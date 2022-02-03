@@ -1,0 +1,7 @@
+# Ignore invisible
+.*
+*~
+!.gitignore
+#
+# WARNING: Automatically copied from dga-tools
+#
