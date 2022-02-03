@@ -54,14 +54,14 @@ Network.prototype = {
    * Activates the network
    */
   activate: function (input, training) {
-    var output = [];
+    const output = [];
 
     // Activate nodes chronologically
-    for (var i = 0; i < this.nodes.length; i++) {
+    for (let i = 0; i < this.nodes.length; i++) {
       if (this.nodes[i].type === "input") {
         this.nodes[i].activate(input[i]);
       } else if (this.nodes[i].type === "output") {
-        var activation = this.nodes[i].activate();
+        const activation = this.nodes[i].activate();
         output.push(activation);
       } else {
         if (training) this.nodes[i].mask = Math.random() < this.dropout ? 0 : 1;
@@ -1052,7 +1052,7 @@ Network.prototype = {
     // Intialise the NEAT instance
     options.network = this;
     const neat = new Neat(this.input, this.output, fitnessFunction, options);
-    console.log("Created Neat");
+    // console.log("Created Neat");
     let error = -Infinity;
     let bestFitness = -Infinity;
     let bestGenome;
@@ -1094,8 +1094,6 @@ Network.prototype = {
         });
       }
     }
-
-    console.log("Ending workers " + workers.length);
 
     for (let i = 0; i < workers.length; i++) {
       const w = workers[i];
