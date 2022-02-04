@@ -13,9 +13,8 @@ Deno.test("AND", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  // console.log( "Mutation", Mutation);
-
   const network = new Network(2, 1);
+
   const results = await network.evolve(trainingSet, {
     mutation: Mutation.FFW,
     equal: true,

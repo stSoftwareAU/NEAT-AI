@@ -8,7 +8,7 @@ export const Multi = {
   workers: Workers,
   // workers: require('./workers/workers'),
 
-  /** Serializes a dataset */
+  /** Serializes a dataset
   serializeDataSet: function (dataSet) {
     const serialized = [dataSet[0].input.length, dataSet[0].output.length];
 
@@ -24,11 +24,11 @@ export const Multi = {
 
     return serialized;
   },
-
+*/
   /** Activate a serialized network */
   activateSerializedNetwork: function (input, A, S, data, F) {
     for (let i = 0; i < data[0]; i++) A[i] = input[i];
-    for (i = 2; i < data.length; i++) {
+    for (let i = 2; i < data.length; i++) {
       const index = data[i++];
       const bias = data[i++];
       const squash = data[i++];
@@ -46,11 +46,11 @@ export const Multi = {
     }
 
     const output = [];
-    for (i = A.length - data[1]; i < A.length; i++) output.push(A[i]);
+    for (let i = A.length - data[1]; i < A.length; i++) output.push(A[i]);
     return output;
   },
 
-  /** Deserializes a dataset to an array of arrays */
+  /** Deserializes a dataset to an array of arrays 
   deserializeDataSet: function (serializedSet) {
     const set = [];
 
@@ -66,7 +66,7 @@ export const Multi = {
       }
       const output = [];
       for (
-        j = 2 + i * sampleSize + serializedSet[0];
+        let j = 2 + i * sampleSize + serializedSet[0];
         j < 2 + i * sampleSize + sampleSize;
         j++
       ) {
@@ -78,7 +78,7 @@ export const Multi = {
 
     return set;
   },
-
+*/
   /** A list of compiled activation functions in a certain order */
   activations: [
     function (x) {
@@ -134,12 +134,12 @@ export const Multi = {
 Multi.testSerializedSet = function (set, cost, A, S, data, F) {
   // Calculate how much samples are in the set
   let error = 0;
-  for (let i = 0; i < set.length; i += 2) {
-    const output = Multi.activateSerializedNetwork(set[i], A, S, data, F);
-    error += cost(set[i + 1], output);
+  for (let i = 0; i < set.length; i ++) {
+    const output = Multi.activateSerializedNetwork(set[i].input, A, S, data, F);
+    error += cost(set[i].output, output);
   }
 
-  return error / (set.length / 2);
+  return error / set.length;
 };
 
 // /* Export */
