@@ -16,11 +16,8 @@ Deno.test("Holder", async () => {
     },
   );
 
-  console.log(worker);
-
-  console.log("postMessage");
   worker.postMessage({ set: trainingSet, costName: "MSE" });
-  console.info("Posted");
+  
   const network = new Network(2, 1);
   const p = new Promise((resolve, reject) => {
     const serialized = network.serialize();
@@ -34,15 +31,14 @@ Deno.test("Holder", async () => {
     const _that = worker;
 
     _that.addEventListener("message", function callback(message) {
-      console.info("resolved Promise");
+      
       resolve(message);
     });
-    console.info("holder.evaluate(network) postMessage(data)");
+    
     _that.postMessage(data);
   });
 
   const m: any = await p;
-  console.info("RESULT:", m.data);
 
   worker.terminate();
 });

@@ -3,7 +3,7 @@
 
 import { Multi } from "../multithreading/multi.js";
 import { Methods } from "../methods/methods.js";
-import { Cost } from "../methods/cost.js";
+// import { Cost } from "../methods/cost.js";
 import Connection from "./connection.js";
 import { Config } from "../config.js";
 import Neat from "../neat.js";
@@ -973,7 +973,7 @@ Network.prototype = {
         threads = navigator.hardwareConcurrency;
       }
     }
-
+    
     const start = Date.now();
 
     if (
@@ -996,10 +996,8 @@ Network.prototype = {
     }
 
     const fitnessFunction = function (population) {
-      console.info("fitness Created Promise");
       return new Promise((resolve, reject) => {
         // Create a queue
-        console.info("fitness started promise");
         const queue = population.slice();
         let done = 0;
 
@@ -1007,7 +1005,6 @@ Network.prototype = {
         const startWorker = async function (worker) {
           if (!queue.length) {
             if (++done === threads) {
-              console.info("fitness Resolved Promise");
               resolve();
             }
             return;
@@ -1086,7 +1083,6 @@ Network.prototype = {
       }
     }
 
-    console.info("killed workers");
     for (let i = 0; i < workers.length; i++) {
       const w = workers[i];
       w.terminate();

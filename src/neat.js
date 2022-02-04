@@ -192,10 +192,11 @@ Neat.prototype = {
         }
       }
       try {
-        const item = await this.fitness(this.population);
-        console.info("fitness complete", item);
+        await this.fitness(this.population);
+        
       } catch (e) {
         console.error("fitness error", e);
+        throw e;
       }
     } else {
       for (let i = 0; i < this.population.length; i++) {
