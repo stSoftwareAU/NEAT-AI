@@ -191,7 +191,12 @@ Neat.prototype = {
           this.population[i].clear();
         }
       }
-      this.fitness(this.population);
+      try {
+        const item = await this.fitness(this.population);
+        console.info("fitness complete", item);
+      } catch (e) {
+        console.error("fitness error", e);
+      }
     } else {
       for (let i = 0; i < this.population.length; i++) {
         const genome = this.population[i];
@@ -213,12 +218,12 @@ Neat.prototype = {
   /**
    * Returns the fittest genome of the current population
    */
-  getFittest: function () {
+  getFittest: async function () {
     // Check if evaluated
     if (
       typeof this.population[this.population.length - 1].score === "undefined"
     ) {
-      this.evaluate();
+      await this.evaluate();
     }
     if (this.population[0].score < this.population[1].score) {
       this.sort();
@@ -230,15 +235,15 @@ Neat.prototype = {
   /**
    * Returns the average fitness of the current population
    */
-  getAverage: function () {
+  getAverage: async function () {
     if (
       typeof this.population[this.population.length - 1].score === "undefined"
     ) {
-      this.evaluate();
+      await this.evaluate();
     }
 
-    var score = 0;
-    for (var i = 0; i < this.population.length; i++) {
+    let score = 0;
+    for (let i = 0; i < this.population.length; i++) {
       score += this.population[i].score;
     }
 

@@ -1,25 +1,42 @@
 import { Multi } from "../../../multithreading/multi.js";
-import { Methods } from "../../../methods/methods.js";
+import { Cost } from "../../../methods/cost.js";
 
-let set = [];
-let cost;
-const F = Multi.activations;
+self.set=[];
+self.cost=null;
+// const F = Multi.activations;
 
-self.onmessage = (e) => {
-  if (typeof e.set === "undefined") {
-    // console.log( "Calculate", e);
+self.onload=()=>{
+  console.info(console.info( "worker.onload", e));
+}
+self.onunload=()=>{
+  console.info(console.info( "worker.onunload", e));
+}
+self.onmessage = (message) => {
 
-    const A = e.activations;
-    const S = e.states;
-    const data = e.conns;
+  // console.info( "worker.onmessage", message);
+  
+  // console.info("TYPEOF: ",  typeof message.data );
+  
+  const data= message.data;
+  // console.info( "data", data);
+  if (typeof data.set === "undefined") {
+    console.log( "Worker: Calculate");
 
-    const result = Multi.testSerializedSet(set, cost, A, S, data, F);
+    const result = Multi.testSerializedSet(
+      self.set, 
+      self.cost, 
+      data.activations, 
+      data.states, 
+      data.conns, 
+      Multi.activations
+    );
     postMessage(result);
 
-    self.close();
+    // self.close();
   } else {
-    // console.log( "Initialize", e);
-    cost = Methods.cost[e.cost];
-    set = Multi.deserializeDataSet(e.set);
+    console.log( "Worker: Initialize", data);
+    self.cost = Cost[data.costName];
+    console.info( "Cost: ", self.cost);
+    self.set = data.set;//Multi.deserializeDataSet(data.set);
   }
 };

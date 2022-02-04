@@ -374,13 +374,12 @@ Node.prototype = {
     switch (method) {
       case Methods.mutation.MOD_ACTIVATION:
         // Can't be the same squash
-        var squash =
-          method
-            .allowed[
-              (method.allowed.indexOf(this.squash) +
-                Math.floor(Math.random() * (method.allowed.length - 1)) + 1) %
-              method.allowed.length
-            ];
+        var squash = method
+          .allowed[
+            (method.allowed.indexOf(this.squash) +
+              Math.floor(Math.random() * (method.allowed.length - 1)) + 1) %
+            method.allowed.length
+          ];
         this.squash = squash;
         break;
       case Methods.mutation.MOD_BIAS:

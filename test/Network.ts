@@ -21,9 +21,9 @@ function checkMutation(method: unknown) {
   network.mutate(Methods.mutation.ADD_SELF_CONN);
 
   const originalOutput = [];
-  let i, j;
-  for (i = 0; i <= 10; i++) {
-    for (j = 0; j <= 10; j++) {
+
+  for (let i = 0; i <= 10; i++) {
+    for (let j = 0; j <= 10; j++) {
       originalOutput.push(network.activate([i / 10, j / 10]));
     }
   }
@@ -32,8 +32,8 @@ function checkMutation(method: unknown) {
 
   const mutatedOutput = [];
 
-  for (i = 0; i <= 10; i++) {
-    for (j = 0; j <= 10; j++) {
+  for (let i = 0; i <= 10; i++) {
+    for (let j = 0; j <= 10; j++) {
       mutatedOutput.push(network.activate([i / 10, j / 10]));
     }
   }

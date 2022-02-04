@@ -3,6 +3,7 @@
 
 import { Multi } from "../multithreading/multi.js";
 import { Methods } from "../methods/methods.js";
+import { Cost } from "../methods/cost.js";
 import Connection from "./connection.js";
 import { Config } from "../config.js";
 import Neat from "../neat.js";
@@ -282,7 +283,7 @@ Network.prototype = {
 
     let i, j;
     switch (method) {
-      case mutation.ADD_NODE:{
+      case mutation.ADD_NODE: {
         // Look for an existing connection and place a node in between
         const connection =
           this.connections[Math.floor(Math.random() * this.connections.length)];
@@ -310,7 +311,7 @@ Network.prototype = {
         }
         break;
       }
-      case mutation.SUB_NODE:{
+      case mutation.SUB_NODE: {
         // Check if there are nodes left to remove
         if (this.nodes.length === this.input + this.output) {
           if (Config.warnings) console.warn("No more nodes left to remove!");
@@ -324,8 +325,8 @@ Network.prototype = {
         );
         this.remove(this.nodes[index]);
         break;
-    }
-      case mutation.ADD_CONN:{
+      }
+      case mutation.ADD_CONN: {
         // Create an array of all uncreated (feedforward) connections
         const available = [];
         for (i = 0; i < this.nodes.length - this.output; i++) {
@@ -345,7 +346,7 @@ Network.prototype = {
         this.connect(pair[0], pair[1]);
         break;
       }
-      case mutation.SUB_CONN:{
+      case mutation.SUB_CONN: {
         // List of possible connections that can be removed
         const possible = [];
 
@@ -366,21 +367,22 @@ Network.prototype = {
           break;
         }
 
-        const randomConn = possible[Math.floor(Math.random() * possible.length)];
+        const randomConn =
+          possible[Math.floor(Math.random() * possible.length)];
         this.disconnect(randomConn.from, randomConn.to);
         break;
       }
-      case mutation.MOD_WEIGHT:{
+      case mutation.MOD_WEIGHT: {
         const allconnections = this.connections.concat(this.selfconns);
 
         const connection =
           allconnections[Math.floor(Math.random() * allconnections.length)];
-          const modification = Math.random() * (method.max - method.min) +
+        const modification = Math.random() * (method.max - method.min) +
           method.min;
         connection.weight += modification;
         break;
       }
-      case mutation.MOD_BIAS:{
+      case mutation.MOD_BIAS: {
         // Has no effect on input node, so they are excluded
         const index = Math.floor(
           Math.random() * (this.nodes.length - this.input) + this.input,
@@ -389,7 +391,7 @@ Network.prototype = {
         node.mutate(method);
         break;
       }
-      case mutation.MOD_ACTIVATION:{
+      case mutation.MOD_ACTIVATION: {
         // Has no effect on input node, so they are excluded
         if (
           !method.mutateOutput && this.input + this.output === this.nodes.length
@@ -410,7 +412,7 @@ Network.prototype = {
         node.mutate(method);
         break;
       }
-      case mutation.ADD_SELF_CONN:{
+      case mutation.ADD_SELF_CONN: {
         // Check which nodes aren't selfconnected yet
         const possible = [];
         for (i = this.input; i < this.nodes.length; i++) {
@@ -432,7 +434,7 @@ Network.prototype = {
         this.connect(node, node);
         break;
       }
-      case mutation.SUB_SELF_CONN:{
+      case mutation.SUB_SELF_CONN: {
         if (this.selfconns.length === 0) {
           if (Config.warnings) {
             console.warn("No more self-connections to remove!");
@@ -444,7 +446,7 @@ Network.prototype = {
         this.disconnect(conn.from, conn.to);
         break;
       }
-      case mutation.ADD_GATE:{
+      case mutation.ADD_GATE: {
         const allconnections = this.connections.concat(this.selfconns);
 
         // Create a list of all non-gated connections
@@ -472,7 +474,7 @@ Network.prototype = {
         this.gate(node, conn);
         break;
       }
-      case mutation.SUB_GATE:{
+      case mutation.SUB_GATE: {
         // Select a random gated connection
         if (this.gates.length === 0) {
           if (Config.warnings) console.warn("No more connections to ungate!");
@@ -485,7 +487,7 @@ Network.prototype = {
         this.ungate(gatedconn);
         break;
       }
-      case mutation.ADD_BACK_CONN:{
+      case mutation.ADD_BACK_CONN: {
         // Create an array of all uncreated (backfed) connections
         const available = [];
         for (i = this.input; i < this.nodes.length; i++) {
@@ -505,7 +507,7 @@ Network.prototype = {
         this.connect(pair[0], pair[1]);
         break;
       }
-      case mutation.SUB_BACK_CONN:{
+      case mutation.SUB_BACK_CONN: {
         // List of possible connections that can be removed
         const possible = [];
 
@@ -526,11 +528,12 @@ Network.prototype = {
           break;
         }
 
-        const randomConn = possible[Math.floor(Math.random() * possible.length)];
+        const randomConn =
+          possible[Math.floor(Math.random() * possible.length)];
         this.disconnect(randomConn.from, randomConn.to);
         break;
       }
-      case mutation.SWAP_NODES:{
+      case mutation.SWAP_NODES: {
         // Has no effect on input node, so they are excluded
         if (
           (method.mutateOutput && this.nodes.length - this.input < 2) ||
@@ -956,8 +959,11 @@ Network.prototype = {
     const growth = typeof options.growth !== "undefined"
       ? options.growth
       : 0.0001;
-    const cost = options.cost || Methods.cost.MSE;
-    const amount = options.amount || 1;
+
+    const costName = options.costName || "MSE";
+
+    // const cost = Cost[costName];
+    // const amount = options.amount || 1;
 
     let threads = options.threads;
     if (typeof threads === "undefined") {
@@ -984,70 +990,55 @@ Network.prototype = {
     }
 
     const workers = [];
-    // Create the fitness function
-    let fitnessFunction;
-    if (true) {
-      fitnessFunction = function (genome) {
-        let score = 0;
-        for (let i = 0; i < amount; i++) {
-          score -= genome.test(set, cost).error;
-        }
 
-        score -= (genome.nodes.length - genome.input - genome.output +
-          genome.connections.length + genome.gates.length) * growth;
-        score = isNaN(score) ? -Infinity : score; // this can cause problems with fitness proportionate selection
+    for (let i = 0; i < threads; i++) {
+      workers.push(new Multi.workers.create(set, costName));
+    }
 
-        return score / amount;
-      };
-    } else {
-      const converted = Multi.serializeDataSet(set);
-
-      // Create workers, send datasets
-
-      console.log("creating workers");
-      for (let i = 0; i < threads; i++) {
-        workers.push(new Multi.workers.create(converted, cost));
-      }
-      // } else {
-      //   for (var i = 0; i < threads; i++) {
-      //     workers.push(new Multi.workers.browser.TestWorker(converted, cost));
-      //   }
-      // }
-      console.log("created workers");
-      fitnessFunction = function (population) {
-        //return new Promise((resolve, reject) => {e
+    const fitnessFunction = function (population) {
+      console.info("fitness Created Promise");
+      return new Promise((resolve, reject) => {
         // Create a queue
+        console.info("fitness started promise");
         const queue = population.slice();
         let done = 0;
 
         // Start worker function
-        const startWorker = function (worker) {
+        const startWorker = async function (worker) {
           if (!queue.length) {
-            if (++done === threads) resolve();
+            if (++done === threads) {
+              console.info("fitness Resolved Promise");
+              resolve();
+            }
             return;
           }
 
           const genome = queue.shift();
 
-          worker.evaluate(genome).then(function (result) {
+          try {
+            const result = await worker.evaluate(genome);
             genome.score = -result;
-            genome.score -=
-              (genome.nodes.length - genome.input - genome.output +
-                genome.connections.length + genome.gates.length) * growth;
+            genome.score -= (
+              genome.nodes.length -
+              genome.input -
+              genome.output +
+              genome.connections.length +
+              genome.gates.length
+            ) * growth;
             genome.score = isNaN(genome.score) ? -Infinity : genome.score;
             startWorker(worker);
-          });
+          } catch (err) {
+            console.error(err);
+            reject(err);
+          }
         };
-
         for (let i = 0; i < workers.length; i++) {
           startWorker(workers[i]);
         }
-        //});
-      };
-      console.log("Created fitness");
+      });
+    };
 
-      options.fitnessPopulation = true;
-    }
+    options.fitnessPopulation = true;
 
     // Intialise the NEAT instance
     options.network = this;
@@ -1095,6 +1086,7 @@ Network.prototype = {
       }
     }
 
+    console.info("killed workers");
     for (let i = 0; i < workers.length; i++) {
       const w = workers[i];
       w.terminate();
@@ -1115,92 +1107,6 @@ Network.prototype = {
       time: Date.now() - start,
     };
   },
-
-  /**
-   * Creates a standalone function of the network which can be run without the
-   * need of a library
-   *
-  standalone: function () {
-    var present = [];
-    var activations = [];
-    var states = [];
-    var lines = [];
-    var functions = [];
-
-    var i;
-    for (i = 0; i < this.input; i++) {
-      var node = this.nodes[i];
-      activations.push(node.activation);
-      states.push(node.state);
-    }
-
-    lines.push("for(var i = 0; i < input.length; i++) A[i] = input[i];");
-
-    // So we don't have to use expensive .indexOf()
-    for (i = 0; i < this.nodes.length; i++) {
-      this.nodes[i].index = i;
-    }
-
-    for (i = this.input; i < this.nodes.length; i++) {
-      let node = this.nodes[i];
-      activations.push(node.activation);
-      states.push(node.state);
-
-      var functionIndex = present.indexOf(node.squash.name);
-
-      if (functionIndex === -1) {
-        functionIndex = present.length;
-        present.push(node.squash.name);
-        functions.push(node.squash.toString());
-      }
-
-      var incoming = [];
-      for (var j = 0; j < node.connections.in.length; j++) {
-        var conn = node.connections.in[j];
-        var computation = `A[${conn.from.index}] * ${conn.weight}`;
-
-        if (conn.gater != null) {
-          computation += ` * A[${conn.gater.index}]`;
-        }
-
-        incoming.push(computation);
-      }
-
-      if (node.connections.self.weight) {
-        let conn = node.connections.self;
-        let computation = `S[${i}] * ${conn.weight}`;
-
-        if (conn.gater != null) {
-          computation += ` * A[${conn.gater.index}]`;
-        }
-
-        incoming.push(computation);
-      }
-
-      var line1 = `S[${i}] = ${incoming.join(" + ")} + ${node.bias};`;
-      var line2 = `A[${i}] = F[${functionIndex}](S[${i}])${
-        !node.mask ? " * " + node.mask : ""
-      };`;
-      lines.push(line1);
-      lines.push(line2);
-    }
-
-    var output = [];
-    for (i = this.nodes.length - this.output; i < this.nodes.length; i++) {
-      output.push(`A[${i}]`);
-    }
-
-    output = `return [${output.join(",")}];`;
-    lines.push(output);
-
-    var total = "";
-    total += `var F = [${functions.toString()}];\r\n`;
-    total += `var A = [${activations.toString()}];\r\n`;
-    total += `var S = [${states.toString()}];\r\n`;
-    total += `function activate(input){\r\n${lines.join("\r\n")}\r\n}`;
-
-    return total;
-  },*/
 
   /**
    * Serialize to send to workers efficiently

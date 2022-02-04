@@ -8,7 +8,7 @@ export const Multi = {
   workers: Workers,
   // workers: require('./workers/workers'),
 
-  /** Serializes a dataset */
+  /** Serializes a dataset
   serializeDataSet: function (dataSet) {
     const serialized = [dataSet[0].input.length, dataSet[0].output.length];
 
@@ -24,11 +24,11 @@ export const Multi = {
 
     return serialized;
   },
-
+*/
   /** Activate a serialized network */
   activateSerializedNetwork: function (input, A, S, data, F) {
     for (let i = 0; i < data[0]; i++) A[i] = input[i];
-    for (i = 2; i < data.length; i++) {
+    for (let i = 2; i < data.length; i++) {
       const index = data[i++];
       const bias = data[i++];
       const squash = data[i++];
@@ -46,7 +46,7 @@ export const Multi = {
     }
 
     const output = [];
-    for (i = A.length - data[1]; i < A.length; i++) output.push(A[i]);
+    for (let i = A.length - data[1]; i < A.length; i++) output.push(A[i]);
     return output;
   },
 
