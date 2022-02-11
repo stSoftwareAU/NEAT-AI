@@ -45,8 +45,15 @@ export const Multi = {
       A[index] = F[squash](S[index]);
     }
 
-    const output = [];
-    for (let i = A.length - data[1]; i < A.length; i++) output.push(A[i]);
+    /* extend */
+    const offset=A.length - data[1];
+    const len=A.length;
+    const output = [len-offset];
+    let pos=0;
+    for (let i = offset;
+       i < len; i++){
+      output[pos++]=A[i];
+    }
     return output;
   },
 
@@ -134,12 +141,13 @@ export const Multi = {
 Multi.testSerializedSet = function (set, cost, A, S, data, F) {
   // Calculate how much samples are in the set
   let error = 0;
-  for (let i = 0; i < set.length; i ++) {
+  const len=set.length;
+  for (let i = 0; i < len; i ++) {
     const output = Multi.activateSerializedNetwork(set[i].input, A, S, data, F);
     error += cost(set[i].output, output);
   }
 
-  return error / set.length;
+  return error / len;
 };
 
 // /* Export */
