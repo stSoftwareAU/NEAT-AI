@@ -24,7 +24,7 @@ export const Multi = {
 
     return serialized;
   },
-*/
+  */
   /** Activate a serialized network */
   activateSerializedNetwork: function (input, A, S, data, F) {
     for (let i = 0; i < data[0]; i++) A[i] = input[i];
@@ -46,18 +46,17 @@ export const Multi = {
     }
 
     /* extend */
-    const offset=A.length - data[1];
-    const len=A.length;
-    const output = [len-offset];
-    let pos=0;
-    for (let i = offset;
-       i < len; i++){
-      output[pos++]=A[i];
+    const offset = A.length - data[1];
+    const len = A.length;
+    const output = [len - offset];
+    let pos = 0;
+    for (let i = offset; i < len; i++) {
+      output[pos++] = A[i];
     }
     return output;
   },
 
-  /** Deserializes a dataset to an array of arrays 
+  /** Deserializes a dataset to an array of arrays
   deserializeDataSet: function (serializedSet) {
     const set = [];
 
@@ -85,7 +84,7 @@ export const Multi = {
 
     return set;
   },
-*/
+  */
   /** A list of compiled activation functions in a certain order */
   activations: [
     function (x) {
@@ -141,8 +140,8 @@ export const Multi = {
 Multi.testSerializedSet = function (set, cost, A, S, data, F) {
   // Calculate how much samples are in the set
   let error = 0;
-  const len=set.length;
-  for (let i = 0; i < len; i ++) {
+  const len = set.length;
+  for (let i = 0; i < len; i++) {
     const output = Multi.activateSerializedNetwork(set[i].input, A, S, data, F);
     error += cost(set[i].output, output);
   }

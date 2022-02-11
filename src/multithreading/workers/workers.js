@@ -1,7 +1,7 @@
 /*******************************************************************************
                                   WORKERS
 *******************************************************************************/
-import {Holder} from "./holder.ts";
+import { Holder } from "./holder.ts";
 
 export const Workers = {
   // export default Workers = {

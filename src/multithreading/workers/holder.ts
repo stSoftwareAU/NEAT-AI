@@ -3,7 +3,6 @@ import { Network } from "../../architecture/network.js";
 export class Holder {
   private worker: Worker;
   constructor(dataSet: any, costName: string) {
-
     if (typeof dataSet === "undefined") {
       throw "dataSet is mandatory";
     }
@@ -13,16 +12,15 @@ export class Holder {
         type: "module",
       },
     );
-    
+
     this.worker.postMessage({ set: dataSet, costName: costName });
   }
 
-  terminate(){
+  terminate() {
     this.worker.terminate();
   }
 
   evaluate(network: Network) {
-    
     return new Promise((resolve, reject) => {
       const serialized = network.serialize();
 
@@ -36,10 +34,10 @@ export class Holder {
 
       _that.addEventListener("message", function callback(message) {
         _that.removeEventListener("message", callback);
-        
+
         resolve(message.data);
       });
-      
+
       _that.postMessage(data);
     });
   }

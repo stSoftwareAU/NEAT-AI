@@ -5,7 +5,7 @@
 // https://stackoverflow.com/questions/30033096/what-is-lr-policy-in-caffe/30045244
 export const Rate = {
   FIXED: function () {
-    var func = function (baseRate, iteration) {
+    const func = function (baseRate) {
       return baseRate;
     };
     return func;
@@ -14,7 +14,7 @@ export const Rate = {
     gamma = gamma || 0.9;
     stepSize = stepSize || 100;
 
-    var func = function (baseRate, iteration) {
+    const func = function (baseRate, iteration) {
       return baseRate * Math.pow(gamma, Math.floor(iteration / stepSize));
     };
 
@@ -23,7 +23,7 @@ export const Rate = {
   EXP: function (gamma) {
     gamma = gamma || 0.999;
 
-    var func = function (baseRate, iteration) {
+    const func = function (baseRate, iteration) {
       return baseRate * Math.pow(gamma, iteration);
     };
 
@@ -33,7 +33,7 @@ export const Rate = {
     gamma = gamma || 0.001;
     power = power || 2;
 
-    var func = function (baseRate, iteration) {
+    const func = function (baseRate, iteration) {
       return baseRate * Math.pow(1 + gamma * iteration, -power);
     };
 

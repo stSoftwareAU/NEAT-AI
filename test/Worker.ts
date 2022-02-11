@@ -17,7 +17,7 @@ Deno.test("Holder", async () => {
   );
 
   worker.postMessage({ set: trainingSet, costName: "MSE" });
-  
+
   const network = new Network(2, 1);
   const p = new Promise((resolve, reject) => {
     const serialized = network.serialize();
@@ -31,10 +31,9 @@ Deno.test("Holder", async () => {
     const _that = worker;
 
     _that.addEventListener("message", function callback(message) {
-      
       resolve(message);
     });
-    
+
     _that.postMessage(data);
   });
 

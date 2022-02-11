@@ -122,7 +122,7 @@ Network.prototype = {
    * Clear the context of the network
    */
   clear: function () {
-    for (var i = 0; i < this.nodes.length; i++) {
+    for (let i = 0; i < this.nodes.length; i++) {
       this.nodes[i].clear();
     }
   },
@@ -720,14 +720,14 @@ Network.prototype = {
    * private function used in this.train
    */
   _trainSet: function (set, batchSize, currentRate, momentum, costFunction) {
-    var errorSum = 0;
-    for (var i = 0; i < set.length; i++) {
-      var input = set[i].input;
-      var target = set[i].output;
+    let errorSum = 0;
+    for (let i = 0; i < set.length; i++) {
+      const input = set[i].input;
+      const target = set[i].output;
 
-      var update = !!((i + 1) % batchSize === 0 || (i + 1) === set.length);
+      const update = !!((i + 1) % batchSize === 0 || (i + 1) === set.length);
 
-      var output = this.activate(input, true);
+      const output = this.activate(input, true);
       this.propagate(currentRate, momentum, update, target);
 
       errorSum += costFunction(target, output);
@@ -973,7 +973,7 @@ Network.prototype = {
         threads = navigator.hardwareConcurrency;
       }
     }
-    
+
     const start = Date.now();
 
     if (
@@ -1256,19 +1256,19 @@ Network.crossOver = function (network1, network2, equal) {
   }
 
   // Initialise offspring
-  var offspring = new Network(network1.input, network1.output);
+  const offspring = new Network(network1.input, network1.output);
   offspring.connections = [];
   offspring.nodes = [];
 
   // Save scores and create a copy
-  var score1 = network1.score || 0;
-  var score2 = network2.score || 0;
+  const score1 = network1.score || 0;
+  const score2 = network2.score || 0;
 
   // Determine offspring node size
-  var size;
+  let size;
   if (equal || score1 === score2) {
-    let max = Math.max(network1.nodes.length, network2.nodes.length);
-    let min = Math.min(network1.nodes.length, network2.nodes.length);
+    const max = Math.max(network1.nodes.length, network2.nodes.length);
+    const min = Math.min(network1.nodes.length, network2.nodes.length);
     size = Math.floor(Math.random() * (max - min + 1) + min);
   } else if (score1 > score2) {
     size = network1.nodes.length;
@@ -1277,26 +1277,26 @@ Network.crossOver = function (network1, network2, equal) {
   }
 
   // Rename some variables for easier reading
-  var outputSize = network1.output;
+  const outputSize = network1.output;
 
   // Set indexes so we don't need indexOf
-  var i;
-  for (i = 0; i < network1.nodes.length; i++) {
+
+  for (let i = 0; i < network1.nodes.length; i++) {
     network1.nodes[i].index = i;
   }
 
-  for (i = 0; i < network2.nodes.length; i++) {
+  for (let i = 0; i < network2.nodes.length; i++) {
     network2.nodes[i].index = i;
   }
 
   // Assign nodes from parents to offspring
-  for (i = 0; i < size; i++) {
+  for (let i = 0; i < size; i++) {
     // Determine if an output node is needed
-    var node;
+    let node;
     if (i < size - outputSize) {
-      let random = Math.random();
+      const random = Math.random();
       node = random >= 0.5 ? network1.nodes[i] : network2.nodes[i];
-      let other = random < 0.5 ? network1.nodes[i] : network2.nodes[i];
+      const other = random < 0.5 ? network1.nodes[i] : network2.nodes[i];
 
       if (typeof node === "undefined" || node.type === "output") {
         node = other;
@@ -1309,7 +1309,7 @@ Network.crossOver = function (network1, network2, equal) {
       }
     }
 
-    var newNode = new Node();
+    const newNode = new Node();
     newNode.bias = node.bias;
     newNode.squash = node.squash;
     newNode.type = node.type;
@@ -1318,13 +1318,13 @@ Network.crossOver = function (network1, network2, equal) {
   }
 
   // Create arrays of connection genes
-  var n1conns = {};
-  var n2conns = {};
+  const n1conns = {};
+  const n2conns = {};
 
   // Normal connections
-  for (i = 0; i < network1.connections.length; i++) {
-    let conn = network1.connections[i];
-    let data = {
+  for (let i = 0; i < network1.connections.length; i++) {
+    const conn = network1.connections[i];
+    const data = {
       weight: conn.weight,
       from: conn.from.index,
       to: conn.to.index,
@@ -1334,9 +1334,9 @@ Network.crossOver = function (network1, network2, equal) {
   }
 
   // Selfconnections
-  for (i = 0; i < network1.selfconns.length; i++) {
-    let conn = network1.selfconns[i];
-    let data = {
+  for (let i = 0; i < network1.selfconns.length; i++) {
+    const conn = network1.selfconns[i];
+    const data = {
       weight: conn.weight,
       from: conn.from.index,
       to: conn.to.index,
@@ -1346,9 +1346,9 @@ Network.crossOver = function (network1, network2, equal) {
   }
 
   // Normal connections
-  for (i = 0; i < network2.connections.length; i++) {
-    let conn = network2.connections[i];
-    let data = {
+  for (let i = 0; i < network2.connections.length; i++) {
+    const conn = network2.connections[i];
+    const data = {
       weight: conn.weight,
       from: conn.from.index,
       to: conn.to.index,
@@ -1358,9 +1358,9 @@ Network.crossOver = function (network1, network2, equal) {
   }
 
   // Selfconnections
-  for (i = 0; i < network2.selfconns.length; i++) {
-    let conn = network2.selfconns[i];
-    let data = {
+  for (let i = 0; i < network2.selfconns.length; i++) {
+    const conn = network2.selfconns[i];
+    const data = {
       weight: conn.weight,
       from: conn.from.index,
       to: conn.to.index,
@@ -1370,13 +1370,13 @@ Network.crossOver = function (network1, network2, equal) {
   }
 
   // Split common conn genes from disjoint or excess conn genes
-  var connections = [];
-  var keys1 = Object.keys(n1conns);
-  var keys2 = Object.keys(n2conns);
-  for (i = keys1.length - 1; i >= 0; i--) {
+  const connections = [];
+  const keys1 = Object.keys(n1conns);
+  const keys2 = Object.keys(n2conns);
+  for (let i = keys1.length - 1; i >= 0; i--) {
     // Common gene
     if (typeof n2conns[keys1[i]] !== "undefined") {
-      let conn = Math.random() >= 0.5 ? n1conns[keys1[i]] : n2conns[keys1[i]];
+      const conn = Math.random() >= 0.5 ? n1conns[keys1[i]] : n2conns[keys1[i]];
       connections.push(conn);
 
       // Because deleting is expensive, just set it to some value
@@ -1388,7 +1388,7 @@ Network.crossOver = function (network1, network2, equal) {
 
   // Excess/disjoint gene
   if (score2 >= score1 || equal) {
-    for (i = 0; i < keys2.length; i++) {
+    for (let i = 0; i < keys2.length; i++) {
       if (typeof n2conns[keys2[i]] !== "undefined") {
         connections.push(n2conns[keys2[i]]);
       }
@@ -1396,12 +1396,12 @@ Network.crossOver = function (network1, network2, equal) {
   }
 
   // Add common conn genes uniformly
-  for (i = 0; i < connections.length; i++) {
-    let connData = connections[i];
+  for (let i = 0; i < connections.length; i++) {
+    const connData = connections[i];
     if (connData.to < size && connData.from < size) {
-      let from = offspring.nodes[connData.from];
-      let to = offspring.nodes[connData.to];
-      let conn = offspring.connect(from, to)[0];
+      const from = offspring.nodes[connData.from];
+      const to = offspring.nodes[connData.to];
+      const conn = offspring.connect(from, to)[0];
 
       conn.weight = connData.weight;
 

@@ -170,8 +170,8 @@ Neat.prototype = {
    * Mutates the given (or current) population
    */
   mutate: function () {
-    // Elitist genomes should not be included
-    for (let i = 0; i < this.population.length; i++) {
+    // Skip the elitist ones.
+    for (let i = this.elitism; i < this.population.length; i++) {
       if (Math.random() <= this.mutationRate) {
         for (let j = 0; j < this.mutationAmount; j++) {
           const mutationMethod = this.selectMutationMethod(this.population[i]);
@@ -193,7 +193,6 @@ Neat.prototype = {
       }
       try {
         await this.fitness(this.population);
-        
       } catch (e) {
         console.error("fitness error", e);
         throw e;
@@ -256,25 +255,25 @@ Neat.prototype = {
    * @return {Network} genome
    */
   getParent: function () {
-    var i;
     switch (this.selection) {
-      case selection.POWER:
+      case selection.POWER: {
         if (this.population[0].score < this.population[1].score) this.sort();
 
-        var index = Math.floor(
+        const index = Math.floor(
           Math.pow(Math.random(), this.selection.power) *
             this.population.length,
         );
         return this.population[index];
-      case selection.FITNESS_PROPORTIONATE:
+      }
+      case selection.FITNESS_PROPORTIONATE: {
         // As negative fitnesses are possible
         // https://stackoverflow.com/questions/16186686/genetic-algorithm-handling-negative-fitness-values
         // this is unnecessarily run for every individual, should be changed
 
-        var totalFitness = 0;
-        var minimalFitness = 0;
-        for (i = 0; i < this.population.length; i++) {
-          var score = this.population[i].score;
+        let totalFitness = 0;
+        let minimalFitness = 0;
+        for (let i = 0; i < this.population.length; i++) {
+          const score = this.population[i].score;
           minimalFitness = score < minimalFitness ? score : minimalFitness;
           totalFitness += score;
         }
@@ -282,11 +281,11 @@ Neat.prototype = {
         minimalFitness = Math.abs(minimalFitness);
         totalFitness += minimalFitness * this.population.length;
 
-        var random = Math.random() * totalFitness;
-        var value = 0;
+        const random = Math.random() * totalFitness;
+        let value = 0;
 
         for (i = 0; i < this.population.length; i++) {
-          let genome = this.population[i];
+          const genome = this.population[i];
           value += genome.score + minimalFitness;
           if (random < value) return genome;
         }
@@ -294,7 +293,8 @@ Neat.prototype = {
         // if all scores equal, return random genome
         return this
           .population[Math.floor(Math.random() * this.population.length)];
-      case selection.TOURNAMENT:
+      }
+      case selection.TOURNAMENT: {
         if (this.selection.size > this.popsize) {
           throw new Error(
             "Your tournament size should be lower than the population size, please change methods.selection.TOURNAMENT.size",
@@ -302,11 +302,11 @@ Neat.prototype = {
         }
 
         // Create a tournament
-        var individuals = [];
-        for (i = 0; i < this.selection.size; i++) {
-          let random =
+        const individuals = new Array(this.selection.size);
+        for (let i = 0; i < this.selection.size; i++) {
+          const random =
             this.population[Math.floor(Math.random() * this.population.length)];
-          individuals.push(random);
+          individuals[i] = random;
         }
 
         // Sort the tournament individuals by score
@@ -315,7 +315,7 @@ Neat.prototype = {
         });
 
         // Select an individual
-        for (i = 0; i < this.selection.size; i++) {
+        for (let i = 0; i < this.selection.size; i++) {
           if (
             Math.random() < this.selection.probability ||
             i === this.selection.size - 1
@@ -323,6 +323,7 @@ Neat.prototype = {
             return individuals[i];
           }
         }
+      }
     }
   },
 
