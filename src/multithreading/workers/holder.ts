@@ -21,7 +21,7 @@ export class Holder {
   }
 
   evaluate(network: Network) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const serialized = network.serialize();
 
       const data = {
