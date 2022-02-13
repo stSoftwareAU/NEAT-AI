@@ -440,7 +440,7 @@ Node.prototype = {
  * Convert a json object to a node
  */
 Node.fromJSON = function (json) {
-  var node = new Node();
+  const node = new Node();
   node.bias = json.bias;
   node.type = json.type;
   node.mask = json.mask;

@@ -1111,23 +1111,23 @@ Network.prototype = {
     const activations = [];
     const states = [];
     const conns = [];
-    const squashes = [
-      "LOGISTIC",
-      "TANH",
-      "IDENTITY",
-      "STEP",
-      "RELU",
-      "SOFTSIGN",
-      "SINUSOID",
-      "GAUSSIAN",
-      "BENT_IDENTITY",
-      "BIPOLAR",
-      "BIPOLAR_SIGMOID",
-      "HARD_TANH",
-      "ABSOLUTE",
-      "INVERSE",
-      "SELU",
-    ];
+    // const squashes = [
+    //   "LOGISTIC",
+    //   "TANH",
+    //   "IDENTITY",
+    //   "STEP",
+    //   "RELU",
+    //   "SOFTSIGN",
+    //   "SINUSOID",
+    //   "GAUSSIAN",
+    //   "BENT_IDENTITY",
+    //   "BIPOLAR",
+    //   "BIPOLAR_SIGMOID",
+    //   "HARD_TANH",
+    //   "ABSOLUTE",
+    //   "INVERSE",
+    //   "SELU",
+    // ];
 
     conns.push(this.input);
     conns.push(this.output);
@@ -1144,7 +1144,7 @@ Network.prototype = {
       const node = this.nodes[i];
       conns.push(node.index);
       conns.push(node.bias);
-      conns.push(squashes.indexOf(node.squash.name));
+      conns.push(node.squash.name); //squashes.indexOf(node.squash.name));
 
       conns.push(node.connections.self.weight);
       conns.push(

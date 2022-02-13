@@ -19,7 +19,7 @@ Deno.test("Holder", async () => {
   worker.postMessage({ set: trainingSet, costName: "MSE" });
 
   const network = new Network(2, 1);
-  const p = new Promise((resolve, reject) => {
+  const p = new Promise((resolve) => {
     const serialized = network.serialize();
 
     const data = {
@@ -37,7 +37,7 @@ Deno.test("Holder", async () => {
     _that.postMessage(data);
   });
 
-  const m: any = await p;
+  await p;
 
   worker.terminate();
 });

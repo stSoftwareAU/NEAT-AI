@@ -1,6 +1,5 @@
 import { Network } from "../src/architecture/network.js";
 import { assert } from "https://deno.land/std@0.122.0/testing/asserts.ts";
-// import { Methods } from "../src/methods/methods.js";
 import { Mutation } from "../src/methods/mutation.js";
 
 // Compact form: name and function

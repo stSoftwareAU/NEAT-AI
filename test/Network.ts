@@ -5,10 +5,8 @@ import {
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.122.0/testing/asserts.ts";
-//import {Mutation} from "../src/methods/mutation.js";
 import { Config } from "../src/config.js";
 import { Methods } from "../src/methods/methods.js";
-//import { jsonStringify } from "https://deno.land/x/stable_stringify@v1.0.0/jsonStringify.ts";
 
 /* Turn off warnings */
 Config.warnings = false;
@@ -43,8 +41,6 @@ function checkMutation(method: unknown) {
     mutatedOutput,
     "Output of original network should be different from the mutated network!",
   );
-
-  //console.log(jsonStringify(network.graph(1000, 1000)));
 }
 
 function learnSet(set: any[], iterations: unknown, error: number) {
