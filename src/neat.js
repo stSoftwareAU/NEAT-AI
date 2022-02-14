@@ -88,7 +88,9 @@ Neat.prototype = {
     const fittest = Network.fromJSON(this.population[0].toJSON());
     fittest.score = this.population[0].score;
     if( isFinite(fittest.score)==false){
-      console.warn( "this.population[0]",this.population[0].toJSON());
+      for( let i = 0;i < this.population.length;i++){
+        console.warn( "this.population["+i+"]",this.population[i].toJSON());
+      }      
     }
     const newPopulation = [];
 
