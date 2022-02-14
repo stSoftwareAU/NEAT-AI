@@ -69,3 +69,6 @@ Deno.test("XNOR", async () => {
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
+Deno.test("check", () => {
+  assert( isFinite(Infinity));
+});

@@ -34,7 +34,7 @@ export function Network(input, output) {
   this.dropout = 0;
 
   // Create input and output nodes
-  
+
   for (let i = 0; i < this.input + this.output; i++) {
     const type = i < this.input ? "input" : "output";
     this.nodes.push(new Node(type));
@@ -106,8 +106,10 @@ Network.prototype = {
 
     let targetIndex = target.length;
 
-    // Propagate output nodes    
-    for (let i = this.nodes.length - 1; i >= this.nodes.length - this.output; i--) {
+    // Propagate output nodes
+    for (
+      let i = this.nodes.length - 1; i >= this.nodes.length - this.output; i--
+    ) {
       this.nodes[i].propagate(rate, momentum, update, target[--targetIndex]);
     }
 
@@ -719,7 +721,7 @@ Network.prototype = {
    * private function used in this.train
    */
   _trainSet: function (set, batchSize, currentRate, momentum, costFunction) {
-    if( set.length == 0) throw "Set size must be positive";
+    if (set.length == 0) throw "Set size must be positive";
     let errorSum = 0;
     for (let i = 0; i < set.length; i++) {
       const input = set[i].input;
@@ -730,13 +732,18 @@ Network.prototype = {
       const output = this.activate(input, true);
       this.propagate(currentRate, momentum, update, target);
 
-      const cost=costFunction(target, output);
-      if( isFinite(cost) == false || isNaN( cost)){
-        throw "Invalid cost: " + cost + " of target: " + target + " output: " + output + " function: " + costFunction
+      const cost = costFunction(target, output);
+      if (isFinite(cost) == false || isNaN(cost)) {
+        throw "Invalid cost: " + cost + " of target: " + target + " output: " +
+          output + " function: " + costFunction;
       }
       errorSum += cost;
     }
-    return errorSum / set.length;
+    const error = errorSum / set.length;
+    if (isFinite(error) == false) {
+      throw "Invalid error: " + error + ", len: " + set.length;
+    }
+    return error;
   },
 
   /**
@@ -744,7 +751,7 @@ Network.prototype = {
    */
   test: function (set, cost = Methods.cost.MSE) {
     // Check if dropout is enabled, set correct mask
-    
+
     if (this.dropout) {
       for (let i = 0; i < this.nodes.length; i++) {
         if (
@@ -1044,7 +1051,7 @@ Network.prototype = {
     // Intialise the NEAT instance
     options.network = this;
     const neat = new Neat(this.input, this.output, fitnessFunction, options);
-    
+
     let error = -Infinity;
     let bestFitness = -Infinity;
     let bestGenome;
@@ -1060,6 +1067,24 @@ Network.prototype = {
         (fittest.nodes.length - fittest.input - fittest.output +
             fittest.connections.length + fittest.gates.length) * growth;
 
+      if (isFinite(error) == false) {
+        console.warn(
+          "fitness",
+          fitness,
+          "fittest.nodes.length",
+          fittest.nodes.length,
+          "fittest.input",
+          fittest.input,
+          "fittest.output",
+          fittest.output,
+          "fittest.connections.length",
+          fittest.connections.length,
+          "fittest.output",
+          fittest.gates.length,
+          "growth",
+          growth,
+        );
+      }
       if (fitness > bestFitness) {
         bestFitness = fitness;
         bestGenome = fittest;

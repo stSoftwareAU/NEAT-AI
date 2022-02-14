@@ -87,7 +87,9 @@ Neat.prototype = {
 
     const fittest = Network.fromJSON(this.population[0].toJSON());
     fittest.score = this.population[0].score;
-
+    if( isFinite(fittest.score)==false){
+      console.warn( "this.population[0]",this.population[0].toJSON());
+    }
     const newPopulation = [];
 
     // Elitism
