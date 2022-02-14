@@ -83,14 +83,30 @@ Neat.prototype = {
     ) {
       await this.evaluate();
     }
-    this.sort();
+    // this.sort();
 
-    const fittest = Network.fromJSON(this.population[0].toJSON());
-    fittest.score = this.population[0].score;
+    let tmpFittest=null;// = Network.fromJSON(this.population[0].toJSON());
+    for( let i = 0;i < this.population.length;i++){
+      if( tmpFittest==null){
+        tmpFittest=this.population[i];
+      }
+      else{
+         const check=this.population[i];
+         if( check.score > tmpFittest.score){
+          tmpFittest=check;
+         }
+      }
+    }
+    const fittest=Network.fromJSON( tmpFittest.toJSON());
+    fittest.score = tmpFittest.score;
+
     if( isFinite(fittest.score)==false){
       for( let i = 0;i < this.population.length;i++){
+        console.warn( "this.population["+i+"].score",this.population[i].score);
         console.warn( "this.population["+i+"]",this.population[i].toJSON());
       }      
+      console.warn( "fittest",fittest);
+      throw "Infinite score"
     }
     const newPopulation = [];
 
