@@ -895,7 +895,7 @@ Network.prototype = {
    */
   toJSON: function () {
     const json = {
-      nodes: [],
+      nodes: new Array(this.nodes.length),
       connections: [],
       input: this.input,
       output: this.output,
@@ -903,16 +903,16 @@ Network.prototype = {
     };
 
     // So we don't have to use expensive .indexOf()
-    let i;
-    for (i = 0; i < this.nodes.length; i++) {
+    
+    for (let i = 0; i < this.nodes.length; i++) {
       this.nodes[i].index = i;
     }
 
-    for (i = 0; i < this.nodes.length; i++) {
+    for (let i = 0; i < this.nodes.length; i++) {
       const node = this.nodes[i];
       const tojson = node.toJSON();
       tojson.index = i;
-      json.nodes.push(tojson);
+      json.nodes[i]=tojson;
 
       if (node.connections.self.weight !== 0) {
         const tojson = node.connections.self.toJSON();
@@ -926,7 +926,7 @@ Network.prototype = {
       }
     }
 
-    for (i = 0; i < this.connections.length; i++) {
+    for (let i = 0; i < this.connections.length; i++) {
       const conn = this.connections[i];
       const tojson = conn.toJSON();
       tojson.from = conn.from.index;
@@ -1033,6 +1033,15 @@ Network.prototype = {
               genome.connections.length +
               genome.gates.length
             ) * growth;
+
+            if( isNaN( genome.score) || isFinite(genome.score) == false){
+              console.error( 
+                "INVALID genome",
+                genome
+               );
+
+               throw "INVALID score";
+            }
             genome.score = isNaN(genome.score) ? -Infinity : genome.score;
             startWorker(worker);
           } catch (err) {
