@@ -1,6 +1,5 @@
 import { Network } from "../../architecture/network.js";
 import { Cost } from "../../methods/cost.js";
-import { Multi } from "../../multithreading/multi.js";
 
 export class WorkerHandle {
   private worker: (Worker | null) = null;
@@ -45,18 +44,14 @@ export class WorkerHandle {
     if (this.worker) {
       const _that = this.worker;
       return new Promise((resolve) => {
-        const serialized = network.serialize();
-
         const data = {
-          activations: serialized[0],
-          states: serialized[1],
-          conns: serialized[2],
+          network: network.toJSON(),
         };
 
         _that.addEventListener("message", function callback(message) {
           _that.removeEventListener("message", callback);
 
-          resolve(message.data);
+          resolve(message.data.error);
         });
 
         _that.postMessage(data);
@@ -64,23 +59,11 @@ export class WorkerHandle {
     } else if (this.mockWorker) {
       const _that = this.mockWorker;
 
-      const serialized = network.serialize();
+      const mockNetwork = Network.fromJSON(network.toJSON());
+      const result = mockNetwork.test(_that.dataSet, _that.cost);
 
-      const data = {
-        activations: serialized[0],
-        states: serialized[1],
-        conns: serialized[2],
-      };
-
-      const result = Multi.testSerializedSet(
-        _that.dataSet,
-        _that.cost,
-        data.activations,
-        data.states,
-        data.conns,
-      );
       return new Promise((resolve) => {
-        resolve(result);
+        resolve(result.error);
       });
     } else {
       throw "No real or fake worker";

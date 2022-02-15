@@ -1,4 +1,3 @@
-
 import { WorkerHandle } from "../multithreading/workers/worker-handle.ts";
 import { Methods } from "../methods/methods.js";
 
@@ -75,20 +74,27 @@ Network.prototype = {
    * Activates the network without calculating elegibility traces and such
    */
   noTraceActivate: function (input) {
-    const output = [];
-
+    const output = new Array(this.nodes.length);
+    let outputLen = 0;
     // Activate nodes chronologically
     for (let i = 0; i < this.nodes.length; i++) {
-      if (this.nodes[i].type === "input") {
-        this.nodes[i].noTraceActivate(input[i]);
-      } else if (this.nodes[i].type === "output") {
-        const activation = this.nodes[i].noTraceActivate();
-        output.push(activation);
-      } else {
-        this.nodes[i].noTraceActivate();
+      const _node = this.nodes[i];
+      switch (_node.type) {
+        case "input": {
+          _node.noTraceActivate(input[i]);
+          break;
+        }
+        case "output": {
+          const activation = _node.noTraceActivate();
+          output[outputLen] = activation;
+          outputLen++;
+          break;
+        }
+        default:
+          _node.noTraceActivate();
       }
     }
-
+    output.length = outputLen;
     return output;
   },
 
@@ -765,14 +771,15 @@ Network.prototype = {
     let error = 0;
     const start = Date.now();
 
-    for (let i = 0; i < set.length; i++) {
+    const len = set.length;
+    for (let i = 0; i < len; i++) {
       const input = set[i].input;
       const target = set[i].output;
       const output = this.noTraceActivate(input);
       error += cost(target, output);
     }
 
-    error /= set.length;
+    error /= len;
 
     const results = {
       error: error,
@@ -1023,23 +1030,17 @@ Network.prototype = {
               genome.gates.length
             ) * growth;
 
-            if (isNaN(genome.score) || isFinite(genome.score) == false) {
-              console.error(
-                "INVALID genome",
-                genome,
-              );
-
-              throw "INVALID score";
-            }
             genome.score = isNaN(genome.score) ? -Infinity : genome.score;
           }
         };
-        const promises=new Array(workers.length);
-        for (let i = workers.length; i--; ) {
-          promises[i]=startWorker(workers[i]);
+        const promises = new Array(workers.length);
+        for (let i = workers.length; i--;) {
+          promises[i] = startWorker(workers[i]);
         }
 
-        Promise.all( promises).then(r=>resolve(r)).catch(reason => reject(reason));
+        Promise.all(promises).then((r) => resolve(r)).catch((reason) =>
+          reject(reason)
+        );
       });
     };
 
@@ -1064,24 +1065,6 @@ Network.prototype = {
         (fittest.nodes.length - fittest.input - fittest.output +
             fittest.connections.length + fittest.gates.length) * growth;
 
-      if (isFinite(error) == false) {
-        console.warn(
-          "fitness",
-          fitness,
-          "fittest.nodes.length",
-          fittest.nodes.length,
-          "fittest.input",
-          fittest.input,
-          "fittest.output",
-          fittest.output,
-          "fittest.connections.length",
-          fittest.connections.length,
-          "fittest.output",
-          fittest.gates.length,
-          "growth",
-          growth,
-        );
-      }
       if (fitness > bestFitness) {
         bestFitness = fitness;
         bestGenome = fittest;
@@ -1128,52 +1111,6 @@ Network.prototype = {
       iterations: neat.generation,
       time: Date.now() - start,
     };
-  },
-
-  /**
-   * Serialize to send to workers efficiently
-   */
-  serialize: function () {
-    const activations = [];
-    const states = [];
-    const conns = [];
-
-    conns.push(this.input);
-    conns.push(this.output);
-
-    let i;
-    for (i = 0; i < this.nodes.length; i++) {
-      const node = this.nodes[i];
-      node.index = i;
-      activations.push(node.activation);
-      states.push(node.state);
-    }
-
-    for (i = this.input; i < this.nodes.length; i++) {
-      const node = this.nodes[i];
-      conns.push(node.index);
-      conns.push(node.bias);
-      conns.push(node.squash.name);
-
-      conns.push(node.connections.self.weight);
-      conns.push(
-        node.connections.self.gater == null
-          ? -1
-          : node.connections.self.gater.index,
-      );
-
-      for (let j = 0; j < node.connections.in.length; j++) {
-        const conn = node.connections.in[j];
-
-        conns.push(conn.from.index);
-        conns.push(conn.weight);
-        conns.push(conn.gater == null ? -1 : conn.gater.index);
-      }
-
-      conns.push(-2); // stop token -> next node
-    }
-
-    return [activations, states, conns];
   },
 };
 

@@ -428,8 +428,8 @@ Deno.test("NARX Sequence", () => {
     error: 0.005,
     rate: 0.05,
   });
-
-  assert(narx.test(trainingData).error < 0.005);
+  const result = narx.test(trainingData);
+  assert(result.error < 0.005, JSON.stringify(result));
 });
 
 Deno.test("SIN + COS", () => {

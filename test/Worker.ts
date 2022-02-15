@@ -20,12 +20,8 @@ Deno.test("Holder", async () => {
 
   const network = new Network(2, 1);
   const p = new Promise((resolve) => {
-    const serialized = network.serialize();
-
     const data = {
-      activations: serialized[0],
-      states: serialized[1],
-      conns: serialized[2],
+      network: network.toJSON(),
     };
 
     const _that = worker;
