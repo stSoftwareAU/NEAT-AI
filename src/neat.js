@@ -86,7 +86,7 @@ Neat.prototype = {
     // this.sort();
 
     let tmpFittest = null; // = Network.fromJSON(this.population[0].toJSON());
-    for (let i = 0; i < this.population.length; i++) {
+    for (let i = this.population.length; i--; ) {
       if (tmpFittest == null) {
         tmpFittest = this.population[i];
       } else {

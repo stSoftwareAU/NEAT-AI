@@ -1,7 +1,7 @@
 /* Export */
 //module.exports = Network;
 
-import { Multi } from "../multithreading/multi.js";
+import { WorkerHandle } from "../multithreading/workers/worker-handle.ts";
 import { Methods } from "../methods/methods.js";
 // import { Cost } from "../methods/cost.js";
 import Connection from "./connection.js";
@@ -108,7 +108,9 @@ Network.prototype = {
 
     // Propagate output nodes
     for (
-      let i = this.nodes.length - 1; i >= this.nodes.length - this.output; i--
+      let i = this.nodes.length - 1;
+      i >= this.nodes.length - this.output;
+      i--
     ) {
       this.nodes[i].propagate(rate, momentum, update, target[--targetIndex]);
     }
@@ -903,7 +905,7 @@ Network.prototype = {
     };
 
     // So we don't have to use expensive .indexOf()
-    
+
     for (let i = 0; i < this.nodes.length; i++) {
       this.nodes[i].index = i;
     }
@@ -912,7 +914,7 @@ Network.prototype = {
       const node = this.nodes[i];
       const tojson = node.toJSON();
       tojson.index = i;
-      json.nodes[i]=tojson;
+      json.nodes[i] = tojson;
 
       if (node.connections.self.weight !== 0) {
         const tojson = node.connections.self.toJSON();
@@ -973,9 +975,6 @@ Network.prototype = {
 
     const costName = options.costName || "MSE";
 
-    // const cost = Cost[costName];
-    // const amount = options.amount || 1;
-
     let threads = options.threads;
     if (typeof threads === "undefined") {
       if (typeof window === "undefined") { // Node.js
@@ -1002,28 +1001,20 @@ Network.prototype = {
 
     const workers = [];
 
-    for (let i = 0; i < threads; i++) {
-      workers.push(new Multi.workers.create(set, costName));
+    for (let i = threads; i--;) {
+      workers.push(new WorkerHandle(set, costName, threads == 1));
     }
 
     const fitnessFunction = function (population) {
       return new Promise((resolve, reject) => {
         // Create a queue
         const queue = population.slice();
-        let done = 0;
 
         // Start worker function
         const startWorker = async function (worker) {
-          if (!queue.length) {
-            if (++done === threads) {
-              resolve();
-            }
-            return;
-          }
+          while (queue.length) {
+            const genome = queue.shift();
 
-          const genome = queue.shift();
-
-          try {
             const result = await worker.evaluate(genome);
             genome.score = -result;
             genome.score -= (
@@ -1034,24 +1025,23 @@ Network.prototype = {
               genome.gates.length
             ) * growth;
 
-            if( isNaN( genome.score) || isFinite(genome.score) == false){
-              console.error( 
+            if (isNaN(genome.score) || isFinite(genome.score) == false) {
+              console.error(
                 "INVALID genome",
-                genome
-               );
+                genome,
+              );
 
-               throw "INVALID score";
+              throw "INVALID score";
             }
             genome.score = isNaN(genome.score) ? -Infinity : genome.score;
-            startWorker(worker);
-          } catch (err) {
-            console.error(err);
-            reject(err);
           }
         };
-        for (let i = 0; i < workers.length; i++) {
-          startWorker(workers[i]);
+        const promises=new Array(workers.length);
+        for (let i = workers.length; i--; ) {
+          promises[i]=startWorker(workers[i]);
         }
+
+        Promise.all( promises).then(r=>resolve(r)).catch(reason => reject(reason));
       });
     };
 

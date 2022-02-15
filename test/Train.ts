@@ -26,6 +26,28 @@ Deno.test("AND", async () => {
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
 
+Deno.test("MT", async () => {
+  // Train the AND gate
+  const trainingSet = [
+    { input: [0, 0], output: [0] },
+    { input: [0, 1], output: [0] },
+    { input: [1, 0], output: [0] },
+    { input: [1, 1], output: [1] },
+  ];
+
+  const network = new Network(2, 1);
+
+  const results = await network.evolve(trainingSet, {
+    mutation: Mutation.FFW,
+    equal: true,
+    elitism: 10,
+    mutationRate: 0.5,
+    error: 0.03,
+    threads: 2,
+  });
+
+  assert(results.error <= 0.03, "Error rate was: " + results.error);
+});
 Deno.test("XOR", async () => {
   // Train the XOR gate
   const trainingSet = [
@@ -70,5 +92,5 @@ Deno.test("XNOR", async () => {
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
 Deno.test("check", () => {
-  assert( isFinite(Infinity)==false);
+  assert(isFinite(Infinity) == false);
 });

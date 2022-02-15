@@ -1,17 +1,18 @@
 /*******************************************************************************
                                 MULTITHREADING
 *******************************************************************************/
-import { Workers } from "./workers/workers.js";
+// import { Workers } from "./workers/workers.js";
 import { Methods } from "../methods/methods.js";
 
 export const Multi = {
   /** Workers */
-  workers: Workers,
+  // workers: Workers,
 
   /** Activate a serialized network */
   activateSerializedNetwork: function (input, A, S, data) {
-    for (let i = 0; i < data[0]; i++) A[i] = input[i];
-    for (let i = 2; i < data.length; i++) {
+    for (let i = data[0]; i--;) A[i] = input[i];
+
+    for (let i = 2, len = data.length; i < len; i++) {
       const index = data[i++];
       const bias = data[i++];
       const squash = data[i++];
@@ -39,21 +40,21 @@ export const Multi = {
     }
     return output;
   },
-};
+  testSerializedSet: function (set, cost, A, S, data) {
+    // Calculate how much samples are in the set
+    let error = 0;
 
-Multi.testSerializedSet = function (set, cost, A, S, data) {
-  // Calculate how much samples are in the set
-  let error = 0;
-  const len = set.length;
-  for (let i = 0; i < len; i++) {
-    const output = Multi.activateSerializedNetwork(
-      set[i].input,
-      A,
-      S,
-      data,
-    );
-    error += cost(set[i].output, output);
-  }
+    const len = set.length;
+    for (let i = len; i--;) {
+      const output = this.activateSerializedNetwork(
+        set[i].input,
+        A,
+        S,
+        data,
+      );
+      error += cost(set[i].output, output);
+    }
 
-  return error / len;
+    return error / len;
+  },
 };

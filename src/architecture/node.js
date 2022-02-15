@@ -58,7 +58,7 @@ Node.prototype = {
       this.connections.self.gain * this.connections.self.weight * this.state +
       this.bias;
 
-    // Activation sources coming from connections    
+    // Activation sources coming from connections
     for (let i = 0; i < this.connections.in.length; i++) {
       const connection = this.connections.in[i];
       this.state += connection.from.activation * connection.weight *
@@ -141,7 +141,7 @@ Node.prototype = {
       this.bias;
 
     // Activation sources coming from connections
-    
+
     for (let i = 0; i < this.connections.in.length; i++) {
       const connection = this.connections.in[i];
       this.state += connection.from.activation * connection.weight *
@@ -371,7 +371,7 @@ Node.prototype = {
     }
 
     switch (method) {
-      case Methods.mutation.MOD_ACTIVATION:{
+      case Methods.mutation.MOD_ACTIVATION: {
         // Can't be the same squash
         const squash = method
           .allowed[
@@ -381,8 +381,8 @@ Node.prototype = {
           ];
         this.squash = squash;
         break;
-    }
-      case Methods.mutation.MOD_BIAS:{
+      }
+      case Methods.mutation.MOD_BIAS: {
         const modification = Math.random() * (method.max - method.min) +
           method.min;
         this.bias += modification;

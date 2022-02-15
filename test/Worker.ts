@@ -16,7 +16,7 @@ Deno.test("Holder", async () => {
     },
   );
 
-  worker.postMessage({ set: trainingSet, costName: "MSE" });
+  worker.postMessage({ dataSet: trainingSet, costName: "MSE" });
 
   const network = new Network(2, 1);
   const p = new Promise((resolve) => {
