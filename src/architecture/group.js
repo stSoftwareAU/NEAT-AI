@@ -1,6 +1,6 @@
 /* Import */
 import { Methods } from "../methods/methods.js";
-import { Config } from "../config.js";
+import { Config } from "../config.ts";
 import { Layer } from "./layer.js";
 import { Node } from "./node.js";
 

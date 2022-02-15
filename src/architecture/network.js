@@ -1,11 +1,9 @@
-/* Export */
-//module.exports = Network;
 
 import { WorkerHandle } from "../multithreading/workers/worker-handle.ts";
 import { Methods } from "../methods/methods.js";
-// import { Cost } from "../methods/cost.js";
+
 import Connection from "./connection.js";
-import { Config } from "../config.js";
+import { Config } from "../config.ts";
 import Neat from "../neat.js";
 import { Node } from "./node.js";
 

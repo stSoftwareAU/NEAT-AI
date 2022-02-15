@@ -1,7 +1,7 @@
 /* Import */
 import { Methods } from "../methods/methods.js";
 import Connection from "./connection.js";
-import { Config } from "../config.js";
+import { Config } from "../config.ts";
 
 /*******************************************************************************
                                          NODE

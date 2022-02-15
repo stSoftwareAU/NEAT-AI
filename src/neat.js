@@ -1,7 +1,7 @@
 /* Import */
 import { Network } from "./architecture/network.js";
 import { Methods } from "./methods/methods.js";
-import { Config } from "./config.js";
+import { Config } from "./config.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -135,7 +135,7 @@ Neat.prototype = {
     this.population.push(...elitists);
 
     // Reset the scores
-    for (let i = 0; i < this.population.length; i++) {
+    for (let i = this.population.length; i--;) {
       this.population[i].score = undefined;
     }
 
@@ -352,26 +352,26 @@ Neat.prototype = {
   /**
    * Export the current population to a json object
    */
-  export: function () {
-    var json = [];
-    for (var i = 0; i < this.population.length; i++) {
-      var genome = this.population[i];
-      json.push(genome.toJSON());
-    }
+  // export: function () {
+  //   var json = [];
+  //   for (var i = 0; i < this.population.length; i++) {
+  //     var genome = this.population[i];
+  //     json.push(genome.toJSON());
+  //   }
 
-    return json;
-  },
+  //   return json;
+  // },
 
   /**
    * Import population from a json object
    */
-  import: function (json) {
-    var population = [];
-    for (var i = 0; i < json.length; i++) {
-      var genome = json[i];
-      population.push(Network.fromJSON(genome));
-    }
-    this.population = population;
-    this.popsize = population.length;
-  },
+  // import: function (json) {
+  //   var population = [];
+  //   for (var i = 0; i < json.length; i++) {
+  //     var genome = json[i];
+  //     population.push(Network.fromJSON(genome));
+  //   }
+  //   this.population = population;
+  //   this.popsize = population.length;
+  // },
 };

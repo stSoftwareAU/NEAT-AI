@@ -5,7 +5,7 @@ import {
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.122.0/testing/asserts.ts";
-import { Config } from "../src/config.js";
+import { Config } from "../src/config.ts";
 import { Methods } from "../src/methods/methods.js";
 
 /* Turn off warnings */
