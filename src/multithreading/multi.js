@@ -1,12 +1,9 @@
 /*******************************************************************************
                                 MULTITHREADING
 *******************************************************************************/
-// import { Workers } from "./workers/workers.js";
 import { Methods } from "../methods/methods.js";
 
 export const Multi = {
-  /** Workers */
-  // workers: Workers,
 
   /** Activate a serialized network */
   activateSerializedNetwork: function (input, A, S, data) {
@@ -40,6 +37,7 @@ export const Multi = {
     }
     return output;
   },
+
   testSerializedSet: function (set, cost, A, S, data) {
     // Calculate how much samples are in the set
     let error = 0;

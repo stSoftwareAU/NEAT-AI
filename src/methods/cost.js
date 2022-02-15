@@ -6,66 +6,102 @@
 export const Cost = {
   // Cross entropy error
   CROSS_ENTROPY: function (target, output) {
-    var error = 0;
-    for (var i = 0; i < output.length; i++) {
+    let error = 0;
+    const len=output.length;
+    for (let i = len; i--; ) {
       // Avoid negative and zero numbers, use 1e-15 http://bit.ly/2p5W29A
-      error -= target[i] * Math.log(Math.max(output[i], 1e-15)) +
-        (1 - target[i]) * Math.log(1 - Math.max(output[i], 1e-15));
+      const t=target[i];
+      const o=output[i];
+      error -= t * Math.log(Math.max(o, 1e-15)) +
+        (1 - t) * Math.log(1 - Math.max(o, 1e-15));
     }
-    return error / output.length;
+
+if( len ==0 || isFinite( error) == false || isNaN(error)){
+  throw "CROSS_ENTROPY len: " + len + ", error: " + error;
+}
+
+    return error / len;
   },
   // Mean Squared Error
   MSE: function (target, output) {
-    var error = 0;
-    for (var i = 0; i < output.length; i++) {
+    let error = 0;
+    const len=output.length;
+    for (let i = len; i--;) {
       error += Math.pow(target[i] - output[i], 2);
     }
 
-    return error / output.length;
+if( len ==0 || isFinite( error) == false || isNaN(error)){
+  throw "MSE len: " + len + ", error: " + error;
+}
+    
+    return error / len;
   },
+
   // Binary error
   BINARY: function (target, output) {
-    var misses = 0;
-    for (var i = 0; i < output.length; i++) {
+    let misses = 0;
+    for (let i = output.length; i--; ) {
       misses += Math.round(target[i] * 2) !== Math.round(output[i] * 2);
     }
 
+if( isFinite( error) == false || isNaN(error)){
+  throw "BINARY error: " + error;
+}
     return misses;
   },
+
   // Mean Absolute Error
   MAE: function (target, output) {
-    var error = 0;
-    for (var i = 0; i < output.length; i++) {
+    let error = 0;
+    const len=output.length;
+    for (let i = len; i--; ) {
       error += Math.abs(target[i] - output[i]);
     }
 
-    return error / output.length;
+if( len ==0 || isFinite( error) == false || isNaN(error)){
+  throw "MAE len: " + len + ", error: " + error;
+}
+    return error / len;
   },
+
   // Mean Absolute Percentage Error
   MAPE: function (target, output) {
-    var error = 0;
-    for (var i = 0; i < output.length; i++) {
-      error += Math.abs((output[i] - target[i]) / Math.max(target[i], 1e-15));
+    let error = 0;
+    const len=output.length;
+    for (let i = len; i--; ) {
+      const t=target[i];
+      const o=output[i];
+      error += Math.abs((o - t) / Math.max(t, 1e-15));
     }
 
-    return error / output.length;
+if( len ==0 || isFinite( error) == false || isNaN(error)){
+  throw "MAPE len: " + len + ", error: " + error;
+}
+    return error / len;
   },
   // Mean Squared Logarithmic Error
   MSLE: function (target, output) {
-    var error = 0;
-    for (var i = 0; i < output.length; i++) {
+    let error = 0;
+    for (let i = output.length; i--;) {
       error += Math.log(Math.max(target[i], 1e-15)) -
         Math.log(Math.max(output[i], 1e-15));
     }
 
+if( isFinite( error) == false || isNaN(error)){
+  throw "MSLE len: " + len + ", error: " + error;
+}
     return error;
   },
+
   // Hinge loss, for classifiers
   HINGE: function (target, output) {
-    var error = 0;
-    for (var i = 0; i < output.length; i++) {
+    let error = 0;
+    for (let i = output.length; i--; ) {
       error += Math.max(0, 1 - target[i] * output[i]);
     }
+if( isFinite( error) == false || isNaN(error)){
+  throw "HINGE len: " + len + ", error: " + error;
+}
 
     return error;
   },
