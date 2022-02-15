@@ -83,7 +83,7 @@ export class WorkerHandle {
         resolve(result);
       });
     } else {
-      throw "Not real of fake worker";
+      throw "No real or fake worker";
     }
   }
 }
