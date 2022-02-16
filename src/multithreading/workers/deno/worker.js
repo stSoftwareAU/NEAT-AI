@@ -1,6 +1,6 @@
 import { Cost } from "../../../methods/cost.js";
 import { Network } from "../../../architecture/network.js";
-import {freezeAndValidate} from "../../../architecture/DataSet.ts";
+// import {freezeAndValidate} from "../../../architecture/DataSet.ts";
 
 self.dataSet = null;
 self.cost = null;
@@ -17,6 +17,6 @@ self.onmessage = (message) => {
     self.cost = Cost[data.costName];
 
     self.dataSet = data.dataSet;
-    freezeAndValidate(self.dataSet);
+    // freezeAndValidate(self.dataSet);
   }
 };

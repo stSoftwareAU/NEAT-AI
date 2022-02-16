@@ -28,14 +28,14 @@ export default function Neat(input, output, fitness, options) {
 
   this.fitnessPopulation = options.fitnessPopulation || false;
 
-  this.selection = options.selection || Methods.selection.FITNESS_PROPORTIONATE;
+  this.selection = options.selection || Methods.selection.POWER;
   this.crossover = options.crossover || [
     Methods.crossover.SINGLE_POINT,
     Methods.crossover.TWO_POINT,
     Methods.crossover.UNIFORM,
     Methods.crossover.AVERAGE,
   ];
-  this.mutation = options.mutation || Methods.mutation.ALL; // was FFW
+  this.mutation = options.mutation || Methods.mutation.FFW; // was FFW
 
   this.template = options.network || false;
 
