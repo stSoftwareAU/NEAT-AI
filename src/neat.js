@@ -21,14 +21,14 @@ export default function Neat(input, output, fitness, options) {
   this.equal = options.equal || false;
   this.clear = options.clear || false;
   this.popsize = options.popsize || 50;
-  this.elitism = options.elitism || 0;
+  this.elitism = options.elitism || 1;
   this.provenance = options.provenance || 0;
   this.mutationRate = options.mutationRate || 0.3;
   this.mutationAmount = options.mutationAmount || 1;
 
   this.fitnessPopulation = options.fitnessPopulation || false;
 
-  this.selection = options.selection || Methods.selection.POWER;
+  this.selection = options.selection || Methods.selection.FITNESS_PROPORTIONATE;
   this.crossover = options.crossover || [
     Methods.crossover.SINGLE_POINT,
     Methods.crossover.TWO_POINT,
@@ -116,10 +116,9 @@ Neat.prototype = {
     }
 
     // Replace the old population with the new population
-    this.population = newPopulation;
-    this.mutate();
+    this._mutate(newPopulation);
 
-    this.population.push(...elitists);
+    this.population=[...elitists, ...newPopulation]; // Keep pseudo sorted. 
 
     // Reset the scores
     for (let i = this.population.length; i--;) {
@@ -178,13 +177,13 @@ Neat.prototype = {
   /**
    * Mutates the given (or current) population
    */
-  mutate: function () {
-    // Skip the elitist ones.
-    for (let i = this.elitism; i < this.population.length; i++) {
+  _mutate: function (genes) {
+    
+    for (let i = genes.length; i--; ) {
       if (Math.random() <= this.mutationRate) {
         for (let j = 0; j < this.mutationAmount; j++) {
-          const mutationMethod = this.selectMutationMethod(this.population[i]);
-          this.population[i].mutate(mutationMethod);
+          const mutationMethod = this.selectMutationMethod(genes[i]);
+          genes[i].mutate(mutationMethod);
         }
       }
     }
@@ -231,7 +230,10 @@ Neat.prototype = {
   getParent: function () {
     switch (this.selection) {
       case selection.POWER: {
-        if (this.population[0].score < this.population[1].score) this.sort();
+        if (this.population[0].score < this.population[1].score){
+          console.trace();
+          throw "Not Sorted";
+        } //this.sort();
 
         const index = Math.floor(
           Math.pow(Math.random(), this.selection.power) *
@@ -258,7 +260,7 @@ Neat.prototype = {
         const random = Math.random() * totalFitness;
         let value = 0;
 
-        for (i = 0; i < this.population.length; i++) {
+        for (let i = 0; i < this.population.length; i++) {
           const genome = this.population[i];
           value += genome.score + minimalFitness;
           if (random < value) return genome;
