@@ -18,7 +18,7 @@ export default function Neat(input, output, fitness, options) {
 
   // Configure options
   options = options || {};
-  this.equal = options.equal || false;
+  this.equal = options.equal || false; 
   this.clear = options.clear || false;
   this.popsize = options.popsize || 50;
   this.elitism = options.elitism || 1;
@@ -35,7 +35,7 @@ export default function Neat(input, output, fitness, options) {
     Methods.crossover.UNIFORM,
     Methods.crossover.AVERAGE,
   ];
-  this.mutation = options.mutation || Methods.mutation.FFW;
+  this.mutation = options.mutation || Methods.mutation.ALL; // was FFW
 
   this.template = options.network || false;
 

@@ -5,6 +5,7 @@ import Connection from "./connection.js";
 import { Config } from "../config.ts";
 import Neat from "../neat.js";
 import { Node } from "./node.js";
+import {freezeAndValidate} from "./DataSet.ts";
 
 /* Easier variable naming */
 const mutation = Methods.mutation;
@@ -960,9 +961,11 @@ Network.prototype = {
   /**
    * Evolves the network to reach a lower error on a dataset
    */
-  evolve: async function (set, options) {
+  evolve: async function (dataSet, options) {
+ 
+    freezeAndValidate( dataSet);
     if (
-      set[0].input.length !== this.input || set[0].output.length !== this.output
+      dataSet[0].input.length !== this.input || dataSet[0].output.length !== this.output
     ) {
       throw new Error(
         "Dataset input/output size should be same as network input/output size!",
@@ -1007,7 +1010,7 @@ Network.prototype = {
     const workers = [];
 
     for (let i = threads; i--;) {
-      workers.push(new WorkerHandle(set, costName, threads == 1));
+      workers.push(new WorkerHandle(dataSet, costName, threads == 1));
     }
 
     const fitnessFunction = function (population) {
