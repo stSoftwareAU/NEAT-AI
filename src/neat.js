@@ -83,19 +83,10 @@ Neat.prototype = {
     ) {
       await this.evaluate();
     }
-    // this.sort();
+    this.sort();
 
-    let tmpFittest = null; // = Network.fromJSON(this.population[0].toJSON());
-    for (let i = this.population.length; i--;) {
-      if (tmpFittest == null) {
-        tmpFittest = this.population[i];
-      } else {
-        const check = this.population[i];
-        if (check.score > tmpFittest.score) {
-          tmpFittest = check;
-        }
-      }
-    }
+    const tmpFittest = this.population[0];
+
     const fittest = Network.fromJSON(tmpFittest.toJSON());
     fittest.score = tmpFittest.score;
 
