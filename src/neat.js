@@ -2,6 +2,7 @@
 import { Network } from "./architecture/network.js";
 import { Methods } from "./methods/methods.js";
 import { Config } from "./config.ts";
+import { makeElitists } from "../src/architecture/elitism.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -83,9 +84,10 @@ Neat.prototype = {
     ) {
       await this.evaluate();
     }
-    this.sort();
-
-    const tmpFittest = this.population[0];
+    
+    // Elitism
+    const elitists = makeElitists(this.population, this.elitism);
+    const tmpFittest = elitists[0];
 
     const fittest = Network.fromJSON(tmpFittest.toJSON());
     fittest.score = tmpFittest.score;
@@ -102,12 +104,6 @@ Neat.prototype = {
       throw "Infinite score";
     }
     const newPopulation = [];
-
-    // Elitism
-    const elitists = [];
-    for (let i = 0; i < this.elitism; i++) {
-      elitists.push(this.population[i]);
-    }
 
     // Provenance
     for (let i = 0; i < this.provenance; i++) {
@@ -229,41 +225,6 @@ Neat.prototype = {
   },
 
   /**
-   * Returns the fittest genome of the current population
-   */
-  getFittest: async function () {
-    // Check if evaluated
-    if (
-      typeof this.population[this.population.length - 1].score === "undefined"
-    ) {
-      await this.evaluate();
-    }
-    if (this.population[0].score < this.population[1].score) {
-      this.sort();
-    }
-
-    return this.population[0];
-  },
-
-  /**
-   * Returns the average fitness of the current population
-   */
-  getAverage: async function () {
-    if (
-      typeof this.population[this.population.length - 1].score === "undefined"
-    ) {
-      await this.evaluate();
-    }
-
-    let score = 0;
-    for (let i = 0; i < this.population.length; i++) {
-      score += this.population[i].score;
-    }
-
-    return score / this.population.length;
-  },
-
-  /**
    * Gets a genome based on the selection function
    * @return {Network} genome
    */
@@ -339,29 +300,5 @@ Neat.prototype = {
       }
     }
   },
-  /**
-   * Export the current population to a json object
-   */
-  // export: function () {
-  //   var json = [];
-  //   for (var i = 0; i < this.population.length; i++) {
-  //     var genome = this.population[i];
-  //     json.push(genome.toJSON());
-  //   }
-
-  //   return json;
-  // },
-
-  /**
-   * Import population from a json object
-   */
-  // import: function (json) {
-  //   var population = [];
-  //   for (var i = 0; i < json.length; i++) {
-  //     var genome = json[i];
-  //     population.push(Network.fromJSON(genome));
-  //   }
-  //   this.population = population;
-  //   this.popsize = population.length;
-  // },
+  
 };
