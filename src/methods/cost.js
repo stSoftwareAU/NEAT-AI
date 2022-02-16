@@ -31,6 +31,10 @@ export const Cost = {
     }
 
     if (len == 0 || isFinite(error) == false || isNaN(error)) {
+      for (let i = len; i--;) {
+        console.error( "MSE", target[i], output[i], Math.pow(target[i] - output[i], 2));
+      }
+      console.trace();
       throw "MSE len: " + len + ", error: " + error;
     }
 
