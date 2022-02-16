@@ -248,21 +248,21 @@ Neat.prototype = {
 
         let totalFitness = 0;
         let minimalFitness = 0;
-        for (let i = 0; i < this.population.length; i++) {
+        for (let i = this.population.length; i --; ) {
           const score = this.population[i].score;
           minimalFitness = score < minimalFitness ? score : minimalFitness;
           totalFitness += score;
         }
 
-        minimalFitness = Math.abs(minimalFitness);
-        totalFitness += minimalFitness * this.population.length;
+        const adjustFitness = Math.abs(minimalFitness);
+        totalFitness += adjustFitness * this.population.length;
 
         const random = Math.random() * totalFitness;
         let value = 0;
 
         for (let i = 0; i < this.population.length; i++) {
           const genome = this.population[i];
-          value += genome.score + minimalFitness;
+          value += genome.score + adjustFitness;
           if (random < value) return genome;
         }
 

@@ -309,7 +309,7 @@ Deno.test("XNOR gate", () => {
       { input: [1, 0], output: [0] },
       { input: [1, 1], output: [1] },
     ],
-    3000,
+    4000,
     0.002,
   );
 });
