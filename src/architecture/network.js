@@ -740,14 +740,14 @@ Network.prototype = {
       this.propagate(currentRate, momentum, update, target);
 
       const cost = costFunction(target, output);
-      if (isFinite(cost) == false) {
+      if (!isFinite(cost)) {
         throw "Invalid cost: " + cost + " of target: " + target + " output: " +
           output + " function: " + costFunction;
       }
       errorSum += cost;
     }
     const error = errorSum / set.length;
-    if (isFinite(error) == false) {
+    if (!isFinite(error)) {
       throw "Invalid error: " + error + ", len: " + set.length;
     }
     return error;
