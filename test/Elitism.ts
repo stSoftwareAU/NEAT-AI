@@ -144,7 +144,7 @@ Deno.test("performance", () => {
     const ms = performance.measure("start", "end").duration;
     console.log("Duration: " + ms);
     totalMS += ms;
-    if( ms < minMS)minMS=ms;
+    if (ms < minMS) minMS = ms;
     for (let i = 0; i < elitists.length; i++) {
       const e = elitists[i];
       assert(e, i + ") " + e);
@@ -175,7 +175,7 @@ Deno.test("order", () => {
 
   const elitists = makeElitists(population, 100);
 
-  const sortedPopulation=population.slice().sort(function (a, b) {
+  const sortedPopulation = population.slice().sort(function (a, b) {
     return b.score - a.score;
   });
   let last = 1;
@@ -186,7 +186,7 @@ Deno.test("order", () => {
     assert(e.score <= last, i + ") " + e.score + " > " + last);
     last = e.score;
 
-    assert( e.score==sortedPopulation[i].score, "not sorted");
+    assert(e.score == sortedPopulation[i].score, "not sorted");
   }
 
   assert(

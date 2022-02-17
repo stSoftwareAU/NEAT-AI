@@ -16,12 +16,12 @@
 //   }
 // }
 export function makeElitists(population: { score: number }[], size = 1) {
-    const elitism = Math.min(Math.max(1, size), population.length);
+  const elitism = Math.min(Math.max(1, size), population.length);
 
-    population.sort( (a, b)=>b.score-a.score);
+  population.sort((a, b) => b.score - a.score);
 
-    const elitists=population.slice(0, elitism);
-    return elitists;
+  const elitists = population.slice(0, elitism);
+  return elitists;
 }
 
 // export function makeElitistsNew(population: { score: number }[], size = 1) {
@@ -46,7 +46,7 @@ export function makeElitists(population: { score: number }[], size = 1) {
 //           }
 //         } else {
 //           _shuffleDown(elitists, i + 1, gene);
-        
+
 //           break;
 //         }
 //       }

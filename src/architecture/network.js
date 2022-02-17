@@ -5,7 +5,7 @@ import Connection from "./connection.js";
 import { Config } from "../config.ts";
 import Neat from "../neat.js";
 import { Node } from "./node.js";
-import {freezeAndValidate} from "./DataSet.ts";
+import { freezeAndValidate } from "./DataSet.ts";
 
 /* Easier variable naming */
 const mutation = Methods.mutation;
@@ -962,10 +962,10 @@ Network.prototype = {
    * Evolves the network to reach a lower error on a dataset
    */
   evolve: async function (dataSet, options) {
- 
-    freezeAndValidate( dataSet);
+    freezeAndValidate(dataSet);
     if (
-      dataSet[0].input.length !== this.input || dataSet[0].output.length !== this.output
+      dataSet[0].input.length !== this.input ||
+      dataSet[0].output.length !== this.output
     ) {
       throw new Error(
         "Dataset input/output size should be same as network input/output size!",

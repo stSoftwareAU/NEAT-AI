@@ -18,7 +18,7 @@ export default function Neat(input, output, fitness, options) {
 
   // Configure options
   options = options || {};
-  this.equal = options.equal || false; 
+  this.equal = options.equal || false;
   this.clear = options.clear || false;
   this.popsize = options.popsize || 50;
   this.elitism = options.elitism || 1;
@@ -84,7 +84,7 @@ Neat.prototype = {
     ) {
       await this.evaluate();
     }
-    
+
     // Elitism
     const elitists = makeElitists(this.population, this.elitism);
     const tmpFittest = elitists[0];
@@ -118,7 +118,7 @@ Neat.prototype = {
     // Replace the old population with the new population
     this._mutate(newPopulation);
 
-    this.population=[...elitists, ...newPopulation]; // Keep pseudo sorted. 
+    this.population = [...elitists, ...newPopulation]; // Keep pseudo sorted.
 
     // Reset the scores
     for (let i = this.population.length; i--;) {
@@ -178,8 +178,7 @@ Neat.prototype = {
    * Mutates the given (or current) population
    */
   _mutate: function (genes) {
-    
-    for (let i = genes.length; i--; ) {
+    for (let i = genes.length; i--;) {
       if (Math.random() <= this.mutationRate) {
         for (let j = 0; j < this.mutationAmount; j++) {
           const mutationMethod = this.selectMutationMethod(genes[i]);
@@ -230,7 +229,7 @@ Neat.prototype = {
   getParent: function () {
     switch (this.selection) {
       case selection.POWER: {
-        if (this.population[0].score < this.population[1].score){
+        if (this.population[0].score < this.population[1].score) {
           console.trace();
           throw "Not Sorted";
         } //this.sort();
@@ -248,7 +247,7 @@ Neat.prototype = {
 
         let totalFitness = 0;
         let minimalFitness = 0;
-        for (let i = this.population.length; i --; ) {
+        for (let i = this.population.length; i--;) {
           const score = this.population[i].score;
           minimalFitness = score < minimalFitness ? score : minimalFitness;
           totalFitness += score;
@@ -302,5 +301,4 @@ Neat.prototype = {
       }
     }
   },
-  
 };

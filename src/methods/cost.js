@@ -9,8 +9,8 @@ export const Cost = {
     let error = 0;
     const len = output.length;
 
-    if (len == 0 ) {
-      throw "CROSS_ENTROPY len: " + len ;
+    if (len == 0) {
+      throw "CROSS_ENTROPY len: " + len;
     }
 
     for (let i = len; i--;) {
@@ -21,7 +21,7 @@ export const Cost = {
         (1 - t) * Math.log(1 - Math.max(o, 1e-15));
     }
 
-    if (isFinite(error) == false ) {
+    if (isFinite(error) == false) {
       throw "CROSS_ENTROPY len: " + len + ", error: " + error;
     }
 
@@ -43,7 +43,12 @@ export const Cost = {
 
     if (isFinite(error) == false) {
       for (let i = len; i--;) {
-        console.error( "MSE", target[i], output[i], Math.pow(target[i] - output[i], 2));
+        console.error(
+          "MSE",
+          target[i],
+          output[i],
+          Math.pow(target[i] - output[i], 2),
+        );
       }
       console.trace();
       throw "MSE len: " + len + ", error: " + error;
@@ -78,7 +83,7 @@ export const Cost = {
       error += Math.abs(target[i] - output[i]);
     }
 
-    if (isFinite(error) == false ) {
+    if (isFinite(error) == false) {
       throw "MAE len: " + len + ", error: " + error;
     }
     return error / len;
@@ -123,7 +128,7 @@ export const Cost = {
     for (let i = output.length; i--;) {
       error += Math.max(0, 1 - target[i] * output[i]);
     }
-    
+
     if (isFinite(error) == false) {
       throw "HINGE len: " + len + ", error: " + error;
     }
