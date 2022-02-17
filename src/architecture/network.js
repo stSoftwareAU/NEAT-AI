@@ -740,7 +740,7 @@ Network.prototype = {
       this.propagate(currentRate, momentum, update, target);
 
       const cost = costFunction(target, output);
-      if (isFinite(cost) == false || isNaN(cost)) {
+      if (isFinite(cost) == false) {
         throw "Invalid cost: " + cost + " of target: " + target + " output: " +
           output + " function: " + costFunction;
       }

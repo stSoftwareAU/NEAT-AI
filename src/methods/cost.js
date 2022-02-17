@@ -8,6 +8,11 @@ export const Cost = {
   CROSS_ENTROPY: function (target, output) {
     let error = 0;
     const len = output.length;
+
+    if (len == 0 ) {
+      throw "CROSS_ENTROPY len: " + len ;
+    }
+
     for (let i = len; i--;) {
       // Avoid negative and zero numbers, use 1e-15 http://bit.ly/2p5W29A
       const t = target[i];
@@ -16,7 +21,7 @@ export const Cost = {
         (1 - t) * Math.log(1 - Math.max(o, 1e-15));
     }
 
-    if (len == 0 || isFinite(error) == false || isNaN(error)) {
+    if (isFinite(error) == false ) {
       throw "CROSS_ENTROPY len: " + len + ", error: " + error;
     }
 
@@ -26,11 +31,17 @@ export const Cost = {
   MSE: function (target, output) {
     let error = 0;
     const len = output.length;
+
+    if (len == 0) {
+      console.trace();
+      throw "MSE zero length";
+    }
+
     for (let i = len; i--;) {
       error += Math.pow(target[i] - output[i], 2);
     }
 
-    if (len == 0 || isFinite(error) == false || isNaN(error)) {
+    if (isFinite(error) == false) {
       for (let i = len; i--;) {
         console.error( "MSE", target[i], output[i], Math.pow(target[i] - output[i], 2));
       }
@@ -48,9 +59,10 @@ export const Cost = {
       misses += Math.round(target[i] * 2) !== Math.round(output[i] * 2);
     }
 
-    if (isFinite(error) == false || isNaN(error)) {
+    if (isFinite(error) == false) {
       throw "BINARY error: " + error;
     }
+
     return misses;
   },
 
@@ -58,11 +70,15 @@ export const Cost = {
   MAE: function (target, output) {
     let error = 0;
     const len = output.length;
+    if (len == 0) {
+      throw "MAE zero length";
+    }
+
     for (let i = len; i--;) {
       error += Math.abs(target[i] - output[i]);
     }
 
-    if (len == 0 || isFinite(error) == false || isNaN(error)) {
+    if (isFinite(error) == false ) {
       throw "MAE len: " + len + ", error: " + error;
     }
     return error / len;
@@ -72,15 +88,19 @@ export const Cost = {
   MAPE: function (target, output) {
     let error = 0;
     const len = output.length;
+    if (len == 0) {
+      throw "MAPE zero length";
+    }
     for (let i = len; i--;) {
       const t = target[i];
       const o = output[i];
       error += Math.abs((o - t) / Math.max(t, 1e-15));
     }
 
-    if (len == 0 || isFinite(error) == false || isNaN(error)) {
+    if (isFinite(error) == false) {
       throw "MAPE len: " + len + ", error: " + error;
     }
+
     return error / len;
   },
   // Mean Squared Logarithmic Error
@@ -91,7 +111,7 @@ export const Cost = {
         Math.log(Math.max(output[i], 1e-15));
     }
 
-    if (isFinite(error) == false || isNaN(error)) {
+    if (isFinite(error) == false) {
       throw "MSLE len: " + len + ", error: " + error;
     }
     return error;
@@ -103,7 +123,8 @@ export const Cost = {
     for (let i = output.length; i--;) {
       error += Math.max(0, 1 - target[i] * output[i]);
     }
-    if (isFinite(error) == false || isNaN(error)) {
+    
+    if (isFinite(error) == false) {
       throw "HINGE len: " + len + ", error: " + error;
     }
 

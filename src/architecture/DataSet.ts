@@ -10,7 +10,6 @@ export function freezeAndValidate(
     for (let j = tmpIn.length; j--;) {
       const v = tmpIn[j];
       if (
-        isNaN(v) ||
         isFinite(v) == false ||
         typeof v !== "number" ||
         v < -1 ||
@@ -23,7 +22,6 @@ export function freezeAndValidate(
     for (let k = tmpOut.length; k--;) {
       const v = tmpOut[k];
       if (
-        isNaN(v) ||
         isFinite(v) == false ||
         typeof v !== "number"
       ) {
