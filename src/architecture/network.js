@@ -14,7 +14,7 @@ const mutation = Methods.mutation;
                                  NETWORK
 *******************************************************************************/
 
-export function Network(input, output) {
+export function Network(input, output, initialise = true) {
   if (typeof input === "undefined" || typeof output === "undefined") {
     throw new Error("No input or output size given");
   }
@@ -31,19 +31,21 @@ export function Network(input, output) {
   // Regularization
   this.dropout = 0;
 
-  // Create input and output nodes
+  if (initialise) {
+    // Create input and output nodes
 
-  for (let i = 0; i < this.input + this.output; i++) {
-    const type = i < this.input ? "input" : "output";
-    this.nodes.push(new Node(type));
-  }
+    for (let i = 0; i < this.input + this.output; i++) {
+      const type = i < this.input ? "input" : "output";
+      this.nodes.push(new Node(type));
+    }
 
-  // Connect input nodes with output nodes directly
-  for (let i = 0; i < this.input; i++) {
-    for (let j = this.input; j < this.output + this.input; j++) {
-      // https://stats.stackexchange.com/a/248040/147931
-      const weight = Math.random() * this.input * Math.sqrt(2 / this.input);
-      this.connect(this.nodes[i], this.nodes[j], weight);
+    // Connect input nodes with output nodes directly
+    for (let i = 0; i < this.input; i++) {
+      for (let j = this.input; j < this.output + this.input; j++) {
+        // https://stats.stackexchange.com/a/248040/147931
+        const weight = Math.random() * this.input * Math.sqrt(2 / this.input);
+        this.connect(this.nodes[i], this.nodes[j], weight);
+      }
     }
   }
 }
@@ -78,7 +80,7 @@ Network.prototype = {
     const output = new Array(this.nodes.length);
     let outputLen = 0;
     // Activate nodes chronologically
-    for (let i = 0; i < this.nodes.length; i++) {
+    for (let i = 0; i < this.nodes.length; i++) { // Order matters for some reason.
       const _node = this.nodes[i];
       switch (_node.type) {
         case "input": {
@@ -139,10 +141,10 @@ Network.prototype = {
    * Connects the from node to the to node
    */
   connect: function (from, to, weight) {
-    const connections = from.connect(to, weight);
+    const _connections = from.connect(to, weight);
 
-    for (let i = 0; i < connections.length; i++) {
-      const connection = connections[i];
+    for (let i = 0; i < _connections.length; i++) {
+      const connection = _connections[i];
       if (from !== to) {
         this.connections.push(connection);
       } else {
@@ -150,7 +152,7 @@ Network.prototype = {
       }
     }
 
-    return connections;
+    return _connections;
   },
 
   /**
@@ -760,7 +762,7 @@ Network.prototype = {
     // Check if dropout is enabled, set correct mask
 
     if (this.dropout) {
-      for (let i = 0; i < this.nodes.length; i++) {
+      for (let i = this.nodes.length; i--;) {
         if (
           this.nodes[i].type === "hidden" || this.nodes[i].type === "constant"
         ) {
@@ -770,10 +772,9 @@ Network.prototype = {
     }
 
     let error = 0;
-    const start = Date.now();
 
     const len = set.length;
-    for (let i = 0; i < len; i++) {
+    for (let i = 0; i < len; i++) { // Order matters for some reason.
       const input = set[i].input;
       const target = set[i].output;
       const output = this.noTraceActivate(input);
@@ -781,10 +782,8 @@ Network.prototype = {
     }
 
     error /= len;
-
     const results = {
       error: error,
-      time: Date.now() - start,
     };
 
     return results;
@@ -1121,16 +1120,17 @@ Network.prototype = {
  * Convert a json object to a network
  */
 Network.fromJSON = function (json) {
-  const network = new Network(json.input, json.output);
+  const network = new Network(json.input, json.output, false);
   network.dropout = json.dropout;
-  network.nodes = [];
+  network.nodes = new Array(json.nodes.length);
   network.connections = [];
-
-  for (let i = 0; i < json.nodes.length; i++) {
-    network.nodes.push(Node.fromJSON(json.nodes[i]));
+  
+  for (let i = json.nodes.length; i--;) {
+    network.nodes[i] = Node.fromJSON(json.nodes[i]);
   }
 
-  for (let i = 0; i < json.connections.length; i++) {
+  const cLen=json.connections.length;
+  for (let i = 0; i<cLen; i++) {    
     const conn = json.connections[i];
 
     const connection =

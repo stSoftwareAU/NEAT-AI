@@ -142,7 +142,7 @@ Node.prototype = {
 
     // Activation sources coming from connections
 
-    for (let i = 0; i < this.connections.in.length; i++) {
+    for (let i = this.connections.in.length; i--; ) {
       const connection = this.connections.in[i];
       this.state += connection.from.activation * connection.weight *
         connection.gain;
@@ -151,7 +151,7 @@ Node.prototype = {
     // Squash the values received
     this.activation = this.squash(this.state);
 
-    for (let i = 0; i < this.connections.gated.length; i++) {
+    for (let i = this.connections.gated.length; i--; ) {
       this.connections.gated[i].gain = this.activation;
     }
 
