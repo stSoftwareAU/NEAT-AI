@@ -290,7 +290,6 @@ Network.prototype = {
       throw new Error("No (correct) mutate method given!");
     }
 
-    let i, j;
     switch (method) {
       case Mutation.ADD_NODE: {
         // Look for an existing connection and place a node in between
@@ -338,9 +337,9 @@ Network.prototype = {
       case Mutation.ADD_CONN: {
         // Create an array of all uncreated (feedforward) connections
         const available = [];
-        for (i = 0; i < this.nodes.length - this.output; i++) {
+        for (let i = 0; i < this.nodes.length - this.output; i++) {
           const node1 = this.nodes[i];
-          for (j = Math.max(i + 1, this.input); j < this.nodes.length; j++) {
+          for (let j = Math.max(i + 1, this.input); j < this.nodes.length; j++) {
             const node2 = this.nodes[j];
             if (!node1.isProjectingTo(node2)) available.push([node1, node2]);
           }
@@ -359,7 +358,7 @@ Network.prototype = {
         // List of possible connections that can be removed
         const possible = [];
 
-        for (i = 0; i < this.connections.length; i++) {
+        for (let i = 0; i < this.connections.length; i++) {
           const conn = this.connections[i];
           // Check if it is not disabling a node
           if (
@@ -424,7 +423,7 @@ Network.prototype = {
       case Mutation.ADD_SELF_CONN: {
         // Check which nodes aren't selfconnected yet
         const possible = [];
-        for (i = this.input; i < this.nodes.length; i++) {
+        for (let i = this.input; i < this.nodes.length; i++) {
           const node = this.nodes[i];
           if (node.connections.self.weight === 0) {
             possible.push(node);
@@ -460,7 +459,7 @@ Network.prototype = {
 
         // Create a list of all non-gated connections
         const possible = [];
-        for (i = 0; i < allconnections.length; i++) {
+        for (let i = 0; i < allconnections.length; i++) {
           const conn = allconnections[i];
           if (conn.gater === null) {
             possible.push(conn);
@@ -499,9 +498,9 @@ Network.prototype = {
       case Mutation.ADD_BACK_CONN: {
         // Create an array of all uncreated (backfed) connections
         const available = [];
-        for (i = this.input; i < this.nodes.length; i++) {
+        for (let i = this.input; i < this.nodes.length; i++) {
           const node1 = this.nodes[i];
-          for (j = this.input; j < i; j++) {
+          for (let j = this.input; j < i; j++) {
             const node2 = this.nodes[j];
             if (!node1.isProjectingTo(node2)) available.push([node1, node2]);
           }
@@ -520,7 +519,7 @@ Network.prototype = {
         // List of possible connections that can be removed
         const possible = [];
 
-        for (i = 0; i < this.connections.length; i++) {
+        for (let i = 0; i < this.connections.length; i++) {
           const conn = this.connections[i];
           // Check if it is not disabling a node
           if (
