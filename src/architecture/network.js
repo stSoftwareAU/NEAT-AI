@@ -23,7 +23,8 @@ export function Network(input, output, initialise = true) {
   this.output = output;
 
   // Store all the node and connection genes
-  this.nodes = []; // Stored in activation order
+  const nLen=this.input + this.output;
+  this.nodes = new Array(nLen); // Stored in activation order
   this.connections = [];
   this.gates = [];
   this.selfconns = [];
@@ -34,9 +35,9 @@ export function Network(input, output, initialise = true) {
   if (initialise) {
     // Create input and output nodes
 
-    for (let i = 0; i < this.input + this.output; i++) {
+    for (let i = nLen; i--; ) {
       const type = i < this.input ? "input" : "output";
-      this.nodes.push(new Node(type));
+      this.nodes[i]=new Node(type);
     }
 
     // Connect input nodes with output nodes directly
@@ -1122,8 +1123,7 @@ Network.prototype = {
 Network.fromJSON = function (json) {
   const network = new Network(json.input, json.output, false);
   network.dropout = json.dropout;
-  network.nodes = new Array(json.nodes.length);
-  network.connections = [];
+  network.nodes.length=json.nodes.length;
   
   for (let i = json.nodes.length; i--;) {
     network.nodes[i] = Node.fromJSON(json.nodes[i]);
