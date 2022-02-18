@@ -6,7 +6,8 @@ import {
   assertNotEquals,
 } from "https://deno.land/std@0.122.0/testing/asserts.ts";
 import { Config } from "../src/config.ts";
-import { Methods } from "../src/methods/methods.js";
+// import { Methods } from "../src/methods/methods.js";
+import { Mutation } from "../src/methods/mutation.ts";
 
 /* Turn off warnings */
 Config.warnings = false;
@@ -14,9 +15,9 @@ Config.warnings = false;
 /* Functions used in the testing process */
 function checkMutation(method: unknown) {
   const network = architect.Perceptron(2, 4, 4, 4, 2);
-  network.mutate(Methods.mutation.ADD_GATE);
-  network.mutate(Methods.mutation.ADD_BACK_CONN);
-  network.mutate(Methods.mutation.ADD_SELF_CONN);
+  network.mutate(Mutation.ADD_GATE);
+  network.mutate(Mutation.ADD_BACK_CONN);
+  network.mutate(Mutation.ADD_SELF_CONN);
 
   const originalOutput = [];
 
@@ -94,59 +95,59 @@ function testEquality(original: any, copied: any) {
                           Test the performance of networks
 *******************************************************************************************/
 Deno.test("ADD_NODE", () => {
-  checkMutation(Methods.mutation.ADD_NODE);
+  checkMutation(Mutation.ADD_NODE);
 });
 
 Deno.test("ADD_CONNECTION", () => {
-  checkMutation(Methods.mutation.ADD_CONN);
+  checkMutation(Mutation.ADD_CONN);
 });
 
 Deno.test("MOD_BIAS", () => {
-  checkMutation(Methods.mutation.MOD_BIAS);
+  checkMutation(Mutation.MOD_BIAS);
 });
 
 Deno.test("MOD_WEIGHT", () => {
-  checkMutation(Methods.mutation.MOD_WEIGHT);
+  checkMutation(Mutation.MOD_WEIGHT);
 });
 
 Deno.test("SUB_CONN", () => {
-  checkMutation(Methods.mutation.SUB_CONN);
+  checkMutation(Mutation.SUB_CONN);
 });
 
 Deno.test("SUB_NODE", () => {
-  checkMutation(Methods.mutation.SUB_NODE);
+  checkMutation(Mutation.SUB_NODE);
 });
 
 Deno.test("MOD_ACTIVATION", () => {
-  checkMutation(Methods.mutation.MOD_ACTIVATION);
+  checkMutation(Mutation.MOD_ACTIVATION);
 });
 
 Deno.test("ADD_GATE", () => {
-  checkMutation(Methods.mutation.ADD_GATE);
+  checkMutation(Mutation.ADD_GATE);
 });
 
 Deno.test("SUB_GATE", () => {
-  checkMutation(Methods.mutation.SUB_GATE);
+  checkMutation(Mutation.SUB_GATE);
 });
 
 Deno.test("ADD_SELF_CONN", () => {
-  checkMutation(Methods.mutation.ADD_SELF_CONN);
+  checkMutation(Mutation.ADD_SELF_CONN);
 });
 
 Deno.test("SUB_SELF_CONN", () => {
-  checkMutation(Methods.mutation.SUB_SELF_CONN);
+  checkMutation(Mutation.SUB_SELF_CONN);
 });
 
 Deno.test("ADD_BACK_CONN", () => {
-  checkMutation(Methods.mutation.ADD_BACK_CONN);
+  checkMutation(Mutation.ADD_BACK_CONN);
 });
 
 Deno.test("SUB_BACK_CONN", () => {
-  checkMutation(Methods.mutation.SUB_BACK_CONN);
+  checkMutation(Mutation.SUB_BACK_CONN);
 });
 
 Deno.test("SWAP_NODES", () => {
-  checkMutation(Methods.mutation.SWAP_NODES);
+  checkMutation(Mutation.SWAP_NODES);
 });
 
 Deno.test("Feed-forward", () => {
@@ -156,12 +157,12 @@ Deno.test("Feed-forward", () => {
   // mutate it a couple of times
   let i;
   for (i = 0; i < 100; i++) {
-    network1.mutate(Methods.mutation.ADD_NODE);
-    network2.mutate(Methods.mutation.ADD_NODE);
+    network1.mutate(Mutation.ADD_NODE);
+    network2.mutate(Mutation.ADD_NODE);
   }
   for (i = 0; i < 400; i++) {
-    network1.mutate(Methods.mutation.ADD_CONN);
-    network2.mutate(Methods.mutation.ADD_NODE);
+    network1.mutate(Mutation.ADD_CONN);
+    network2.mutate(Mutation.ADD_NODE);
   }
 
   // Crossover

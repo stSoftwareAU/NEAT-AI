@@ -1,5 +1,6 @@
 /* Import */
 import { Methods } from "../methods/methods.js";
+import { Mutation } from "../methods/mutation.ts";
 import Connection from "./connection.js";
 import { Config } from "../config.ts";
 
@@ -366,12 +367,12 @@ Node.prototype = {
   mutate: function (method) {
     if (typeof method === "undefined") {
       throw new Error("No mutate method given!");
-    } else if (!(method.name in Methods.mutation)) {
+    } /*else if (!(method.name in Mutation.ALL)) {
       throw new Error("This method does not exist!");
-    }
+    }*/
 
     switch (method) {
-      case Methods.mutation.MOD_ACTIVATION: {
+      case Mutation.MOD_ACTIVATION: {
         // Can't be the same squash
         const squash = method
           .allowed[
@@ -382,7 +383,7 @@ Node.prototype = {
         this.squash = squash;
         break;
       }
-      case Methods.mutation.MOD_BIAS: {
+      case Mutation.MOD_BIAS: {
         const modification = Math.random() * (method.max - method.min) +
           method.min;
         this.bias += modification;

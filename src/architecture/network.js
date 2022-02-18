@@ -1,14 +1,12 @@
 import { WorkerHandle } from "../multithreading/workers/worker-handle.ts";
 import { Methods } from "../methods/methods.js";
+import { Mutation } from "../methods/mutation.ts";
 
 import Connection from "./connection.js";
 import { Config } from "../config.ts";
 import Neat from "../neat.js";
 import { Node } from "./node.js";
 import { freezeAndValidate } from "./DataSet.ts";
-
-/* Easier variable naming */
-const mutation = Methods.mutation;
 
 /*******************************************************************************
                                  NETWORK
@@ -224,7 +222,7 @@ Network.prototype = {
     for (let i = node.connections.in.length - 1; i >= 0; i--) {
       const connection = node.connections.in[i];
       if (
-        mutation.SUB_NODE.keep_gates && connection.gater !== null &&
+        Mutation.SUB_NODE.keep_gates && connection.gater !== null &&
         connection.gater !== node
       ) {
         gaters.push(connection.gater);
@@ -238,7 +236,7 @@ Network.prototype = {
     for (let i = node.connections.out.length - 1; i >= 0; i--) {
       const connection = node.connections.out[i];
       if (
-        mutation.SUB_NODE.keep_gates && connection.gater !== null &&
+        Mutation.SUB_NODE.keep_gates && connection.gater !== null &&
         connection.gater !== node
       ) {
         gaters.push(connection.gater);
@@ -294,7 +292,7 @@ Network.prototype = {
 
     let i, j;
     switch (method) {
-      case mutation.ADD_NODE: {
+      case Mutation.ADD_NODE: {
         // Look for an existing connection and place a node in between
         const connection =
           this.connections[Math.floor(Math.random() * this.connections.length)];
@@ -306,7 +304,7 @@ Network.prototype = {
         const node = new Node("hidden");
 
         // Random squash function
-        node.mutate(mutation.MOD_ACTIVATION);
+        node.mutate(Mutation.MOD_ACTIVATION);
 
         // Place it in this.nodes
         const minBound = Math.min(toIndex, this.nodes.length - this.output);
@@ -322,7 +320,7 @@ Network.prototype = {
         }
         break;
       }
-      case mutation.SUB_NODE: {
+      case Mutation.SUB_NODE: {
         // Check if there are nodes left to remove
         if (this.nodes.length === this.input + this.output) {
           if (Config.warnings) console.warn("No more nodes left to remove!");
@@ -337,7 +335,7 @@ Network.prototype = {
         this.remove(this.nodes[index]);
         break;
       }
-      case mutation.ADD_CONN: {
+      case Mutation.ADD_CONN: {
         // Create an array of all uncreated (feedforward) connections
         const available = [];
         for (i = 0; i < this.nodes.length - this.output; i++) {
@@ -357,7 +355,7 @@ Network.prototype = {
         this.connect(pair[0], pair[1]);
         break;
       }
-      case mutation.SUB_CONN: {
+      case Mutation.SUB_CONN: {
         // List of possible connections that can be removed
         const possible = [];
 
@@ -383,7 +381,7 @@ Network.prototype = {
         this.disconnect(randomConn.from, randomConn.to);
         break;
       }
-      case mutation.MOD_WEIGHT: {
+      case Mutation.MOD_WEIGHT: {
         const allconnections = this.connections.concat(this.selfconns);
 
         const connection =
@@ -393,7 +391,7 @@ Network.prototype = {
         connection.weight += modification;
         break;
       }
-      case mutation.MOD_BIAS: {
+      case Mutation.MOD_BIAS: {
         // Has no effect on input node, so they are excluded
         const index = Math.floor(
           Math.random() * (this.nodes.length - this.input) + this.input,
@@ -402,7 +400,7 @@ Network.prototype = {
         node.mutate(method);
         break;
       }
-      case mutation.MOD_ACTIVATION: {
+      case Mutation.MOD_ACTIVATION: {
         // Has no effect on input node, so they are excluded
         if (
           !method.mutateOutput && this.input + this.output === this.nodes.length
@@ -423,7 +421,7 @@ Network.prototype = {
         node.mutate(method);
         break;
       }
-      case mutation.ADD_SELF_CONN: {
+      case Mutation.ADD_SELF_CONN: {
         // Check which nodes aren't selfconnected yet
         const possible = [];
         for (i = this.input; i < this.nodes.length; i++) {
@@ -445,7 +443,7 @@ Network.prototype = {
         this.connect(node, node);
         break;
       }
-      case mutation.SUB_SELF_CONN: {
+      case Mutation.SUB_SELF_CONN: {
         if (this.selfconns.length === 0) {
           if (Config.warnings) {
             console.warn("No more self-connections to remove!");
@@ -457,7 +455,7 @@ Network.prototype = {
         this.disconnect(conn.from, conn.to);
         break;
       }
-      case mutation.ADD_GATE: {
+      case Mutation.ADD_GATE: {
         const allconnections = this.connections.concat(this.selfconns);
 
         // Create a list of all non-gated connections
@@ -485,7 +483,7 @@ Network.prototype = {
         this.gate(node, conn);
         break;
       }
-      case mutation.SUB_GATE: {
+      case Mutation.SUB_GATE: {
         // Select a random gated connection
         if (this.gates.length === 0) {
           if (Config.warnings) console.warn("No more connections to ungate!");
@@ -498,7 +496,7 @@ Network.prototype = {
         this.ungate(gatedconn);
         break;
       }
-      case mutation.ADD_BACK_CONN: {
+      case Mutation.ADD_BACK_CONN: {
         // Create an array of all uncreated (backfed) connections
         const available = [];
         for (i = this.input; i < this.nodes.length; i++) {
@@ -518,7 +516,7 @@ Network.prototype = {
         this.connect(pair[0], pair[1]);
         break;
       }
-      case mutation.SUB_BACK_CONN: {
+      case Mutation.SUB_BACK_CONN: {
         // List of possible connections that can be removed
         const possible = [];
 
@@ -544,7 +542,7 @@ Network.prototype = {
         this.disconnect(randomConn.from, randomConn.to);
         break;
       }
-      case mutation.SWAP_NODES: {
+      case Mutation.SWAP_NODES: {
         // Has no effect on input node, so they are excluded
         if (
           (method.mutateOutput && this.nodes.length - this.input < 2) ||

@@ -1,6 +1,7 @@
 /* Import */
 import { Network } from "./architecture/network.js";
 import { Methods } from "./methods/methods.js";
+import { Mutation } from "./methods/mutation.ts";
 import { Config } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 
@@ -35,7 +36,7 @@ export default function Neat(input, output, fitness, options) {
     Methods.crossover.UNIFORM,
     Methods.crossover.AVERAGE,
   ];
-  this.mutation = options.mutation || Methods.mutation.FFW; // was FFW
+  this.mutation = options.mutation || Mutation.FFW; // was FFW
 
   this.template = options.network || false;
 
@@ -148,7 +149,7 @@ Neat.prototype = {
       this.mutation[Math.floor(Math.random() * this.mutation.length)];
 
     if (
-      mutationMethod === Methods.mutation.ADD_NODE &&
+      mutationMethod === Mutation.ADD_NODE &&
       genome.nodes.length >= this.maxNodes
     ) {
       if (Config.warnings) console.warn("maxNodes exceeded!");
@@ -156,7 +157,7 @@ Neat.prototype = {
     }
 
     if (
-      mutationMethod === Methods.mutation.ADD_CONN &&
+      mutationMethod === Mutation.ADD_CONN &&
       genome.connections.length >= this.maxConns
     ) {
       if (Config.warnings) console.warn("maxConns exceeded!");
@@ -164,7 +165,7 @@ Neat.prototype = {
     }
 
     if (
-      mutationMethod === Methods.mutation.ADD_GATE &&
+      mutationMethod === Mutation.ADD_GATE &&
       genome.gates.length >= this.maxGates
     ) {
       if (Config.warnings) console.warn("maxGates exceeded!");

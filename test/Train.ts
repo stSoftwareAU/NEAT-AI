@@ -1,6 +1,6 @@
 import { Network } from "../src/architecture/network.js";
 import { assert } from "https://deno.land/std@0.122.0/testing/asserts.ts";
-import { Mutation } from "../src/methods/mutation.js";
+import { Mutation } from "../src/methods/mutation.ts";
 
 // Compact form: name and function
 Deno.test("AND", async () => {

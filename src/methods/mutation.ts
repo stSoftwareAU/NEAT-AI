@@ -75,34 +75,6 @@ const temp = {
   },
 };
 
-temp.ALL = [
-  temp.ADD_NODE,
-  temp.SUB_NODE,
-  temp.ADD_CONN,
-  temp.SUB_CONN,
-  temp.MOD_WEIGHT,
-  temp.MOD_BIAS,
-  temp.MOD_ACTIVATION,
-  temp.ADD_GATE,
-  temp.SUB_GATE,
-  temp.ADD_SELF_CONN,
-  temp.SUB_SELF_CONN,
-  temp.ADD_BACK_CONN,
-  temp.SUB_BACK_CONN,
-  temp.SWAP_NODES,
-];
-
-temp.FFW = [
-  temp.ADD_NODE,
-  temp.SUB_NODE,
-  temp.ADD_CONN,
-  temp.SUB_CONN,
-  temp.MOD_WEIGHT,
-  temp.MOD_BIAS,
-  temp.MOD_ACTIVATION,
-  temp.SWAP_NODES,
-];
-
 export const Mutation = {
   ADD_NODE: temp.ADD_NODE,
   SUB_NODE: temp.SUB_NODE,
@@ -118,6 +90,31 @@ export const Mutation = {
   ADD_BACK_CONN: temp.ADD_BACK_CONN,
   SUB_BACK_CONN: temp.SUB_BACK_CONN,
   SWAP_NODES: temp.SWAP_NODES,
-  FFW: temp.FFW,
-  ALL: temp.ALL,
+  FFW: [
+    temp.ADD_NODE,
+    temp.SUB_NODE,
+    temp.ADD_CONN,
+    temp.SUB_CONN,
+    temp.MOD_WEIGHT,
+    temp.MOD_BIAS,
+    temp.MOD_ACTIVATION,
+    temp.SWAP_NODES,
+  ],
+  ALL: [
+    temp.ADD_NODE,
+    temp.SUB_NODE,
+    temp.ADD_CONN,
+    temp.SUB_CONN,
+    temp.MOD_WEIGHT,
+    temp.MOD_BIAS,
+    temp.MOD_ACTIVATION,
+    temp.SWAP_NODES,
+
+    temp.ADD_GATE,
+    temp.SUB_GATE,
+    temp.ADD_SELF_CONN,
+    temp.SUB_SELF_CONN,
+    temp.ADD_BACK_CONN,
+    temp.SUB_BACK_CONN,
+  ],
 };

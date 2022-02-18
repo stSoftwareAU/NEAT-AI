@@ -4,6 +4,7 @@ import { Network } from "./network.js";
 import { Group } from "./group.js";
 import { Layer } from "./layer.js";
 import { Methods } from "../methods/methods.js";
+import { Mutation } from "../methods/mutation.ts";
 
 /*******************************************************************************
                                         architect
@@ -123,23 +124,23 @@ export const architect = {
     const network = new Network(input, output);
 
     for (let i = 0; i < hidden; i++) {
-      network.mutate(Methods.mutation.ADD_NODE);
+      network.mutate(Mutation.ADD_NODE);
     }
 
     for (let i = 0; i < connections - hidden; i++) {
-      network.mutate(Methods.mutation.ADD_CONN);
+      network.mutate(Mutation.ADD_CONN);
     }
 
     for (let i = 0; i < backconnections; i++) {
-      network.mutate(Methods.mutation.ADD_BACK_CONN);
+      network.mutate(Mutation.ADD_BACK_CONN);
     }
 
     for (let i = 0; i < selfconnections; i++) {
-      network.mutate(Methods.mutation.ADD_SELF_CONN);
+      network.mutate(Mutation.ADD_SELF_CONN);
     }
 
     for (let i = 0; i < gates; i++) {
-      network.mutate(Methods.mutation.ADD_GATE);
+      network.mutate(Mutation.ADD_GATE);
     }
 
     return network;
