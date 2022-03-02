@@ -6,7 +6,7 @@ import {
   assertNotEquals,
 } from "https://deno.land/std@0.122.0/testing/asserts.ts";
 import { Config } from "../src/config.ts";
-// import { Methods } from "../src/methods/methods.js";
+
 import { Mutation } from "../src/methods/mutation.ts";
 
 /* Turn off warnings */
