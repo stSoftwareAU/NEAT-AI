@@ -965,7 +965,7 @@ Network.prototype = {
       dataSet[0].output.length !== this.output
     ) {
       throw new Error(
-        "Dataset input/output size should be same as network input/output size!",
+        "Dataset input(" + dataSet[0].input.length +")/output(" + dataSet[0].output.length+") size should be same as network input("+this.input+")/output("+this.output+") size!",
       );
     }
 

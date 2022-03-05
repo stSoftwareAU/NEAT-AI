@@ -10,10 +10,10 @@ export function freezeAndValidate(
     for (let j = tmpIn.length; j--;) {
       const v = tmpIn[j];
       if (
-        isFinite(v) == false ||
-        typeof v !== "number" ||
-        v < -1 ||
-        v > 1
+        isFinite(v) == false //||
+        // typeof v !== "number" //||
+        // v < -1 ||
+        // v > 1
       ) {
         console.trace();
         throw i + ":" + j + ") Input not within range: " + v;
