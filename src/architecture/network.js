@@ -959,7 +959,7 @@ Network.prototype = {
    * Evolves the network to reach a lower error on a dataset
    */
   evolve: async function (dataSet, options) {
-    freezeAndValidate(dataSet);
+    // freezeAndValidate(dataSet);
     if (
       dataSet[0].input.length !== this.input ||
       dataSet[0].output.length !== this.output
