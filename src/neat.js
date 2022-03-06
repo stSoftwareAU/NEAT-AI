@@ -4,6 +4,7 @@ import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
 import { Config } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
+import { shuffle } from "./architecture/DataSet.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -107,8 +108,8 @@ Neat.prototype = {
     const newPopulation = [];
 
     // Provenance
-    for (let i = this.provenance; i--; ) {
-      const p=Network.fromJSON(this.template.toJSON());
+    for (let i = this.provenance; i--;) {
+      const p = Network.fromJSON(this.template.toJSON());
 
       newPopulation.push(p);
     }
@@ -181,11 +182,18 @@ Neat.prototype = {
    * Mutates the given (or current) population
    */
   _mutate: function (genes) {
+    const index = new Array(genes.length);
     for (let i = genes.length; i--;) {
+      index[i] = i;
+    }
+    shuffle(index);
+
+    for (let i = genes.length; i--;) {
+      const pos = index[i];
       if (Math.random() <= this.mutationRate) {
-        for (let j = 0; j < this.mutationAmount; j++) {
-          const mutationMethod = this.selectMutationMethod(genes[i]);
-          genes[i].mutate(mutationMethod);
+        for (let j = this.mutationAmount; j--;) {
+          const mutationMethod = this.selectMutationMethod(genes[pos]);
+          genes[pos].mutate(mutationMethod);
         }
       }
     }

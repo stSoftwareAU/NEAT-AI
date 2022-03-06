@@ -12,7 +12,7 @@ import { Rate } from "./rate.js";
 
 export const Methods = {
   activation: Activation,
-  
+
   selection: Selection,
   crossover: Crossover,
   cost: Cost,

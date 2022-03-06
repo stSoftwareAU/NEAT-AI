@@ -115,7 +115,7 @@ export const Mutation = {
 
     temp.ADD_SELF_CONN,
     temp.SUB_SELF_CONN,
-    
+
     temp.ADD_BACK_CONN,
     temp.SUB_BACK_CONN,
   ],

@@ -2,7 +2,7 @@ import { architect } from "../../NEAT-TS/src/architecture/architect.js";
 import { assert } from "https://deno.land/std@0.122.0/testing/asserts.ts";
 
 Deno.test("hypotenuse", async () => {
-  const network = architect.Random(2,2, 1);
+  const network = architect.Random(2, 2, 1);
 
   const ts = [];
   for (let i = 100; i--;) {
@@ -13,7 +13,7 @@ Deno.test("hypotenuse", async () => {
         output: [Math.sqrt(i * i + j * j)],
       };
 
-      ts.push( item);
+      ts.push(item);
     }
   }
 
@@ -26,11 +26,14 @@ Deno.test("hypotenuse", async () => {
     rate: 0.3,
     momentum: 0.9,
   };
-  await network.evolve(ts,options);
-  const check=[50,10];
-  const answer=network.activate( check)[0];
+  await network.evolve(ts, options);
+  const check = [50, 10];
+  const answer = network.activate(check)[0];
 
-  console.log( "Answer: ", answer);
-  assert( answer >45 && answer < 55, "Correct answer is ~51 but was: " + answer);
+  console.log("Answer: ", answer);
+  assert(
+    answer > 45 && answer < 55,
+    "Correct answer is ~51 but was: " + answer,
+  );
   // console.log( network.toJSON());
 });

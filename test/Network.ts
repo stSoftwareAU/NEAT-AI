@@ -467,37 +467,37 @@ Deno.test("SHIFT", () => {
 Deno.test("from-to", () => {
   const network = new Network(1000, 10);
   const startJson = network.toJSON();
-  const startTxt=JSON.stringify(startJson, null, 1);
+  const startTxt = JSON.stringify(startJson, null, 1);
   let fromTotalMS = 0;
   let toTotalMS = 0;
   let fromMinMS = Infinity;
   let toMinMS = Infinity;
-  let currentJson=startJson;
-  const LOOPS=100;
+  let currentJson = startJson;
+  const LOOPS = 100;
   for (let i = LOOPS; i--;) {
     performance.mark("from-start");
-    const currentNetwork=Network.fromJSON(currentJson);
+    const currentNetwork = Network.fromJSON(currentJson);
     performance.mark("from-end");
-    const fromMS=performance.measure("", "from-start", "from-end").duration;
-    fromMinMS=fromMinMS>fromMS?fromMS:fromMinMS;
+    const fromMS = performance.measure("", "from-start", "from-end").duration;
+    fromMinMS = fromMinMS > fromMS ? fromMS : fromMinMS;
     fromTotalMS += fromMS;
 
     performance.mark("to-start");
     currentJson = currentNetwork.toJSON();
     performance.mark("to-end");
     const toMS = performance.measure("", "to-start", "to-end").duration;
-    toMinMS=toMinMS>toMS?toMS:toMinMS;
+    toMinMS = toMinMS > toMS ? toMS : toMinMS;
     toTotalMS += toMS;
-    const currentTxt=JSON.stringify(currentJson, null, 1)
-    
-    if ( startTxt != currentTxt) {
+    const currentTxt = JSON.stringify(currentJson, null, 1);
+
+    if (startTxt != currentTxt) {
       Deno.writeTextFileSync(
         ".start.json",
-        startTxt
+        startTxt,
       );
       Deno.writeTextFileSync(
         ".end.json",
-        currentTxt
+        currentTxt,
       );
 
       assert(false, "JSON changed");

@@ -20,7 +20,7 @@ export function Network(input, output, initialise = true) {
   this.output = output;
 
   // Store all the node and connection genes
-  const nLen=this.input + this.output;
+  const nLen = this.input + this.output;
   this.nodes = new Array(nLen); // Stored in activation order
   this.connections = [];
   this.gates = [];
@@ -32,9 +32,9 @@ export function Network(input, output, initialise = true) {
   if (initialise) {
     // Create input and output nodes
 
-    for (let i = nLen; i--; ) {
+    for (let i = nLen; i--;) {
       const type = i < this.input ? "input" : "output";
-      this.nodes[i]=new Node(type);
+      this.nodes[i] = new Node(type);
     }
 
     // Connect input nodes with output nodes directly
@@ -338,7 +338,11 @@ Network.prototype = {
         const available = [];
         for (let i = 0; i < this.nodes.length - this.output; i++) {
           const node1 = this.nodes[i];
-          for (let j = Math.max(i + 1, this.input); j < this.nodes.length; j++) {
+          for (
+            let j = Math.max(i + 1, this.input);
+            j < this.nodes.length;
+            j++
+          ) {
             const node2 = this.nodes[j];
             if (!node1.isProjectingTo(node2)) available.push([node1, node2]);
           }
@@ -650,7 +654,6 @@ Network.prototype = {
     let iteration = 0;
     let error = 1;
 
-    let i, j, x;
     while (
       error > targetError &&
       (options.iterations === 0 || iteration < options.iterations)
@@ -675,17 +678,10 @@ Network.prototype = {
         if (options.clear) this.clear();
       }
 
-      // Checks for options such as scheduled logs and shuffling
-      if (options.shuffle) {
-        for (
-          j, x, i = set.length;
-          i;
-          j = Math.floor(Math.random() * i),
-            x = set[--i],
-            set[i] = set[j],
-            set[j] = x
-        );
-      }
+      // // Checks for options such as scheduled logs and shuffling
+      // if (options.shuffle) {
+      //   shuffle(set);
+      // }
 
       if (options.log && iteration % options.log === 0) {
         console.log(
@@ -706,7 +702,7 @@ Network.prototype = {
     if (options.clear) this.clear();
 
     if (dropout) {
-      for (i = 0; i < this.nodes.length; i++) {
+      for (let i = this.nodes.length; i--;) {
         if (
           this.nodes[i].type === "hidden" || this.nodes[i].type === "constant"
         ) {
@@ -964,7 +960,9 @@ Network.prototype = {
       dataSet[0].output.length !== this.output
     ) {
       throw new Error(
-        "Dataset input(" + dataSet[0].input.length +")/output(" + dataSet[0].output.length+") size should be same as network input("+this.input+")/output("+this.output+") size!",
+        "Dataset input(" + dataSet[0].input.length + ")/output(" +
+          dataSet[0].output.length + ") size should be same as network input(" +
+          this.input + ")/output(" + this.output + ") size!",
       );
     }
 
@@ -1119,14 +1117,14 @@ Network.prototype = {
 Network.fromJSON = function (json) {
   const network = new Network(json.input, json.output, false);
   network.dropout = json.dropout;
-  network.nodes.length=json.nodes.length;
-  
+  network.nodes.length = json.nodes.length;
+
   for (let i = json.nodes.length; i--;) {
     network.nodes[i] = Node.fromJSON(json.nodes[i]);
   }
 
-  const cLen=json.connections.length;
-  for (let i = 0; i<cLen; i++) {    
+  const cLen = json.connections.length;
+  for (let i = 0; i < cLen; i++) {
     const conn = json.connections[i];
 
     const connection =
