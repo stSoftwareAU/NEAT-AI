@@ -107,8 +107,10 @@ Neat.prototype = {
     const newPopulation = [];
 
     // Provenance
-    for (let i = 0; i < this.provenance; i++) {
-      newPopulation.push(Network.fromJSON(this.template.toJSON()));
+    for (let i = this.provenance; i--; ) {
+      const p=Network.fromJSON(this.template.toJSON());
+
+      newPopulation.push(p);
     }
 
     // Breed the next individuals

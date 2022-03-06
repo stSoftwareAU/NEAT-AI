@@ -6,7 +6,6 @@ import Connection from "./connection.js";
 import { Config } from "../config.ts";
 import Neat from "../neat.js";
 import { Node } from "./node.js";
-import { freezeAndValidate } from "./DataSet.ts";
 
 /*******************************************************************************
                                  NETWORK
