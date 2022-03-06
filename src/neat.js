@@ -4,7 +4,7 @@ import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
 import { Config } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
-import { shuffle } from "./architecture/DataSet.ts";
+// import { shuffle } from "./architecture/DataSet.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -26,6 +26,7 @@ export default function Neat(input, output, fitness, options) {
   this.elitism = options.elitism || 1;
   this.provenance = options.provenance || 0;
   this.mutationRate = options.mutationRate || 0.3;
+  /* Number of changes per Gene */
   this.mutationAmount = options.mutationAmount || 1;
 
   this.fitnessPopulation = options.fitnessPopulation || false;
@@ -182,18 +183,19 @@ Neat.prototype = {
    * Mutates the given (or current) population
    */
   _mutate: function (genes) {
-    const index = new Array(genes.length);
-    for (let i = genes.length; i--;) {
-      index[i] = i;
-    }
-    shuffle(index);
+    // const index = new Array(genes.length);
+    // for (let i = genes.length; i--;) {
+    //   index[i] = i;
+    // }
+    // shuffle(index);
 
     for (let i = genes.length; i--;) {
-      const pos = index[i];
+      // const pos = index[i];
       if (Math.random() <= this.mutationRate) {
+        const gene=genes[i];
         for (let j = this.mutationAmount; j--;) {
-          const mutationMethod = this.selectMutationMethod(genes[pos]);
-          genes[pos].mutate(mutationMethod);
+          const mutationMethod = this.selectMutationMethod(gene);
+          gene.mutate(mutationMethod);
         }
       }
     }
