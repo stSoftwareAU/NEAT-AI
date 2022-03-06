@@ -1222,11 +1222,11 @@ Network.crossOver = function (network1, network2, equal) {
 
   // Set indexes so we don't need indexOf
 
-  for (let i = 0; i < network1.nodes.length; i++) {
+  for (let i = network1.nodes.length; i--; ) {
     network1.nodes[i].index = i;
   }
 
-  for (let i = 0; i < network2.nodes.length; i++) {
+  for (let i = network2.nodes.length; i--;) {
     network2.nodes[i].index = i;
   }
 
