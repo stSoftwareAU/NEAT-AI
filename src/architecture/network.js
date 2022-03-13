@@ -1091,8 +1091,9 @@ Network.prototype = {
 
     for (let i = 0; i < workers.length; i++) {
       const w = workers[i];
-      w.terminate();
+      w.terminate();      
     }
+    workers=null; // Release the memory.
 
     if (typeof bestGenome !== "undefined") {
       this.nodes = bestGenome.nodes;
