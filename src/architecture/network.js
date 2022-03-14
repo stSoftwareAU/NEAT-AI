@@ -1093,7 +1093,7 @@ Network.prototype = {
       const w = workers[i];
       w.terminate();      
     }
-    workers=null; // Release the memory.
+    workers.length=0; // Release the memory.
 
     if (typeof bestGenome !== "undefined") {
       this.nodes = bestGenome.nodes;
