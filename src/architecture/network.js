@@ -1250,15 +1250,20 @@ Network.crossOver = function (network1, network2, equal) {
         node = network2.nodes[network2.nodes.length + i - size];
       }
     }
+    const newNode = new Node();
 
     if( node){
-      const newNode = new Node();
       newNode.bias = node.bias;
       newNode.squash = node.squash;
       newNode.type = node.type;
-
-      offspring.nodes.push(newNode);
     }
+    else{
+      console.warn( "missing node");
+      newNode.bias = 0;
+      newNode.squash = 0;
+      newNode.type = "hidden";
+    }
+    offspring.nodes.push(newNode);    
   }
 
   // Create arrays of connection genes
