@@ -1260,7 +1260,7 @@ Network.crossOver = function (network1, network2, equal) {
     else{
       console.warn( "missing node");
       newNode.bias = 0;
-      newNode.squash = 0;
+      newNode.squash = "LOGISTIC";
       newNode.type = "hidden";
     }
     offspring.nodes.push(newNode);    
