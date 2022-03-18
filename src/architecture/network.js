@@ -1251,12 +1251,14 @@ Network.crossOver = function (network1, network2, equal) {
       }
     }
 
-    const newNode = new Node();
-    newNode.bias = node.bias;
-    newNode.squash = node.squash;
-    newNode.type = node.type;
+    if( node){
+      const newNode = new Node();
+      newNode.bias = node.bias;
+      newNode.squash = node.squash;
+      newNode.type = node.type;
 
-    offspring.nodes.push(newNode);
+      offspring.nodes.push(newNode);
+    }
   }
 
   // Create arrays of connection genes
