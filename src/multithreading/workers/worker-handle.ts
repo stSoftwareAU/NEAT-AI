@@ -37,7 +37,7 @@ export class WorkerHandle {
   terminate() {
     if (this.worker) {
       this.worker.terminate();
-      this.worker=null; // release the memory.
+      this.worker = null; // release the memory.
     }
   }
 

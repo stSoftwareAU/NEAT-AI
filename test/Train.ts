@@ -70,9 +70,8 @@ Deno.test("XOR", async () => {
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
 
-Deno.test("x",()=>{
-  
-console.log( "value",  +false );
+Deno.test("x", () => {
+  console.log("value", +false);
 });
 
 Deno.test("booleanXOR", async () => {
@@ -96,9 +95,9 @@ Deno.test("booleanXOR", async () => {
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 
-  const value=network.activate([1,0])[0];
+  const value = network.activate([1, 0])[0];
 
-  assert( value > 0.7, "Should be more than 0.7 was: " + value);
+  assert(value > 0.7, "Should be more than 0.7 was: " + value);
 });
 
 Deno.test("XNOR", async () => {

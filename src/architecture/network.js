@@ -1051,12 +1051,14 @@ Network.prototype = {
     let bestFitness = -Infinity;
     let bestGenome;
 
+    let previousFittest = null;
     while (
       error < -targetError &&
       (options.iterations === 0 || neat.generation < options.iterations)
     ) {
-      const fittest = await neat.evolve();
+      const fittest = await neat.evolve(previousFittest);
 
+      previousFittest = fittest;
       const fitness = fittest.score;
       error = fitness +
         (fittest.nodes.length - fittest.input - fittest.output +
@@ -1091,9 +1093,9 @@ Network.prototype = {
 
     for (let i = 0; i < workers.length; i++) {
       const w = workers[i];
-      w.terminate();      
+      w.terminate();
     }
-    workers.length=0; // Release the memory.
+    workers.length = 0; // Release the memory.
 
     if (typeof bestGenome !== "undefined") {
       this.nodes = bestGenome.nodes;
@@ -1223,7 +1225,7 @@ Network.crossOver = function (network1, network2, equal) {
 
   // Set indexes so we don't need indexOf
 
-  for (let i = network1.nodes.length; i--; ) {
+  for (let i = network1.nodes.length; i--;) {
     network1.nodes[i].index = i;
   }
 
@@ -1252,15 +1254,14 @@ Network.crossOver = function (network1, network2, equal) {
     }
     const newNode = new Node();
 
-    if( node){
+    if (node) {
       newNode.bias = node.bias;
       newNode.squash = node.squash;
       newNode.type = node.type;
+    } else {
+      console.warn("missing node");
     }
-    else{
-      console.warn( "missing node");
-    }
-    offspring.nodes.push(newNode);    
+    offspring.nodes.push(newNode);
   }
 
   // Create arrays of connection genes

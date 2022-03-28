@@ -1,10 +1,10 @@
 /* Import */
 import { Network } from "./architecture/network.js";
+import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
 import { Config } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
-// import { shuffle } from "./architecture/DataSet.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -80,7 +80,7 @@ Neat.prototype = {
   /**
    * Evaluates, selects, breeds and mutates population
    */
-  evolve: async function () {
+  evolve: async function (previousFittest) {
     // Check if evaluated, sort the population
     if (
       typeof this.population[this.population.length - 1].score === "undefined"
@@ -94,6 +94,7 @@ Neat.prototype = {
 
     const fittest = Network.fromJSON(tmpFittest.toJSON());
     fittest.score = tmpFittest.score;
+    fittest.calculatedScore = tmpFittest.score;
 
     if (isFinite(fittest.score) == false) {
       for (let i = 0; i < this.population.length; i++) {
@@ -106,6 +107,11 @@ Neat.prototype = {
       console.warn("fittest", fittest);
       throw "Infinite score";
     }
+    const fineTunedPopulation = fineTuneImprovement(
+      fittest,
+      previousFittest,
+      this.popsize,
+    );
     const newPopulation = [];
 
     // Provenance
@@ -116,14 +122,16 @@ Neat.prototype = {
     }
 
     // Breed the next individuals
-    for (let i = 0; i < this.popsize - this.elitism - this.provenance; i++) {
+    for (
+      let i = this.popsize - this.elitism - fineTunedPopulation.length; i--;
+    ) {
       newPopulation.push(this.getOffspring());
     }
 
     // Replace the old population with the new population
     this._mutate(newPopulation);
 
-    this.population = [...elitists, ...newPopulation]; // Keep pseudo sorted.
+    this.population = [...elitists, ...fineTunedPopulation, ...newPopulation]; // Keep pseudo sorted.
 
     // Reset the scores
     for (let i = this.population.length; i--;) {
@@ -136,7 +144,7 @@ Neat.prototype = {
   },
 
   /**
-   * Breeds two parents into an offspring, population MUST be surted
+   * Breeds two parents into an offspring, population MUST be sorted
    */
   getOffspring: function () {
     const parent1 = this.getParent();
@@ -192,7 +200,7 @@ Neat.prototype = {
     for (let i = genes.length; i--;) {
       // const pos = index[i];
       if (Math.random() <= this.mutationRate) {
-        const gene=genes[i];
+        const gene = genes[i];
         for (let j = this.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(gene);
           gene.mutate(mutationMethod);
