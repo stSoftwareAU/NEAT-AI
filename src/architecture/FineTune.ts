@@ -70,12 +70,12 @@ export function fineTuneImprovement(
           const c = cloneIt(fittest);
 
           const adjust = (fc.weight - pc.weight) * 2 * Math.random();
-          const weight = c.connections[i].weight + adjust;
+          const weight = fc.weight + adjust;
           console.debug(
             i,
             "fine tune weight",
-            c.connections[i].weight,
-            "by",
+            fc.weight, "(", pc.weight,
+            ") by",
             adjust,
             "to",
             weight,
