@@ -1051,7 +1051,7 @@ Network.prototype = {
 
     let error = -Infinity;
     let bestFitness = -Infinity;
-    let bestGenome=null;
+    let bestGenome = null;
 
     while (
       error < -targetError &&
