@@ -1,12 +1,16 @@
-import { makeElitists } from "../src/architecture/elitism.ts";
+import {
+  makeElitists,
+  ScorableInterface,
+} from "../src/architecture/elitism.ts";
 import { assert } from "https://deno.land/std@0.122.0/testing/asserts.ts";
+
 Deno.test("1make", () => {
-  const population: { score: number }[] = [
-    { score: 1 },
-    { score: -1 },
-    { score: 3 },
-    { score: 1 },
-    { score: 2 },
+  const population: ScorableInterface[] = [
+    { score: 1, nodes: [], connections: [] },
+    { score: -1, nodes: [], connections: [] },
+    { score: 3, nodes: [], connections: [] },
+    { score: 1, nodes: [], connections: [] },
+    { score: 2, nodes: [], connections: [] },
   ];
 
   const elitists = makeElitists(population);
@@ -24,12 +28,12 @@ Deno.test("1make", () => {
 });
 
 Deno.test("3make", () => {
-  const population: { score: number }[] = [
-    { score: 1 },
-    { score: -1 },
-    { score: 3 },
-    { score: 1 },
-    { score: 2 },
+  const population: ScorableInterface[] = [
+    { score: 1, nodes: [], connections: [] },
+    { score: -1, nodes: [], connections: [] },
+    { score: 3, nodes: [], connections: [] },
+    { score: 1, nodes: [], connections: [] },
+    { score: 2, nodes: [], connections: [] },
   ];
 
   const elitists = makeElitists(population, 3);
@@ -45,10 +49,10 @@ Deno.test("3make", () => {
   assert(elitists[2].score == 1, "Wrong elitism " + JSON.stringify(elitists));
 });
 Deno.test("3make2", () => {
-  const population: { score: number }[] = [
-    { score: -3 },
-    { score: -2 },
-    { score: -1 },
+  const population: ScorableInterface[] = [
+    { score: -3, nodes: [], connections: [] },
+    { score: -2, nodes: [], connections: [] },
+    { score: -1, nodes: [], connections: [] },
   ];
 
   const elitists = makeElitists(population, 3);
@@ -65,9 +69,9 @@ Deno.test("3make2", () => {
 });
 
 Deno.test("short", () => {
-  const population: { score: number }[] = [
-    { score: -2 },
-    { score: -1 },
+  const population: ScorableInterface[] = [
+    { score: -2, nodes: [], connections: [] },
+    { score: -1, nodes: [], connections: [] },
   ];
 
   const elitists = makeElitists(population, 3);
@@ -83,10 +87,16 @@ Deno.test("short", () => {
 });
 
 Deno.test("backwards", () => {
-  const population: { score: number }[] = [];
+  const population: {
+    score: number;
+    nodes: { index: number }[];
+    connections: { from: number; to: number }[];
+  }[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
       score: i,
+      nodes: [],
+      connections: [],
     });
   }
 
@@ -104,10 +114,11 @@ Deno.test("backwards", () => {
 });
 
 Deno.test("forward", () => {
-  const population: { score: number }[] = [];
+  const population: ScorableInterface[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
-      score: 1000 - i,
+      score: 1000 - i
+      , nodes: [], connections: []
     });
   }
 
@@ -128,10 +139,10 @@ Deno.test("forward", () => {
 });
 
 Deno.test("performance", () => {
-  const population: { score: number }[] = [];
+  const population: ScorableInterface[] = [];
   for (let i = 0; i < 100000; i++) {
     population.push({
-      score: Math.random(),
+      score: Math.random(), nodes: [], connections: []
     });
   }
   let totalMS = 0;
@@ -160,16 +171,16 @@ Deno.test("performance", () => {
 });
 
 Deno.test("order", () => {
-  const population: { score: number }[] = [];
+  const population: ScorableInterface[] = [];
   for (let i = 0; i < 1000; i++) {
     const v = Math.random();
     if (i % 11 == 0) {
       population.push({
-        score: v,
+        score: v, nodes: [], connections: []
       });
     }
     population.push({
-      score: v,
+      score: v, nodes: [], connections: []
     });
   }
 

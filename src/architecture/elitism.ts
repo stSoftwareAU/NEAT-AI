@@ -15,12 +15,30 @@
 //     }
 //   }
 // }
-export function makeElitists(population: { score: number }[], size = 1) {
+export interface ScorableInterface {
+  score: number,
+  nodes: { index: number }[],
+  connections: {from:(undefined|number)}[]
+}
+export function makeElitists(
+  population: ScorableInterface[],
+  size = 1
+) {
   const elitism = Math.min(Math.max(1, size), population.length);
 
-  population.sort((a, b) => b.score - a.score);
-
+  population.sort((a, b) => {
+    if (b.score == a.score) {
+      if (b.nodes == a.nodes) {
+        return a.connections.length - b.connections.length; //Shorter the better
+      } else {
+        return a.nodes.length - b.nodes.length; //Shorter the better
+      }
+    }
+    return b.score - a.score;
+  });
+  
   const elitists = population.slice(0, elitism);
+  
   return elitists;
 }
 
