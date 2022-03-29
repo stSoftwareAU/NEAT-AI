@@ -1,10 +1,10 @@
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
-import { FitnessInterface } from "../src/architecture/FitnessInterface.ts";
+import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { assert } from "https://deno.land/std@0.122.0/testing/asserts.ts";
 
 // Compact form: name and function
 Deno.test("tune", () => {
-  const previousFittest: FitnessInterface = {
+  const previousFittest: NetworkInterface = {
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -33,13 +33,15 @@ Deno.test("tune", () => {
     "input": 2,
     "output": 1,
     "dropout": 0,
-    calculatedScore: 0.5,
+    tags: [
+      { name: "score", value: "0.5" },
+    ],
     toJSON: function () {
       return this;
     },
   };
 
-  const fittest: FitnessInterface = {
+  const fittest: NetworkInterface = {
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -68,7 +70,9 @@ Deno.test("tune", () => {
     "input": 2,
     "output": 1,
     "dropout": 0,
-    calculatedScore: 0.6,
+    tags: [
+      { name: "score", value: "0.6" },
+    ],
     toJSON: function () {
       return this;
     },

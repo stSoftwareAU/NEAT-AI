@@ -25,6 +25,7 @@ export function Network(input, output, initialise = true) {
   this.connections = [];
   this.gates = [];
   this.selfconns = [];
+  this.tags = undefined;
 
   // Regularization
   this.dropout = 0;
@@ -900,6 +901,7 @@ Network.prototype = {
       input: this.input,
       output: this.output,
       dropout: this.dropout,
+      tags: this.tags,
     };
 
     // So we don't have to use expensive .indexOf()
@@ -1121,6 +1123,7 @@ Network.fromJSON = function (json) {
   const network = new Network(json.input, json.output, false);
   network.dropout = json.dropout;
   network.nodes.length = json.nodes.length;
+  network.tags = json.tags;
 
   for (let i = json.nodes.length; i--;) {
     network.nodes[i] = Node.fromJSON(json.nodes[i]);

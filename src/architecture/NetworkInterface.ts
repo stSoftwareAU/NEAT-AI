@@ -1,4 +1,6 @@
-export interface NetworkInterface {
+import { TagsInterface } from "../tags/TagsInterface.ts";
+
+export interface NetworkInterface extends TagsInterface {
   input: number;
   output: number;
   dropout: number;
