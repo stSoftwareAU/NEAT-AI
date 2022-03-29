@@ -135,13 +135,14 @@ Neat.prototype = {
     this.population = [...elitists, ...fineTunedPopulation, ...newPopulation]; // Keep pseudo sorted.
 
     const unique = new Set();
-    // Reset the scores & de-duplcate the population.
+    /**
+     *  Reset the scores & de-duplcate the population.
+     */
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
       const key = JSON.stringify(p);
       if (unique.has(key)) {
-        console.debug(i, "Twin found, new offspring added");
-
+       
         for (let j = 0; j < 100; j++) {
           const tmpPopulation = [this.getOffspring()];
           this._mutate(tmpPopulation);
@@ -152,8 +153,6 @@ Neat.prototype = {
             this.population[i] = p2;
             unique.add(key2);
             break;
-          } else {
-            console.debug(j, "Identical twin after mutation, trying again");
           }
         }
       } else {
