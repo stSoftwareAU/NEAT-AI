@@ -42,11 +42,11 @@ export function fineTuneImprovement(
           const c = cloneIt(fittest);
 
           const adjust = (fn.bias - pn.bias) * 2 * Math.random();
-          const bias = c.nodes[i].bias + adjust;
+          const bias = fn.bias + adjust;
           console.debug(
             i,
             "fine tune bias",
-            c.nodes[i].bias,
+            fn.bias,"(",pn.bias ,")",
             "by",
             adjust,
             "to",
