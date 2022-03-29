@@ -1051,16 +1051,14 @@ Network.prototype = {
 
     let error = -Infinity;
     let bestFitness = -Infinity;
-    let bestGenome;
+    let bestGenome=null;
 
-    let previousFittest = null;
     while (
       error < -targetError &&
       (options.iterations === 0 || neat.generation < options.iterations)
     ) {
-      const fittest = await neat.evolve(previousFittest);
+      const fittest = await neat.evolve(bestGenome);
 
-      previousFittest = fittest;
       const fitness = fittest.score;
       error = fitness +
         (fittest.nodes.length - fittest.input - fittest.output +
