@@ -46,8 +46,7 @@ export function fineTuneImprovement(
           console.debug(
             i,
             "fine tune bias",
-            fn.bias,"(",pn.bias ,")",
-            "by",
+            fn.bias,"(",pn.bias ,") by",
             adjust,
             "to",
             bias,
