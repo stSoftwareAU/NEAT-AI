@@ -134,33 +134,30 @@ Neat.prototype = {
 
     this.population = [...elitists, ...fineTunedPopulation, ...newPopulation]; // Keep pseudo sorted.
 
-    const unique=new Set();
-    // Reset the scores
-    for (let i = 0; i <this.population.length; i++) {
-      
-      const p=this.population[i];
-      const key=JSON.stringify( p);
-      if( unique.has( key)){
-        console.debug( i, "Twin found, new offspring added");
-        
-        for( let j =0; j<100;j++){
-          const tmpPopulation=[this.getOffspring()];
+    const unique = new Set();
+    // Reset the scores & de-duplcate the population.
+    for (let i = 0; i < this.population.length; i++) {
+      const p = this.population[i];
+      const key = JSON.stringify(p);
+      if (unique.has(key)) {
+        console.debug(i, "Twin found, new offspring added");
+
+        for (let j = 0; j < 100; j++) {
+          const tmpPopulation = [this.getOffspring()];
           this._mutate(tmpPopulation);
 
-          const p2=tmpPopulation[0];
-          const key2=JSON.stringify( p2);
-          if( unique.has( key2) ==false){
+          const p2 = tmpPopulation[0];
+          const key2 = JSON.stringify(p2);
+          if (unique.has(key2) == false) {
             this.population[i] = p2;
-            unique.add( key2);
+            unique.add(key2);
             break;
-          }
-          else{
-            console.debug( j, "Identical twin after mutation, trying again");
+          } else {
+            console.debug(j, "Identical twin after mutation, trying again");
           }
         }
-      }
-      else{
-        unique.add( key)
+      } else {
+        unique.add(key);
         p.score = undefined;
       }
     }

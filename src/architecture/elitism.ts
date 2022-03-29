@@ -16,13 +16,13 @@
 //   }
 // }
 export interface ScorableInterface {
-  score: number,
-  nodes: { index: number }[],
-  connections: {from:(undefined|number)}[]
+  score: number;
+  nodes: { index: number }[];
+  connections: { from: (undefined | number) }[];
 }
 export function makeElitists(
   population: ScorableInterface[],
-  size = 1
+  size = 1,
 ) {
   const elitism = Math.min(Math.max(1, size), population.length);
 
@@ -36,9 +36,9 @@ export function makeElitists(
     }
     return b.score - a.score;
   });
-  
+
   const elitists = population.slice(0, elitism);
-  
+
   return elitists;
 }
 

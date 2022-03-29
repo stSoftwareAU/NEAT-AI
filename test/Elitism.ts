@@ -117,8 +117,9 @@ Deno.test("forward", () => {
   const population: ScorableInterface[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
-      score: 1000 - i
-      , nodes: [], connections: []
+      score: 1000 - i,
+      nodes: [],
+      connections: [],
     });
   }
 
@@ -142,7 +143,9 @@ Deno.test("performance", () => {
   const population: ScorableInterface[] = [];
   for (let i = 0; i < 100000; i++) {
     population.push({
-      score: Math.random(), nodes: [], connections: []
+      score: Math.random(),
+      nodes: [],
+      connections: [],
     });
   }
   let totalMS = 0;
@@ -176,11 +179,15 @@ Deno.test("order", () => {
     const v = Math.random();
     if (i % 11 == 0) {
       population.push({
-        score: v, nodes: [], connections: []
+        score: v,
+        nodes: [],
+        connections: [],
       });
     }
     population.push({
-      score: v, nodes: [], connections: []
+      score: v,
+      nodes: [],
+      connections: [],
     });
   }
 
