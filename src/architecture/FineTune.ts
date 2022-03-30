@@ -26,6 +26,11 @@ export function fineTuneImprovement(
   if (fScore <= pScore) {
     return [];
   }
+  Deno.writeTextFileSync(".fittest.json", JSON.stringify(fittest));
+  Deno.writeTextFileSync(
+    ".previous.json",
+    JSON.stringify(previousFittest),
+  );
 
   if (getTag(fittest, "tuned") == "fine") {
     console.info(
@@ -43,7 +48,6 @@ export function fineTuneImprovement(
       if (isFinite(fn.index) && isFinite(pn.index)) {
         if (fn.index == pn.index) {
           if (fn.bias != pn.bias) {
-            Deno.writeTextFileSync(".fittest1.json", JSON.stringify(fittest));
             const c = cloneIt(fittest);
 
             const adjust = (fn.bias - pn.bias) * 2 * Math.random();
@@ -62,12 +66,7 @@ export function fineTuneImprovement(
             );
             c.nodes[i].bias = bias;
             fineTuned.push(c);
-            Deno.writeTextFileSync(".fittest2.json", JSON.stringify(fittest));
             Deno.writeTextFileSync(".variant.json", JSON.stringify(c));
-            Deno.writeTextFileSync(
-              ".previous.json",
-              JSON.stringify(previousFittest),
-            );
           }
           break;
         }
