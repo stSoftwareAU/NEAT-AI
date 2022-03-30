@@ -109,8 +109,7 @@ Neat.prototype = {
     }
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
-      previousFittest,
-      this.popsize,
+      previousFittest
     );
     const newPopulation = [];
 

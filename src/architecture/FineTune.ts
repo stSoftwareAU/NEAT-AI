@@ -24,6 +24,7 @@ export function fineTuneImprovement(
   if (fScore <= pScore) {
     return [];
   }
+  console.info( "Fine tune scores" , pScore, "->", fScore);
   if (getTag(fittest, "tuned") == "fine") {
     console.info(
       "Fine tuning increased fitness by",
