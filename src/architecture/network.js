@@ -1108,6 +1108,7 @@ Network.prototype = {
 
     return {
       error: -error,
+      score: bestFitness,
       iterations: neat.generation,
       time: Date.now() - start,
     };
