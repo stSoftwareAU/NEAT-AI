@@ -29,7 +29,7 @@ Deno.test("tune", () => {
       "from": 1,
       "to": 2,
       "gater": null,
-    }, { "weight": 0.9686464354110709, "from": 0, "to": 2, "gater": null }],
+    }, { "weight": 0.96864643541, "from": 0, "to": 2, "gater": null }],
     "input": 2,
     "output": 1,
     "dropout": 0,
@@ -80,5 +80,5 @@ Deno.test("tune", () => {
 
   const fineTuned = fineTuneImprovement(fittest, previousFittest);
 
-  assert(fineTuned.length > 0, "We should have detected a change");
+  assert(fineTuned.length > 1, "We should have detected the changes");
 });
