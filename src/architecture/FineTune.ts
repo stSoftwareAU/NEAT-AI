@@ -26,11 +26,6 @@ export function fineTuneImprovement(
   if (fScore <= pScore) {
     return [];
   }
-  Deno.writeTextFileSync(".fittest.json", JSON.stringify(fittest));
-  Deno.writeTextFileSync(
-    ".previous.json",
-    JSON.stringify(previousFittest),
-  );
 
   if (getTag(fittest, "tuned") == "fine") {
     console.info(
@@ -66,7 +61,6 @@ export function fineTuneImprovement(
             );
             c.nodes[i].bias = bias;
             fineTuned.push(c);
-            Deno.writeTextFileSync(".variant.json", JSON.stringify(c));
           }
           break;
         }
@@ -107,9 +101,6 @@ export function fineTuneImprovement(
     if (fineTuned.length >= popsize) break;
   }
 
-  if (fineTuned.length > 0) {
-    console.info("fine tuned", fineTuned.length, "variants");
-  }
   return fineTuned;
 }
 
