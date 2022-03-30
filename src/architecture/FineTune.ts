@@ -113,6 +113,7 @@ export function fineTuneImprovement(
   return fineTuned;
 }
 
+// deno-lint-ignore ban-types
 function cloneIt(fittest: { toJSON: Function }) {
   const json = fittest.toJSON();
 
