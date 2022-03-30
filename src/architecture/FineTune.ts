@@ -24,7 +24,7 @@ export function fineTuneImprovement(
   if (fScore <= pScore) {
     return [];
   }
-  console.info( "Fine tune scores" , pScore, "->", fScore);
+  
   if (getTag(fittest, "tuned") == "fine") {
     console.info(
       "Fine tuning increased fitness by",
@@ -38,33 +38,39 @@ export function fineTuneImprovement(
     for (let j = previousFittest.nodes.length; j--;) {
       const pn = previousFittest.nodes[j];
 
-      if (fn.index == pn.index) {
-        if (fn.bias != pn.bias) {
-          const c = cloneIt(fittest);
+      if (isFinite(fn.index) && isFinite(pn.index)) {
+        if (fn.index == pn.index) {
+          if (fn.bias != pn.bias) {
+            const c = cloneIt(fittest);
 
-          const adjust = (fn.bias - pn.bias) * 2 * Math.random();
-          const bias = fn.bias + adjust;
-          console.debug(
-            "pos: ("+i+":"+j+"), index: (" + fn.index +":" +pn.index +")",
-            "fine tune bias",
-            fn.bias,
-            "(",
-            pn.bias,
-            ") by",
-            adjust,
-            "to",
-            bias,
-          );
-          c.nodes[i].bias = bias;
-          fineTuned.push(c);
-          Deno.writeTextFileSync( ".fittest.json", JSON.stringify( fittest));
-          Deno.writeTextFileSync( ".variant.json", JSON.stringify( c));
-          Deno.writeTextFileSync( ".previous.json", JSON.stringify( previousFittest));
+            const adjust = (fn.bias - pn.bias) * 2 * Math.random();
+            const bias = fn.bias + adjust;
+            console.debug(
+              "pos: (" + i + ":" + j + "), index: (" + fn.index + ":" +
+                pn.index + ")",
+              "fine tune bias",
+              fn.bias,
+              "(",
+              pn.bias,
+              ") by",
+              adjust,
+              "to",
+              bias,
+            );
+            c.nodes[i].bias = bias;
+            fineTuned.push(c);
+            Deno.writeTextFileSync(".fittest.json", JSON.stringify(fittest));
+            Deno.writeTextFileSync(".variant.json", JSON.stringify(c));
+            Deno.writeTextFileSync(
+              ".previous.json",
+              JSON.stringify(previousFittest),
+            );
+          }
+          break;
         }
-        break;
       }
+      if (fineTuned.length >= popsize) break;
     }
-    if (fineTuned.length >= popsize) break;
   }
 
   for (let i = fittest.connections.length; i--;) {
