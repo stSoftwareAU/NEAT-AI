@@ -48,4 +48,9 @@ Deno.test("keep", () => {
   const n2 = Network.fromJSON(json);
 
   assert(getTag(n2, "hello") == "world", "Expecting a value.");
+
+  addTag(n, "hello", "mars");
+  assert(getTag(n, "hello") == "mars", "Expecting change");
+
+  assert(getTag(n2, "hello") == "world", "Expecting unchanged");
 });

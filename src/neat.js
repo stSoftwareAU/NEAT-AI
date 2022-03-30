@@ -5,7 +5,7 @@ import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
 import { Config } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
-import { addTag } from "../src/tags/TagsInterface.ts";
+import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 /* Easier variable naming */
 const selection = Methods.selection;
 
@@ -94,7 +94,7 @@ Neat.prototype = {
 
     const fittest = Network.fromJSON(tmpFittest.toJSON()); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
-    addTag(fittest, "score", tmpFittest.score.toString());
+    addTag(fittest, "score", fittest.score.toString());
 
     if (isFinite(fittest.score) == false) {
       for (let i = 0; i < this.population.length; i++) {
@@ -109,7 +109,7 @@ Neat.prototype = {
     }
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
-      previousFittest
+      previousFittest,
     );
     const newPopulation = [];
 
@@ -141,7 +141,6 @@ Neat.prototype = {
       const p = this.population[i];
       const key = JSON.stringify(p);
       if (unique.has(key)) {
-       
         for (let j = 0; j < 100; j++) {
           const tmpPopulation = [this.getOffspring()];
           this._mutate(tmpPopulation);

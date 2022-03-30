@@ -18,21 +18,19 @@ export function addTag(taggable: TagsInterface, name: string, value: string) {
     tags = [];
     taggable.tags = tags;
   }
-
+  const tag2 = { name: name, value: value };
   for (let i = tags.length; i--;) {
     const tag = tags[i];
 
     if (tag.name == name) {
       const previousValue = tag.value;
 
-      tag.value = value;
+      tags[i] = tag2;
       return previousValue;
     }
   }
 
-  const tag = { name: name, value: value };
-
-  tags.push(tag);
+  tags.push(tag2);
 
   return null;
 }

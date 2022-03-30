@@ -12,19 +12,21 @@ export function fineTuneImprovement(
   }
 
   const fScoreTxt = getTag(fittest, "score");
-  if (!fScoreTxt) return [];
-
+  if (!fScoreTxt) {
+    return [];
+  }
   const fScore = Number.parseFloat(fScoreTxt);
 
   const pScoreTxt = getTag(previousFittest, "score");
-  if (!pScoreTxt) return [];
-
+  if (!pScoreTxt) {
+    return [];
+  }
   const pScore = Number.parseFloat(pScoreTxt);
 
   if (fScore <= pScore) {
     return [];
   }
-  
+
   if (getTag(fittest, "tuned") == "fine") {
     console.info(
       "Fine tuning increased fitness by",

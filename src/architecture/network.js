@@ -6,6 +6,7 @@ import Connection from "./connection.js";
 import { Config } from "../config.ts";
 import Neat from "../neat.js";
 import { Node } from "./node.js";
+import { addTags } from "../tags/TagsInterface.ts";
 
 /*******************************************************************************
                                  NETWORK
@@ -901,7 +902,7 @@ Network.prototype = {
       input: this.input,
       output: this.output,
       dropout: this.dropout,
-      tags: this.tags,
+      tags: this.tags ? this.tags.slice() : undefined,
     };
 
     // So we don't have to use expensive .indexOf()
@@ -1066,7 +1067,7 @@ Network.prototype = {
 
       if (fitness > bestFitness) {
         bestFitness = fitness;
-        bestGenome = fittest;
+        bestGenome = Network.fromJSON(fittest.toJSON());
       }
 
       if (options.log && neat.generation % options.log === 0) {
@@ -1102,6 +1103,7 @@ Network.prototype = {
       this.connections = bestGenome.connections;
       this.selfconns = bestGenome.selfconns;
       this.gates = bestGenome.gates;
+      addTags(this, bestGenome);
 
       if (options.clear) this.clear();
     }
