@@ -57,9 +57,9 @@ export function fineTuneImprovement(
           );
           c.nodes[i].bias = bias;
           fineTuned.push(c);
-          Deno.writeTextFileSync( ".fittest.json", JSON.stringify( fn));
+          Deno.writeTextFileSync( ".fittest.json", JSON.stringify( fittest));
           Deno.writeTextFileSync( ".variant.json", JSON.stringify( c));
-          Deno.writeTextFileSync( ".previous.json", JSON.stringify( pn));
+          Deno.writeTextFileSync( ".previous.json", JSON.stringify( previousFittest));
         }
         break;
       }
