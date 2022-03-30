@@ -45,7 +45,7 @@ export function fineTuneImprovement(
           const adjust = (fn.bias - pn.bias) * 2 * Math.random();
           const bias = fn.bias + adjust;
           console.debug(
-            i,
+            "pos: ("+i+":"+j+"), index: " + fn.index,
             "fine tune bias",
             fn.bias,
             "(",
