@@ -92,7 +92,7 @@ Neat.prototype = {
     const elitists = makeElitists(this.population, this.elitism);
     const tmpFittest = elitists[0];
 
-    const fittest = Network.fromJSON(tmpFittest.toJSON());
+    const fittest = Network.fromJSON(tmpFittest.toJSON()); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
     addTag(fittest, "score", tmpFittest.score.toString());
 
