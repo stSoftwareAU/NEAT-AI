@@ -35,31 +35,66 @@ export function fineTuneImprovement(
   }
   const fineTuned: Network[] = [];
 
-  for (let i = fittest.nodes.length; i--;) {
-    const fn = fittest.nodes[i];
-    for (let j = previousFittest.nodes.length; j--;) {
-      const pn = previousFittest.nodes[j];
+  for (let k = 0; true; k++) {
+    for (let i = fittest.nodes.length; i--;) {
+      const fn = fittest.nodes[i];
+      for (let j = previousFittest.nodes.length; j--;) {
+        const pn = previousFittest.nodes[j];
 
-      if (isFinite(fn.index) && isFinite(pn.index)) {
-        if (fn.index == pn.index) {
-          if (fn.bias != pn.bias) {
+        if (isFinite(fn.index) && isFinite(pn.index)) {
+          if (fn.index == pn.index) {
+            if (fn.bias != pn.bias) {
+              const c = cloneIt(fittest);
+
+              const adjust = adjustment(k, fn.bias - pn.bias);
+              const bias = fn.bias + adjust;
+              console.debug(
+                "pos: (" + i + ":" + j + "), index: (" + fn.index + ":" +
+                  pn.index + ")",
+                "fine tune bias",
+                fn.bias,
+                "(",
+                pn.bias,
+                ") by",
+                adjust,
+                "to",
+                bias,
+              );
+              c.nodes[i].bias = bias;
+              fineTuned.push(c);
+            }
+            break;
+          }
+        }
+      }
+      if (fineTuned.length >= popsize) break;
+    }
+    if (fineTuned.length >= popsize) break;
+
+    for (let i = fittest.connections.length; i--;) {
+      const fc = fittest.connections[i];
+      for (let j = previousFittest.connections.length; j--;) {
+        const pc = previousFittest.connections[j];
+
+        if (fc.from == pc.from && fc.to == pc.to) {
+          if (fc.weight != pc.weight) {
             const c = cloneIt(fittest);
 
-            const adjust = (fn.bias - pn.bias) * 2 * Math.random();
-            const bias = fn.bias + adjust;
+            const adjust = adjustment(k, fc.weight - pc.weight);
+            const weight = fc.weight + adjust;
             console.debug(
-              "pos: (" + i + ":" + j + "), index: (" + fn.index + ":" +
-                pn.index + ")",
-              "fine tune bias",
-              fn.bias,
+              i,
+              "fine tune weight",
+              fc.weight,
               "(",
-              pn.bias,
+              pc.weight,
               ") by",
               adjust,
               "to",
-              bias,
+              weight,
             );
-            c.nodes[i].bias = bias;
+            c.connections[i].weight = weight;
+
             fineTuned.push(c);
           }
           break;
@@ -67,41 +102,37 @@ export function fineTuneImprovement(
       }
       if (fineTuned.length >= popsize) break;
     }
-  }
-
-  for (let i = fittest.connections.length; i--;) {
-    const fc = fittest.connections[i];
-    for (let j = previousFittest.connections.length; j--;) {
-      const pc = previousFittest.connections[j];
-
-      if (fc.from == pc.from && fc.to == pc.to) {
-        if (fc.weight != pc.weight) {
-          const c = cloneIt(fittest);
-
-          const adjust = (fc.weight - pc.weight) * 2 * Math.random();
-          const weight = fc.weight + adjust;
-          console.debug(
-            i,
-            "fine tune weight",
-            fc.weight,
-            "(",
-            pc.weight,
-            ") by",
-            adjust,
-            "to",
-            weight,
-          );
-          c.connections[i].weight = weight;
-
-          fineTuned.push(c);
-        }
-        break;
-      }
-    }
+    if (fineTuned.length == 0) break; // No viable genes to modify.
     if (fineTuned.length >= popsize) break;
   }
 
   return fineTuned;
+}
+
+function adjustment(loop: number, difference: number) {
+  switch (loop % 3) {
+    /* Big step forward. */
+    case 0: {
+      const r = 1 + Math.random();
+      const v = difference * r; // Big step forward.
+      // console.debug("big step forward", difference, r, v);
+      return v;
+    }
+    /* Little step forward. */
+    case 1: {
+      const r = Math.random();
+      const v = difference * r;
+      // console.debug("Little step forward", difference, r, v);
+      return v; // Little step forward.
+    }
+    /* Little step backwards */
+    default: {
+      const r = Math.random() * -1;
+      const v = difference * r;
+      // console.debug("Little step backwards", difference, r, v);
+      return v;
+    }
+  }
 }
 
 // deno-lint-ignore ban-types

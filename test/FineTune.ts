@@ -80,5 +80,12 @@ Deno.test("tune", () => {
 
   const fineTuned = fineTuneImprovement(fittest, previousFittest);
 
-  assert(fineTuned.length > 1, "We should have detected the changes");
+  assert(fineTuned.length == 10, "We should have made ten changes");
+
+  const fineTuned2 = fineTuneImprovement(fittest, previousFittest, 3);
+
+  assert(
+    fineTuned2.length == 3,
+    "We should have detected THREE changes was: " + fineTuned2.length,
+  );
 });
