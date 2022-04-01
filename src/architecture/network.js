@@ -1,12 +1,14 @@
-import { WorkerHandle } from "../multithreading/workers/worker-handle.ts";
+import { WorkerHandle } from "../multithreading/workers/WorkerHandle.ts";
 import { Methods } from "../methods/methods.js";
 import { Mutation } from "../methods/mutation.ts";
-
+import { makeDataDir } from "../architecture/DataSet.ts";
 import Connection from "./connection.js";
 import { Config } from "../config.ts";
 import Neat from "../neat.js";
 import { Node } from "./node.js";
 import { addTags } from "../tags/TagsInterface.ts";
+
+import { yellow } from "https://deno.land/std@0.126.0/fmt/colors.ts";
 
 /*******************************************************************************
                                  NETWORK
@@ -673,7 +675,9 @@ Network.prototype = {
       if (options.crossValidate) {
         this._trainSet(trainSet, batchSize, currentRate, momentum, cost);
         if (options.clear) this.clear();
-        error = this.test(testSet, cost).error;
+        const dataDir = makeDataDir(testSet);
+        error = this.test(dataDir, cost).error;
+        Deno.removeSync(dataDir, { recursive: true });
         if (options.clear) this.clear();
       } else {
         error = this._trainSet(set, batchSize, currentRate, momentum, cost);
@@ -753,32 +757,45 @@ Network.prototype = {
   /**
    * Tests a set and returns the error and elapsed time
    */
-  test: function (set, cost = Methods.cost.MSE) {
+  test: function (dataDir, cost) {
     // Check if dropout is enabled, set correct mask
 
     if (this.dropout) {
       for (let i = this.nodes.length; i--;) {
+        const node = this.nodes[i];
         if (
-          this.nodes[i].type === "hidden" || this.nodes[i].type === "constant"
+          node.type === "hidden" || node.type === "constant"
         ) {
-          this.nodes[i].mask = 1 - this.dropout;
+          node.mask = 1 - this.dropout;
         }
       }
     }
 
     let error = 0;
+    let counter = 0;
 
-    const len = set.length;
-    for (let i = 0; i < len; i++) { // Order matters for some reason.
-      const input = set[i].input;
-      const target = set[i].output;
-      const output = this.noTraceActivate(input);
-      error += cost(target, output);
+    for (const dirEntry of Deno.readDirSync(dataDir)) {
+      if (dirEntry.isFile) {
+        const fn = dataDir + "/" + dirEntry.name;
+        const json = JSON.parse(
+          Deno.readTextFileSync(fn),
+        );
+
+        const len = json.length;
+        counter += len;
+        for (let i = 0; i < len; i++) { // Order matters for some reason.
+          const data = json[i];
+          const input = data.input;
+          const target = data.output;
+          const output = this.noTraceActivate(input);
+          error += cost(target, output);
+        }
+      }
     }
 
-    error /= len;
+    const avgError = error / counter;
     const results = {
-      error: error,
+      error: avgError,
     };
 
     return results;
@@ -1006,8 +1023,10 @@ Network.prototype = {
 
     const workers = [];
 
+    const dataSetDir = makeDataDir(dataSet);
+
     for (let i = threads; i--;) {
-      workers.push(new WorkerHandle(dataSet, costName, threads == 1));
+      workers.push(new WorkerHandle(dataSetDir, costName, threads == 1));
     }
 
     const fitnessFunction = function (population) {
@@ -1054,6 +1073,7 @@ Network.prototype = {
     let bestFitness = -Infinity;
     let bestGenome = null;
 
+    let iterationStartMS = new Date().getTime();
     while (
       error < -targetError &&
       (options.iterations === 0 || neat.generation < options.iterations)
@@ -1071,6 +1091,7 @@ Network.prototype = {
       }
 
       if (options.log && neat.generation % options.log === 0) {
+        const now = new Date().getTime();
         console.log(
           "iteration",
           neat.generation,
@@ -1078,7 +1099,15 @@ Network.prototype = {
           fitness,
           "error",
           -error,
+          "avg time",
+          yellow(
+            new Intl.NumberFormat().format(
+              Math.round((now - iterationStartMS) / options.log),
+            ) + " ms",
+          ),
         );
+
+        iterationStartMS = new Date().getTime();
       }
 
       if (
@@ -1097,6 +1126,9 @@ Network.prototype = {
       w.terminate();
     }
     workers.length = 0; // Release the memory.
+    if (dataSetDir) {
+      await Deno.remove(dataSetDir, { recursive: true });
+    }
 
     if (typeof bestGenome !== "undefined") {
       this.nodes = bestGenome.nodes;

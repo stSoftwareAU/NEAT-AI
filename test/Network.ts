@@ -410,7 +410,7 @@ Deno.test("GRU XOR", () => {
   assert(getActivation([0]) < 0.1, "GRU error");
 });
 
-Deno.test("NARX Sequence", () => {
+Deno.test("NARX Sequence", async () => {
   const narx = architect.NARX(1, 5, 1, 3, 3);
 
   // Train the XOR gate (in sequence!)
@@ -424,12 +424,13 @@ Deno.test("NARX Sequence", () => {
     { input: [0], output: [1] },
   ];
 
-  narx.train(trainingData, {
+  const result = await narx.evolve(trainingData, {
     iterations: 1000,
     error: 0.005,
     rate: 0.05,
+    threads: 1,
   });
-  const result = narx.test(trainingData);
+  // const result = narx.test(trainingData);
   assert(result.error < 0.005, JSON.stringify(result));
 });
 

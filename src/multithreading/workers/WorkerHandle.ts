@@ -1,9 +1,14 @@
 import { Network } from "../../architecture/network.js";
+// import {
+//   DataRecordInterface,
+//   makeDataDir,
+// } from "../../architecture/DataSet.ts";
 import { Cost } from "../../methods/cost.js";
 
 export class WorkerHandle {
   private worker: (Worker | null) = null;
   private mockWorker;
+  // private dataSetDir;
 
   private findCost(costName: string) {
     const values = Object.values(Cost);
@@ -15,8 +20,13 @@ export class WorkerHandle {
       }
     }
   }
-  constructor(dataSet: any, costName: string, direct: boolean = false) {
-    if (typeof dataSet === "undefined") {
+
+  constructor(
+    dataSetDir: string,
+    costName: string,
+    direct: boolean = false,
+  ) {
+    if (typeof dataSetDir === "undefined") {
       throw "dataSet is mandatory";
     }
 
@@ -25,12 +35,26 @@ export class WorkerHandle {
         new URL("./deno/worker.js", import.meta.url).href,
         {
           type: "module",
+          deno: {
+            namespace: true,
+            permissions: {
+              read: [
+                dataSetDir,
+              ],
+            },
+          },
         },
       );
 
-      this.worker.postMessage({ dataSet: dataSet, costName: costName });
+      this.worker.postMessage({
+        dataSetDir: dataSetDir,
+        costName: costName,
+      });
     } else {
-      this.mockWorker = { dataSet: dataSet, cost: this.findCost(costName) };
+      this.mockWorker = {
+        dataSetDir: dataSetDir,
+        cost: this.findCost(costName),
+      };
     }
   }
 
@@ -61,7 +85,7 @@ export class WorkerHandle {
       const _that = this.mockWorker;
 
       const mockNetwork = Network.fromJSON(network.toJSON());
-      const result = mockNetwork.test(_that.dataSet, _that.cost);
+      const result = mockNetwork.test(_that.dataSetDir, _that.cost);
 
       return new Promise((resolve) => {
         resolve(result.error);

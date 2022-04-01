@@ -20,8 +20,6 @@ export interface NetworkInterface extends TagsInterface {
     gater: (null | number);
   }[];
 
+  // deno-lint-ignore ban-types
   toJSON: Function;
-
-  //   gates: ({ from: number; to: number }[]|undefined);
-  //   selfconns: ({ from: number; to: number }[]|undefined);
 }
