@@ -1,14 +1,10 @@
-import { WorkerHandle } from "../multithreading/workers/WorkerHandle.ts";
 import { Methods } from "../methods/methods.js";
 import { Mutation } from "../methods/mutation.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import Connection from "./connection.js";
 import { Config } from "../config.ts";
-import Neat from "../neat.js";
 import { Node } from "./node.js";
-import { addTags } from "../tags/TagsInterface.ts";
-
-import { yellow } from "https://deno.land/std@0.126.0/fmt/colors.ts";
+import { evolveDataSet, evolveDir } from "./NetworkUtil.ts";
 
 /*******************************************************************************
                                  NETWORK
@@ -32,6 +28,9 @@ export function Network(input, output, initialise = true) {
 
   // Regularization
   this.dropout = 0;
+
+  // Just define a variable.
+  this.score = undefined;
 
   if (initialise) {
     // Create input and output nodes
@@ -973,179 +972,15 @@ Network.prototype = {
   /**
    * Evolves the network to reach a lower error on a dataset
    */
-  evolve: async function (dataSet, options) {
-    // freezeAndValidate(dataSet);
-    if (
-      dataSet[0].input.length !== this.input ||
-      dataSet[0].output.length !== this.output
-    ) {
-      throw new Error(
-        "Dataset input(" + dataSet[0].input.length + ")/output(" +
-          dataSet[0].output.length + ") size should be same as network input(" +
-          this.input + ")/output(" + this.output + ") size!",
-      );
-    }
-
-    // Read the options
-    options = options || {};
-    let targetError = typeof options.error !== "undefined"
-      ? options.error
-      : 0.05;
-    const growth = typeof options.growth !== "undefined"
-      ? options.growth
-      : 0.0001;
-
-    const costName = options.costName || "MSE";
-
-    let threads = options.threads;
-    if (typeof threads === "undefined") {
-      if (typeof window === "undefined") { // Node.js
-        threads = require("os").cpus().length;
-      } else { // Browser
-        threads = navigator.hardwareConcurrency;
-      }
-    }
-
-    const start = Date.now();
-
-    if (
-      typeof options.iterations === "undefined" &&
-      typeof options.error === "undefined"
-    ) {
-      throw new Error(
-        "At least one of the following options must be specified: error, iterations",
-      );
-    } else if (typeof options.error === "undefined") {
-      targetError = -1; // run until iterations
-    } else if (typeof options.iterations === "undefined") {
-      options.iterations = 0; // run until target error
-    }
-
-    const workers = [];
-
-    const dataSetDir = makeDataDir(dataSet);
-
-    for (let i = threads; i--;) {
-      workers.push(new WorkerHandle(dataSetDir, costName, threads == 1));
-    }
-
-    const fitnessFunction = function (population) {
-      return new Promise((resolve, reject) => {
-        // Create a queue
-        const queue = population.slice();
-
-        // Start worker function
-        const startWorker = async function (worker) {
-          while (queue.length) {
-            const genome = queue.shift();
-
-            const result = await worker.evaluate(genome);
-            genome.score = -result;
-            genome.score -= (
-              genome.nodes.length -
-              genome.input -
-              genome.output +
-              genome.connections.length +
-              genome.gates.length
-            ) * growth;
-
-            genome.score = isNaN(genome.score) ? -Infinity : genome.score;
-          }
-        };
-        const promises = new Array(workers.length);
-        for (let i = workers.length; i--;) {
-          promises[i] = startWorker(workers[i]);
-        }
-
-        Promise.all(promises).then((r) => resolve(r)).catch((reason) =>
-          reject(reason)
-        );
-      });
-    };
-
-    options.fitnessPopulation = true;
-
-    // Intialise the NEAT instance
-    options.network = this;
-    const neat = new Neat(this.input, this.output, fitnessFunction, options);
-
-    let error = -Infinity;
-    let bestFitness = -Infinity;
-    let bestGenome = null;
-
-    let iterationStartMS = new Date().getTime();
-    while (
-      error < -targetError &&
-      (options.iterations === 0 || neat.generation < options.iterations)
-    ) {
-      const fittest = await neat.evolve(bestGenome);
-
-      const fitness = fittest.score;
-      error = fitness +
-        (fittest.nodes.length - fittest.input - fittest.output +
-            fittest.connections.length + fittest.gates.length) * growth;
-
-      if (fitness > bestFitness) {
-        bestFitness = fitness;
-        bestGenome = Network.fromJSON(fittest.toJSON());
-      }
-
-      if (options.log && neat.generation % options.log === 0) {
-        const now = new Date().getTime();
-        console.log(
-          "iteration",
-          neat.generation,
-          "fitness",
-          fitness,
-          "error",
-          -error,
-          "avg time",
-          yellow(
-            new Intl.NumberFormat().format(
-              Math.round((now - iterationStartMS) / options.log),
-            ) + " ms",
-          ),
-        );
-
-        iterationStartMS = new Date().getTime();
-      }
-
-      if (
-        options.schedule && neat.generation % options.schedule.iterations === 0
-      ) {
-        options.schedule.function({
-          fitness: fitness,
-          error: -error,
-          iteration: neat.generation,
-        });
-      }
-    }
-
-    for (let i = 0; i < workers.length; i++) {
-      const w = workers[i];
-      w.terminate();
-    }
-    workers.length = 0; // Release the memory.
-    if (dataSetDir) {
-      await Deno.remove(dataSetDir, { recursive: true });
-    }
-
-    if (typeof bestGenome !== "undefined") {
-      this.nodes = bestGenome.nodes;
-      this.connections = bestGenome.connections;
-      this.selfconns = bestGenome.selfconns;
-      this.gates = bestGenome.gates;
-      addTags(this, bestGenome);
-
-      if (options.clear) this.clear();
-    }
-
-    return {
-      error: -error,
-      score: bestFitness,
-      iterations: neat.generation,
-      time: Date.now() - start,
-    };
+  evolve: function (dataSet, options) {
+    return evolveDataSet(this, dataSet, options);
+  },
+  
+  /**
+   * Evolves the network to reach a lower error on a dataset
+   */
+  evolveDir: function (dataDir, options) {
+    return evolveDir(this, dataDir, options);
   },
 };
 

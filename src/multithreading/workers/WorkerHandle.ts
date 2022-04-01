@@ -1,4 +1,6 @@
+import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
 import { Network } from "../../architecture/network.js";
+
 // import {
 //   DataRecordInterface,
 //   makeDataDir,
@@ -65,7 +67,7 @@ export class WorkerHandle {
     }
   }
 
-  evaluate(network: Network) {
+  evaluate(network: NetworkInterface) {
     if (this.worker) {
       const _that = this.worker;
       return new Promise((resolve) => {
@@ -76,7 +78,8 @@ export class WorkerHandle {
         _that.addEventListener("message", function callback(message) {
           _that.removeEventListener("message", callback);
 
-          resolve(message.data.error);
+          const error: number = message.data.error;
+          resolve(error);
         });
 
         _that.postMessage(data);
@@ -88,7 +91,8 @@ export class WorkerHandle {
       const result = mockNetwork.test(_that.dataSetDir, _that.cost);
 
       return new Promise((resolve) => {
-        resolve(result.error);
+        const error: number = result.error;
+        resolve(error);
       });
     } else {
       throw "No real or fake worker";

@@ -5,7 +5,8 @@ import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
 import { Config } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
-import { addTag, getTag } from "../src/tags/TagsInterface.ts";
+import { addTag } from "../src/tags/TagsInterface.ts";
+
 /* Easier variable naming */
 const selection = Methods.selection;
 

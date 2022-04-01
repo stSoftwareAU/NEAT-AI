@@ -20,6 +20,7 @@ export interface ScorableInterface {
   nodes: { index: number }[];
   connections: { from: (undefined | number) }[];
 }
+
 export function makeElitists(
   population: ScorableInterface[],
   size = 1,
