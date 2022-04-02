@@ -228,30 +228,23 @@ export async function testDir(
   let counter = 0;
 
   const promises = [];
-  for (const dirEntry of Deno.readDirSync(dataDir)) {
+  for await (const dirEntry of Deno.readDir(dataDir)) {
     if (dirEntry.isFile) {
       const fn = dataDir + "/" + dirEntry.name;
 
       const p = Deno.readTextFile(fn).then((txt) => {
         const json = JSON.parse(txt);
         const len = json.length;
-        let partionError = 0;
-        for (let i = 0; i < len; i++) { // Order matters for some reason.
+
+        for (let i = len; i--;) {
           const data = json[i];
           const input = data.input;
           const target = data.output;
           if (!network.noTraceActivate) throw "no trace function";
           const output = network.noTraceActivate(input);
-          partionError += cost(target, output);
+          error += cost(target, output);
         }
-
-        return {
-          error: partionError,
-          counter: len,
-        };
-      }).then((r) => {
-        error += r.error;
-        counter += r.counter;
+        counter += len;
       });
 
       promises.push(p);
