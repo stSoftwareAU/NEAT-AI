@@ -26,8 +26,13 @@ export async function evolveDir(
   const costName = options.costName || "MSE";
 
   /** At least 1 and whole numbers only */
-  const threads = Math.round(Math.max(options.threads?options.threads:navigator.hardwareConcurrency,1));
-  
+  const threads = Math.round(
+    Math.max(
+      options.threads ? options.threads : navigator.hardwareConcurrency,
+      1,
+    ),
+  );
+
   const start = Date.now();
 
   if (

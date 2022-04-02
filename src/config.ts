@@ -14,6 +14,7 @@ export interface NeatConfigInterface {
   clear?: boolean;
   error?: number;
   growth?: number;
+  elitism?: number;
   costName?: string;
   threads?: number;
   iterations?: number;

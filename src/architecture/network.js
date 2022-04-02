@@ -975,7 +975,7 @@ Network.prototype = {
   evolve: function (dataSet, options) {
     return evolveDataSet(this, dataSet, options);
   },
-  
+
   /**
    * Evolves the network to reach a lower error on a dataset
    */
