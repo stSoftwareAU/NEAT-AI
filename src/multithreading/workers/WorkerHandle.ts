@@ -67,7 +67,7 @@ export class WorkerHandle {
     }
   }
 
-  evaluate(network: NetworkInterface) {
+  async evaluate(network: NetworkInterface) {
     if (this.worker) {
       const _that = this.worker;
       return new Promise((resolve) => {
@@ -88,12 +88,9 @@ export class WorkerHandle {
       const _that = this.mockWorker;
 
       const mockNetwork = Network.fromJSON(network.toJSON());
-      const result = mockNetwork.test(_that.dataSetDir, _that.cost);
+      const result = await mockNetwork.test(_that.dataSetDir, _that.cost);
 
-      return new Promise((resolve) => {
-        const error: number = result.error;
-        resolve(error);
-      });
+      return result.error;
     } else {
       throw "No real or fake worker";
     }

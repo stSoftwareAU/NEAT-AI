@@ -31,4 +31,6 @@ export interface NetworkInterface extends TagsInterface {
   toJSON: Function;
   // deno-lint-ignore ban-types
   clear?: Function;
+  // deno-lint-ignore ban-types
+  noTraceActivate?: Function;
 }

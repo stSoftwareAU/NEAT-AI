@@ -4,7 +4,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 import Connection from "./connection.js";
 import { Config } from "../config.ts";
 import { Node } from "./node.js";
-import { evolveDataSet, evolveDir } from "./NetworkUtil.ts";
+import { evolveDataSet, evolveDir, testDir } from "./NetworkUtil.ts";
 
 /*******************************************************************************
                                  NETWORK
@@ -756,48 +756,51 @@ Network.prototype = {
   /**
    * Tests a set and returns the error and elapsed time
    */
-  test: function (dataDir, cost) {
+  test: async function (dataDir, cost) {
+    const result = await testDir(this, dataDir, cost);
+
+    return result;
     // Check if dropout is enabled, set correct mask
 
-    if (this.dropout) {
-      for (let i = this.nodes.length; i--;) {
-        const node = this.nodes[i];
-        if (
-          node.type === "hidden" || node.type === "constant"
-        ) {
-          node.mask = 1 - this.dropout;
-        }
-      }
-    }
+    // if (this.dropout) {
+    //   for (let i = this.nodes.length; i--;) {
+    //     const node = this.nodes[i];
+    //     if (
+    //       node.type === "hidden" || node.type === "constant"
+    //     ) {
+    //       node.mask = 1 - this.dropout;
+    //     }
+    //   }
+    // }
 
-    let error = 0;
-    let counter = 0;
+    // let error = 0;
+    // let counter = 0;
 
-    for (const dirEntry of Deno.readDirSync(dataDir)) {
-      if (dirEntry.isFile) {
-        const fn = dataDir + "/" + dirEntry.name;
-        const json = JSON.parse(
-          Deno.readTextFileSync(fn),
-        );
+    // for (const dirEntry of Deno.readDirSync(dataDir)) {
+    //   if (dirEntry.isFile) {
+    //     const fn = dataDir + "/" + dirEntry.name;
+    //     const json = JSON.parse(
+    //       Deno.readTextFileSync(fn),
+    //     );
 
-        const len = json.length;
-        counter += len;
-        for (let i = 0; i < len; i++) { // Order matters for some reason.
-          const data = json[i];
-          const input = data.input;
-          const target = data.output;
-          const output = this.noTraceActivate(input);
-          error += cost(target, output);
-        }
-      }
-    }
+    //     const len = json.length;
+    //     counter += len;
+    //     for (let i = 0; i < len; i++) { // Order matters for some reason.
+    //       const data = json[i];
+    //       const input = data.input;
+    //       const target = data.output;
+    //       const output = this.noTraceActivate(input);
+    //       error += cost(target, output);
+    //     }
+    //   }
+    // }
 
-    const avgError = error / counter;
-    const results = {
-      error: avgError,
-    };
+    // const avgError = error / counter;
+    // const results = {
+    //   error: avgError,
+    // };
 
-    return results;
+    // return results;
   },
 
   /**

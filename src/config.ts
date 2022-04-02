@@ -15,13 +15,13 @@ export interface NeatConfigInterface {
   error?: number;
   growth?: number;
   elitism?: number;
-  momentum?:number;
-  mutationAmount?:number;
-  mutationRate?:number;
+  momentum?: number;
+  mutationAmount?: number;
+  mutationRate?: number;
   costName?: string;
   threads?: number;
-  selection?:any;
-  mutation?:any;
+  selection?: any;
+  mutation?: any;
   iterations?: number;
   log?: number;
   fitnessPopulation?: boolean; /** No idea what this does */

@@ -204,3 +204,72 @@ export async function evolveDataSet(
 
   return result;
 }
+
+export async function testDir(
+  network: NetworkInterface,
+  dataDir: string,
+  // deno-lint-ignore ban-types
+  cost: Function,
+) {
+  // Check if dropout is enabled, set correct mask
+
+  if (network.dropout) {
+    for (let i = network.nodes.length; i--;) {
+      const node = network.nodes[i];
+      if (
+        node.type === "hidden" || node.type === "constant"
+      ) {
+        node.mask = 1 - network.dropout;
+      }
+    }
+  }
+  //   if (!network ||!network.noTraceActivate) throw "no trace function";
+
+  //   const noTraceActivate = network.noTraceActivate;
+
+  let error = 0;
+  let counter = 0;
+
+  const promises = [];
+  for (const dirEntry of Deno.readDirSync(dataDir)) {
+    if (dirEntry.isFile) {
+      const fn = dataDir + "/" + dirEntry.name;
+
+      const p = Deno.readTextFile(fn).then((txt) => JSON.parse(txt)).then(
+        (json) => {
+          const len = json.length;
+          let partionError = 0;
+          for (let i = 0; i < len; i++) { // Order matters for some reason.
+            const data = json[i];
+            const input = data.input;
+            const target = data.output;
+            if (!network.noTraceActivate) throw "no trace function";
+            const output = network.noTraceActivate(input);
+            partionError += cost(target, output);
+          }
+
+          return {
+            error: partionError,
+            counter: len,
+          };
+        },
+      );
+
+      promises.push(p);
+    }
+  }
+
+  const pResults = await Promise.all(promises);
+
+  pResults.forEach((r) => {
+    error += r.error;
+    counter += r.counter;
+  });
+
+  const avgError = error / counter;
+  const results = {
+    error: avgError,
+  };
+
+  return results;
+}
