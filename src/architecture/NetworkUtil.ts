@@ -223,9 +223,6 @@ export async function testDir(
       }
     }
   }
-  //   if (!network ||!network.noTraceActivate) throw "no trace function";
-
-  //   const noTraceActivate = network.noTraceActivate;
 
   let error = 0;
   let counter = 0;
@@ -252,18 +249,16 @@ export async function testDir(
           error: partionError,
           counter: len,
         };
+      }).then((r) => {
+        error += r.error;
+        counter += r.counter;
       });
 
       promises.push(p);
     }
   }
 
-  const pResults = await Promise.all(promises);
-
-  pResults.forEach((r) => {
-    error += r.error;
-    counter += r.counter;
-  });
+  await Promise.all(promises);
 
   const avgError = error / counter;
   const results = {
