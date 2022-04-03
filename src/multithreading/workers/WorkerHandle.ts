@@ -1,16 +1,11 @@
 import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
 import { Network } from "../../architecture/network.js";
 
-// import {
-//   DataRecordInterface,
-//   makeDataDir,
-// } from "../../architecture/DataSet.ts";
 import { Cost } from "../../methods/cost.js";
 
 export class WorkerHandle {
   private worker: (Worker | null) = null;
   private mockWorker;
-  // private dataSetDir;
 
   private findCost(costName: string) {
     const values = Object.values(Cost);

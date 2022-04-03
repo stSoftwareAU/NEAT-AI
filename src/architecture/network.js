@@ -760,47 +760,6 @@ Network.prototype = {
     const result = await testDir(this, dataDir, cost);
 
     return result;
-    // Check if dropout is enabled, set correct mask
-
-    // if (this.dropout) {
-    //   for (let i = this.nodes.length; i--;) {
-    //     const node = this.nodes[i];
-    //     if (
-    //       node.type === "hidden" || node.type === "constant"
-    //     ) {
-    //       node.mask = 1 - this.dropout;
-    //     }
-    //   }
-    // }
-
-    // let error = 0;
-    // let counter = 0;
-
-    // for (const dirEntry of Deno.readDirSync(dataDir)) {
-    //   if (dirEntry.isFile) {
-    //     const fn = dataDir + "/" + dirEntry.name;
-    //     const json = JSON.parse(
-    //       Deno.readTextFileSync(fn),
-    //     );
-
-    //     const len = json.length;
-    //     counter += len;
-    //     for (let i = 0; i < len; i++) { // Order matters for some reason.
-    //       const data = json[i];
-    //       const input = data.input;
-    //       const target = data.output;
-    //       const output = this.noTraceActivate(input);
-    //       error += cost(target, output);
-    //     }
-    //   }
-    // }
-
-    // const avgError = error / counter;
-    // const results = {
-    //   error: avgError,
-    // };
-
-    // return results;
   },
 
   /**
