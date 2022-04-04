@@ -756,8 +756,8 @@ Network.prototype = {
   /**
    * Tests a set and returns the error and elapsed time
    */
-  test: async function (dataDir, cost) {
-    const result = await testDir(this, dataDir, cost);
+  test: function (dataDir, cost) {
+    const result = testDir(this, dataDir, cost);
 
     return result;
   },
