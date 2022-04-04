@@ -205,7 +205,7 @@ export async function evolveDataSet(
   return result;
 }
 
-export async function testDir(
+export function testDir(
   network: NetworkInterface,
   dataDir: string,
   // deno-lint-ignore ban-types
@@ -227,31 +227,31 @@ export async function testDir(
   let error = 0;
   let counter = 0;
 
-  const promises = [];
-  for await (const dirEntry of Deno.readDir(dataDir)) {
+  //const promises = [];
+  for (const dirEntry of Deno.readDirSync(dataDir)) {
     if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
       const fn = dataDir + "/" + dirEntry.name;
 
-      const p = Deno.readTextFile(fn).then((txt) => {
-        const json = JSON.parse(txt);
+      // const p = Deno.readTextFile(fn).then((txt) => {
+      const json = JSON.parse(Deno.readTextFileSync(fn));
 
-        const len = json.length;
+      const len = json.length;
 
-        for (let i = len; i--;) {
-          const data = json[i];
-          const input = data.input;
-          const target = data.output;
-          if (!network.noTraceActivate) throw "no trace function";
-          const output = network.noTraceActivate(input);
-          error += cost(target, output);
-        }
-        counter += len;
-      });
-      promises.push(p);
+      for (let i = len; i--;) {
+        const data = json[i];
+        const input = data.input;
+        const target = data.output;
+        if (!network.noTraceActivate) throw "no trace function";
+        const output = network.noTraceActivate(input);
+        error += cost(target, output);
+      }
+      counter += len;
+      // });
+      //  promises.push(p);
     }
   }
 
-  await Promise.all(promises);
+  // await Promise.all(promises);
   const avgError = error / counter;
   const results = {
     error: avgError,
