@@ -54,17 +54,17 @@ export function fineTuneImprovement(
           if (fn.bias != pn.bias) {
             const adjust = adjustment(k, fn.bias - pn.bias);
             const bias = fn.bias + adjust;
-            console.debug(
-              "Index: " + i,
-              "bias",
-              fn.bias,
-              "(",
-              pn.bias,
-              ") by",
-              adjust,
-              "to",
-              bias,
-            );
+            // console.debug(
+            //   "Index: " + i,
+            //   "bias",
+            //   fn.bias,
+            //   "(",
+            //   pn.bias,
+            //   ") by",
+            //   adjust,
+            //   "to",
+            //   bias,
+            // );
             fn.bias = bias;
             const n = Network.fromJSON(targetJSON);
             addTag(n, "tuned", "fine");
@@ -90,20 +90,20 @@ export function fineTuneImprovement(
             if (fc.weight != pc.weight) {
               const adjust = adjustment(k, fc.weight - pc.weight);
               const weight = fc.weight + adjust;
-              console.debug(
-                "from",
-                fc.from,
-                "to",
-                pc.to,
-                "weight",
-                fc.weight,
-                "(",
-                pc.weight,
-                ") by",
-                adjust,
-                "to",
-                weight,
-              );
+              // console.debug(
+              //   "from",
+              //   fc.from,
+              //   "to",
+              //   pc.to,
+              //   "weight",
+              //   fc.weight,
+              //   "(",
+              //   pc.weight,
+              //   ") by",
+              //   adjust,
+              //   "to",
+              //   weight,
+              // );
               fc.weight = weight;
               const n = Network.fromJSON(targetJSON);
               addTag(n, "tuned", "fine");
