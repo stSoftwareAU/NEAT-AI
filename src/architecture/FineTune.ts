@@ -37,10 +37,6 @@ export function fineTuneImprovement(
   const previousJSON = previousFittest.toJSON();
   let targetJSON = fittest.toJSON();
   for (let k = 0; true; k++) {
-    if( targetJSON==null)
-    {
-      targetJSON = fittest.toJSON();
-    }
 
     for (let i = targetJSON.nodes.length; i--;) {
       const fn = targetJSON.nodes[i];
@@ -69,7 +65,7 @@ export function fineTuneImprovement(
             addTag(n, "adjusted", "bias");
             fineTuned.push(n);
             if (fineTuned.length >= popsize) break;
-            targetJSON=null;
+            targetJSON = fittest.toJSON();            
           }
         }
       }
@@ -106,7 +102,8 @@ export function fineTuneImprovement(
               addTag(n, "tuned", "fine");
               addTag(n, "adjusted", "weight");
               fineTuned.push(n);
-              targetJSON=null;
+              if (fineTuned.length >= popsize) break;
+              targetJSON = fittest.toJSON();
             }
           }
           break;
