@@ -62,6 +62,7 @@ export function fineTuneImprovement(
             fn.bias = bias;
             const n = Network.fromJSON(targetJSON);
             addTag(n, "tuned", "fine");
+            addTag(n, "adjusted", "bias");
             fineTuned.push(n);
             if (fineTuned.length >= popsize) break;
           }
@@ -98,6 +99,7 @@ export function fineTuneImprovement(
               fc.weight = weight;
               const n = Network.fromJSON(targetJSON);
               addTag(n, "tuned", "fine");
+              addTag(n, "adjusted", "weight");
               fineTuned.push(n);
             }
           }
