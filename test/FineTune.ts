@@ -1,10 +1,11 @@
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { Network } from "../src/architecture/network.js";
 import { assert } from "https://deno.land/std@0.122.0/testing/asserts.ts";
 
 // Compact form: name and function
 Deno.test("tune", () => {
-  const previousFittest: NetworkInterface = {
+  const previousFittest: NetworkInterface = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -36,12 +37,9 @@ Deno.test("tune", () => {
     tags: [
       { name: "score", value: "0.5" },
     ],
-    toJSON: function () {
-      return this;
-    },
-  };
+  });
 
-  const fittest: NetworkInterface = {
+  const fittest: NetworkInterface = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -57,7 +55,7 @@ Deno.test("tune", () => {
     }, {
       "bias": -1.045867615444029,
       "type": "output",
-      "squash": "RELU",
+      "squash": "BIPOLAR_SIGMOID",
       "mask": 1,
       "index": 2,
     }],
@@ -66,21 +64,21 @@ Deno.test("tune", () => {
       "from": 1,
       "to": 2,
       "gater": null,
-    }, { "weight": 0.9686464354110709, "from": 0, "to": 2, "gater": null }],
+    }, { "weight": 0.96764643541, "from": 0, "to": 2, "gater": null }],
     "input": 2,
     "output": 1,
     "dropout": 0,
     tags: [
       { name: "score", value: "0.6" },
     ],
-    toJSON: function () {
-      return this;
-    },
-  };
+  });
 
   const fineTuned = fineTuneImprovement(fittest, previousFittest);
 
-  assert(fineTuned.length == 10, "We should have made ten changes");
+  assert(
+    fineTuned.length == 10,
+    "We should have made ten changes, was: " + fineTuned.length,
+  );
 
   const fineTuned2 = fineTuneImprovement(fittest, previousFittest, 3);
 

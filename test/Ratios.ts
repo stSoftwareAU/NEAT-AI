@@ -18,7 +18,7 @@ Deno.test("hypotenuse", async () => {
   }
 
   const options = {
-    iterations: 100,
+    iterations: 1000,
     error: 0.002,
     shuffle: true,
     log: 50,

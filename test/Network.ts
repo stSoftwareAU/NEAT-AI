@@ -425,7 +425,7 @@ Deno.test("NARX Sequence", async () => {
   ];
 
   const result = await narx.evolve(trainingData, {
-    iterations: 1000,
+    iterations: 5000,
     error: 0.005,
     rate: 0.05,
     threads: 1,

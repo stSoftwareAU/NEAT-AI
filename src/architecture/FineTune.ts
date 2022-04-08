@@ -35,35 +35,36 @@ export function fineTuneImprovement(
   }
   const fineTuned: Network[] = [];
 
+  const previousJSON = previousFittest.toJSON();
+  const targetJSON = fittest.toJSON();
+
   for (let k = 0; true; k++) {
     for (let i = fittest.nodes.length; i--;) {
       const fn = fittest.nodes[i];
-      for (let j = previousFittest.nodes.length; j--;) {
-        const pn = previousFittest.nodes[j];
 
-        if (isFinite(fn.index) && isFinite(pn.index)) {
-          if (fn.index == pn.index) {
-            if (fn.bias != pn.bias) {
-              const c = cloneIt(fittest);
+      if (i < previousFittest.nodes.length) {
+        const pn = previousFittest.nodes[i];
 
-              const adjust = adjustment(k, fn.bias - pn.bias);
-              const bias = fn.bias + adjust;
-              console.debug(
-                "pos: (" + i + ":" + j + "), index: (" + fn.index + ":" +
-                  pn.index + ")",
-                "fine tune bias",
-                fn.bias,
-                "(",
-                pn.bias,
-                ") by",
-                adjust,
-                "to",
-                bias,
-              );
-              c.nodes[i].bias = bias;
-              fineTuned.push(c);
-            }
-            break;
+        if (fn.squash == pn.squash) {
+          if (fn.bias != pn.bias) {
+            const c = cloneIt(fittest);
+
+            const adjust = adjustment(k, fn.bias - pn.bias);
+            const bias = fn.bias + adjust;
+            console.debug(
+              "Index: " + i,
+              "bias",
+              fn.bias,
+              "(",
+              pn.bias,
+              ") by",
+              adjust,
+              "to",
+              bias,
+            );
+            c.nodes[i].bias = bias;
+            fineTuned.push(c);
+            if (fineTuned.length >= popsize) break;
           }
         }
       }
@@ -71,31 +72,36 @@ export function fineTuneImprovement(
     }
     if (fineTuned.length >= popsize) break;
 
-    for (let i = fittest.connections.length; i--;) {
-      const fc = fittest.connections[i];
-      for (let j = previousFittest.connections.length; j--;) {
-        const pc = previousFittest.connections[j];
+    for (let i = targetJSON.connections.length; i--;) {
+      const fc = targetJSON.connections[i];
+      for (let j = previousJSON.connections.length; j--;) {
+        const pc = previousJSON.connections[j];
 
         if (fc.from == pc.from && fc.to == pc.to) {
-          if (fc.weight != pc.weight) {
-            const c = cloneIt(fittest);
+          if (fc.gater == pc.gater) {
+            if (fc.weight != pc.weight) {
+              const c = cloneIt(fittest);
 
-            const adjust = adjustment(k, fc.weight - pc.weight);
-            const weight = fc.weight + adjust;
-            console.debug(
-              i,
-              "fine tune weight",
-              fc.weight,
-              "(",
-              pc.weight,
-              ") by",
-              adjust,
-              "to",
-              weight,
-            );
-            c.connections[i].weight = weight;
+              const adjust = adjustment(k, fc.weight - pc.weight);
+              const weight = fc.weight + adjust;
+              console.debug(
+                "from",
+                fc.from,
+                "to",
+                pc.to,
+                "weight",
+                fc.weight,
+                "(",
+                pc.weight,
+                ") by",
+                adjust,
+                "to",
+                weight,
+              );
+              c.connections[i].weight = weight;
 
-            fineTuned.push(c);
+              fineTuned.push(c);
+            }
           }
           break;
         }
