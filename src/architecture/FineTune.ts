@@ -34,21 +34,18 @@ export function fineTuneImprovement(
     );
   }
   const fineTuned: Network[] = [];
-
-  const previousJSON = previousFittest.toJSON();
-  const targetJSON = fittest.toJSON();
-
   for (let k = 0; true; k++) {
-    for (let i = fittest.nodes.length; i--;) {
-      const fn = fittest.nodes[i];
+    const previousJSON = previousFittest.toJSON();
+    const targetJSON = fittest.toJSON();
 
-      if (i < previousFittest.nodes.length) {
-        const pn = previousFittest.nodes[i];
+    for (let i = targetJSON.nodes.length; i--;) {
+      const fn = targetJSON.nodes[i];
+
+      if (i < previousJSON.nodes.length) {
+        const pn = previousJSON.nodes[i];
 
         if (fn.squash == pn.squash) {
           if (fn.bias != pn.bias) {
-            const c = cloneIt(fittest);
-
             const adjust = adjustment(k, fn.bias - pn.bias);
             const bias = fn.bias + adjust;
             console.debug(
@@ -62,8 +59,10 @@ export function fineTuneImprovement(
               "to",
               bias,
             );
-            c.nodes[i].bias = bias;
-            fineTuned.push(c);
+            fn.bias = bias;
+            const n = Network.fromJSON(targetJSON);
+            addTag(n, "tuned", "fine");
+            fineTuned.push(n);
             if (fineTuned.length >= popsize) break;
           }
         }
@@ -80,8 +79,6 @@ export function fineTuneImprovement(
         if (fc.from == pc.from && fc.to == pc.to) {
           if (fc.gater == pc.gater) {
             if (fc.weight != pc.weight) {
-              const c = cloneIt(fittest);
-
               const adjust = adjustment(k, fc.weight - pc.weight);
               const weight = fc.weight + adjust;
               console.debug(
@@ -98,9 +95,10 @@ export function fineTuneImprovement(
                 "to",
                 weight,
               );
-              c.connections[i].weight = weight;
-
-              fineTuned.push(c);
+              fc.weight = weight;
+              const n = Network.fromJSON(targetJSON);
+              addTag(n, "tuned", "fine");
+              fineTuned.push(n);
             }
           }
           break;
@@ -139,14 +137,4 @@ function adjustment(loop: number, difference: number) {
       return v;
     }
   }
-}
-
-// deno-lint-ignore ban-types
-function cloneIt(fittest: { toJSON: Function }) {
-  const json = fittest.toJSON();
-
-  const n = Network.fromJSON(json);
-
-  addTag(n, "tuned", "fine");
-  return n;
 }
