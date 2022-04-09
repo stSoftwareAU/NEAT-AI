@@ -626,18 +626,28 @@ Network.prototype = {
 
     const start = Date.now();
 
+    const endTimeMS = options.timeoutMinutes
+      ? start * Math.max(1, options.timeoutMinutes) * 60_000
+      : 0;
+
     if (batchSize > set.length) {
       throw new Error("Batch size must be smaller or equal to dataset length!");
     } else if (
       typeof options.iterations === "undefined" &&
       typeof options.error === "undefined"
     ) {
-      throw new Error(
-        "At least one of the following options must be specified: error, iterations",
-      );
-    } else if (typeof options.error === "undefined") {
-      targetError = -1; // run until iterations
-    } else if (typeof options.iterations === "undefined") {
+      if (!endTimeMS) {
+        throw new Error(
+          "At least one of the following options must be specified: error, iterations",
+        );
+      }
+    }
+
+    if (typeof options.error === "undefined") {
+      targetError = 0; // run until iterations (or no error)
+    }
+
+    if (typeof options.iterations === "undefined") {
       options.iterations = 0; // run until target error
     }
 
@@ -688,7 +698,9 @@ Network.prototype = {
       //   shuffle(set);
       // }
 
-      if (options.log && iteration % options.log === 0) {
+      const timedOut = endTimeMS ? Date.now() < endTimeMS : false;
+
+      if (options.log && (iteration % options.log === 0 | timedOut)) {
         console.log(
           "iteration",
           iteration,
@@ -702,6 +714,7 @@ Network.prototype = {
       if (options.schedule && iteration % options.schedule.iterations === 0) {
         options.schedule.function({ error: error, iteration: iteration });
       }
+      if (timedOut) break;
     }
 
     if (options.clear) this.clear();
