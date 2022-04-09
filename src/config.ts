@@ -16,7 +16,8 @@ export interface NeatConfigInterface {
   growth?: number;
   elitism?: number;
   momentum?: number;
-  timeoutMinutes?: number; /** Once the number of minutes are reached exit the loop. */
+  timeoutMinutes?:
+    number; /** Once the number of minutes are reached exit the loop. */
   mutationAmount?: number;
   mutationRate?: number;
   costName?: string;

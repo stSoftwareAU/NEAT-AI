@@ -33,7 +33,7 @@ export function fineTuneImprovement(
       fScore - pScore,
       "to",
       fScore,
-      "adjusted", 
+      "adjusted",
       getTag(fittest, "adjusted"),
       "step",
       getTag(fittest, "step"),
@@ -43,7 +43,6 @@ export function fineTuneImprovement(
   const previousJSON = previousFittest.toJSON();
   let targetJSON = fittest.toJSON();
   for (let k = 0; true; k++) {
-
     for (let i = targetJSON.nodes.length; i--;) {
       const fn = targetJSON.nodes[i];
 
@@ -69,10 +68,14 @@ export function fineTuneImprovement(
             const n = Network.fromJSON(targetJSON);
             addTag(n, "tuned", "fine");
             addTag(n, "adjusted", "bias");
-            addTag(n, "step", k % 3==0?"large":k%3==1?"small":"back");
+            addTag(
+              n,
+              "step",
+              k % 3 == 0 ? "large" : k % 3 == 1 ? "small" : "back",
+            );
             fineTuned.push(n);
             if (fineTuned.length >= popsize) break;
-            targetJSON = fittest.toJSON();            
+            targetJSON = fittest.toJSON();
           }
         }
       }
@@ -108,7 +111,11 @@ export function fineTuneImprovement(
               const n = Network.fromJSON(targetJSON);
               addTag(n, "tuned", "fine");
               addTag(n, "adjusted", "weight");
-              addTag(n, "step", k % 3==0?"large":k%3==1?"small":"back");
+              addTag(
+                n,
+                "step",
+                k % 3 == 0 ? "large" : k % 3 == 1 ? "small" : "back",
+              );
               fineTuned.push(n);
               if (fineTuned.length >= popsize) break;
               targetJSON = fittest.toJSON();
