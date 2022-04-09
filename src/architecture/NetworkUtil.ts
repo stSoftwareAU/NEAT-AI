@@ -126,7 +126,7 @@ export async function evolveDir(
       bestFitness = fitness;
       bestGenome = Network.fromJSON(fittest.toJSON());
     }
-    const timedOut = endTimeMS ? Date.now() < endTimeMS : false;
+    const timedOut = endTimeMS ? Date.now() > endTimeMS : false;
     if (options.log && (neat.generation % options.log === 0 || timedOut)) {
       const now = new Date().getTime();
       console.log(
