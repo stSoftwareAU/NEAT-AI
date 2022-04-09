@@ -16,6 +16,7 @@ export interface NeatConfigInterface {
   growth?: number;
   elitism?: number;
   momentum?: number;
+  timeoutMinutes?: number;
   mutationAmount?: number;
   mutationRate?: number;
   costName?: string;
