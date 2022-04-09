@@ -35,6 +35,10 @@ export async function evolveDir(
 
   const start = Date.now();
 
+  const endTimeMS = options.timeoutMinutes
+    ? start * Math.max(1, options.timeoutMinutes) * 60_000
+    : 0;
+
   if (
     typeof options.iterations === "undefined" &&
     typeof options.error === "undefined"
@@ -104,6 +108,7 @@ export async function evolveDir(
   let bestGenome = null;
 
   let iterationStartMS = new Date().getTime();
+
   while (
     error < -targetError &&
     (!options.iterations || neat.generation < options.iterations)
@@ -121,8 +126,8 @@ export async function evolveDir(
       bestFitness = fitness;
       bestGenome = Network.fromJSON(fittest.toJSON());
     }
-
-    if (options.log && neat.generation % options.log === 0) {
+    const timedOut = endTimeMS ? Date.now() < endTimeMS : false;
+    if (options.log && (neat.generation % options.log === 0 || timedOut)) {
       const now = new Date().getTime();
       console.log(
         "iteration",
@@ -151,6 +156,7 @@ export async function evolveDir(
         iteration: neat.generation,
       });
     }
+    if (timedOut) break;
   }
 
   for (let i = 0; i < workers.length; i++) {

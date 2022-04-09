@@ -590,151 +590,155 @@ Network.prototype = {
   /**
    * Train the given set to this network
    */
-  train: function (set, options) {
-    if (
-      set[0].input.length !== this.input || set[0].output.length !== this.output
-    ) {
-      throw new Error(
-        "Dataset input/output size should be same as network input/output size!",
-      );
-    }
+  //  train: async function (set, options) {
 
-    options = options || {};
+  //    return await evolveDataSet(this, set, options);
+  //  },
+  // train: function (set, options) {
+  //   if (
+  //     set[0].input.length !== this.input || set[0].output.length !== this.output
+  //   ) {
+  //     throw new Error(
+  //       "Dataset input/output size should be same as network input/output size!",
+  //     );
+  //   }
 
-    // Warning messages
-    if (typeof options.rate === "undefined") {
-      if (Config.warnings) {
-        console.warn("Using default learning rate, please define a rate!");
-      }
-    }
-    if (typeof options.iterations === "undefined") {
-      if (Config.warnings) {
-        console.warn(
-          "No target iterations given, running until error is reached!",
-        );
-      }
-    }
+  //   options = options || {};
 
-    // Read the options
-    let targetError = options.error || 0.05;
-    const cost = options.cost || Methods.cost.MSE;
-    const baseRate = options.rate || 0.3;
-    const dropout = options.dropout || 0;
-    const momentum = options.momentum || 0;
-    const batchSize = options.batchSize || 1; // online learning
-    const ratePolicy = options.ratePolicy || Methods.rate.FIXED();
+  //   // Warning messages
+  //   if (typeof options.rate === "undefined") {
+  //     if (Config.warnings) {
+  //       console.warn("Using default learning rate, please define a rate!");
+  //     }
+  //   }
+  //   if (typeof options.iterations === "undefined") {
+  //     if (Config.warnings) {
+  //       console.warn(
+  //         "No target iterations given, running until error is reached!",
+  //       );
+  //     }
+  //   }
 
-    const start = Date.now();
+  //   // Read the options
+  //   let targetError = options.error || 0.05;
+  //   const cost = options.cost || Methods.cost.MSE;
+  //   const baseRate = options.rate || 0.3;
+  //   const dropout = options.dropout || 0;
+  //   const momentum = options.momentum || 0;
+  //   const batchSize = options.batchSize || 1; // online learning
+  //   const ratePolicy = options.ratePolicy || Methods.rate.FIXED();
 
-    const endTimeMS = options.timeoutMinutes
-      ? start * Math.max(1, options.timeoutMinutes) * 60_000
-      : 0;
+  //   const start = Date.now();
 
-    if (batchSize > set.length) {
-      throw new Error("Batch size must be smaller or equal to dataset length!");
-    } else if (
-      typeof options.iterations === "undefined" &&
-      typeof options.error === "undefined"
-    ) {
-      if (!endTimeMS) {
-        throw new Error(
-          "At least one of the following options must be specified: error, iterations",
-        );
-      }
-    }
+  //   const endTimeMS = options.timeoutMinutes
+  //     ? start * Math.max(1, options.timeoutMinutes) * 60_000
+  //     : 0;
 
-    if (typeof options.error === "undefined") {
-      targetError = 0; // run until iterations (or no error)
-    }
+  //   if (batchSize > set.length) {
+  //     throw new Error("Batch size must be smaller or equal to dataset length!");
+  //   } else if (
+  //     typeof options.iterations === "undefined" &&
+  //     typeof options.error === "undefined"
+  //   ) {
+  //     if (!endTimeMS) {
+  //       throw new Error(
+  //         "At least one of the following options must be specified: error, iterations",
+  //       );
+  //     }
+  //   }
 
-    if (typeof options.iterations === "undefined") {
-      options.iterations = 0; // run until target error
-    }
+  //   if (typeof options.error === "undefined") {
+  //     targetError = 0; // run until iterations (or no error)
+  //   }
 
-    // Save to network
-    this.dropout = dropout;
+  //   if (typeof options.iterations === "undefined") {
+  //     options.iterations = 0; // run until target error
+  //   }
 
-    /*if (options.crossValidate) {
-      const numTrain = Math.ceil(
-        (1 - options.crossValidate.testSize) * set.length,
-      );
-      const trainSet = set.slice(0, numTrain);
-      const testSet = set.slice(numTrain);
-    }*/
+  //   // Save to network
+  //   this.dropout = dropout;
 
-    // Loops the training process
-    let currentRate = baseRate;
-    let iteration = 0;
-    let error = 1;
+  //   /*if (options.crossValidate) {
+  //     const numTrain = Math.ceil(
+  //       (1 - options.crossValidate.testSize) * set.length,
+  //     );
+  //     const trainSet = set.slice(0, numTrain);
+  //     const testSet = set.slice(numTrain);
+  //   }*/
 
-    while (
-      error > targetError &&
-      (options.iterations === 0 || iteration < options.iterations)
-    ) {
-      if (options.crossValidate && error <= options.crossValidate.testError) {
-        break;
-      }
+  //   // Loops the training process
+  //   let currentRate = baseRate;
+  //   let iteration = 0;
+  //   let error = 1;
 
-      iteration++;
+  //   while (
+  //     error > targetError &&
+  //     (options.iterations === 0 || iteration < options.iterations)
+  //   ) {
+  //     if (options.crossValidate && error <= options.crossValidate.testError) {
+  //       break;
+  //     }
 
-      // Update the rate
-      currentRate = ratePolicy(baseRate, iteration);
+  //     iteration++;
 
-      // Checks if cross validation is enabled
-      if (options.crossValidate) {
-        this._trainSet(trainSet, batchSize, currentRate, momentum, cost);
-        if (options.clear) this.clear();
-        const dataDir = makeDataDir(testSet);
-        error = this.test(dataDir, cost).error;
-        Deno.removeSync(dataDir, { recursive: true });
-        if (options.clear) this.clear();
-      } else {
-        error = this._trainSet(set, batchSize, currentRate, momentum, cost);
-        if (options.clear) this.clear();
-      }
+  //     // Update the rate
+  //     currentRate = ratePolicy(baseRate, iteration);
 
-      // // Checks for options such as scheduled logs and shuffling
-      // if (options.shuffle) {
-      //   shuffle(set);
-      // }
+  //     // Checks if cross validation is enabled
+  //     if (options.crossValidate) {
+  //       this._trainSet(trainSet, batchSize, currentRate, momentum, cost);
+  //       if (options.clear) this.clear();
+  //       const dataDir = makeDataDir(testSet);
+  //       error = this.test(dataDir, cost).error;
+  //       Deno.removeSync(dataDir, { recursive: true });
+  //       if (options.clear) this.clear();
+  //     } else {
+  //       error = this._trainSet(set, batchSize, currentRate, momentum, cost);
+  //       if (options.clear) this.clear();
+  //     }
 
-      const timedOut = endTimeMS ? Date.now() < endTimeMS : false;
+  //     // // Checks for options such as scheduled logs and shuffling
+  //     // if (options.shuffle) {
+  //     //   shuffle(set);
+  //     // }
 
-      if (options.log && (iteration % options.log === 0 | timedOut)) {
-        console.log(
-          "iteration",
-          iteration,
-          "error",
-          error,
-          "rate",
-          currentRate,
-        );
-      }
+  //     const timedOut = endTimeMS ? Date.now() < endTimeMS : false;
 
-      if (options.schedule && iteration % options.schedule.iterations === 0) {
-        options.schedule.function({ error: error, iteration: iteration });
-      }
-      if (timedOut) break;
-    }
+  //     if (options.log && (iteration % options.log === 0 | timedOut)) {
+  //       console.log(
+  //         "iteration",
+  //         iteration,
+  //         "error",
+  //         error,
+  //         "rate",
+  //         currentRate,
+  //       );
+  //     }
 
-    if (options.clear) this.clear();
+  //     if (options.schedule && iteration % options.schedule.iterations === 0) {
+  //       options.schedule.function({ error: error, iteration: iteration });
+  //     }
+  //     if (timedOut) break;
+  //   }
 
-    if (dropout) {
-      for (let i = this.nodes.length; i--;) {
-        if (
-          this.nodes[i].type === "hidden" || this.nodes[i].type === "constant"
-        ) {
-          this.nodes[i].mask = 1 - this.dropout;
-        }
-      }
-    }
+  //   if (options.clear) this.clear();
 
-    return {
-      error: error,
-      iterations: iteration,
-      time: Date.now() - start,
-    };
-  },
+  //   if (dropout) {
+  //     for (let i = this.nodes.length; i--;) {
+  //       if (
+  //         this.nodes[i].type === "hidden" || this.nodes[i].type === "constant"
+  //       ) {
+  //         this.nodes[i].mask = 1 - this.dropout;
+  //       }
+  //     }
+  //   }
+
+  //   return {
+  //     error: error,
+  //     iterations: iteration,
+  //     time: Date.now() - start,
+  //   };
+  // },
 
   /**
    * Performs one training epoch and returns the error
