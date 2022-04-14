@@ -36,7 +36,7 @@ export async function evolveDir(
   const start = Date.now();
 
   const endTimeMS = options.timeoutMinutes
-    ? start * Math.max(1, options.timeoutMinutes) * 60_000
+    ? start + Math.max(1, options.timeoutMinutes) * 60_000
     : 0;
 
   if (
