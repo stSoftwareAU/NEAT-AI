@@ -84,10 +84,12 @@ Neat.prototype = {
   evolve: async function (previousFittest) {
     // Check if evaluated, sort the population
     if (
-      typeof this.population[this.population.length - 1].score === "undefined"
+      typeof this.population[this.population.length - 1].score !== "undefined"
     ) {
-      await this.evaluate();
+      throw "already evaluated"
     }
+
+    await this.evaluate();
 
     // Elitism
     const elitists = makeElitists(this.population, this.elitism);
@@ -113,6 +115,20 @@ Neat.prototype = {
       fittest,
       previousFittest,
     );
+
+    const livePopulation=[]
+    for (let i=0; i<this.population.length; i++ ) {
+      const p = this.population[i];
+      if( isFinite( p.score)){
+        livePopulation.push( p);
+      }
+      else{
+        console.info( i, "take out your dead", p.score);
+      }
+    }
+    
+    this.population=livePopulation;
+
     const newPopulation = [];
 
     // Provenance
@@ -170,10 +186,7 @@ Neat.prototype = {
    * Breeds two parents into an offspring, population MUST be sorted
    */
   getOffspring: function () {
-    const parent1 = this.getParent();
-    const parent2 = this.getParent();
-
-    return Network.crossOver(parent1, parent2, this.equal);
+    return Network.crossOver(this.getParent(), this.getParent(), this.equal);
   },
 
   /**
@@ -258,15 +271,6 @@ Neat.prototype = {
   },
 
   /**
-   * Sorts the population by score
-   */
-  sort: function () {
-    this.population.sort(function (a, b) {
-      return b.score - a.score;
-    });
-  },
-
-  /**
    * Gets a genome based on the selection function
    * @return {Network} genome
    */
@@ -276,7 +280,7 @@ Neat.prototype = {
         if (this.population[0].score < this.population[1].score) {
           console.trace();
           throw "Not Sorted";
-        } //this.sort();
+        }
 
         const index = Math.floor(
           Math.pow(Math.random(), this.selection.power) *

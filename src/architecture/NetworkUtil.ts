@@ -68,7 +68,7 @@ export async function evolveDir(
         while (queue.length) {
           const creature = queue.shift();
           if (!creature) continue;
-          // const creatureID=population.length - queue.length;
+          const creatureID=population.length - queue.length;
           const result = await worker.evaluate(creature) as number;
 
           addTag(creature, "error", (-result).toString());
@@ -81,7 +81,7 @@ export async function evolveDir(
               ) * growth;
 
           creature.score = isNaN(creature.score) ? -Infinity : creature.score;
-          // console.info( "Creature", creatureID, "result", result, "score", creature.score);
+          console.info( "Creature", creatureID, "result", result, "score", creature.score);
         }
       };
       const promises = new Array(workers.length);
