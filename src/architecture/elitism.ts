@@ -28,14 +28,24 @@ export function makeElitists(
   const elitism = Math.min(Math.max(1, size), population.length);
 
   population.sort((a, b) => {
-    if (b.score == a.score) {
-      if (b.nodes == a.nodes) {
-        return a.connections.length - b.connections.length; //Shorter the better
+    if (isFinite(a.score)) {
+      if (isFinite(b.score)) {
+        if (b.score == a.score) {
+          if (b.nodes == a.nodes) {
+            return a.connections.length - b.connections.length; //Shorter the better
+          } else {
+            return a.nodes.length - b.nodes.length; //Shorter the better
+          }
+        }
+        return b.score - a.score;
       } else {
-        return a.nodes.length - b.nodes.length; //Shorter the better
+        return -1;
       }
+    } else if (isFinite(b.score)) {
+      return 1;
+    } else {
+      return 0;
     }
-    return b.score - a.score;
   });
 
   const elitists = population.slice(0, elitism);

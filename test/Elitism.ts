@@ -212,3 +212,95 @@ Deno.test("order", () => {
     "Should find three " + JSON.stringify(elitists),
   );
 });
+
+Deno.test("NaN", () => {
+  const population: ScorableInterface[] = [];
+
+  population.push({
+    score: NaN,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: -1,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: NaN,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: -Infinity,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: NaN,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: Infinity,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: NaN,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: 0,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: NaN,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: 1,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    score: NaN,
+    nodes: [],
+    connections: [],
+  });
+
+  const elitists = makeElitists(population, 3);
+
+  assert(
+    elitists.length == 3,
+    "Should find three " + JSON.stringify(elitists),
+  );
+
+  assert(
+    elitists[0].score == 1,
+    "Highest score first " + elitists[0].score,
+  );
+
+  assert(
+    elitists[1].score == 0,
+    "Zero next " + elitists[1].score,
+  );
+
+  assert(
+    elitists[2].score == -1,
+    "Then negative 1 " + elitists[2].score,
+  );
+});
