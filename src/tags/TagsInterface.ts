@@ -12,6 +12,7 @@ export function addTags(target: TagsInterface, source: TagsInterface) {
     }
   }
 }
+
 export function addTag(taggable: TagsInterface, name: string, value: string) {
   let tags = taggable.tags;
   if (!tags) {

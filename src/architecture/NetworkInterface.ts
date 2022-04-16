@@ -4,6 +4,8 @@ export interface NetworkInterface extends TagsInterface {
   input: number;
   output: number;
   dropout: number;
+
+  /** The error plus a discount because of the complexity of the genome */
   score?: number;
 
   nodes: {

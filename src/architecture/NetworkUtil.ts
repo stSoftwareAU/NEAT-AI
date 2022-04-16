@@ -5,7 +5,7 @@ import { NeatConfigInterface } from "../config.ts";
 import { yellow } from "https://deno.land/std@0.126.0/fmt/colors.ts";
 import { WorkerHandle } from "../multithreading/workers/WorkerHandle.ts";
 import Neat from "../neat.js";
-import { addTags } from "../tags/TagsInterface.ts";
+import { addTag, addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
 /**
@@ -66,19 +66,22 @@ export async function evolveDir(
       // Start worker function
       const startWorker = async function (worker: WorkerHandle) {
         while (queue.length) {
-          const genome = queue.shift();
-          if (!genome) continue;
-          const result = await worker.evaluate(genome) as number;
-          genome.score = -result;
-          genome.score -= (
-            genome.nodes.length -
-            genome.input -
-            genome.output +
-            genome.connections.length +
-            (genome.gates ? genome.gates.length : 0)
-          ) * growth;
+          const creature = queue.shift();
+          if (!creature) continue;
+          // const creatureID=population.length - queue.length;
+          const result = await worker.evaluate(creature) as number;
 
-          genome.score = isNaN(genome.score) ? -Infinity : genome.score;
+          addTag(creature, "error", (-result).toString());
+          creature.score = -result - (
+                creature.nodes.length -
+                creature.input -
+                creature.output +
+                creature.connections.length +
+                (creature.gates ? creature.gates.length : 0)
+              ) * growth;
+
+          creature.score = isNaN(creature.score) ? -Infinity : creature.score;
+          // console.info( "Creature", creatureID, "result", result, "score", creature.score);
         }
       };
       const promises = new Array(workers.length);
@@ -104,8 +107,8 @@ export async function evolveDir(
   );
 
   let error = -Infinity;
-  let bestFitness = -Infinity;
-  let bestGenome = null;
+  let bestScore = -Infinity;
+  let bestCreature = null;
 
   let iterationStartMS = new Date().getTime();
 
@@ -113,28 +116,28 @@ export async function evolveDir(
     error < -targetError &&
     (!options.iterations || neat.generation < options.iterations)
   ) {
-    const fittest = await neat.evolve(bestGenome);
+    const fittest = await neat.evolve(bestCreature);
 
-    const fitness = fittest.score;
-    error = fitness +
-      (fittest.nodes.length - fittest.input - fittest.output +
-          fittest.connections.length + (fittest.gates
-            ? fittest.gates.length
-            : 0)) * growth;
+    if (fittest.score > bestScore) {
+      const errorTmp = getTag(fittest, "error");
+      if (errorTmp) {
+        error = Number.parseFloat(errorTmp);
+      } else {
+        throw "No error: " + errorTmp;
+      }
 
-    if (fitness > bestFitness) {
-      bestFitness = fitness;
-      bestGenome = Network.fromJSON(fittest.toJSON());
+      bestScore = fittest.score;
+      bestCreature = Network.fromJSON(fittest.toJSON());
     }
     const timedOut = endTimeMS ? Date.now() > endTimeMS : false;
-    
+
     if (options.log && (neat.generation % options.log === 0 || timedOut)) {
       const now = new Date().getTime();
       console.log(
         "iteration",
         neat.generation,
         "fitness",
-        fitness,
+        fittest.score,
         "error",
         -error,
         "avg time",
@@ -152,7 +155,7 @@ export async function evolveDir(
       options.schedule && neat.generation % options.schedule.iterations === 0
     ) {
       options.schedule.function({
-        fitness: fitness,
+        fitness: fittest.score,
         error: -error,
         iteration: neat.generation,
       });
@@ -166,19 +169,19 @@ export async function evolveDir(
   }
   workers.length = 0; // Release the memory.
 
-  if (bestGenome) {
-    network.nodes = bestGenome.nodes;
-    network.connections = bestGenome.connections;
-    network.selfconns = bestGenome.selfconns;
-    network.gates = bestGenome.gates;
-    addTags(network, bestGenome);
+  if (bestCreature) {
+    network.nodes = bestCreature.nodes;
+    network.connections = bestCreature.connections;
+    network.selfconns = bestCreature.selfconns;
+    network.gates = bestCreature.gates;
+    addTags(network, bestCreature);
 
     if (options.clear && network.clear) network.clear();
   }
 
   return {
     error: -error,
-    score: bestFitness,
+    score: bestScore,
     iterations: neat.generation,
     time: Date.now() - start,
   };

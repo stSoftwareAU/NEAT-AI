@@ -5,7 +5,7 @@ import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
 import { Config } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
-import { addTag } from "../src/tags/TagsInterface.ts";
+import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -96,6 +96,7 @@ Neat.prototype = {
     const fittest = Network.fromJSON(tmpFittest.toJSON()); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
     addTag(fittest, "score", fittest.score.toString());
+    addTag(fittest, "error", getTag(fittest, "error"));
 
     if (isFinite(fittest.score) == false) {
       for (let i = 0; i < this.population.length; i++) {
