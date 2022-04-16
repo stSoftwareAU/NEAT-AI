@@ -86,7 +86,7 @@ Neat.prototype = {
     if (
       typeof this.population[this.population.length - 1].score !== "undefined"
     ) {
-      throw "already evaluated"
+      throw "already evaluated";
     }
 
     await this.evaluate();
@@ -116,18 +116,23 @@ Neat.prototype = {
       previousFittest,
     );
 
-    const livePopulation=[]
-    for (let i=0; i<this.population.length; i++ ) {
+    const livePopulation = [];
+    for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
-      if( isFinite( p.score)){
-        livePopulation.push( p);
-      }
-      else{
-        console.info( i, "take out your dead", p.score);
+      if (isFinite(p.score)) {
+        livePopulation.push(p);
       }
     }
-    
-    this.population=livePopulation;
+
+    if (this.population.length !== livePopulation.length) {
+      console.info(
+        "Removed",
+        this.population.length - livePopulation.length,
+        "dead creatures",
+      );
+    }
+
+    this.population = livePopulation;
 
     const newPopulation = [];
 
