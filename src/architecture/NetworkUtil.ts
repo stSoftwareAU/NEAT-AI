@@ -237,29 +237,34 @@ export function testDir(
   let error = 0;
   let counter = 0;
 
-  //const promises = [];
+  const files: string[] = [];
+
   for (const dirEntry of Deno.readDirSync(dataDir)) {
     if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
-      const fn = dataDir + "/" + dirEntry.name;
-
-      // const p = Deno.readTextFile(fn).then((txt) => {
-      const json = JSON.parse(Deno.readTextFileSync(fn));
-
-      const len = json.length;
-
-      for (let i = len; i--;) {
-        const data = json[i];
-        const input = data.input;
-        const target = data.output;
-        if (!network.noTraceActivate) throw "no trace function";
-        const output = network.noTraceActivate(input);
-        error += cost(target, output);
-      }
-      counter += len;
+      files.push(dirEntry.name);
     }
   }
 
-  // await Promise.all(promises);
+  files.sort();
+
+  files.forEach((name) => {
+    const fn = dataDir + "/" + name;
+
+    const json = JSON.parse(Deno.readTextFileSync(fn));
+
+    const len = json.length;
+
+    for (let i = len; i--;) {
+      const data = json[i];
+      const input = data.input;
+      const target = data.output;
+      if (!network.noTraceActivate) throw "no trace function";
+      const output = network.noTraceActivate(input);
+      error += cost(target, output);
+    }
+    counter += len;
+  });
+
   const avgError = error / counter;
   const results = {
     error: avgError,

@@ -55,6 +55,7 @@ async function learnSet(set: any[], iterations: unknown, error: number) {
     iterations: iterations,
     error: error,
     shuffle: true,
+    threads: 1,
     rate: 0.3,
     momentum: 0.9,
   };
