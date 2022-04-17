@@ -78,7 +78,7 @@ export class Network {
    * Activates the network without calculating elegibility traces and such
    */
   noTraceActivate(input) {
-    const output = new Array(this.nodes.length);
+    const output = new Array(this.output);
     let outputLen = 0;
     // Activate nodes chronologically
     for (let i = 0; i < this.nodes.length; i++) { // Order matters for some reason.

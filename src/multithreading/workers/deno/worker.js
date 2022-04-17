@@ -4,12 +4,12 @@ import { Network } from "../../../architecture/network.js";
 self.dataSetDir = null;
 self.cost = null;
 
-self.onmessage = async function (message) {
+self.onmessage = function (message) {
   const data = message.data;
 
   if (typeof data.dataSetDir === "undefined") {
     const network = Network.fromJSON(data.network);
-    const result = await network.test(self.dataSetDir, self.cost);
+    const result = network.test(self.dataSetDir, self.cost);
 
     self.postMessage(result);
   } else {

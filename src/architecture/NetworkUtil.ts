@@ -136,7 +136,7 @@ export async function evolveDir(
       console.log(
         "iteration",
         neat.generation,
-        "fitness",
+        "score",
         fittest.score,
         "error",
         -error,
@@ -155,7 +155,7 @@ export async function evolveDir(
       options.schedule && neat.generation % options.schedule.iterations === 0
     ) {
       options.schedule.function({
-        fitness: fittest.score,
+        score: fittest.score,
         error: -error,
         iteration: neat.generation,
       });
@@ -256,8 +256,6 @@ export function testDir(
         error += cost(target, output);
       }
       counter += len;
-      // });
-      //  promises.push(p);
     }
   }
 
