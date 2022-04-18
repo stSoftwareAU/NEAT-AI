@@ -851,7 +851,7 @@ export class Network {
   }
   /**
    * Merge two networks into one
-   */
+   *
   static merge(network1, network2) {
     // Create a copy of the networks
     network1 = Network.fromJSON(network1.toJSON());
@@ -894,7 +894,7 @@ export class Network {
     network1.nodes = network1.nodes.concat(network2.nodes);
 
     return network1;
-  }
+  }*/
   /**
    * Create an offspring from two parent networks
    */
