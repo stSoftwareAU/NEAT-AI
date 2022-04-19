@@ -111,10 +111,6 @@ Neat.prototype = {
       console.warn("fittest", fittest);
       throw "Infinite score";
     }
-    const fineTunedPopulation = fineTuneImprovement(
-      fittest,
-      previousFittest,
-    );
 
     const livePopulation = [];
     for (let i = 0; i < this.population.length; i++) {
@@ -133,6 +129,12 @@ Neat.prototype = {
     }
 
     this.population = livePopulation;
+
+    const fineTunedPopulation = fineTuneImprovement(
+      fittest,
+      previousFittest,
+      Math.max( Math.ceil(this.popsize/5), this.popsize - this.population.length)// 20% of population or those that just died
+    );
 
     const newPopulation = [];
 
