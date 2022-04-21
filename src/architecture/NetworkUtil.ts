@@ -1,10 +1,10 @@
 import { NetworkInterface } from "./NetworkInterface.ts";
 import { Network } from "./network.js";
 import { DataRecordInterface } from "./DataSet.ts";
-import { NeatConfigInterface } from "../config.ts";
+import { make as makeConfig, NeatOptions } from "../config.ts";
 import { yellow } from "https://deno.land/std@0.126.0/fmt/colors.ts";
 import { WorkerHandle } from "../multithreading/workers/WorkerHandle.ts";
-import Neat from "../neat.js";
+import { Neat } from "../neat.js";
 import { addTag, addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
@@ -14,29 +14,20 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 export async function evolveDir(
   network: NetworkInterface,
   dataSetDir: string,
-  options: NeatConfigInterface,
+  options: NeatOptions,
 ) {
+  const config = makeConfig(options);
   // Read the options
   options = options || {};
   let targetError = typeof options.error !== "undefined" ? options.error : 0.05;
-  const growth = typeof options.growth !== "undefined"
-    ? options.growth
-    : 0.0001;
-
-  const costName = options.costName || "MSE";
-
-  /** At least 1 and whole numbers only */
-  const threads = Math.round(
-    Math.max(
-      options.threads ? options.threads : navigator.hardwareConcurrency,
-      1,
-    ),
-  );
+  // const growth = typeof options.growth !== "undefined"
+  //   ? options.growth
+  //   : 0.0001;
 
   const start = Date.now();
 
-  const endTimeMS = options.timeoutMinutes
-    ? start + Math.max(1, options.timeoutMinutes) * 60_000
+  const endTimeMS = config.timeoutMinutes
+    ? start + Math.max(1, config.timeoutMinutes) * 60_000
     : 0;
 
   if (
@@ -54,8 +45,10 @@ export async function evolveDir(
 
   const workers: WorkerHandle[] = [];
 
-  for (let i = threads; i--;) {
-    workers.push(new WorkerHandle(dataSetDir, costName, threads == 1));
+  for (let i = config.threads; i--;) {
+    workers.push(
+      new WorkerHandle(dataSetDir, config.costName, config.threads == 1),
+    );
   }
 
   const fitnessFunction = function (population: NetworkInterface[]) {
@@ -78,7 +71,7 @@ export async function evolveDir(
                 creature.output +
                 creature.connections.length +
                 (creature.gates ? creature.gates.length : 0)
-              ) * growth;
+              ) * config.growth;
 
           creature.score = isNaN(creature.score) ? -Infinity : creature.score;
           // console.info( "Creature", creatureID, "result", result, "score", creature.score);
@@ -193,7 +186,7 @@ export async function evolveDir(
 export async function evolveDataSet(
   network: NetworkInterface,
   dataSet: DataRecordInterface[],
-  options: NeatConfigInterface,
+  options: NeatOptions,
 ) {
   if (
     dataSet[0].input.length !== network.input ||

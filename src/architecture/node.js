@@ -2,7 +2,7 @@
 import { Methods } from "../methods/methods.js";
 import { Mutation } from "../methods/mutation.ts";
 import Connection from "./connection.js";
-import { Config } from "../config.ts";
+// import { Config } from "../config.ts";
 
 /*******************************************************************************
                                          NODE
@@ -252,7 +252,7 @@ Node.prototype = {
       if (target === this) {
         // Turn on the self connection by setting the weight
         if (this.connections.self.weight !== 0) {
-          if (Config.warnings) console.warn("This connection already exists!");
+          console.warn("This connection already exists!");
         } else {
           this.connections.self.weight = weight || 1;
         }

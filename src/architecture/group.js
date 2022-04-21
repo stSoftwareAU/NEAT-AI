@@ -1,6 +1,6 @@
 /* Import */
 import { Methods } from "../methods/methods.js";
-import { Config } from "../config.ts";
+// import { Config } from "../config.ts";
 import { Layer } from "./layer.js";
 import { Node } from "./node.js";
 
@@ -76,14 +76,12 @@ Group.prototype = {
     if (target instanceof Group) {
       if (typeof method === "undefined") {
         if (this !== target) {
-          if (Config.warnings) {
-            console.warn("No group connection specified, using ALL_TO_ALL");
-          }
+          console.warn("No group connection specified, using ALL_TO_ALL");
+
           method = Methods.connection.ALL_TO_ALL;
         } else {
-          if (Config.warnings) {
-            console.warn("No group connection specified, using ONE_TO_ONE");
-          }
+          console.warn("No group connection specified, using ONE_TO_ONE");
+
           method = Methods.connection.ONE_TO_ONE;
         }
       }

@@ -5,12 +5,8 @@ import {
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.122.0/testing/asserts.ts";
-import { Config } from "../src/config.ts";
 
 import { Mutation } from "../src/methods/mutation.ts";
-
-/* Turn off warnings */
-Config.warnings = false;
 
 /* Functions used in the testing process */
 function checkMutation(method: unknown) {
@@ -428,7 +424,7 @@ Deno.test("NARX Sequence", async () => {
     threads: 1,
   });
   // const result = narx.test(trainingData);
-  assert(result.error < 0.005, JSON.stringify(result));
+  assert(result.error < 0.005, JSON.stringify(result, null, 2));
 });
 
 Deno.test("SIN + COS", async () => {

@@ -1,6 +1,5 @@
 import { Mutation } from "../methods/mutation.ts";
 import Connection from "./connection.js";
-import { Config } from "../config.ts";
 import { Node } from "./node.js";
 import { evolveDataSet, evolveDir, testDir } from "./NetworkUtil.ts";
 
@@ -180,9 +179,8 @@ export class Network {
     if (this.nodes.indexOf(node) === -1) {
       throw new Error("This node is not part of the network!");
     } else if (connection.gater != null) {
-      if (Config.warnings) {
-        console.warn("This connection is already gated!");
-      }
+      console.warn("This connection is already gated!");
+
       return;
     }
     node.gate(connection);
@@ -322,9 +320,6 @@ export class Network {
       case Mutation.SUB_NODE: {
         // Check if there are nodes left to remove
         if (this.nodes.length === this.input + this.output) {
-          if (Config.warnings) {
-            console.warn("No more nodes left to remove!");
-          }
           break;
         }
 
@@ -354,9 +349,6 @@ export class Network {
         }
 
         if (available.length === 0) {
-          if (Config.warnings) {
-            console.warn("No more connections to be made!");
-          }
           break;
         }
 
@@ -381,9 +373,6 @@ export class Network {
         }
 
         if (possible.length === 0) {
-          if (Config.warnings) {
-            console.warn("No connections to remove!");
-          }
           break;
         }
 
@@ -416,9 +405,8 @@ export class Network {
         if (
           !method.mutateOutput && this.input + this.output === this.nodes.length
         ) {
-          if (Config.warnings) {
-            console.warn("No nodes that allow mutation of activation function");
-          }
+          console.warn("No nodes that allow mutation of activation function");
+
           break;
         }
 
@@ -443,9 +431,8 @@ export class Network {
         }
 
         if (possible.length === 0) {
-          if (Config.warnings) {
-            console.warn("No more self-connections to add!");
-          }
+          console.warn("No more self-connections to add!");
+
           break;
         }
 
@@ -458,9 +445,8 @@ export class Network {
       }
       case Mutation.SUB_SELF_CONN: {
         if (this.selfconns.length === 0) {
-          if (Config.warnings) {
-            console.warn("No more self-connections to remove!");
-          }
+          console.warn("No more self-connections to remove!");
+
           break;
         }
         const conn =
@@ -481,9 +467,8 @@ export class Network {
         }
 
         if (possible.length === 0) {
-          if (Config.warnings) {
-            console.warn("No more connections to gate!");
-          }
+          console.warn("No more connections to gate!");
+
           break;
         }
 
@@ -501,9 +486,8 @@ export class Network {
       case Mutation.SUB_GATE: {
         // Select a random gated connection
         if (this.gates.length === 0) {
-          if (Config.warnings) {
-            console.warn("No more connections to ungate!");
-          }
+          console.warn("No more connections to ungate!");
+
           break;
         }
 
@@ -527,9 +511,8 @@ export class Network {
         }
 
         if (available.length === 0) {
-          if (Config.warnings) {
-            console.warn("No more connections to be made!");
-          }
+          console.warn("No more connections to be made!");
+
           break;
         }
 
@@ -554,9 +537,6 @@ export class Network {
         }
 
         if (possible.length === 0) {
-          if (Config.warnings) {
-            console.warn("No connections to remove!");
-          }
           break;
         }
 
@@ -572,11 +552,6 @@ export class Network {
           (!method.mutateOutput &&
             this.nodes.length - this.input - this.output < 2)
         ) {
-          if (Config.warnings) {
-            console.warn(
-              "No nodes that allow swapping of bias and activation function",
-            );
-          }
           break;
         }
 

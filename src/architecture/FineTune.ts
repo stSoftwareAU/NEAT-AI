@@ -133,6 +133,15 @@ export function fineTuneImprovement(
   return fineTuned;
 }
 
+function minStep(v: number) {
+  const MIN_STEP = 0.000_000_1;
+  if (v > 0) {
+    return v < MIN_STEP ? MIN_STEP : v;
+  } else {
+    return v > MIN_STEP * -1 ? MIN_STEP * -1 : v;
+  }
+}
+
 function adjustment(loop: number, difference: number) {
   switch (loop % 3) {
     /* Big step forward. */
@@ -140,21 +149,22 @@ function adjustment(loop: number, difference: number) {
       const r = 1 + Math.random();
       const v = difference * r; // Big step forward.
       // console.debug("big step forward", difference, r, v);
-      return v;
+      return minStep(v);
     }
     /* Little step forward. */
     case 1: {
       const r = Math.random();
       const v = difference * r;
+
       // console.debug("Little step forward", difference, r, v);
-      return v; // Little step forward.
+      return minStep(v); // Little step forward.
     }
     /* Little step backwards */
     default: {
       const r = Math.random() * -1;
       const v = difference * r;
       // console.debug("Little step backwards", difference, r, v);
-      return v;
+      return minStep(v);
     }
   }
 }

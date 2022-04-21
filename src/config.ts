@@ -2,6 +2,8 @@
                                       CONFIG
 *******************************************************************************/
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
+import { Methods } from "./methods/methods.js";
+import { Mutation } from "./methods/mutation.ts";
 
 interface ScheduleInterface {
   iterations: number;
@@ -9,17 +11,37 @@ interface ScheduleInterface {
   function: Function;
 }
 
-export interface NeatConfigInterface {
+export interface NeatOptions {
+  equal?: boolean; // No clue.
+  error?: number; // Target error
+
   warnings?: boolean;
   clear?: boolean;
-  error?: number;
   growth?: number;
   elitism?: number;
   momentum?: number;
-  timeoutMinutes?:
-    number; /** Once the number of minutes are reached exit the loop. */
+  /** Once the number of minutes are reached exit the loop. */
+  timeoutMinutes?: number;
+
+  /** Tne maximum number of connections */
+  maxConns?: number;
+
+  /** Tne maximum number of gates */
+  maxGates?: number;
+
+  /** Tne maximum number of nodes */
+  maxNodes?: number;
+
+  /** Number of changes per Gene */
   mutationAmount?: number;
+
+  /** Probability of changing a gene */
   mutationRate?: number;
+
+  /** The target population size. */
+  popsize?: number;
+  provenance?: number;
+
   costName?: string;
   threads?: number;
   selection?: any;
@@ -31,7 +53,95 @@ export interface NeatConfigInterface {
   network?: NetworkInterface;
 }
 
-// Config
-export const Config: NeatConfigInterface = {
-  warnings: false,
-};
+export interface NeatConfig {
+  clear: boolean;
+
+  elitism: number;
+  equal: boolean; // No clue.
+  /** Target error ( optional) */
+  error?: number;
+
+  growth: number;
+
+  /** Once the number of minutes are reached exit the loop. */
+  timeoutMinutes?: number;
+
+  /** Tne maximum number of connections */
+  maxConns: number;
+
+  /** Tne maximum number of gates */
+  maxGates: number;
+
+  /** Tne maximum number of nodes */
+  maxNodes: number;
+  /** Number of changes per Gene */
+  mutationAmount: number;
+
+  /** Probability of changing a gene */
+  mutationRate: number;
+
+  /** The target population size. */
+  popsize: number;
+  provenance: number;
+
+  costName: string;
+  threads: number;
+  selection: any;
+  mutation: any;
+  iterations: number;
+  log: number;
+  fitnessPopulation: boolean; /** No idea what this does */
+  schedule?: ScheduleInterface;
+  network?: NetworkInterface;
+
+  warnings: boolean;
+}
+
+export function make(parameters?: NeatOptions) {
+  // Configure options
+  //@TODO move to Config.ts
+  const options = parameters || {};
+
+  const config: NeatConfig = {
+    clear: options.clear || false,
+
+    costName: options.costName || "MSE",
+
+    equal: options.equal || false,
+    error: options.error,
+    fitnessPopulation: options.fitnessPopulation || false,
+    growth: typeof options.growth !== "undefined" ? options.growth : 0.0001,
+
+    iterations: options.iterations ? options.iterations : 0,
+
+    popsize: options.popsize || 50,
+    elitism: options.elitism || 1,
+    provenance: options.provenance || 0,
+
+    maxConns: options.maxConns || Infinity,
+    maxGates: options.maxGates || Infinity,
+    maxNodes: options.maxNodes || Infinity,
+    mutationRate: options.mutationRate || 0.3,
+
+    mutationAmount: options.mutationAmount || 1,
+    mutation: options.mutation || Mutation.FFW,
+    selection: options.selection || Methods.selection.POWER,
+    // selectMutationMethod: typeof options.mutationSelection === "function"
+    // ? options.mutationSelection.bind(this)
+    // : this.selectMutationMethod,
+    network: options.network,
+    threads: Math.round(
+      Math.max(
+        options.threads ? options.threads : navigator.hardwareConcurrency,
+        1,
+      ),
+    ),
+    timeoutMinutes: options.timeoutMinutes,
+    warnings: options.warnings ? true : false,
+
+    log: options.log ? options.log : 0,
+    schedule: options.schedule,
+  };
+
+  return config;
+}
