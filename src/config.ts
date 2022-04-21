@@ -17,6 +17,9 @@ export interface NeatOptions {
 
   warnings?: boolean;
   clear?: boolean;
+
+  costName?: string;
+
   growth?: number;
   elitism?: number;
   momentum?: number;
@@ -40,15 +43,13 @@ export interface NeatOptions {
 
   /** The target population size. */
   popsize?: number;
-  provenance?: number;
 
-  costName?: string;
   threads?: number;
   selection?: any;
   mutation?: any;
   iterations?: number;
   log?: number;
-  fitnessPopulation?: boolean; /** No idea what this does */
+
   schedule?: ScheduleInterface;
   network?: NetworkInterface;
 }
@@ -58,8 +59,8 @@ export interface NeatConfig {
 
   elitism: number;
   equal: boolean; // No clue.
-  /** Target error ( optional) */
-  error?: number;
+  /** Target error */
+  targetError: number;
 
   growth: number;
 
@@ -82,7 +83,6 @@ export interface NeatConfig {
 
   /** The target population size. */
   popsize: number;
-  provenance: number;
 
   costName: string;
   threads: number;
@@ -90,7 +90,7 @@ export interface NeatConfig {
   mutation: any;
   iterations: number;
   log: number;
-  fitnessPopulation: boolean; /** No idea what this does */
+
   schedule?: ScheduleInterface;
   network?: NetworkInterface;
 
@@ -98,8 +98,6 @@ export interface NeatConfig {
 }
 
 export function make(parameters?: NeatOptions) {
-  // Configure options
-  //@TODO move to Config.ts
   const options = parameters || {};
 
   const config: NeatConfig = {
@@ -108,15 +106,16 @@ export function make(parameters?: NeatOptions) {
     costName: options.costName || "MSE",
 
     equal: options.equal || false,
-    error: options.error,
-    fitnessPopulation: options.fitnessPopulation || false,
+    targetError: typeof options.error !== "undefined"
+      ? Math.abs(options.error) * -1
+      : -0.05,
+
     growth: typeof options.growth !== "undefined" ? options.growth : 0.0001,
 
     iterations: options.iterations ? options.iterations : 0,
 
     popsize: options.popsize || 50,
     elitism: options.elitism || 1,
-    provenance: options.provenance || 0,
 
     maxConns: options.maxConns || Infinity,
     maxGates: options.maxGates || Infinity,
@@ -126,9 +125,7 @@ export function make(parameters?: NeatOptions) {
     mutationAmount: options.mutationAmount || 1,
     mutation: options.mutation || Mutation.FFW,
     selection: options.selection || Methods.selection.POWER,
-    // selectMutationMethod: typeof options.mutationSelection === "function"
-    // ? options.mutationSelection.bind(this)
-    // : this.selectMutationMethod,
+
     network: options.network,
     threads: Math.round(
       Math.max(

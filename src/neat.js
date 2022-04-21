@@ -42,7 +42,7 @@ export class Neat {
       } else {
         copy = new Network(this.input, this.output);
       }
-      copy.score = undefined;
+      delete copy.score;
       this.population.push(copy);
     }
   }
@@ -109,20 +109,14 @@ export class Neat {
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
       previousFittest,
+      /** 20% of population or those that just died */
       Math.max(
         Math.ceil(this.config.popsize / 5),
         this.config.popsize - this.population.length,
-      ), // 20% of population or those that just died
+      ),
     );
 
     const newPopulation = [];
-
-    // Provenance
-    for (let i = this.config.provenance; i--;) {
-      const p = Network.fromJSON(this.config.template.toJSON());
-
-      newPopulation.push(p);
-    }
 
     // Breed the next individuals
     for (
@@ -160,7 +154,7 @@ export class Neat {
         }
       } else {
         unique.add(key);
-        p.score = undefined;
+        delete p.score;
       }
     }
 
@@ -242,26 +236,17 @@ export class Neat {
    * Evaluates the current population
    */
   async evaluate() {
-    if (this.config.fitnessPopulation) {
-      if (this.config.clear) {
-        for (let i = 0; i < this.population.length; i++) {
-          this.population[i].clear();
-        }
+    if (this.config.clear) {
+      for (let i = this.population.length; i--;) {
+        this.population[i].clear();
       }
-      try {
-        await this.fitness(this.population);
-      } catch (e) {
-        console.error("fitness error", e);
-        throw e;
-      }
-    } else {
-      for (let i = 0; i < this.population.length; i++) {
-        const genome = this.population[i];
-        if (this.config.clear) {
-          genome.clear();
-        }
-        genome.score = await this.fitness(genome);
-      }
+    }
+
+    try {
+      await this.fitness(this.population);
+    } catch (e) {
+      console.error("fitness error", e);
+      throw e;
     }
   }
   /**

@@ -18,30 +18,12 @@ export async function evolveDir(
 ) {
   const config = makeConfig(options);
   // Read the options
-  options = options || {};
-  let targetError = typeof options.error !== "undefined" ? options.error : 0.05;
-  // const growth = typeof options.growth !== "undefined"
-  //   ? options.growth
-  //   : 0.0001;
 
   const start = Date.now();
 
   const endTimeMS = config.timeoutMinutes
     ? start + Math.max(1, config.timeoutMinutes) * 60_000
     : 0;
-
-  if (
-    typeof options.iterations === "undefined" &&
-    typeof options.error === "undefined"
-  ) {
-    throw new Error(
-      "At least one of the following options must be specified: error, iterations",
-    );
-  } else if (typeof options.error === "undefined") {
-    targetError = -1; // run until iterations
-  } else if (typeof options.iterations === "undefined") {
-    options.iterations = 0; // run until target error
-  }
 
   const workers: WorkerHandle[] = [];
 
@@ -88,8 +70,6 @@ export async function evolveDir(
     });
   };
 
-  options.fitnessPopulation = true;
-
   // Intialise the NEAT instance
   options.network = network;
   const neat = new Neat(
@@ -106,7 +86,7 @@ export async function evolveDir(
   let iterationStartMS = new Date().getTime();
 
   while (
-    error < -targetError &&
+    error < config.targetError &&
     (!options.iterations || neat.generation < options.iterations)
   ) {
     const fittest = await neat.evolve(bestCreature);
