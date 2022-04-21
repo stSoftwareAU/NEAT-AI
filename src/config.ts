@@ -22,7 +22,7 @@ export interface NeatOptions {
 
   growth?: number;
   elitism?: number;
-  momentum?: number;
+
   /** Once the number of minutes are reached exit the loop. */
   timeoutMinutes?: number;
 

@@ -215,11 +215,6 @@ export class Neat {
    * Mutates the given (or current) population
    */
   _mutate(genes) {
-    // const index = new Array(genes.length);
-    // for (let i = genes.length; i--;) {
-    //   index[i] = i;
-    // }
-    // shuffle(index);
     for (let i = genes.length; i--;) {
       // const pos = index[i];
       if (Math.random() <= this.config.mutationRate) {

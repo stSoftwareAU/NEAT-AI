@@ -7,6 +7,7 @@ import {
 } from "https://deno.land/std@0.122.0/testing/asserts.ts";
 
 import { Mutation } from "../src/methods/mutation.ts";
+import { NeatOptions } from "../src/config.ts";
 
 /* Functions used in the testing process */
 function checkMutation(method: unknown) {
@@ -40,20 +41,17 @@ function checkMutation(method: unknown) {
   );
 }
 
-async function learnSet(set: any[], iterations: unknown, error: number) {
+async function learnSet(set: any[], iterations: number, error: number) {
   const network = architect.Perceptron(
     set[0].input.length,
     5,
     set[0].output.length,
   );
 
-  const options = {
+  const options: NeatOptions = {
     iterations: iterations,
     error: error,
-    shuffle: true,
     threads: 1,
-    rate: 0.3,
-    momentum: 0.9,
   };
 
   const results = await network.evolve(set, options);
