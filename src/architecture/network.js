@@ -486,8 +486,6 @@ export class Network {
       case Mutation.SUB_GATE: {
         // Select a random gated connection
         if (this.gates.length === 0) {
-          console.warn("No more connections to ungate!");
-
           break;
         }
 
