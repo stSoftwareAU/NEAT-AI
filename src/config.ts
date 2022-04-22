@@ -22,6 +22,9 @@ export interface NeatOptions {
   /** The directory to store the creatures (optional) */
   creatureStore?: string;
 
+  /** List of creatures to start with */
+  creatures?: NetworkInterface[];
+
   growth?: number;
   elitism?: number;
 
@@ -60,6 +63,9 @@ export interface NeatConfig {
   clear: boolean;
   /** The directory to store the creatures (optional) */
   creatureStore?: string;
+
+  /** List of creatures to start with */
+  creatures: NetworkInterface[];
 
   elitism: number;
   equal: boolean; // No clue.
@@ -108,6 +114,7 @@ export function make(parameters?: NeatOptions) {
     clear: options.clear || false,
 
     creatureStore: options.creatureStore,
+    creatures: options.creatures ? options.creatures : [],
     costName: options.costName || "MSE",
 
     equal: options.equal || false,

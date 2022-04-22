@@ -24,27 +24,28 @@ export class Neat {
     // Generation counter
     this.generation = 0;
 
-    //@TODO use fitness population
     // Initialise the genomes
-    this.createPool(this.config.network);
+    this.population = this.config.creatures;
+
+    this._populatePopulation(this.config.network);
   }
 
   /**
    * Create the initial pool of genomes
    */
-  createPool(network) {
-    this.population = [];
-
-    for (let i = 0; i < this.config.popsize; i++) {
+  _populatePopulation(network) {
+    while (this.population.length < this.config.popsize) {
       let copy;
       if (network) {
         copy = Network.fromJSON(network.toJSON());
       } else {
         copy = new Network(this.input, this.output);
       }
-      delete copy.score;
+
       this.population.push(copy);
     }
+
+    this.population.forEach((p) => delete p.score);
   }
 
   /**

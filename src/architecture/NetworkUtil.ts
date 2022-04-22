@@ -7,8 +7,8 @@ import { WorkerHandle } from "../multithreading/workers/WorkerHandle.ts";
 import { Neat } from "../neat.js";
 import { addTag, addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
-import { crypto } from "https://deno.land/std@0.136.0/crypto/mod.ts";
-import { encode } from "https://deno.land/std@0.136.0/encoding/base64.ts";
+// import { crypto } from "https://deno.land/std@0.136.0/crypto/mod.ts";
+// import { encode } from "https://deno.land/std@0.136.0/encoding/base64.ts";
 import { ensureDirSync } from "https://deno.land/std@0.136.0/fs/ensure_dir.ts";
 /**
  * Evolves the network to reach a lower error on a dataset
