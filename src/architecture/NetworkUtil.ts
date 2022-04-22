@@ -7,7 +7,9 @@ import { WorkerHandle } from "../multithreading/workers/WorkerHandle.ts";
 import { Neat } from "../neat.js";
 import { addTag, addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
-
+import { crypto } from "https://deno.land/std@0.136.0/crypto/mod.ts";
+import { encode } from "https://deno.land/std@0.136.0/encoding/base64.ts";
+import { ensureDirSync } from "https://deno.land/std@0.136.0/fs/ensure_dir.ts";
 /**
  * Evolves the network to reach a lower error on a dataset
  */
@@ -152,12 +154,40 @@ export async function evolveDir(
     if (options.clear && network.clear) network.clear();
   }
 
+  if (config.creatureStore) {
+    writeCreatures(neat, config.creatureStore);
+  }
   return {
     error: -error,
     score: bestScore,
     iterations: neat.generation,
     time: Date.now() - start,
   };
+}
+
+function writeCreatures(neat: Neat, dir: string) {
+  let counter = 1;
+  ensureDirSync(dir + "/store");
+
+  neat.population.forEach((creature: NetworkInterface) => {
+    const json = creature.toJSON();
+
+    const txt = JSON.stringify(json, null, 1);
+
+    // const b64=encode(new Uint8Array(
+    //   await crypto.subtle.digest(
+    //     "SHA-256",
+    //     new TextEncoder().encode(txt),
+    //   ),
+    // ) );
+    // const name=b64.replaceAll("/", "_").replaceAll("=", "").replaceAll( "+", "-") +".json";
+
+    const filePath = dir + "/" + counter + ".json";
+    Deno.writeTextFileSync(filePath, txt);
+    // const symPath=dir + "/" +counter +".json";
+    // Deno.symlinkSync( filePath, "store/" + name);
+    counter++;
+  });
 }
 
 /**

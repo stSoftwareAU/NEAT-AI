@@ -431,8 +431,6 @@ export class Network {
         }
 
         if (possible.length === 0) {
-          console.warn("No more self-connections to add!");
-
           break;
         }
 
@@ -445,8 +443,6 @@ export class Network {
       }
       case Mutation.SUB_SELF_CONN: {
         if (this.selfconns.length === 0) {
-          console.warn("No more self-connections to remove!");
-
           break;
         }
         const conn =
@@ -467,8 +463,6 @@ export class Network {
         }
 
         if (possible.length === 0) {
-          console.warn("No more connections to gate!");
-
           break;
         }
 
@@ -509,8 +503,6 @@ export class Network {
         }
 
         if (available.length === 0) {
-          console.warn("No more connections to be made!");
-
           break;
         }
 

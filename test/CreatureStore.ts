@@ -1,8 +1,9 @@
 import { architect } from "../../NEAT-TS/src/architecture/architect.js";
 import { assert } from "https://deno.land/std@0.136.0/testing/asserts.ts";
+import { emptyDirSync } from "https://deno.land/std@0.136.0/fs/empty_dir.ts";
 import { NeatOptions } from "../src/config.ts";
 
-Deno.test("hypotenuse", async () => {
+Deno.test("storePopulation", async () => {
   const network = architect.Random(2, 2, 1);
 
   const ts = [];
@@ -18,22 +19,22 @@ Deno.test("hypotenuse", async () => {
     }
   }
 
+  const dir = ".creatures";
+  emptyDirSync(".creatures");
   const options: NeatOptions = {
-    iterations: 1000,
-    error: 0.002,
-    log: 50,
-    elitism: 3,
+    iterations: 10,
+    creatureStore: dir,
   };
   await network.evolve(ts, options);
 
-  const check = [50, 60];
-  const answer = network.activate(check)[0];
-
-  const errorPercent = Math.round((1 - answer / 78.1) * 100);
-  console.info("Answer", answer, errorPercent);
-
+  let creatureCount = 0;
+  for (const dirEntry of Deno.readDirSync(dir)) {
+    if (dirEntry.name.endsWith(".json")) {
+      creatureCount++;
+    }
+  }
   assert(
-    Math.abs(errorPercent) <= 10,
-    "Correct answer is ~78.1 but was: " + answer + " ( " + errorPercent + "% )",
+    creatureCount > 1,
+    "Should have stored the creatures was: " + creatureCount,
   );
 });

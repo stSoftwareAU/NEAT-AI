@@ -1,7 +1,7 @@
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.122.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.136.0/testing/asserts.ts";
 
 // Compact form: name and function
 Deno.test("tune", () => {

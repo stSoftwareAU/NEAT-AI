@@ -19,6 +19,8 @@ export interface NeatOptions {
   clear?: boolean;
 
   costName?: string;
+  /** The directory to store the creatures (optional) */
+  creatureStore?: string;
 
   growth?: number;
   elitism?: number;
@@ -56,6 +58,8 @@ export interface NeatOptions {
 
 export interface NeatConfig {
   clear: boolean;
+  /** The directory to store the creatures (optional) */
+  creatureStore?: string;
 
   elitism: number;
   equal: boolean; // No clue.
@@ -103,6 +107,7 @@ export function make(parameters?: NeatOptions) {
   const config: NeatConfig = {
     clear: options.clear || false,
 
+    creatureStore: options.creatureStore,
     costName: options.costName || "MSE",
 
     equal: options.equal || false,

@@ -138,14 +138,19 @@ export class Neat {
      */
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
-      const key = JSON.stringify(p);
+      const json = p.toJSON();
+      delete json.tags;
+      const key = JSON.stringify(json);
+
       if (unique.has(key)) {
         for (let j = 0; j < 100; j++) {
           const tmpPopulation = [this.getOffspring()];
           this._mutate(tmpPopulation);
 
           const p2 = tmpPopulation[0];
-          const key2 = JSON.stringify(p2);
+          const json2 = p2.toJSON();
+          delete json2.tags;
+          const key2 = JSON.stringify(json2);
           if (unique.has(key2) == false) {
             this.population[i] = p2;
             unique.add(key2);
