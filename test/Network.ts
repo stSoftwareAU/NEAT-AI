@@ -41,7 +41,7 @@ function checkMutation(method: unknown) {
   );
 }
 
-async function learnSet(set: any[], iterations: number, error: number) {
+async function evolveSet(set: any[], iterations: number, error: number) {
   const network = architect.Perceptron(
     set[0].input.length,
     5,
@@ -55,6 +55,24 @@ async function learnSet(set: any[], iterations: number, error: number) {
   };
 
   const results = await network.evolve(set, options);
+
+  assert(results.error < error);
+}
+
+function trainSet(set: any[], iterations: number, error: number) {
+  const network = architect.Perceptron(
+    set[0].input.length,
+    5,
+    set[0].output.length,
+  );
+
+  const options: NeatOptions = {
+    iterations: iterations,
+    error: error,
+    threads: 1,
+  };
+
+  const results = network.train(set, options);
 
   assert(results.error < error);
 }
@@ -260,8 +278,8 @@ Deno.test("from/toJSON equivalency", () => {
       testEquality(original, eval( "return activate"));
   });*/
 
-Deno.test("AND gate", async () => {
-  await learnSet(
+Deno.test("train_AND_gate", () => {
+  trainSet(
     [
       { input: [0, 0], output: [0] },
       { input: [0, 1], output: [0] },
@@ -273,8 +291,20 @@ Deno.test("AND gate", async () => {
   );
 });
 
-Deno.test("XOR gate", async () => {
-  await learnSet(
+Deno.test("evolve_AND_gate", async () => {
+  await evolveSet(
+    [
+      { input: [0, 0], output: [0] },
+      { input: [0, 1], output: [0] },
+      { input: [1, 0], output: [0] },
+      { input: [1, 1], output: [1] },
+    ],
+    1000,
+    0.002,
+  );
+});
+Deno.test("evolve XOR gate", async () => {
+  await evolveSet(
     [
       { input: [0, 0], output: [0] },
       { input: [0, 1], output: [1] },
@@ -286,8 +316,21 @@ Deno.test("XOR gate", async () => {
   );
 });
 
-Deno.test("NOT gate", async () => {
-  await learnSet(
+Deno.test("train XOR gate", () => {
+  trainSet(
+    [
+      { input: [0, 0], output: [0] },
+      { input: [0, 1], output: [1] },
+      { input: [1, 0], output: [1] },
+      { input: [1, 1], output: [0] },
+    ],
+    3000,
+    0.002,
+  );
+});
+
+Deno.test("evolve_NOT_gate", async () => {
+  await evolveSet(
     [
       { input: [0], output: [1] },
       { input: [1], output: [0] },
@@ -296,9 +339,30 @@ Deno.test("NOT gate", async () => {
     0.002,
   );
 });
-
-Deno.test("XNOR gate", async () => {
-  await learnSet(
+Deno.test("train_NOT_gate", () => {
+  trainSet(
+    [
+      { input: [0], output: [1] },
+      { input: [1], output: [0] },
+    ],
+    1000,
+    0.002,
+  );
+});
+Deno.test("evolve_XNOR_gate", async () => {
+  await evolveSet(
+    [
+      { input: [0, 0], output: [1] },
+      { input: [0, 1], output: [0] },
+      { input: [1, 0], output: [0] },
+      { input: [1, 1], output: [1] },
+    ],
+    4000,
+    0.002,
+  );
+});
+Deno.test("train_XNOR_gate", () => {
+  trainSet(
     [
       { input: [0, 0], output: [1] },
       { input: [0, 1], output: [0] },
@@ -310,8 +374,8 @@ Deno.test("XNOR gate", async () => {
   );
 });
 
-Deno.test("OR gate", async () => {
-  await learnSet(
+Deno.test("train OR gate", () => {
+  trainSet(
     [
       { input: [0, 0], output: [0] },
       { input: [0, 1], output: [1] },
@@ -323,7 +387,20 @@ Deno.test("OR gate", async () => {
   );
 });
 
-Deno.test("SIN function", async () => {
+Deno.test("evolve OR gate", async () => {
+  await evolveSet(
+    [
+      { input: [0, 0], output: [0] },
+      { input: [0, 1], output: [1] },
+      { input: [1, 0], output: [1] },
+      { input: [1, 1], output: [1] },
+    ],
+    1000,
+    0.002,
+  );
+});
+
+Deno.test("train_SIN_function", () => {
   const set = [];
 
   while (set.length < 100) {
@@ -334,10 +411,24 @@ Deno.test("SIN function", async () => {
     });
   }
 
-  await learnSet(set, 1000, 0.05);
+  trainSet(set, 1000, 0.05);
 });
 
-Deno.test("Bigger than", async () => {
+Deno.test("evolve_SIN_function", async () => {
+  const set = [];
+
+  while (set.length < 100) {
+    const inputValue = Math.random() * Math.PI * 2;
+    set.push({
+      input: [inputValue / (Math.PI * 2)],
+      output: [(Math.sin(inputValue) + 1) / 2],
+    });
+  }
+
+  await evolveSet(set, 1000, 0.05);
+});
+
+Deno.test("train_Bigger_than", () => {
   const set = [];
 
   for (let i = 0; i < 100; i++) {
@@ -348,7 +439,20 @@ Deno.test("Bigger than", async () => {
     set.push({ input: [x, y], output: [z] });
   }
 
-  await learnSet(set, 500, 0.05);
+  trainSet(set, 500, 0.05);
+});
+Deno.test("evolve_Bigger_than", async () => {
+  const set = [];
+
+  for (let i = 0; i < 100; i++) {
+    const x = Math.random();
+    const y = Math.random();
+    const z = x > y ? 1 : 0;
+
+    set.push({ input: [x, y], output: [z] });
+  }
+
+  await evolveSet(set, 500, 0.05);
 });
 
 // Deno.test("LSTM XOR", async () => {
@@ -425,7 +529,7 @@ Deno.test("NARX Sequence", async () => {
   assert(result.error < 0.005, JSON.stringify(result, null, 2));
 });
 
-Deno.test("SIN + COS", async () => {
+Deno.test("train SIN + COS", () => {
   const set = [];
 
   while (set.length < 100) {
@@ -439,10 +543,27 @@ Deno.test("SIN + COS", async () => {
     });
   }
 
-  await learnSet(set, 1000, 0.05);
+  trainSet(set, 1000, 0.05);
 });
 
-Deno.test("SHIFT", async () => {
+Deno.test("evolve SIN + COS", async () => {
+  const set = [];
+
+  while (set.length < 100) {
+    const inputValue = Math.random() * Math.PI * 2;
+    set.push({
+      input: [inputValue / (Math.PI * 2)],
+      output: [
+        (Math.sin(inputValue) + 1) / 2,
+        (Math.cos(inputValue) + 1) / 2,
+      ],
+    });
+  }
+
+  await evolveSet(set, 1000, 0.05);
+});
+
+Deno.test("train_SHIFT", () => {
   const set = [];
 
   for (let i = 0; i < 1000; i++) {
@@ -453,7 +574,21 @@ Deno.test("SHIFT", async () => {
     set.push({ input: [x, y, z], output: [z, x, y] });
   }
 
-  await learnSet(set, 500, 0.03);
+  trainSet(set, 500, 0.03);
+});
+
+Deno.test("evolve SHIFT", async () => {
+  const set = [];
+
+  for (let i = 0; i < 1000; i++) {
+    const x = Math.random();
+    const y = Math.random();
+    const z = Math.random();
+
+    set.push({ input: [x, y, z], output: [z, x, y] });
+  }
+
+  await evolveSet(set, 500, 0.03);
 });
 
 Deno.test("from-to", () => {

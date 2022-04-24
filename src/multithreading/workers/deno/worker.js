@@ -1,20 +1,8 @@
-import { Cost } from "../../../methods/cost.js";
-import { Network } from "../../../architecture/network.js";
+import { WorkerProcessor } from "../WorkerProcessor.ts";
 
-self.dataSetDir = null;
-self.cost = null;
+const processor = new WorkerProcessor();
 
 self.onmessage = function (message) {
-  const data = message.data;
-
-  if (typeof data.dataSetDir === "undefined") {
-    const network = Network.fromJSON(data.network);
-    const result = network.test(self.dataSetDir, self.cost);
-
-    self.postMessage(result);
-  } else {
-    self.cost = Cost[data.costName];
-
-    self.dataSetDir = data.dataSetDir;
-  }
+  const result = processor.process(message.data);
+  self.postMessage(result);
 };

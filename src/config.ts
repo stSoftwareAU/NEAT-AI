@@ -4,6 +4,8 @@
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
+import { Cost } from "./methods/cost.js";
+import { Rate } from "./methods/rate.js";
 
 interface ScheduleInterface {
   iterations: number;
@@ -105,6 +107,33 @@ export interface NeatConfig {
   network?: NetworkInterface;
 
   warnings: boolean;
+}
+
+export function findCost(costName: string) {
+  const values = Object.values(Cost);
+  for (let i = values.length; i--;) {
+    const v = values[i];
+
+    if (v.name == costName) {
+      return v;
+    }
+  }
+
+  throw "Invalid cost: " + costName;
+}
+
+// deno-lint-ignore ban-types
+export function findRatePolicy(ratePolicy: string): Function {
+  const values = Object.values(Rate);
+  for (let i = values.length; i--;) {
+    const v = values[i];
+
+    if (v.name == ratePolicy) {
+      return v;
+    }
+  }
+
+  throw "Invalid cost: " + ratePolicy;
 }
 
 export function make(parameters?: NeatOptions) {

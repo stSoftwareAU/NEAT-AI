@@ -1,22 +1,21 @@
 import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
 import { Network } from "../../architecture/network.js";
 
-import { Cost } from "../../methods/cost.js";
+import { WorkerProcessor } from "./WorkerProcessor.ts";
+
+export interface WorkerData {
+  initialize?: {
+    dataSetDir: string;
+    costName: string;
+  };
+  evaluate?: {
+    network: string;
+  };
+}
 
 export class WorkerHandle {
   private worker: (Worker | null) = null;
-  private mockWorker;
-
-  private findCost(costName: string) {
-    const values = Object.values(Cost);
-    for (let i = values.length; i--;) {
-      const v = values[i];
-
-      if (v.name == costName) {
-        return v;
-      }
-    }
-  }
+  private mockProcessor: (WorkerProcessor | null) = null;
 
   constructor(
     dataSetDir: string,
@@ -26,7 +25,12 @@ export class WorkerHandle {
     if (typeof dataSetDir === "undefined") {
       throw "dataSet is mandatory";
     }
-
+    const data: WorkerData = {
+      initialize: {
+        dataSetDir: dataSetDir,
+        costName: costName,
+      },
+    };
     if (!direct) {
       this.worker = new Worker(
         new URL("./deno/worker.js", import.meta.url).href,
@@ -43,19 +47,15 @@ export class WorkerHandle {
         },
       );
 
-      this.worker.postMessage({
-        dataSetDir: dataSetDir,
-        costName: costName,
-      });
+      this.worker.postMessage(data);
     } else {
-      this.mockWorker = {
-        dataSetDir: dataSetDir,
-        cost: this.findCost(costName),
-      };
+      this.mockProcessor = new WorkerProcessor();
+      this.mockProcessor.process(data);
     }
   }
 
   terminate() {
+    this.mockProcessor = null;
     if (this.worker) {
       this.worker.terminate();
       this.worker = null; // release the memory.
@@ -63,13 +63,15 @@ export class WorkerHandle {
   }
 
   evaluate(network: NetworkInterface) {
+    const data: WorkerData = {
+      evaluate: {
+        network: network.toJSON(),
+      },
+    };
+
     if (this.worker) {
       const _that = this.worker;
       return new Promise((resolve) => {
-        const data = {
-          network: network.toJSON(),
-        };
-
         _that.addEventListener("message", function callback(message) {
           _that.removeEventListener("message", callback);
 
@@ -79,14 +81,16 @@ export class WorkerHandle {
 
         _that.postMessage(data);
       });
-    } else if (this.mockWorker) {
-      const _that = this.mockWorker;
+    } else if (this.mockProcessor) {
+      const _that = this.mockProcessor;
 
       return new Promise((resolve) => {
-        const mockNetwork = Network.fromJSON(network.toJSON());
-        const result = mockNetwork.test(_that.dataSetDir, _that.cost);
-
-        resolve(result.error);
+        const result = _that.process(data);
+        if ("error" in result) {
+          resolve(result.error);
+        } else {
+          throw "No error property";
+        }
       });
     } else {
       throw "No real or fake worker";

@@ -1,7 +1,7 @@
 import { Mutation } from "../methods/mutation.ts";
 import Connection from "./connection.js";
 import { Node } from "./node.js";
-import { evolveDataSet, evolveDir, testDir } from "./NetworkUtil.ts";
+import { NetworkUtil } from "./NetworkUtil.ts";
 
 /*******************************************************************************
                                  NETWORK
@@ -30,6 +30,7 @@ export class Network {
     // Regularization
     this.dropout = 0;
 
+    this.util = new NetworkUtil(this);
     // Just define a variable.
     this.score = undefined;
 
@@ -100,32 +101,7 @@ export class Network {
     output.length = outputLen;
     return output;
   }
-  /**
-   * Backpropagate the network
-   */
-  propagate(rate, momentum, update, target) {
-    if (typeof target === "undefined" || target.length !== this.output) {
-      throw new Error(
-        "Output target length should match network output length",
-      );
-    }
 
-    let targetIndex = target.length;
-
-    // Propagate output nodes
-    for (
-      let i = this.nodes.length - 1;
-      i >= this.nodes.length - this.output;
-      i--
-    ) {
-      this.nodes[i].propagate(rate, momentum, update, target[--targetIndex]);
-    }
-
-    // Propagate hidden and input nodes
-    for (let i = this.nodes.length - this.output - 1; i >= this.input; i--) {
-      this.nodes[i].propagate(rate, momentum, update);
-    }
-  }
   /**
    * Clear the context of the network
    */
@@ -571,41 +547,10 @@ export class Network {
   }
 
   /**
-   * Performs one training epoch and returns the error
-   * private function used in this.train
-   */
-  _trainSet(set, batchSize, currentRate, momentum, costFunction) {
-    if (set.length == 0) {
-      throw "Set size must be positive";
-    }
-    let errorSum = 0;
-    for (let i = 0; i < set.length; i++) {
-      const input = set[i].input;
-      const target = set[i].output;
-
-      const update = !!((i + 1) % batchSize === 0 || (i + 1) === set.length);
-
-      const output = this.activate(input, true);
-      this.propagate(currentRate, momentum, update, target);
-
-      const cost = costFunction(target, output);
-      if (!isFinite(cost)) {
-        throw "Invalid cost: " + cost + " of target: " + target + " output: " +
-          output + " function: " + costFunction;
-      }
-      errorSum += cost;
-    }
-    const error = errorSum / set.length;
-    if (!isFinite(error)) {
-      throw "Invalid error: " + error + ", len: " + set.length;
-    }
-    return error;
-  }
-  /**
    * Tests a set and returns the error and elapsed time
    */
   test(dataDir, cost) {
-    const result = testDir(this, dataDir, cost);
+    const result = this.util.testDir(dataDir, cost);
 
     return result;
   }
@@ -774,17 +719,25 @@ export class Network {
       this.nodes[i].squash = values.squash || this.nodes[i].squash;
     }
   }
+
+  /**
+   * Train the given set to this network
+   */
+  train(dataSet, options) {
+    return this.util.train(dataSet, options);
+  }
+
   /**
    * Evolves the network to reach a lower error on a dataset
    */
   evolve(dataSet, options) {
-    return evolveDataSet(this, dataSet, options);
+    return this.util.evolveDataSet(dataSet, options);
   }
   /**
    * Evolves the network to reach a lower error on a dataset
    */
   evolveDir(dataDir, options) {
-    return evolveDir(this, dataDir, options);
+    return this.util.evolveDir(dataDir, options);
   }
   /**
    * Convert a json object to a network

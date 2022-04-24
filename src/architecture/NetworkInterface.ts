@@ -14,6 +14,8 @@ export interface NetworkInterface extends TagsInterface {
     bias: number;
     type: string;
     squash: string;
+    // deno-lint-ignore ban-types
+    propagate: Function;
   }[];
 
   connections: {
@@ -34,5 +36,9 @@ export interface NetworkInterface extends TagsInterface {
   // deno-lint-ignore ban-types
   clear?: Function;
   // deno-lint-ignore ban-types
+  _trainSet?: Function;
+  // deno-lint-ignore ban-types
   noTraceActivate?: Function;
+  // deno-lint-ignore ban-types
+  activate?: Function;
 }

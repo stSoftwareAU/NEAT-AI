@@ -42,20 +42,22 @@ export function makeDataDir(dataSet: DataRecordInterface[]) {
 
   let completed = false;
   for (let loop = 0; completed == false; loop++) {
-    const file = Deno.openSync(dataSetDir + "/" + loop + ".json", {
+    const fn = dataSetDir + "/" + loop + ".json";
+    const file = Deno.openSync(fn, {
       write: true,
       create: true,
     });
 
     file.writeSync(encoder.encode("[\n"));
 
-    for (let j = 0; j < partitionBreak; j++) {
-      const pos = partitionBreak * loop + j;
+    let counter = 0;
+    for (; counter < partitionBreak; counter++) {
+      const pos = partitionBreak * loop + counter;
       if (pos >= dataSet.length) {
         completed = true;
         break;
       }
-      if (j != 0) {
+      if (counter != 0) {
         file.writeSync(encoder.encode(",\n"));
       }
 
@@ -65,6 +67,10 @@ export function makeDataDir(dataSet: DataRecordInterface[]) {
     }
     file.writeSync(encoder.encode("\n]"));
     file.close();
+
+    if (counter == 0) {
+      Deno.removeSync(fn);
+    }
   }
 
   return dataSetDir;
