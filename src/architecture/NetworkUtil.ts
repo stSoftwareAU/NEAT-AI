@@ -41,7 +41,8 @@ export class NetworkUtil {
       i >= this.network.nodes.length - this.network.output;
       i--
     ) {
-      this.network.nodes[i].propagate(
+      const n=this.network.nodes[i];
+      n.propagate(
         rate,
         momentum,
         update,
@@ -55,7 +56,8 @@ export class NetworkUtil {
       i >= this.network.input;
       i--
     ) {
-      this.network.nodes[i].propagate(rate, momentum, update);
+      const n=this.network.nodes[i];
+      n.propagate(rate, momentum, update);
     }
   }
 
@@ -93,6 +95,10 @@ export class NetworkUtil {
           while (queue.length) {
             const creature = queue.shift();
             if (!creature) continue;
+            if( creature.score){
+              console.log( "creatue already have been scored");
+              continue;
+            }
             // const creatureID=population.length - queue.length;
             const result = await worker.evaluate(creature) as number;
 
@@ -151,6 +157,8 @@ export class NetworkUtil {
 
         bestScore = fittest.score;
         bestCreature = Network.fromJSON(fittest.toJSON());
+      } else if( fittest.score < bestScore){
+        throw "fitness decreased over generations";
       }
       const timedOut = endTimeMS ? Date.now() > endTimeMS : false;
 

@@ -9,7 +9,7 @@ import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
-
+const DEBUG = true;
 /*******************************************************************************
                                          NEAT
 *******************************************************************************/
@@ -49,10 +49,10 @@ export class Neat {
       this.population.unshift(network);
     }
 
-    this.deDepulateAndClean();
+    this.deDepulate();
   }
 
-  deDepulateAndClean() {
+  deDepulate() {
     const unique = new Set();
     /**
      *  Reset the scores & de-duplcate the population.
@@ -82,7 +82,6 @@ export class Neat {
         }
       } else {
         unique.add(key);
-        delete p.score;
       }
     }
   }
@@ -91,15 +90,17 @@ export class Neat {
    * Evaluates, selects, breeds and mutates population
    */
   async evolve(previousFittest) {
-    if (this.config.warnings) {
-      // Check if evaluated, sort the population
-      if (
-        typeof this.population[this.population.length - 1].score !== "undefined"
-      ) {
-        console.log("already evaluated");
+    if (DEBUG) {
+      if (!previousFittest) {
+        for (let i = 0; i < this.population.length; i++) {
+          const n = this.population[i];
+
+          if (n.score) {
+            throw "Score found " + i;
+          }
+        }
       }
     }
-
     await this.evaluate();
 
     // Elitism
@@ -110,23 +111,6 @@ export class Neat {
     fittest.score = tmpFittest.score;
     addTag(fittest, "score", fittest.score.toString());
     addTag(fittest, "error", getTag(fittest, "error"));
-
-    if (this.config.warnings) {
-      if (isFinite(fittest.score) == false) {
-        for (let i = 0; i < this.population.length; i++) {
-          console.warn(
-            "this.population[" + i + "].score",
-            this.population[i].score,
-          );
-          console.warn(
-            "this.population[" + i + "]",
-            this.population[i].toJSON(),
-          );
-        }
-        console.warn("fittest", fittest);
-        throw "Infinite score";
-      }
-    }
 
     const livePopulation = [];
     for (let i = 0; i < this.population.length; i++) {
@@ -172,8 +156,24 @@ export class Neat {
 
     this.population = [...elitists, ...fineTunedPopulation, ...newPopulation]; // Keep pseudo sorted.
 
-    this.deDepulateAndClean();
+    this.deDepulate();
 
+    if (DEBUG) {
+      for (let i = 0; i < elitists.length; i++) {
+        const n = this.population[i];
+
+        if (!n.score) {
+          throw "No score for " + i;
+        }
+      }
+      for (let i = elitists.length; i < this.population.length; i++) {
+        const n = this.population[i];
+
+        if (n.score) {
+          throw "Score found " + i;
+        }
+      }
+    }
     this.generation++;
 
     return fittest;

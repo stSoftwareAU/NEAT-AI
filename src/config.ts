@@ -17,7 +17,6 @@ export interface NeatOptions {
   equal?: boolean; // No clue.
   error?: number; // Target error
 
-  warnings?: boolean;
   clear?: boolean;
 
   costName?: string;
@@ -105,8 +104,6 @@ export interface NeatConfig {
 
   schedule?: ScheduleInterface;
   network?: NetworkInterface;
-
-  warnings: boolean;
 }
 
 export function findCost(costName: string) {
@@ -175,7 +172,6 @@ export function make(parameters?: NeatOptions) {
       ),
     ),
     timeoutMinutes: options.timeoutMinutes,
-    warnings: options.warnings ? true : false,
 
     log: options.log ? options.log : 0,
     schedule: options.schedule,
