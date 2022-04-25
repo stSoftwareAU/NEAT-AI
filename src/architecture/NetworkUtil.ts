@@ -2,10 +2,10 @@ import { NetworkInterface } from "./NetworkInterface.ts";
 import { Network } from "./network.js";
 import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig, NeatOptions } from "../config.ts";
-import { yellow } from "https://deno.land/std@0.126.0/fmt/colors.ts";
-import { WorkerHandle } from "../multithreading/workers/WorkerHandler.ts";
+import { yellow } from "https://deno.land/std@0.136.0/fmt/colors.ts";
+import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../neat.js";
-import { addTag, addTags, getTag } from "../tags/TagsInterface.ts";
+import { addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 // import { crypto } from "https://deno.land/std@0.136.0/crypto/mod.ts";
 // import { encode } from "https://deno.land/std@0.136.0/encoding/base64.ts";
@@ -41,7 +41,7 @@ export class NetworkUtil {
       i >= this.network.nodes.length - this.network.output;
       i--
     ) {
-      const n=this.network.nodes[i];
+      const n = this.network.nodes[i];
       n.propagate(
         rate,
         momentum,
@@ -56,7 +56,7 @@ export class NetworkUtil {
       i >= this.network.input;
       i--
     ) {
-      const n=this.network.nodes[i];
+      const n = this.network.nodes[i];
       n.propagate(rate, momentum, update);
     }
   }
@@ -77,62 +77,21 @@ export class NetworkUtil {
       ? start + Math.max(1, config.timeoutMinutes) * 60_000
       : 0;
 
-    const workers: WorkerHandle[] = [];
+    const workers: WorkerHandler[] = [];
 
     for (let i = config.threads; i--;) {
       workers.push(
-        new WorkerHandle(dataSetDir, config.costName, config.threads == 1),
+        new WorkerHandler(dataSetDir, config.costName, config.threads == 1),
       );
     }
-
-    const fitnessFunction = function (population: NetworkInterface[]) {
-      return new Promise((resolve, reject) => {
-        // Create a queue
-        const queue = population.slice();
-
-        // Start worker function
-        const startWorker = async function (worker: WorkerHandle) {
-          while (queue.length) {
-            const creature = queue.shift();
-            if (!creature) continue;
-            if( creature.score){
-              console.log( "creatue already have been scored");
-              continue;
-            }
-            // const creatureID=population.length - queue.length;
-            const result = await worker.evaluate(creature) as number;
-
-            addTag(creature, "error", (-result).toString());
-            creature.score = -result - (
-                  creature.nodes.length -
-                  creature.input -
-                  creature.output +
-                  creature.connections.length +
-                  (creature.gates ? creature.gates.length : 0)
-                ) * config.growth;
-
-            creature.score = isNaN(creature.score) ? -Infinity : creature.score;
-            // console.info( "Creature", creatureID, "result", result, "score", creature.score);
-          }
-        };
-        const promises = new Array(workers.length);
-        for (let i = workers.length; i--;) {
-          promises[i] = startWorker(workers[i]);
-        }
-
-        Promise.all(promises).then((r) => resolve(r)).catch((reason) =>
-          reject(reason)
-        );
-      });
-    };
 
     // Intialise the NEAT instance
     options.network = this.network;
     const neat = new Neat(
       this.network.input,
       this.network.output,
-      fitnessFunction,
       options,
+      workers,
     );
 
     let error = -Infinity;
@@ -157,7 +116,7 @@ export class NetworkUtil {
 
         bestScore = fittest.score;
         bestCreature = Network.fromJSON(fittest.toJSON());
-      } else if( fittest.score < bestScore){
+      } else if (fittest.score < bestScore) {
         throw "fitness decreased over generations";
       }
       const timedOut = endTimeMS ? Date.now() > endTimeMS : false;
@@ -358,9 +317,6 @@ export class NetworkUtil {
     const start = Date.now();
     options = options || {};
     // Warning messages
-    if (typeof options.rate === "undefined") {
-      console.warn("Using default learning rate, please define a rate!");
-    }
     if (typeof options.iterations === "undefined") {
       console.warn(
         "No target iterations given, running until error is reached!",
@@ -442,20 +398,20 @@ export class NetworkUtil {
           this.propagate(currentRate, momentum, update, target);
 
           const cost = costFunction(target, output);
-          if (!isFinite(cost)) {
-            throw "Invalid cost: " + cost + " of target: " + target +
-              " output: " +
-              output + " function: " + options.cost;
-          }
+          // if (!isFinite(cost)) {
+          //   throw "Invalid cost: " + cost + " of target: " + target +
+          //     " output: " +
+          //     output + " function: " + options.cost;
+          // }
           errorSum += cost;
         }
         counter += dataSet.length;
       });
 
       error = errorSum / counter;
-      if (!isFinite(error)) {
-        throw "Invalid error: " + error + ", len: " + counter;
-      }
+      // if (!isFinite(error)) {
+      //   throw "Invalid error: " + error + ", len: " + counter;
+      // }
 
       if (options.clear && this.network.clear) this.network.clear();
       // }

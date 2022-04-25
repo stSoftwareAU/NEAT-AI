@@ -1,9 +1,11 @@
 import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
-import { Network } from "../../architecture/network.js";
 
 import { WorkerProcessor } from "./WorkerProcessor.ts";
 
+import { TrainOptions } from "../../TrainOptions.ts";
+
 export interface WorkerData {
+  taskID: number;
   initialize?: {
     dataSetDir: string;
     costName: string;
@@ -11,11 +13,32 @@ export interface WorkerData {
   evaluate?: {
     network: string;
   };
+  train?: {
+    network: string;
+    options: TrainOptions;
+  };
 }
 
-export class WorkerHandle {
+export interface ResponseData {
+  taskID: number;
+  initialize?: {
+    status: string;
+  };
+  evaluate?: {
+    error: number;
+  };
+  train?: {
+    network: string;
+  };
+}
+
+export class WorkerHandler {
   private worker: (Worker | null) = null;
   private mockProcessor: (WorkerProcessor | null) = null;
+  private taskID = 1;
+
+  // private holdData: { [key: string]: ResponseData } = {};
+  private callbacks: { [key: string]: CallableFunction } = {};
 
   constructor(
     dataSetDir: string,
@@ -26,6 +49,7 @@ export class WorkerHandle {
       throw "dataSet is mandatory";
     }
     const data: WorkerData = {
+      taskID: this.taskID++,
       initialize: {
         dataSetDir: dataSetDir,
         costName: costName,
@@ -47,11 +71,56 @@ export class WorkerHandle {
         },
       );
 
-      this.worker.postMessage(data);
+      this.worker.addEventListener("message", (message) => {
+        this.callback(message.data as ResponseData);
+      });
     } else {
       this.mockProcessor = new WorkerProcessor();
-      this.mockProcessor.process(data);
     }
+
+    this.makePromise(data);
+  }
+
+  private callback(data: ResponseData) {
+    // console.log("callback", data);
+
+    const call = this.callbacks[data.taskID.toString()];
+    if (call) {
+      // console.log("call", data);
+      call(data);
+    } else {
+      throw "No callback";
+      // console.log("hold", data);
+      // this.holdData[data.taskID.toString()] = data;
+    }
+  }
+
+  private makePromise(data: WorkerData) {
+    const p = new Promise<ResponseData>((resolve) => {
+      // const result = this.holdData[data.taskID.toString()];
+      // console.log("makePromise", data.taskID);
+      // if (result) {
+      //   console.log("resolve-now", data.taskID, result);
+      //   resolve(result);
+      // } else {
+      const call = (result: ResponseData) => {
+        // console.log("resolve-delay", data.taskID, result);
+        resolve(result);
+      };
+
+      this.callbacks[data.taskID.toString()] = call;
+      // }
+    });
+
+    if (this.worker) {
+      this.worker.postMessage(data);
+    } else if (this.mockProcessor) {
+      const result = this.mockProcessor.process(data);
+      this.callback(result);
+    } else {
+      throw "No real or fake worker";
+    }
+    return p;
   }
 
   terminate() {
@@ -64,36 +133,34 @@ export class WorkerHandle {
 
   evaluate(network: NetworkInterface) {
     const data: WorkerData = {
+      taskID: this.taskID++,
       evaluate: {
         network: network.toJSON(),
       },
     };
 
-    if (this.worker) {
-      const _that = this.worker;
-      return new Promise((resolve) => {
-        _that.addEventListener("message", function callback(message) {
-          _that.removeEventListener("message", callback);
+    return this.makePromise(data);
+  }
 
-          const error: number = message.data.error;
-          resolve(error);
-        });
+  train(network: NetworkInterface) {
+    const json = network.toJSON();
+    delete json.score;
+    delete json.tags;
 
-        _that.postMessage(data);
-      });
-    } else if (this.mockProcessor) {
-      const _that = this.mockProcessor;
+    const trainOptions: TrainOptions = {
+      // log: options.log,
+      iterations: 1,
+      // error: options.error,
+    };
 
-      return new Promise((resolve) => {
-        const result = _that.process(data);
-        if ("error" in result) {
-          resolve(result.error);
-        } else {
-          throw "No error property";
-        }
-      });
-    } else {
-      throw "No real or fake worker";
-    }
+    const data: WorkerData = {
+      taskID: this.taskID++,
+      train: {
+        network: json,
+        options: trainOptions,
+      },
+    };
+
+    return this.makePromise(data);
   }
 }

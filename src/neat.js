@@ -5,7 +5,9 @@ import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
 import { make as makeConfig } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
-import { addTag, getTag } from "../src/tags/TagsInterface.ts";
+import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
+import { Fitness } from "./architecture/Fitness.ts";
+import { ensureDirSync } from "https://deno.land/std@0.136.0/fs/ensure_dir.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -14,13 +16,15 @@ const DEBUG = true;
                                          NEAT
 *******************************************************************************/
 export class Neat {
-  constructor(input, output, fitness, options) {
+  constructor(input, output, options, workers) {
     this.input = input; // The input size of the networks
     this.output = output; // The output size of the networks
-    this.fitness = fitness; // The fitness function to evaluate the networks
 
+    this.workers = workers;
     this.config = makeConfig(options);
 
+    // The fitness function to evaluate the networks
+    this.fitness = new Fitness(workers, this.config.growth);
     // Generation counter
     this.generation = 0;
 
@@ -91,13 +95,28 @@ export class Neat {
    */
   async evolve(previousFittest) {
     if (DEBUG) {
-      if (!previousFittest) {
+      if (!previousFittest) { //FIRST
         for (let i = 0; i < this.population.length; i++) {
           const n = this.population[i];
 
           if (n.score) {
             throw "Score found " + i;
           }
+          if (n.error) {
+            throw "Error found " + i;
+          }
+        }
+      }
+    }
+    const trainPromises = [];
+    for (let i = 0; i < this.population.length; i++) {
+      const n = this.population[i];
+      if (n.score) {
+        if (this.workers.length > i) {
+          const w = i % this.workers.length;
+          // console.log("Worker: ", w);
+          const p = this.workers[w].train(n);
+          trainPromises.push(p);
         }
       }
     }
@@ -154,7 +173,38 @@ export class Neat {
     // Replace the old population with the new population
     this._mutate(newPopulation);
 
-    this.population = [...elitists, ...fineTunedPopulation, ...newPopulation]; // Keep pseudo sorted.
+    const trainPopulation = [];
+    let tCounter = 0;
+    await Promise.all(trainPromises).then((results) => {
+      results.forEach((r) => {
+        if (r.train) {
+          const json = JSON.parse(r.train.network);
+          addTag(json, "approach", "trained");
+
+          ensureDirSync(".debug");
+          Deno.writeTextFileSync(
+            ".debug/train-" + tCounter + ".json",
+            JSON.stringify(json, null, 2),
+          );
+          Deno.writeTextFileSync(
+            ".debug/elitist-" + tCounter + ".json",
+            JSON.stringify(elitists[tCounter].toJSON(), null, 2),
+          );
+
+          tCounter++;
+          trainPopulation.push(Network.fromJSON(json));
+        } else {
+          throw "No train result";
+        }
+      });
+    });
+
+    this.population = [
+      ...elitists,
+      ...fineTunedPopulation,
+      ...newPopulation,
+      ...trainPopulation,
+    ]; // Keep pseudo sorted.
 
     this.deDepulate();
 
@@ -171,6 +221,9 @@ export class Neat {
 
         if (n.score) {
           throw "Score found " + i;
+        }
+        if (n.error) {
+          throw "Error found " + i;
         }
       }
     }
@@ -227,18 +280,19 @@ export class Neat {
 
     return mutationMethod;
   }
+
   /**
    * Mutates the given (or current) population
    */
   _mutate(genes) {
     for (let i = genes.length; i--;) {
-      // const pos = index[i];
       if (Math.random() <= this.config.mutationRate) {
         const gene = genes[i];
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(gene);
           gene.mutate(mutationMethod);
         }
+        removeTag(gene, "approach");
       }
     }
   }
@@ -254,7 +308,7 @@ export class Neat {
     }
 
     try {
-      await this.fitness(this.population);
+      await this.fitness.calculate(this.population);
     } catch (e) {
       console.error("fitness error", e);
       throw e;
