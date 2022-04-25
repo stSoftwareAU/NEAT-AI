@@ -2,9 +2,7 @@ import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
 
 import { WorkerProcessor } from "./WorkerProcessor.ts";
 
-import { TrainOptions } from "../../TrainOptions.ts";
-
-export interface WorkerData {
+export interface RequestData {
   taskID: number;
   initialize?: {
     dataSetDir: string;
@@ -15,12 +13,12 @@ export interface WorkerData {
   };
   train?: {
     network: string;
-    options: TrainOptions;
   };
 }
 
 export interface ResponseData {
   taskID: number;
+  duration: number;
   initialize?: {
     status: string;
   };
@@ -29,6 +27,7 @@ export interface ResponseData {
   };
   train?: {
     network: string;
+    error: number;
   };
 }
 
@@ -48,7 +47,7 @@ export class WorkerHandler {
     if (typeof dataSetDir === "undefined") {
       throw "dataSet is mandatory";
     }
-    const data: WorkerData = {
+    const data: RequestData = {
       taskID: this.taskID++,
       initialize: {
         dataSetDir: dataSetDir,
@@ -95,7 +94,7 @@ export class WorkerHandler {
     }
   }
 
-  private makePromise(data: WorkerData) {
+  private makePromise(data: RequestData) {
     const p = new Promise<ResponseData>((resolve) => {
       // const result = this.holdData[data.taskID.toString()];
       // console.log("makePromise", data.taskID);
@@ -132,7 +131,7 @@ export class WorkerHandler {
   }
 
   evaluate(network: NetworkInterface) {
-    const data: WorkerData = {
+    const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
         network: network.toJSON(),
@@ -147,17 +146,10 @@ export class WorkerHandler {
     delete json.score;
     delete json.tags;
 
-    const trainOptions: TrainOptions = {
-      // log: options.log,
-      iterations: 1,
-      // error: options.error,
-    };
-
-    const data: WorkerData = {
+    const data: RequestData = {
       taskID: this.taskID++,
       train: {
         network: json,
-        options: trainOptions,
       },
     };
 

@@ -7,7 +7,7 @@ import { make as makeConfig } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
-import { ensureDirSync } from "https://deno.land/std@0.136.0/fs/ensure_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.136.0/fs/empty_dir.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -69,6 +69,7 @@ export class Neat {
       const key = JSON.stringify(json);
 
       if (unique.has(key)) {
+        // console.log( "duplicate found at", i);
         for (let j = 0; j < 100; j++) {
           const tmpPopulation = [this.getOffspring()];
           this._mutate(tmpPopulation);
@@ -178,21 +179,23 @@ export class Neat {
     await Promise.all(trainPromises).then((results) => {
       results.forEach((r) => {
         if (r.train) {
-          const json = JSON.parse(r.train.network);
-          addTag(json, "approach", "trained");
+          if (isFinite(r.train.error)) {
+            const json = JSON.parse(r.train.network);
+            addTag(json, "approach", "trained");
+            addTag(json, "duration", r.duration);
+            emptyDirSync(".debug");
+            Deno.writeTextFileSync(
+              ".debug/train-" + tCounter + ".json",
+              JSON.stringify(json, null, 2),
+            );
+            Deno.writeTextFileSync(
+              ".debug/elitist-" + tCounter + ".json",
+              JSON.stringify(elitists[tCounter].toJSON(), null, 2),
+            );
 
-          ensureDirSync(".debug");
-          Deno.writeTextFileSync(
-            ".debug/train-" + tCounter + ".json",
-            JSON.stringify(json, null, 2),
-          );
-          Deno.writeTextFileSync(
-            ".debug/elitist-" + tCounter + ".json",
-            JSON.stringify(elitists[tCounter].toJSON(), null, 2),
-          );
-
-          tCounter++;
-          trainPopulation.push(Network.fromJSON(json));
+            tCounter++;
+            trainPopulation.push(Network.fromJSON(json));
+          }
         } else {
           throw "No train result";
         }

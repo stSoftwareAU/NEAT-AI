@@ -170,7 +170,7 @@ export class NetworkUtil {
     }
 
     if (config.creatureStore) {
-      writeCreatures(neat, config.creatureStore);
+      this.writeCreatures(neat, config.creatureStore);
     }
     return {
       error: -error,
@@ -207,6 +207,9 @@ export class NetworkUtil {
     return result;
   }
 
+  /**
+   * Tests a set and returns the error and elapsed time
+   */
   testDir(
     dataDir: string,
     // deno-lint-ignore ban-types
@@ -242,7 +245,9 @@ export class NetworkUtil {
       const fn = dataDir + "/" + name;
 
       const json = JSON.parse(Deno.readTextFileSync(fn));
-
+      if (json.length == 0) {
+        throw "Set size must be positive";
+      }
       const len = json.length;
 
       for (let i = len; i--;) {
@@ -311,10 +316,9 @@ export class NetworkUtil {
    * Train the given set to this network
    */
   trainDir(
-    dataSetDir: string,
+    dataDir: string,
     options: TrainOptions,
   ) {
-    const start = Date.now();
     options = options || {};
     // Warning messages
     if (typeof options.iterations === "undefined") {
@@ -325,7 +329,7 @@ export class NetworkUtil {
 
     // Read the options
     const targetError = options.error || 0.05;
-    const costFunction = findCost(options.cost ? options.cost : "MSE");
+    const cost = findCost(options.cost ? options.cost : "MSE");
     const baseRate = options.rate || 0.3;
     const dropout = options.dropout || 0;
     const momentum = options.momentum || 0;
@@ -335,11 +339,16 @@ export class NetworkUtil {
     );
 
     const iterations = options.iterations ? options.iterations : 0;
-    // const activate = this.network.activate;
-    // if (!this.network.activate) throw "no activate funtion";
 
-    // activate.bind( this);
+    const files: string[] = [];
 
+    for (const dirEntry of Deno.readDirSync(dataDir)) {
+      if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
+        files.push(dirEntry.name);
+      }
+    }
+
+    files.sort();
     // Loops the training process
     let currentRate = 0.3;
     let iteration = 0;
@@ -357,76 +366,35 @@ export class NetworkUtil {
       currentRate = ratePolicy(baseRate, iteration);
 
       if (!isFinite(currentRate)) throw "not a valid rate: " + currentRate;
-      // Checks if cross validation is enabled
-      // if (options.crossValidate) {
-      //   this._trainSet(trainSet, batchSize, currentRate, momentum, cost);
-      //   if (options.clear) this.clear();
-      //   error = this.test(testSet, cost).error;
-      //   if (options.clear) this.clear();
-      // } else {
-      const files: string[] = [];
 
-      for (const dirEntry of Deno.readDirSync(dataSetDir)) {
-        if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
-          files.push(dirEntry.name);
-        }
-      }
-
-      files.sort();
       let counter = 0;
-
       let errorSum = 0;
 
       files.forEach((name) => {
-        const fn = dataSetDir + "/" + name;
+        const fn = dataDir + "/" + name;
 
-        const dataSet = JSON.parse(Deno.readTextFileSync(fn));
-
-        if (dataSet.length == 0) {
+        const json = JSON.parse(Deno.readTextFileSync(fn));
+        if (json.length == 0) {
           throw "Set size must be positive";
         }
+        const len = json.length;
 
-        for (let i = 0; i < dataSet.length; i++) {
-          const input = dataSet[i].input;
-          const target = dataSet[i].output;
-
-          const update =
-            !!((i + 1) % batchSize === 0 || (i + 1) === dataSet.length);
+        for (let i = len; i--;) {
+          const data = json[i];
+          const input = data.input;
+          const target = data.output;
+          const update = !!((i + 1) % batchSize === 0 || i === 0);
 
           if (!this.network.activate) throw "no activate funtion";
           const output = this.network.activate(input, true);
           this.propagate(currentRate, momentum, update, target);
 
-          const cost = costFunction(target, output);
-          // if (!isFinite(cost)) {
-          //   throw "Invalid cost: " + cost + " of target: " + target +
-          //     " output: " +
-          //     output + " function: " + options.cost;
-          // }
-          errorSum += cost;
+          errorSum += cost(target, output);
         }
-        counter += dataSet.length;
+        counter += len;
       });
 
       error = errorSum / counter;
-      // if (!isFinite(error)) {
-      //   throw "Invalid error: " + error + ", len: " + counter;
-      // }
-
-      if (options.clear && this.network.clear) this.network.clear();
-      // }
-
-      // Checks for options such as scheduled logs and shuffling
-      // if (options.shuffle) {
-      //   for (
-      //     let j, x, i = dataSet.length;
-      //     i;
-      //     j = Math.floor(Math.random() * i),
-      //       x = dataSet[--i],
-      //       dataSet[i] = dataSet[j],
-      //       dataSet[j] = x
-      //   );
-      // }
 
       if (options.log && iteration % options.log === 0) {
         console.log(
@@ -455,8 +423,6 @@ export class NetworkUtil {
 
     return {
       error: error,
-      iterations: iteration,
-      time: Date.now() - start,
     };
   }
 
@@ -484,29 +450,29 @@ export class NetworkUtil {
 
     return result;
   }
-}
 
-function writeCreatures(neat: Neat, dir: string) {
-  let counter = 1;
-  ensureDirSync(dir + "/store");
+  private writeCreatures(neat: Neat, dir: string) {
+    let counter = 1;
+    // ensureDirSync(dir + "/store");
 
-  neat.population.forEach((creature: NetworkInterface) => {
-    const json = creature.toJSON();
+    neat.population.forEach((creature: NetworkInterface) => {
+      const json = creature.toJSON();
 
-    const txt = JSON.stringify(json, null, 1);
+      const txt = JSON.stringify(json, null, 1);
 
-    // const b64=encode(new Uint8Array(
-    //   await crypto.subtle.digest(
-    //     "SHA-256",
-    //     new TextEncoder().encode(txt),
-    //   ),
-    // ) );
-    // const name=b64.replaceAll("/", "_").replaceAll("=", "").replaceAll( "+", "-") +".json";
+      // const b64=encode(new Uint8Array(
+      //   await crypto.subtle.digest(
+      //     "SHA-256",
+      //     new TextEncoder().encode(txt),
+      //   ),
+      // ) );
+      // const name=b64.replaceAll("/", "_").replaceAll("=", "").replaceAll( "+", "-") +".json";
 
-    const filePath = dir + "/" + counter + ".json";
-    Deno.writeTextFileSync(filePath, txt);
-    // const symPath=dir + "/" +counter +".json";
-    // Deno.symlinkSync( filePath, "store/" + name);
-    counter++;
-  });
+      const filePath = dir + "/" + counter + ".json";
+      Deno.writeTextFileSync(filePath, txt);
+      // const symPath=dir + "/" +counter +".json";
+      // Deno.symlinkSync( filePath, "store/" + name);
+      counter++;
+    });
+  }
 }

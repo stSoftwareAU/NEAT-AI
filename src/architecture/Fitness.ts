@@ -24,7 +24,7 @@ export class Fitness {
           const creature = queue.shift();
           if (!creature) continue;
           if (creature.score) {
-            // console.log("creatue already have been scored");
+            // console.log("creatue already have been scored",creature.score);
             continue;
           }
           // const creatureID=population.length - queue.length;
@@ -41,7 +41,10 @@ export class Fitness {
                 (creature.gates ? creature.gates.length : 0)
               ) * growth;
 
-          creature.score = isNaN(creature.score) ? -Infinity : creature.score;
+          creature.score = isFinite(creature.score)
+            ? creature.score
+            : -Infinity;
+          addTag(creature, "score", creature.score.toString());
           // console.info( "Creature", creatureID, "result", result, "score", creature.score);
         }
       };

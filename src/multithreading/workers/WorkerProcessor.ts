@@ -1,46 +1,72 @@
-import { ResponseData, WorkerData } from "./WorkerHandler.ts";
+import { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 import { Network } from "../../architecture/network.js";
 import { NetworkUtil } from "../../architecture/NetworkUtil.ts";
 import { findCost } from "../../config.ts";
 
+import { TrainOptions } from "../../TrainOptions.ts";
+
 export class WorkerProcessor {
-  // deno-lint-ignore no-explicit-any
-  private cost: any = null;
+  private costName: (string | null) = null;
   private dataSetDir: (string | null) = null;
 
-  process(data: WorkerData): ResponseData {
-    if (data.evaluate) {
-      const network = Network.fromJSON(data.evaluate.network);
-      const result = network.test(this.dataSetDir, this.cost);
-
-      return {
-        taskID: data.taskID,
-        evaluate: {
-          error: result.error,
-        },
-      };
-    } else if (data.initialize) {
-      this.cost = findCost(data.initialize.costName);
+  process(data: RequestData): ResponseData {
+    const start = Date.now();
+    if (data.initialize) {
+      this.costName = data.initialize.costName;
 
       this.dataSetDir = data.initialize.dataSetDir;
       return {
         taskID: data.taskID,
+        duration: Date.now() - start,
         initialize: {
           status: "OK",
+        },
+      };
+    } else if (data.evaluate) {
+      if (!this.dataSetDir) throw "no data directory";
+      if (!this.costName) throw "no cost";
+
+      const network = Network.fromJSON(data.evaluate.network);
+      const util = new NetworkUtil(network);
+
+      const cost = findCost(this.costName);
+      const result = util.testDir(this.dataSetDir, cost);
+
+      return {
+        taskID: data.taskID,
+        duration: Date.now() - start,
+        evaluate: {
+          error: result.error,
         },
       };
     } else if (data.train) {
       const network = Network.fromJSON(data.train.network);
       const util = new NetworkUtil(network);
+
       if (!this.dataSetDir) throw "No data dir";
 
-      util.trainDir(this.dataSetDir, data.train.options);
-      const json = JSON.stringify(network.toJSON(), null, 1);
+      if (!this.costName) throw "no cost";
+
+      const trainOptions: TrainOptions = {
+        cost: this.costName,
+        // log: 1,
+        iterations: Math.max(1, Math.round(5 * Math.random())),
+        momentum: Math.random(),
+        rate: Math.random(),
+        batchSize: Infinity,
+        clear: Math.random() < 0.5 ? true : false,
+      };
+
+      const result = util.trainDir(this.dataSetDir, trainOptions);
+      const json = JSON.stringify(network.toJSON());
+
       return {
         taskID: data.taskID,
+        duration: Date.now() - start,
         train: {
           network: json,
+          error: result.error,
         },
       };
     } else {

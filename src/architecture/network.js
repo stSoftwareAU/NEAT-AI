@@ -55,25 +55,36 @@ export class Network {
    * Activates the network
    */
   activate(input, training) {
-    const output = [];
+    const output = new Array(this.output);
+    let outputLen = 0;
 
     // Activate nodes chronologically
     for (let i = 0; i < this.nodes.length; i++) {
-      if (this.nodes[i].type === "input") {
-        this.nodes[i].activate(input[i]);
-      } else if (this.nodes[i].type === "output") {
-        const activation = this.nodes[i].activate();
-        output.push(activation);
-      } else {
-        if (training) {
-          this.nodes[i].mask = Math.random() < this.dropout ? 0 : 1;
+      const _node = this.nodes[i];
+      switch (_node.type) {
+        case "input": {
+          _node.activate(input[i]);
+          break;
         }
-        this.nodes[i].activate();
+        case "output": {
+          const activation = _node.activate();
+          output[outputLen] = activation;
+          outputLen++;
+          break;
+        }
+        default:
+          if (training) {
+            _node.mask = Math.random() < this.dropout ? 0 : 1;
+          }
+          _node.activate();
       }
     }
 
+    output.length = outputLen;
+
     return output;
   }
+
   /**
    * Activates the network without calculating elegibility traces and such
    */
@@ -546,14 +557,6 @@ export class Network {
     }
   }
 
-  /**
-   * Tests a set and returns the error and elapsed time
-   */
-  test(dataDir, cost) {
-    const result = this.util.testDir(dataDir, cost);
-
-    return result;
-  }
   /**
    * Creates a json that can be used to create a graph with d3 and webcola
    */

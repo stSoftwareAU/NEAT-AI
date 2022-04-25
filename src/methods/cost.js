@@ -32,27 +32,9 @@ export const Cost = {
     let error = 0;
     const len = output.length;
 
-    // if (len == 0) {
-    //   console.trace();
-    //   throw "MSE zero length";
-    // }
-
     for (let i = len; i--;) {
       error += Math.pow(target[i] - output[i], 2);
     }
-
-    // if (isFinite(error) == false) {
-    //   for (let i = len; i--;) {
-    //     console.error(
-    //       "MSE",
-    //       target[i],
-    //       output[i],
-    //       Math.pow(target[i] - output[i], 2),
-    //     );
-    //   }
-    //   console.trace();
-    //   throw "MSE len: " + len + ", error: " + error;
-    // }
 
     return error / len;
   },

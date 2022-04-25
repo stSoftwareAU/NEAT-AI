@@ -28,7 +28,7 @@ export function fineTuneImprovement(
   }
 
   const approach = getTag(fittest, "approach");
-  if (approach == "tuned") {
+  if (approach == "fine") {
     console.info(
       "Fine tuning increased fitness by",
       fScore - pScore,
@@ -74,7 +74,7 @@ export function fineTuneImprovement(
             // );
             fn.bias = bias;
             const n = Network.fromJSON(targetJSON);
-            addTag(n, "approach", "tuned");
+            addTag(n, "approach", "fine");
             addTag(n, "adjusted", "bias");
             addTag(
               n,
@@ -117,7 +117,7 @@ export function fineTuneImprovement(
               // );
               fc.weight = weight;
               const n = Network.fromJSON(targetJSON);
-              addTag(n, "approach", "tuned");
+              addTag(n, "approach", "fine");
               addTag(n, "adjusted", "weight");
               addTag(
                 n,
