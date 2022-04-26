@@ -53,7 +53,7 @@ export class WorkerProcessor {
         log: 1,
         iterations: Math.max(1, Math.round(5 * Math.random())),
         momentum: Math.random(),
-        rate: 0.001* Math.random(),// Math.random(),
+        rate: 0.0001* Math.random(),// Math.random(),
         batchSize: Infinity,
         clear: Math.random() < 0.5 ? true : false,
       };
