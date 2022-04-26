@@ -51,8 +51,8 @@ export class WorkerProcessor {
       const trainOptions: TrainOptions = {
         cost: this.costName,
         log: 1,
-        iterations: Math.max(1, Math.round(5 * Math.random())),
-        // momentum: Math.random(),
+        iterations: Math.max(1, Math.round(10 * Math.random())),
+        momentum: Math.random(),
         rate: 0.000_01* Math.random(),// Math.random(),
         batchSize: Infinity,
       //  clear: Math.random() < 0.5 ? true : false,
