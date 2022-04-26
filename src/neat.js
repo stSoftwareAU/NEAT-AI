@@ -147,7 +147,6 @@ export class Neat {
         
         if (untrained) {
           const error = getTag(p, "error");
-          // console.log( "training result", untrained, error);
           if (parseFloat( error) <= parseFloat(untrained)) {
             trainingWorked = true;
           }
@@ -158,11 +157,9 @@ export class Neat {
     if (previousFittest) {
       if (trainingWorked) {
         const nextRate=Math.min(this.trainRate * (1 + Math.random(), 0.1));
-        console.info( "trainRate increase", this.trainRate, nextRate);
         this.trainRate = nextRate;
       } else {
         const nextRate = Math.max(this.trainRate * Math.random(), 0.000_000_01);
-        // console.info( "trainRate decrease", this.trainRate, nextRate);
         this.trainRate = nextRate;
       }
     }
