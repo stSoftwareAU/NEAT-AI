@@ -155,7 +155,7 @@ export class Neat {
       if (trainingWorked) {
         this.trainRate = Math.min(this.trainRate * (1 + Math.random(), 0.1));
       } else {
-        this.trainRate = Math.max(this.trainRate * Math.random(), 0.000_000_1);
+        this.trainRate = Math.max(this.trainRate * Math.random(), 0.000_000_01);
       }
     }
     if (this.population.length !== livePopulation.length) {
