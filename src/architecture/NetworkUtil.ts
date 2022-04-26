@@ -334,9 +334,8 @@ export class NetworkUtil {
     const dropout = options.dropout || 0;
     const momentum = options.momentum || 0;
     const batchSize = options.batchSize || 1; // online learning
-    const ratePolicy = findRatePolicy(
-      options.ratePolicy ? options.ratePolicy : "FIXED",
-    );
+    const ratePolicyName=options.ratePolicy ? options.ratePolicy : "FIXED";
+    const ratePolicy = findRatePolicy(ratePolicyName);
 
     const iterations = options.iterations ? options.iterations : 0;
 
@@ -396,7 +395,12 @@ export class NetworkUtil {
 
       error = errorSum / counter;
 
-      if (options.log && iteration % options.log === 0) {
+      if (
+        options.log && (
+          iteration % options.log === 0||
+          iteration === iterations
+        )
+      ) {
         console.log(
           "iteration",
           iteration,
@@ -404,6 +408,10 @@ export class NetworkUtil {
           error,
           "rate",
           currentRate,
+          "clear",
+          options.clear?true:false,
+          "policy",
+         yellow( ratePolicyName)
         );
       }
     }
