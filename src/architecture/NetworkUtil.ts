@@ -388,10 +388,11 @@ export class NetworkUtil {
 
           if (!this.network.activate) throw "no activate funtion";
           const output = this.network.activate(input, true);
-          this.propagate(currentRate, momentum, update, target);
 
           errorSum += cost(target, output);
           if (!isFinite(errorSum)) break;
+
+          this.propagate(currentRate, momentum, update, target);
         }
 
         counter += len;
