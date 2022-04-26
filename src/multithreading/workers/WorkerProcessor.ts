@@ -50,7 +50,7 @@ export class WorkerProcessor {
 
       const trainOptions: TrainOptions = {
         cost: this.costName,
-        log: 100,
+        // log: 100,
         iterations: Math.max(1, Math.round(10 * Math.random())),
         momentum: Math.random(),
         rate: data.train.rate, 

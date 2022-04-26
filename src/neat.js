@@ -139,12 +139,16 @@ export class Neat {
 
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
+
       if (isFinite(p.score)) {
         livePopulation.push(p);
 
         const untrained = getTag(p, "untrained");
+        
         if (untrained) {
-          if (p.error < parseFloat(untrained)) {
+          const error = getTag(p, "error");
+          // console.log( "training result", untrained, error);
+          if (parseFloat( error) <= parseFloat(untrained)) {
             trainingWorked = true;
           }
         }
@@ -153,9 +157,13 @@ export class Neat {
 
     if (previousFittest) {
       if (trainingWorked) {
-        this.trainRate = Math.min(this.trainRate * (1 + Math.random(), 0.1));
+        const nextRate=Math.min(this.trainRate * (1 + Math.random(), 0.1));
+        console.info( "trainRate increase", this.trainRate, nextRate);
+        this.trainRate = nextRate;
       } else {
-        this.trainRate = Math.max(this.trainRate * Math.random(), 0.000_000_01);
+        const nextRate = Math.max(this.trainRate * Math.random(), 0.000_000_01);
+        // console.info( "trainRate decrease", this.trainRate, nextRate);
+        this.trainRate = nextRate;
       }
     }
     if (this.population.length !== livePopulation.length) {

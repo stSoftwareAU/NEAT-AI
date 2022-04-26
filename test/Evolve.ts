@@ -26,7 +26,7 @@ Deno.test("AND", async () => {
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
 
-Deno.test("MT", async () => {
+Deno.test("evolve-MT", async () => {
   // Train the AND gate
   const trainingSet = [
     { input: [0, 0], output: [0] },
