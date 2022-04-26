@@ -9,7 +9,7 @@ import { addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 // import { crypto } from "https://deno.land/std@0.136.0/crypto/mod.ts";
 // import { encode } from "https://deno.land/std@0.136.0/encoding/base64.ts";
-import { ensureDirSync } from "https://deno.land/std@0.136.0/fs/ensure_dir.ts";
+// import { ensureDirSync } from "https://deno.land/std@0.136.0/fs/ensure_dir.ts";
 import { TrainOptions } from "../TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
 

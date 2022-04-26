@@ -182,6 +182,7 @@ export class Neat {
           if (isFinite(r.train.error)) {
             const json = JSON.parse(r.train.network);
             addTag(json, "approach", "trained");
+            addTag(json, "error", r.train.error);
             addTag(json, "duration", r.duration);
             emptyDirSync(".debug");
             Deno.writeTextFileSync(
