@@ -334,7 +334,7 @@ export class NetworkUtil {
     const dropout = options.dropout || 0;
     const momentum = options.momentum || 0;
     const batchSize = options.batchSize || 1; // online learning
-    const ratePolicyName=options.ratePolicy ? options.ratePolicy : "FIXED";
+    const ratePolicyName = options.ratePolicy ? options.ratePolicy : "FIXED";
     const ratePolicy = findRatePolicy(ratePolicyName);
 
     const iterations = options.iterations ? options.iterations : 0;
@@ -354,6 +354,7 @@ export class NetworkUtil {
     let error = 1;
 
     while (
+      isFinite(error) &&
       error > targetError &&
       (iterations === 0 || iteration < iterations)
     ) {
@@ -370,6 +371,7 @@ export class NetworkUtil {
       let errorSum = 0;
 
       files.forEach((name) => {
+        if (!isFinite(errorSum)) return;
         const fn = dataDir + "/" + name;
 
         const json = JSON.parse(Deno.readTextFileSync(fn));
@@ -389,7 +391,9 @@ export class NetworkUtil {
           this.propagate(currentRate, momentum, update, target);
 
           errorSum += cost(target, output);
+          if (!isFinite(errorSum)) break;
         }
+
         counter += len;
       });
 
@@ -397,7 +401,7 @@ export class NetworkUtil {
 
       if (
         options.log && (
-          iteration % options.log === 0||
+          iteration % options.log === 0 ||
           iteration === iterations
         )
       ) {
@@ -409,9 +413,9 @@ export class NetworkUtil {
           "rate",
           currentRate,
           "clear",
-          options.clear?true:false,
+          options.clear ? true : false,
           "policy",
-         yellow( ratePolicyName)
+          yellow(ratePolicyName),
         );
       }
     }
