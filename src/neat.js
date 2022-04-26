@@ -176,6 +176,7 @@ export class Neat {
 
     const trainPopulation = [];
     let tCounter = 0;
+    emptyDirSync(".debug");
     await Promise.all(trainPromises).then((results) => {
       results.forEach((r) => {
         if (r.train) {
@@ -184,7 +185,6 @@ export class Neat {
             addTag(json, "approach", "trained");
             addTag(json, "error", r.train.error);
             addTag(json, "duration", r.duration);
-            emptyDirSync(".debug");
             Deno.writeTextFileSync(
               ".debug/train-" + tCounter + ".json",
               JSON.stringify(json, null, 2),
