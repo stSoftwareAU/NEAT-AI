@@ -27,7 +27,7 @@ export class Neat {
     this.fitness = new Fitness(workers, this.config.growth);
     // Generation counter
     this.generation = 0;
-    this.trainRate=0.01;
+    this.trainRate = 0.01;
 
     // Initialise the genomes
     this.population = this.config.creatures;
@@ -117,7 +117,7 @@ export class Neat {
         if (this.workers.length > i) {
           const w = i % this.workers.length;
           // console.log("Worker: ", w);
-          const p = this.workers[w].train(n,this.trainRate);
+          const p = this.workers[w].train(n, this.trainRate);
           trainPromises.push(p);
         }
       }
@@ -134,13 +134,30 @@ export class Neat {
     addTag(fittest, "error", getTag(fittest, "error"));
 
     const livePopulation = [];
+
+    let trainingWorked = false;
+
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
       if (isFinite(p.score)) {
         livePopulation.push(p);
+
+        const untrained = getTag(p, "untrained");
+        if (untrained) {
+          if (p.error < parseFloat(untrained)) {
+            trainingWorked = true;
+          }
+        }
       }
     }
 
+    if (previousFittest) {
+      if (trainingWorked) {
+        this.trainRate = Math.min(this.trainRate * (1 + Math.random(), 0.1));
+      } else {
+        this.trainRate = Math.max(this.trainRate * Math.random(), 0.000_000_1);
+      }
+    }
     if (this.population.length !== livePopulation.length) {
       console.info(
         "Removed",
@@ -177,22 +194,12 @@ export class Neat {
 
     const trainPopulation = [];
     let tCounter = 0;
-    let trainingWorked=false;
     emptyDirSync(".debug");
     await Promise.all(trainPromises).then((results) => {
       results.forEach((r) => {
         if (r.train) {
           if (isFinite(r.train.error)) {
             const json = JSON.parse(r.train.network);
-            const untrained=getTag( json, "untrained");
-            if( ! untrained ){
-              console.error( "No un-trained error");            
-            }
-            else{
-              if( r.train.error < parseFloat( untrained)){
-                trainingWorked=true;
-              }
-            }
 
             addTag(json, "approach", "trained");
             addTag(json, "error", r.train.error);
@@ -215,11 +222,6 @@ export class Neat {
       });
     });
 
-    if( trainingWorked){
-      this.trainRate = Math.min( this.trainRate * (1 + Math.random(), 0.1));
-    } else{
-      this.trainRate = Math.max( this.trainRate *Math.random(), 0.000_000_1);
-    }
     this.population = [
       ...elitists,
       ...fineTunedPopulation,
