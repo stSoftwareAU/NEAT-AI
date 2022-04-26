@@ -1,6 +1,7 @@
 import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
 
 import { WorkerProcessor } from "./WorkerProcessor.ts";
+import { addTag, getTag } from "../../tags/TagsInterface.ts";
 
 export interface RequestData {
   taskID: number;
@@ -13,6 +14,7 @@ export interface RequestData {
   };
   train?: {
     network: string;
+    rate:number
   };
 }
 
@@ -141,15 +143,19 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  train(network: NetworkInterface) {
+  train(network: NetworkInterface, rate:number) {
     const json = network.toJSON();
     delete json.score;
     delete json.tags;
-
+    const error=getTag( network, "error");
+    if( error){
+      addTag( json, "untrained", error);
+    }
     const data: RequestData = {
       taskID: this.taskID++,
       train: {
         network: json,
+        rate:rate
       },
     };
 

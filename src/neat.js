@@ -27,6 +27,7 @@ export class Neat {
     this.fitness = new Fitness(workers, this.config.growth);
     // Generation counter
     this.generation = 0;
+    this.trainRate=0.01;
 
     // Initialise the genomes
     this.population = this.config.creatures;
@@ -116,7 +117,7 @@ export class Neat {
         if (this.workers.length > i) {
           const w = i % this.workers.length;
           // console.log("Worker: ", w);
-          const p = this.workers[w].train(n);
+          const p = this.workers[w].train(n,trainRate);
           trainPromises.push(p);
         }
       }
@@ -176,12 +177,23 @@ export class Neat {
 
     const trainPopulation = [];
     let tCounter = 0;
+    let trainingWorked=false;
     emptyDirSync(".debug");
     await Promise.all(trainPromises).then((results) => {
       results.forEach((r) => {
         if (r.train) {
           if (isFinite(r.train.error)) {
             const json = JSON.parse(r.train.network);
+            const untrained=getTag( json, "untrained");
+            if( ! untrained ){
+              console.error( "No un-trained error");            
+            }
+            else{
+              if( r.train.error < parseFloat( untrained)){
+                trainingWorked=true;
+              }
+            }
+
             addTag(json, "approach", "trained");
             addTag(json, "error", r.train.error);
             addTag(json, "duration", r.duration);
@@ -203,6 +215,11 @@ export class Neat {
       });
     });
 
+    if( trainingWorked){
+      this.trainRate *= 1 + Math.random();
+    } else{
+      this.trainRate *= Math.random();
+    }
     this.population = [
       ...elitists,
       ...fineTunedPopulation,
