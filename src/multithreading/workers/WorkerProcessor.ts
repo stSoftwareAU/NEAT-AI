@@ -52,7 +52,7 @@ export class WorkerProcessor {
         cost: this.costName,
         log: 100,
         iterations: Math.max(1, Math.round(10 * Math.random())),
-        momentum: Math.random(),
+        // momentum: Math.random(),
         rate: data.train.rate, 
         batchSize: Infinity,
       //  clear: Math.random() < 0.5 ? true : false,

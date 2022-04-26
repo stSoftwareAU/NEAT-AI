@@ -148,6 +148,7 @@ export class Neat {
         if (untrained) {
           const error = getTag(p, "error");
           if (parseFloat( error) <= parseFloat(untrained)) {
+            console.info( "Training worked", parseFloat(untrained), parseFloat( error) );
             trainingWorked = true;
           }
         }
