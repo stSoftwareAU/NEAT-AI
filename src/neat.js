@@ -117,7 +117,7 @@ export class Neat {
         if (this.workers.length > i) {
           const w = i % this.workers.length;
           // console.log("Worker: ", w);
-          const p = this.workers[w].train(n,trainRate);
+          const p = this.workers[w].train(n,this.trainRate);
           trainPromises.push(p);
         }
       }
