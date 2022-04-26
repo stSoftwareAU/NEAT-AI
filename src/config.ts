@@ -50,7 +50,10 @@ export interface NeatOptions {
   /** The target population size. */
   popsize?: number;
 
+  /** the number of workers */
   threads?: number;
+  /** the initial train rate if evolving or the rate to use when training only; default 0.01 */
+  trainRate?: number;
   selection?: any;
   mutation?: any;
   iterations?: number;
@@ -96,7 +99,11 @@ export interface NeatConfig {
   popsize: number;
 
   costName: string;
+  /** the number of workers */
   threads: number;
+  /** the initial train rate if evolving or the rate to use when training only */
+  trainRate: number;
+
   selection: any;
   mutation: any;
   iterations: number;
@@ -172,6 +179,7 @@ export function make(parameters?: NeatOptions) {
       ),
     ),
     timeoutMinutes: options.timeoutMinutes,
+    trainRate: options.trainRate ? options.trainRate : 0.01,
 
     log: options.log ? options.log : 0,
     schedule: options.schedule,

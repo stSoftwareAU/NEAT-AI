@@ -27,7 +27,7 @@ export class Neat {
     this.fitness = new Fitness(workers, this.config.growth);
     // Generation counter
     this.generation = 0;
-    this.trainRate = 0.01;
+    this.trainRate = options.trainRate;
 
     // Initialise the genomes
     this.population = this.config.creatures;
@@ -151,7 +151,7 @@ export class Neat {
           const previousError=parseFloat( untrained)*-1;
 
           if ( currentError<= previousError) {
-            console.info( "Training worked", previousError, currentError );
+            // console.info( "Training worked", previousError, currentError );
             trainingWorked = true;
           }
         }
