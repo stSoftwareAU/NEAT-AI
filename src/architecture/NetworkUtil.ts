@@ -417,6 +417,8 @@ export class NetworkUtil {
           options.clear ? true : false,
           "policy",
           yellow(ratePolicyName),
+          "momentum",
+          momentum,
         );
       }
     }

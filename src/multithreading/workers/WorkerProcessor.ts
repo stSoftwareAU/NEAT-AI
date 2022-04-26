@@ -52,10 +52,10 @@ export class WorkerProcessor {
         cost: this.costName,
         log: 1,
         iterations: Math.max(1, Math.round(5 * Math.random())),
-        momentum: Math.random(),
-        rate: 0.0001* Math.random(),// Math.random(),
+        // momentum: Math.random(),
+        rate: 0.000_01* Math.random(),// Math.random(),
         batchSize: Infinity,
-        clear: Math.random() < 0.5 ? true : false,
+      //  clear: Math.random() < 0.5 ? true : false,
       };
 
       const result = util.trainDir(this.dataSetDir, trainOptions);
