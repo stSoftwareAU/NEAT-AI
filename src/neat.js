@@ -156,7 +156,7 @@ export class Neat {
 
     if (previousFittest) {
       if (trainingWorked) {
-        const nextRate=Math.min(this.trainRate * (1 + Math.random(), 0.1));
+        const nextRate=Math.min(this.trainRate * (1 + Math.random()), 0.1);
         this.trainRate = nextRate;
       } else {
         const nextRate = Math.max(this.trainRate * Math.random(), 0.000_000_01);
