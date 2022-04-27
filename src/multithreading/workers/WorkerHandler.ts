@@ -14,7 +14,7 @@ export interface RequestData {
   };
   train?: {
     network: string;
-    rate:number
+    rate: number;
   };
 }
 
@@ -143,19 +143,19 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  train(network: NetworkInterface, rate:number) {
+  train(network: NetworkInterface, rate: number) {
     const json = network.toJSON();
     delete json.score;
     delete json.tags;
-    const error=getTag( network, "error");
-    if( error){
-      addTag( json, "untrained", error);
+    const error = getTag(network, "error");
+    if (error) {
+      addTag(json, "untrained", error);
     }
     const data: RequestData = {
       taskID: this.taskID++,
       train: {
         network: json,
-        rate:rate
+        rate: rate,
       },
     };
 

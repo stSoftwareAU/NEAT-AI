@@ -144,13 +144,13 @@ export class Neat {
         livePopulation.push(p);
 
         const untrained = getTag(p, "untrained");
-        
+
         if (untrained) {
           const error = getTag(p, "error");
-          const currentError=parseFloat( error)*-1;
-          const previousError=parseFloat( untrained)*-1;
+          const currentError = parseFloat(error) * -1;
+          const previousError = parseFloat(untrained) * -1;
 
-          if ( currentError<= previousError) {
+          if (currentError <= previousError) {
             // console.info( "Training worked", previousError, currentError );
             trainingWorked = true;
           }
@@ -160,8 +160,8 @@ export class Neat {
 
     if (previousFittest) {
       if (trainingWorked) {
-        const nextRate=Math.min(this.trainRate * (1 + Math.random()), 0.1);
-        console.info( "trainRate increased", this.trainRate, nextRate, "by", nextRate - this.trainRate);
+        const nextRate = Math.min(this.trainRate * (1 + Math.random()), 0.1);
+        // console.info( "trainRate increased", this.trainRate, nextRate, "by", nextRate - this.trainRate);
         this.trainRate = nextRate;
       } else {
         const nextRate = Math.max(this.trainRate * Math.random(), 0.000_000_01);
