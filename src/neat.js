@@ -86,7 +86,11 @@ export class Neat {
           delete json2.tags;
           delete json2.score;
           const key2 = JSON.stringify(json2);
-          if (unique.has(key2) == false) {
+          let duplicate2 = unique.has(key2);
+          if (!duplicate2 && i > this.config.elitism) {
+            duplicate2 = this.util.previousExperiment(p2);
+          }
+          if (duplicate2== false) {
             this.population[i] = p2;
             unique.add(key2);
             break;
