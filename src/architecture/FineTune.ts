@@ -113,7 +113,10 @@ export function fineTuneImprovement(
     }
   }
 
-  if (changeCount > 1) { // If only 1 then use the normal steps.
+  if( changeCount == 0){
+    return []; // There is no point in continuing as there are no viable changes. 
+  }
+  else if (changeCount > 1) { // If only 1 then use the normal steps.
     const all = Network.fromJSON(allJSON);
     addTag(all, "approach", "fine");
     addTag(all, "adjusted", "weight");
