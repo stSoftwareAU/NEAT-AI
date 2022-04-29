@@ -1,6 +1,7 @@
 import { addTag, getTag } from "../tags/TagsInterface.ts";
 import { Network } from "./network.js";
 import { NetworkInterface } from "./NetworkInterface.ts";
+const MIN_STEP = 0.000_000_1;
 
 export function fineTuneImprovement(
   fittest: NetworkInterface,
@@ -59,7 +60,7 @@ export function fineTuneImprovement(
       const pn = previousJSON.nodes[i];
 
       if (tn.squash == pn.squash) {
-        if (tn.bias != pn.bias) {
+        if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
           const adjust = tn.bias - pn.bias;
           const bias = tn.bias + adjust;
           // console.debug(
@@ -87,7 +88,7 @@ export function fineTuneImprovement(
 
       if (tc.from == pc.from && tc.to == pc.to) {
         if (tc.gater == pc.gater) {
-          if (tc.weight != pc.weight) {
+          if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
             const adjust = tc.weight - pc.weight;
             const weight = tc.weight + adjust;
             // console.debug(
@@ -113,10 +114,9 @@ export function fineTuneImprovement(
     }
   }
 
-  if( changeCount == 0){
-    return []; // There is no point in continuing as there are no viable changes. 
-  }
-  else if (changeCount > 1) { // If only 1 then use the normal steps.
+  if (changeCount == 0) {
+    return []; // There is no point in continuing as there are no viable changes.
+  } else if (changeCount > 1) { // If only 1 then use the normal steps.
     const all = Network.fromJSON(allJSON);
     addTag(all, "approach", "fine");
     addTag(all, "adjusted", "weight");
@@ -221,7 +221,6 @@ export function fineTuneImprovement(
 }
 
 function minStep(v: number) {
-  const MIN_STEP = 0.000_000_1;
   if (v > 0) {
     return v < MIN_STEP ? MIN_STEP : v;
   } else {
