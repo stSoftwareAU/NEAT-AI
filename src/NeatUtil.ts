@@ -70,7 +70,7 @@ export class NeatUtil {
         const filePath = this.config.creatureStore + "/" + EXPERIMENTS_DIR +
           "/" +
           name.substring(0, 3) + "/" +
-          name.substring(4);
+          name.substring(3);
         const sTxt = creature.score ? creature.score.toString() : "unknown";
         // try {
         await Deno.writeTextFile(filePath, sTxt);
