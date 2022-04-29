@@ -49,6 +49,82 @@ export function fineTuneImprovement(
   }
   const fineTuned: Network[] = [];
   const previousJSON = previousFittest.toJSON();
+  const allJSON = fittest.toJSON();
+  let changeCount = 0;
+
+  for (let i = allJSON.nodes.length; i--;) {
+    const tn = allJSON.nodes[i];
+
+    if (i < previousJSON.nodes.length) {
+      const pn = previousJSON.nodes[i];
+
+      if (tn.squash == pn.squash) {
+        if (tn.bias != pn.bias) {
+          const adjust = tn.bias - pn.bias;
+          const bias = tn.bias + adjust;
+          // console.debug(
+          //   "Index: " + i,
+          //   "bias",
+          //   fn.bias,
+          //   "(",
+          //   pn.bias,
+          //   ") by",
+          //   adjust,
+          //   "to",
+          //   bias,
+          // );
+          tn.bias = bias;
+          changeCount++;
+        }
+      }
+    }
+  }
+
+  for (let i = allJSON.connections.length; i--;) {
+    const tc = allJSON.connections[i];
+    for (let j = previousJSON.connections.length; j--;) {
+      const pc = previousJSON.connections[j];
+
+      if (tc.from == pc.from && tc.to == pc.to) {
+        if (tc.gater == pc.gater) {
+          if (tc.weight != pc.weight) {
+            const adjust = tc.weight - pc.weight;
+            const weight = tc.weight + adjust;
+            // console.debug(
+            //   "from",
+            //   fc.from,
+            //   "to",
+            //   pc.to,
+            //   "weight",
+            //   fc.weight,
+            //   "(",
+            //   pc.weight,
+            //   ") by",
+            //   adjust,
+            //   "to",
+            //   weight,
+            // );
+            tc.weight = weight;
+            changeCount++;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  if (changeCount > 1) { // If only 1 then use the normal steps.
+    const all = Network.fromJSON(allJSON);
+    addTag(all, "approach", "fine");
+    addTag(all, "adjusted", "weight");
+    addTag(
+      all,
+      "step",
+      "ALL",
+    );
+    fineTuned.push(all);
+  }
+
   let targetJSON = fittest.toJSON();
   for (let k = 0; true; k++) {
     for (let i = targetJSON.nodes.length; i--;) {
