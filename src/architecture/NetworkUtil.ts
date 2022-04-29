@@ -269,49 +269,6 @@ export class NetworkUtil {
     return results;
   }
 
-  // /**
-  //  * Performs one training epoch and returns the error
-  //  * private function used in this.train
-  //  */
-  // private _trainSet(
-  //   dataSet: DataRecordInterface[],
-  //   batchSize: number,
-  //   currentRate: number,
-  //   momentum: number,
-  //   // deno-lint-ignore ban-types
-  //   costFunction: Function,
-  // ): number {
-  //   if (dataSet.length == 0) {
-  //     throw "Set size must be positive";
-  //   }
-  //   const activate = this.network.activate;
-  //   if (!activate) throw "no activate funtion";
-
-  //   let errorSum = 0;
-  //   for (let i = 0; i < dataSet.length; i++) {
-  //     const input = dataSet[i].input;
-  //     const target = dataSet[i].output;
-
-  //     const update =
-  //       !!((i + 1) % batchSize === 0 || (i + 1) === dataSet.length);
-
-  //     const output = activate(input, true);
-  //     this.propagate(currentRate, momentum, update, target);
-
-  //     const cost = costFunction(target, output);
-  //     if (!isFinite(cost)) {
-  //       throw "Invalid cost: " + cost + " of target: " + target + " output: " +
-  //         output + " function: " + costFunction;
-  //     }
-  //     errorSum += cost;
-  //   }
-  //   const error = errorSum / dataSet.length;
-  //   if (!isFinite(error)) {
-  //     throw "Invalid error: " + error + ", len: " + dataSet.length;
-  //   }
-  //   return error;
-  // }
-
   /**
    * Train the given set to this network
    */

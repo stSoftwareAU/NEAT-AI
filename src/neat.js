@@ -5,9 +5,10 @@ import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
 import { make as makeConfig } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
-import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
+import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
 import { emptyDirSync } from "https://deno.land/std@0.137.0/fs/empty_dir.ts";
+import { NeatUtil } from "./NeatUtil.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -22,6 +23,7 @@ export class Neat {
 
     this.workers = workers;
     this.config = makeConfig(options);
+    this.util = new NeatUtil(this, this.config);
 
     // The fitness function to evaluate the networks
     this.fitness = new Fitness(workers, this.config.growth);
@@ -69,11 +71,15 @@ export class Neat {
       delete json.score;
       const key = JSON.stringify(json);
 
-      if (unique.has(key)) {
+      let duplicate = unique.has(key);
+      if (!duplicate && i > this.config.elitism) {
+        duplicate = this.util.previousExperiment(p);
+      }
+      if (duplicate) {
         // console.log( "duplicate found at", i);
         for (let j = 0; j < 100; j++) {
           const tmpPopulation = [this.getOffspring()];
-          this._mutate(tmpPopulation);
+          this.util.mutate(tmpPopulation);
 
           const p2 = tmpPopulation[0];
           const json2 = p2.toJSON();
@@ -134,6 +140,11 @@ export class Neat {
     addTag(fittest, "error", getTag(fittest, "error"));
 
     const livePopulation = [];
+
+    await this.util.writeExperiments(
+      this.population,
+      this.config.creatureStore,
+    );
 
     let trainingWorked = false;
 
@@ -200,7 +211,7 @@ export class Neat {
     }
 
     // Replace the old population with the new population
-    this._mutate(newPopulation);
+    this.util.mutate(newPopulation);
 
     const trainPopulation = [];
     let tCounter = 0;
@@ -312,22 +323,6 @@ export class Neat {
     }
 
     return mutationMethod;
-  }
-
-  /**
-   * Mutates the given (or current) population
-   */
-  _mutate(genes) {
-    for (let i = genes.length; i--;) {
-      if (Math.random() <= this.config.mutationRate) {
-        const gene = genes[i];
-        for (let j = this.config.mutationAmount; j--;) {
-          const mutationMethod = this.selectMutationMethod(gene);
-          gene.mutate(mutationMethod);
-        }
-        removeTag(gene, "approach");
-      }
-    }
   }
 
   /**

@@ -41,4 +41,6 @@ export interface NetworkInterface extends TagsInterface {
   noTraceActivate?: Function;
   // deno-lint-ignore ban-types
   activate?: Function;
+  // deno-lint-ignore ban-types
+  mutate?: Function;
 }
