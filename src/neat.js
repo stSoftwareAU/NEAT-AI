@@ -7,7 +7,7 @@ import { make as makeConfig } from "./config.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
-import { emptyDirSync } from "https://deno.land/std@0.136.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.137.0/fs/empty_dir.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
