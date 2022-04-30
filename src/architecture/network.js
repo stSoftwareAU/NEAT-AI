@@ -278,8 +278,8 @@ export class Network {
     switch (method) {
       case Mutation.ADD_NODE: {
         // Look for an existing connection and place a node in between
-        const pos =Math.floor(Math.random() * this.connections.length)
-        const connection =  this.connections[pos];
+        const pos = Math.floor(Math.random() * this.connections.length);
+        const connection = this.connections[pos];
         if (connection) {
           const gater = connection.gater;
           this.disconnect(connection.from, connection.to);
@@ -303,9 +303,8 @@ export class Network {
           if (gater != null) {
             this.gate(gater, Math.random() >= 0.5 ? newConn1 : newConn2);
           }
-        }
-        else{
-          console.warn( "mission connection at", pos, "of", connection.length);
+        } else {
+          console.warn("mission connection at", pos, "of", connection.length);
         }
         break;
       }

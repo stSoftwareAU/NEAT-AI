@@ -3,7 +3,7 @@ import { Network } from "./architecture/network.js";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { Methods } from "./methods/methods.js";
 import { Mutation } from "./methods/mutation.ts";
-import { make as makeConfig } from "./config.ts";
+import { make as makeConfig } from "./config/NeatConfig.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
@@ -12,7 +12,7 @@ import { NeatUtil } from "./NeatUtil.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
-const DEBUG = false;
+
 /*******************************************************************************
                                          NEAT
 *******************************************************************************/
@@ -29,7 +29,7 @@ export class Neat {
     this.fitness = new Fitness(workers, this.config.growth);
     // Generation counter
     this.generation = 0;
-    this.trainRate = options.trainRate;
+    this.trainRate = this.config.trainRate;
 
     // Initialise the genomes
     this.population = this.config.creatures;
@@ -90,7 +90,7 @@ export class Neat {
           if (!duplicate2 && i > this.config.elitism) {
             duplicate2 = this.util.previousExperiment(p2);
           }
-          if (duplicate2== false) {
+          if (duplicate2 == false) {
             this.population[i] = p2;
             unique.add(key2);
             break;
@@ -106,20 +106,7 @@ export class Neat {
    * Evaluates, selects, breeds and mutates population
    */
   async evolve(previousFittest) {
-    if (DEBUG) {
-      if (!previousFittest) { //FIRST
-        for (let i = 0; i < this.population.length; i++) {
-          const n = this.population[i];
-
-          if (n.score) {
-            throw "Score found " + i;
-          }
-          if (n.error) {
-            throw "Error found " + i;
-          }
-        }
-      }
-    }
+    
     const trainPromises = [];
     for (let i = 0; i < this.population.length; i++) {
       const n = this.population[i];
@@ -145,9 +132,8 @@ export class Neat {
 
     const livePopulation = [];
 
-    await this.util.writeExperiments(
-      this.population,
-      this.config.creatureStore,
+    await this.util.writeScores(
+      this.population
     );
 
     let trainingWorked = false;
@@ -256,25 +242,6 @@ export class Neat {
 
     this.deDepulate();
 
-    if (DEBUG) {
-      for (let i = 0; i < elitists.length; i++) {
-        const n = this.population[i];
-
-        if (!n.score) {
-          throw "No score for " + i;
-        }
-      }
-      for (let i = elitists.length; i < this.population.length; i++) {
-        const n = this.population[i];
-
-        if (n.score) {
-          throw "Score found " + i;
-        }
-        if (n.error) {
-          throw "Error found " + i;
-        }
-      }
-    }
     this.generation++;
 
     return fittest;

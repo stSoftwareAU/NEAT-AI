@@ -4,7 +4,7 @@ import { Network } from "../../architecture/network.js";
 import { NetworkUtil } from "../../architecture/NetworkUtil.ts";
 import { findCost } from "../../config.ts";
 
-import { TrainOptions } from "../../TrainOptions.ts";
+import { TrainOptions } from "../../config/TrainOptions.ts";
 
 export class WorkerProcessor {
   private costName: (string | null) = null;

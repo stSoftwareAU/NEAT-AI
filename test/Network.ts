@@ -7,7 +7,7 @@ import {
 } from "https://deno.land/std@0.137.0/testing/asserts.ts";
 
 import { Mutation } from "../src/methods/mutation.ts";
-import { NeatOptions } from "../src/config.ts";
+import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 /* Functions used in the testing process */
 function checkMutation(method: unknown) {

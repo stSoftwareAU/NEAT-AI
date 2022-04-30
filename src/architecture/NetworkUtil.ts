@@ -1,16 +1,16 @@
 import { NetworkInterface } from "./NetworkInterface.ts";
 import { Network } from "./network.js";
 import { DataRecordInterface } from "./DataSet.ts";
-import { make as makeConfig, NeatOptions } from "../config.ts";
+import { make as makeConfig } from "../config/NeatConfig.ts";
+import { NeatOptions } from "../config/NeatOptions.ts";
+
 import { yellow } from "https://deno.land/std@0.137.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../neat.js";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
-// import { crypto } from "https://deno.land/std@0.137.0/crypto/mod.ts";
-// import { encode } from "https://deno.land/std@0.137.0/encoding/base64.ts";
-// import { ensureDirSync } from "https://deno.land/std@0.137.0/fs/ensure_dir.ts";
-import { TrainOptions } from "../TrainOptions.ts";
+
+import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
 
 export class NetworkUtil {

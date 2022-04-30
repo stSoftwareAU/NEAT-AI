@@ -1,6 +1,6 @@
 import { architect } from "../../NEAT-TS/src/architecture/architect.js";
 import { assert } from "https://deno.land/std@0.137.0/testing/asserts.ts";
-import { NeatOptions } from "../src/config.ts";
+import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 Deno.test("hypotenuse", async () => {
   const network = architect.Random(2, 2, 1);
