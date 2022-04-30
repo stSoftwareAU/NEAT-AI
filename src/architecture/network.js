@@ -304,7 +304,12 @@ export class Network {
             this.gate(gater, Math.random() >= 0.5 ? newConn1 : newConn2);
           }
         } else {
-          console.warn("mission connection at", pos, "of", connection.length);
+          console.warn(
+            "mission connection at",
+            pos,
+            "of",
+            this.connections.length,
+          );
         }
         break;
       }
