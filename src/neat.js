@@ -12,7 +12,7 @@ import { NeatUtil } from "./NeatUtil.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
-const DEBUG = true;
+const DEBUG = false;
 /*******************************************************************************
                                          NEAT
 *******************************************************************************/
