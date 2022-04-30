@@ -278,29 +278,34 @@ export class Network {
     switch (method) {
       case Mutation.ADD_NODE: {
         // Look for an existing connection and place a node in between
-        const connection =
-          this.connections[Math.floor(Math.random() * this.connections.length)];
-        const gater = connection.gater;
-        this.disconnect(connection.from, connection.to);
+        const pos =Math.floor(Math.random() * this.connections.length)
+        const connection =  this.connections[pos];
+        if (connection) {
+          const gater = connection.gater;
+          this.disconnect(connection.from, connection.to);
 
-        // Insert the new node right before the old connection.to
-        const toIndex = this.nodes.indexOf(connection.to);
-        const node = new Node("hidden");
+          // Insert the new node right before the old connection.to
+          const toIndex = this.nodes.indexOf(connection.to);
+          const node = new Node("hidden");
 
-        // Random squash function
-        node.mutate(Mutation.MOD_ACTIVATION);
+          // Random squash function
+          node.mutate(Mutation.MOD_ACTIVATION);
 
-        // Place it in this.nodes
-        const minBound = Math.min(toIndex, this.nodes.length - this.output);
-        this.nodes.splice(minBound, 0, node);
+          // Place it in this.nodes
+          const minBound = Math.min(toIndex, this.nodes.length - this.output);
+          this.nodes.splice(minBound, 0, node);
 
-        // Now create two new connections
-        const newConn1 = this.connect(connection.from, node)[0];
-        const newConn2 = this.connect(node, connection.to)[0];
+          // Now create two new connections
+          const newConn1 = this.connect(connection.from, node)[0];
+          const newConn2 = this.connect(node, connection.to)[0];
 
-        // Check if the original connection was gated
-        if (gater != null) {
-          this.gate(gater, Math.random() >= 0.5 ? newConn1 : newConn2);
+          // Check if the original connection was gated
+          if (gater != null) {
+            this.gate(gater, Math.random() >= 0.5 ? newConn1 : newConn2);
+          }
+        }
+        else{
+          console.warn( "mission connection at", pos, "of", connection.length);
         }
         break;
       }
