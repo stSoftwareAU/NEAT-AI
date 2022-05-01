@@ -12,6 +12,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
+import { emptyDirSync } from "https://deno.land/std@0.137.0/fs/empty_dir.ts";
 
 export class NetworkUtil {
   private network;
@@ -425,25 +426,15 @@ export class NetworkUtil {
 
   private writeCreatures(neat: Neat, dir: string) {
     let counter = 1;
-    // ensureDirSync(dir + "/store");
-
+    emptyDirSync(dir);
     neat.population.forEach((creature: NetworkInterface) => {
       const json = creature.toJSON();
 
       const txt = JSON.stringify(json, null, 1);
 
-      // const b64=encode(new Uint8Array(
-      //   await crypto.subtle.digest(
-      //     "SHA-256",
-      //     new TextEncoder().encode(txt),
-      //   ),
-      // ) );
-      // const name=b64.replaceAll("/", "_").replaceAll("=", "").replaceAll( "+", "-") +".json";
-
       const filePath = dir + "/" + counter + ".json";
       Deno.writeTextFileSync(filePath, txt);
-      // const symPath=dir + "/" +counter +".json";
-      // Deno.symlinkSync( filePath, "store/" + name);
+
       counter++;
     });
   }

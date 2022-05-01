@@ -106,7 +106,6 @@ export class Neat {
    * Evaluates, selects, breeds and mutates population
    */
   async evolve(previousFittest) {
-    
     const trainPromises = [];
     for (let i = 0; i < this.population.length; i++) {
       const n = this.population[i];
@@ -133,7 +132,7 @@ export class Neat {
     const livePopulation = [];
 
     await this.util.writeScores(
-      this.population
+      this.population,
     );
 
     let trainingWorked = false;
