@@ -305,7 +305,7 @@ export class Network {
           }
         } else {
           console.warn(
-            "mission connection at",
+            "missing connection at",
             pos,
             "of",
             this.connections.length,
@@ -380,11 +380,20 @@ export class Network {
       case Mutation.MOD_WEIGHT: {
         const allconnections = this.connections.concat(this.selfconns);
 
-        const connection =
-          allconnections[Math.floor(Math.random() * allconnections.length)];
-        const modification = Math.random() * (method.max - method.min) +
-          method.min;
-        connection.weight += modification;
+        const pos = Math.floor(Math.random() * allconnections.length);
+        const connection = allconnections[pos];
+        if (connection) {
+          const modification = Math.random() * (method.max - method.min) +
+            method.min;
+          connection.weight += modification;
+        } else {
+          console.warn(
+            "missing connection at",
+            pos,
+            "of",
+            allconnections.length,
+          );
+        }
         break;
       }
       case Mutation.MOD_BIAS: {
