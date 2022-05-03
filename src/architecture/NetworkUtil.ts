@@ -339,8 +339,11 @@ export class NetworkUtil {
       files.forEach((name) => {
         if (!isFinite(errorSum)) return;
         const fn = dataDir + "/" + name;
+        const json = cacheDataFile.fn==fn?cacheDataFile.json:JSON.parse(Deno.readTextFileSync(fn));
 
-        const json = JSON.parse(Deno.readTextFileSync(fn));
+        cacheDataFile.fn=fn;
+        cacheDataFile.json=json;
+
         if (json.length == 0) {
           throw "Set size must be positive";
         }
