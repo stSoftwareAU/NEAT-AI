@@ -59,33 +59,27 @@ export class Neat {
     this.deDepulate();
   }
 
-  deDepulate() {
+  async deDepulate() {
     const unique = new Set();
     /**
      *  Reset the scores & de-duplcate the population.
      */
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
-      const json = p.toJSON();
-      delete json.tags;
-      delete json.score;
-      const key = JSON.stringify(json);
+      const key=await this.util.makeUniqueName( p);
 
       let duplicate = unique.has(key);
-      if (!duplicate && i > this.config.elitism) {
+      if (!duplicate && i > this.config.elitism) {        
         duplicate = this.util.previousExperiment(p);
       }
       if (duplicate) {
-        // console.log( "duplicate found at", i);
         for (let j = 0; j < 100; j++) {
           const tmpPopulation = [this.getOffspring()];
           this.util.mutate(tmpPopulation);
 
           const p2 = tmpPopulation[0];
-          const json2 = p2.toJSON();
-          delete json2.tags;
-          delete json2.score;
-          const key2 = JSON.stringify(json2);
+          const key2=await this.util.makeUniqueName( p2);
+
           let duplicate2 = unique.has(key2);
           if (!duplicate2 && i > this.config.elitism) {
             duplicate2 = this.util.previousExperiment(p2);

@@ -251,9 +251,14 @@ export class NetworkUtil {
 
       const json = cacheDataFile.fn==fn?cacheDataFile.json:JSON.parse(Deno.readTextFileSync(fn));
 
-      cacheDataFile.fn=fn;
-      cacheDataFile.json=json;
-
+      if( files.length == 1){
+        cacheDataFile.fn=fn;
+        cacheDataFile.json=json;
+      }
+      else{
+        cacheDataFile.fn="";
+        cacheDataFile.json={};
+      }
       if (json.length == 0) {
         throw "Set size must be positive";
       }
@@ -341,8 +346,14 @@ export class NetworkUtil {
         const fn = dataDir + "/" + name;
         const json = cacheDataFile.fn==fn?cacheDataFile.json:JSON.parse(Deno.readTextFileSync(fn));
 
-        cacheDataFile.fn=fn;
-        cacheDataFile.json=json;
+        if( files.length == 1){
+          cacheDataFile.fn=fn;
+          cacheDataFile.json=json;
+        }
+        else{
+          cacheDataFile.fn="";
+          cacheDataFile.json={};
+        }
 
         if (json.length == 0) {
           throw "Set size must be positive";
