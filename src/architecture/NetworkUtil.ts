@@ -14,6 +14,10 @@ import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.137.0/fs/empty_dir.ts";
 
+const cacheDataFile={
+  fn:"",
+  json:{}
+}
 export class NetworkUtil {
   private network;
   constructor(
@@ -245,7 +249,11 @@ export class NetworkUtil {
     files.forEach((name) => {
       const fn = dataDir + "/" + name;
 
-      const json = JSON.parse(Deno.readTextFileSync(fn));
+      const json = cacheDataFile.fn==fn?cacheDataFile.json:JSON.parse(Deno.readTextFileSync(fn));
+
+      cacheDataFile.fn=fn;
+      cacheDataFile.json=json;
+
       if (json.length == 0) {
         throw "Set size must be positive";
       }
