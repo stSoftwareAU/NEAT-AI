@@ -56,7 +56,7 @@ export interface NeatConfig {
   log: number;
 
   schedule?: ScheduleInterface;
-  network?: NetworkInterface;
+  // network?: NetworkInterface;
 }
 
 export function make(parameters?: NeatOptions) {
@@ -91,7 +91,6 @@ export function make(parameters?: NeatOptions) {
     mutation: options.mutation || Mutation.FFW,
     selection: options.selection || Methods.selection.POWER,
 
-    network: options.network,
     threads: Math.round(
       Math.max(
         options.threads ? options.threads : navigator.hardwareConcurrency,

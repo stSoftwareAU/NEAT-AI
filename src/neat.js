@@ -33,14 +33,12 @@ export class Neat {
 
     // Initialise the genomes
     this.population = this.config.creatures;
-
-    this._populatePopulation(this.config.network);
   }
 
   /**
    * Create the initial pool of genomes
    */
-  _populatePopulation(network) {
+  async populatePopulation(network) {
     while (this.population.length < this.config.popsize) {
       let copy;
       if (network) {
@@ -56,7 +54,7 @@ export class Neat {
       this.population.unshift(network);
     }
 
-    this.deDepulate();
+    await this.deDepulate();
   }
 
   async deDepulate() {
@@ -66,10 +64,10 @@ export class Neat {
      */
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
-      const key=await this.util.makeUniqueName( p);
+      const key = await this.util.makeUniqueName(p);
 
       let duplicate = unique.has(key);
-      if (!duplicate && i > this.config.elitism) {        
+      if (!duplicate && i > this.config.elitism) {
         duplicate = this.util.previousExperiment(p);
       }
       if (duplicate) {
@@ -78,7 +76,7 @@ export class Neat {
           this.util.mutate(tmpPopulation);
 
           const p2 = tmpPopulation[0];
-          const key2=await this.util.makeUniqueName( p2);
+          const key2 = await this.util.makeUniqueName(p2);
 
           let duplicate2 = unique.has(key2);
           if (!duplicate2 && i > this.config.elitism) {
@@ -233,7 +231,7 @@ export class Neat {
       ...trainPopulation,
     ]; // Keep pseudo sorted.
 
-    this.deDepulate();
+    await this.deDepulate();
 
     this.generation++;
 

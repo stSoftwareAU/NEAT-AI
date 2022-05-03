@@ -14,10 +14,10 @@ import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.137.0/fs/empty_dir.ts";
 
-const cacheDataFile={
-  fn:"",
-  json:{}
-}
+const cacheDataFile = {
+  fn: "",
+  json: {},
+};
 export class NetworkUtil {
   private network;
   constructor(
@@ -91,13 +91,14 @@ export class NetworkUtil {
     }
 
     // Intialise the NEAT instance
-    options.network = this.network;
     const neat = new Neat(
       this.network.input,
       this.network.output,
       options,
       workers,
     );
+
+    await neat.populatePopulation(this.network);
 
     let error = -Infinity;
     let bestScore = -Infinity;
@@ -249,15 +250,16 @@ export class NetworkUtil {
     files.forEach((name) => {
       const fn = dataDir + "/" + name;
 
-      const json = cacheDataFile.fn==fn?cacheDataFile.json:JSON.parse(Deno.readTextFileSync(fn));
+      const json = cacheDataFile.fn == fn
+        ? cacheDataFile.json
+        : JSON.parse(Deno.readTextFileSync(fn));
 
-      if( files.length == 1){
-        cacheDataFile.fn=fn;
-        cacheDataFile.json=json;
-      }
-      else{
-        cacheDataFile.fn="";
-        cacheDataFile.json={};
+      if (files.length == 1) {
+        cacheDataFile.fn = fn;
+        cacheDataFile.json = json;
+      } else {
+        cacheDataFile.fn = "";
+        cacheDataFile.json = {};
       }
       if (json.length == 0) {
         throw "Set size must be positive";
@@ -344,15 +346,16 @@ export class NetworkUtil {
       files.forEach((name) => {
         if (!isFinite(errorSum)) return;
         const fn = dataDir + "/" + name;
-        const json = cacheDataFile.fn==fn?cacheDataFile.json:JSON.parse(Deno.readTextFileSync(fn));
+        const json = cacheDataFile.fn == fn
+          ? cacheDataFile.json
+          : JSON.parse(Deno.readTextFileSync(fn));
 
-        if( files.length == 1){
-          cacheDataFile.fn=fn;
-          cacheDataFile.json=json;
-        }
-        else{
-          cacheDataFile.fn="";
-          cacheDataFile.json={};
+        if (files.length == 1) {
+          cacheDataFile.fn = fn;
+          cacheDataFile.json = json;
+        } else {
+          cacheDataFile.fn = "";
+          cacheDataFile.json = {};
         }
 
         if (json.length == 0) {

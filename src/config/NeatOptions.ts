@@ -55,5 +55,5 @@ export interface NeatOptions {
   log?: number;
 
   schedule?: ScheduleInterface;
-  network?: NetworkInterface;
+  // network?: NetworkInterface;
 }
