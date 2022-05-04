@@ -128,11 +128,19 @@ export class Neat {
     );
 
     let trainingWorked = false;
-
+    let unTunedCount = 0;
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
 
       if (isFinite(p.score)) {
+        const oldScore = getTag(p, "old-score");
+        if (oldScore && p.score < parseFloat(oldScore)) {
+          // const diff=p.score-parseFloat(oldScore);
+          // console.log("tuning crippled creature by ", diff);
+          unTunedCount++;
+          continue;
+        }
+
         livePopulation.push(p);
 
         const untrained = getTag(p, "untrained");
@@ -160,12 +168,31 @@ export class Neat {
         this.trainRate = nextRate;
       }
     }
-    if (this.population.length !== livePopulation.length) {
-      console.info(
-        "Removed",
-        this.population.length - livePopulation.length,
-        "dead creatures",
-      );
+    const removedCount = this.population.length - livePopulation.length;
+    if (removedCount) {
+      const deadCreatures = (removedCount - unTunedCount);
+      if (removedCount > unTunedCount && unTunedCount) {
+        console.info(
+          "Removed",
+          deadCreatures,
+          "dead creature" + (deadCreatures > 0 ? "s" : ""),
+          "and",
+          unTunedCount,
+          "crippled creature" + (unTunedCount > 0 ? "s" : ""),
+        );
+      } else if (removedCount == unTunedCount) {
+        console.info(
+          "Removed",
+          unTunedCount,
+          "crippled creature" + (unTunedCount > 0 ? "s" : ""),
+        );
+      } else {
+        console.info(
+          "Removed",
+          deadCreatures,
+          "dead creature" + (deadCreatures > 0 ? "s" : ""),
+        );
+      }
     }
 
     this.population = livePopulation;

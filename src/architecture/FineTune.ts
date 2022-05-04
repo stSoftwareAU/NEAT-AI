@@ -52,7 +52,8 @@ export function fineTuneImprovement(
   const previousJSON = previousFittest.toJSON();
   const allJSON = fittest.toJSON();
   let changeCount = 0;
-
+  let changeBiasCount = 0;
+  let changeWeightCount = 0;
   for (let i = allJSON.nodes.length; i--;) {
     const tn = allJSON.nodes[i];
 
@@ -76,6 +77,7 @@ export function fineTuneImprovement(
           // );
           tn.bias = bias;
           changeCount++;
+          changeBiasCount++;
         }
       }
     }
@@ -107,6 +109,7 @@ export function fineTuneImprovement(
             // );
             tc.weight = weight;
             changeCount++;
+            changeWeightCount++;
           }
         }
         break;
@@ -119,12 +122,23 @@ export function fineTuneImprovement(
   } else if (changeCount > 1) { // If only 1 then use the normal steps.
     const all = Network.fromJSON(allJSON);
     addTag(all, "approach", "fine");
-    addTag(all, "adjusted", "weight");
+    if (changeWeightCount > 0 && changeBiasCount > 0) {
+      addTag(
+        all,
+        "adjusted",
+        "weight: " + changeWeightCount + ", bias: " + changeBiasCount,
+      );
+    } else if (changeWeightCount > 0) {
+      addTag(all, "adjusted", "weight: " + changeWeightCount);
+    } else {
+      addTag(all, "adjusted", "bias: " + changeBiasCount);
+    }
     addTag(
       all,
       "step",
       "ALL",
     );
+    addTag(all, "old-score", fScoreTxt);
     fineTuned.push(all);
   }
 
@@ -160,6 +174,7 @@ export function fineTuneImprovement(
               "step",
               k % 3 == 0 ? "large" : k % 3 == 1 ? "small" : "back",
             );
+            addTag(n, "old-score", fScoreTxt);
             fineTuned.push(n);
             if (fineTuned.length >= popsize) break;
             targetJSON = fittest.toJSON();
@@ -203,6 +218,7 @@ export function fineTuneImprovement(
                 "step",
                 k % 3 == 0 ? "large" : k % 3 == 1 ? "small" : "back",
               );
+              addTag(n, "old-score", fScoreTxt);
               fineTuned.push(n);
               if (fineTuned.length >= popsize) break;
               targetJSON = fittest.toJSON();
