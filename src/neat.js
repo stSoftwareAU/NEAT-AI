@@ -128,7 +128,7 @@ export class Neat {
     );
 
     let trainingWorked = false;
-    let unTunedCount = 0;
+    // let crippledCount = 0;
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
 
@@ -137,7 +137,7 @@ export class Neat {
         if (oldScore && p.score < parseFloat(oldScore)) {
           // const diff=p.score-parseFloat(oldScore);
           // console.log("tuning crippled creature by ", diff);
-          unTunedCount++;
+          // crippledCount++;
           continue;
         }
 
@@ -168,32 +168,32 @@ export class Neat {
         this.trainRate = nextRate;
       }
     }
-    const removedCount = this.population.length - livePopulation.length;
-    if (removedCount) {
-      const deadCreatures = (removedCount - unTunedCount);
-      if (removedCount > unTunedCount && unTunedCount) {
-        console.info(
-          "Removed",
-          deadCreatures,
-          "dead creature" + (deadCreatures > 0 ? "s" : ""),
-          "and",
-          unTunedCount,
-          "crippled creature" + (unTunedCount > 0 ? "s" : ""),
-        );
-      } else if (removedCount == unTunedCount) {
-        console.info(
-          "Removed",
-          unTunedCount,
-          "crippled creature" + (unTunedCount > 0 ? "s" : ""),
-        );
-      } else {
-        console.info(
-          "Removed",
-          deadCreatures,
-          "dead creature" + (deadCreatures > 0 ? "s" : ""),
-        );
-      }
-    }
+    // const removedCount = this.population.length - livePopulation.length;
+    // if (removedCount) {
+    //   const deadCreatures = (removedCount - crippledCount);
+    //   if (removedCount > crippledCount && crippledCount) {
+    //     console.info(
+    //       "Removed",
+    //       deadCreatures,
+    //       "dead creature" + (deadCreatures > 1 ? "s" : ""),
+    //       "and",
+    //       crippledCount,
+    //       "crippled creature" + (crippledCount > 1 ? "s" : ""),
+    //     );
+    //   } else if (removedCount == crippledCount) {
+    //     console.info(
+    //       "Removed",
+    //       crippledCount,
+    //       "crippled creature" + (crippledCount > 1 ? "s" : ""),
+    //     );
+    //   } else {
+    //     console.info(
+    //       "Removed",
+    //       deadCreatures,
+    //       "dead creature" + (deadCreatures > 1 ? "s" : ""),
+    //     );
+    //   }
+    // }
 
     this.population = livePopulation;
 
