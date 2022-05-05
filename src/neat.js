@@ -113,7 +113,7 @@ export class Neat {
     await this.evaluate();
 
     // Elitism
-    const elitists = makeElitists(this.population, this.config.elitism);
+    const elitists = makeElitists(this.population, this.config.elitism>1?this.config.elitism:2);
     const tmpFittest = elitists[0];
 
     const fittest = Network.fromJSON(tmpFittest.toJSON()); // Make a copy so it's not mutated.
@@ -197,9 +197,11 @@ export class Neat {
 
     this.population = livePopulation;
 
+    /** If this is the first run then use the second best as the "previous" */
+    const tmpPreviousFittest=previousFittest?previousFittest:elitists[1];
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
-      previousFittest,
+      tmpPreviousFittest,
       /** 20% of population or those that just died */
       Math.max(
         Math.ceil(this.config.popsize / 5),
