@@ -112,7 +112,7 @@ export class Neat {
     }
     await this.evaluate();
 
-    /* Elitism: we need 2 on the first run */
+    /* Elitism: we need at least 2 on the first run */
     const elitists = makeElitists(
       this.population,
       this.config.elitism > 1
