@@ -113,7 +113,10 @@ export class Neat {
     await this.evaluate();
 
     // Elitism
-    const elitists = makeElitists(this.population, this.config.elitism>1?this.config.elitism:2);
+    const elitists = makeElitists(
+      this.population,
+      this.config.elitism > 1 ? this.config.elitism : 2,
+    );
     const tmpFittest = elitists[0];
 
     const fittest = Network.fromJSON(tmpFittest.toJSON()); // Make a copy so it's not mutated.
@@ -168,37 +171,11 @@ export class Neat {
         this.trainRate = nextRate;
       }
     }
-    // const removedCount = this.population.length - livePopulation.length;
-    // if (removedCount) {
-    //   const deadCreatures = (removedCount - crippledCount);
-    //   if (removedCount > crippledCount && crippledCount) {
-    //     console.info(
-    //       "Removed",
-    //       deadCreatures,
-    //       "dead creature" + (deadCreatures > 1 ? "s" : ""),
-    //       "and",
-    //       crippledCount,
-    //       "crippled creature" + (crippledCount > 1 ? "s" : ""),
-    //     );
-    //   } else if (removedCount == crippledCount) {
-    //     console.info(
-    //       "Removed",
-    //       crippledCount,
-    //       "crippled creature" + (crippledCount > 1 ? "s" : ""),
-    //     );
-    //   } else {
-    //     console.info(
-    //       "Removed",
-    //       deadCreatures,
-    //       "dead creature" + (deadCreatures > 1 ? "s" : ""),
-    //     );
-    //   }
-    // }
 
     this.population = livePopulation;
 
     /** If this is the first run then use the second best as the "previous" */
-    const tmpPreviousFittest=previousFittest?previousFittest:elitists[1];
+    const tmpPreviousFittest = previousFittest ? previousFittest : elitists[1];
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
       tmpPreviousFittest,
