@@ -266,7 +266,12 @@ export function fineTuneImprovement(
   ) {
     const sliceRate = (popsize - fineTuned.length) /
       (resultALL.changeBiasCount + resultALL.changeWeightCount);
+
+    console.info( "Slice Rate", sliceRate, (popsize - fineTuned.length), resultALL.changeBiasCount , resultALL.changeWeightCount);
+
     const slices = Math.ceil(1 / sliceRate);
+    console.info( "Slices", slices);
+
     if (resultALL.changeBiasCount < 2 && resultALL.changeWeightCount > 1) {
       for (let i = 0; i < slices; i++) {
         const weightsOnly = tuneWeights(
