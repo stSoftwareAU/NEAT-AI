@@ -7,6 +7,7 @@ function tuneWeights(
   fittest: NetworkInterface,
   previousFittest: NetworkInterface,
   oldScore: string,
+  rate = 1,
 ) {
   const previousJSON = previousFittest.toJSON();
   const allJSON = fittest.toJSON();
@@ -20,11 +21,13 @@ function tuneWeights(
       if (tc.from == pc.from && tc.to == pc.to) {
         if (tc.gater == pc.gater) {
           if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
-            const adjust = tc.weight - pc.weight;
-            const weight = tc.weight + adjust;
+            if (Math.random() < rate) {
+              const adjust = tc.weight - pc.weight;
+              const weight = tc.weight + adjust;
 
-            tc.weight = weight;
-            changeWeightCount++;
+              tc.weight = weight;
+              changeWeightCount++;
+            }
           }
         }
         break;
@@ -32,7 +35,7 @@ function tuneWeights(
     }
   }
 
-  if (changeWeightCount < 2) return null;
+  if (changeWeightCount < 2 && rate == 1) return null;
 
   const all = Network.fromJSON(allJSON);
   addTag(all, "approach", "fine");
@@ -42,11 +45,20 @@ function tuneWeights(
     changeWeightCount + " weights",
   );
 
-  addTag(
-    all,
-    "step",
-    "ALL-weigths",
-  );
+  if (rate == 1) {
+    addTag(
+      all,
+      "step",
+      "ALL-weigths",
+    );
+  } else {
+    const p = Math.ceil(rate * 100);
+    addTag(
+      all,
+      "step",
+      p + "%-weigths",
+    );
+  }
   addTag(all, "old-score", oldScore);
 
   return all;
@@ -56,6 +68,7 @@ function tuneBias(
   fittest: NetworkInterface,
   previousFittest: NetworkInterface,
   oldScore: string,
+  rate = 1,
 ) {
   const previousJSON = previousFittest.toJSON();
   const allJSON = fittest.toJSON();
@@ -69,17 +82,19 @@ function tuneBias(
 
       if (tn.squash == pn.squash) {
         if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
-          const adjust = tn.bias - pn.bias;
-          const bias = tn.bias + adjust;
+          if (Math.random() < rate) {
+            const adjust = tn.bias - pn.bias;
+            const bias = tn.bias + adjust;
 
-          tn.bias = bias;
-          changeBiasCount++;
+            tn.bias = bias;
+            changeBiasCount++;
+          }
         }
       }
     }
   }
 
-  if (changeBiasCount < 2) return null;
+  if (changeBiasCount < 2 && rate == 1) return null;
 
   const all = Network.fromJSON(allJSON);
   addTag(all, "approach", "fine");
@@ -89,11 +104,20 @@ function tuneBias(
     changeBiasCount + " biases",
   );
 
-  addTag(
-    all,
-    "step",
-    "ALL-biases",
-  );
+  if (rate == 1) {
+    addTag(
+      all,
+      "step",
+      "ALL-biases",
+    );
+  } else {
+    const p = Math.ceil(rate * 100);
+    addTag(
+      all,
+      "step",
+      p + "%-biases",
+    );
+  }
   addTag(all, "old-score", oldScore);
 
   return all;
@@ -147,7 +171,13 @@ function tuneAll(
     }
   }
 
-  if (changeBiasCount == 0 || changeWeightCount == 0) return null;
+  if (changeBiasCount == 0 || changeWeightCount == 0) {
+    return {
+      changeBiasCount: changeBiasCount,
+      changeWeightCount: changeWeightCount,
+      all: null,
+    };
+  }
 
   const all = Network.fromJSON(allJSON);
   addTag(all, "approach", "fine");
@@ -165,7 +195,11 @@ function tuneAll(
   );
   addTag(all, "old-score", oldScore);
 
-  return all;
+  return {
+    changeBiasCount: changeBiasCount,
+    changeWeightCount: changeWeightCount,
+    all: all,
+  };
 }
 
 export function fineTuneImprovement(
@@ -217,14 +251,59 @@ export function fineTuneImprovement(
   const fineTuned: Network[] = [];
   const previousJSON = previousFittest.toJSON();
 
-  const all = tuneAll(fittest, previousFittest, fScoreTxt);
-  if (all) fineTuned.push(all);
+  const resultALL = tuneAll(fittest, previousFittest, fScoreTxt);
+  if (resultALL.all) fineTuned.push(resultALL.all);
 
   const weightsOnly = tuneWeights(fittest, previousFittest, fScoreTxt);
   if (weightsOnly) fineTuned.push(weightsOnly);
 
   const biasOnly = tuneBias(fittest, previousFittest, fScoreTxt);
   if (biasOnly) fineTuned.push(biasOnly);
+
+  if (
+    resultALL.changeBiasCount + resultALL.changeWeightCount >
+      popsize - fineTuned.length
+  ) {
+    const sliceRate = (popsize - fineTuned.length) /
+      (resultALL.changeBiasCount + resultALL.changeWeightCount);
+    const slices = Math.ceil(1 / sliceRate);
+    if (resultALL.changeBiasCount < 2 && resultALL.changeWeightCount > 1) {
+      for (let i = 0; i < slices; i++) {
+        const weightsOnly = tuneWeights(
+          fittest,
+          previousFittest,
+          fScoreTxt,
+          sliceRate,
+        );
+        if (weightsOnly) fineTuned.push(weightsOnly);
+      }
+    } else if (
+      resultALL.changeWeightCount < 2 && resultALL.changeBiasCount > 1
+    ) {
+      const biasOnly = tuneBias(fittest, previousFittest, fScoreTxt, sliceRate);
+      if (biasOnly) fineTuned.push(biasOnly);
+    } else {
+      for (let i = 0; i < Math.floor(slices / 2); i++) {
+        const weightsOnly = tuneWeights(
+          fittest,
+          previousFittest,
+          fScoreTxt,
+          sliceRate * 2,
+        );
+        if (weightsOnly) fineTuned.push(weightsOnly);
+
+        const biasOnly = tuneBias(
+          fittest,
+          previousFittest,
+          fScoreTxt,
+          sliceRate * 2,
+        );
+        if (biasOnly) fineTuned.push(biasOnly);
+      }
+    }
+
+    return fineTuned;
+  }
 
   let targetJSON = fittest.toJSON();
   for (let k = 0; true; k++) {
