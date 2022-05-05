@@ -308,7 +308,7 @@ export function fineTuneImprovement(
       "Slices",
       slices,
     );
-    // @TODO add unique set and last slice is 100%
+    
     const weights = new Set<string>();
     const biases = new Set<string>();
 
@@ -337,12 +337,15 @@ export function fineTuneImprovement(
         if (biasOnly) fineTuned.push(biasOnly);
       }
     } else {
-      for (let slice = 0; slice < Math.floor(slices / 2); slice++) {
+      const halfSlices=Math.max( Math.floor(slices / 2),2);
+      const doubleRate=sliceRate * 2;
+      console.info( "both", slices, halfSlices, sliceRate, doubleRate);
+      for (let slice = 0; slice < halfSlices; slice++) {
         const weightsOnly = tuneWeights(
           fittest,
           previousFittest,
           fScoreTxt,
-          slice + 1 == slices ? 1 : sliceRate * 2,
+          slice + 1 == halfSlices ? 1 : doubleRate,
           weights,
         );
         if (weightsOnly) fineTuned.push(weightsOnly);
@@ -351,7 +354,7 @@ export function fineTuneImprovement(
           fittest,
           previousFittest,
           fScoreTxt,
-          slice + 1 == slices ? 1 : sliceRate * 2,
+          slice + 1 == halfSlices ? 1 : doubleRate,
           biases,
         );
         if (biasOnly) fineTuned.push(biasOnly);
