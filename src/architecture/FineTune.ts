@@ -172,6 +172,7 @@ export function fineTuneImprovement(
   fittest: NetworkInterface,
   previousFittest: (NetworkInterface | null),
   popsize = 10,
+  showMessage = true,
 ) {
   if (previousFittest == null) {
     return [];
@@ -194,7 +195,7 @@ export function fineTuneImprovement(
   }
 
   const approach = getTag(fittest, "approach");
-  if (approach == "fine") {
+  if (showMessage && approach == "fine") {
     console.info(
       "Fine tuning increased fitness by",
       fScore - pScore,

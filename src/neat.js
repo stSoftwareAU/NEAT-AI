@@ -178,8 +178,19 @@ export class Neat {
 
     this.population = livePopulation;
 
-    /** If this is the first run then use the second best as the "previous" */
-    const tmpPreviousFittest = previousFittest ? previousFittest : elitists[1];
+    /**
+     * If this is the first run then use the second best as the "previous"
+     *
+     * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
+     */
+    const tmpPreviousFittest = previousFittest
+      ? (previousFittest.score != fittest.score
+        ? previousFittest
+        : elitists.length > 1
+        ? elitists[Math.floor(Math.random() * elitists.length) + 1]
+        : previousFittest)
+      : elitists[1];
+
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
       tmpPreviousFittest,
@@ -188,6 +199,7 @@ export class Neat {
         Math.ceil(this.config.popsize / 5),
         this.config.popsize - this.population.length,
       ),
+      previousFittest ? previousFittest.score != fittest.score : false,
     );
 
     const newPopulation = [];
