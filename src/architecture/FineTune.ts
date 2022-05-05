@@ -8,6 +8,7 @@ function tuneWeights(
   previousFittest: NetworkInterface,
   oldScore: string,
   rate = 1,
+  skipSet: (Set<string> | null) = null,
 ) {
   const previousJSON = previousFittest.toJSON();
   const allJSON = fittest.toJSON();
@@ -22,6 +23,12 @@ function tuneWeights(
         if (tc.gater == pc.gater) {
           if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
             if (Math.random() < rate) {
+              if (skipSet) {
+                const key = tc.from + ":" + tc.to;
+                if (skipSet.has(key)) continue;
+
+                skipSet.add(key);
+              }
               const adjust = tc.weight - pc.weight;
               const weight = tc.weight + adjust;
 
@@ -35,7 +42,7 @@ function tuneWeights(
     }
   }
 
-  if (changeWeightCount < 2 && rate == 1) return null;
+  if (!skipSet && changeWeightCount < 2 && rate == 1) return null;
 
   const all = Network.fromJSON(allJSON);
   addTag(all, "approach", "fine");
@@ -46,11 +53,19 @@ function tuneWeights(
   );
 
   if (rate == 1) {
-    addTag(
-      all,
-      "step",
-      "ALL-weigths",
-    );
+    if (skipSet) {
+      addTag(
+        all,
+        "step",
+        "remaining-weigths",
+      );
+    } else {
+      addTag(
+        all,
+        "step",
+        "ALL-weigths",
+      );
+    }
   } else {
     const p = Math.ceil(rate * 100);
     addTag(
@@ -69,6 +84,7 @@ function tuneBias(
   previousFittest: NetworkInterface,
   oldScore: string,
   rate = 1,
+  skipSet: (Set<string> | null) = null,
 ) {
   const previousJSON = previousFittest.toJSON();
   const allJSON = fittest.toJSON();
@@ -83,6 +99,12 @@ function tuneBias(
       if (tn.squash == pn.squash) {
         if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
           if (Math.random() < rate) {
+            if (skipSet) {
+              const key = "idx:" + i;
+              if (skipSet.has(key)) continue;
+
+              skipSet.add(key);
+            }
             const adjust = tn.bias - pn.bias;
             const bias = tn.bias + adjust;
 
@@ -94,7 +116,7 @@ function tuneBias(
     }
   }
 
-  if (changeBiasCount < 2 && rate == 1) return null;
+  if (!skipSet && changeBiasCount < 2 && rate == 1) return null;
 
   const all = Network.fromJSON(allJSON);
   addTag(all, "approach", "fine");
@@ -105,11 +127,19 @@ function tuneBias(
   );
 
   if (rate == 1) {
-    addTag(
-      all,
-      "step",
-      "ALL-biases",
-    );
+    if (skipSet) {
+      addTag(
+        all,
+        "step",
+        "remaining-biases",
+      );
+    } else {
+      addTag(
+        all,
+        "step",
+        "ALL-biases",
+      );
+    }
   } else {
     const p = Math.ceil(rate * 100);
     addTag(
@@ -266,41 +296,54 @@ export function fineTuneImprovement(
   ) {
     const sliceRateRaw = 1 - ((popsize - fineTuned.length) /
       (resultALL.changeBiasCount + resultALL.changeWeightCount));
-    
+
     const slices = Math.floor(1 / sliceRateRaw) + 1;
-    const sliceRate=1/slices;
+    const sliceRate = 1 / slices;
     console.info(
       "Slice Rate",
       sliceRate,
       popsize - fineTuned.length,
       resultALL.changeBiasCount,
       resultALL.changeWeightCount,
-      "Slices", slices
+      "Slices",
+      slices,
     );
     // @TODO add unique set and last slice is 100%
+    const weights = new Set<string>();
+    const biases = new Set<string>();
 
     if (resultALL.changeBiasCount < 2 && resultALL.changeWeightCount > 1) {
-      for (let i = 0; i < slices; i++) {
+      for (let slice = 0; slice < slices; slice++) {
         const weightsOnly = tuneWeights(
           fittest,
           previousFittest,
           fScoreTxt,
-          sliceRate,
+          slice + 1 == slices ? 1 : sliceRate,
+          weights,
         );
         if (weightsOnly) fineTuned.push(weightsOnly);
       }
     } else if (
       resultALL.changeWeightCount < 2 && resultALL.changeBiasCount > 1
     ) {
-      const biasOnly = tuneBias(fittest, previousFittest, fScoreTxt, sliceRate);
-      if (biasOnly) fineTuned.push(biasOnly);
+      for (let slice = 0; slice < slices; slice++) {
+        const biasOnly = tuneBias(
+          fittest,
+          previousFittest,
+          fScoreTxt,
+          slice + 1 == slices ? 1 : sliceRate,
+          biases,
+        );
+        if (biasOnly) fineTuned.push(biasOnly);
+      }
     } else {
-      for (let i = 0; i < Math.floor(slices / 2); i++) {
+      for (let slice = 0; slice < Math.floor(slices / 2); slice++) {
         const weightsOnly = tuneWeights(
           fittest,
           previousFittest,
           fScoreTxt,
-          sliceRate * 2,
+          slice + 1 == slices ? 1 : sliceRate * 2,
+          weights,
         );
         if (weightsOnly) fineTuned.push(weightsOnly);
 
@@ -308,7 +351,8 @@ export function fineTuneImprovement(
           fittest,
           previousFittest,
           fScoreTxt,
-          sliceRate * 2,
+          slice + 1 == slices ? 1 : sliceRate * 2,
+          biases,
         );
         if (biasOnly) fineTuned.push(biasOnly);
       }
