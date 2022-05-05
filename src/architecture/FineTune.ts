@@ -269,14 +269,15 @@ export function fineTuneImprovement(
     
     const slices = Math.floor(1 / sliceRateRaw) + 1;
     const sliceRate=1/slices;
-    // console.info(
-    //   "Slice Rate",
-    //   sliceRate,
-    //   popsize - fineTuned.length,
-    //   resultALL.changeBiasCount,
-    //   resultALL.changeWeightCount,
-    //   "Slices", slices
-    // );
+    console.info(
+      "Slice Rate",
+      sliceRate,
+      popsize - fineTuned.length,
+      resultALL.changeBiasCount,
+      resultALL.changeWeightCount,
+      "Slices", slices
+    );
+    // @TODO add unique set and last slice is 100%
 
     if (resultALL.changeBiasCount < 2 && resultALL.changeWeightCount > 1) {
       for (let i = 0; i < slices; i++) {
