@@ -3,6 +3,171 @@ import { Network } from "./network.js";
 import { NetworkInterface } from "./NetworkInterface.ts";
 const MIN_STEP = 0.000_000_1;
 
+function tuneWeights(
+  fittest: NetworkInterface,
+  previousFittest: NetworkInterface,
+  oldScore: string,
+) {
+  const previousJSON = previousFittest.toJSON();
+  const allJSON = fittest.toJSON();
+  let changeWeightCount = 0;
+
+  for (let i = allJSON.connections.length; i--;) {
+    const tc = allJSON.connections[i];
+    for (let j = previousJSON.connections.length; j--;) {
+      const pc = previousJSON.connections[j];
+
+      if (tc.from == pc.from && tc.to == pc.to) {
+        if (tc.gater == pc.gater) {
+          if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
+            const adjust = tc.weight - pc.weight;
+            const weight = tc.weight + adjust;
+
+            tc.weight = weight;
+            changeWeightCount++;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  if (changeWeightCount < 2) return null;
+
+  const all = Network.fromJSON(allJSON);
+  addTag(all, "approach", "fine");
+  addTag(
+    all,
+    "adjusted",
+    changeWeightCount + " weights",
+  );
+
+  addTag(
+    all,
+    "step",
+    "ALL-weigths",
+  );
+  addTag(all, "old-score", oldScore);
+
+  return all;
+}
+
+function tuneBias(
+  fittest: NetworkInterface,
+  previousFittest: NetworkInterface,
+  oldScore: string,
+) {
+  const previousJSON = previousFittest.toJSON();
+  const allJSON = fittest.toJSON();
+
+  let changeBiasCount = 0;
+  for (let i = allJSON.nodes.length; i--;) {
+    const tn = allJSON.nodes[i];
+
+    if (i < previousJSON.nodes.length) {
+      const pn = previousJSON.nodes[i];
+
+      if (tn.squash == pn.squash) {
+        if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
+          const adjust = tn.bias - pn.bias;
+          const bias = tn.bias + adjust;
+
+          tn.bias = bias;
+          changeBiasCount++;
+        }
+      }
+    }
+  }
+
+  if (changeBiasCount < 2) return null;
+
+  const all = Network.fromJSON(allJSON);
+  addTag(all, "approach", "fine");
+  addTag(
+    all,
+    "adjusted",
+    changeBiasCount + " biases",
+  );
+
+  addTag(
+    all,
+    "step",
+    "ALL-biases",
+  );
+  addTag(all, "old-score", oldScore);
+
+  return all;
+}
+
+function tuneAll(
+  fittest: NetworkInterface,
+  previousFittest: NetworkInterface,
+  oldScore: string,
+) {
+  const previousJSON = previousFittest.toJSON();
+  const allJSON = fittest.toJSON();
+
+  let changeBiasCount = 0;
+  let changeWeightCount = 0;
+  for (let i = allJSON.nodes.length; i--;) {
+    const tn = allJSON.nodes[i];
+
+    if (i < previousJSON.nodes.length) {
+      const pn = previousJSON.nodes[i];
+
+      if (tn.squash == pn.squash) {
+        if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
+          const adjust = tn.bias - pn.bias;
+          const bias = tn.bias + adjust;
+
+          tn.bias = bias;
+          changeBiasCount++;
+        }
+      }
+    }
+  }
+
+  for (let i = allJSON.connections.length; i--;) {
+    const tc = allJSON.connections[i];
+    for (let j = previousJSON.connections.length; j--;) {
+      const pc = previousJSON.connections[j];
+
+      if (tc.from == pc.from && tc.to == pc.to) {
+        if (tc.gater == pc.gater) {
+          if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
+            const adjust = tc.weight - pc.weight;
+            const weight = tc.weight + adjust;
+
+            tc.weight = weight;
+            changeWeightCount++;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  if (changeBiasCount == 0 || changeWeightCount == 0) return null;
+
+  const all = Network.fromJSON(allJSON);
+  addTag(all, "approach", "fine");
+  addTag(
+    all,
+    "adjusted",
+    changeWeightCount + " weight" + (changeWeightCount > 1 ? "s" : "") +
+      ", " + changeBiasCount + " bias" + (changeBiasCount > 1 ? "es" : ""),
+  );
+
+  addTag(
+    all,
+    "step",
+    "ALL",
+  );
+  addTag(all, "old-score", oldScore);
+
+  return all;
+}
+
 export function fineTuneImprovement(
   fittest: NetworkInterface,
   previousFittest: (NetworkInterface | null),
@@ -50,97 +215,15 @@ export function fineTuneImprovement(
   }
   const fineTuned: Network[] = [];
   const previousJSON = previousFittest.toJSON();
-  const allJSON = fittest.toJSON();
-  let changeCount = 0;
-  let changeBiasCount = 0;
-  let changeWeightCount = 0;
-  for (let i = allJSON.nodes.length; i--;) {
-    const tn = allJSON.nodes[i];
 
-    if (i < previousJSON.nodes.length) {
-      const pn = previousJSON.nodes[i];
+  const all = tuneAll(fittest, previousFittest, fScoreTxt);
+  if (all) fineTuned.push(all);
 
-      if (tn.squash == pn.squash) {
-        if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
-          const adjust = tn.bias - pn.bias;
-          const bias = tn.bias + adjust;
-          // console.debug(
-          //   "Index: " + i,
-          //   "bias",
-          //   fn.bias,
-          //   "(",
-          //   pn.bias,
-          //   ") by",
-          //   adjust,
-          //   "to",
-          //   bias,
-          // );
-          tn.bias = bias;
-          changeCount++;
-          changeBiasCount++;
-        }
-      }
-    }
-  }
+  const weightsOnly = tuneWeights(fittest, previousFittest, fScoreTxt);
+  if (weightsOnly) fineTuned.push(weightsOnly);
 
-  for (let i = allJSON.connections.length; i--;) {
-    const tc = allJSON.connections[i];
-    for (let j = previousJSON.connections.length; j--;) {
-      const pc = previousJSON.connections[j];
-
-      if (tc.from == pc.from && tc.to == pc.to) {
-        if (tc.gater == pc.gater) {
-          if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
-            const adjust = tc.weight - pc.weight;
-            const weight = tc.weight + adjust;
-            // console.debug(
-            //   "from",
-            //   fc.from,
-            //   "to",
-            //   pc.to,
-            //   "weight",
-            //   fc.weight,
-            //   "(",
-            //   pc.weight,
-            //   ") by",
-            //   adjust,
-            //   "to",
-            //   weight,
-            // );
-            tc.weight = weight;
-            changeCount++;
-            changeWeightCount++;
-          }
-        }
-        break;
-      }
-    }
-  }
-
-  if (changeCount == 0) {
-    return []; // There is no point in continuing as there are no viable changes.
-  } else if (changeCount > 1) { // If only 1 then use the normal steps.
-    const all = Network.fromJSON(allJSON);
-    addTag(all, "approach", "fine");
-    if (changeWeightCount > 0 && changeBiasCount > 0) {
-      addTag(
-        all,
-        "adjusted",
-        "weight: " + changeWeightCount + ", bias: " + changeBiasCount,
-      );
-    } else if (changeWeightCount > 0) {
-      addTag(all, "adjusted", "weight: " + changeWeightCount);
-    } else {
-      addTag(all, "adjusted", "bias: " + changeBiasCount);
-    }
-    addTag(
-      all,
-      "step",
-      "ALL",
-    );
-    addTag(all, "old-score", fScoreTxt);
-    fineTuned.push(all);
-  }
+  const biasOnly = tuneBias(fittest, previousFittest, fScoreTxt);
+  if (biasOnly) fineTuned.push(biasOnly);
 
   let targetJSON = fittest.toJSON();
   for (let k = 0; true; k++) {

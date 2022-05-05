@@ -211,7 +211,7 @@ export class Neat {
 
     // Breed the next individuals
     for (
-      let i = this.config.popsize - this.config.elitism -
+      let i = this.config.popsize - elitists.length -
         fineTunedPopulation.length;
       i--;
     ) {
@@ -264,6 +264,7 @@ export class Neat {
 
     return fittest;
   }
+
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
