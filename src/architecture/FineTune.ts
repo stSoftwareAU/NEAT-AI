@@ -264,12 +264,12 @@ export function fineTuneImprovement(
     resultALL.changeBiasCount + resultALL.changeWeightCount >
       popsize - fineTuned.length
   ) {
-    const sliceRate = (popsize - fineTuned.length) /
-      (resultALL.changeBiasCount + resultALL.changeWeightCount);
+    const sliceRate =1-( (popsize - fineTuned.length) /
+      (resultALL.changeBiasCount + resultALL.changeWeightCount));
 
     console.info( "Slice Rate", sliceRate, (popsize - fineTuned.length), resultALL.changeBiasCount , resultALL.changeWeightCount);
 
-    const slices = Math.ceil(1 / sliceRate);
+    const slices = Math.floor(1 / sliceRate) + 1;
     console.info( "Slices", slices);
 
     if (resultALL.changeBiasCount < 2 && resultALL.changeWeightCount > 1) {
