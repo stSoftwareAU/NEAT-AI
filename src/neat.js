@@ -183,13 +183,20 @@ export class Neat {
      *
      * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
      */
-    const tmpPreviousFittest = previousFittest
-      ? (previousFittest.score != fittest.score
-        ? previousFittest
-        : elitists.length > 1
-        ? elitists[Math.floor(Math.random() * elitists.length) + 1]
-        : previousFittest)
-      : elitists[1];
+    let tmpPreviousFittest = previousFittest;
+
+    if(! tmpPreviousFittest){
+      tmpPreviousFittest=elitists[1];
+    } else if( previousFittest.score != fittest.score){
+      tmpPreviousFittest=previousFittest;
+    } else if( elitists.length > 1){
+      const pos=Math.floor(Math.random() * elitists.length) + 1;
+      tmpPreviousFittest=elitists[pos];
+      console.info( "Rebooting fine tuning",pos);
+    }
+    else{
+      tmpPreviousFittest=previousFittest;
+    }
 
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
