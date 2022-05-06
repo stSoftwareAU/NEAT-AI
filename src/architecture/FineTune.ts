@@ -308,7 +308,7 @@ export function fineTuneImprovement(
       "Slices",
       slices,
     );
-    
+
     const weights = new Set<string>();
     const biases = new Set<string>();
 
@@ -337,9 +337,9 @@ export function fineTuneImprovement(
         if (biasOnly) fineTuned.push(biasOnly);
       }
     } else {
-      const halfSlices=Math.max( Math.floor(slices / 2),2);
-      const doubleRate=1/halfSlices;
-      console.info( "both", slices, halfSlices, sliceRate, doubleRate);
+      const halfSlices = Math.max(Math.floor(slices / 2), 2);
+      const doubleRate = 1 / halfSlices;
+      console.info("both", slices, halfSlices, sliceRate, doubleRate);
       for (let slice = 0; slice < halfSlices; slice++) {
         const weightsOnly = tuneWeights(
           fittest,
