@@ -183,6 +183,7 @@ export class Neat {
      *
      * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
      */
+    let rebootedFineTune = false;
     let tmpPreviousFittest = previousFittest;
 
     if (!tmpPreviousFittest) {
@@ -206,6 +207,7 @@ export class Neat {
                 pos,
                 fittest.score - previousScore2,
               );
+              rebootedFineTune = true;
             } else {
               console.info("Rebooting fine tuning FAILED ", pos);
             }
@@ -222,7 +224,7 @@ export class Neat {
         Math.ceil(this.config.popsize / 5),
         this.config.popsize - this.population.length,
       ),
-      previousFittest ? previousFittest.score != fittest.score : false,
+      !rebootedFineTune,
     );
 
     const newPopulation = [];
