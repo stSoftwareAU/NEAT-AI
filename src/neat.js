@@ -141,10 +141,8 @@ export class Neat {
 
       if (isFinite(p.score)) {
         const oldScore = getTag(p, "old-score");
-        if (oldScore && p.score < parseFloat(oldScore)) {
-          // const diff=p.score-parseFloat(oldScore);
-          // console.log("tuning crippled creature by ", diff);
-          // crippledCount++;
+        if (oldScore && p.score <= parseFloat(oldScore)) {
+          /** If fine tuning made no improvement then remove to prevent flooding of the population with clones. */
           continue;
         }
 
