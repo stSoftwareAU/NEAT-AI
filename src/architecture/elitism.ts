@@ -1,3 +1,5 @@
+const DEBUG=true;
+
 export interface ScorableInterface {
   score: number;
   nodes: { index: number }[];
@@ -31,6 +33,24 @@ export function makeElitists(
     }
   });
 
+  if( DEBUG){
+    let lastScore=Infinity;
+    for( let pos=0;pos<population.length;pos++){
+      const creature=population[pos];
+      if( creature.score>lastScore){
+        throw "Unsorted at " + pos + " was: " + lastScore + ", now: " + creature.score;
+      }
+      if( isFinite( creature.score)){
+        if( lastScore!=Infinity)
+        {
+          if( !isFinite(lastScore)){
+            throw "Unsorted (not a number) at " + pos + " was: " + lastScore + ", now: " + creature.score;
+          }
+        }
+      }
+      lastScore=creature.score;
+    }
+  }
   const elitists = population.slice(0, elitism);
 
   return elitists;

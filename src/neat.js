@@ -191,9 +191,15 @@ export class Neat {
       if (previousScoreTxt) {
         const previousScore = parseFloat(previousScoreTxt);
         if (previousScore == fittest.score) {
-          const pos = Math.floor(Math.random() * elitists.length) + 1;
-          tmpPreviousFittest = elitists[pos];
+          let pos;
 
+          for( let attempts=0; attempts<3 ;attempts++){
+            pos = Math.floor(Math.random() * elitists.length) + 1;
+            tmpPreviousFittest = elitists[pos];
+
+            if( tmpPreviousFittest) break;
+          }
+          
           if (tmpPreviousFittest) {
             const previousScoreTxt2 = getTag(tmpPreviousFittest, "score");
             if (!previousScoreTxt2) {
