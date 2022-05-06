@@ -203,9 +203,8 @@ export class Neat {
             const previousScore2 = parseFloat(previousScoreTxt2);
             if (previousScore2 < fittest.score) {
               console.info(
-                "Rebooting fine tuning",
-                pos,
-                fittest.score - previousScore2,
+                "Rebooting fine tuning, elitist:",
+                pos
               );
               rebootedFineTune = true;
             } else {
