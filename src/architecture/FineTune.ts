@@ -302,22 +302,22 @@ export function fineTuneImprovement(
 
     const slices = Math.floor(1 / sliceRateRaw) + 1;
     const sliceRate = 1 / slices;
-    console.info(
-      "Total items",
-      totalItems,
-      "remianing cells",
-      remainingCells,
-      "Items per cell",
-      itemsPerCell,
-      "Slice Rate",
-      sliceRate,
-      "Biases",
-      resultALL.changeBiasCount,
-      "Weights",
-      resultALL.changeWeightCount,
-      "Slices",
-      slices,
-    );
+    // console.info(
+    //   "Total items",
+    //   totalItems,
+    //   "remianing cells",
+    //   remainingCells,
+    //   "Items per cell",
+    //   itemsPerCell,
+    //   "Slice Rate",
+    //   sliceRate,
+    //   "Biases",
+    //   resultALL.changeBiasCount,
+    //   "Weights",
+    //   resultALL.changeWeightCount,
+    //   "Slices",
+    //   slices,
+    // );
 
     const weights = new Set<string>();
     const biases = new Set<string>();
@@ -349,7 +349,7 @@ export function fineTuneImprovement(
     } else {
       const halfSlices = Math.max(Math.floor(slices / 2), 2);
       const doubleRate = 1 / halfSlices;
-      console.info("both", slices, halfSlices, sliceRate, doubleRate);
+      // console.info("both", slices, halfSlices, sliceRate, doubleRate);
       for (let slice = 0; slice < halfSlices; slice++) {
         const weightsOnly = tuneWeights(
           fittest,
@@ -368,14 +368,14 @@ export function fineTuneImprovement(
           biases,
         );
         if (biasOnly) fineTuned.push(biasOnly);
-        console.info(
-          "Slice",
-          slice,
-          "weights",
-          weights.size,
-          "biases",
-          biases.size,
-        );
+        // console.info(
+        //   "Slice",
+        //   slice,
+        //   "weights",
+        //   weights.size,
+        //   "biases",
+        //   biases.size,
+        // );
       }
     }
 
