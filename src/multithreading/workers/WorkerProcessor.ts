@@ -56,6 +56,7 @@ export class WorkerProcessor {
         rate: data.train.rate,
         batchSize: Infinity,
         //  clear: Math.random() < 0.5 ? true : false,
+        dropout: Math.random() * 0.5,
       };
 
       const result = util.trainDir(this.dataSetDir, trainOptions);
