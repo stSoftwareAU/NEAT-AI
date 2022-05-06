@@ -294,18 +294,18 @@ export function fineTuneImprovement(
     resultALL.changeBiasCount + resultALL.changeWeightCount >
       popsize - fineTuned.length
   ) {
-    const totalItems=resultALL.changeBiasCount + resultALL.changeWeightCount;
-    const remainingCells=popsize - fineTuned.length;
+    const totalItems = resultALL.changeBiasCount + resultALL.changeWeightCount;
+    const remainingCells = popsize - fineTuned.length;
 
-    const itemsPerCell=Math.ceil(totalItems/remainingCells);
-    const sliceRateRaw = itemsPerCell/totalItems;
+    const itemsPerCell = Math.ceil(totalItems / remainingCells);
+    const sliceRateRaw = itemsPerCell / totalItems;
 
     const slices = Math.floor(1 / sliceRateRaw) + 1;
     const sliceRate = 1 / slices;
     console.info(
       "Total items",
       totalItems,
-      "remianing cells", 
+      "remianing cells",
       remainingCells,
       "Items per cell",
       itemsPerCell,
@@ -368,7 +368,14 @@ export function fineTuneImprovement(
           biases,
         );
         if (biasOnly) fineTuned.push(biasOnly);
-        console.info( "Slice", slice, "weights", weights.size, "biases", biases.size);
+        console.info(
+          "Slice",
+          slice,
+          "weights",
+          weights.size,
+          "biases",
+          biases.size,
+        );
       }
     }
 

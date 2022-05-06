@@ -234,11 +234,14 @@ export class Neat {
               ".debug/train-" + tCounter + ".json",
               JSON.stringify(json, null, 2),
             );
-            Deno.writeTextFileSync(
-              ".debug/elitist-" + tCounter + ".json",
-              JSON.stringify(elitists[tCounter].toJSON(), null, 2),
-            );
 
+            const tmpElite = elitists[tCounter];
+            if (tmpElite) {
+              Deno.writeTextFileSync(
+                ".debug/elitist-" + tCounter + ".json",
+                JSON.stringify(elitists[tCounter].toJSON(), null, 2),
+              );
+            }
             tCounter++;
             trainPopulation.push(Network.fromJSON(json));
           }
