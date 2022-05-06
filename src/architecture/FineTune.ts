@@ -358,6 +358,7 @@ export function fineTuneImprovement(
           biases,
         );
         if (biasOnly) fineTuned.push(biasOnly);
+        console.info( "Slice", slice, "weights", weights.size, "biases", biases.size);
       }
     }
 
