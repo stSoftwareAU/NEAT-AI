@@ -294,16 +294,26 @@ export function fineTuneImprovement(
     resultALL.changeBiasCount + resultALL.changeWeightCount >
       popsize - fineTuned.length
   ) {
-    const sliceRateRaw = 1 - ((popsize - fineTuned.length) /
-      (resultALL.changeBiasCount + resultALL.changeWeightCount));
+    const totalItems=resultALL.changeBiasCount + resultALL.changeWeightCount;
+    const remainingCells=popsize - fineTuned.length;
+
+    const itemsPerCell=Math.ceil(totalItems/remainingCells);
+    const sliceRateRaw = itemsPerCell/totalItems;
 
     const slices = Math.floor(1 / sliceRateRaw) + 1;
     const sliceRate = 1 / slices;
     console.info(
+      "Total items",
+      totalItems,
+      "remianing cells", 
+      remainingCells,
+      "Items per cell",
+      itemsPerCell,
       "Slice Rate",
       sliceRate,
-      popsize - fineTuned.length,
+      "Biases",
       resultALL.changeBiasCount,
+      "Weights",
       resultALL.changeWeightCount,
       "Slices",
       slices,
