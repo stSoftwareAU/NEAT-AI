@@ -187,10 +187,16 @@ export class Neat {
 
     if (!tmpPreviousFittest) {
       tmpPreviousFittest = elitists[1];
-    } else if (previousFittest.score == fittest.score && elitists.length > 1) {
-      const pos = Math.floor(Math.random() * elitists.length) + 1;
-      tmpPreviousFittest = elitists[pos];
-      console.info("Rebooting fine tuning", pos);
+    } else if (elitists.length > 1) {
+      const previousScoreTxt = getTag(previousFittest, "score");
+      if (previousScoreTxt) {
+        const previousScore = parseFloat(previousScoreTxt);
+        if (previousScore == fittest.score) {
+          const pos = Math.floor(Math.random() * elitists.length) + 1;
+          tmpPreviousFittest = elitists[pos];
+          console.info("Rebooting fine tuning", pos);
+        }
+      }
     }
 
     const fineTunedPopulation = fineTuneImprovement(

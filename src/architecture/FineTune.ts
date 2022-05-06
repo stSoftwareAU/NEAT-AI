@@ -290,13 +290,10 @@ export function fineTuneImprovement(
   const biasOnly = tuneBias(fittest, previousFittest, fScoreTxt);
   if (biasOnly) fineTuned.push(biasOnly);
 
-  if (
-    resultALL.changeBiasCount + resultALL.changeWeightCount >
-      popsize - fineTuned.length
-  ) {
-    const totalItems = resultALL.changeBiasCount + resultALL.changeWeightCount;
-    const remainingCells = popsize - fineTuned.length;
+  const totalItems = resultALL.changeBiasCount + resultALL.changeWeightCount;
+  const remainingCells = popsize - fineTuned.length;
 
+  if (totalItems > remainingCells) {
     const itemsPerCell = Math.ceil(totalItems / remainingCells);
     const sliceRateRaw = itemsPerCell / totalItems;
 
