@@ -188,13 +188,28 @@ export class Neat {
     if (!tmpPreviousFittest) {
       tmpPreviousFittest = elitists[1];
     } else if (elitists.length > 1) {
-      const previousScoreTxt = getTag(previousFittest, "score");
+      const previousScoreTxt = getTag(tmpPreviousFittest, "score");
       if (previousScoreTxt) {
         const previousScore = parseFloat(previousScoreTxt);
         if (previousScore == fittest.score) {
           const pos = Math.floor(Math.random() * elitists.length) + 1;
           tmpPreviousFittest = elitists[pos];
-          console.info("Rebooting fine tuning", pos);
+
+          const previousScoreTxt2 = getTag(tmpPreviousFittest, "score");
+          if (!previousScoreTxt2) {
+            console.info("No score for elitist", pos);
+          } else {
+            const previousScore2 = parseFloat(previousScoreTxt2);
+            if (previousScore2 < fittest.score) {
+              console.info(
+                "Rebooting fine tuning",
+                pos,
+                fittest.score - previousScore2,
+              );
+            } else {
+              console.info("Rebooting fine tuning FAILED ", pos);
+            }
+          }
         }
       }
     }
