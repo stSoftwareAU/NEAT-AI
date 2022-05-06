@@ -338,7 +338,7 @@ export function fineTuneImprovement(
       }
     } else {
       const halfSlices=Math.max( Math.floor(slices / 2),2);
-      const doubleRate=sliceRate * 2;
+      const doubleRate=1/halfSlices;
       console.info( "both", slices, halfSlices, sliceRate, doubleRate);
       for (let slice = 0; slice < halfSlices; slice++) {
         const weightsOnly = tuneWeights(
