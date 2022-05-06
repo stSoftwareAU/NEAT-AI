@@ -196,20 +196,29 @@ export class Neat {
           const pos = Math.floor(Math.random() * elitists.length) + 1;
           tmpPreviousFittest = elitists[pos];
 
-          const previousScoreTxt2 = getTag(tmpPreviousFittest, "score");
-          if (!previousScoreTxt2) {
-            console.info("No score for elitist", pos);
-          } else {
-            const previousScore2 = parseFloat(previousScoreTxt2);
-            if (previousScore2 < fittest.score) {
-              console.info(
-                "Rebooting fine tuning, elitist:",
-                pos
-              );
-              rebootedFineTune = true;
+          if (tmpPreviousFittest) {
+            const previousScoreTxt2 = getTag(tmpPreviousFittest, "score");
+            if (!previousScoreTxt2) {
+              console.info("No score for elitist", pos);
             } else {
-              console.info("Rebooting fine tuning FAILED ", pos);
+              const previousScore2 = parseFloat(previousScoreTxt2);
+              if (previousScore2 < fittest.score) {
+                console.info(
+                  "Rebooting fine tuning, elitist:",
+                  pos,
+                );
+                rebootedFineTune = true;
+              } else {
+                console.info(
+                  "FAILED: Rebooting fine tuning: previous score not less than current",
+                  pos,
+                  previousScore2,
+                  fittest.score,
+                );
+              }
             }
+          } else {
+            console.info("FAILED Rebooting fine tuning: no creature at", pos);
           }
         }
       }
