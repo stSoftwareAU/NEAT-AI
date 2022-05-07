@@ -16,6 +16,10 @@ export interface RequestData {
     network: string;
     rate: number;
   };
+  echo?: {
+    ms: number;
+    message: string;
+  };
 }
 
 export interface ResponseData {
@@ -31,15 +35,22 @@ export interface ResponseData {
     network: string;
     error: number;
   };
+  echo?: {
+    message: string;
+  };
+}
+
+interface WorkerEventListner {
+  (worker: WorkerHandler): void;
 }
 
 export class WorkerHandler {
   private worker: (Worker | null) = null;
   private mockProcessor: (WorkerProcessor | null) = null;
   private taskID = 1;
-
-  // private holdData: { [key: string]: ResponseData } = {};
+  private busy = false;
   private callbacks: { [key: string]: CallableFunction } = {};
+  private idleListners: WorkerEventListner[] = [];
 
   constructor(
     dataSetDir: string,
@@ -82,42 +93,42 @@ export class WorkerHandler {
     this.makePromise(data);
   }
 
-  private callback(data: ResponseData) {
-    // console.log("callback", data);
+  isBusy() {
+    return this.busy;
+  }
 
+  addIdleListener(callback: WorkerEventListner) {
+    this.idleListners.push(callback);
+  }
+
+  private callback(data: ResponseData) {
     const call = this.callbacks[data.taskID.toString()];
     if (call) {
-      // console.log("call", data);
       call(data);
     } else {
       throw "No callback";
-      // console.log("hold", data);
-      // this.holdData[data.taskID.toString()] = data;
     }
   }
 
   private makePromise(data: RequestData) {
+    this.busy = true;
     const p = new Promise<ResponseData>((resolve) => {
-      // const result = this.holdData[data.taskID.toString()];
-      // console.log("makePromise", data.taskID);
-      // if (result) {
-      //   console.log("resolve-now", data.taskID, result);
-      //   resolve(result);
-      // } else {
       const call = (result: ResponseData) => {
-        // console.log("resolve-delay", data.taskID, result);
         resolve(result);
+        this.busy = false;
+
+        this.idleListners.forEach((listner) => listner(this));
       };
 
       this.callbacks[data.taskID.toString()] = call;
-      // }
     });
 
     if (this.worker) {
       this.worker.postMessage(data);
     } else if (this.mockProcessor) {
-      const result = this.mockProcessor.process(data);
-      this.callback(result);
+      const mp = this.mockProcessor.process(data);
+
+      mp.then((result) => this.callback(result));
     } else {
       throw "No real or fake worker";
     }
@@ -130,6 +141,18 @@ export class WorkerHandler {
       this.worker.terminate();
       this.worker = null; // release the memory.
     }
+  }
+
+  echo(message: string, ms: number) {
+    const data: RequestData = {
+      taskID: this.taskID++,
+      echo: {
+        message: message,
+        ms: ms,
+      },
+    };
+
+    return this.makePromise(data);
   }
 
   evaluate(network: NetworkInterface) {

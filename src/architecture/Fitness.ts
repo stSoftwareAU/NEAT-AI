@@ -2,60 +2,87 @@ import { NetworkInterface } from "./NetworkInterface.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { addTag } from "../tags/TagsInterface.ts";
 
+type PromiseFunction = (v: unknown) => void;
+
+let calculationData: ({
+  queue: NetworkInterface[];
+  resolve: PromiseFunction;
+  reject: PromiseFunction;
+  that: Fitness;
+} | null) = null;
+
 export class Fitness {
   private workers: WorkerHandler[];
   private growth: number;
 
   constructor(workers: WorkerHandler[], growth: number) {
     this.workers = workers;
+    this._callback.bind(this);
+    workers.forEach((w) => w.addIdleListener(this._callback));
     this.growth = growth;
   }
 
+  private _callback() {
+    calculationData?.that.schedule();
+  }
+
+  private async _callWorker(worker: WorkerHandler, creature: NetworkInterface) {
+    // const creatureID=population.length - queue.length;
+    const responeData = await worker.evaluate(creature);
+    if (!responeData.evaluate) throw "Invalid response";
+
+    const error = responeData.evaluate.error;
+    addTag(creature, "error", (-error).toString());
+    creature.score = -error - (
+          creature.nodes.length -
+          creature.input -
+          creature.output +
+          creature.connections.length +
+          (creature.gates ? creature.gates.length : 0)
+        ) * this.growth;
+
+    creature.score = isFinite(creature.score) ? creature.score : -Infinity;
+    addTag(creature, "score", creature.score.toString());
+    // console.info( "Creature", creatureID, "result", result, "score", creature.score);
+  }
+
+  private schedule() {
+    if (!calculationData) throw "No calculation data";
+
+    const data = calculationData;
+
+    const promises = [];
+    for (let i = this.workers.length; i--;) {
+      const w = this.workers[i];
+      if (!w.isBusy()) {
+        const creature = data.queue.shift();
+        if (creature && !creature.score) {
+          promises.push(this._callWorker(w, creature));
+        }
+      }
+    }
+
+    Promise.all(promises).then(
+      (r) => {
+        if (data.queue.length == 0) {
+          data.resolve(r);
+        }
+      },
+    ).catch((reason) => data.reject(reason));
+  }
+
   calculate(population: NetworkInterface[]) {
-    const growth = this.growth;
-    const workers = this.workers;
     return new Promise((resolve, reject) => {
       // Create a queue
-      const queue = population.slice();
 
-      // Start worker function
-      const startWorker = async function (worker: WorkerHandler) {
-        while (queue.length) {
-          const creature = queue.shift();
-          if (!creature) continue;
-          if (creature.score) {
-            // console.log("creatue already have been scored",creature.score);
-            continue;
-          }
-          // const creatureID=population.length - queue.length;
-          const responeData = await worker.evaluate(creature);
-          if (!responeData.evaluate) throw "Invalid response";
-
-          const error = responeData.evaluate.error;
-          addTag(creature, "error", (-error).toString());
-          creature.score = -error - (
-                creature.nodes.length -
-                creature.input -
-                creature.output +
-                creature.connections.length +
-                (creature.gates ? creature.gates.length : 0)
-              ) * growth;
-
-          creature.score = isFinite(creature.score)
-            ? creature.score
-            : -Infinity;
-          addTag(creature, "score", creature.score.toString());
-          // console.info( "Creature", creatureID, "result", result, "score", creature.score);
-        }
+      calculationData = {
+        queue: population.slice(),
+        resolve: resolve,
+        reject: reject,
+        that: this,
       };
-      const promises = new Array(workers.length);
-      for (let i = workers.length; i--;) {
-        promises[i] = startWorker(workers[i]);
-      }
 
-      Promise.all(promises).then((r) => resolve(r)).catch((reason) =>
-        reject(reason)
-      );
+      this.schedule();
     });
   }
 }

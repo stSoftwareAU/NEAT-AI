@@ -98,15 +98,15 @@ export class Neat {
    */
   async evolve(previousFittest) {
     const trainPromises = [];
-    for (let i = 0; i < this.population.length; i++) {
+    for (
+      let i = 0;
+      i < this.population.length && i < this.workers.length;
+      i++
+    ) {
       const n = this.population[i];
       if (n.score) {
-        if (this.workers.length > i) {
-          const w = i % this.workers.length;
-          // console.log("Worker: ", w);
-          const p = this.workers[w].train(n, this.trainRate);
-          trainPromises.push(p);
-        }
+        const p = this.workers[i].train(n, this.trainRate);
+        trainPromises.push(p);
       }
     }
     await this.evaluate();

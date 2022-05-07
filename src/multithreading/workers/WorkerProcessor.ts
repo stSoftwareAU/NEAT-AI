@@ -10,7 +10,7 @@ export class WorkerProcessor {
   private costName: (string | null) = null;
   private dataSetDir: (string | null) = null;
 
-  process(data: RequestData): ResponseData {
+  async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();
     if (data.initialize) {
       this.costName = data.initialize.costName;
@@ -66,6 +66,15 @@ export class WorkerProcessor {
         train: {
           network: json,
           error: result.error,
+        },
+      };
+    } else if (data.echo) {
+      await new Promise((f) => setTimeout(f, data.echo?.ms));
+      return {
+        taskID: data.taskID,
+        duration: Date.now() - start,
+        echo: {
+          message: data.echo.message,
         },
       };
     } else {
