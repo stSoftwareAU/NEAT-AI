@@ -17,7 +17,7 @@ export class Fitness {
 
   constructor(workers: WorkerHandler[], growth: number) {
     this.workers = workers;
-    this._callback.bind(this);
+
     workers.forEach((w) => w.addIdleListener(this._callback));
     this.growth = growth;
   }
@@ -27,7 +27,6 @@ export class Fitness {
   }
 
   private async _callWorker(worker: WorkerHandler, creature: NetworkInterface) {
-    // const creatureID=population.length - queue.length;
     const responeData = await worker.evaluate(creature);
     if (!responeData.evaluate) throw "Invalid response";
 
@@ -43,7 +42,6 @@ export class Fitness {
 
     creature.score = isFinite(creature.score) ? creature.score : -Infinity;
     addTag(creature, "score", creature.score.toString());
-    // console.info( "Creature", creatureID, "result", result, "score", creature.score);
   }
 
   private schedule() {

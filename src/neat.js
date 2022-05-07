@@ -20,7 +20,7 @@ export class Neat {
     this.input = input; // The input size of the networks
     this.output = output; // The output size of the networks
 
-    this.workers = workers?workers:[];
+    this.workers = workers ? workers : [];
     this.config = makeConfig(options);
     this.util = new NeatUtil(this, this.config);
 
