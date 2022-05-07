@@ -64,7 +64,7 @@ export class Fitness {
       (r) => {
         if (data.queue.length == 0) {
           data.resolve(r);
-          calculationData=null;
+          calculationData = null;
         }
       },
     ).catch((reason) => data.reject(reason));

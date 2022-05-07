@@ -48,7 +48,7 @@ export class WorkerHandler {
   private worker: (Worker | null) = null;
   private mockProcessor: (WorkerProcessor | null) = null;
   private taskID = 1;
-  private busy = false;
+  private busyCount = 0;
   private callbacks: { [key: string]: CallableFunction } = {};
   private idleListners: WorkerEventListner[] = [];
 
@@ -94,7 +94,7 @@ export class WorkerHandler {
   }
 
   isBusy() {
-    return this.busy;
+    return this.busyCount > 0;
   }
 
   addIdleListener(callback: WorkerEventListner) {
@@ -111,13 +111,15 @@ export class WorkerHandler {
   }
 
   private makePromise(data: RequestData) {
-    this.busy = true;
+    this.busyCount++;
     const p = new Promise<ResponseData>((resolve) => {
       const call = (result: ResponseData) => {
         resolve(result);
-        this.busy = false;
+        this.busyCount--;
 
-        this.idleListners.forEach((listner) => listner(this));
+        if (!this.isBusy()) {
+          this.idleListners.forEach((listner) => listner(this));
+        }
       };
 
       this.callbacks[data.taskID.toString()] = call;
@@ -141,7 +143,7 @@ export class WorkerHandler {
       this.worker.terminate();
       this.worker = null; // release the memory.
     }
-    this.idleListners.length=0;
+    this.idleListners.length = 0;
   }
 
   echo(message: string, ms: number) {
