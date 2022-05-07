@@ -127,7 +127,7 @@ export class WorkerHandler {
           this.idleListners.forEach((listner) => listner(this));
         }
         else{
-          console.debug( this.workerID, "still busy");
+          console.info( this.workerID, "still busy");
         }
       };
 

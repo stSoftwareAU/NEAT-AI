@@ -46,33 +46,44 @@ export class Fitness {
 
   private schedule() {
     if (!calculationData) throw "No calculation data";
-console.info( "schedule");
+console.info( "schedule workers: ",  this.workers.length);
     const data = calculationData;
 
     const promises = [];
     for (let i = this.workers.length; i--;) {
       const w = this.workers[i];
       if (!w.isBusy()) {
-        console.debug( "Not busy, remaining creatures", data.queue.length);
+        console.info( "indx", i,"Not busy, remaining creatures", data.queue.length);
         const creature = data.queue.shift();
         if (creature && !creature.score) {
-          console.debug( "Scheduling another creature");
+          console.info( "indx", i,"Scheduling another creature");
           promises.push(this._callWorker(w, creature));
         }
+        else{
+          if( !creature){
+          console.info( "indx", i,"Not scheduling a null creature");
+          }
+          else{
+            console.info( "indx", i,"Not scheduling already scored creature");
+          }
+        }
+      }
+      else{
+        console.info( "indx", i, "worker busy");
       }
     }
 
     Promise.all(promises).then(
       (r) => {
-        console.info( "Promise.all", r);
+        console.info( "Promise.all");
         console.info( "data.queue.length", data.queue.length);
         if (data.queue.length == 0) {
           console.info( "resolve");
           data.resolve(r);
-          calculationData = null;
+          // calculationData = null;
         }
       },
-    ).catch((reason) => data.reject(reason));
+    ).catch((reason) => {console.error(reason);data.reject(reason);});
   }
 
   calculate(population: NetworkInterface[]) {
