@@ -159,9 +159,8 @@ export class NetworkUtil {
       if (timedOut) break;
     }
 
-    for (let i = 0; i < workers.length; i++) {
-      const w = workers[i];
-      w.terminate();
+    for (let i = workers.length; i--;) {
+      workers[i].terminate();
     }
     workers.length = 0; // Release the memory.
 

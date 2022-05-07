@@ -141,6 +141,7 @@ export class WorkerHandler {
       this.worker.terminate();
       this.worker = null; // release the memory.
     }
+    this.idleListners.length=0;
   }
 
   echo(message: string, ms: number) {
