@@ -46,7 +46,7 @@ export class Fitness {
 
   private schedule() {
     if (!calculationData) throw "No calculation data";
-
+console.info( "schedule");
     const data = calculationData;
 
     const promises = [];
@@ -62,7 +62,10 @@ export class Fitness {
 
     Promise.all(promises).then(
       (r) => {
+        console.info( "Promise.all", r);
+        console.info( "data.queue.length", data.queue.length);
         if (data.queue.length == 0) {
+          console.info( "resolve");
           data.resolve(r);
           calculationData = null;
         }

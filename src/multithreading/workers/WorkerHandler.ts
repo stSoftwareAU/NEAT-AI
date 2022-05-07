@@ -48,6 +48,7 @@ export class WorkerHandler {
   private worker: (Worker | null) = null;
   private mockProcessor: (WorkerProcessor | null) = null;
   private taskID = 1;
+  private workerID=0;
   private busyCount = 0;
   private callbacks: { [key: string]: CallableFunction } = {};
   private idleListners: WorkerEventListner[] = [];
@@ -60,6 +61,7 @@ export class WorkerHandler {
     if (typeof dataSetDir === "undefined") {
       throw "dataSet is mandatory";
     }
+    this.workerID++;
     const data: RequestData = {
       taskID: this.taskID++,
       initialize: {
@@ -94,6 +96,7 @@ export class WorkerHandler {
   }
 
   isBusy() {
+    console.info( this.workerID, "isBusy", this.busyCount);
     return this.busyCount > 0;
   }
 
