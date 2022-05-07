@@ -96,13 +96,14 @@ export class WorkerHandler {
   }
 
   isBusy() {
-    console.info( this.workerID, "isBusy", this.busyCount);
     return this.busyCount > 0;
   }
 
   addIdleListener(callback: WorkerEventListner) {
     this.idleListners.push(callback);
-    console.log( this.workerID, "listners", this.idleListners.length);
+    if( this.idleListners.length>1){
+      console.warn( this.workerID, "listners", this.idleListners.length);
+    }
   }
 
   private callback(data: ResponseData) {
