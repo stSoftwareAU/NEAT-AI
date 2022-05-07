@@ -12,19 +12,16 @@ Deno.test("previous", async () => {
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 0,
     }, {
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 1,
     }, {
       "bias": -0.49135010426905,
       "type": "output",
       "squash": "BIPOLAR_SIGMOID",
-      "mask": 1,
       "index": 2,
     }],
     "connections": [{
@@ -35,7 +32,6 @@ Deno.test("previous", async () => {
     }, { "weight": 0.96864643541, "from": 0, "to": 2, "gater": null }],
     "input": 2,
     "output": 1,
-    "dropout": 0,
     tags: [
       { name: "error", value: "0.5" },
     ],

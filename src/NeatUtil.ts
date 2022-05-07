@@ -1,6 +1,6 @@
 import { Neat } from "./neat.js";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
-
+import { Mutation } from "./methods/mutation.ts";
 import { crypto } from "https://deno.land/std@0.137.0/crypto/mod.ts";
 import { encode } from "https://deno.land/std@0.137.0/encoding/base64.ts";
 import { ensureDirSync } from "https://deno.land/std@0.137.0/fs/ensure_dir.ts";
@@ -86,13 +86,51 @@ export class NeatUtil {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i];
         for (let j = this.config.mutationAmount; j--;) {
-          const mutationMethod = this.neat.selectMutationMethod(creature);
+          const mutationMethod = this.selectMutationMethod(creature);
           if (creature.mutate) {
             creature.mutate(mutationMethod);
           }
         }
         removeTag(creature, "approach");
       }
+    }
+  }
+
+  /**
+   * Selects a random mutation method for a genome according to the parameters
+   */
+  selectMutationMethod(creature: NetworkInterface) {
+    const mutationMethods = this.config
+      .mutation;
+
+    for (let attempts = 0; attempts < 3; attempts++) {
+      const mutationMethod = mutationMethods[
+        Math.floor(Math.random() * this.config.mutation.length)
+      ];
+
+      if (
+        mutationMethod === Mutation.ADD_NODE &&
+        creature.nodes.length >= this.config.maxNodes
+      ) {
+        continue;
+      }
+
+      if (
+        mutationMethod === Mutation.ADD_CONN &&
+        creature.connections.length >= this.config.maxConns
+      ) {
+        continue;
+      }
+
+      if (
+        mutationMethod === Mutation.ADD_GATE &&
+        creature.gates &&
+        creature.gates.length >= this.config.maxGates
+      ) {
+        continue;
+      }
+
+      return mutationMethod;
     }
   }
 }

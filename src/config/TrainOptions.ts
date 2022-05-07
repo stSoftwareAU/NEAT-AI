@@ -11,9 +11,6 @@ export interface TrainOptions {
   /** Sets the learning rate of the backpropagation process. Default: 0.3. */
   rate?: number;
 
-  /** Sets the dropout of the hidden network nodes. Read more about it on the regularization page. Default: 0. */
-  dropout?: number;
-
   /** Sets the amount of iterations the process will maximally run, even when the target error has not been reached. Default: NaN */
   iterations?: number;
 

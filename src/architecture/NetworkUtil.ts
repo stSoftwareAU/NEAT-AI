@@ -221,19 +221,6 @@ export class NetworkUtil {
     // deno-lint-ignore ban-types
     cost: Function,
   ) {
-    // Check if dropout is enabled, set correct mask
-
-    if (this.network.dropout) {
-      for (let i = this.network.nodes.length; i--;) {
-        const node = this.network.nodes[i];
-        if (
-          node.type === "hidden" || node.type === "constant"
-        ) {
-          node.mask = 1 - this.network.dropout;
-        }
-      }
-    }
-
     let error = 0;
     let counter = 0;
 
@@ -304,7 +291,6 @@ export class NetworkUtil {
     const targetError = options.error || 0.05;
     const cost = findCost(options.cost ? options.cost : "MSE");
     const baseRate = options.rate || 0.3;
-    const dropout = options.dropout || 0;
     const momentum = options.momentum || 0;
     const batchSize = options.batchSize || 1; // online learning
     const ratePolicyName = options.ratePolicy ? options.ratePolicy : "FIXED";
@@ -407,17 +393,6 @@ export class NetworkUtil {
     }
 
     if (options.clear && this.network.clear) this.network.clear();
-
-    if (dropout) {
-      for (let i = 0; i < this.network.nodes.length; i++) {
-        if (
-          this.network.nodes[i].type === "hidden" ||
-          this.network.nodes[i].type === "constant"
-        ) {
-          this.network.nodes[i].mask = 1 - this.network.dropout;
-        }
-      }
-    }
 
     return {
       error: error,

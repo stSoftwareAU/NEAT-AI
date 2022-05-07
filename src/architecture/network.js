@@ -27,9 +27,6 @@ export class Network {
     this.selfconns = [];
     this.tags = undefined;
 
-    // Regularization
-    this.dropout = 0;
-
     this.util = new NetworkUtil(this);
     // Just define a variable.
     this.score = undefined;
@@ -73,9 +70,6 @@ export class Network {
           break;
         }
         default:
-          if (training) {
-            _node.mask = Math.random() < this.dropout ? 0 : 1;
-          }
           _node.activate();
       }
     }
@@ -575,6 +569,9 @@ export class Network {
         node2.squash = squashTemp;
         break;
       }
+      default: {
+        throw "unknown: " + method;
+      }
     }
   }
 
@@ -694,7 +691,6 @@ export class Network {
       connections: [],
       input: this.input,
       output: this.output,
-      dropout: this.dropout,
       tags: this.tags ? this.tags.slice() : undefined,
     };
 
@@ -768,7 +764,6 @@ export class Network {
    */
   static fromJSON(json) {
     const network = new Network(json.input, json.output, false);
-    network.dropout = json.dropout;
     network.nodes.length = json.nodes.length;
     network.tags = json.tags;
 

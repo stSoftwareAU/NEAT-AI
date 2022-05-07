@@ -10,19 +10,16 @@ Deno.test("tune", () => {
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 0,
     }, {
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 1,
     }, {
       "bias": -0.49135010426905,
       "type": "output",
       "squash": "BIPOLAR_SIGMOID",
-      "mask": 1,
       "index": 2,
     }],
     "connections": [{
@@ -33,7 +30,6 @@ Deno.test("tune", () => {
     }, { "weight": 0.96864643541, "from": 0, "to": 2, "gater": null }],
     "input": 2,
     "output": 1,
-    "dropout": 0,
     tags: [
       { name: "score", value: "0.5" },
     ],
@@ -44,19 +40,16 @@ Deno.test("tune", () => {
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 0,
     }, {
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 1,
     }, {
       "bias": -1.045867615444029,
       "type": "output",
       "squash": "BIPOLAR_SIGMOID",
-      "mask": 1,
       "index": 2,
     }],
     "connections": [{
@@ -67,7 +60,6 @@ Deno.test("tune", () => {
     }, { "weight": 0.96764643541, "from": 0, "to": 2, "gater": null }],
     "input": 2,
     "output": 1,
-    "dropout": 0,
     tags: [
       { name: "score", value: "0.6" },
     ],
@@ -94,19 +86,16 @@ Deno.test("many", () => {
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 0,
     }, {
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 1,
     }, {
       "bias": -0.49135010426905,
       "type": "output",
       "squash": "BIPOLAR_SIGMOID",
-      "mask": 1,
       "index": 2,
     }],
     "connections": [{
@@ -117,7 +106,6 @@ Deno.test("many", () => {
     }, { "weight": 0.96864643541, "from": 0, "to": 2, "gater": null }],
     "input": 2,
     "output": 1,
-    "dropout": 0,
     tags: [
       { name: "score", value: "0.5" },
     ],
@@ -128,19 +116,16 @@ Deno.test("many", () => {
       "bias": 0.123,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 0,
     }, {
       "bias": 0.456,
       "type": "input",
       "squash": "LOGISTIC",
-      "mask": 1,
       "index": 1,
     }, {
       "bias": -1.845867615444029,
       "type": "output",
       "squash": "BIPOLAR_SIGMOID",
-      "mask": 1,
       "index": 2,
     }],
     "connections": [{
@@ -156,16 +141,15 @@ Deno.test("many", () => {
     }],
     "input": 2,
     "output": 1,
-    "dropout": 0,
     tags: [
       { name: "score", value: "0.6" },
     ],
   });
 
-  const fineTuned = fineTuneImprovement(fittest, previousFittest, 5);
+  const fineTuned = fineTuneImprovement(fittest, previousFittest, 7);
 
   assert(
-    fineTuned.length == 5,
-    "We should have made 5 changes, was: " + fineTuned.length,
+    fineTuned.length == 7,
+    "We should have made 7 changes, was: " + fineTuned.length,
   );
 });

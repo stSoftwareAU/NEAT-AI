@@ -2,7 +2,6 @@
 import { Network } from "./architecture/network.js";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { Methods } from "./methods/methods.js";
-import { Mutation } from "./methods/mutation.ts";
 import { make as makeConfig } from "./config/NeatConfig.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
@@ -193,13 +192,13 @@ export class Neat {
         if (previousScore == fittest.score) {
           let pos;
 
-          for( let attempts=0; attempts<3 ;attempts++){
+          for (let attempts = 0; attempts < 3; attempts++) {
             pos = Math.floor(Math.random() * elitists.length) + 1;
             tmpPreviousFittest = elitists[pos];
 
-            if( tmpPreviousFittest) break;
+            if (tmpPreviousFittest) break;
           }
-          
+
           if (tmpPreviousFittest) {
             const previousScoreTxt2 = getTag(tmpPreviousFittest, "score");
             if (!previousScoreTxt2) {
@@ -309,45 +308,6 @@ export class Neat {
       this.getParent(),
       this.config.equal,
     );
-  }
-  /**
-   * Selects a random mutation method for a genome according to the parameters
-   */
-  selectMutationMethod(genome) {
-    const mutationMethod = this.config
-      .mutation[Math.floor(Math.random() * this.config.mutation.length)];
-
-    if (
-      mutationMethod === Mutation.ADD_NODE &&
-      genome.nodes.length >= this.config.maxNodes
-    ) {
-      if (this.config.warnings) {
-        console.warn("maxNodes exceeded!");
-      }
-      return;
-    }
-
-    if (
-      mutationMethod === Mutation.ADD_CONN &&
-      genome.connections.length >= this.config.maxConns
-    ) {
-      if (this.config.warnings) {
-        console.warn("maxConns exceeded!");
-      }
-      return;
-    }
-
-    if (
-      mutationMethod === Mutation.ADD_GATE &&
-      genome.gates.length >= this.config.maxGates
-    ) {
-      if (this.config.warnings) {
-        console.warn("maxGates exceeded!");
-      }
-      return;
-    }
-
-    return mutationMethod;
   }
 
   /**

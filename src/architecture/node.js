@@ -17,9 +17,6 @@ export function Node(type) {
   this.state = 0;
   this.old = 0;
 
-  // For dropout
-  this.mask = 1;
-
   // For tracking momentum
   this.previousDeltaBias = 0;
 
@@ -67,7 +64,7 @@ Node.prototype = {
     }
 
     // Squash the values received
-    this.activation = this.squash(this.state) * this.mask;
+    this.activation = this.squash(this.state);
     this.derivative = this.squash(this.state, true);
 
     // Update traces
@@ -221,7 +218,7 @@ Node.prototype = {
       }
 
       // Adjust weight
-      const deltaWeight = rate * gradient * this.mask;
+      const deltaWeight = rate * gradient;
       connection.totalDeltaWeight += deltaWeight;
       if (update) {
         connection.totalDeltaWeight += momentum *
@@ -431,7 +428,6 @@ Node.prototype = {
       bias: this.bias,
       type: this.type,
       squash: this.squash.name,
-      mask: this.mask,
     };
 
     return json;
@@ -445,7 +441,6 @@ Node.fromJSON = function (json) {
   const node = new Node();
   node.bias = json.bias;
   node.type = json.type;
-  node.mask = json.mask;
   node.squash = Methods.activation[json.squash];
 
   return node;
