@@ -53,8 +53,10 @@ console.info( "schedule");
     for (let i = this.workers.length; i--;) {
       const w = this.workers[i];
       if (!w.isBusy()) {
+        console.debug( "Not busy, remaining creatures", data.queue.length);
         const creature = data.queue.shift();
         if (creature && !creature.score) {
+          console.debug( "Scheduling another creature");
           promises.push(this._callWorker(w, creature));
         }
       }

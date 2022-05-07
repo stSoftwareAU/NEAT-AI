@@ -44,11 +44,12 @@ interface WorkerEventListner {
   (worker: WorkerHandler): void;
 }
 
+let globalWorkerID=0;
 export class WorkerHandler {
-  private worker: (Worker | null) = null;
+  private realWorker: (Worker | null) = null;
   private mockProcessor: (WorkerProcessor | null) = null;
   private taskID = 1;
-  private workerID=0;
+  private workerID=++globalWorkerID;
   private busyCount = 0;
   private callbacks: { [key: string]: CallableFunction } = {};
   private idleListners: WorkerEventListner[] = [];
@@ -61,7 +62,6 @@ export class WorkerHandler {
     if (typeof dataSetDir === "undefined") {
       throw "dataSet is mandatory";
     }
-    this.workerID++;
     const data: RequestData = {
       taskID: this.taskID++,
       initialize: {
@@ -70,7 +70,7 @@ export class WorkerHandler {
       },
     };
     if (!direct) {
-      this.worker = new Worker(
+      this.realWorker = new Worker(
         new URL("./deno/worker.js", import.meta.url).href,
         {
           type: "module",
@@ -85,7 +85,7 @@ export class WorkerHandler {
         },
       );
 
-      this.worker.addEventListener("message", (message) => {
+      this.realWorker.addEventListener("message", (message) => {
         this.callback(message.data as ResponseData);
       });
     } else {
@@ -102,6 +102,7 @@ export class WorkerHandler {
 
   addIdleListener(callback: WorkerEventListner) {
     this.idleListners.push(callback);
+    console.log( this.workerID, "listners", this.idleListners.length);
   }
 
   private callback(data: ResponseData) {
@@ -109,7 +110,9 @@ export class WorkerHandler {
     if (call) {
       call(data);
     } else {
-      throw "No callback";
+      const msg="No callback";
+      console.warn( this.workerID, msg);
+      throw msg;
     }
   }
 
@@ -123,13 +126,16 @@ export class WorkerHandler {
         if (!this.isBusy()) {
           this.idleListners.forEach((listner) => listner(this));
         }
+        else{
+          console.debug( this.workerID, "still busy");
+        }
       };
 
       this.callbacks[data.taskID.toString()] = call;
     });
 
-    if (this.worker) {
-      this.worker.postMessage(data);
+    if (this.realWorker) {
+      this.realWorker.postMessage(data);
     } else if (this.mockProcessor) {
       const mp = this.mockProcessor.process(data);
 
@@ -141,10 +147,13 @@ export class WorkerHandler {
   }
 
   terminate() {
+    if( this.isBusy()){
+      console.warn( this.workerID, "terminated but still busy" );
+    }
     this.mockProcessor = null;
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null; // release the memory.
+    if (this.realWorker) {
+      this.realWorker.terminate();
+      this.realWorker = null; // release the memory.
     }
     this.idleListners.length = 0;
   }
