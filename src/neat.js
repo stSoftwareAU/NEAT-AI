@@ -20,12 +20,12 @@ export class Neat {
     this.input = input; // The input size of the networks
     this.output = output; // The output size of the networks
 
-    this.workers = workers;
+    this.workers = workers?workers:[];
     this.config = makeConfig(options);
     this.util = new NeatUtil(this, this.config);
 
     // The fitness function to evaluate the networks
-    this.fitness = new Fitness(workers, this.config.growth);
+    this.fitness = new Fitness(this.workers, this.config.growth);
     // Generation counter
     this.generation = 0;
     this.trainRate = this.config.trainRate;
