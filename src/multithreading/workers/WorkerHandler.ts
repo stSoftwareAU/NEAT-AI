@@ -44,15 +44,15 @@ interface WorkerEventListner {
   (worker: WorkerHandler): void;
 }
 
-let globalWorkerID=0;
+let globalWorkerID = 0;
 export class WorkerHandler {
   private realWorker: (Worker | null) = null;
   private mockProcessor: (WorkerProcessor | null) = null;
   private taskID = 1;
-  private workerID=++globalWorkerID;
+  private workerID = ++globalWorkerID;
   private busyCount = 0;
   private callbacks: { [key: string]: CallableFunction } = {};
-  private idleListners: WorkerEventListner[] = [];
+  private doneListners: WorkerEventListner[] = [];
 
   constructor(
     dataSetDir: string,
@@ -99,10 +99,10 @@ export class WorkerHandler {
     return this.busyCount > 0;
   }
 
-  addIdleListener(callback: WorkerEventListner) {
-    this.idleListners.push(callback);
-    if( this.idleListners.length>1){
-      console.warn( this.workerID, "listners", this.idleListners.length);
+  addDoneListener(callback: WorkerEventListner) {
+    this.doneListners.push(callback);
+    if (this.doneListners.length > 1) {
+      console.warn(this.workerID, "listners", this.doneListners.length);
     }
   }
 
@@ -111,8 +111,8 @@ export class WorkerHandler {
     if (call) {
       call(data);
     } else {
-      const msg="No callback";
-      console.warn( this.workerID, msg);
+      const msg = "No callback";
+      console.warn(this.workerID, msg);
       throw msg;
     }
   }
@@ -124,12 +124,12 @@ export class WorkerHandler {
         resolve(result);
         this.busyCount--;
 
-        if (!this.isBusy()) {
-          this.idleListners.forEach((listner) => listner(this));
-        }
-        else{
-          console.info( this.workerID, "still busy");
-        }
+        // if (!this.isBusy()) {
+        this.doneListners.forEach((listner) => listner(this));
+        // }
+        // else{
+        //   console.info( this.workerID, "still busy", this.busyCount);
+        // }
       };
 
       this.callbacks[data.taskID.toString()] = call;
@@ -148,15 +148,15 @@ export class WorkerHandler {
   }
 
   terminate() {
-    if( this.isBusy()){
-      console.warn( this.workerID, "terminated but still busy" );
+    if (this.isBusy()) {
+      console.warn(this.workerID, "terminated but still busy");
     }
     this.mockProcessor = null;
     if (this.realWorker) {
       this.realWorker.terminate();
       this.realWorker = null; // release the memory.
     }
-    this.idleListners.length = 0;
+    this.doneListners.length = 0;
   }
 
   echo(message: string, ms: number) {

@@ -18,11 +18,11 @@ export class Fitness {
   constructor(workers: WorkerHandler[], growth: number) {
     this.workers = workers;
 
-    workers.forEach((w) => w.addIdleListener(this._callback));
+    workers.forEach((w) => w.addDoneListener(this._reschedule));
     this.growth = growth;
   }
 
-  private _callback() {
+  private _reschedule() {
     calculationData?.that.schedule();
   }
 
@@ -56,19 +56,22 @@ export class Fitness {
         const creature = data.queue.shift();
         if (creature && !creature.score) {
           promises.push(this._callWorker(w, creature));
-        }       
+        }
       }
     }
 
     Promise.all(promises).then(
       (r) => {
-
         if (data.queue.length == 0) {
           data.resolve(r);
           // calculationData = null;
         }
       },
-    ).catch((reason) => {console.error(reason);data.reject(reason);});
+    ).catch((reason) => {
+      console.error(reason);
+      data.reject(reason);
+      this._reschedule();
+    });
   }
 
   calculate(population: NetworkInterface[]) {
