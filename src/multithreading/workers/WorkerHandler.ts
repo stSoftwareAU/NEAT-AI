@@ -124,6 +124,9 @@ export class WorkerHandler {
         resolve(result);
         this.busyCount--;
 
+        if( this.busyCount < 0){
+          console.error(  this.workerID, "busy count negative", this.busyCount);
+        }
         // if (!this.isBusy()) {
         this.doneListners.forEach((listner) => listner(this));
         // }
@@ -149,7 +152,7 @@ export class WorkerHandler {
 
   terminate() {
     if (this.isBusy()) {
-      console.warn(this.workerID, "terminated but still busy");
+      console.warn(this.workerID, "terminated but still busy", this.busyCount);
     }
     this.mockProcessor = null;
     if (this.realWorker) {
