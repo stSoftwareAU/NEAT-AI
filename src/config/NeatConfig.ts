@@ -104,5 +104,14 @@ export function make(parameters?: NeatOptions) {
     schedule: options.schedule,
   };
 
+  if (config.mutationAmount < 1) {
+    throw "Mutation Amount must be more than zero was: " +
+      config.mutationAmount;
+  }
+  
+  if (config.mutationRate <= 0.001) {
+    throw "Mutation Rate must be more than 0.1% was: " + config.mutationRate;
+  }
+
   return config;
 }
