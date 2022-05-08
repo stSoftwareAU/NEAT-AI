@@ -35,10 +35,11 @@ export interface NeatConfig {
 
   /** Tne maximum number of nodes */
   maxNodes: number;
+
   /** Number of changes per Gene */
   mutationAmount: number;
 
-  /** Probability of changing a gene */
+  /** Probability of changing a single gene */
   mutationRate: number;
 
   /** The target population size. */
@@ -56,7 +57,6 @@ export interface NeatConfig {
   log: number;
 
   schedule?: ScheduleInterface;
-  // network?: NetworkInterface;
 }
 
 export function make(parameters?: NeatOptions) {
