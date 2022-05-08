@@ -160,7 +160,14 @@ export class NetworkUtil {
     }
 
     for (let i = workers.length; i--;) {
-      workers[i].terminate();
+      const w = workers[i];
+      if (w.isBusy()) {
+        w.addIdleListener((w) => {
+          w.terminate();
+        });
+      } else {
+        w.terminate();
+      }
     }
     workers.length = 0; // Release the memory.
 

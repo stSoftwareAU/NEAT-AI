@@ -18,7 +18,7 @@ export class Fitness {
   constructor(workers: WorkerHandler[], growth: number) {
     this.workers = workers;
 
-    workers.forEach((w) => w.addDoneListener(this._reschedule));
+    workers.forEach((w) => w.addIdleListener(this._reschedule));
     this.growth = growth;
   }
 

@@ -52,7 +52,7 @@ export class WorkerHandler {
   private workerID = ++globalWorkerID;
   private busyCount = 0;
   private callbacks: { [key: string]: CallableFunction } = {};
-  private doneListners: WorkerEventListner[] = [];
+  private idleListners: WorkerEventListner[] = [];
 
   constructor(
     dataSetDir: string,
@@ -99,10 +99,11 @@ export class WorkerHandler {
     return this.busyCount > 0;
   }
 
-  addDoneListener(callback: WorkerEventListner) {
-    this.doneListners.push(callback);
-    if (this.doneListners.length > 1) {
-      console.warn(this.workerID, "listners", this.doneListners.length);
+  /** Notify listeners when worker no longer busy */
+  addIdleListener(callback: WorkerEventListner) {
+    this.idleListners.push(callback);
+    if (this.idleListners.length > 1) {
+      console.warn(this.workerID, "listners", this.idleListners.length);
     }
   }
 
@@ -124,12 +125,12 @@ export class WorkerHandler {
         resolve(result);
         this.busyCount--;
 
-        if( this.busyCount < 0){
-          console.error(  this.workerID, "busy count negative", this.busyCount);
-        }
-        // if (!this.isBusy()) {
-        this.doneListners.forEach((listner) => listner(this));
+        // if( this.busyCount < 0){
+        //   console.error(  this.workerID, "busy count negative", this.busyCount);
         // }
+        if (!this.isBusy()) {
+          this.idleListners.forEach((listner) => listner(this));
+        }
         // else{
         //   console.info( this.workerID, "still busy", this.busyCount);
         // }
@@ -159,7 +160,7 @@ export class WorkerHandler {
       this.realWorker.terminate();
       this.realWorker = null; // release the memory.
     }
-    this.doneListners.length = 0;
+    this.idleListners.length = 0;
   }
 
   echo(message: string, ms: number) {
