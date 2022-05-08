@@ -102,9 +102,6 @@ export class WorkerHandler {
   /** Notify listeners when worker no longer busy */
   addIdleListener(callback: WorkerEventListner) {
     this.idleListners.push(callback);
-    if (this.idleListners.length > 1) {
-      console.warn(this.workerID, "listners", this.idleListners.length);
-    }
   }
 
   private callback(data: ResponseData) {
