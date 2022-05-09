@@ -55,8 +55,6 @@ export interface NeatConfig {
   mutation: any;
   iterations: number;
   log: number;
-
-  schedule?: ScheduleInterface;
 }
 
 export function make(parameters?: NeatOptions) {
@@ -101,7 +99,6 @@ export function make(parameters?: NeatOptions) {
     trainRate: options.trainRate ? options.trainRate : 0.01,
 
     log: options.log ? options.log : 0,
-    schedule: options.schedule,
   };
 
   if (config.mutationAmount < 1) {

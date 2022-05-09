@@ -23,7 +23,10 @@ export class Fitness {
   }
 
   private _reschedule() {
-    calculationData?.that.schedule();
+    
+    if (calculationData && calculationData.queue.length > 0) {
+      calculationData.that.schedule();
+    }
   }
 
   private async _callWorker(worker: WorkerHandler, creature: NetworkInterface) {
@@ -44,7 +47,7 @@ export class Fitness {
     addTag(creature, "score", creature.score.toString());
   }
 
-  private schedule() {
+  private async schedule() {
     if (!calculationData) throw "No calculation data";
 
     const data = calculationData;
@@ -60,7 +63,7 @@ export class Fitness {
       }
     }
 
-    Promise.all(promises).then(
+    await Promise.all(promises).then(
       (r) => {
         if (data.queue.length == 0) {
           data.resolve(r);

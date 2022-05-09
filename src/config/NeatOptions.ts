@@ -2,7 +2,6 @@
                                       CONFIG
 *******************************************************************************/
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
-import { ScheduleInterface } from "./ScheduleInterface.ts";
 
 export interface NeatOptions {
   equal?: boolean; // No clue.
@@ -54,6 +53,4 @@ export interface NeatOptions {
   iterations?: number;
   log?: number;
 
-  schedule?: ScheduleInterface;
-  // network?: NetworkInterface;
 }

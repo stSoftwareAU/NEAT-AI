@@ -116,36 +116,39 @@ export class WorkerHandler {
   }
 
   private makePromise(data: RequestData) {
-    this.busyCount++;
-    const p = new Promise<ResponseData>((resolve) => {
-      const call = (result: ResponseData) => {
-        resolve(result);
-        this.busyCount--;
 
-        // if( this.busyCount < 0){
-        //   console.error(  this.workerID, "busy count negative", this.busyCount);
-        // }
-        if (!this.isBusy()) {
-          this.idleListners.forEach((listner) => listner(this));
-        }
-        // else{
-        //   console.info( this.workerID, "still busy", this.busyCount);
-        // }
-      };
-
-      this.callbacks[data.taskID.toString()] = call;
-    });
 
     if (this.realWorker) {
+      this.busyCount++;
+      const p = new Promise<ResponseData>((resolve) => {
+        const call = (result: ResponseData) => {
+          resolve(result);
+          this.busyCount--;
+  
+          // if( this.busyCount < 0){
+          //   console.error(  this.workerID, "busy count negative", this.busyCount);
+          // }
+          if (!this.isBusy()) {
+            this.idleListners.forEach((listner) => listner(this));
+          }
+          // else{
+          //   console.info( this.workerID, "still busy", this.busyCount);
+          // }
+        };
+  
+        this.callbacks[data.taskID.toString()] = call;
+      });
       this.realWorker.postMessage(data);
-    } else if (this.mockProcessor) {
-      const mp = this.mockProcessor.process(data);
 
-      mp.then((result) => this.callback(result));
+      return p;
+    } else if (this.mockProcessor) {
+      this.busyCount++;
+      const mp = this.mockProcessor.process(data).then( r=>{this.busyCount--; return r});
+
+     return mp;//.then((result) => this.callback(result));
     } else {
       throw "No real or fake worker";
     }
-    return p;
   }
 
   terminate() {

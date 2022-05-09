@@ -147,15 +147,6 @@ export class NetworkUtil {
         iterationStartMS = new Date().getTime();
       }
 
-      if (
-        options.schedule && neat.generation % options.schedule.iterations === 0
-      ) {
-        options.schedule.function({
-          score: fittest.score,
-          error: -error,
-          iteration: neat.generation,
-        });
-      }
       if (timedOut) break;
     }
 
