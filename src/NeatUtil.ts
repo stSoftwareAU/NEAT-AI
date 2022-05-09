@@ -1,4 +1,4 @@
-import { Neat } from "./neat.js";
+import { Neat } from "./Neat.js";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { crypto } from "https://deno.land/std@0.137.0/crypto/mod.ts";

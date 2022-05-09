@@ -1,5 +1,5 @@
 import { NeatUtil } from "../src/NeatUtil.ts";
-import { Neat } from "../src/neat.js";
+import { Neat } from "../src/Neat.js";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { Network } from "../src/architecture/network.js";
 import { assert } from "https://deno.land/std@0.137.0/testing/asserts.ts";

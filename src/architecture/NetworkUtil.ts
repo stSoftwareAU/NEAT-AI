@@ -6,7 +6,7 @@ import { NeatOptions } from "../config/NeatOptions.ts";
 
 import { yellow } from "https://deno.land/std@0.137.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import { Neat } from "../neat.js";
+import { Neat } from "../Neat.js";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
