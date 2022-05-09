@@ -53,44 +53,7 @@ export class Neat {
       this.population.unshift(network);
     }
 
-    await this.deDepulate();
-  }
-
-  async deDepulate() {
-    const unique = new Set();
-    /**
-     *  Reset the scores & de-duplcate the population.
-     */
-    for (let i = 0; i < this.population.length; i++) {
-      const p = this.population[i];
-      const key = await this.util.makeUniqueName(p);
-
-      let duplicate = unique.has(key);
-      if (!duplicate && i > this.config.elitism) {
-        duplicate = this.util.previousExperiment(p);
-      }
-      if (duplicate) {
-        for (let j = 0; j < 100; j++) {
-          const tmpPopulation = [this.getOffspring()];
-          this.util.mutate(tmpPopulation);
-
-          const p2 = tmpPopulation[0];
-          const key2 = await this.util.makeUniqueName(p2);
-
-          let duplicate2 = unique.has(key2);
-          if (!duplicate2 && i > this.config.elitism) {
-            duplicate2 = this.util.previousExperiment(p2);
-          }
-          if (duplicate2 == false) {
-            this.population[i] = p2;
-            unique.add(key2);
-            break;
-          }
-        }
-      } else {
-        unique.add(key);
-      }
-    }
+    await this.util.deDepulate(this.population);
   }
 
   /**
@@ -292,8 +255,7 @@ export class Neat {
       ...trainPopulation,
     ]; // Keep pseudo sorted.
 
-    await this.deDepulate();
-
+    await this.util.deDepulate(this.population);
     this.generation++;
 
     return fittest;

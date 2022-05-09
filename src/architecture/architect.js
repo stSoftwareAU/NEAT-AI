@@ -1,5 +1,5 @@
 /* Import */
-import { Node } from "./node.js";
+import { Node } from "./Node.js";
 import { Network } from "./network.js";
 import { Group } from "./group.js";
 import { Layer } from "./layer.js";
@@ -306,7 +306,7 @@ export const architect = {
 
     let previous = inputLayer;
     for (let i = 0; i < blocks.length; i++) {
-      const layer = new Layer.GRU(blocks[i]);
+      const layer = Layer.GRU(blocks[i]);
       previous.connect(layer);
       previous = layer;
 
@@ -357,17 +357,17 @@ export const architect = {
 
     const nodes = [];
 
-    const input = new Layer.Dense(inputSize);
-    const inputMemory = new Layer.Memory(inputSize, previousInput);
+    const input = Layer.Dense(inputSize);
+    const inputMemory = Layer.Memory(inputSize, previousInput);
     const hidden = [];
-    const output = new Layer.Dense(outputSize);
-    const outputMemory = new Layer.Memory(outputSize, previousOutput);
+    const output = Layer.Dense(outputSize);
+    const outputMemory = Layer.Memory(outputSize, previousOutput);
 
     nodes.push(input);
     nodes.push(outputMemory);
 
     for (let i = 0; i < hiddenLayers.length; i++) {
-      const hiddenLayer = new Layer.Dense(hiddenLayers[i]);
+      const hiddenLayer = Layer.Dense(hiddenLayers[i]);
       hidden.push(hiddenLayer);
       nodes.push(hiddenLayer);
       if (typeof hidden[i - 1] !== "undefined") {

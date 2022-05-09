@@ -1,7 +1,7 @@
 /* Import */
 import { Methods } from "../methods/methods.js";
 import { Mutation } from "../methods/mutation.ts";
-import Connection from "./connection.js";
+import { Connection } from "./connection.js";
 // import { Config } from "../config.ts";
 
 /*******************************************************************************

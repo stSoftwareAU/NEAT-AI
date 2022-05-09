@@ -1,6 +1,6 @@
 import { Mutation } from "../methods/mutation.ts";
-import Connection from "./connection.js";
-import { Node } from "./node.js";
+import { Connection } from "./connection.js";
+import { Node } from "./Node.js";
 import { NetworkUtil } from "./NetworkUtil.ts";
 
 /*******************************************************************************
@@ -51,7 +51,7 @@ export class Network {
   /**
    * Activates the network
    */
-  activate(input, training) {
+  activate(input) {
     const output = new Array(this.output);
     let outputLen = 0;
 
@@ -786,52 +786,7 @@ export class Network {
 
     return network;
   }
-  /**
-   * Merge two networks into one
-   *
-  static merge(network1, network2) {
-    // Create a copy of the networks
-    network1 = Network.fromJSON(network1.toJSON());
-    network2 = Network.fromJSON(network2.toJSON());
 
-    // Check if output and input size are the same
-    if (network1.output !== network2.input) {
-      throw new Error(
-        "Output size of network1 should be the same as the input size of network2!",
-      );
-    }
-
-    // Redirect all connections from network2 input from network1 output
-    for (let i = 0; i < network2.connections.length; i++) {
-      const conn = network2.connections[i];
-      if (conn.from.type === "input") {
-        const index = network2.nodes.indexOf(conn.from);
-
-        // redirect
-        conn.from = network1.nodes[network1.nodes.length - 1 - index];
-      }
-    }
-
-    // Delete input nodes of network2
-    for (let i = network2.input - 1; i >= 0; i--) {
-      network2.nodes.splice(i, 1);
-    }
-
-    // Change the node type of network1's output nodes (now hidden)
-    for (
-      let i = network1.nodes.length - network1.output;
-      i < network1.nodes.length;
-      i++
-    ) {
-      network1.nodes[i].type = "hidden";
-    }
-
-    // Create one network from both networks
-    network1.connections = network1.connections.concat(network2.connections);
-    network1.nodes = network1.nodes.concat(network2.nodes);
-
-    return network1;
-  }*/
   /**
    * Create an offspring from two parent networks
    */

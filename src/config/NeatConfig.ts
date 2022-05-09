@@ -108,7 +108,7 @@ export function make(parameters?: NeatOptions) {
     throw "Mutation Amount must be more than zero was: " +
       config.mutationAmount;
   }
-  
+
   if (config.mutationRate <= 0.001) {
     throw "Mutation Rate must be more than 0.1% was: " + config.mutationRate;
   }

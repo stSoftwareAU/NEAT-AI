@@ -96,6 +96,43 @@ export class NeatUtil {
     }
   }
 
+  async deDepulate(creatures: NetworkInterface[]) {
+    const unique = new Set();
+    /**
+     *  Reset the scores & de-duplcate the population.
+     */
+    for (let i = 0; i < creatures.length; i++) {
+      const p = creatures[i];
+      const key = await this.makeUniqueName(p);
+
+      let duplicate = unique.has(key);
+      if (!duplicate && i > this.config.elitism) {
+        duplicate = await this.previousExperiment(p);
+      }
+      if (duplicate) {
+        for (let j = 0; j < 100; j++) {
+          const tmpPopulation = [this.neat.getOffspring()];
+          this.mutate(tmpPopulation);
+
+          const p2 = tmpPopulation[0];
+          const key2 = await this.makeUniqueName(p2);
+
+          let duplicate2 = unique.has(key2);
+          if (!duplicate2 && i > this.config.elitism) {
+            duplicate2 = await this.previousExperiment(p2);
+          }
+          if (duplicate2 == false) {
+            creatures[i] = p2;
+            unique.add(key2);
+            break;
+          }
+        }
+      } else {
+        unique.add(key);
+      }
+    }
+  }
+
   /**
    * Selects a random mutation method for a genome according to the parameters
    */

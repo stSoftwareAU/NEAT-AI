@@ -159,18 +159,23 @@ export class NetworkUtil {
       if (timedOut) break;
     }
 
+    const promises: Promise<string>[] = [];
     for (let i = workers.length; i--;) {
       const w = workers[i];
       if (w.isBusy()) {
-        w.addIdleListener((w) => {
-          w.terminate();
+        const p = new Promise<string>((resolve) => {
+          w.addIdleListener((w) => {
+            w.terminate();
+            resolve("done");
+          });
         });
+        promises.push(p);
       } else {
         w.terminate();
       }
     }
     workers.length = 0; // Release the memory.
-
+    await Promise.all(promises);
     if (bestCreature) {
       this.network.nodes = bestCreature.nodes;
       this.network.connections = bestCreature.connections;

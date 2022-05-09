@@ -2,30 +2,32 @@
 import { Methods } from "../methods/methods.js";
 // import { Config } from "../config.ts";
 import { Layer } from "./layer.js";
-import { Node } from "./node.js";
+import { Node } from "./Node.js";
 
 /*******************************************************************************
                                          Group
 *******************************************************************************/
 
-export function Group(size) {
-  this.nodes = [];
-  this.connections = {
-    in: [],
-    out: [],
-    self: [],
-  };
+/*******************************************************************************
+Group
+*******************************************************************************/
+export class Group {
+  constructor(size) {
+    this.nodes = [];
+    this.connections = {
+      in: [],
+      out: [],
+      self: [],
+    };
 
-  for (let i = 0; i < size; i++) {
-    this.nodes.push(new Node());
+    for (let i = 0; i < size; i++) {
+      this.nodes.push(new Node());
+    }
   }
-}
-
-Group.prototype = {
   /**
    * Activates all the nodes in the group
    */
-  activate: function (value) {
+  activate(value) {
     const values = [];
 
     if (typeof value !== "undefined" && value.length !== this.nodes.length) {
@@ -46,12 +48,11 @@ Group.prototype = {
     }
 
     return values;
-  },
-
+  }
   /**
    * Propagates all the node in the group
    */
-  propagate: function (rate, momentum, target) {
+  propagate(rate, momentum, target) {
     if (typeof target !== "undefined" && target.length !== this.nodes.length) {
       throw new Error(
         "Array with values should be same as the amount of nodes!",
@@ -65,12 +66,11 @@ Group.prototype = {
         this.nodes[i].propagate(rate, momentum, target[i]);
       }
     }
-  },
-
+  }
   /**
    * Connects the nodes in this group to nodes in another group or just a node
    */
-  connect: function (target, method, weight) {
+  connect(target, method, weight) {
     let connections = [];
     let i, j;
     if (target instanceof Group) {
@@ -125,12 +125,11 @@ Group.prototype = {
     }
 
     return connections;
-  },
-
+  }
   /**
    * Make nodes from this group gate the given connection(s)
    */
-  gate: function (connections, method) {
+  gate(connections, method) {
     if (typeof method === "undefined") {
       throw new Error("Please specify Gating.INPUT, Gating.OUTPUT");
     }
@@ -145,8 +144,12 @@ Group.prototype = {
     let i, j;
     for (i = 0; i < connections.length; i++) {
       const connection = connections[i];
-      if (!nodes1.includes(connection.from)) nodes1.push(connection.from);
-      if (!nodes2.includes(connection.to)) nodes2.push(connection.to);
+      if (!nodes1.includes(connection.from)) {
+        nodes1.push(connection.from);
+      }
+      if (!nodes2.includes(connection.to)) {
+        nodes2.push(connection.to);
+      }
     }
 
     switch (method) {
@@ -186,12 +189,11 @@ Group.prototype = {
           }
         }
     }
-  },
-
+  }
   /**
    * Sets the value of a property for every node
    */
-  set: function (values) {
+  set(values) {
     for (let i = 0; i < this.nodes.length; i++) {
       if (typeof values.bias !== "undefined") {
         this.nodes[i].bias = values.bias;
@@ -200,12 +202,11 @@ Group.prototype = {
       this.nodes[i].squash = values.squash || this.nodes[i].squash;
       this.nodes[i].type = values.type || this.nodes[i].type;
     }
-  },
-
+  }
   /**
    * Disconnects all nodes from this group from another given group/node
    */
-  disconnect: function (target, twosided) {
+  disconnect(target, twosided) {
     twosided = twosided || false;
 
     // In the future, disconnect will return a connection so indexOf can be used
@@ -261,14 +262,13 @@ Group.prototype = {
         }
       }
     }
-  },
-
+  }
   /**
    * Clear the context of this group
    */
-  clear: function () {
+  clear() {
     for (let i = 0; i < this.nodes.length; i++) {
       this.nodes[i].clear();
     }
-  },
-};
+  }
+}
