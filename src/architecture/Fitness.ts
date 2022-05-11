@@ -74,8 +74,6 @@ export class Fitness {
 
   calculate(population: NetworkInterface[]) {
     return new Promise((resolve, reject) => {
-      // Create a queue
-
       calculationData = {
         queue: population.slice(),
         resolve: resolve,

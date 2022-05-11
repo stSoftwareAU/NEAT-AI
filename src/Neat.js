@@ -201,8 +201,8 @@ export class Neat {
     this.util.mutate(newPopulation);
 
     const trainPopulation = [];
-    let tCounter = 0;
-    emptyDirSync(".debug");
+    // let tCounter = 0;
+    // emptyDirSync(".debug");
     await Promise.all(trainPromises).then((results) => {
       results.forEach((r) => {
         if (r.train) {
@@ -212,19 +212,19 @@ export class Neat {
             addTag(json, "approach", "trained");
             addTag(json, "error", r.train.error);
             addTag(json, "duration", r.duration);
-            Deno.writeTextFileSync(
-              ".debug/train-" + tCounter + ".json",
-              JSON.stringify(json, null, 2),
-            );
+            // Deno.writeTextFileSync(
+            //   ".debug/train-" + tCounter + ".json",
+            //   JSON.stringify(json, null, 2),
+            // );
 
-            const tmpElite = elitists[tCounter];
-            if (tmpElite) {
-              Deno.writeTextFileSync(
-                ".debug/elitist-" + tCounter + ".json",
-                JSON.stringify(elitists[tCounter].toJSON(), null, 2),
-              );
-            }
-            tCounter++;
+            // const tmpElite = elitists[tCounter];
+            // if (tmpElite) {
+            //   Deno.writeTextFileSync(
+            //     ".debug/elitist-" + tCounter + ".json",
+            //     JSON.stringify(elitists[tCounter].toJSON(), null, 2),
+            //   );
+            // }
+            // tCounter++;
             trainPopulation.push(Network.fromJSON(json));
           }
         } else {

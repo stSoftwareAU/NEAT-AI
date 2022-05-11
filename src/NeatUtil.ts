@@ -76,7 +76,7 @@ export class NeatUtil {
           name.substring(3) + ".txt";
         const sTxt = creature.score ? creature.score.toString() : "unknown";
 
-        await Deno.writeTextFile(filePath, sTxt);
+        Deno.writeTextFileSync(filePath, sTxt);
       }
     }
   }
