@@ -8,41 +8,44 @@ import { Connection } from "./connection.js";
                                          NODE
 *******************************************************************************/
 
-export function Node(type) {
-  this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
-  this.squash = Methods.activation.LOGISTIC;
-  this.type = type || "hidden";
+// import { Config } from "../config.ts";
+/*******************************************************************************
+NODE
+*******************************************************************************/
+export class Node {
+  constructor(type) {
+    this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
+    this.squash = Methods.activation.LOGISTIC;
+    this.type = type || "hidden";
 
-  this.activation = 0;
-  this.state = 0;
-  this.old = 0;
+    this.activation = 0;
+    this.state = 0;
+    this.old = 0;
 
-  // For tracking momentum
-  this.previousDeltaBias = 0;
+    // For tracking momentum
+    this.previousDeltaBias = 0;
 
-  // Batch training
-  this.totalDeltaBias = 0;
+    // Batch training
+    this.totalDeltaBias = 0;
 
-  this.connections = {
-    in: [],
-    out: [],
-    gated: [],
-    self: new Connection(this, this, 0),
-  };
+    this.connections = {
+      in: [],
+      out: [],
+      gated: [],
+      self: new Connection(this, this, 0),
+    };
 
-  // Data for backpropagation
-  this.error = {
-    responsibility: 0,
-    projected: 0,
-    gated: 0,
-  };
-}
-
-Node.prototype = {
+    // Data for backpropagation
+    this.error = {
+      responsibility: 0,
+      projected: 0,
+      gated: 0,
+    };
+  }
   /**
    * Activates the node
    */
-  activate: function (input) {
+  activate(input) {
     // Check if an input is given
     if (typeof input !== "undefined") {
       this.activation = input;
@@ -121,12 +124,11 @@ Node.prototype = {
     }
 
     return this.activation;
-  },
-
+  }
   /**
    * Activates the node without calculating elegibility traces and such
    */
-  noTraceActivate: function (input) {
+  noTraceActivate(input) {
     // Check if an input is given
     if (typeof input !== "undefined") {
       this.activation = input;
@@ -139,7 +141,6 @@ Node.prototype = {
       this.bias;
 
     // Activation sources coming from connections
-
     for (let i = this.connections.in.length; i--;) {
       const connection = this.connections.in[i];
       this.state += connection.from.activation * connection.weight *
@@ -154,12 +155,11 @@ Node.prototype = {
     }
 
     return this.activation;
-  },
-
+  }
   /**
    * Back-propagate the error, aka learn
    */
-  propagate: function (rate, momentum, update, target) {
+  propagate(rate, momentum, update, target) {
     momentum = momentum || 0;
     rate = rate || 0.3;
 
@@ -172,7 +172,6 @@ Node.prototype = {
         this.activation;
     } else { // the rest of the nodes compute their error responsibilities by backpropagation
       // error responsibilities from all the connections projected from this node
-
       for (let i = 0; i < this.connections.out.length; i++) {
         const connection = this.connections.out[i];
         const node = connection.to;
@@ -203,7 +202,9 @@ Node.prototype = {
       this.error.responsibility = this.error.projected + this.error.gated;
     }
 
-    if (this.type === "constant") return;
+    if (this.type === "constant") {
+      return;
+    }
 
     // Adjust all the node's incoming connections
     for (let i = 0; i < this.connections.in.length; i++) {
@@ -238,12 +239,11 @@ Node.prototype = {
       this.previousDeltaBias = this.totalDeltaBias;
       this.totalDeltaBias = 0;
     }
-  },
-
+  }
   /**
    * Creates a connection from this node to the given node
    */
-  connect: function (target, weight) {
+  connect(target, weight) {
     const connections = [];
     if (typeof target.bias !== "undefined") { // must be a node!
       if (target === this) {
@@ -274,12 +274,11 @@ Node.prototype = {
       }
     }
     return connections;
-  },
-
+  }
   /**
    * Disconnects this node from the other node
    */
-  disconnect: function (node, twosided) {
+  disconnect(node, twosided) {
     if (this === node) {
       this.connections.self.weight = 0;
       return;
@@ -291,7 +290,9 @@ Node.prototype = {
         this.connections.out.splice(i, 1);
         const j = conn.to.connections.in.indexOf(conn);
         conn.to.connections.in.splice(j, 1);
-        if (conn.gater !== null) conn.gater.ungate(conn);
+        if (conn.gater !== null) {
+          conn.gater.ungate(conn);
+        }
         break;
       }
     }
@@ -299,12 +300,11 @@ Node.prototype = {
     if (twosided) {
       node.disconnect(this);
     }
-  },
-
+  }
   /**
    * Make this node gate a connection
    */
-  gate: function (connections) {
+  gate(connections) {
     if (!Array.isArray(connections)) {
       connections = [connections];
     }
@@ -315,12 +315,11 @@ Node.prototype = {
       this.connections.gated.push(connection);
       connection.gater = this;
     }
-  },
-
+  }
   /**
    * Removes the gates from this node from the given connection(s)
    */
-  ungate: function (connections) {
+  ungate(connections) {
     if (!Array.isArray(connections)) {
       connections = [connections];
     }
@@ -333,12 +332,11 @@ Node.prototype = {
       connection.gater = null;
       connection.gain = 1;
     }
-  },
-
+  }
   /**
    * Clear the context of the node
    */
-  clear: function () {
+  clear() {
     for (let i = 0; i < this.connections.in.length; i++) {
       const connection = this.connections.in[i];
 
@@ -356,17 +354,16 @@ Node.prototype = {
 
     this.error.responsibility = this.error.projected = this.error.gated = 0;
     this.old = this.state = this.activation = 0;
-  },
-
+  }
   /**
    * Mutates the node with the given method
    */
-  mutate: function (method) {
+  mutate(method) {
     if (typeof method === "undefined") {
       throw new Error("No mutate method given!");
     } /*else if (!(method.name in Mutation.ALL)) {
-      throw new Error("This method does not exist!");
-    }*/
+          throw new Error("This method does not exist!");
+        }*/
 
     switch (method) {
       case Mutation.MOD_ACTIVATION: {
@@ -387,13 +384,14 @@ Node.prototype = {
         break;
       }
     }
-  },
-
+  }
   /**
    * Checks if this node is projecting to the given node
    */
-  isProjectingTo: function (node) {
-    if (node === this && this.connections.self.weight !== 0) return true;
+  isProjectingTo(node) {
+    if (node === this && this.connections.self.weight !== 0) {
+      return true;
+    }
 
     for (let i = 0; i < this.connections.out.length; i++) {
       const conn = this.connections.out[i];
@@ -402,13 +400,14 @@ Node.prototype = {
       }
     }
     return false;
-  },
-
+  }
   /**
    * Checks if the given node is projecting to this node
    */
-  isProjectedBy: function (node) {
-    if (node === this && this.connections.self.weight !== 0) return true;
+  isProjectedBy(node) {
+    if (node === this && this.connections.self.weight !== 0) {
+      return true;
+    }
 
     for (let i = 0; i < this.connections.in.length; i++) {
       const conn = this.connections.in[i];
@@ -418,12 +417,11 @@ Node.prototype = {
     }
 
     return false;
-  },
-
+  }
   /**
    * Converts the node to a json object
    */
-  toJSON: function () {
+  toJSON() {
     const json = {
       bias: this.bias,
       type: this.type,
@@ -431,17 +429,16 @@ Node.prototype = {
     };
 
     return json;
-  },
-};
+  }
+  /**
+   * Convert a json object to a node
+   */
+  static fromJSON(json) {
+    const node = new Node();
+    node.bias = json.bias;
+    node.type = json.type;
+    node.squash = Methods.activation[json.squash];
 
-/**
- * Convert a json object to a node
- */
-Node.fromJSON = function (json) {
-  const node = new Node();
-  node.bias = json.bias;
-  node.type = json.type;
-  node.squash = Methods.activation[json.squash];
-
-  return node;
-};
+    return node;
+  }
+}
