@@ -38,22 +38,7 @@ export class Neat {
    * Create the initial pool of genomes
    */
   async populatePopulation(network) {
-    while (this.population.length < this.config.popsize) {
-      let copy;
-      if (network) {
-        copy = Network.fromJSON(network.toJSON());
-      } else {
-        copy = new Network(this.input, this.output);
-      }
-
-      this.population.push(copy);
-    }
-
-    if (network) {
-      this.population.unshift(network);
-    }
-
-    await this.util.deDepulate(this.population);
+    await this.util.populatePopulation(network);
   }
 
   /**

@@ -695,7 +695,7 @@ export class Network {
     };
 
     // So we don't have to use expensive .indexOf()
-    for (let i = 0; i < this.nodes.length; i++) {
+    for (let i = this.nodes.length; i--;) {
       this.nodes[i].index = i;
     }
 
@@ -718,12 +718,13 @@ export class Network {
     }
 
     for (let i = 0; i < this.connections.length; i++) {
-      const conn = this.connections[i];
-      const tojson = conn.toJSON();
-      tojson.from = conn.from.index;
-      tojson.to = conn.to.index;
+      const tojson = this.connections[i].toJSON();
+      // const conn = this.connections[i];
+      // const tojson = conn.toJSON();
+      // tojson.from = conn.from.index;
+      // tojson.to = conn.to.index;
 
-      tojson.gater = conn.gater != null ? conn.gater.index : null;
+      // tojson.gater = conn.gater != null ? conn.gater.index : null;
 
       json.connections.push(tojson);
     }

@@ -29,16 +29,21 @@ export class Connection {
       values: [],
     };
   }
+
   /**
    * Converts the connection to a json object
    */
   toJSON() {
     const json = {
       weight: this.weight,
+      from: this.from.index,
+      to: this.to.index,
+      gater: this.gater != null ? this.gater.index : null,
     };
 
     return json;
   }
+
   /**
    * Returns an innovation ID
    * https://en.wikipedia.org/wiki/Pairing_function (Cantor pairing function)

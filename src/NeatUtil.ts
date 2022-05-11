@@ -1,4 +1,6 @@
 import { Neat } from "./Neat.js";
+
+import { Network } from "./architecture/network.js";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { crypto } from "https://deno.land/std@0.137.0/crypto/mod.ts";
@@ -18,6 +20,7 @@ export class NeatUtil {
     this.config = config;
   }
 
+  private te = new TextEncoder();
   async makeUniqueName(creature: NetworkInterface) {
     const json = creature.toJSON();
     delete json.tags;
@@ -28,7 +31,7 @@ export class NeatUtil {
       new Uint8Array(
         await crypto.subtle.digest(
           "SHA-256",
-          new TextEncoder().encode(txt),
+          this.te.encode(txt),
         ),
       ),
     );
@@ -94,6 +97,26 @@ export class NeatUtil {
         removeTag(creature, "approach");
       }
     }
+  }
+
+  /**
+   * Create the initial pool of genomes
+   */
+  async populatePopulation(network: Network) {
+    if (!network) {
+      throw "Network mandatory";
+    }
+
+    while (this.neat.population.length < this.config.popsize) {
+      const clonedCreature = Network.fromJSON(network.toJSON());
+      const creatures = [clonedCreature];
+      this.mutate(creatures);
+      this.neat.population.push(creatures[0]);
+    }
+
+    this.neat.population.unshift(network);
+
+    await this.deDepulate(this.neat.population);
   }
 
   async deDepulate(creatures: NetworkInterface[]) {

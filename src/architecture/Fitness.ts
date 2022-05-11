@@ -23,7 +23,6 @@ export class Fitness {
   }
 
   private _reschedule() {
-    
     if (calculationData && calculationData.queue.length > 0) {
       calculationData.that.schedule();
     }
@@ -56,25 +55,21 @@ export class Fitness {
     for (let i = this.workers.length; i--;) {
       const w = this.workers[i];
       if (!w.isBusy()) {
-        const creature = data.queue.shift();
-        if (creature && !creature.score) {
-          promises.push(this._callWorker(w, creature));
+        while (data.queue.length > 0) {
+          const creature = data.queue.shift();
+          if (creature && !creature.score) {
+            promises.push(this._callWorker(w, creature));
+            break;
+          }
         }
       }
     }
 
-    await Promise.all(promises).then(
-      (r) => {
-        if (data.queue.length == 0) {
-          data.resolve(r);
-          // calculationData = null;
-        }
-      },
-    ).catch((reason) => {
-      console.error(reason);
-      data.reject(reason);
-      this._reschedule();
-    });
+    await Promise.all(promises);
+
+    if (data.queue.length == 0) {
+      data.resolve("");
+    }
   }
 
   calculate(population: NetworkInterface[]) {

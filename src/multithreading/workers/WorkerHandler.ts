@@ -1,6 +1,6 @@
 import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
+import { MockWorker } from "./MockWorker.ts";
 
-import { WorkerProcessor } from "./WorkerProcessor.ts";
 import { addTag, getTag } from "../../tags/TagsInterface.ts";
 
 export interface RequestData {
@@ -43,11 +43,21 @@ export interface ResponseData {
 interface WorkerEventListner {
   (worker: WorkerHandler): void;
 }
+export interface WorkerInterface {
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+
+  postMessage(data: RequestData): void;
+  terminate(): void;
+}
 
 let globalWorkerID = 0;
 export class WorkerHandler {
-  private realWorker: (Worker | null) = null;
-  private mockProcessor: (WorkerProcessor | null) = null;
+  private worker: WorkerInterface;
+
   private taskID = 1;
   private workerID = ++globalWorkerID;
   private busyCount = 0;
@@ -69,8 +79,9 @@ export class WorkerHandler {
         costName: costName,
       },
     };
+
     if (!direct) {
-      this.realWorker = new Worker(
+      this.worker = new Worker(
         new URL("./deno/worker.js", import.meta.url).href,
         {
           type: "module",
@@ -84,14 +95,15 @@ export class WorkerHandler {
           },
         },
       );
-
-      this.realWorker.addEventListener("message", (message) => {
-        this.callback(message.data as ResponseData);
-      });
     } else {
-      this.mockProcessor = new WorkerProcessor();
+      this.worker = new MockWorker();
     }
 
+    this.worker.addEventListener("message", (message) => {
+      const me = message as MessageEvent;
+
+      this.callback(me.data as ResponseData);
+    });
     this.makePromise(data);
   }
 
@@ -116,49 +128,32 @@ export class WorkerHandler {
   }
 
   private makePromise(data: RequestData) {
+    this.busyCount++;
+    const p = new Promise<ResponseData>((resolve) => {
+      const call = (result: ResponseData) => {
+        resolve(result);
+        this.busyCount--;
 
+        if (!this.isBusy()) {
+          this.idleListners.forEach((listner) => listner(this));
+        }
+      };
 
-    if (this.realWorker) {
-      this.busyCount++;
-      const p = new Promise<ResponseData>((resolve) => {
-        const call = (result: ResponseData) => {
-          resolve(result);
-          this.busyCount--;
-  
-          // if( this.busyCount < 0){
-          //   console.error(  this.workerID, "busy count negative", this.busyCount);
-          // }
-          if (!this.isBusy()) {
-            this.idleListners.forEach((listner) => listner(this));
-          }
-          // else{
-          //   console.info( this.workerID, "still busy", this.busyCount);
-          // }
-        };
-  
-        this.callbacks[data.taskID.toString()] = call;
-      });
-      this.realWorker.postMessage(data);
+      this.callbacks[data.taskID.toString()] = call;
+    });
 
-      return p;
-    } else if (this.mockProcessor) {
-      this.busyCount++;
-      const mp = this.mockProcessor.process(data).then( r=>{this.busyCount--; return r});
+    this.worker.postMessage(data);
 
-     return mp;//.then((result) => this.callback(result));
-    } else {
-      throw "No real or fake worker";
-    }
+    return p;
   }
 
   terminate() {
     if (this.isBusy()) {
       console.warn(this.workerID, "terminated but still busy", this.busyCount);
     }
-    this.mockProcessor = null;
-    if (this.realWorker) {
-      this.realWorker.terminate();
-      this.realWorker = null; // release the memory.
+
+    if (this.worker) {
+      this.worker.terminate();
     }
     this.idleListners.length = 0;
   }

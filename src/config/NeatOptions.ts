@@ -52,5 +52,4 @@ export interface NeatOptions {
   mutation?: any;
   iterations?: number;
   log?: number;
-
 }
