@@ -141,7 +141,7 @@ export class Neat {
           let pos;
 
           for (let attempts = 0; attempts < 3; attempts++) {
-            pos = Math.floor(Math.random() * elitists.length) + 1;
+            pos = Math.floor(Math.random() * elitists.length);
             tmpPreviousFittest = elitists[pos];
 
             if (tmpPreviousFittest) break;
@@ -172,7 +172,7 @@ export class Neat {
               }
             }
           } else {
-            console.info("FAILED Rebooting fine tuning: no creature at", pos);
+            console.info("FAILED Rebooting fine tuning: no creature at", pos, "of", elitists.length);
           }
         }
       }
