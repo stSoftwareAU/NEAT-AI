@@ -228,11 +228,11 @@ export class NetworkUtil {
 
     const files: string[] = [];
 
-    if( cacheDataFile.fn.startsWith(dataDir)){
-      files.push( cacheDataFile.fn.substring( cacheDataFile.fn.lastIndexOf('/') + 1));
-    }
-    else
-    {
+    if (cacheDataFile.fn.startsWith(dataDir)) {
+      files.push(
+        cacheDataFile.fn.substring(cacheDataFile.fn.lastIndexOf("/") + 1),
+      );
+    } else {
       for (const dirEntry of Deno.readDirSync(dataDir)) {
         if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
           files.push(dirEntry.name);
@@ -426,7 +426,7 @@ export class NetworkUtil {
     const dataSetDir = makeDataDir(dataSet);
 
     const result = this.trainDir(dataSetDir, options);
-    
+
     Deno.removeSync(dataSetDir, { recursive: true });
 
     return result;

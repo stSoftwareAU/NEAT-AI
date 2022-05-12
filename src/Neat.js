@@ -138,13 +138,16 @@ export class Neat {
       if (previousScoreTxt) {
         const previousScore = parseFloat(previousScoreTxt);
         if (previousScore == fittest.score) {
-          let pos;
+          let pos = Math.floor(Math.random() * elitists.length);
 
-          for (let attempts = 0; attempts < 3; attempts++) {
-            pos = Math.floor(Math.random() * elitists.length);
+          for (; pos < elitists.length; pos++) {
             tmpPreviousFittest = elitists[pos];
+            if (!tmpPreviousFittest) continue;
+            const previousScoreTxt3 = getTag(tmpPreviousFittest, "score");
+            if (!previousScoreTxt3) continue;
 
-            if (tmpPreviousFittest) break;
+            const previousScore3 = parseFloat(previousScoreTxt3);
+            if (previousScore3 < fittest.score) break;
           }
 
           if (tmpPreviousFittest) {
@@ -154,15 +157,14 @@ export class Neat {
             } else {
               const previousScore2 = parseFloat(previousScoreTxt2);
               if (previousScore2 < fittest.score) {
-                if( this.config.verbose){
+                if (this.config.verbose) {
                   console.info(
                     "Rebooting fine tuning, elitist:",
                     pos,
                   );
                 }
                 rebootedFineTune = true;
-              } 
-              else if( this.config.verbose){
+              } else if (this.config.verbose) {
                 console.info(
                   "FAILED: Rebooting fine tuning: previous score not less than current",
                   pos,
@@ -172,7 +174,12 @@ export class Neat {
               }
             }
           } else {
-            console.info("FAILED Rebooting fine tuning: no creature at", pos, "of", elitists.length);
+            console.info(
+              "FAILED Rebooting fine tuning: no creature at",
+              pos,
+              "of",
+              elitists.length,
+            );
           }
         }
       }

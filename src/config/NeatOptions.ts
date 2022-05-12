@@ -53,5 +53,5 @@ export interface NeatOptions {
   iterations?: number;
   log?: number;
   /** verbose logging default: false */
-  verbose?:boolean;
+  verbose?: boolean;
 }
