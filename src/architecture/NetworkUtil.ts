@@ -210,7 +210,7 @@ export class NetworkUtil {
 
     const result = await this.evolveDir(dataSetDir, options);
 
-    await Deno.remove(dataSetDir, { recursive: true });
+    Deno.removeSync(dataSetDir, { recursive: true });
 
     return result;
   }
@@ -228,13 +228,19 @@ export class NetworkUtil {
 
     const files: string[] = [];
 
-    for (const dirEntry of Deno.readDirSync(dataDir)) {
-      if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
-        files.push(dirEntry.name);
-      }
+    if( cacheDataFile.fn.startsWith(dataDir)){
+      files.push( cacheDataFile.fn.substring( cacheDataFile.fn.lastIndexOf('/') + 1));
     }
+    else
+    {
+      for (const dirEntry of Deno.readDirSync(dataDir)) {
+        if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
+          files.push(dirEntry.name);
+        }
+      }
 
-    files.sort();
+      files.sort();
+    }
 
     files.forEach((name) => {
       const fn = dataDir + "/" + name;
@@ -420,7 +426,7 @@ export class NetworkUtil {
     const dataSetDir = makeDataDir(dataSet);
 
     const result = this.trainDir(dataSetDir, options);
-
+    
     Deno.removeSync(dataSetDir, { recursive: true });
 
     return result;

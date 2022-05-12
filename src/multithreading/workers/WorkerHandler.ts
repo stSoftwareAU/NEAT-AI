@@ -152,9 +152,7 @@ export class WorkerHandler {
       console.warn(this.workerID, "terminated but still busy", this.busyCount);
     }
 
-    if (this.worker) {
-      this.worker.terminate();
-    }
+    this.worker.terminate();
     this.idleListners.length = 0;
   }
 
