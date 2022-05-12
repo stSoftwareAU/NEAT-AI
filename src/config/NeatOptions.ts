@@ -52,4 +52,6 @@ export interface NeatOptions {
   mutation?: any;
   iterations?: number;
   log?: number;
+  /** verbose logging default: false */
+  verbose?:boolean;
 }

@@ -55,6 +55,8 @@ export interface NeatConfig {
   mutation: any;
   iterations: number;
   log: number;
+  /** verbose logging default: false */
+  verbose: boolean;
 }
 
 export function make(parameters?: NeatOptions) {
@@ -99,6 +101,7 @@ export function make(parameters?: NeatOptions) {
     trainRate: options.trainRate ? options.trainRate : 0.01,
 
     log: options.log ? options.log : 0,
+    verbose: options.verbose ? true : false,
   };
 
   if (config.mutationAmount < 1) {

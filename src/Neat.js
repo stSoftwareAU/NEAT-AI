@@ -154,12 +154,15 @@ export class Neat {
             } else {
               const previousScore2 = parseFloat(previousScoreTxt2);
               if (previousScore2 < fittest.score) {
-                console.info(
-                  "Rebooting fine tuning, elitist:",
-                  pos,
-                );
+                if( this.config.verbose){
+                  console.info(
+                    "Rebooting fine tuning, elitist:",
+                    pos,
+                  );
+                }
                 rebootedFineTune = true;
-              } else {
+              } 
+              else if( this.config.verbose){
                 console.info(
                   "FAILED: Rebooting fine tuning: previous score not less than current",
                   pos,
@@ -183,7 +186,7 @@ export class Neat {
         Math.ceil(this.config.popsize / 5),
         this.config.popsize - this.population.length,
       ),
-      !rebootedFineTune,
+      !rebootedFineTune && this.config.verbose,
     );
 
     const newPopulation = [];
