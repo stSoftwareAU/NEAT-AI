@@ -258,26 +258,26 @@ export function fineTuneImprovement(
     return [];
   }
 
-  const approach = getTag(fittest, "approach");
-  if (showMessage && approach == "fine") {
-    console.info(
-      "Fine tuning increased fitness by",
-      fScore - pScore,
-      "to",
-      fScore,
-      "adjusted",
-      getTag(fittest, "adjusted"),
-      "step",
-      getTag(fittest, "step"),
-    );
-  } else if (approach == "trained") {
-    console.info(
-      "Training increased fitness by",
-      fScore - pScore,
-      "to",
-      fScore,
-    );
-  }
+  // const approach = getTag(fittest, "approach");
+  // if (showMessage && approach == "fine") {
+  //   console.info(
+  //     "Fine tuning increased fitness by",
+  //     fScore - pScore,
+  //     "to",
+  //     fScore,
+  //     "adjusted",
+  //     getTag(fittest, "adjusted"),
+  //     "step",
+  //     getTag(fittest, "step"),
+  //   );
+  // } else if (approach == "trained") {
+  //   console.info(
+  //     "Training increased fitness by",
+  //     fScore - pScore,
+  //     "to",
+  //     fScore,
+  //   );
+  // }
   const fineTuned: Network[] = [];
   const previousJSON = previousFittest.toJSON();
 
