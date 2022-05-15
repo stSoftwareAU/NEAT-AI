@@ -17,6 +17,11 @@ export interface NeatConfig {
   /** List of creatures to start with */
   creatures: NetworkInterface[];
 
+  /** The list of observations to focus one */
+  focusList: number[];
+  /** Focus rate */
+  focusRate: number;
+
   elitism: number;
   equal: boolean; // No clue.
   /** Target error */
@@ -71,6 +76,9 @@ export function make(parameters?: NeatOptions) {
     costName: options.costName || "MSE",
 
     equal: options.equal || false,
+    focusList: options.focusList || [],
+    focusRate: options.focusRate || 0.25,
+
     targetError: typeof options.error !== "undefined"
       ? Math.abs(options.error) * -1
       : -0.05,

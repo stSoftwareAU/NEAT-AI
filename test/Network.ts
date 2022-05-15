@@ -4,7 +4,7 @@ import {
   assert,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.137.0/testing/asserts.ts";
+} from "https://deno.land/std@0.139.0/testing/asserts.ts";
 
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
@@ -12,9 +12,9 @@ import { NeatOptions } from "../src/config/NeatOptions.ts";
 /* Functions used in the testing process */
 function checkMutation(method: unknown) {
   const network = architect.Perceptron(2, 4, 4, 4, 2);
-  network.mutate(Mutation.ADD_GATE);
-  network.mutate(Mutation.ADD_BACK_CONN);
-  network.mutate(Mutation.ADD_SELF_CONN);
+  network.util.mutate(Mutation.ADD_GATE);
+  network.util.mutate(Mutation.ADD_BACK_CONN);
+  network.util.mutate(Mutation.ADD_SELF_CONN);
 
   const originalOutput = [];
 
@@ -24,7 +24,7 @@ function checkMutation(method: unknown) {
     }
   }
 
-  network.mutate(method);
+  network.util.mutate(method as { name: string });
 
   const mutatedOutput = [];
 
@@ -170,12 +170,12 @@ Deno.test("Feed-forward", () => {
   // mutate it a couple of times
   let i;
   for (i = 0; i < 100; i++) {
-    network1.mutate(Mutation.ADD_NODE);
-    network2.mutate(Mutation.ADD_NODE);
+    network1.util.mutate(Mutation.ADD_NODE);
+    network2.util.mutate(Mutation.ADD_NODE);
   }
   for (i = 0; i < 400; i++) {
-    network1.mutate(Mutation.ADD_CONN);
-    network2.mutate(Mutation.ADD_NODE);
+    network1.util.mutate(Mutation.ADD_CONN);
+    network2.util.mutate(Mutation.ADD_NODE);
   }
 
   // Crossover

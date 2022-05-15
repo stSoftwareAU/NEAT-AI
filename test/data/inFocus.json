@@ -1,0 +1,110 @@
+{
+  "nodes": [
+    {
+      "bias": 0,
+      "type": "input",
+      "squash": "LOGISTIC",
+      "index": 0
+    },
+    {
+      "bias": 0,
+      "type": "input",
+      "squash": "LOGISTIC",
+      "index": 1
+    },
+    {
+      "bias": 0.05369173111693848,
+      "type": "hidden",
+      "squash": "SOFTSIGN",
+      "index": 2
+    },
+    {
+      "bias": 0.058337769856790844,
+      "type": "hidden",
+      "squash": "TANH",
+      "index": 3
+    },
+    {
+      "bias": -0.06314498653206804,
+      "type": "hidden",
+      "squash": "SELU",
+      "index": 4
+    },
+    {
+      "bias": -0.06314498653206804,
+      "type": "hidden",
+      "squash": "SELU",
+      "index": 5
+    },
+    {
+      "bias": -0.06314498653206804,
+      "type": "output",
+      "squash": "SELU",
+      "index": 6
+    }
+  ],
+  "connections": [
+    {
+      "weight": 0.06564275513642656,
+      "from": 0,
+      "to": 5,
+      "gater": null
+    },
+    {
+      "weight": 0.06564275513642656,
+      "from": 0,
+      "to": 4,
+      "gater": null
+    },
+    {
+      "weight": -0.047882710499611396,
+      "from": 1,
+      "to": 3,
+      "gater": null
+    },
+    {
+      "weight": 0.06903117438758648,
+      "from": 0,
+      "to": 2,
+      "gater": null
+    },
+    {
+      "weight": -0.05508514689706354,
+      "from": 2,
+      "to": 4,
+      "gater": null
+    },
+    {
+      "weight": 0.06564275513642656,
+      "from": 0,
+      "to": 6,
+      "gater": null
+    },
+    {
+      "weight": 0.039070247698802685,
+      "from": 3,
+      "to": 4,
+      "gater": null
+    },
+    {
+      "weight": 1.1752385564378658,
+      "from": 1,
+      "to": 6,
+      "gater": null
+    },
+    {
+      "weight": 3.624824916276402,
+      "from": 4,
+      "to": 6,
+      "gater": null
+    },
+    {
+      "weight": 0.09425312910671699,
+      "from": 5,
+      "to": 6,
+      "gater": null
+    }
+  ],
+  "input": 2,
+  "output": 1
+}

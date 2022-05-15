@@ -20,6 +20,11 @@ export interface NeatOptions {
   /** List of creatures to start with */
   creatures?: NetworkInterface[];
 
+  /** The list of observations to focus one */
+  focusList?: number[];
+  /** Focus rate */
+  focusRate?: number;
+
   growth?: number;
   elitism?: number;
 

@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.137.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.139.0/testing/asserts.ts";
 import { WorkerHandler } from "../src/multithreading/workers/WorkerHandler.ts";
 
 Deno.test("busyWorker", async () => {

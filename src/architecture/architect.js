@@ -124,23 +124,23 @@ export const architect = {
     const network = new Network(input, output);
 
     for (let i = 0; i < hidden; i++) {
-      network.mutate(Mutation.ADD_NODE);
+      network.util.mutate(Mutation.ADD_NODE);
     }
 
     for (let i = 0; i < connections - hidden; i++) {
-      network.mutate(Mutation.ADD_CONN);
+      network.util.mutate(Mutation.ADD_CONN);
     }
 
     for (let i = 0; i < backconnections; i++) {
-      network.mutate(Mutation.ADD_BACK_CONN);
+      network.util.mutate(Mutation.ADD_BACK_CONN);
     }
 
     for (let i = 0; i < selfconnections; i++) {
-      network.mutate(Mutation.ADD_SELF_CONN);
+      network.util.mutate(Mutation.ADD_SELF_CONN);
     }
 
     for (let i = 0; i < gates; i++) {
-      network.mutate(Mutation.ADD_GATE);
+      network.util.mutate(Mutation.ADD_GATE);
     }
 
     return network;

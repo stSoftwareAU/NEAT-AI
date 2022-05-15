@@ -32,7 +32,6 @@ const temp = {
   },
   MOD_ACTIVATION: {
     name: "MOD_ACTIVATION",
-    mutateOutput: true,
     allowed: [
       Activation.LOGISTIC,
       Activation.TANH,
@@ -71,7 +70,7 @@ const temp = {
   },
   SWAP_NODES: {
     name: "SWAP_NODES",
-    mutateOutput: true,
+    // mutateOutput: true,
   },
 };
 

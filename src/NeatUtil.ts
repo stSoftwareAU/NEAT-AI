@@ -3,9 +3,9 @@ import { Neat } from "./Neat.js";
 import { Network } from "./architecture/network.js";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Mutation } from "./methods/mutation.ts";
-import { crypto } from "https://deno.land/std@0.137.0/crypto/mod.ts";
-import { encode } from "https://deno.land/std@0.137.0/encoding/base64.ts";
-import { ensureDirSync } from "https://deno.land/std@0.137.0/fs/ensure_dir.ts";
+import { crypto } from "https://deno.land/std@0.139.0/crypto/mod.ts";
+import { encode } from "https://deno.land/std@0.139.0/encoding/base64.ts";
+import { ensureDirSync } from "https://deno.land/std@0.139.0/fs/ensure_dir.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import { removeTag } from "../src/tags/TagsInterface.ts";
 
@@ -87,12 +87,18 @@ export class NeatUtil {
   mutate(creatures: NetworkInterface[]) {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
-        const creature = creatures[i];
+        const creature = creatures[i] as Network;
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
-          if (creature.mutate) {
-            creature.mutate(mutationMethod);
-          }
+
+          // if (creature.mutate) {
+          creature.util.mutate(
+            mutationMethod,
+            Math.random() < this.config.focusRate
+              ? this.config.focusList
+              : undefined,
+          );
+          // }
         }
         removeTag(creature, "approach");
       }
