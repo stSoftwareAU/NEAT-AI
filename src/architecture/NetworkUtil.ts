@@ -896,13 +896,15 @@ export class NetworkUtil {
       }
     }
 
-    const biasTemp = node1.bias;
-    const squashTemp = node1.squash;
+    if (node1 && node2) {
+      const biasTemp = node1.bias;
+      const squashTemp = node1.squash;
 
-    node1.bias = node2.bias;
-    node1.squash = node2.squash;
-    node2.bias = biasTemp;
-    node2.squash = squashTemp;
+      node1.bias = node2.bias;
+      node1.squash = node2.squash;
+      node2.bias = biasTemp;
+      node2.squash = squashTemp;
+    }
   }
   /**
    * Mutates the network with the given method
