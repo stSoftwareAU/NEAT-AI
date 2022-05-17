@@ -217,6 +217,27 @@ export class NetworkUtil {
     return result;
   }
 
+  private dataFiles(dataDir: string) {
+    const files: string[] = [];
+
+    if (cacheDataFile.fn.startsWith(dataDir)) {
+      files.push(
+        cacheDataFile.fn.substring(cacheDataFile.fn.lastIndexOf("/") + 1),
+      );
+    } else {
+      cacheDataFile.fn = "NOT-CACHED";
+      for (const dirEntry of Deno.readDirSync(dataDir)) {
+        if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
+          files.push(dirEntry.name);
+        }
+      }
+
+      files.sort();
+    }
+
+    return files;
+  }
+
   /**
    * Tests a set and returns the error and elapsed time
    */
@@ -228,21 +249,7 @@ export class NetworkUtil {
     let error = 0;
     let counter = 0;
 
-    const files: string[] = [];
-
-    if (cacheDataFile.fn.startsWith(dataDir)) {
-      files.push(
-        cacheDataFile.fn.substring(cacheDataFile.fn.lastIndexOf("/") + 1),
-      );
-    } else {
-      for (const dirEntry of Deno.readDirSync(dataDir)) {
-        if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
-          files.push(dirEntry.name);
-        }
-      }
-
-      files.sort();
-    }
+    const files: string[] = this.dataFiles(dataDir);
 
     files.forEach((name) => {
       const fn = dataDir + "/" + name;
@@ -308,15 +315,8 @@ export class NetworkUtil {
 
     const iterations = options.iterations ? options.iterations : 0;
 
-    const files: string[] = [];
+    const files: string[] = this.dataFiles(dataDir);
 
-    for (const dirEntry of Deno.readDirSync(dataDir)) {
-      if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
-        files.push(dirEntry.name);
-      }
-    }
-
-    files.sort();
     // Loops the training process
     let currentRate = 0.3;
     let iteration = 0;
