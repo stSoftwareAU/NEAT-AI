@@ -291,10 +291,6 @@ export class Neat {
   getParent() {
     switch (this.config.selection) {
       case selection.POWER: {
-        if (this.population[0].score < this.population[1].score) {
-          console.trace();
-          throw "Not Sorted";
-        }
 
         const index = Math.floor(
           Math.pow(Math.random(), this.config.selection.power) *
