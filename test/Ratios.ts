@@ -1,4 +1,4 @@
-import { architect } from "../../NEAT-TS/src/architecture/architect.js";
+import { architect } from "../src/architecture/architect.js";
 import { assert } from "https://deno.land/std@0.139.0/testing/asserts.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
