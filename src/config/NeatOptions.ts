@@ -14,6 +14,9 @@ export interface NeatOptions {
   /** The directory to store the creatures (optional) */
   creatureStore?: string;
 
+  /** number of records per dataset file. default: 2000 */
+  dataSetParitionBreak?: number;
+
   /** The directory to store the experiments (optional) */
   experimentStore?: string;
 
@@ -55,6 +58,7 @@ export interface NeatOptions {
   trainRate?: number;
   selection?: any;
   mutation?: any;
+
   iterations?: number;
   log?: number;
   /** verbose logging default: false */

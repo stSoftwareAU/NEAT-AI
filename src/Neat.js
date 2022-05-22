@@ -6,7 +6,6 @@ import { make as makeConfig } from "./config/NeatConfig.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
-import { emptyDirSync } from "https://deno.land/std@0.139.0/fs/empty_dir.ts";
 import { NeatUtil } from "./NeatUtil.ts";
 
 /* Easier variable naming */
@@ -291,7 +290,6 @@ export class Neat {
   getParent() {
     switch (this.config.selection) {
       case selection.POWER: {
-
         const index = Math.floor(
           Math.pow(Math.random(), this.config.selection.power) *
             this.population.length,

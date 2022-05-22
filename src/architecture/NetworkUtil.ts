@@ -208,7 +208,8 @@ export class NetworkUtil {
       );
     }
 
-    const dataSetDir = makeDataDir(dataSet);
+    const config = makeConfig(options);
+    const dataSetDir = makeDataDir(dataSet, config.dataSetParitionBreak);
 
     const result = await this.evolveDir(dataSetDir, options);
 
@@ -424,8 +425,8 @@ export class NetworkUtil {
         "Dataset input/output size should be same as network input/output size!",
       );
     }
-
-    const dataSetDir = makeDataDir(dataSet);
+    const config = makeConfig(options);
+    const dataSetDir = makeDataDir(dataSet, config.dataSetParitionBreak);
 
     const result = this.trainDir(dataSetDir, options);
 

@@ -17,6 +17,9 @@ export interface NeatConfig {
   /** List of creatures to start with */
   creatures: NetworkInterface[];
 
+  /** number of records per dataset file. default: 2000 */
+  dataSetParitionBreak: number;
+
   /** The list of observations to focus one */
   focusList: number[];
   /** Focus rate */
@@ -74,7 +77,9 @@ export function make(parameters?: NeatOptions) {
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
     costName: options.costName || "MSE",
-
+    dataSetParitionBreak: options.dataSetParitionBreak
+      ? Math.max(options.dataSetParitionBreak, 1000)
+      : 2000,
     equal: options.equal || false,
     focusList: options.focusList || [],
     focusRate: options.focusRate || 0.25,

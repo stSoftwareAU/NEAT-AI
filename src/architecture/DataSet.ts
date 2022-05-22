@@ -34,11 +34,17 @@ export function freezeAndValidate(
   }
 }
 
-export function makeDataDir(dataSet: DataRecordInterface[]) {
-  const dataSetDir = Deno.makeTempDirSync({ prefix: "dataSet-" });
-  const partitionBreak = 1000;
+const encoder = new TextEncoder();
 
-  const encoder = new TextEncoder();
+export function makeDataDir(
+  dataSet: DataRecordInterface[],
+  partitionBreak: number,
+) {
+  if (partitionBreak < 1) {
+    throw "must have a positive partition break was: " + partitionBreak;
+  }
+
+  const dataSetDir = Deno.makeTempDirSync({ prefix: "dataSet-" });
 
   let completed = false;
   for (let loop = 0; completed == false; loop++) {
