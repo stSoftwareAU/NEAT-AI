@@ -9,6 +9,8 @@ import { ensureDirSync } from "https://deno.land/std@0.139.0/fs/ensure_dir.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import { removeTag } from "../src/tags/TagsInterface.ts";
 
+const TE = new TextEncoder();
+
 export class NeatUtil {
   private neat;
   private config;
@@ -20,21 +22,17 @@ export class NeatUtil {
     this.config = config;
   }
 
-  private te = new TextEncoder();
   async makeUniqueName(creature: NetworkInterface) {
     const json = creature.toJSON();
     delete json.tags;
 
     const txt = JSON.stringify(json, null, 1);
 
-    const b64 = encode(
-      new Uint8Array(
-        await crypto.subtle.digest(
-          "SHA-256",
-          this.te.encode(txt),
-        ),
-      ),
+    const arrayBuffer = await crypto.subtle.digest(
+      "SHA-256",
+      TE.encode(txt),
     );
+    const b64 = encode(arrayBuffer);
     const name = b64.replaceAll("=", "").replaceAll("/", "-").replaceAll(
       "+",
       "_",
