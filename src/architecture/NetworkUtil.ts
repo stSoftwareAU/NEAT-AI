@@ -183,7 +183,7 @@ export class NetworkUtil {
       this.writeCreatures(neat, config.creatureStore);
     }
     return {
-      error: -error,
+      error: error,
       score: bestScore,
       iterations: neat.generation,
       time: Date.now() - start,
