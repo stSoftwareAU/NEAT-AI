@@ -33,7 +33,7 @@ export class Fitness {
     if (!responeData.evaluate) throw "Invalid response";
 
     const error = responeData.evaluate.error;
-    addTag(creature, "error", (-error).toString());
+    addTag(creature, "error", Math.abs(error).toString());
     creature.score = -error - (
           creature.nodes.length -
           creature.input -

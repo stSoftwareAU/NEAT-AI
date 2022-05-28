@@ -52,8 +52,10 @@ export class Network {
    * Activates the network
    */
   activate(input) {
-    if(input && input.length != this.input){
-      throw "Activate input: " + input.length + " does not match expected input: " + this.input;
+    if (input && input.length != this.input) {
+      console.tracee();
+      throw "Activate input: " + input.length +
+        " does not match expected input: " + this.input;
     }
     const output = new Array(this.output);
     let outputLen = 0;

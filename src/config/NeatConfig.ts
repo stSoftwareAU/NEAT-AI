@@ -27,7 +27,7 @@ export interface NeatConfig {
 
   elitism: number;
   equal: boolean; // No clue.
-  /** Target error */
+  /** Target error 0 to 1 */
   targetError: number;
 
   growth: number;
@@ -85,8 +85,8 @@ export function make(parameters?: NeatOptions) {
     focusRate: options.focusRate || 0.25,
 
     targetError: typeof options.error !== "undefined"
-      ? Math.abs(options.error) * -1
-      : -0.05,
+      ? Math.min(1, Math.max(Math.abs(options.error), 0))
+      : 0.05,
 
     growth: typeof options.growth !== "undefined" ? options.growth : 0.0001,
 

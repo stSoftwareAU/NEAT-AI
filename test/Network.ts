@@ -85,10 +85,10 @@ function testEquality(original: any, copied: any) {
       input.push(Math.random());
     }
 
-    const ORout = original.activate([input]);
+    const ORout = original.activate(input);
     const COout = copied instanceof Network
-      ? copied.activate([input])
-      : copied([input]);
+      ? copied.activate(input)
+      : copied(input);
 
     for (a = 0; a < original.output; a++) {
       ORout[a] = ORout[a].toFixed(9);

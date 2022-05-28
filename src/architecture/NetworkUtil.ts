@@ -102,14 +102,14 @@ export class NetworkUtil {
 
     await neat.populatePopulation(this.network);
 
-    let error = -Infinity;
+    let error = Infinity;
     let bestScore = -Infinity;
     let bestCreature = null;
 
     let iterationStartMS = new Date().getTime();
 
     while (
-      error < config.targetError &&
+      error > config.targetError &&
       (!options.iterations || neat.generation < options.iterations)
     ) {
       const fittest = await neat.evolve(bestCreature);
@@ -137,7 +137,7 @@ export class NetworkUtil {
           "score",
           fittest.score,
           "error",
-          -error,
+          error,
           "avg time",
           yellow(
             new Intl.NumberFormat().format(
