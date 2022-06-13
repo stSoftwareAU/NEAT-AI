@@ -53,7 +53,7 @@ export class Network {
    */
   activate(input) {
     if (input && input.length != this.input) {
-      console.tracee();
+      console.trace();
       throw "Activate input: " + input.length +
         " does not match expected input: " + this.input;
     }
