@@ -1,6 +1,6 @@
 import { Mutation } from "../methods/mutation.ts";
-import { Connection } from "./connection.js";
-import { Node } from "./Node.js";
+import { Connection } from "./Connection.ts";
+import { Node } from "./Node.ts";
 import { NetworkUtil } from "./NetworkUtil.ts";
 
 /*******************************************************************************
@@ -65,9 +65,6 @@ export class Network {
       const _node = this.nodes[i];
       switch (_node.type) {
         case "input": {
-          // if( i == 297){
-          //   console.info( _node);
-          // }
           _node.activate(input[i]);
           break;
         }

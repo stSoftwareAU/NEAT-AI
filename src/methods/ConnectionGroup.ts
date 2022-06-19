@@ -3,7 +3,7 @@
 *******************************************************************************/
 
 // Specifies in what manner two groups are connected
-export const Connection = {
+export const ConnectionGroup = {
   ALL_TO_ALL: {
     name: "OUTPUT",
   },

@@ -1,7 +1,7 @@
 /* Import */
 import { Methods } from "../methods/methods.js";
 import { Group } from "./group.js";
-import { Node } from "./Node.js";
+import { Node } from "./Node.ts";
 
 /*******************************************************************************
                                          Group

@@ -5,34 +5,34 @@
 // https://en.wikipedia.org/wiki/Activation_function
 // https://stats.stackexchange.com/questions/115258/comprehensive-list-of-activation-functions-in-neural-networks-with-pros-cons
 export const Activation = {
-  LOGISTIC: function (x, derivate) {
-    const fx = 1 / (1 + Math.exp(-x));
-    if (!derivate) return fx;
-    return fx * (1 - fx);
-  },
-  TANH: function (x, derivate) {
-    if (derivate) return 1 - Math.pow(Math.tanh(x), 2);
-    return Math.tanh(x);
-  },
-  IDENTITY: function (x, derivate) {
-    return derivate ? 1 : x;
-  },
-  STEP: function (x, derivate) {
-    return derivate ? 0 : x > 0 ? 1 : 0;
-  },
-  RELU: function (x, derivate) {
-    if (derivate) return x > 0 ? 1 : 0;
-    return x > 0 ? x : 0;
-  },
-  SOFTSIGN: function (x, derivate) {
-    const d = 1 + Math.abs(x);
-    if (derivate) return x / Math.pow(d, 2);
-    return x / d;
-  },
-  SINUSOID: function (x, derivate) {
-    if (derivate) return Math.cos(x);
-    return Math.sin(x);
-  },
+  // LOGISTIC: function (x, derivate) {
+  //   const fx = 1 / (1 + Math.exp(-x));
+  //   if (!derivate) return fx;
+  //   return fx * (1 - fx);
+  // },
+  // TANH: function (x, derivate) {
+  //   if (derivate) return 1 - Math.pow(Math.tanh(x), 2);
+  //   return Math.tanh(x);
+  // },
+  // IDENTITY: function (x, derivate) {
+  //   return derivate ? 1 : x;
+  // },
+  // STEP: function (x, derivate) {
+  //   return derivate ? 0 : x > 0 ? 1 : 0;
+  // },
+  // RELU: function (x, derivate) {
+  //   if (derivate) return x > 0 ? 1 : 0;
+  //   return x > 0 ? x : 0;
+  // },
+  // SOFTSIGN: function (x, derivate) {
+  //   const d = 1 + Math.abs(x);
+  //   if (derivate) return x / Math.pow(d, 2);
+  //   return x / d;
+  // },
+  // SINUSOID: function (x, derivate) {
+  //   if (derivate) return Math.cos(x);
+  //   return Math.sin(x);
+  // },
   GAUSSIAN: function (x, derivate) {
     const d = Math.exp(-Math.pow(x, 2));
     if (derivate) return -2 * x * d;

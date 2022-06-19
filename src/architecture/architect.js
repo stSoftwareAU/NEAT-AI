@@ -1,5 +1,5 @@
 /* Import */
-import { Node } from "./Node.js";
+import { Node } from "./Node.ts";
 import { Network } from "./network.js";
 import { Group } from "./group.js";
 import { Layer } from "./layer.js";
