@@ -5,6 +5,7 @@ import { Group } from "./group.js";
 import { Layer } from "./layer.js";
 import { Methods } from "../methods/methods.js";
 import { Mutation } from "../methods/mutation.ts";
+import { STEP } from "../methods/activations/types/STEP.ts";
 
 /*******************************************************************************
                                         architect
@@ -332,7 +333,7 @@ export const architect = {
       type: "input",
     });
     output.set({
-      squash: Methods.activation.STEP,
+      squash: STEP.name,
       type: "output",
     });
 

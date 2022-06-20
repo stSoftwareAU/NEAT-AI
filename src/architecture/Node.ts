@@ -1,5 +1,5 @@
 /* Import */
-import { Logistic } from "../methods/activations/Logistic.ts";
+import { Logistic } from "../methods/activations/types/Logistic.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 // import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
@@ -288,7 +288,7 @@ export class Node {
         connections.push(connection);
       }
     } else { // should be a group
-      const group = (target as unknown ) as {nodes:Node[]};
+      const group = (target as unknown) as { nodes: Node[] };
       for (let i = 0; i < group.nodes.length; i++) {
         const connection = new Connection(this, group.nodes[i], weight);
         group.nodes[i].connections.in.push(connection);
@@ -316,7 +316,7 @@ export class Node {
         const j = conn.to.connections.in.indexOf(conn);
         conn.to.connections.in.splice(j, 1);
         if (conn.gater !== null) {
-          const a=[conn];
+          const a = [conn];
           conn.gater.ungate(a);
         }
         break;
@@ -330,7 +330,7 @@ export class Node {
   /**
    * Make this node gate a connection
    */
-  gate(connections:Connection[]) {
+  gate(connections: Connection[]) {
     if (!Array.isArray(connections)) {
       connections = [connections];
     }
@@ -345,7 +345,7 @@ export class Node {
   /**
    * Removes the gates from this node from the given connection(s)
    */
-  ungate(connections:Connection[]) {
+  ungate(connections: Connection[]) {
     // if (!Array.isArray(connections)) {
     //   connections = [connections];
     // }
@@ -384,7 +384,7 @@ export class Node {
   /**
    * Mutates the node with the given method
    */
-  mutate(method:string) {
+  mutate(method: string) {
     if (typeof method === "undefined") {
       throw new Error("No mutate method given!");
     } /*else if (!(method.name in Mutation.ALL)) {
@@ -394,18 +394,22 @@ export class Node {
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
         // Can't be the same squash
-        const squash = Mutation.MOD_ACTIVATION
-          .allowed[
-            // (Mutation.MOD_ACTIVATION.allowed.indexOf(this.squash) +
-              Math.floor(Math.random() * Mutation.MOD_ACTIVATION.allowed.length)// + 1) %
-              // Mutation.MOD_ACTIVATION.allowed.length
-          ];
-        this.squash = squash.name;
+        while (true) {
+          const tmpSquash =
+            Activations
+              .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
+
+          if (tmpSquash != this.squash) {
+            this.squash = tmpSquash;
+            break;
+          }
+        }
         break;
       }
       case Mutation.MOD_BIAS.name: {
-        const modification = Math.random() * (Mutation.MOD_BIAS.max - Mutation.MOD_BIAS.min) +
-        Mutation.MOD_BIAS.min;
+        const modification =
+          Math.random() * (Mutation.MOD_BIAS.max - Mutation.MOD_BIAS.min) +
+          Mutation.MOD_BIAS.min;
         this.bias += modification;
         break;
       }
@@ -414,7 +418,7 @@ export class Node {
   /**
    * Checks if this node is projecting to the given node
    */
-  isProjectingTo(node:Node) {
+  isProjectingTo(node: Node) {
     if (node === this && this.connections.self.weight !== 0) {
       return true;
     }
@@ -430,7 +434,7 @@ export class Node {
   /**
    * Checks if the given node is projecting to this node
    */
-  isProjectedBy(node:Node) {
+  isProjectedBy(node: Node) {
     if (node === this && this.connections.self.weight !== 0) {
       return true;
     }

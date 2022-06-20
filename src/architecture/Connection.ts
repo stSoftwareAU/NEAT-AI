@@ -1,19 +1,19 @@
 import { Node } from "./Node.ts";
 
 export class Connection {
-  public from:Node;
-  public to:Node;
-  public gain:number;
-  public weight:number;
-  public elegibility:number;
-  public previousDeltaWeight:number;
+  public from: Node;
+  public to: Node;
+  public gain: number;
+  public weight: number;
+  public elegibility: number;
+  public previousDeltaWeight: number;
 
-  public totalDeltaWeight:number;
-  public gater:(Node|null);
+  public totalDeltaWeight: number;
+  public gater: (Node | null);
 
-  public xtrace:{nodes: Node[], values:number[]};
+  public xtrace: { nodes: Node[]; values: number[] };
 
-  constructor(from:Node, to:Node, weight:number) {
+  constructor(from: Node, to: Node, weight: number) {
     this.from = from;
     this.to = to;
     this.gain = 1;
@@ -55,7 +55,7 @@ export class Connection {
    * Returns an innovation ID
    * https://en.wikipedia.org/wiki/Pairing_function (Cantor pairing function)
    */
-  static innovationID(a:number, b:number) {
+  static innovationID(a: number, b: number) {
     return 1 / 2 * (a + b) * (a + b + 1) + b;
   }
 }

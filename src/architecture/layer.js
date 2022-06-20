@@ -2,6 +2,10 @@
 import { Methods } from "../methods/methods.js";
 import { Group } from "./group.js";
 import { Node } from "./Node.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
+import { TANH } from "../methods/activations/types/TANH.ts";
+
+import { INVERSE } from "../methods/activations/types/INVERSE.ts";
 
 /*******************************************************************************
                                          Group
@@ -268,15 +272,16 @@ export class Layer {
 
     previousOutput.set({
       bias: 0,
-      squash: Methods.activation.IDENTITY,
+      squash: IDENTITY.name,
       type: "constant",
     });
+
     memoryCell.set({
-      squash: Methods.activation.TANH,
+      squash: TANH.name,
     });
     inverseUpdateGate.set({
       bias: 0,
-      squash: Methods.activation.INVERSE,
+      squash: INVERSE.name,
       type: "constant",
     });
     updateGate.set({
@@ -358,7 +363,7 @@ export class Layer {
       const block = new Group(size);
 
       block.set({
-        squash: Methods.activation.IDENTITY,
+        squash: IDENTITY.name,
         bias: 0,
         type: "constant",
       });

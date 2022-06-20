@@ -1,6 +1,3 @@
-/* Import */
-import { Activation } from "./activation.js";
-
 /*******************************************************************************
                                       MUTATION
 *******************************************************************************/
@@ -32,23 +29,6 @@ const temp = {
   },
   MOD_ACTIVATION: {
     name: "MOD_ACTIVATION",
-    allowed: [
-      Activation.LOGISTIC,
-      Activation.TANH,
-      Activation.RELU,
-      Activation.IDENTITY,
-      Activation.STEP,
-      Activation.SOFTSIGN,
-      Activation.SINUSOID,
-      Activation.GAUSSIAN,
-      Activation.BENT_IDENTITY,
-      Activation.BIPOLAR,
-      Activation.BIPOLAR_SIGMOID,
-      Activation.HARD_TANH,
-      Activation.ABSOLUTE,
-      Activation.INVERSE,
-      Activation.SELU,
-    ],
   },
   ADD_SELF_CONN: {
     name: "ADD_SELF_CONN",
