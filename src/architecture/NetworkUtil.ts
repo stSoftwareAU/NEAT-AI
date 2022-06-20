@@ -14,7 +14,7 @@ import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.139.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
-import { Node } from "../architecture/Node.js";
+import { Node } from "../architecture/Node.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -552,7 +552,7 @@ export class NetworkUtil {
           const node = new Node("hidden");
 
           // Random squash function
-          node.mutate(Mutation.MOD_ACTIVATION);
+          node.mutate(Mutation.MOD_ACTIVATION.name);
 
           // Place it in this.nodes
           const minBound = Math.min(

@@ -1,21 +1,39 @@
 /* Import */
-import { Methods } from "../methods/methods.js";
+import { Logistic } from "../methods/activations/types/Logistic.ts";
+import { Activations } from "../methods/activations/Activations.ts";
+// import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
-import { Connection } from "./connection.js";
-// import { Config } from "../config.ts";
+import { Connection } from "./Connection.ts";
 
-/*******************************************************************************
-                                         NODE
-*******************************************************************************/
-
-// import { Config } from "../config.ts";
 /*******************************************************************************
 NODE
 *******************************************************************************/
+
+interface ConnectionsInterface {
+  in: Connection[];
+  out: Connection[];
+  gated: Connection[];
+  self: Connection;
+}
+
 export class Node {
-  constructor(type) {
+  private type;
+  private bias;
+  private squash: string;
+  private old;
+  private state;
+  private activation;
+  private derivative = 0;
+  private previousDeltaBias;
+  private totalDeltaBias;
+  public connections: ConnectionsInterface;
+  public index?: number;
+
+  private error;
+
+  constructor(type: string) {
     this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
-    this.squash = Methods.activation.LOGISTIC;
+    this.squash = Logistic.NAME;
     this.type = type || "hidden";
 
     this.activation = 0;
@@ -42,10 +60,11 @@ export class Node {
       gated: 0,
     };
   }
+
   /**
    * Activates the node
    */
-  activate(input) {
+  activate(input?: number) {
     // Check if an input is given
     if (typeof input !== "undefined") {
       this.activation = input;
@@ -66,9 +85,12 @@ export class Node {
         connection.gain;
     }
 
+    const result = Activations.find(this.squash).squashAndDerive(this.state);
     // Squash the values received
-    this.activation = this.squash(this.state);
-    this.derivative = this.squash(this.state, true);
+    this.activation = result.activation;
+    this.derivative = result.derivative;
+    // this.activation = this.squash(this.state);
+    // this.derivative = this.squash(this.state, true);
 
     // Update traces
     const nodes = [];
@@ -109,10 +131,12 @@ export class Node {
         const index = connection.xtrace.nodes.indexOf(node);
 
         if (index > -1) {
-          connection.xtrace.values[index] =
+          const value =
             node.connections.self.gain * node.connections.self.weight *
               connection.xtrace.values[index] +
             this.derivative * connection.elegibility * influence;
+
+          connection.xtrace.values[index] = value;
         } else {
           // Does not exist there yet, might be through mutation
           connection.xtrace.nodes.push(node);
@@ -128,7 +152,7 @@ export class Node {
   /**
    * Activates the node without calculating elegibility traces and such
    */
-  noTraceActivate(input) {
+  noTraceActivate(input?: number) {
     // Check if an input is given
     if (typeof input !== "undefined") {
       this.activation = input;
@@ -148,7 +172,7 @@ export class Node {
     }
 
     // Squash the values received
-    this.activation = this.squash(this.state);
+    this.activation = Activations.find(this.squash).squash(this.state);
 
     for (let i = this.connections.gated.length; i--;) {
       this.connections.gated[i].gain = this.activation;
@@ -159,7 +183,7 @@ export class Node {
   /**
    * Back-propagate the error, aka learn
    */
-  propagate(rate, momentum, update, target) {
+  propagate(rate: number, momentum: number, update: boolean, target: number) {
     momentum = momentum || 0;
     rate = rate || 0.3;
 
@@ -243,7 +267,7 @@ export class Node {
   /**
    * Creates a connection from this node to the given node
    */
-  connect(target, weight) {
+  connect(target: Node, weight: number) {
     const connections = [];
     if (typeof target.bias !== "undefined") { // must be a node!
       if (target === this) {
@@ -264,9 +288,10 @@ export class Node {
         connections.push(connection);
       }
     } else { // should be a group
-      for (let i = 0; i < target.nodes.length; i++) {
-        const connection = new Connection(this, target.nodes[i], weight);
-        target.nodes[i].connections.in.push(connection);
+      const group = (target as unknown) as { nodes: Node[] };
+      for (let i = 0; i < group.nodes.length; i++) {
+        const connection = new Connection(this, group.nodes[i], weight);
+        group.nodes[i].connections.in.push(connection);
         this.connections.out.push(connection);
         target.connections.in.push(connection);
 
@@ -278,7 +303,7 @@ export class Node {
   /**
    * Disconnects this node from the other node
    */
-  disconnect(node, twosided) {
+  disconnect(node: Node, twosided: boolean) {
     if (this === node) {
       this.connections.self.weight = 0;
       return;
@@ -291,20 +316,21 @@ export class Node {
         const j = conn.to.connections.in.indexOf(conn);
         conn.to.connections.in.splice(j, 1);
         if (conn.gater !== null) {
-          conn.gater.ungate(conn);
+          const a = [conn];
+          conn.gater.ungate(a);
         }
         break;
       }
     }
 
     if (twosided) {
-      node.disconnect(this);
+      node.disconnect(this, false);
     }
   }
   /**
    * Make this node gate a connection
    */
-  gate(connections) {
+  gate(connections: Connection[]) {
     if (!Array.isArray(connections)) {
       connections = [connections];
     }
@@ -319,10 +345,10 @@ export class Node {
   /**
    * Removes the gates from this node from the given connection(s)
    */
-  ungate(connections) {
-    if (!Array.isArray(connections)) {
-      connections = [connections];
-    }
+  ungate(connections: Connection[]) {
+    // if (!Array.isArray(connections)) {
+    //   connections = [connections];
+    // }
 
     for (let i = connections.length - 1; i >= 0; i--) {
       const connection = connections[i];
@@ -358,7 +384,7 @@ export class Node {
   /**
    * Mutates the node with the given method
    */
-  mutate(method) {
+  mutate(method: string) {
     if (typeof method === "undefined") {
       throw new Error("No mutate method given!");
     } /*else if (!(method.name in Mutation.ALL)) {
@@ -366,20 +392,24 @@ export class Node {
         }*/
 
     switch (method) {
-      case Mutation.MOD_ACTIVATION: {
+      case Mutation.MOD_ACTIVATION.name: {
         // Can't be the same squash
-        const squash = method
-          .allowed[
-            (method.allowed.indexOf(this.squash) +
-              Math.floor(Math.random() * (method.allowed.length - 1)) + 1) %
-            method.allowed.length
-          ];
-        this.squash = squash;
+        while (true) {
+          const tmpSquash =
+            Activations
+              .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
+
+          if (tmpSquash != this.squash) {
+            this.squash = tmpSquash;
+            break;
+          }
+        }
         break;
       }
-      case Mutation.MOD_BIAS: {
-        const modification = Math.random() * (method.max - method.min) +
-          method.min;
+      case Mutation.MOD_BIAS.name: {
+        const modification =
+          Math.random() * (Mutation.MOD_BIAS.max - Mutation.MOD_BIAS.min) +
+          Mutation.MOD_BIAS.min;
         this.bias += modification;
         break;
       }
@@ -388,7 +418,7 @@ export class Node {
   /**
    * Checks if this node is projecting to the given node
    */
-  isProjectingTo(node) {
+  isProjectingTo(node: Node) {
     if (node === this && this.connections.self.weight !== 0) {
       return true;
     }
@@ -404,7 +434,7 @@ export class Node {
   /**
    * Checks if the given node is projecting to this node
    */
-  isProjectedBy(node) {
+  isProjectedBy(node: Node) {
     if (node === this && this.connections.self.weight !== 0) {
       return true;
     }
@@ -425,7 +455,7 @@ export class Node {
     const json = {
       bias: this.bias,
       type: this.type,
-      squash: this.squash.name,
+      squash: this.squash,
     };
 
     return json;
@@ -433,11 +463,11 @@ export class Node {
   /**
    * Convert a json object to a node
    */
-  static fromJSON(json) {
-    const node = new Node();
+  static fromJSON(json: { type: string; bias: number; squash: string }) {
+    const node = new Node(json.type);
     node.bias = json.bias;
-    node.type = json.type;
-    node.squash = Methods.activation[json.squash];
+    // node.type = json.type;
+    node.squash = json.squash; //Methods.activation[json.squash];
 
     return node;
   }

@@ -2,7 +2,7 @@
 import { Methods } from "../methods/methods.js";
 // import { Config } from "../config.ts";
 import { Layer } from "./layer.js";
-import { Node } from "./Node.js";
+import { Node } from "./Node.ts";
 
 /*******************************************************************************
                                          Group
