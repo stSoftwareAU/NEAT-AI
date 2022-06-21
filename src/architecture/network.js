@@ -178,7 +178,7 @@ export class Network {
   ungate(connection) {
     const index = this.gates.indexOf(connection);
     if (index === -1) {
-      throw new Error("This connection is not gated!");
+      console.warn("This connection is not gated!", this.gates, connection);
     }
 
     this.gates.splice(index, 1);
