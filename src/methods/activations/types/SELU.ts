@@ -14,7 +14,9 @@ export class SELU implements ActivationInterface {
   }
 
   squash(x: number) {
-    return x > 0 ? x : SELU.ALPHA * Math.exp(x) - SELU.ALPHA;
+    const fx= x > 0 ? x : SELU.ALPHA * Math.exp(x) - SELU.ALPHA;
+
+    return fx * SELU.SCALE;
   }
 
   squashAndDerive(x: number) {
@@ -22,7 +24,7 @@ export class SELU implements ActivationInterface {
 
     return {
       activation: fx,
-      derivative: x > 0 ? SELU.SCALE : (fx + SELU.ALPHA) * SELU.SCALE,
+      derivative: x > 0 ? SELU.SCALE : (fx/SELU.SCALE + SELU.ALPHA) * SELU.SCALE,
     };
   }
 }

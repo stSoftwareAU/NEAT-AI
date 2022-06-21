@@ -8,7 +8,7 @@ export class ABSOLUTE implements ActivationInterface {
   }
 
   squash(x: number) {
-    return 1 - x;
+    return Math.abs(x);
   }
 
   squashAndDerive(x: number) {
@@ -16,7 +16,7 @@ export class ABSOLUTE implements ActivationInterface {
 
     return {
       activation: fx,
-      derivative: -1,
+      derivative: x < 0 ? -1 : 1,
     };
   }
 }

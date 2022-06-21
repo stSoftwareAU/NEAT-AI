@@ -2,7 +2,7 @@ import { NeatUtil } from "../src/NeatUtil.ts";
 import { Neat } from "../src/Neat.js";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.139.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.144.0/testing/asserts.ts";
 import { make as makeConfig } from "../src/config/NeatConfig.ts";
 
 Deno.test("knownName", async () => {

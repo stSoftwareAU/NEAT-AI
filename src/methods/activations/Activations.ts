@@ -1,4 +1,4 @@
-import { Logistic } from "./types/Logistic.ts";
+import { LOGISTIC } from "./types/LOGISTIC.ts";
 import { TANH } from "./types/TANH.ts";
 import { IDENTITY } from "./types/IDENTITY.ts";
 import { INVERSE } from "./types/INVERSE.ts";
@@ -24,7 +24,7 @@ import { ABSOLUTE } from "./types/ABSOLUTE.ts";
  */
 export class Activations {
   static NAMES = [
-    Logistic.NAME,
+    LOGISTIC.NAME,
     TANH.NAME,
     IDENTITY.NAME,
     INVERSE.NAME,
@@ -41,7 +41,7 @@ export class Activations {
     ABSOLUTE.NAME,
   ];
 
-  private static logistic = new Logistic();
+  private static logistic = new LOGISTIC();
   private static tanh = new TANH();
   private static identity = new IDENTITY();
   private static step = new STEP();
@@ -59,7 +59,7 @@ export class Activations {
 
   static find(name: string) {
     switch (name) {
-      case Logistic.NAME:
+      case LOGISTIC.NAME:
         return this.logistic;
       case TANH.NAME:
         return this.tanh;

@@ -1,10 +1,10 @@
 import { ActivationInterface } from "../ActivationInterface.ts";
 
-export class Logistic implements ActivationInterface {
+export class LOGISTIC implements ActivationInterface {
   public static NAME = "LOGISTIC";
 
   getName() {
-    return Logistic.NAME;
+    return LOGISTIC.NAME;
   }
 
   squash(x: number) {

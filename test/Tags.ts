@@ -6,7 +6,7 @@ import {
   TagsInterface,
 } from "../src/tags/TagsInterface.ts";
 import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.139.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.144.0/testing/asserts.ts";
 
 Deno.test("tag", () => {
   const taggable: TagsInterface = { tags: undefined };

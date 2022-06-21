@@ -1,5 +1,5 @@
 /* Import */
-import { Logistic } from "../methods/activations/types/Logistic.ts";
+import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 // import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
@@ -33,7 +33,7 @@ export class Node {
 
   constructor(type: string) {
     this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
-    this.squash = Logistic.NAME;
+    this.squash = LOGISTIC.NAME;
     this.type = type || "hidden";
 
     this.activation = 0;

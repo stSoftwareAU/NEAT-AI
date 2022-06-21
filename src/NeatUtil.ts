@@ -3,9 +3,9 @@ import { Neat } from "./Neat.js";
 import { Network } from "./architecture/network.js";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Mutation } from "./methods/mutation.ts";
-import { crypto } from "https://deno.land/std@0.139.0/crypto/mod.ts";
-import { encode } from "https://deno.land/std@0.139.0/encoding/base64.ts";
-import { ensureDirSync } from "https://deno.land/std@0.139.0/fs/ensure_dir.ts";
+import { crypto } from "https://deno.land/std@0.144.0/crypto/mod.ts";
+import { encode } from "https://deno.land/std@0.144.0/encoding/base64.ts";
+import { ensureDirSync } from "https://deno.land/std@0.144.0/fs/ensure_dir.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import { removeTag } from "../src/tags/TagsInterface.ts";
 
