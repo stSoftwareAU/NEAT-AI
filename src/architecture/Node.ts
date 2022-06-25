@@ -1,9 +1,11 @@
 /* Import */
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { Activations } from "../methods/activations/Activations.ts";
-// import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { NodeActivationInterface } from "../methods/activations/NodeActivationInterface.ts";
+import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
+import { addTags, TagsInterface } from "../tags/TagsInterface.ts";
 
 /*******************************************************************************
 NODE
@@ -16,7 +18,7 @@ interface ConnectionsInterface {
   self: Connection;
 }
 
-export class Node {
+export class Node implements TagsInterface {
   private type;
   private bias;
   private squash: string;
@@ -28,6 +30,7 @@ export class Node {
   private totalDeltaBias;
   public connections: ConnectionsInterface;
   public index?: number;
+  public tags = undefined;
 
   private error;
 
@@ -61,6 +64,16 @@ export class Node {
     };
   }
 
+  private isNodeActivation(
+    activation: NodeActivationInterface | ActivationInterface,
+  ): activation is NodeActivationInterface {
+    return (activation as NodeActivationInterface).activate != undefined;
+  }
+
+  getActivation() {
+    return this.activation;
+  }
+
   /**
    * Activates the node
    */
@@ -71,83 +84,91 @@ export class Node {
       return this.activation;
     }
 
-    this.old = this.state;
+    const activation = Activations.find(this.squash);
 
-    // All activation sources coming from the node itself
-    this.state =
-      this.connections.self.gain * this.connections.self.weight * this.state +
-      this.bias;
+    if (this.isNodeActivation(activation)) {
+      return activation.activate(this) + this.bias;
+    } else {
+      this.old = this.state;
 
-    // Activation sources coming from connections
-    for (let i = 0; i < this.connections.in.length; i++) {
-      const connection = this.connections.in[i];
-      this.state += connection.from.activation * connection.weight *
-        connection.gain;
-    }
+      // All activation sources coming from the node itself
+      this.state =
+        this.connections.self.gain * this.connections.self.weight * this.state +
+        this.bias;
 
-    const result = Activations.find(this.squash).squashAndDerive(this.state);
-    // Squash the values received
-    this.activation = result.activation;
-    this.derivative = result.derivative;
-    // this.activation = this.squash(this.state);
-    // this.derivative = this.squash(this.state, true);
-
-    // Update traces
-    const nodes = [];
-    const influences = [];
-
-    for (let i = 0; i < this.connections.gated.length; i++) {
-      const conn = this.connections.gated[i];
-      const node = conn.to;
-
-      const index = nodes.indexOf(node);
-      if (index > -1) {
-        influences[index] += conn.weight * conn.from.activation;
-      } else {
-        nodes.push(node);
-        influences.push(
-          conn.weight * conn.from.activation +
-            (node.connections.self.gater === this ? node.old : 0),
-        );
+      // Activation sources coming from connections
+      for (let i = 0; i < this.connections.in.length; i++) {
+        const connection = this.connections.in[i];
+        this.state += connection.from.activation * connection.weight *
+          connection.gain;
       }
 
-      // Adjust the gain to this nodes' activation
-      conn.gain = this.activation;
-    }
+      const activationSquash = (activation as ActivationInterface);
+      const result = activationSquash.squashAndDerive(this.state);
+      // Squash the values received
+      this.activation = result.activation;
+      this.derivative = result.derivative;
+      // this.activation = this.squash(this.state);
+      // this.derivative = this.squash(this.state, true);
 
-    for (let i = 0; i < this.connections.in.length; i++) {
-      const connection = this.connections.in[i];
+      // Update traces
+      const nodes = [];
+      const influences = [];
 
-      // Elegibility trace
-      connection.elegibility =
-        this.connections.self.gain * this.connections.self.weight *
-          connection.elegibility + connection.from.activation * connection.gain;
+      for (let i = 0; i < this.connections.gated.length; i++) {
+        const conn = this.connections.gated[i];
+        const node = conn.to;
 
-      // Extended trace
-      for (let j = 0; j < nodes.length; j++) {
-        const node = nodes[j];
-        const influence = influences[j];
-
-        const index = connection.xtrace.nodes.indexOf(node);
-
+        const index = nodes.indexOf(node);
         if (index > -1) {
-          const value =
-            node.connections.self.gain * node.connections.self.weight *
-              connection.xtrace.values[index] +
-            this.derivative * connection.elegibility * influence;
-
-          connection.xtrace.values[index] = value;
+          influences[index] += conn.weight * conn.from.activation;
         } else {
-          // Does not exist there yet, might be through mutation
-          connection.xtrace.nodes.push(node);
-          connection.xtrace.values.push(
-            this.derivative * connection.elegibility * influence,
+          nodes.push(node);
+          influences.push(
+            conn.weight * conn.from.activation +
+              (node.connections.self.gater === this ? node.old : 0),
           );
         }
-      }
-    }
 
-    return this.activation;
+        // Adjust the gain to this nodes' activation
+        conn.gain = this.activation;
+      }
+
+      for (let i = 0; i < this.connections.in.length; i++) {
+        const connection = this.connections.in[i];
+
+        // Elegibility trace
+        connection.elegibility =
+          this.connections.self.gain * this.connections.self.weight *
+            connection.elegibility +
+          connection.from.activation * connection.gain;
+
+        // Extended trace
+        for (let j = 0; j < nodes.length; j++) {
+          const node = nodes[j];
+          const influence = influences[j];
+
+          const index = connection.xtrace.nodes.indexOf(node);
+
+          if (index > -1) {
+            const value =
+              node.connections.self.gain * node.connections.self.weight *
+                connection.xtrace.values[index] +
+              this.derivative * connection.elegibility * influence;
+
+            connection.xtrace.values[index] = value;
+          } else {
+            // Does not exist there yet, might be through mutation
+            connection.xtrace.nodes.push(node);
+            connection.xtrace.values.push(
+              this.derivative * connection.elegibility * influence,
+            );
+          }
+        }
+      }
+
+      return this.activation;
+    }
   }
   /**
    * Activates the node without calculating elegibility traces and such
@@ -158,27 +179,32 @@ export class Node {
       this.activation = input;
       return this.activation;
     }
+    const activation = Activations.find(this.squash);
 
-    // All activation sources coming from the node itself
-    this.state =
-      this.connections.self.gain * this.connections.self.weight * this.state +
-      this.bias;
+    if (this.isNodeActivation(activation)) {
+      return activation.activate(this);
+    } else {
+      // All activation sources coming from the node itself
+      this.state =
+        this.connections.self.gain * this.connections.self.weight * this.state +
+        this.bias;
 
-    // Activation sources coming from connections
-    for (let i = this.connections.in.length; i--;) {
-      const connection = this.connections.in[i];
-      this.state += connection.from.activation * connection.weight *
-        connection.gain;
+      // Activation sources coming from connections
+      for (let i = this.connections.in.length; i--;) {
+        const connection = this.connections.in[i];
+        this.state += connection.from.activation * connection.weight *
+          connection.gain;
+      }
+      const activationSquash = (activation as ActivationInterface);
+      // Squash the values received
+      this.activation = activationSquash.squash(this.state);
+
+      for (let i = this.connections.gated.length; i--;) {
+        this.connections.gated[i].gain = this.activation;
+      }
+
+      return this.activation;
     }
-
-    // Squash the values received
-    this.activation = Activations.find(this.squash).squash(this.state);
-
-    for (let i = this.connections.gated.length; i--;) {
-      this.connections.gated[i].gain = this.activation;
-    }
-
-    return this.activation;
   }
   /**
    * Back-propagate the error, aka learn
@@ -395,9 +421,8 @@ export class Node {
       case Mutation.MOD_ACTIVATION.name: {
         // Can't be the same squash
         while (true) {
-          const tmpSquash =
-            Activations
-              .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
+          const tmpSquash = Activations
+            .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
 
           if (tmpSquash != this.squash) {
             this.squash = tmpSquash;
@@ -456,6 +481,7 @@ export class Node {
       bias: this.bias,
       type: this.type,
       squash: this.squash,
+      tags: this.tags ? [...this.tags] : undefined,
     };
 
     return json;
@@ -463,12 +489,17 @@ export class Node {
   /**
    * Convert a json object to a node
    */
-  static fromJSON(json: { type: string; bias: number; squash: string }) {
+  static fromJSON(
+    json: { type: string; bias: number; squash: string; tags?: [] },
+  ) {
     const node = new Node(json.type);
     node.bias = json.bias;
     // node.type = json.type;
     node.squash = json.squash; //Methods.activation[json.squash];
 
+    if (json.tags) {
+      addTags(node, json as TagsInterface);
+    }
     return node;
   }
 }

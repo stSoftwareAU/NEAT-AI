@@ -771,10 +771,15 @@ export class Network {
   static fromJSON(json) {
     const network = new Network(json.input, json.output, false);
     network.nodes.length = json.nodes.length;
+    if (json.tags) {
+      network.tags = [...json.tags];
+    }
     network.tags = json.tags;
 
     for (let i = json.nodes.length; i--;) {
-      network.nodes[i] = Node.fromJSON(json.nodes[i]);
+      const n = Node.fromJSON(json.nodes[i]);
+
+      network.nodes[i] = n;
     }
 
     const cLen = json.connections.length;

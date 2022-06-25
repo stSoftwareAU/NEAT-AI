@@ -15,8 +15,12 @@ import { BIPOLAR } from "./types/BIPOLAR.ts";
 import { BIPOLAR_SIGMOID } from "./types/BIPOLAR_SIGMOID.ts";
 
 import { HARD_TANH } from "./types/HARD_TANH.ts";
-
 import { ABSOLUTE } from "./types/ABSOLUTE.ts";
+
+import { MINIMUM } from "./aggregate/MINIMUM.ts";
+import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
+import { MEAN } from "./aggregate/MEAN.ts";
+import { HYPOT } from "./aggregate/HYPOT.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -39,7 +43,12 @@ export class Activations {
     BIPOLAR_SIGMOID.NAME,
     HARD_TANH.NAME,
     ABSOLUTE.NAME,
-  ];
+
+    MINIMUM.NAME,
+    MAXIMUM.NAME,
+    MEAN.NAME,
+    HYPOT.NAME,
+  ] as const;
 
   private static logistic = new LOGISTIC();
   private static tanh = new TANH();
@@ -56,6 +65,11 @@ export class Activations {
   private static absolute = new ABSOLUTE();
   private static inverse = new INVERSE();
   private static selu = new SELU();
+
+  private static minimum = new MINIMUM();
+  private static maximum = new MAXIMUM();
+  private static mean = new MEAN();
+  private static hypot = new HYPOT();
 
   static find(name: string) {
     switch (name) {
@@ -89,7 +103,14 @@ export class Activations {
         return this.hardTanh;
       case ABSOLUTE.NAME:
         return this.absolute;
-
+      case MINIMUM.NAME:
+        return this.minimum;
+      case MAXIMUM.NAME:
+        return this.maximum;
+      case MEAN.NAME:
+        return this.mean;
+      case HYPOT.NAME:
+        return this.hypot;
       default:
         throw "Unknown activation: " + name;
     }

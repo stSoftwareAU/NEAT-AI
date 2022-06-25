@@ -2,13 +2,13 @@ import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
 
 import { Network } from "../../NEAT-TS/src/architecture/network.js";
 
-Deno.test("Minimum", () => {
+Deno.test("Hypot", () => {
   const json = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 2 },
-      { bias: 0, type: "output", squash: "MINIMUM", index: 3 },
+      { bias: 0, type: "output", squash: "HYPOT", index: 3 },
     ],
     connections: [
       { weight: 1, from: 0, to: 3 },
@@ -33,7 +33,7 @@ Deno.test("Minimum", () => {
       Math.abs(actual - actual2) < 0.00000001,
       "repeated calls should return the same result",
     );
-    const expected = Math.min(a, b, c);
+    const expected = Math.hypot(a, b, c);
 
     if (Math.abs(expected - actual) >= 0.00001) {
       const actual3 = network.activate(data)[0];
