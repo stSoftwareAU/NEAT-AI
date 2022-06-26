@@ -188,6 +188,7 @@ export class Network {
     const index = this.gates.indexOf(connection);
     if (index === -1) {
       console.warn("This connection is not gated!", this.gates, connection);
+      console.trace();
       return;
     }
 
