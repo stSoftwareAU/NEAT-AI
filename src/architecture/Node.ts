@@ -372,9 +372,6 @@ export class Node implements TagsInterface {
    * Removes the gates from this node from the given connection(s)
    */
   ungate(connections: Connection[]) {
-    // if (!Array.isArray(connections)) {
-    //   connections = [connections];
-    // }
 
     for (let i = connections.length - 1; i >= 0; i--) {
       const connection = connections[i];
@@ -385,6 +382,7 @@ export class Node implements TagsInterface {
       connection.gain = 1;
     }
   }
+
   /**
    * Clear the context of the node
    */
@@ -407,6 +405,7 @@ export class Node implements TagsInterface {
     this.error.responsibility = this.error.projected = this.error.gated = 0;
     this.old = this.state = this.activation = 0;
   }
+  
   /**
    * Mutates the node with the given method
    */
