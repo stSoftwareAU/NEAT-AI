@@ -476,7 +476,6 @@ export class Network {
     if (json.tags) {
       network.tags = [...json.tags];
     }
-    network.tags = json.tags;
 
     for (let i = json.nodes.length; i--;) {
       const n = Node.fromJSON(json.nodes[i]);
