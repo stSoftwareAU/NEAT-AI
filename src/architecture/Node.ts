@@ -6,6 +6,7 @@ import { ActivationInterface } from "../methods/activations/ActivationInterface.
 import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
 import { addTags, TagsInterface } from "../tags/TagsInterface.ts";
+import { NodeInterface } from "./NodeInterface.ts";
 
 /*******************************************************************************
 NODE
@@ -18,9 +19,9 @@ interface ConnectionsInterface {
   self: Connection;
 }
 
-export class Node implements TagsInterface {
-  private type;
-  private bias;
+export class Node implements TagsInterface,NodeInterface {
+  public type;
+  public bias;
   private squash: string;
   private old;
   private state;
