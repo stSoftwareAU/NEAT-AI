@@ -1,5 +1,5 @@
 import { architect } from "../src/architecture/architect.js";
-import { assert } from "https://deno.land/std@0.144.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 Deno.test("hypotenuse", async () => {

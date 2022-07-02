@@ -9,22 +9,27 @@ export class IF implements NodeActivationInterface {
   }
 
   activate(node: Node) {
-    // const conditions: number[] = [];
+    let condition = 0;
+    let negative = 0;
+    let positive = 0;
 
-    // // Activation sources coming from connections
-    // for (let i = 0; i < node.connections.in.length; i++) {
-    //   const connection = node.connections.in[i];
-    //   values.push(
-    //     connection.from.getActivation() * connection.weight *
-    //       connection.gain,
-    //   );
-    // }
+    // Activation sources coming from connections
+    for (let i = 0; i < node.connections.in.length; i++) {
+      const connection = node.connections.in[i];
+      const value = connection.from.getActivation() * connection.weight *
+        connection.gain;
+      switch (connection.type) {
+        case "condition":
+          condition += value;
+          break;
+        case "negative":
+          negative += value;
+          break;
+        default:
+          positive += value;
+      }
+    }
 
-    // { from: 2, to: 3, type:"positive"},
-    // { from: 1, to: 3, type:"condition" },
-    // { from: 0, to: 3, type:"negative" },
-
-    // const value = Math.hypot(...values);
-    return 0;
+    return condition > 0 ? positive : negative;
   }
 }

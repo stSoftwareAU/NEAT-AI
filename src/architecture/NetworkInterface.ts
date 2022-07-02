@@ -20,7 +20,8 @@ export interface NetworkInterface extends TagsInterface {
     from: number;
     to: number;
     weight: number;
-    gater: (null | number);
+    gater?: number;
+    type?: string;
   }[];
 
   // deno-lint-ignore no-explicit-any

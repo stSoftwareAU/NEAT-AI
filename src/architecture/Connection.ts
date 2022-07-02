@@ -3,6 +3,7 @@ import { Node } from "./Node.ts";
 export class Connection {
   public from: Node;
   public to: Node;
+  public type?: string;
   public gain: number;
   public weight: number;
   public elegibility: number;
@@ -13,10 +14,11 @@ export class Connection {
 
   public xtrace: { nodes: Node[]; values: number[] };
 
-  constructor(from: Node, to: Node, weight: number) {
+  constructor(from: Node, to: Node, weight: number, type?: string) {
     this.from = from;
     this.to = to;
     this.gain = 1;
+    this.type = type;
 
     this.weight = (typeof weight === "undefined")
       ? Math.random() * 0.2 - 0.1
@@ -45,7 +47,8 @@ export class Connection {
       weight: this.weight,
       from: this.from.index,
       to: this.to.index,
-      gater: this.gater != null ? this.gater.index : null,
+      gater: this.gater ? this.gater.index : undefined,
+      type: this.type ? this.type : undefined,
     };
 
     return json;

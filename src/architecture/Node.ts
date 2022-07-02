@@ -19,7 +19,7 @@ interface ConnectionsInterface {
   self: Connection;
 }
 
-export class Node implements TagsInterface,NodeInterface {
+export class Node implements TagsInterface, NodeInterface {
   public type;
   public bias;
   private squash: string;
@@ -30,7 +30,7 @@ export class Node implements TagsInterface,NodeInterface {
   private previousDeltaBias;
   private totalDeltaBias;
   public connections: ConnectionsInterface;
-  public index?: number;
+  public index: number;
   public tags = undefined;
 
   private error;
@@ -296,8 +296,8 @@ export class Node implements TagsInterface,NodeInterface {
    */
   connect(target: Node, weight: number) {
     const connections = [];
-    if( target.type != "group"){
-    // if (typeof target.bias !== "undefined") { // must be a node!
+    if (target.type != "group") {
+      // if (typeof target.bias !== "undefined") { // must be a node!
       if (target === this) {
         // Turn on the self connection by setting the weight
         if (this.connections.self.weight !== 0) {
@@ -374,7 +374,6 @@ export class Node implements TagsInterface,NodeInterface {
    * Removes the gates from this node from the given connection(s)
    */
   ungate(connections: Connection[]) {
-
     for (let i = connections.length - 1; i >= 0; i--) {
       const connection = connections[i];
 
@@ -407,7 +406,7 @@ export class Node implements TagsInterface,NodeInterface {
     this.error.responsibility = this.error.projected = this.error.gated = 0;
     this.old = this.state = this.activation = 0;
   }
-  
+
   /**
    * Mutates the node with the given method
    */

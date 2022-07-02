@@ -15,9 +15,9 @@ Deno.test("if/Else", () => {
       },
     ],
     connections: [
-      { from: 2, to: 3, type:"positive"},
-      { from: 1, to: 3, type:"condition" },
-      { from: 0, to: 3, type:"negative" },
+      { from: 2, to: 3, type: "positive" },
+      { from: 1, to: 3, type: "condition" },
+      { from: 0, to: 3, type: "negative" },
     ],
     input: 3,
     output: 1,

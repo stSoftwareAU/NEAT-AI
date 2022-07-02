@@ -4,7 +4,7 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.144.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.146.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.js";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
@@ -12,7 +12,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.144.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.146.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 
@@ -27,6 +27,39 @@ export class NetworkUtil {
   ) {
     this.network = network;
   }
+
+  // private getIndex( node:Node):number{
+  //   if( typeof node.index !== 'undefined'){
+  //     return node.index;
+  //   }
+    
+  //   this.network.nodes.findIndex( node);
+  // }
+    /**
+   * Connects the from node to the to node
+   */
+     connect(from:Node, to:Node, weight:number, type?:string) {
+
+      const _connections = from.connect(to, weight, type);
+  
+      for (let i = 0; i < _connections.length; i++) {
+        const connection = _connections[i];
+        if (from !== to) {
+          this.network.connections.push({
+            from=getIndex( connection.from);
+          });
+        } else {
+
+          if( !this.network.selfconns )
+          {
+            this.network.selfconns=[];
+          }
+          this.network.selfconns.push(connection);
+        }
+      }
+  
+      return _connections;
+    }
 
   /**
    * Backpropagate the network
