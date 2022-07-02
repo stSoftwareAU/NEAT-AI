@@ -15,6 +15,7 @@ import { findCost, findRatePolicy } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.146.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
+// import {ConnectionInterface} from "./ConnectionInterface.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -45,9 +46,7 @@ export class NetworkUtil {
       for (let i = 0; i < _connections.length; i++) {
         const connection = _connections[i];
         if (from !== to) {
-          this.network.connections.push({
-            from=getIndex( connection.from);
-          });
+          this.network.connections.push(connection);
         } else {
 
           if( !this.network.selfconns )

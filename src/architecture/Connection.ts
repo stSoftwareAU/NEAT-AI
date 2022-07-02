@@ -1,6 +1,7 @@
 import { Node } from "./Node.ts";
+import {ConnectionInterface} from "./ConnectionInterface.ts";
 
-export class Connection {
+export class Connection implements ConnectionInterface{
   public from: Node;
   public to: Node;
   public type?: string;

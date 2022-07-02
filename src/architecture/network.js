@@ -124,7 +124,7 @@ export class Network {
    * Connects the from node to the to node
    */
   connect(from, to, weight, type) {
-    return util.connect(from, to, weight, type);
+    return this.util.connect(from, to, weight, type);
   }
   /**
    * Disconnects the from node from the to node

@@ -1,4 +1,5 @@
 import { TagsInterface } from "../tags/TagsInterface.ts";
+import { ConnectionInterface } from "./ConnectionInterface.ts";
 
 export interface NetworkInterface extends TagsInterface {
   input: number;
@@ -16,13 +17,7 @@ export interface NetworkInterface extends TagsInterface {
     propagate: Function;
   }[];
 
-  connections: {
-    from: number;
-    to: number;
-    weight: number;
-    gater?: number;
-    type?: string;
-  }[];
+  connections: ConnectionInterface[];
 
   // deno-lint-ignore no-explicit-any
   gates?: any[];
