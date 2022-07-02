@@ -296,7 +296,8 @@ export class Node implements TagsInterface,NodeInterface {
    */
   connect(target: Node, weight: number) {
     const connections = [];
-    if (typeof target.bias !== "undefined") { // must be a node!
+    if( target.type != "group"){
+    // if (typeof target.bias !== "undefined") { // must be a node!
       if (target === this) {
         // Turn on the self connection by setting the weight
         if (this.connections.self.weight !== 0) {

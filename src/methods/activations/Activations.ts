@@ -21,6 +21,7 @@ import { MINIMUM } from "./aggregate/MINIMUM.ts";
 import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
 import { MEAN } from "./aggregate/MEAN.ts";
 import { HYPOT } from "./aggregate/HYPOT.ts";
+import { IF } from "./aggregate/IF.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -48,6 +49,7 @@ export class Activations {
     MAXIMUM.NAME,
     MEAN.NAME,
     HYPOT.NAME,
+    IF.NAME,
   ] as const;
 
   private static logistic = new LOGISTIC();
@@ -70,6 +72,7 @@ export class Activations {
   private static maximum = new MAXIMUM();
   private static mean = new MEAN();
   private static hypot = new HYPOT();
+  private static ifActivation = new IF();
 
   static find(name: string) {
     switch (name) {
@@ -111,6 +114,8 @@ export class Activations {
         return this.mean;
       case HYPOT.NAME:
         return this.hypot;
+      case IF.NAME:
+        return this.ifActivation;
       default:
         throw "Unknown activation: " + name;
     }
