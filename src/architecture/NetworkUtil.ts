@@ -15,7 +15,7 @@ import { findCost, findRatePolicy } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.146.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
-// import {ConnectionInterface} from "./ConnectionInterface.ts";
+import {Connection} from "./Connection.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -36,12 +36,35 @@ export class NetworkUtil {
     
   //   this.network.nodes.findIndex( node);
   // }
+  getNode( pos:number):Node{
+    if( Number.isInteger(pos) ==false || pos < 0){
+      console.trace();
+      throw "POS should be a non-negative integer was: " + pos;
+    }
+    const tmp=this.network.nodes[pos];
+
+    return ((tmp as unknown) as Node);
+  }
+
     /**
    * Connects the from node to the to node
    */
-     connect(from:Node, to:Node, weight:number, type?:string) {
-
-      const _connections = from.connect(to, weight, type);
+     connect(from:number, to:number, weight:number, type?:string) {
+      if( Number.isInteger(from) ==false || from < 0){
+        console.trace();
+        throw "from should be a non-negative integer was: " + from;
+      }
+      if( Number.isInteger(to) ==false || to < 0){
+        console.trace();
+        throw "to should be a non-negative integer was: " + to;
+      }
+      if( typeof weight !== "number"){
+        console.trace();
+        throw "weight not a number was: " + weight;
+      }
+      const fromNode=this.getNode( from);
+      const toNode=this.getNode( to);
+      const _connections = fromNode.connect(toNode, weight, type);
   
       for (let i = 0; i < _connections.length; i++) {
         const connection = _connections[i];
@@ -594,8 +617,8 @@ export class NetworkUtil {
           network.nodes.splice(minBound, 0, node);
 
           // Now create two new connections
-          const newConn1 = network.connect(connection.from, node)[0];
-          const newConn2 = network.connect(node, connection.to)[0];
+          const newConn1 = network.util.connect(connection.from.index, node.index, Connection.randomWeight())[0];
+          const newConn2 = network.util.connect(node.index, connection.to.index, Connection.randomWeight())[0];
 
           // Check if the original connection was gated
           if (gater != null) {
@@ -644,7 +667,7 @@ export class NetworkUtil {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    network.connect(pair[0], pair[1]);
+    network.util.connect(pair[0].index, pair[1].index, Connection.randomWeight());
   }
 
   private subConnection(focusList?: number[]) {

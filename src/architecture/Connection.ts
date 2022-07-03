@@ -2,8 +2,8 @@ import { Node } from "./Node.ts";
 import {ConnectionInterface} from "./ConnectionInterface.ts";
 
 export class Connection implements ConnectionInterface{
-  public from: Node;
-  public to: Node;
+  public from: number;
+  public to: number;
   public type?: string;
   public gain: number;
   public weight: number;
@@ -15,15 +15,34 @@ export class Connection implements ConnectionInterface{
 
   public xtrace: { nodes: Node[]; values: number[] };
 
-  constructor(from: Node, to: Node, weight: number, type?: string) {
+  public static randomWeight(){
+    return Math.random() * 0.2 - 0.1;
+  }
+
+  constructor(from: number, to: number, weight: number, type?: string) {
+    console.info( "from", (typeof from), "to", (typeof to), "weight", (typeof weight));
+
+    if( Number.isInteger(from) ==false || from < 0){
+      console.trace();
+      throw "from should be a non-negative integer was: " + from;
+    }
+    if( Number.isInteger(to) ==false || to < 0){
+      console.trace();
+      throw "to should be a non-negative integer was: " + to;
+    }
+    if( typeof weight !== "number"){
+      console.trace();
+      throw "weight not a number was: " + weight;
+    }
     this.from = from;
     this.to = to;
     this.gain = 1;
     this.type = type;
+    this.weight=weight;
 
-    this.weight = (typeof weight === "undefined")
-      ? Math.random() * 0.2 - 0.1
-      : weight;
+    // this.weight = (typeof weight === "undefined")
+    //   ? Math.random() * 0.2 - 0.1
+    //   : weight;
 
     this.gater = null;
     this.elegibility = 0;
@@ -46,8 +65,8 @@ export class Connection implements ConnectionInterface{
   toJSON() {
     const json = {
       weight: this.weight,
-      from: this.from.index,
-      to: this.to.index,
+      from: this.from,
+      to: this.to,
       gater: this.gater ? this.gater.index : undefined,
       type: this.type ? this.type : undefined,
     };

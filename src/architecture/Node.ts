@@ -16,7 +16,7 @@ interface ConnectionsInterface {
   in: Connection[];
   out: Connection[];
   gated: Connection[];
-  self: Connection;
+  self?: Connection;
 }
 
 export class Node implements TagsInterface, NodeInterface {
@@ -53,8 +53,8 @@ export class Node implements TagsInterface, NodeInterface {
     this.connections = {
       in: [],
       out: [],
-      gated: [],
-      self: new Connection(this, this, 0),
+      gated: []
+      // self: []// new Connection(this, this, 0),
     };
 
     // Data for backpropagation
@@ -294,7 +294,7 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Creates a connection from this node to the given node
    */
-  connect(target: Node, weight: number) {
+  connect(target: Node, weight: number,type?:string) {
     const connections = [];
     if (target.type != "group") {
       // if (typeof target.bias !== "undefined") { // must be a node!
@@ -309,7 +309,7 @@ export class Node implements TagsInterface, NodeInterface {
       } else if (this.isProjectingTo(target)) {
         throw new Error("Already projecting a connection to this node!");
       } else {
-        const connection = new Connection(this, target, weight);
+        const connection = new Connection(this.index, target.index, weight,type);
         target.connections.in.push(connection);
         this.connections.out.push(connection);
 
@@ -318,7 +318,7 @@ export class Node implements TagsInterface, NodeInterface {
     } else { // should be a group
       const group = (target as unknown) as { nodes: Node[] };
       for (let i = 0; i < group.nodes.length; i++) {
-        const connection = new Connection(this, group.nodes[i], weight);
+        const connection = new Connection(this, group.nodes[i], weight,type);
         group.nodes[i].connections.in.push(connection);
         this.connections.out.push(connection);
         target.connections.in.push(connection);

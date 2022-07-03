@@ -16,6 +16,7 @@ export class IF implements NodeActivationInterface {
     // Activation sources coming from connections
     for (let i = 0; i < node.connections.in.length; i++) {
       const connection = node.connections.in[i];
+      
       const value = connection.from.getActivation() * connection.weight *
         connection.gain;
       switch (connection.type) {

@@ -123,9 +123,9 @@ export class Network {
   /**
    * Connects the from node to the to node
    */
-  connect(from, to, weight, type) {
-    return this.util.connect(from, to, weight, type);
-  }
+  // connect(from, to, weight, type) {
+  //   return this.util.connect(from, to, weight, type);
+  // }
   /**
    * Disconnects the from node from the to node
    */
@@ -399,7 +399,7 @@ export class Network {
       tojson.index = i;
       json.nodes[i] = tojson;
 
-      if (node.connections.self.weight !== 0) {
+      if (node.connections.self && node.connections.self.weight !== 0) {
         const tojson = node.connections.self.toJSON();
         tojson.from = i;
         tojson.to = i;
@@ -467,7 +467,7 @@ export class Network {
 
     for (let i = json.nodes.length; i--;) {
       const n = Node.fromJSON(json.nodes[i]);
-
+      n.index=i;
       network.nodes[i] = n;
     }
 
@@ -475,13 +475,28 @@ export class Network {
     for (let i = 0; i < cLen; i++) {
       const conn = json.connections[i];
 
+      if( Number.isInteger(conn.from) ==false || conn.from < 0){
+        console.trace();
+        console.log( json);
+        throw "from should be a non-negative integer was: " + conn.from;
+      }
+      if( Number.isInteger(conn.to) ==false || conn.to < 0){
+        console.trace();
+        throw "to should be a non-negative integer was: " + conn.to;
+      }
+      if( typeof conn.weight !== "number"){
+        console.trace();
+        throw "weight not a number was: " + conn.weight;
+      }
+
       const connection =
-        network.connect(
-          network.nodes[conn.from],
-          network.nodes[conn.to],
+        network.util.connect(
+          conn.from,
+          conn.to,
+          conn.weight,
           conn.type,
         )[0];
-      connection.weight = conn.weight;
+      // connection.weight = conn.weight;
 
       if (conn.gater != null) {
         network.gate(network.nodes[conn.gater], connection);

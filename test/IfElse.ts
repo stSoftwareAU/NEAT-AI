@@ -15,15 +15,19 @@ Deno.test("if/Else", () => {
       },
     ],
     connections: [
-      { from: 2, to: 3, type: "positive" },
-      { from: 1, to: 3, type: "condition" },
-      { from: 0, to: 3, type: "negative" },
+      { from: 2, to: 3, weight: 1, type: "positive" },
+      { from: 1, to: 3, weight: 1, type: "condition" },
+      { from: 0, to: 3, weight: 1, type: "negative" },
     ],
     input: 3,
     output: 1,
   };
   const network1 = Network.fromJSON(json);
-  const network2 = Network.fromJSON(network1.toJSON());
+  const tmpJSON=JSON.stringify(network1.toJSON(), null, 2);
+
+  console.log( tmpJSON);
+  const network2 = Network.fromJSON(JSON.parse( tmpJSON));
+  
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;
     const b = Math.random() * 2 - 1;
