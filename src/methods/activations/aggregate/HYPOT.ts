@@ -14,8 +14,9 @@ export class HYPOT implements NodeActivationInterface {
     // Activation sources coming from connections
     for (let i = 0; i < node.connections.in.length; i++) {
       const connection = node.connections.in[i];
+      const fromNode = node.util.getNode(connection.from);
       values.push(
-        connection.from.getActivation() * connection.weight *
+        fromNode.getActivation() * connection.weight *
           connection.gain,
       );
     }

@@ -2,7 +2,7 @@ import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
 
 import { Network } from "../../NEAT-TS/src/architecture/network.js";
 
-Deno.test("if/Else", () => {
+Deno.test("projection", () => {
   const json = {
     nodes: [
       { type: "input", squash: "LOGISTIC", index: 0 },
@@ -23,22 +23,21 @@ Deno.test("if/Else", () => {
     input: 3,
     output: 1,
   };
-  const network1 = Network.fromJSON(json);
-  const tmpJSON = JSON.stringify(network1.toJSON(), null, 2);
+  const network = Network.fromJSON(json);
 
-  console.log(tmpJSON);
-  const network2 = Network.fromJSON(JSON.parse(tmpJSON));
+  const outNode = network.nodes[3];
 
-  for (let p = 0; p < 1000; p++) {
-    const a = Math.random() * 2 - 1;
-    const b = Math.random() * 2 - 1;
-    const flag = Math.random() > 0.5 ? 1 : 0;
+  const inNode0 = network.nodes[0];
 
-    const expected = flag > 0 ? b : a;
+  const flag0to3 = inNode0.isProjectingTo(outNode);
 
-    const actual = network2.activate([a, flag, b])[0];
+  assert(flag0to3, "0 -> 3");
 
-    const diff = Math.abs(expected - actual);
-    assert(diff < 0.00001, p + ") If/Else didn't work " + diff);
-  }
+  const flag3to0 = outNode.isProjectingTo(inNode0);
+
+  assert(!flag3to0, "3 -> 0 should not be associated");
+
+  const project3by0 = outNode.isProjectedBy(inNode0);
+
+  assert(project3by0, "3 is projected by 0");
 });

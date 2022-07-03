@@ -7,21 +7,19 @@ import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
 import { addTags, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
+import { NetworkUtil } from "./NetworkUtil.ts";
 
-/*******************************************************************************
-NODE
-*******************************************************************************/
-
-interface ConnectionsInterface {
-  in: Connection[];
-  out: Connection[];
-  gated: Connection[];
-  self?: Connection;
-}
+// interface ConnectionsInterface {
+//   in: Connection[];
+//   out: Connection[];
+//   gated: Connection[];
+//   self?: Connection;
+// }
 
 export class Node implements TagsInterface, NodeInterface {
-  public type;
-  public bias;
+  readonly util: NetworkUtil;
+  readonly type;
+  private bias?;
   private squash: string;
   private old;
   private state;
@@ -29,16 +27,46 @@ export class Node implements TagsInterface, NodeInterface {
   private derivative = 0;
   private previousDeltaBias;
   private totalDeltaBias;
-  public connections: ConnectionsInterface;
+  // public connections: ConnectionsInterface;
   public index: number;
   public tags = undefined;
 
   private error;
 
-  constructor(type: string) {
-    this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
+  constructor(
+    type: "input" | "output" | "hidden",
+    bias: (number | undefined),
+    util: NetworkUtil,
+  ) {
+    if (!type) {
+      console.trace();
+      throw "util must be a NetworkUtil was: " + (typeof type);
+    }
+
+    if (type !== "input") {
+      if (type !== "output" && type !== "hidden") {
+        console.trace();
+        throw "invalid type: " + type;
+      }
+
+      if (typeof bias !== "number") {
+        console.trace();
+        throw "bias (other than for " + type + ") must be a number was: " +
+          (typeof bias);
+      }
+
+      this.bias = bias;
+    }
+
+    if (typeof util !== "object") {
+      console.trace();
+      throw "util must be a NetworkUtil was: " + (typeof util);
+    }
+
+    this.util = util;
+    // this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
     this.squash = LOGISTIC.NAME;
-    this.type = type || "hidden";
+    this.type = type;
 
     this.activation = 0;
     this.state = 0;
@@ -50,12 +78,13 @@ export class Node implements TagsInterface, NodeInterface {
     // Batch training
     this.totalDeltaBias = 0;
 
-    this.connections = {
-      in: [],
-      out: [],
-      gated: []
-      // self: []// new Connection(this, this, 0),
-    };
+    this.index = -1;
+    // this.connections = {
+    //   in: [],
+    //   out: [],
+    //   gated: [],
+    //   // self: []// new Connection(this, this, 0),
+    // };
 
     // Data for backpropagation
     this.error = {
@@ -294,7 +323,11 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Creates a connection from this node to the given node
    */
-  connect(target: Node, weight: number,type?:string) {
+  connect(
+    target: NodeInterface,
+    weight: number,
+    type?: "positive" | "negative" | "condition" | undefined,
+  ) {
     const connections = [];
     if (target.type != "group") {
       // if (typeof target.bias !== "undefined") { // must be a node!
@@ -309,16 +342,21 @@ export class Node implements TagsInterface, NodeInterface {
       } else if (this.isProjectingTo(target)) {
         throw new Error("Already projecting a connection to this node!");
       } else {
-        const connection = new Connection(this.index, target.index, weight,type);
-        target.connections.in.push(connection);
-        this.connections.out.push(connection);
+        const connection = new Connection(
+          this.index,
+          target.index,
+          weight,
+          type,
+        );
+        // target.connections.in.push(connection);
+        // this.connections.out.push(connection);
 
         connections.push(connection);
       }
     } else { // should be a group
       const group = (target as unknown) as { nodes: Node[] };
       for (let i = 0; i < group.nodes.length; i++) {
-        const connection = new Connection(this, group.nodes[i], weight,type);
+        const connection = new Connection(this, group.nodes[i], weight, type);
         group.nodes[i].connections.in.push(connection);
         this.connections.out.push(connection);
         target.connections.in.push(connection);
@@ -444,56 +482,71 @@ export class Node implements TagsInterface, NodeInterface {
    * Checks if this node is projecting to the given node
    */
   isProjectingTo(node: Node) {
-    if (node === this && this.connections.self.weight !== 0) {
-      return true;
-    }
-
-    for (let i = 0; i < this.connections.out.length; i++) {
-      const conn = this.connections.out[i];
-      if (conn.to === node) {
-        return true;
-      }
-    }
-    return false;
+    const c = this.util.getConnection(this.index, node.index);
+    return c != null;
   }
   /**
    * Checks if the given node is projecting to this node
    */
   isProjectedBy(node: Node) {
-    if (node === this && this.connections.self.weight !== 0) {
-      return true;
-    }
+    const c = this.util.getConnection(node.index, this.index);
+    return c != null;
 
-    for (let i = 0; i < this.connections.in.length; i++) {
-      const conn = this.connections.in[i];
-      if (conn.from === node) {
-        return true;
-      }
-    }
+    // if (node === this && this.connections.self.weight !== 0) {
+    //   return true;
+    // }
 
-    return false;
+    // for (let i = 0; i < this.connections.in.length; i++) {
+    //   const conn = this.connections.in[i];
+    //   if (conn.from === node) {
+    //     return true;
+    //   }
+    // }
+
+    // return false;
   }
   /**
    * Converts the node to a json object
    */
   toJSON() {
-    const json = {
-      bias: this.bias,
-      type: this.type,
-      squash: this.squash,
-      tags: this.tags ? [...this.tags] : undefined,
-    };
-
-    return json;
+    if (this.type === "input") {
+      return {
+        type: this.type,
+        squash: this.squash,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    } else {
+      return {
+        bias: this.bias,
+        type: this.type,
+        squash: this.squash,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    }
   }
   /**
    * Convert a json object to a node
    */
   static fromJSON(
     json: { type: string; bias: number; squash: string; tags?: [] },
+    util: NetworkUtil,
   ) {
-    const node = new Node(json.type);
-    node.bias = json.bias;
+    switch (json.type) {
+      case "input":
+      case "output":
+      case "hidden":
+        break;
+      default:
+        throw "unknown type: " + json.type;
+    }
+
+    if (typeof util !== "object") {
+      console.trace();
+      throw "util must be a NetworkUtil was: " + (typeof util);
+    }
+
+    const node = new Node(json.type, json.bias, util);
+    // node.bias = json.bias;
     // node.type = json.type;
     node.squash = json.squash; //Methods.activation[json.squash];
 

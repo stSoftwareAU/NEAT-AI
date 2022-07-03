@@ -7,7 +7,7 @@ interface NodeJSON extends TagsInterface {
 }
 
 export interface NodeInterface {
-  readonly type: string;
+  readonly type: "input" | "hidden" | "output" | "group";
   index: number;
   toJSON(): NodeJSON;
 }

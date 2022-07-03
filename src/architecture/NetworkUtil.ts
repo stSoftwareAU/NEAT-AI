@@ -15,7 +15,8 @@ import { findCost, findRatePolicy } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.146.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
-import {Connection} from "./Connection.ts";
+import { Connection } from "./Connection.ts";
+import { NodeInterface } from "../architecture/NodeInterface.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -33,55 +34,137 @@ export class NetworkUtil {
   //   if( typeof node.index !== 'undefined'){
   //     return node.index;
   //   }
-    
+
   //   this.network.nodes.findIndex( node);
   // }
-  getNode( pos:number):Node{
-    if( Number.isInteger(pos) ==false || pos < 0){
+  getNode(pos: number): Node {
+    if (Number.isInteger(pos) == false || pos < 0) {
       console.trace();
       throw "POS should be a non-negative integer was: " + pos;
     }
-    const tmp=this.network.nodes[pos];
+    const tmp = this.network.nodes[pos];
+
+    if (typeof tmp === "undefined") {
+      throw "getNode( " + pos + ") " + (typeof tmp);
+    }
+
+    tmp.index = pos;
 
     return ((tmp as unknown) as Node);
   }
 
-    /**
+  getConnection(from: number, to: number): ConnectionInterface | null {
+    if (Number.isInteger(from) == false || from < 0) {
+      console.trace();
+      throw "FROM should be a non-negative integer was: " + from;
+    }
+
+    if (Number.isInteger(to) == false || to < 0) {
+      console.trace();
+      throw "TO should be a non-negative integer was: " + to;
+    }
+
+    for (let pos = this.network.connections.length; pos--;) {
+      const c = this.network.connections[pos];
+
+      if (c.from == from && c.to == to) {
+        return c;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Connects the from node to the to node
    */
-     connect(from:number, to:number, weight:number, type?:string) {
-      if( Number.isInteger(from) ==false || from < 0){
-        console.trace();
-        throw "from should be a non-negative integer was: " + from;
-      }
-      if( Number.isInteger(to) ==false || to < 0){
-        console.trace();
-        throw "to should be a non-negative integer was: " + to;
-      }
-      if( typeof weight !== "number"){
-        console.trace();
-        throw "weight not a number was: " + weight;
-      }
-      const fromNode=this.getNode( from);
-      const toNode=this.getNode( to);
-      const _connections = fromNode.connect(toNode, weight, type);
-  
-      for (let i = 0; i < _connections.length; i++) {
-        const connection = _connections[i];
-        if (from !== to) {
-          this.network.connections.push(connection);
-        } else {
+  connect(from: number, to: number, weight: number, type?: string) {
+    if (Number.isInteger(from) == false || from < 0) {
+      console.trace();
+      throw "from should be a non-negative integer was: " + from;
+    }
+    if (Number.isInteger(to) == false || to < 0) {
+      console.trace();
+      throw "to should be a non-negative integer was: " + to;
+    }
+    if (typeof weight !== "number") {
+      console.trace();
+      throw "weight not a number was: " + weight;
+    }
+    const fromNode = this.getNode(from);
+    const toNode = this.getNode(to);
+    const _connections = fromNode.connect(toNode, weight, type);
 
-          if( !this.network.selfconns )
-          {
-            this.network.selfconns=[];
+    for (let i = 0; i < _connections.length; i++) {
+      const connection = _connections[i];
+      if (from !== to) {
+        this.network.connections.push(connection);
+      } else {
+        if (!this.network.selfconns) {
+          this.network.selfconns = [];
+        }
+        this.network.selfconns.push(connection);
+      }
+    }
+
+    return _connections;
+  }
+  /**
+   * Disconnects the from node from the to node
+   */
+  disconnect(from: number, to: number) {
+    if (Number.isInteger(from) == false || from < 0) {
+      console.trace();
+      throw "from should be a non-negative integer was: " + from;
+    }
+    if (Number.isInteger(to) == false || to < 0) {
+      console.trace();
+      throw "to should be a non-negative integer was: " + to;
+    }
+
+    // Delete the connection in the network's connection array
+    const connections = from === to
+      ? this.network.selfconns
+      : this.network.connections;
+
+    if (connections) {
+      for (let i = 0; i < connections.length; i++) {
+        const connection = connections[i];
+        if (connection.from === from && connection.to === to) {
+          if (connection.gater !== null) {
+            this.ungate(connection);
           }
-          this.network.selfconns.push(connection);
+          connections.splice(i, 1);
+          break;
         }
       }
-  
-      return _connections;
     }
+
+    const fromNode = this.getNode(from);
+
+    const toNode = this.getNode(to);
+    // Delete the connection at the sending and receiving neuron
+    fromNode.disconnect(toNode, false);
+  }
+
+  /**
+   *  Remove the gate of a connection
+   */
+  ungate(connection: ConnectionInterface) {
+    const index = this.network.gates.indexOf(connection);
+    if (index === -1) {
+      console.warn(
+        "This connection is not gated!",
+        this.network.gates,
+        connection,
+      );
+      console.trace();
+      return;
+    }
+
+    this.gates.splice(index, 1);
+    connection.gater.ungate(connection);
+  }
 
   /**
    * Backpropagate the network
@@ -521,18 +604,18 @@ export class NetworkUtil {
       }
 
       for (let k = 0; k < node.connections.in.length; k++) {
-        const c: { from: Node; to: Node } = node.connections.in[k];
+        const c = node.connections.in[k];
         const fromIndex = nodeList.indexOf(c.from);
         if (!checked.has(fromIndex)) {
           checked.add(fromIndex);
-          if (this.inFocus(c.from, focusList, checked)) {
+          if (this.inFocus(node.util.getNode(c.from), focusList, checked)) {
             return true;
           }
         }
         const toIndex = nodeList.indexOf(c.to);
         if (!checked.has(toIndex)) {
           checked.add(toIndex);
-          if (this.inFocus(c.to, focusList, checked)) {
+          if (this.inFocus(node.util.getNode(c.to), focusList, checked)) {
             return true;
           }
         }
@@ -594,17 +677,17 @@ export class NetworkUtil {
         if (connection) {
           if (
             !this.inFocus(connection.from, focusList) &&
-            !this.inFocus(connection.in, focusList)
+            !this.inFocus(connection.to, focusList)
           ) {
             continue;
           }
 
           const gater = connection.gater;
-          network.disconnect(connection.from, connection.to);
+          network.util.disconnect(connection.from, connection.to);
 
           // Insert the new node right before the old connection.to
-          const toIndex = network.nodes.indexOf(connection.to);
-          const node = new Node("hidden");
+          const toIndex = connection.to;
+          const node = new Node("hidden", 0, network.util);
 
           // Random squash function
           node.mutate(Mutation.MOD_ACTIVATION.name);
@@ -614,11 +697,20 @@ export class NetworkUtil {
             toIndex,
             network.nodes.length - network.output,
           );
-          network.nodes.splice(minBound, 0, node);
+          network.util.insertNode(node, minBound);
+          // network.nodes.splice(minBound, 0, node);
 
           // Now create two new connections
-          const newConn1 = network.util.connect(connection.from.index, node.index, Connection.randomWeight())[0];
-          const newConn2 = network.util.connect(node.index, connection.to.index, Connection.randomWeight())[0];
+          const newConn1 = network.util.connect(
+            connection.from,
+            node.index,
+            Connection.randomWeight(),
+          )[0];
+          const newConn2 = network.util.connect(
+            node.index,
+            connection.to,
+            Connection.randomWeight(),
+          )[0];
 
           // Check if the original connection was gated
           if (gater != null) {
@@ -636,6 +728,30 @@ export class NetworkUtil {
         break;
       }
     }
+  }
+
+  insertNode(node: Node, pos: number) {
+    if (Number.isInteger(pos) == false || pos < 0) {
+      console.trace();
+      throw "to should be a non-negative integer was: " + pos;
+    }
+
+    const left = this.network.nodes.slice(0, pos);
+    const right = this.network.nodes.slice(pos);
+    right.forEach((n) => {
+      n.index++;
+    });
+
+    node.index = pos;
+    const full = [...left, node, ...right];
+
+    this.network.nodes = full;
+
+    this.network.connections.forEach((c) => {
+      if (c.from >= pos) c.from++;
+      if (c.to >= pos) c.to++;
+      if (c.gater && c.gater >= pos) c.gater++;
+    });
   }
 
   private addConnection(focusList?: number[]) {
@@ -667,7 +783,11 @@ export class NetworkUtil {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    network.util.connect(pair[0].index, pair[1].index, Connection.randomWeight());
+    network.util.connect(
+      pair[0].index,
+      pair[1].index,
+      Connection.randomWeight(),
+    );
   }
 
   private subConnection(focusList?: number[]) {

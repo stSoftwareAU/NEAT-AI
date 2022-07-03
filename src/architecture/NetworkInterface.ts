@@ -1,5 +1,6 @@
 import { TagsInterface } from "../tags/TagsInterface.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
+import { NodeInterface } from "./NodeInterface.ts";
 
 export interface NetworkInterface extends TagsInterface {
   input: number;
@@ -8,14 +9,7 @@ export interface NetworkInterface extends TagsInterface {
   /** The error plus a discount because of the complexity of the genome */
   score?: number;
 
-  nodes: {
-    index: number;
-    bias: number;
-    type: string;
-    squash: string;
-    // deno-lint-ignore ban-types
-    propagate: Function;
-  }[];
+  nodes: NodeInterface[];
 
   connections: ConnectionInterface[];
 

@@ -1,10 +1,10 @@
 import { Node } from "./Node.ts";
-import {ConnectionInterface} from "./ConnectionInterface.ts";
+import { ConnectionInterface } from "./ConnectionInterface.ts";
 
-export class Connection implements ConnectionInterface{
+export class Connection implements ConnectionInterface {
   public from: number;
   public to: number;
-  public type?: string;
+  public type?: "positive" | "negative" | "condition";
   public gain: number;
   public weight: number;
   public elegibility: number;
@@ -15,22 +15,27 @@ export class Connection implements ConnectionInterface{
 
   public xtrace: { nodes: Node[]; values: number[] };
 
-  public static randomWeight(){
+  public static randomWeight() {
     return Math.random() * 0.2 - 0.1;
   }
 
-  constructor(from: number, to: number, weight: number, type?: string) {
-    console.info( "from", (typeof from), "to", (typeof to), "weight", (typeof weight));
+  constructor(
+    from: number,
+    to: number,
+    weight: number,
+    type?: "positive" | "negative" | "condition" | undefined,
+  ) {
+    console.info("from", typeof from, "to", typeof to, "weight", typeof weight);
 
-    if( Number.isInteger(from) ==false || from < 0){
+    if (Number.isInteger(from) == false || from < 0) {
       console.trace();
       throw "from should be a non-negative integer was: " + from;
     }
-    if( Number.isInteger(to) ==false || to < 0){
+    if (Number.isInteger(to) == false || to < 0) {
       console.trace();
       throw "to should be a non-negative integer was: " + to;
     }
-    if( typeof weight !== "number"){
+    if (typeof weight !== "number") {
       console.trace();
       throw "weight not a number was: " + weight;
     }
@@ -38,7 +43,7 @@ export class Connection implements ConnectionInterface{
     this.to = to;
     this.gain = 1;
     this.type = type;
-    this.weight=weight;
+    this.weight = weight;
 
     // this.weight = (typeof weight === "undefined")
     //   ? Math.random() * 0.2 - 0.1

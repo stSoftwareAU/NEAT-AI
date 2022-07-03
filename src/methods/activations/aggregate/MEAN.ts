@@ -13,7 +13,8 @@ export class MEAN implements NodeActivationInterface {
     // Activation sources coming from connections
     for (let i = 0; i < node.connections.in.length; i++) {
       const connection = node.connections.in[i];
-      const v = connection.from.getActivation() * connection.weight *
+      const fromNode = node.util.getNode(connection.from);
+      const v = fromNode.getActivation() * connection.weight *
         connection.gain;
 
       sum += v;

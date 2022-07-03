@@ -35,7 +35,7 @@ export class Network {
       // Create input and output nodes
       for (let i = nLen; i--;) {
         const type = i < this.input ? "input" : "output";
-        this.nodes[i] = new Node(type);
+        this.nodes[i] = new Node(type, 0, this.util);
       }
 
       // Connect input nodes with output nodes directly
@@ -43,7 +43,7 @@ export class Network {
         for (let j = this.input; j < this.output + this.input; j++) {
           // https://stats.stackexchange.com/a/248040/147931
           const weight = Math.random() * this.input * Math.sqrt(2 / this.input);
-          this.connect(this.nodes[i], this.nodes[j], weight);
+          this.util.connect(i, j, weight);
         }
       }
     }
@@ -126,27 +126,6 @@ export class Network {
   // connect(from, to, weight, type) {
   //   return this.util.connect(from, to, weight, type);
   // }
-  /**
-   * Disconnects the from node from the to node
-   */
-  disconnect(from, to) {
-    // Delete the connection in the network's connection array
-    const connections = from === to ? this.selfconns : this.connections;
-
-    for (let i = 0; i < connections.length; i++) {
-      const connection = connections[i];
-      if (connection.from === from && connection.to === to) {
-        if (connection.gater !== null) {
-          this.ungate(connection);
-        }
-        connections.splice(i, 1);
-        break;
-      }
-    }
-
-    // Delete the connection at the sending and receiving neuron
-    from.disconnect(to);
-  }
 
   /**
    * Gate a connection with a node
@@ -168,20 +147,6 @@ export class Network {
     this.gates.push(connection);
   }
 
-  /**
-   *  Remove the gate of a connection
-   */
-  ungate(connection) {
-    const index = this.gates.indexOf(connection);
-    if (index === -1) {
-      console.warn("This connection is not gated!", this.gates, connection);
-      console.trace();
-      return;
-    }
-
-    this.gates.splice(index, 1);
-    connection.gater.ungate(connection);
-  }
   /**
    *  Removes a node from the network
    */
@@ -465,9 +430,11 @@ export class Network {
       network.tags = [...json.tags];
     }
 
+    const util = new NetworkUtil(network);
+
     for (let i = json.nodes.length; i--;) {
-      const n = Node.fromJSON(json.nodes[i]);
-      n.index=i;
+      const n = Node.fromJSON(json.nodes[i], util);
+      n.index = i;
       network.nodes[i] = n;
     }
 
@@ -475,27 +442,26 @@ export class Network {
     for (let i = 0; i < cLen; i++) {
       const conn = json.connections[i];
 
-      if( Number.isInteger(conn.from) ==false || conn.from < 0){
+      if (Number.isInteger(conn.from) == false || conn.from < 0) {
         console.trace();
-        console.log( json);
+        console.log(json);
         throw "from should be a non-negative integer was: " + conn.from;
       }
-      if( Number.isInteger(conn.to) ==false || conn.to < 0){
+      if (Number.isInteger(conn.to) == false || conn.to < 0) {
         console.trace();
         throw "to should be a non-negative integer was: " + conn.to;
       }
-      if( typeof conn.weight !== "number"){
+      if (typeof conn.weight !== "number") {
         console.trace();
         throw "weight not a number was: " + conn.weight;
       }
 
-      const connection =
-        network.util.connect(
-          conn.from,
-          conn.to,
-          conn.weight,
-          conn.type,
-        )[0];
+      const connection = network.util.connect(
+        conn.from,
+        conn.to,
+        conn.weight,
+        conn.type,
+      )[0];
       // connection.weight = conn.weight;
 
       if (conn.gater != null) {
