@@ -3,7 +3,6 @@ import { Connection } from "./Connection.ts";
 import { Node } from "./Node.ts";
 import { NetworkUtil } from "./NetworkUtil.ts";
 
-
 /*******************************************************************************
                                  NETWORK
 *******************************************************************************/
@@ -165,13 +164,12 @@ export class Network {
    */
   gate(node, connection) {
     if (this.nodes.indexOf(node) === -1) {
-      const msg="Gate: This node is not part of the network!";
-      console.warn( msg, node);
+      const msg = "Gate: This node is not part of the network!";
+      console.warn(msg, node);
       console.trace();
-      if( window.DEBUG==true) throw new Error(msg);
-      
-      return;
+      if (window.DEBUG == true) throw new Error(msg);
 
+      return;
     } else if (connection.gater != null) {
       console.warn("This connection is already gated!");
 
@@ -202,9 +200,9 @@ export class Network {
     const index = this.nodes.indexOf(node);
 
     if (index === -1) {
-      const msg="Remove: This node does not exist in the network!";
+      const msg = "Remove: This node does not exist in the network!";
       console.warn(msg, node);
-      if( window.DEBUG==true) throw new Error(msg);
+      if (window.DEBUG == true) throw new Error(msg);
 
       return;
     }
@@ -281,7 +279,7 @@ export class Network {
     // Remove the node from this.nodes
     this.nodes.splice(index, 1);
   }
-  
+
   /**
    * Creates a json that can be used to create a graph with d3 and webcola
    */

@@ -31,7 +31,11 @@ export class WorkerProcessor {
       const util = new NetworkUtil(network);
 
       const cost = findCost(this.costName);
-      const result = util.testDir(this.dataSetDir, cost);
+      const result = util.testDir(
+        this.dataSetDir,
+        cost,
+        data.evaluate.feedbackLoop,
+      );
 
       return {
         taskID: data.taskID,

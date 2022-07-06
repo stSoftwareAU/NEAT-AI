@@ -9,13 +9,13 @@ import { Node } from "./Node.ts";
 *******************************************************************************/
 
 export class Group {
-  nodes:Node[]=[];
+  nodes: Node[] = [];
   connections = {
     in: [],
     out: [],
     self: [],
   };
-  constructor(size:number) {
+  constructor(size: number) {
     // this.nodes = [];
     // this.connections = {
     //   in: [],
@@ -30,7 +30,7 @@ export class Group {
   /**
    * Activates all the nodes in the group
    */
-  activate(value:number[]) {
+  activate(value: number[]) {
     const values = [];
 
     if (typeof value !== "undefined" && value.length !== this.nodes.length) {
@@ -55,7 +55,7 @@ export class Group {
   /**
    * Propagates all the node in the group
    */
-  propagate(rate:number, momentum:number, target?:number[]) {
+  propagate(rate: number, momentum: number, target?: number[]) {
     if (typeof target !== "undefined" && target.length !== this.nodes.length) {
       throw new Error(
         "Array with values should be same as the amount of nodes!",
@@ -64,9 +64,9 @@ export class Group {
 
     for (let i = this.nodes.length - 1; i >= 0; i--) {
       if (typeof target === "undefined") {
-        this.nodes[i].propagate(rate, momentum,true,-1);
+        this.nodes[i].propagate(rate, momentum, true, -1);
       } else {
-        this.nodes[i].propagate(rate, momentum,true, target[i]);
+        this.nodes[i].propagate(rate, momentum, true, target[i]);
       }
     }
   }
@@ -196,7 +196,7 @@ export class Group {
   /**
    * Sets the value of a property for every node
    */
-  set(values:any) {
+  set(values: any) {
     for (let i = 0; i < this.nodes.length; i++) {
       if (typeof values.bias !== "undefined") {
         this.nodes[i].bias = values.bias;

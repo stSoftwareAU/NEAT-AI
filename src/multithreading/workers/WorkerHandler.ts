@@ -11,6 +11,7 @@ export interface RequestData {
   };
   evaluate?: {
     network: string;
+    feedbackLoop: boolean;
   };
   train?: {
     network: string;
@@ -168,11 +169,12 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  evaluate(network: NetworkInterface) {
+  evaluate(network: NetworkInterface, feedbackLoop: boolean) {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
         network: network.toJSON(),
+        feedbackLoop,
       },
     };
 
