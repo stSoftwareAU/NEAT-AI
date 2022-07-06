@@ -25,6 +25,9 @@ export interface NeatOptions {
   /** List of creatures to start with */
   creatures?: NetworkInterface[];
 
+  /** feedback loop ( previous result feeds back into next interaction */
+  feedbackLoop?: boolean;
+
   /** The list of observations to focus one */
   focusList?: number[];
   /** Focus rate */

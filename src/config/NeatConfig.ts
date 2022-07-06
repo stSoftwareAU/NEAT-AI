@@ -20,6 +20,9 @@ export interface NeatConfig {
   /** number of records per dataset file. default: 2000 */
   dataSetParitionBreak: number;
 
+  /** feedback loop ( previous result feeds back into next interaction */
+  feedbackLoop: boolean;
+
   /** The list of observations to focus one */
   focusList: number[];
   /** Focus rate */
@@ -81,6 +84,7 @@ export function make(parameters?: NeatOptions) {
       ? Math.max(options.dataSetParitionBreak, 1000)
       : 2000,
     equal: options.equal || false,
+    feedbackLoop: options.feedbackLoop || false,
     focusList: options.focusList || [],
     focusRate: options.focusRate || 0.25,
 

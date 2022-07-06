@@ -9,13 +9,6 @@ import { addTags, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
 import { NetworkUtil } from "./NetworkUtil.ts";
 
-// interface ConnectionsInterface {
-//   in: Connection[];
-//   out: Connection[];
-//   gated: Connection[];
-//   self?: Connection;
-// }
-
 export class Node implements TagsInterface, NodeInterface {
   readonly util: NetworkUtil;
   readonly type;

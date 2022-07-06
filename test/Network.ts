@@ -524,6 +524,7 @@ Deno.test("NARX Sequence", async () => {
     error: 0.005,
     rate: 0.05,
     threads: 1,
+    feedbackLoop: true,
   });
   // const result = narx.test(trainingData);
   assert(result.error < 0.005, JSON.stringify(result, null, 2));

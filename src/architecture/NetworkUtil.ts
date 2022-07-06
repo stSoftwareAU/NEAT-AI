@@ -384,6 +384,7 @@ export class NetworkUtil {
     dataDir: string,
     // deno-lint-ignore ban-types
     cost: Function,
+    feedbackLoop: boolean,
   ) {
     let error = 0;
     let counter = 0;
@@ -416,6 +417,7 @@ export class NetworkUtil {
         if (!this.network.noTraceActivate) throw "no trace function";
         const output = this.network.noTraceActivate(input);
         error += cost(target, output);
+        if (!feedbackLoop && this.network.clear) this.network.clear();
       }
       counter += len;
     });
@@ -512,7 +514,7 @@ export class NetworkUtil {
 
           this.propagate(currentRate, momentum, update, target);
         }
-
+        if (this.network.clear) this.network.clear();
         counter += len;
       });
 

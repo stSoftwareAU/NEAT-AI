@@ -14,10 +14,11 @@ let calculationData: ({
 export class Fitness {
   private workers: WorkerHandler[];
   private growth: number;
+  private feedbackLoop: boolean;
 
-  constructor(workers: WorkerHandler[], growth: number) {
+  constructor(workers: WorkerHandler[], growth: number, feedbackLoop: boolean) {
     this.workers = workers;
-
+    this.feedbackLoop = feedbackLoop;
     workers.forEach((w) => w.addIdleListener(this._reschedule));
     this.growth = growth;
   }
@@ -29,7 +30,7 @@ export class Fitness {
   }
 
   private async _callWorker(worker: WorkerHandler, creature: NetworkInterface) {
-    const responeData = await worker.evaluate(creature);
+    const responeData = await worker.evaluate(creature, this.feedbackLoop);
     if (!responeData.evaluate) throw "Invalid response";
 
     const error = responeData.evaluate.error;

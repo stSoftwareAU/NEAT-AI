@@ -24,7 +24,11 @@ export class Neat {
     this.util = new NeatUtil(this, this.config);
 
     // The fitness function to evaluate the networks
-    this.fitness = new Fitness(this.workers, this.config.growth);
+    this.fitness = new Fitness(
+      this.workers,
+      this.config.growth,
+      this.config.feedbackLoop,
+    );
     // Generation counter
     this.generation = 0;
     this.trainRate = this.config.trainRate;
