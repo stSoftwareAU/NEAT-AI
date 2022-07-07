@@ -324,15 +324,16 @@ export class Node implements TagsInterface, NodeInterface {
     const connections = [];
     if (target.type != "group") {
       // if (typeof target.bias !== "undefined") { // must be a node!
-      if (target === this) {
-        // Turn on the self connection by setting the weight
-        if (this.connections.self.weight !== 0) {
-          console.warn("This connection already exists!");
-        } else {
-          this.connections.self.weight = weight || 1;
-        }
-        connections.push(this.connections.self);
-      } else if (this.isProjectingTo(target)) {
+      // if (target === this) {
+      //   // Turn on the self connection by setting the weight
+      //   if (this.connections.self.weight !== 0) {
+      //     console.warn("This connection already exists!");
+      //   } else {
+      //     this.connections.self.weight = weight || 1;
+      //   }
+      //   connections.push(this.connections.self);
+      // } else
+      if (this.isProjectingTo(target)) {
         throw new Error("Already projecting a connection to this node!");
       } else {
         const connection = new Connection(
@@ -362,30 +363,13 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Disconnects this node from the other node
    */
-  disconnect(node: Node, twosided: boolean) {
-    if (this === node) {
-      this.connections.self.weight = 0;
-      return;
-    }
-
-    for (let i = 0; i < this.connections.out.length; i++) {
-      const conn = this.connections.out[i];
-      if (conn.to === node) {
-        this.connections.out.splice(i, 1);
-        const j = conn.to.connections.in.indexOf(conn);
-        conn.to.connections.in.splice(j, 1);
-        if (conn.gater !== null) {
-          const a = [conn];
-          conn.gater.ungate(a);
-        }
-        break;
-      }
-    }
-
-    if (twosided) {
-      node.disconnect(this, false);
+  disconnect(to: number, twoSided: boolean) {
+    this.util.disconnect(this.index, to);
+    if (twoSided) {
+      this.util.disconnect(to, this.index);
     }
   }
+
   /**
    * Make this node gate a connection
    */

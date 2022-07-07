@@ -16,7 +16,7 @@ import { emptyDirSync } from "https://deno.land/std@0.146.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
-import { NodeInterface } from "../architecture/NodeInterface.ts";
+// import { NodeInterface } from "../architecture/NodeInterface.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -24,10 +24,25 @@ const cacheDataFile = {
 };
 export class NetworkUtil {
   private network;
+  private cache: ConnectionInterface[][] = [];
   constructor(
     network: NetworkInterface,
   ) {
     this.network = network;
+  }
+
+  toConnections(to: number): ConnectionInterface[] {
+    let results: ConnectionInterface[] = this.cache[to];
+    if (results == null) {
+      results = [];
+      const tmpList = this.network.connections;
+      tmpList.forEach((c) => {
+        if (c.to === to) results.push(c);
+      });
+
+      this.cache[to] = results;
+    }
+    return results;
   }
 
   // private getIndex( node:Node):number{
@@ -123,28 +138,27 @@ export class NetworkUtil {
     }
 
     // Delete the connection in the network's connection array
-    const connections = from === to
-      ? this.network.selfconns
-      : this.network.connections;
+    const connections = this.network.connections;
 
-    if (connections) {
-      for (let i = 0; i < connections.length; i++) {
-        const connection = connections[i];
-        if (connection.from === from && connection.to === to) {
-          if (connection.gater !== null) {
-            this.ungate(connection);
-          }
-          connections.splice(i, 1);
-          break;
+    // if (connections) {
+    for (let i = 0; i < connections.length; i++) {
+      const connection = connections[i];
+      if (connection.from === from && connection.to === to) {
+        if (connection.gater !== null) {
+          this.ungate(connection);
         }
+        connections.splice(i, 1);
+        this.cache.length = 0;
+        break;
       }
     }
+    // }
 
-    const fromNode = this.getNode(from);
+    // const fromNode = this.getNode(from);
 
-    const toNode = this.getNode(to);
+    // const toNode = this.getNode(to);
     // Delete the connection at the sending and receiving neuron
-    fromNode.disconnect(toNode, false);
+    // fromNode.disconnect(to, false);
   }
 
   /**
@@ -667,7 +681,7 @@ export class NetworkUtil {
     }
   }
 
-  private addNode(focusList?: number[]) {
+  public addNode(focusList?: number[]) {
     const network = this.network as Network;
     const connections = network.connections;
 

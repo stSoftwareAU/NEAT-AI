@@ -364,16 +364,16 @@ export class Network {
       tojson.index = i;
       json.nodes[i] = tojson;
 
-      if (node.connections.self && node.connections.self.weight !== 0) {
-        const tojson = node.connections.self.toJSON();
-        tojson.from = i;
-        tojson.to = i;
+      // if (node.connections.self && node.connections.self.weight !== 0) {
+      //   const tojson = node.connections.self.toJSON();
+      //   tojson.from = i;
+      //   tojson.to = i;
 
-        tojson.gater = node.connections.self.gater != null
-          ? node.connections.self.gater.index
-          : null;
-        json.connections.push(tojson);
-      }
+      //   tojson.gater = node.connections.self.gater != null
+      //     ? node.connections.self.gater.index
+      //     : null;
+      //   json.connections.push(tojson);
+      // }
     }
 
     for (let i = 0; i < this.connections.length; i++) {
