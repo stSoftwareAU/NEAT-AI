@@ -20,7 +20,10 @@ export interface NeatConfig {
   /** number of records per dataset file. default: 2000 */
   dataSetParitionBreak: number;
 
-  /** feedback loop ( previous result feeds back into next interaction */
+  /**
+   * Feedback loop ( previous result feeds back into next interaction
+   * https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html;jsessionid=2d7fa2c64f0bd39c86dec46870cd
+   */
   feedbackLoop: boolean;
 
   /** The list of observations to focus one */
@@ -84,6 +87,7 @@ export function make(parameters?: NeatOptions) {
       ? Math.max(options.dataSetParitionBreak, 1000)
       : 2000,
     equal: options.equal || false,
+
     feedbackLoop: options.feedbackLoop || false,
     focusList: options.focusList || [],
     focusRate: options.focusRate || 0.25,

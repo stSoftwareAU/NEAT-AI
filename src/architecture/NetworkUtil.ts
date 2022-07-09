@@ -22,17 +22,32 @@ const cacheDataFile = {
   fn: "",
   json: {},
 };
+
+interface HashTable<T> {
+  [key: string]: T;
+}
+
 export class NetworkUtil {
   private network;
-  private cache: ConnectionInterface[][] = [];
+  private cache: HashTable<ConnectionInterface[]> = {};
+
   constructor(
     network: NetworkInterface,
   ) {
     this.network = network;
   }
 
+  private clearCache() {
+    this.cache = {};
+
+    // for (const member in this.cache) {
+    //   throw "still has: " + member;
+    // }
+  }
+
   toConnections(to: number): ConnectionInterface[] {
-    let results: ConnectionInterface[] = this.cache[to];
+    const key = "to:" + to;
+    let results: ConnectionInterface[] = this.cache[key];
     if (results == null) {
       results = [];
       const tmpList = this.network.connections;
@@ -40,7 +55,22 @@ export class NetworkUtil {
         if (c.to === to) results.push(c);
       });
 
-      this.cache[to] = results;
+      this.cache[key] = results;
+    }
+    return results;
+  }
+
+  fromConnections(from: number): ConnectionInterface[] {
+    const key = "from:" + from;
+    let results: ConnectionInterface[] = this.cache[key];
+    if (results == null) {
+      results = [];
+      const tmpList = this.network.connections;
+      tmpList.forEach((c) => {
+        if (c.from === from) results.push(c);
+      });
+
+      this.cache[key] = results;
     }
     return results;
   }
@@ -93,19 +123,42 @@ export class NetworkUtil {
   /**
    * Connects the from node to the to node
    */
-  connect(from: number, to: number, weight: number, type?: string) {
-    if (Number.isInteger(from) == false || from < 0) {
+  connect(
+    from: number,
+    to: number,
+    weight: number,
+    type?: "positive" | "negative" | "condition",
+  ) {
+    if (
+      Number.isInteger(from) == false || from < 0
+    ) {
       console.trace();
       throw "from should be a non-negative integer was: " + from;
+    }
+
+    const firstOutputIndex = this.network.nodes.length - this.network.output;
+    if (from >= firstOutputIndex) {
+      console.trace();
+      throw "from should not be from an output node (" + firstOutputIndex +
+        "): " + from;
     }
     if (Number.isInteger(to) == false || to < 0) {
       console.trace();
       throw "to should be a non-negative integer was: " + to;
     }
+
+    if (to < this.network.input) {
+      console.trace();
+      throw "to should not be pointed to any input nodes(" +
+        this.network.input + "): " + to;
+    }
     if (typeof weight !== "number") {
       console.trace();
       throw "weight not a number was: " + weight;
     }
+
+    this.clearCache();
+    // fix from here
     const fromNode = this.getNode(from);
     const toNode = this.getNode(to);
     const _connections = fromNode.connect(toNode, weight, type);
@@ -124,6 +177,7 @@ export class NetworkUtil {
 
     return _connections;
   }
+
   /**
    * Disconnects the from node from the to node
    */
@@ -148,7 +202,7 @@ export class NetworkUtil {
           this.ungate(connection);
         }
         connections.splice(i, 1);
-        this.cache.length = 0;
+        this.clearCache();
         break;
       }
     }
@@ -604,14 +658,17 @@ export class NetworkUtil {
     });
   }
 
-  inFocus(node: Node, focusList?: number[], checked = new Set()) {
+  inFocus(index: number, focusList?: number[], checked = new Set()) {
+    if (Number.isInteger(index) == false || index < 0) {
+      console.trace();
+      throw "to should be non-negative was: " + index;
+    }
     if (!focusList || focusList.length == 0) return true;
-    const network = this.network as Network;
-    const nodeList = network.nodes;
-    const index = nodeList.indexOf(node);
-    if (index === -1) return false;
 
-    // console.info( "Index", index, focusList);
+    if (checked.has(index)) return false;
+
+    checked.add(index);
+
     for (let pos = 0; pos < focusList.length; pos++) {
       const focusIndex = focusList[pos];
 
@@ -619,43 +676,19 @@ export class NetworkUtil {
         return true;
       }
 
-      for (let k = 0; k < node.connections.in.length; k++) {
-        const c = node.connections.in[k];
-        const fromIndex = nodeList.indexOf(c.from);
-        if (!checked.has(fromIndex)) {
-          checked.add(fromIndex);
-          if (this.inFocus(node.util.getNode(c.from), focusList, checked)) {
-            return true;
-          }
+      const tmpList = this.network.connections;
+      for (let i = tmpList.length; i--;) {
+        const c = tmpList[i];
+        if (c.to === index || c.from === index) return true;
+
+        if (this.inFocus(c.from, focusList, checked)) {
+          return true;
         }
-        const toIndex = nodeList.indexOf(c.to);
-        if (!checked.has(toIndex)) {
-          checked.add(toIndex);
-          if (this.inFocus(node.util.getNode(c.to), focusList, checked)) {
-            return true;
-          }
+
+        if (this.inFocus(c.to, focusList, checked)) {
+          return true;
         }
       }
-
-      // node.connections.out.forEach((c: unknown) => {
-      //   const targetIndex =this.network.nodes.indexOf( c);
-      //   if(! checked.has( targetIndex)){
-      //     checked.add(targetIndex);
-      //     if( this.inFocus( c, focusList, checked)){
-      //       return true;
-      //     }
-      //   }
-      // });
-
-      // node.connections.gated.forEach((c: unknown) => {
-      //   const targetIndex =this.network.nodes.indexOf( c);
-      //   if(! checked.has( targetIndex)){
-      //     checked.add(targetIndex);
-      //     if( this.inFocus( c, focusList, checked)){
-      //       return true;
-      //     }
-      //   }
-      // });
     }
     return false;
   }
@@ -683,75 +716,87 @@ export class NetworkUtil {
 
   public addNode(focusList?: number[]) {
     const network = this.network as Network;
-    const connections = network.connections;
+
+    const node = new Node("hidden", 0, network.util);
+
+    // Random squash function
+    node.mutate(Mutation.MOD_ACTIVATION.name);
+
+    // const connections = network.connections;
+
+    const pos = network.nodes.length - network.output;
+    network.util.insertNode(node, pos);
+
+    let fromIndex = -1;
+    let toIndex = -1;
 
     // Look for an existing connection and place a node in between
-    if (connections.length > 0) {
-      for (let attempts = 0; attempts < 12; attempts++) {
-        const pos = Math.floor(Math.random() * connections.length);
-        const connection = connections[pos];
-        if (connection) {
-          if (
-            !this.inFocus(connection.from, focusList) &&
-            !this.inFocus(connection.to, focusList)
-          ) {
-            continue;
-          }
+    // if (connections.length > 0) {
+    for (let attempts = 0; attempts < 12; attempts++) {
+      if (fromIndex === -1) {
+        let pos = Math.min(
+          Math.floor(
+            Math.random() * network.nodes.length,
+          ),
+          network.nodes.length - this.network.output - 1,
+        );
 
-          const gater = connection.gater;
-          network.util.disconnect(connection.from, connection.to);
-
-          // Insert the new node right before the old connection.to
-          const toIndex = connection.to;
-          const node = new Node("hidden", 0, network.util);
-
-          // Random squash function
-          node.mutate(Mutation.MOD_ACTIVATION.name);
-
-          // Place it in this.nodes
-          const minBound = Math.min(
-            toIndex,
-            network.nodes.length - network.output,
-          );
-          network.util.insertNode(node, minBound);
-          // network.nodes.splice(minBound, 0, node);
-
-          // Now create two new connections
-          const newConn1 = network.util.connect(
-            connection.from,
-            node.index,
-            Connection.randomWeight(),
-          )[0];
-          const newConn2 = network.util.connect(
-            node.index,
-            connection.to,
-            Connection.randomWeight(),
-          )[0];
-
-          // Check if the original connection was gated
-          if (gater != null) {
-            network.gate(gater, Math.random() >= 0.5 ? newConn1 : newConn2);
-          }
-        } else {
-          console.warn(
-            "ADD_NODE: missing connection at",
-            pos,
-            "of",
-            network.connections.length,
-          );
+        if (node.index === pos) pos--;
+        if (this.inFocus(pos, focusList)) {
+          fromIndex = pos;
         }
+      } else if (toIndex === -1) {
+        let pos = Math.max(
+          Math.floor(
+            Math.random() * network.nodes.length - this.network.input,
+          ),
+          0,
+        ) + this.network.input;
 
+        if (node.index === pos) pos++;
+        if (this.inFocus(pos, focusList)) {
+          toIndex = pos;
+        }
+      } else {
         break;
       }
+    }
+    // }
+
+    if (fromIndex !== -1) {
+      network.util.connect(
+        fromIndex,
+        node.index,
+        Connection.randomWeight(),
+      );
+    }
+
+    if (toIndex !== -1) {
+      network.util.connect(
+        node.index,
+        toIndex,
+        Connection.randomWeight(),
+      );
     }
   }
 
   insertNode(node: Node, pos: number) {
-    if (Number.isInteger(pos) == false || pos < 0) {
+    if (Number.isInteger(pos) == false || pos < this.network.input) {
       console.trace();
-      throw "to should be a non-negative integer was: " + pos;
+      throw "to should be a greater than the input count was: " + pos;
     }
 
+    const firstOutputIndex = this.network.nodes.length - this.network.output;
+    if (pos > firstOutputIndex) {
+      console.trace();
+      throw "to should be a between than input (" + this.network.input +
+        ") and output nodes (" + firstOutputIndex + ") was: " + pos;
+    }
+
+    if (node.type !== "hidden") {
+      console.trace();
+      throw "Should be a 'hidden' type was: " + node.type;
+    }
     const left = this.network.nodes.slice(0, pos);
     const right = this.network.nodes.slice(pos);
     right.forEach((n) => {
@@ -768,6 +813,8 @@ export class NetworkUtil {
       if (c.to >= pos) c.to++;
       if (c.gater && c.gater >= pos) c.gater++;
     });
+
+    this.clearCache();
   }
 
   private addConnection(focusList?: number[]) {
@@ -778,7 +825,7 @@ export class NetworkUtil {
     for (let i = 0; i < network.nodes.length - network.output; i++) {
       const node1 = network.nodes[i];
 
-      if (!this.inFocus(node1, focusList)) continue;
+      if (!this.inFocus(i, focusList)) continue;
 
       for (
         let j = Math.max(i + 1, network.input);
@@ -786,7 +833,7 @@ export class NetworkUtil {
         j++
       ) {
         const node2 = network.nodes[j];
-        if (!this.inFocus(node2, focusList)) continue;
+        if (!this.inFocus(j, focusList)) continue;
 
         if (!node1.isProjectingTo(node2)) {
           available.push([node1, node2]);
@@ -815,9 +862,9 @@ export class NetworkUtil {
       const conn = network.connections[i];
       // Check if it is not disabling a node
       if (
-        conn.from.connections.out.length > 1 &&
-        conn.to.connections.in.length > 1 &&
-        network.nodes.indexOf(conn.to) > network.nodes.indexOf(conn.from)
+        // conn.from.connections.out.length > 1 &&
+        // conn.to.connections.in.length > 1 &&
+        conn.to > conn.from
       ) {
         if (
           this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
@@ -832,7 +879,7 @@ export class NetworkUtil {
     }
 
     const randomConn = possible[Math.floor(Math.random() * possible.length)];
-    network.disconnect(randomConn.from, randomConn.to);
+    network.util.disconnect(randomConn.from, randomConn.to);
   }
 
   private modWeight(focusList?: number[]) {
@@ -870,7 +917,7 @@ export class NetworkUtil {
           network.input,
       );
       const node = network.nodes[index];
-      if (!this.inFocus(node, focusList)) continue;
+      if (!this.inFocus(index, focusList)) continue;
       node.mutate(Mutation.MOD_BIAS);
       break;
     }
@@ -888,7 +935,7 @@ export class NetworkUtil {
       );
       const node = network.nodes[index];
 
-      if (this.inFocus(node, focusList)) {
+      if (this.inFocus(index, focusList)) {
         node.mutate(Mutation.MOD_ACTIVATION);
         break;
       }

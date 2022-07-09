@@ -534,14 +534,14 @@ export class Network {
           node = network2.nodes[network2.nodes.length + i - size];
         }
       }
-      const newNode = new Node();
+      const newNode = new Node(node.type, node.bias, network2.util);
 
       if (node) {
-        newNode.bias = node.bias;
+        // newNode.bias = node.bias;
         newNode.squash = node.squash;
-        newNode.type = node.type;
+        // newNode.type = node.type;
       } else {
-        console.warn("missing node");
+        throw ("missing node");
       }
       offspring.nodes.push(newNode);
     }

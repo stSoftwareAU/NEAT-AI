@@ -54,7 +54,15 @@ Deno.test("inward", () => {
   assert(foundNegative, "should have found a negative link");
 
   assert(foundCondition, "should have found a condition link");
-  const connects3 = network.util.toConnections(4);
+  const connects4 = network.util.toConnections(4);
 
-  assert(connects3.length >= 3, "expected 3 got " + connects3.length);
+  assert(connects4.length >= 3, "expected at least 3 got " + connects4.length);
+
+  const to3 = network.util.toConnections(3);
+
+  assert(to3.length == 1, "expected 1 got " + to3.length);
+
+  const from3 = network.util.fromConnections(3);
+
+  assert(from3.length == 1, "expected 1 got " + from3.length);
 });

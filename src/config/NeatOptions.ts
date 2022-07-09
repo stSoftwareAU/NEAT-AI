@@ -25,7 +25,10 @@ export interface NeatOptions {
   /** List of creatures to start with */
   creatures?: NetworkInterface[];
 
-  /** feedback loop ( previous result feeds back into next interaction */
+  /**
+   * Feedback loop ( previous result feeds back into next interaction
+   * https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html;jsessionid=2d7fa2c64f0bd39c86dec46870cd
+   */
   feedbackLoop?: boolean;
 
   /** The list of observations to focus one */

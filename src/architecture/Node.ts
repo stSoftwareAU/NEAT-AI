@@ -31,9 +31,9 @@ export class Node implements TagsInterface, NodeInterface {
     bias: (number | undefined),
     util: NetworkUtil,
   ) {
-    if (!type) {
+    if (!type ) {
       console.trace();
-      throw "util must be a NetworkUtil was: " + (typeof type);
+      throw "type must be defined: " + (typeof type);
     }
 
     if (type !== "input") {
