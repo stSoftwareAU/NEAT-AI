@@ -1,13 +1,7 @@
 import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
 
 import { Network } from "../../NEAT-TS/src/architecture/network.js";
-import {
-  addTag,
-  addTags,
-  getTag,
-  removeTag,
-  TagsInterface,
-} from "../src/tags/TagsInterface.ts";
+import { getTag } from "../src/tags/TagsInterface.ts";
 
 const json = {
   nodes: [
@@ -121,12 +115,15 @@ Deno.test("addNode", () => {
     const from = network.util.fromConnections(indx);
 
     if (node.type !== "output") {
-      assert(from.length >= 1, indx + ") expected at least 1 got " + from.length);
+      assert(
+        from.length >= 1,
+        indx + ") expected at least 1 got " + from.length,
+      );
     } else {
       assert(
         from.length == 0,
         indx + ") 'output' should not have any 'from' connections was: " +
-        from.length,
+          from.length,
       );
     }
   }

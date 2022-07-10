@@ -23,7 +23,7 @@ export class Connection implements ConnectionInterface {
     from: number,
     to: number,
     weight: number,
-    type?: "positive" | "negative" | "condition" | undefined,
+    type?: "positive" | "negative" | "condition",
   ) {
     console.info("from", typeof from, "to", typeof to, "weight", typeof weight);
 

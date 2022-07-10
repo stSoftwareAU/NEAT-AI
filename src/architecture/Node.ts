@@ -31,7 +31,7 @@ export class Node implements TagsInterface, NodeInterface {
     bias: (number | undefined),
     util: NetworkUtil,
   ) {
-    if (!type ) {
+    if (!type) {
       console.trace();
       throw "type must be defined: " + (typeof type);
     }
@@ -313,53 +313,53 @@ export class Node implements TagsInterface, NodeInterface {
       this.totalDeltaBias = 0;
     }
   }
-  /**
-   * Creates a connection from this node to the given node
-   */
-  connect(
-    target: NodeInterface,
-    weight: number,
-    type?: "positive" | "negative" | "condition" | undefined,
-  ) {
-    const connections = [];
-    if (target.type != "group") {
-      // if (typeof target.bias !== "undefined") { // must be a node!
-      // if (target === this) {
-      //   // Turn on the self connection by setting the weight
-      //   if (this.connections.self.weight !== 0) {
-      //     console.warn("This connection already exists!");
-      //   } else {
-      //     this.connections.self.weight = weight || 1;
-      //   }
-      //   connections.push(this.connections.self);
-      // } else
-      if (this.isProjectingTo(target)) {
-        throw new Error("Already projecting a connection to this node!");
-      } else {
-        const connection = new Connection(
-          this.index,
-          target.index,
-          weight,
-          type,
-        );
-        // target.connections.in.push(connection);
-        // this.connections.out.push(connection);
+  // /**
+  //  * Creates a connection from this node to the given node
+  //  */
+  // connect(
+  //   target: NodeInterface,
+  //   weight: number,
+  //   type?: "positive" | "negative" | "condition",
+  // ) {
+  //   const connections = [];
+  //   if (target.type != "group") {
+  //     // if (typeof target.bias !== "undefined") { // must be a node!
+  //     // if (target === this) {
+  //     //   // Turn on the self connection by setting the weight
+  //     //   if (this.connections.self.weight !== 0) {
+  //     //     console.warn("This connection already exists!");
+  //     //   } else {
+  //     //     this.connections.self.weight = weight || 1;
+  //     //   }
+  //     //   connections.push(this.connections.self);
+  //     // } else
+  //     if (this.isProjectingTo(target)) {
+  //       throw new Error("Already projecting a connection to this node!");
+  //     } else {
+  //       const connection = new Connection(
+  //         this.index,
+  //         target.index,
+  //         weight,
+  //         type,
+  //       );
+  //       // target.connections.in.push(connection);
+  //       // this.connections.out.push(connection);
 
-        connections.push(connection);
-      }
-    } else { // should be a group
-      const group = (target as unknown) as { nodes: Node[] };
-      for (let i = 0; i < group.nodes.length; i++) {
-        const connection = new Connection(this, group.nodes[i], weight, type);
-        group.nodes[i].connections.in.push(connection);
-        this.connections.out.push(connection);
-        target.connections.in.push(connection);
+  //       connections.push(connection);
+  //     }
+  //   } else { // should be a group
+  //     const group = (target as unknown) as { nodes: Node[] };
+  //     for (let i = 0; i < group.nodes.length; i++) {
+  //       const connection = new Connection(this, group.nodes[i], weight, type);
+  //       group.nodes[i].connections.in.push(connection);
+  //       this.connections.out.push(connection);
+  //       target.connections.in.push(connection);
 
-        connections.push(connection);
-      }
-    }
-    return connections;
-  }
+  //       connections.push(connection);
+  //     }
+  //   }
+  //   return connections;
+  // }
   /**
    * Disconnects this node from the other node
    */

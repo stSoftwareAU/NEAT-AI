@@ -120,12 +120,6 @@ export class Network {
       this.nodes[i].clear();
     }
   }
-  /**
-   * Connects the from node to the to node
-   */
-  // connect(from, to, weight, type) {
-  //   return this.util.connect(from, to, weight, type);
-  // }
 
   /**
    * Gate a connection with a node
@@ -145,93 +139,6 @@ export class Network {
     }
     node.gate(connection);
     this.gates.push(connection);
-  }
-
-  /**
-   *  Removes a node from the network
-   */
-  remove(node) {
-    const index = this.nodes.indexOf(node);
-
-    if (index === -1) {
-      const msg = "Remove: This node does not exist in the network!";
-      console.warn(msg, node);
-      if (window.DEBUG == true) throw new Error(msg);
-
-      return;
-    }
-
-    // Keep track of gaters
-    const gaters = [];
-
-    // Remove selfconnections from this.selfconns
-    this.disconnect(node, node);
-
-    // Get all its inputting nodes
-    const inputs = [];
-    for (let i = node.connections.in.length - 1; i >= 0; i--) {
-      const connection = node.connections.in[i];
-      if (
-        Mutation.SUB_NODE.keep_gates && connection.gater !== null &&
-        connection.gater !== node
-      ) {
-        gaters.push(connection.gater);
-      }
-      inputs.push(connection.from);
-      this.disconnect(connection.from, node);
-    }
-
-    // Get all its outputing nodes
-    const outputs = [];
-    for (let i = node.connections.out.length - 1; i >= 0; i--) {
-      const connection = node.connections.out[i];
-      if (
-        Mutation.SUB_NODE.keep_gates && connection.gater !== null &&
-        connection.gater !== node
-      ) {
-        gaters.push(connection.gater);
-      }
-      outputs.push(connection.to);
-      this.disconnect(node, connection.to);
-    }
-
-    // Connect the input nodes to the output nodes (if not already connected)
-    const connections = [];
-    for (let i = 0; i < inputs.length; i++) {
-      const input = inputs[i];
-      for (let j = 0; j < outputs.length; j++) {
-        const output = outputs[j];
-        if (!input.isProjectingTo(output)) {
-          const conn = this.connect(input, output);
-          connections.push(conn[0]);
-        }
-      }
-    }
-
-    // Gate random connections with gaters
-    for (let i = 0; i < gaters.length; i++) {
-      if (connections.length === 0) {
-        break;
-      }
-
-      const gater = gaters[i];
-      const connIndex = Math.floor(Math.random() * connections.length);
-
-      this.gate(gater, connections[connIndex]);
-      connections.splice(connIndex, 1);
-    }
-
-    // Remove gated connections gated by this node
-    for (let i = node.connections.gated.length - 1; i >= 0; i--) {
-      const conn = node.connections.gated[i];
-      this.ungate(conn);
-    }
-
-    // Remove selfconnection
-    this.disconnect(node, node);
-
-    // Remove the node from this.nodes
-    this.nodes.splice(index, 1);
   }
 
   /**
@@ -442,26 +349,26 @@ export class Network {
     for (let i = 0; i < cLen; i++) {
       const conn = json.connections[i];
 
-      if (Number.isInteger(conn.from) == false || conn.from < 0) {
-        console.trace();
-        console.log(json);
-        throw "from should be a non-negative integer was: " + conn.from;
-      }
-      if (Number.isInteger(conn.to) == false || conn.to < 0) {
-        console.trace();
-        throw "to should be a non-negative integer was: " + conn.to;
-      }
-      if (typeof conn.weight !== "number") {
-        console.trace();
-        throw "weight not a number was: " + conn.weight;
-      }
+      // if (Number.isInteger(conn.from) == false || conn.from < 0) {
+      //   console.trace();
+      //   console.log(json);
+      //   throw "from should be a non-negative integer was: " + conn.from;
+      // }
+      // if (Number.isInteger(conn.to) == false || conn.to < 0) {
+      //   console.trace();
+      //   throw "to should be a non-negative integer was: " + conn.to;
+      // }
+      // if (typeof conn.weight !== "number") {
+      //   console.trace();
+      //   throw "weight not a number was: " + conn.weight;
+      // }
 
       const connection = network.util.connect(
         conn.from,
         conn.to,
         conn.weight,
         conn.type,
-      )[0];
+      );
       // connection.weight = conn.weight;
 
       if (conn.gater != null) {

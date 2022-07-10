@@ -45,6 +45,107 @@ export class NetworkUtil {
     // }
   }
 
+  /**
+   * Validate the network
+   * @param options specific values to check
+   */
+  validate(options?: { nodes?: number; connections?: number }) {
+    if (options && options.nodes) {
+      if (this.network.nodes.length !== options.nodes) {
+        throw "Node length: " + this.network.nodes.length + " expected: " +
+          options.nodes;
+      }
+    }
+
+    const stats = {
+      input: 0,
+      hidden: 0,
+      output: 0,
+      connections: 0,
+    };
+
+    this.network.nodes.forEach((node, indx) => {
+      switch (node.type) {
+        case "input":
+          stats.input++;
+          break;
+        case "hidden":
+          stats.hidden++;
+          break;
+        case "output":
+          stats.output++;
+          break;
+        default:
+          throw indx + ") Invalid type: " + node.type;
+      }
+    });
+
+    if (stats.input !== this.network.input) {
+      console.trace();
+      throw "Expected " + this.network.input + " input nodes found: " +
+        stats.input;
+    }
+    if (stats.output !== this.network.output) {
+      console.trace();
+      throw "Expected " + this.network.output + " output nodes found: " +
+        stats.output;
+    }
+
+    let lastFrom = -1;
+    let lastTo = -1;
+    this.network.connections.forEach((c, indx) => {
+      stats.connections++;
+      const toNode = this.getNode(c.to);
+
+      if (toNode.type === "input") {
+        console.info(JSON.stringify(this.network.connections, null, 1));
+        console.trace();
+        throw indx + ") connection points to an input node";
+      }
+      const fromNode = this.getNode(c.from);
+
+      if (fromNode.type === "output") {
+        console.trace();
+        throw indx + ") connection from an output node";
+      }
+
+      if (c.gater !== null) {
+        const gaterNode = this.getNode(c.gater);
+
+        if (gaterNode.type === "output") {
+          throw indx + ") connection gater an output node";
+        }
+      }
+      if (c.from < lastFrom) {
+        console.info(JSON.stringify(this.network.connections, null, 1));
+        console.trace();
+        throw indx + ") connections not sorted";
+      } else if (c.from > lastFrom) {
+        lastTo = -1;
+      }
+
+      if (c.from == lastFrom && c.to <= lastTo) {
+        console.info(JSON.stringify(this.network.connections, null, 1));
+        console.trace();
+        throw indx + ") connections not sorted";
+      }
+
+      lastFrom = c.from;
+      lastTo = c.to;
+    });
+
+    if (options && Number.isInteger(options.connections)) {
+      if (this.network.connections.length !== options.connections) {
+        console.trace();
+        throw "Connections length: " + this.network.connections.length +
+          " expected: " +
+          options.connections;
+      }
+    }
+
+    return stats;
+  }
+
   toConnections(to: number): ConnectionInterface[] {
     const key = "to:" + to;
     let results: ConnectionInterface[] = this.cache[key];
@@ -158,24 +259,47 @@ export class NetworkUtil {
     }
 
     this.clearCache();
-    // fix from here
-    const fromNode = this.getNode(from);
-    const toNode = this.getNode(to);
-    const _connections = fromNode.connect(toNode, weight, type);
 
-    for (let i = 0; i < _connections.length; i++) {
-      const connection = _connections[i];
-      if (from !== to) {
-        this.network.connections.push(connection);
-      } else {
-        if (!this.network.selfconns) {
-          this.network.selfconns = [];
+    const connection = new Connection(
+      from,
+      to,
+      weight,
+      type,
+    );
+
+    let location = -1;
+    for (let indx = 0; indx < this.network.connections.length; indx++) {
+      const c = this.network.connections[indx];
+
+      if (c.from > from) {
+        location = indx;
+        break;
+      } else if (c.from === from) {
+        if (c.to > to) {
+          location = indx;
+          break;
+        } else if (c.to === to) {
+          console.trace();
+
+          throw indx + ") already connected from: " + from + " to: " + to;
+        } else {
+          location = indx + 1;
         }
-        this.network.selfconns.push(connection);
+      } else {
+        location = indx + 1;
       }
     }
 
-    return _connections;
+    if (location !== -1) {
+      const left = this.network.connections.slice(0, location);
+      const right = this.network.connections.slice(location);
+
+      this.network.connections = [...left, connection, ...right];
+    } else {
+      this.network.connections.push(connection);
+    }
+
+    return connection;
   }
 
   /**
@@ -693,7 +817,7 @@ export class NetworkUtil {
     return false;
   }
 
-  private subNode(focusList?: number[]) {
+  public subNode(focusList?: number[]) {
     const network = this.network as Network;
     // Check if there are nodes left to remove
     if (network.nodes.length === network.input + network.output) {
@@ -702,16 +826,66 @@ export class NetworkUtil {
 
     for (let attempts = 0; attempts < 12; attempts++) {
       // Select a node which isn't an input or output node
-      const index = Math.floor(
+      const indx = Math.floor(
         Math.random() *
             (network.nodes.length - network.output - network.input) +
           network.input,
       );
-      const node = network.nodes[index];
-      if (!this.inFocus(node, focusList)) continue;
-      network.remove(node);
+      // const node = network.nodes[index];
+      if (!this.inFocus(indx, focusList)) continue;
+      this.removeHiddenNode(indx);
       break;
     }
+  }
+
+  /**
+   *  Removes a node from the network
+   */
+  private removeHiddenNode(indx: number) {
+    if (Number.isInteger(indx) == false || indx < 0) {
+      console.trace();
+      throw "Must be a positive integer was: " + indx;
+    }
+
+    const node = this.network.nodes[indx];
+
+    if (node.type !== "hidden") {
+      console.trace();
+      throw indx + ") Node must be a 'hidden' type was: " + node.type;
+    }
+    const left = this.network.nodes.slice(0, indx);
+    const right = this.network.nodes.slice(indx + 1);
+    right.forEach((n) => {
+      n.index--;
+    });
+
+    const full = [...left, ...right];
+
+    this.network.nodes = full;
+
+    const tmpConnections: ConnectionInterface[] = [];
+
+    this.network.connections.forEach((c) => {
+      if (c.from !== indx) {
+        if (c.from > indx) c.from--;
+        if (c.to !== indx) {
+          if (c.to > indx) c.to--;
+          if (Number.isInteger(c.gater)) {
+            if (c.gater !== indx) {
+              if (c.gater > indx) c.gater--;
+
+              tmpConnections.push(c);
+            }
+          } else {
+            tmpConnections.push(c);
+          }
+        }
+      }
+    });
+
+    this.network.connections = tmpConnections;
+    this.clearCache();
+    this.validate();
   }
 
   public addNode(focusList?: number[]) {
@@ -722,11 +896,10 @@ export class NetworkUtil {
     // Random squash function
     node.mutate(Mutation.MOD_ACTIVATION.name);
 
-    const pos =
-      Math.floor(
-        Math.random() *
-          (network.nodes.length - network.output - network.input + 1),
-      ) + network.input;
+    const pos = Math.floor(
+      Math.random() *
+        (network.nodes.length - network.output - network.input + 1),
+    ) + network.input;
     network.util.insertNode(node, pos);
 
     let fromIndex = -1;
@@ -761,7 +934,7 @@ export class NetworkUtil {
         break;
       }
     }
-
+    this.validate();
     if (fromIndex !== -1) {
       network.util.connect(
         fromIndex,
@@ -769,7 +942,7 @@ export class NetworkUtil {
         Connection.randomWeight(),
       );
     }
-
+    this.validate();
     if (toIndex !== -1) {
       network.util.connect(
         node.index,
@@ -777,43 +950,45 @@ export class NetworkUtil {
         Connection.randomWeight(),
       );
     }
+    this.validate();
   }
 
-  insertNode(node: Node, pos: number) {
-    if (Number.isInteger(pos) == false || pos < this.network.input) {
+  private insertNode(node: Node, indx: number) {
+    if (Number.isInteger(indx) == false || indx < this.network.input) {
       console.trace();
-      throw "to should be a greater than the input count was: " + pos;
+      throw "to should be a greater than the input count was: " + indx;
     }
 
     const firstOutputIndex = this.network.nodes.length - this.network.output;
-    if (pos > firstOutputIndex) {
+    if (indx > firstOutputIndex) {
       console.trace();
       throw "to should be a between than input (" + this.network.input +
-        ") and output nodes (" + firstOutputIndex + ") was: " + pos;
+        ") and output nodes (" + firstOutputIndex + ") was: " + indx;
     }
 
     if (node.type !== "hidden") {
       console.trace();
       throw "Should be a 'hidden' type was: " + node.type;
     }
-    const left = this.network.nodes.slice(0, pos);
-    const right = this.network.nodes.slice(pos);
+    const left = this.network.nodes.slice(0, indx);
+    const right = this.network.nodes.slice(indx);
     right.forEach((n) => {
       n.index++;
     });
 
-    node.index = pos;
+    node.index = indx;
     const full = [...left, node, ...right];
 
     this.network.nodes = full;
 
     this.network.connections.forEach((c) => {
-      if (c.from >= pos) c.from++;
-      if (c.to >= pos) c.to++;
-      if (c.gater && c.gater >= pos) c.gater++;
+      if (c.from >= indx) c.from++;
+      if (c.to >= indx) c.to++;
+      if (c.gater && c.gater >= indx) c.gater++;
     });
 
     this.clearCache();
+    this.validate();
   }
 
   private addConnection(focusList?: number[]) {
