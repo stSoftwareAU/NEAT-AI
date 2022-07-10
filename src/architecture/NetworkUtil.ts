@@ -722,16 +722,16 @@ export class NetworkUtil {
     // Random squash function
     node.mutate(Mutation.MOD_ACTIVATION.name);
 
-    // const connections = network.connections;
-
-    const pos = network.nodes.length - network.output;
+    const pos =
+      Math.floor(
+        Math.random() *
+          (network.nodes.length - network.output - network.input + 1),
+      ) + network.input;
     network.util.insertNode(node, pos);
 
     let fromIndex = -1;
     let toIndex = -1;
 
-    // Look for an existing connection and place a node in between
-    // if (connections.length > 0) {
     for (let attempts = 0; attempts < 12; attempts++) {
       if (fromIndex === -1) {
         let pos = Math.min(
@@ -761,7 +761,6 @@ export class NetworkUtil {
         break;
       }
     }
-    // }
 
     if (fromIndex !== -1) {
       network.util.connect(
