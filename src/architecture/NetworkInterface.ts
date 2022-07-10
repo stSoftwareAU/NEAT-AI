@@ -14,10 +14,10 @@ export interface NetworkInterface extends TagsInterface {
   connections: ConnectionInterface[];
 
   // deno-lint-ignore no-explicit-any
-  gates?: any[];
+  // gates?: any[];x
 
   // deno-lint-ignore no-explicit-any
-  selfconns?: any[];
+  // selfconns?: any[];
 
   // deno-lint-ignore ban-types
   toJSON: Function;

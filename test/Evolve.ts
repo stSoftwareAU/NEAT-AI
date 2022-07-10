@@ -19,6 +19,7 @@ Deno.test("AND", async () => {
     equal: true,
     elitism: 10,
     mutationRate: 0.5,
+    log: 1, 
     error: 0.03,
     threads: 1,
   });
@@ -84,6 +85,7 @@ Deno.test("booleanXOR", async () => {
   ];
 
   const network = new Network(2, 1);
+  network.util.validate();
   const results = await network.evolve(trainingSet, {
     mutation: Mutation.FFW,
     equal: true,
@@ -93,6 +95,7 @@ Deno.test("booleanXOR", async () => {
     threads: 1,
   });
 
+  network.util.validate();
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 
   const value = network.activate([1, 0])[0];

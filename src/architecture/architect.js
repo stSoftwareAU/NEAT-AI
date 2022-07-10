@@ -68,18 +68,18 @@ export const architect = {
       throw new Error("Given nodes have no clear input/output node!");
     }
 
-    for (i = 0; i < nodes.length; i++) {
-      let j;
-      for (j = 0; j < nodes[i].connections.out.length; j++) {
-        network.connections.push(nodes[i].connections.out[j]);
-      }
-      for (j = 0; j < nodes[i].connections.gated.length; j++) {
-        network.gates.push(nodes[i].connections.gated[j]);
-      }
-      if (nodes[i].connections.self.weight !== 0) {
-        network.selfconns.push(nodes[i].connections.self);
-      }
-    }
+    // for (i = 0; i < nodes.length; i++) {
+    //   let j;
+    //   for (j = 0; j < nodes[i].connections.out.length; j++) {
+    //     network.connections.push(nodes[i].connections.out[j]);
+    //   }
+    //   for (j = 0; j < nodes[i].connections.gated.length; j++) {
+    //     network.gates.push(nodes[i].connections.gated[j]);
+    //   }
+    //   if (nodes[i].connections.self.weight !== 0) {
+    //     network.selfconns.push(nodes[i].connections.self);
+    //   }
+    // }
 
     network.nodes = nodes;
 

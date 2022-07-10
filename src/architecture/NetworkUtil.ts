@@ -152,6 +152,26 @@ export class NetworkUtil {
     return stats;
   }
 
+  selfConnection(indx: number): ConnectionInterface | null {
+    const key = "self:" + indx;
+    let results: ConnectionInterface[] = this.cache[key];
+    if (results == null) {
+      results = [];
+      const tmpList = this.network.connections;
+      tmpList.forEach((c) => {
+        if (c.to === indx && c.from == indx) results.push(c);
+      });
+
+      this.cache[key] = results;
+    }
+
+    if (results.length > 0) {
+      return results[0];
+    } else {
+      return null;
+    }
+  }
+
   toConnections(to: number): ConnectionInterface[] {
     const key = "to:" + to;
     let results: ConnectionInterface[] = this.cache[key];
@@ -175,6 +195,21 @@ export class NetworkUtil {
       const tmpList = this.network.connections;
       tmpList.forEach((c) => {
         if (c.from === from) results.push(c);
+      });
+
+      this.cache[key] = results;
+    }
+    return results;
+  }
+
+  gateConnections(indx: number): ConnectionInterface[] {
+    const key = "gate:" + indx;
+    let results: ConnectionInterface[] = this.cache[key];
+    if (results == null) {
+      results = [];
+      const tmpList = this.network.connections;
+      tmpList.forEach((c) => {
+        if (c.gate === indx) results.push(c);
       });
 
       this.cache[key] = results;
@@ -336,13 +371,6 @@ export class NetworkUtil {
         break;
       }
     }
-    // }
-
-    // const fromNode = this.getNode(from);
-
-    // const toNode = this.getNode(to);
-    // Delete the connection at the sending and receiving neuron
-    // fromNode.disconnect(to, false);
   }
 
   /**
@@ -508,8 +536,8 @@ export class NetworkUtil {
     if (bestCreature) {
       this.network.nodes = bestCreature.nodes;
       this.network.connections = bestCreature.connections;
-      this.network.selfconns = bestCreature.selfconns;
-      this.network.gates = bestCreature.gates;
+      // this.network.selfconns = bestCreature.selfconns;
+      // this.network.gates = bestCreature.gates;
       addTags(this.network, bestCreature);
 
       if (options.clear && this.network.clear) this.network.clear();
@@ -940,7 +968,7 @@ export class NetworkUtil {
         break;
       }
     }
-    this.validate();
+
     if (fromIndex !== -1) {
       network.util.connect(
         fromIndex,
@@ -948,7 +976,7 @@ export class NetworkUtil {
         Connection.randomWeight(),
       );
     }
-    this.validate();
+
     if (toIndex !== -1) {
       network.util.connect(
         node.index,
@@ -1063,10 +1091,11 @@ export class NetworkUtil {
   }
 
   private modWeight(focusList?: number[]) {
-    const network = this.network as Network;
-    const allconnections = network.connections.concat(network.selfconns).filter(
+ 
+    // const network = this.network as Network;
+    const allconnections = this.network.connections.filter(
       (c) => {
-        return this.inFocus(c.from, focusList) || this.inFocus(c.to, focusList);
+        return this.inFocus(c.from, focusList) || this.inFocus(c.to, focusList)|| (c.gater && this.inFocus(c.gater, focusList));
       },
     );
     if (allconnections.length > 0) {
@@ -1147,78 +1176,84 @@ export class NetworkUtil {
   }
 
   private subSelfCon(focusList?: number[]) {
-    const network = this.network as Network;
-    if (network.selfconns.length === 0) {
-      return;
-    }
+    console.trace();
+    throw "not done";
+    // const network = this.network as Network;
+    // if (network.selfconns.length === 0) {
+    //   return;
+    // }
 
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const conn = network
-        .selfconns[Math.floor(Math.random() * network.selfconns.length)];
+    // for (let attempts = 0; attempts < 12; attempts++) {
+    //   const conn = network
+    //     .selfconns[Math.floor(Math.random() * network.selfconns.length)];
 
-      if (
-        this.inFocus(conn.from, focusList) || this.inFocus(conn.to, focusList)
-      ) {
-        network.disconnect(conn.from, conn.to);
-        break;
-      }
-    }
+    //   if (
+    //     this.inFocus(conn.from, focusList) || this.inFocus(conn.to, focusList)
+    //   ) {
+    //     network.disconnect(conn.from, conn.to);
+    //     break;
+    //   }
+    // }
   }
 
   private addGate(focusList?: number[]) {
-    const network = this.network as Network;
-    const allconnections = network.connections.concat(network.selfconns);
+    console.trace();
+    throw "not done";
+    // const network = this.network as Network;
+    // const allconnections = network.connections.concat(network.selfconns);
 
-    // Create a list of all non-gated connections
-    const possible = [];
-    for (let i = 0; i < allconnections.length; i++) {
-      const conn = allconnections[i];
-      if (conn.gater === null) {
-        possible.push(conn);
-      }
-    }
+    // // Create a list of all non-gated connections
+    // const possible = [];
+    // for (let i = 0; i < allconnections.length; i++) {
+    //   const conn = allconnections[i];
+    //   if (conn.gater === null) {
+    //     possible.push(conn);
+    //   }
+    // }
 
-    if (possible.length === 0) {
-      return;
-    }
+    // if (possible.length === 0) {
+    //   return;
+    // }
 
-    for (let attempts = 0; attempts < 12; attempts++) {
-      // Select a random gater node and connection, can't be gated by input
-      const index = Math.floor(
-        Math.random() * (network.nodes.length - network.input) +
-          network.input,
-      );
-      const node = network.nodes[index];
+    // for (let attempts = 0; attempts < 12; attempts++) {
+    //   // Select a random gater node and connection, can't be gated by input
+    //   const index = Math.floor(
+    //     Math.random() * (network.nodes.length - network.input) +
+    //       network.input,
+    //   );
+    //   const node = network.nodes[index];
 
-      if (this.inFocus(node, focusList)) {
-        const conn = possible[Math.floor(Math.random() * possible.length)];
+    //   if (this.inFocus(node, focusList)) {
+    //     const conn = possible[Math.floor(Math.random() * possible.length)];
 
-        // Gate the connection with the node
-        network.gate(node, conn);
-        break;
-      }
-    }
+    //     // Gate the connection with the node
+    //     network.gate(node, conn);
+    //     break;
+    //   }
+    // }
   }
 
   private subGate(focusList?: number[]) {
-    const network = this.network as Network;
-    // Select a random gated connection
-    if (network.gates.length === 0) {
-      return;
-    }
+    console.trace();
+    throw "not done";
+    // const network = this.network as Network;
+    // // Select a random gated connection
+    // if (network.gates.length === 0) {
+    //   return;
+    // }
 
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index = Math.floor(Math.random() * network.gates.length);
-      const gatedconn = network.gates[index];
+    // for (let attempts = 0; attempts < 12; attempts++) {
+    //   const index = Math.floor(Math.random() * network.gates.length);
+    //   const gatedconn = network.gates[index];
 
-      if (
-        this.inFocus(gatedconn.from, focusList) ||
-        this.inFocus(gatedconn.to, focusList)
-      ) {
-        network.ungate(gatedconn);
-        break;
-      }
-    }
+    //   if (
+    //     this.inFocus(gatedconn.from, focusList) ||
+    //     this.inFocus(gatedconn.to, focusList)
+    //   ) {
+    //     network.ungate(gatedconn);
+    //     break;
+    //   }
+    // }
   }
 
   private addBackConn(focusList?: number[]) {
@@ -1294,9 +1329,9 @@ export class NetworkUtil {
             (network.nodes.length -
               network.input) + network.input,
       );
-      const tmpNode = network.nodes[index1];
-      if (this.inFocus(tmpNode, focusList)) {
-        node1 = tmpNode;
+      // const tmpNode = network.nodes[index1];
+      if (this.inFocus(index1, focusList)) {
+        node1 = network.nodes[index1];
         break;
       }
     }
@@ -1308,9 +1343,9 @@ export class NetworkUtil {
             (network.nodes.length -
               network.input) + network.input,
       );
-      const tmpNode = network.nodes[index2];
-      if (this.inFocus(tmpNode, focusList)) {
-        node2 = tmpNode;
+
+      if (this.inFocus(index2, focusList)) {
+        node2 = network.nodes[index2];
         break;
       }
     }
@@ -1332,8 +1367,6 @@ export class NetworkUtil {
     if (typeof method === "undefined") {
       throw new Error("No (correct) mutate method given!");
     }
-
-    // const network = this.network as Network;
 
     switch (method.name) {
       case Mutation.ADD_NODE.name: {

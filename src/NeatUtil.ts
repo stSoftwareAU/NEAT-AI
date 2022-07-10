@@ -89,14 +89,12 @@ export class NeatUtil {
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
 
-          // if (creature.mutate) {
           creature.util.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
               ? this.config.focusList
               : undefined,
           );
-          // }
         }
         removeTag(creature, "approach");
       }

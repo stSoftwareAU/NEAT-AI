@@ -25,7 +25,7 @@ export class Connection implements ConnectionInterface {
     weight: number,
     type?: "positive" | "negative" | "condition",
   ) {
-    console.info("from", typeof from, "to", typeof to, "weight", typeof weight);
+    // console.info("from", typeof from, "to", typeof to, "weight", typeof weight);
 
     if (Number.isInteger(from) == false || from < 0) {
       console.trace();
@@ -35,7 +35,7 @@ export class Connection implements ConnectionInterface {
       console.trace();
       throw "to should be a non-negative integer was: " + to;
     }
-    if (typeof weight !== "number") {
+    if (!Number.isFinite(weight)) {
       console.trace();
       throw "weight not a number was: " + weight;
     }
@@ -44,10 +44,6 @@ export class Connection implements ConnectionInterface {
     this.gain = 1;
     this.type = type;
     this.weight = weight;
-
-    // this.weight = (typeof weight === "undefined")
-    //   ? Math.random() * 0.2 - 0.1
-    //   : weight;
 
     this.gater = null;
     this.elegibility = 0;

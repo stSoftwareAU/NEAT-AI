@@ -27,7 +27,7 @@ export class Node implements TagsInterface, NodeInterface {
   private error;
 
   constructor(
-    type: "input" | "output" | "hidden",
+    type: "input" | "output" | "hidden" | "constant",
     bias: (number | undefined),
     util: NetworkUtil,
   ) {
@@ -110,21 +110,28 @@ export class Node implements TagsInterface, NodeInterface {
     const activation = Activations.find(this.squash);
 
     if (this.isNodeActivation(activation)) {
-      return activation.activate(this) + this.bias;
+      return activation.activate(this) + (this.bias ? this.bias : 0);
     } else {
       this.old = this.state;
 
-      // All activation sources coming from the node itself
-      this.state =
-        this.connections.self.gain * this.connections.self.weight * this.state +
-        this.bias;
+      const toList = this.util.toConnections(this.index);
+      this.state = 0;
+      toList.forEach((c) => {
+        this.state += this.util.getNode(c.from).activation * c.weight; // *
+        // connection.gain;
+      });
 
-      // Activation sources coming from connections
-      for (let i = 0; i < this.connections.in.length; i++) {
-        const connection = this.connections.in[i];
-        this.state += connection.from.activation * connection.weight *
-          connection.gain;
-      }
+      // // All activation sources coming from the node itself
+      // this.state =
+      //   this.connections.self.gain * this.connections.self.weight * this.state +
+      //   this.bias;
+
+      // // Activation sources coming from connections
+      // for (let i = 0; i < this.connections.in.length; i++) {
+      //   const connection = this.connections.in[i];
+      //   this.state += connection.from.activation * connection.weight *
+      //     connection.gain;
+      // }
 
       const activationSquash = (activation as ActivationInterface);
       const result = activationSquash.squashAndDerive(this.state);
@@ -135,37 +142,47 @@ export class Node implements TagsInterface, NodeInterface {
       // this.derivative = this.squash(this.state, true);
 
       // Update traces
-      const nodes = [];
-      const influences = [];
+      const nodes: Node[] = [];
+      const influences: number[] = [];
 
-      for (let i = 0; i < this.connections.gated.length; i++) {
-        const conn = this.connections.gated[i];
-        const node = conn.to;
+      const gateList = this.util.gateConnections(this.index);
+      gateList.forEach((conn) => {
+        // for (let i = 0; i < this.connections.gated.length; i++) {
+        //   const conn = this.connections.gated[i];
+        const node = this.util.getNode(conn.to);
 
         const index = nodes.indexOf(node);
         if (index > -1) {
-          influences[index] += conn.weight * conn.from.activation;
+          const from = this.util.getNode(conn.from);
+          influences[index] += conn.weight * from.activation;
         } else {
           nodes.push(node);
+          const from = this.util.getNode(conn.from);
           influences.push(
-            conn.weight * conn.from.activation +
-              (node.connections.self.gater === this ? node.old : 0),
+            conn.weight * from.activation +
+              (conn.gater === this.index ? node.old : 0),
           );
         }
 
         // Adjust the gain to this nodes' activation
         conn.gain = this.activation;
-      }
+      });
 
-      for (let i = 0; i < this.connections.in.length; i++) {
-        const connection = this.connections.in[i];
-
+      toList.forEach((c) => {
+        // for (let i = 0; i < this.connections.in.length; i++) {
+        //   const connection = this.connections.in[i];
+        const connection = ((c as unknown) as Connection);
         // Elegibility trace
-        connection.elegibility =
-          this.connections.self.gain * this.connections.self.weight *
-            connection.elegibility +
-          connection.from.activation * connection.gain;
 
+        const from = this.util.getNode(c.from);
+        const self = this.util.selfConnection(this.index);
+        if (self) {
+          connection.elegibility = (self.gain ? self.gain : 0) * self.weight *
+              connection.elegibility +
+            from.activation * connection.gain;
+        } else {
+          connection.elegibility = from.activation * connection.gain;
+        }
         // Extended trace
         for (let j = 0; j < nodes.length; j++) {
           const node = nodes[j];
@@ -174,10 +191,12 @@ export class Node implements TagsInterface, NodeInterface {
           const index = connection.xtrace.nodes.indexOf(node);
 
           if (index > -1) {
-            const value =
-              node.connections.self.gain * node.connections.self.weight *
-                connection.xtrace.values[index] +
-              this.derivative * connection.elegibility * influence;
+            const self = this.util.selfConnection(node.index);
+            const value = self
+              ? ((self.gain ? self.gain : 0) * self.weight *
+                connection.xtrace.values[index])
+              : 0 +
+                this.derivative * connection.elegibility * influence;
 
             connection.xtrace.values[index] = value;
           } else {
@@ -188,7 +207,7 @@ export class Node implements TagsInterface, NodeInterface {
             );
           }
         }
-      }
+      });
 
       return this.activation;
     }
@@ -208,23 +227,29 @@ export class Node implements TagsInterface, NodeInterface {
       return activation.activate(this);
     } else {
       // All activation sources coming from the node itself
-      this.state =
-        this.connections.self.gain * this.connections.self.weight * this.state +
-        this.bias;
+      // this.state =
+      //   this.connections.self.gain * this.connections.self.weight * this.state +
+      //   this.bias;
 
+      const conttections = this.util.toConnections(this.index);
+      let value = 0;
+      conttections.forEach((c) => {
+        value += this.util.getNode(c.from).activation * c.weight; // *
+        // connection.gain;
+      });
       // Activation sources coming from connections
-      for (let i = this.connections.in.length; i--;) {
-        const connection = this.connections.in[i];
-        this.state += connection.from.activation * connection.weight *
-          connection.gain;
-      }
+      // for (let i = this.connections.in.length; i--;) {
+      //   const connection = this.connections.in[i];
+      //   this.state += connection.from.activation * connection.weight *
+      //     connection.gain;
+      // }
       const activationSquash = (activation as ActivationInterface);
       // Squash the values received
-      this.activation = activationSquash.squash(this.state);
+      this.activation = activationSquash.squash(value);
 
-      for (let i = this.connections.gated.length; i--;) {
-        this.connections.gated[i].gain = this.activation;
-      }
+      // for (let i = this.connections.gated.length; i--;) {
+      //   this.connections.gated[i].gain = this.activation;
+      // }
 
       return this.activation;
     }
@@ -245,13 +270,21 @@ export class Node implements TagsInterface, NodeInterface {
         this.activation;
     } else { // the rest of the nodes compute their error responsibilities by backpropagation
       // error responsibilities from all the connections projected from this node
-      for (let i = 0; i < this.connections.out.length; i++) {
-        const connection = this.connections.out[i];
-        const node = connection.to;
+      const toList = this.util.toConnections(this.index);
+      toList.forEach((c) => {
+        const node = this.util.getNode(c.to);
         // Eq. 21
-        error += node.error.responsibility * connection.weight *
-          connection.gain;
-      }
+        error += node.error.responsibility * c.weight *
+          c.gain;
+      });
+
+      const fromList = this.util.fromConnections(this.index);
+      fromList.forEach((c) => {
+        const node = this.util.getNode(c.to);
+        // Eq. 21
+        error += node.error.responsibility * c.weight *
+          c.gain;
+      });
 
       // Projected error responsibility
       this.error.projected = this.derivative * error;
@@ -259,14 +292,18 @@ export class Node implements TagsInterface, NodeInterface {
       // Error responsibilities from all connections gated by this neuron
       error = 0;
 
-      for (let i = 0; i < this.connections.gated.length; i++) {
-        const conn = this.connections.gated[i];
-        const node = conn.to;
-        let influence = node.connections.self.gater === this ? node.old : 0;
+      const gateList = this.util.gateConnections(this.index);
+      gateList.forEach((c) => {
+        // for (let i = 0; i < this.connections.gated.length; i++) {
+        // const conn = this.connections.gated[i];
+        const node = this.util.getNode(c.to);
+        const self = this.util.selfConnection(this.index);
+        let influence = self ? node.old : 0;
 
-        influence += conn.weight * conn.from.activation;
+        const fromNode = this.util.getNode(c.from);
+        influence += c.weight * fromNode.activation;
         error += node.error.responsibility * influence;
-      }
+      });
 
       // Gated error responsibility
       this.error.gated = this.derivative * error;
@@ -280,8 +317,9 @@ export class Node implements TagsInterface, NodeInterface {
     }
 
     // Adjust all the node's incoming connections
-    for (let i = 0; i < this.connections.in.length; i++) {
-      const connection = this.connections.in[i];
+    const toList = this.util.toConnections(this.index);
+    for (let i = 0; i < toList.length; i++) {
+      const connection = ((toList[i] as unknown) as Connection);
 
       let gradient = this.error.projected * connection.elegibility;
 
@@ -403,20 +441,23 @@ export class Node implements TagsInterface, NodeInterface {
    * Clear the context of the node
    */
   clear() {
-    for (let i = 0; i < this.connections.in.length; i++) {
-      const connection = this.connections.in[i];
+    const toList = this.util.toConnections(this.index);
+
+    toList.forEach((c) => {
+      const connection = ((c as unknown) as Connection);
 
       connection.elegibility = 0;
       connection.xtrace = {
         nodes: [],
         values: [],
       };
-    }
+    });
 
-    for (let i = 0; i < this.connections.gated.length; i++) {
-      const conn = this.connections.gated[i];
-      conn.gain = 0;
-    }
+    const gateList = this.util.gateConnections(this.index);
+    gateList.forEach((c) => {
+      const connection = ((c as unknown) as Connection);
+      connection.gain = 0;
+    });
 
     this.error.responsibility = this.error.projected = this.error.gated = 0;
     this.old = this.state = this.activation = 0;

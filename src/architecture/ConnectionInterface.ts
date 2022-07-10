@@ -4,4 +4,7 @@ interface ConnectionInterface {
   weight: number;
   gater?: number;
   type?: string;
+
+  /** not persisted */
+  gain: number;
 }

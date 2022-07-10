@@ -23,8 +23,8 @@ export class Network {
     const nLen = this.input + this.output;
     this.nodes = new Array(nLen); // Stored in activation order
     this.connections = [];
-    this.gates = [];
-    this.selfconns = [];
+    // this.gates = [];
+    // this.selfconns = [];
     this.tags = undefined;
 
     this.util = new NetworkUtil(this);
@@ -128,20 +128,22 @@ export class Network {
    * Gate a connection with a node
    */
   gate(node, connection) {
-    if (this.nodes.indexOf(node) === -1) {
-      const msg = "Gate: This node is not part of the network!";
-      console.warn(msg, node);
-      console.trace();
-      if (window.DEBUG == true) throw new Error(msg);
+    console.trace();
+    throw "not done";
+    // if (this.nodes.indexOf(node) === -1) {
+    //   const msg = "Gate: This node is not part of the network!";
+    //   console.warn(msg, node);
+    //   console.trace();
+    //   if (window.DEBUG == true) throw new Error(msg);
 
-      return;
-    } else if (connection.gater != null) {
-      console.warn("This connection is already gated!");
+    //   return;
+    // } else if (connection.gater != null) {
+    //   console.warn("This connection is already gated!");
 
-      return;
-    }
-    node.gate(connection);
-    this.gates.push(connection);
+    //   return;
+    // }
+    // node.gate(connection);
+    // this.gates.push(connection);
   }
 
   /**
@@ -213,8 +215,8 @@ export class Network {
       });
     }
 
-    const connections = this.connections.concat(this.selfconns);
-    for (i = 0; i < connections.length; i++) {
+    // const connections = this.connections.concat(this.selfconns);
+    for (i = 0; i < this.connections.length; i++) {
       const connection = connections[i];
       if (connection.gater == null) {
         json.links.push({
@@ -453,6 +455,7 @@ export class Network {
       } else {
         throw ("missing node");
       }
+      newNode.index = offspring.nodes.length;
       offspring.nodes.push(newNode);
     }
 
@@ -473,16 +476,16 @@ export class Network {
     }
 
     // Selfconnections
-    for (let i = 0; i < network1.selfconns.length; i++) {
-      const conn = network1.selfconns[i];
-      const data = {
-        weight: conn.weight,
-        from: conn.from.index,
-        to: conn.to.index,
-        gater: conn.gater != null ? conn.gater.index : -1,
-      };
-      n1conns[Connection.innovationID(data.from, data.to)] = data;
-    }
+    // for (let i = 0; i < network1.selfconns.length; i++) {
+    //   const conn = network1.selfconns[i];
+    //   const data = {
+    //     weight: conn.weight,
+    //     from: conn.from.index,
+    //     to: conn.to.index,
+    //     gater: conn.gater != null ? conn.gater.index : -1,
+    //   };
+    //   n1conns[Connection.innovationID(data.from, data.to)] = data;
+    // }
 
     // Normal connections
     for (let i = 0; i < network2.connections.length; i++) {
@@ -497,16 +500,16 @@ export class Network {
     }
 
     // Selfconnections
-    for (let i = 0; i < network2.selfconns.length; i++) {
-      const conn = network2.selfconns[i];
-      const data = {
-        weight: conn.weight,
-        from: conn.from.index,
-        to: conn.to.index,
-        gater: conn.gater != null ? conn.gater.index : -1,
-      };
-      n2conns[Connection.innovationID(data.from, data.to)] = data;
-    }
+    // for (let i = 0; i < network2.selfconns.length; i++) {
+    //   const conn = network2.selfconns[i];
+    //   const data = {
+    //     weight: conn.weight,
+    //     from: conn.from.index,
+    //     to: conn.to.index,
+    //     gater: conn.gater != null ? conn.gater.index : -1,
+    //   };
+    //   n2conns[Connection.innovationID(data.from, data.to)] = data;
+    // }
 
     // Split common conn genes from disjoint or excess conn genes
     const connections = [];
