@@ -35,7 +35,9 @@ export class Network {
       // Create input and output nodes
       for (let i = nLen; i--;) {
         const type = i < this.input ? "input" : "output";
-        this.nodes[i] = new Node(type, 0, this.util);
+        const node = new Node(type, 0, this.util);
+        node.index = i;
+        this.nodes[i] = node;
       }
 
       // Connect input nodes with output nodes directly
@@ -48,6 +50,7 @@ export class Network {
       }
     }
   }
+
   /**
    * Activates the network
    */

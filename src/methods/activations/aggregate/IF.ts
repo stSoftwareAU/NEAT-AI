@@ -13,13 +13,11 @@ export class IF implements NodeActivationInterface {
     let negative = 0;
     let positive = 0;
 
-    // Activation sources coming from connections
-    for (let i = 0; i < node.connections.in.length; i++) {
-      const connection = node.connections.in[i];
-      const fromNode = node.util.getNode(connection.from);
-      const value = fromNode.getActivation() * connection.weight *
-        connection.gain;
-      switch (connection.type) {
+    const connections = node.util.toConnections(node.index);
+    connections.forEach((c) => {
+      const fromNode = node.util.getNode(c.from);
+      const value = fromNode.getActivation() * c.weight;
+      switch (c.type) {
         case "condition":
           condition += value;
           break;
@@ -29,7 +27,7 @@ export class IF implements NodeActivationInterface {
         default:
           positive += value;
       }
-    }
+    });
 
     return condition > 0 ? positive : negative;
   }

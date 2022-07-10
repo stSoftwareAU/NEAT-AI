@@ -78,6 +78,12 @@ export class NetworkUtil {
         default:
           throw indx + ") Invalid type: " + node.type;
       }
+
+      if (node.index !== indx) {
+        console.trace();
+        throw indx + ") node.index: " + node.index +
+          " does not match expected index";
+      }
     });
 
     if (stats.input !== this.network.input) {
@@ -991,7 +997,7 @@ export class NetworkUtil {
     this.validate();
   }
 
-  private addConnection(focusList?: number[]) {
+  public addConnection(focusList?: number[]) {
     const network = this.network as Network;
     // Create an array of all uncreated (feedforward) connections
     const available = [];
