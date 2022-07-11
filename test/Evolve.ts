@@ -2,6 +2,12 @@ import { Network } from "../src/architecture/network.js";
 import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 
+declare global {
+  interface Window { DEBUG: boolean; }
+}
+
+window.DEBUG =true;
+
 // Compact form: name and function
 Deno.test("AND", async () => {
   // Train the AND gate

@@ -15,7 +15,7 @@ const temp = {
     name: "ADD_CONN",
   },
   SUB_CONN: {
-    name: "REMOVE_CONN",
+    name: "SUB_CONN",
   },
   MOD_WEIGHT: {
     name: "MOD_WEIGHT",

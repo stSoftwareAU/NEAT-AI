@@ -57,6 +57,24 @@ export class NetworkUtil {
       }
     }
 
+    if (!this.network || (this.network as Network).util !== this) {
+      throw "Network and Util don't match";
+    }
+
+    if (
+      Number.isInteger(this.network.input) == false || this.network.input < 1
+    ) {
+      console.trace();
+      throw "Must have at least one input nodes was: " + this.network.input;
+    }
+
+    if (
+      Number.isInteger(this.network.output) == false || this.network.output < 1
+    ) {
+      console.trace();
+      throw "Must have at least one output nodes was: " + this.network.output;
+    }
+
     const stats = {
       input: 0,
       hidden: 0,
@@ -66,15 +84,41 @@ export class NetworkUtil {
 
     this.network.nodes.forEach((node, indx) => {
       switch (node.type) {
-        case "input":
+        case "input": {
           stats.input++;
+          const fromList = this.fromConnections(indx);
+          if (fromList.length == 0) {
+            console.trace();
+            // this.fromConnections(indx);
+            console.info(this.network.connections);
+            throw indx + ") 'input' node has no outward connections";
+          }
           break;
-        case "hidden":
+        }
+        case "hidden": {
           stats.hidden++;
+          const toList = this.toConnections(indx);
+          if (toList.length == 0) {
+            console.trace();
+            console.info(this.network.connections);
+            throw indx + ") hidden node has no inward connections";
+          }
+          const fromList = this.fromConnections(indx);
+          if (fromList.length == 0) {
+            console.trace();
+            throw indx + ") hidden node has no outward connections";
+          }
           break;
-        case "output":
+        }
+        case "output": {
           stats.output++;
+          const toList = this.toConnections(indx);
+          if (toList.length == 0) {
+            console.trace();
+            throw indx + ") output node has no inward connections";
+          }
           break;
+        }
         default:
           throw indx + ") Invalid type: " + node.type;
       }
@@ -147,6 +191,12 @@ export class NetworkUtil {
           " expected: " +
           options.connections;
       }
+    }
+
+    if (this.network.connections.length < this.network.nodes.length - this.network.output) {
+      console.trace();
+      throw "Connections length: " + this.network.connections.length +
+        " require at least: " + this.network.nodes.length;
     }
 
     return stats;
@@ -271,6 +321,8 @@ export class NetworkUtil {
     weight: number,
     type?: "positive" | "negative" | "condition",
   ) {
+    console.info("START", from, "->", to, this.network.connections);
+
     if (
       Number.isInteger(from) == false || from < 0
     ) {
@@ -294,12 +346,16 @@ export class NetworkUtil {
       throw "to should not be pointed to any input nodes(" +
         this.network.input + "): " + to;
     }
+
+    if (to < from) {
+      console.trace();
+      throw "to: " + to + " should not be less than from: " + from;
+    }
+
     if (typeof weight !== "number") {
       console.trace();
       throw "weight not a number was: " + weight;
     }
-
-    this.clearCache();
 
     const connection = new Connection(
       from,
@@ -340,6 +396,9 @@ export class NetworkUtil {
       this.network.connections.push(connection);
     }
 
+    console.info("END", from, "->", to, this.network.connections);
+    this.clearCache();
+
     return connection;
   }
 
@@ -363,34 +422,36 @@ export class NetworkUtil {
     for (let i = 0; i < connections.length; i++) {
       const connection = connections[i];
       if (connection.from === from && connection.to === to) {
-        if (connection.gater !== null) {
-          this.ungate(connection);
-        }
+        // if (connection.gater !== null) {
+        //   this.ungate(connection);
+        // }
         connections.splice(i, 1);
         this.clearCache();
+
+        this.validate();
         break;
       }
     }
   }
 
-  /**
-   *  Remove the gate of a connection
-   */
-  ungate(connection: ConnectionInterface) {
-    const index = this.network.gates.indexOf(connection);
-    if (index === -1) {
-      console.warn(
-        "This connection is not gated!",
-        this.network.gates,
-        connection,
-      );
-      console.trace();
-      return;
-    }
+  // /**
+  //  *  Remove the gate of a connection
+  //  */
+  // ungate(connection: ConnectionInterface) {
+  //   const index = this.network.gates.indexOf(connection);
+  //   if (index === -1) {
+  //     console.warn(
+  //       "This connection is not gated!",
+  //       this.network.gates,
+  //       connection,
+  //     );
+  //     console.trace();
+  //     return;
+  //   }
 
-    this.gates.splice(index, 1);
-    connection.gater.ungate(connection);
-  }
+  //   this.gates.splice(index, 1);
+  //   connection.gater.ungate(connection);
+  // }
 
   /**
    * Backpropagate the network
@@ -923,23 +984,29 @@ export class NetworkUtil {
   }
 
   public addNode(focusList?: number[]) {
+    console.info("addNode", this.network.connections);
+    this.validate();
+
     const network = this.network as Network;
 
-    const node = new Node("hidden", 0, network.util);
+    const node = new Node("hidden", 0, this);
 
     // Random squash function
     node.mutate(Mutation.MOD_ACTIVATION.name);
 
-    const pos = Math.floor(
+    node.index = Math.floor(
       Math.random() *
         (network.nodes.length - network.output - network.input + 1),
     ) + network.input;
-    network.util.insertNode(node, pos);
 
+    network.util._insertNode(node);
+
+    let tmpFocusList = focusList;
     let fromIndex = -1;
     let toIndex = -1;
 
     for (let attempts = 0; attempts < 12; attempts++) {
+      if (attempts > 9) tmpFocusList = undefined;
       if (fromIndex === -1) {
         let pos = Math.min(
           Math.floor(
@@ -949,7 +1016,7 @@ export class NetworkUtil {
         );
 
         if (node.index === pos) pos--;
-        if (this.inFocus(pos, focusList)) {
+        if (this.inFocus(pos, tmpFocusList)) {
           fromIndex = pos;
         }
       } else if (toIndex === -1) {
@@ -961,7 +1028,7 @@ export class NetworkUtil {
         ) + this.network.input;
 
         if (node.index === pos) pos++;
-        if (this.inFocus(pos, focusList)) {
+        if (this.inFocus(pos, tmpFocusList)) {
           toIndex = pos;
         }
       } else {
@@ -970,62 +1037,76 @@ export class NetworkUtil {
     }
 
     if (fromIndex !== -1) {
-      network.util.connect(
+      this.connect(
         fromIndex,
         node.index,
         Connection.randomWeight(),
       );
+    } else {
+      console.trace();
+      throw "Should have a from index";
     }
 
     if (toIndex !== -1) {
-      network.util.connect(
+      this.connect(
         node.index,
         toIndex,
         Connection.randomWeight(),
       );
+    } else {
+      console.trace();
+      throw "Should have a to index";
     }
+
     this.validate();
   }
 
-  private insertNode(node: Node, indx: number) {
-    if (Number.isInteger(indx) == false || indx < this.network.input) {
+  private _insertNode(node: Node) {
+    if (
+      Number.isInteger(node.index) == false || node.index < this.network.input
+    ) {
       console.trace();
-      throw "to should be a greater than the input count was: " + indx;
+      throw "to should be a greater than the input count was: " + node.index;
     }
 
     const firstOutputIndex = this.network.nodes.length - this.network.output;
-    if (indx > firstOutputIndex) {
+    if (node.index > firstOutputIndex) {
       console.trace();
       throw "to should be a between than input (" + this.network.input +
-        ") and output nodes (" + firstOutputIndex + ") was: " + indx;
+        ") and output nodes (" + firstOutputIndex + ") was: " + node.index;
     }
 
     if (node.type !== "hidden") {
       console.trace();
       throw "Should be a 'hidden' type was: " + node.type;
     }
-    const left = this.network.nodes.slice(0, indx);
-    const right = this.network.nodes.slice(indx);
+    const left = this.network.nodes.slice(0, node.index);
+    const right = this.network.nodes.slice(node.index);
     right.forEach((n) => {
       n.index++;
     });
 
-    node.index = indx;
+    // node.index = indx;
     const full = [...left, node, ...right];
 
     this.network.nodes = full;
 
+    // if (this.network.connections.length < this.network.output) {
+    //   console.trace();
+    //   throw "Should have at least " + this.network.output +
+    //     " connections was: " + this.network.connections.length;
+    // }
+
     this.network.connections.forEach((c) => {
-      if (c.from >= indx) c.from++;
-      if (c.to >= indx) c.to++;
-      if (c.gater && c.gater >= indx) c.gater++;
+      if (c.from >= node.index) c.from++;
+      if (c.to >= node.index) c.to++;
+      if (c.gater && c.gater >= node.index) c.gater++;
     });
 
     this.clearCache();
-    this.validate();
   }
 
-  public addConnection(focusList?: number[]) {
+  private _addConnection(focusList?: number[]) {
     const network = this.network as Network;
     // Create an array of all uncreated (feedforward) connections
     const available = [];
@@ -1054,14 +1135,16 @@ export class NetworkUtil {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    network.util.connect(
+    this.connect(
       pair[0].index,
       pair[1].index,
       Connection.randomWeight(),
     );
+
+    this.validate();
   }
 
-  private subConnection(focusList?: number[]) {
+  private _subConnection(focusList?: number[]) {
     const network = this.network as Network;
     // List of possible connections that can be removed
     const possible = [];
@@ -1077,7 +1160,13 @@ export class NetworkUtil {
         if (
           this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
         ) {
-          possible.push(conn);
+          /** Each node must have at least one from/to connection */
+          if (
+            this.toConnections(conn.from).length > 1 &&
+            this.fromConnections(conn.to).length > 1
+          ) {
+            possible.push(conn);
+          }
         }
       }
     }
@@ -1087,15 +1176,18 @@ export class NetworkUtil {
     }
 
     const randomConn = possible[Math.floor(Math.random() * possible.length)];
-    network.util.disconnect(randomConn.from, randomConn.to);
+    this.disconnect(randomConn.from, randomConn.to);
+
+    this.validate();
   }
 
   private modWeight(focusList?: number[]) {
- 
     // const network = this.network as Network;
     const allconnections = this.network.connections.filter(
       (c) => {
-        return this.inFocus(c.from, focusList) || this.inFocus(c.to, focusList)|| (c.gater && this.inFocus(c.gater, focusList));
+        return this.inFocus(c.from, focusList) ||
+          this.inFocus(c.to, focusList) ||
+          (c.gater && this.inFocus(c.gater, focusList));
       },
     );
     if (allconnections.length > 0) {
@@ -1312,7 +1404,7 @@ export class NetworkUtil {
     network.disconnect(randomConn.from, randomConn.to);
   }
 
-  private swapNodes(focusList?: number[]) {
+  private _swapNodes(focusList?: number[]) {
     const network = this.network as Network;
     // Has no effect on input node, so they are excluded
     if (
@@ -1358,8 +1450,11 @@ export class NetworkUtil {
       node1.squash = node2.squash;
       node2.bias = biasTemp;
       node2.squash = squashTemp;
+
+      this.validate();
     }
   }
+
   /**
    * Mutates the network with the given method
    */
@@ -1379,12 +1474,12 @@ export class NetworkUtil {
         break;
       }
       case Mutation.ADD_CONN.name: {
-        this.addConnection(focusList);
+        this._addConnection(focusList);
 
         break;
       }
       case Mutation.SUB_CONN.name: {
-        this.subConnection(focusList);
+        this._subConnection(focusList);
         break;
       }
       case Mutation.MOD_WEIGHT.name: {
@@ -1432,7 +1527,7 @@ export class NetworkUtil {
         break;
       }
       case Mutation.SWAP_NODES.name: {
-        this.swapNodes(focusList);
+        this._swapNodes(focusList);
         break;
       }
       default: {

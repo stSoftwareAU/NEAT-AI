@@ -86,9 +86,13 @@ export class NeatUtil {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i] as Network;
+        if( window.DEBUG){
+          creature.util.validate();
+        }
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
-
+console.info( mutationMethod);
+          if( window.DEBUG) creature.util.validate();
           creature.util.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
@@ -96,6 +100,11 @@ export class NeatUtil {
               : undefined,
           );
         }
+
+        if( window.DEBUG){
+          creature.util.validate();
+        }
+
         removeTag(creature, "approach");
       }
     }
@@ -109,6 +118,9 @@ export class NeatUtil {
       throw "Network mandatory";
     }
 
+    if( window.DEBUG){
+      network.util.validate();
+    }
     while (this.neat.population.length < this.config.popsize) {
       const clonedCreature = Network.fromJSON(network.toJSON());
       const creatures = [clonedCreature];
@@ -119,6 +131,20 @@ export class NeatUtil {
     this.neat.population.unshift(network);
 
     await this.deDepulate(this.neat.population);
+  }
+
+  /**
+   * Breeds two parents into an offspring, population MUST be sorted
+   */
+   getOffspring() {
+    const creature= Network.crossOver(
+      this.neat.getParent(),
+      this.neat.getParent(),
+      this.config.equal,
+    );
+
+    if( window.DEBUG) creature.util.validate();
+    return creature;
   }
 
   async deDepulate(creatures: NetworkInterface[]) {
@@ -136,7 +162,7 @@ export class NeatUtil {
       }
       if (duplicate) {
         for (let j = 0; j < 100; j++) {
-          const tmpPopulation = [this.neat.getOffspring()];
+          const tmpPopulation = [this.getOffspring()];
           this.mutate(tmpPopulation);
 
           const p2 = tmpPopulation[0];
@@ -185,9 +211,7 @@ export class NeatUtil {
       }
 
       if (
-        mutationMethod === Mutation.ADD_GATE &&
-        creature.gates &&
-        creature.gates.length >= this.config.maxGates
+        mutationMethod === Mutation.ADD_GATE
       ) {
         continue;
       }

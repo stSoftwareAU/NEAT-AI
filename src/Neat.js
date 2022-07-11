@@ -207,7 +207,7 @@ export class Neat {
         fineTunedPopulation.length;
       i--;
     ) {
-      newPopulation.push(this.getOffspring());
+      newPopulation.push(this.util.getOffspring());
     }
 
     // Replace the old population with the new population
@@ -244,17 +244,6 @@ export class Neat {
     this.generation++;
 
     return fittest;
-  }
-
-  /**
-   * Breeds two parents into an offspring, population MUST be sorted
-   */
-  getOffspring() {
-    return Network.crossOver(
-      this.getParent(),
-      this.getParent(),
-      this.config.equal,
-    );
   }
 
   /**

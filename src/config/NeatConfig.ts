@@ -44,9 +44,6 @@ export interface NeatConfig {
   /** Tne maximum number of connections */
   maxConns: number;
 
-  /** Tne maximum number of gates */
-  maxGates: number;
-
   /** Tne maximum number of nodes */
   maxNodes: number;
 
@@ -104,7 +101,6 @@ export function make(parameters?: NeatOptions) {
     elitism: options.elitism || 1,
 
     maxConns: options.maxConns || Infinity,
-    maxGates: options.maxGates || Infinity,
     maxNodes: options.maxNodes || Infinity,
     mutationRate: options.mutationRate || 0.3,
 

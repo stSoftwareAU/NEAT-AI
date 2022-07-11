@@ -491,11 +491,12 @@ export class Node implements TagsInterface, NodeInterface {
         const modification =
           Math.random() * (Mutation.MOD_BIAS.max - Mutation.MOD_BIAS.min) +
           Mutation.MOD_BIAS.min;
-        this.bias += modification;
+        this.bias = modification + (this.bias ? this.bias:0);
         break;
       }
     }
   }
+  
   /**
    * Checks if this node is projecting to the given node
    */

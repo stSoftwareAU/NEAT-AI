@@ -43,11 +43,15 @@ export class Network {
       // Connect input nodes with output nodes directly
       for (let i = 0; i < this.input; i++) {
         for (let j = this.input; j < this.output + this.input; j++) {
-          // https://stats.stackexchange.com/a/248040/147931
+          /** https://stats.stackexchange.com/a/248040/147931 */
           const weight = Math.random() * this.input * Math.sqrt(2 / this.input);
           this.util.connect(i, j, weight);
         }
       }
+    }
+
+    if( window.DEBUG && initialise){
+      this.util.validate();
     }
   }
 
@@ -257,6 +261,11 @@ export class Network {
    * Convert the network to a json object
    */
   toJSON() {
+
+    if( window.DEBUG){
+      this.util.validate();
+    }
+
     const json = {
       nodes: new Array(this.nodes.length),
       connections: [],
@@ -354,33 +363,22 @@ export class Network {
     for (let i = 0; i < cLen; i++) {
       const conn = json.connections[i];
 
-      // if (Number.isInteger(conn.from) == false || conn.from < 0) {
-      //   console.trace();
-      //   console.log(json);
-      //   throw "from should be a non-negative integer was: " + conn.from;
-      // }
-      // if (Number.isInteger(conn.to) == false || conn.to < 0) {
-      //   console.trace();
-      //   throw "to should be a non-negative integer was: " + conn.to;
-      // }
-      // if (typeof conn.weight !== "number") {
-      //   console.trace();
-      //   throw "weight not a number was: " + conn.weight;
-      // }
-
       const connection = network.util.connect(
         conn.from,
         conn.to,
         conn.weight,
         conn.type,
       );
-      // connection.weight = conn.weight;
 
       if (conn.gater != null) {
         network.gate(network.nodes[conn.gater], connection);
       }
     }
 
+    if( window.DEBUG){
+      network.util.validate();
+    }
+    
     return network;
   }
 

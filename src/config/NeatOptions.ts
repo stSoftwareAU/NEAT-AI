@@ -45,9 +45,6 @@ export interface NeatOptions {
   /** Tne maximum number of connections */
   maxConns?: number;
 
-  /** Tne maximum number of gates */
-  maxGates?: number;
-
   /** Tne maximum number of nodes */
   maxNodes?: number;
 
@@ -62,6 +59,7 @@ export interface NeatOptions {
 
   /** the number of workers */
   threads?: number;
+  
   /** the initial train rate if evolving or the rate to use when training only; default 0.01 */
   trainRate?: number;
   selection?: any;
