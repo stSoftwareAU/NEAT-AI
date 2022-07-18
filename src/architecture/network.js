@@ -500,7 +500,7 @@ export class Network {
   /**
    * Create an offspring from two parent networks
    */
-  static crossOver(network1, network2, equal) {
+  static crossOver(network1, network2) {
     if (
       network1.input !== network2.input || network1.output !== network2.output
     ) {
@@ -512,21 +512,21 @@ export class Network {
     offspring.connections = [];
     offspring.nodes = [];
 
-    // Save scores and create a copy
-    const score1 = network1.score || 0;
-    const score2 = network2.score || 0;
+    // // Save scores and create a copy
+    // const score1 = network1.score || 0;
+    // const score2 = network2.score || 0;
 
     // Determine offspring node size
-    let size;
-    if (equal || score1 === score2) {
+     
+    // if (equal || score1 === score2) {
       const max = Math.max(network1.nodes.length, network2.nodes.length);
       const min = Math.min(network1.nodes.length, network2.nodes.length);
-      size = Math.floor(Math.random() * (max - min + 1) + min);
-    } else if (score1 > score2) {
-      size = network1.nodes.length;
-    } else {
-      size = network2.nodes.length;
-    }
+    const  size = Math.floor(Math.random() * (max - min + 1) + min);
+    // } else if (score1 > score2) {
+    //   size = network1.nodes.length;
+    // } else {
+    //   size = network2.nodes.length;
+    // }
 
     // Rename some variables for easier reading
     const outputSize = network1.output;
@@ -637,19 +637,19 @@ export class Network {
 
         // Because deleting is expensive, just set it to some value
         n2conns[keys1[i]] = undefined;
-      } else if (score1 >= score2 || equal) {
+      } else {
         connections.push(n1conns[keys1[i]]);
       }
     }
 
     // Excess/disjoint gene
-    if (score2 >= score1 || equal) {
+ 
       for (let i = 0; i < keys2.length; i++) {
         if (typeof n2conns[keys2[i]] !== "undefined") {
           connections.push(n2conns[keys2[i]]);
         }
       }
-    }
+    
 
     // Add common conn genes uniformly
     for (let i = 0; i < connections.length; i++) {
