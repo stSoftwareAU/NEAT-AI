@@ -1,7 +1,7 @@
 import { TagInterface } from "./TagInterface.ts";
 
 export interface TagsInterface {
-  tags: (undefined | TagInterface[]);
+  tags: undefined | TagInterface[];
 }
 
 export function addTags(target: TagsInterface, source: TagsInterface) {

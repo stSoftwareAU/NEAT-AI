@@ -28,9 +28,9 @@ export class Node implements TagsInterface, NodeInterface {
 
   constructor(
     type: "input" | "output" | "hidden" | "constant",
-    bias: (number | undefined),
+    bias: number | undefined,
     util: NetworkUtil,
-    squash:string=LOGISTIC.NAME
+    squash: string = LOGISTIC.NAME,
   ) {
     if (!type) {
       console.trace();
@@ -88,15 +88,21 @@ export class Node implements TagsInterface, NodeInterface {
     };
   }
 
-  fix(){
-    if( this.type == 'hidden'){
-      const fromList=this.util.fromConnections(this.index);
-      if( fromList.length ==0 ){
-        const gateList=this.util.gateConnections(this.index);
+  fix() {
+    if (this.type == "hidden") {
+      const fromList = this.util.fromConnections(this.index);
+      if (fromList.length == 0) {
+        const gateList = this.util.gateConnections(this.index);
         {
-          if( gateList.length == 0){
-            const targetIndx = Math.floor( Math.random() * (this.util.nodeCount()-this.index)) + this.index;
-            this.util.connect( this.index, targetIndx, Connection.randomWeight());
+          if (gateList.length == 0) {
+            const targetIndx =
+              Math.floor(Math.random() * (this.util.nodeCount() - this.index)) +
+              this.index;
+            this.util.connect(
+              this.index,
+              targetIndx,
+              Connection.randomWeight(),
+            );
           }
         }
       }
@@ -507,12 +513,12 @@ export class Node implements TagsInterface, NodeInterface {
         const modification =
           Math.random() * (Mutation.MOD_BIAS.max - Mutation.MOD_BIAS.min) +
           Mutation.MOD_BIAS.min;
-        this.bias = modification + (this.bias ? this.bias:0);
+        this.bias = modification + (this.bias ? this.bias : 0);
         break;
       }
     }
   }
-  
+
   /**
    * Checks if this node is projecting to the given node
    */

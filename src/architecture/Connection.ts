@@ -11,7 +11,7 @@ export class Connection implements ConnectionInterface {
   public previousDeltaWeight: number;
 
   public totalDeltaWeight: number;
-  public gater?: number ;
+  public gater?: number;
 
   public xtrace: { nodes: Node[]; values: number[] };
 
@@ -78,14 +78,14 @@ export class Connection implements ConnectionInterface {
   /**
    * Returns an innovation ID
    * https://en.wikipedia.org/wiki/Pairing_function (Cantor pairing function)
-   * 
+   *
    * Just a simple key
    */
-  static innovationID(a: number, b: number){
-    if( !Number.isInteger( a)){
+  static innovationID(a: number, b: number) {
+    if (!Number.isInteger(a)) {
       throw "A) Not a number: " + a;
     }
-    if( !Number.isInteger( b)){
+    if (!Number.isInteger(b)) {
       throw "B) Not a number: " + b;
     }
     return a + ":" + b;

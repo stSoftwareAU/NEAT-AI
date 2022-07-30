@@ -7,8 +7,8 @@ import { findCost } from "../../config.ts";
 import { TrainOptions } from "../../config/TrainOptions.ts";
 
 export class WorkerProcessor {
-  private costName: (string | null) = null;
-  private dataSetDir: (string | null) = null;
+  private costName: string | null = null;
+  private dataSetDir: string | null = null;
 
   async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();

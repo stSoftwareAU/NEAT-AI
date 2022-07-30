@@ -3,7 +3,7 @@
 export interface ScorableInterface {
   score: number;
   nodes: { index: number }[];
-  connections: { from: (undefined | number) }[];
+  connections: { from: undefined | number }[];
 }
 
 export function makeElitists(

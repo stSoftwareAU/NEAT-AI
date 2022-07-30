@@ -4,7 +4,6 @@
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 
 export interface NeatOptions {
-
   /** Target error 0 to 1 */
   error?: number;
 
@@ -58,7 +57,7 @@ export interface NeatOptions {
 
   /** the number of workers */
   threads?: number;
-  
+
   /** the initial train rate if evolving or the rate to use when training only; default 0.01 */
   trainRate?: number;
   selection?: any;

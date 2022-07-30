@@ -8,7 +8,7 @@ function tuneWeights(
   previousFittest: NetworkInterface,
   oldScore: string,
   rate = 1,
-  skipSet: (Set<string> | null) = null,
+  skipSet: Set<string> | null = null,
 ) {
   const previousJSON = previousFittest.toJSON();
   const allJSON = fittest.toJSON();
@@ -84,7 +84,7 @@ function tuneBias(
   previousFittest: NetworkInterface,
   oldScore: string,
   rate = 1,
-  skipSet: (Set<string> | null) = null,
+  skipSet: Set<string> | null = null,
 ) {
   const previousJSON = previousFittest.toJSON();
   const allJSON = fittest.toJSON();
@@ -234,7 +234,7 @@ function tuneAll(
 
 export function fineTuneImprovement(
   fittest: NetworkInterface,
-  previousFittest: (NetworkInterface | null),
+  previousFittest: NetworkInterface | null,
   popsize = 10,
   showMessage = true,
 ) {

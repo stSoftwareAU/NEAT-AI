@@ -88,13 +88,13 @@ export class NeatUtil {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i] as Network;
-        if( window.DEBUG){
+        if (window.DEBUG) {
           creature.util.validate();
         }
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
-// console.info( mutationMethod);
-          if( window.DEBUG) creature.util.validate();
+          // console.info( mutationMethod);
+          if (window.DEBUG) creature.util.validate();
           creature.util.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
@@ -103,7 +103,7 @@ export class NeatUtil {
           );
         }
 
-        if( window.DEBUG){
+        if (window.DEBUG) {
           creature.util.validate();
         }
 
@@ -120,7 +120,7 @@ export class NeatUtil {
       throw "Network mandatory";
     }
 
-    if( window.DEBUG){
+    if (window.DEBUG) {
       network.util.validate();
     }
     while (this.neat.population.length < this.config.popsize) {
@@ -138,14 +138,14 @@ export class NeatUtil {
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
-   getOffspring() {
-    const creature= NetworkUtil.crossOver(
+  getOffspring() {
+    const creature = NetworkUtil.crossOver(
       this.neat.getParent(),
-      this.neat.getParent()
+      this.neat.getParent(),
     );
 
     creature.util.fix();
-    if( window.DEBUG) creature.util.validate();
+    if (window.DEBUG) creature.util.validate();
     return creature;
   }
 

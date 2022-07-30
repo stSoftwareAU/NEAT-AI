@@ -50,7 +50,7 @@ Deno.test("OffSpring", async () => {
 
   await util.populatePopulation(creature);
   for (let i = 0; i < 100; i++) {
-    const kid=util.getOffspring();
+    const kid = util.getOffspring();
     await util.populatePopulation(kid);
   }
 });

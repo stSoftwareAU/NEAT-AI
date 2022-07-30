@@ -1122,7 +1122,7 @@ export class NetworkUtil {
     this.clearCache();
   }
 
-  private _addConnection(focusList?: number[]) {
+  public addConnection(focusList?: number[]) {
     const network = this.network as Network;
     // Create an array of all uncreated (feedforward) connections
     const available = [];
@@ -1497,7 +1497,7 @@ export class NetworkUtil {
         break;
       }
       case Mutation.ADD_CONN.name: {
-        this._addConnection(focusList);
+        this.addConnection(focusList);
 
         break;
       }
@@ -1583,7 +1583,6 @@ export class NetworkUtil {
     this.network.connections = connections;
 
     this.network.nodes.forEach((node) => {
-      
       (node as Node).fix();
     });
   }

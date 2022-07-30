@@ -50,7 +50,7 @@ export class Network {
       }
     }
 
-    if( window.DEBUG && initialise){
+    if (window.DEBUG && initialise) {
       this.util.validate();
     }
   }
@@ -261,8 +261,7 @@ export class Network {
    * Convert the network to a json object
    */
   toJSON() {
-
-    if( window.DEBUG){
+    if (window.DEBUG) {
       this.util.validate();
     }
 
@@ -375,11 +374,10 @@ export class Network {
       }
     }
 
-    if( window.DEBUG){
+    if (window.DEBUG) {
       network.util.validate();
     }
-    
+
     return network;
   }
-
 }

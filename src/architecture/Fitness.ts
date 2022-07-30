@@ -4,12 +4,12 @@ import { addTag } from "../tags/TagsInterface.ts";
 
 type PromiseFunction = (v: unknown) => void;
 
-let calculationData: ({
+let calculationData: {
   queue: NetworkInterface[];
   resolve: PromiseFunction;
   reject: PromiseFunction;
   that: Fitness;
-} | null) = null;
+} | null = null;
 
 export class Fitness {
   private workers: WorkerHandler[];

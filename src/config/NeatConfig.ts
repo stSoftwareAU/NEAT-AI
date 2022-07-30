@@ -32,7 +32,7 @@ export interface NeatConfig {
   focusRate: number;
 
   elitism: number;
-  
+
   /** Target error 0 to 1 */
   targetError: number;
 

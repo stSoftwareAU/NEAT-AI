@@ -3,10 +3,12 @@ import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 
 declare global {
-  interface Window { DEBUG: boolean; }
+  interface Window {
+    DEBUG: boolean;
+  }
 }
 
-window.DEBUG =true;
+window.DEBUG = true;
 
 // Compact form: name and function
 Deno.test("AND", async () => {
@@ -25,7 +27,7 @@ Deno.test("AND", async () => {
     equal: true,
     elitism: 10,
     mutationRate: 0.5,
-    log: 1, 
+    log: 1,
     error: 0.03,
     threads: 1,
   });
