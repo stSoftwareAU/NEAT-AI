@@ -1,4 +1,5 @@
 import { Network } from "../src/architecture/network.js";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { architect } from "../src/architecture/architect.js";
 import {
   assert,
@@ -179,7 +180,7 @@ Deno.test("Feed-forward", () => {
   }
 
   // Crossover
-  const network = Network.crossOver(network1, network2);
+  const network = NetworkUtil.crossOver(network1, network2, false);
 
   // Check if the network is feed-forward correctly
   for (i = 0; i < network.connections.length; i++) {

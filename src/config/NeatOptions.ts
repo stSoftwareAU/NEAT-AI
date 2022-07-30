@@ -4,7 +4,6 @@
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 
 export interface NeatOptions {
-  equal?: boolean; // No clue.
 
   /** Target error 0 to 1 */
   error?: number;

@@ -30,6 +30,7 @@ export class Node implements TagsInterface, NodeInterface {
     type: "input" | "output" | "hidden" | "constant",
     bias: (number | undefined),
     util: NetworkUtil,
+    squash:string=LOGISTIC.NAME
   ) {
     if (!type) {
       console.trace();
@@ -58,7 +59,7 @@ export class Node implements TagsInterface, NodeInterface {
 
     this.util = util;
     // this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
-    this.squash = LOGISTIC.NAME;
+    this.squash = squash;
     this.type = type;
 
     this.activation = 0;
@@ -85,6 +86,21 @@ export class Node implements TagsInterface, NodeInterface {
       projected: 0,
       gated: 0,
     };
+  }
+
+  fix(){
+    if( this.type == 'hidden'){
+      const fromList=this.util.fromConnections(this.index);
+      if( fromList.length ==0 ){
+        const gateList=this.util.gateConnections(this.index);
+        {
+          if( gateList.length == 0){
+            const targetIndx = Math.floor( Math.random() * (this.util.nodeCount()-this.index)) + this.index;
+            this.util.connect( this.index, targetIndx, Connection.randomWeight());
+          }
+        }
+      }
+    }
   }
 
   private isNodeActivation(

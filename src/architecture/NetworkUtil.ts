@@ -16,6 +16,7 @@ import { emptyDirSync } from "https://deno.land/std@0.146.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
+import { ConnectionInterface } from "./ConnectionInterface.ts";
 // import { NodeInterface } from "../architecture/NodeInterface.ts";
 
 const cacheDataFile = {
@@ -86,12 +87,13 @@ export class NetworkUtil {
       switch (node.type) {
         case "input": {
           stats.input++;
-          const fromList = this.fromConnections(indx);
-          if (fromList.length == 0) {
+          const toList = this.toConnections(indx);
+          if (toList.length > 0) {
             console.trace();
             // this.fromConnections(indx);
             console.info(this.network.connections);
-            throw indx + ") 'input' node has no outward connections";
+            throw indx + ") 'input' node has inward connections: " +
+              toList.length;
           }
           break;
         }
@@ -105,8 +107,11 @@ export class NetworkUtil {
           }
           const fromList = this.fromConnections(indx);
           if (fromList.length == 0) {
-            console.trace();
-            throw indx + ") hidden node has no outward connections";
+            const gateList = this.gateConnections(indx);
+            if (gateList.length == 0) {
+              console.trace();
+              throw indx + ") hidden node has no outward or gate connections";
+            }
           }
           break;
         }
@@ -115,6 +120,7 @@ export class NetworkUtil {
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
             console.trace();
+            console.warn(JSON.stringify(this.network.toJSON(), null, 2));
             throw indx + ") output node has no inward connections";
           }
           break;
@@ -155,12 +161,14 @@ export class NetworkUtil {
       const fromNode = this.getNode(c.from);
 
       if (fromNode.type === "output") {
-        console.trace();
-        throw indx + ") connection from an output node";
+        if (c.from != c.to) {
+          console.trace();
+          throw indx + ") connection from an output node";
+        }
       }
 
-      if (c.gater !== null) {
-        const gaterNode = this.getNode(c.gater);
+      if (Number.isInteger(c.gater)) {
+        const gaterNode = this.getNode(c.gater as number);
 
         if (gaterNode.type === "output") {
           throw indx + ") connection gater an output node";
@@ -193,11 +201,14 @@ export class NetworkUtil {
       }
     }
 
-    if (this.network.connections.length < this.network.nodes.length - this.network.output) {
-      console.trace();
-      throw "Connections length: " + this.network.connections.length +
-        " require at least: " + this.network.nodes.length;
-    }
+    // if (
+    //   this.network.connections.length <
+    //     this.network.nodes.length - this.network.output
+    // ) {
+    //   console.trace();
+    //   throw "Connections length: " + this.network.connections.length +
+    //     " require at least: " + this.network.nodes.length;
+    // }
 
     return stats;
   }
@@ -282,6 +293,7 @@ export class NetworkUtil {
     const tmp = this.network.nodes[pos];
 
     if (typeof tmp === "undefined") {
+      console.trace();
       throw "getNode( " + pos + ") " + (typeof tmp);
     }
 
@@ -332,8 +344,11 @@ export class NetworkUtil {
 
     const firstOutputIndex = this.network.nodes.length - this.network.output;
     if (from >= firstOutputIndex) {
+      // console.info( "ZZZ", JSON.stringify( this.network, null, 2));
       console.trace();
       throw "from should not be from an output node (" + firstOutputIndex +
+        ", len: " + this.network.nodes.length + ", output: " +
+        this.network.output +
         "): " + from;
     }
     if (Number.isInteger(to) == false || to < 0) {
@@ -1005,29 +1020,30 @@ export class NetworkUtil {
     let fromIndex = -1;
     let toIndex = -1;
 
-    for (let attempts = 0; attempts < 12; attempts++) {
+    for (let attempts = 0; true; attempts++) {
       if (attempts > 9) tmpFocusList = undefined;
       if (fromIndex === -1) {
-        let pos = Math.min(
+        const pos = Math.min(
           Math.floor(
             Math.random() * network.nodes.length,
           ),
           network.nodes.length - this.network.output - 1,
         );
 
-        if (node.index === pos) pos--;
+        if (node.index <= pos) continue;
         if (this.inFocus(pos, tmpFocusList)) {
           fromIndex = pos;
         }
       } else if (toIndex === -1) {
-        let pos = Math.max(
+        const pos = Math.max(
           Math.floor(
             Math.random() * network.nodes.length - this.network.input,
           ),
           0,
         ) + this.network.input;
 
-        if (node.index === pos) pos++;
+        if (node.index >= pos) continue;
+        // if (node.index === pos) pos++;
         if (this.inFocus(pos, tmpFocusList)) {
           toIndex = pos;
         }
@@ -1114,6 +1130,10 @@ export class NetworkUtil {
     for (let i = 0; i < network.nodes.length - network.output; i++) {
       const node1 = network.nodes[i];
 
+      if (node1.index != i) {
+        throw i + ") invalid node index: " + node1.index;
+      }
+
       if (!this.inFocus(i, focusList)) continue;
 
       for (
@@ -1121,10 +1141,13 @@ export class NetworkUtil {
         j < network.nodes.length;
         j++
       ) {
-        const node2 = network.nodes[j];
         if (!this.inFocus(j, focusList)) continue;
+        const node2 = network.nodes[j];
 
         if (!node1.isProjectingTo(node2)) {
+          // console.info( "ZZZZZZZ");
+          // console.info( JSON.stringify( this.network.toJSON(), null, 2));
+          node1.isProjectingTo(node2);
           available.push([node1, node2]);
         }
       }
@@ -1534,5 +1557,231 @@ export class NetworkUtil {
         throw "unknown: " + method;
       }
     }
+  }
+
+  /**
+   * Fix the network
+   */
+  fix() {
+    const maxTo = this.network.nodes.length - 1;
+    const minTo = this.network.input;
+    const maxFrom = this.network.nodes.length - this.network.output;
+
+    const connections: Connection[] = [];
+    this.network.connections.forEach((c) => {
+      if (c.to > maxTo) {
+        console.debug("Ignoring connection to above max", maxTo, c);
+      } else if (c.to < minTo) {
+        console.debug("Ignoring connection to below min", minTo, c);
+      } else if (c.from > maxFrom) {
+        console.debug("Ignoring connection from above max", maxFrom, c);
+      } else {
+        connections.push(c as Connection);
+      }
+    });
+
+    this.network.connections = connections;
+
+    this.network.nodes.forEach((node) => {
+      
+      (node as Node).fix();
+    });
+  }
+
+  nodeCount() {
+    return this.network.nodes.length;
+  }
+
+  /**
+   * Create an offspring from two parent networks
+   */
+  static crossOver(network1: Network, network2: Network) {
+    if (
+      network1.input !== network2.input || network1.output !== network2.output
+    ) {
+      throw new Error("Networks don't have the same input/output size!");
+    }
+
+    // Initialise offspring
+    const offspring = new Network(network1.input, network1.output, false);
+    offspring.connections = [];
+    offspring.nodes = [];
+
+    // Determine offspring node size
+    const max = Math.max(network1.nodes.length, network2.nodes.length);
+    const min = Math.min(network1.nodes.length, network2.nodes.length);
+    const size = Math.floor(Math.random() * (max - min + 1) + min);
+
+    // Rename some variables for easier reading
+    const outputSize = network1.output;
+
+    // Set indexes so we don't need indexOf
+    for (let i = network1.nodes.length; i--;) {
+      network1.nodes[i].index = i;
+    }
+
+    for (let i = network2.nodes.length; i--;) {
+      network2.nodes[i].index = i;
+    }
+
+    let outputCount = 0;
+    // Assign nodes from parents to offspring
+    for (let i = 0; i < size; i++) {
+      // Determine if an output node is needed
+      let node;
+      if (i < size - outputSize) {
+        const random = Math.random();
+        node = random >= 0.5 ? network1.nodes[i] : network2.nodes[i];
+        const other = random < 0.5 ? network1.nodes[i] : network2.nodes[i];
+
+        if (typeof node === "undefined" || node.type === "output") {
+          if (other.type === "output") {
+            console.trace();
+            throw i + ") Should not be an 'output' node";
+          }
+
+          node = other;
+        }
+      } else {
+        if (Math.random() >= 0.5) {
+          node = network1.nodes[network1.nodes.length + i - size];
+        } else {
+          node = network2.nodes[network2.nodes.length + i - size];
+        }
+        if (node.type !== "output") {
+          console.trace();
+          throw i + ") expected 'output' was: " + node.type;
+        }
+        outputCount++;
+      }
+      const newNode = new Node(
+        node.type,
+        node.bias,
+        offspring.util,
+        node.squash,
+      );
+
+      // if (node) {
+      //   // newNode.bias = node.bias;
+      //   newNode.squash = node.squash;
+      //   // newNode.type = node.type;
+      // } else {
+      //   throw ("missing node");
+      // }
+      newNode.index = i; //offspring.nodes.length;
+      offspring.nodes.push(newNode);
+    }
+
+    // Create arrays of connection genes
+    const n1conns: { [key: string]: Connection } = {};
+    const n2conns: { [key: string]: Connection } = {};
+
+    // Normal connections
+    for (let i = network1.connections.length; i--;) {
+      const conn = network1.connections[i] as Connection;
+      const newConn = new Connection(
+        conn.from,
+        conn.to,
+        conn.weight,
+        conn.type,
+      );
+      newConn.gater = conn.gater;
+
+      n1conns[Connection.innovationID(conn.from, conn.to)] = newConn;
+    }
+
+    // Selfconnections
+    // for (let i = 0; i < network1.selfconns.length; i++) {
+    //   const conn = network1.selfconns[i];
+    //   const data = {
+    //     weight: conn.weight,
+    //     from: conn.from.index,
+    //     to: conn.to.index,
+    //     gater: conn.gater != null ? conn.gater.index : -1,
+    //   };
+    //   n1conns[Connection.innovationID(data.from, data.to)] = data;
+    // }
+
+    // Normal connections
+    for (let i = network2.connections.length; i--;) {
+      const conn = network2.connections[i];
+      const newConn = new Connection(
+        conn.from,
+        conn.to,
+        conn.weight,
+        conn.type,
+      );
+      newConn.gater = conn.gater;
+      n2conns[Connection.innovationID(conn.from, conn.to)] = newConn;
+    }
+
+    // Selfconnections
+    // for (let i = 0; i < network2.selfconns.length; i++) {
+    //   const conn = network2.selfconns[i];
+    //   const data = {
+    //     weight: conn.weight,
+    //     from: conn.from.index,
+    //     to: conn.to.index,
+    //     gater: conn.gater != null ? conn.gater.index : -1,
+    //   };
+    //   n2conns[Connection.innovationID(data.from, data.to)] = data;
+    // }
+
+    // Split common conn genes from disjoint or excess conn genes
+    const connections: Connection[] = [];
+    const keys1 = Object.keys(n1conns);
+    const keys2 = Object.keys(n2conns);
+    keys1.forEach((key) => {
+      // Common gene
+      if (typeof n2conns[key] !== "undefined") {
+        const conn = Math.random() >= 0.5 ? n1conns[key] : n2conns[key];
+        connections.push(conn);
+
+        // Because deleting is expensive, just set it to some value
+        // n2conns[keys1[i]] = undefined;
+      } else {
+        connections.push(n1conns[key]);
+      }
+    });
+
+    // Excess/disjoint gene
+
+    keys2.forEach((key) => {
+      if (typeof n1conns[key] === "undefined") {
+        connections.push(n2conns[key]);
+      }
+    });
+
+    // // Add common conn genes uniformly
+    // for (let i = 0; i < connections.length; i++) {
+    //   const connData = connections[i];
+    //   if (connData.to < size && connData.from < size) {
+    //     const from = offspring.nodes[connData.from];
+    //     const to = offspring.nodes[connData.to];
+    //     const conn = offspring.connect(from, to)[0];
+
+    //     conn.weight = connData.weight;
+
+    //     if (connData.gater !== -1 && connData.gater < size) {
+    //       offspring.gate(offspring.nodes[connData.gater], conn);
+    //     }
+    //   }
+    // }
+
+    connections.sort((a, b) => {
+      if (a.from == b.from) {
+        return a.to - b.to;
+      }
+      return a.from - b.from;
+    });
+
+    offspring.connections = connections;
+
+    if (window.DEBUG) {
+      window.DEBUG = false;
+      console.warn(JSON.stringify(offspring.toJSON(), null, 2));
+      window.DEBUG = true;
+    }
+    return offspring;
   }
 }

@@ -1,6 +1,8 @@
 import { Neat } from "./Neat.js";
 
 import { Network } from "./architecture/network.js";
+
+import { NetworkUtil } from "./architecture/NetworkUtil.ts";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { crypto } from "https://deno.land/std@0.146.0/crypto/mod.ts";
@@ -91,7 +93,7 @@ export class NeatUtil {
         }
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
-console.info( mutationMethod);
+// console.info( mutationMethod);
           if( window.DEBUG) creature.util.validate();
           creature.util.mutate(
             mutationMethod,
@@ -137,12 +139,12 @@ console.info( mutationMethod);
    * Breeds two parents into an offspring, population MUST be sorted
    */
    getOffspring() {
-    const creature= Network.crossOver(
+    const creature= NetworkUtil.crossOver(
       this.neat.getParent(),
-      this.neat.getParent(),
-      this.config.equal,
+      this.neat.getParent()
     );
 
+    creature.util.fix();
     if( window.DEBUG) creature.util.validate();
     return creature;
   }

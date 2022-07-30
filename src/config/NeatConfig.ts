@@ -32,7 +32,7 @@ export interface NeatConfig {
   focusRate: number;
 
   elitism: number;
-  equal: boolean; // No clue.
+  
   /** Target error 0 to 1 */
   targetError: number;
 
@@ -83,7 +83,6 @@ export function make(parameters?: NeatOptions) {
     dataSetParitionBreak: options.dataSetParitionBreak
       ? Math.max(options.dataSetParitionBreak, 1000)
       : 2000,
-    equal: options.equal || false,
 
     feedbackLoop: options.feedbackLoop || false,
     focusList: options.focusList || [],

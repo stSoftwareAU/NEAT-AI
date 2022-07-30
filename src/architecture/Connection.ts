@@ -11,7 +11,7 @@ export class Connection implements ConnectionInterface {
   public previousDeltaWeight: number;
 
   public totalDeltaWeight: number;
-  public gater: (Node | null);
+  public gater?: number ;
 
   public xtrace: { nodes: Node[]; values: number[] };
 
@@ -45,7 +45,7 @@ export class Connection implements ConnectionInterface {
     this.type = type;
     this.weight = weight;
 
-    this.gater = null;
+    this.gater = undefined;
     this.elegibility = 0;
 
     // For tracking momentum
@@ -68,7 +68,7 @@ export class Connection implements ConnectionInterface {
       weight: this.weight,
       from: this.from,
       to: this.to,
-      gater: this.gater ? this.gater.index : undefined,
+      gater: this.gater ? this.gater : undefined,
       type: this.type ? this.type : undefined,
     };
 
@@ -78,8 +78,16 @@ export class Connection implements ConnectionInterface {
   /**
    * Returns an innovation ID
    * https://en.wikipedia.org/wiki/Pairing_function (Cantor pairing function)
+   * 
+   * Just a simple key
    */
-  static innovationID(a: number, b: number) {
-    return 1 / 2 * (a + b) * (a + b + 1) + b;
+  static innovationID(a: number, b: number){
+    if( !Number.isInteger( a)){
+      throw "A) Not a number: " + a;
+    }
+    if( !Number.isInteger( b)){
+      throw "B) Not a number: " + b;
+    }
+    return a + ":" + b;
   }
 }
