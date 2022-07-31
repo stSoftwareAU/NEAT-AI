@@ -608,9 +608,8 @@ export class Node implements TagsInterface, NodeInterface {
     }
 
     const node = new Node(json.type, json.bias, util);
-    // node.bias = json.bias;
-    // node.type = json.type;
-    node.squash = json.squash; //Methods.activation[json.squash];
+
+    node.squash = json.squash;
 
     if (json.tags) {
       addTags(node, json as TagsInterface);

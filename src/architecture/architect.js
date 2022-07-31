@@ -89,27 +89,27 @@ export const architect = {
   /**
    * Creates a multilayer perceptron (MLP)
    */
-  Perceptron: function () {
-    // Convert arguments to Array
-    const layers = Array.prototype.slice.call(arguments);
-    if (layers.length < 3) {
-      throw new Error("You have to specify at least 3 layers");
-    }
+  // Perceptron: function () {
+  //   // Convert arguments to Array
+  //   const layers = Array.prototype.slice.call(arguments);
+  //   if (layers.length < 3) {
+  //     throw new Error("You have to specify at least 3 layers");
+  //   }
 
-    // Create a list of nodes/groups
-    const nodes = [];
-    nodes.push(new Group(layers[0]));
+  //   // Create a list of nodes/groups
+  //   const nodes = [];
+  //   nodes.push(new Group(layers[0]));
 
-    for (let i = 1; i < layers.length; i++) {
-      let layer = layers[i];
-      layer = new Group(layer);
-      nodes.push(layer);
-      nodes[i - 1].connect(nodes[i], Methods.connection.ALL_TO_ALL);
-    }
+  //   for (let i = 1; i < layers.length; i++) {
+  //     let layer = layers[i];
+  //     layer = new Group(layer);
+  //     nodes.push(layer);
+  //     nodes[i - 1].connect(nodes[i], Methods.connection.ALL_TO_ALL);
+  //   }
 
-    // Construct the network
-    return architect.Construct(nodes);
-  },
+  //   // Construct the network
+  //   return architect.Construct(nodes);
+  // },
 
   /**
    * Creates a randomly connected network

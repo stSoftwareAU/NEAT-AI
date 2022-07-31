@@ -9,10 +9,19 @@ import {
 
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
+declare global {
+  interface Window {
+    DEBUG: boolean;
+  }
+}
+
+window.DEBUG = true;
 
 /* Functions used in the testing process */
 function checkMutation(method: unknown) {
-  const network = architect.Perceptron(2, 4, 4, 4, 2);
+  // const network = architect.Perceptron(2, 4, 4, 4, 2);
+  // const network = architect.Random(2, 4*4, 2);
+  const network = new Network(2, 2);
   network.util.mutate(Mutation.ADD_GATE);
   network.util.mutate(Mutation.ADD_BACK_CONN);
   network.util.mutate(Mutation.ADD_SELF_CONN);
@@ -21,17 +30,25 @@ function checkMutation(method: unknown) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      originalOutput.push(network.activate([i / 10, j / 10]));
+      const v = network.activate([i / 10, j / 10]);
+      originalOutput.push(...v);
     }
   }
 
+  const json1 = JSON.stringify(network.toJSON(), null, 2);
   network.util.mutate(method as { name: string });
+  const json2 = JSON.stringify(network.toJSON(), null, 2);
+
+  console.info(json1);
+  console.info(json2);
+  assertNotEquals(json1, json2);
 
   const mutatedOutput = [];
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      mutatedOutput.push(network.activate([i / 10, j / 10]));
+      const v = network.activate([i / 10, j / 10]);
+      mutatedOutput.push(...v);
     }
   }
 
@@ -43,7 +60,7 @@ function checkMutation(method: unknown) {
 }
 
 async function evolveSet(set: any[], iterations: number, error: number) {
-  const network = architect.Perceptron(
+  const network = architect.Random(
     set[0].input.length,
     5,
     set[0].output.length,
@@ -61,7 +78,7 @@ async function evolveSet(set: any[], iterations: number, error: number) {
 }
 
 function trainSet(set: any[], iterations: number, error: number) {
-  const network = architect.Perceptron(
+  const network = architect.Random(
     set[0].input.length,
     5,
     set[0].output.length,
@@ -603,6 +620,7 @@ Deno.test("from-to", () => {
   let toMinMS = Infinity;
   let currentJson = startJson;
   const LOOPS = 100;
+  window.DEBUG = false;
   for (let i = LOOPS; i--;) {
     performance.mark("from-start");
     const currentNetwork = Network.fromJSON(currentJson);
@@ -632,6 +650,7 @@ Deno.test("from-to", () => {
       assert(false, "JSON changed");
     }
   }
+  window.DEBUG = true;
   console.info("toJSON", toTotalMS / LOOPS, toMinMS);
   console.info("fromJSON", fromTotalMS / LOOPS, fromMinMS);
 });

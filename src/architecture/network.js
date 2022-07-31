@@ -1,5 +1,3 @@
-import { Mutation } from "../methods/mutation.ts";
-import { Connection } from "./Connection.ts";
 import { Node } from "./Node.ts";
 import { NetworkUtil } from "./NetworkUtil.ts";
 
@@ -19,9 +17,6 @@ export class Network {
     this.input = input;
     this.output = output;
 
-    // Store all the node and connection genes
-    const nLen = this.input + this.output;
-    this.nodes = new Array(nLen); // Stored in activation order
     this.connections = [];
     // this.gates = [];
     // this.selfconns = [];
@@ -32,6 +27,8 @@ export class Network {
     this.score = undefined;
 
     if (initialise) {
+      const nLen = this.input + this.output;
+      this.nodes = new Array(nLen); // Stored in activation order
       // Create input and output nodes
       for (let i = nLen; i--;) {
         const type = i < this.input ? "input" : "output";
@@ -48,6 +45,8 @@ export class Network {
           this.util.connect(i, j, weight);
         }
       }
+    } else {
+      this.nodes = [];
     }
 
     if (window.DEBUG && initialise) {
@@ -267,45 +266,24 @@ export class Network {
 
     const json = {
       nodes: new Array(this.nodes.length),
-      connections: [],
+      connections: new Array(this.connections.length),
       input: this.input,
       output: this.output,
       tags: this.tags ? this.tags.slice() : undefined,
     };
 
-    // So we don't have to use expensive .indexOf()
     for (let i = this.nodes.length; i--;) {
-      this.nodes[i].index = i;
-    }
-
-    for (let i = 0; i < this.nodes.length; i++) {
       const node = this.nodes[i];
+      node.index = i;
       const tojson = node.toJSON();
-      tojson.index = i;
+
       json.nodes[i] = tojson;
-
-      // if (node.connections.self && node.connections.self.weight !== 0) {
-      //   const tojson = node.connections.self.toJSON();
-      //   tojson.from = i;
-      //   tojson.to = i;
-
-      //   tojson.gater = node.connections.self.gater != null
-      //     ? node.connections.self.gater.index
-      //     : null;
-      //   json.connections.push(tojson);
-      // }
     }
 
-    for (let i = 0; i < this.connections.length; i++) {
+    for (let i = this.connections.length; i--;) {
       const tojson = this.connections[i].toJSON();
-      // const conn = this.connections[i];
-      // const tojson = conn.toJSON();
-      // tojson.from = conn.from.index;
-      // tojson.to = conn.to.index;
 
-      // tojson.gater = conn.gater != null ? conn.gater.index : null;
-
-      json.connections.push(tojson);
+      json.connections[i] = tojson;
     }
 
     return json;
@@ -344,16 +322,15 @@ export class Network {
    * Convert a json object to a network
    */
   static fromJSON(json) {
-    console.info("ZZZZ", JSON.stringify(json, null, 2));
-
     const network = new Network(json.input, json.output, false);
     network.nodes.length = json.nodes.length;
     if (json.tags) {
       network.tags = [...json.tags];
     }
 
-    const util = new NetworkUtil(network);
+    const util = network.util; //new NetworkUtil(network);
 
+    network.nodes = new Array(json.nodes.length);
     for (let i = json.nodes.length; i--;) {
       const n = Node.fromJSON(json.nodes[i], util);
       n.index = i;
