@@ -399,10 +399,10 @@ export class NetworkUtil {
 
           throw indx + ") already connected from: " + from + " to: " + to;
         } else {
-          location = indx + 1;
+          location = indx;
         }
       } else {
-        location = indx + 1;
+        location = indx;
       }
     }
     if (location !== -1 && location < this.network.connections.length) {
@@ -1089,9 +1089,6 @@ export class NetworkUtil {
       throw "Should have a to index";
     }
 
-    if (window.DEBUG) {
-      this.validate();
-    }
   }
 
   private _insertNode(node: Node) {
