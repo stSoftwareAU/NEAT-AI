@@ -120,7 +120,11 @@ export class NetworkUtil {
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
             console.trace();
-            console.warn(JSON.stringify(this.network.toJSON(), null, 2));
+            if (window.DEBUG) {
+              window.DEBUG = false;
+              console.warn(JSON.stringify(this.network.toJSON(), null, 2));
+              window.DEBUG = true;
+            }
             throw indx + ") output node has no inward connections";
           }
           break;
@@ -333,7 +337,7 @@ export class NetworkUtil {
     weight: number,
     type?: "positive" | "negative" | "condition",
   ) {
-    console.info("START", from, "->", to, this.network.connections);
+    // console.info("START", from, "->", to, this.network.connections);
 
     if (
       Number.isInteger(from) == false || from < 0
@@ -342,18 +346,19 @@ export class NetworkUtil {
       throw "from should be a non-negative integer was: " + from;
     }
 
+    if (Number.isInteger(to) == false || to < 0) {
+      console.trace();
+      throw "to should be a non-negative integer was: " + to;
+    }
+
     const firstOutputIndex = this.network.nodes.length - this.network.output;
-    if (from >= firstOutputIndex) {
-      // console.info( "ZZZ", JSON.stringify( this.network, null, 2));
+    if (from >= firstOutputIndex && from !== to) {
+      console.info("Network", JSON.stringify(this.network, null, 2));
       console.trace();
       throw "from should not be from an output node (" + firstOutputIndex +
         ", len: " + this.network.nodes.length + ", output: " +
         this.network.output +
         "): " + from;
-    }
-    if (Number.isInteger(to) == false || to < 0) {
-      console.trace();
-      throw "to should be a non-negative integer was: " + to;
     }
 
     if (to < this.network.input) {
@@ -411,7 +416,7 @@ export class NetworkUtil {
       this.network.connections.push(connection);
     }
 
-    console.info("END", from, "->", to, this.network.connections);
+    // console.info("END", from, "->", to, this.network.connections);
     this.clearCache();
 
     return connection;
@@ -443,7 +448,6 @@ export class NetworkUtil {
         connections.splice(i, 1);
         this.clearCache();
 
-        this.validate();
         break;
       }
     }
@@ -975,15 +979,22 @@ export class NetworkUtil {
 
     const tmpConnections: ConnectionInterface[] = [];
 
-    this.network.connections.forEach((c) => {
+    this.network.connections.forEach((tmpC) => {
+      const c = tmpC as Connection;
       if (c.from !== indx) {
         if (c.from > indx) c.from--;
         if (c.to !== indx) {
           if (c.to > indx) c.to--;
-          if (Number.isInteger(c.gater)) {
-            if (c.gater !== indx) {
-              if (c.gater > indx) c.gater--;
 
+          if (Number.isInteger(c.gater)) {
+            if (typeof c.gater === "undefined") {
+              throw "not an integer: " + c.gater;
+            }
+            let tmpGater: number = c.gater;
+            if (tmpGater !== indx) {
+              if (tmpGater > indx) tmpGater--;
+
+              c.gater = tmpGater;
               tmpConnections.push(c);
             }
           } else {
@@ -995,7 +1006,6 @@ export class NetworkUtil {
 
     this.network.connections = tmpConnections;
     this.clearCache();
-    this.validate();
   }
 
   public addNode(focusList?: number[]) {
@@ -1074,7 +1084,9 @@ export class NetworkUtil {
       throw "Should have a to index";
     }
 
-    this.validate();
+    if (window.DEBUG) {
+      this.validate();
+    }
   }
 
   private _insertNode(node: Node) {
@@ -1200,8 +1212,6 @@ export class NetworkUtil {
 
     const randomConn = possible[Math.floor(Math.random() * possible.length)];
     this.disconnect(randomConn.from, randomConn.to);
-
-    this.validate();
   }
 
   private modWeight(focusList?: number[]) {
@@ -1372,59 +1382,63 @@ export class NetworkUtil {
   }
 
   private addBackConn(focusList?: number[]) {
-    const network = this.network as Network;
+    console.trace();
+    throw "not done";
+    //     const network = this.network as Network;
 
-    // Create an array of all uncreated (backfed) connections
-    const available = [];
-    for (let i = network.input; i < network.nodes.length; i++) {
-      const node1 = network.nodes[i];
-      if (this.inFocus(node1, focusList)) {
-        for (let j = network.input; j < i; j++) {
-          const node2 = network.nodes[j];
-          if (this.inFocus(node2, focusList)) {
-            if (!node1.isProjectingTo(node2)) {
-              available.push([node1, node2]);
-            }
-          }
-        }
-      }
-    }
+    // // Create an array of all uncreated (backfed) connections
+    // const available = [];
+    // for (let i = network.input; i < network.nodes.length; i++) {
+    //   const node1 = network.nodes[i];
+    //   if (this.inFocus(node1, focusList)) {
+    //     for (let j = network.input; j < i; j++) {
+    //       const node2 = network.nodes[j];
+    //       if (this.inFocus(node2, focusList)) {
+    //         if (!node1.isProjectingTo(node2)) {
+    //           available.push([node1, node2]);
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
 
-    if (available.length === 0) {
-      return;
-    }
+    // if (available.length === 0) {
+    //   return;
+    // }
 
-    const pair = available[Math.floor(Math.random() * available.length)];
-    network.connect(pair[0], pair[1]);
+    // const pair = available[Math.floor(Math.random() * available.length)];
+    // this.connect(pair[0].index, pair[1].index);
   }
 
   private subBackConn(focusList?: number[]) {
-    const network = this.network as Network;
-    // List of possible connections that can be removed
-    const possible = [];
+    console.trace();
+    throw "not done";
+    // const network = this.network as Network;
+    // // List of possible connections that can be removed
+    // const possible = [];
 
-    for (let i = 0; i < network.connections.length; i++) {
-      const conn = network.connections[i];
-      // Check if it is not disabling a node
-      if (
-        conn.from.connections.out.length > 1 &&
-        conn.to.connections.in.length > 1 &&
-        network.nodes.indexOf(conn.from) > network.nodes.indexOf(conn.to)
-      ) {
-        if (
-          this.inFocus(conn.from, focusList) || this.inFocus(conn.to, focusList)
-        ) {
-          possible.push(conn);
-        }
-      }
-    }
+    // for (let i = 0; i < network.connections.length; i++) {
+    //   const conn = network.connections[i];
+    //   // Check if it is not disabling a node
+    //   if (
+    //     conn.from.connections.out.length > 1 &&
+    //     conn.to.connections.in.length > 1 &&
+    //     network.nodes.indexOf(conn.from) > network.nodes.indexOf(conn.to)
+    //   ) {
+    //     if (
+    //       this.inFocus(conn.from, focusList) || this.inFocus(conn.to, focusList)
+    //     ) {
+    //       possible.push(conn);
+    //     }
+    //   }
+    // }
 
-    if (possible.length === 0) {
-      return;
-    }
+    // if (possible.length === 0) {
+    //   return;
+    // }
 
-    const randomConn = possible[Math.floor(Math.random() * possible.length)];
-    network.disconnect(randomConn.from, randomConn.to);
+    // const randomConn = possible[Math.floor(Math.random() * possible.length)];
+    // network.disconnect(randomConn.from, randomConn.to);
   }
 
   private _swapNodes(focusList?: number[]) {
@@ -1557,6 +1571,11 @@ export class NetworkUtil {
         throw "unknown: " + method;
       }
     }
+
+    this.fix();
+    if (window.DEBUG) {
+      this.validate();
+    }
   }
 
   /**
@@ -1581,10 +1600,14 @@ export class NetworkUtil {
     });
 
     this.network.connections = connections;
-
+    this.clearCache();
     this.network.nodes.forEach((node) => {
       (node as Node).fix();
     });
+  }
+
+  outputCount() {
+    return this.network.output;
   }
 
   nodeCount() {
@@ -1778,7 +1801,7 @@ export class NetworkUtil {
 
     if (window.DEBUG) {
       window.DEBUG = false;
-      console.warn(JSON.stringify(offspring.toJSON(), null, 2));
+      console.warn("crossOver", JSON.stringify(offspring.toJSON(), null, 2));
       window.DEBUG = true;
     }
     return offspring;

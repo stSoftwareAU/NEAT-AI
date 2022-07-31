@@ -106,6 +106,27 @@ export class Node implements TagsInterface, NodeInterface {
           }
         }
       }
+      const toList = this.util.toConnections(this.index);
+      if (toList.length == 0) {
+        const fromIndx = Math.floor(Math.random() * this.index);
+        this.util.connect(
+          fromIndx,
+          this.index,
+          Connection.randomWeight(),
+        );
+      }
+    } else if (this.type == "output") {
+      const toList = this.util.toConnections(this.index);
+      if (toList.length == 0) {
+        const fromIndx = Math.floor(
+          Math.random() * (this.util.nodeCount() - this.util.outputCount()),
+        );
+        this.util.connect(
+          fromIndx,
+          this.index,
+          Connection.randomWeight(),
+        );
+      }
     }
   }
 

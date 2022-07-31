@@ -3,6 +3,8 @@ import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { Network } from "../src/architecture/network.js";
 import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
 
+window.DEBUG = true;
+
 // Compact form: name and function
 Deno.test("tune", () => {
   const previousFittest: NetworkInterface = Network.fromJSON({

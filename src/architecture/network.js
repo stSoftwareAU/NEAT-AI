@@ -344,6 +344,8 @@ export class Network {
    * Convert a json object to a network
    */
   static fromJSON(json) {
+    console.info("ZZZZ", JSON.stringify(json, null, 2));
+
     const network = new Network(json.input, json.output, false);
     network.nodes.length = json.nodes.length;
     if (json.tags) {

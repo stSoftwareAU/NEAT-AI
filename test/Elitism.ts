@@ -3,6 +3,7 @@ import {
   ScorableInterface,
 } from "../src/architecture/elitism.ts";
 import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
+window.DEBUG = true;
 
 Deno.test("1make", () => {
   const population: ScorableInterface[] = [
@@ -48,6 +49,7 @@ Deno.test("3make", () => {
   assert(elitists[1].score == 2, "Wrong elitism " + JSON.stringify(elitists));
   assert(elitists[2].score == 1, "Wrong elitism " + JSON.stringify(elitists));
 });
+
 Deno.test("3make2", () => {
   const population: ScorableInterface[] = [
     { score: -3, nodes: [], connections: [] },

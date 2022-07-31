@@ -6,6 +6,7 @@ import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
 import { make as makeConfig } from "../src/config/NeatConfig.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
 
+window.DEBUG = true;
 Deno.test("previous", async () => {
   const creature: NetworkInterface = Network.fromJSON({
     "nodes": [{

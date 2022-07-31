@@ -52,11 +52,12 @@ Deno.test("evolve-MT", async () => {
     elitism: 10,
     mutationRate: 0.5,
     error: 0.03,
-    threads: 2,
+    threads: 1,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
+
 Deno.test("evolve-XOR", async () => {
   // Train the XOR gate
   const trainingSet = [
@@ -132,6 +133,7 @@ Deno.test("XNOR", async () => {
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
+
 Deno.test("check", () => {
   assert(isFinite(Infinity) == false);
 });
