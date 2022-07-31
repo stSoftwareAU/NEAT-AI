@@ -1,5 +1,6 @@
 import { Network } from "../src/architecture/network.js";
 import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
+window.DEBUG = true;
 
 Deno.test("hidden", () => {
   const json = JSON.parse(Deno.readTextFileSync("./test/data/inFocus.json"));
@@ -14,7 +15,7 @@ Deno.test("hidden", () => {
   for (let pos = startPos; pos < endPos; pos++) {
     const n = network.nodes[pos];
 
-    if (network.util.inFocus(n, [1])) {
+    if (network.util.inFocus(n.index, [1])) {
       positiveCount++;
     } else {
       negativeCount++;
@@ -38,7 +39,7 @@ Deno.test("input", () => {
   for (let pos = startPos; pos < endPos; pos++) {
     const n = network.nodes[pos];
 
-    if (network.util.inFocus(n, [1])) {
+    if (network.util.inFocus(n.index, [1])) {
       positiveCount++;
     } else {
       negativeCount++;

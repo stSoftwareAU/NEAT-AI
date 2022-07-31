@@ -914,19 +914,27 @@ export class NetworkUtil {
         return true;
       }
 
-      const tmpList = this.network.connections;
-      for (let i = tmpList.length; i--;) {
-        const c = tmpList[i];
-        if (c.to === index || c.from === index) return true;
+      const toList = this.toConnections(index);
+      // const tmpList = this.network.connections;
+      for (let i = toList.length; i--;) {
+        const checkIndx: number = toList[i].from;
+        if (checkIndx === index) return true;
 
-        if (this.inFocus(c.from, focusList, checked)) {
-          return true;
-        }
-
-        if (this.inFocus(c.to, focusList, checked)) {
+        if (this.inFocus(checkIndx, focusList, checked)) {
           return true;
         }
       }
+
+      // const fromList=this.fromConnections( index);
+
+      // for( let i=fromList.length;i--;) {
+      //   const checkIndx:number = fromList[i].to;
+      //   if (checkIndx === index ) return true;
+
+      //   if (this.inFocus(checkIndx, focusList, checked)) {
+      //     return true;
+      //   }
+      // }
     }
     return false;
   }

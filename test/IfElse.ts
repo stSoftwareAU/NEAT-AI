@@ -2,6 +2,8 @@ import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
 
 import { Network } from "../../NEAT-TS/src/architecture/network.js";
 
+window.DEBUG = true;
+
 Deno.test("if/Else", () => {
   const json = {
     nodes: [
