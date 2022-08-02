@@ -13,7 +13,7 @@ export class Node implements TagsInterface, NodeInterface {
   readonly util: NetworkUtil;
   readonly type;
   private bias?;
-  private squash: string;
+  private squash?: string;
   private old;
   private state;
   private activation;
@@ -50,6 +50,13 @@ export class Node implements TagsInterface, NodeInterface {
       }
 
       this.bias = bias;
+
+      if (typeof squash !== "string") {
+        console.trace();
+        throw "squash (other than for " + type + ") must be a string was: " +
+          (typeof squash);
+      }
+      this.squash = squash;
     }
 
     if (typeof util !== "object") {
@@ -59,7 +66,7 @@ export class Node implements TagsInterface, NodeInterface {
 
     this.util = util;
     // this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
-    this.squash = squash;
+
     this.type = type;
 
     this.activation = 0;
@@ -145,9 +152,25 @@ export class Node implements TagsInterface, NodeInterface {
    */
   activate(input?: number) {
     // Check if an input is given
-    if (typeof input !== "undefined") {
-      this.activation = input;
-      return this.activation;
+    // if (typeof input !== "undefined") {
+    //   this.activation = input;
+    //   return this.activation;
+    // }
+
+    if (this.type == "input") {
+      if (Number.isFinite(input)) {
+        this.activation = input ? input : 0;
+        return this.activation;
+      } else {
+        throw "must have an input value for an input value";
+      }
+    } else {
+      if (typeof input !== "undefined") {
+        throw "Must not have an input value for type: " + this.type;
+      }
+      if (!this.squash) {
+        throw "Must have a squash for type: " + this.type;
+      }
     }
 
     const activation = Activations.find(this.squash);
@@ -158,7 +181,7 @@ export class Node implements TagsInterface, NodeInterface {
       this.old = this.state;
 
       const toList = this.util.toConnections(this.index);
-      this.state = 0;
+      this.state = this.bias ? this.bias : 0;
       toList.forEach((c) => {
         this.state += this.util.getNode(c.from).activation * c.weight; // *
         // connection.gain;
@@ -259,11 +282,22 @@ export class Node implements TagsInterface, NodeInterface {
    * Activates the node without calculating elegibility traces and such
    */
   noTraceActivate(input?: number) {
-    // Check if an input is given
-    if (typeof input !== "undefined") {
-      this.activation = input;
-      return this.activation;
+    if (this.type == "input") {
+      if (Number.isFinite(input)) {
+        this.activation = input ? input : 0;
+        return this.activation;
+      } else {
+        throw "must have an input value for an input value";
+      }
+    } else {
+      if (typeof input !== "undefined") {
+        throw "Must not have an input value for type: " + this.type;
+      }
+      if (!this.squash) {
+        throw "Must have a squash for type: " + this.type;
+      }
     }
+
     const activation = Activations.find(this.squash);
 
     if (this.isNodeActivation(activation)) {
@@ -275,7 +309,7 @@ export class Node implements TagsInterface, NodeInterface {
       //   this.bias;
 
       const conttections = this.util.toConnections(this.index);
-      let value = 0;
+      let value = this.bias ? this.bias : 0;
       conttections.forEach((c) => {
         value += this.util.getNode(c.from).activation * c.weight; // *
         // connection.gain;
@@ -300,7 +334,7 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Back-propagate the error, aka learn
    */
-  propagate(rate: number, momentum: number, update: boolean, target: number) {
+  propagate(rate: number, momentum: number, update: boolean, target?: number) {
     momentum = momentum || 0;
     rate = rate || 0.3;
 
@@ -309,7 +343,7 @@ export class Node implements TagsInterface, NodeInterface {
 
     // Output nodes get their error from the enviroment
     if (this.type === "output") {
-      this.error.responsibility = this.error.projected = target -
+      this.error.responsibility = this.error.projected = (target ? target : 0) -
         this.activation;
     } else { // the rest of the nodes compute their error responsibilities by backpropagation
       // error responsibilities from all the connections projected from this node
@@ -355,9 +389,9 @@ export class Node implements TagsInterface, NodeInterface {
       this.error.responsibility = this.error.projected + this.error.gated;
     }
 
-    if (this.type === "constant") {
-      return;
-    }
+    // if (this.type === "constant") {
+    //   return;
+    // }
 
     // Adjust all the node's incoming connections
     const toList = this.util.toConnections(this.index);
@@ -389,7 +423,9 @@ export class Node implements TagsInterface, NodeInterface {
     this.totalDeltaBias += deltaBias;
     if (update) {
       this.totalDeltaBias += momentum * this.previousDeltaBias;
-      this.bias += this.totalDeltaBias;
+      if (typeof this.bias !== "undefined") {
+        this.bias += this.totalDeltaBias;
+      }
       this.previousDeltaBias = this.totalDeltaBias;
       this.totalDeltaBias = 0;
     }
@@ -454,31 +490,31 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Make this node gate a connection
    */
-  gate(connections: Connection[]) {
-    if (!Array.isArray(connections)) {
-      connections = [connections];
-    }
+  // gate(connections: Connection[]) {
+  //   if (!Array.isArray(connections)) {
+  //     connections = [connections];
+  //   }
 
-    for (let i = 0; i < connections.length; i++) {
-      const connection = connections[i];
+  //   for (let i = 0; i < connections.length; i++) {
+  //     const connection = connections[i];
 
-      this.connections.gated.push(connection);
-      connection.gater = this;
-    }
-  }
+  //     this.connections.gated.push(connection);
+  //     connection.gater = this;
+  //   }
+  // }
   /**
    * Removes the gates from this node from the given connection(s)
-   */
-  ungate(connections: Connection[]) {
-    for (let i = connections.length - 1; i >= 0; i--) {
-      const connection = connections[i];
+  //  */
+  // ungate(connections: Connection[]) {
+  //   for (let i = connections.length - 1; i >= 0; i--) {
+  //     const connection = connections[i];
 
-      const index = this.connections.gated.indexOf(connection);
-      this.connections.gated.splice(index, 1);
-      connection.gater = null;
-      connection.gain = 1;
-    }
-  }
+  //     const index = this.connections.gated.indexOf(connection);
+  //     this.connections.gated.splice(index, 1);
+  //     connection.gater = null;
+  //     connection.gain = 1;
+  //   }
+  // }
 
   /**
    * Clear the context of the node
@@ -510,12 +546,16 @@ export class Node implements TagsInterface, NodeInterface {
    * Mutates the node with the given method
    */
   mutate(method: string) {
-    if (typeof method === "undefined") {
-      throw new Error("No mutate method given!");
-    } /*else if (!(method.name in Mutation.ALL)) {
-          throw new Error("This method does not exist!");
-        }*/
+    // if (typeof method === "undefined") {
+    //   throw new Error("No mutate method given!");
+    // } /*else if (!(method.name in Mutation.ALL)) {
+    //       throw new Error("This method does not exist!");
+    //     }*/
 
+    if (typeof method !== "string") {
+      console.trace();
+      throw "Mutate method wrong type: " + (typeof method);
+    }
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
         // Can't be the same squash
@@ -537,6 +577,9 @@ export class Node implements TagsInterface, NodeInterface {
         this.bias = modification + (this.bias ? this.bias : 0);
         break;
       }
+      default:
+        console.trace();
+        throw "Unknown mutate method: " + method;
     }
   }
 
@@ -574,7 +617,6 @@ export class Node implements TagsInterface, NodeInterface {
     if (this.type === "input") {
       return {
         type: this.type,
-        squash: this.squash,
         tags: this.tags ? [...this.tags] : undefined,
       };
     } else {

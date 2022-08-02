@@ -18,7 +18,7 @@ import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
 // import { NodeInterface } from "../architecture/NodeInterface.ts";
-
+import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 const cacheDataFile = {
   fn: "",
   json: {},
@@ -46,6 +46,84 @@ export class NetworkUtil {
     // }
   }
 
+  initialize(options: {
+    layers?: { squash: string; count: number }[];
+  }) {
+    // Create input nodes
+    for (let i = this.network.input; i--;) {
+      const type = "input";
+      const node = new Node(type, 0, this);
+      node.index = this.network.nodes.length;
+      this.network.nodes.push(node);
+    }
+
+    if (options.layers) {
+      let lastStartIndx = 0;
+      let lastEndIndx = this.network.nodes.length - 1;
+
+      for (let i = 0; i < options.layers.length; i++) {
+        const layer = options.layers[i];
+
+        if (layer.count <= 0) {
+          throw "Layer count should be positive was: " + layer.count;
+        }
+        for (let j = 0; j < layer.count; j++) {
+          const node = new Node(
+            "hidden",
+            0,
+            this,
+            layer.squash ? layer.squash : LOGISTIC.NAME,
+          );
+          node.index = this.network.nodes.length;
+          this.network.nodes.push(node);
+        }
+
+        for (let k = lastStartIndx; k <= lastEndIndx; k++) {
+          for (let l = lastEndIndx + 1; l < this.network.nodes.length; l++) {
+            this.connect(k, l, Connection.randomWeight());
+          }
+        }
+        lastStartIndx = lastEndIndx + 1;
+        lastEndIndx = this.network.nodes.length - 1;
+      }
+
+      // Create output nodes
+      for (let i = this.network.output; i--;) {
+        const type = "output";
+        const node = new Node(type, 0, this);
+        node.index = this.network.nodes.length;
+        this.network.nodes.push(node);
+      }
+
+      for (let k = lastStartIndx; k <= lastEndIndx; k++) {
+        for (let l = lastEndIndx + 1; l < this.network.nodes.length; l++) {
+          this.connect(k, l, Connection.randomWeight());
+        }
+      }
+    } else {
+      // Create output nodes
+      for (let i = this.network.output; i--;) {
+        const type = "output";
+        const node = new Node(type, 0, this);
+        node.index = this.network.nodes.length;
+        this.network.nodes.push(node);
+      }
+
+      // Connect input nodes with output nodes directly
+      for (let i = 0; i < this.network.input; i++) {
+        for (
+          let j = this.network.input;
+          j < this.network.output + this.network.input;
+          j++
+        ) {
+          /** https://stats.stackexchange.com/a/248040/147931 */
+          const weight = Math.random() * this.network.input *
+            Math.sqrt(2 / this.network.input);
+          this.connect(i, j, weight);
+        }
+      }
+    }
+  }
   /**
    * Validate the network
    * @param options specific values to check
@@ -267,6 +345,21 @@ export class NetworkUtil {
     return results;
   }
 
+  gates(): ConnectionInterface[] {
+    const key = "gates";
+    let results: ConnectionInterface[] = this.cache[key];
+    if (results == null) {
+      results = [];
+      const tmpList = this.network.connections;
+      tmpList.forEach((c) => {
+        if (typeof c.gater !== "undefined") results.push(c);
+      });
+
+      this.cache[key] = results;
+    }
+    return results;
+  }
+
   gateConnections(indx: number): ConnectionInterface[] {
     const key = "gate:" + indx;
     let results: ConnectionInterface[] = this.cache[key];
@@ -274,7 +367,7 @@ export class NetworkUtil {
       results = [];
       const tmpList = this.network.connections;
       tmpList.forEach((c) => {
-        if (c.gate === indx) results.push(c);
+        if (c.gater === indx) results.push(c);
       });
 
       this.cache[key] = results;
@@ -489,7 +582,7 @@ export class NetworkUtil {
       i >= this.network.nodes.length - this.network.output;
       i--
     ) {
-      const n = this.network.nodes[i];
+      const n = (this.network.nodes[i] as Node);
       n.propagate(
         rate,
         momentum,
@@ -504,7 +597,7 @@ export class NetworkUtil {
       i >= this.network.input;
       i--
     ) {
-      const n = this.network.nodes[i];
+      const n = (this.network.nodes[i] as Node);
       n.propagate(rate, momentum, update);
     }
   }
@@ -1014,9 +1107,6 @@ export class NetworkUtil {
   }
 
   public addNode(focusList?: number[]) {
-    console.info("addNode", this.network.connections);
-    this.validate();
-
     const network = this.network as Network;
 
     const node = new Node("hidden", 0, this);
@@ -1088,7 +1178,6 @@ export class NetworkUtil {
       console.trace();
       throw "Should have a to index";
     }
-
   }
 
   private _insertNode(node: Node) {
@@ -1254,7 +1343,7 @@ export class NetworkUtil {
       );
       const node = network.nodes[index];
       if (!this.inFocus(index, focusList)) continue;
-      node.mutate(Mutation.MOD_BIAS);
+      node.mutate(Mutation.MOD_BIAS.name);
       break;
     }
   }
@@ -1272,7 +1361,7 @@ export class NetworkUtil {
       const node = network.nodes[index];
 
       if (this.inFocus(index, focusList)) {
-        node.mutate(Mutation.MOD_ACTIVATION);
+        node.mutate(Mutation.MOD_ACTIVATION.name);
         break;
       }
     }
@@ -1332,7 +1421,7 @@ export class NetworkUtil {
     const possible = [];
     for (let i = 0; i < network.connections.length; i++) {
       const conn = network.connections[i];
-      if (conn.gater === null) {
+      if (!Number.isInteger(conn.gater)) {
         possible.push(conn);
       }
     }
@@ -1342,18 +1431,20 @@ export class NetworkUtil {
     }
 
     for (let attempts = 0; attempts < 12; attempts++) {
-      // Select a random gater node and connection, can't be gated by input
-      const index = Math.floor(
-        Math.random() * (network.nodes.length - network.input) +
-          network.input,
-      );
-      const node = network.nodes[index];
-
-      if (this.inFocus(node, focusList)) {
-        const conn = possible[Math.floor(Math.random() * possible.length)];
+      const conn = possible[Math.floor(Math.random() * possible.length)];
+      if (
+        this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
+      ) {
+        // Select a random gater node and connection, can't be gated by input
+        const index = Math.floor(
+          Math.random() * (conn.to - network.input) +
+            network.input,
+        );
+        conn.gater = index;
+        // const node = network.nodes[index];
 
         // Gate the connection with the node
-        network.gate(node, conn);
+        // network.gate(index, conn);
         break;
       }
     }
@@ -1498,8 +1589,9 @@ export class NetworkUtil {
    * Mutates the network with the given method
    */
   mutate(method: { name: string }, focusList?: number[]) {
-    if (typeof method === "undefined") {
-      throw new Error("No (correct) mutate method given!");
+    if (typeof method.name !== "string") {
+      console.trace();
+      throw "Mutate method wrong type: " + (typeof method);
     }
 
     switch (method.name) {

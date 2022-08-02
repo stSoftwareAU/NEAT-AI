@@ -87,7 +87,6 @@ export class WorkerHandler {
         {
           type: "module",
           deno: {
-            namespace: true,
             permissions: {
               read: [
                 dataSetDir,

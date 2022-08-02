@@ -18,10 +18,16 @@ declare global {
 window.DEBUG = true;
 
 /* Functions used in the testing process */
-function checkMutation(method: unknown) {
+function checkMutation(method: { name: string }) {
   // const network = architect.Perceptron(2, 4, 4, 4, 2);
   // const network = architect.Random(2, 4*4, 2);
-  const network = new Network(2, 2);
+  const network = new Network(2, 2, {
+    layers: [
+      { count: 4 },
+      { count: 4 },
+      { count: 4 },
+    ],
+  });
   network.util.mutate(Mutation.ADD_GATE);
   network.util.mutate(Mutation.ADD_BACK_CONN);
   network.util.mutate(Mutation.ADD_SELF_CONN);
@@ -36,7 +42,7 @@ function checkMutation(method: unknown) {
   }
 
   const json1 = JSON.stringify(network.toJSON(), null, 2);
-  network.util.mutate(method as { name: string });
+  network.util.mutate(method);
   const json2 = JSON.stringify(network.toJSON(), null, 2);
 
   console.info(json1);
@@ -197,7 +203,7 @@ Deno.test("Feed-forward", () => {
   }
 
   // Crossover
-  const network = NetworkUtil.crossOver(network1, network2, false);
+  const network = NetworkUtil.crossOver(network1, network2);
 
   // Check if the network is feed-forward correctly
   for (i = 0; i < network.connections.length; i++) {
@@ -208,13 +214,19 @@ Deno.test("Feed-forward", () => {
     assert(from < to, "network is not feeding forward correctly");
   }
 });
+
 Deno.test("from/toJSON equivalency", () => {
   let original, copy;
-  original = architect.Perceptron(
+  original = new Network(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
+    {
+      layers: [
+        { count: Math.floor(Math.random() * 5 + 1) },
+      ],
+    },
   );
+
   copy = Network.fromJSON(original.toJSON());
   testEquality(original, copy);
 

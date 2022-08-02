@@ -9,14 +9,14 @@ import { NetworkUtil } from "./NetworkUtil.ts";
 NETWORK
 *******************************************************************************/
 export class Network {
-  constructor(input, output, initialise = true) {
+  constructor(input, output, options = {}) {
     if (typeof input === "undefined" || typeof output === "undefined") {
       throw new Error("No input or output size given");
     }
 
     this.input = input;
     this.output = output;
-
+    this.nodes = [];
     this.connections = [];
     // this.gates = [];
     // this.selfconns = [];
@@ -26,31 +26,12 @@ export class Network {
     // Just define a variable.
     this.score = undefined;
 
-    if (initialise) {
-      const nLen = this.input + this.output;
-      this.nodes = new Array(nLen); // Stored in activation order
-      // Create input and output nodes
-      for (let i = nLen; i--;) {
-        const type = i < this.input ? "input" : "output";
-        const node = new Node(type, 0, this.util);
-        node.index = i;
-        this.nodes[i] = node;
-      }
+    if (options) {
+      this.util.initialize(options);
 
-      // Connect input nodes with output nodes directly
-      for (let i = 0; i < this.input; i++) {
-        for (let j = this.input; j < this.output + this.input; j++) {
-          /** https://stats.stackexchange.com/a/248040/147931 */
-          const weight = Math.random() * this.input * Math.sqrt(2 / this.input);
-          this.util.connect(i, j, weight);
-        }
+      if (window.DEBUG) {
+        this.util.validate();
       }
-    } else {
-      this.nodes = [];
-    }
-
-    if (window.DEBUG && initialise) {
-      this.util.validate();
     }
   }
 
@@ -130,24 +111,24 @@ export class Network {
   /**
    * Gate a connection with a node
    */
-  gate(node, connection) {
-    console.trace();
-    throw "not done";
-    // if (this.nodes.indexOf(node) === -1) {
-    //   const msg = "Gate: This node is not part of the network!";
-    //   console.warn(msg, node);
-    //   console.trace();
-    //   if (window.DEBUG == true) throw new Error(msg);
+  // gate(node, connection) {
+  //   console.trace();
+  //   throw "not done";
+  // if (this.nodes.indexOf(node) === -1) {
+  //   const msg = "Gate: This node is not part of the network!";
+  //   console.warn(msg, node);
+  //   console.trace();
+  //   if (window.DEBUG == true) throw new Error(msg);
 
-    //   return;
-    // } else if (connection.gater != null) {
-    //   console.warn("This connection is already gated!");
+  //   return;
+  // } else if (connection.gater != null) {
+  //   console.warn("This connection is already gated!");
 
-    //   return;
-    // }
-    // node.gate(connection);
-    // this.gates.push(connection);
-  }
+  //   return;
+  // }
+  // node.gate(connection);
+  // this.gates.push(connection);
+  // }
 
   /**
    * Creates a json that can be used to create a graph with d3 and webcola
