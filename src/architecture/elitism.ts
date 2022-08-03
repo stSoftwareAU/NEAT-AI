@@ -1,5 +1,3 @@
-// const DEBUG=true;
-
 export interface ScorableInterface {
   score: number;
   nodes: { index: number }[];

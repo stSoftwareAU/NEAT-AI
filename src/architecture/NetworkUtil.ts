@@ -19,6 +19,12 @@ import { Connection } from "./Connection.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
 // import { NodeInterface } from "../architecture/NodeInterface.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
+declare global {
+  interface Window {
+    DEBUG: boolean;
+  }
+}
+
 const cacheDataFile = {
   fn: "",
   json: {},
@@ -468,6 +474,11 @@ export class NetworkUtil {
     }
 
     if (typeof weight !== "number") {
+      if( window.DEBUG){
+        window.DEBUG=false;
+        console.warn(JSON.stringify( this.network.toJSON(), null, 2));
+        window.DEBUG=true;
+      }
       console.trace();
       throw from + ":" + to + ") weight not a number was: " + weight;
     }
