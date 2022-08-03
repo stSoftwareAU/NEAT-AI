@@ -36,7 +36,7 @@ Deno.test("MT", () => {
   // const network = architect.Perceptron(2, 5, 1);
   const network = new Network(2, 1, {
     layers: [
-      { count: 5 }
+      { count: 5 },
     ],
   });
   const util = new NetworkUtil(network);
@@ -58,7 +58,7 @@ Deno.test("train-XOR", () => {
   ];
   const network = new Network(2, 1, {
     layers: [
-      { count: 5 }
+      { count: 5 },
     ],
   });
   // const network = architect.Perceptron(2, 5, 1);
@@ -82,7 +82,7 @@ Deno.test("XNOR", () => {
   ];
   const network = new Network(2, 1, {
     layers: [
-      { count: 5 }
+      { count: 5 },
     ],
   });
   // const network = architect.Perceptron(2, 5, 1);

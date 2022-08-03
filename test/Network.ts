@@ -539,7 +539,7 @@ Deno.test("NARX Sequence", async () => {
   // const narx = architect.NARX(1, 5, 1, 3, 3);
   const narx = new Network(1, 1, {
     layers: [
-      { count: 5 }
+      { count: 5 },
     ],
   });
   // Train the XOR gate (in sequence!)

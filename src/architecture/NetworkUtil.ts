@@ -469,7 +469,7 @@ export class NetworkUtil {
 
     if (typeof weight !== "number") {
       console.trace();
-      throw "weight not a number was: " + weight;
+      throw from + ":" + to + ") weight not a number was: " + weight;
     }
 
     const connection = new Connection(
@@ -1734,11 +1734,28 @@ export class NetworkUtil {
     offspring.connections = [];
     offspring.nodes = [];
 
-    // Determine offspring node size
-    const max = Math.max(network1.nodes.length, network2.nodes.length);
-    const min = Math.min(network1.nodes.length, network2.nodes.length);
-    const size = Math.floor(Math.random() * (max - min + 1) + min);
+    let size;
 
+    if (network1.nodes.length == network2.nodes.length) {
+      size = network1.nodes.length;
+    } else {
+      if (
+        network1.score > network2.score &&
+        network1.nodes.length > network2.nodes.length
+      ) {
+        size = network1.nodes.length;
+      } else if (
+        network2.score > network1.score &&
+        network2.nodes.length > network1.nodes.length
+      ) {
+        size = network2.nodes.length;
+      } else {
+        // Determine offspring node size
+        const max = Math.max(network1.nodes.length, network2.nodes.length);
+        const min = Math.min(network1.nodes.length, network2.nodes.length);
+        size = Math.floor(Math.random() * (max - min + 1) + min);
+      }
+    }
     // Rename some variables for easier reading
     const outputSize = network1.output;
 
@@ -1806,6 +1823,8 @@ export class NetworkUtil {
     // Normal connections
     for (let i = network1.connections.length; i--;) {
       const conn = network1.connections[i] as Connection;
+      if (conn.from >= offspring.nodes.length - offspring.output) continue;
+      if (conn.to >= offspring.nodes.length) continue;
       const newConn = new Connection(
         conn.from,
         conn.to,
@@ -1832,6 +1851,8 @@ export class NetworkUtil {
     // Normal connections
     for (let i = network2.connections.length; i--;) {
       const conn = network2.connections[i];
+      if (conn.from >= offspring.nodes.length - offspring.output) continue;
+      if (conn.to >= offspring.nodes.length) continue;
       const newConn = new Connection(
         conn.from,
         conn.to,
