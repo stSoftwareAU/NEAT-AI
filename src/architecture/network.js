@@ -29,7 +29,7 @@ export class Network {
     if (options) {
       this.util.initialize(options);
 
-      if (window.DEBUG) {
+      if (globalThis.DEBUG) {
         this.util.validate();
       }
     }
@@ -118,7 +118,7 @@ export class Network {
   //   const msg = "Gate: This node is not part of the network!";
   //   console.warn(msg, node);
   //   console.trace();
-  //   if (window.DEBUG == true) throw new Error(msg);
+  //   if (globalThis.DEBUG == true) throw new Error(msg);
 
   //   return;
   // } else if (connection.gater != null) {
@@ -241,7 +241,7 @@ export class Network {
    * Convert the network to a json object
    */
   toJSON() {
-    if (window.DEBUG) {
+    if (globalThis.DEBUG) {
       this.util.validate();
     }
 
@@ -334,7 +334,7 @@ export class Network {
       }
     }
 
-    if (window.DEBUG) {
+    if (globalThis.DEBUG) {
       network.util.validate();
     }
 

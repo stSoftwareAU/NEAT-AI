@@ -19,11 +19,8 @@ import { Connection } from "./Connection.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
 // import { NodeInterface } from "../architecture/NodeInterface.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
-declare global {
-  interface Window {
-    DEBUG: boolean;
-  }
-}
+
+const DEBUG = ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG;
 
 const cacheDataFile = {
   fn: "",
@@ -209,10 +206,10 @@ export class NetworkUtil {
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
             console.trace();
-            if (window.DEBUG) {
-              window.DEBUG = false;
+            if (DEBUG) {
+              ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG=false;
               console.warn(JSON.stringify(this.network.toJSON(), null, 2));
-              window.DEBUG = true;
+              ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG=true;
             }
             throw indx + ") output node has no inward connections";
           }
@@ -474,10 +471,11 @@ export class NetworkUtil {
     }
 
     if (typeof weight !== "number") {
-      if( window.DEBUG){
-        window.DEBUG=false;
+      if( DEBUG){
+        ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG=false;
         console.warn(JSON.stringify( this.network.toJSON(), null, 2));
-        window.DEBUG=true;
+        
+        ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG=true;
       }
       console.trace();
       throw from + ":" + to + ") weight not a number was: " + weight;
@@ -1687,7 +1685,7 @@ export class NetworkUtil {
     }
 
     this.fix();
-    if (window.DEBUG) {
+    if (DEBUG) {
       this.validate();
     }
   }

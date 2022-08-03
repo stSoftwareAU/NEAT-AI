@@ -3,7 +3,7 @@ import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
 import { emptyDirSync } from "https://deno.land/std@0.146.0/fs/empty_dir.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
-window.DEBUG = true;
+((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
 
 Deno.test("storePopulation", async () => {
   const network = architect.Random(2, 2, 1);

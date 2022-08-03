@@ -12,6 +12,7 @@ import { NeatConfig } from "./config/NeatConfig.ts";
 import { removeTag } from "../src/tags/TagsInterface.ts";
 
 const TE = new TextEncoder();
+const DEBUG = ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG;
 
 export class NeatUtil {
   private neat;
@@ -88,13 +89,13 @@ export class NeatUtil {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i] as Network;
-        if (window.DEBUG) {
+        if (DEBUG) {
           creature.util.validate();
         }
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
           // console.info( mutationMethod);
-          if (window.DEBUG) creature.util.validate();
+          if (DEBUG) creature.util.validate();
           creature.util.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
@@ -103,7 +104,7 @@ export class NeatUtil {
           );
         }
 
-        if (window.DEBUG) {
+        if (DEBUG) {
           creature.util.validate();
         }
 
@@ -120,7 +121,7 @@ export class NeatUtil {
       throw "Network mandatory";
     }
 
-    if (window.DEBUG) {
+    if (DEBUG) {
       network.util.validate();
     }
     while (this.neat.population.length < this.config.popsize) {
@@ -145,7 +146,7 @@ export class NeatUtil {
     );
 
     creature.util.fix();
-    if (window.DEBUG) creature.util.validate();
+    if (DEBUG) creature.util.validate();
     return creature;
   }
 

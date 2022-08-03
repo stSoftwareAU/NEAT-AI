@@ -6,13 +6,8 @@ import { Network } from "../src/architecture/network.js";
 import { make as makeConfig } from "../src/config/NeatConfig.ts";
 // import { addTag } from "../src/tags/TagsInterface.ts";
 
-declare global {
-  interface Window {
-    DEBUG: boolean;
-  }
-}
 
-window.DEBUG = true;
+((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
 
 Deno.test("OffSpring", async () => {
   const creature = Network.fromJSON({

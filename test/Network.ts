@@ -9,13 +9,8 @@ import {
 
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
-declare global {
-  interface Window {
-    DEBUG: boolean;
-  }
-}
 
-window.DEBUG = true;
+((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
 
 /* Functions used in the testing process */
 function checkMutation(method: { name: string }) {
@@ -636,7 +631,8 @@ Deno.test("from-to", () => {
   let toMinMS = Infinity;
   let currentJson = startJson;
   const LOOPS = 100;
-  window.DEBUG = false;
+  
+  ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = false;
   for (let i = LOOPS; i--;) {
     performance.mark("from-start");
     const currentNetwork = Network.fromJSON(currentJson);
@@ -666,7 +662,7 @@ Deno.test("from-to", () => {
       assert(false, "JSON changed");
     }
   }
-  window.DEBUG = true;
+  ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
   console.info("toJSON", toTotalMS / LOOPS, toMinMS);
   console.info("fromJSON", fromTotalMS / LOOPS, fromMinMS);
 });

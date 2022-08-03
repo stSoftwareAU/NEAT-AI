@@ -3,7 +3,7 @@ import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { Network } from "../src/architecture/network.js";
 import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
 
-window.DEBUG = true;
+((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
 
 // Compact form: name and function
 Deno.test("tune", () => {

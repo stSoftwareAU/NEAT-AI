@@ -146,7 +146,7 @@ export const architect = {
 
     network.util.fix();
 
-    if (Window.DEBUG) {
+    if (globalThis.DEBUG) {
       network.util.validate();
     }
     return network;
