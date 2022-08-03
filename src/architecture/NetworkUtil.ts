@@ -70,7 +70,7 @@ export class NetworkUtil {
         for (let j = 0; j < layer.count; j++) {
           const node = new Node(
             "hidden",
-            0,
+            undefined,
             this,
             layer.squash ? layer.squash : LOGISTIC.NAME,
           );
@@ -78,11 +78,15 @@ export class NetworkUtil {
           this.network.nodes.push(node);
         }
 
+        const tmpOutput = this.network.output;
+        this.network.output = 0;
+
         for (let k = lastStartIndx; k <= lastEndIndx; k++) {
           for (let l = lastEndIndx + 1; l < this.network.nodes.length; l++) {
             this.connect(k, l, Connection.randomWeight());
           }
         }
+        this.network.output = tmpOutput;
         lastStartIndx = lastEndIndx + 1;
         lastEndIndx = this.network.nodes.length - 1;
       }
@@ -90,7 +94,7 @@ export class NetworkUtil {
       // Create output nodes
       for (let i = this.network.output; i--;) {
         const type = "output";
-        const node = new Node(type, 0, this);
+        const node = new Node(type, undefined, this);
         node.index = this.network.nodes.length;
         this.network.nodes.push(node);
       }
@@ -104,7 +108,7 @@ export class NetworkUtil {
       // Create output nodes
       for (let i = this.network.output; i--;) {
         const type = "output";
-        const node = new Node(type, 0, this);
+        const node = new Node(type, undefined, this);
         node.index = this.network.nodes.length;
         this.network.nodes.push(node);
       }
@@ -124,6 +128,7 @@ export class NetworkUtil {
       }
     }
   }
+
   /**
    * Validate the network
    * @param options specific values to check
@@ -444,7 +449,6 @@ export class NetworkUtil {
 
     const firstOutputIndex = this.network.nodes.length - this.network.output;
     if (from >= firstOutputIndex && from !== to) {
-      console.info("Network", JSON.stringify(this.network, null, 2));
       console.trace();
       throw "from should not be from an output node (" + firstOutputIndex +
         ", len: " + this.network.nodes.length + ", output: " +
@@ -528,18 +532,21 @@ export class NetworkUtil {
     // Delete the connection in the network's connection array
     const connections = this.network.connections;
 
-    // if (connections) {
+    let found = false;
     for (let i = 0; i < connections.length; i++) {
       const connection = connections[i];
       if (connection.from === from && connection.to === to) {
-        // if (connection.gater !== null) {
-        //   this.ungate(connection);
-        // }
+        found = true;
         connections.splice(i, 1);
         this.clearCache();
 
         break;
       }
+    }
+
+    if (!found) {
+      console.trace();
+      throw "No connection from: " + from + ", to: " + to;
     }
   }
 
@@ -1109,7 +1116,7 @@ export class NetworkUtil {
   public addNode(focusList?: number[]) {
     const network = this.network as Network;
 
-    const node = new Node("hidden", 0, this);
+    const node = new Node("hidden", undefined, this);
 
     // Random squash function
     node.mutate(Mutation.MOD_ACTIVATION.name);
@@ -1375,7 +1382,7 @@ export class NetworkUtil {
       if (this.inFocus(i, focusList)) {
         const node = network.nodes[i];
         const c = this.getConnection(node.index, node.index);
-        if (c !== null) {
+        if (c === null) {
           possible.push(node);
         }
       }
@@ -1393,29 +1400,32 @@ export class NetworkUtil {
   }
 
   private subSelfCon(focusList?: number[]) {
-    console.trace();
-    throw "not done";
-    // const network = this.network as Network;
-    // if (network.selfconns.length === 0) {
-    //   return;
-    // }
+    const network = this.network as Network;
+    // Check which nodes aren't selfconnected yet
+    const possible = [];
+    for (let i = network.input; i < network.nodes.length; i++) {
+      if (this.inFocus(i, focusList)) {
+        const node = network.nodes[i];
+        const c = this.getConnection(node.index, node.index);
+        if (c !== null) {
+          possible.push(node);
+        }
+      }
+    }
 
-    // for (let attempts = 0; attempts < 12; attempts++) {
-    //   const conn = network
-    //     .selfconns[Math.floor(Math.random() * network.selfconns.length)];
+    if (possible.length === 0) {
+      return;
+    }
 
-    //   if (
-    //     this.inFocus(conn.from, focusList) || this.inFocus(conn.to, focusList)
-    //   ) {
-    //     network.disconnect(conn.from, conn.to);
-    //     break;
-    //   }
-    // }
+    // Select a random node
+    const node = possible[Math.floor(Math.random() * possible.length)];
+
+    // Connect it to himself
+    this.disconnect(node.index, node.index);
   }
 
   private addGate(focusList?: number[]) {
     const network = this.network as Network;
-    // const allconnections = network.connections.concat(network.selfconns);
 
     // Create a list of all non-gated connections
     const possible = [];
@@ -1441,48 +1451,52 @@ export class NetworkUtil {
             network.input,
         );
         conn.gater = index;
-        // const node = network.nodes[index];
 
-        // Gate the connection with the node
-        // network.gate(index, conn);
         break;
       }
     }
+
+    this.clearCache();
   }
 
   private subGate(focusList?: number[]) {
-    console.trace();
-    throw "not done";
-    // const network = this.network as Network;
-    // // Select a random gated connection
-    // if (network.gates.length === 0) {
-    //   return;
-    // }
+    const network = this.network as Network;
 
-    // for (let attempts = 0; attempts < 12; attempts++) {
-    //   const index = Math.floor(Math.random() * network.gates.length);
-    //   const gatedconn = network.gates[index];
+    // Create a list of all non-gated connections
+    const possible = [];
+    for (let i = 0; i < network.connections.length; i++) {
+      const conn = network.connections[i];
+      if (conn.gater >= 0) {
+        possible.push(conn);
+      }
+    }
 
-    //   if (
-    //     this.inFocus(gatedconn.from, focusList) ||
-    //     this.inFocus(gatedconn.to, focusList)
-    //   ) {
-    //     network.ungate(gatedconn);
-    //     break;
-    //   }
-    // }
+    if (possible.length === 0) {
+      return;
+    }
+
+    for (let attempts = 0; attempts < 12; attempts++) {
+      const conn = possible[Math.floor(Math.random() * possible.length)];
+      if (
+        this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
+      ) {
+        conn.gater = undefined;
+
+        break;
+      }
+    }
+
+    this.clearCache();
   }
 
   private addBackConn(focusList?: number[]) {
-    // console.trace();
-    // throw "not done";
     const network = this.network as Network;
 
     // Create an array of all uncreated (backfed) connections
     const available = [];
     for (let i = network.input; i < network.nodes.length; i++) {
-      const node1 = network.nodes[i];
-      if (this.inFocus(node1.index, focusList)) {
+      if (this.inFocus(i, focusList)) {
+        const node1 = network.nodes[i];
         for (let j = network.input; j < i; j++) {
           const node2 = network.nodes[j];
           if (node2.type == "output") break;
@@ -1504,34 +1518,31 @@ export class NetworkUtil {
   }
 
   private subBackConn(focusList?: number[]) {
-    console.trace();
-    throw "not done";
-    // const network = this.network as Network;
-    // // List of possible connections that can be removed
-    // const possible = [];
+    const network = this.network as Network;
 
-    // for (let i = 0; i < network.connections.length; i++) {
-    //   const conn = network.connections[i];
-    //   // Check if it is not disabling a node
-    //   if (
-    //     conn.from.connections.out.length > 1 &&
-    //     conn.to.connections.in.length > 1 &&
-    //     network.nodes.indexOf(conn.from) > network.nodes.indexOf(conn.to)
-    //   ) {
-    //     if (
-    //       this.inFocus(conn.from, focusList) || this.inFocus(conn.to, focusList)
-    //     ) {
-    //       possible.push(conn);
-    //     }
-    //   }
-    // }
+    // Create an array of all uncreated (backfed) connections
+    const available = [];
+    for (let i = network.input; i < network.nodes.length; i++) {
+      if (this.inFocus(i, focusList)) {
+        const node1 = network.nodes[i];
+        for (let j = network.input; j < i; j++) {
+          const node2 = network.nodes[j];
+          if (node2.type == "output") break;
+          if (this.inFocus(node2.index, focusList)) {
+            if (node2.isProjectingTo(node1)) {
+              available.push([node2, node1]);
+            }
+          }
+        }
+      }
+    }
 
-    // if (possible.length === 0) {
-    //   return;
-    // }
+    if (available.length === 0) {
+      return;
+    }
 
-    // const randomConn = possible[Math.floor(Math.random() * possible.length)];
-    // network.disconnect(randomConn.from, randomConn.to);
+    const pair = available[Math.floor(Math.random() * available.length)];
+    this.disconnect(pair[0].index, pair[1].index);
   }
 
   private _swapNodes(focusList?: number[]) {

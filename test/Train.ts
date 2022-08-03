@@ -33,7 +33,12 @@ Deno.test("MT", () => {
     { input: [1, 1], output: [1] },
   ];
 
-  const network = architect.Perceptron(2, 5, 1);
+  // const network = architect.Perceptron(2, 5, 1);
+  const network = new Network(2, 1, {
+    layers: [
+      { count: 5 }
+    ],
+  });
   const util = new NetworkUtil(network);
 
   const results = util.train(trainingSet, {
@@ -51,8 +56,12 @@ Deno.test("train-XOR", () => {
     { input: [1, 0], output: [1] },
     { input: [1, 1], output: [0] },
   ];
-
-  const network = architect.Perceptron(2, 5, 1);
+  const network = new Network(2, 1, {
+    layers: [
+      { count: 5 }
+    ],
+  });
+  // const network = architect.Perceptron(2, 5, 1);
   const util = new NetworkUtil(network);
 
   const results = util.train(trainingSet, {
@@ -71,8 +80,12 @@ Deno.test("XNOR", () => {
     { input: [1, 0], output: [0] },
     { input: [1, 1], output: [1] },
   ];
-
-  const network = architect.Perceptron(2, 5, 1);
+  const network = new Network(2, 1, {
+    layers: [
+      { count: 5 }
+    ],
+  });
+  // const network = architect.Perceptron(2, 5, 1);
   const util = new NetworkUtil(network);
 
   const results = util.train(trainingSet, {

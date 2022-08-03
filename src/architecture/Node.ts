@@ -43,7 +43,10 @@ export class Node implements TagsInterface, NodeInterface {
         throw "invalid type: " + type;
       }
 
-      if (typeof bias !== "number") {
+      if (typeof bias === "undefined") {
+        bias = Math.random() * 0.2 - 0.1;
+      }
+      if (!isFinite(bias)) {
         console.trace();
         throw "bias (other than for " + type + ") must be a number was: " +
           (typeof bias);
@@ -151,12 +154,6 @@ export class Node implements TagsInterface, NodeInterface {
    * Activates the node
    */
   activate(input?: number) {
-    // Check if an input is given
-    // if (typeof input !== "undefined") {
-    //   this.activation = input;
-    //   return this.activation;
-    // }
-
     if (this.type == "input") {
       if (Number.isFinite(input)) {
         this.activation = input ? input : 0;
@@ -183,8 +180,7 @@ export class Node implements TagsInterface, NodeInterface {
       const toList = this.util.toConnections(this.index);
       this.state = this.bias ? this.bias : 0;
       toList.forEach((c) => {
-        this.state += this.util.getNode(c.from).activation * c.weight; // *
-        // connection.gain;
+        this.state += this.util.getNode(c.from).activation * c.weight * c.gain;
       });
 
       // // All activation sources coming from the node itself
@@ -217,10 +213,10 @@ export class Node implements TagsInterface, NodeInterface {
         //   const conn = this.connections.gated[i];
         const node = this.util.getNode(conn.to);
 
-        const index = nodes.indexOf(node);
-        if (index > -1) {
+        const pos = nodes.indexOf(node);
+        if (pos > -1) {
           const from = this.util.getNode(conn.from);
-          influences[index] += conn.weight * from.activation;
+          influences[pos] += conn.weight * from.activation;
         } else {
           nodes.push(node);
           const from = this.util.getNode(conn.from);

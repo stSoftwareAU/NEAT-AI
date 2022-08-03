@@ -43,5 +43,5 @@ Deno.test("knownName", async () => {
 
   console.log("Name", name);
 
-  assert(name == "RODNwSiat-xgmhnOxnIthwtEz9HsManTEsOu7vrKDRs", "Wrong name");
+  assert(name == "SLlAZQPDNDna2fU4RduVHJlWkisQTLSLqK5lLrNv45s", "Wrong name");
 });
