@@ -87,10 +87,10 @@ Deno.test("x", () => {
 Deno.test("booleanXOR", async () => {
   // Train the XOR gate
   const trainingSet = [
-    { input: [false, false], output: [0] },
-    { input: [false, true], output: [1] },
-    { input: [true, false], output: [1] },
-    { input: [true, true], output: [0] },
+    { input: [0, 0], output: [0] },
+    { input: [0, 1], output: [1] },
+    { input: [1, 0], output: [1] },
+    { input: [1, 1], output: [0] },
   ];
 
   const network = new Network(2, 1);

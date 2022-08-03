@@ -1255,8 +1255,6 @@ export class NetworkUtil {
         const node2 = network.nodes[j];
 
         if (!node1.isProjectingTo(node2)) {
-          // console.info( "ZZZZZZZ");
-          // console.info( JSON.stringify( this.network.toJSON(), null, 2));
           node1.isProjectingTo(node2);
           available.push([node1, node2]);
         }
@@ -1900,22 +1898,6 @@ export class NetworkUtil {
       }
     });
 
-    // // Add common conn genes uniformly
-    // for (let i = 0; i < connections.length; i++) {
-    //   const connData = connections[i];
-    //   if (connData.to < size && connData.from < size) {
-    //     const from = offspring.nodes[connData.from];
-    //     const to = offspring.nodes[connData.to];
-    //     const conn = offspring.connect(from, to)[0];
-
-    //     conn.weight = connData.weight;
-
-    //     if (connData.gater !== -1 && connData.gater < size) {
-    //       offspring.gate(offspring.nodes[connData.gater], conn);
-    //     }
-    //   }
-    // }
-
     connections.sort((a, b) => {
       if (a.from == b.from) {
         return a.to - b.to;
@@ -1925,11 +1907,6 @@ export class NetworkUtil {
 
     offspring.connections = connections;
 
-    if (window.DEBUG) {
-      window.DEBUG = false;
-      console.warn("crossOver", JSON.stringify(offspring.toJSON(), null, 2));
-      window.DEBUG = true;
-    }
     return offspring;
   }
 }
