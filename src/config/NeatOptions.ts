@@ -17,6 +17,9 @@ export interface NeatOptions {
   /** number of records per dataset file. default: 2000 */
   dataSetParitionBreak?: number;
 
+  /** debug (much slower) */
+  debug?: boolean;
+
   /** The directory to store the experiments (optional) */
   experimentStore?: string;
 

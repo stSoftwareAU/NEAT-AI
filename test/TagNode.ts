@@ -1,6 +1,8 @@
-import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 
-import { Network } from "../../NEAT-TS/src/architecture/network.js";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("TagNode", () => {
   const json = {
@@ -29,11 +31,11 @@ Deno.test("TagNode", () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = NetworkUtil.fromJSON(json);
 
   const json2 = network.toJSON();
 
-  const network2 = Network.fromJSON(json2);
+  const network2 = NetworkUtil.fromJSON(json2);
   const json3 = network2.toJSON();
 
   // console.info( JSON.stringify( json3, null, 2));

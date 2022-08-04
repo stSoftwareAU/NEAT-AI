@@ -5,12 +5,12 @@ import {
   assert,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.146.0/testing/asserts.ts";
+} from "https://deno.land/std@0.150.0/testing/asserts.ts";
 
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
-((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 /* Functions used in the testing process */
 function checkMutation(method: { name: string }) {
@@ -222,14 +222,14 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = Network.fromJSON(original.toJSON());
+  copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
 
   original = new Network(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
   );
-  copy = Network.fromJSON(original.toJSON());
+  copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
 
   // original = architect.LSTM(
@@ -237,7 +237,7 @@ Deno.test("from/toJSON equivalency", () => {
   //   Math.floor(Math.random() * 5 + 1),
   //   Math.floor(Math.random() * 5 + 1),
   // );
-  // copy = Network.fromJSON(original.toJSON());
+  // copy = NetworkUtil.fromJSON(original.toJSON());
   // testEquality(original, copy);
 
   // original = architect.GRU(
@@ -246,7 +246,7 @@ Deno.test("from/toJSON equivalency", () => {
   //   Math.floor(Math.random() * 5 + 1),
   //   Math.floor(Math.random() * 5 + 1),
   // );
-  // copy = Network.fromJSON(original.toJSON());
+  // copy = NetworkUtil.fromJSON(original.toJSON());
   // testEquality(original, copy);
 
   original = architect.Random(
@@ -254,7 +254,7 @@ Deno.test("from/toJSON equivalency", () => {
     Math.floor(Math.random() * 10 + 1),
     Math.floor(Math.random() * 5 + 1),
   );
-  copy = Network.fromJSON(original.toJSON());
+  copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
 
   // original = architect.NARX(
@@ -264,11 +264,11 @@ Deno.test("from/toJSON equivalency", () => {
   //   Math.floor(Math.random() * 5 + 1),
   //   Math.floor(Math.random() * 5 + 1),
   // );
-  // copy = Network.fromJSON(original.toJSON());
+  // copy = NetworkUtil.fromJSON(original.toJSON());
   // testEquality(original, copy);
 
   // original = architect.Hopfield(Math.floor(Math.random() * 5 + 1));
-  // copy = Network.fromJSON(original.toJSON());
+  // copy = NetworkUtil.fromJSON(original.toJSON());
   // testEquality(original, copy);
 });
 /* Deno.test("standalone equivalency", () => {
@@ -631,11 +631,11 @@ Deno.test("from-to", () => {
   let toMinMS = Infinity;
   let currentJson = startJson;
   const LOOPS = 100;
-  
-  ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = false;
+
+  ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = false;
   for (let i = LOOPS; i--;) {
     performance.mark("from-start");
-    const currentNetwork = Network.fromJSON(currentJson);
+    const currentNetwork = NetworkUtil.fromJSON(currentJson);
     performance.mark("from-end");
     const fromMS = performance.measure("", "from-start", "from-end").duration;
     fromMinMS = fromMinMS > fromMS ? fromMS : fromMinMS;
@@ -662,7 +662,7 @@ Deno.test("from-to", () => {
       assert(false, "JSON changed");
     }
   }
-  ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
+  ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
   console.info("toJSON", toTotalMS / LOOPS, toMinMS);
   console.info("fromJSON", fromTotalMS / LOOPS, fromMinMS);
 });

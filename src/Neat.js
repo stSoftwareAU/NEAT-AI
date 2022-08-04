@@ -1,5 +1,4 @@
 /* Import */
-import { Network } from "./architecture/network.js";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { Methods } from "./methods/methods.js";
 import { make as makeConfig } from "./config/NeatConfig.ts";
@@ -7,6 +6,8 @@ import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
 import { NeatUtil } from "./NeatUtil.ts";
+
+import { NetworkUtil } from "./architecture/NetworkUtil.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -73,7 +74,10 @@ export class Neat {
     );
     const tmpFittest = elitists[0];
 
-    const fittest = Network.fromJSON(tmpFittest.toJSON()); // Make a copy so it's not mutated.
+    const fittest = NetworkUtil.fromJSON(
+      tmpFittest.toJSON(),
+      this.config.debug,
+    ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
     addTag(fittest, "score", fittest.score.toString());
     addTag(fittest, "error", getTag(fittest, "error"));
@@ -225,7 +229,7 @@ export class Neat {
             addTag(json, "error", Math.abs(r.train.error));
             addTag(json, "duration", r.duration);
 
-            trainPopulation.push(Network.fromJSON(json));
+            trainPopulation.push(NetworkUtil.fromJSON(json, this.config.debug));
           }
         } else {
           throw "No train result";

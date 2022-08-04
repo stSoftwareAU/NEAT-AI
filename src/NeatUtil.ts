@@ -5,14 +5,13 @@ import { Network } from "./architecture/network.js";
 import { NetworkUtil } from "./architecture/NetworkUtil.ts";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Mutation } from "./methods/mutation.ts";
-import { crypto } from "https://deno.land/std@0.146.0/crypto/mod.ts";
-import { encode } from "https://deno.land/std@0.146.0/encoding/base64.ts";
-import { ensureDirSync } from "https://deno.land/std@0.146.0/fs/ensure_dir.ts";
+import { crypto } from "https://deno.land/std@0.150.0/crypto/mod.ts";
+import { encode } from "https://deno.land/std@0.150.0/encoding/base64.ts";
+import { ensureDirSync } from "https://deno.land/std@0.150.0/fs/ensure_dir.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import { removeTag } from "../src/tags/TagsInterface.ts";
 
 const TE = new TextEncoder();
-const DEBUG = ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG;
 
 export class NeatUtil {
   private neat;
@@ -26,6 +25,11 @@ export class NeatUtil {
   }
 
   async makeUniqueName(creature: NetworkInterface) {
+    if (typeof creature !== "object") {
+      console.trace();
+      throw "Not an object was: " + (typeof creature);
+    }
+
     const json = creature.toJSON();
     delete json.tags;
 
@@ -89,13 +93,13 @@ export class NeatUtil {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i] as Network;
-        if (DEBUG) {
+        if (this.config.debug) {
           creature.util.validate();
         }
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
           // console.info( mutationMethod);
-          if (DEBUG) creature.util.validate();
+          if (this.config.debug) creature.util.validate();
           creature.util.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
@@ -104,7 +108,7 @@ export class NeatUtil {
           );
         }
 
-        if (DEBUG) {
+        if (this.config.debug) {
           creature.util.validate();
         }
 
@@ -121,11 +125,14 @@ export class NeatUtil {
       throw "Network mandatory";
     }
 
-    if (DEBUG) {
+    if (this.config.debug) {
       network.util.validate();
     }
     while (this.neat.population.length < this.config.popsize) {
-      const clonedCreature = Network.fromJSON(network.toJSON());
+      const clonedCreature = NetworkUtil.fromJSON(
+        network.toJSON(),
+        this.config.debug,
+      );
       const creatures = [clonedCreature];
       this.mutate(creatures);
       this.neat.population.push(creatures[0]);
@@ -146,7 +153,7 @@ export class NeatUtil {
     );
 
     creature.util.fix();
-    if (DEBUG) creature.util.validate();
+    if (this.config.debug) creature.util.validate();
     return creature;
   }
 

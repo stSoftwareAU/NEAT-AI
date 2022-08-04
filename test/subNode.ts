@@ -1,4 +1,6 @@
-import { Network } from "../../NEAT-TS/src/architecture/network.js";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 const json = {
   nodes: [
@@ -49,7 +51,7 @@ const json = {
 };
 
 Deno.test("subNode", () => {
-  const network = Network.fromJSON(json);
+  const network = NetworkUtil.fromJSON(json);
   network.util.validate({ nodes: 4, connections: 3 });
   network.util.subNode();
   network.util.validate({ nodes: 4 });

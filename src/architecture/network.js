@@ -1,13 +1,5 @@
-import { Node } from "./Node.ts";
 import { NetworkUtil } from "./NetworkUtil.ts";
 
-/*******************************************************************************
-                                 NETWORK
-*******************************************************************************/
-
-/*******************************************************************************
-NETWORK
-*******************************************************************************/
 export class Network {
   constructor(input, output, options = {}) {
     if (typeof input === "undefined" || typeof output === "undefined") {
@@ -18,8 +10,7 @@ export class Network {
     this.output = output;
     this.nodes = [];
     this.connections = [];
-    // this.gates = [];
-    // this.selfconns = [];
+
     this.tags = undefined;
 
     this.util = new NetworkUtil(this);
@@ -29,7 +20,7 @@ export class Network {
     if (options) {
       this.util.initialize(options);
 
-      if (globalThis.DEBUG) {
+      if (this.util.DEBUG) {
         this.util.validate();
       }
     }
@@ -241,7 +232,7 @@ export class Network {
    * Convert the network to a json object
    */
   toJSON() {
-    if (globalThis.DEBUG) {
+    if (this.util.DEBUG) {
       this.util.validate();
     }
 
@@ -297,47 +288,5 @@ export class Network {
    */
   evolveDir(dataDir, options) {
     return this.util.evolveDir(dataDir, options);
-  }
-
-  /**
-   * Convert a json object to a network
-   */
-  static fromJSON(json) {
-    const network = new Network(json.input, json.output, false);
-    network.nodes.length = json.nodes.length;
-    if (json.tags) {
-      network.tags = [...json.tags];
-    }
-
-    const util = network.util; //new NetworkUtil(network);
-
-    network.nodes = new Array(json.nodes.length);
-    for (let i = json.nodes.length; i--;) {
-      const n = Node.fromJSON(json.nodes[i], util);
-      n.index = i;
-      network.nodes[i] = n;
-    }
-
-    const cLen = json.connections.length;
-    for (let i = 0; i < cLen; i++) {
-      const conn = json.connections[i];
-
-      const connection = network.util.connect(
-        conn.from,
-        conn.to,
-        conn.weight,
-        conn.type,
-      );
-
-      if (conn.gater != null) {
-        network.gate(network.nodes[conn.gater], connection);
-      }
-    }
-
-    if (globalThis.DEBUG) {
-      network.util.validate();
-    }
-
-    return network;
   }
 }

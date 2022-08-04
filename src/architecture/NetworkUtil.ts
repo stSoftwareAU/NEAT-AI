@@ -4,7 +4,7 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.146.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.150.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.js";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
@@ -12,15 +12,12 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.146.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.150.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
-// import { NodeInterface } from "../architecture/NodeInterface.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
-
-const DEBUG = ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG;
 
 const cacheDataFile = {
   fn: "",
@@ -34,6 +31,7 @@ interface HashTable<T> {
 export class NetworkUtil {
   private network;
   private cache: HashTable<ConnectionInterface[]> = {};
+  DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
   constructor(
     network: NetworkInterface,
@@ -43,10 +41,6 @@ export class NetworkUtil {
 
   private clearCache() {
     this.cache = {};
-
-    // for (const member in this.cache) {
-    //   throw "still has: " + member;
-    // }
   }
 
   initialize(options: {
@@ -162,6 +156,11 @@ export class NetworkUtil {
       throw "Must have at least one output nodes was: " + this.network.output;
     }
 
+    if (typeof this.network.toJSON !== "function") {
+      console.trace();
+      throw "missing toJSON function was: " + (typeof this.network.toJSON);
+    }
+
     const stats = {
       input: 0,
       hidden: 0,
@@ -206,10 +205,10 @@ export class NetworkUtil {
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
             console.trace();
-            if (DEBUG) {
-              ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG=false;
+            if (this.DEBUG) {
+              this.DEBUG = false;
               console.warn(JSON.stringify(this.network.toJSON(), null, 2));
-              ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG=true;
+              this.DEBUG = true;
             }
             throw indx + ") output node has no inward connections";
           }
@@ -471,11 +470,11 @@ export class NetworkUtil {
     }
 
     if (typeof weight !== "number") {
-      if( DEBUG){
-        ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG=false;
-        console.warn(JSON.stringify( this.network.toJSON(), null, 2));
-        
-        ((globalThis as unknown ) as {DEBUG:boolean}).DEBUG=true;
+      if (this.DEBUG) {
+        this.DEBUG = false;
+        console.warn(JSON.stringify(this.network.toJSON(), null, 2));
+
+        this.DEBUG = true;
       }
       console.trace();
       throw from + ":" + to + ") weight not a number was: " + weight;
@@ -673,7 +672,7 @@ export class NetworkUtil {
         }
 
         bestScore = fittest.score;
-        bestCreature = Network.fromJSON(fittest.toJSON());
+        bestCreature = NetworkUtil.fromJSON(fittest.toJSON());
       } else if (fittest.score < bestScore) {
         throw "fitness decreased over generations";
       }
@@ -1685,7 +1684,7 @@ export class NetworkUtil {
     }
 
     this.fix();
-    if (DEBUG) {
+    if (this.DEBUG) {
       this.validate();
     }
   }
@@ -1917,5 +1916,47 @@ export class NetworkUtil {
     offspring.connections = connections;
 
     return offspring;
+  }
+
+  /**
+   * Convert a json object to a network
+   */
+  static fromJSON(json: any, validate = false) {
+    const network = new Network(json.input, json.output, false);
+    network.nodes.length = json.nodes.length;
+    if (json.tags) {
+      network.tags = [...json.tags];
+    }
+
+    const util = network.util;
+
+    network.nodes = new Array(json.nodes.length);
+    for (let i = json.nodes.length; i--;) {
+      const n = Node.fromJSON(json.nodes[i], util);
+      n.index = i;
+      network.nodes[i] = n;
+    }
+
+    const cLen = json.connections.length;
+    for (let i = 0; i < cLen; i++) {
+      const conn = json.connections[i];
+
+      const connection = network.util.connect(
+        conn.from,
+        conn.to,
+        conn.weight,
+        conn.type,
+      );
+
+      if (conn.gater != null) {
+        connection.gater = conn.gater;
+      }
+    }
+
+    if (validate) {
+      network.util.validate();
+    }
+
+    return network;
   }
 }

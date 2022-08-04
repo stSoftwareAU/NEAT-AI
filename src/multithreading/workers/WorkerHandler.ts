@@ -5,6 +5,7 @@ import { addTag, getTag } from "../../tags/TagsInterface.ts";
 
 export interface RequestData {
   taskID: number;
+  debug?: boolean;
   initialize?: {
     dataSetDir: string;
     costName: string;
@@ -25,6 +26,7 @@ export interface RequestData {
 
 export interface ResponseData {
   taskID: number;
+  debug?: boolean;
   duration: number;
   initialize?: {
     status: string;

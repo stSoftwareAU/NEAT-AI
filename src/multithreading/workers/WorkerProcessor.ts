@@ -27,7 +27,7 @@ export class WorkerProcessor {
       if (!this.dataSetDir) throw "no data directory";
       if (!this.costName) throw "no cost";
 
-      const network = Network.fromJSON(data.evaluate.network);
+      const network = NetworkUtil.fromJSON(data.evaluate.network);
       const util = new NetworkUtil(network);
 
       const cost = findCost(this.costName);
@@ -45,7 +45,7 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
-      const network = Network.fromJSON(data.train.network);
+      const network = NetworkUtil.fromJSON(data.train.network, data.debug);
       const util = new NetworkUtil(network);
 
       if (!this.dataSetDir) throw "No data dir";

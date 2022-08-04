@@ -1,7 +1,9 @@
-import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
-import { Network } from "../../NEAT-TS/src/architecture/network.js";
 import { getTag } from "../src/tags/TagsInterface.ts";
+
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 const json = {
   nodes: [
@@ -72,7 +74,7 @@ const json = {
 };
 
 Deno.test("addNode", () => {
-  const network = Network.fromJSON(json);
+  const network = NetworkUtil.fromJSON(json);
 
   for (let i = 100; i--;) {
     network.util.addNode();

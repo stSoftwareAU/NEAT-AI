@@ -20,6 +20,9 @@ export interface NeatConfig {
   /** number of records per dataset file. default: 2000 */
   dataSetParitionBreak: number;
 
+  /** debug (much slower) */
+  debug: boolean;
+
   /**
    * Feedback loop ( previous result feeds back into next interaction
    * https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html;jsessionid=2d7fa2c64f0bd39c86dec46870cd
@@ -83,6 +86,12 @@ export function make(parameters?: NeatOptions) {
     dataSetParitionBreak: options.dataSetParitionBreak
       ? Math.max(options.dataSetParitionBreak, 1000)
       : 2000,
+
+    debug: options.debug
+      ? true
+      : ((globalThis as unknown) as { DEBUG: boolean }).DEBUG
+      ? true
+      : false,
 
     feedbackLoop: options.feedbackLoop || false,
     focusList: options.focusList || [],

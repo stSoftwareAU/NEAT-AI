@@ -1,5 +1,6 @@
 import { addTag, getTag } from "../tags/TagsInterface.ts";
 import { Network } from "./network.js";
+import { NetworkUtil } from "./NetworkUtil.ts";
 import { NetworkInterface } from "./NetworkInterface.ts";
 const MIN_STEP = 0.000_000_1;
 
@@ -44,7 +45,7 @@ function tuneWeights(
 
   if (!skipSet && changeWeightCount < 2 && rate == 1) return null;
 
-  const all = Network.fromJSON(allJSON);
+  const all = NetworkUtil.fromJSON(allJSON);
   addTag(all, "approach", "fine");
   addTag(
     all,
@@ -118,7 +119,7 @@ function tuneBias(
 
   if (!skipSet && changeBiasCount < 2 && rate == 1) return null;
 
-  const all = Network.fromJSON(allJSON);
+  const all = NetworkUtil.fromJSON(allJSON);
   addTag(all, "approach", "fine");
   addTag(
     all,
@@ -209,7 +210,7 @@ function tuneAll(
     };
   }
 
-  const all = Network.fromJSON(allJSON);
+  const all = NetworkUtil.fromJSON(allJSON);
   addTag(all, "approach", "fine");
   addTag(
     all,
@@ -403,7 +404,7 @@ export function fineTuneImprovement(
             //   bias,
             // );
             fn.bias = bias;
-            const n = Network.fromJSON(targetJSON);
+            const n = NetworkUtil.fromJSON(targetJSON);
             addTag(n, "approach", "fine");
             addTag(n, "adjusted", "bias");
             addTag(
@@ -447,7 +448,7 @@ export function fineTuneImprovement(
               //   weight,
               // );
               fc.weight = weight;
-              const n = Network.fromJSON(targetJSON);
+              const n = NetworkUtil.fromJSON(targetJSON);
               addTag(n, "approach", "fine");
               addTag(n, "adjusted", "weight");
               addTag(

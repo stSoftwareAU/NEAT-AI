@@ -1,8 +1,8 @@
-import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 
-import { Network } from "../../NEAT-TS/src/architecture/network.js";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
-((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("if/Else", () => {
   const json = {
@@ -25,11 +25,11 @@ Deno.test("if/Else", () => {
     input: 3,
     output: 1,
   };
-  const network1 = Network.fromJSON(json);
+  const network1 = NetworkUtil.fromJSON(json);
   const tmpJSON = JSON.stringify(network1.toJSON(), null, 2);
 
   console.log(tmpJSON);
-  const network2 = Network.fromJSON(JSON.parse(tmpJSON));
+  const network2 = NetworkUtil.fromJSON(JSON.parse(tmpJSON));
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;

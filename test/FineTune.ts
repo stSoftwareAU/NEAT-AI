@@ -1,13 +1,13 @@
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
-import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 
-((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
 Deno.test("tune", () => {
-  const previousFittest: NetworkInterface = Network.fromJSON({
+  const previousFittest: NetworkInterface = NetworkUtil.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -37,7 +37,7 @@ Deno.test("tune", () => {
     ],
   });
 
-  const fittest: NetworkInterface = Network.fromJSON({
+  const fittest: NetworkInterface = NetworkUtil.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -83,7 +83,7 @@ Deno.test("tune", () => {
 });
 
 Deno.test("many", () => {
-  const previousFittest: NetworkInterface = Network.fromJSON({
+  const previousFittest: NetworkInterface = NetworkUtil.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -113,7 +113,7 @@ Deno.test("many", () => {
     ],
   });
 
-  const fittest: NetworkInterface = Network.fromJSON({
+  const fittest: NetworkInterface = NetworkUtil.fromJSON({
     "nodes": [{
       "bias": 0.123,
       "type": "input",

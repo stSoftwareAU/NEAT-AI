@@ -1,7 +1,9 @@
 import { Network } from "../src/architecture/network.js";
-import { architect } from "../src/architecture/architect.js";
+
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
-import { assert } from "https://deno.land/std@0.146.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
+
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
 Deno.test("AND", () => {

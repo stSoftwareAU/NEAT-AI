@@ -1,8 +1,8 @@
-import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 
-import { Network } from "../../NEAT-TS/src/architecture/network.js";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
-((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("inward", () => {
   const json = {
@@ -25,7 +25,7 @@ Deno.test("inward", () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = NetworkUtil.fromJSON(json);
 
   const connects = network.util.toConnections(3);
 

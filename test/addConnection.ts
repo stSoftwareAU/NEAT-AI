@@ -1,4 +1,5 @@
-import { Network } from "../../NEAT-TS/src/architecture/network.js";
+import { Network } from "../src/architecture/network.js";
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("addConnection", () => {
   const network = new Network(2, 1);

@@ -1,7 +1,7 @@
-import { assert } from "https://deno.land/std@0.140.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 
-import { Network } from "../../NEAT-TS/src/architecture/network.js";
-((globalThis as unknown ) as {DEBUG:boolean}).DEBUG = true;
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Maximum", () => {
   const json = {
@@ -19,7 +19,7 @@ Deno.test("Maximum", () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = NetworkUtil.fromJSON(json);
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;
