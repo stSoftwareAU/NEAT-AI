@@ -79,11 +79,19 @@ async function evolveSet(set: any[], iterations: number, error: number) {
 }
 
 function trainSet(set: any[], iterations: number, error: number) {
-  const network = architect.Random(
+  const network = new Network(
     set[0].input.length,
-    5,
     set[0].output.length,
+    {
+      layers: [
+        {
+          count: 5,
+        },
+      ],
+    },
   );
+
+  // console.info( JSON.stringify( network.toJSON(), null, 2));
 
   const options: NeatOptions = {
     iterations: iterations,
@@ -93,7 +101,7 @@ function trainSet(set: any[], iterations: number, error: number) {
 
   const results = network.train(set, options);
 
-  assert(results.error < error);
+  assert(results.error < error, "Error is " + results.error);
 }
 
 function testEquality(original: any, copied: any) {

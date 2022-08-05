@@ -183,25 +183,11 @@ export class Node implements TagsInterface, NodeInterface {
         this.state += this.util.getNode(c.from).activation * c.weight * c.gain;
       });
 
-      // // All activation sources coming from the node itself
-      // this.state =
-      //   this.connections.self.gain * this.connections.self.weight * this.state +
-      //   this.bias;
-
-      // // Activation sources coming from connections
-      // for (let i = 0; i < this.connections.in.length; i++) {
-      //   const connection = this.connections.in[i];
-      //   this.state += connection.from.activation * connection.weight *
-      //     connection.gain;
-      // }
-
       const activationSquash = (activation as ActivationInterface);
       const result = activationSquash.squashAndDerive(this.state);
       // Squash the values received
       this.activation = result.activation;
       this.derivative = result.derivative;
-      // this.activation = this.squash(this.state);
-      // this.derivative = this.squash(this.state, true);
 
       // Update traces
       const nodes: Node[] = [];
@@ -209,8 +195,6 @@ export class Node implements TagsInterface, NodeInterface {
 
       const gateList = this.util.gateConnections(this.index);
       gateList.forEach((conn) => {
-        // for (let i = 0; i < this.connections.gated.length; i++) {
-        //   const conn = this.connections.gated[i];
         const node = this.util.getNode(conn.to);
 
         const pos = nodes.indexOf(node);
@@ -229,51 +213,51 @@ export class Node implements TagsInterface, NodeInterface {
         // Adjust the gain to this nodes' activation
         conn.gain = this.activation;
       });
-
-      toList.forEach((c) => {
-        // for (let i = 0; i < this.connections.in.length; i++) {
-        //   const connection = this.connections.in[i];
-        const connection = ((c as unknown) as Connection);
+      const self = this.util.selfConnection(this.index);
+      for (let i = 0; i < toList.length; i++) {
+        const c = ((toList[i] as unknown) as Connection);
         // Elegibility trace
+        if (c.from === c.to && c.from == this.index) continue;
 
         const from = this.util.getNode(c.from);
-        const self = this.util.selfConnection(this.index);
         if (self) {
-          connection.elegibility = (self.gain ? self.gain : 0) * self.weight *
-              connection.elegibility +
-            from.activation * connection.gain;
+          c.elegibility =
+            self.gain * self.weight * (self as Connection).elegibility +
+            from.activation * c.gain;
         } else {
-          connection.elegibility = from.activation * connection.gain;
+          c.elegibility = from.activation * c.gain;
         }
+
         // Extended trace
         for (let j = 0; j < nodes.length; j++) {
           const node = nodes[j];
           const influence = influences[j];
 
-          const index = connection.xtrace.nodes.indexOf(node);
+          const index = c.xtrace.nodes.indexOf(node);
 
           if (index > -1) {
-            const self = this.util.selfConnection(node.index);
+            // const self = this.util.selfConnection(node.index);
             const value = self
               ? ((self.gain ? self.gain : 0) * self.weight *
-                connection.xtrace.values[index])
+                c.xtrace.values[index])
               : 0 +
-                this.derivative * connection.elegibility * influence;
+                this.derivative * c.elegibility * influence;
 
-            connection.xtrace.values[index] = value;
+            c.xtrace.values[index] = value;
           } else {
             // Does not exist there yet, might be through mutation
-            connection.xtrace.nodes.push(node);
-            connection.xtrace.values.push(
-              this.derivative * connection.elegibility * influence,
+            c.xtrace.nodes.push(node);
+            c.xtrace.values.push(
+              this.derivative * c.elegibility * influence,
             );
           }
         }
-      });
+      }
 
       return this.activation;
     }
   }
+
   /**
    * Activates the node without calculating elegibility traces and such
    */
@@ -300,29 +284,17 @@ export class Node implements TagsInterface, NodeInterface {
       return activation.activate(this);
     } else {
       // All activation sources coming from the node itself
-      // this.state =
-      //   this.connections.self.gain * this.connections.self.weight * this.state +
-      //   this.bias;
 
       const conttections = this.util.toConnections(this.index);
       let value = this.bias ? this.bias : 0;
       conttections.forEach((c) => {
-        value += this.util.getNode(c.from).activation * c.weight; // *
-        // connection.gain;
+        value += this.util.getNode(c.from).activation * c.weight *
+          c.gain;
       });
-      // Activation sources coming from connections
-      // for (let i = this.connections.in.length; i--;) {
-      //   const connection = this.connections.in[i];
-      //   this.state += connection.from.activation * connection.weight *
-      //     connection.gain;
-      // }
+
       const activationSquash = (activation as ActivationInterface);
       // Squash the values received
       this.activation = activationSquash.squash(value);
-
-      // for (let i = this.connections.gated.length; i--;) {
-      //   this.connections.gated[i].gain = this.activation;
-      // }
 
       return this.activation;
     }
@@ -343,14 +315,6 @@ export class Node implements TagsInterface, NodeInterface {
         this.activation;
     } else { // the rest of the nodes compute their error responsibilities by backpropagation
       // error responsibilities from all the connections projected from this node
-      const toList = this.util.toConnections(this.index);
-      toList.forEach((c) => {
-        const node = this.util.getNode(c.to);
-        // Eq. 21
-        error += node.error.responsibility * c.weight *
-          c.gain;
-      });
-
       const fromList = this.util.fromConnections(this.index);
       fromList.forEach((c) => {
         const node = this.util.getNode(c.to);
@@ -367,8 +331,6 @@ export class Node implements TagsInterface, NodeInterface {
 
       const gateList = this.util.gateConnections(this.index);
       gateList.forEach((c) => {
-        // for (let i = 0; i < this.connections.gated.length; i++) {
-        // const conn = this.connections.gated[i];
         const node = this.util.getNode(c.to);
         const self = this.util.selfConnection(this.index);
         let influence = self ? node.old : 0;
@@ -426,53 +388,7 @@ export class Node implements TagsInterface, NodeInterface {
       this.totalDeltaBias = 0;
     }
   }
-  // /**
-  //  * Creates a connection from this node to the given node
-  //  */
-  // connect(
-  //   target: NodeInterface,
-  //   weight: number,
-  //   type?: "positive" | "negative" | "condition",
-  // ) {
-  //   const connections = [];
-  //   if (target.type != "group") {
-  //     // if (typeof target.bias !== "undefined") { // must be a node!
-  //     // if (target === this) {
-  //     //   // Turn on the self connection by setting the weight
-  //     //   if (this.connections.self.weight !== 0) {
-  //     //     console.warn("This connection already exists!");
-  //     //   } else {
-  //     //     this.connections.self.weight = weight || 1;
-  //     //   }
-  //     //   connections.push(this.connections.self);
-  //     // } else
-  //     if (this.isProjectingTo(target)) {
-  //       throw new Error("Already projecting a connection to this node!");
-  //     } else {
-  //       const connection = new Connection(
-  //         this.index,
-  //         target.index,
-  //         weight,
-  //         type,
-  //       );
-  //       // target.connections.in.push(connection);
-  //       // this.connections.out.push(connection);
 
-  //       connections.push(connection);
-  //     }
-  //   } else { // should be a group
-  //     const group = (target as unknown) as { nodes: Node[] };
-  //     for (let i = 0; i < group.nodes.length; i++) {
-  //       const connection = new Connection(this, group.nodes[i], weight, type);
-  //       group.nodes[i].connections.in.push(connection);
-  //       this.connections.out.push(connection);
-  //       target.connections.in.push(connection);
-
-  //       connections.push(connection);
-  //     }
-  //   }
-  //   return connections;
-  // }
   /**
    * Disconnects this node from the other node
    */
