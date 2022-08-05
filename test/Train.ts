@@ -45,11 +45,12 @@ Deno.test("MT", () => {
 
   const results = util.train(trainingSet, {
     error: 0.03,
-    iterations: 1000,
+    iterations: 3000,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
+
 Deno.test("train-XOR", () => {
   // Train the XOR gate
   const trainingSet = [
@@ -64,13 +65,13 @@ Deno.test("train-XOR", () => {
     ],
   });
   // const network = architect.Perceptron(2, 5, 1);
-  const util = new NetworkUtil(network);
-
-  const results = util.train(trainingSet, {
+  // const util = new NetworkUtil(network);
+  // console.info( JSON.stringify( network.toJSON(), null, 2));
+  const results = network.util.train(trainingSet, {
     error: 0.03,
-    iterations: 1000,
+    iterations: 5000,
   });
-
+  console.info(results);
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
 
@@ -92,7 +93,7 @@ Deno.test("XNOR", () => {
 
   const results = util.train(trainingSet, {
     error: 0.03,
-    iterations: 1000,
+    iterations: 5000,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);

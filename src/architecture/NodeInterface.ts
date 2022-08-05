@@ -9,5 +9,6 @@ interface NodeJSON extends TagsInterface {
 export interface NodeInterface {
   readonly type: "input" | "hidden" | "output" | "group" | "constant";
   index: number;
+  bias?: number;
   toJSON(): NodeJSON;
 }

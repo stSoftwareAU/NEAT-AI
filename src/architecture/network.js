@@ -100,28 +100,6 @@ export class Network {
   }
 
   /**
-   * Gate a connection with a node
-   */
-  // gate(node, connection) {
-  //   console.trace();
-  //   throw "not done";
-  // if (this.nodes.indexOf(node) === -1) {
-  //   const msg = "Gate: This node is not part of the network!";
-  //   console.warn(msg, node);
-  //   console.trace();
-  //   if (globalThis.DEBUG == true) throw new Error(msg);
-
-  //   return;
-  // } else if (connection.gater != null) {
-  //   console.warn("This connection is already gated!");
-
-  //   return;
-  // }
-  // node.gate(connection);
-  // this.gates.push(connection);
-  // }
-
-  /**
    * Creates a json that can be used to create a graph with d3 and webcola
    */
   graph(width, height) {
@@ -228,6 +206,7 @@ export class Network {
 
     return json;
   }
+
   /**
    * Convert the network to a json object
    */
@@ -260,6 +239,7 @@ export class Network {
 
     return json;
   }
+
   /**
    * Sets the value of a property for every node in this network
    */

@@ -198,6 +198,16 @@ export class NetworkUtil {
               throw indx + ") hidden node has no outward or gate connections";
             }
           }
+          if (typeof node.bias === "undefined") {
+            console.trace();
+            throw indx + ") hidden node should have a bias was: " + node.bias;
+          }
+          if (!isFinite(node.bias)) {
+            console.trace();
+            throw indx + ") hidden node should have a finite bias was: " +
+              node.bias;
+          }
+
           break;
         }
         case "output": {
@@ -290,15 +300,6 @@ export class NetworkUtil {
       }
     }
 
-    // if (
-    //   this.network.connections.length <
-    //     this.network.nodes.length - this.network.output
-    // ) {
-    //   console.trace();
-    //   throw "Connections length: " + this.network.connections.length +
-    //     " require at least: " + this.network.nodes.length;
-    // }
-
     return stats;
   }
 
@@ -382,13 +383,6 @@ export class NetworkUtil {
     return results;
   }
 
-  // private getIndex( node:Node):number{
-  //   if( typeof node.index !== 'undefined'){
-  //     return node.index;
-  //   }
-
-  //   this.network.nodes.findIndex( node);
-  // }
   getNode(pos: number): Node {
     if (Number.isInteger(pos) == false || pos < 0) {
       console.trace();
@@ -558,25 +552,6 @@ export class NetworkUtil {
     }
   }
 
-  // /**
-  //  *  Remove the gate of a connection
-  //  */
-  // ungate(connection: ConnectionInterface) {
-  //   const index = this.network.gates.indexOf(connection);
-  //   if (index === -1) {
-  //     console.warn(
-  //       "This connection is not gated!",
-  //       this.network.gates,
-  //       connection,
-  //     );
-  //     console.trace();
-  //     return;
-  //   }
-
-  //   this.gates.splice(index, 1);
-  //   connection.gater.ungate(connection);
-  // }
-
   /**
    * Backpropagate the network
    */
@@ -721,8 +696,7 @@ export class NetworkUtil {
     if (bestCreature) {
       this.network.nodes = bestCreature.nodes;
       this.network.connections = bestCreature.connections;
-      // this.network.selfconns = bestCreature.selfconns;
-      // this.network.gates = bestCreature.gates;
+
       addTags(this.network, bestCreature);
 
       if (options.clear && this.network.clear) this.network.clear();
@@ -879,8 +853,6 @@ export class NetworkUtil {
       error > targetError &&
       (iterations === 0 || iteration < iterations)
     ) {
-      // if (options.crossValidate && error <= options.crossValidate.testError) break;
-
       iteration++;
 
       // Update the rate
@@ -1029,17 +1001,6 @@ export class NetworkUtil {
           return true;
         }
       }
-
-      // const fromList=this.fromConnections( index);
-
-      // for( let i=fromList.length;i--;) {
-      //   const checkIndx:number = fromList[i].to;
-      //   if (checkIndx === index ) return true;
-
-      //   if (this.inFocus(checkIndx, focusList, checked)) {
-      //     return true;
-      //   }
-      // }
     }
     return false;
   }
@@ -1163,7 +1124,7 @@ export class NetworkUtil {
         ) + this.network.input;
 
         if (node.index >= pos) continue;
-        // if (node.index === pos) pos++;
+
         if (this.inFocus(pos, tmpFocusList)) {
           toIndex = pos;
         }
@@ -1220,16 +1181,9 @@ export class NetworkUtil {
       n.index++;
     });
 
-    // node.index = indx;
     const full = [...left, node, ...right];
 
     this.network.nodes = full;
-
-    // if (this.network.connections.length < this.network.output) {
-    //   console.trace();
-    //   throw "Should have at least " + this.network.output +
-    //     " connections was: " + this.network.connections.length;
-    // }
 
     this.network.connections.forEach((c) => {
       if (c.from >= node.index) c.from++;
@@ -1292,8 +1246,6 @@ export class NetworkUtil {
       const conn = network.connections[i];
       // Check if it is not disabling a node
       if (
-        // conn.from.connections.out.length > 1 &&
-        // conn.to.connections.in.length > 1 &&
         conn.to > conn.from
       ) {
         if (
@@ -1384,10 +1336,15 @@ export class NetworkUtil {
     const network = this.network as Network;
     // Check which nodes aren't selfconnected yet
     const possible = [];
-    for (let i = network.input; i < network.nodes.length; i++) {
+    for (
+      let i = network.input;
+      i < network.nodes.length - network.output;
+      i++
+    ) {
       if (this.inFocus(i, focusList)) {
         const node = network.nodes[i];
-        const c = this.getConnection(node.index, node.index);
+
+        const c = this.selfConnection(node.index);
         if (c === null) {
           possible.push(node);
         }
@@ -1566,9 +1523,9 @@ export class NetworkUtil {
       const index1 = Math.floor(
         Math.random() *
             (network.nodes.length -
-              network.input) + network.input,
+              network.input - network.output) + network.input,
       );
-      // const tmpNode = network.nodes[index1];
+
       if (this.inFocus(index1, focusList)) {
         node1 = network.nodes[index1];
         break;
@@ -1580,7 +1537,7 @@ export class NetworkUtil {
       const index2 = Math.floor(
         Math.random() *
             (network.nodes.length -
-              network.input) + network.input,
+              network.input - network.output) + network.input,
       );
 
       if (this.inFocus(index2, focusList)) {
@@ -1811,14 +1768,7 @@ export class NetworkUtil {
         node.squash,
       );
 
-      // if (node) {
-      //   // newNode.bias = node.bias;
-      //   newNode.squash = node.squash;
-      //   // newNode.type = node.type;
-      // } else {
-      //   throw ("missing node");
-      // }
-      newNode.index = i; //offspring.nodes.length;
+      newNode.index = i;
       offspring.nodes.push(newNode);
     }
 
@@ -1842,18 +1792,6 @@ export class NetworkUtil {
       n1conns[Connection.innovationID(conn.from, conn.to)] = newConn;
     }
 
-    // Selfconnections
-    // for (let i = 0; i < network1.selfconns.length; i++) {
-    //   const conn = network1.selfconns[i];
-    //   const data = {
-    //     weight: conn.weight,
-    //     from: conn.from.index,
-    //     to: conn.to.index,
-    //     gater: conn.gater != null ? conn.gater.index : -1,
-    //   };
-    //   n1conns[Connection.innovationID(data.from, data.to)] = data;
-    // }
-
     // Normal connections
     for (let i = network2.connections.length; i--;) {
       const conn = network2.connections[i];
@@ -1869,18 +1807,6 @@ export class NetworkUtil {
       n2conns[Connection.innovationID(conn.from, conn.to)] = newConn;
     }
 
-    // Selfconnections
-    // for (let i = 0; i < network2.selfconns.length; i++) {
-    //   const conn = network2.selfconns[i];
-    //   const data = {
-    //     weight: conn.weight,
-    //     from: conn.from.index,
-    //     to: conn.to.index,
-    //     gater: conn.gater != null ? conn.gater.index : -1,
-    //   };
-    //   n2conns[Connection.innovationID(data.from, data.to)] = data;
-    // }
-
     // Split common conn genes from disjoint or excess conn genes
     const connections: Connection[] = [];
     const keys1 = Object.keys(n1conns);
@@ -1890,9 +1816,6 @@ export class NetworkUtil {
       if (typeof n2conns[key] !== "undefined") {
         const conn = Math.random() >= 0.5 ? n1conns[key] : n2conns[key];
         connections.push(conn);
-
-        // Because deleting is expensive, just set it to some value
-        // n2conns[keys1[i]] = undefined;
       } else {
         connections.push(n1conns[key]);
       }

@@ -1,6 +1,5 @@
 import { RequestData, ResponseData } from "./WorkerHandler.ts";
 
-import { Network } from "../../architecture/network.js";
 import { NetworkUtil } from "../../architecture/NetworkUtil.ts";
 import { findCost } from "../../config.ts";
 

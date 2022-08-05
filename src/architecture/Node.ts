@@ -12,7 +12,7 @@ import { NetworkUtil } from "./NetworkUtil.ts";
 export class Node implements TagsInterface, NodeInterface {
   readonly util: NetworkUtil;
   readonly type;
-  private bias?;
+  bias?: number;
   private squash?: string;
   private old;
   private state;
@@ -20,7 +20,6 @@ export class Node implements TagsInterface, NodeInterface {
   private derivative = 0;
   private previousDeltaBias;
   private totalDeltaBias;
-  // public connections: ConnectionsInterface;
   public index: number;
   public tags = undefined;
 
@@ -68,7 +67,6 @@ export class Node implements TagsInterface, NodeInterface {
     }
 
     this.util = util;
-    // this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
 
     this.type = type;
 
@@ -83,12 +81,6 @@ export class Node implements TagsInterface, NodeInterface {
     this.totalDeltaBias = 0;
 
     this.index = -1;
-    // this.connections = {
-    //   in: [],
-    //   out: [],
-    //   gated: [],
-    //   // self: []// new Connection(this, this, 0),
-    // };
 
     // Data for backpropagation
     this.error = {
@@ -180,13 +172,30 @@ export class Node implements TagsInterface, NodeInterface {
       const toList = this.util.toConnections(this.index);
       this.state = this.bias ? this.bias : 0;
       toList.forEach((c) => {
-        this.state += this.util.getNode(c.from).activation * c.weight * c.gain;
+        const fromNode = this.util.getNode(c.from);
+        this.state += fromNode.activation * c.weight * c.gain;
+        if (Math.abs(this.state) > Number.MAX_SAFE_INTEGER) {
+          this.state = Number.MAX_SAFE_INTEGER * (this.state < 0 ? -1 : 1);
+        }
+        if (!isFinite(this.state)) {
+          console.trace();
+          console.info(fromNode, c);
+          throw c.from + ") invalid state: " + this.state;
+        }
       });
 
       const activationSquash = (activation as ActivationInterface);
       const result = activationSquash.squashAndDerive(this.state);
       // Squash the values received
       this.activation = result.activation;
+
+      if (!isFinite(this.activation)) {
+        console.trace();
+
+        throw this.index + ") invalid value: + " + this.state +
+          ", activation: " + this.activation;
+      }
+
       this.derivative = result.derivative;
 
       // Update traces
@@ -224,8 +233,20 @@ export class Node implements TagsInterface, NodeInterface {
           c.elegibility =
             self.gain * self.weight * (self as Connection).elegibility +
             from.activation * c.gain;
+          if (!isFinite(c.elegibility)) {
+            console.trace();
+            console.info(self, c, from.activation);
+            throw c.from + ":" + c.to + ") invalid elegibility: " +
+              c.elegibility;
+          }
         } else {
           c.elegibility = from.activation * c.gain;
+          if (!isFinite(c.elegibility)) {
+            console.trace();
+            console.info(c, from.activation);
+            throw c.from + ":" + c.to + ") invalid elegibility: " +
+              c.elegibility;
+          }
         }
 
         // Extended trace
@@ -296,9 +317,17 @@ export class Node implements TagsInterface, NodeInterface {
       // Squash the values received
       this.activation = activationSquash.squash(value);
 
+      if (!isFinite(this.activation)) {
+        console.trace();
+
+        throw this.index + ") invalid value: + " + value + ", activation: " +
+          this.activation;
+      }
+
       return this.activation;
     }
   }
+
   /**
    * Back-propagate the error, aka learn
    */
@@ -319,12 +348,19 @@ export class Node implements TagsInterface, NodeInterface {
       fromList.forEach((c) => {
         const node = this.util.getNode(c.to);
         // Eq. 21
-        error += node.error.responsibility * c.weight *
-          c.gain;
+        const tmpError = error + node.error.responsibility * c.weight *
+            c.gain;
+        error = isFinite(tmpError) ? tmpError : error;
       });
 
       // Projected error responsibility
       this.error.projected = this.derivative * error;
+
+      if (!isFinite(this.error.projected)) {
+        console.trace();
+        console.info(this.error, this.derivative, error);
+        throw this.index + ") invalid error.projected: " + this.error.projected;
+      }
 
       // Error responsibilities from all connections gated by this neuron
       error = 0;
@@ -371,6 +407,12 @@ export class Node implements TagsInterface, NodeInterface {
         connection.totalDeltaWeight += momentum *
           connection.previousDeltaWeight;
         connection.weight += connection.totalDeltaWeight;
+        if (!isFinite(connection.weight)) {
+          console.trace();
+          console.info(this.error, connection, rate, gradient, momentum);
+          throw connection.from + ":" + connection.to + ") invalid weight: " +
+            connection.weight;
+        }
         connection.previousDeltaWeight = connection.totalDeltaWeight;
         connection.totalDeltaWeight = 0;
       }
@@ -383,6 +425,11 @@ export class Node implements TagsInterface, NodeInterface {
       this.totalDeltaBias += momentum * this.previousDeltaBias;
       if (typeof this.bias !== "undefined") {
         this.bias += this.totalDeltaBias;
+        if (!isFinite(this.bias)) {
+          console.trace();
+          console.info(this);
+          throw this.index + ") invalid bias: " + this.bias;
+        }
       }
       this.previousDeltaBias = this.totalDeltaBias;
       this.totalDeltaBias = 0;
@@ -398,35 +445,6 @@ export class Node implements TagsInterface, NodeInterface {
       this.util.disconnect(to, this.index);
     }
   }
-
-  /**
-   * Make this node gate a connection
-   */
-  // gate(connections: Connection[]) {
-  //   if (!Array.isArray(connections)) {
-  //     connections = [connections];
-  //   }
-
-  //   for (let i = 0; i < connections.length; i++) {
-  //     const connection = connections[i];
-
-  //     this.connections.gated.push(connection);
-  //     connection.gater = this;
-  //   }
-  // }
-  /**
-   * Removes the gates from this node from the given connection(s)
-  //  */
-  // ungate(connections: Connection[]) {
-  //   for (let i = connections.length - 1; i >= 0; i--) {
-  //     const connection = connections[i];
-
-  //     const index = this.connections.gated.indexOf(connection);
-  //     this.connections.gated.splice(index, 1);
-  //     connection.gater = null;
-  //     connection.gain = 1;
-  //   }
-  // }
 
   /**
    * Clear the context of the node
@@ -458,12 +476,6 @@ export class Node implements TagsInterface, NodeInterface {
    * Mutates the node with the given method
    */
   mutate(method: string) {
-    // if (typeof method === "undefined") {
-    //   throw new Error("No mutate method given!");
-    // } /*else if (!(method.name in Mutation.ALL)) {
-    //       throw new Error("This method does not exist!");
-    //     }*/
-
     if (typeof method !== "string") {
       console.trace();
       throw "Mutate method wrong type: " + (typeof method);
@@ -508,20 +520,8 @@ export class Node implements TagsInterface, NodeInterface {
   isProjectedBy(node: Node) {
     const c = this.util.getConnection(node.index, this.index);
     return c != null;
-
-    // if (node === this && this.connections.self.weight !== 0) {
-    //   return true;
-    // }
-
-    // for (let i = 0; i < this.connections.in.length; i++) {
-    //   const conn = this.connections.in[i];
-    //   if (conn.from === node) {
-    //     return true;
-    //   }
-    // }
-
-    // return false;
   }
+
   /**
    * Converts the node to a json object
    */
@@ -540,6 +540,7 @@ export class Node implements TagsInterface, NodeInterface {
       };
     }
   }
+
   /**
    * Convert a json object to a node
    */

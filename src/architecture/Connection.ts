@@ -25,8 +25,6 @@ export class Connection implements ConnectionInterface {
     weight: number,
     type?: "positive" | "negative" | "condition",
   ) {
-    // console.info("from", typeof from, "to", typeof to, "weight", typeof weight);
-
     if (Number.isInteger(from) == false || from < 0) {
       console.trace();
       throw "from should be a non-negative integer was: " + from;
