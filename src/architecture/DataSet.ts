@@ -15,7 +15,7 @@ export function freezeAndValidate(
     for (let j = tmpIn.length; j--;) {
       const v = tmpIn[j];
       if (
-        isFinite(v) == false
+        Number.isFinite(v) == false
       ) {
         console.trace();
         throw i + ":" + j + ") Input not within range: " + v;
@@ -24,7 +24,7 @@ export function freezeAndValidate(
     for (let k = tmpOut.length; k--;) {
       const v = tmpOut[k];
       if (
-        isFinite(v) == false ||
+        Number.isFinite(v) == false ||
         typeof v !== "number"
       ) {
         console.trace();

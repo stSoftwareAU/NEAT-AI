@@ -30,7 +30,7 @@ export class NeatUtil {
       throw "Not an object was: " + (typeof creature);
     }
 
-    const json = creature.toJSON();
+    const json = (creature as Network).toJSON();
     delete json.tags;
 
     const txt = JSON.stringify(json, null, 1);

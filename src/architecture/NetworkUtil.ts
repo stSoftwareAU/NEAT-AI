@@ -156,9 +156,10 @@ export class NetworkUtil {
       throw "Must have at least one output nodes was: " + this.network.output;
     }
 
-    if (typeof this.network.toJSON !== "function") {
+    if (typeof (this.network as Network).toJSON !== "function") {
       console.trace();
-      throw "missing toJSON function was: " + (typeof this.network.toJSON);
+      throw "missing toJSON function was: " +
+        (typeof (this.network as Network).toJSON);
     }
 
     const stats = {
@@ -175,9 +176,21 @@ export class NetworkUtil {
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
             console.trace();
-            // this.fromConnections(indx);
+
             console.info(this.network.connections);
             throw indx + ") 'input' node has inward connections: " +
+              toList.length;
+          }
+          break;
+        }
+        case "constant": {
+          stats.input++;
+          const toList = this.toConnections(indx);
+          if (toList.length > 0) {
+            console.trace();
+
+            console.info(this.network.connections);
+            throw indx + ") '" + node.type + "' node has inward connections: " +
               toList.length;
           }
           break;
@@ -202,7 +215,7 @@ export class NetworkUtil {
             console.trace();
             throw indx + ") hidden node should have a bias was: " + node.bias;
           }
-          if (!isFinite(node.bias)) {
+          if (!Number.isFinite(node.bias)) {
             console.trace();
             throw indx + ") hidden node should have a finite bias was: " +
               node.bias;
@@ -217,7 +230,9 @@ export class NetworkUtil {
             console.trace();
             if (this.DEBUG) {
               this.DEBUG = false;
-              console.warn(JSON.stringify(this.network.toJSON(), null, 2));
+              console.warn(
+                JSON.stringify((this.network as Network).toJSON(), null, 2),
+              );
               this.DEBUG = true;
             }
             throw indx + ") output node has no inward connections";
@@ -466,7 +481,9 @@ export class NetworkUtil {
     if (typeof weight !== "number") {
       if (this.DEBUG) {
         this.DEBUG = false;
-        console.warn(JSON.stringify(this.network.toJSON(), null, 2));
+        console.warn(
+          JSON.stringify((this.network as Network).toJSON(), null, 2),
+        );
 
         this.DEBUG = true;
       }
@@ -699,7 +716,7 @@ export class NetworkUtil {
 
       addTags(this.network, bestCreature);
 
-      if (options.clear && this.network.clear) this.network.clear();
+      if (options.clear) (this.network as Network).clear();
     }
 
     if (config.creatureStore) {
@@ -799,10 +816,10 @@ export class NetworkUtil {
         const data = json[i];
         const input = data.input;
         const target = data.output;
-        if (!this.network.noTraceActivate) throw "no trace function";
-        const output = this.network.noTraceActivate(input);
+        // if (!this.network.noTraceActivate) throw "no trace function";
+        const output = (this.network as Network).noTraceActivate(input);
         error += cost(target, output);
-        if (!feedbackLoop && this.network.clear) this.network.clear();
+        if (!feedbackLoop) (this.network as Network).clear();
       }
       counter += len;
     });
@@ -849,7 +866,7 @@ export class NetworkUtil {
     let error = 1;
 
     while (
-      isFinite(error) &&
+      Number.isFinite(error) &&
       error > targetError &&
       (iterations === 0 || iteration < iterations)
     ) {
@@ -858,13 +875,15 @@ export class NetworkUtil {
       // Update the rate
       currentRate = ratePolicy(baseRate, iteration);
 
-      if (!isFinite(currentRate)) throw "not a valid rate: " + currentRate;
+      if (!Number.isFinite(currentRate)) {
+        throw "not a valid rate: " + currentRate;
+      }
 
       let counter = 0;
       let errorSum = 0;
 
       files.forEach((name) => {
-        if (!isFinite(errorSum)) return;
+        if (!Number.isFinite(errorSum)) return;
         const fn = dataDir + "/" + name;
         const json = cacheDataFile.fn == fn
           ? cacheDataFile.json
@@ -889,15 +908,15 @@ export class NetworkUtil {
           const target = data.output;
           const update = !!((i + 1) % batchSize === 0 || i === 0);
 
-          if (!this.network.activate) throw "no activate funtion";
-          const output = this.network.activate(input, true);
+          // if (!this.network.activate) throw "no activate funtion";
+          const output = (this.network as Network).activate(input);
 
           errorSum += cost(target, output);
-          if (!isFinite(errorSum)) break;
+          if (!Number.isFinite(errorSum)) break;
 
           this.propagate(currentRate, momentum, update, target);
         }
-        if (this.network.clear) this.network.clear();
+        if (options.clear) (this.network as Network).clear();
         counter += len;
       });
 
@@ -926,7 +945,7 @@ export class NetworkUtil {
       }
     }
 
-    if (options.clear && this.network.clear) this.network.clear();
+    if (options.clear) (this.network as Network).clear();
 
     return {
       error: error,
@@ -962,7 +981,7 @@ export class NetworkUtil {
     let counter = 1;
     emptyDirSync(dir);
     neat.population.forEach((creature: NetworkInterface) => {
-      const json = creature.toJSON();
+      const json = (creature as Network).toJSON();
 
       const txt = JSON.stringify(json, null, 1);
 
@@ -1844,7 +1863,7 @@ export class NetworkUtil {
   /**
    * Convert a json object to a network
    */
-  static fromJSON(json: any, validate = false) {
+  static fromJSON(json: NetworkInterface, validate = false) {
     const network = new Network(json.input, json.output, false);
     network.nodes.length = json.nodes.length;
     if (json.tags) {

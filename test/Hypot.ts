@@ -2,10 +2,12 @@ import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
+import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Hypot", () => {
-  const json = {
+  const json: NetworkInterface = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },

@@ -1,8 +1,9 @@
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const json = {
+const json: NetworkInterface = {
   nodes: [
     {
       type: "input",

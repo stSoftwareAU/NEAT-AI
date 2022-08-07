@@ -1,11 +1,12 @@
 import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
 import { getTag } from "../src/tags/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const json = {
+const json: NetworkInterface = {
   nodes: [
     {
       type: "input",

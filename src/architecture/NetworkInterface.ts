@@ -13,16 +13,16 @@ export interface NetworkInterface extends TagsInterface {
 
   connections: ConnectionInterface[];
 
-  // deno-lint-ignore ban-types
-  toJSON: Function;
-  // deno-lint-ignore ban-types
-  clear?: Function;
-  // deno-lint-ignore ban-types
-  _trainSet?: Function;
-  // deno-lint-ignore ban-types
-  noTraceActivate?: Function;
-  // deno-lint-ignore ban-types
-  activate?: Function;
-  // deno-lint-ignore ban-types
-  mutate?: Function;
+  //   // deno-lint-ignore ban-types
+  //   // toJSON: Function;
+  //   // deno-lint-ignore ban-types
+  //   clear?: Function;
+  //   // deno-lint-ignore ban-types
+  //   _trainSet?: Function;
+  //   // deno-lint-ignore ban-types
+  //   noTraceActivate?: Function;
+  //   // deno-lint-ignore ban-types
+  //   activate?: Function;
+  //   // deno-lint-ignore ban-types
+  //   mutate?: Function;
 }

@@ -269,4 +269,8 @@ export class Network {
   evolveDir(dataDir, options) {
     return this.util.evolveDir(dataDir, options);
   }
+
+  static fromJSON(json) {
+    return NetworkUtil.fromJSON(json);
+  }
 }

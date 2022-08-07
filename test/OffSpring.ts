@@ -30,8 +30,7 @@ Deno.test("OffSpring", async () => {
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,
-      "gater": null,
-    }, { "weight": 0.96864643541, "from": 0, "to": 2, "gater": null }],
+    }, { "weight": 0.96864643541, "from": 0, "to": 2 }],
     "input": 2,
     "output": 1,
     tags: [

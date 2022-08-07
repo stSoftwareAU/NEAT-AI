@@ -129,5 +129,5 @@ Deno.test("XNOR", async () => {
 });
 
 Deno.test("check", () => {
-  assert(isFinite(Infinity) == false);
+  assert(Number.isFinite(Infinity) == false);
 });

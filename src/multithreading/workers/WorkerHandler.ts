@@ -1,4 +1,5 @@
 import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
+import { Network } from "../../architecture/network.js";
 import { MockWorker } from "./MockWorker.ts";
 
 import { addTag, getTag } from "../../tags/TagsInterface.ts";
@@ -174,7 +175,7 @@ export class WorkerHandler {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        network: network.toJSON(),
+        network: JSON.stringify((network as Network).toJSON()),
         feedbackLoop,
       },
     };
@@ -183,8 +184,8 @@ export class WorkerHandler {
   }
 
   train(network: NetworkInterface, rate: number) {
-    const json = network.toJSON();
-    delete json.score;
+    const json = (network as Network).toJSON();
+    // delete json.score;
     delete json.tags;
     const error = getTag(network, "error");
     if (error) {
@@ -193,7 +194,7 @@ export class WorkerHandler {
     const data: RequestData = {
       taskID: this.taskID++,
       train: {
-        network: json,
+        network: JSON.stringify(json),
         rate: rate,
       },
     };

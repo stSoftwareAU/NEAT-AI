@@ -93,7 +93,7 @@ export class Neat {
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
 
-      if (isFinite(p.score)) {
+      if (Number.isFinite(p.score)) {
         const oldScore = getTag(p, "old-score");
         if (oldScore && p.score <= parseFloat(oldScore)) {
           /** If fine tuning made no improvement then remove to prevent flooding of the population with clones. */
@@ -222,7 +222,7 @@ export class Neat {
     await Promise.all(trainPromises).then((results) => {
       results.forEach((r) => {
         if (r.train) {
-          if (isFinite(r.train.error)) {
+          if (Number.isFinite(r.train.error)) {
             const json = JSON.parse(r.train.network);
 
             addTag(json, "approach", "trained");

@@ -29,8 +29,7 @@ Deno.test("knownName", async () => {
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,
-      "gater": null,
-    }, { "weight": 0.96864643541, "from": 0, "to": 2, "gater": null }],
+    }, { "weight": 0.96864643541, "from": 0, "to": 2 }],
     "input": 2,
     "output": 1,
     tags: [
@@ -45,5 +44,5 @@ Deno.test("knownName", async () => {
 
   console.log("Name", name);
 
-  assert(name == "SLlAZQPDNDna2fU4RduVHJlWkisQTLSLqK5lLrNv45s", "Wrong name");
+  assert(name == "dbyER2J8QO6QjMwhUHknydSnJYcjnjfcbLmPEXLJL6A", "Wrong name");
 });

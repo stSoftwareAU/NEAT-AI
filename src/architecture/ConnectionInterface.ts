@@ -4,7 +4,10 @@ export interface ConnectionInterface {
   weight: number;
   gater?: number;
   type?: "positive" | "negative" | "condition";
-
-  /** not persisted */
-  gain: number;
 }
+
+// export interface TransitantConnectionInterface extends ConnectionInterface {
+
+//   /** not persisted */
+//   gain: number;
+// }

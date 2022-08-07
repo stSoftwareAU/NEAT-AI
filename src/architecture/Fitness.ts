@@ -45,7 +45,9 @@ export class Fitness {
           realCreature.util.gates().length
         ) * this.growth;
 
-    creature.score = isFinite(creature.score) ? creature.score : -Infinity;
+    creature.score = Number.isFinite(creature.score)
+      ? creature.score
+      : -Infinity;
     addTag(creature, "score", creature.score.toString());
   }
 

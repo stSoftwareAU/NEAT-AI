@@ -1,14 +1,14 @@
 import { TagsInterface } from "../tags/TagsInterface.ts";
 
-interface NodeJSON extends TagsInterface {
-  bias?: number;
-  type: string;
-  squash?: string;
-}
+// interface NodeJSON extends TagsInterface {
+//   bias?: number;
+//   type: string;
+//   squash?: string;
+// }
 
-export interface NodeInterface {
-  readonly type: "input" | "hidden" | "output" | "group" | "constant";
+export interface NodeInterface extends TagsInterface {
+  readonly type: "input" | "hidden" | "output" | "constant";
   index: number;
   bias?: number;
-  toJSON(): NodeJSON;
+  squash?: string;
 }

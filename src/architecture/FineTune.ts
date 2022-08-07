@@ -11,8 +11,8 @@ function tuneWeights(
   rate = 1,
   skipSet: Set<string> | null = null,
 ) {
-  const previousJSON = previousFittest.toJSON();
-  const allJSON = fittest.toJSON();
+  const previousJSON = (previousFittest as Network).toJSON();
+  const allJSON = (fittest as Network).toJSON();
   let changeWeightCount = 0;
 
   for (let i = allJSON.connections.length; i--;) {
@@ -87,8 +87,8 @@ function tuneBias(
   rate = 1,
   skipSet: Set<string> | null = null,
 ) {
-  const previousJSON = previousFittest.toJSON();
-  const allJSON = fittest.toJSON();
+  const previousJSON = (previousFittest as Network).toJSON();
+  const allJSON = (fittest as Network).toJSON();
 
   let changeBiasCount = 0;
   for (let i = allJSON.nodes.length; i--;) {
@@ -159,8 +159,8 @@ function tuneAll(
   previousFittest: NetworkInterface,
   oldScore: string,
 ) {
-  const previousJSON = previousFittest.toJSON();
-  const allJSON = fittest.toJSON();
+  const previousJSON = (previousFittest as Network).toJSON();
+  const allJSON = (fittest as Network).toJSON();
 
   let changeBiasCount = 0;
   let changeWeightCount = 0;
@@ -280,7 +280,7 @@ export function fineTuneImprovement(
     );
   }
   const fineTuned: Network[] = [];
-  const previousJSON = previousFittest.toJSON();
+  const previousJSON = (previousFittest as Network).toJSON();
 
   const resultALL = tuneAll(fittest, previousFittest, fScoreTxt);
   if (resultALL.all) fineTuned.push(resultALL.all);
@@ -380,7 +380,7 @@ export function fineTuneImprovement(
     return fineTuned;
   }
 
-  let targetJSON = fittest.toJSON();
+  let targetJSON = (fittest as Network).toJSON();
   for (let k = 0; true; k++) {
     for (let i = targetJSON.nodes.length; i--;) {
       const fn = targetJSON.nodes[i];
@@ -415,7 +415,7 @@ export function fineTuneImprovement(
             addTag(n, "old-score", fScoreTxt);
             fineTuned.push(n);
             if (fineTuned.length >= popsize) break;
-            targetJSON = fittest.toJSON();
+            targetJSON = (fittest as Network).toJSON();
           }
         }
       }
@@ -459,7 +459,7 @@ export function fineTuneImprovement(
               addTag(n, "old-score", fScoreTxt);
               fineTuned.push(n);
               if (fineTuned.length >= popsize) break;
-              targetJSON = fittest.toJSON();
+              targetJSON = (fittest as Network).toJSON();
             }
           }
           break;

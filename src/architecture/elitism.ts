@@ -11,8 +11,8 @@ export function makeElitists(
   const elitism = Math.min(Math.max(1, size), population.length);
 
   population.sort((a, b) => {
-    if (isFinite(a.score)) {
-      if (isFinite(b.score)) {
+    if (Number.isFinite(a.score)) {
+      if (Number.isFinite(b.score)) {
         if (b.score == a.score) {
           if (b.nodes == a.nodes) {
             return a.connections.length - b.connections.length; //Shorter the better
@@ -24,7 +24,7 @@ export function makeElitists(
       } else {
         return -1;
       }
-    } else if (isFinite(b.score)) {
+    } else if (Number.isFinite(b.score)) {
       return 1;
     } else {
       return 0;
@@ -38,10 +38,10 @@ export function makeElitists(
   //     if( creature.score>lastScore){
   //       throw "Unsorted at " + pos + " was: " + lastScore + ", now: " + creature.score;
   //     }
-  //     if( isFinite( creature.score)){
+  //     if( Number.isFinite( creature.score)){
   //       if( lastScore!=Infinity)
   //       {
-  //         if( !isFinite(lastScore)){
+  //         if( !Number.isFinite(lastScore)){
   //           throw "Unsorted (not a number) at " + pos + " was: " + lastScore + ", now: " + creature.score;
   //         }
   //       }
