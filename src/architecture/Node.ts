@@ -152,6 +152,7 @@ export class Node implements TagsInterface, NodeInterface {
         this.activation = input ? input : 0;
         return this.activation;
       } else {
+        console.trace();
         throw this.index +
           ") Node of type 'input' must have a finite value was: " + input;
       }

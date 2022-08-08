@@ -53,6 +53,7 @@ export class Upgrade {
     json2.connections = connections;
     const network = NetworkUtil.fromJSON(json2);
 
+    network.util.fix();
     network.util.validate();
     return network;
   }
