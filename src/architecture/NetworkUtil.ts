@@ -24,13 +24,9 @@ const cacheDataFile = {
   json: {},
 };
 
-interface HashTable<T> {
-  [key: string]: T;
-}
-
 export class NetworkUtil {
   private network;
-  private cache: HashTable<ConnectionInterface[]> = {};
+  private cache = new Map<string, ConnectionInterface[]>();
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
   constructor(
@@ -40,7 +36,7 @@ export class NetworkUtil {
   }
 
   private clearCache() {
-    this.cache = {};
+    this.cache.clear();
   }
 
   initialize(options: {
@@ -284,8 +280,8 @@ export class NetworkUtil {
       if (Number.isInteger(c.gater)) {
         const gaterNode = this.getNode(c.gater as number);
 
-        if (gaterNode.type === "output") {
-          throw indx + ") connection gater an output node";
+        if (gaterNode.type === "input") {
+          throw indx + ") connection can't be gated by input";
         }
       }
       if (c.from < lastFrom) {
@@ -320,15 +316,18 @@ export class NetworkUtil {
 
   selfConnection(indx: number): ConnectionInterface | null {
     const key = "self:" + indx;
-    let results: ConnectionInterface[] = this.cache[key];
-    if (results == null) {
+    let results = this.cache.get(key);
+    if (results === undefined) {
       results = [];
       const tmpList = this.network.connections;
-      tmpList.forEach((c) => {
-        if (c.to === indx && c.from == indx) results.push(c);
-      });
+      for (let i = tmpList.length; i--;) {
+        const c = tmpList[i];
+        if (c.to === indx && c.from == indx) {
+          results.push(c);
+        }
+      }
 
-      this.cache[key] = results;
+      this.cache.set(key, results);
     }
 
     if (results.length > 0) {
@@ -340,60 +339,68 @@ export class NetworkUtil {
 
   toConnections(to: number): ConnectionInterface[] {
     const key = "to:" + to;
-    let results: ConnectionInterface[] = this.cache[key];
-    if (results == null) {
+    let results = this.cache.get(key);
+    if (results === undefined) {
       results = [];
       const tmpList = this.network.connections;
-      tmpList.forEach((c) => {
-        if (c.to === to) results.push(c);
-      });
+      for (let i = tmpList.length; i--;) {
+        const c = tmpList[i];
 
-      this.cache[key] = results;
+        if (c.to === to) results.push(c);
+      }
+
+      this.cache.set(key, results);
     }
     return results;
   }
 
   fromConnections(from: number): ConnectionInterface[] {
     const key = "from:" + from;
-    let results: ConnectionInterface[] = this.cache[key];
-    if (results == null) {
+    let results = this.cache.get(key);
+    if (results === undefined) {
       results = [];
       const tmpList = this.network.connections;
-      tmpList.forEach((c) => {
-        if (c.from === from) results.push(c);
-      });
+      for (let i = tmpList.length; i--;) {
+        const c = tmpList[i];
 
-      this.cache[key] = results;
+        if (c.from === from) results.push(c);
+      }
+
+      this.cache.set(key, results);
     }
     return results;
   }
 
   gates(): ConnectionInterface[] {
     const key = "gates";
-    let results: ConnectionInterface[] = this.cache[key];
-    if (results == null) {
+    let results = this.cache.get(key);
+    if (results === undefined) {
       results = [];
       const tmpList = this.network.connections;
-      tmpList.forEach((c) => {
-        if (typeof c.gater !== "undefined") results.push(c);
-      });
+      for (let i = tmpList.length; i--;) {
+        const c = tmpList[i];
 
-      this.cache[key] = results;
+        if (typeof c.gater !== "undefined") results.push(c);
+      }
+
+      this.cache.set(key, results);
     }
     return results;
   }
 
   gateConnections(indx: number): ConnectionInterface[] {
     const key = "gate:" + indx;
-    let results: ConnectionInterface[] = this.cache[key];
-    if (results == null) {
+    let results = this.cache.get(key);
+    if (results === undefined) {
       results = [];
       const tmpList = this.network.connections;
-      tmpList.forEach((c) => {
-        if (c.gater === indx) results.push(c);
-      });
+      for (let i = tmpList.length; i--;) {
+        const c = tmpList[i];
 
-      this.cache[key] = results;
+        if (c.gater === indx) results.push(c);
+      }
+
+      this.cache.set(key, results);
     }
     return results;
   }
@@ -1411,7 +1418,7 @@ export class NetworkUtil {
 
     // Create a list of all non-gated connections
     const possible = [];
-    for (let i = 0; i < network.connections.length; i++) {
+    for (let i = network.connections.length; i--;) {
       const conn = network.connections[i];
       if (!Number.isInteger(conn.gater)) {
         possible.push(conn);
