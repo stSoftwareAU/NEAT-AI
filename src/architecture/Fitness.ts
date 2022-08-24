@@ -1,15 +1,16 @@
 import { NetworkInterface } from "./NetworkInterface.ts";
+import { Network } from "./network.js";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { addTag } from "../tags/TagsInterface.ts";
 
 type PromiseFunction = (v: unknown) => void;
 
-let calculationData: ({
+let calculationData: {
   queue: NetworkInterface[];
   resolve: PromiseFunction;
   reject: PromiseFunction;
   that: Fitness;
-} | null) = null;
+} | null = null;
 
 export class Fitness {
   private workers: WorkerHandler[];
@@ -35,15 +36,18 @@ export class Fitness {
 
     const error = responeData.evaluate.error;
     addTag(creature, "error", Math.abs(error).toString());
+    const realCreature = (creature as Network);
     creature.score = -error - (
           creature.nodes.length -
           creature.input -
           creature.output +
           creature.connections.length +
-          (creature.gates ? creature.gates.length : 0)
+          realCreature.util.gates().length
         ) * this.growth;
 
-    creature.score = isFinite(creature.score) ? creature.score : -Infinity;
+    creature.score = Number.isFinite(creature.score)
+      ? creature.score
+      : -Infinity;
     addTag(creature, "score", creature.score.toString());
   }
 

@@ -1,5 +1,4 @@
 /* Import */
-import { Network } from "./architecture/network.js";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { Methods } from "./methods/methods.js";
 import { make as makeConfig } from "./config/NeatConfig.ts";
@@ -7,6 +6,8 @@ import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
 import { NeatUtil } from "./NeatUtil.ts";
+
+import { NetworkUtil } from "./architecture/NetworkUtil.ts";
 
 /* Easier variable naming */
 const selection = Methods.selection;
@@ -73,7 +74,10 @@ export class Neat {
     );
     const tmpFittest = elitists[0];
 
-    const fittest = Network.fromJSON(tmpFittest.toJSON()); // Make a copy so it's not mutated.
+    const fittest = NetworkUtil.fromJSON(
+      tmpFittest.toJSON(),
+      this.config.debug,
+    ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
     addTag(fittest, "score", fittest.score.toString());
     addTag(fittest, "error", getTag(fittest, "error"));
@@ -89,7 +93,7 @@ export class Neat {
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
 
-      if (isFinite(p.score)) {
+      if (Number.isFinite(p.score)) {
         const oldScore = getTag(p, "old-score");
         if (oldScore && p.score <= parseFloat(oldScore)) {
           /** If fine tuning made no improvement then remove to prevent flooding of the population with clones. */
@@ -207,7 +211,7 @@ export class Neat {
         fineTunedPopulation.length;
       i--;
     ) {
-      newPopulation.push(this.getOffspring());
+      newPopulation.push(this.util.getOffspring());
     }
 
     // Replace the old population with the new population
@@ -218,14 +222,14 @@ export class Neat {
     await Promise.all(trainPromises).then((results) => {
       results.forEach((r) => {
         if (r.train) {
-          if (isFinite(r.train.error)) {
+          if (Number.isFinite(r.train.error)) {
             const json = JSON.parse(r.train.network);
 
             addTag(json, "approach", "trained");
             addTag(json, "error", Math.abs(r.train.error));
             addTag(json, "duration", r.duration);
 
-            trainPopulation.push(Network.fromJSON(json));
+            trainPopulation.push(NetworkUtil.fromJSON(json, this.config.debug));
           }
         } else {
           throw "No train result";
@@ -247,23 +251,12 @@ export class Neat {
   }
 
   /**
-   * Breeds two parents into an offspring, population MUST be sorted
-   */
-  getOffspring() {
-    return Network.crossOver(
-      this.getParent(),
-      this.getParent(),
-      this.config.equal,
-    );
-  }
-
-  /**
    * Evaluates the current population
    */
   async evaluate() {
     if (this.config.clear) {
       for (let i = this.population.length; i--;) {
-        this.population[i].clear();
+        this.population[i].util.clear();
       }
     }
 

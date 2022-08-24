@@ -1,17 +1,28 @@
 import { Network } from "../src/architecture/network.js";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { architect } from "../src/architecture/architect.js";
 import {
   assert,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.144.0/testing/asserts.ts";
+} from "https://deno.land/std@0.150.0/testing/asserts.ts";
 
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
 /* Functions used in the testing process */
-function checkMutation(method: unknown) {
-  const network = architect.Perceptron(2, 4, 4, 4, 2);
+function checkMutation(method: { name: string }) {
+  // const network = architect.Perceptron(2, 4, 4, 4, 2);
+  // const network = architect.Random(2, 4*4, 2);
+  const network = new Network(2, 2, {
+    layers: [
+      { count: 4 },
+      { count: 4 },
+      { count: 4 },
+    ],
+  });
   network.util.mutate(Mutation.ADD_GATE);
   network.util.mutate(Mutation.ADD_BACK_CONN);
   network.util.mutate(Mutation.ADD_SELF_CONN);
@@ -20,17 +31,25 @@ function checkMutation(method: unknown) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      originalOutput.push(network.activate([i / 10, j / 10]));
+      const v = network.activate([i / 10, j / 10]);
+      originalOutput.push(...v);
     }
   }
 
-  network.util.mutate(method as { name: string });
+  const json1 = JSON.stringify(network.toJSON(), null, 2);
+  network.util.mutate(method);
+  const json2 = JSON.stringify(network.toJSON(), null, 2);
+
+  console.info(json1);
+  console.info(json2);
+  assertNotEquals(json1, json2);
 
   const mutatedOutput = [];
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      mutatedOutput.push(network.activate([i / 10, j / 10]));
+      const v = network.activate([i / 10, j / 10]);
+      mutatedOutput.push(...v);
     }
   }
 
@@ -42,7 +61,7 @@ function checkMutation(method: unknown) {
 }
 
 async function evolveSet(set: any[], iterations: number, error: number) {
-  const network = architect.Perceptron(
+  const network = architect.Random(
     set[0].input.length,
     5,
     set[0].output.length,
@@ -60,11 +79,19 @@ async function evolveSet(set: any[], iterations: number, error: number) {
 }
 
 function trainSet(set: any[], iterations: number, error: number) {
-  const network = architect.Perceptron(
+  const network = new Network(
     set[0].input.length,
-    5,
     set[0].output.length,
+    {
+      layers: [
+        {
+          count: 5,
+        },
+      ],
+    },
   );
+
+  // console.info( JSON.stringify( network.toJSON(), null, 2));
 
   const options: NeatOptions = {
     iterations: iterations,
@@ -74,7 +101,7 @@ function trainSet(set: any[], iterations: number, error: number) {
 
   const results = network.train(set, options);
 
-  assert(results.error < error);
+  assert(results.error < error, "Error is " + results.error);
 }
 
 function testEquality(original: any, copied: any) {
@@ -179,72 +206,78 @@ Deno.test("Feed-forward", () => {
   }
 
   // Crossover
-  const network = Network.crossOver(network1, network2);
+  const network = NetworkUtil.crossOver(network1, network2);
 
   // Check if the network is feed-forward correctly
   for (i = 0; i < network.connections.length; i++) {
-    const from = network.nodes.indexOf(network.connections[i].from);
-    const to = network.nodes.indexOf(network.connections[i].to);
+    const from = network.connections[i].from;
+    const to = network.connections[i].to;
 
     // Exception will be made for memory connections soon
     assert(from < to, "network is not feeding forward correctly");
   }
 });
+
 Deno.test("from/toJSON equivalency", () => {
   let original, copy;
-  original = architect.Perceptron(
+  original = new Network(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
+    {
+      layers: [
+        { count: Math.floor(Math.random() * 5 + 1) },
+      ],
+    },
   );
-  copy = Network.fromJSON(original.toJSON());
+
+  copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
 
   original = new Network(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
   );
-  copy = Network.fromJSON(original.toJSON());
+  copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
 
-  original = architect.LSTM(
-    Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
-  );
-  copy = Network.fromJSON(original.toJSON());
-  testEquality(original, copy);
+  // original = architect.LSTM(
+  //   Math.floor(Math.random() * 5 + 1),
+  //   Math.floor(Math.random() * 5 + 1),
+  //   Math.floor(Math.random() * 5 + 1),
+  // );
+  // copy = NetworkUtil.fromJSON(original.toJSON());
+  // testEquality(original, copy);
 
-  original = architect.GRU(
-    Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
-  );
-  copy = Network.fromJSON(original.toJSON());
-  testEquality(original, copy);
+  // original = architect.GRU(
+  //   Math.floor(Math.random() * 5 + 1),
+  //   Math.floor(Math.random() * 5 + 1),
+  //   Math.floor(Math.random() * 5 + 1),
+  //   Math.floor(Math.random() * 5 + 1),
+  // );
+  // copy = NetworkUtil.fromJSON(original.toJSON());
+  // testEquality(original, copy);
 
   original = architect.Random(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 10 + 1),
     Math.floor(Math.random() * 5 + 1),
   );
-  copy = Network.fromJSON(original.toJSON());
+  copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
 
-  original = architect.NARX(
-    Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 10 + 1),
-    Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 5 + 1),
-  );
-  copy = Network.fromJSON(original.toJSON());
-  testEquality(original, copy);
+  // original = architect.NARX(
+  //   Math.floor(Math.random() * 5 + 1),
+  //   Math.floor(Math.random() * 10 + 1),
+  //   Math.floor(Math.random() * 5 + 1),
+  //   Math.floor(Math.random() * 5 + 1),
+  //   Math.floor(Math.random() * 5 + 1),
+  // );
+  // copy = NetworkUtil.fromJSON(original.toJSON());
+  // testEquality(original, copy);
 
-  original = architect.Hopfield(Math.floor(Math.random() * 5 + 1));
-  copy = Network.fromJSON(original.toJSON());
-  testEquality(original, copy);
+  // original = architect.Hopfield(Math.floor(Math.random() * 5 + 1));
+  // copy = NetworkUtil.fromJSON(original.toJSON());
+  // testEquality(original, copy);
 });
 /* Deno.test("standalone equivalency", () => {
       let original;
@@ -506,8 +539,12 @@ Deno.test("evolve_Bigger_than", async () => {
 // });
 
 Deno.test("NARX Sequence", async () => {
-  const narx = architect.NARX(1, 5, 1, 3, 3);
-
+  // const narx = architect.NARX(1, 5, 1, 3, 3);
+  const narx = new Network(1, 1, {
+    layers: [
+      { count: 5 },
+    ],
+  });
   // Train the XOR gate (in sequence!)
   const trainingData = [
     { input: [0], output: [0] },
@@ -602,9 +639,11 @@ Deno.test("from-to", () => {
   let toMinMS = Infinity;
   let currentJson = startJson;
   const LOOPS = 100;
+
+  ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = false;
   for (let i = LOOPS; i--;) {
     performance.mark("from-start");
-    const currentNetwork = Network.fromJSON(currentJson);
+    const currentNetwork = NetworkUtil.fromJSON(currentJson);
     performance.mark("from-end");
     const fromMS = performance.measure("", "from-start", "from-end").duration;
     fromMinMS = fromMinMS > fromMS ? fromMS : fromMinMS;
@@ -631,6 +670,7 @@ Deno.test("from-to", () => {
       assert(false, "JSON changed");
     }
   }
+  ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
   console.info("toJSON", toTotalMS / LOOPS, toMinMS);
   console.info("fromJSON", fromTotalMS / LOOPS, fromMinMS);
 });

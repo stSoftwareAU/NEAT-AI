@@ -20,7 +20,13 @@ export interface NeatConfig {
   /** number of records per dataset file. default: 2000 */
   dataSetParitionBreak: number;
 
-  /** feedback loop ( previous result feeds back into next interaction */
+  /** debug (much slower) */
+  debug: boolean;
+
+  /**
+   * Feedback loop ( previous result feeds back into next interaction
+   * https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html;jsessionid=2d7fa2c64f0bd39c86dec46870cd
+   */
   feedbackLoop: boolean;
 
   /** The list of observations to focus one */
@@ -29,7 +35,7 @@ export interface NeatConfig {
   focusRate: number;
 
   elitism: number;
-  equal: boolean; // No clue.
+
   /** Target error 0 to 1 */
   targetError: number;
 
@@ -40,9 +46,6 @@ export interface NeatConfig {
 
   /** Tne maximum number of connections */
   maxConns: number;
-
-  /** Tne maximum number of gates */
-  maxGates: number;
 
   /** Tne maximum number of nodes */
   maxNodes: number;
@@ -83,7 +86,13 @@ export function make(parameters?: NeatOptions) {
     dataSetParitionBreak: options.dataSetParitionBreak
       ? Math.max(options.dataSetParitionBreak, 1000)
       : 2000,
-    equal: options.equal || false,
+
+    debug: options.debug
+      ? true
+      : ((globalThis as unknown) as { DEBUG: boolean }).DEBUG
+      ? true
+      : false,
+
     feedbackLoop: options.feedbackLoop || false,
     focusList: options.focusList || [],
     focusRate: options.focusRate || 0.25,
@@ -100,7 +109,6 @@ export function make(parameters?: NeatOptions) {
     elitism: options.elitism || 1,
 
     maxConns: options.maxConns || Infinity,
-    maxGates: options.maxGates || Infinity,
     maxNodes: options.maxNodes || Infinity,
     mutationRate: options.mutationRate || 0.3,
 

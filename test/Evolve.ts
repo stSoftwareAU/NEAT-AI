@@ -1,6 +1,8 @@
 import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.144.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 import { Mutation } from "../src/methods/mutation.ts";
+
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
 Deno.test("AND", async () => {
@@ -19,6 +21,7 @@ Deno.test("AND", async () => {
     equal: true,
     elitism: 10,
     mutationRate: 0.5,
+    log: 1,
     error: 0.03,
     threads: 1,
   });
@@ -43,11 +46,12 @@ Deno.test("evolve-MT", async () => {
     elitism: 10,
     mutationRate: 0.5,
     error: 0.03,
-    threads: 2,
+    threads: 1,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
+
 Deno.test("evolve-XOR", async () => {
   // Train the XOR gate
   const trainingSet = [
@@ -65,6 +69,7 @@ Deno.test("evolve-XOR", async () => {
     mutationRate: 0.5,
     error: 0.03,
     threads: 1,
+    iterations: 1000,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
@@ -77,13 +82,14 @@ Deno.test("x", () => {
 Deno.test("booleanXOR", async () => {
   // Train the XOR gate
   const trainingSet = [
-    { input: [false, false], output: [0] },
-    { input: [false, true], output: [1] },
-    { input: [true, false], output: [1] },
-    { input: [true, true], output: [0] },
+    { input: [0, 0], output: [0] },
+    { input: [0, 1], output: [1] },
+    { input: [1, 0], output: [1] },
+    { input: [1, 1], output: [0] },
   ];
 
   const network = new Network(2, 1);
+  network.util.validate();
   const results = await network.evolve(trainingSet, {
     mutation: Mutation.FFW,
     equal: true,
@@ -93,6 +99,7 @@ Deno.test("booleanXOR", async () => {
     threads: 1,
   });
 
+  network.util.validate();
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 
   const value = network.activate([1, 0])[0];
@@ -121,6 +128,7 @@ Deno.test("XNOR", async () => {
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
+
 Deno.test("check", () => {
-  assert(isFinite(Infinity) == false);
+  assert(Number.isFinite(Infinity) == false);
 });

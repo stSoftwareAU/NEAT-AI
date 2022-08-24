@@ -6,7 +6,10 @@ import {
   TagsInterface,
 } from "../src/tags/TagsInterface.ts";
 import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.144.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("tag", () => {
   const taggable: TagsInterface = { tags: undefined };
@@ -45,7 +48,7 @@ Deno.test("keep", () => {
   assert(getTag(n, "hello") == "world", "Expecting a value.");
   const json = n.toJSON();
 
-  const n2 = Network.fromJSON(json);
+  const n2 = NetworkUtil.fromJSON(json);
 
   assert(getTag(n2, "hello") == "world", "Expecting a value.");
 

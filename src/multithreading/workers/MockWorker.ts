@@ -3,7 +3,7 @@ import { RequestData, ResponseData, WorkerInterface } from "./WorkerHandler.ts";
 import { WorkerProcessor } from "./WorkerProcessor.ts";
 
 export class MockWorker implements WorkerInterface {
-  private callBack: (EventListener | null) = null;
+  private callBack: EventListener | null = null;
 
   addEventListener(
     _type: string,

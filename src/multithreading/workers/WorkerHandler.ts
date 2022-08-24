@@ -1,10 +1,12 @@
 import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
+import { Network } from "../../architecture/network.js";
 import { MockWorker } from "./MockWorker.ts";
 
 import { addTag, getTag } from "../../tags/TagsInterface.ts";
 
 export interface RequestData {
   taskID: number;
+  debug?: boolean;
   initialize?: {
     dataSetDir: string;
     costName: string;
@@ -25,6 +27,7 @@ export interface RequestData {
 
 export interface ResponseData {
   taskID: number;
+  debug?: boolean;
   duration: number;
   initialize?: {
     status: string;
@@ -87,7 +90,6 @@ export class WorkerHandler {
         {
           type: "module",
           deno: {
-            namespace: true,
             permissions: {
               read: [
                 dataSetDir,
@@ -173,7 +175,7 @@ export class WorkerHandler {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        network: network.toJSON(),
+        network: JSON.stringify((network as Network).toJSON()),
         feedbackLoop,
       },
     };
@@ -182,8 +184,8 @@ export class WorkerHandler {
   }
 
   train(network: NetworkInterface, rate: number) {
-    const json = network.toJSON();
-    delete json.score;
+    const json = (network as Network).toJSON();
+    // delete json.score;
     delete json.tags;
     const error = getTag(network, "error");
     if (error) {
@@ -192,7 +194,7 @@ export class WorkerHandler {
     const data: RequestData = {
       taskID: this.taskID++,
       train: {
-        network: json,
+        network: JSON.stringify(json),
         rate: rate,
       },
     };

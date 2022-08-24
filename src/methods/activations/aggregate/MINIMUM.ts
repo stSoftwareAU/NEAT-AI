@@ -11,14 +11,13 @@ export class MINIMUM implements NodeActivationInterface {
   activate(node: Node) {
     const values: number[] = [];
 
-    // Activation sources coming from connections
-    for (let i = 0; i < node.connections.in.length; i++) {
-      const connection = node.connections.in[i];
+    const connections = node.util.toConnections(node.index);
+    connections.forEach((c) => {
+      const fromNode = node.util.getNode(c.from);
       values.push(
-        connection.from.getActivation() * connection.weight *
-          connection.gain,
+        fromNode.getActivation() * c.weight,
       );
-    }
+    });
 
     const value = Math.min(...values);
     return value;

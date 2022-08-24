@@ -4,8 +4,6 @@
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 
 export interface NeatOptions {
-  equal?: boolean; // No clue.
-
   /** Target error 0 to 1 */
   error?: number;
 
@@ -19,13 +17,19 @@ export interface NeatOptions {
   /** number of records per dataset file. default: 2000 */
   dataSetParitionBreak?: number;
 
+  /** debug (much slower) */
+  debug?: boolean;
+
   /** The directory to store the experiments (optional) */
   experimentStore?: string;
 
   /** List of creatures to start with */
   creatures?: NetworkInterface[];
 
-  /** feedback loop ( previous result feeds back into next interaction */
+  /**
+   * Feedback loop ( previous result feeds back into next interaction
+   * https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html;jsessionid=2d7fa2c64f0bd39c86dec46870cd
+   */
   feedbackLoop?: boolean;
 
   /** The list of observations to focus one */
@@ -42,9 +46,6 @@ export interface NeatOptions {
   /** Tne maximum number of connections */
   maxConns?: number;
 
-  /** Tne maximum number of gates */
-  maxGates?: number;
-
   /** Tne maximum number of nodes */
   maxNodes?: number;
 
@@ -59,6 +60,7 @@ export interface NeatOptions {
 
   /** the number of workers */
   threads?: number;
+
   /** the initial train rate if evolving or the rate to use when training only; default 0.01 */
   trainRate?: number;
   selection?: any;

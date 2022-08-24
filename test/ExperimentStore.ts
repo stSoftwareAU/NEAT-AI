@@ -1,13 +1,15 @@
 import { NeatUtil } from "../src/NeatUtil.ts";
 import { Neat } from "../src/Neat.js";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
-import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.144.0/testing/asserts.ts";
+import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
 import { make as makeConfig } from "../src/config/NeatConfig.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
 
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
 Deno.test("previous", async () => {
-  const creature: NetworkInterface = Network.fromJSON({
+  const creature: NetworkInterface = NetworkUtil.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -28,8 +30,7 @@ Deno.test("previous", async () => {
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,
-      "gater": null,
-    }, { "weight": 0.96864643541, "from": 0, "to": 2, "gater": null }],
+    }, { "weight": 0.96864643541, "from": 0, "to": 2 }],
     "input": 2,
     "output": 1,
     tags: [

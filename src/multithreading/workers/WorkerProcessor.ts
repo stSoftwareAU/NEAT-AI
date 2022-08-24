@@ -1,14 +1,13 @@
 import { RequestData, ResponseData } from "./WorkerHandler.ts";
 
-import { Network } from "../../architecture/network.js";
 import { NetworkUtil } from "../../architecture/NetworkUtil.ts";
 import { findCost } from "../../config.ts";
 
 import { TrainOptions } from "../../config/TrainOptions.ts";
 
 export class WorkerProcessor {
-  private costName: (string | null) = null;
-  private dataSetDir: (string | null) = null;
+  private costName: string | null = null;
+  private dataSetDir: string | null = null;
 
   async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();
@@ -27,7 +26,7 @@ export class WorkerProcessor {
       if (!this.dataSetDir) throw "no data directory";
       if (!this.costName) throw "no cost";
 
-      const network = Network.fromJSON(data.evaluate.network);
+      const network = NetworkUtil.fromJSON(JSON.parse(data.evaluate.network));
       const util = new NetworkUtil(network);
 
       const cost = findCost(this.costName);
@@ -45,7 +44,10 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
-      const network = Network.fromJSON(data.train.network);
+      const network = NetworkUtil.fromJSON(
+        JSON.parse(data.train.network),
+        data.debug,
+      );
       const util = new NetworkUtil(network);
 
       if (!this.dataSetDir) throw "No data dir";

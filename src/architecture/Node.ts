@@ -7,62 +7,106 @@ import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
 import { addTags, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
-
-/*******************************************************************************
-NODE
-*******************************************************************************/
-
-interface ConnectionsInterface {
-  in: Connection[];
-  out: Connection[];
-  gated: Connection[];
-  self: Connection;
-}
+import { NetworkUtil } from "./NetworkUtil.ts";
 
 export class Node implements TagsInterface, NodeInterface {
-  public type;
-  public bias;
-  private squash: string;
-  private old;
-  private state;
-  private activation;
-  private derivative = 0;
-  private previousDeltaBias;
-  private totalDeltaBias;
-  public connections: ConnectionsInterface;
-  public index?: number;
+  readonly util: NetworkUtil;
+  readonly type;
+  bias?: number;
+  squash?: string;
+
+  public index: number;
   public tags = undefined;
 
-  private error;
+  constructor(
+    type: "input" | "output" | "hidden" | "constant",
+    bias: number | undefined,
+    util: NetworkUtil,
+    squash: string = LOGISTIC.NAME,
+  ) {
+    if (!type) {
+      console.trace();
+      throw "type must be defined: " + (typeof type);
+    }
 
-  constructor(type: string) {
-    this.bias = (type === "input") ? 0 : Math.random() * 0.2 - 0.1;
-    this.squash = LOGISTIC.NAME;
-    this.type = type || "hidden";
+    if (type !== "input") {
+      if (type !== "output" && type !== "hidden" && type !== "constant") {
+        console.trace();
+        throw "invalid type: " + type;
+      }
 
-    this.activation = 0;
-    this.state = 0;
-    this.old = 0;
+      if (typeof bias === "undefined") {
+        bias = Math.random() * 0.2 - 0.1;
+      }
+      if (!Number.isFinite(bias)) {
+        console.trace();
+        throw "bias (other than for 'input') must be a number type: " + type +
+          ", typeof: " +
+          (typeof bias) + ", value: " + bias;
+      }
 
-    // For tracking momentum
-    this.previousDeltaBias = 0;
+      this.bias = bias;
 
-    // Batch training
-    this.totalDeltaBias = 0;
+      if (typeof squash !== "string") {
+        console.trace();
+        throw "squash (other than for " + type + ") must be a string typeof: " +
+          (typeof squash) + ", value: " + squash;
+      }
+      this.squash = squash;
+    }
 
-    this.connections = {
-      in: [],
-      out: [],
-      gated: [],
-      self: new Connection(this, this, 0),
-    };
+    if (typeof util !== "object") {
+      console.trace();
+      throw "util must be a NetworkUtil was: " + (typeof util);
+    }
 
-    // Data for backpropagation
-    this.error = {
-      responsibility: 0,
-      projected: 0,
-      gated: 0,
-    };
+    this.util = util;
+
+    this.type = type;
+
+    this.index = -1;
+  }
+
+  fix() {
+    if (this.type == "hidden") {
+      const fromList = this.util.fromConnections(this.index);
+      if (fromList.length == 0) {
+        const gateList = this.util.gateConnections(this.index);
+        {
+          if (gateList.length == 0) {
+            const targetIndx =
+              Math.floor(Math.random() * (this.util.nodeCount() - this.index)) +
+              this.index;
+            this.util.connect(
+              this.index,
+              targetIndx,
+              Connection.randomWeight(),
+            );
+          }
+        }
+      }
+      const toList = this.util.toConnections(this.index);
+      if (toList.length == 0) {
+        const fromIndx = Math.floor(Math.random() * this.index);
+        this.util.connect(
+          fromIndx,
+          this.index,
+          Connection.randomWeight(),
+        );
+      }
+    } else if (this.type == "output") {
+      const toList = this.util.toConnections(this.index);
+      if (toList.length == 0) {
+        const fromIndx = Math.floor(
+          Math.random() * (this.util.nodeCount() - this.util.outputCount()),
+        );
+        this.util.connect(
+          fromIndx,
+          this.index,
+          Connection.randomWeight(),
+        );
+      }
+    }
   }
 
   private isNodeActivation(
@@ -72,185 +116,291 @@ export class Node implements TagsInterface, NodeInterface {
   }
 
   getActivation() {
-    return this.activation;
+    const state = this.util.networkState.node(this.index);
+
+    return state.activation;
   }
 
   /**
    * Activates the node
    */
   activate(input?: number) {
-    // Check if an input is given
-    if (typeof input !== "undefined") {
-      this.activation = input;
-      return this.activation;
+    const s = this.util.networkState.node(this.index);
+    if (this.type == "input") {
+      if (Number.isFinite(input)) {
+        s.activation = input ? input : 0;
+
+        return s.activation;
+      } else {
+        console.trace();
+        throw this.index +
+          ") Node of type 'input' must have a finite value was: " + input;
+      }
+    } else {
+      if (typeof input !== "undefined") {
+        throw this.index + ") Node of type '" + this.type +
+          "' Must not have an input value was: " + input;
+      }
+      if (!this.squash) {
+        throw "Must have a squash for type: " + this.type;
+      }
     }
 
-    const activation = Activations.find(this.squash);
+    const squashMethod = Activations.find(this.squash);
 
-    if (this.isNodeActivation(activation)) {
-      return activation.activate(this) + this.bias;
+    if (this.isNodeActivation(squashMethod)) {
+      return squashMethod.activate(this) + (this.bias ? this.bias : 0);
     } else {
-      this.old = this.state;
+      s.old = s.state;
 
-      // All activation sources coming from the node itself
-      this.state =
-        this.connections.self.gain * this.connections.self.weight * this.state +
-        this.bias;
-
-      // Activation sources coming from connections
-      for (let i = 0; i < this.connections.in.length; i++) {
-        const connection = this.connections.in[i];
-        this.state += connection.from.activation * connection.weight *
-          connection.gain;
+      const toList = this.util.toConnections(this.index);
+      s.state = this.bias ? this.bias : 0;
+      for (let i = toList.length; i--;) {
+        const c = toList[i];
+        const fromState = this.util.networkState.node(c.from);
+        const cs = this.util.networkState.connection(c.from, c.to);
+        s.state += fromState.activation * c.weight * cs.gain;
+        if (Math.abs(s.state) > Number.MAX_SAFE_INTEGER) {
+          s.state = Number.MAX_SAFE_INTEGER * (s.state < 0 ? -1 : 1);
+        }
+        if (!Number.isFinite(s.state)) {
+          console.trace();
+          throw c.from + ") invalid state: " + s.state;
+        }
       }
 
-      const activationSquash = (activation as ActivationInterface);
-      const result = activationSquash.squashAndDerive(this.state);
+      const activationSquash = (squashMethod as ActivationInterface);
+      const result = activationSquash.squashAndDerive(s.state);
       // Squash the values received
-      this.activation = result.activation;
-      this.derivative = result.derivative;
-      // this.activation = this.squash(this.state);
-      // this.derivative = this.squash(this.state, true);
+      s.activation = result.activation;
+
+      if (!Number.isFinite(s.activation)) {
+        console.trace();
+
+        throw this.index + ") invalid value: + " + s.state + ", squash: " +
+          this.squash +
+          ", activation: " + s.activation;
+      }
+      const sp = this.util.networkState.nodePersistent(this.index);
+      sp.derivative = result.derivative;
 
       // Update traces
-      const nodes = [];
-      const influences = [];
+      const nodes: Node[] = [];
+      const influences: number[] = [];
 
-      for (let i = 0; i < this.connections.gated.length; i++) {
-        const conn = this.connections.gated[i];
-        const node = conn.to;
+      const gateList = this.util.gateConnections(this.index);
+      for (let i = gateList.length; i--;) {
+        const c = gateList[i];
+        const node = this.util.getNode(c.to);
 
-        const index = nodes.indexOf(node);
-        if (index > -1) {
-          influences[index] += conn.weight * conn.from.activation;
+        const pos = nodes.indexOf(node);
+        if (pos > -1) {
+          const fromState = this.util.networkState.node(c.from);
+          influences[pos] += c.weight * fromState.activation;
         } else {
           nodes.push(node);
+          const fromState = this.util.networkState.node(c.from);
           influences.push(
-            conn.weight * conn.from.activation +
-              (node.connections.self.gater === this ? node.old : 0),
+            c.weight * fromState.activation +
+              (c.gater === this.index ? fromState.old : 0),
           );
         }
 
         // Adjust the gain to this nodes' activation
-        conn.gain = this.activation;
+        const cs = this.util.networkState.connection(c.from, c.to);
+        cs.gain = s.activation;
       }
 
-      for (let i = 0; i < this.connections.in.length; i++) {
-        const connection = this.connections.in[i];
+      const self = this.util.selfConnection(this.index);
+      const selfState = this.util.networkState.connection(
+        this.index,
+        this.index,
+      );
 
+      for (let i = 0; i < toList.length; i++) {
+        const c = toList[i];
         // Elegibility trace
-        connection.elegibility =
-          this.connections.self.gain * this.connections.self.weight *
-            connection.elegibility +
-          connection.from.activation * connection.gain;
+        if (c.from === c.to && c.from == this.index) continue;
+
+        const fromState = this.util.networkState.node(c.from);
+        const cs = this.util.networkState.connection(c.from, c.to);
+        if (self) {
+          cs.elegibility =
+            selfState.gain * self.weight * selfState.elegibility +
+            fromState.activation * cs.gain;
+
+          if (!Number.isFinite(cs.elegibility)) {
+            console.trace();
+            console.info(self, c, fromState.activation);
+            throw c.from + ":" + c.to + ") invalid elegibility: " +
+              cs.elegibility;
+          }
+        } else {
+          cs.elegibility = fromState.activation * cs.gain;
+          if (!Number.isFinite(cs.elegibility)) {
+            console.trace();
+            console.info(c, fromState.activation);
+            throw c.from + ":" + c.to + ") invalid elegibility: " +
+              cs.elegibility;
+          }
+        }
 
         // Extended trace
-        for (let j = 0; j < nodes.length; j++) {
+        for (let j = nodes.length; j--;) {
           const node = nodes[j];
           const influence = influences[j];
 
-          const index = connection.xtrace.nodes.indexOf(node);
+          const index = cs.xtrace.nodes.indexOf(node);
 
           if (index > -1) {
-            const value =
-              node.connections.self.gain * node.connections.self.weight *
-                connection.xtrace.values[index] +
-              this.derivative * connection.elegibility * influence;
+            const value = self
+              ? (cs.gain *
+                self.weight *
+                cs.xtrace.values[index])
+              : 0 +
+                sp.derivative * cs.elegibility * influence;
 
-            connection.xtrace.values[index] = value;
+            cs.xtrace.values[index] = value;
           } else {
             // Does not exist there yet, might be through mutation
-            connection.xtrace.nodes.push(node);
-            connection.xtrace.values.push(
-              this.derivative * connection.elegibility * influence,
+            cs.xtrace.nodes.push(node);
+            cs.xtrace.values.push(
+              sp.derivative * cs.elegibility * influence,
             );
           }
         }
       }
 
-      return this.activation;
+      return s.activation;
     }
   }
+
   /**
    * Activates the node without calculating elegibility traces and such
    */
   noTraceActivate(input?: number) {
-    // Check if an input is given
-    if (typeof input !== "undefined") {
-      this.activation = input;
-      return this.activation;
+    const state = this.util.networkState.node(this.index);
+    if (this.type == "input") {
+      if (Number.isFinite(input)) {
+        state.activation = input ? input : 0;
+        return state.activation;
+      } else {
+        throw this.index +
+          ") Node of type 'input' must have a finite value was: " + input;
+      }
+    } else {
+      if (input !== undefined) {
+        throw this.index + ") Node of type '" + this.type +
+          "' Must not have an input value was: " + input;
+      }
+      if (!this.squash) {
+        throw "Must have a squash for type: " + this.type;
+      }
     }
+
     const activation = Activations.find(this.squash);
 
     if (this.isNodeActivation(activation)) {
       return activation.activate(this);
     } else {
       // All activation sources coming from the node itself
-      this.state =
-        this.connections.self.gain * this.connections.self.weight * this.state +
-        this.bias;
 
-      // Activation sources coming from connections
-      for (let i = this.connections.in.length; i--;) {
-        const connection = this.connections.in[i];
-        this.state += connection.from.activation * connection.weight *
-          connection.gain;
+      const toConnections = this.util.toConnections(this.index);
+      let value = this.bias ? this.bias : 0;
+
+      for (let i = toConnections.length; i--;) {
+        const c = toConnections[i];
+
+        const fromState = this.util.networkState.node(c.from);
+        const cs = this.util.networkState.connection(c.from, c.to);
+        value += fromState.activation * c.weight * cs.gain;
       }
+
       const activationSquash = (activation as ActivationInterface);
       // Squash the values received
-      this.activation = activationSquash.squash(this.state);
+      state.activation = activationSquash.squash(value);
 
-      for (let i = this.connections.gated.length; i--;) {
-        this.connections.gated[i].gain = this.activation;
+      if (!Number.isFinite(state.activation)) {
+        console.trace();
+
+        const msg = this.index + ") invalid value: + " + value + ", squash: " +
+          this.squash +
+          ", activation: " +
+          state.activation;
+        console.warn(msg);
+        if (state.activation > Number.MAX_SAFE_INTEGER) {
+          state.activation = Number.MAX_SAFE_INTEGER;
+        } else if (state.activation < Number.MIN_SAFE_INTEGER) {
+          state.activation = Number.MIN_SAFE_INTEGER;
+        } else {
+          throw msg;
+        }
       }
 
-      return this.activation;
+      return state.activation;
     }
   }
+
   /**
    * Back-propagate the error, aka learn
    */
-  propagate(rate: number, momentum: number, update: boolean, target: number) {
+  propagate(rate: number, momentum: number, update: boolean, target?: number) {
     momentum = momentum || 0;
     rate = rate || 0.3;
 
     // Error accumulator
     let error = 0;
 
+    const s = this.util.networkState.node(this.index);
+    const sp = this.util.networkState.nodePersistent(this.index);
     // Output nodes get their error from the enviroment
     if (this.type === "output") {
-      this.error.responsibility = this.error.projected = target -
-        this.activation;
+      s.errorResponsibility = s.errorProjected = (target ? target : 0) -
+        s.activation;
     } else { // the rest of the nodes compute their error responsibilities by backpropagation
       // error responsibilities from all the connections projected from this node
-      for (let i = 0; i < this.connections.out.length; i++) {
-        const connection = this.connections.out[i];
-        const node = connection.to;
+      const fromList = this.util.fromConnections(this.index);
+
+      for (let i = fromList.length; i--;) {
+        const c = fromList[i];
+
+        const toState = this.util.networkState.node(c.to);
         // Eq. 21
-        error += node.error.responsibility * connection.weight *
-          connection.gain;
+        const cs = this.util.networkState.connection(c.from, c.to);
+        const tmpError = error +
+          toState.errorResponsibility * c.weight * cs.gain;
+        error = Number.isFinite(tmpError) ? tmpError : error;
       }
 
       // Projected error responsibility
-      this.error.projected = this.derivative * error;
+      s.errorProjected = sp.derivative * error;
+
+      if (!Number.isFinite(s.errorProjected)) {
+        console.trace();
+        // console.info(state.error, this.derivative, error);
+        throw this.index + ") invalid error.projected: " + s.errorProjected;
+      }
 
       // Error responsibilities from all connections gated by this neuron
       error = 0;
 
-      for (let i = 0; i < this.connections.gated.length; i++) {
-        const conn = this.connections.gated[i];
-        const node = conn.to;
-        let influence = node.connections.self.gater === this ? node.old : 0;
+      const gateList = this.util.gateConnections(this.index);
+      for (let i = gateList.length; i--;) {
+        const c = gateList[i];
+        const toState = this.util.networkState.node(c.to);
+        const self = this.util.selfConnection(this.index);
+        let influence = self ? toState.old : 0;
 
-        influence += conn.weight * conn.from.activation;
-        error += node.error.responsibility * influence;
+        const fromState = this.util.networkState.node(c.from);
+        influence += c.weight * fromState.activation;
+        error += toState.errorResponsibility * influence;
       }
 
       // Gated error responsibility
-      this.error.gated = this.derivative * error;
+      s.errorGated = sp.derivative * error;
 
       // Error responsibility
-      this.error.responsibility = this.error.projected + this.error.gated;
+      s.errorResponsibility = s.errorProjected + s.errorGated;
     }
 
     if (this.type === "constant") {
@@ -258,164 +408,77 @@ export class Node implements TagsInterface, NodeInterface {
     }
 
     // Adjust all the node's incoming connections
-    for (let i = 0; i < this.connections.in.length; i++) {
-      const connection = this.connections.in[i];
+    const toList = this.util.toConnections(this.index);
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
 
-      let gradient = this.error.projected * connection.elegibility;
+      const cs = this.util.networkState.connection(c.from, c.to);
+      const csp = this.util.networkState.connectionPersistent(c.from, c.to);
+      let gradient = s.errorProjected * cs.elegibility;
 
-      for (let j = 0; j < connection.xtrace.nodes.length; j++) {
-        const node = connection.xtrace.nodes[j];
-        const value = connection.xtrace.values[j];
-        gradient += node.error.responsibility * value;
+      for (let j = cs.xtrace.nodes.length; j--;) {
+        const node = cs.xtrace.nodes[j];
+        const value = cs.xtrace.values[j];
+        const traceState = this.util.networkState.node(node.index);
+        gradient += traceState.errorResponsibility * value;
       }
 
       // Adjust weight
       const deltaWeight = rate * gradient;
-      connection.totalDeltaWeight += deltaWeight;
+
+      csp.totalDeltaWeight += deltaWeight;
       if (update) {
-        connection.totalDeltaWeight += momentum *
-          connection.previousDeltaWeight;
-        connection.weight += connection.totalDeltaWeight;
-        connection.previousDeltaWeight = connection.totalDeltaWeight;
-        connection.totalDeltaWeight = 0;
+        csp.totalDeltaWeight += momentum *
+          csp.previousDeltaWeight;
+        c.weight += csp.totalDeltaWeight;
+        if (!Number.isFinite(c.weight)) {
+          console.trace();
+
+          throw c.from + ":" + c.to + ") invalid weight: " +
+            c.weight;
+        }
+
+        csp.previousDeltaWeight = csp.totalDeltaWeight;
+        csp.totalDeltaWeight = 0;
       }
     }
 
     // Adjust bias
-    const deltaBias = rate * this.error.responsibility;
-    this.totalDeltaBias += deltaBias;
+    const deltaBias = rate * s.errorResponsibility;
+    sp.totalDeltaBias += deltaBias;
     if (update) {
-      this.totalDeltaBias += momentum * this.previousDeltaBias;
-      this.bias += this.totalDeltaBias;
-      this.previousDeltaBias = this.totalDeltaBias;
-      this.totalDeltaBias = 0;
-    }
-  }
-  /**
-   * Creates a connection from this node to the given node
-   */
-  connect(target: Node, weight: number) {
-    const connections = [];
-    if (typeof target.bias !== "undefined") { // must be a node!
-      if (target === this) {
-        // Turn on the self connection by setting the weight
-        if (this.connections.self.weight !== 0) {
-          console.warn("This connection already exists!");
-        } else {
-          this.connections.self.weight = weight || 1;
+      sp.totalDeltaBias += momentum * sp.previousDeltaBias;
+      if (this.bias !== undefined) {
+        this.bias += sp.totalDeltaBias;
+        if (!Number.isFinite(this.bias)) {
+          console.trace();
+          console.info(this);
+          throw this.index + ") invalid bias: " + this.bias;
         }
-        connections.push(this.connections.self);
-      } else if (this.isProjectingTo(target)) {
-        throw new Error("Already projecting a connection to this node!");
-      } else {
-        const connection = new Connection(this, target, weight);
-        target.connections.in.push(connection);
-        this.connections.out.push(connection);
-
-        connections.push(connection);
       }
-    } else { // should be a group
-      const group = (target as unknown) as { nodes: Node[] };
-      for (let i = 0; i < group.nodes.length; i++) {
-        const connection = new Connection(this, group.nodes[i], weight);
-        group.nodes[i].connections.in.push(connection);
-        this.connections.out.push(connection);
-        target.connections.in.push(connection);
-
-        connections.push(connection);
-      }
+      sp.previousDeltaBias = sp.totalDeltaBias;
+      sp.totalDeltaBias = 0;
     }
-    return connections;
   }
+
   /**
    * Disconnects this node from the other node
    */
-  disconnect(node: Node, twosided: boolean) {
-    if (this === node) {
-      this.connections.self.weight = 0;
-      return;
+  disconnect(to: number, twoSided: boolean) {
+    this.util.disconnect(this.index, to);
+    if (twoSided) {
+      this.util.disconnect(to, this.index);
     }
-
-    for (let i = 0; i < this.connections.out.length; i++) {
-      const conn = this.connections.out[i];
-      if (conn.to === node) {
-        this.connections.out.splice(i, 1);
-        const j = conn.to.connections.in.indexOf(conn);
-        conn.to.connections.in.splice(j, 1);
-        if (conn.gater !== null) {
-          const a = [conn];
-          conn.gater.ungate(a);
-        }
-        break;
-      }
-    }
-
-    if (twosided) {
-      node.disconnect(this, false);
-    }
-  }
-  /**
-   * Make this node gate a connection
-   */
-  gate(connections: Connection[]) {
-    if (!Array.isArray(connections)) {
-      connections = [connections];
-    }
-
-    for (let i = 0; i < connections.length; i++) {
-      const connection = connections[i];
-
-      this.connections.gated.push(connection);
-      connection.gater = this;
-    }
-  }
-  /**
-   * Removes the gates from this node from the given connection(s)
-   */
-  ungate(connections: Connection[]) {
-    for (let i = connections.length - 1; i >= 0; i--) {
-      const connection = connections[i];
-
-      const index = this.connections.gated.indexOf(connection);
-      this.connections.gated.splice(index, 1);
-      connection.gater = null;
-      connection.gain = 1;
-    }
-  }
-
-  /**
-   * Clear the context of the node
-   */
-  clear() {
-    for (let i = 0; i < this.connections.in.length; i++) {
-      const connection = this.connections.in[i];
-
-      connection.elegibility = 0;
-      connection.xtrace = {
-        nodes: [],
-        values: [],
-      };
-    }
-
-    for (let i = 0; i < this.connections.gated.length; i++) {
-      const conn = this.connections.gated[i];
-      conn.gain = 0;
-    }
-
-    this.error.responsibility = this.error.projected = this.error.gated = 0;
-    this.old = this.state = this.activation = 0;
   }
 
   /**
    * Mutates the node with the given method
    */
   mutate(method: string) {
-    if (typeof method === "undefined") {
-      throw new Error("No mutate method given!");
-    } /*else if (!(method.name in Mutation.ALL)) {
-          throw new Error("This method does not exist!");
-        }*/
-
+    if (typeof method !== "string") {
+      console.trace();
+      throw "Mutate method wrong type: " + (typeof method);
+    }
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
         // Can't be the same squash
@@ -434,70 +497,77 @@ export class Node implements TagsInterface, NodeInterface {
         const modification =
           Math.random() * (Mutation.MOD_BIAS.max - Mutation.MOD_BIAS.min) +
           Mutation.MOD_BIAS.min;
-        this.bias += modification;
+        this.bias = modification + (this.bias ? this.bias : 0);
         break;
       }
+      default:
+        console.trace();
+        throw "Unknown mutate method: " + method;
     }
   }
+
   /**
    * Checks if this node is projecting to the given node
    */
   isProjectingTo(node: Node) {
-    if (node === this && this.connections.self.weight !== 0) {
-      return true;
-    }
-
-    for (let i = 0; i < this.connections.out.length; i++) {
-      const conn = this.connections.out[i];
-      if (conn.to === node) {
-        return true;
-      }
-    }
-    return false;
+    const c = this.util.getConnection(this.index, node.index);
+    return c != null;
   }
   /**
    * Checks if the given node is projecting to this node
    */
   isProjectedBy(node: Node) {
-    if (node === this && this.connections.self.weight !== 0) {
-      return true;
-    }
-
-    for (let i = 0; i < this.connections.in.length; i++) {
-      const conn = this.connections.in[i];
-      if (conn.from === node) {
-        return true;
-      }
-    }
-
-    return false;
+    const c = this.util.getConnection(node.index, this.index);
+    return c != null;
   }
+
   /**
    * Converts the node to a json object
    */
   toJSON() {
-    const json = {
-      bias: this.bias,
-      type: this.type,
-      squash: this.squash,
-      tags: this.tags ? [...this.tags] : undefined,
-    };
-
-    return json;
+    if (this.type === "input") {
+      return {
+        type: this.type,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    } else {
+      return {
+        bias: this.bias,
+        index: this.index,
+        type: this.type,
+        squash: this.squash,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    }
   }
+
   /**
    * Convert a json object to a node
    */
   static fromJSON(
-    json: { type: string; bias: number; squash: string; tags?: [] },
+    json: NodeInterface, // { type: string; bias: number; squash: string; tags?: [] },
+    util: NetworkUtil,
   ) {
-    const node = new Node(json.type);
-    node.bias = json.bias;
-    // node.type = json.type;
-    node.squash = json.squash; //Methods.activation[json.squash];
+    switch (json.type) {
+      case "input":
+      case "output":
+      case "hidden":
+        break;
+      default:
+        throw "unknown type: " + json.type;
+    }
+
+    if (typeof util !== "object") {
+      console.trace();
+      throw "util must be a NetworkUtil was: " + (typeof util);
+    }
+
+    const node = new Node(json.type, json.bias, util);
+
+    node.squash = json.squash;
 
     if (json.tags) {
-      addTags(node, json as TagsInterface);
+      addTags(node, json);
     }
     return node;
   }

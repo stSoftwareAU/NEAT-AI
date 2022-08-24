@@ -21,7 +21,7 @@ export const Cost = {
         (1 - t) * Math.log(1 - Math.max(o, 1e-15));
     }
 
-    // if (isFinite(error) == false) {
+    // if (Number.isFinite(error) == false) {
     //   throw "CROSS_ENTROPY len: " + len + ", error: " + error;
     // }
 
@@ -46,7 +46,7 @@ export const Cost = {
       misses += Math.round(target[i] * 2) !== Math.round(output[i] * 2);
     }
 
-    // if (isFinite(error) == false) {
+    // if (Number.isFinite(error) == false) {
     //   throw "BINARY error: " + error;
     // }
 
@@ -65,7 +65,7 @@ export const Cost = {
       error += Math.abs(target[i] - output[i]);
     }
 
-    // if (isFinite(error) == false) {
+    // if (Number.isFinite(error) == false) {
     //   throw "MAE len: " + len + ", error: " + error;
     // }
     return error / len;
@@ -84,7 +84,7 @@ export const Cost = {
       error += Math.abs((o - t) / Math.max(t, 1e-15));
     }
 
-    // if (isFinite(error) == false) {
+    // if (Number.isFinite(error) == false) {
     //   throw "MAPE len: " + len + ", error: " + error;
     // }
 
@@ -98,7 +98,7 @@ export const Cost = {
         Math.log(Math.max(output[i], 1e-15));
     }
 
-    // if (isFinite(error) == false) {
+    // if (Number.isFinite(error) == false) {
     //   throw "MSLE len: " + len + ", error: " + error;
     // }
     return error;
@@ -111,7 +111,7 @@ export const Cost = {
       error += Math.max(0, 1 - target[i] * output[i]);
     }
 
-    // if (isFinite(error) == false) {
+    // if (Number.isFinite(error) == false) {
     //   throw "HINGE len: " + len + ", error: " + error;
     // }
 
