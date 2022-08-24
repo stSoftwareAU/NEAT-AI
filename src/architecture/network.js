@@ -57,8 +57,6 @@ export class Network {
       }
     }
 
-    output.length = outputLen;
-
     return output;
   }
 
@@ -86,17 +84,7 @@ export class Network {
           _node.noTraceActivate();
       }
     }
-    output.length = outputLen;
     return output;
-  }
-
-  /**
-   * Clear the context of the network
-   */
-  clear() {
-    for (let i = 0; i < this.nodes.length; i++) {
-      this.nodes[i].clear();
-    }
   }
 
   /**

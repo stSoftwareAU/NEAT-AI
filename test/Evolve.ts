@@ -69,6 +69,7 @@ Deno.test("evolve-XOR", async () => {
     mutationRate: 0.5,
     error: 0.03,
     threads: 1,
+    iterations: 1000,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);

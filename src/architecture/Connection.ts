@@ -1,19 +1,11 @@
-import { Node } from "./Node.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
 
 export class Connection implements ConnectionInterface {
   public from: number;
   public to: number;
   public type?: "positive" | "negative" | "condition";
-  public gain: number;
   public weight: number;
-  public elegibility: number;
-  public previousDeltaWeight: number;
-
-  public totalDeltaWeight: number;
   public gater?: number;
-
-  public xtrace: { nodes: Node[]; values: number[] };
 
   public static randomWeight() {
     return Math.random() * 0.2 - 0.1;
@@ -39,23 +31,10 @@ export class Connection implements ConnectionInterface {
     }
     this.from = from;
     this.to = to;
-    this.gain = 1;
     this.type = type;
     this.weight = weight;
 
     this.gater = undefined;
-    this.elegibility = 0;
-
-    // For tracking momentum
-    this.previousDeltaWeight = 0;
-
-    // Batch training
-    this.totalDeltaWeight = 0;
-
-    this.xtrace = {
-      nodes: [],
-      values: [],
-    };
   }
 
   /**

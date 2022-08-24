@@ -5,9 +5,3 @@ export interface ConnectionInterface {
   gater?: number;
   type?: "positive" | "negative" | "condition";
 }
-
-// export interface TransitantConnectionInterface extends ConnectionInterface {
-
-//   /** not persisted */
-//   gain: number;
-// }

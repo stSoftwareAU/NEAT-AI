@@ -18,6 +18,7 @@ import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
+import { NetworkState } from "./NetworkState.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -26,6 +27,7 @@ const cacheDataFile = {
 
 export class NetworkUtil {
   private network;
+  readonly networkState = new NetworkState();
   private cache = new Map<string, ConnectionInterface[]>();
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
@@ -120,6 +122,13 @@ export class NetworkUtil {
         }
       }
     }
+  }
+
+  /**
+   * Clear the context of the network
+   */
+  clear() {
+    this.networkState.clear(this.network.input);
   }
 
   /**
@@ -723,7 +732,7 @@ export class NetworkUtil {
 
       addTags(this.network, bestCreature);
 
-      if (options.clear) (this.network as Network).clear();
+      if (options.clear) this.clear();
     }
 
     if (config.creatureStore) {
@@ -823,10 +832,10 @@ export class NetworkUtil {
         const data = json[i];
         const input = data.input;
         const target = data.output;
-        // if (!this.network.noTraceActivate) throw "no trace function";
+
         const output = (this.network as Network).noTraceActivate(input);
         error += cost(target, output);
-        if (!feedbackLoop) (this.network as Network).clear();
+        if (!feedbackLoop) this.networkState.clear(this.network.input);
       }
       counter += len;
     });
@@ -923,7 +932,7 @@ export class NetworkUtil {
 
           this.propagate(currentRate, momentum, update, target);
         }
-        if (options.clear) (this.network as Network).clear();
+        // this.clear();
         counter += len;
       });
 
@@ -952,7 +961,7 @@ export class NetworkUtil {
       }
     }
 
-    if (options.clear) (this.network as Network).clear();
+    if (options.clear) this.clear();
 
     return {
       error: error,

@@ -256,7 +256,7 @@ export class Neat {
   async evaluate() {
     if (this.config.clear) {
       for (let i = this.population.length; i--;) {
-        this.population[i].clear();
+        this.population[i].util.clear();
       }
     }
 
