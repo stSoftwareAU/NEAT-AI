@@ -381,8 +381,17 @@ export class Node implements TagsInterface, NodeInterface {
 
       if (!Number.isFinite(s.errorProjected)) {
         console.trace();
+        if (s.errorProjected === Number.POSITIVE_INFINITY) {
+          s.errorProjected = Number.MAX_SAFE_INTEGER;
+        } else if (s.errorProjected === Number.NEGATIVE_INFINITY) {
+          s.errorProjected= Number.MIN_SAFE_INTEGER;
+        } else if (isNaN( s.errorProjected)) {
+          s.errorProjected= 0;
+        }
+        else{
         // console.info(state.error, this.derivative, error);
-        throw this.index + ") invalid error.projected: " + s.errorProjected;
+          throw this.index + ") invalid error.projected: " + s.errorProjected;
+        }
       }
 
       // Error responsibilities from all connections gated by this neuron
