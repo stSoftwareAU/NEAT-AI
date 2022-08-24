@@ -321,19 +321,23 @@ export class Node implements TagsInterface, NodeInterface {
       state.activation = activationSquash.squash(value);
 
       if (!Number.isFinite(state.activation)) {
-        console.trace();
-
-        const msg = this.index + ") invalid value: + " + value + ", squash: " +
-          this.squash +
-          ", activation: " +
-          state.activation;
-        console.warn(msg);
-        if (state.activation > Number.MAX_SAFE_INTEGER) {
+        if (state.activation === Number.POSITIVE_INFINITY) {
           state.activation = Number.MAX_SAFE_INTEGER;
-        } else if (state.activation < Number.MIN_SAFE_INTEGER) {
+        } else if (state.activation === Number.NEGATIVE_INFINITY) {
           state.activation = Number.MIN_SAFE_INTEGER;
+        } else if (isNaN( state.activation)) {
+          state.activation = 0;
         } else {
-          throw msg;
+          const msg = this.index + ") invalid value:" + value +
+            ", squash: " +
+            this.squash +
+            ", activation: " +
+            state.activation;
+          console.warn(msg);
+          console.trace();
+          state.activation = Number.MAX_SAFE_INTEGER;
+
+          // throw msg;
         }
       }
 
