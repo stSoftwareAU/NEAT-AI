@@ -325,7 +325,7 @@ export class Node implements TagsInterface, NodeInterface {
           state.activation = Number.MAX_SAFE_INTEGER;
         } else if (state.activation === Number.NEGATIVE_INFINITY) {
           state.activation = Number.MIN_SAFE_INTEGER;
-        } else if (isNaN( state.activation)) {
+        } else if (isNaN(state.activation)) {
           state.activation = 0;
         } else {
           const msg = this.index + ") invalid value:" + value +
@@ -384,12 +384,11 @@ export class Node implements TagsInterface, NodeInterface {
         if (s.errorProjected === Number.POSITIVE_INFINITY) {
           s.errorProjected = Number.MAX_SAFE_INTEGER;
         } else if (s.errorProjected === Number.NEGATIVE_INFINITY) {
-          s.errorProjected= Number.MIN_SAFE_INTEGER;
-        } else if (isNaN( s.errorProjected)) {
-          s.errorProjected= 0;
-        }
-        else{
-        // console.info(state.error, this.derivative, error);
+          s.errorProjected = Number.MIN_SAFE_INTEGER;
+        } else if (isNaN(s.errorProjected)) {
+          s.errorProjected = 0;
+        } else {
+          // console.info(state.error, this.derivative, error);
           throw this.index + ") invalid error.projected: " + s.errorProjected;
         }
       }

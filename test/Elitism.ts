@@ -2,7 +2,7 @@ import {
   makeElitists,
   ScorableInterface,
 } from "../src/architecture/elitism.ts";
-import { assert } from "https://deno.land/std@0.150.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.153.0/testing/asserts.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

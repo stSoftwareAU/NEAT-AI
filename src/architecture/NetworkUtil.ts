@@ -4,7 +4,7 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.150.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.153.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.js";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
@@ -12,7 +12,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.150.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.153.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -809,7 +809,8 @@ export class NetworkUtil {
 
     const files: string[] = this.dataFiles(dataDir);
 
-    files.forEach((name) => {
+    for (let i = files.length; i--;) {
+      const name = files[i];
       const fn = dataDir + "/" + name;
 
       const json = cacheDataFile.fn == fn
@@ -838,7 +839,7 @@ export class NetworkUtil {
         if (!feedbackLoop) this.networkState.clear(this.network.input);
       }
       counter += len;
-    });
+    }
 
     const avgError = error / counter;
     const results = {
@@ -898,8 +899,9 @@ export class NetworkUtil {
       let counter = 0;
       let errorSum = 0;
 
-      files.forEach((name) => {
-        if (!Number.isFinite(errorSum)) return;
+      // files.forEach((name) => {
+      for (let i = files.length; i--;) {
+        const name = files[i];
         const fn = dataDir + "/" + name;
         const json = cacheDataFile.fn == fn
           ? cacheDataFile.json
@@ -924,17 +926,17 @@ export class NetworkUtil {
           const target = data.output;
           const update = !!((i + 1) % batchSize === 0 || i === 0);
 
-          // if (!this.network.activate) throw "no activate funtion";
           const output = (this.network as Network).activate(input);
 
           errorSum += cost(target, output);
-          if (!Number.isFinite(errorSum)) break;
+          // if (!Number.isFinite(errorSum)) break;
 
           this.propagate(currentRate, momentum, update, target);
         }
-        // this.clear();
+        // if (!Number.isFinite(errorSum)) return;
+
         counter += len;
-      });
+      }
 
       error = errorSum / counter;
 
