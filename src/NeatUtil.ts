@@ -201,7 +201,7 @@ export class NeatUtil {
     const mutationMethods = this.config
       .mutation;
 
-    for (let attempts = 0; attempts < 3; attempts++) {
+    for (let attempts = 0; true; attempts++) {
       const mutationMethod = mutationMethods[
         Math.floor(Math.random() * this.config.mutation.length)
       ];
@@ -220,13 +220,14 @@ export class NeatUtil {
         continue;
       }
 
-      if (
-        mutationMethod === Mutation.ADD_GATE
-      ) {
-        continue;
-      }
+      // if (
+      //   mutationMethod === Mutation.ADD_GATE
+      // ) {
+      //   continue;
+      // }
 
       return mutationMethod;
     }
+
   }
 }

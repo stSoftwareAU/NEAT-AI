@@ -444,10 +444,17 @@ export class Node implements TagsInterface, NodeInterface {
           csp.previousDeltaWeight;
         c.weight += csp.totalDeltaWeight;
         if (!Number.isFinite(c.weight)) {
-          console.trace();
 
-          throw c.from + ":" + c.to + ") invalid weight: " +
-            c.weight;
+          if (c.weight === Number.POSITIVE_INFINITY) {
+            c.weight = Number.MAX_SAFE_INTEGER;
+          } else if (c.weight === Number.NEGATIVE_INFINITY) {
+            c.weight = Number.MIN_SAFE_INTEGER;
+          } else if (isNaN(c.weight)) {
+            c.weight = 0;
+          } else {
+            console.trace();
+            throw c.from + ":" + c.to + ") invalid weight: " + c.weight;
+          }
         }
 
         csp.previousDeltaWeight = csp.totalDeltaWeight;
