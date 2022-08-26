@@ -65,14 +65,17 @@ export class NetworkState {
     this.nodeMap = new Map<number, NodeState>();
     this.connectionMap = new Map<number, Map<number, ConnectionState>>();
     this.nodeMapPersistent = new Map<number, NodeStatePersistent>();
-    this.connectionMapPersistent = new Map<number, Map<number, ConnectionStatePersistent>>();
+    this.connectionMapPersistent = new Map<
+      number,
+      Map<number, ConnectionStatePersistent>
+    >();
   }
 
   connectionPersistent(from: number, to: number): ConnectionStatePersistent {
-    let fromMap=this.connectionMapPersistent.get(from);
-    if( fromMap === undefined){
-      fromMap=new Map<number, ConnectionStatePersistent>();
-      this.connectionMapPersistent.set( from, fromMap);
+    let fromMap = this.connectionMapPersistent.get(from);
+    if (fromMap === undefined) {
+      fromMap = new Map<number, ConnectionStatePersistent>();
+      this.connectionMapPersistent.set(from, fromMap);
     }
     const state = fromMap.get(to);
 
@@ -87,10 +90,10 @@ export class NetworkState {
   }
 
   connection(from: number, to: number): ConnectionState {
-    let fromMap=this.connectionMap.get(from);
-    if( fromMap === undefined){
-      fromMap=new Map<number, ConnectionState>();
-      this.connectionMap.set( from, fromMap);
+    let fromMap = this.connectionMap.get(from);
+    if (fromMap === undefined) {
+      fromMap = new Map<number, ConnectionState>();
+      this.connectionMap.set(from, fromMap);
     }
     const state = fromMap.get(to);
 
@@ -105,9 +108,9 @@ export class NetworkState {
   }
 
   nodePersistent(indx: number): NodeStatePersistent {
-    if (!Number.isInteger(indx) || indx < 0) {
-      throw "Invalid index: " + indx;
-    }
+    // if (!Number.isInteger(indx) || indx < 0) {
+    //   throw "Invalid index: " + indx;
+    // }
     const state = this.nodeMapPersistent.get(indx);
 
     if (state !== undefined) {
@@ -121,9 +124,9 @@ export class NetworkState {
   }
 
   node(indx: number): NodeState {
-    if (!Number.isInteger(indx) || indx < 0) {
-      throw "Invalid index: " + indx;
-    }
+    // if (!Number.isInteger(indx) || indx < 0) {
+    //   throw "Invalid index: " + indx;
+    // }
     const state = this.nodeMap.get(indx);
 
     if (state !== undefined) {
@@ -137,15 +140,14 @@ export class NetworkState {
   }
 
   clear(input: number) {
-    if (!Number.isInteger(input) || input < 1) {
-      throw "Invalid input was: " + input;
-    }
+    // if (!Number.isInteger(input) || input < 1) {
+    //   throw "Invalid input was: " + input;
+    // }
     this.nodeMap.clear();
 
     for (const from of this.connectionMap.keys()) {
-
       if (from >= input) {
-        this.connectionMap.delete( from);
+        this.connectionMap.delete(from);
       }
     }
   }

@@ -5,29 +5,30 @@
 import { Cost } from "./methods/cost.js";
 import { Rate } from "./methods/rate.js";
 
-export function findCost(costName: string) {
-  const values = Object.values(Cost);
-  for (let i = values.length; i--;) {
-    const v = values[i];
+const costMap = new Map();
 
-    if (v.name == costName) {
-      return v;
-    }
+const rateMap = new Map();
+
+function init() {
+  const costValues = Object.values(Cost);
+  for (let i = costValues.length; i--;) {
+    const v = costValues[i];
+    costMap.set(v.name, v);
   }
 
-  throw "Invalid cost: " + costName;
+  const rateValues = Object.values(Rate);
+  for (let i = rateValues.length; i--;) {
+    const v = rateValues[i];
+    rateMap.set(v.name, v);
+  }
+}
+init();
+
+export function findCost(costName: string) {
+  return costMap.get(costName);
 }
 
 // deno-lint-ignore ban-types
 export function findRatePolicy(ratePolicy: string): Function {
-  const values = Object.values(Rate);
-  for (let i = values.length; i--;) {
-    const v = values[i];
-
-    if (v.name == ratePolicy) {
-      return v;
-    }
-  }
-
-  throw "Invalid cost: " + ratePolicy;
+  return rateMap.get(ratePolicy);
 }

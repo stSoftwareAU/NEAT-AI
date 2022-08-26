@@ -5,7 +5,7 @@ import {
   assert,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.150.0/testing/asserts.ts";
+} from "https://deno.land/std@0.153.0/testing/asserts.ts";
 
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
