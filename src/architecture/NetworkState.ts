@@ -63,53 +63,43 @@ export class NetworkState {
   private connectionMapPersistent;
   constructor() {
     this.nodeMap = new Map<number, NodeState>();
-    this.connectionMap = new Map<string, ConnectionState>();
+    this.connectionMap = new Map<number, Map<number, ConnectionState>>();
     this.nodeMapPersistent = new Map<number, NodeStatePersistent>();
-    this.connectionMapPersistent = new Map<string, ConnectionStatePersistent>();
+    this.connectionMapPersistent = new Map<number, Map<number, ConnectionStatePersistent>>();
   }
 
   connectionPersistent(from: number, to: number): ConnectionStatePersistent {
-    if (!Number.isInteger(from) || from < 0) {
-      throw "Invalid from: " + from;
+    let fromMap=this.connectionMapPersistent.get(from);
+    if( fromMap === undefined){
+      fromMap=new Map<number, ConnectionStatePersistent>();
+      this.connectionMapPersistent.set( from, fromMap);
     }
-    if (!Number.isInteger(to) || to < 0) {
-      throw "Invalid to: " + to;
-    }
-    if (from > to) {
-      throw "Invalid from: " + from + ", to: " + to;
-    }
-    const key = from + ":" + to;
-    const state = this.connectionMapPersistent.get(key);
+    const state = fromMap.get(to);
 
     if (state !== undefined) {
       return state;
     } else {
       const tmpState = new ConnectionStatePersistent();
 
-      this.connectionMapPersistent.set(key, tmpState);
+      fromMap.set(to, tmpState);
       return tmpState;
     }
   }
 
   connection(from: number, to: number): ConnectionState {
-    if (!Number.isInteger(from) || from < 0) {
-      throw "Invalid from: " + from;
+    let fromMap=this.connectionMap.get(from);
+    if( fromMap === undefined){
+      fromMap=new Map<number, ConnectionState>();
+      this.connectionMap.set( from, fromMap);
     }
-    if (!Number.isInteger(to) || to < 0) {
-      throw "Invalid to: " + to;
-    }
-    if (from > to) {
-      throw "Invalid from: " + from + ", to: " + to;
-    }
-    const key = from + ":" + to;
-    const state = this.connectionMap.get(key);
+    const state = fromMap.get(to);
 
     if (state !== undefined) {
       return state;
     } else {
       const tmpState = new ConnectionState();
 
-      this.connectionMap.set(key, tmpState);
+      fromMap.set(to, tmpState);
       return tmpState;
     }
   }
@@ -152,17 +142,11 @@ export class NetworkState {
     }
     this.nodeMap.clear();
 
-    const connectionsToClear = [];
-    for (const key of this.connectionMap.keys()) {
-      const pos = key.indexOf(":");
-      const from = Number.parseInt(key.substring(0, pos));
-      if (from >= input) {
-        connectionsToClear.push(key);
-      }
-    }
+    for (const from of this.connectionMap.keys()) {
 
-    for (const key of connectionsToClear) {
-      this.connectionMap.delete(key);
+      if (from >= input) {
+        this.connectionMap.delete( from);
+      }
     }
   }
 }
