@@ -587,6 +587,7 @@ export class Node implements TagsInterface, NodeInterface {
     switch (json.type) {
       case "input":
       case "output":
+      case "constant":
       case "hidden":
         break;
       default:

@@ -37,7 +37,9 @@ function checkMutation(method: { name: string }) {
   }
 
   const json1 = JSON.stringify(network.toJSON(), null, 2);
-  network.util.mutate(method);
+  for (let i = 10; i--;) {
+    network.util.mutate(method);
+  }
   const json2 = JSON.stringify(network.toJSON(), null, 2);
 
   console.info(json1);
@@ -598,7 +600,7 @@ Deno.test("evolve SIN + COS", async () => {
     });
   }
 
-  await evolveSet(set, 5000, 0.05);
+  await evolveSet(set, 10_000, 0.05);
 });
 
 Deno.test("train_SHIFT", () => {

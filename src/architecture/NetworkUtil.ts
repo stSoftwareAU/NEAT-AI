@@ -169,6 +169,7 @@ export class NetworkUtil {
 
     const stats = {
       input: 0,
+      constant: 0,
       hidden: 0,
       output: 0,
       connections: 0,
@@ -189,7 +190,7 @@ export class NetworkUtil {
           break;
         }
         case "constant": {
-          stats.input++;
+          stats.constant++;
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
             console.trace();
@@ -1253,6 +1254,8 @@ export class NetworkUtil {
         if (!this.inFocus(j, focusList)) continue;
         const node2 = network.nodes[j];
 
+        if (node2.type === "constant") continue;
+
         if (!node1.isProjectingTo(node2)) {
           node1.isProjectingTo(node2);
           available.push([node1, node2]);
@@ -1277,7 +1280,7 @@ export class NetworkUtil {
   public makeRandomConnection(indx: number) {
     for (let attempts = 0; attempts < 12; attempts++) {
       const from = Math.min(
-        this.network.nodes.length - this.network.output,
+        this.network.nodes.length - this.network.output - 1,
         Math.floor(Math.random() * indx),
       );
       const c = this.getConnection(from, indx);
@@ -1355,7 +1358,7 @@ export class NetworkUtil {
     }
   }
 
-  private modBias(focusList?: number[]) {
+  public modBias(focusList?: number[]) {
     const network = this.network as Network;
     for (let attempts = 0; attempts < 12; attempts++) {
       // Has no effect on input node, so they are excluded
@@ -1364,6 +1367,7 @@ export class NetworkUtil {
           network.input,
       );
       const node = network.nodes[index];
+      if (node.type === "constant") continue;
       if (!this.inFocus(index, focusList)) continue;
       node.mutate(Mutation.MOD_BIAS.name);
       break;
