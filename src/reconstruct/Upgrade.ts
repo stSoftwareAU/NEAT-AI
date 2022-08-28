@@ -21,7 +21,7 @@ export class Upgrade {
 
     const connections: ConnectionInterface[] = [];
     json2.connections.forEach((c) => {
-      if (c.from >= firstOutputIndx) {
+      if (c.from >= firstOutputIndx && c.from !== c.to) {
         console.warn(
           "Ingoring connection (from:",
           c.from,

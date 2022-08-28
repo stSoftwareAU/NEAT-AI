@@ -16,9 +16,8 @@ Deno.test("AND", () => {
   ];
 
   const network = new Network(2, 1);
-  const util = new NetworkUtil(network);
 
-  const results = util.train(trainingSet, {
+  const results = network.util.train(trainingSet, {
     error: 0.03,
     iterations: 1000,
   });
@@ -35,15 +34,13 @@ Deno.test("MT", () => {
     { input: [1, 1], output: [1] },
   ];
 
-  // const network = architect.Perceptron(2, 5, 1);
   const network = new Network(2, 1, {
     layers: [
       { count: 5 },
     ],
   });
-  const util = new NetworkUtil(network);
 
-  const results = util.train(trainingSet, {
+  const results = network.util.train(trainingSet, {
     error: 0.03,
     iterations: 3000,
   });
@@ -64,9 +61,7 @@ Deno.test("train-XOR", () => {
       { count: 5 },
     ],
   });
-  // const network = architect.Perceptron(2, 5, 1);
-  // const util = new NetworkUtil(network);
-  // console.info( JSON.stringify( network.toJSON(), null, 2));
+
   const results = network.util.train(trainingSet, {
     error: 0.03,
     iterations: 5000,
@@ -75,8 +70,10 @@ Deno.test("train-XOR", () => {
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
 
+/**
+ * Train the XNOR gate
+ */
 Deno.test("XNOR", () => {
-  // Train the XNOR gate
   const trainingSet = [
     { input: [0, 0], output: [1] },
     { input: [0, 1], output: [0] },
@@ -88,13 +85,12 @@ Deno.test("XNOR", () => {
       { count: 5 },
     ],
   });
-  // const network = architect.Perceptron(2, 5, 1);
-  const util = new NetworkUtil(network);
 
-  const results = util.train(trainingSet, {
+  const results = network.util.train(trainingSet, {
     error: 0.03,
     iterations: 10_000,
   });
 
+  console.info(results);
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
