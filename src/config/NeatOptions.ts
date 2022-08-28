@@ -55,7 +55,7 @@ export interface NeatOptions {
   /** Probability of changing a gene */
   mutationRate?: number;
 
-  /** The target population size. */
+  /** The target population size. 50 by default */
   popsize?: number;
 
   /** the number of workers */
