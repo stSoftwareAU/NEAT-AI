@@ -274,10 +274,12 @@ export class Neat {
   getParent() {
     switch (this.config.selection) {
       case selection.POWER: {
+        const r = Math.random();
         const index = Math.floor(
-          Math.pow(Math.random(), this.config.selection.power) *
+          Math.pow(r, this.config.selection.power) *
             this.population.length,
         );
+        // console.info( "index", index, r, this.config.selection.power, this.population.length);
         return this.population[index];
       }
       case selection.FITNESS_PROPORTIONATE: {

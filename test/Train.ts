@@ -93,7 +93,7 @@ Deno.test("XNOR", () => {
 
   const results = util.train(trainingSet, {
     error: 0.03,
-    iterations: 5000,
+    iterations: 10_000,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);

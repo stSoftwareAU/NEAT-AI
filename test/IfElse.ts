@@ -46,3 +46,46 @@ Deno.test("if/Else", () => {
     assert(diff < 0.00001, p + ") If/Else didn't work " + diff);
   }
 });
+
+Deno.test("if-fix", () => {
+  const json: NetworkInterface = {
+    nodes: [
+      { type: "input", squash: "LOGISTIC", index: 0 },
+      { type: "input", squash: "LOGISTIC", index: 1 },
+      { type: "input", squash: "LOGISTIC", index: 2 },
+      { type: "input", squash: "LOGISTIC", index: 3 },
+      { type: "input", squash: "LOGISTIC", index: 4 },
+      {
+        type: "output",
+        squash: "IF",
+        index: 5,
+        bias: 0,
+      },
+    ],
+    connections: [
+      { from: 2, to: 5, weight: 1, type: "positive" },
+      { from: 1, to: 5, weight: 1, type: "condition" },
+      { from: 4, to: 5, weight: 1, type: "negative" },
+    ],
+    input: 5,
+    output: 1,
+  };
+  const network = NetworkUtil.fromJSON(json);
+
+  for (let i = 0; i < 10; i++) {
+    network.util.subConnection();
+  }
+
+  for (let i = 0; i < 10; i++) {
+    network.util.addConnection();
+  }
+
+  for (let i = 0; i < 100; i++) {
+    network.util.subConnection();
+  }
+  network.util.fix();
+  console.info(JSON.stringify(network.toJSON(), null, 2));
+  const toList = network.util.toConnections(5);
+
+  assert(toList.length > 2, "Should have 3 connections was: " + toList.length);
+});

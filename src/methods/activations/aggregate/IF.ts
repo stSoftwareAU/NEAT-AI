@@ -8,6 +8,54 @@ export class IF implements NodeActivationInterface {
     return IF.NAME;
   }
 
+  fix(node: Node) {
+    const toList = node.util.toConnections(node.index);
+
+    let foundPositive = false;
+    let foundCondition = false;
+    let foundNegative = false;
+
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+      if (c.type == "condition") {
+        foundCondition = true;
+      } else if (c.type == "negative") {
+        foundNegative = true;
+      } else if (c.type == "positive") {
+        foundPositive = true;
+      }
+    }
+
+    toList.forEach((c) => {
+      if (c.type === undefined) {
+        if (!foundCondition) {
+          foundCondition = true;
+          c.type = "condition";
+        } else if (!foundNegative) {
+          foundNegative = true;
+          c.type = "negative";
+        } else if (!foundPositive) {
+          foundPositive = true;
+          c.type = "positive";
+        }
+      }
+    });
+
+    if (!foundCondition) {
+      const c = node.util.makeRandomConnection(node.index);
+      if (c) c.type = "condition";
+    }
+
+    if (!foundNegative) {
+      const c = node.util.makeRandomConnection(node.index);
+      if (c) c.type = "negative";
+    }
+
+    if (!foundPositive) {
+      const c = node.util.makeRandomConnection(node.index);
+      if (c) c.type = "positive";
+    }
+  }
   activate(node: Node) {
     let condition = 0;
     let negative = 0;
