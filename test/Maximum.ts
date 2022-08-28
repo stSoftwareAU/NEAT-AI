@@ -48,3 +48,28 @@ Deno.test("Maximum", () => {
     );
   }
 });
+
+Deno.test("Maximum-fix", () => {
+  const json: NetworkInterface = {
+    nodes: [
+      { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
+      { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
+      { bias: 0, type: "input", squash: "LOGISTIC", index: 2 },
+      { bias: 0, type: "output", squash: "MAXIMUM", index: 3 },
+    ],
+    connections: [
+      { weight: 1, from: 0, to: 3 },
+    ],
+    input: 3,
+    output: 1,
+  };
+  const network = NetworkUtil.fromJSON(json);
+
+  network.util.fix();
+  const toList = network.util.toConnections(3);
+
+  assert(
+    toList.length >= 2,
+    "should have corrected number of connection was: " + toList.length,
+  );
+});

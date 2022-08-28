@@ -1276,7 +1276,10 @@ export class NetworkUtil {
 
   public makeRandomConnection(indx: number) {
     for (let attempts = 0; attempts < 12; attempts++) {
-      const from = Math.floor(Math.random() * indx);
+      const from = Math.min(
+        this.network.nodes.length - this.network.output,
+        Math.floor(Math.random() * indx),
+      );
       const c = this.getConnection(from, indx);
       if (c === null) {
         return this.connect(

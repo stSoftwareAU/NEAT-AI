@@ -22,4 +22,12 @@ export class MINIMUM implements NodeActivationInterface {
     const value = Math.min(...values);
     return value;
   }
+
+  fix(node: Node) {
+    const toList = node.util.toConnections(node.index);
+
+    if (toList.length < 2) {
+      node.util.makeRandomConnection(node.index);
+    }
+  }
 }

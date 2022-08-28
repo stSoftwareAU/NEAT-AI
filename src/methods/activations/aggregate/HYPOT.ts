@@ -22,4 +22,12 @@ export class HYPOT implements NodeActivationInterface {
     const value = Math.hypot(...values);
     return value;
   }
+
+  fix(node: Node) {
+    const toList = node.util.toConnections(node.index);
+
+    if (toList.length < 2) {
+      node.util.makeRandomConnection(node.index);
+    }
+  }
 }

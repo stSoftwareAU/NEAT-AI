@@ -23,4 +23,12 @@ export class MEAN implements NodeActivationInterface {
     const value = sum / count;
     return value;
   }
+
+  fix(node: Node) {
+    const toList = node.util.toConnections(node.index);
+
+    if (toList.length < 2) {
+      node.util.makeRandomConnection(node.index);
+    }
+  }
 }

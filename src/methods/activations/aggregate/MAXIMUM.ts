@@ -22,4 +22,12 @@ export class MAXIMUM implements NodeActivationInterface {
     const value = Math.max(...values);
     return value;
   }
+
+  fix(node: Node) {
+    const toList = node.util.toConnections(node.index);
+
+    if (toList.length < 2) {
+      node.util.makeRandomConnection(node.index);
+    }
+  }
 }
