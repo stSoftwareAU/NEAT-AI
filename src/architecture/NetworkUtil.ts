@@ -1274,7 +1274,22 @@ export class NetworkUtil {
     this.validate();
   }
 
-  private _subConnection(focusList?: number[]) {
+  public makeRandomConnection(indx: number) {
+    for (let attempts = 0; attempts < 12; attempts++) {
+      const from = Math.floor(Math.random() * indx);
+      const c = this.getConnection(from, indx);
+      if (c === null) {
+        return this.connect(
+          from,
+          indx,
+          Connection.randomWeight(),
+        );
+      }
+    }
+    return null;
+  }
+
+  public subConnection(focusList?: number[]) {
     const network = this.network as Network;
     // List of possible connections that can be removed
     const possible = [];
@@ -1290,8 +1305,10 @@ export class NetworkUtil {
         ) {
           /** Each node must have at least one from/to connection */
           if (
-            this.toConnections(conn.from).length > 1 &&
-            this.fromConnections(conn.to).length > 1
+            (
+              this.fromConnections(conn.from).length > 1 ||
+              this.network.nodes[conn.from].type === "input"
+            ) && this.toConnections(conn.to).length > 1
           ) {
             possible.push(conn);
           }
@@ -1545,7 +1562,7 @@ export class NetworkUtil {
     this.disconnect(pair[0].index, pair[1].index);
   }
 
-  private _swapNodes(focusList?: number[]) {
+  public swapNodes(focusList?: number[]) {
     const network = this.network as Network;
     // Has no effect on input node, so they are excluded
     if (
@@ -1621,7 +1638,7 @@ export class NetworkUtil {
         break;
       }
       case Mutation.SUB_CONN.name: {
-        this._subConnection(focusList);
+        this.subConnection(focusList);
         break;
       }
       case Mutation.MOD_WEIGHT.name: {
@@ -1669,7 +1686,7 @@ export class NetworkUtil {
         break;
       }
       case Mutation.SWAP_NODES.name: {
-        this._swapNodes(focusList);
+        this.swapNodes(focusList);
         break;
       }
       default: {
@@ -1817,6 +1834,11 @@ export class NetworkUtil {
     for (let i = network1.connections.length; i--;) {
       const conn = network1.connections[i] as Connection;
       if (conn.from >= offspring.nodes.length - offspring.output) continue;
+      if (
+        conn.gater ? conn.gater : 0 >= offspring.nodes.length - offspring.output
+      ) {
+        continue;
+      }
       if (conn.to >= offspring.nodes.length) continue;
       const newConn = new Connection(
         conn.from,
@@ -1833,6 +1855,11 @@ export class NetworkUtil {
     for (let i = network2.connections.length; i--;) {
       const conn = network2.connections[i];
       if (conn.from >= offspring.nodes.length - offspring.output) continue;
+      if (
+        conn.gater ? conn.gater : 0 >= offspring.nodes.length - offspring.output
+      ) {
+        continue;
+      }
       if (conn.to >= offspring.nodes.length) continue;
       const newConn = new Connection(
         conn.from,

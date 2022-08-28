@@ -2,6 +2,7 @@
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { NodeActivationInterface } from "../methods/activations/NodeActivationInterface.ts";
+import { NodeFixableInterface } from "../methods/activations/NodeFixableInterface.ts";
 import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
@@ -107,12 +108,29 @@ export class Node implements TagsInterface, NodeInterface {
         );
       }
     }
+
+    if (this.squash) {
+      const activation = Activations.find(this.squash);
+
+      if (this.isFixableActivation(activation)) {
+        activation.fix(this);
+      }
+    }
   }
 
   private isNodeActivation(
     activation: NodeActivationInterface | ActivationInterface,
   ): activation is NodeActivationInterface {
     return (activation as NodeActivationInterface).activate != undefined;
+  }
+
+  private isFixableActivation(
+    activation:
+      | NodeActivationInterface
+      | ActivationInterface
+      | NodeFixableInterface,
+  ): activation is NodeFixableInterface {
+    return (activation as NodeFixableInterface).fix != undefined;
   }
 
   getActivation() {
@@ -444,7 +462,6 @@ export class Node implements TagsInterface, NodeInterface {
           csp.previousDeltaWeight;
         c.weight += csp.totalDeltaWeight;
         if (!Number.isFinite(c.weight)) {
-
           if (c.weight === Number.POSITIVE_INFINITY) {
             c.weight = Number.MAX_SAFE_INTEGER;
           } else if (c.weight === Number.NEGATIVE_INFINITY) {

@@ -99,7 +99,7 @@ export class NeatUtil {
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
           // console.info( mutationMethod);
-          if (this.config.debug) creature.util.validate();
+          // if (this.config.debug) creature.util.validate();
           creature.util.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
@@ -147,9 +147,17 @@ export class NeatUtil {
    * Breeds two parents into an offspring, population MUST be sorted
    */
   getOffspring() {
+    const p1 = this.neat.getParent();
+
+    let p2 = this.neat.getParent();
+    for (let i = 0; i < 12; i++) {
+      p2 = this.neat.getParent();
+      if (p1 !== p2) break;
+    }
+
     const creature = NetworkUtil.crossOver(
-      this.neat.getParent(),
-      this.neat.getParent(),
+      p1,
+      p2,
     );
 
     creature.util.fix();
@@ -228,6 +236,5 @@ export class NeatUtil {
 
       return mutationMethod;
     }
-
   }
 }
