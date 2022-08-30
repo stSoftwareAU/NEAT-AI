@@ -3,6 +3,7 @@ import { assert } from "https://deno.land/std@0.153.0/testing/asserts.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { Network } from "../src/architecture/network.js";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -84,7 +85,9 @@ Deno.test("if-fix", () => {
     network.util.subConnection();
   }
   network.util.fix();
-  console.info(JSON.stringify(network.toJSON(), null, 2));
+  const network2 = Network.fromJSON(network.toJSON());
+  network2.util.validate();
+  console.info(JSON.stringify(network2.toJSON(), null, 2));
   const toList = network.util.toConnections(5);
 
   assert(toList.length > 2, "Should have 3 connections was: " + toList.length);

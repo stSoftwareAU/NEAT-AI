@@ -75,8 +75,12 @@ export class Node implements TagsInterface, NodeInterface {
         const gateList = this.util.gateConnections(this.index);
         {
           if (gateList.length == 0) {
-            const targetIndx =
-              Math.floor(Math.random() * (this.util.nodeCount() - this.index)) +
+            const targetIndx = Math.min(
+              1,
+              Math.floor(
+                Math.random() * (this.util.nodeCount() - this.index),
+              ),
+            ) +
               this.index;
             this.util.connect(
               this.index,
@@ -89,11 +93,12 @@ export class Node implements TagsInterface, NodeInterface {
       const toList = this.util.toConnections(this.index);
       if (toList.length == 0) {
         const fromIndx = Math.floor(Math.random() * this.index);
-        this.util.connect(
+        const c = this.util.connect(
           fromIndx,
           this.index,
           Connection.randomWeight(),
         );
+        console.info("ZZZ", c);
       }
     } else if (this.type == "output") {
       const toList = this.util.toConnections(this.index);

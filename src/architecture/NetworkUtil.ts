@@ -176,6 +176,46 @@ export class NetworkUtil {
     };
 
     this.network.nodes.forEach((node, indx) => {
+      if (node.squash === "IF" && indx > 2) {
+        const toList = this.toConnections(indx);
+        if (toList.length < 3) {
+          console.trace();
+          throw indx + ") 'IF' should have at least 3 connections was: " +
+            toList.length;
+        }
+
+        let foundPositive = false;
+        let foundCondition = false;
+        let foundNegative = false;
+
+        for (let i = toList.length; i--;) {
+          const c = toList[i];
+          if (c.type == "condition") {
+            foundCondition = true;
+          } else if (c.type == "negative") {
+            foundNegative = true;
+          } else if (c.type == "positive") {
+            foundPositive = true;
+          }
+        }
+        if (!foundCondition || !foundPositive || !foundNegative) {
+          console.trace();
+          if (this.DEBUG) {
+            this.DEBUG = false;
+            console.warn(
+              JSON.stringify((this.network as Network).toJSON(), null, 2),
+            );
+            this.DEBUG = true;
+          }
+        }
+        if (!foundCondition) throw indx + ") 'IF' should have a condition(s)";
+        if (!foundPositive) {
+          throw indx + ") 'IF' should have a positive connection(s)";
+        }
+        if (!foundNegative) {
+          throw indx + ") 'IF' should have a negative connection(s)";
+        }
+      }
       switch (node.type) {
         case "input": {
           stats.input++;
@@ -1188,6 +1228,7 @@ export class NetworkUtil {
         toIndex,
         Connection.randomWeight(),
       );
+      node.fix();
     } else {
       console.trace();
       throw "Should have a to index";
@@ -1273,16 +1314,26 @@ export class NetworkUtil {
       pair[1].index,
       Connection.randomWeight(),
     );
-
-    this.validate();
   }
 
   public makeRandomConnection(indx: number) {
     for (let attempts = 0; attempts < 12; attempts++) {
       const from = Math.min(
         this.network.nodes.length - this.network.output - 1,
-        Math.floor(Math.random() * indx),
+        Math.floor(Math.random() * indx + 1),
       );
+      const c = this.getConnection(from, indx);
+      if (c === null) {
+        return this.connect(
+          from,
+          indx,
+          Connection.randomWeight(),
+        );
+      }
+    }
+    const firstOutputIndex = this.network.nodes.length - this.network.output;
+    for (let from = 0; from <= indx; from++) {
+      if (from >= firstOutputIndex && from !== indx) continue;
       const c = this.getConnection(from, indx);
       if (c === null) {
         return this.connect(
@@ -1616,7 +1667,9 @@ export class NetworkUtil {
       node2.bias = biasTemp;
       node2.squash = squashTemp;
 
-      this.validate();
+      node1.fix();
+      node2.fix();
+      if (this.DEBUG) this.validate();
     }
   }
 
@@ -1908,7 +1961,8 @@ export class NetworkUtil {
     });
 
     offspring.connections = connections;
-
+    //offspring.util.clearCache();
+    offspring.util.fix();
     return offspring;
   }
 

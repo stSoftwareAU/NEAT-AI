@@ -9,6 +9,7 @@ import {
 
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
+import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -62,7 +63,11 @@ function checkMutation(method: { name: string }) {
   );
 }
 
-async function evolveSet(set: any[], iterations: number, error: number) {
+async function evolveSet(
+  set: DataRecordInterface[],
+  iterations: number,
+  error: number,
+) {
   const network = architect.Random(
     set[0].input.length,
     5,
@@ -216,7 +221,7 @@ Deno.test("Feed-forward", () => {
     const to = network.connections[i].to;
 
     // Exception will be made for memory connections soon
-    assert(from < to, "network is not feeding forward correctly");
+    assert(from <= to, "network is not feeding forward correctly");
   }
 });
 
@@ -384,6 +389,7 @@ Deno.test("train_NOT_gate", () => {
     0.002,
   );
 });
+
 Deno.test("evolve_XNOR_gate", async () => {
   await evolveSet(
     [
@@ -476,6 +482,7 @@ Deno.test("train_Bigger_than", () => {
 
   trainSet(set, 500, 0.05);
 });
+
 Deno.test("evolve_Bigger_than", async () => {
   const set = [];
 
