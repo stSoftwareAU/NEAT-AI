@@ -160,7 +160,6 @@ export class NeatUtil {
       p2,
     );
 
-    creature.util.fix();
     if (this.config.debug) creature.util.validate();
     return creature;
   }
