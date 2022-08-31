@@ -1834,7 +1834,6 @@ export class NetworkUtil {
       }
     }
     // Rename some variables for easier reading
-    const outputSize = network1.output;
 
     // Set indexes so we don't need indexOf
     for (let i = network1.nodes.length; i--;) {
@@ -1845,12 +1844,12 @@ export class NetworkUtil {
       network2.nodes[i].index = i;
     }
 
-    let outputCount = 0;
+    const connectionsMap = new Map<number, ConnectionInterface[]>();
     // Assign nodes from parents to offspring
     for (let i = 0; i < size; i++) {
       // Determine if an output node is needed
       let node;
-      if (i < size - outputSize) {
+      if (i < size - network1.output) {
         const random = Math.random();
         node = random >= 0.5 ? network1.nodes[i] : network2.nodes[i];
         const other = random < 0.5 ? network1.nodes[i] : network2.nodes[i];
@@ -1873,8 +1872,9 @@ export class NetworkUtil {
           console.trace();
           throw i + ") expected 'output' was: " + node.type;
         }
-        outputCount++;
       }
+
+      connectionsMap.set(i, node.util.toConnections(node.index));
       const newNode = new Node(
         node.type,
         node.bias,
@@ -1885,83 +1885,35 @@ export class NetworkUtil {
       newNode.index = i;
       offspring.nodes.push(newNode);
     }
+    offspring.util.clear();
 
-    // Create arrays of connection genes
-    const n1conns: { [key: string]: Connection } = {};
-    const n2conns: { [key: string]: Connection } = {};
+    for (let indx = offspring.nodes.length; indx--;) {
+      const toList = connectionsMap.get(indx);
+      if (toList) {
+        for (let i = toList.length; i--;) {
+          const c = toList[i];
+          const adjust = indx - c.to;
+          const adjustTo = c.to + adjust;
+          let adjustFrom = adjustTo - (c.to - c.from);
+          adjustFrom = adjustFrom < 0 ? 0 : adjustFrom;
 
-    // Normal connections
-    for (let i = network1.connections.length; i--;) {
-      const conn = network1.connections[i] as Connection;
-      if (conn.from >= offspring.nodes.length - offspring.output) continue;
-      if (
-        conn.gater ? conn.gater : 0 >= offspring.nodes.length - offspring.output
-      ) {
-        continue;
+          if (offspring.util.getConnection(adjustFrom, adjustTo) == null) {
+            const co = offspring.util.connect(
+              adjustFrom,
+              adjustTo,
+              c.weight,
+              c.type,
+            );
+            if (c.gater !== undefined) {
+              co.gater = adjustTo - (c.to - c.gater);
+              if (co.gater < 0) {
+                co.gater = 0;
+              }
+            }
+          }
+        }
       }
-      if (conn.to >= offspring.nodes.length) continue;
-      const newConn = new Connection(
-        conn.from,
-        conn.to,
-        conn.weight,
-        conn.type,
-      );
-      newConn.gater = conn.gater;
-
-      n1conns[Connection.innovationID(conn.from, conn.to)] = newConn;
     }
-
-    // Normal connections
-    for (let i = network2.connections.length; i--;) {
-      const conn = network2.connections[i];
-      if (conn.from >= offspring.nodes.length - offspring.output) continue;
-      if (
-        conn.gater ? conn.gater : 0 >= offspring.nodes.length - offspring.output
-      ) {
-        continue;
-      }
-      if (conn.to >= offspring.nodes.length) continue;
-      const newConn = new Connection(
-        conn.from,
-        conn.to,
-        conn.weight,
-        conn.type,
-      );
-      newConn.gater = conn.gater;
-      n2conns[Connection.innovationID(conn.from, conn.to)] = newConn;
-    }
-
-    // Split common conn genes from disjoint or excess conn genes
-    const connections: Connection[] = [];
-    const keys1 = Object.keys(n1conns);
-    const keys2 = Object.keys(n2conns);
-    keys1.forEach((key) => {
-      // Common gene
-      if (typeof n2conns[key] !== "undefined") {
-        const conn = Math.random() >= 0.5 ? n1conns[key] : n2conns[key];
-        connections.push(conn);
-      } else {
-        connections.push(n1conns[key]);
-      }
-    });
-
-    // Excess/disjoint gene
-
-    keys2.forEach((key) => {
-      if (typeof n1conns[key] === "undefined") {
-        connections.push(n2conns[key]);
-      }
-    });
-
-    connections.sort((a, b) => {
-      if (a.from == b.from) {
-        return a.to - b.to;
-      }
-      return a.from - b.from;
-    });
-
-    offspring.connections = connections;
-    //offspring.util.clearCache();
     offspring.util.fix();
     return offspring;
   }
