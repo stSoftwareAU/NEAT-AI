@@ -1892,11 +1892,18 @@ export class NetworkUtil {
       if (toList) {
         for (let i = toList.length; i--;) {
           const c = toList[i];
-          const adjust = indx - c.to;
-          const adjustTo = c.to + adjust;
-          let adjustFrom = adjustTo - (c.to - c.from);
-          adjustFrom = adjustFrom < 0 ? 0 : adjustFrom;
 
+          const adjustTo = c.to + (indx - c.to);
+          let adjustFrom = (c.to == c.from)
+            ? adjustTo
+            : c.from < adjustTo
+            ? c.from
+            : adjustTo - (c.to - c.from);
+
+          adjustFrom = adjustFrom < 0 ? 0 : adjustFrom;
+          while( offspring.nodes[adjustFrom].type === 'output'){
+            adjustFrom--;
+          }
           if (offspring.util.getConnection(adjustFrom, adjustTo) == null) {
             const co = offspring.util.connect(
               adjustFrom,
@@ -1905,9 +1912,13 @@ export class NetworkUtil {
               c.type,
             );
             if (c.gater !== undefined) {
-              co.gater = adjustTo - (c.to - c.gater);
-              if (co.gater < 0) {
-                co.gater = 0;
+              if (c.gater < adjustTo) {
+                co.gater = c.gater;
+              } else {
+                co.gater = adjustTo - (c.to - c.gater);
+                if (co.gater < 0) {
+                  co.gater = 0;
+                }
               }
             }
           }
