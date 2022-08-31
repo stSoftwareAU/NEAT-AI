@@ -114,7 +114,7 @@ export class IF implements NodeActivationInterface {
     }
 
     const toList2 = node.util.toConnections(node.index);
-    
+
     if (toList2.length < 3 && node.index > 2) {
       console.trace();
       throw "Should have 3 or more connections was: " + toList2.length;
