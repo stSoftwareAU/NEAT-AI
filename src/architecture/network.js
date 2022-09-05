@@ -198,34 +198,8 @@ export class Network {
   /**
    * Convert the network to a json object
    */
-  toJSON() {
-    if (this.util.DEBUG) {
-      this.util.validate();
-    }
-
-    const json = {
-      nodes: new Array(this.nodes.length),
-      connections: new Array(this.connections.length),
-      input: this.input,
-      output: this.output,
-      tags: this.tags ? this.tags.slice() : undefined,
-    };
-
-    for (let i = this.nodes.length; i--;) {
-      const node = this.nodes[i];
-      node.index = i;
-      const tojson = node.toJSON();
-
-      json.nodes[i] = tojson;
-    }
-
-    for (let i = this.connections.length; i--;) {
-      const tojson = this.connections[i].toJSON();
-
-      json.connections[i] = tojson;
-    }
-
-    return json;
+  toJSON(options = { verbose: false }) {
+    return this.util.toJSON(options);
   }
 
   /**

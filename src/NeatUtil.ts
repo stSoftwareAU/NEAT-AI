@@ -33,7 +33,7 @@ export class NeatUtil {
     const json = (creature as Network).toJSON();
     delete json.tags;
 
-    const txt = JSON.stringify(json, null, 1);
+    const txt = JSON.stringify(json);
 
     const arrayBuffer = await crypto.subtle.digest(
       "SHA-256",

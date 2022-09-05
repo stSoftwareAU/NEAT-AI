@@ -1796,6 +1796,39 @@ export class NetworkUtil {
     return this.network.nodes.length;
   }
 
+  toJSON(options = { verbose: false }) {
+    if (this.DEBUG) {
+      this.validate();
+    }
+
+    const json = {
+      nodes: new Array(
+        this.network.nodes.length - (options.verbose ? 0 : this.network.input),
+      ),
+      connections: new Array(this.network.connections.length),
+      input: this.network.input,
+      output: this.network.output,
+      tags: this.network.tags ? this.network.tags.slice() : undefined,
+    };
+
+    for (let i = this.network.nodes.length; i--;) {
+      const node = this.network.nodes[i];
+      if (!options.verbose && node.type == "input") continue;
+      node.index = i;
+      const tojson = (node as Node).toJSON();
+
+      json.nodes[i - (options.verbose ? 0 : this.network.input)] = tojson;
+    }
+
+    for (let i = this.network.connections.length; i--;) {
+      const tojson = (this.network.connections[i] as Connection).toJSON();
+
+      json.connections[i] = tojson;
+    }
+
+    return json;
+  }
+
   /**
    * Create an offspring from two parent networks
    */
@@ -1901,7 +1934,7 @@ export class NetworkUtil {
             : adjustTo - (c.to - c.from);
 
           adjustFrom = adjustFrom < 0 ? 0 : adjustFrom;
-          while( offspring.nodes[adjustFrom].type === 'output'){
+          while (offspring.nodes[adjustFrom].type === "output") {
             adjustFrom--;
           }
           if (offspring.util.getConnection(adjustFrom, adjustTo) == null) {
@@ -1942,10 +1975,22 @@ export class NetworkUtil {
     const util = network.util;
 
     network.nodes = new Array(json.nodes.length);
-    for (let i = json.nodes.length; i--;) {
-      const n = Node.fromJSON(json.nodes[i], util);
+    for (let i = json.input; i--;) {
+      const n = new Node("input", undefined, util);
       n.index = i;
       network.nodes[i] = n;
+    }
+
+    let pos = json.input;
+    for (let i = 0; i < json.nodes.length; i++) {
+      const jn = json.nodes[i];
+
+      if (jn.type === "input") continue;
+
+      const n = Node.fromJSON(jn, util);
+      n.index = pos;
+      network.nodes[pos] = n;
+      pos++;
     }
 
     const cLen = json.connections.length;

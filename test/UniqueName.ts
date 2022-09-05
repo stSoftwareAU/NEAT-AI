@@ -40,9 +40,10 @@ Deno.test("knownName", async () => {
   const config = makeConfig({});
   const util = new NeatUtil(new Neat(1, 1), config);
 
+  // console.info( (creature as Network).toJSON() );
   const name = await util.makeUniqueName(creature);
 
   console.log("Name", name);
 
-  assert(name == "dbyER2J8QO6QjMwhUHknydSnJYcjnjfcbLmPEXLJL6A", "Wrong name");
+  assert(name == "saKA1irZVoZawzb3w7LdqxBXIUhNqe4aLbeEzsvHK2w", "Wrong name");
 });
