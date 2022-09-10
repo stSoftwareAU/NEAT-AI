@@ -171,7 +171,7 @@ export class Node implements TagsInterface, NodeInterface {
     const squashMethod = Activations.find(this.squash);
 
     if (this.isNodeActivation(squashMethod)) {
-      return squashMethod.activate(this) + (this.bias ? this.bias : 0);
+      s.activation = squashMethod.activate(this) + (this.bias ? this.bias : 0);
     } else {
       s.old = s.state;
 
@@ -292,9 +292,9 @@ export class Node implements TagsInterface, NodeInterface {
           }
         }
       }
-
-      return s.activation;
     }
+
+    return s.activation;
   }
 
   /**
