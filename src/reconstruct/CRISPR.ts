@@ -1,16 +1,7 @@
-import { ConnectionInterface } from "../architecture/ConnectionInterface.ts";
-import { NodeInterface } from "../architecture/NodeInterface.ts";
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 import { Network } from "../architecture/network.js";
 import { Node } from "../architecture/Node.ts";
-import {
-  addTag,
-  addTags,
-  getTag,
-  removeTag,
-  TagsInterface,
-} from "../tags/TagsInterface.ts";
-import { CHAR_NO_BREAK_SPACE } from "https://deno.land/std@0.153.0/path/_constants.ts";
+import { addTag, getTag, TagsInterface } from "../tags/TagsInterface.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;

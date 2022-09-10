@@ -1,9 +1,7 @@
 {
   "id": "Volume Recommendation",
-  "mode":"append",
+  "mode": "append",
   "nodes": [
-
-
     {
       "bias": 0,
       "index": 1000,
@@ -12,8 +10,7 @@
     }
   ],
   "connections": [
-
-    { "from": 183,          "toRelative": 1000, "weight": 1 },
-    { "fromRelative": 999,  "toRelative": 1000, "weight": 1 }
+    { "from": 183, "toRelative": 1000, "weight": 1 },
+    { "fromRelative": 999, "toRelative": 1000, "weight": 1 }
   ]
 }
