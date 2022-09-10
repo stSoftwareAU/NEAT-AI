@@ -1,0 +1,29 @@
+{
+  "id": "Industry Model",
+  "mode": "append",
+  "nodes": [
+    {
+      "bias": -0.5,
+      "index": 335,
+      "type": "hidden",
+      "squash": "LOGISTIC"
+    },
+    {
+      "bias": 0,
+      "index": 336,
+      "type": "output",
+      "squash": "IF"
+    }
+  ],
+  "connections": [
+    { "from": 298, "toRelative": 335, "weight": 1 },
+    {
+      "fromRelative": 335,
+      "toRelative": 336,
+      "weight": 1,
+      "type": "condition"
+    },
+    { "fromRelative": 334, "toRelative": 336, "weight": 1, "type": "positive" },
+    { "from": 297, "toRelative": 336, "weight": 1, "type": "negative" }
+  ]
+}
