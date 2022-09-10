@@ -1,4 +1,7 @@
-import { assert } from "https://deno.land/std@0.153.0/testing/asserts.ts";
+import {
+  assert,
+  assertAlmostEquals,
+} from "https://deno.land/std@0.153.0/testing/asserts.ts";
 
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
@@ -6,6 +9,47 @@ import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { Network } from "../src/architecture/network.js";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+Deno.test("if-bias", () => {
+  const json: NetworkInterface = {
+    nodes: [
+      { type: "input", index: 0 },
+      { type: "input", index: 1 },
+      { type: "input", index: 2 },
+      { type: "hidden", squash: "IDENTITY", bias: -0.5, index: 3 },
+      {
+        type: "output",
+        squash: "IF",
+        index: 4,
+        bias: 0,
+      },
+    ],
+    connections: [
+      { from: 1, to: 3, weight: 1 },
+      { from: 2, to: 4, weight: 1, type: "positive" },
+      { from: 3, to: 4, weight: 1, type: "condition" },
+      { from: 0, to: 4, weight: 1, type: "negative" },
+    ],
+    input: 3,
+    output: 1,
+  };
+  const network = NetworkUtil.fromJSON(json);
+  const tmpJSON = JSON.stringify(network.toJSON(), null, 2);
+
+  console.log(tmpJSON);
+
+  const input1 = [-1, 0.4, 1];
+
+  const r1 = network.activate(input1)[0];
+
+  assertAlmostEquals(r1, -1, 0.0001, "should handle bias");
+
+  const input2 = [-1, 0.6, 1];
+
+  const r2 = network.activate(input2)[0];
+
+  assertAlmostEquals(r2, 1, 0.0001, "should handle bias");
+});
 
 Deno.test("if/Else", () => {
   const json: NetworkInterface = {
