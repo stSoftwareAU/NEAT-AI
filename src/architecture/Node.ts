@@ -492,8 +492,15 @@ export class Node implements TagsInterface, NodeInterface {
         this.bias += sp.totalDeltaBias;
         if (!Number.isFinite(this.bias)) {
           console.trace();
-          console.info(this);
-          throw this.index + ") invalid bias: " + this.bias;
+          if (this.bias === Number.POSITIVE_INFINITY) {
+            this.bias = Number.MAX_SAFE_INTEGER;
+          } else if (this.bias === Number.NEGATIVE_INFINITY) {
+            this.bias = Number.MIN_SAFE_INTEGER;
+          } else if (isNaN(this.bias)) {
+            this.bias = 0;
+          } else {
+            throw this.index + ") invalid this.bias: " + this.bias;
+          }
         }
       }
       sp.previousDeltaBias = sp.totalDeltaBias;
