@@ -854,32 +854,38 @@ export class NetworkUtil {
       const name = files[i];
       const fn = dataDir + "/" + name;
 
-      const json = cacheDataFile.fn == fn
-        ? cacheDataFile.json
-        : JSON.parse(Deno.readTextFileSync(fn));
+      try {
+        const json = cacheDataFile.fn == fn
+          ? cacheDataFile.json
+          : JSON.parse(Deno.readTextFileSync(fn));
 
-      if (files.length == 1) {
-        cacheDataFile.fn = fn;
-        cacheDataFile.json = json;
-      } else {
-        cacheDataFile.fn = "";
-        cacheDataFile.json = {};
-      }
-      if (json.length == 0) {
-        throw "Set size must be positive";
-      }
-      const len = json.length;
+        if (files.length == 1) {
+          cacheDataFile.fn = fn;
+          cacheDataFile.json = json;
+        } else {
+          cacheDataFile.fn = "";
+          cacheDataFile.json = {};
+        }
+        if (json.length == 0) {
+          throw "Set size must be positive";
+        }
+        const len = json.length;
 
-      for (let i = len; i--;) {
-        const data = json[i];
-        const input = data.input;
-        const target = data.output;
+        for (let i = len; i--;) {
+          const data = json[i];
+          const input = data.input;
+          const target = data.output;
 
-        const output = (this.network as Network).noTraceActivate(input);
-        error += cost(target, output);
-        if (!feedbackLoop) this.networkState.clear(this.network.input);
+          const output = (this.network as Network).noTraceActivate(input);
+          error += cost(target, output);
+          if (!feedbackLoop) this.networkState.clear(this.network.input);
+        }
+
+        counter += len;
+      } catch (e) {
+        console.warn(fn, e);
+        throw e;
       }
-      counter += len;
     }
 
     const avgError = error / counter;
