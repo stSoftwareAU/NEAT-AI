@@ -25,7 +25,7 @@ Deno.test("CRISPR", () => {
     null,
     2,
   );
-  Deno.writeTextFileSync("test/data/CRISPR/expected-IF.json", expectedTXT);
+  // Deno.writeTextFileSync("test/data/CRISPR/expected-IF.json", expectedTXT);
   const actualTXT = JSON.stringify((networkIF as Network).toJSON(), null, 2);
 
   Deno.writeTextFileSync("test/data/CRISPR/.actual-IF.json", actualTXT);
@@ -71,7 +71,7 @@ Deno.test("CRISPR-Volume", () => {
     null,
     2,
   );
-  Deno.writeTextFileSync("test/data/CRISPR/expected-VOLUME.json", expectedTXT);
+  // Deno.writeTextFileSync("test/data/CRISPR/expected-VOLUME.json", expectedTXT);
   const actualTXT = JSON.stringify((networkIF as Network).toJSON(), null, 2);
 
   Deno.writeTextFileSync("test/data/CRISPR/.actual-VOLUME.json", actualTXT);

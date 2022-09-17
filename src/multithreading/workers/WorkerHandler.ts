@@ -89,13 +89,13 @@ export class WorkerHandler {
         new URL("./deno/worker.js", import.meta.url).href,
         {
           type: "module",
-          deno: {
-            permissions: {
-              read: [
-                dataSetDir,
-              ],
-            },
-          },
+          // deno: {
+          //   permissions: {
+          //     read: [
+          //       dataSetDir,
+          //     ],
+          //   },
+          // },
         },
       );
     } else {

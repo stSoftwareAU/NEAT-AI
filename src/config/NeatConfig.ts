@@ -97,11 +97,11 @@ export function make(parameters?: NeatOptions) {
     focusList: options.focusList || [],
     focusRate: options.focusRate || 0.25,
 
-    targetError: typeof options.error !== "undefined"
+    targetError: options.error !== undefined
       ? Math.min(1, Math.max(Math.abs(options.error), 0))
       : 0.05,
 
-    growth: typeof options.growth !== "undefined" ? options.growth : 0.0001,
+    growth: options.growth !== undefined ? options.growth : 0.000_1,
 
     iterations: options.iterations ? options.iterations : 0,
 

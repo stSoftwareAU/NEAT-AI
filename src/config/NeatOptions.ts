@@ -37,6 +37,7 @@ export interface NeatOptions {
   /** Focus rate */
   focusRate?: number;
 
+  /** Cost of growth */
   growth?: number;
   elitism?: number;
 

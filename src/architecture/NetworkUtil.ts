@@ -430,7 +430,7 @@ export class NetworkUtil {
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
 
-        if (typeof c.gater !== "undefined") results.push(c);
+        if (c.gater !== undefined) results.push(c);
       }
 
       this.cache.set(key, results);
