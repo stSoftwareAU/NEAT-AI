@@ -3,8 +3,8 @@
 *******************************************************************************/
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 import { NeatOptions } from "./NeatOptions.ts";
-import { Methods } from "../methods/methods.js";
 import { Mutation } from "../methods/mutation.ts";
+import { Selection } from "../methods/Selection.ts";
 
 export interface NeatConfig {
   clear: boolean;
@@ -114,7 +114,7 @@ export function make(parameters?: NeatOptions) {
 
     mutationAmount: options.mutationAmount || 1,
     mutation: options.mutation || Mutation.FFW,
-    selection: options.selection || Methods.selection.POWER,
+    selection: options.selection || Selection.POWER,
 
     threads: Math.round(
       Math.max(
