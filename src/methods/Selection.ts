@@ -1,8 +1,7 @@
 /*******************************************************************************
-                                      SELECTION
-*******************************************************************************/
-
-// https://en.wikipedia.org/wiki/Selection_(genetic_algorithm)
+ **                                    SELECTION
+ **  https://en.wikipedia.org/wiki/Selection_(genetic_algorithm)
+ *******************************************************************************/
 
 export const Selection = {
   FITNESS_PROPORTIONATE: {

@@ -1,5 +1,5 @@
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
-import { assert } from "https://deno.land/std@0.153.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.156.0/testing/asserts.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("hidden", () => {

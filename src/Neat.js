@@ -1,16 +1,13 @@
 /* Import */
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
-import { Methods } from "./methods/methods.js";
 import { make as makeConfig } from "./config/NeatConfig.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
 import { NeatUtil } from "./NeatUtil.ts";
+import { Selection } from "./methods/Selection.ts";
 
 import { NetworkUtil } from "./architecture/NetworkUtil.ts";
-
-/* Easier variable naming */
-const selection = Methods.selection;
 
 /*******************************************************************************
                                          NEAT
@@ -273,19 +270,22 @@ export class Neat {
    */
   getParent() {
     switch (this.config.selection) {
-      case selection.POWER: {
+      case Selection.POWER: {
         const r = Math.random();
         const index = Math.floor(
-          Math.pow(r, this.config.selection.power) *
+          Math.pow(r, Selection.POWER.power) *
             this.population.length,
         );
-        // console.info( "index", index, r, this.config.selection.power, this.population.length);
+
         return this.population[index];
       }
-      case selection.FITNESS_PROPORTIONATE: {
-        // As negative fitnesses are possible
-        // https://stackoverflow.com/questions/16186686/genetic-algorithm-handling-negative-fitness-values
-        // this is unnecessarily run for every individual, should be changed
+      case Selection.FITNESS_PROPORTIONATE: {
+        /**
+         * As negative fitnesses are possible
+         * https://stackoverflow.com/questions/16186686/genetic-algorithm-handling-negative-fitness-values
+         * this is unnecessarily run for every individual, should be changed
+         */
+
         let totalFitness = 0;
         let minimalFitness = 0;
         for (let i = this.population.length; i--;) {
@@ -312,16 +312,16 @@ export class Neat {
         return this
           .population[Math.floor(Math.random() * this.population.length)];
       }
-      case selection.TOURNAMENT: {
-        if (this.config.selection.size > this.config.popsize) {
+      case Selection.TOURNAMENT: {
+        if (Selection.TOURNAMENT.size > this.config.popsize) {
           throw new Error(
-            "Your tournament size should be lower than the population size, please change methods.selection.TOURNAMENT.size",
+            "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
           );
         }
 
         // Create a tournament
-        const individuals = new Array(this.config.selection.size);
-        for (let i = 0; i < this.config.selection.size; i++) {
+        const individuals = new Array(Selection.TOURNAMENT.size);
+        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
           const random =
             this.population[Math.floor(Math.random() * this.population.length)];
           individuals[i] = random;
@@ -333,10 +333,10 @@ export class Neat {
         });
 
         // Select an individual
-        for (let i = 0; i < this.config.selection.size; i++) {
+        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
           if (
-            Math.random() < this.config.selection.probability ||
-            i === this.config.selection.size - 1
+            Math.random() < Selection.TOURNAMENT.probability ||
+            i === Selection.TOURNAMENT.size - 1
           ) {
             return individuals[i];
           }

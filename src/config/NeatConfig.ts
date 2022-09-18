@@ -3,8 +3,8 @@
 *******************************************************************************/
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 import { NeatOptions } from "./NeatOptions.ts";
-import { Methods } from "../methods/methods.js";
 import { Mutation } from "../methods/mutation.ts";
+import { Selection } from "../methods/Selection.ts";
 
 export interface NeatConfig {
   clear: boolean;
@@ -97,11 +97,11 @@ export function make(parameters?: NeatOptions) {
     focusList: options.focusList || [],
     focusRate: options.focusRate || 0.25,
 
-    targetError: typeof options.error !== "undefined"
+    targetError: options.error !== undefined
       ? Math.min(1, Math.max(Math.abs(options.error), 0))
       : 0.05,
 
-    growth: typeof options.growth !== "undefined" ? options.growth : 0.0001,
+    growth: options.growth !== undefined ? options.growth : 0.000_1,
 
     iterations: options.iterations ? options.iterations : 0,
 
@@ -114,7 +114,7 @@ export function make(parameters?: NeatOptions) {
 
     mutationAmount: options.mutationAmount || 1,
     mutation: options.mutation || Mutation.FFW,
-    selection: options.selection || Methods.selection.POWER,
+    selection: options.selection || Selection.POWER,
 
     threads: Math.round(
       Math.max(

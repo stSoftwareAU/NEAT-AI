@@ -4,7 +4,7 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.153.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.156.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.js";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
@@ -12,7 +12,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findCost, findRatePolicy } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.153.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.156.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -430,7 +430,7 @@ export class NetworkUtil {
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
 
-        if (typeof c.gater !== "undefined") results.push(c);
+        if (c.gater !== undefined) results.push(c);
       }
 
       this.cache.set(key, results);

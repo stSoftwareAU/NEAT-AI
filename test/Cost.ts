@@ -1,5 +1,5 @@
-import { Cost } from "../src/methods/cost.js";
-import { assert } from "https://deno.land/std@0.153.0/testing/asserts.ts";
+import { Cost } from "../src/methods/Cost.ts";
+import { assert } from "https://deno.land/std@0.156.0/testing/asserts.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -25,5 +25,45 @@ Deno.test("byName", () => {
   // console.info( list);
   list.forEach((fn) => {
     assert(typeof (fn) === "function", "Should be a function: " + typeof (fn));
+  });
+});
+
+Deno.test("calculate cost", () => {
+  const checks = [
+    { target: [0.8], output: [0.9] },
+    { target: [0.9], output: [0.8] },
+    { target: [-0.8], output: [-0.9] },
+    { target: [-0.9], output: [-0.8] },
+
+    { target: [0.5], output: [0.5] },
+    { target: [-0.5], output: [0.5] },
+  ];
+
+  checks.forEach((check) => {
+    const rBinary = Cost.BINARY(check.target, check.output);
+
+    console.info("BINARY", check, rBinary);
+
+    const rce = Cost.CROSS_ENTROPY(check.target, check.output);
+
+    console.info("CROSS_ENTROPY", check, rce);
+
+    const hr = Cost.HINGE(check.target, check.output);
+
+    console.info("HINGE", check, hr);
+
+    const mae = Cost.MAE(check.target, check.output);
+
+    console.info("MAE", check, mae);
+
+    const mape = Cost.MAPE(check.target, check.output);
+
+    console.info("MAPE", check, mape);
+    const mse = Cost.MSE(check.target, check.output);
+
+    console.info("MSE", check, mse);
+    const msle = Cost.MSLE(check.target, check.output);
+
+    console.info("MSLE", check, msle);
   });
 });
