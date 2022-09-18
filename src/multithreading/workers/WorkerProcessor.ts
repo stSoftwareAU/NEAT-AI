@@ -1,9 +1,9 @@
 import { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 import { NetworkUtil } from "../../architecture/NetworkUtil.ts";
-import { findCost } from "../../config.ts";
 
 import { TrainOptions } from "../../config/TrainOptions.ts";
+import { Costs } from "../../Costs.ts";
 
 export class WorkerProcessor {
   private costName: string | null = null;
@@ -29,7 +29,7 @@ export class WorkerProcessor {
       const network = NetworkUtil.fromJSON(JSON.parse(data.evaluate.network));
       const util = new NetworkUtil(network);
 
-      const cost = findCost(this.costName);
+      const cost = Costs.find(this.costName);
       const result = util.testDir(
         this.dataSetDir,
         cost,

@@ -11,7 +11,7 @@ import { addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
-import { findCost, findRatePolicy } from "../config.ts";
+import { findRatePolicy } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.156.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
@@ -19,6 +19,7 @@ import { Connection } from "./Connection.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { NetworkState } from "./NetworkState.ts";
+import { CostInterface, Costs } from "../Costs.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -841,8 +842,7 @@ export class NetworkUtil {
    */
   testDir(
     dataDir: string,
-    // deno-lint-ignore ban-types
-    cost: Function,
+    cost: CostInterface,
     feedbackLoop: boolean,
   ) {
     let error = 0;
@@ -877,7 +877,7 @@ export class NetworkUtil {
           const target = data.output;
 
           const output = (this.network as Network).noTraceActivate(input);
-          error += cost(target, output);
+          error += cost.calculate(target, output);
           if (!feedbackLoop) this.networkState.clear(this.network.input);
         }
 
@@ -913,7 +913,7 @@ export class NetworkUtil {
 
     // Read the options
     const targetError = options.error || 0.05;
-    const cost = findCost(options.cost ? options.cost : "MSE");
+    const cost = Costs.find(options.cost ? options.cost : "MSE");
     const baseRate = options.rate || 0.3;
     const momentum = options.momentum || 0;
     const batchSize = options.batchSize || 1; // online learning
@@ -975,12 +975,10 @@ export class NetworkUtil {
 
           const output = (this.network as Network).activate(input);
 
-          errorSum += cost(target, output);
-          // if (!Number.isFinite(errorSum)) break;
+          errorSum += cost.calculate(target, output);
 
           this.propagate(currentRate, momentum, update, target);
         }
-        // if (!Number.isFinite(errorSum)) return;
 
         counter += len;
       }
