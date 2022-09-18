@@ -252,18 +252,34 @@ export class Node implements TagsInterface, NodeInterface {
             fromState.activation * cs.gain;
 
           if (!Number.isFinite(cs.elegibility)) {
-            console.trace();
-            console.info(self, c, fromState.activation);
-            throw c.from + ":" + c.to + ") invalid elegibility: " +
-              cs.elegibility;
+            if (cs.elegibility === Number.POSITIVE_INFINITY) {
+              cs.elegibility = Number.MAX_SAFE_INTEGER;
+            } else if (cs.elegibility === Number.NEGATIVE_INFINITY) {
+              cs.elegibility = Number.MIN_SAFE_INTEGER;
+            } else if (isNaN(cs.elegibility)) {
+              cs.elegibility = 0;
+            } else {
+              console.trace();
+              console.info(self, c, fromState.activation);
+              throw c.from + ":" + c.to + ") invalid elegibility: " +
+                cs.elegibility;
+            }
           }
         } else {
           cs.elegibility = fromState.activation * cs.gain;
           if (!Number.isFinite(cs.elegibility)) {
-            console.trace();
-            console.info(c, fromState.activation);
-            throw c.from + ":" + c.to + ") invalid elegibility: " +
-              cs.elegibility;
+            if (cs.elegibility === Number.POSITIVE_INFINITY) {
+              cs.elegibility = Number.MAX_SAFE_INTEGER;
+            } else if (cs.elegibility === Number.NEGATIVE_INFINITY) {
+              cs.elegibility = Number.MIN_SAFE_INTEGER;
+            } else if (isNaN(cs.elegibility)) {
+              cs.elegibility = 0;
+            } else {
+              console.trace();
+              console.info(c, fromState.activation);
+              throw c.from + ":" + c.to + ") invalid elegibility: " +
+                cs.elegibility;
+            }
           }
         }
 
