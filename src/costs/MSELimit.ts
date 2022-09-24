@@ -13,7 +13,11 @@ export class MSELimit implements CostInterface {
 
       const o = output[i];
       const o1 = Math.min(1, Math.max(-1, o));
-      error += Math.pow(t1 - o1, 2);
+      let adjust=1;
+      if( t1 >= 0.5 && o1 <= -0.5 || t1 <= -0.5 && o1 >= 0.5){
+        adjust=2;
+      }
+      error += Math.pow(t1 - o1, 2) * adjust;
     }
 
     return error / len;
