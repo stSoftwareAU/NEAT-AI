@@ -418,7 +418,6 @@ export class Node implements TagsInterface, NodeInterface {
       s.errorProjected = sp.derivative * error;
 
       if (!Number.isFinite(s.errorProjected)) {
-        console.trace();
         if (s.errorProjected === Number.POSITIVE_INFINITY) {
           s.errorProjected = Number.MAX_SAFE_INTEGER;
         } else if (s.errorProjected === Number.NEGATIVE_INFINITY) {
@@ -426,6 +425,7 @@ export class Node implements TagsInterface, NodeInterface {
         } else if (isNaN(s.errorProjected)) {
           s.errorProjected = 0;
         } else {
+          console.trace();
           // console.info(state.error, this.derivative, error);
           throw this.index + ") invalid error.projected: " + s.errorProjected;
         }
@@ -507,7 +507,6 @@ export class Node implements TagsInterface, NodeInterface {
       if (this.bias !== undefined) {
         this.bias += sp.totalDeltaBias;
         if (!Number.isFinite(this.bias)) {
-          console.trace();
           if (this.bias === Number.POSITIVE_INFINITY) {
             this.bias = Number.MAX_SAFE_INTEGER;
           } else if (this.bias === Number.NEGATIVE_INFINITY) {
@@ -515,6 +514,7 @@ export class Node implements TagsInterface, NodeInterface {
           } else if (isNaN(this.bias)) {
             this.bias = 0;
           } else {
+            console.trace();
             throw this.index + ") invalid this.bias: " + this.bias;
           }
         }

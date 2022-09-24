@@ -1,6 +1,6 @@
-import { architect } from "../src/architecture/architect.js";
-import { assert } from "https://deno.land/std@0.156.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.157.0/testing/asserts.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
+import { Network } from "../src/architecture/network.js";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -28,7 +28,11 @@ Deno.test("hypotenuse", async () => {
   let errorPercent = 0;
   let answer = 0;
   for (let attempts = 0; attempts < 12; attempts++) {
-    const network = architect.Random(2, 2, 1);
+    const network = new Network(2, 1, {
+      layers: [
+        { count: 2 },
+      ],
+    });
 
     await network.evolve(ts, options);
 

@@ -1,13 +1,16 @@
-import { architect } from "../src/architecture/architect.js";
-import { assert } from "https://deno.land/std@0.156.0/testing/asserts.ts";
-import { emptyDirSync } from "https://deno.land/std@0.156.0/fs/empty_dir.ts";
+import { assert } from "https://deno.land/std@0.157.0/testing/asserts.ts";
+import { emptyDirSync } from "https://deno.land/std@0.157.0/fs/empty_dir.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
+import { Network } from "../src/architecture/network.js";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("storePopulation", async () => {
-  const network = architect.Random(2, 2, 1);
-
+  const network = new Network(2, 1, {
+    layers: [
+      { count: 2 },
+    ],
+  });
   const ts = [];
   for (let i = 100; i--;) {
     for (let j = 100; j--;) {
