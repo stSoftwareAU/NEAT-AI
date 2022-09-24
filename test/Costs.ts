@@ -59,7 +59,16 @@ Deno.test("MSELimit", () => {
     {
       target: [-0.51],
       output: [0.9],
-      error: 3.9762
+      error: 7.9524
+    },
+    {
+      target: [-0.51],
+      output: [-0.1],
+      error: 0.1681
+    },    {
+      target: [-0.3],
+      output: [0.3],
+      error: 0.72
     }
   ];
 
@@ -67,6 +76,6 @@ Deno.test("MSELimit", () => {
     const error=cost.calculate(check.target,check.output);
 
 
-    assertAlmostEquals(error, check.error, 0.000001, "Should be near zero for: " + check + " was: " + error);
+    assertAlmostEquals(error, check.error, 0.000001, "Should be near zero for: " + JSON.stringify( check) + " was: " + error);
   });
 });
