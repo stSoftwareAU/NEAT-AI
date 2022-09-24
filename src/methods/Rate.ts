@@ -4,7 +4,7 @@
 
 // https://stackoverflow.com/questions/30033096/what-is-lr-policy-in-caffe/30045244
 export const Rate = {
-  FIXED: function (baseRate) {
+  FIXED: function (baseRate: number) {
     return baseRate;
   },
   // STEP: function (gamma, stepSize) {

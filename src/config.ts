@@ -2,7 +2,7 @@
                                       CONFIG
 *******************************************************************************/
 
-import { Rate } from "./methods/rate.js";
+import { Rate } from "./methods/Rate.ts";
 
 const rateMap = new Map();
 

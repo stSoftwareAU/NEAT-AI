@@ -98,8 +98,7 @@ export class NeatUtil {
         }
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
-          // console.info( mutationMethod);
-          // if (this.config.debug) creature.util.validate();
+
           creature.util.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
@@ -226,12 +225,6 @@ export class NeatUtil {
       ) {
         continue;
       }
-
-      // if (
-      //   mutationMethod === Mutation.ADD_GATE
-      // ) {
-      //   continue;
-      // }
 
       return mutationMethod;
     }
