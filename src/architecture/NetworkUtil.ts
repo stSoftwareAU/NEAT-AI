@@ -1919,6 +1919,8 @@ export class NetworkUtil {
         node.squash,
       );
 
+      addTags(newNode, node);
+
       newNode.index = i;
       offspring.nodes.push(newNode);
     }

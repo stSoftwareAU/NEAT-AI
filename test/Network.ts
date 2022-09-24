@@ -9,6 +9,7 @@ import {
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
+import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -189,6 +190,22 @@ Deno.test("SUB_BACK_CONN", () => {
 
 Deno.test("SWAP_NODES", () => {
   checkMutation(Mutation.SWAP_NODES);
+});
+
+Deno.test("gender-tag", () => {
+  const network1 = new Network(2, 2);
+  const network2 = new Network(2, 2);
+
+  addTag(network1.nodes[0], "gender", "male");
+
+  addTag(network2.nodes[0], "gender", "female");
+
+  // Crossover
+  const network = NetworkUtil.crossOver(network1, network2);
+
+  const gender = getTag(network.nodes[0], "gender");
+
+  assert(gender == "male" || gender == "female", "No gender: " + gender);
 });
 
 Deno.test("Feed-forward", () => {
