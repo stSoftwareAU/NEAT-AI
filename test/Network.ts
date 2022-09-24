@@ -1,11 +1,10 @@
 import { Network } from "../src/architecture/network.js";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
-import { architect } from "../src/architecture/architect.js";
 import {
   assert,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.156.0/testing/asserts.ts";
+} from "https://deno.land/std@0.157.0/testing/asserts.ts";
 
 import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
@@ -15,8 +14,6 @@ import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 
 /* Functions used in the testing process */
 function checkMutation(method: { name: string }) {
-  // const network = architect.Perceptron(2, 4, 4, 4, 2);
-  // const network = architect.Random(2, 4*4, 2);
   const network = new Network(2, 2, {
     layers: [
       { count: 4 },
@@ -68,12 +65,11 @@ async function evolveSet(
   iterations: number,
   error: number,
 ) {
-  const network = architect.Random(
-    set[0].input.length,
-    5,
-    set[0].output.length,
-  );
-
+  const network = new Network(set[0].input.length, set[0].output.length, {
+    layers: [
+      { count: 5 },
+    ],
+  });
   const options: NeatOptions = {
     iterations: iterations,
     error: error,
@@ -97,8 +93,6 @@ function trainSet(set: any[], iterations: number, error: number) {
       ],
     },
   );
-
-  // console.info( JSON.stringify( network.toJSON(), null, 2));
 
   const options: NeatOptions = {
     iterations: iterations,
@@ -263,12 +257,16 @@ Deno.test("from/toJSON equivalency", () => {
   // );
   // copy = NetworkUtil.fromJSON(original.toJSON());
   // testEquality(original, copy);
-
-  original = architect.Random(
+  original = new Network(
     Math.floor(Math.random() * 5 + 1),
-    Math.floor(Math.random() * 10 + 1),
     Math.floor(Math.random() * 5 + 1),
+    {
+      layers: [
+        { count: Math.floor(Math.random() * 10 + 1) },
+      ],
+    },
   );
+
   copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
 

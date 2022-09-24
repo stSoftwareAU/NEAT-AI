@@ -5,9 +5,9 @@ import { Network } from "./architecture/network.js";
 import { NetworkUtil } from "./architecture/NetworkUtil.ts";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Mutation } from "./methods/mutation.ts";
-import { crypto } from "https://deno.land/std@0.156.0/crypto/mod.ts";
-import { encode } from "https://deno.land/std@0.156.0/encoding/base64.ts";
-import { ensureDirSync } from "https://deno.land/std@0.156.0/fs/ensure_dir.ts";
+import { crypto } from "https://deno.land/std@0.157.0/crypto/mod.ts";
+import { encode } from "https://deno.land/std@0.157.0/encoding/base64.ts";
+import { ensureDirSync } from "https://deno.land/std@0.157.0/fs/ensure_dir.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import { removeTag } from "../src/tags/TagsInterface.ts";
 
