@@ -141,37 +141,37 @@ Deno.test("12Steps", () => {
     {
       target: [-1],
       output: [1.2],
-      error: 1000,
+      error: 1,
     },
     {
       target: [1],
       output: [1.2],
-      error: 1,
+      error: 0.001,
     },
     {
       target: [-0.51],
       output: [0.9],
-      error: 392,
+      error: 0.39762,
     },
     {
       target: [-0.51],
       output: [-0.1],
-      error: 16,
+      error: 0.01681,
     },
     {
       target: [-0.3],
       output: [0.3],
-      error: 36,
+      error: 0.036,
     },
     {
       target: [-1],
       output: [1],
-      error: 800,
+      error: 0.800,
     },
     {
       target: [-2],
       output: [2],
-      error: 1000,
+      error: 1,
     },
   ];
 
