@@ -1,6 +1,7 @@
-import { assert, assertAlmostEquals } from "https://deno.land/std@0.157.0/testing/asserts.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.157.0/testing/asserts.ts";
 import { Costs } from "../src/Costs.ts";
 import { MSELimit } from "../src/costs/MSELimit.ts";
+import { TwelveSteps } from "../src/costs/TwelveSteps.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -26,6 +27,7 @@ Deno.test("calculate cost", () => {
     "MSE",
     "MSLE",
     "MSELimit",
+    "12STEPS",
   ];
 
   checks.forEach((check) => {
@@ -38,44 +40,149 @@ Deno.test("calculate cost", () => {
   });
 });
 
-
 Deno.test("MSELimit", () => {
-  const cost=new MSELimit();
+  const cost = new MSELimit();
 
-  const exact=[-1,-0.5, 0, 0.5, 1];
+  const exact = [-1, -0.5, 0, 0.5, 1];
 
-  exact.forEach( v =>{
-    const c=cost.calculate([v],[v]);
+  exact.forEach((v) => {
+    const c = cost.calculate([v], [v]);
 
-    assertAlmostEquals( c, 0, 0.000001, "Should be near zero for: " + v + " was: " + c);
+    assertAlmostEquals(
+      c,
+      0,
+      0.000001,
+      "Should be near zero for: " + v + " was: " + c,
+    );
   });
 
-  const checks=[
+  const checks = [
     {
       target: [1],
       output: [2],
-      error: 0
+      error: 0,
     },
     {
       target: [-0.51],
       output: [0.9],
-      error: 7.9524
+      error: 7.9524,
     },
     {
       target: [-0.51],
       output: [-0.1],
-      error: 0.1681
-    },    {
+      error: 0.1681,
+    },
+    {
       target: [-0.3],
       output: [0.3],
-      error: 0.72
-    }
+      error: 0.72,
+    },
   ];
 
-  checks.forEach( check=> {
-    const error=cost.calculate(check.target,check.output);
+  checks.forEach((check) => {
+    const error = cost.calculate(check.target, check.output);
 
+    assertAlmostEquals(
+      error,
+      check.error,
+      0.000001,
+      "Should be near zero for: " + JSON.stringify(check) + " was: " + error,
+    );
+  });
+});
 
-    assertAlmostEquals(error, check.error, 0.000001, "Should be near zero for: " + JSON.stringify( check) + " was: " + error);
+Deno.test("12StepsLimitA", () => {
+  const cost = new TwelveSteps();
+
+  const c1 = cost.calculate([1.1], [1.2]);
+  const c2 = cost.calculate([1.1], [2]);
+
+  console.info("cost: " + c1);
+  assertAlmostEquals(
+    c1,
+    c2,
+    0.000001,
+    "Should be near zero was: " + c1 + ":" + c2,
+  );
+});
+
+Deno.test("12StepsLimitB", () => {
+  const cost = new TwelveSteps();
+
+  const c1 = cost.calculate([1], [1.2]);
+  const c2 = cost.calculate([1], [2]);
+
+  console.info("cost: " + c1);
+  assertAlmostEquals(
+    c1,
+    c2,
+    0.000001,
+    "Should be near zero was: " + c1 + ":" + c2,
+  );
+});
+
+Deno.test("12Steps", () => {
+  const cost = new TwelveSteps();
+
+  const exact = [-1, -0.5, 0, 0.5, 1];
+
+  exact.forEach((v) => {
+    const c = cost.calculate([v], [v]);
+
+    assertAlmostEquals(
+      c,
+      0,
+      0.000001,
+      "Should be near zero for: " + v + " was: " + c,
+    );
+  });
+
+  const checks = [
+    {
+      target: [-1],
+      output: [1.2],
+      error: 1000,
+    },
+    {
+      target: [1],
+      output: [1.2],
+      error: 1,
+    },
+    {
+      target: [-0.51],
+      output: [0.9],
+      error: 392,
+    },
+    {
+      target: [-0.51],
+      output: [-0.1],
+      error: 16,
+    },
+    {
+      target: [-0.3],
+      output: [0.3],
+      error: 36,
+    },
+    {
+      target: [-1],
+      output: [1],
+      error: 800,
+    },
+    {
+      target: [-2],
+      output: [2],
+      error: 1000,
+    },
+  ];
+
+  checks.forEach((check) => {
+    const error = cost.calculate(check.target, check.output);
+
+    assertAlmostEquals(
+      error,
+      check.error,
+      0.000001,
+      "Should be near zero for: " + JSON.stringify(check) + " was: " + error,
+    );
   });
 });

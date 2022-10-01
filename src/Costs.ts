@@ -11,6 +11,7 @@ import { MAPE } from "./costs/MAPE.ts";
 import { MSE } from "./costs/MSE.ts";
 import { MSELimit } from "./costs/MSELimit.ts";
 import { MSLE } from "./costs/MSLE.ts";
+import { TwelveSteps } from "./costs/TwelveSteps.ts";
 
 export interface CostInterface {
   calculate(target: number[], output: number[]): number;
@@ -42,6 +43,9 @@ export class Costs {
       /** Hinge loss, for classifiers */
       case "HINGE":
         return new HINGE();
+      /** Twelve steps Error */
+      case "12STEPS":
+        return new TwelveSteps();
       default:
         throw "Unknown: " + name;
     }
