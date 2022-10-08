@@ -775,7 +775,7 @@ export class NetworkUtil {
     if (bestCreature) {
       this.network.nodes = bestCreature.nodes;
       this.network.connections = bestCreature.connections;
-
+      delete this.network.tags;
       addTags(this.network, bestCreature);
 
       this.clearCache();
