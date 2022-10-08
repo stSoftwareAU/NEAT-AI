@@ -1,7 +1,7 @@
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.157.0/testing/asserts.ts";
+} from "https://deno.land/std@0.159.0/testing/asserts.ts";
 
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 

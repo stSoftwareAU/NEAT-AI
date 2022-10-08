@@ -1,5 +1,5 @@
 import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.157.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.159.0/testing/asserts.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
