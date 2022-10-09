@@ -13,7 +13,7 @@ import { NetworkUtil } from "./NetworkUtil.ts";
 export class Node implements TagsInterface, NodeInterface {
   readonly util: NetworkUtil;
   readonly type;
-  bias?: number;
+  bias: number;
   squash?: string;
 
   public index: number;
@@ -36,17 +36,17 @@ export class Node implements TagsInterface, NodeInterface {
         throw "invalid type: " + type;
       }
 
-      if (typeof bias === "undefined") {
-        bias = Math.random() * 0.2 - 0.1;
+      if (bias === undefined) {
+        this.bias = Math.random() * 0.2 - 0.1;
+      } else {
+        if (!Number.isFinite(bias)) {
+          console.trace();
+          throw "bias (other than for 'input') must be a number type: " + type +
+            ", typeof: " +
+            (typeof bias) + ", value: " + bias;
+        }
+        this.bias = bias;
       }
-      if (!Number.isFinite(bias)) {
-        console.trace();
-        throw "bias (other than for 'input') must be a number type: " + type +
-          ", typeof: " +
-          (typeof bias) + ", value: " + bias;
-      }
-
-      this.bias = bias;
 
       if (typeof squash !== "string") {
         console.trace();
@@ -54,6 +54,8 @@ export class Node implements TagsInterface, NodeInterface {
           (typeof squash) + ", value: " + squash;
       }
       this.squash = squash;
+    } else {
+      this.bias = Infinity;
     }
 
     if (typeof util !== "object") {
@@ -147,19 +149,17 @@ export class Node implements TagsInterface, NodeInterface {
    * Activates the node
    */
   activate(input?: number) {
-    const s = this.util.networkState.node(this.index);
+    const state = this.util.networkState.node(this.index);
     if (this.type == "input") {
       if (Number.isFinite(input)) {
-        s.activation = input ? input : 0;
-
-        return s.activation;
+        state.activation = input ? input : 0;
+        return state.activation;
       } else {
-        console.trace();
         throw this.index +
           ") Node of type 'input' must have a finite value was: " + input;
       }
     } else {
-      if (typeof input !== "undefined") {
+      if (input !== undefined) {
         throw this.index + ") Node of type '" + this.type +
           "' Must not have an input value was: " + input;
       }
@@ -167,42 +167,60 @@ export class Node implements TagsInterface, NodeInterface {
         throw "Must have a squash for type: " + this.type;
       }
     }
-
     const squashMethod = Activations.find(this.squash);
 
     if (this.isNodeActivation(squashMethod)) {
-      s.activation = squashMethod.activate(this) + (this.bias ? this.bias : 0);
+      state.activation = squashMethod.activate(this) + this.bias;
     } else {
-      s.old = s.state;
+      state.old = state.state;
+
+      // const toList = this.util.toConnections(this.index);
+      // state.state = this.bias ? this.bias : 0;
+      // for (let i = toList.length; i--;) {
+      //   const c = toList[i];
+      //   const fromState = this.util.networkState.node(c.from);
+      //   const cs = this.util.networkState.connection(c.from, c.to);
+      //   state.state += fromState.activation * c.weight * cs.gain;
+      //   if (Math.abs(state.state) > Number.MAX_SAFE_INTEGER) {
+      //     state.state = Number.MAX_SAFE_INTEGER * (state.state < 0 ? -1 : 1);
+      //   }
+      //   if (!Number.isFinite(state.state)) {
+      //     console.trace();
+      //     throw c.from + ") invalid state: " + state.state;
+      //   }
+      // }
 
       const toList = this.util.toConnections(this.index);
-      s.state = this.bias ? this.bias : 0;
+      let value = this.bias;
+
       for (let i = toList.length; i--;) {
         const c = toList[i];
+
         const fromState = this.util.networkState.node(c.from);
         const cs = this.util.networkState.connection(c.from, c.to);
-        s.state += fromState.activation * c.weight * cs.gain;
-        if (Math.abs(s.state) > Number.MAX_SAFE_INTEGER) {
-          s.state = Number.MAX_SAFE_INTEGER * (s.state < 0 ? -1 : 1);
-        }
-        if (!Number.isFinite(s.state)) {
-          console.trace();
-          throw c.from + ") invalid state: " + s.state;
-        }
+        value += fromState.activation * c.weight * cs.gain;
       }
 
       const activationSquash = (squashMethod as ActivationInterface);
-      const result = activationSquash.squashAndDerive(s.state);
+      const result = activationSquash.squashAndDerive(value);
       // Squash the values received
-      s.activation = result.activation;
-
-      if (!Number.isFinite(s.activation)) {
-        console.trace();
-
-        throw this.index + ") invalid value: + " + s.state + ", squash: " +
-          this.squash +
-          ", activation: " + s.activation;
+      state.activation = result.activation;
+      if (!Number.isFinite(state.activation)) {
+        if (state.activation === Number.POSITIVE_INFINITY) {
+          state.activation = Number.MAX_SAFE_INTEGER;
+        } else if (state.activation === Number.NEGATIVE_INFINITY) {
+          state.activation = Number.MIN_SAFE_INTEGER;
+        } else if (isNaN(state.activation)) {
+          state.activation = 0;
+        } else {
+          console.trace();
+          throw this.index + ") invalid value: + " + state.state +
+            ", squash: " +
+            this.squash +
+            ", activation: " + state.activation;
+        }
       }
+
       const sp = this.util.networkState.nodePersistent(this.index);
       sp.derivative = result.derivative;
 
@@ -229,8 +247,8 @@ export class Node implements TagsInterface, NodeInterface {
         }
 
         // Adjust the gain to this nodes' activation
-        const cs = this.util.networkState.connection(c.from, c.to);
-        cs.gain = s.activation;
+        // const cs = this.util.networkState.connection(c.from, c.to);
+        // cs.gain = state.activation;
       }
 
       const self = this.util.selfConnection(this.index);
@@ -242,7 +260,6 @@ export class Node implements TagsInterface, NodeInterface {
       for (let i = 0; i < toList.length; i++) {
         const c = toList[i];
         // Elegibility trace
-        if (c.from === c.to && c.from == this.index) continue;
 
         const fromState = this.util.networkState.node(c.from);
         const cs = this.util.networkState.connection(c.from, c.to);
@@ -310,7 +327,7 @@ export class Node implements TagsInterface, NodeInterface {
       }
     }
 
-    return s.activation;
+    return state.activation;
   }
 
   /**
@@ -336,25 +353,24 @@ export class Node implements TagsInterface, NodeInterface {
       }
     }
 
-    const activation = Activations.find(this.squash);
+    const squashMethod = Activations.find(this.squash);
 
-    if (this.isNodeActivation(activation)) {
-      return activation.activate(this);
+    if (this.isNodeActivation(squashMethod)) {
+      state.activation = squashMethod.activate(this) + this.bias;
     } else {
       // All activation sources coming from the node itself
 
-      const toConnections = this.util.toConnections(this.index);
-      let value = this.bias ? this.bias : 0;
+      const toList = this.util.toConnections(this.index);
+      let value = this.bias;
 
-      for (let i = toConnections.length; i--;) {
-        const c = toConnections[i];
-
+      for (let i = toList.length; i--;) {
+        const c = toList[i];
         const fromState = this.util.networkState.node(c.from);
         const cs = this.util.networkState.connection(c.from, c.to);
         value += fromState.activation * c.weight * cs.gain;
       }
 
-      const activationSquash = (activation as ActivationInterface);
+      const activationSquash = (squashMethod as ActivationInterface);
       // Squash the values received
       state.activation = activationSquash.squash(value);
 
@@ -374,13 +390,11 @@ export class Node implements TagsInterface, NodeInterface {
           console.warn(msg);
           console.trace();
           state.activation = Number.MAX_SAFE_INTEGER;
-
-          // throw msg;
         }
       }
-
-      return state.activation;
     }
+
+    return state.activation;
   }
 
   /**
@@ -504,21 +518,21 @@ export class Node implements TagsInterface, NodeInterface {
     sp.totalDeltaBias += deltaBias;
     if (update) {
       sp.totalDeltaBias += momentum * sp.previousDeltaBias;
-      if (this.bias !== undefined) {
-        this.bias += sp.totalDeltaBias;
-        if (!Number.isFinite(this.bias)) {
-          if (this.bias === Number.POSITIVE_INFINITY) {
-            this.bias = Number.MAX_SAFE_INTEGER;
-          } else if (this.bias === Number.NEGATIVE_INFINITY) {
-            this.bias = Number.MIN_SAFE_INTEGER;
-          } else if (isNaN(this.bias)) {
-            this.bias = 0;
-          } else {
-            console.trace();
-            throw this.index + ") invalid this.bias: " + this.bias;
-          }
+      // if (this.bias !== undefined) {
+      this.bias += sp.totalDeltaBias;
+      if (!Number.isFinite(this.bias)) {
+        if (this.bias === Number.POSITIVE_INFINITY) {
+          this.bias = Number.MAX_SAFE_INTEGER;
+        } else if (this.bias === Number.NEGATIVE_INFINITY) {
+          this.bias = Number.MIN_SAFE_INTEGER;
+        } else if (isNaN(this.bias)) {
+          this.bias = 0;
+        } else {
+          console.trace();
+          throw this.index + ") invalid this.bias: " + this.bias;
         }
       }
+      // }
       sp.previousDeltaBias = sp.totalDeltaBias;
       sp.totalDeltaBias = 0;
     }
@@ -560,7 +574,7 @@ export class Node implements TagsInterface, NodeInterface {
         const modification =
           Math.random() * (Mutation.MOD_BIAS.max - Mutation.MOD_BIAS.min) +
           Mutation.MOD_BIAS.min;
-        this.bias = modification + (this.bias ? this.bias : 0);
+        this.bias = modification + this.bias;
         break;
       }
       default:
@@ -576,6 +590,7 @@ export class Node implements TagsInterface, NodeInterface {
     const c = this.util.getConnection(this.index, node.index);
     return c != null;
   }
+
   /**
    * Checks if the given node is projecting to this node
    */
@@ -608,7 +623,7 @@ export class Node implements TagsInterface, NodeInterface {
    * Convert a json object to a node
    */
   static fromJSON(
-    json: NodeInterface, // { type: string; bias: number; squash: string; tags?: [] },
+    json: NodeInterface,
     util: NetworkUtil,
   ) {
     switch (json.type) {

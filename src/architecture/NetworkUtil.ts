@@ -27,7 +27,7 @@ const cacheDataFile = {
 };
 
 export class NetworkUtil {
-  private network;
+  readonly network;
   readonly networkState = new NetworkState();
   private cache = new Map<string, ConnectionInterface[]>();
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
@@ -38,7 +38,7 @@ export class NetworkUtil {
     this.network = network;
   }
 
-  private clearCache() {
+  public clearCache() {
     this.cache.clear();
   }
 
@@ -294,6 +294,10 @@ export class NetworkUtil {
         console.trace();
         throw indx + ") node.index: " + node.index +
           " does not match expected index";
+      }
+      if ((node as Node).util !== this) {
+        console.trace();
+        throw indx + ") node.util mismatch";
       }
     });
 
@@ -773,13 +777,7 @@ export class NetworkUtil {
     workers.length = 0; // Release the memory.
     await Promise.all(promises);
     if (bestCreature) {
-      this.network.nodes = bestCreature.nodes;
-      this.network.connections = bestCreature.connections;
-      delete this.network.tags;
-      addTags(this.network, bestCreature);
-
-      this.clearCache();
-      this.clear();
+      this.loadFrom(bestCreature, config.debug);
     }
 
     if (config.creatureStore) {
@@ -881,9 +879,11 @@ export class NetworkUtil {
           const input = data.input;
           const target = data.output;
 
-          const output = (this.network as Network).noTraceActivate(input);
+          const output = (this.network as Network).noTraceActivate(
+            input,
+            feedbackLoop,
+          );
           error += cost.calculate(target, output);
-          if (!feedbackLoop) this.networkState.clear(this.network.input);
         }
 
         counter += len;
@@ -1973,23 +1973,17 @@ export class NetworkUtil {
     return offspring;
   }
 
-  /**
-   * Convert a json object to a network
-   */
-  static fromJSON(json: NetworkInterface, validate = false) {
-    const network = new Network(json.input, json.output, false);
-    network.nodes.length = json.nodes.length;
+  private loadFrom(json: NetworkInterface, validate: boolean) {
+    this.network.nodes.length = json.nodes.length;
     if (json.tags) {
-      network.tags = [...json.tags];
+      this.network.tags = [...json.tags];
     }
 
-    const util = network.util;
-
-    network.nodes = new Array(json.nodes.length);
+    this.network.nodes = new Array(json.nodes.length);
     for (let i = json.input; i--;) {
-      const n = new Node("input", undefined, util);
+      const n = new Node("input", undefined, this);
       n.index = i;
-      network.nodes[i] = n;
+      this.network.nodes[i] = n;
     }
 
     let pos = json.input;
@@ -1998,17 +1992,18 @@ export class NetworkUtil {
 
       if (jn.type === "input") continue;
 
-      const n = Node.fromJSON(jn, util);
+      const n = Node.fromJSON(jn, this);
       n.index = pos;
-      network.nodes[pos] = n;
+      this.network.nodes[pos] = n;
       pos++;
     }
 
+    this.network.connections.length = 0;
     const cLen = json.connections.length;
     for (let i = 0; i < cLen; i++) {
       const conn = json.connections[i];
 
-      const connection = network.util.connect(
+      const connection = this.connect(
         conn.from,
         conn.to,
         conn.weight,
@@ -2020,9 +2015,20 @@ export class NetworkUtil {
       }
     }
 
+    this.clearCache();
+    this.clear();
+
     if (validate) {
-      network.util.validate();
+      this.validate();
     }
+  }
+
+  /**
+   * Convert a json object to a network
+   */
+  static fromJSON(json: NetworkInterface, validate = false) {
+    const network = new Network(json.input, json.output, false);
+    network.util.loadFrom(json, validate);
 
     return network;
   }

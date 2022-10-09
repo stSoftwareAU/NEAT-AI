@@ -2,6 +2,7 @@ import { Network } from "../src/architecture/network.js";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import {
   assert,
+  assertAlmostEquals,
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.159.0/testing/asserts.ts";
@@ -30,7 +31,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.activate([i / 10, j / 10]);
+      const v = network.activate([i / 10, j / 10], true);
       originalOutput.push(...v);
     }
   }
@@ -49,7 +50,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.activate([i / 10, j / 10]);
+      const v = network.activate([i / 10, j / 10], true);
       mutatedOutput.push(...v);
     }
   }
@@ -80,6 +81,76 @@ async function evolveSet(
   const results = await network.evolve(set, options);
 
   assert(results.error < error);
+
+  set.forEach((dr) => {
+    const nt0 = network.noTraceActivate(dr.input)[0];
+
+    const nt1 = network.noTraceActivate(dr.input)[0];
+    network.util.validate();
+    assertEquals(
+      network.util.network,
+      network,
+      "Network not pointing to util's",
+    );
+
+    if (Math.abs(nt0 - nt1) > 0.0001) {
+      Deno.writeTextFileSync(
+        ".start.json",
+        JSON.stringify(network.toJSON(), null, 2),
+      );
+      const nt2 = network.noTraceActivate(dr.input)[0];
+
+      Deno.writeTextFileSync(
+        ".end.json",
+        JSON.stringify(network.toJSON(), null, 2),
+      );
+      console.log(dr.input);
+      const n0 =
+        Network.fromJSON(network.toJSON()).noTraceActivate(dr.input)[0];
+
+      network.util.clearCache();
+      const c1 = network.noTraceActivate(dr.input)[0];
+      const n1 =
+        Network.fromJSON(network.toJSON()).noTraceActivate(dr.input)[0];
+      const network2 = Network.fromJSON(network.toJSON());
+      const n2 = network2.noTraceActivate(dr.input)[0];
+      const n2b = network2.noTraceActivate(dr.input)[0];
+      assertAlmostEquals(
+        nt0,
+        nt1,
+        0.000_1,
+        "noTraceActivate first: " + nt0 + ", second: " +
+          nt1 + ", third: " + nt2 + ", new0: " + n0 + ", new1: " + n1 +
+          ", new2: " + n2 + ", new2b: " + n2b + ", cleared cache: " + c1,
+      );
+    }
+
+    const r0 = network.activate(dr.input)[0];
+    const r1 = network.activate(dr.input)[0];
+    assertAlmostEquals(
+      r0,
+      r1,
+      0.000_1,
+      "activate first: " + r0 + ", second: " +
+        r1,
+    );
+
+    const r2 = network.noTraceActivate(dr.input)[0];
+
+    if (Math.abs(r1 - r2) > 0.0001) {
+      console.log("hello");
+      const r3 = network.activate(dr.input)[0];
+      console.log(r2, r3);
+      console.info(JSON.stringify(network.toJSON(), null, 2));
+    }
+    assertAlmostEquals(
+      r1,
+      r2,
+      0.000_1,
+      "Mismatch activate: " + r1 + ", no trace: " +
+        r2,
+    );
+  });
 }
 
 function trainSet(set: any[], iterations: number, error: number) {
@@ -104,6 +175,19 @@ function trainSet(set: any[], iterations: number, error: number) {
   const results = network.train(set, options);
 
   assert(results.error < error, "Error is " + results.error);
+
+  set.forEach((dr) => {
+    const r1 = network.activate(dr.input)[0];
+    const r2 = network.noTraceActivate(dr.input)[0];
+
+    assertAlmostEquals(
+      r1,
+      r2,
+      0.000_1,
+      "Mismatch activate: " + r1.toLocaleString("en-AU") + ", no trace: " +
+        r2.toLocaleString("en-AU"),
+    );
+  });
 }
 
 function testEquality(original: any, copied: any) {
@@ -258,22 +342,6 @@ Deno.test("from/toJSON equivalency", () => {
   copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
 
-  // original = architect.LSTM(
-  //   Math.floor(Math.random() * 5 + 1),
-  //   Math.floor(Math.random() * 5 + 1),
-  //   Math.floor(Math.random() * 5 + 1),
-  // );
-  // copy = NetworkUtil.fromJSON(original.toJSON());
-  // testEquality(original, copy);
-
-  // original = architect.GRU(
-  //   Math.floor(Math.random() * 5 + 1),
-  //   Math.floor(Math.random() * 5 + 1),
-  //   Math.floor(Math.random() * 5 + 1),
-  //   Math.floor(Math.random() * 5 + 1),
-  // );
-  // copy = NetworkUtil.fromJSON(original.toJSON());
-  // testEquality(original, copy);
   original = new Network(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
@@ -286,52 +354,7 @@ Deno.test("from/toJSON equivalency", () => {
 
   copy = NetworkUtil.fromJSON(original.toJSON());
   testEquality(original, copy);
-
-  // original = architect.NARX(
-  //   Math.floor(Math.random() * 5 + 1),
-  //   Math.floor(Math.random() * 10 + 1),
-  //   Math.floor(Math.random() * 5 + 1),
-  //   Math.floor(Math.random() * 5 + 1),
-  //   Math.floor(Math.random() * 5 + 1),
-  // );
-  // copy = NetworkUtil.fromJSON(original.toJSON());
-  // testEquality(original, copy);
-
-  // original = architect.Hopfield(Math.floor(Math.random() * 5 + 1));
-  // copy = NetworkUtil.fromJSON(original.toJSON());
-  // testEquality(original, copy);
 });
-/* Deno.test("standalone equivalency", () => {
-      let original;
-      // let activate;
-      original = architect.Perceptron(Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1));
-      eval(original.standalone());
-      testEquality(original, eval( "activate"));
-
-      original = new Network(Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1));
-      eval(original.standalone());
-      testEquality(original, eval( "activate"));
-
-      original = architect.LSTM(Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1));
-      eval(original.standalone());
-      testEquality(original, eval( "activate"));
-
-      original = architect.GRU(Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1));
-      eval(original.standalone());
-      testEquality(original, eval( "activate"));
-
-      original = architect.Random(Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 10 + 1), Math.floor(Math.random() * 5 + 1));
-      eval(original.standalone());
-      testEquality(original, eval( "return activate"));
-
-      original = architect.NARX(Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1), Math.floor(Math.random() * 5 + 1));
-      eval(original.standalone());
-      testEquality(original, eval( "return activate"));
-
-      original = architect.Hopfield(Math.floor(Math.random() * 5 + 1));
-      eval(original.standalone());
-      testEquality(original, eval( "return activate"));
-  });*/
 
 Deno.test("train_AND_gate", () => {
   trainSet(
@@ -358,7 +381,8 @@ Deno.test("evolve_AND_gate", async () => {
     0.002,
   );
 });
-Deno.test("evolve XOR gate", async () => {
+
+Deno.test("evolve XORgate", async () => {
   await evolveSet(
     [
       { input: [0, 0], output: [0] },
@@ -379,7 +403,7 @@ Deno.test("train XOR gate", () => {
       { input: [1, 0], output: [1] },
       { input: [1, 1], output: [0] },
     ],
-    3000,
+    10000,
     0.002,
   );
 });
@@ -394,6 +418,7 @@ Deno.test("evolve_NOT_gate", async () => {
     0.002,
   );
 });
+
 Deno.test("train_NOT_gate", () => {
   trainSet(
     [
@@ -417,6 +442,7 @@ Deno.test("evolve_XNOR_gate", async () => {
     0.002,
   );
 });
+
 Deno.test("train_XNOR_gate", () => {
   trainSet(
     [
@@ -639,7 +665,7 @@ Deno.test("train_SHIFT", () => {
   trainSet(set, 500, 0.03);
 });
 
-Deno.test("evolve SHIFT", async () => {
+Deno.test("evolveSHIFT", async () => {
   const set = [];
 
   for (let i = 0; i < 1000; i++) {

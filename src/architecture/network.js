@@ -29,7 +29,10 @@ export class Network {
   /**
    * Activates the network
    */
-  activate(input) {
+  activate(input, feedbackLoop = false) {
+    if (!feedbackLoop) {
+      this.util.networkState.clear(this.input);
+    }
     if (input && input.length != this.input) {
       console.trace();
       throw "Activate input: " + input.length +
@@ -63,7 +66,10 @@ export class Network {
   /**
    * Activates the network without calculating elegibility traces and such
    */
-  noTraceActivate(input) {
+  noTraceActivate(input, feedbackLoop = false) {
+    if (!feedbackLoop) {
+      this.util.networkState.clear(this.input);
+    }
     const output = new Array(this.output);
     let outputLen = 0;
     // Activate nodes chronologically
