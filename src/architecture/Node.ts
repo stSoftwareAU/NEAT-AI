@@ -15,7 +15,7 @@ export class Node implements TagsInterface, NodeInterface {
   readonly type;
   bias: number;
   squash?: string;
-
+  private squashMethodCache?: NodeActivationInterface | ActivationInterface;
   public index: number;
   public tags = undefined;
 
@@ -70,7 +70,18 @@ export class Node implements TagsInterface, NodeInterface {
     this.index = -1;
   }
 
+  findSquash() {
+    if (!this.squashMethodCache) {
+      this.squashMethodCache = Activations.find(
+        this.squash ? this.squash : "UNDEFINED",
+      );
+    }
+    return this.squashMethodCache;
+  }
+
   fix() {
+    delete this.squashMethodCache;
+
     if (this.type == "hidden") {
       const fromList = this.util.fromConnections(this.index);
       if (fromList.length == 0) {
@@ -116,7 +127,7 @@ export class Node implements TagsInterface, NodeInterface {
     }
 
     if (this.squash) {
-      const activation = Activations.find(this.squash);
+      const activation = this.findSquash();
 
       if (this.isFixableActivation(activation)) {
         activation.fix(this);
@@ -163,32 +174,13 @@ export class Node implements TagsInterface, NodeInterface {
         throw this.index + ") Node of type '" + this.type +
           "' Must not have an input value was: " + input;
       }
-      if (!this.squash) {
-        throw "Must have a squash for type: " + this.type;
-      }
     }
-    const squashMethod = Activations.find(this.squash);
+    const squashMethod = this.findSquash();
 
     if (this.isNodeActivation(squashMethod)) {
       state.activation = squashMethod.activate(this) + this.bias;
     } else {
       state.old = state.state;
-
-      // const toList = this.util.toConnections(this.index);
-      // state.state = this.bias ? this.bias : 0;
-      // for (let i = toList.length; i--;) {
-      //   const c = toList[i];
-      //   const fromState = this.util.networkState.node(c.from);
-      //   const cs = this.util.networkState.connection(c.from, c.to);
-      //   state.state += fromState.activation * c.weight * cs.gain;
-      //   if (Math.abs(state.state) > Number.MAX_SAFE_INTEGER) {
-      //     state.state = Number.MAX_SAFE_INTEGER * (state.state < 0 ? -1 : 1);
-      //   }
-      //   if (!Number.isFinite(state.state)) {
-      //     console.trace();
-      //     throw c.from + ") invalid state: " + state.state;
-      //   }
-      // }
 
       const toList = this.util.toConnections(this.index);
       let value = this.bias;
@@ -348,13 +340,9 @@ export class Node implements TagsInterface, NodeInterface {
         throw this.index + ") Node of type '" + this.type +
           "' Must not have an input value was: " + input;
       }
-      if (!this.squash) {
-        throw "Must have a squash for type: " + this.type;
-      }
     }
 
-    const squashMethod = Activations.find(this.squash);
-
+    const squashMethod = this.findSquash();
     if (this.isNodeActivation(squashMethod)) {
       state.activation = squashMethod.activate(this) + this.bias;
     } else {
@@ -556,6 +544,9 @@ export class Node implements TagsInterface, NodeInterface {
       console.trace();
       throw "Mutate method wrong type: " + (typeof method);
     }
+    if (this.type == "input") {
+      throw "Mutate on wrong node type: " + this.type;
+    }
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
         // Can't be the same squash
@@ -565,6 +556,7 @@ export class Node implements TagsInterface, NodeInterface {
 
           if (tmpSquash != this.squash) {
             this.squash = tmpSquash;
+            delete this.squashMethodCache;
             break;
           }
         }
