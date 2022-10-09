@@ -851,46 +851,39 @@ export class NetworkUtil {
     let error = 0;
     let counter = 0;
 
-    const files: string[] = this.dataFiles(dataDir);
+    const files: string[] = this.dataFiles(dataDir).map((fn) =>
+      dataDir + "/" + fn
+    );
 
-    for (let i = files.length; i--;) {
-      const name = files[i];
-      const fn = dataDir + "/" + name;
+    for (let j = files.length; j--;) {
+      const fn = files[j];
 
-      try {
-        const json = cacheDataFile.fn == fn
-          ? cacheDataFile.json
-          : JSON.parse(Deno.readTextFileSync(fn));
+      const json = cacheDataFile.fn == fn
+        ? cacheDataFile.json
+        : JSON.parse(Deno.readTextFileSync(fn));
 
-        if (files.length == 1) {
-          cacheDataFile.fn = fn;
-          cacheDataFile.json = json;
-        } else {
-          cacheDataFile.fn = "";
-          cacheDataFile.json = {};
-        }
-        if (json.length == 0) {
-          throw "Set size must be positive";
-        }
-        const len = json.length;
-
-        for (let i = len; i--;) {
-          const data = json[i];
-          const input = data.input;
-          const target = data.output;
-
-          const output = (this.network as Network).noTraceActivate(
-            input,
-            feedbackLoop,
-          );
-          error += cost.calculate(target, output);
-        }
-
-        counter += len;
-      } catch (e) {
-        console.warn(fn, e);
-        throw e;
+      if (files.length == 1) {
+        cacheDataFile.fn = fn;
+        cacheDataFile.json = json;
+      } else {
+        cacheDataFile.fn = "";
+        cacheDataFile.json = {};
       }
+      if (json.length == 0) {
+        throw "Set size must be positive";
+      }
+
+      for (let i = json.length; i--;) {
+        const data = json[i];
+
+        const output = (this.network as Network).noTraceActivate(
+          data.input,
+          feedbackLoop,
+        );
+        error += cost.calculate(data.output, output);
+      }
+
+      counter += json.length;
     }
 
     const avgError = error / counter;
@@ -927,7 +920,9 @@ export class NetworkUtil {
 
     const iterations = options.iterations ? options.iterations : 0;
 
-    const files: string[] = this.dataFiles(dataDir);
+    const files: string[] = this.dataFiles(dataDir).map((fn) =>
+      dataDir + "/" + fn
+    );
 
     // Loops the training process
     let currentRate = 0.3;
@@ -952,9 +947,8 @@ export class NetworkUtil {
       let errorSum = 0;
 
       // files.forEach((name) => {
-      for (let i = files.length; i--;) {
-        const name = files[i];
-        const fn = dataDir + "/" + name;
+      for (let j = files.length; j--;) {
+        const fn = files[j];
         const json = cacheDataFile.fn == fn
           ? cacheDataFile.json
           : JSON.parse(Deno.readTextFileSync(fn));

@@ -4,7 +4,7 @@ import { WorkerHandler } from "../src/multithreading/workers/WorkerHandler.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("busyWorker", async () => {
-  const w = new WorkerHandler("/tmp", "ABC", false);
+  const w = new WorkerHandler("/tmp", "MSE", false);
 
   await checkWorker(w);
 });
@@ -23,6 +23,6 @@ async function checkWorker(w: WorkerHandler) {
 }
 
 Deno.test("busyDirect", async () => {
-  const w = new WorkerHandler("/tmp", "ABC", true);
+  const w = new WorkerHandler("/tmp", "MSE", true);
   await checkWorker(w);
 });

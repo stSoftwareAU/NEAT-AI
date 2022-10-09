@@ -535,7 +535,7 @@ Deno.test("evolve_Bigger_than", async () => {
     set.push({ input: [x, y], output: [z] });
   }
 
-  await evolveSet(set, 1000, 0.05);
+  await evolveSet(set, 10000, 0.05);
 });
 
 // Deno.test("LSTM XOR", async () => {
