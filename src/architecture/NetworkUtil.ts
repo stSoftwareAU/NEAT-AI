@@ -20,6 +20,7 @@ import { ConnectionInterface } from "./ConnectionInterface.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { NetworkState } from "./NetworkState.ts";
 import { CostInterface, Costs } from "../Costs.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -1932,13 +1933,20 @@ export class NetworkUtil {
           const c = toList[i];
 
           const adjustTo = c.to + (indx - c.to);
-          let adjustFrom = (c.to == c.from)
-            ? adjustTo
-            : c.from < adjustTo
-            ? c.from
-            : adjustTo - (c.to - c.from);
+          let adjustFrom = c.from;
+          if (c.to == c.from) {
+            adjustFrom = adjustTo;
+          } else if (c.from >= offspring.input) {
+            adjustFrom = adjustTo - (c.to - c.from);
+            if (adjustFrom < offspring.input) {
+              if (c.from < adjustTo) {
+                adjustFrom = c.from;
+              } else {
+                adjustFrom = adjustFrom < 0 ? 0 : adjustFrom;
+              }
+            }
+          }
 
-          adjustFrom = adjustFrom < 0 ? 0 : adjustFrom;
           while (offspring.nodes[adjustFrom].type === "output") {
             adjustFrom--;
           }
