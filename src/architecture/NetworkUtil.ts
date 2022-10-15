@@ -205,12 +205,13 @@ export class NetworkUtil {
 
     if (changed) {
       addTag(compactNetwork, "approach", "compact");
-      compactNetwork.util.fix();
+      // compactNetwork.util.fix();
       return compactNetwork;
     } else {
       return null;
     }
   }
+
   /**
    * Validate the network
    * @param options specific values to check
@@ -1025,7 +1026,6 @@ export class NetworkUtil {
       let counter = 0;
       let errorSum = 0;
 
-      // files.forEach((name) => {
       for (let j = files.length; j--;) {
         const fn = files[j];
         const json = cacheDataFile.fn == fn

@@ -238,6 +238,7 @@ export function fineTuneImprovement(
   previousFittest: NetworkInterface | null,
   popsize = 10,
   showMessage = true,
+  compactEnabled = false,
 ) {
   if (previousFittest == null) {
     return [];
@@ -288,9 +289,11 @@ export function fineTuneImprovement(
   }
 
   const fineTuned: Network[] = [];
-  const compactNetwork = (fittest as Network).util.compact();
-  if (compactNetwork != null) {
-    fineTuned.push(compactNetwork);
+  if (compactEnabled) {
+    const compactNetwork = (fittest as Network).util.compact();
+    if (compactNetwork != null) {
+      fineTuned.push(compactNetwork);
+    }
   }
   const previousJSON = (previousFittest as Network).toJSON();
 

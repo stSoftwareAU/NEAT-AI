@@ -9,18 +9,18 @@ export class MAXIMUM implements NodeActivationInterface {
   }
 
   activate(node: Node) {
-    const values: number[] = [];
+    const toList = node.util.toConnections(node.index);
+    let maxValue = Infinity * -1;
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
 
-    const connections = node.util.toConnections(node.index);
-    connections.forEach((c) => {
-      const fromNode = node.util.getNode(c.from);
-      values.push(
-        fromNode.getActivation() * c.weight,
-      );
-    });
+      const value = node.util.networkState.node(c.from).activation * c.weight;
+      if (value > maxValue) {
+        maxValue = value;
+      }
+    }
 
-    const value = Math.max(...values);
-    return value;
+    return maxValue;
   }
 
   fix(node: Node) {
