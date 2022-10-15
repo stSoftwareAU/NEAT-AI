@@ -198,6 +198,7 @@ export class Neat {
         this.config.popsize - this.population.length,
       ),
       !rebootedFineTune && this.config.verbose,
+      this.config.experimentStore ? true : false,
     );
 
     const newPopulation = [];

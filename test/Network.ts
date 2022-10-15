@@ -80,7 +80,7 @@ async function evolveSet(
 
   const results = await network.evolve(set, options);
 
-  assert(results.error < error);
+  assert(results.error <= error, `expected: ${error}, was: ${results.error}`);
 
   set.forEach((dr) => {
     const nt0 = network.noTraceActivate(dr.input)[0];
