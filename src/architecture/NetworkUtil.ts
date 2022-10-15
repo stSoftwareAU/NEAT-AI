@@ -20,7 +20,8 @@ import { ConnectionInterface } from "./ConnectionInterface.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { NetworkState } from "./NetworkState.ts";
 import { CostInterface, Costs } from "../Costs.ts";
-import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
+import { Activations } from "../methods/activations/Activations.ts";
+import { addTag } from "../tags/TagsInterface.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -46,6 +47,7 @@ export class NetworkUtil {
   initialize(options: {
     layers?: { squash: string; count: number }[];
   }) {
+    let fixNeeded = false;
     // Create input nodes
     for (let i = this.network.input; i--;) {
       const type = "input";
@@ -65,11 +67,18 @@ export class NetworkUtil {
           throw "Layer count should be positive was: " + layer.count;
         }
         for (let j = 0; j < layer.count; j++) {
+          let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
+          if (tmpSquash == "*") {
+            tmpSquash = Activations
+              .NAMES[Math.floor(Activations.NAMES.length * Math.random())];
+            fixNeeded = true;
+          }
+
           const node = new Node(
             "hidden",
             undefined,
             this,
-            layer.squash ? layer.squash : LOGISTIC.NAME,
+            tmpSquash,
           );
           node.index = this.network.nodes.length;
           this.network.nodes.push(node);
@@ -124,6 +133,10 @@ export class NetworkUtil {
         }
       }
     }
+
+    if (fixNeeded) {
+      this.fix();
+    }
   }
 
   /**
@@ -133,6 +146,71 @@ export class NetworkUtil {
     this.networkState.clear(this.network.input);
   }
 
+  /**
+   * Compact the network.
+   */
+  compact(): Network | null {
+    const json = this.toJSON();
+    const compactNetwork = Network.fromJSON(json);
+
+    let changed = false;
+    let complete = false;
+    for (let changes = 0; complete == false; changes++) {
+      complete = true;
+      for (
+        let pos = compactNetwork.input;
+        pos < compactNetwork.nodes.length - compactNetwork.output;
+        pos++
+      ) {
+        const toList = compactNetwork.util.toConnections(pos);
+        if (toList.length == 1) {
+          const fromList = compactNetwork.util.fromConnections(pos);
+          if (fromList.length == 1) {
+            const to = fromList[0].to;
+            const from = toList[0].from;
+            if (
+              compactNetwork.nodes[from].type == compactNetwork.nodes[pos].type
+            ) {
+              if (compactNetwork.util.getConnection(from, to) == null) {
+                const weightA = fromList[0].weight * toList[0].weight;
+
+                const biasA =
+                  compactNetwork.nodes[from].bias * toList[0].weight +
+                  compactNetwork.nodes[pos].bias;
+
+                compactNetwork.nodes[from].bias = biasA;
+
+                compactNetwork.util.removeHiddenNode(pos);
+                let adjustedTo = to;
+                if (adjustedTo > pos) {
+                  adjustedTo--;
+                }
+                compactNetwork.util.connect(
+                  from,
+                  adjustedTo,
+                  weightA,
+                  fromList[0].type,
+                );
+                changed = true;
+                if (changes < 12) {
+                  complete = false;
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (changed) {
+      addTag(compactNetwork, "approach", "compact");
+      compactNetwork.util.fix();
+      return compactNetwork;
+    } else {
+      return null;
+    }
+  }
   /**
    * Validate the network
    * @param options specific values to check

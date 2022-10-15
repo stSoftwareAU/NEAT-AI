@@ -278,8 +278,20 @@ export function fineTuneImprovement(
       "to",
       fScore,
     );
+  } else if (approach == "compact") {
+    console.info(
+      "Compacting increased fitness by",
+      fScore - pScore,
+      "to",
+      fScore,
+    );
   }
+
   const fineTuned: Network[] = [];
+  const compactNetwork = (fittest as Network).util.compact();
+  if (compactNetwork != null) {
+    fineTuned.push(compactNetwork);
+  }
   const previousJSON = (previousFittest as Network).toJSON();
 
   const resultALL = tuneAll(fittest, previousFittest, fScoreTxt);
@@ -300,22 +312,6 @@ export function fineTuneImprovement(
 
     const slices = Math.floor(1 / sliceRateRaw) + 1;
     const sliceRate = 1 / slices;
-    // console.info(
-    //   "Total items",
-    //   totalItems,
-    //   "remianing cells",
-    //   remainingCells,
-    //   "Items per cell",
-    //   itemsPerCell,
-    //   "Slice Rate",
-    //   sliceRate,
-    //   "Biases",
-    //   resultALL.changeBiasCount,
-    //   "Weights",
-    //   resultALL.changeWeightCount,
-    //   "Slices",
-    //   slices,
-    // );
 
     const weights = new Set<string>();
     const biases = new Set<string>();
