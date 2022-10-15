@@ -11,16 +11,14 @@ export class MEAN implements NodeActivationInterface {
   activate(node: Node) {
     let sum = 0;
 
-    let count = 0;
-    const connections = node.util.toConnections(node.index);
-    connections.forEach((c) => {
-      const fromNode = node.util.getNode(c.from);
-      sum += fromNode.getActivation() * c.weight;
+    const toList = node.util.toConnections(node.index);
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
 
-      count++;
-    });
+      sum += node.util.networkState.node(c.from).activation * c.weight;
+    }
 
-    const value = sum / count;
+    const value = sum / toList.length;
     return value;
   }
 

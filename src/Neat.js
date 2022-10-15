@@ -217,7 +217,8 @@ export class Neat {
     const trainPopulation = [];
 
     await Promise.all(trainPromises).then((results) => {
-      results.forEach((r) => {
+      for (let i = results.length; i--;) {
+        const r = results[i];
         if (r.train) {
           if (Number.isFinite(r.train.error)) {
             const json = JSON.parse(r.train.network);
@@ -231,7 +232,7 @@ export class Neat {
         } else {
           throw "No train result";
         }
-      });
+      }
     });
 
     this.population = [

@@ -38,7 +38,8 @@ export class IF implements NodeActivationInterface {
       }
     }
 
-    toList.forEach((c) => {
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
       if (c.type === undefined) {
         if (!foundCondition) {
           foundCondition = true;
@@ -62,7 +63,7 @@ export class IF implements NodeActivationInterface {
           }
         }
       }
-    });
+    }
 
     if (!foundCondition) {
       const c = node.util.makeRandomConnection(node.index);
@@ -130,10 +131,12 @@ export class IF implements NodeActivationInterface {
     let negative = 0;
     let positive = 0;
 
-    const connections = node.util.toConnections(node.index);
-    connections.forEach((c) => {
-      const fromNode = node.util.getNode(c.from);
-      const value = fromNode.getActivation() * c.weight;
+    const toList = node.util.toConnections(node.index);
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+
+      const value = node.util.networkState.node(c.from).activation * c.weight;
+
       switch (c.type) {
         case "condition":
           condition += value;
@@ -144,7 +147,7 @@ export class IF implements NodeActivationInterface {
         default:
           positive += value;
       }
-    });
+    }
 
     return condition > 0 ? positive : negative;
   }
