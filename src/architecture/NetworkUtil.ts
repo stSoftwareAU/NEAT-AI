@@ -205,7 +205,13 @@ export class NetworkUtil {
 
     if (changed) {
       addTag(compactNetwork, "approach", "compact");
-      // compactNetwork.util.fix();
+      addTag(compactNetwork, "old-nodes", this.network.nodes.length.toString());
+      addTag(
+        compactNetwork,
+        "old-connections",
+        this.network.connections.length.toString(),
+      );
+
       return compactNetwork;
     } else {
       return null;
