@@ -285,6 +285,10 @@ export function fineTuneImprovement(
       fScore - pScore,
       "to",
       fScore,
+      `nodes: ${fittest.nodes.length} was:`,
+      getTag(fittest, "old-nodes"),
+      `connections: ${fittest.connections.length} was:`,
+      getTag(fittest, "old-connections"),
     );
   }
 
@@ -346,7 +350,7 @@ export function fineTuneImprovement(
     } else {
       const halfSlices = Math.max(Math.floor(slices / 2), 2);
       const doubleRate = 1 / halfSlices;
-      // console.info("both", slices, halfSlices, sliceRate, doubleRate);
+
       for (let slice = 0; slice < halfSlices; slice++) {
         const weightsOnly = tuneWeights(
           fittest,
@@ -365,14 +369,6 @@ export function fineTuneImprovement(
           biases,
         );
         if (biasOnly) fineTuned.push(biasOnly);
-        // console.info(
-        //   "Slice",
-        //   slice,
-        //   "weights",
-        //   weights.size,
-        //   "biases",
-        //   biases.size,
-        // );
       }
     }
 
@@ -391,17 +387,7 @@ export function fineTuneImprovement(
           if (fn.bias != pn.bias) {
             const adjust = adjustment(k, fn.bias - pn.bias);
             const bias = fn.bias + adjust;
-            // console.debug(
-            //   "Index: " + i,
-            //   "bias",
-            //   fn.bias,
-            //   "(",
-            //   pn.bias,
-            //   ") by",
-            //   adjust,
-            //   "to",
-            //   bias,
-            // );
+
             fn.bias = bias;
             const n = NetworkUtil.fromJSON(targetJSON);
             addTag(n, "approach", "fine");
@@ -432,20 +418,7 @@ export function fineTuneImprovement(
             if (fc.weight != pc.weight) {
               const adjust = adjustment(k, fc.weight - pc.weight);
               const weight = fc.weight + adjust;
-              // console.debug(
-              //   "from",
-              //   fc.from,
-              //   "to",
-              //   pc.to,
-              //   "weight",
-              //   fc.weight,
-              //   "(",
-              //   pc.weight,
-              //   ") by",
-              //   adjust,
-              //   "to",
-              //   weight,
-              // );
+
               fc.weight = weight;
               const n = NetworkUtil.fromJSON(targetJSON);
               addTag(n, "approach", "fine");
@@ -487,7 +460,7 @@ function adjustment(loop: number, difference: number) {
     case 0: {
       const r = 1 + Math.random();
       const v = difference * r; // Big step forward.
-      // console.debug("big step forward", difference, r, v);
+
       return minStep(v);
     }
     /* Little step forward. */
@@ -495,14 +468,13 @@ function adjustment(loop: number, difference: number) {
       const r = Math.random();
       const v = difference * r;
 
-      // console.debug("Little step forward", difference, r, v);
       return minStep(v); // Little step forward.
     }
     /* Little step backwards */
     default: {
       const r = Math.random() * -1;
       const v = difference * r;
-      // console.debug("Little step backwards", difference, r, v);
+
       return minStep(v);
     }
   }
