@@ -159,22 +159,9 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Activates the node
    */
-  activate(input?: number) {
+  activate() {
     const state = this.util.networkState.node(this.index);
-    if (this.type == "input") {
-      if (Number.isFinite(input)) {
-        state.activation = input ? input : 0;
-        return state.activation;
-      } else {
-        throw this.index +
-          ") Node of type 'input' must have a finite value was: " + input;
-      }
-    } else {
-      if (input !== undefined) {
-        throw this.index + ") Node of type '" + this.type +
-          "' Must not have an input value was: " + input;
-      }
-    }
+
     const squashMethod = this.findSquash();
 
     if (this.isNodeActivation(squashMethod)) {
@@ -237,10 +224,6 @@ export class Node implements TagsInterface, NodeInterface {
               (c.gater === this.index ? fromState.old : 0),
           );
         }
-
-        // Adjust the gain to this nodes' activation
-        // const cs = this.util.networkState.connection(c.from, c.to);
-        // cs.gain = state.activation;
       }
 
       const self = this.util.selfConnection(this.index);
@@ -251,43 +234,41 @@ export class Node implements TagsInterface, NodeInterface {
 
       for (let i = 0; i < toList.length; i++) {
         const c = toList[i];
-        // Elegibility trace
-
         const fromState = this.util.networkState.node(c.from);
         const cs = this.util.networkState.connection(c.from, c.to);
         if (self) {
-          cs.elegibility =
-            selfState.gain * self.weight * selfState.elegibility +
+          cs.eligibility =
+            selfState.gain * self.weight * selfState.eligibility +
             fromState.activation * cs.gain;
 
-          if (!Number.isFinite(cs.elegibility)) {
-            if (cs.elegibility === Number.POSITIVE_INFINITY) {
-              cs.elegibility = Number.MAX_SAFE_INTEGER;
-            } else if (cs.elegibility === Number.NEGATIVE_INFINITY) {
-              cs.elegibility = Number.MIN_SAFE_INTEGER;
-            } else if (isNaN(cs.elegibility)) {
-              cs.elegibility = 0;
+          if (!Number.isFinite(cs.eligibility)) {
+            if (cs.eligibility === Number.POSITIVE_INFINITY) {
+              cs.eligibility = Number.MAX_SAFE_INTEGER;
+            } else if (cs.eligibility === Number.NEGATIVE_INFINITY) {
+              cs.eligibility = Number.MIN_SAFE_INTEGER;
+            } else if (isNaN(cs.eligibility)) {
+              cs.eligibility = 0;
             } else {
               console.trace();
               console.info(self, c, fromState.activation);
-              throw c.from + ":" + c.to + ") invalid elegibility: " +
-                cs.elegibility;
+              throw c.from + ":" + c.to + ") invalid eligibility: " +
+                cs.eligibility;
             }
           }
         } else {
-          cs.elegibility = fromState.activation * cs.gain;
-          if (!Number.isFinite(cs.elegibility)) {
-            if (cs.elegibility === Number.POSITIVE_INFINITY) {
-              cs.elegibility = Number.MAX_SAFE_INTEGER;
-            } else if (cs.elegibility === Number.NEGATIVE_INFINITY) {
-              cs.elegibility = Number.MIN_SAFE_INTEGER;
-            } else if (isNaN(cs.elegibility)) {
-              cs.elegibility = 0;
+          cs.eligibility = fromState.activation * cs.gain;
+          if (!Number.isFinite(cs.eligibility)) {
+            if (cs.eligibility === Number.POSITIVE_INFINITY) {
+              cs.eligibility = Number.MAX_SAFE_INTEGER;
+            } else if (cs.eligibility === Number.NEGATIVE_INFINITY) {
+              cs.eligibility = Number.MIN_SAFE_INTEGER;
+            } else if (isNaN(cs.eligibility)) {
+              cs.eligibility = 0;
             } else {
               console.trace();
               console.info(c, fromState.activation);
-              throw c.from + ":" + c.to + ") invalid elegibility: " +
-                cs.elegibility;
+              throw c.from + ":" + c.to + ") invalid eligibility: " +
+                cs.eligibility;
             }
           }
         }
@@ -297,22 +278,22 @@ export class Node implements TagsInterface, NodeInterface {
           const node = nodes[j];
           const influence = influences[j];
 
-          const index = cs.xtrace.nodes.indexOf(node);
+          const index = cs.xTrace.nodes.indexOf(node);
 
           if (index > -1) {
             const value = self
               ? (cs.gain *
                 self.weight *
-                cs.xtrace.values[index])
+                cs.xTrace.values[index])
               : 0 +
-                sp.derivative * cs.elegibility * influence;
+                sp.derivative * cs.eligibility * influence;
 
-            cs.xtrace.values[index] = value;
+            cs.xTrace.values[index] = value;
           } else {
             // Does not exist there yet, might be through mutation
-            cs.xtrace.nodes.push(node);
-            cs.xtrace.values.push(
-              sp.derivative * cs.elegibility * influence,
+            cs.xTrace.nodes.push(node);
+            cs.xTrace.values.push(
+              sp.derivative * cs.eligibility * influence,
             );
           }
         }
@@ -323,24 +304,10 @@ export class Node implements TagsInterface, NodeInterface {
   }
 
   /**
-   * Activates the node without calculating elegibility traces and such
+   * Activates the node without calculating eligibility traces and such
    */
-  noTraceActivate(input?: number) {
+  noTraceActivate() {
     const state = this.util.networkState.node(this.index);
-    if (this.type == "input") {
-      if (Number.isFinite(input)) {
-        state.activation = input ? input : 0;
-        return state.activation;
-      } else {
-        throw this.index +
-          ") Node of type 'input' must have a finite value was: " + input;
-      }
-    } else {
-      if (input !== undefined) {
-        throw this.index + ") Node of type '" + this.type +
-          "' Must not have an input value was: " + input;
-      }
-    }
 
     const squashMethod = this.findSquash();
     if (this.isNodeActivation(squashMethod)) {
@@ -397,11 +364,11 @@ export class Node implements TagsInterface, NodeInterface {
 
     const s = this.util.networkState.node(this.index);
     const sp = this.util.networkState.nodePersistent(this.index);
-    // Output nodes get their error from the enviroment
+    // Output nodes get their error from the environment
     if (this.type === "output") {
       s.errorResponsibility = s.errorProjected = (target ? target : 0) -
         s.activation;
-    } else { // the rest of the nodes compute their error responsibilities by backpropagation
+    } else { // the rest of the nodes compute their error responsibilities by back propagation
       // error responsibilities from all the connections projected from this node
       const fromList = this.util.fromConnections(this.index);
 
@@ -466,11 +433,11 @@ export class Node implements TagsInterface, NodeInterface {
 
       const cs = this.util.networkState.connection(c.from, c.to);
       const csp = this.util.networkState.connectionPersistent(c.from, c.to);
-      let gradient = s.errorProjected * cs.elegibility;
+      let gradient = s.errorProjected * cs.eligibility;
 
-      for (let j = cs.xtrace.nodes.length; j--;) {
-        const node = cs.xtrace.nodes[j];
-        const value = cs.xtrace.values[j];
+      for (let j = cs.xTrace.nodes.length; j--;) {
+        const node = cs.xTrace.nodes[j];
+        const value = cs.xTrace.values[j];
         const traceState = this.util.networkState.node(node.index);
         gradient += traceState.errorResponsibility * value;
       }
