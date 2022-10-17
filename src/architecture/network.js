@@ -41,12 +41,13 @@ export class Network {
     const output = new Array(this.output);
     let outputLen = 0;
 
+    const ns = this.util.networkState;
     // Activate nodes chronologically
     for (let i = 0; i < this.nodes.length; i++) {
       const _node = this.nodes[i];
       switch (_node.type) {
         case "input": {
-          _node.activate(input[i]);
+          ns.node(i).activation = input[i];
           break;
         }
         case "output": {
@@ -64,20 +65,21 @@ export class Network {
   }
 
   /**
-   * Activates the network without calculating elegibility traces and such
+   * Activates the network without calculating eligibility traces and such
    */
   noTraceActivate(input, feedbackLoop = false) {
     if (!feedbackLoop) {
       this.util.networkState.clear(this.input);
     }
     const output = new Array(this.output);
+    const ns = this.util.networkState;
     let outputLen = 0;
     // Activate nodes chronologically
     for (let i = 0; i < this.nodes.length; i++) { // Order matters for some reason.
       const _node = this.nodes[i];
       switch (_node.type) {
         case "input": {
-          _node.noTraceActivate(input[i]);
+          ns.node(i).activation = input[i];
           break;
         }
         case "output": {
@@ -162,7 +164,6 @@ export class Network {
       });
     }
 
-    // const connections = this.connections.concat(this.selfconns);
     for (i = 0; i < this.connections.length; i++) {
       const connection = connections[i];
       if (connection.gater == null) {

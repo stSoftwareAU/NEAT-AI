@@ -174,7 +174,10 @@ function trainSet(set: any[], iterations: number, error: number) {
 
   const results = network.train(set, options);
 
-  assert(results.error < error, `Error is: ${results.error}, required: ${error}` );
+  assert(
+    results.error < error,
+    `Error is: ${results.error}, required: ${error}`,
+  );
 
   set.forEach((dr) => {
     const r1 = network.activate(dr.input)[0];

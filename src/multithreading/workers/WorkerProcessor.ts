@@ -27,9 +27,8 @@ export class WorkerProcessor {
       if (!this.cost) throw "no cost";
 
       const network = NetworkUtil.fromJSON(JSON.parse(data.evaluate.network));
-      const util = new NetworkUtil(network);
 
-      const result = util.testDir(
+      const result = network.util.testDir(
         this.dataSetDir,
         this.cost,
         data.evaluate.feedbackLoop,
@@ -47,7 +46,6 @@ export class WorkerProcessor {
         JSON.parse(data.train.network),
         data.debug,
       );
-      const util = new NetworkUtil(network);
 
       if (!this.dataSetDir) throw "No data dir";
 
@@ -62,7 +60,7 @@ export class WorkerProcessor {
         batchSize: Infinity,
       };
 
-      const result = util.trainDir(this.dataSetDir, trainOptions);
+      const result = network.util.trainDir(this.dataSetDir, trainOptions);
       const json = JSON.stringify(network.toJSON());
 
       return {

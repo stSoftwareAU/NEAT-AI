@@ -31,15 +31,15 @@ class NodeStatePersistent {
 }
 
 class ConnectionState {
-  public elegibility: number;
+  public eligibility: number;
   public gain: number;
 
-  public xtrace: { nodes: Node[]; values: number[] };
+  public xTrace: { nodes: Node[]; values: number[] };
 
   constructor() {
-    this.elegibility = 0;
+    this.eligibility = 0;
     this.gain = 1; // gate only
-    this.xtrace = {
+    this.xTrace = {
       nodes: [],
       values: [],
     };
