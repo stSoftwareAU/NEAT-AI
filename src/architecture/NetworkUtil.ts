@@ -152,8 +152,8 @@ export class NetworkUtil {
   compact(): Network | null {
     const json = this.toJSON();
     const compactNetwork = Network.fromJSON(json);
+    compactNetwork.util.fix();
 
-    let changed = false;
     let complete = false;
     for (let changes = 0; complete == false; changes++) {
       complete = true;
@@ -162,13 +162,20 @@ export class NetworkUtil {
         pos < compactNetwork.nodes.length - compactNetwork.output;
         pos++
       ) {
-        const toList = compactNetwork.util.toConnections(pos);
+        const toList = compactNetwork.util.toConnections(pos).filter((c) => {
+          return c.from !== c.to;
+        });
         if (toList.length == 1) {
-          const fromList = compactNetwork.util.fromConnections(pos);
+          const fromList = compactNetwork.util.fromConnections(pos).filter(
+            (c) => {
+              return c.from !== c.to;
+            },
+          );
           if (fromList.length == 1) {
             const to = fromList[0].to;
             const from = toList[0].from;
             if (
+              from > this.network.input &&
               compactNetwork.nodes[from].type == compactNetwork.nodes[pos].type
             ) {
               if (compactNetwork.util.getConnection(from, to) == null) {
@@ -191,7 +198,7 @@ export class NetworkUtil {
                   weightA,
                   fromList[0].type,
                 );
-                changed = true;
+
                 if (changes < 12) {
                   complete = false;
                 }
@@ -203,7 +210,8 @@ export class NetworkUtil {
       }
     }
 
-    if (changed) {
+    const json2 = compactNetwork.toJSON();
+    if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
       addTag(compactNetwork, "approach", "compact");
       addTag(compactNetwork, "old-nodes", this.network.nodes.length.toString());
       addTag(
@@ -718,7 +726,7 @@ export class NetworkUtil {
   }
 
   /**
-   * Backpropagate the network
+   * Back propagate the network
    */
   propagate(rate: number, momentum: number, update: boolean, target: number[]) {
     if (
@@ -781,7 +789,7 @@ export class NetworkUtil {
       );
     }
 
-    // Intialise the NEAT instance
+    // Initialize the NEAT instance
     const neat = new Neat(
       this.network.input,
       this.network.output,
@@ -896,7 +904,7 @@ export class NetworkUtil {
     }
 
     const config = makeConfig(options);
-    const dataSetDir = makeDataDir(dataSet, config.dataSetParitionBreak);
+    const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
 
     const result = await this.evolveDir(dataSetDir, options);
 
@@ -1115,7 +1123,7 @@ export class NetworkUtil {
       );
     }
     const config = makeConfig(options);
-    const dataSetDir = makeDataDir(dataSet, config.dataSetParitionBreak);
+    const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
 
     const result = this.trainDir(dataSetDir, options);
 
@@ -1471,16 +1479,16 @@ export class NetworkUtil {
 
   private modWeight(focusList?: number[]) {
     // const network = this.network as Network;
-    const allconnections = this.network.connections.filter(
+    const allConnections = this.network.connections.filter(
       (c) => {
         return this.inFocus(c.from, focusList) ||
           this.inFocus(c.to, focusList) ||
           (c.gater && this.inFocus(c.gater, focusList));
       },
     );
-    if (allconnections.length > 0) {
-      const pos = Math.floor(Math.random() * allconnections.length);
-      const connection = allconnections[pos];
+    if (allConnections.length > 0) {
+      const pos = Math.floor(Math.random() * allConnections.length);
+      const connection = allConnections[pos];
       if (connection) {
         const modification = Math.random() *
             (Mutation.MOD_WEIGHT.max - Mutation.MOD_WEIGHT.min) +
@@ -1491,7 +1499,7 @@ export class NetworkUtil {
           "MOD_WEIGHT: missing connection at",
           pos,
           "of",
-          allconnections.length,
+          allConnections.length,
         );
       }
     }
@@ -1534,7 +1542,7 @@ export class NetworkUtil {
 
   private addSelfCon(focusList?: number[]) {
     const network = this.network as Network;
-    // Check which nodes aren't selfconnected yet
+    // Check which nodes aren't self connected yet
     const possible = [];
     for (
       let i = network.input;
@@ -1564,7 +1572,7 @@ export class NetworkUtil {
 
   private subSelfCon(focusList?: number[]) {
     const network = this.network as Network;
-    // Check which nodes aren't selfconnected yet
+    // Check which nodes aren't self connected yet
     const possible = [];
     for (let i = network.input; i < network.nodes.length; i++) {
       if (this.inFocus(i, focusList)) {
@@ -1655,7 +1663,7 @@ export class NetworkUtil {
   private addBackConn(focusList?: number[]) {
     const network = this.network as Network;
 
-    // Create an array of all uncreated (backfed) connections
+    // Create an array of all uncreated (back feed) connections
     const available = [];
     for (let i = network.input; i < network.nodes.length; i++) {
       if (this.inFocus(i, focusList)) {
@@ -1683,7 +1691,7 @@ export class NetworkUtil {
   private subBackConn(focusList?: number[]) {
     const network = this.network as Network;
 
-    // Create an array of all uncreated (backfed) connections
+    // Create an array of all uncreated (back fed) connections
     const available = [];
     for (let i = network.input; i < network.nodes.length; i++) {
       if (this.inFocus(i, focusList)) {
@@ -1871,6 +1879,29 @@ export class NetworkUtil {
 
     this.network.connections = connections;
     this.clearCache();
+
+    let nodeRemoved = false;
+
+    while (true) {
+      nodeRemoved = false;
+      for (
+        let pos = this.network.input;
+        pos < this.network.nodes.length - this.network.output;
+        pos++
+      ) {
+        if (
+          this.fromConnections(pos).filter((c) => {
+            return c.from !== c.to;
+          }).length == 0
+        ) {
+          this.removeHiddenNode(pos);
+          nodeRemoved = true;
+          break;
+        }
+      }
+      if (!nodeRemoved) break;
+    }
+
     this.network.nodes.forEach((node) => {
       (node as Node).fix();
     });
@@ -1927,7 +1958,7 @@ export class NetworkUtil {
       throw new Error("Networks don't have the same input/output size!");
     }
 
-    // Initialise offspring
+    // Initialize offspring
     const offspring = new Network(network1.input, network1.output, false);
     offspring.connections = [];
     offspring.nodes = [];

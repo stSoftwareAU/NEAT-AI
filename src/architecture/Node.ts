@@ -82,6 +82,11 @@ export class Node implements TagsInterface, NodeInterface {
   fix() {
     delete this.squashMethodCache;
 
+    if( this.squash !== 'IF'){
+      const toList = this.util.toConnections(this.index);
+      toList.forEach(c => {delete c.type});
+    }
+
     if (this.type == "hidden") {
       const fromList = this.util.fromConnections(this.index);
       if (fromList.length == 0) {

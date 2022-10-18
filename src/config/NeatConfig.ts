@@ -18,7 +18,7 @@ export interface NeatConfig {
   creatures: NetworkInterface[];
 
   /** number of records per dataset file. default: 2000 */
-  dataSetParitionBreak: number;
+  dataSetPartitionBreak: number;
 
   /** debug (much slower) */
   debug: boolean;
@@ -83,7 +83,7 @@ export function make(parameters?: NeatOptions) {
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
     costName: options.costName || "MSE",
-    dataSetParitionBreak: options.dataSetParitionBreak
+    dataSetPartitionBreak: options.dataSetParitionBreak
       ? Math.max(options.dataSetParitionBreak, 1000)
       : 2000,
 
