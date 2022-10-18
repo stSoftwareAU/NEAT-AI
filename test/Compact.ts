@@ -191,7 +191,7 @@ Deno.test("CompactSelf", () => {
   const startConnections = a.connections.length;
 
   const input = [0.1, 0.2];
-  const startOut = a.noTraceActivate(input);
+  const aOut = a.noTraceActivate(input);
 
   console.info(
     "START",
@@ -200,10 +200,16 @@ Deno.test("CompactSelf", () => {
     "connections",
     startConnections,
     "output",
-    startOut,
+    aOut,
   );
 
   Deno.writeTextFileSync(".a.json", JSON.stringify(a.toJSON(), null, 2));
+  // a.util.fix();
+  // Deno.writeTextFileSync(".a2.json", JSON.stringify(a.toJSON(), null, 2));
+
+  const aOut2 = a.noTraceActivate(input);
+
+  assertAlmostEquals(aOut[0], aOut2[0], 0.001);
   const b = a.util.compact();
   if (b == null) {
     assert(false, "should have compacted the network");
@@ -225,7 +231,7 @@ Deno.test("CompactSelf", () => {
       endOut,
     );
 
-    assertAlmostEquals(startOut[0], endOut[0], 0.001);
+    assertAlmostEquals(aOut[0], endOut[0], 0.001);
     assert(endNodes < startNodes);
     assert(endConnections < startConnections);
 

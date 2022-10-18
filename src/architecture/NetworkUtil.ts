@@ -153,7 +153,7 @@ export class NetworkUtil {
     const json = this.toJSON();
     const compactNetwork = Network.fromJSON(json);
     compactNetwork.util.fix();
-    let changed = false;
+
     let complete = false;
     for (let changes = 0; complete == false; changes++) {
       complete = true;
@@ -162,9 +162,15 @@ export class NetworkUtil {
         pos < compactNetwork.nodes.length - compactNetwork.output;
         pos++
       ) {
-        const toList = compactNetwork.util.toConnections(pos).filter(c => {c.from!==c.to});
+        const toList = compactNetwork.util.toConnections(pos).filter((c) => {
+          return c.from !== c.to;
+        });
         if (toList.length == 1) {
-          const fromList = compactNetwork.util.fromConnections(pos).filter(c => {c.from!==c.to});
+          const fromList = compactNetwork.util.fromConnections(pos).filter(
+            (c) => {
+              return c.from !== c.to;
+            },
+          );
           if (fromList.length == 1) {
             const to = fromList[0].to;
             const from = toList[0].from;
@@ -192,7 +198,7 @@ export class NetworkUtil {
                   weightA,
                   fromList[0].type,
                 );
-                changed = true;
+
                 if (changes < 12) {
                   complete = false;
                 }
@@ -205,7 +211,7 @@ export class NetworkUtil {
     }
 
     const json2 = compactNetwork.toJSON();
-    if (JSON.stringify(json, null,2) != JSON.stringify(json2, null, 2)) {
+    if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
       addTag(compactNetwork, "approach", "compact");
       addTag(compactNetwork, "old-nodes", this.network.nodes.length.toString());
       addTag(
@@ -1873,20 +1879,27 @@ export class NetworkUtil {
 
     this.network.connections = connections;
     this.clearCache();
-   
-    let nodeRemoved=false;
 
-    while(true){
-      nodeRemoved=false;
-      for( let pos=this.network.input; pos < this.network.nodes.length - this.network.output;pos++){
-        if( this.fromConnections(pos).filter( c => {c.from !== c.to}).length ==0)
-        {
+    let nodeRemoved = false;
+
+    while (true) {
+      nodeRemoved = false;
+      for (
+        let pos = this.network.input;
+        pos < this.network.nodes.length - this.network.output;
+        pos++
+      ) {
+        if (
+          this.fromConnections(pos).filter((c) => {
+            return c.from !== c.to;
+          }).length == 0
+        ) {
           this.removeHiddenNode(pos);
-          nodeRemoved=true;
+          nodeRemoved = true;
           break;
         }
       }
-      if( !nodeRemoved) break;
+      if (!nodeRemoved) break;
     }
 
     this.network.nodes.forEach((node) => {
