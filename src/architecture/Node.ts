@@ -522,7 +522,7 @@ export class Node implements TagsInterface, NodeInterface {
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
         // Can't be the same squash
-        while (true) {
+        for (let attempts=0; attempts<12;attempts++) {
           const tmpSquash = Activations
             .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
 

@@ -1880,9 +1880,9 @@ export class NetworkUtil {
     this.network.connections = connections;
     this.clearCache();
 
-    let nodeRemoved = false;
+    let nodeRemoved = true;
 
-    while (true) {
+    while (nodeRemoved) {
       nodeRemoved = false;
       for (
         let pos = this.network.input;
@@ -1899,7 +1899,6 @@ export class NetworkUtil {
           break;
         }
       }
-      if (!nodeRemoved) break;
     }
 
     this.network.nodes.forEach((node) => {
