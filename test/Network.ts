@@ -31,7 +31,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.activate([i / 10, j / 10], true);
+      const v = network.util.activate([i / 10, j / 10], true);
       originalOutput.push(...v);
     }
   }
@@ -50,7 +50,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.activate([i / 10, j / 10], true);
+      const v = network.util.activate([i / 10, j / 10], true);
       mutatedOutput.push(...v);
     }
   }
@@ -83,9 +83,9 @@ async function evolveSet(
   assert(results.error <= error, `expected: ${error}, was: ${results.error}`);
 
   set.forEach((dr) => {
-    const nt0 = network.noTraceActivate(dr.input)[0];
+    const nt0 = network.util.noTraceActivate(dr.input)[0];
 
-    const nt1 = network.noTraceActivate(dr.input)[0];
+    const nt1 = network.util.noTraceActivate(dr.input)[0];
     network.util.validate();
     assertEquals(
       network.util.network,
@@ -98,7 +98,7 @@ async function evolveSet(
         ".start.json",
         JSON.stringify(network.toJSON(), null, 2),
       );
-      const nt2 = network.noTraceActivate(dr.input)[0];
+      const nt2 = network.util.noTraceActivate(dr.input)[0];
 
       Deno.writeTextFileSync(
         ".end.json",
@@ -106,15 +106,15 @@ async function evolveSet(
       );
       console.log(dr.input);
       const n0 =
-        Network.fromJSON(network.toJSON()).noTraceActivate(dr.input)[0];
+        Network.fromJSON(network.toJSON()).util.noTraceActivate(dr.input)[0];
 
       network.util.clearCache();
-      const c1 = network.noTraceActivate(dr.input)[0];
+      const c1 = network.util.noTraceActivate(dr.input)[0];
       const n1 =
-        Network.fromJSON(network.toJSON()).noTraceActivate(dr.input)[0];
+        Network.fromJSON(network.toJSON()).util.noTraceActivate(dr.input)[0];
       const network2 = Network.fromJSON(network.toJSON());
-      const n2 = network2.noTraceActivate(dr.input)[0];
-      const n2b = network2.noTraceActivate(dr.input)[0];
+      const n2 = network2.util.noTraceActivate(dr.input)[0];
+      const n2b = network2.util.noTraceActivate(dr.input)[0];
       assertAlmostEquals(
         nt0,
         nt1,
@@ -125,8 +125,8 @@ async function evolveSet(
       );
     }
 
-    const r0 = network.activate(dr.input)[0];
-    const r1 = network.activate(dr.input)[0];
+    const r0 = network.util.activate(dr.input)[0];
+    const r1 = network.util.activate(dr.input)[0];
     assertAlmostEquals(
       r0,
       r1,
@@ -135,11 +135,11 @@ async function evolveSet(
         r1,
     );
 
-    const r2 = network.noTraceActivate(dr.input)[0];
+    const r2 = network.util.noTraceActivate(dr.input)[0];
 
     if (Math.abs(r1 - r2) > 0.0001) {
       console.log("hello");
-      const r3 = network.activate(dr.input)[0];
+      const r3 = network.util.activate(dr.input)[0];
       console.log(r2, r3);
       console.info(JSON.stringify(network.toJSON(), null, 2));
     }
@@ -180,8 +180,8 @@ function trainSet(set: any[], iterations: number, error: number) {
   );
 
   set.forEach((dr) => {
-    const r1 = network.activate(dr.input)[0];
-    const r2 = network.noTraceActivate(dr.input)[0];
+    const r1 = network.util.activate(dr.input)[0];
+    const r2 = network.util.noTraceActivate(dr.input)[0];
 
     assertAlmostEquals(
       r1,
@@ -201,9 +201,9 @@ function testEquality(original: any, copied: any) {
       input.push(Math.random());
     }
 
-    const ORout = original.activate(input);
+    const ORout = original.util.activate(input);
     const COout = copied instanceof Network
-      ? copied.activate(input)
+      ? copied.util.activate(input)
       : copied(input);
 
     for (a = 0; a < original.output; a++) {

@@ -147,6 +147,75 @@ export class NetworkUtil {
   }
 
   /**
+   * Activates the network
+   */
+   activate(input:number[], feedbackLoop = false) {
+    if (!feedbackLoop) {
+      this.networkState.clear(this.network.input);
+    }
+    if (input && input.length != this.network.input) {
+      console.trace();
+      throw "Activate input: " + input.length +
+        " does not match expected input: " + this.network.input;
+    }
+    const output = new Array(this.network.output);
+    let outputLen = 0;
+
+    const ns = this.networkState;
+    // Activate nodes chronologically
+    for (let i = 0; i < this.network.nodes.length; i++) {
+      const _node = this.network.nodes[i];
+      switch (_node.type) {
+        case "input": {
+          ns.node(i).activation = input[i];
+          break;
+        }
+        case "output": {
+          const activation = (_node as Node).activate();
+          output[outputLen] = activation;
+          outputLen++;
+          break;
+        }
+        default:
+          (_node as Node).activate();
+      }
+    }
+
+    return output;
+  }
+
+  /**
+   * Activates the network without calculating eligibility traces and such
+   */
+  noTraceActivate(input:number[], feedbackLoop = false) {
+    if (!feedbackLoop) {
+      this.networkState.clear(this.network.input);
+    }
+    const output = new Array(this.network.output);
+    const ns = this.networkState;
+    let outputLen = 0;
+    // Activate nodes chronologically
+    for (let i = 0; i < this.network.nodes.length; i++) {
+      const _node = this.network.nodes[i];
+      switch (_node.type) {
+        case "input": {
+          ns.node(i).activation = input[i];
+          break;
+        }
+        case "output": {
+          const activation = (_node as Node).noTraceActivate();
+          output[outputLen] = activation;
+          outputLen++;
+          break;
+        }
+        default:
+          (_node as Node).noTraceActivate();
+      }
+    }
+    return output;
+  }
+
+  /**
    * Compact the network.
    */
   compact(): Network | null {
@@ -970,7 +1039,7 @@ export class NetworkUtil {
       for (let i = json.length; i--;) {
         const data = json[i];
 
-        const output = (this.network as Network).noTraceActivate(
+        const output = this.noTraceActivate(
           data.input,
           feedbackLoop,
         );
@@ -1065,7 +1134,7 @@ export class NetworkUtil {
           const target = data.output;
           const update = !!((i + 1) % batchSize === 0 || i === 0);
 
-          const output = (this.network as Network).activate(input);
+          const output = this.activate(input);
 
           errorSum += cost.calculate(target, output);
 

@@ -28,7 +28,7 @@ Deno.test("CompactSimple", () => {
   const startConnections = a.connections.length;
 
   const input = [0.1, 0.2];
-  const startOut = a.noTraceActivate(input);
+  const startOut = a.util.noTraceActivate(input);
 
   console.info(
     "START",
@@ -50,7 +50,7 @@ Deno.test("CompactSimple", () => {
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
-    const endOut = b.noTraceActivate(input);
+    const endOut = b.util.noTraceActivate(input);
 
     console.info(
       "END",
@@ -104,7 +104,7 @@ Deno.test("RandomizeCompact", () => {
   const startConnections = a.connections.length;
 
   const input = [0.1, 0.2];
-  const startOut = a.noTraceActivate(input);
+  const startOut = a.util.noTraceActivate(input);
 
   console.info(
     "START",
@@ -128,7 +128,7 @@ Deno.test("RandomizeCompact", () => {
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
-    const endOut = b.noTraceActivate(input);
+    const endOut = b.util.noTraceActivate(input);
 
     console.info(
       "END",
@@ -191,7 +191,7 @@ Deno.test("CompactSelf", () => {
   const startConnections = a.connections.length;
 
   const input = [0.1, 0.2];
-  const aOut = a.noTraceActivate(input);
+  const aOut = a.util.noTraceActivate(input);
 
   console.info(
     "START",
@@ -207,7 +207,7 @@ Deno.test("CompactSelf", () => {
   // a.util.fix();
   // Deno.writeTextFileSync(".a2.json", JSON.stringify(a.toJSON(), null, 2));
 
-  const aOut2 = a.noTraceActivate(input);
+  const aOut2 = a.util.noTraceActivate(input);
 
   assertAlmostEquals(aOut[0], aOut2[0], 0.001);
   const b = a.util.compact();
@@ -219,7 +219,7 @@ Deno.test("CompactSelf", () => {
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
-    const endOut = b.noTraceActivate(input);
+    const endOut = b.util.noTraceActivate(input);
 
     console.info(
       "END",
