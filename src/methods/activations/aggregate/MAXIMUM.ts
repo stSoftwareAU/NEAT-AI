@@ -8,6 +8,21 @@ export class MAXIMUM implements NodeActivationInterface {
     return MAXIMUM.NAME;
   }
 
+  noTraceActivate(node: Node) {
+    const toList = node.util.toConnections(node.index);
+    let maxValue = Infinity * -1;
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+
+      const value = node.util.networkState.node(c.from).activation * c.weight;
+      if (value > maxValue) {
+        maxValue = value;
+      }
+    }
+
+    return maxValue;
+  }
+
   activate(node: Node) {
     const toList = node.util.toConnections(node.index);
     let maxValue = Infinity * -1;

@@ -8,6 +8,21 @@ export class MINIMUM implements NodeActivationInterface {
     return MINIMUM.NAME;
   }
 
+  noTraceActivate(node: Node): number {
+    const toList = node.util.toConnections(node.index);
+    let minValue = Infinity;
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+
+      const value = node.util.networkState.node(c.from).activation * c.weight;
+      if (value < minValue) {
+        minValue = value;
+      }
+    }
+
+    return minValue;
+  }
+
   activate(node: Node) {
     const toList = node.util.toConnections(node.index);
     let minValue = Infinity;
