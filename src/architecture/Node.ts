@@ -82,9 +82,11 @@ export class Node implements TagsInterface, NodeInterface {
   fix() {
     delete this.squashMethodCache;
 
-    if( this.squash !== 'IF'){
+    if (this.squash !== "IF") {
       const toList = this.util.toConnections(this.index);
-      toList.forEach(c => {delete c.type});
+      toList.forEach((c) => {
+        delete c.type;
+      });
     }
 
     if (this.type == "hidden") {
@@ -522,7 +524,7 @@ export class Node implements TagsInterface, NodeInterface {
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
         // Can't be the same squash
-        for (let attempts=0; attempts<12;attempts++) {
+        for (let attempts = 0; attempts < 12; attempts++) {
           const tmpSquash = Activations
             .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
 

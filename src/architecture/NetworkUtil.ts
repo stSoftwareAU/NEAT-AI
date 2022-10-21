@@ -149,7 +149,7 @@ export class NetworkUtil {
   /**
    * Activates the network
    */
-   activate(input:number[], feedbackLoop = false) {
+  activate(input: number[], feedbackLoop = false) {
     if (input && input.length != this.network.input) {
       console.trace();
       throw "Activate input: " + input.length +
@@ -158,13 +158,13 @@ export class NetworkUtil {
     if (!feedbackLoop) {
       this.networkState.clear(this.network.input);
     }
-    const output:number[] = new Array(this.network.output);
+    const output: number[] = new Array(this.network.output);
     const ns = this.networkState;
-    for(let i=this.network.input;i--;){
+    for (let i = this.network.input; i--;) {
       ns.node(i).activation = input[i];
     }
 
-    const lastHiddenNode=this.network.nodes.length-this.network.output;
+    const lastHiddenNode = this.network.nodes.length - this.network.output;
 
     /* Activate nodes chronologically */
     for (let i = this.network.input; i < lastHiddenNode; i++) {
@@ -172,7 +172,7 @@ export class NetworkUtil {
     }
 
     for (let i = 0; i < this.network.output; i++) {
-      output[i] = (this.network.nodes[i+lastHiddenNode] as Node).activate();      
+      output[i] = (this.network.nodes[i + lastHiddenNode] as Node).activate();
     }
 
     return output;
@@ -181,25 +181,26 @@ export class NetworkUtil {
   /**
    * Activates the network without calculating eligibility traces and such
    */
-  noTraceActivate(input:number[], feedbackLoop = false) {
+  noTraceActivate(input: number[], feedbackLoop = false) {
     if (!feedbackLoop) {
       this.networkState.clear(this.network.input);
     }
-    const output:number[] = new Array(this.network.output);
+    const output: number[] = new Array(this.network.output);
     const ns = this.networkState;
-    for(let i=this.network.input;i--;){
+    for (let i = this.network.input; i--;) {
       ns.node(i).activation = input[i];
     }
 
-    const lastHiddenNode=this.network.nodes.length-this.network.output;
-    
+    const lastHiddenNode = this.network.nodes.length - this.network.output;
+
     /* Activate nodes chronologically */
     for (let i = this.network.input; i < lastHiddenNode; i++) {
       (this.network.nodes[i] as Node).noTraceActivate();
     }
 
     for (let i = 0; i < this.network.output; i++) {
-      output[i] = (this.network.nodes[i+lastHiddenNode] as Node).noTraceActivate();      
+      output[i] = (this.network.nodes[i + lastHiddenNode] as Node)
+        .noTraceActivate();
     }
 
     return output;

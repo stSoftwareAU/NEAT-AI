@@ -376,7 +376,7 @@ export function fineTuneImprovement(
   }
 
   let targetJSON = (fittest as Network).toJSON();
-  for (let k = 0; true; k++) {
+  for (let k = 0; k < popsize; k++) {
     for (let i = targetJSON.nodes.length; i--;) {
       const fn = targetJSON.nodes[i];
 
