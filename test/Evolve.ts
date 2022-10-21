@@ -1,5 +1,5 @@
 import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.159.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.160.0/testing/asserts.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -102,7 +102,7 @@ Deno.test("booleanXOR", async () => {
   network.util.validate();
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 
-  const value = network.activate([1, 0])[0];
+  const value = network.util.activate([1, 0])[0];
 
   assert(value > 0.7, "Should be more than 0.7 was: " + value);
 });

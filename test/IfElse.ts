@@ -1,7 +1,7 @@
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.159.0/testing/asserts.ts";
+} from "https://deno.land/std@0.160.0/testing/asserts.ts";
 
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
@@ -40,13 +40,13 @@ Deno.test("if-bias", () => {
 
   const input1 = [-1, 0.4, 1];
 
-  const r1 = network.activate(input1)[0];
+  const r1 = network.util.activate(input1)[0];
 
   assertAlmostEquals(r1, -1, 0.0001, "should handle bias");
 
   const input2 = [-1, 0.6, 1];
 
-  const r2 = network.activate(input2)[0];
+  const r2 = network.util.activate(input2)[0];
 
   assertAlmostEquals(r2, 1, 0.0001, "should handle bias");
 });
@@ -85,7 +85,7 @@ Deno.test("if/Else", () => {
 
     const expected = flag > 0 ? b : a;
 
-    const actual = network2.activate([a, flag, b])[0];
+    const actual = network2.util.activate([a, flag, b])[0];
 
     const diff = Math.abs(expected - actual);
     assert(diff < 0.00001, p + ") If/Else didn't work " + diff);

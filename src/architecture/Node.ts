@@ -316,7 +316,7 @@ export class Node implements TagsInterface, NodeInterface {
 
     const squashMethod = this.findSquash();
     if (this.isNodeActivation(squashMethod)) {
-      state.activation = squashMethod.activate(this) + this.bias;
+      state.activation = squashMethod.noTraceActivate(this) + this.bias;
     } else {
       // All activation sources coming from the node itself
 

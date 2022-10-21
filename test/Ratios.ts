@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.159.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.160.0/testing/asserts.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Network } from "../src/architecture/network.js";
 
@@ -37,7 +37,7 @@ Deno.test("hypotenuse", async () => {
     await network.evolve(ts, options);
 
     const check = [50, 60];
-    answer = network.activate(check)[0];
+    answer = network.util.activate(check)[0];
 
     errorPercent = Math.round((1 - answer / 78.1) * 100);
     console.info("Answer", answer, errorPercent);

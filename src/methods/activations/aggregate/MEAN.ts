@@ -8,7 +8,7 @@ export class MEAN implements NodeActivationInterface {
     return MEAN.NAME;
   }
 
-  activate(node: Node) {
+  noTraceActivate(node: Node) {
     let sum = 0;
 
     const toList = node.util.toConnections(node.index);
@@ -22,6 +22,19 @@ export class MEAN implements NodeActivationInterface {
     return value;
   }
 
+  activate(node: Node) {
+    let sum = 0;
+
+    const toList = node.util.toConnections(node.index);
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+
+      sum += node.util.networkState.node(c.from).activation * c.weight;
+    }
+
+    const value = sum / toList.length;
+    return value;
+  }
   fix(node: Node) {
     const toList = node.util.toConnections(node.index);
 

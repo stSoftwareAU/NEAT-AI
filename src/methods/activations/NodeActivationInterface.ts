@@ -3,4 +3,5 @@ import { Node } from "../../architecture/Node.ts";
 
 export interface NodeActivationInterface extends AbstractActivationInterface {
   activate(node: Node): number;
+  noTraceActivate(node: Node): number;
 }

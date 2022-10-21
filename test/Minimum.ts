@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.159.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.160.0/testing/asserts.ts";
 
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
@@ -29,8 +29,8 @@ Deno.test("Minimum", () => {
     const c = Math.random() * 2 - 1;
 
     const data = [a, b, c];
-    const actual = network.activate(data)[0];
-    const actual2 = network.activate(data)[0];
+    const actual = network.util.activate(data)[0];
+    const actual2 = network.util.activate(data)[0];
 
     assert(
       Math.abs(actual - actual2) < 0.00000001,
@@ -39,7 +39,7 @@ Deno.test("Minimum", () => {
     const expected = Math.min(a, b, c);
 
     if (Math.abs(expected - actual) >= 0.00001) {
-      const actual3 = network.activate(data)[0];
+      const actual3 = network.util.activate(data)[0];
       console.info(actual3);
     }
     assert(

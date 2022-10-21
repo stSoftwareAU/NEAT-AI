@@ -151,4 +151,30 @@ export class IF implements NodeActivationInterface {
 
     return condition > 0 ? positive : negative;
   }
+
+  noTraceActivate(node: Node): number {
+    let condition = 0;
+    let negative = 0;
+    let positive = 0;
+
+    const toList = node.util.toConnections(node.index);
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+
+      const value = node.util.networkState.node(c.from).activation * c.weight;
+
+      switch (c.type) {
+        case "condition":
+          condition += value;
+          break;
+        case "negative":
+          negative += value;
+          break;
+        default:
+          positive += value;
+      }
+    }
+
+    return condition > 0 ? positive : negative;
+  }
 }

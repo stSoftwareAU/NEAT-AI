@@ -8,6 +8,19 @@ export class HYPOT implements NodeActivationInterface {
     return HYPOT.NAME;
   }
 
+  noTraceActivate(node: Node) {
+    const toList = node.util.toConnections(node.index);
+    const values: number[] = new Array(toList.length);
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+
+      values[i] = node.util.networkState.node(c.from).activation * c.weight;
+    }
+
+    const value = Math.hypot(...values);
+    return value;
+  }
+
   activate(node: Node) {
     const toList = node.util.toConnections(node.index);
     const values: number[] = new Array(toList.length);

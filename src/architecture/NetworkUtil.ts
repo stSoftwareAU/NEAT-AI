@@ -4,7 +4,7 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.159.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.160.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.js";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
@@ -12,7 +12,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findRatePolicy } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.159.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.160.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -144,6 +144,65 @@ export class NetworkUtil {
    */
   clear() {
     this.networkState.clear(this.network.input);
+  }
+
+  /**
+   * Activates the network
+   */
+   activate(input:number[], feedbackLoop = false) {
+    if (input && input.length != this.network.input) {
+      console.trace();
+      throw "Activate input: " + input.length +
+        " does not match expected input: " + this.network.input;
+    }
+    if (!feedbackLoop) {
+      this.networkState.clear(this.network.input);
+    }
+    const output:number[] = new Array(this.network.output);
+    const ns = this.networkState;
+    for(let i=this.network.input;i--;){
+      ns.node(i).activation = input[i];
+    }
+
+    const lastHiddenNode=this.network.nodes.length-this.network.output;
+
+    /* Activate nodes chronologically */
+    for (let i = this.network.input; i < lastHiddenNode; i++) {
+      (this.network.nodes[i] as Node).activate();
+    }
+
+    for (let i = 0; i < this.network.output; i++) {
+      output[i] = (this.network.nodes[i+lastHiddenNode] as Node).activate();      
+    }
+
+    return output;
+  }
+
+  /**
+   * Activates the network without calculating eligibility traces and such
+   */
+  noTraceActivate(input:number[], feedbackLoop = false) {
+    if (!feedbackLoop) {
+      this.networkState.clear(this.network.input);
+    }
+    const output:number[] = new Array(this.network.output);
+    const ns = this.networkState;
+    for(let i=this.network.input;i--;){
+      ns.node(i).activation = input[i];
+    }
+
+    const lastHiddenNode=this.network.nodes.length-this.network.output;
+    
+    /* Activate nodes chronologically */
+    for (let i = this.network.input; i < lastHiddenNode; i++) {
+      (this.network.nodes[i] as Node).noTraceActivate();
+    }
+
+    for (let i = 0; i < this.network.output; i++) {
+      output[i] = (this.network.nodes[i+lastHiddenNode] as Node).noTraceActivate();      
+    }
+
+    return output;
   }
 
   /**
@@ -970,7 +1029,7 @@ export class NetworkUtil {
       for (let i = json.length; i--;) {
         const data = json[i];
 
-        const output = (this.network as Network).noTraceActivate(
+        const output = this.noTraceActivate(
           data.input,
           feedbackLoop,
         );
@@ -1065,7 +1124,7 @@ export class NetworkUtil {
           const target = data.output;
           const update = !!((i + 1) % batchSize === 0 || i === 0);
 
-          const output = (this.network as Network).activate(input);
+          const output = this.activate(input);
 
           errorSum += cost.calculate(target, output);
 
