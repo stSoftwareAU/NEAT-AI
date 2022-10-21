@@ -4,7 +4,6 @@ import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("TraceAggregate", () => {
-  
   const json: NetworkInterface = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
@@ -35,5 +34,4 @@ Deno.test("TraceAggregate", () => {
     "output",
     startOut,
   );
-
 });
