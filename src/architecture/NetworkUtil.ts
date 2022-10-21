@@ -150,35 +150,29 @@ export class NetworkUtil {
    * Activates the network
    */
    activate(input:number[], feedbackLoop = false) {
-    if (!feedbackLoop) {
-      this.networkState.clear(this.network.input);
-    }
     if (input && input.length != this.network.input) {
       console.trace();
       throw "Activate input: " + input.length +
         " does not match expected input: " + this.network.input;
     }
-    const output = new Array(this.network.output);
-    let outputLen = 0;
-
+    if (!feedbackLoop) {
+      this.networkState.clear(this.network.input);
+    }
+    const output:number[] = new Array(this.network.output);
     const ns = this.networkState;
-    // Activate nodes chronologically
-    for (let i = 0; i < this.network.nodes.length; i++) {
-      const _node = this.network.nodes[i];
-      switch (_node.type) {
-        case "input": {
-          ns.node(i).activation = input[i];
-          break;
-        }
-        case "output": {
-          const activation = (_node as Node).activate();
-          output[outputLen] = activation;
-          outputLen++;
-          break;
-        }
-        default:
-          (_node as Node).activate();
-      }
+    for(let i=this.network.input;i--;){
+      ns.node(i).activation = input[i];
+    }
+
+    const lastHiddenNode=this.network.nodes.length-this.network.output;
+
+    /* Activate nodes chronologically */
+    for (let i = this.network.input; i < lastHiddenNode; i++) {
+      (this.network.nodes[i] as Node).activate();
+    }
+
+    for (let i = 0; i < this.network.output; i++) {
+      output[i] = (this.network.nodes[i+lastHiddenNode] as Node).activate();      
     }
 
     return output;
@@ -191,27 +185,23 @@ export class NetworkUtil {
     if (!feedbackLoop) {
       this.networkState.clear(this.network.input);
     }
-    const output = new Array(this.network.output);
+    const output:number[] = new Array(this.network.output);
     const ns = this.networkState;
-    let outputLen = 0;
-    // Activate nodes chronologically
-    for (let i = 0; i < this.network.nodes.length; i++) {
-      const _node = this.network.nodes[i];
-      switch (_node.type) {
-        case "input": {
-          ns.node(i).activation = input[i];
-          break;
-        }
-        case "output": {
-          const activation = (_node as Node).noTraceActivate();
-          output[outputLen] = activation;
-          outputLen++;
-          break;
-        }
-        default:
-          (_node as Node).noTraceActivate();
-      }
+    for(let i=this.network.input;i--;){
+      ns.node(i).activation = input[i];
     }
+
+    const lastHiddenNode=this.network.nodes.length-this.network.output;
+    
+    /* Activate nodes chronologically */
+    for (let i = this.network.input; i < lastHiddenNode; i++) {
+      (this.network.nodes[i] as Node).noTraceActivate();
+    }
+
+    for (let i = 0; i < this.network.output; i++) {
+      output[i] = (this.network.nodes[i+lastHiddenNode] as Node).noTraceActivate();      
+    }
+
     return output;
   }
 
