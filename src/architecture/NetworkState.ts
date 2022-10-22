@@ -34,7 +34,7 @@ class ConnectionState {
   public eligibility: number;
   public gain: number;
 
-  public xTrace: { nodes: Node[]; values: number[] };
+  public xTrace: { nodes: Node[]; values: number[]; used: boolean };
 
   constructor() {
     this.eligibility = 0;
@@ -42,6 +42,7 @@ class ConnectionState {
     this.xTrace = {
       nodes: [],
       values: [],
+      used: false,
     };
   }
 }
@@ -139,16 +140,8 @@ export class NetworkState {
     }
   }
 
-  clear(input: number) {
-    // if (!Number.isInteger(input) || input < 1) {
-    //   throw "Invalid input was: " + input;
-    // }
+  clear() {
     this.nodeMap.clear();
-
-    for (const from of this.connectionMap.keys()) {
-      if (from >= input) {
-        this.connectionMap.delete(from);
-      }
-    }
+    this.connectionMap.clear();
   }
 }

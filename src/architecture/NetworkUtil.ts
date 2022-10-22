@@ -143,7 +143,7 @@ export class NetworkUtil {
    * Clear the context of the network
    */
   clear() {
-    this.networkState.clear(this.network.input);
+    this.networkState.clear();
   }
 
   /**
@@ -156,7 +156,7 @@ export class NetworkUtil {
         " does not match expected input: " + this.network.input;
     }
     if (!feedbackLoop) {
-      this.networkState.clear(this.network.input);
+      this.networkState.clear();
     }
     const output: number[] = new Array(this.network.output);
     const ns = this.networkState;
@@ -183,7 +183,7 @@ export class NetworkUtil {
    */
   noTraceActivate(input: number[], feedbackLoop = false) {
     if (!feedbackLoop) {
-      this.networkState.clear(this.network.input);
+      this.networkState.clear();
     }
     const output: number[] = new Array(this.network.output);
     const ns = this.networkState;
@@ -789,6 +789,25 @@ export class NetworkUtil {
     }
   }
 
+  applyLearnings() {
+    let changed = false;
+    for (
+      let i = this.network.nodes.length;
+      i--;
+    ) {
+      const n = (this.network.nodes[i] as Node);
+      if (n.type == "input") break;
+      changed ||= n.applyLearnings();
+    }
+
+    if (changed) {
+      console.info("Learnings applied");
+      this.fix();
+      this.compact();
+    }
+    return changed;
+  }
+
   /**
    * Back propagate the network
    */
@@ -1139,6 +1158,7 @@ export class NetworkUtil {
         counter += len;
       }
 
+      this.applyLearnings();
       error = errorSum / counter;
 
       if (
@@ -1961,6 +1981,12 @@ export class NetworkUtil {
           this.removeHiddenNode(pos);
           nodeRemoved = true;
           break;
+          // } else if (
+          //   this.toConnections(pos).length == 0
+          // ) {
+          //   this.removeHiddenNode(pos);
+          //   nodeRemoved = true;
+          //   break;
         }
       }
     }

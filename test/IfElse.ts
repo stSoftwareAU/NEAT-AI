@@ -6,7 +6,6 @@ import {
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
-import { Network } from "../src/architecture/network.js";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

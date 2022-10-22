@@ -1,9 +1,13 @@
+import {
+  assert,
+  assertAlmostEquals,
+} from "https://deno.land/std@0.160.0/testing/asserts.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("TraceAggregate", () => {
+Deno.test("TraceAggregateMINIMUM", () => {
   const json: NetworkInterface = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
@@ -25,13 +29,51 @@ Deno.test("TraceAggregate", () => {
   };
   const network = NetworkUtil.fromJSON(json);
   network.util.validate();
-
+  Deno.writeTextFileSync(
+    "test/data/.a.json",
+    JSON.stringify(network.util.toJSON(), null, 2),
+  );
   const input = [0.1, 0.2];
-  const startOut = network.util.activate(input);
+  const eOut = network.util.noTraceActivate(input);
+  console.info(
+    "PRE",
+    "output",
+    eOut,
+  );
+  const aOut = network.util.activate(input);
 
   console.info(
     "START",
     "output",
-    startOut,
+    aOut,
   );
+  // const bOut = network.util.noTraceActivate(input);
+
+  // assertAlmostEquals(aOut[0], bOut[0], 0.0001);
+  // assertAlmostEquals(aOut[1], bOut[1], 0.0001);
+
+  // network.util.fix();
+  // const cOut = network.util.noTraceActivate(input);
+
+  // assertAlmostEquals(aOut[0], cOut[0], 0.0001);
+  // assertAlmostEquals(aOut[1], cOut[1], 0.0001);
+
+  const changed = network.util.applyLearnings();
+
+  assert(changed, "should have changed");
+
+  const dOut = network.util.noTraceActivate(input);
+
+  console.info(
+    "END",
+    "output",
+    dOut,
+  );
+  Deno.writeTextFileSync(
+    "test/data/.d.json",
+    JSON.stringify(network.util.toJSON(), null, 2),
+  );
+  assertAlmostEquals(aOut[0], dOut[0], 0.0001);
+
+  assertAlmostEquals(aOut[1], dOut[1], 0.0001);
 });
