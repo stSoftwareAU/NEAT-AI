@@ -34,7 +34,7 @@ Deno.test("hypotenuse", async () => {
       ],
     });
 
-    await network.evolve(ts, options);
+    await network.util.evolveDataSet(ts, options);
 
     const check = [50, 60];
     answer = network.util.activate(check)[0];

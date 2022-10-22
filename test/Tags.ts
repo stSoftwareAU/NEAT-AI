@@ -46,7 +46,7 @@ Deno.test("keep", () => {
   addTag(n, "hello", "world");
 
   assert(getTag(n, "hello") == "world", "Expecting a value.");
-  const json = n.toJSON();
+  const json = n.util.toJSON();
 
   const n2 = NetworkUtil.fromJSON(json);
 

@@ -68,5 +68,5 @@ Deno.test("subNode", () => {
   }
   network.util.validate({ nodes: 4, connections: 3 });
 
-  console.info(JSON.stringify(network.toJSON(), null, 1));
+  console.info(JSON.stringify(network.util.toJSON(), null, 1));
 });

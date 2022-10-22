@@ -9,6 +9,7 @@ import { Connection } from "./Connection.ts";
 import { addTags, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
 import { NetworkUtil } from "./NetworkUtil.ts";
+import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 
 export class Node implements TagsInterface, NodeInterface {
   readonly util: NetworkUtil;
@@ -68,6 +69,12 @@ export class Node implements TagsInterface, NodeInterface {
     this.type = type;
 
     this.index = -1;
+  }
+
+  setSquash(name: string) {
+    delete this.squashMethodCache;
+    this.squash = name;
+    return this.findSquash();
   }
 
   findSquash() {
@@ -146,6 +153,15 @@ export class Node implements TagsInterface, NodeInterface {
     activation: NodeActivationInterface | ActivationInterface,
   ): activation is NodeActivationInterface {
     return (activation as NodeActivationInterface).activate != undefined;
+  }
+
+  private hasApplyLearnings(
+    activation:
+      | ApplyLearningsInterface
+      | NodeActivationInterface
+      | ActivationInterface,
+  ): activation is ApplyLearningsInterface {
+    return (activation as ApplyLearningsInterface).applyLearnings != undefined;
   }
 
   private isFixableActivation(
@@ -311,6 +327,20 @@ export class Node implements TagsInterface, NodeInterface {
   }
 
   /**
+   * Apply the learnings from the previous training.
+   * @returns true if changed
+   */
+  applyLearnings() {
+    const squashMethod = this.findSquash();
+
+    if (this.hasApplyLearnings(squashMethod)) {
+      return squashMethod.applyLearnings(this);
+    }
+
+    return false;
+  }
+
+  /**
    * Activates the node without calculating eligibility traces and such
    */
   noTraceActivate() {
@@ -329,6 +359,7 @@ export class Node implements TagsInterface, NodeInterface {
         const c = toList[i];
         const fromState = this.util.networkState.node(c.from);
         const cs = this.util.networkState.connection(c.from, c.to);
+
         value += fromState.activation * c.weight * cs.gain;
       }
 

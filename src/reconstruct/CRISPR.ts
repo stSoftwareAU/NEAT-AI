@@ -2,6 +2,7 @@ import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 import { Network } from "../architecture/network.js";
 import { Node } from "../architecture/Node.ts";
 import { addTag, getTag, TagsInterface } from "../tags/TagsInterface.ts";
+import { NetworkUtil } from "../architecture/NetworkUtil.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;
@@ -30,11 +31,13 @@ export class CRISPR {
   constructor(
     network: NetworkInterface,
   ) {
-    this.network = Network.fromJSON((network as Network).toJSON());
+    this.network = NetworkUtil.fromJSON((network as Network).util.toJSON());
   }
 
   apply(dna: CrisprInterface): NetworkInterface {
-    const tmpNetwork = Network.fromJSON((this.network as Network).toJSON());
+    const tmpNetwork = NetworkUtil.fromJSON(
+      (this.network as Network).util.toJSON(),
+    );
 
     let alreadyProcessed = false;
     tmpNetwork.nodes.forEach((node) => {

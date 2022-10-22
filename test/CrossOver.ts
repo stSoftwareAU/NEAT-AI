@@ -102,7 +102,7 @@ Deno.test("CrossOver", () => {
     if (n.squash == "IF") {
       Deno.writeTextFileSync(
         ".cross_over.json",
-        JSON.stringify(c.toJSON(), null, 2),
+        JSON.stringify(c.util.toJSON(), null, 2),
       );
 
       const list = c.util.toConnections(n.index);

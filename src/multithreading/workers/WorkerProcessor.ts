@@ -61,7 +61,7 @@ export class WorkerProcessor {
       };
 
       const result = network.util.trainDir(this.dataSetDir, trainOptions);
-      const json = JSON.stringify(network.toJSON());
+      const json = JSON.stringify(network.util.toJSON());
 
       return {
         taskID: data.taskID,

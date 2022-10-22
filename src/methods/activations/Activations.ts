@@ -117,6 +117,7 @@ export class Activations {
       case IF.NAME:
         return this.ifActivation;
       default:
+        console.trace();
         throw "Unknown activation: " + name;
     }
   }

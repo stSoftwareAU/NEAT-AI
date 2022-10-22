@@ -6,7 +6,6 @@ import {
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
-import { Network } from "../src/architecture/network.js";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -34,7 +33,7 @@ Deno.test("if-bias", () => {
     output: 1,
   };
   const network = NetworkUtil.fromJSON(json);
-  const tmpJSON = JSON.stringify(network.toJSON(), null, 2);
+  const tmpJSON = JSON.stringify(network.util.toJSON(), null, 2);
 
   console.log(tmpJSON);
 
@@ -73,7 +72,7 @@ Deno.test("if/Else", () => {
     output: 1,
   };
   const network1 = NetworkUtil.fromJSON(json);
-  const tmpJSON = JSON.stringify(network1.toJSON(), null, 2);
+  const tmpJSON = JSON.stringify(network1.util.toJSON(), null, 2);
 
   console.log(tmpJSON);
   const network2 = NetworkUtil.fromJSON(JSON.parse(tmpJSON));
@@ -129,9 +128,9 @@ Deno.test("if-fix", () => {
     network.util.subConnection();
   }
   network.util.fix();
-  const network2 = Network.fromJSON(network.toJSON());
+  const network2 = NetworkUtil.fromJSON(network.util.toJSON());
   network2.util.validate();
-  console.info(JSON.stringify(network2.toJSON(), null, 2));
+  console.info(JSON.stringify(network2.util.toJSON(), null, 2));
   const toList = network.util.toConnections(5);
 
   assert(toList.length > 2, "Should have 3 connections was: " + toList.length);

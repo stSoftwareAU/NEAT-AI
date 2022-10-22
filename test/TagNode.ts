@@ -35,10 +35,10 @@ Deno.test("TagNode", () => {
   };
   const network = NetworkUtil.fromJSON(json);
 
-  const json2 = network.toJSON();
+  const json2 = network.util.toJSON();
 
   const network2 = NetworkUtil.fromJSON(json2);
-  const json3 = network2.toJSON();
+  const json3 = network2.util.toJSON();
 
   console.info(JSON.stringify(json3, null, 2));
 
