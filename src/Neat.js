@@ -72,7 +72,7 @@ export class Neat {
     const tmpFittest = elitists[0];
 
     const fittest = NetworkUtil.fromJSON(
-      tmpFittest.toJSON(),
+      tmpFittest.util.toJSON(),
       this.config.debug,
     ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;

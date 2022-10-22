@@ -36,11 +36,11 @@ function checkMutation(method: { name: string }) {
     }
   }
 
-  const json1 = JSON.stringify(network.toJSON(), null, 2);
+  const json1 = JSON.stringify(network.util.toJSON(), null, 2);
   for (let i = 10; i--;) {
     network.util.mutate(method);
   }
-  const json2 = JSON.stringify(network.toJSON(), null, 2);
+  const json2 = JSON.stringify(network.util.toJSON(), null, 2);
 
   console.info(json1);
   console.info(json2);
@@ -78,7 +78,7 @@ async function evolveSet(
     threads: 1,
   };
 
-  const results = await network.evolve(set, options);
+  const results = await network.util.evolveDataSet(set, options);
 
   assert(results.error <= error, `expected: ${error}, was: ${results.error}`);
 
@@ -96,23 +96,27 @@ async function evolveSet(
     if (Math.abs(nt0 - nt1) > 0.0001) {
       Deno.writeTextFileSync(
         ".start.json",
-        JSON.stringify(network.toJSON(), null, 2),
+        JSON.stringify(network.util.toJSON(), null, 2),
       );
       const nt2 = network.util.noTraceActivate(dr.input)[0];
 
       Deno.writeTextFileSync(
         ".end.json",
-        JSON.stringify(network.toJSON(), null, 2),
+        JSON.stringify(network.util.toJSON(), null, 2),
       );
       console.log(dr.input);
       const n0 =
-        Network.fromJSON(network.toJSON()).util.noTraceActivate(dr.input)[0];
+        NetworkUtil.fromJSON(network.util.toJSON()).util.noTraceActivate(
+          dr.input,
+        )[0];
 
       network.util.clearCache();
       const c1 = network.util.noTraceActivate(dr.input)[0];
       const n1 =
-        Network.fromJSON(network.toJSON()).util.noTraceActivate(dr.input)[0];
-      const network2 = Network.fromJSON(network.toJSON());
+        NetworkUtil.fromJSON(network.util.toJSON()).util.noTraceActivate(
+          dr.input,
+        )[0];
+      const network2 = NetworkUtil.fromJSON(network.util.toJSON());
       const n2 = network2.util.noTraceActivate(dr.input)[0];
       const n2b = network2.util.noTraceActivate(dr.input)[0];
       assertAlmostEquals(
@@ -141,7 +145,7 @@ async function evolveSet(
       console.log("hello");
       const r3 = network.util.activate(dr.input)[0];
       console.log(r2, r3);
-      console.info(JSON.stringify(network.toJSON(), null, 2));
+      console.info(JSON.stringify(network.util.toJSON(), null, 2));
     }
     assertAlmostEquals(
       r1,
@@ -172,7 +176,7 @@ function trainSet(set: any[], iterations: number, error: number) {
     threads: 1,
   };
 
-  const results = network.train(set, options);
+  const results = network.util.train(set, options);
 
   assert(
     results.error < error,
@@ -335,14 +339,14 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = NetworkUtil.fromJSON(original.toJSON());
+  copy = NetworkUtil.fromJSON(original.util.toJSON());
   testEquality(original, copy);
 
   original = new Network(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
   );
-  copy = NetworkUtil.fromJSON(original.toJSON());
+  copy = NetworkUtil.fromJSON(original.util.toJSON());
   testEquality(original, copy);
 
   original = new Network(
@@ -355,7 +359,7 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = NetworkUtil.fromJSON(original.toJSON());
+  copy = NetworkUtil.fromJSON(original.util.toJSON());
   testEquality(original, copy);
 });
 
@@ -454,7 +458,7 @@ Deno.test("train_XNOR_gate", () => {
       { input: [1, 0], output: [0] },
       { input: [1, 1], output: [1] },
     ],
-    4000,
+    10000,
     0.002,
   );
 });
@@ -609,10 +613,9 @@ Deno.test("NARX Sequence", async () => {
     { input: [0], output: [1] },
   ];
 
-  const result = await narx.evolve(trainingData, {
+  const result = await narx.util.evolveDataSet(trainingData, {
     iterations: 5000,
     error: 0.005,
-    rate: 0.05,
     threads: 1,
     feedbackLoop: true,
   });
@@ -684,7 +687,7 @@ Deno.test("evolveSHIFT", async () => {
 
 Deno.test("from-to", () => {
   const network = new Network(1000, 10);
-  const startJson = network.toJSON();
+  const startJson = network.util.toJSON();
   const startTxt = JSON.stringify(startJson, null, 1);
   let fromTotalMS = 0;
   let toTotalMS = 0;
@@ -703,7 +706,7 @@ Deno.test("from-to", () => {
     fromTotalMS += fromMS;
 
     performance.mark("to-start");
-    currentJson = currentNetwork.toJSON();
+    currentJson = currentNetwork.util.toJSON();
     performance.mark("to-end");
     const toMS = performance.measure("", "to-start", "to-end").duration;
     toMinMS = toMinMS > toMS ? toMS : toMinMS;

@@ -30,7 +30,7 @@ export class NeatUtil {
       throw "Not an object was: " + (typeof creature);
     }
 
-    const json = (creature as Network).toJSON();
+    const json = (creature as Network).util.toJSON();
     delete json.tags;
 
     const txt = JSON.stringify(json);
@@ -129,7 +129,7 @@ export class NeatUtil {
     }
     while (this.neat.population.length < this.config.popsize) {
       const clonedCreature = NetworkUtil.fromJSON(
-        network.toJSON(),
+        network.util.toJSON(),
         this.config.debug,
       );
       const creatures = [clonedCreature];

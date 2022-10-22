@@ -211,7 +211,7 @@ export class NetworkUtil {
    */
   compact(): Network | null {
     const json = this.toJSON();
-    const compactNetwork = Network.fromJSON(json);
+    const compactNetwork = NetworkUtil.fromJSON(json);
     compactNetwork.util.fix();
 
     let complete = false;
@@ -270,7 +270,7 @@ export class NetworkUtil {
       }
     }
 
-    const json2 = compactNetwork.toJSON();
+    const json2 = compactNetwork.util.toJSON();
     if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
       addTag(compactNetwork, "approach", "compact");
       addTag(compactNetwork, "old-nodes", this.network.nodes.length.toString());
@@ -316,10 +316,10 @@ export class NetworkUtil {
       throw "Must have at least one output nodes was: " + this.network.output;
     }
 
-    if (typeof (this.network as Network).toJSON !== "function") {
+    if (typeof (this.network as Network).util.toJSON !== "function") {
       console.trace();
       throw "missing toJSON function was: " +
-        (typeof (this.network as Network).toJSON);
+        (typeof (this.network as Network).util.toJSON);
     }
 
     const stats = {
@@ -358,7 +358,7 @@ export class NetworkUtil {
           if (this.DEBUG) {
             this.DEBUG = false;
             console.warn(
-              JSON.stringify((this.network as Network).toJSON(), null, 2),
+              JSON.stringify((this.network as Network).util.toJSON(), null, 2),
             );
             this.DEBUG = true;
           }
@@ -432,7 +432,11 @@ export class NetworkUtil {
             if (this.DEBUG) {
               this.DEBUG = false;
               console.warn(
-                JSON.stringify((this.network as Network).toJSON(), null, 2),
+                JSON.stringify(
+                  (this.network as Network).util.toJSON(),
+                  null,
+                  2,
+                ),
               );
               this.DEBUG = true;
             }
@@ -698,7 +702,7 @@ export class NetworkUtil {
       if (this.DEBUG) {
         this.DEBUG = false;
         console.warn(
-          JSON.stringify((this.network as Network).toJSON(), null, 2),
+          JSON.stringify((this.network as Network).util.toJSON(), null, 2),
         );
 
         this.DEBUG = true;
@@ -880,7 +884,7 @@ export class NetworkUtil {
         }
 
         bestScore = fittest.score;
-        bestCreature = NetworkUtil.fromJSON(fittest.toJSON());
+        bestCreature = NetworkUtil.fromJSON(fittest.util.toJSON());
       } else if (fittest.score < bestScore) {
         throw "fitness decreased over generations";
       }
@@ -1196,7 +1200,7 @@ export class NetworkUtil {
     let counter = 1;
     emptyDirSync(dir);
     neat.population.forEach((creature: NetworkInterface) => {
-      const json = (creature as Network).toJSON();
+      const json = (creature as Network).util.toJSON();
 
       const txt = JSON.stringify(json, null, 1);
 
@@ -1974,6 +1978,9 @@ export class NetworkUtil {
     return this.network.nodes.length;
   }
 
+  /**
+   * Convert the network to a json object
+   */
   toJSON(options = { verbose: false }) {
     if (this.DEBUG) {
       this.validate();

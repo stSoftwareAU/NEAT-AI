@@ -31,9 +31,9 @@ Deno.test("Constants", () => {
     network.util.addConnection();
   }
 
-  console.info(JSON.stringify(network.toJSON(), null, 2));
+  console.info(JSON.stringify(network.util.toJSON(), null, 2));
   network.util.validate();
-  Network.fromJSON(network.toJSON());
+  NetworkUtil.fromJSON(network.util.toJSON());
   assert(
     Math.abs(network.nodes[1].bias) - 0.5 < 0.00001,
     "Should NOT have changed the constant node was: " + network.nodes[1].bias,

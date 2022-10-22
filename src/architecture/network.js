@@ -132,45 +132,4 @@ export class Network {
 
     return json;
   }
-
-  /**
-   * Convert the network to a json object
-   */
-  toJSON(options = { verbose: false }) {
-    return this.util.toJSON(options);
-  }
-
-  /**
-   * Sets the value of a property for every node in this network
-   */
-  set(values) {
-    for (let i = 0; i < this.nodes.length; i++) {
-      this.nodes[i].bias = values.bias || this.nodes[i].bias;
-      this.nodes[i].squash = values.squash || this.nodes[i].squash;
-    }
-  }
-
-  /**
-   * Train the given set to this network
-   */
-  train(dataSet, options) {
-    return this.util.train(dataSet, options);
-  }
-
-  /**
-   * Evolves the network to reach a lower error on a dataset
-   */
-  evolve(dataSet, options) {
-    return this.util.evolveDataSet(dataSet, options);
-  }
-  /**
-   * Evolves the network to reach a lower error on a dataset
-   */
-  evolveDir(dataDir, options) {
-    return this.util.evolveDir(dataDir, options);
-  }
-
-  static fromJSON(json) {
-    return NetworkUtil.fromJSON(json);
-  }
 }

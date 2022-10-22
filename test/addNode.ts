@@ -80,7 +80,7 @@ Deno.test("addNode", () => {
   for (let i = 100; i--;) {
     network.util.addNode();
   }
-  const nodes = network.toJSON({ verbose: true }).nodes;
+  const nodes = network.util.toJSON({ verbose: true }).nodes;
   console.info(JSON.stringify(nodes, null, 1));
 
   for (let indx = nodes.length; indx--;) {

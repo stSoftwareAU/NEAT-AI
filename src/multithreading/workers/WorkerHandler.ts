@@ -175,7 +175,7 @@ export class WorkerHandler {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        network: JSON.stringify((network as Network).toJSON()),
+        network: JSON.stringify((network as Network).util.toJSON()),
         feedbackLoop,
       },
     };
@@ -184,8 +184,8 @@ export class WorkerHandler {
   }
 
   train(network: NetworkInterface, rate: number) {
-    const json = (network as Network).toJSON();
-    // delete json.score;
+    const json = (network as Network).util.toJSON();
+
     delete json.tags;
     const error = getTag(network, "error");
     if (error) {
