@@ -790,6 +790,8 @@ export class NetworkUtil {
   }
 
   applyLearnings() {
+    const oldConnections = this.network.connections.length;
+    const oldNodes = this.network.nodes.length;
     let changed = false;
     for (
       let i = this.network.nodes.length;
@@ -801,9 +803,18 @@ export class NetworkUtil {
     }
 
     if (changed) {
-      console.info("Learnings applied");
       this.fix();
-      this.compact();
+      const temp = this.compact();
+      if (temp != null) {
+        this.loadFrom(temp.util.toJSON(), true);
+      }
+      addTag(this.network, "approach", "Learnings");
+      addTag(this.network, "old-nodes", oldNodes.toString());
+      addTag(
+        this.network,
+        "old-connections",
+        oldConnections.toString(),
+      );
     }
     return changed;
   }

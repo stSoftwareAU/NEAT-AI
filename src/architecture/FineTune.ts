@@ -290,6 +290,17 @@ export function fineTuneImprovement(
       `connections: ${fittest.connections.length} was:`,
       getTag(fittest, "old-connections"),
     );
+  } else if (approach == "Learnings") {
+    console.info(
+      "Learnings increased fitness by",
+      fScore - pScore,
+      "to",
+      fScore,
+      `nodes: ${fittest.nodes.length} was:`,
+      getTag(fittest, "old-nodes"),
+      `connections: ${fittest.connections.length} was:`,
+      getTag(fittest, "old-connections"),
+    );
   }
 
   const fineTuned: Network[] = [];
