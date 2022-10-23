@@ -1,7 +1,9 @@
 import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { Node } from "../../../architecture/Node.ts";
+import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
+import { IDENTITY } from "../types/IDENTITY.ts";
 
-export class IF implements NodeActivationInterface {
+export class IF implements NodeActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
 
   getName() {
@@ -149,7 +151,29 @@ export class IF implements NodeActivationInterface {
       }
     }
 
-    return condition > 0 ? positive : negative;
+    if (condition > 0) {
+      for (let i = toList.length; i--;) {
+        const c = toList[i];
+
+        switch (c.type) {
+          case "condition":
+          case "negative":
+            break;
+          default:
+            node.util.networkState.connection(c.from, c.to).xTrace.used = true;
+        }
+      }
+      return positive;
+    } else {
+      for (let i = toList.length; i--;) {
+        const c = toList[i];
+
+        if (c.type == "negative") {
+          node.util.networkState.connection(c.from, c.to).xTrace.used = true;
+        }
+      }
+      return negative;
+    }
   }
 
   noTraceActivate(node: Node): number {
@@ -176,5 +200,58 @@ export class IF implements NodeActivationInterface {
     }
 
     return condition > 0 ? positive : negative;
+  }
+
+  applyLearnings(node: Node): boolean {
+    const toList = node.util.toConnections(node.index);
+
+    let foundPositive = false;
+
+    let foundNegative = false;
+
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+      const cs = node.util.networkState.connection(c.from, c.to);
+      switch (c.type) {
+        case "condition":
+          break;
+        case "negative":
+          if (cs.xTrace.used) {
+            foundNegative = true;
+          }
+          break;
+        default:
+          if (cs.xTrace.used) {
+            foundPositive = true;
+          }
+      }
+    }
+
+    if (foundNegative && foundPositive) {
+      return false;
+    }
+
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+      const cs = node.util.networkState.connection(c.from, c.to);
+      switch (c.type) {
+        case "condition":
+          node.util.disconnect(c.from, c.to);
+          break;
+        case "negative":
+          if (foundPositive) {
+            node.util.disconnect(c.from, c.to);
+          }
+          break;
+        default:
+          if (foundNegative) {
+            node.util.disconnect(c.from, c.to);
+          }
+      }
+    }
+
+    node.setSquash(IDENTITY.NAME);
+
+    return true;
   }
 }

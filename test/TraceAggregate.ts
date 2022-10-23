@@ -77,3 +77,126 @@ Deno.test("TraceAggregateMINIMUM", () => {
 
   assertAlmostEquals(aOut[1], dOut[1], 0.0001);
 });
+
+Deno.test("TraceAggregateMAXIMUM", () => {
+  const json: NetworkInterface = {
+    nodes: [
+      { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
+      { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
+      { bias: 0.3, type: "hidden", squash: "MAXIMUM", index: 4 },
+      { bias: -0.4, type: "output", squash: "LOGISTIC", index: 5 },
+      { bias: 0.5, type: "output", squash: "LOGISTIC", index: 6 },
+    ],
+    connections: [
+      { weight: 0.1, from: 0, to: 2 },
+      { weight: -0.2, from: 1, to: 3 },
+      { weight: 0.3, from: 2, to: 4 },
+      { weight: -0.4, from: 3, to: 4 },
+      { weight: -0.5, from: 4, to: 5 },
+      { weight: 0.6, from: 4, to: 6 },
+    ],
+    input: 2,
+    output: 2,
+  };
+  const network = NetworkUtil.fromJSON(json);
+  network.util.validate();
+  Deno.writeTextFileSync(
+    "test/data/.a.json",
+    JSON.stringify(network.util.toJSON(), null, 2),
+  );
+  const input = [0.1, 0.2];
+  const eOut = network.util.noTraceActivate(input);
+  console.info(
+    "PRE",
+    "output",
+    eOut,
+  );
+  const aOut = network.util.activate(input);
+
+  console.info(
+    "START",
+    "output",
+    aOut,
+  );
+
+  const changed = network.util.applyLearnings();
+
+  assert(changed, "should have changed");
+
+  const dOut = network.util.noTraceActivate(input);
+
+  console.info(
+    "END",
+    "output",
+    dOut,
+  );
+  Deno.writeTextFileSync(
+    "test/data/.d.json",
+    JSON.stringify(network.util.toJSON(), null, 2),
+  );
+  assertAlmostEquals(aOut[0], dOut[0], 0.0001);
+
+  assertAlmostEquals(aOut[1], dOut[1], 0.0001);
+});
+
+Deno.test("TraceAggregateIF", () => {
+  const json: NetworkInterface = {
+    nodes: [
+      { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
+      { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
+      { bias: 0.3, type: "hidden", squash: "IF", index: 4 },
+      { bias: -0.4, type: "output", squash: "LOGISTIC", index: 5 },
+      { bias: 0.5, type: "output", squash: "LOGISTIC", index: 6 },
+    ],
+    connections: [
+      { weight: 0.1, from: 0, to: 2 },
+      { weight: -0.2, from: 1, to: 3 },
+      { weight: 0.15, from: 1, to: 4, type: "condition" },
+      { weight: 0.3, from: 2, to: 4, type: "positive" },
+      { weight: -0.4, from: 3, to: 4, type: "negative" },
+      { weight: -0.5, from: 4, to: 5 },
+      { weight: 0.6, from: 4, to: 6 },
+    ],
+    input: 2,
+    output: 2,
+  };
+  const network = NetworkUtil.fromJSON(json);
+  network.util.validate();
+  Deno.writeTextFileSync(
+    "test/data/.a.json",
+    JSON.stringify(network.util.toJSON(), null, 2),
+  );
+  const input = [0.1, 0.2];
+  const eOut = network.util.noTraceActivate(input);
+  console.info(
+    "PRE",
+    "output",
+    eOut,
+  );
+  const aOut = network.util.activate(input);
+
+  console.info(
+    "START",
+    "output",
+    aOut,
+  );
+
+  const changed = network.util.applyLearnings();
+
+  assert(changed, "should have changed");
+
+  const dOut = network.util.noTraceActivate(input);
+
+  console.info(
+    "END",
+    "output",
+    dOut,
+  );
+  Deno.writeTextFileSync(
+    "test/data/.d.json",
+    JSON.stringify(network.util.toJSON(), null, 2),
+  );
+  assertAlmostEquals(aOut[0], dOut[0], 0.0001);
+
+  assertAlmostEquals(aOut[1], dOut[1], 0.0001);
+});
