@@ -233,7 +233,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
 
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = node.util.networkState.connection(c.from, c.to);
+
       switch (c.type) {
         case "condition":
           node.util.disconnect(c.from, c.to);
