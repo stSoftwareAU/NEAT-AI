@@ -34,6 +34,8 @@ export class WorkerProcessor {
         data.evaluate.feedbackLoop,
       );
 
+      network.util.dispose();
+
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
@@ -62,6 +64,8 @@ export class WorkerProcessor {
 
       const result = network.util.trainDir(this.dataSetDir, trainOptions);
       const json = JSON.stringify(network.util.toJSON());
+
+      network.util.dispose();
 
       return {
         taskID: data.taskID,
