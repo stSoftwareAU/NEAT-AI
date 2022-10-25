@@ -40,6 +40,14 @@ export class NetworkUtil {
     this.network = network;
   }
 
+  /* Dispose of the network and all held memory */
+  public dispose() {
+    this.clear();
+    this.clearCache();
+    this.network.connections = [];
+    this.network.nodes = [];
+  }
+
   public clearCache() {
     this.cache.clear();
   }
