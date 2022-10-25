@@ -239,7 +239,7 @@ export class NetworkUtil {
               compactNetwork.nodes[from].type == compactNetwork.nodes[pos].type
             ) {
               if (compactNetwork.util.getConnection(from, to) == null) {
-                const weightA = fromList[0].weight * toList[0].weight;
+                let weightA = fromList[0].weight * toList[0].weight;
 
                 const biasA =
                   compactNetwork.nodes[from].bias * toList[0].weight +
@@ -252,6 +252,15 @@ export class NetworkUtil {
                 if (adjustedTo > pos) {
                   adjustedTo--;
                 }
+
+                if (weightA === Number.POSITIVE_INFINITY) {
+                  weightA = Number.MAX_SAFE_INTEGER;
+                } else if (weightA === Number.NEGATIVE_INFINITY) {
+                  weightA = Number.MIN_SAFE_INTEGER;
+                } else if (isNaN(weightA)) {
+                  weightA = 0;
+                }
+
                 compactNetwork.util.connect(
                   from,
                   adjustedTo,
