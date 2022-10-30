@@ -23,7 +23,7 @@ export class Upgrade {
       }
     });
 
-    const firstOutputIndx = json2.input + otherNodes - json2.output;
+    const firstOutputIndx = json2.input + otherNodes;
 
     const connections: ConnectionInterface[] = [];
     json2.connections.forEach((c) => {
