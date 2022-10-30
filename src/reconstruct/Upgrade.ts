@@ -6,6 +6,7 @@ export class Upgrade {
   static correct(json: NetworkInterface): NetworkInterface {
     const json2 = (JSON.parse(JSON.stringify(json)) as NetworkInterface);
 
+    let otherNodes=0;
     json2.nodes.forEach((n, indx) => {
       if (n.type == "hidden" || n.type == "output" || n.type == "constant") {
         if (!Number.isFinite(n.bias)) {
@@ -16,24 +17,29 @@ export class Upgrade {
           n.bias = 0;
         }
       }
+
+      if( n.type != 'input' && n.type !='output'){
+        otherNodes++;
+      }
     });
-    const firstOutputIndx = json2.nodes.length - json2.output;
+
+    const firstOutputIndx = json2.input + otherNodes;
 
     const connections: ConnectionInterface[] = [];
     json2.connections.forEach((c) => {
       if (c.from >= firstOutputIndx && c.from !== c.to) {
         console.warn(
-          "Ingoring connection (from:",
+          "Ignoring",
           c.from,
           "=> first output:",
           firstOutputIndx,
           c,
         );
       } else if (c.from > c.to) {
-        console.warn("Ingoring connection (from:", c.from, "> to:", c.to, c);
+        console.warn("Ignoring", c.from, "> to:", c.to, c);
       } else if ((c.gater ? c.gater : -1) >= firstOutputIndx) {
         console.warn(
-          "Ingoring connection (gater:",
+          "Ignoring",
           c.gater,
           "=> first output:",
           firstOutputIndx,
@@ -41,7 +47,7 @@ export class Upgrade {
         );
       } else if (!Number.isFinite(c.weight)) {
         console.warn(
-          "Ingoring connection invalid weight:",
+          "Ignoring",
           c.weight,
           c,
         );
