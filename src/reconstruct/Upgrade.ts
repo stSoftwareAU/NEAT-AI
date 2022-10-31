@@ -6,7 +6,7 @@ export class Upgrade {
   static correct(json: NetworkInterface): NetworkInterface {
     const json2 = (JSON.parse(JSON.stringify(json)) as NetworkInterface);
 
-    let otherNodes=0;
+    let otherNodes = 0;
     json2.nodes.forEach((n, indx) => {
       if (n.type == "hidden" || n.type == "output" || n.type == "constant") {
         if (!Number.isFinite(n.bias)) {
@@ -18,9 +18,11 @@ export class Upgrade {
         }
       }
 
-      if( n.type != 'input' && n.type !='output'){
+      if (n.type != "input" && n.type != "output") {
         otherNodes++;
       }
+
+      if (n.squash == "SUM") n.squash = "IDENTITY";
     });
 
     const firstOutputIndx = json2.input + otherNodes;

@@ -34,6 +34,7 @@ export interface NeatOptions {
 
   /** The list of observations to focus one */
   focusList?: number[];
+
   /** Focus rate */
   focusRate?: number;
 
@@ -57,7 +58,10 @@ export interface NeatOptions {
   mutationRate?: number;
 
   /** The target population size. 50 by default */
-  popsize?: number;
+  popSize?: number;
+
+  /* pause every log for X milliseconds. */
+  pauseMS?: number;
 
   /** the number of workers */
   threads?: number;

@@ -28,6 +28,11 @@ const cacheDataFile = {
   json: {},
 };
 
+function sleep(ms: number) {
+  console.info(`Sleep ${ms}`);
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class NetworkUtil {
   readonly network;
   readonly networkState = new NetworkState();
@@ -958,6 +963,9 @@ export class NetworkUtil {
           ),
         );
 
+        if (config.pauseMS) {
+          await sleep(config.pauseMS);
+        }
         iterationStartMS = new Date().getTime();
       }
 

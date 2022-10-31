@@ -20,7 +20,7 @@ Deno.test("Sum", () => {
     input: 3,
     output: 1,
   };
-  const json2=Upgrade.correct(json);
+  const json2 = Upgrade.correct(json);
   const network = NetworkUtil.fromJSON(json2);
 
   for (let p = 0; p < 1000; p++) {

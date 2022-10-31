@@ -236,7 +236,7 @@ function tuneAll(
 export function fineTuneImprovement(
   fittest: NetworkInterface,
   previousFittest: NetworkInterface | null,
-  popsize = 10,
+  popSize = 10,
   showMessage = true,
   compactEnabled = false,
 ) {
@@ -322,7 +322,7 @@ export function fineTuneImprovement(
   if (biasOnly) fineTuned.push(biasOnly);
 
   const totalItems = resultALL.changeBiasCount + resultALL.changeWeightCount;
-  const remainingCells = popsize - fineTuned.length;
+  const remainingCells = popSize - fineTuned.length;
 
   if (totalItems > remainingCells) {
     const itemsPerCell = Math.ceil(totalItems / remainingCells);
@@ -387,7 +387,7 @@ export function fineTuneImprovement(
   }
 
   let targetJSON = (fittest as Network).util.toJSON();
-  for (let k = 0; k < popsize; k++) {
+  for (let k = 0; k < popSize; k++) {
     for (let i = targetJSON.nodes.length; i--;) {
       const fn = targetJSON.nodes[i];
 
@@ -410,14 +410,14 @@ export function fineTuneImprovement(
             );
             addTag(n, "old-score", fScoreTxt);
             fineTuned.push(n);
-            if (fineTuned.length >= popsize) break;
+            if (fineTuned.length >= popSize) break;
             targetJSON = (fittest as Network).util.toJSON();
           }
         }
       }
-      if (fineTuned.length >= popsize) break;
+      if (fineTuned.length >= popSize) break;
     }
-    if (fineTuned.length >= popsize) break;
+    if (fineTuned.length >= popSize) break;
 
     for (let i = targetJSON.connections.length; i--;) {
       const fc = targetJSON.connections[i];
@@ -441,17 +441,17 @@ export function fineTuneImprovement(
               );
               addTag(n, "old-score", fScoreTxt);
               fineTuned.push(n);
-              if (fineTuned.length >= popsize) break;
+              if (fineTuned.length >= popSize) break;
               targetJSON = (fittest as Network).util.toJSON();
             }
           }
           break;
         }
       }
-      if (fineTuned.length >= popsize) break;
+      if (fineTuned.length >= popSize) break;
     }
     if (fineTuned.length == 0) break; // No viable genes to modify.
-    if (fineTuned.length >= popsize) break;
+    if (fineTuned.length >= popSize) break;
   }
 
   return fineTuned;
