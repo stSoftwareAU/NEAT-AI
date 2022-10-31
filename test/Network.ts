@@ -157,7 +157,11 @@ async function evolveSet(
   });
 }
 
-function trainSet(set: any[], iterations: number, error: number) {
+function trainSet(
+  set: { input: number[]; output: number[] }[],
+  iterations: number,
+  error: number,
+) {
   const network = new Network(
     set[0].input.length,
     set[0].output.length,

@@ -2,7 +2,7 @@ import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { Node } from "../../../architecture/Node.ts";
 
 export class SUM implements NodeActivationInterface {
-  public static NAME = "SUM";
+  public static NAME = "SUM"; //@TODO deleted and upgrade me.
 
   getName() {
     return SUM.NAME;

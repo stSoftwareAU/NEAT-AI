@@ -127,7 +127,7 @@ export class NeatUtil {
     if (this.config.debug) {
       network.util.validate();
     }
-    while (this.neat.population.length < this.config.popsize) {
+    while (this.neat.population.length < this.config.popSize) {
       const clonedCreature = NetworkUtil.fromJSON(
         network.util.toJSON(),
         this.config.debug,

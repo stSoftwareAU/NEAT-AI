@@ -57,7 +57,10 @@ export interface NeatConfig {
   mutationRate: number;
 
   /** The target population size. */
-  popsize: number;
+  popSize: number;
+
+  /* pause every log for X milliseconds. */
+  pauseMS?: number;
 
   costName: string;
   /** the number of workers */
@@ -105,7 +108,7 @@ export function make(parameters?: NeatOptions) {
 
     iterations: options.iterations ? options.iterations : 0,
 
-    popsize: options.popsize || 50,
+    popSize: options.popSize || 50,
     elitism: options.elitism || 1,
 
     maxConns: options.maxConns || Infinity,

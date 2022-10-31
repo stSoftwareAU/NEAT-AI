@@ -199,8 +199,8 @@ export class Node implements TagsInterface, NodeInterface {
         const c = toList[i];
 
         const fromState = this.util.networkState.node(c.from);
-        const cs = this.util.networkState.connection(c.from, c.to);
-        value += fromState.activation * c.weight * cs.gain;
+        
+        value += fromState.activation * c.weight;
       }
 
       const activationSquash = (squashMethod as ActivationInterface);
@@ -260,9 +260,8 @@ export class Node implements TagsInterface, NodeInterface {
         const fromState = this.util.networkState.node(c.from);
         const cs = this.util.networkState.connection(c.from, c.to);
         if (self) {
-          cs.eligibility =
-            selfState.gain * self.weight * selfState.eligibility +
-            fromState.activation * cs.gain;
+          cs.eligibility = self.weight * selfState.eligibility +
+            fromState.activation;
 
           if (!Number.isFinite(cs.eligibility)) {
             if (cs.eligibility === Number.POSITIVE_INFINITY) {
@@ -279,7 +278,7 @@ export class Node implements TagsInterface, NodeInterface {
             }
           }
         } else {
-          cs.eligibility = fromState.activation * cs.gain;
+          cs.eligibility = fromState.activation;
           if (!Number.isFinite(cs.eligibility)) {
             if (cs.eligibility === Number.POSITIVE_INFINITY) {
               cs.eligibility = Number.MAX_SAFE_INTEGER;
@@ -305,8 +304,7 @@ export class Node implements TagsInterface, NodeInterface {
 
           if (index > -1) {
             const value = self
-              ? (cs.gain *
-                self.weight *
+              ? (self.weight *
                 cs.xTrace.values[index])
               : 0 +
                 sp.derivative * cs.eligibility * influence;
@@ -358,9 +356,8 @@ export class Node implements TagsInterface, NodeInterface {
       for (let i = toList.length; i--;) {
         const c = toList[i];
         const fromState = this.util.networkState.node(c.from);
-        const cs = this.util.networkState.connection(c.from, c.to);
 
-        value += fromState.activation * c.weight * cs.gain;
+        value += fromState.activation * c.weight;
       }
 
       const activationSquash = (squashMethod as ActivationInterface);
@@ -415,9 +412,9 @@ export class Node implements TagsInterface, NodeInterface {
 
         const toState = this.util.networkState.node(c.to);
         // Eq. 21
-        const cs = this.util.networkState.connection(c.from, c.to);
+        // const cs = this.util.networkState.connection(c.from, c.to);
         const tmpError = error +
-          toState.errorResponsibility * c.weight * cs.gain;
+          toState.errorResponsibility * c.weight;
         error = Number.isFinite(tmpError) ? tmpError : error;
       }
 

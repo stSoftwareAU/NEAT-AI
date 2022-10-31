@@ -194,8 +194,8 @@ export class Neat {
       tmpPreviousFittest,
       /** 20% of population or those that just died */
       Math.max(
-        Math.ceil(this.config.popsize / 5),
-        this.config.popsize - this.population.length,
+        Math.ceil(this.config.popSize / 5),
+        this.config.popSize - this.population.length,
       ),
       !rebootedFineTune && this.config.verbose,
       this.config.experimentStore ? true : false,
@@ -205,7 +205,7 @@ export class Neat {
 
     // Breed the next individuals
     for (
-      let i = this.config.popsize - elitists.length -
+      let i = this.config.popSize - elitists.length -
         fineTunedPopulation.length;
       i--;
     ) {
@@ -315,7 +315,7 @@ export class Neat {
           .population[Math.floor(Math.random() * this.population.length)];
       }
       case Selection.TOURNAMENT: {
-        if (Selection.TOURNAMENT.size > this.config.popsize) {
+        if (Selection.TOURNAMENT.size > this.config.popSize) {
           throw new Error(
             "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
           );
