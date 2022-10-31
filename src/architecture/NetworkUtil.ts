@@ -919,6 +919,10 @@ export class NetworkUtil {
     let bestScore = -Infinity;
     let bestCreature = null;
 
+    if (config.pauseMS) {
+      await sleep(config.pauseMS);
+    }
+
     let iterationStartMS = new Date().getTime();
 
     while (

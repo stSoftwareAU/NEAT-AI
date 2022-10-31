@@ -199,7 +199,7 @@ export class Node implements TagsInterface, NodeInterface {
         const c = toList[i];
 
         const fromState = this.util.networkState.node(c.from);
-        const cs = this.util.networkState.connection(c.from, c.to);
+        
         value += fromState.activation * c.weight;
       }
 
