@@ -27,7 +27,8 @@ export class WorkerProcessor {
       if (!this.cost) throw "no cost";
 
       const network = NetworkUtil.fromJSON(JSON.parse(data.evaluate.network));
-
+      /* release some memory*/
+      data.evaluate.network = "";
       const result = network.util.testDir(
         this.dataSetDir,
         this.cost,
@@ -48,6 +49,8 @@ export class WorkerProcessor {
         JSON.parse(data.train.network),
         data.debug,
       );
+      /* release some memory*/
+      data.train.network = "";
 
       if (!this.dataSetDir) throw "No data dir";
 

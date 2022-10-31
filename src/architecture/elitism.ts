@@ -31,24 +31,6 @@ export function makeElitists(
     }
   });
 
-  // if( DEBUG){
-  //   let lastScore=Infinity;
-  //   for( let pos=0;pos<population.length;pos++){
-  //     const creature=population[pos];
-  //     if( creature.score>lastScore){
-  //       throw "Unsorted at " + pos + " was: " + lastScore + ", now: " + creature.score;
-  //     }
-  //     if( Number.isFinite( creature.score)){
-  //       if( lastScore!=Infinity)
-  //       {
-  //         if( !Number.isFinite(lastScore)){
-  //           throw "Unsorted (not a number) at " + pos + " was: " + lastScore + ", now: " + creature.score;
-  //         }
-  //       }
-  //     }
-  //     lastScore=creature.score;
-  //   }
-  // }
   const elitists = population.slice(0, elitism);
 
   return elitists;

@@ -1072,6 +1072,12 @@ export class NetworkUtil {
       dataDir + "/" + fn
     );
 
+    const cached = files.length == 1;
+    if (!cached) {
+      cacheDataFile.fn = "";
+      cacheDataFile.json = {};
+    }
+    const EMPTY = { input: [], output: [] };
     for (let j = files.length; j--;) {
       const fn = files[j];
 
@@ -1079,13 +1085,11 @@ export class NetworkUtil {
         ? cacheDataFile.json
         : JSON.parse(Deno.readTextFileSync(fn));
 
-      if (files.length == 1) {
+      if (cached) {
         cacheDataFile.fn = fn;
         cacheDataFile.json = json;
-      } else {
-        cacheDataFile.fn = "";
-        cacheDataFile.json = {};
       }
+
       if (json.length == 0) {
         throw "Set size must be positive";
       }
@@ -1093,6 +1097,9 @@ export class NetworkUtil {
       for (let i = json.length; i--;) {
         const data = json[i];
 
+        if (!cached) {
+          json[i] = EMPTY;
+        }
         const output = this.noTraceActivate(
           data.input,
           feedbackLoop,
@@ -1145,7 +1152,7 @@ export class NetworkUtil {
     let currentRate = 0.3;
     let iteration = 0;
     let error = 1;
-
+    const EMPTY = { input: [], output: [] };
     while (
       Number.isFinite(error) &&
       error > targetError &&
@@ -1162,6 +1169,11 @@ export class NetworkUtil {
 
       let counter = 0;
       let errorSum = 0;
+      const cached = files.length == 1;
+      if (!cached) {
+        cacheDataFile.fn = "";
+        cacheDataFile.json = {};
+      }
 
       for (let j = files.length; j--;) {
         const fn = files[j];
@@ -1169,12 +1181,9 @@ export class NetworkUtil {
           ? cacheDataFile.json
           : JSON.parse(Deno.readTextFileSync(fn));
 
-        if (files.length == 1) {
+        if (cached) {
           cacheDataFile.fn = fn;
           cacheDataFile.json = json;
-        } else {
-          cacheDataFile.fn = "";
-          cacheDataFile.json = {};
         }
 
         if (json.length == 0) {
@@ -1184,15 +1193,17 @@ export class NetworkUtil {
 
         for (let i = len; i--;) {
           const data = json[i];
-          const input = data.input;
-          const target = data.output;
+
+          if (!cached) {
+            json[i] = EMPTY;
+          }
           const update = !!((i + 1) % batchSize === 0 || i === 0);
 
-          const output = this.activate(input);
+          const output = this.activate(data.input);
 
-          errorSum += cost.calculate(target, output);
+          errorSum += cost.calculate(data.output, output);
 
-          this.propagate(currentRate, momentum, update, target);
+          this.propagate(currentRate, momentum, update, data.output);
         }
 
         counter += len;
