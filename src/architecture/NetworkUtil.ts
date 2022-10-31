@@ -28,8 +28,7 @@ const cacheDataFile = {
   json: {},
 };
 
-function sleep(ms: number) {
-  console.info(`Sleep ${ms}`);
+function sleep(ms: number) {  
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
