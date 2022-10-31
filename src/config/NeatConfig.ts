@@ -3,8 +3,8 @@
 *******************************************************************************/
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 import { NeatOptions } from "./NeatOptions.ts";
-import { Mutation } from "../methods/mutation.ts";
-import { Selection } from "../methods/Selection.ts";
+import { Mutation, MutationIterface } from "../methods/mutation.ts";
+import { Selection, SelectionIterface } from "../methods/Selection.ts";
 
 export interface NeatConfig {
   clear: boolean;
@@ -59,8 +59,8 @@ export interface NeatConfig {
   /** The target population size. */
   popSize: number;
 
-  /* pause every log for X milliseconds. */
-  pauseMS?: number;
+  /* pause every log for X milliseconds. Default 0*/
+  pauseMS: number;
 
   costName: string;
   /** the number of workers */
@@ -68,8 +68,9 @@ export interface NeatConfig {
   /** the initial train rate if evolving or the rate to use when training only */
   trainRate: number;
 
-  selection: any;
-  mutation: any;
+  selection: SelectionIterface;
+  mutation: MutationIterface[];
+
   iterations: number;
   log: number;
   /** verbose logging default: false */
@@ -109,6 +110,7 @@ export function make(parameters?: NeatOptions) {
     iterations: options.iterations ? options.iterations : 0,
 
     popSize: options.popSize || 50,
+    pauseMS: options.pauseMS || 0,
     elitism: options.elitism || 1,
 
     maxConns: options.maxConns || Infinity,

@@ -2,7 +2,9 @@
  **                                    SELECTION
  **  https://en.wikipedia.org/wiki/Selection_(genetic_algorithm)
  *******************************************************************************/
-
+export interface SelectionIterface {
+  name: string;
+}
 export const Selection = {
   FITNESS_PROPORTIONATE: {
     name: "FITNESS_PROPORTIONATE",

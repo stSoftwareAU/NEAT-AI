@@ -1,7 +1,9 @@
 /*******************************************************************************
                                       MUTATION
 *******************************************************************************/
-
+export interface MutationIterface {
+  name: string;
+}
 // https://en.wikipedia.org/wiki/mutation_(genetic_algorithm)
 const temp = {
   ADD_NODE: {
