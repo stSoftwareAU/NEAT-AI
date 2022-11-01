@@ -149,7 +149,7 @@ export class NeatUtil {
     const p1 = this.neat.getParent();
 
     if( p1 === undefined ){
-      console.warn( "No parent 1 found", this.config.selection);
+      console.warn( "No parent 1 found", this.config.selection.name, this.neat.population.length);
 
       for( let pos=0; pos< this.neat.population.length;pos++){
         console.info( pos, this.neat.population[pos]?true:false);
@@ -157,6 +157,7 @@ export class NeatUtil {
       for( let pos=0; pos< this.neat.population.length;pos++){
         if( this.neat.population[pos]) return this.neat.population[pos];
       }
+      throw "Extinction event";
     }
 
     let p2 = this.neat.getParent();
@@ -166,7 +167,7 @@ export class NeatUtil {
     }
 
     if( p2 === undefined ){
-      console.warn( "No parent 2 found", this.config.selection);
+      console.warn( "No parent 2 found", this.config.selection.name,this.neat.population.length);
 
       for( let pos=0; pos< this.neat.population.length;pos++){
         console.info( pos, this.neat.population[pos]?true:false);
@@ -174,6 +175,8 @@ export class NeatUtil {
       for( let pos=0; pos< this.neat.population.length;pos++){
         if( this.neat.population[pos]) return this.neat.population[pos];
       }
+
+      throw "Extinction event";
     }
 
     const creature = NetworkUtil.crossOver(

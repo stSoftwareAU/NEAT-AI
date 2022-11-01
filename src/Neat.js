@@ -125,7 +125,12 @@ export class Neat {
       }
     }
 
+    if( livePopulation.length>0){
     this.population = livePopulation;
+    }
+    else{
+      console.warn( "All creatures died, using zombies");
+    }
 
     /**
      * If this is the first run then use the second best as the "previous"
