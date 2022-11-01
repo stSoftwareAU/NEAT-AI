@@ -148,17 +148,38 @@ export class NeatUtil {
   getOffspring() {
     const p1 = this.neat.getParent();
 
+    if( p1 === undefined ){
+      console.warn( "No parent 1 found", this.config.selection);
+
+      for( let pos=0; pos< this.neat.population.length;pos++){
+        console.info( pos, this.neat.population[pos]?true:false);
+      }
+      for( let pos=0; pos< this.neat.population.length;pos++){
+        if( this.neat.population[pos]) return this.neat.population[pos];
+      }
+    }
+
     let p2 = this.neat.getParent();
     for (let i = 0; i < 12; i++) {
       p2 = this.neat.getParent();
       if (p1 !== p2) break;
     }
 
+    if( p2 === undefined ){
+      console.warn( "No parent 2 found", this.config.selection);
+
+      for( let pos=0; pos< this.neat.population.length;pos++){
+        console.info( pos, this.neat.population[pos]?true:false);
+      }
+      for( let pos=0; pos< this.neat.population.length;pos++){
+        if( this.neat.population[pos]) return this.neat.population[pos];
+      }
+    }
+
     const creature = NetworkUtil.crossOver(
       p1,
       p2,
     );
-
     if (this.config.debug) creature.util.validate();
     return creature;
   }
