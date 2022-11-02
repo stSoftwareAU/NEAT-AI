@@ -31,7 +31,7 @@ export class Neat {
     this.generation = 0;
     this.trainRate = this.config.trainRate;
 
-    // Initialise the genomes
+    // Initialize the genomes
     this.population = this.config.creatures;
   }
 
@@ -248,7 +248,7 @@ export class Neat {
       ...trainPopulation,
     ]; // Keep pseudo sorted.
 
-    await this.util.deDepulate(this.population);
+    await this.util.deDuplicate(this.population);
     this.generation++;
 
     return fittest;

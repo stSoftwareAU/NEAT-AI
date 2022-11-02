@@ -139,7 +139,7 @@ export class NeatUtil {
 
     this.neat.population.unshift(network);
 
-    await this.deDepulate(this.neat.population);
+    await this.deDuplicate(this.neat.population);
   }
 
   /**
@@ -187,10 +187,10 @@ export class NeatUtil {
     return creature;
   }
 
-  async deDepulate(creatures: NetworkInterface[]) {
+  async deDuplicate(creatures: NetworkInterface[]) {
     const unique = new Set();
     /**
-     *  Reset the scores & de-duplcate the population.
+     *  Reset the scores & de-duplicate the population.
      */
     for (let i = 0; i < creatures.length; i++) {
       const p = creatures[i];
