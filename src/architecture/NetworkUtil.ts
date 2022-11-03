@@ -28,10 +28,6 @@ const cacheDataFile = {
   json: {},
 };
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export class NetworkUtil {
   readonly network;
   readonly networkState = new NetworkState();
@@ -925,10 +921,6 @@ export class NetworkUtil {
     let bestScore = -Infinity;
     let bestCreature = null;
 
-    if (config.pauseMS) {
-      await sleep(config.pauseMS);
-    }
-
     let iterationStartMS = new Date().getTime();
 
     while (
@@ -973,9 +965,6 @@ export class NetworkUtil {
           ),
         );
 
-        if (config.pauseMS) {
-          await sleep(config.pauseMS);
-        }
         iterationStartMS = new Date().getTime();
       }
 

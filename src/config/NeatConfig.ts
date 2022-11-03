@@ -59,9 +59,6 @@ export interface NeatConfig {
   /** The target population size. */
   popSize: number;
 
-  /* pause every log for X milliseconds. Default 0*/
-  pauseMS: number;
-
   costName: string;
   /** the number of workers */
   threads: number;
@@ -87,8 +84,8 @@ export function make(parameters?: NeatOptions) {
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
     costName: options.costName || "MSE",
-    dataSetPartitionBreak: options.dataSetParitionBreak
-      ? Math.max(options.dataSetParitionBreak, 1000)
+    dataSetPartitionBreak: options.dataSetPartitionBreak
+      ? Math.max(options.dataSetPartitionBreak, 1000)
       : 2000,
 
     debug: options.debug
@@ -110,7 +107,6 @@ export function make(parameters?: NeatOptions) {
     iterations: options.iterations ? options.iterations : 0,
 
     popSize: options.popSize || 50,
-    pauseMS: options.pauseMS || 0,
     elitism: options.elitism || 1,
 
     maxConns: options.maxConns || Infinity,

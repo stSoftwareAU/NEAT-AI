@@ -17,7 +17,7 @@ export interface NeatOptions {
   creatureStore?: string;
 
   /** number of records per dataset file. default: 2000 */
-  dataSetParitionBreak?: number;
+  dataSetPartitionBreak?: number;
 
   /** debug (much slower) */
   debug?: boolean;
@@ -61,9 +61,6 @@ export interface NeatOptions {
 
   /** The target population size. 50 by default */
   popSize?: number;
-
-  /* pause every log for X milliseconds. */
-  pauseMS?: number;
 
   /** the number of workers */
   threads?: number;
