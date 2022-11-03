@@ -8,7 +8,7 @@ export interface TrainOptions {
   /** The cost function to use. See cost methods. Default: methods.cost.MSE */
   cost?: string;
 
-  /** Sets the learning rate of the backpropagation process. Default: 0.3. */
+  /** Sets the learning rate of the back propagation process. Default: 0.3. */
   rate?: number;
 
   /** Sets the amount of iterations the process will maximally run, even when the target error has not been reached. Default: NaN */

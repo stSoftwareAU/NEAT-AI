@@ -31,10 +31,10 @@ export class Fitness {
   }
 
   private async _callWorker(worker: WorkerHandler, creature: NetworkInterface) {
-    const responeData = await worker.evaluate(creature, this.feedbackLoop);
-    if (!responeData.evaluate) throw "Invalid response";
+    const responseData = await worker.evaluate(creature, this.feedbackLoop);
+    if (!responseData.evaluate) throw "Invalid response";
 
-    const error = responeData.evaluate.error;
+    const error = responseData.evaluate.error;
     addTag(creature, "error", Math.abs(error).toString());
     const realCreature = (creature as Network);
     creature.score = -error - (

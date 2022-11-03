@@ -2,7 +2,7 @@
  **                                    SELECTION
  **  https://en.wikipedia.org/wiki/Selection_(genetic_algorithm)
  *******************************************************************************/
-export interface SelectionIterface {
+export interface SelectionInterface {
   name: string;
 }
 export const Selection = {

@@ -1,7 +1,7 @@
 /*******************************************************************************
                                       MUTATION
 *******************************************************************************/
-export interface MutationIterface {
+export interface MutationInterface {
   name: string;
 }
 // https://en.wikipedia.org/wiki/mutation_(genetic_algorithm)

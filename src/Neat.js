@@ -58,7 +58,7 @@ export class Neat {
         trainPromises.push(p);
       }
     }
-    await this.evaluate();
+    await this.fitness.calculate(this.population);
 
     /* Elitism: we need at least 2 on the first run */
     const elitists = makeElitists(
@@ -196,18 +196,26 @@ export class Neat {
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
       tmpPreviousFittest,
-      /** 20% of population */
-      Math.ceil(this.config.popSize / 5),
+      /** 20% of population or those that just died */
+      Math.max(
+        Math.ceil(this.config.popSize / 5),
+        this.config.popSize - this.population.length - this.config.elitism -
+          trainPromises.length,
+      ),
       !rebootedFineTune && this.config.verbose,
       this.config.experimentStore ? true : false,
     );
 
     const newPopulation = [];
 
+    const newPopSize = this.config.popSize -
+      elitists.length -
+      trainPromises.length -
+      fineTunedPopulation.length - 1;
+
     // Breed the next individuals
     for (
-      let i = this.config.popSize - elitists.length - trainPromises.length -
-        fineTunedPopulation.length - 1;
+      let i = newPopSize > 0 ? newPopSize : 0;
       i--;
     ) {
       newPopulation.push(this.util.getOffspring());
@@ -250,24 +258,6 @@ export class Neat {
     this.generation++;
 
     return fittest;
-  }
-
-  /**
-   * Evaluates the current population
-   */
-  async evaluate() {
-    if (this.config.clear) {
-      for (let i = this.population.length; i--;) {
-        this.population[i].util.clear();
-      }
-    }
-
-    try {
-      await this.fitness.calculate(this.population);
-    } catch (e) {
-      console.error("fitness error", e);
-      throw e;
-    }
   }
 
   /**

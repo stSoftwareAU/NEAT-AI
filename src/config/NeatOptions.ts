@@ -2,8 +2,8 @@
                                       CONFIG
 *******************************************************************************/
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
-import { MutationIterface } from "../methods/mutation.ts";
-import { SelectionIterface } from "../methods/Selection.ts";
+import { MutationInterface } from "../methods/mutation.ts";
+import { SelectionInterface } from "../methods/Selection.ts";
 
 export interface NeatOptions {
   /** Target error 0 to 1 */
@@ -70,8 +70,8 @@ export interface NeatOptions {
 
   /** the initial train rate if evolving or the rate to use when training only; default 0.01 */
   trainRate?: number;
-  selection?: SelectionIterface;
-  mutation?: MutationIterface[];
+  selection?: SelectionInterface;
+  mutation?: MutationInterface[];
 
   iterations?: number;
   log?: number;

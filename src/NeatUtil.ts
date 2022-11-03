@@ -200,7 +200,6 @@ export class NeatUtil {
       console.info(
         `Over populated ${creatures.length} expected ${this.config.popSize}`,
       );
-      console.trace();
     }
 
     const unique = new Set();
