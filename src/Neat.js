@@ -54,8 +54,12 @@ export class Neat {
     ) {
       const n = this.population[i];
       if (n.score) {
-        const p = this.workers[i].train(n, this.trainRate);
-        trainPromises.push(p);
+        const trained = getTag(n, "trained");
+        if (trained !== "YES") {
+          const p = this.workers[i].train(n, this.trainRate);
+          trainPromises.push(p);
+          addTag(n, "trained", "YES");
+        }
       }
     }
     await this.fitness.calculate(this.population);
