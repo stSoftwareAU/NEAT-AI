@@ -2,6 +2,7 @@ import { NeatUtil } from "../src/NeatUtil.ts";
 import { Neat } from "../src/Neat.js";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { make as makeConfig } from "../src/config/NeatConfig.ts";
+import { Network } from "../src/architecture/network.js";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -39,8 +40,8 @@ Deno.test("OffSpring", async () => {
   const util = new NeatUtil(new Neat(1, 1), config);
 
   await util.populatePopulation(creature);
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < config.popSize; i++) {
     const kid = util.getOffspring();
-    await util.populatePopulation(kid);
+    await util.populatePopulation(kid as Network);
   }
 });

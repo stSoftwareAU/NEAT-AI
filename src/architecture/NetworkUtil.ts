@@ -253,8 +253,7 @@ export class NetworkUtil {
               if (compactNetwork.util.getConnection(from, to) == null) {
                 let weightA = fromList[0].weight * toList[0].weight;
 
-                let biasA =
-                  compactNetwork.nodes[from].bias * toList[0].weight +
+                let biasA = compactNetwork.nodes[from].bias * toList[0].weight +
                   compactNetwork.nodes[pos].bias;
 
                 if (biasA === Number.POSITIVE_INFINITY) {
@@ -264,7 +263,7 @@ export class NetworkUtil {
                 } else if (isNaN(biasA)) {
                   biasA = 0;
                 }
-                
+
                 compactNetwork.nodes[from].bias = biasA;
 
                 compactNetwork.util.removeHiddenNode(pos);

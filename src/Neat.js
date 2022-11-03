@@ -125,11 +125,10 @@ export class Neat {
       }
     }
 
-    if( livePopulation.length>0){
-    this.population = livePopulation;
-    }
-    else{
-      console.warn( "All creatures died, using zombies");
+    if (livePopulation.length > 0) {
+      this.population = livePopulation;
+    } else {
+      console.warn("All creatures died, using zombies");
     }
 
     /**
@@ -197,11 +196,8 @@ export class Neat {
     const fineTunedPopulation = fineTuneImprovement(
       fittest,
       tmpPreviousFittest,
-      /** 20% of population or those that just died */
-      Math.max(
-        Math.ceil(this.config.popSize / 5),
-        this.config.popSize - this.population.length,
-      ),
+      /** 20% of population */
+      Math.ceil(this.config.popSize / 5),
       !rebootedFineTune && this.config.verbose,
       this.config.experimentStore ? true : false,
     );
@@ -210,8 +206,8 @@ export class Neat {
 
     // Breed the next individuals
     for (
-      let i = this.config.popSize - elitists.length -
-        fineTunedPopulation.length;
+      let i = this.config.popSize - elitists.length - trainPromises.length -
+        fineTunedPopulation.length - 1;
       i--;
     ) {
       newPopulation.push(this.util.getOffspring());
@@ -243,10 +239,12 @@ export class Neat {
 
     this.population = [
       ...elitists,
+      ...trainPopulation,
       ...fineTunedPopulation,
       ...newPopulation,
-      ...trainPopulation,
     ]; // Keep pseudo sorted.
+
+    // console.info(`popSize: ${this.config.popSize}, elitists: ${elitists.length}, trained: ${trainPopulation.length}, fineTuned: ${fineTunedPopulation.length}, newPop: ${newPopulation.length}`);
 
     await this.util.deDuplicate(this.population);
     this.generation++;
@@ -271,6 +269,7 @@ export class Neat {
       throw e;
     }
   }
+
   /**
    * Gets a genome based on the selection function
    * @return {Network} genome

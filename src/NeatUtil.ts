@@ -56,7 +56,7 @@ export class NeatUtil {
         name.substring(0, 3) + "/" + name.substring(3) + ".txt";
       try {
         Deno.readTextFileSync(filePath);
-        // console.log("PREVIOUS", name, score);
+
         return true;
       } catch {
         return false;
@@ -127,7 +127,7 @@ export class NeatUtil {
     if (this.config.debug) {
       network.util.validate();
     }
-    while (this.neat.population.length < this.config.popSize) {
+    while (this.neat.population.length < this.config.popSize - 1) {
       const clonedCreature = NetworkUtil.fromJSON(
         network.util.toJSON(),
         this.config.debug,
@@ -148,14 +148,18 @@ export class NeatUtil {
   getOffspring() {
     const p1 = this.neat.getParent();
 
-    if( p1 === undefined ){
-      console.warn( "No parent 1 found", this.config.selection.name, this.neat.population.length);
+    if (p1 === undefined) {
+      console.warn(
+        "No parent 1 found",
+        this.config.selection.name,
+        this.neat.population.length,
+      );
 
-      for( let pos=0; pos< this.neat.population.length;pos++){
-        console.info( pos, this.neat.population[pos]?true:false);
+      for (let pos = 0; pos < this.neat.population.length; pos++) {
+        console.info(pos, this.neat.population[pos] ? true : false);
       }
-      for( let pos=0; pos< this.neat.population.length;pos++){
-        if( this.neat.population[pos]) return this.neat.population[pos];
+      for (let pos = 0; pos < this.neat.population.length; pos++) {
+        if (this.neat.population[pos]) return this.neat.population[pos];
       }
       throw "Extinction event";
     }
@@ -166,14 +170,18 @@ export class NeatUtil {
       if (p1 !== p2) break;
     }
 
-    if( p2 === undefined ){
-      console.warn( "No parent 2 found", this.config.selection.name,this.neat.population.length);
+    if (p2 === undefined) {
+      console.warn(
+        "No parent 2 found",
+        this.config.selection.name,
+        this.neat.population.length,
+      );
 
-      for( let pos=0; pos< this.neat.population.length;pos++){
-        console.info( pos, this.neat.population[pos]?true:false);
+      for (let pos = 0; pos < this.neat.population.length; pos++) {
+        console.info(pos, this.neat.population[pos] ? true : false);
       }
-      for( let pos=0; pos< this.neat.population.length;pos++){
-        if( this.neat.population[pos]) return this.neat.population[pos];
+      for (let pos = 0; pos < this.neat.population.length; pos++) {
+        if (this.neat.population[pos]) return this.neat.population[pos];
       }
 
       throw "Extinction event";
@@ -188,6 +196,13 @@ export class NeatUtil {
   }
 
   async deDuplicate(creatures: NetworkInterface[]) {
+    if (creatures.length > this.config.popSize + 1) {
+      console.info(
+        `Over populated ${creatures.length} expected ${this.config.popSize}`,
+      );
+      console.trace();
+    }
+
     const unique = new Set();
     /**
      *  Reset the scores & de-duplicate the population.
@@ -201,21 +216,29 @@ export class NeatUtil {
         duplicate = await this.previousExperiment(p);
       }
       if (duplicate) {
-        for (let j = 0; j < 100; j++) {
-          const tmpPopulation = [this.getOffspring()];
-          this.mutate(tmpPopulation);
+        if (creatures.length > this.config.popSize) {
+          console.info(
+            `Culling duplicate creature at ${i} of ${creatures.length}`,
+          );
+          creatures.splice(i, 1);
+          i--;
+        } else {
+          for (let j = 0; j < 100; j++) {
+            const tmpPopulation = [this.getOffspring()];
+            this.mutate(tmpPopulation);
 
-          const p2 = tmpPopulation[0];
-          const key2 = await this.makeUniqueName(p2);
+            const p2 = tmpPopulation[0];
+            const key2 = await this.makeUniqueName(p2);
 
-          let duplicate2 = unique.has(key2);
-          if (!duplicate2 && i > this.config.elitism) {
-            duplicate2 = await this.previousExperiment(p2);
-          }
-          if (duplicate2 == false) {
-            creatures[i] = p2;
-            unique.add(key2);
-            break;
+            let duplicate2 = unique.has(key2);
+            if (!duplicate2 && i > this.config.elitism) {
+              duplicate2 = await this.previousExperiment(p2);
+            }
+            if (duplicate2 == false) {
+              creatures[i] = p2;
+              unique.add(key2);
+              break;
+            }
           }
         }
       } else {
