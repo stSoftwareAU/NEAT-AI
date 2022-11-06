@@ -848,7 +848,7 @@ export class NetworkUtil {
    */
   propagate(rate: number, momentum: number, update: boolean, target: number[]) {
     if (
-      typeof target === "undefined" || target.length !== this.network.output
+      target === undefined || target.length !== this.network.output
     ) {
       throw new Error(
         "Output target length should match network output length",
