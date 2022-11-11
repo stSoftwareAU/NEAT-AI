@@ -1405,7 +1405,7 @@ export class NetworkUtil {
     let fromIndex = -1;
     let toIndex = -1;
 
-    for (let attempts = 0; true; attempts++) {
+    for (let attempts = 0; attempts < 1000; attempts++) { //@TODO
       if (attempts > 9) tmpFocusList = undefined;
       if (fromIndex === -1) {
         const pos = Math.min(
@@ -1445,7 +1445,7 @@ export class NetworkUtil {
       );
     } else {
       console.trace();
-      throw "Should have a from index";
+      console.warn("addNode: Should have a from index");
     }
 
     if (toIndex !== -1) {
@@ -1457,7 +1457,7 @@ export class NetworkUtil {
       node.fix();
     } else {
       console.trace();
-      throw "Should have a to index";
+      console.warn("addNode: Should have a to index");
     }
   }
 

@@ -113,7 +113,9 @@ export function make(parameters?: NeatOptions) {
     maxNodes: options.maxNodes || Infinity,
     mutationRate: options.mutationRate || 0.3,
 
-    mutationAmount: options.mutationAmount || 1,
+    mutationAmount: options.mutationAmount
+      ? options.mutationAmount > 1 ? options.mutationAmount : 1
+      : 1,
     mutation: options.mutation || Mutation.FFW,
     selection: options.selection || Selection.POWER,
 

@@ -48,18 +48,22 @@ export class NeatUtil {
     return name;
   }
 
-  async previousExperiment(creature: NetworkInterface) {
+  previousExperiment(key: string) {
     if (this.config.experimentStore) {
-      const name = await this.makeUniqueName(creature);
-
       const filePath = this.config.experimentStore + "/score/" +
-        name.substring(0, 3) + "/" + name.substring(3) + ".txt";
+        key.substring(0, 3) + "/" + key.substring(3) + ".txt";
       try {
-        Deno.readTextFileSync(filePath);
+        Deno.statSync(filePath);
 
         return true;
-      } catch {
-        return false;
+      } catch (error) {
+        if (error instanceof Deno.errors.NotFound) {
+          // file or directory does not exist
+          return false;
+        } else {
+          // unexpected error, maybe permissions, pass it along
+          throw error;
+        }
       }
     } else {
       return false;
@@ -202,6 +206,7 @@ export class NeatUtil {
       );
     }
 
+    let duplicateCount = 0;
     const unique = new Set();
     /**
      *  Reset the scores & de-duplicate the population.
@@ -212,9 +217,10 @@ export class NeatUtil {
 
       let duplicate = unique.has(key);
       if (!duplicate && i > this.config.elitism) {
-        duplicate = await this.previousExperiment(p);
+        duplicate = await this.previousExperiment(key);
       }
       if (duplicate) {
+        duplicateCount++;
         if (creatures.length > this.config.popSize) {
           console.info(
             `Culling duplicate creature at ${i} of ${creatures.length}`,
@@ -231,18 +237,24 @@ export class NeatUtil {
 
             let duplicate2 = unique.has(key2);
             if (!duplicate2 && i > this.config.elitism) {
-              duplicate2 = await this.previousExperiment(p2);
+              duplicate2 = await this.previousExperiment(key2);
             }
             if (duplicate2 == false) {
               creatures[i] = p2;
               unique.add(key2);
               break;
+            } else {
+              duplicateCount++;
             }
           }
         }
       } else {
         unique.add(key);
       }
+    }
+
+    if (duplicateCount) {
+      console.info(`Removed ${duplicateCount} identical creatures`);
     }
   }
 

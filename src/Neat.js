@@ -256,8 +256,6 @@ export class Neat {
       ...newPopulation,
     ]; // Keep pseudo sorted.
 
-    // console.info(`popSize: ${this.config.popSize}, elitists: ${elitists.length}, trained: ${trainPopulation.length}, fineTuned: ${fineTunedPopulation.length}, newPop: ${newPopulation.length}`);
-
     await this.util.deDuplicate(this.population);
     this.generation++;
 

@@ -46,18 +46,24 @@ Deno.test("previous", async () => {
   const p = [creature];
   util.writeScores(p);
 
-  const flag = await util.previousExperiment(creature);
+  const flag = await previousExperiment(creature, util);
 
   assert(flag, "should have detected itself just written");
 
   delete creature.score;
-  const flag2 = await util.previousExperiment(creature);
+  const flag2 = await previousExperiment(creature, util);
 
   assert(flag2, "Don't look at score");
 
   addTag(creature, "hello", "world");
 
-  const flag3 = await util.previousExperiment(creature);
+  const flag3 = await previousExperiment(creature, util);
 
   assert(flag3, "Don't care about tags");
 });
+
+async function previousExperiment(creature: NetworkInterface, util: NeatUtil) {
+  const key = await util.makeUniqueName(creature);
+
+  return util.previousExperiment(key);
+}
