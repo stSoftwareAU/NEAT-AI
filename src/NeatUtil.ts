@@ -206,7 +206,6 @@ export class NeatUtil {
       );
     }
 
-    let duplicateCount = 0;
     const unique = new Set();
     /**
      *  Reset the scores & de-duplicate the population.
@@ -217,10 +216,9 @@ export class NeatUtil {
 
       let duplicate = unique.has(key);
       if (!duplicate && i > this.config.elitism) {
-        duplicate = await this.previousExperiment(key);
+        duplicate = this.previousExperiment(key);
       }
       if (duplicate) {
-        duplicateCount++;
         if (creatures.length > this.config.popSize) {
           console.info(
             `Culling duplicate creature at ${i} of ${creatures.length}`,
@@ -243,18 +241,12 @@ export class NeatUtil {
               creatures[i] = p2;
               unique.add(key2);
               break;
-            } else {
-              duplicateCount++;
             }
           }
         }
       } else {
         unique.add(key);
       }
-    }
-
-    if (duplicateCount) {
-      console.info(`Removed ${duplicateCount} identical creatures`);
     }
   }
 
