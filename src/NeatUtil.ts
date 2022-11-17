@@ -5,11 +5,12 @@ import { Network } from "./architecture/network.js";
 import { NetworkUtil } from "./architecture/NetworkUtil.ts";
 import { NetworkInterface } from "./architecture/NetworkInterface.ts";
 import { Mutation } from "./methods/mutation.ts";
-import { crypto } from "https://deno.land/std@0.161.0/crypto/mod.ts";
-import { encode } from "https://deno.land/std@0.161.0/encoding/base64.ts";
-import { ensureDirSync } from "https://deno.land/std@0.161.0/fs/ensure_dir.ts";
+import { crypto } from "https://deno.land/std@0.165.0/crypto/mod.ts";
+import { encode } from "https://deno.land/std@0.165.0/encoding/base64.ts";
+import { ensureDirSync } from "https://deno.land/std@0.165.0/fs/ensure_dir.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import { removeTag } from "../src/tags/TagsInterface.ts";
+import { Selection } from "./methods/Selection.ts";
 
 const TE = new TextEncoder();
 
@@ -150,7 +151,7 @@ export class NeatUtil {
    * Breeds two parents into an offspring, population MUST be sorted
    */
   getOffspring() {
-    const p1 = this.neat.getParent();
+    const p1 = this.getParent();
 
     if (p1 === undefined) {
       console.warn(
@@ -168,9 +169,9 @@ export class NeatUtil {
       throw "Extinction event";
     }
 
-    let p2 = this.neat.getParent();
+    let p2 = this.getParent();
     for (let i = 0; i < 12; i++) {
-      p2 = this.neat.getParent();
+      p2 = this.getParent();
       if (p1 !== p2) break;
     }
 
@@ -277,6 +278,92 @@ export class NeatUtil {
       }
 
       return mutationMethod;
+    }
+  }
+
+  /**
+   * Gets a genome based on the selection function
+   * @return {Network} genome
+   */
+  getParent() {
+    switch (this.config.selection) {
+      case Selection.POWER: {
+        const r = Math.random();
+        const index = Math.floor(
+          Math.pow(r, Selection.POWER.power) *
+            this.neat.population.length,
+        );
+
+        return this.neat.population[index];
+      }
+      case Selection.FITNESS_PROPORTIONATE: {
+        /**
+         * As negative fitnesses are possible
+         * https://stackoverflow.com/questions/16186686/genetic-algorithm-handling-negative-fitness-values
+         * this is unnecessarily run for every individual, should be changed
+         */
+
+        let totalFitness = 0;
+        let minimalFitness = 0;
+        for (let i = this.neat.population.length; i--;) {
+          const tmpScore = this.neat.population[i].score;
+          const score = tmpScore === undefined ? Infinity * -1 : tmpScore;
+          minimalFitness = score < minimalFitness ? score : minimalFitness;
+          totalFitness += score;
+        }
+
+        const adjustFitness = Math.abs(minimalFitness);
+        totalFitness += adjustFitness * this.neat.population.length;
+
+        const random = Math.random() * totalFitness;
+        let value = 0;
+
+        for (let i = 0; i < this.neat.population.length; i++) {
+          const genome = this.neat.population[i];
+          if (genome.score !== undefined) {
+            value += genome.score + adjustFitness;
+            if (random < value) {
+              return genome;
+            }
+          }
+        }
+
+        // if all scores equal, return random genome
+        return this.neat
+          .population[Math.floor(Math.random() * this.neat.population.length)];
+      }
+      case Selection.TOURNAMENT: {
+        if (Selection.TOURNAMENT.size > this.config.popSize) {
+          throw new Error(
+            "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
+          );
+        }
+
+        // Create a tournament
+        const individuals = new Array(Selection.TOURNAMENT.size);
+        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
+          const random = this.neat
+            .population[
+              Math.floor(Math.random() * this.neat.population.length)
+            ];
+          individuals[i] = random;
+        }
+
+        // Sort the tournament individuals by score
+        individuals.sort(function (a, b) {
+          return b.score - a.score;
+        });
+
+        // Select an individual
+        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
+          if (
+            Math.random() < Selection.TOURNAMENT.probability ||
+            i === Selection.TOURNAMENT.size - 1
+          ) {
+            return individuals[i];
+          }
+        }
+      }
     }
   }
 }

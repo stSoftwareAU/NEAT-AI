@@ -4,7 +4,7 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.161.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.165.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.js";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
@@ -12,7 +12,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findRatePolicy } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.161.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.165.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -915,7 +915,7 @@ export class NetworkUtil {
       workers,
     );
 
-    await neat.populatePopulation(this.network);
+    await neat.util.populatePopulation(this.network as Network);
 
     let error = Infinity;
     let bestScore = -Infinity;
@@ -1296,7 +1296,7 @@ export class NetworkUtil {
       }
 
       const toList = this.toConnections(index);
-      // const tmpList = this.network.connections;
+
       for (let i = toList.length; i--;) {
         const checkIndx: number = toList[i].from;
         if (checkIndx === index) return true;
@@ -1408,11 +1408,8 @@ export class NetworkUtil {
     for (let attempts = 0; attempts < 1000; attempts++) { //@TODO
       if (attempts > 9) tmpFocusList = undefined;
       if (fromIndex === -1) {
-        const pos = Math.min(
-          Math.floor(
-            Math.random() * network.nodes.length,
-          ),
-          network.nodes.length - this.network.output - 1,
+        const pos = Math.floor(
+          Math.random() * (network.nodes.length - this.network.output),
         );
 
         if (node.index <= pos) continue;
@@ -1420,11 +1417,8 @@ export class NetworkUtil {
           fromIndex = pos;
         }
       } else if (toIndex === -1) {
-        const pos = Math.max(
-          Math.floor(
-            Math.random() * network.nodes.length - this.network.input,
-          ),
-          0,
+        const pos = Math.floor(
+          Math.random() * (network.nodes.length - this.network.input),
         ) + this.network.input;
 
         if (node.index >= pos) continue;

@@ -6,7 +6,7 @@ import {
   TagsInterface,
 } from "../src/tags/TagsInterface.ts";
 import { Network } from "../src/architecture/network.js";
-import { assert } from "https://deno.land/std@0.161.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

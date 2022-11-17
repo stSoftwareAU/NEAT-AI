@@ -2,7 +2,7 @@ import { NeatUtil } from "../src/NeatUtil.ts";
 import { Neat } from "../src/Neat.js";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
-import { assert } from "https://deno.land/std@0.161.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
 import { make as makeConfig } from "../src/config/NeatConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

@@ -36,13 +36,6 @@ export class Neat {
   }
 
   /**
-   * Create the initial pool of genomes
-   */
-  async populatePopulation(network) {
-    await this.util.populatePopulation(network);
-  }
-
-  /**
    * Evaluates, selects, breeds and mutates population
    */
   async evolve(previousFittest) {
@@ -260,86 +253,5 @@ export class Neat {
     this.generation++;
 
     return fittest;
-  }
-
-  /**
-   * Gets a genome based on the selection function
-   * @return {Network} genome
-   */
-  getParent() {
-    switch (this.config.selection) {
-      case Selection.POWER: {
-        const r = Math.random();
-        const index = Math.floor(
-          Math.pow(r, Selection.POWER.power) *
-            this.population.length,
-        );
-
-        return this.population[index];
-      }
-      case Selection.FITNESS_PROPORTIONATE: {
-        /**
-         * As negative fitnesses are possible
-         * https://stackoverflow.com/questions/16186686/genetic-algorithm-handling-negative-fitness-values
-         * this is unnecessarily run for every individual, should be changed
-         */
-
-        let totalFitness = 0;
-        let minimalFitness = 0;
-        for (let i = this.population.length; i--;) {
-          const score = this.population[i].score;
-          minimalFitness = score < minimalFitness ? score : minimalFitness;
-          totalFitness += score;
-        }
-
-        const adjustFitness = Math.abs(minimalFitness);
-        totalFitness += adjustFitness * this.population.length;
-
-        const random = Math.random() * totalFitness;
-        let value = 0;
-
-        for (let i = 0; i < this.population.length; i++) {
-          const genome = this.population[i];
-          value += genome.score + adjustFitness;
-          if (random < value) {
-            return genome;
-          }
-        }
-
-        // if all scores equal, return random genome
-        return this
-          .population[Math.floor(Math.random() * this.population.length)];
-      }
-      case Selection.TOURNAMENT: {
-        if (Selection.TOURNAMENT.size > this.config.popSize) {
-          throw new Error(
-            "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
-          );
-        }
-
-        // Create a tournament
-        const individuals = new Array(Selection.TOURNAMENT.size);
-        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
-          const random =
-            this.population[Math.floor(Math.random() * this.population.length)];
-          individuals[i] = random;
-        }
-
-        // Sort the tournament individuals by score
-        individuals.sort(function (a, b) {
-          return b.score - a.score;
-        });
-
-        // Select an individual
-        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
-          if (
-            Math.random() < Selection.TOURNAMENT.probability ||
-            i === Selection.TOURNAMENT.size - 1
-          ) {
-            return individuals[i];
-          }
-        }
-      }
-    }
   }
 }

@@ -2,7 +2,7 @@ import { NetworkUtil } from "./NetworkUtil.ts";
 
 export class Network {
   constructor(input, output, options = {}) {
-    if (typeof input === "undefined" || typeof output === "undefined") {
+    if (input === undefined || output === undefined) {
       throw new Error("No input or output size given");
     }
 
