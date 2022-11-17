@@ -5,7 +5,6 @@ import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { Fitness } from "./architecture/Fitness.ts";
 import { NeatUtil } from "./NeatUtil.ts";
-import { Selection } from "./methods/Selection.ts";
 
 import { NetworkUtil } from "./architecture/NetworkUtil.ts";
 
