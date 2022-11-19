@@ -1,5 +1,5 @@
 import { NeatUtil } from "../src/NeatUtil.ts";
-import { Neat } from "../src/Neat.js";
+import { Neat } from "../src/Neat.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { make as makeConfig } from "../src/config/NeatConfig.ts";
 import { Network } from "../src/architecture/network.js";
@@ -37,7 +37,7 @@ Deno.test("OffSpring", async () => {
   });
 
   const config = makeConfig({});
-  const util = new NeatUtil(new Neat(1, 1), config);
+  const util = new NeatUtil(new Neat(1, 1, {}, []), config);
 
   await util.populatePopulation(creature);
   for (let i = 0; i < config.popSize; i++) {

@@ -1,5 +1,5 @@
 import { NeatUtil } from "../src/NeatUtil.ts";
-import { Neat } from "../src/Neat.js";
+import { Neat } from "../src/Neat.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
@@ -38,7 +38,7 @@ Deno.test("knownName", async () => {
   });
 
   const config = makeConfig({});
-  const util = new NeatUtil(new Neat(1, 1), config);
+  const util = new NeatUtil(new Neat(1, 1, {}, []), config);
 
   // console.info( (creature as Network).toJSON() );
   const name = await util.makeUniqueName(creature);

@@ -1,4 +1,4 @@
-import { Neat } from "./Neat.js";
+import { Neat } from "./Neat.ts";
 
 import { Network } from "./architecture/network.js";
 
@@ -237,7 +237,7 @@ export class NeatUtil {
 
             addTag(json, "approach", "trained");
             addTag(json, "error", Math.abs(r.train.error).toString());
-            addTag(json, "duration", r.duration);
+            // addTag(json, "duration", r.duration);
 
             trainPopulation.push(NetworkUtil.fromJSON(json, this.config.debug));
           }

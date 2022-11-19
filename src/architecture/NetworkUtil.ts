@@ -6,7 +6,7 @@ import { NeatOptions } from "../config/NeatOptions.ts";
 
 import { yellow } from "https://deno.land/std@0.165.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import { Neat } from "../Neat.js";
+import { Neat } from "../Neat.ts";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
@@ -927,7 +927,9 @@ export class NetworkUtil {
       error > config.targetError &&
       (!options.iterations || neat.generation < options.iterations)
     ) {
-      const fittest = await neat.util.evolve((bestCreature as (NetworkInterface|undefined)));
+      const fittest = await neat.util.evolve(
+        bestCreature as (NetworkInterface | undefined),
+      );
 
       if (fittest.score > bestScore) {
         const errorTmp = getTag(fittest, "error");
