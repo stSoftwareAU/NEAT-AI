@@ -1,4 +1,4 @@
-import { Network } from "../src/architecture/network.js";
+import { Network } from "../src/architecture/Network.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import {
   assert,

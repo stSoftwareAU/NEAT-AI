@@ -3,6 +3,7 @@ import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { Node } from "../src/architecture/Node.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("projection", () => {
@@ -32,15 +33,15 @@ Deno.test("projection", () => {
 
   const inNode0 = network.nodes[0];
 
-  const flag0to3 = inNode0.isProjectingTo(outNode);
+  const flag0to3 = (inNode0 as Node).isProjectingTo(outNode as Node);
 
   assert(flag0to3, "0 -> 3");
 
-  const flag3to0 = outNode.isProjectingTo(inNode0);
+  const flag3to0 = (outNode as Node).isProjectingTo(inNode0 as Node);
 
   assert(!flag3to0, "3 -> 0 should not be associated");
 
-  const project3by0 = outNode.isProjectedBy(inNode0);
+  const project3by0 = (outNode as Node).isProjectedBy(inNode0 as Node);
 
   assert(project3by0, "3 is projected by 0");
 });

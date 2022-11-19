@@ -1,5 +1,5 @@
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
-import { Network } from "../architecture/network.js";
+import { Network } from "../architecture/Network.ts";
 import { Node } from "../architecture/Node.ts";
 import { addTag, getTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { NetworkUtil } from "../architecture/NetworkUtil.ts";
@@ -63,7 +63,7 @@ export class CRISPR {
       if (node.type == "output") {
         if (firstNetworkOutputIndex == -1) {
           firstNetworkOutputIndex = indx;
-          node.type = "hidden";
+          ((node as unknown) as { type: string }).type = "hidden";
         }
       }
     });

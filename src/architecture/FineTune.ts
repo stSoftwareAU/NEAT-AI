@@ -1,5 +1,5 @@
 import { addTag, getTag } from "../tags/TagsInterface.ts";
-import { Network } from "./network.js";
+import { Network } from "./Network.ts";
 import { NetworkUtil } from "./NetworkUtil.ts";
 import { NetworkInterface } from "./NetworkInterface.ts";
 const MIN_STEP = 0.000_000_1;
@@ -58,13 +58,13 @@ function tuneWeights(
       addTag(
         all,
         "step",
-        "remaining-weigths",
+        "remaining-weights",
       );
     } else {
       addTag(
         all,
         "step",
-        "ALL-weigths",
+        "ALL-weights",
       );
     }
   } else {
@@ -72,7 +72,7 @@ function tuneWeights(
     addTag(
       all,
       "step",
-      p + "%-weigths",
+      p + "%-weights",
     );
   }
   addTag(all, "old-score", oldScore);

@@ -1,5 +1,5 @@
 import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
-import { Network } from "../../architecture/network.js";
+import { Network } from "../../architecture/Network.ts";
 import { MockWorker } from "./MockWorker.ts";
 
 import { addTag, getTag } from "../../tags/TagsInterface.ts";

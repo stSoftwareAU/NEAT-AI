@@ -1,5 +1,5 @@
 import { NetworkInterface } from "./NetworkInterface.ts";
-import { Network } from "./network.js";
+import { Network } from "./Network.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { addTag } from "../tags/TagsInterface.ts";
 

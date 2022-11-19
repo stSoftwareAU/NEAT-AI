@@ -34,12 +34,13 @@ Deno.test("Constants", () => {
   network.util.validate();
   NetworkUtil.fromJSON(network.util.toJSON());
   assert(
-    Math.abs(network.nodes[1].bias) - 0.5 < 0.00001,
+    Math.abs(network.nodes[1].bias ? network.nodes[1].bias : 0) - 0.5 < 0.00001,
     "Should NOT have changed the constant node was: " + network.nodes[1].bias,
   );
 
   assert(
-    network.nodes[2].bias > 0.60001 || network.nodes[2].bias < 0.59999,
+    (network.nodes[2].bias ? network.nodes[2].bias : 0) > 0.60001 ||
+      (network.nodes[2].bias ? network.nodes[2].bias : 0) < 0.59999,
     "Should have changed the hidden node was: " + network.nodes[2].bias,
   );
 

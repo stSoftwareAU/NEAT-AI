@@ -5,7 +5,7 @@ import {
   removeTag,
   TagsInterface,
 } from "../src/tags/TagsInterface.ts";
-import { Network } from "../src/architecture/network.js";
+import { Network } from "../src/architecture/Network.ts";
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
@@ -37,7 +37,7 @@ Deno.test("tags", () => {
 
   assert(getTag(target, "hello") == "world", "Expecting a value.");
 
-  assert(getTag(target, "keep") == "me", "Keep the orginal.");
+  assert(getTag(target, "keep") == "me", "Keep the original.");
 });
 
 Deno.test("keep", () => {
