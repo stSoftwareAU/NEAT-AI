@@ -2283,4 +2283,113 @@ export class NetworkUtil {
 
     return network;
   }
+
+    /**
+   * Creates a json that can be used to create a graph with d3 and webcola
+   */
+     graph(width:number, height:number
+      ) {
+      let input = 0;
+      let output = 0;
+  
+      
+      const json = {
+        nodes: [],
+        links: [],
+        constraints: [{
+          type: "alignment",
+          axis: "x",
+          offsets: [],
+        }, {
+          type: "alignment",
+          axis: "y",
+          offsets: [],
+        }],
+      };
+  
+      let i;
+      for (i = 0; i < this.network.nodes.length; i++) {
+        const node = this.network.nodes[i];
+  
+        if (node.type === "input") {
+          if (this.network.input === 1) {
+            (json.constraints[0].offsets as {node:number, offset: number}[]).push({
+              node: i,
+              offset: 0,
+            });
+          } else {
+            (json.constraints[0].offsets as {node:number, offset: number}[]).push({
+              node: i,
+              offset: 0.8 * width / (this.network.input - 1) * input++,
+            });
+          }
+          (json.constraints[1].offsets as {node:number, offset: number}[]).push({
+            node: i,
+            offset: 0,
+          });
+        } else if (node.type === "output") {
+          if (this.network.output === 1) {
+            (json.constraints[0].offsets as {node:number, offset: number}[]).push({
+              node: i,
+              offset: 0,
+            });
+          } else {
+            (json.constraints[0].offsets as {node:number, offset: number}[]).push({
+              node: i,
+              offset: 0.8 * width / (this.network.output - 1) * output++,
+            });
+          }
+          (json.constraints[1].offsets as {node:number, offset: number}[]).push({
+            node: i,
+            offset: -0.8 * height,
+          });
+        }
+  
+        (json.nodes as {id:number, name:string, activation:number, bias:number}[]).push({
+          id: i,
+          name: node.type === "hidden"
+            ? (node.squash? node.squash:"UNKNOWN")
+            : node.type.toUpperCase(),
+          activation: (node as Node).getActivation(),
+          bias: node.bias?node.bias:0,
+        });
+      }
+  
+      for (i = 0; i < this.network.connections.length; i++) {
+        const connection = this.network.connections[i];
+        if (connection.gater == null) {
+          (json.links as {from:number, to:number, weight:number}[]).push({
+            from: connection.from,
+            to: connection.to,
+            weight: connection.weight,
+          });
+        } else {
+          // Add a gater 'node'
+          const index = json.nodes.length;
+          (json.nodes as {id:number, activation:number, name:string}[]).push({
+            id: index,
+            activation: (this.network.nodes[index] as Node).getActivation(),
+            name: "GATE",
+          });
+          (json.links as {source:number, target:number, weight:number}[]).push({
+            source: connection.from,
+            target: connection.to,
+            weight: 1 / 2 * connection.weight,
+          });
+          (json.links as {source:number, target:number, weight:number}[]).push({
+            source: index,
+            target: connection.to,
+            weight: 1 / 2 * connection.weight,
+          });
+          (json.links as {source:number, target:number, weight:number, gate:boolean}[]).push({
+            source: connection.gater,
+            target: index,
+            weight: (this.network.nodes[connection.gater] as Node).getActivation(),
+            gate: true,
+          });
+        }
+      }
+  
+      return json;
+    }
 }
