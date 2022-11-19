@@ -44,7 +44,7 @@ export interface ResponseData {
   };
 }
 
-interface WorkerEventListner {
+interface WorkerEventListener {
   (worker: WorkerHandler): void;
 }
 export interface WorkerInterface {
@@ -66,7 +66,7 @@ export class WorkerHandler {
   private workerID = ++globalWorkerID;
   private busyCount = 0;
   private callbacks: { [key: string]: CallableFunction } = {};
-  private idleListners: WorkerEventListner[] = [];
+  private idleListeners: WorkerEventListener[] = [];
 
   constructor(
     dataSetDir: string,
@@ -86,16 +86,9 @@ export class WorkerHandler {
 
     if (!direct) {
       this.worker = new Worker(
-        new URL("./deno/worker.js", import.meta.url).href,
+        new URL("./deno/worker.ts", import.meta.url).href,
         {
           type: "module",
-          // deno: {
-          //   permissions: {
-          //     read: [
-          //       dataSetDir,
-          //     ],
-          //   },
-          // },
         },
       );
     } else {
@@ -115,8 +108,8 @@ export class WorkerHandler {
   }
 
   /** Notify listeners when worker no longer busy */
-  addIdleListener(callback: WorkerEventListner) {
-    this.idleListners.push(callback);
+  addIdleListener(callback: WorkerEventListener) {
+    this.idleListeners.push(callback);
   }
 
   private callback(data: ResponseData) {
@@ -138,7 +131,7 @@ export class WorkerHandler {
         this.busyCount--;
 
         if (!this.isBusy()) {
-          this.idleListners.forEach((listner) => listner(this));
+          this.idleListeners.forEach((listener) => listener(this));
         }
       };
 
@@ -156,7 +149,7 @@ export class WorkerHandler {
     }
 
     this.worker.terminate();
-    this.idleListners.length = 0;
+    this.idleListeners.length = 0;
   }
 
   echo(message: string, ms: number) {
