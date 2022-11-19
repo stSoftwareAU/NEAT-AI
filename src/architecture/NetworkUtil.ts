@@ -915,7 +915,7 @@ export class NetworkUtil {
       workers,
     );
 
-    await neat.util.populatePopulation(this.network as Network);
+    await neat.populatePopulation(this.network as Network);
 
     let error = Infinity;
     let bestScore = -Infinity;
@@ -927,7 +927,7 @@ export class NetworkUtil {
       error > config.targetError &&
       (!options.iterations || neat.generation < options.iterations)
     ) {
-      const fittest = await neat.util.evolve(
+      const fittest = await neat.evolve(
         bestCreature as (NetworkInterface | undefined),
       );
 

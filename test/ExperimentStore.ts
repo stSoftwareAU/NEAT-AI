@@ -1,9 +1,7 @@
-import { NeatUtil } from "../src/NeatUtil.ts";
 import { Neat } from "../src/Neat.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-import { make as makeConfig } from "../src/config/NeatConfig.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -40,30 +38,29 @@ Deno.test("previous", async () => {
 
   creature.score = 0.1234;
 
-  const config = makeConfig({ experimentStore: ".testExperiments" });
-  const util = new NeatUtil(new Neat(1, 1, {}, []), config);
+  const neat = new Neat(1, 1, { experimentStore: ".testExperiments" }, []);
 
   const p = [creature];
-  util.writeScores(p);
+  neat.writeScores(p);
 
-  const flag = await previousExperiment(creature, util);
+  const flag = await previousExperiment(creature, neat);
 
   assert(flag, "should have detected itself just written");
 
   delete creature.score;
-  const flag2 = await previousExperiment(creature, util);
+  const flag2 = await previousExperiment(creature, neat);
 
   assert(flag2, "Don't look at score");
 
   addTag(creature, "hello", "world");
 
-  const flag3 = await previousExperiment(creature, util);
+  const flag3 = await previousExperiment(creature, neat);
 
   assert(flag3, "Don't care about tags");
 });
 
-async function previousExperiment(creature: NetworkInterface, util: NeatUtil) {
-  const key = await util.makeUniqueName(creature);
+async function previousExperiment(creature: NetworkInterface, neat: Neat) {
+  const key = await neat.makeUniqueName(creature);
 
-  return util.previousExperiment(key);
+  return neat.previousExperiment(key);
 }
