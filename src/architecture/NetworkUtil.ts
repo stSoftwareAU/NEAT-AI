@@ -927,7 +927,7 @@ export class NetworkUtil {
       error > config.targetError &&
       (!options.iterations || neat.generation < options.iterations)
     ) {
-      const fittest = await neat.evolve(bestCreature);
+      const fittest = await neat.util.evolve((bestCreature as (NetworkInterface|undefined)));
 
       if (fittest.score > bestScore) {
         const errorTmp = getTag(fittest, "error");

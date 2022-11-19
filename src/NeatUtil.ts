@@ -9,8 +9,13 @@ import { crypto } from "https://deno.land/std@0.165.0/crypto/mod.ts";
 import { encode } from "https://deno.land/std@0.165.0/encoding/base64.ts";
 import { ensureDirSync } from "https://deno.land/std@0.165.0/fs/ensure_dir.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
-import { removeTag } from "../src/tags/TagsInterface.ts";
+import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { Selection } from "./methods/Selection.ts";
+import {
+  makeElitists,
+  ScorableInterface,
+} from "../src/architecture/elitism.ts";
+import { fineTuneImprovement } from "./architecture/FineTune.ts";
 
 const TE = new TextEncoder();
 
@@ -23,6 +28,236 @@ export class NeatUtil {
   ) {
     this.neat = neat;
     this.config = config;
+  }
+
+  /**
+   * Evaluates, selects, breeds and mutates population
+   */
+  async evolve(previousFittest?: NetworkInterface) {
+    const trainPromises = [];
+    for (
+      let i = 0;
+      i < this.neat.population.length && i < this.neat.workers.length;
+      i++
+    ) {
+      const n = this.neat.population[i];
+      if (n.score) {
+        const trained = getTag(n, "trained");
+        if (trained !== "YES") {
+          const p = this.neat.workers[i].train(n, this.neat.trainRate);
+          trainPromises.push(p);
+          addTag(n, "trained", "YES");
+        }
+      }
+    }
+    await this.neat.fitness.calculate(this.neat.population);
+
+    /* Elitism: we need at least 2 on the first run */
+    const elitists = makeElitists(
+      (this.neat.population as unknown) as ScorableInterface[],
+      this.config.elitism > 1
+        ? this.config.elitism
+        : previousFittest
+        ? this.config.elitism
+        : 2,
+    );
+    const tmpFittest = elitists[0];
+
+    const fittest = NetworkUtil.fromJSON(
+      (tmpFittest as Network).util.toJSON(),
+      this.config.debug,
+    ); // Make a copy so it's not mutated.
+    fittest.score = tmpFittest.score;
+    addTag(fittest, "score", fittest.score.toString());
+    const error = getTag(fittest, "error");
+    addTag(fittest, "error", error ? error : "-1");
+
+    const livePopulation = [];
+
+    await this.writeScores(
+      this.neat.population,
+    );
+
+    let trainingWorked = false;
+
+    for (let i = 0; i < this.neat.population.length; i++) {
+      const p = this.neat.population[i];
+
+      if (p.score && Number.isFinite(p.score)) {
+        const oldScore = getTag(p, "old-score");
+        if (oldScore && p.score <= parseFloat(oldScore)) {
+          /** If fine tuning made no improvement then remove to prevent flooding of the population with clones. */
+          continue;
+        }
+
+        livePopulation.push(p);
+
+        const untrained = getTag(p, "untrained");
+
+        if (untrained) {
+          const error = getTag(p, "error");
+          const currentError = Math.abs(
+            parseFloat(error ? error : Number.MAX_SAFE_INTEGER.toString()),
+          );
+          const previousError = Math.abs(parseFloat(untrained));
+
+          if (currentError < previousError) {
+            // console.info( "Training worked", previousError, currentError );
+            trainingWorked = true;
+          }
+        }
+      }
+    }
+
+    if (previousFittest) {
+      if (trainingWorked) {
+        const nextRate = Math.min(
+          this.neat.trainRate * (1 + Math.random()),
+          0.1,
+        );
+
+        this.neat.trainRate = nextRate;
+      } else {
+        const nextRate = Math.max(
+          this.neat.trainRate * Math.random(),
+          0.000_000_01,
+        );
+        this.neat.trainRate = nextRate;
+      }
+    }
+
+    if (livePopulation.length > 0) {
+      this.neat.population = livePopulation;
+    } else {
+      console.warn("All creatures died, using zombies");
+    }
+
+    /**
+     * If this is the first run then use the second best as the "previous"
+     *
+     * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
+     */
+    let rebootedFineTune = false;
+    let tmpPreviousFittest = previousFittest;
+
+    if (!tmpPreviousFittest) {
+      tmpPreviousFittest = elitists[1] as NetworkInterface;
+    } else if (elitists.length > 1) {
+      const previousScoreTxt = getTag(tmpPreviousFittest, "score");
+      if (previousScoreTxt) {
+        const previousScore = parseFloat(previousScoreTxt);
+        if (previousScore == fittest.score) {
+          let pos = Math.floor(Math.random() * elitists.length);
+
+          for (; pos < elitists.length; pos++) {
+            tmpPreviousFittest = elitists[pos] as NetworkInterface;
+            if (!tmpPreviousFittest) continue;
+            const previousScoreTxt3 = getTag(tmpPreviousFittest, "score");
+            if (!previousScoreTxt3) continue;
+
+            const previousScore3 = parseFloat(previousScoreTxt3);
+            if (previousScore3 < fittest.score) break;
+          }
+
+          if (tmpPreviousFittest) {
+            const previousScoreTxt2 = getTag(tmpPreviousFittest, "score");
+            if (!previousScoreTxt2) {
+              console.info("No score for elitist", pos);
+            } else {
+              const previousScore2 = parseFloat(previousScoreTxt2);
+              if (previousScore2 < fittest.score) {
+                if (this.config.verbose) {
+                  console.info(
+                    "Rebooting fine tuning, elitist:",
+                    pos,
+                  );
+                }
+                rebootedFineTune = true;
+              } else if (this.config.verbose) {
+                console.info(
+                  "FAILED: Rebooting fine tuning: previous score not less than current",
+                  pos,
+                  previousScore2,
+                  fittest.score,
+                );
+              }
+            }
+          } else {
+            console.info(
+              "FAILED Rebooting fine tuning: no creature at",
+              pos,
+              "of",
+              elitists.length,
+            );
+          }
+        }
+      }
+    }
+
+    const fineTunedPopulation = fineTuneImprovement(
+      fittest,
+      tmpPreviousFittest,
+      /** 20% of population or those that just died */
+      Math.max(
+        Math.ceil(this.config.popSize / 5),
+        this.config.popSize - this.neat.population.length -
+          this.config.elitism -
+          trainPromises.length,
+      ),
+      !rebootedFineTune && this.config.verbose,
+      this.config.experimentStore ? true : false,
+    );
+
+    const newPopulation = [];
+
+    const newPopSize = this.config.popSize -
+      elitists.length -
+      trainPromises.length -
+      fineTunedPopulation.length - 1;
+
+    // Breed the next individuals
+    for (
+      let i = newPopSize > 0 ? newPopSize : 0;
+      i--;
+    ) {
+      newPopulation.push(this.getOffspring());
+    }
+
+    // Replace the old population with the new population
+    this.mutate(newPopulation);
+
+    const trainPopulation: NetworkInterface[] = [];
+
+    await Promise.all(trainPromises).then((results) => {
+      for (let i = results.length; i--;) {
+        const r = results[i];
+        if (r.train) {
+          if (Number.isFinite(r.train.error)) {
+            const json = JSON.parse(r.train.network);
+
+            addTag(json, "approach", "trained");
+            addTag(json, "error", Math.abs(r.train.error).toString());
+            addTag(json, "duration", r.duration);
+
+            trainPopulation.push(NetworkUtil.fromJSON(json, this.config.debug));
+          }
+        } else {
+          throw "No train result";
+        }
+      }
+    });
+
+    this.neat.population = [
+      ...(elitists as NetworkInterface[]),
+      ...trainPopulation,
+      ...fineTunedPopulation,
+      ...newPopulation,
+    ]; // Keep pseudo sorted.
+
+    await this.deDuplicate(this.neat.population);
+    this.neat.generation++;
+
+    return fittest;
   }
 
   async makeUniqueName(creature: NetworkInterface) {
