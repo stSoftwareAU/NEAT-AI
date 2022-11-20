@@ -48,7 +48,7 @@ export function removeTag(taggable: TagsInterface, name: string) {
   if (pos < 0) return null;
 
   const previousTag = tags[pos];
-  tags.splice(pos);
+  tags.splice(pos, 1);
 
   return previousTag.value;
 }

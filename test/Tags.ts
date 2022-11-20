@@ -6,8 +6,10 @@ import {
   TagsInterface,
 } from "../src/tags/TagsInterface.ts";
 import { Network } from "../src/architecture/Network.ts";
-import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-
+import {
+  assert,
+  assertEquals,
+} from "https://deno.land/std@0.165.0/testing/asserts.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("tag", () => {
@@ -56,3 +58,27 @@ Deno.test("keep", () => {
 
   assert(getTag(n2, "hello") == "world", "Expecting unchanged");
 });
+
+Deno.test("Remove", () => {
+  const taggable: TagsInterface = {};
+
+  for (let i = 0; i < 10; i++) {
+    addTag(taggable, `t${i}`, `v${i}`);
+  }
+  addTag(taggable, "middle", "something");
+
+  for (let i = 10; i < 20; i++) {
+    addTag(taggable, `t${i}`, `v${i}`);
+  }
+  checkIt(taggable);
+
+  removeTag(taggable, "middle");
+  checkIt(taggable);
+});
+
+function checkIt(taggable: TagsInterface) {
+  for (let i = 0; i < 20; i++) {
+    const value = getTag(taggable, `t${i}`);
+    assertEquals(`v${i}`, value);
+  }
+}
