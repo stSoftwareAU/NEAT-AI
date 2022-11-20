@@ -2,7 +2,6 @@ import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 import { Network } from "../architecture/Network.ts";
 import { Node } from "../architecture/Node.ts";
 import { addTag, getTag, TagsInterface } from "../tags/TagsInterface.ts";
-import { NetworkUtil } from "../architecture/NetworkUtil.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;
@@ -31,12 +30,12 @@ export class CRISPR {
   constructor(
     network: NetworkInterface,
   ) {
-    this.network = NetworkUtil.fromJSON((network as Network).util.toJSON());
+    this.network = Network.fromJSON((network as Network).toJSON());
   }
 
   apply(dna: CrisprInterface): NetworkInterface {
-    const tmpNetwork = NetworkUtil.fromJSON(
-      (this.network as Network).util.toJSON(),
+    const tmpNetwork = Network.fromJSON(
+      (this.network as Network).toJSON(),
     );
 
     let alreadyProcessed = false;
@@ -76,7 +75,7 @@ export class CRISPR {
       const networkNode = new Node(
         dnaNode.type,
         dnaNode.bias,
-        tmpNetwork.util,
+        tmpNetwork,
         dnaNode.squash,
       );
       networkNode.index = indx;
@@ -100,7 +99,7 @@ export class CRISPR {
         : ((c.toRelative ? c.toRelative : 0) + adjustIndx);
       if (to == undefined) throw "invalid connection " + c;
       console.info(c);
-      tmpNetwork.util.connect(from, to, c.weight, c.type);
+      tmpNetwork.connect(from, to, c.weight, c.type);
     });
     return tmpNetwork;
   }

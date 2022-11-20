@@ -1,4 +1,4 @@
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { Network } from "../src/architecture/Network.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -52,21 +52,21 @@ const json: NetworkInterface = {
 };
 
 Deno.test("subNode", () => {
-  const network = NetworkUtil.fromJSON(json);
-  network.util.validate({ nodes: 4, connections: 3 });
-  network.util.subNode();
-  network.util.validate({ nodes: 4 });
+  const network = Network.fromJSON(json);
+  network.validate({ nodes: 4, connections: 3 });
+  network.subNode();
+  network.validate({ nodes: 4 });
   for (let i = 100; i--;) {
-    network.util.validate();
-    network.util.addNode();
+    network.validate();
+    network.addNode();
   }
 
-  network.util.validate({ nodes: 104 });
+  network.validate({ nodes: 104 });
 
   for (let i = 110; i--;) {
-    network.util.subNode();
+    network.subNode();
   }
-  network.util.validate({ nodes: 4, connections: 3 });
+  network.validate({ nodes: 4, connections: 3 });
 
-  console.info(JSON.stringify(network.util.toJSON(), null, 1));
+  console.info(JSON.stringify(network.toJSON(), null, 1));
 });

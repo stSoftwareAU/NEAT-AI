@@ -11,11 +11,11 @@ export class MEAN implements NodeActivationInterface {
   noTraceActivate(node: Node) {
     let sum = 0;
 
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      sum += node.util.networkState.node(c.from).activation * c.weight;
+      sum += node.network.networkState.node(c.from).activation * c.weight;
     }
 
     const value = sum / toList.length;
@@ -27,10 +27,10 @@ export class MEAN implements NodeActivationInterface {
   }
 
   fix(node: Node) {
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
 
     if (toList.length < 2) {
-      node.util.makeRandomConnection(node.index);
+      node.network.makeRandomConnection(node.index);
     }
   }
 }

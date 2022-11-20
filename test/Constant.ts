@@ -1,6 +1,5 @@
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
@@ -22,17 +21,17 @@ Deno.test("Constants", () => {
     input: 1,
     output: 1,
   };
-  const network = NetworkUtil.fromJSON(json);
-  network.util.validate();
+  const network = Network.fromJSON(json);
+  network.validate();
 
   for (let i = 100; i--;) {
-    network.util.modBias();
-    network.util.addConnection();
+    network.modBias();
+    network.addConnection();
   }
 
-  console.info(JSON.stringify(network.util.toJSON(), null, 2));
-  network.util.validate();
-  NetworkUtil.fromJSON(network.util.toJSON());
+  console.info(JSON.stringify(network.toJSON(), null, 2));
+  network.validate();
+  Network.fromJSON(network.toJSON());
   assert(
     Math.abs(network.nodes[1].bias ? network.nodes[1].bias : 0) - 0.5 < 0.00001,
     "Should NOT have changed the constant node was: " + network.nodes[1].bias,
@@ -45,7 +44,7 @@ Deno.test("Constants", () => {
   );
 
   assert(
-    network.util.toConnections(1).length === 0,
+    network.toConnections(1).length === 0,
     "Should not have any inward connections",
   );
 });

@@ -11,7 +11,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
   }
 
   fix(node: Node) {
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
     const spareList = [];
     let foundPositive = false;
     let foundCondition = false;
@@ -68,7 +68,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     }
 
     if (!foundCondition) {
-      const c = node.util.makeRandomConnection(node.index);
+      const c = node.network.makeRandomConnection(node.index);
       if (c) {
         c.type = "condition";
         foundCondition = true;
@@ -76,7 +76,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     }
 
     if (!foundNegative) {
-      const c = node.util.makeRandomConnection(node.index);
+      const c = node.network.makeRandomConnection(node.index);
 
       if (c) {
         c.type = "negative";
@@ -85,7 +85,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     }
 
     if (!foundPositive) {
-      const c = node.util.makeRandomConnection(node.index);
+      const c = node.network.makeRandomConnection(node.index);
 
       if (c) {
         c.type = "positive";
@@ -116,7 +116,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
       }
     }
 
-    const toList2 = node.util.toConnections(node.index);
+    const toList2 = node.network.toConnections(node.index);
 
     if (toList2.length < 3 && node.index > 2) {
       console.trace();
@@ -133,11 +133,12 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     let negative = 0;
     let positive = 0;
 
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.util.networkState.node(c.from).activation * c.weight;
+      const value = node.network.networkState.node(c.from).activation *
+        c.weight;
 
       switch (c.type) {
         case "condition":
@@ -160,7 +161,8 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
           case "negative":
             break;
           default:
-            node.util.networkState.connection(c.from, c.to).xTrace.used = true;
+            node.network.networkState.connection(c.from, c.to).xTrace.used =
+              true;
         }
       }
       return positive;
@@ -169,7 +171,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
         const c = toList[i];
 
         if (c.type == "negative") {
-          node.util.networkState.connection(c.from, c.to).xTrace.used = true;
+          node.network.networkState.connection(c.from, c.to).xTrace.used = true;
         }
       }
       return negative;
@@ -181,11 +183,12 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     let negative = 0;
     let positive = 0;
 
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.util.networkState.node(c.from).activation * c.weight;
+      const value = node.network.networkState.node(c.from).activation *
+        c.weight;
 
       switch (c.type) {
         case "condition":
@@ -203,7 +206,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
   }
 
   applyLearnings(node: Node): boolean {
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
 
     let foundPositive = false;
 
@@ -211,7 +214,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
 
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = node.util.networkState.connection(c.from, c.to);
+      const cs = node.network.networkState.connection(c.from, c.to);
       switch (c.type) {
         case "condition":
           break;
@@ -236,16 +239,16 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
 
       switch (c.type) {
         case "condition":
-          node.util.disconnect(c.from, c.to);
+          node.network.disconnect(c.from, c.to);
           break;
         case "negative":
           if (foundPositive) {
-            node.util.disconnect(c.from, c.to);
+            node.network.disconnect(c.from, c.to);
           }
           break;
         default:
           if (foundNegative) {
-            node.util.disconnect(c.from, c.to);
+            node.network.disconnect(c.from, c.to);
           }
       }
     }

@@ -1,11 +1,10 @@
 import { Neat } from "../src/Neat.ts";
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("OffSpring", async () => {
-  const creature = NetworkUtil.fromJSON({
+  const creature = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",

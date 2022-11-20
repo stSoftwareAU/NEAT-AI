@@ -1,6 +1,5 @@
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { Node } from "../src/architecture/Node.ts";
@@ -27,7 +26,7 @@ Deno.test("projection", () => {
     input: 3,
     output: 1,
   };
-  const network = NetworkUtil.fromJSON(json);
+  const network = Network.fromJSON(json);
 
   const outNode = network.nodes[3];
 

@@ -1,4 +1,3 @@
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { Network } from "../src/architecture/Network.ts";
 import {
   assertEquals,
@@ -8,7 +7,7 @@ import {
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("CrossOver", () => {
-  const a = NetworkUtil.fromJSON({
+  const a = Network.fromJSON({
     "nodes": [
       {
         "bias": 0.1,
@@ -84,8 +83,8 @@ Deno.test("CrossOver", () => {
     "output": 2,
   });
 
-  a.util.fix();
-  a.util.validate();
+  a.fix();
+  a.validate();
 
   const b = new Network(2, 2, {
     layers: [
@@ -94,7 +93,7 @@ Deno.test("CrossOver", () => {
   });
 
   for (let i = 0; i < 100; i++) {
-    const c = NetworkUtil.crossOver(a, b);
+    const c = Network.crossOver(a, b);
 
     const n = c.nodes[c.nodes.length - 2];
     assertEquals(n.type, "output");
@@ -102,10 +101,10 @@ Deno.test("CrossOver", () => {
     if (n.squash == "IF") {
       Deno.writeTextFileSync(
         ".cross_over.json",
-        JSON.stringify(c.util.toJSON(), null, 2),
+        JSON.stringify(c.toJSON(), null, 2),
       );
 
-      const list = c.util.toConnections(n.index);
+      const list = c.toConnections(n.index);
       list.forEach((c) => {
         console.info(c);
         switch (c.type) {

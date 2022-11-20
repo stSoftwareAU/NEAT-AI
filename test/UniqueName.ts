@@ -1,12 +1,12 @@
 import { Neat } from "../src/Neat.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("knownName", async () => {
-  const creature: NetworkInterface = NetworkUtil.fromJSON({
+  const creature: NetworkInterface = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",

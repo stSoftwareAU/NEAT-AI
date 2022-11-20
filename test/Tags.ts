@@ -7,7 +7,6 @@ import {
 } from "../src/tags/TagsInterface.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -46,9 +45,9 @@ Deno.test("keep", () => {
   addTag(n, "hello", "world");
 
   assert(getTag(n, "hello") == "world", "Expecting a value.");
-  const json = n.util.toJSON();
+  const json = n.toJSON();
 
-  const n2 = NetworkUtil.fromJSON(json);
+  const n2 = Network.fromJSON(json);
 
   assert(getTag(n2, "hello") == "world", "Expecting a value.");
 

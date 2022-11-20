@@ -1,6 +1,5 @@
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -21,7 +20,7 @@ Deno.test("Maximum", () => {
     input: 3,
     output: 1,
   };
-  const network = NetworkUtil.fromJSON(json);
+  const network = Network.fromJSON(json);
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;
@@ -29,8 +28,8 @@ Deno.test("Maximum", () => {
     const c = Math.random() * 2 - 1;
 
     const data = [a, b, c];
-    const actual = network.util.activate(data)[0];
-    const actual2 = network.util.activate(data)[0];
+    const actual = network.activate(data)[0];
+    const actual2 = network.activate(data)[0];
 
     assert(
       Math.abs(actual - actual2) < 0.00000001,
@@ -39,7 +38,7 @@ Deno.test("Maximum", () => {
     const expected = Math.max(a, b, c);
 
     if (Math.abs(expected - actual) >= 0.00001) {
-      const actual3 = network.util.activate(data)[0];
+      const actual3 = network.activate(data)[0];
       console.info(actual3);
     }
     assert(
@@ -63,10 +62,10 @@ Deno.test("Maximum-fix", () => {
     input: 3,
     output: 1,
   };
-  const network = NetworkUtil.fromJSON(json);
+  const network = Network.fromJSON(json);
 
-  network.util.fix();
-  const toList = network.util.toConnections(3);
+  network.fix();
+  const toList = network.toConnections(3);
 
   assert(
     toList.length >= 2,

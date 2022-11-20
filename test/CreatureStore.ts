@@ -31,7 +31,7 @@ Deno.test("storePopulation", async () => {
     creatureStore: dir,
     threads: 1,
   };
-  await network.util.evolveDataSet(ts, options);
+  await network.evolveDataSet(ts, options);
 
   let creatureCount = 0;
   for (const dirEntry of Deno.readDirSync(dir)) {

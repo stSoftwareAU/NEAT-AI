@@ -1,6 +1,5 @@
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
@@ -33,12 +32,12 @@ Deno.test("TagNode", () => {
     input: 3,
     output: 1,
   };
-  const network = NetworkUtil.fromJSON(json);
+  const network = Network.fromJSON(json);
 
-  const json2 = network.util.toJSON();
+  const json2 = network.toJSON();
 
-  const network2 = NetworkUtil.fromJSON(json2);
-  const json3 = network2.util.toJSON();
+  const network2 = Network.fromJSON(json2);
+  const json3 = network2.toJSON();
 
   console.info(JSON.stringify(json3, null, 2));
 

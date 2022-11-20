@@ -1,13 +1,13 @@
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
 Deno.test("tune", () => {
-  const previousFittest: NetworkInterface = NetworkUtil.fromJSON({
+  const previousFittest: NetworkInterface = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -36,7 +36,7 @@ Deno.test("tune", () => {
     ],
   });
 
-  const fittest: NetworkInterface = NetworkUtil.fromJSON({
+  const fittest: NetworkInterface = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -81,7 +81,7 @@ Deno.test("tune", () => {
 });
 
 Deno.test("many", () => {
-  const previousFittest: NetworkInterface = NetworkUtil.fromJSON({
+  const previousFittest: NetworkInterface = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -110,7 +110,7 @@ Deno.test("many", () => {
     ],
   });
 
-  const fittest: NetworkInterface = NetworkUtil.fromJSON({
+  const fittest: NetworkInterface = Network.fromJSON({
     "nodes": [{
       "bias": 0.123,
       "type": "input",

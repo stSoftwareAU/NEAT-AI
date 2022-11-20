@@ -14,8 +14,6 @@ import {
   makeElitists,
   ScorableInterface,
 } from "../src/architecture/elitism.ts";
-
-import { NetworkUtil } from "./architecture/NetworkUtil.ts";
 import { Network } from "./architecture/Network.ts";
 import { encode } from "https://deno.land/std@0.165.0/encoding/base64.ts";
 import { ensureDirSync } from "https://deno.land/std@0.165.0/fs/ensure_dir.ts";
@@ -93,8 +91,8 @@ export class Neat {
     );
     const tmpFittest = elitists[0];
 
-    const fittest = NetworkUtil.fromJSON(
-      (tmpFittest as Network).util.toJSON(),
+    const fittest = Network.fromJSON(
+      (tmpFittest as Network).toJSON(),
       this.config.debug,
     ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
@@ -269,7 +267,7 @@ export class Neat {
             addTag(json, "error", Math.abs(r.train.error).toString());
             // addTag(json, "duration", r.duration);
 
-            trainPopulation.push(NetworkUtil.fromJSON(json, this.config.debug));
+            trainPopulation.push(Network.fromJSON(json, this.config.debug));
           }
         } else {
           throw "No train result";
@@ -296,7 +294,7 @@ export class Neat {
       throw "Not an object was: " + (typeof creature);
     }
 
-    const json = (creature as Network).util.toJSON();
+    const json = (creature as Network).toJSON();
     delete json.tags;
 
     const txt = JSON.stringify(json);
@@ -364,12 +362,12 @@ export class Neat {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i] as Network;
         if (this.config.debug) {
-          creature.util.validate();
+          creature.validate();
         }
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
 
-          creature.util.mutate(
+          creature.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
               ? this.config.focusList
@@ -378,7 +376,7 @@ export class Neat {
         }
 
         if (this.config.debug) {
-          creature.util.validate();
+          creature.validate();
         }
 
         removeTag(creature, "approach");
@@ -395,11 +393,11 @@ export class Neat {
     }
 
     if (this.config.debug) {
-      network.util.validate();
+      network.validate();
     }
     while (this.population.length < this.config.popSize - 1) {
-      const clonedCreature = NetworkUtil.fromJSON(
-        network.util.toJSON(),
+      const clonedCreature = Network.fromJSON(
+        network.toJSON(),
         this.config.debug,
       );
       const creatures = [clonedCreature];
@@ -457,11 +455,11 @@ export class Neat {
       throw "Extinction event";
     }
 
-    const creature = NetworkUtil.crossOver(
+    const creature = Network.crossOver(
       p1,
       p2,
     );
-    if (this.config.debug) creature.util.validate();
+    if (this.config.debug) creature.validate();
     return creature;
   }
 

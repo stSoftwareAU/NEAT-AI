@@ -1,12 +1,11 @@
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
-
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Learn", () => {
-  const nn = NetworkUtil.fromJSON(
+  const nn = Network.fromJSON(
     {
       nodes: [
         {
@@ -49,8 +48,8 @@ Deno.test("Learn", () => {
     },
   );
 
-  nn.util.fix();
-  nn.util.validate();
+  nn.fix();
+  nn.validate();
 
   const options: NeatOptions = {
     iterations: 10000,
@@ -70,12 +69,12 @@ Deno.test("Learn", () => {
     dataSet.push(dr);
   }
 
-  const answersA = nn.util.noTraceActivate([0.1, 0.2]);
+  const answersA = nn.noTraceActivate([0.1, 0.2]);
   console.info(answersA);
-  nn.util.train(dataSet, options);
+  nn.train(dataSet, options);
 
   // console.info( nn.util.toJSON());
 
-  const answersB = nn.util.noTraceActivate([0.1, 0.2]);
+  const answersB = nn.noTraceActivate([0.1, 0.2]);
   console.info(answersB);
 });

@@ -42,7 +42,7 @@ export class Fitness {
           creature.input -
           creature.output +
           creature.connections.length +
-          realCreature.util.gates().length
+          realCreature.gates().length
         ) * this.growth;
 
     creature.score = Number.isFinite(creature.score)

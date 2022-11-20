@@ -1,9 +1,8 @@
 import { RequestData, ResponseData } from "./WorkerHandler.ts";
 
-import { NetworkUtil } from "../../architecture/NetworkUtil.ts";
-
 import { TrainOptions } from "../../config/TrainOptions.ts";
 import { CostInterface, Costs } from "../../Costs.ts";
+import { Network } from "../../architecture/Network.ts";
 
 export class WorkerProcessor {
   private costName?: string;
@@ -26,16 +25,16 @@ export class WorkerProcessor {
       if (!this.dataSetDir) throw "no data directory";
       if (!this.cost) throw "no cost";
 
-      const network = NetworkUtil.fromJSON(JSON.parse(data.evaluate.network));
+      const network = Network.fromJSON(JSON.parse(data.evaluate.network));
       /* release some memory*/
       data.evaluate.network = "";
-      const result = network.util.testDir(
+      const result = network.testDir(
         this.dataSetDir,
         this.cost,
         data.evaluate.feedbackLoop,
       );
 
-      network.util.dispose();
+      network.dispose();
 
       return {
         taskID: data.taskID,
@@ -45,7 +44,7 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
-      const network = NetworkUtil.fromJSON(
+      const network = Network.fromJSON(
         JSON.parse(data.train.network),
         data.debug,
       );
@@ -65,10 +64,10 @@ export class WorkerProcessor {
         batchSize: Infinity,
       };
 
-      const result = network.util.trainDir(this.dataSetDir, trainOptions);
-      const json = JSON.stringify(network.util.toJSON());
+      const result = network.trainDir(this.dataSetDir, trainOptions);
+      const json = JSON.stringify(network.toJSON());
 
-      network.util.dispose();
+      network.dispose();
 
       return {
         taskID: data.taskID,

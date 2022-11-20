@@ -1,6 +1,5 @@
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
@@ -27,18 +26,18 @@ Deno.test("inward", () => {
     input: 3,
     output: 1,
   };
-  const network = NetworkUtil.fromJSON(json);
+  const network = Network.fromJSON(json);
 
-  const connects = network.util.toConnections(3);
+  const connects = network.toConnections(3);
 
   assert(connects.length == 3, "expected 3 got " + connects.length);
 
-  const connects2 = network.util.toConnections(3);
+  const connects2 = network.toConnections(3);
 
   assert(connects2.length == 3, "expected 3 got " + connects2.length);
 
-  network.util.addNode();
-  console.info(JSON.stringify(network.util.toJSON(), null, 2));
+  network.addNode();
+  console.info(JSON.stringify(network.toJSON(), null, 2));
 
   let foundPositive = false;
   let foundNegative = false;
@@ -58,7 +57,7 @@ Deno.test("inward", () => {
   assert(foundNegative, "should have found a negative link");
 
   assert(foundCondition, "should have found a condition link");
-  const connects4 = network.util.toConnections(4);
+  const connects4 = network.toConnections(4);
 
   assert(connects4.length >= 3, "expected at least 3 got " + connects4.length);
 

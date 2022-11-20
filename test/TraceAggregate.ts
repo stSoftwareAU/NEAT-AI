@@ -2,8 +2,8 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.165.0/testing/asserts.ts";
+import { Network } from "../src/architecture/Network.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -27,42 +27,42 @@ Deno.test("TraceAggregateMINIMUM", () => {
     input: 2,
     output: 2,
   };
-  const network = NetworkUtil.fromJSON(json);
-  network.util.validate();
+  const network = Network.fromJSON(json);
+  network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.util.toJSON(), null, 2),
+    JSON.stringify(network.toJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  const eOut = network.util.noTraceActivate(input);
+  const eOut = network.noTraceActivate(input);
   console.info(
     "PRE",
     "output",
     eOut,
   );
-  const aOut = network.util.activate(input);
+  const aOut = network.activate(input);
 
   console.info(
     "START",
     "output",
     aOut,
   );
-  // const bOut = network.util.noTraceActivate(input);
+  // const bOut = network.noTraceActivate(input);
 
   // assertAlmostEquals(aOut[0], bOut[0], 0.0001);
   // assertAlmostEquals(aOut[1], bOut[1], 0.0001);
 
-  // network.util.fix();
-  // const cOut = network.util.noTraceActivate(input);
+  // network.fix();
+  // const cOut = network.noTraceActivate(input);
 
   // assertAlmostEquals(aOut[0], cOut[0], 0.0001);
   // assertAlmostEquals(aOut[1], cOut[1], 0.0001);
 
-  const changed = network.util.applyLearnings();
+  const changed = network.applyLearnings();
 
   assert(changed, "should have changed");
 
-  const dOut = network.util.noTraceActivate(input);
+  const dOut = network.noTraceActivate(input);
 
   console.info(
     "END",
@@ -71,7 +71,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.util.toJSON(), null, 2),
+    JSON.stringify(network.toJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -98,20 +98,20 @@ Deno.test("TraceAggregateMAXIMUM", () => {
     input: 2,
     output: 2,
   };
-  const network = NetworkUtil.fromJSON(json);
-  network.util.validate();
+  const network = Network.fromJSON(json);
+  network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.util.toJSON(), null, 2),
+    JSON.stringify(network.toJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  const eOut = network.util.noTraceActivate(input);
+  const eOut = network.noTraceActivate(input);
   console.info(
     "PRE",
     "output",
     eOut,
   );
-  const aOut = network.util.activate(input);
+  const aOut = network.activate(input);
 
   console.info(
     "START",
@@ -119,11 +119,11 @@ Deno.test("TraceAggregateMAXIMUM", () => {
     aOut,
   );
 
-  const changed = network.util.applyLearnings();
+  const changed = network.applyLearnings();
 
   assert(changed, "should have changed");
 
-  const dOut = network.util.noTraceActivate(input);
+  const dOut = network.noTraceActivate(input);
 
   console.info(
     "END",
@@ -132,7 +132,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.util.toJSON(), null, 2),
+    JSON.stringify(network.toJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -160,20 +160,20 @@ Deno.test("TraceAggregateIF", () => {
     input: 2,
     output: 2,
   };
-  const network = NetworkUtil.fromJSON(json);
-  network.util.validate();
+  const network = Network.fromJSON(json);
+  network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.util.toJSON(), null, 2),
+    JSON.stringify(network.toJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  const eOut = network.util.noTraceActivate(input);
+  const eOut = network.noTraceActivate(input);
   console.info(
     "PRE",
     "output",
     eOut,
   );
-  const aOut = network.util.activate(input);
+  const aOut = network.activate(input);
 
   console.info(
     "START",
@@ -181,11 +181,11 @@ Deno.test("TraceAggregateIF", () => {
     aOut,
   );
 
-  const changed = network.util.applyLearnings();
+  const changed = network.applyLearnings();
 
   assert(changed, "should have changed");
 
-  const dOut = network.util.noTraceActivate(input);
+  const dOut = network.noTraceActivate(input);
 
   console.info(
     "END",
@@ -194,7 +194,7 @@ Deno.test("TraceAggregateIF", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.util.toJSON(), null, 2),
+    JSON.stringify(network.toJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 

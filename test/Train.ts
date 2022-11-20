@@ -15,7 +15,7 @@ Deno.test("AND", () => {
 
   const network = new Network(2, 1);
 
-  const results = network.util.train(trainingSet, {
+  const results = network.train(trainingSet, {
     error: 0.03,
     iterations: 1000,
   });
@@ -38,7 +38,7 @@ Deno.test("MT", () => {
     ],
   });
 
-  const results = network.util.train(trainingSet, {
+  const results = network.train(trainingSet, {
     error: 0.03,
     iterations: 3000,
   });
@@ -60,9 +60,9 @@ Deno.test("train-XOR", () => {
     ],
   });
 
-  const results = network.util.train(trainingSet, {
+  const results = network.train(trainingSet, {
     error: 0.03,
-    iterations: 10000,
+    iterations: 50000,
   });
   console.info(results);
   assert(results.error <= 0.03, "Error rate was: " + results.error);
@@ -86,7 +86,7 @@ Deno.test("XNOR", () => {
       ],
     });
 
-    const results = network.util.train(trainingSet, {
+    const results = network.train(trainingSet, {
       error: 0.03,
       iterations: 10_000,
     });

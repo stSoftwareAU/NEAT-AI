@@ -1,5 +1,4 @@
 import { Network } from "../src/architecture/Network.ts";
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
 import {
   assert,
   assertAlmostEquals,
@@ -23,24 +22,24 @@ function checkMutation(method: { name: string }) {
       { count: 4 },
     ],
   });
-  network.util.mutate(Mutation.ADD_GATE);
-  network.util.mutate(Mutation.ADD_BACK_CONN);
-  network.util.mutate(Mutation.ADD_SELF_CONN);
+  network.mutate(Mutation.ADD_GATE);
+  network.mutate(Mutation.ADD_BACK_CONN);
+  network.mutate(Mutation.ADD_SELF_CONN);
 
   const originalOutput = [];
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.util.activate([i / 10, j / 10], true);
+      const v = network.activate([i / 10, j / 10], true);
       originalOutput.push(...v);
     }
   }
 
-  const json1 = JSON.stringify(network.util.toJSON(), null, 2);
+  const json1 = JSON.stringify(network.toJSON(), null, 2);
   for (let i = 10; i--;) {
-    network.util.mutate(method);
+    network.mutate(method);
   }
-  const json2 = JSON.stringify(network.util.toJSON(), null, 2);
+  const json2 = JSON.stringify(network.toJSON(), null, 2);
 
   console.info(json1);
   console.info(json2);
@@ -50,7 +49,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.util.activate([i / 10, j / 10], true);
+      const v = network.activate([i / 10, j / 10], true);
       mutatedOutput.push(...v);
     }
   }
@@ -78,47 +77,40 @@ async function evolveSet(
     threads: 1,
   };
 
-  const results = await network.util.evolveDataSet(set, options);
+  const results = await network.evolveDataSet(set, options);
 
   assert(results.error <= error, `expected: ${error}, was: ${results.error}`);
 
   set.forEach((dr) => {
-    const nt0 = network.util.noTraceActivate(dr.input)[0];
+    const nt0 = network.noTraceActivate(dr.input)[0];
 
-    const nt1 = network.util.noTraceActivate(dr.input)[0];
-    network.util.validate();
-    assertEquals(
-      network.util.network,
-      network,
-      "Network not pointing to util's",
-    );
+    const nt1 = network.noTraceActivate(dr.input)[0];
+    network.validate();
 
     if (Math.abs(nt0 - nt1) > 0.0001) {
       Deno.writeTextFileSync(
         ".start.json",
-        JSON.stringify(network.util.toJSON(), null, 2),
+        JSON.stringify(network.toJSON(), null, 2),
       );
-      const nt2 = network.util.noTraceActivate(dr.input)[0];
+      const nt2 = network.noTraceActivate(dr.input)[0];
 
       Deno.writeTextFileSync(
         ".end.json",
-        JSON.stringify(network.util.toJSON(), null, 2),
+        JSON.stringify(network.toJSON(), null, 2),
       );
       console.log(dr.input);
-      const n0 =
-        NetworkUtil.fromJSON(network.util.toJSON()).util.noTraceActivate(
-          dr.input,
-        )[0];
+      const n0 = Network.fromJSON(network.toJSON()).noTraceActivate(
+        dr.input,
+      )[0];
 
-      network.util.clearCache();
-      const c1 = network.util.noTraceActivate(dr.input)[0];
-      const n1 =
-        NetworkUtil.fromJSON(network.util.toJSON()).util.noTraceActivate(
-          dr.input,
-        )[0];
-      const network2 = NetworkUtil.fromJSON(network.util.toJSON());
-      const n2 = network2.util.noTraceActivate(dr.input)[0];
-      const n2b = network2.util.noTraceActivate(dr.input)[0];
+      network.clearCache();
+      const c1 = network.noTraceActivate(dr.input)[0];
+      const n1 = Network.fromJSON(network.toJSON()).noTraceActivate(
+        dr.input,
+      )[0];
+      const network2 = Network.fromJSON(network.toJSON());
+      const n2 = network2.noTraceActivate(dr.input)[0];
+      const n2b = network2.noTraceActivate(dr.input)[0];
       assertAlmostEquals(
         nt0,
         nt1,
@@ -129,8 +121,8 @@ async function evolveSet(
       );
     }
 
-    const r0 = network.util.activate(dr.input)[0];
-    const r1 = network.util.activate(dr.input)[0];
+    const r0 = network.activate(dr.input)[0];
+    const r1 = network.activate(dr.input)[0];
     assertAlmostEquals(
       r0,
       r1,
@@ -139,13 +131,13 @@ async function evolveSet(
         r1,
     );
 
-    const r2 = network.util.noTraceActivate(dr.input)[0];
+    const r2 = network.noTraceActivate(dr.input)[0];
 
     if (Math.abs(r1 - r2) > 0.0001) {
       console.log("hello");
-      const r3 = network.util.activate(dr.input)[0];
+      const r3 = network.activate(dr.input)[0];
       console.log(r2, r3);
-      console.info(JSON.stringify(network.util.toJSON(), null, 2));
+      console.info(JSON.stringify(network.toJSON(), null, 2));
     }
     assertAlmostEquals(
       r1,
@@ -180,7 +172,7 @@ function trainSet(
     threads: 1,
   };
 
-  const results = network.util.train(set, options);
+  const results = network.train(set, options);
 
   assert(
     results.error < error,
@@ -188,8 +180,8 @@ function trainSet(
   );
 
   set.forEach((dr) => {
-    const r1 = network.util.activate(dr.input)[0];
-    const r2 = network.util.noTraceActivate(dr.input)[0];
+    const r1 = network.activate(dr.input)[0];
+    const r2 = network.noTraceActivate(dr.input)[0];
 
     assertAlmostEquals(
       r1,
@@ -209,8 +201,8 @@ function testEquality(original: Network, copied: Network) {
       input.push(Math.random());
     }
 
-    const ORout = original.util.activate(input);
-    const COout = copied.util.activate(input);
+    const ORout = original.activate(input);
+    const COout = copied.activate(input);
 
     // for (a = 0; a < original.output; a++) {
     //   ORout[a] = ORout[a].toFixed(9);
@@ -294,7 +286,7 @@ Deno.test("gender-tag", () => {
   addTag(network2.nodes[0], "gender", "female");
 
   // Crossover
-  const network = NetworkUtil.crossOver(network1, network2);
+  const network = Network.crossOver(network1, network2);
 
   const gender = getTag(network.nodes[0], "gender");
 
@@ -308,16 +300,16 @@ Deno.test("Feed-forward", () => {
   // mutate it a couple of times
   let i;
   for (i = 0; i < 100; i++) {
-    network1.util.mutate(Mutation.ADD_NODE);
-    network2.util.mutate(Mutation.ADD_NODE);
+    network1.mutate(Mutation.ADD_NODE);
+    network2.mutate(Mutation.ADD_NODE);
   }
   for (i = 0; i < 400; i++) {
-    network1.util.mutate(Mutation.ADD_CONN);
-    network2.util.mutate(Mutation.ADD_NODE);
+    network1.mutate(Mutation.ADD_CONN);
+    network2.mutate(Mutation.ADD_NODE);
   }
 
   // Crossover
-  const network = NetworkUtil.crossOver(network1, network2);
+  const network = Network.crossOver(network1, network2);
 
   // Check if the network is feed-forward correctly
   for (i = 0; i < network.connections.length; i++) {
@@ -341,14 +333,14 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = NetworkUtil.fromJSON(original.util.toJSON());
+  copy = Network.fromJSON(original.toJSON());
   testEquality(original, copy);
 
   original = new Network(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
   );
-  copy = NetworkUtil.fromJSON(original.util.toJSON());
+  copy = Network.fromJSON(original.toJSON());
   testEquality(original, copy);
 
   original = new Network(
@@ -361,7 +353,7 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = NetworkUtil.fromJSON(original.util.toJSON());
+  copy = Network.fromJSON(original.toJSON());
   testEquality(original, copy);
 });
 
@@ -566,7 +558,7 @@ Deno.test("NARX Sequence", async () => {
       ],
     });
 
-    const result = await narx.util.evolveDataSet(trainingData, {
+    const result = await narx.evolveDataSet(trainingData, {
       iterations: 5000,
       error: 0.005,
       threads: 1,
@@ -644,7 +636,7 @@ Deno.test("evolveSHIFT", async () => {
 
 Deno.test("from-to", () => {
   const network = new Network(1000, 10);
-  const startJson = network.util.toJSON();
+  const startJson = network.toJSON();
   const startTxt = JSON.stringify(startJson, null, 1);
   let fromTotalMS = 0;
   let toTotalMS = 0;
@@ -656,14 +648,14 @@ Deno.test("from-to", () => {
   ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = false;
   for (let i = LOOPS; i--;) {
     performance.mark("from-start");
-    const currentNetwork = NetworkUtil.fromJSON(currentJson);
+    const currentNetwork = Network.fromJSON(currentJson);
     performance.mark("from-end");
     const fromMS = performance.measure("", "from-start", "from-end").duration;
     fromMinMS = fromMinMS > fromMS ? fromMS : fromMinMS;
     fromTotalMS += fromMS;
 
     performance.mark("to-start");
-    currentJson = currentNetwork.util.toJSON();
+    currentJson = currentNetwork.toJSON();
     performance.mark("to-end");
     const toMS = performance.measure("", "to-start", "to-end").duration;
     toMinMS = toMinMS > toMS ? toMS : toMinMS;

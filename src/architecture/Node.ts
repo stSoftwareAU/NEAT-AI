@@ -8,11 +8,11 @@ import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
 import { addTags, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
-import { NetworkUtil } from "./NetworkUtil.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
+import { Network } from "./Network.ts";
 
 export class Node implements TagsInterface, NodeInterface {
-  readonly util: NetworkUtil;
+  readonly network: Network;
   readonly type;
   bias: number;
   squash?: string;
@@ -23,7 +23,7 @@ export class Node implements TagsInterface, NodeInterface {
   constructor(
     type: "input" | "output" | "hidden" | "constant",
     bias: number | undefined,
-    util: NetworkUtil,
+    network: Network,
     squash: string = LOGISTIC.NAME,
   ) {
     if (!type) {
@@ -59,12 +59,12 @@ export class Node implements TagsInterface, NodeInterface {
       this.bias = Infinity;
     }
 
-    if (typeof util !== "object") {
+    if (typeof network !== "object") {
       console.trace();
-      throw "util must be a NetworkUtil was: " + (typeof util);
+      throw "network must be a Network was: " + (typeof network);
     }
 
-    this.util = util;
+    this.network = network;
 
     this.type = type;
 
@@ -90,26 +90,26 @@ export class Node implements TagsInterface, NodeInterface {
     delete this.squashMethodCache;
 
     if (this.squash !== "IF") {
-      const toList = this.util.toConnections(this.index);
+      const toList = this.network.toConnections(this.index);
       toList.forEach((c) => {
         delete c.type;
       });
     }
 
     if (this.type == "hidden") {
-      const fromList = this.util.fromConnections(this.index);
+      const fromList = this.network.fromConnections(this.index);
       if (fromList.length == 0) {
-        const gateList = this.util.gateConnections(this.index);
+        const gateList = this.network.gateConnections(this.index);
         {
           if (gateList.length == 0) {
             const targetIndx = Math.min(
               1,
               Math.floor(
-                Math.random() * (this.util.nodeCount() - this.index),
+                Math.random() * (this.network.nodeCount() - this.index),
               ),
             ) +
               this.index;
-            this.util.connect(
+            this.network.connect(
               this.index,
               targetIndx,
               Connection.randomWeight(),
@@ -117,22 +117,23 @@ export class Node implements TagsInterface, NodeInterface {
           }
         }
       }
-      const toList = this.util.toConnections(this.index);
+      const toList = this.network.toConnections(this.index);
       if (toList.length == 0) {
         const fromIndx = Math.floor(Math.random() * this.index);
-        this.util.connect(
+        this.network.connect(
           fromIndx,
           this.index,
           Connection.randomWeight(),
         );
       }
     } else if (this.type == "output") {
-      const toList = this.util.toConnections(this.index);
+      const toList = this.network.toConnections(this.index);
       if (toList.length == 0) {
         const fromIndx = Math.floor(
-          Math.random() * (this.util.nodeCount() - this.util.outputCount()),
+          Math.random() *
+            (this.network.nodeCount() - this.network.outputCount()),
         );
-        this.util.connect(
+        this.network.connect(
           fromIndx,
           this.index,
           Connection.randomWeight(),
@@ -174,7 +175,7 @@ export class Node implements TagsInterface, NodeInterface {
   }
 
   getActivation() {
-    const state = this.util.networkState.node(this.index);
+    const state = this.network.networkState.node(this.index);
 
     return state.activation;
   }
@@ -183,7 +184,7 @@ export class Node implements TagsInterface, NodeInterface {
    * Activates the node
    */
   activate() {
-    const state = this.util.networkState.node(this.index);
+    const state = this.network.networkState.node(this.index);
 
     const squashMethod = this.findSquash();
 
@@ -192,13 +193,13 @@ export class Node implements TagsInterface, NodeInterface {
     } else {
       state.old = state.state;
 
-      const toList = this.util.toConnections(this.index);
+      const toList = this.network.toConnections(this.index);
       let value = this.bias;
 
       for (let i = toList.length; i--;) {
         const c = toList[i];
 
-        const fromState = this.util.networkState.node(c.from);
+        const fromState = this.network.networkState.node(c.from);
 
         value += fromState.activation * c.weight;
       }
@@ -223,25 +224,25 @@ export class Node implements TagsInterface, NodeInterface {
         }
       }
 
-      const sp = this.util.networkState.nodePersistent(this.index);
+      const sp = this.network.networkState.nodePersistent(this.index);
       sp.derivative = result.derivative;
 
       // Update traces
       const nodes: Node[] = [];
       const influences: number[] = [];
 
-      const gateList = this.util.gateConnections(this.index);
+      const gateList = this.network.gateConnections(this.index);
       for (let i = gateList.length; i--;) {
         const c = gateList[i];
-        const node = this.util.getNode(c.to);
+        const node = this.network.getNode(c.to);
 
         const pos = nodes.indexOf(node);
         if (pos > -1) {
-          const fromState = this.util.networkState.node(c.from);
+          const fromState = this.network.networkState.node(c.from);
           influences[pos] += c.weight * fromState.activation;
         } else {
           nodes.push(node);
-          const fromState = this.util.networkState.node(c.from);
+          const fromState = this.network.networkState.node(c.from);
           influences.push(
             c.weight * fromState.activation +
               (c.gater === this.index ? fromState.old : 0),
@@ -249,16 +250,16 @@ export class Node implements TagsInterface, NodeInterface {
         }
       }
 
-      const self = this.util.selfConnection(this.index);
-      const selfState = this.util.networkState.connection(
+      const self = this.network.selfConnection(this.index);
+      const selfState = this.network.networkState.connection(
         this.index,
         this.index,
       );
 
       for (let i = 0; i < toList.length; i++) {
         const c = toList[i];
-        const fromState = this.util.networkState.node(c.from);
-        const cs = this.util.networkState.connection(c.from, c.to);
+        const fromState = this.network.networkState.node(c.from);
+        const cs = this.network.networkState.connection(c.from, c.to);
         if (self) {
           cs.eligibility = self.weight * selfState.eligibility +
             fromState.activation;
@@ -342,7 +343,7 @@ export class Node implements TagsInterface, NodeInterface {
    * Activates the node without calculating eligibility traces and such
    */
   noTraceActivate() {
-    const state = this.util.networkState.node(this.index);
+    const state = this.network.networkState.node(this.index);
 
     const squashMethod = this.findSquash();
     if (this.isNodeActivation(squashMethod)) {
@@ -350,12 +351,12 @@ export class Node implements TagsInterface, NodeInterface {
     } else {
       // All activation sources coming from the node itself
 
-      const toList = this.util.toConnections(this.index);
+      const toList = this.network.toConnections(this.index);
       let value = this.bias;
 
       for (let i = toList.length; i--;) {
         const c = toList[i];
-        const fromState = this.util.networkState.node(c.from);
+        const fromState = this.network.networkState.node(c.from);
 
         value += fromState.activation * c.weight;
       }
@@ -397,22 +398,22 @@ export class Node implements TagsInterface, NodeInterface {
     // Error accumulator
     let error = 0;
 
-    const s = this.util.networkState.node(this.index);
-    const sp = this.util.networkState.nodePersistent(this.index);
+    const s = this.network.networkState.node(this.index);
+    const sp = this.network.networkState.nodePersistent(this.index);
     // Output nodes get their error from the environment
     if (this.type === "output") {
       s.errorResponsibility = s.errorProjected = (target ? target : 0) -
         s.activation;
     } else { // the rest of the nodes compute their error responsibilities by back propagation
       // error responsibilities from all the connections projected from this node
-      const fromList = this.util.fromConnections(this.index);
+      const fromList = this.network.fromConnections(this.index);
 
       for (let i = fromList.length; i--;) {
         const c = fromList[i];
 
-        const toState = this.util.networkState.node(c.to);
+        const toState = this.network.networkState.node(c.to);
         // Eq. 21
-        // const cs = this.util.networkState.connection(c.from, c.to);
+        // const cs = this.network.networkState.connection(c.from, c.to);
         const tmpError = error +
           toState.errorResponsibility * c.weight;
         error = Number.isFinite(tmpError) ? tmpError : error;
@@ -438,14 +439,14 @@ export class Node implements TagsInterface, NodeInterface {
       // Error responsibilities from all connections gated by this neuron
       error = 0;
 
-      const gateList = this.util.gateConnections(this.index);
+      const gateList = this.network.gateConnections(this.index);
       for (let i = gateList.length; i--;) {
         const c = gateList[i];
-        const toState = this.util.networkState.node(c.to);
-        const self = this.util.selfConnection(this.index);
+        const toState = this.network.networkState.node(c.to);
+        const self = this.network.selfConnection(this.index);
         let influence = self ? toState.old : 0;
 
-        const fromState = this.util.networkState.node(c.from);
+        const fromState = this.network.networkState.node(c.from);
         influence += c.weight * fromState.activation;
         error += toState.errorResponsibility * influence;
       }
@@ -462,18 +463,18 @@ export class Node implements TagsInterface, NodeInterface {
     }
 
     // Adjust all the node's incoming connections
-    const toList = this.util.toConnections(this.index);
+    const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const cs = this.util.networkState.connection(c.from, c.to);
-      const csp = this.util.networkState.connectionPersistent(c.from, c.to);
+      const cs = this.network.networkState.connection(c.from, c.to);
+      const csp = this.network.networkState.connectionPersistent(c.from, c.to);
       let gradient = s.errorProjected * cs.eligibility;
 
       for (let j = cs.xTrace.nodes.length; j--;) {
         const node = cs.xTrace.nodes[j];
         const value = cs.xTrace.values[j];
-        const traceState = this.util.networkState.node(node.index);
+        const traceState = this.network.networkState.node(node.index);
         gradient += traceState.errorResponsibility * value;
       }
 
@@ -532,9 +533,9 @@ export class Node implements TagsInterface, NodeInterface {
    * Disconnects this node from the other node
    */
   disconnect(to: number, twoSided: boolean) {
-    this.util.disconnect(this.index, to);
+    this.network.disconnect(this.index, to);
     if (twoSided) {
-      this.util.disconnect(to, this.index);
+      this.network.disconnect(to, this.index);
     }
   }
 
@@ -581,7 +582,7 @@ export class Node implements TagsInterface, NodeInterface {
    * Checks if this node is projecting to the given node
    */
   isProjectingTo(node: Node) {
-    const c = this.util.getConnection(this.index, node.index);
+    const c = this.network.getConnection(this.index, node.index);
     return c != null;
   }
 
@@ -589,7 +590,7 @@ export class Node implements TagsInterface, NodeInterface {
    * Checks if the given node is projecting to this node
    */
   isProjectedBy(node: Node) {
-    const c = this.util.getConnection(node.index, this.index);
+    const c = this.network.getConnection(node.index, this.index);
     return c != null;
   }
 
@@ -618,7 +619,7 @@ export class Node implements TagsInterface, NodeInterface {
    */
   static fromJSON(
     json: NodeInterface,
-    util: NetworkUtil,
+    network: Network,
   ) {
     switch (json.type) {
       case "input":
@@ -630,12 +631,12 @@ export class Node implements TagsInterface, NodeInterface {
         throw "unknown type: " + json.type;
     }
 
-    if (typeof util !== "object") {
+    if (typeof network !== "object") {
       console.trace();
-      throw "util must be a NetworkUtil was: " + (typeof util);
+      throw "network must be a Network was: " + (typeof network);
     }
 
-    const node = new Node(json.type, json.bias, util);
+    const node = new Node(json.type, json.bias, network);
 
     node.squash = json.squash;
 

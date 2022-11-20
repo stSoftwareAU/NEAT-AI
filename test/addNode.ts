@@ -1,5 +1,5 @@
 import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { Network } from "../src/architecture/Network.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
 import { getTag } from "../src/tags/TagsInterface.ts";
@@ -75,12 +75,12 @@ const json: NetworkInterface = {
 };
 
 Deno.test("addNode", () => {
-  const network = NetworkUtil.fromJSON(json);
+  const network = Network.fromJSON(json);
 
   for (let i = 100; i--;) {
-    network.util.addNode();
+    network.addNode();
   }
-  const nodes = network.util.toJSON({ verbose: true }).nodes;
+  const nodes = network.toJSON({ verbose: true }).nodes;
   console.info(JSON.stringify(nodes, null, 1));
 
   for (let indx = nodes.length; indx--;) {
@@ -103,7 +103,7 @@ Deno.test("addNode", () => {
       );
     }
 
-    const to = network.util.toConnections(indx);
+    const to = network.toConnections(indx);
 
     if (node.type !== "input") {
       assert(to.length >= 1, indx + ") expected at least 1 got " + to.length);
@@ -115,7 +115,7 @@ Deno.test("addNode", () => {
       );
     }
 
-    const from = network.util.fromConnections(indx);
+    const from = network.fromConnections(indx);
 
     if (node.type !== "output") {
       assert(

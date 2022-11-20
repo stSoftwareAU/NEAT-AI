@@ -1,6 +1,5 @@
 import { assertAlmostEquals } from "https://deno.land/std@0.165.0/testing/asserts.ts";
-
-import { NetworkUtil } from "../src/architecture/NetworkUtil.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { Upgrade } from "../src/reconstruct/Upgrade.ts";
@@ -21,7 +20,7 @@ Deno.test("Sum", () => {
     output: 1,
   };
   const json2 = Upgrade.correct(json);
-  const network = NetworkUtil.fromJSON(json2);
+  const network = Network.fromJSON(json2);
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;
@@ -29,7 +28,7 @@ Deno.test("Sum", () => {
     const c = Math.random() * 2 - 1;
 
     const data = [a, b, c];
-    const actual = network.util.activate(data)[0];
+    const actual = network.activate(data)[0];
 
     assertAlmostEquals(actual, a + b + c, 0.00001);
   }

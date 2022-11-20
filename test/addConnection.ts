@@ -3,14 +3,14 @@ import { Network } from "../src/architecture/Network.ts";
 
 Deno.test("addConnection", () => {
   const network = new Network(2, 1);
-  network.util.validate();
+  network.validate();
   for (let i = 10; i--;) {
-    network.util.addNode();
+    network.addNode();
   }
 
   for (let i = 10; i--;) {
-    network.util.addConnection();
+    network.addConnection();
   }
 
-  network.util.validate();
+  network.validate();
 });

@@ -16,7 +16,7 @@ Deno.test("AND", async () => {
 
   const network = new Network(2, 1);
 
-  const results = await network.util.evolveDataSet(trainingSet, {
+  const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
@@ -39,7 +39,7 @@ Deno.test("evolve-MT", async () => {
 
   const network = new Network(2, 1);
 
-  const results = await network.util.evolveDataSet(trainingSet, {
+  const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
@@ -60,7 +60,7 @@ Deno.test("evolve-XOR", async () => {
   ];
 
   const network = new Network(2, 1);
-  const results = await network.util.evolveDataSet(trainingSet, {
+  const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
@@ -86,8 +86,8 @@ Deno.test("booleanXOR", async () => {
   ];
 
   const network = new Network(2, 1);
-  network.util.validate();
-  const results = await network.util.evolveDataSet(trainingSet, {
+  network.validate();
+  const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
@@ -95,10 +95,10 @@ Deno.test("booleanXOR", async () => {
     threads: 1,
   });
 
-  network.util.validate();
+  network.validate();
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 
-  const value = network.util.activate([1, 0])[0];
+  const value = network.activate([1, 0])[0];
 
   assert(value > 0.7, "Should be more than 0.7 was: " + value);
 });
@@ -113,7 +113,7 @@ Deno.test("XNOR", async () => {
   ];
 
   const network = new Network(2, 1);
-  const results = await network.util.evolveDataSet(trainingSet, {
+  const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,

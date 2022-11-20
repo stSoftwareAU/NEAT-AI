@@ -1,6 +1,6 @@
-import { NetworkUtil } from "../architecture/NetworkUtil.ts";
 import { NetworkInterface } from "../architecture/NetworkInterface.ts";
 import { ConnectionInterface } from "../architecture/ConnectionInterface.ts";
+import { Network } from "../architecture/Network.ts";
 
 export class Upgrade {
   static correct(json: NetworkInterface): NetworkInterface {
@@ -59,10 +59,10 @@ export class Upgrade {
     });
 
     json2.connections = connections;
-    const network = NetworkUtil.fromJSON(json2);
+    const network = Network.fromJSON(json2);
 
-    network.util.fix();
-    network.util.validate();
+    network.fix();
+    network.validate();
     return network;
   }
 }

@@ -13,12 +13,13 @@ export class MINIMUM
   }
 
   noTraceActivate(node: Node): number {
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
     let minValue = Infinity;
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.util.networkState.node(c.from).activation * c.weight;
+      const value = node.network.networkState.node(c.from).activation *
+        c.weight;
       if (value < minValue) {
         minValue = value;
       }
@@ -28,13 +29,14 @@ export class MINIMUM
   }
 
   activate(node: Node) {
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
     let minValue = Infinity;
     let usedConnection: ConnectionInterface | null = null;
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.util.networkState.node(c.from).activation * c.weight;
+      const value = node.network.networkState.node(c.from).activation *
+        c.weight;
       if (value < minValue) {
         minValue = value;
         usedConnection = c;
@@ -42,7 +44,7 @@ export class MINIMUM
     }
 
     if (usedConnection != null) {
-      const cs = node.util.networkState.connection(
+      const cs = node.network.networkState.connection(
         usedConnection.from,
         usedConnection.to,
       );
@@ -53,23 +55,23 @@ export class MINIMUM
   }
 
   fix(node: Node) {
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
 
     if (toList.length < 2) {
-      node.util.makeRandomConnection(node.index);
+      node.network.makeRandomConnection(node.index);
     }
   }
 
   applyLearnings(node: Node): boolean {
     let changed = false;
     let usedCount = 0;
-    const toList = node.util.toConnections(node.index);
+    const toList = node.network.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
       if (node.index != c.to) throw "mismatched index " + c;
-      const cs = node.util.networkState.connection(c.from, c.to);
+      const cs = node.network.networkState.connection(c.from, c.to);
       if (!cs.xTrace.used) {
-        node.util.disconnect(c.from, c.to);
+        node.network.disconnect(c.from, c.to);
         changed = true;
         cs.xTrace.used = false;
       } else {
