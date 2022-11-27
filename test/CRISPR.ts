@@ -2,6 +2,10 @@ import { assertEquals } from "https://deno.land/std@0.165.0/testing/asserts.ts";
 
 import { CRISPR } from "../src/reconstruct/CRISPR.ts";
 import { Network } from "../src/architecture/Network.ts";
+import { getTag } from "../src/tags/TagsInterface.ts";
+import { Node } from "../src/architecture/Node.ts";
+import { Mutation } from "../src/methods/mutation.ts";
+import { assert } from "https://deno.land/std@0.165.0/_util/asserts.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -92,4 +96,32 @@ Deno.test("CRISPR-Volume", () => {
 
   Deno.writeTextFileSync("test/data/CRISPR/.actual-VOLUME.json", actualTXT);
   assertEquals(actualTXT, expectedTXT, "should have converted");
+});
+
+Deno.test("REMOVE", () => {
+  const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
+  const network = Network.fromJSON(JSON.parse(networkTXT));
+  network.validate();
+  const crispr = new CRISPR(network);
+  const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-IF.json");
+
+  const networkIF = (crispr.apply(JSON.parse(dnaTXT)) as Network);
+  (networkIF as Network).validate();
+
+  console.info(networkIF.toJSON());
+
+  for (let pos = networkIF.nodes.length; pos--;) {
+    const node = (networkIF.nodes[pos] as Node);
+    const tag = getTag(node, "CRISPR");
+    if (tag) {
+      for (let attempts = 0; attempts < 10; attempts++) {
+        node.mutate(Mutation.MOD_ACTIVATION.name);
+      }
+
+      const tag = getTag(node, "CRISPR");
+      if (tag) {
+        assert(false, "Should have removed CRISPER");
+      }
+    }
+  }
 });

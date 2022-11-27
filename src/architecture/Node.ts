@@ -6,7 +6,7 @@ import { NodeFixableInterface } from "../methods/activations/NodeFixableInterfac
 import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
-import { addTags, TagsInterface } from "../tags/TagsInterface.ts";
+import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
@@ -560,6 +560,7 @@ export class Node implements TagsInterface, NodeInterface {
           if (tmpSquash != this.squash) {
             this.squash = tmpSquash;
             delete this.squashMethodCache;
+            removeTag(this, "CRISPR");
             break;
           }
         }
