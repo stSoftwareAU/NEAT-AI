@@ -4,6 +4,10 @@ import { Network } from "../src/architecture/Network.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+Deno.test("FIX ME", () => {
+  // @TODO constant should have no squash
+  assert( false);
+});
 
 Deno.test("Constants", () => {
   const json: NetworkInterface = {
