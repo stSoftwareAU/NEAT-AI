@@ -134,7 +134,7 @@ export class Network {
       // Create output nodes
       for (let i = this.output; i--;) {
         const type = "output";
-        const node = new Node(type, undefined, this);
+        const node = new Node(type, undefined, this, LOGISTIC.NAME);
         node.index = this.nodes.length;
         this.nodes.push(node);
       }
@@ -148,7 +148,7 @@ export class Network {
       // Create output nodes
       for (let i = this.output; i--;) {
         const type = "output";
-        const node = new Node(type, undefined, this);
+        const node = new Node(type, undefined, this, LOGISTIC.NAME);
         node.index = this.nodes.length;
         this.nodes.push(node);
       }
@@ -437,6 +437,10 @@ export class Network {
             console.info(this.connections);
             throw indx + ") '" + node.type + "' node has inward connections: " +
               toList.length;
+          }
+          if (node.squash) {
+            throw indx + ") '" + node.type + "' has squash: " +
+              node.squash;
           }
           break;
         }
