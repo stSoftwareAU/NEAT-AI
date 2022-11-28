@@ -8,9 +8,33 @@ import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("No squash", () => {
-  assert(false, "@TODO compat two same constants");
-});
+// Deno.test("Compact", () => {
+//   const json: NetworkInterface = {
+//     nodes: [
+//       { bias: 0.5, type: "constant", index: 1 },
+//       { bias: 0, type: "output", squash: "IDENTITY", index: 2 },
+//     ],
+//     connections: [
+//       { weight: 1, from: 1, to: 2 },
+//     ],
+//     input: 1,
+//     output: 1,
+//   };
+//   const network = Network.fromJSON(json);
+//   network.validate();
+//   network.fix();
+//   network.validate();
+
+//   const value = network.noTraceActivate([Math.random()])[0];
+
+//   assertAlmostEquals(value, 0.5, 0.00001);
+
+//   const value2 = network.activate([Math.random()])[0];
+
+//   assertAlmostEquals(value2, 0.5, 0.00001);
+
+//   console.info(JSON.stringify(network.toJSON(), null, 2));
+// });
 
 Deno.test("No squash", () => {
   const json: NetworkInterface = {

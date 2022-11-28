@@ -1366,7 +1366,7 @@ export class Network {
 
     const node = this.nodes[indx];
 
-    if (node.type !== "hidden") {
+    if (node.type !== "hidden" && node.type !== "constant") {
       console.trace();
       throw indx + ") Node must be a 'hidden' type was: " + node.type;
     }
