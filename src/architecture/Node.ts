@@ -85,7 +85,7 @@ export class Node implements TagsInterface, NodeInterface {
   findSquash() {
     if (!this.squashMethodCache) {
       this.squashMethodCache = Activations.find(
-        this.squash ? this.squash : "UNDEFINED",
+        this.squash ? this.squash : `UNDEFINED-${this.type}-${this.index}`,
       );
     }
     return this.squashMethodCache;
@@ -352,7 +352,7 @@ export class Node implements TagsInterface, NodeInterface {
    */
   noTraceActivate() {
     const state = this.network.networkState.node(this.index);
-    if (this.type == "constant") {
+    if (this.type == 'constant') {
       state.activation = this.bias;
     } else {
       const squashMethod = this.findSquash();
