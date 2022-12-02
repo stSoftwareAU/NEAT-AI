@@ -1,5 +1,4 @@
 /* Import */
-import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { NodeActivationInterface } from "../methods/activations/NodeActivationInterface.ts";
 import { NodeFixableInterface } from "../methods/activations/NodeFixableInterface.ts";
