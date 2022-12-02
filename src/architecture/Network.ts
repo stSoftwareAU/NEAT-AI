@@ -1675,6 +1675,8 @@ export class Network {
       );
       const node = this.nodes[index];
 
+      if (node.type == "constant") continue;
+
       if (this.inFocus(index, focusList)) {
         (node as Node).mutate(Mutation.MOD_ACTIVATION.name);
         break;

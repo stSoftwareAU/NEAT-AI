@@ -563,6 +563,13 @@ export class Node implements TagsInterface, NodeInterface {
     }
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
+        switch (this.type) {
+          case "hidden":
+          case "output":
+            break;
+          default:
+            throw `Can't modify activation for type ${this.type}`;
+        }
         // Can't be the same squash
         for (let attempts = 0; attempts < 12; attempts++) {
           const tmpSquash = Activations
