@@ -1868,8 +1868,11 @@ export class Network {
       );
 
       if (this.inFocus(index1, focusList)) {
-        node1 = this.nodes[index1];
-        break;
+        const tmpNode = this.nodes[index1];
+        if (tmpNode.type == "hidden") {
+          node1 = tmpNode;
+          break;
+        }
       }
     }
     if (node1 == null) return;
@@ -1882,8 +1885,11 @@ export class Network {
       );
 
       if (this.inFocus(index2, focusList)) {
-        node2 = this.nodes[index2];
-        break;
+        const tmpNode = this.nodes[index2];
+        if (tmpNode.type == "hidden") {
+          node2 = tmpNode;
+          break;
+        }
       }
     }
 

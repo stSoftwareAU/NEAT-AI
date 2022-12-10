@@ -53,11 +53,6 @@ export class Node implements TagsInterface, NodeInterface {
           throw "constants should not a have a squash was: " + squash;
         }
       } else {
-        // if (typeof squash !== "string") {
-        //   console.trace();
-        //   throw "squash (other than for input/constant) must be a string typeof: " +
-        //     (typeof squash) + ", value: " + squash;
-        // }
         this.squash = squash;
       }
     } else {
@@ -77,6 +72,10 @@ export class Node implements TagsInterface, NodeInterface {
   }
 
   setSquash(name: string) {
+    if (this.type == "constant") {
+      console.trace();
+      throw "Can't set the squash of a constant";
+    }
     delete this.squashMethodCache;
     this.squash = name;
     return this.findSquash();
@@ -352,7 +351,7 @@ export class Node implements TagsInterface, NodeInterface {
    */
   noTraceActivate() {
     const state = this.network.networkState.node(this.index);
-    if (this.type == 'constant') {
+    if (this.type == "constant") {
       state.activation = this.bias;
     } else {
       const squashMethod = this.findSquash();
