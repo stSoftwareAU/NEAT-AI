@@ -1,5 +1,5 @@
 import { Network } from "../src/architecture/Network.ts";
-import { assert } from "https://deno.land/std@0.165.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.167.0/testing/asserts.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

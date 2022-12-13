@@ -7,7 +7,7 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.165.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.167.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.ts";
 import { addTags, getTag } from "../tags/TagsInterface.ts";
@@ -15,7 +15,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findRatePolicy } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.165.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.167.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -1447,7 +1447,10 @@ export class Network {
         if (node.index >= pos) continue;
 
         if (this.inFocus(pos, tmpFocusList)) {
-          toIndex = pos;
+          const toNode = this.getNode(pos);
+          if (toNode.type !== "constant") {
+            toIndex = pos;
+          }
         }
       } else {
         break;
@@ -1540,7 +1543,6 @@ export class Network {
         if (node2.type === "constant") continue;
 
         if (!(node1 as Node).isProjectingTo(node2 as Node)) {
-          // (node1 as Node).isProjectingTo((node2 as Node));
           available.push([node1, node2]);
         }
       }
@@ -1694,6 +1696,7 @@ export class Network {
     ) {
       if (this.inFocus(i, focusList)) {
         const node = this.nodes[i];
+        if (node.type === "constant") continue;
 
         const c = this.selfConnection(node.index);
         if (c === null) {
@@ -1832,7 +1835,7 @@ export class Network {
         const node1 = this.nodes[i];
         for (let j = this.input; j < i; j++) {
           const node2 = this.nodes[j];
-          if (node2.type == "output") break;
+          // if (node2.type == "output") break;
           if (this.inFocus(node2.index, focusList)) {
             if ((node2 as Node).isProjectingTo(node1 as Node)) {
               available.push([node2, node1]);
@@ -2210,19 +2213,21 @@ export class Network {
             adjustFrom--;
           }
           if (offspring.getConnection(adjustFrom, adjustTo) == null) {
-            const co = offspring.connect(
-              adjustFrom,
-              adjustTo,
-              c.weight,
-              c.type,
-            );
-            if (c.gater !== undefined) {
-              if (c.gater < adjustTo) {
-                co.gater = c.gater;
-              } else {
-                co.gater = adjustTo - (c.to - c.gater);
-                if (co.gater < 0) {
-                  co.gater = 0;
+            if (offspring.nodes[adjustTo].type !== "constant") {
+              const co = offspring.connect(
+                adjustFrom,
+                adjustTo,
+                c.weight,
+                c.type,
+              );
+              if (c.gater !== undefined) {
+                if (c.gater < adjustTo) {
+                  co.gater = c.gater;
+                } else {
+                  co.gater = adjustTo - (c.to - c.gater);
+                  if (co.gater < 0) {
+                    co.gater = 0;
+                  }
                 }
               }
             }

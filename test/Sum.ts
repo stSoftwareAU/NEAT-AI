@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.165.0/testing/asserts.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";

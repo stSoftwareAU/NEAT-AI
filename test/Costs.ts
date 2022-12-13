@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.165.0/testing/asserts.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.167.0/testing/asserts.ts";
 import { Costs } from "../src/Costs.ts";
 import { MSELimit } from "../src/costs/MSELimit.ts";
 import { TwelveSteps } from "../src/costs/TwelveSteps.ts";
