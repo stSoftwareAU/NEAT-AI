@@ -1830,15 +1830,19 @@ export class Network {
   private subBackConn(focusList?: number[]) {
     // Create an array of all uncreated (back fed) connections
     const available = [];
-    for (let i = this.input; i < this.nodes.length; i++) {
-      if (this.inFocus(i, focusList)) {
-        const node1 = this.nodes[i];
-        for (let j = this.input; j < i; j++) {
-          const node2 = this.nodes[j];
-          // if (node2.type == "output") break;
-          if (this.inFocus(node2.index, focusList)) {
-            if ((node2 as Node).isProjectingTo(node1 as Node)) {
-              available.push([node2, node1]);
+    for (let to = this.input; to < this.nodes.length; to++) {
+      if (this.inFocus(to, focusList)) {
+        for (let from = 0; from < to; from++) {
+          if (this.inFocus(from, focusList)) {
+            if (
+              (
+                this.fromConnections(from).length > 1 ||
+                this.nodes[from].type === "input"
+              ) && this.toConnections(to).length > 1
+            ) {
+              if (this.getConnection(from, to) != null) {
+                available.push([from, to]);
+              }
             }
           }
         }
@@ -1850,7 +1854,7 @@ export class Network {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    this.disconnect(pair[0].index, pair[1].index);
+    this.disconnect(pair[0], pair[1]);
   }
 
   public swapNodes(focusList?: number[]) {
