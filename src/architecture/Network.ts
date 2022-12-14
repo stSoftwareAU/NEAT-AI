@@ -1743,7 +1743,7 @@ export class Network {
   private addGate(focusList?: number[]) {
     // Create a list of all non-gated connections
     const possible = [];
-    for (let i = this.connections.length; i--;) {
+    for (let i = this.input; i <this.connections.length; i++) {
       const conn = this.connections[i];
       if (!Number.isInteger(conn.gater)) {
         possible.push(conn);
