@@ -244,7 +244,10 @@ export class Network {
    * Compact the network.
    */
   compact(): Network | null {
+    const holdDebug = this.DEBUG;
+    this.DEBUG = false;
     const json = this.toJSON();
+    this.DEBUG = holdDebug;
     const compactNetwork = Network.fromJSON(json);
     compactNetwork.fix();
 
@@ -256,67 +259,80 @@ export class Network {
         pos < compactNetwork.nodes.length - compactNetwork.output;
         pos++
       ) {
-        const toList = compactNetwork.toConnections(pos).filter(
+        const fromList = compactNetwork.fromConnections(pos).filter(
           (c: ConnectionInterface) => {
             return c.from !== c.to;
           },
         );
-        if (toList.length == 1) {
-          const fromList = compactNetwork.fromConnections(pos).filter(
+
+        if (fromList.length == 0) {
+          compactNetwork.removeHiddenNode(pos);
+          complete = false;
+        } else {
+          const toList = compactNetwork.toConnections(pos).filter(
             (c: ConnectionInterface) => {
               return c.from !== c.to;
             },
           );
-          if (fromList.length == 1) {
-            const to = fromList[0].to;
-            const from = toList[0].from;
-            if (
-              from > this.input &&
-              compactNetwork.nodes[from].type == compactNetwork.nodes[pos].type
-            ) {
-              if (compactNetwork.getConnection(from, to) == null) {
-                let weightA = fromList[0].weight * toList[0].weight;
+          if (toList.length == 1) {
+            const fromList = compactNetwork.fromConnections(pos).filter(
+              (c: ConnectionInterface) => {
+                return c.from !== c.to;
+              },
+            );
+            if (fromList.length == 1) {
+              const to = fromList[0].to;
+              const from = toList[0].from;
+              if (
+                from > this.input &&
+                compactNetwork.nodes[from].type ==
+                  compactNetwork.nodes[pos].type
+              ) {
+                if (compactNetwork.getConnection(from, to) == null) {
+                  let weightA = fromList[0].weight * toList[0].weight;
 
-                const tmpFromBias = compactNetwork.nodes[from].bias;
-                const tmpToBias = compactNetwork.nodes[pos].bias;
-                let biasA = (tmpFromBias ? tmpFromBias : 0) * toList[0].weight +
-                  (tmpToBias ? tmpToBias : 0);
+                  const tmpFromBias = compactNetwork.nodes[from].bias;
+                  const tmpToBias = compactNetwork.nodes[pos].bias;
+                  let biasA =
+                    (tmpFromBias ? tmpFromBias : 0) * toList[0].weight +
+                    (tmpToBias ? tmpToBias : 0);
 
-                if (biasA === Number.POSITIVE_INFINITY) {
-                  biasA = Number.MAX_SAFE_INTEGER;
-                } else if (biasA === Number.NEGATIVE_INFINITY) {
-                  biasA = Number.MIN_SAFE_INTEGER;
-                } else if (isNaN(biasA)) {
-                  biasA = 0;
+                  if (biasA === Number.POSITIVE_INFINITY) {
+                    biasA = Number.MAX_SAFE_INTEGER;
+                  } else if (biasA === Number.NEGATIVE_INFINITY) {
+                    biasA = Number.MIN_SAFE_INTEGER;
+                  } else if (isNaN(biasA)) {
+                    biasA = 0;
+                  }
+
+                  compactNetwork.nodes[from].bias = biasA;
+
+                  compactNetwork.removeHiddenNode(pos);
+                  let adjustedTo = to;
+                  if (adjustedTo > pos) {
+                    adjustedTo--;
+                  }
+
+                  if (weightA === Number.POSITIVE_INFINITY) {
+                    weightA = Number.MAX_SAFE_INTEGER;
+                  } else if (weightA === Number.NEGATIVE_INFINITY) {
+                    weightA = Number.MIN_SAFE_INTEGER;
+                  } else if (isNaN(weightA)) {
+                    weightA = 0;
+                  }
+
+                  compactNetwork.connect(
+                    from,
+                    adjustedTo,
+                    weightA,
+                    fromList[0].type,
+                  );
+
+                  if (changes < 12) {
+                    complete = false;
+                  }
+                  break;
                 }
-
-                compactNetwork.nodes[from].bias = biasA;
-
-                compactNetwork.removeHiddenNode(pos);
-                let adjustedTo = to;
-                if (adjustedTo > pos) {
-                  adjustedTo--;
-                }
-
-                if (weightA === Number.POSITIVE_INFINITY) {
-                  weightA = Number.MAX_SAFE_INTEGER;
-                } else if (weightA === Number.NEGATIVE_INFINITY) {
-                  weightA = Number.MIN_SAFE_INTEGER;
-                } else if (isNaN(weightA)) {
-                  weightA = 0;
-                }
-
-                compactNetwork.connect(
-                  from,
-                  adjustedTo,
-                  weightA,
-                  fromList[0].type,
-                );
-
-                if (changes < 12) {
-                  complete = false;
-                }
-                break;
               }
             }
           }
@@ -1743,7 +1759,7 @@ export class Network {
   private addGate(focusList?: number[]) {
     // Create a list of all non-gated connections
     const possible = [];
-    for (let i = this.input; i <this.connections.length; i++) {
+    for (let i = this.input; i < this.connections.length; i++) {
       const conn = this.connections[i];
       if (!Number.isInteger(conn.gater)) {
         possible.push(conn);

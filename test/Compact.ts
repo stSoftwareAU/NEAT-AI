@@ -2,11 +2,58 @@ import { Network } from "../src/architecture/Network.ts";
 import {
   assert,
   assertAlmostEquals,
+  fail,
 } from "https://deno.land/std@0.167.0/testing/asserts.ts";
 
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+/** Make sure the compact routine remove hidden nodes with no affect */
+Deno.test("removeDanglingHidden", () => {
+  const json: NetworkInterface = {
+    nodes: [
+      { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
+      { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
+      { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5 },
+      { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 6 },
+      { type: "hidden", squash: "MEAN", bias: -0.25, index: 7 },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        index: 8,
+        bias: 0,
+      },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        index: 9,
+        bias: 0,
+      },
+    ],
+    connections: [
+      { from: 1, to: 3, weight: 0.1 },
+      { from: 3, to: 8, weight: 0.2 },
+      { from: 0, to: 8, weight: 0.25 },
+      { from: 3, to: 4, weight: 0.3 },
+      { from: 2, to: 5, weight: 0.4 },
+      { from: 1, to: 6, weight: 0.5 },
+      { from: 4, to: 7, weight: 0.7 },
+      { from: 6, to: 8, weight: 0.8 },
+      { from: 7, to: 9, weight: 0.9 },
+    ],
+    input: 3,
+    output: 2,
+  };
+  const a = Network.fromJSON(json);
+
+  const b = a.compact();
+  if (b !== null) {
+    b.validate();
+  } else {
+    fail("Should have compacted");
+  }
+});
 
 Deno.test("CompactSimple", () => {
   const a = new Network(2, 2, {
