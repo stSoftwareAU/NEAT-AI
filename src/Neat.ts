@@ -15,11 +15,11 @@ import {
   ScorableInterface,
 } from "../src/architecture/elitism.ts";
 import { Network } from "./architecture/Network.ts";
-import { encode } from "https://deno.land/std@0.167.0/encoding/base64.ts";
-import { ensureDirSync } from "https://deno.land/std@0.167.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.168.0/fs/ensure_dir.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { Selection } from "./methods/Selection.ts";
 import { Offspring } from "./architecture/Offspring.ts";
+import { NetworkUtil } from "./architecture/NetworkUtils.ts";
 
 export class Neat {
   readonly input: number;
@@ -289,30 +289,6 @@ export class Neat {
     return fittest;
   }
 
-  async makeUniqueName(creature: NetworkInterface) {
-    if (typeof creature !== "object") {
-      console.trace();
-      throw "Not an object was: " + (typeof creature);
-    }
-
-    const json = (creature as Network).toJSON();
-    delete json.tags;
-
-    const txt = JSON.stringify(json);
-
-    const arrayBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      this.TE.encode(txt),
-    );
-    const b64 = encode(arrayBuffer);
-    const name = b64.replaceAll("=", "").replaceAll("/", "-").replaceAll(
-      "+",
-      "_",
-    );
-
-    return name;
-  }
-
   previousExperiment(key: string) {
     if (this.config.experimentStore) {
       const filePath = this.config.experimentStore + "/score/" +
@@ -340,7 +316,7 @@ export class Neat {
       for (let i = creatures.length; i--;) {
         const creature = creatures[i];
 
-        const name = await this.makeUniqueName(creature);
+        const name = await NetworkUtil.makeUUID(creature);
         ensureDirSync(
           this.config.experimentStore + "/score/" +
             name.substring(0, 3),
@@ -477,7 +453,7 @@ export class Neat {
      */
     for (let i = 0; i < creatures.length; i++) {
       const p = creatures[i];
-      const key = await this.makeUniqueName(p);
+      const key = await NetworkUtil.makeUUID(p);
 
       let duplicate = unique.has(key);
       if (!duplicate && i > this.config.elitism) {
@@ -496,7 +472,7 @@ export class Neat {
             this.mutate(tmpPopulation);
 
             const p2 = tmpPopulation[0];
-            const key2 = await this.makeUniqueName(p2);
+            const key2 = await NetworkUtil.makeUUID(p2);
 
             let duplicate2 = unique.has(key2);
             if (!duplicate2 && i > this.config.elitism) {
@@ -549,7 +525,7 @@ export class Neat {
    * Gets a genome based on the selection function
    * @return {Network} genome
    */
-  getParent() {
+  getParent(): Network {
     switch (this.config.selection) {
       case Selection.POWER: {
         const r = Math.random();
@@ -558,7 +534,7 @@ export class Neat {
             this.population.length,
         );
 
-        return this.population[index];
+        return this.population[index] as Network;
       }
       case Selection.FITNESS_PROPORTIONATE: {
         /**
@@ -587,14 +563,16 @@ export class Neat {
           if (genome.score !== undefined) {
             value += genome.score + adjustFitness;
             if (random < value) {
-              return genome;
+              return genome as Network;
             }
           }
         }
 
         // if all scores equal, return random genome
         return this
-          .population[Math.floor(Math.random() * this.population.length)];
+          .population[
+            Math.floor(Math.random() * this.population.length)
+          ] as Network;
       }
       case Selection.TOURNAMENT: {
         if (Selection.TOURNAMENT.size > this.config.popSize) {
@@ -626,6 +604,10 @@ export class Neat {
             return individuals[i];
           }
         }
+        throw "No parent found in tournament";
+      }
+      default: {
+        throw "Unknown selection: " + this.config.selection;
       }
     }
   }

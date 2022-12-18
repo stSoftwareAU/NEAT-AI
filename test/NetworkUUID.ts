@@ -1,0 +1,122 @@
+import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import {
+  assert,
+  assertEquals,
+} from "https://deno.land/std@0.168.0/testing/asserts.ts";
+import { Network } from "../src/architecture/Network.ts";
+import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";
+
+((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+Deno.test("knownName", async () => {
+  const creature: NetworkInterface = Network.fromJSON({
+    "nodes": [{
+      "bias": 0,
+      "type": "input",
+      "squash": "LOGISTIC",
+      "index": 0,
+    }, {
+      "bias": 0,
+      "type": "input",
+      "squash": "LOGISTIC",
+      "index": 1,
+    }, {
+      "bias": -0.49135010426905,
+      "type": "output",
+      "squash": "BIPOLAR_SIGMOID",
+      "index": 2,
+    }],
+    "connections": [{
+      "weight": 0.9967556172986067,
+      "from": 1,
+      "to": 2,
+    }, { "weight": 0.96864643541, "from": 0, "to": 2 }],
+    "input": 2,
+    "output": 1,
+    tags: [
+      { name: "error", value: "0.5" },
+    ],
+  });
+
+  const uuid = await NetworkUtil.makeUUID(creature);
+
+  console.log("UUID", uuid);
+
+  assert(
+    uuid == "29461e8f-296d-5f3f-84db-a3734d6411fb",
+    "Wrong UUID was: " + uuid,
+  );
+});
+
+Deno.test("ignoreTags", async () => {
+  const creature: NetworkInterface = {
+    uuid: crypto.randomUUID(),
+    nodes: [
+      {
+        bias: 0,
+        index: 5,
+        type: "hidden",
+        squash: "IDENTITY",
+      },
+      {
+        bias: 0.1,
+        index: 6,
+        type: "output",
+        squash: "IDENTITY",
+      },
+      {
+        bias: 0.2,
+        index: 7,
+        type: "output",
+        squash: "IDENTITY",
+      },
+    ],
+    connections: [
+      {
+        weight: -0.1,
+        from: 1,
+        to: 5,
+      },
+      {
+        weight: 0.2,
+        from: 4,
+        to: 7,
+      },
+      {
+        weight: 0.1,
+        from: 5,
+        to: 6,
+      },
+    ],
+    input: 5,
+    output: 2,
+    tags: [
+      { name: "hello", value: "world" },
+    ],
+    score: -0.1111,
+  };
+
+  const clean = JSON.parse(JSON.stringify(creature, null, 4));
+
+  delete clean.uuid;
+  delete clean.score;
+  delete clean.tags;
+
+  const uuid1 = await NetworkUtil.makeUUID(creature);
+  const uuid2 = await NetworkUtil.makeUUID(clean);
+
+  console.log("uuid1", uuid1, "uuid2", uuid2);
+
+  assertEquals(uuid2, uuid1, "Should match");
+
+  const alive = Network.fromJSON(creature);
+  const uuid3 = await NetworkUtil.makeUUID(alive);
+
+  assertEquals(uuid3, uuid1, "Alive creature should match was: " + uuid3);
+
+  /** Manually update if needed. */
+  assert(
+    uuid2 == "e6f77bae-5ab2-5425-acc5-0b34c90521d9",
+    "Wrong UUID was: " + uuid2,
+  );
+});

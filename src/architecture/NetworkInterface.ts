@@ -3,6 +3,8 @@ import { ConnectionInterface } from "./ConnectionInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
 
 export interface NetworkInterface extends TagsInterface {
+  /* ID of this network */
+  uuid?: string;
   input: number;
   output: number;
 

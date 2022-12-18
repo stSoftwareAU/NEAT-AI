@@ -2,7 +2,7 @@ import { Network } from "../src/architecture/Network.ts";
 import {
   assertEquals,
   fail,
-} from "https://deno.land/std@0.167.0/testing/asserts.ts";
+} from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

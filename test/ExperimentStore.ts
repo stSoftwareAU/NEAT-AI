@@ -1,8 +1,9 @@
 import { Neat } from "../src/Neat.ts";
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
-import { assert } from "https://deno.land/std@0.167.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
 import { Network } from "../src/architecture/Network.ts";
+import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -60,7 +61,7 @@ Deno.test("previous", async () => {
 });
 
 async function previousExperiment(creature: NetworkInterface, neat: Neat) {
-  const key = await neat.makeUniqueName(creature);
+  const key = await NetworkUtil.makeUUID(creature);
 
   return neat.previousExperiment(key);
 }
