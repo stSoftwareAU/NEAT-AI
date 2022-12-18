@@ -19,6 +19,7 @@ import { encode } from "https://deno.land/std@0.167.0/encoding/base64.ts";
 import { ensureDirSync } from "https://deno.land/std@0.167.0/fs/ensure_dir.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { Selection } from "./methods/Selection.ts";
+import { Offspring } from "./architecture/Offspring.ts";
 
 export class Neat {
   readonly input: number;
@@ -455,7 +456,7 @@ export class Neat {
       throw "Extinction event";
     }
 
-    const creature = Network.crossOver(
+    const creature = Offspring.bread(
       p1,
       p2,
     );

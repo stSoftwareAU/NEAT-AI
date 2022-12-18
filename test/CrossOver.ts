@@ -3,6 +3,7 @@ import {
   assertEquals,
   fail,
 } from "https://deno.land/std@0.167.0/testing/asserts.ts";
+import { Offspring } from "../src/architecture/Offspring.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -93,7 +94,7 @@ Deno.test("CrossOver", () => {
   });
 
   for (let i = 0; i < 100; i++) {
-    const c = Network.crossOver(a, b);
+    const c = Offspring.bread(a, b);
 
     const n = c.nodes[c.nodes.length - 2];
     assertEquals(n.type, "output");

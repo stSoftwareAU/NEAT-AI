@@ -10,6 +10,7 @@ import { Mutation } from "../src/methods/mutation.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
+import { Offspring } from "../src/architecture/Offspring.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -286,7 +287,7 @@ Deno.test("gender-tag", () => {
   addTag(network2.nodes[0], "gender", "female");
 
   // Crossover
-  const network = Network.crossOver(network1, network2);
+  const network = Offspring.bread(network1, network2);
 
   const gender = getTag(network.nodes[0], "gender");
 
@@ -309,7 +310,7 @@ Deno.test("Feed-forward", () => {
   }
 
   // Crossover
-  const network = Network.crossOver(network1, network2);
+  const network = Offspring.bread(network1, network2);
 
   // Check if the network is feed-forward correctly
   for (i = 0; i < network.connections.length; i++) {
