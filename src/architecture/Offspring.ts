@@ -32,7 +32,7 @@ export class Offspring {
       }
     }
 
-    const score2 = tmpScore1 ? tmpScore1 : -1;
+    const score2 = tmpScore2 ? tmpScore2 : -1;
 
     // Initialize offspring
     const offspring = new Network(network1.input, network1.output, false);
