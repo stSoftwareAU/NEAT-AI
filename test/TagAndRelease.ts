@@ -3,7 +3,7 @@ import { TagAndRelease } from "../src/tags/TagAndReleaseApp.ts";
 import { getTag } from "../src/tags/TagsInterface.ts";
 
 Deno.test("TagDirectory", async () => {
-  const tempDirPath = await Deno.makeTempDir();
+  const tempDirPath = await Deno.makeTempDir({prefix:"test_tags"});
   console.log("Temp dir path:", tempDirPath);
 
   Deno.writeTextFile(

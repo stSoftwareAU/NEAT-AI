@@ -453,7 +453,7 @@ Deno.test("train_XNOR_gate", () => {
       { input: [1, 0], output: [0] },
       { input: [1, 1], output: [1] },
     ],
-    10000,
+    50000,
     0.002,
   );
 });

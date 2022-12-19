@@ -9,7 +9,7 @@ export class TagAndRelease {
   process(options: TagAndReleaseOptions) {
     for (const dirEntry of Deno.readDirSync(options.directory)) {
       if (dirEntry.name.endsWith(".json")) {
-        // console.info( dirEntry);
+        console.info("ZZZZ", dirEntry);
         const json = JSON.parse(
           Deno.readTextFileSync(options.directory + "/" + dirEntry.name),
         );

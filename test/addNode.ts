@@ -77,7 +77,7 @@ const json: NetworkInterface = {
 Deno.test("addNode", () => {
   const network = Network.fromJSON(json);
 
-  for (let i = 100; i--;) {
+  for (let i = 1000; i--;) {
     network.addNode();
   }
   const nodes = network.toJSON({ verbose: true }).nodes;
@@ -90,15 +90,15 @@ Deno.test("addNode", () => {
     if (tag === "yes") {
       assert(
         indx > 3,
-        "Unlikely to be the first node after randomly adding 100 nodes was: " +
+        "Unlikely to be the first node after randomly adding 1000 nodes was: " +
           indx,
       );
     }
 
     if (tag === "yes") {
       assert(
-        indx < 104,
-        "Unlikely to be the last node after randomly adding 100 nodes was: " +
+        indx < 1004,
+        "Unlikely to be the last node after randomly adding 1000 nodes was: " +
           indx,
       );
     }
