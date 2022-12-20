@@ -74,6 +74,16 @@ const json: NetworkInterface = {
   output: 1,
 };
 
+Deno.test("addNodeValidate", () => {
+  for (let j = 10; j--;) {
+    const network = Network.fromJSON(json);
+    for (let i = 1000; i--;) {
+      network.addNode();
+    }
+    network.validate();
+  }
+});
+
 Deno.test("addNode", () => {
   const network = Network.fromJSON(json);
 

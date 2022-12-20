@@ -3,14 +3,17 @@ import { TagAndRelease } from "../src/tags/TagAndReleaseApp.ts";
 import { getTag } from "../src/tags/TagsInterface.ts";
 
 Deno.test("TagDirectory", async () => {
-  const tempDirPath = await Deno.makeTempDir({prefix:"test_tags"});
+  const tempDirPath = await Deno.makeTempDir({ prefix: "test_tags" });
   console.log("Temp dir path:", tempDirPath);
 
-  Deno.writeTextFile(
+  Deno.writeTextFileSync(
     tempDirPath + "/1.json",
     JSON.stringify({ hello: "world" }),
   );
-  Deno.writeTextFile(tempDirPath + "/2.json", JSON.stringify({ good: "bye" }));
+  Deno.writeTextFileSync(
+    tempDirPath + "/2.json",
+    JSON.stringify({ good: "bye" }),
+  );
 
   const tar = new TagAndRelease();
   tar.process({ directory: tempDirPath, tagList: "ABC=123,XYZ=456" });

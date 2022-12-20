@@ -14,7 +14,7 @@ import { getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
-import { findRatePolicy } from "../config.ts";
+import { findRatePolicy, randomPolicyName } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.168.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
@@ -1176,7 +1176,9 @@ export class Network {
     const baseRate = options.rate || 0.3;
     const momentum = options.momentum || 0;
     const batchSize = options.batchSize || 1; // online learning
-    const ratePolicyName = options.ratePolicy ? options.ratePolicy : "FIXED";
+    const ratePolicyName = options.ratePolicy
+      ? options.ratePolicy
+      : randomPolicyName();
     const ratePolicy = findRatePolicy(ratePolicyName);
 
     const iterations = options.iterations ? options.iterations : 0;
@@ -1186,7 +1188,6 @@ export class Network {
     );
 
     // Loops the training process
-    let currentRate = 0.3;
     let iteration = 0;
     let error = 1;
     const EMPTY = { input: [], output: [] };
@@ -1198,7 +1199,7 @@ export class Network {
       iteration++;
 
       // Update the rate
-      currentRate = ratePolicy(baseRate, iteration);
+      const currentRate = ratePolicy(baseRate, iteration);
 
       if (!Number.isFinite(currentRate)) {
         throw "not a valid rate: " + currentRate;
@@ -1234,8 +1235,10 @@ export class Network {
           if (!cached) {
             json[i] = EMPTY;
           }
-          const update = !!((i + 1) % batchSize === 0 || i === 0);
+          const update = ((i + 1) % batchSize === 0 || i === 0);
+          // console.info( "ZZZZ", "i", i, "mod", (i + 1) % batchSize === 0 ,"currentRate",currentRate,"batchSize", batchSize, "update", update, "last", i===0);
 
+          // this.propagate(currentRate, momentum, update, data.output);
           const output = this.activate(data.input);
 
           errorSum += cost.calculate(data.output, output);
@@ -1245,7 +1248,6 @@ export class Network {
 
         counter += len;
       }
-
       this.applyLearnings();
       error = errorSum / counter;
 
@@ -1444,23 +1446,32 @@ export class Network {
     let fromIndex = -1;
     let toIndex = -1;
 
-    for (let attempts = 0; attempts < 1000; attempts++) { //@TODO
-      if (attempts > 9) tmpFocusList = undefined;
+    for (let attempts = 0; attempts < 10; attempts++) {
+      if (attempts >= 9) {
+        tmpFocusList =
+          undefined; /* Should work first time once we remove the "focus" */
+      }
       if (fromIndex === -1) {
         const pos = Math.floor(
-          Math.random() * (this.nodes.length - this.output),
+          Math.random() * (node.index),
         );
 
-        if (node.index <= pos) continue;
+        if (node.index <= pos) {
+          throw "From: " + pos + " should be less than node index: " +
+            node.index;
+        }
         if (this.inFocus(pos, tmpFocusList)) {
           fromIndex = pos;
         }
       } else if (toIndex === -1) {
         const pos = Math.floor(
-          Math.random() * (this.nodes.length - this.input),
-        ) + this.input;
+          Math.random() * (this.nodes.length - node.index),
+        ) + node.index;
 
-        if (node.index >= pos) continue;
+        if (node.index > pos) {
+          throw "To: " + pos + " should be great than node index: " +
+            node.index;
+        }
 
         if (this.inFocus(pos, tmpFocusList)) {
           const toNode = this.getNode(pos);
