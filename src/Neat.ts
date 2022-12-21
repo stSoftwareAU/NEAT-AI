@@ -27,9 +27,6 @@ export class Neat {
   readonly config: NeatConfig;
   readonly workers: WorkerHandler[];
   readonly fitness: Fitness;
-  private TE = new TextEncoder();
-
-  generation: number;
   trainRate: number;
   population: NetworkInterface[];
 
@@ -51,8 +48,7 @@ export class Neat {
       this.config.growth,
       this.config.feedbackLoop,
     );
-    // Generation counter
-    this.generation = 0;
+
     this.trainRate = this.config.trainRate;
 
     // Initialize the genomes
@@ -284,7 +280,6 @@ export class Neat {
     ]; // Keep pseudo sorted.
 
     await this.deDuplicate(this.population);
-    this.generation++;
 
     return fittest;
   }
@@ -390,7 +385,7 @@ export class Neat {
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
-  getOffspring() {
+  getOffspring(): Network {
     const p1 = this.getParent();
 
     if (p1 === undefined) {
@@ -404,7 +399,7 @@ export class Neat {
         console.info(pos, this.population[pos] ? true : false);
       }
       for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return this.population[pos];
+        if (this.population[pos]) return (this.population[pos] as Network);
       }
       throw "Extinction event";
     }
@@ -426,7 +421,7 @@ export class Neat {
         console.info(pos, this.population[pos] ? true : false);
       }
       for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return this.population[pos];
+        if (this.population[pos]) return (this.population[pos] as Network);
       }
 
       throw "Extinction event";

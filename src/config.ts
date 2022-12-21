@@ -19,7 +19,7 @@ init();
 
 // deno-lint-ignore ban-types
 export function findRatePolicy(ratePolicy: string): Function {
-  console.info("Rate Policy", ratePolicy);
+  // console.info("Rate Policy", ratePolicy);
   return rateMap.get(ratePolicy);
 }
 

@@ -962,10 +962,10 @@ export class Network {
     let bestCreature = null;
 
     let iterationStartMS = new Date().getTime();
-
+    let generation = 0;
     while (
       error > config.targetError &&
-      (!options.iterations || neat.generation < options.iterations)
+      (!options.iterations || generation < options.iterations)
     ) {
       const fittest: Network = await neat.evolve(
         bestCreature as (NetworkInterface | undefined),
@@ -988,13 +988,13 @@ export class Network {
 
       if (
         options.log &&
-        (neat.generation % options.log === 0 || timedOut ||
+        (generation % options.log === 0 || timedOut ||
           error <= config.targetError)
       ) {
         const now = new Date().getTime();
         console.log(
           "iteration",
-          neat.generation,
+          generation,
           "score",
           fittest.score,
           "error",
@@ -1011,6 +1011,7 @@ export class Network {
       }
 
       if (timedOut) break;
+      generation++;
     }
 
     const promises: Promise<string>[] = [];
@@ -1040,7 +1041,6 @@ export class Network {
     return {
       error: error,
       score: bestScore,
-      iterations: neat.generation,
       time: Date.now() - start,
     };
   }
@@ -1164,7 +1164,7 @@ export class Network {
   ) {
     options = options || {};
     // Warning messages
-    if (typeof options.iterations === "undefined") {
+    if (options.iterations == undefined) {
       console.warn(
         "No target iterations given, running until error is reached!",
       );
@@ -1173,8 +1173,10 @@ export class Network {
     // Read the options
     const targetError = options.error || 0.05;
     const cost = Costs.find(options.cost ? options.cost : "MSE");
-    const baseRate = options.rate || 0.3;
-    const momentum = options.momentum || 0;
+    const baseRate = options.rate == undefined ? Math.random() : options.rate;
+    const momentum = options.momentum == undefined
+      ? Math.random()
+      : options.momentum;
     const batchSize = options.batchSize || 1; // online learning
     const ratePolicyName = options.ratePolicy
       ? options.ratePolicy
@@ -1233,12 +1235,11 @@ export class Network {
           const data = json[i];
 
           if (!cached) {
+            /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
           const update = ((i + 1) % batchSize === 0 || i === 0);
-          // console.info( "ZZZZ", "i", i, "mod", (i + 1) % batchSize === 0 ,"currentRate",currentRate,"batchSize", batchSize, "update", update, "last", i===0);
 
-          // this.propagate(currentRate, momentum, update, data.output);
           const output = this.activate(data.input);
 
           errorSum += cost.calculate(data.output, output);

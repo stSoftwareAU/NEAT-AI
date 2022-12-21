@@ -11,6 +11,7 @@ import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
+import { TrainOptions } from "../src/config/TrainOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -154,6 +155,8 @@ function trainSet(
   set: { input: number[]; output: number[] }[],
   iterations: number,
   error: number,
+  momentum = 0,
+  rate = 0.3,
 ) {
   const network = new Network(
     set[0].input.length,
@@ -167,10 +170,11 @@ function trainSet(
     },
   );
 
-  const options: NeatOptions = {
+  const options: TrainOptions = {
     iterations: iterations,
     error: error,
-    threads: 1,
+    momentum: momentum,
+    rate: rate,
   };
 
   const results = network.train(set, options);

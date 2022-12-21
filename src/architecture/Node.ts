@@ -401,8 +401,8 @@ export class Node implements TagsInterface, NodeInterface {
    * Back-propagate the error, aka learn
    */
   propagate(rate: number, momentum: number, update: boolean, target?: number) {
-    momentum = momentum || 0;
-    rate = rate || 0.3;
+    // momentum = momentum || 0;
+    // rate = rate || 0.3;
 
     // Error accumulator
     let error = 0;
@@ -518,7 +518,7 @@ export class Node implements TagsInterface, NodeInterface {
     sp.totalDeltaBias += deltaBias;
     if (update) {
       sp.totalDeltaBias += momentum * sp.previousDeltaBias;
-      // if (this.bias !== undefined) {
+
       this.bias += sp.totalDeltaBias;
       if (!Number.isFinite(this.bias)) {
         if (this.bias === Number.POSITIVE_INFINITY) {
@@ -532,7 +532,7 @@ export class Node implements TagsInterface, NodeInterface {
           throw this.index + ") invalid this.bias: " + this.bias;
         }
       }
-      // }
+
       sp.previousDeltaBias = sp.totalDeltaBias;
       sp.totalDeltaBias = 0;
     }
