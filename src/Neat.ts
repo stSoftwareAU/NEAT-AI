@@ -230,7 +230,6 @@ export class Neat {
           trainPromises.length,
       ),
       !rebootedFineTune && this.config.verbose,
-      this.config.experimentStore ? true : false,
     );
 
     const newPopulation = [];
