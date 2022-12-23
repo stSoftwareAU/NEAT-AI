@@ -30,7 +30,10 @@ const cacheDataFile = {
   json: {},
 };
 
-export class Network {
+export class Network implements NetworkInterface{
+  /* ID of this network */
+  uuid?: string;
+
   input: number;
   output: number;
   nodes: NodeInterface[];
@@ -1689,7 +1692,7 @@ export class Network {
       );
       const node = this.nodes[index];
       if (node.type === "constant") continue;
-      if (!this.inFocus(index, focusList)) continue;
+      if (!this.inFocus(index, focusList) && attempts < 6) continue;
       (node as Node).mutate(Mutation.MOD_BIAS.name);
       break;
     }
@@ -2097,6 +2100,7 @@ export class Network {
     }
 
     const json = {
+      uuid: this.uuid,
       nodes: new Array(
         this.nodes.length - (options.verbose ? 0 : this.input),
       ),
@@ -2125,6 +2129,7 @@ export class Network {
   }
 
   private loadFrom(json: NetworkInterface, validate: boolean) {
+    this.uuid=json.uuid;
     this.nodes.length = json.nodes.length;
     if (json.tags) {
       this.tags = [...json.tags];

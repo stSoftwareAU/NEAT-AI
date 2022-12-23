@@ -593,6 +593,7 @@ export class Node implements TagsInterface, NodeInterface {
         console.trace();
         throw "Unknown mutate method: " + method;
     }
+    delete this.network.uuid;
   }
 
   /**

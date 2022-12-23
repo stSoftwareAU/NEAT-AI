@@ -2,9 +2,11 @@ import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import {
   assert,
   assertEquals,
+assertNotEquals,
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";
+import { Neat } from "../src/Neat.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -119,4 +121,121 @@ Deno.test("ignoreTags", async () => {
     uuid2 == "e6f77bae-5ab2-5425-acc5-0b34c90521d9",
     "Wrong UUID was: " + uuid2,
   );
+});
+
+Deno.test("keepUUID", () => {
+  const creature: NetworkInterface = {
+    uuid: crypto.randomUUID(),
+    nodes: [
+      {
+        bias: 0,
+        index: 5,
+        type: "hidden",
+        squash: "IDENTITY",
+      },
+      {
+        bias: 0.1,
+        index: 6,
+        type: "output",
+        squash: "IDENTITY",
+      },
+      {
+        bias: 0.2,
+        index: 7,
+        type: "output",
+        squash: "IDENTITY",
+      },
+    ],
+    connections: [
+      {
+        weight: -0.1,
+        from: 1,
+        to: 5,
+      },
+      {
+        weight: 0.2,
+        from: 4,
+        to: 7,
+      },
+      {
+        weight: 0.1,
+        from: 5,
+        to: 6,
+      },
+    ],
+    input: 5,
+    output: 2,
+    tags: [
+      { name: "hello", value: "world" },
+    ],
+    score: -0.1111,
+  };
+
+  const n1=Network.fromJSON( creature);
+  const j1=n1.toJSON();
+  const n2=Network.fromJSON( j1);
+  
+  assertEquals(n2.uuid, creature.uuid, "Exported creature should match was: " + n2.uuid);
+
+});
+
+Deno.test("generateUUID", async () => {
+  const creature: NetworkInterface = {
+    nodes: [
+      {
+        bias: 0,
+        index: 5,
+        type: "hidden",
+        squash: "IDENTITY",
+      },
+      {
+        bias: 0.1,
+        index: 6,
+        type: "output",
+        squash: "IDENTITY",
+      },
+      {
+        bias: 0.2,
+        index: 7,
+        type: "output",
+        squash: "IDENTITY",
+      },
+    ],
+    connections: [
+      {
+        weight: -0.1,
+        from: 1,
+        to: 5,
+      },
+      {
+        weight: 0.2,
+        from: 4,
+        to: 7,
+      },
+      {
+        weight: 0.1,
+        from: 5,
+        to: 6,
+      },
+    ],
+    input: 5,
+    output: 2,
+    tags: [
+      { name: "hello", value: "world" },
+    ],
+    score: -0.1111,
+  };
+
+  const n1=Network.fromJSON( creature);
+
+  const neat = new Neat(1, 1, {}, []);
+  await neat.deDuplicate([n1]);
+  
+  const uuid1=n1.uuid;
+  assert(n1.uuid, "deDuplicate should create UUIDs: " + n1.uuid);
+
+  n1.modBias( );
+  await neat.deDuplicate([n1]);
+
+  assertNotEquals(uuid1, n1.uuid, "modifying should change the UUID: " + n1.uuid);
 });
