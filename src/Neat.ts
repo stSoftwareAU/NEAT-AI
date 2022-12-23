@@ -448,7 +448,7 @@ export class Neat {
     for (let i = 0; i < creatures.length; i++) {
       const p = creatures[i];
       const key = await NetworkUtil.makeUUID(p);
-      p.uuid=key;
+      p.uuid = key;
       let duplicate = unique.has(key);
       if (!duplicate && i > this.config.elitism) {
         duplicate = this.previousExperiment(key);

@@ -30,7 +30,7 @@ const cacheDataFile = {
   json: {},
 };
 
-export class Network implements NetworkInterface{
+export class Network implements NetworkInterface {
   /* ID of this network */
   uuid?: string;
 
@@ -2129,7 +2129,7 @@ export class Network implements NetworkInterface{
   }
 
   private loadFrom(json: NetworkInterface, validate: boolean) {
-    this.uuid=json.uuid;
+    this.uuid = json.uuid;
     this.nodes.length = json.nodes.length;
     if (json.tags) {
       this.tags = [...json.tags];
