@@ -1,5 +1,5 @@
 import { NetworkInterface } from "./NetworkInterface.ts";
-import { generate as generateV5 } from "https://deno.land/std@0.168.0/uuid/v5.ts";
+import { generate as generateV5 } from "https://deno.land/std@0.170.0/uuid/v5.ts";
 export class NetworkUtil {
   private static TE = new TextEncoder();
   private static NAMESPACE = "843dc7df-f60b-47f6-823d-2992e0a4295c";

@@ -15,7 +15,7 @@ import {
   ScorableInterface,
 } from "../src/architecture/elitism.ts";
 import { Network } from "./architecture/Network.ts";
-import { ensureDirSync } from "https://deno.land/std@0.168.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.170.0/fs/ensure_dir.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { Selection } from "./methods/Selection.ts";
 import { Offspring } from "./architecture/Offspring.ts";
