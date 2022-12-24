@@ -143,12 +143,17 @@ export class Offspring {
           if (from === undefined) throw "No index for UUID: " + fromUUID;
           let gater;
           if (c.gater !== undefined) {
+            try{
             const gaterUUID = tmpNetwork.nodes[c.gater].uuid;
             if (!gaterUUID) throw "No gater UUID";
             const tmpGater = uuidMap.get(gaterUUID);
             if (tmpGater !== undefined && tmpGater <= i) {
               gater = tmpGater;
             }
+          }
+          catch( e){
+            console.warn( c, e);
+          }
           }
           if (from <= i) {
             let tmpFrom = from;
