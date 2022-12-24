@@ -144,11 +144,14 @@ export class Offspring {
           let gater;
           if (c.gater !== undefined) {
             try{
-            const gaterUUID = tmpNetwork.nodes[c.gater].uuid;
-            if (!gaterUUID) throw "No gater UUID";
-            const tmpGater = uuidMap.get(gaterUUID);
-            if (tmpGater !== undefined && tmpGater <= i) {
-              gater = tmpGater;
+            const tmpGater1=Math.abs(c.gater);
+            if( tmpGater1 < i){
+              const gaterUUID = tmpNetwork.nodes[tmpGater1].uuid;
+              if (!gaterUUID) throw "No gater UUID";
+              const tmpGater2 = uuidMap.get(gaterUUID);
+              if (tmpGater2 !== undefined && tmpGater2 <= i) {
+                gater = tmpGater2;
+              }
             }
           }
           catch( e){
