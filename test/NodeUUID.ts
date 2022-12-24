@@ -7,7 +7,7 @@ import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("generateUUID", ( ) => {
+Deno.test("generateUUID", () => {
   const creature: NetworkInterface = {
     nodes: [
       {
@@ -54,14 +54,16 @@ Deno.test("generateUUID", ( ) => {
     score: -0.1111,
   };
 
-  const n1=Network.fromJSON( creature);
+  const n1 = Network.fromJSON(creature);
 
-  n1.nodes.forEach( n => {assert( n.uuid, "Must have a UUID")});
-
-  const j1=n1.toJSON();
-  const n2=Network.fromJSON( j1);
-
-  for( let i=0;i<n1.nodes.length;i++){
-    assertEquals( n1.nodes[i].uuid, n2.nodes[i].uuid );
-  }
+  n1.nodes.forEach((n) => {
+    assert(n.uuid, "Must have a UUID");
   });
+
+  const j1 = n1.toJSON();
+  const n2 = Network.fromJSON(j1);
+
+  for (let i = 0; i < n1.nodes.length; i++) {
+    assertEquals(n1.nodes[i].uuid, n2.nodes[i].uuid);
+  }
+});

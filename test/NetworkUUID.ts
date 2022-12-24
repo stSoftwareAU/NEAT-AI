@@ -2,7 +2,7 @@ import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import {
   assert,
   assertEquals,
-assertNotEquals,
+  assertNotEquals,
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";
@@ -171,12 +171,15 @@ Deno.test("keepUUID", () => {
     score: -0.1111,
   };
 
-  const n1=Network.fromJSON( creature);
-  const j1=n1.toJSON();
-  const n2=Network.fromJSON( j1);
-  
-  assertEquals(n2.uuid, creature.uuid, "Exported creature should match was: " + n2.uuid);
+  const n1 = Network.fromJSON(creature);
+  const j1 = n1.toJSON();
+  const n2 = Network.fromJSON(j1);
 
+  assertEquals(
+    n2.uuid,
+    creature.uuid,
+    "Exported creature should match was: " + n2.uuid,
+  );
 });
 
 Deno.test("generateUUID", async () => {
@@ -226,16 +229,20 @@ Deno.test("generateUUID", async () => {
     score: -0.1111,
   };
 
-  const n1=Network.fromJSON( creature);
+  const n1 = Network.fromJSON(creature);
 
   const neat = new Neat(1, 1, {}, []);
   await neat.deDuplicate([n1]);
-  
-  const uuid1=n1.uuid;
+
+  const uuid1 = n1.uuid;
   assert(n1.uuid, "deDuplicate should create UUIDs: " + n1.uuid);
 
-  n1.modBias( );
+  n1.modBias();
   await neat.deDuplicate([n1]);
 
-  assertNotEquals(uuid1, n1.uuid, "modifying should change the UUID: " + n1.uuid);
+  assertNotEquals(
+    uuid1,
+    n1.uuid,
+    "modifying should change the UUID: " + n1.uuid,
+  );
 });

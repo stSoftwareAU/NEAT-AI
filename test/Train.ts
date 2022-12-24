@@ -60,18 +60,18 @@ Deno.test("train-XOR", () => {
     ],
   });
 
-  for( let attempts=0;true; attempts++){
+  for (let attempts = 0; true; attempts++) {
     const results = network.train(trainingSet, {
       error: 0.03,
       iterations: 5000,
-      momentum: 0
+      momentum: 0,
     });
     console.info(results);
-    if( results.error <= 0.03){
+    if (results.error <= 0.03) {
       break;
     }
 
-    if( attempts>12){
+    if (attempts > 12) {
       throw "Error rate was: " + results.error;
     }
   }
