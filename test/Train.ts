@@ -40,7 +40,7 @@ Deno.test("MT", () => {
 
   const results = network.train(trainingSet, {
     error: 0.03,
-    iterations: 3000,
+    iterations: 10000,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);

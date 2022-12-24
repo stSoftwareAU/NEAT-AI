@@ -244,7 +244,7 @@ export class Neat {
       let i = newPopSize > 0 ? newPopSize : 0;
       i--;
     ) {
-      newPopulation.push(this.getOffspring());
+      newPopulation.push(this.offspring());
     }
 
     // Replace the old population with the new population
@@ -384,7 +384,7 @@ export class Neat {
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
-  getOffspring(): Network {
+  offspring(): Network {
     const p1 = this.getParent();
 
     if (p1 === undefined) {
@@ -462,7 +462,7 @@ export class Neat {
           i--;
         } else {
           for (let j = 0; j < 100; j++) {
-            const tmpPopulation = [this.getOffspring()];
+            const tmpPopulation = [this.offspring()];
             this.mutate(tmpPopulation);
 
             const p2 = tmpPopulation[0];

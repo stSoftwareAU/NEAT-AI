@@ -84,16 +84,19 @@ export class Offspring {
     }
 
     const connectionList: ConnectionInterface[] = [];
+    let outputIndx=0;
     // Assign nodes from parents to offspring
     for (let i = 0; i < size; i++) {
       // Determine if an output node is needed
       let node;
       if (i < size - network1.output) {
+        
         const random = Math.random();
         node = random >= 0.5 ? network1.nodes[i] : network2.nodes[i];
-        const other = random < 0.5 ? network1.nodes[i] : network2.nodes[i];
 
-        if (typeof node === "undefined" || node.type === "output") {
+        if (node === undefined || node.type === "output") {
+          const other = random < 0.5 ? network1.nodes[i] : network2.nodes[i];
+
           if (other.type === "output") {
             console.trace();
             throw i + ") Should not be an 'output' node";
@@ -103,20 +106,30 @@ export class Offspring {
         }
       } else {
         if (Math.random() >= 0.5) {
-          node = network1.nodes[network1.nodes.length + i - size];
+          node = network1.nodes[network1.nodes.length -network1.output + outputIndx];
         } else {
-          node = network2.nodes[network2.nodes.length + i - size];
+          node = network2.nodes[network2.nodes.length -network2.output + outputIndx];
         }
+        outputIndx++;
         if (node.type !== "output") {
           console.trace();
           throw i + ") expected 'output' was: " + node.type;
         }
       }
 
-      const uuid = node.uuid;
+      let uuid = node.uuid;
       if (!uuid) {
         console.trace();
         throw "No UUID";
+      }
+
+      const currentPos=uuidMap.get( uuid);
+      if( currentPos !== undefined && currentPos > 0){
+        if( uuid.startsWith("input-")){
+          console.trace();
+          throw "Duplicate input: " + uuid;
+        }
+        uuid=crypto.randomUUID();
       }
 
       const newNode = new Node(
