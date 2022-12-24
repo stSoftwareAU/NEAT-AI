@@ -66,7 +66,7 @@ Deno.test("evolve-XOR", async () => {
     mutationRate: 0.5,
     error: 0.03,
     threads: 1,
-    iterations: 1000,
+    iterations: 10000,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
@@ -91,8 +91,9 @@ Deno.test("booleanXOR", async () => {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
-    error: 0.03,
+    error: 0.025,
     threads: 1,
+    iterations: 10000,
   });
 
   network.validate();

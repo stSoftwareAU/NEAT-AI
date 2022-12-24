@@ -55,18 +55,35 @@ export class Offspring {
         size = Math.floor(Math.random() * (max - min + 1) + min);
       }
     }
-    // Rename some variables for easier reading
 
-    // Set indexes so we don't need indexOf
+    // Rename some variables for easier reading
+    const uuidMap = new Map<string, number>();
+
     for (let i = network1.nodes.length; i--;) {
-      network1.nodes[i].index = i;
+      const node = network1.nodes[i];
+      if (node.index != i) {
+        console.trace();
+        throw "Not index correctly index: " + node.index + " at: " + i;
+      }
+      if (!node.uuid) {
+        throw "Not index correctly index: " + node.index + " at: " + i;
+      }
+      uuidMap.set(node.uuid, node.index * -1);
     }
 
     for (let i = network2.nodes.length; i--;) {
-      network2.nodes[i].index = i;
+      const node = network2.nodes[i];
+      if (node.index != i) {
+        console.trace();
+        throw "Not index correctly index: " + node.index + " at: " + i;
+      }
+      if (!node.uuid) {
+        throw "Not index correctly index: " + node.index + " at: " + i;
+      }
+      uuidMap.set(node.uuid, node.index * -1);
     }
 
-    const connectionsMap = new Map<number, ConnectionInterface[]>();
+    const connectionList: ConnectionInterface[] = [];
     // Assign nodes from parents to offspring
     for (let i = 0; i < size; i++) {
       // Determine if an output node is needed
@@ -96,9 +113,14 @@ export class Offspring {
         }
       }
 
-      connectionsMap.set(i, (node as Node).network.toConnections(node.index));
+      const uuid = node.uuid;
+      if (!uuid) {
+        console.trace();
+        throw "No UUID";
+      }
+
       const newNode = new Node(
-        node.uuid ? node.uuid : crypto.randomUUID(),
+        uuid,
         node.type,
         node.bias,
         offspring,
@@ -109,57 +131,91 @@ export class Offspring {
 
       newNode.index = i;
       offspring.nodes.push(newNode);
-    }
-    offspring.clear();
 
-    for (let indx = offspring.nodes.length; indx--;) {
-      const toList = connectionsMap.get(indx);
-      if (toList) {
-        for (let i = toList.length; i--;) {
-          const c = toList[i];
+      uuidMap.set(uuid, i);
 
-          const adjustTo = c.to + (indx - c.to);
-          let adjustFrom = c.from;
-          if (c.to == c.from) {
-            adjustFrom = adjustTo;
-          } else if (c.from >= offspring.input) {
-            adjustFrom = adjustTo - (c.to - c.from);
-            if (adjustFrom < offspring.input) {
-              if (c.from < adjustTo) {
-                adjustFrom = c.from;
-              } else {
-                adjustFrom = adjustFrom < 0 ? 0 : adjustFrom;
-              }
+      if (newNode.type !== "constant") {
+        const tmpNetwork = (node as Node).network;
+        tmpNetwork.toConnections(node.index).forEach((c) => {
+          const fromUUID = tmpNetwork.nodes[c.from].uuid;
+          if (!fromUUID) throw "No UUID";
+          const from = uuidMap.get(fromUUID);
+          if (from === undefined) throw "No index for UUID: " + fromUUID;
+          let gater;
+          if (c.gater !== undefined) {
+            const gaterUUID = tmpNetwork.nodes[c.gater].uuid;
+            if (!gaterUUID) throw "No gater UUID";
+            const tmpGater = uuidMap.get(gaterUUID);
+            if (tmpGater !== undefined && tmpGater <= i) {
+              gater = tmpGater;
             }
           }
+          if (from <= i) {
+            let tmpFrom = from;
+            if (tmpFrom < 0) {
+              const tmpFrom2 = tmpFrom * -1;
 
-          while (offspring.nodes[adjustFrom].type === "output") {
-            adjustFrom--;
-          }
-          if (offspring.getConnection(adjustFrom, adjustTo) == null) {
-            if (offspring.nodes[adjustTo].type !== "constant") {
-              const co = offspring.connect(
-                adjustFrom,
-                adjustTo,
-                c.weight,
-                c.type,
-              );
-              if (c.gater !== undefined) {
-                if (c.gater < adjustTo) {
-                  co.gater = c.gater;
-                } else {
-                  co.gater = adjustTo - (c.to - c.gater);
-                  if (co.gater < 0) {
-                    co.gater = 0;
+              if (tmpFrom2 <= i) {
+                if (offspring.nodes[tmpFrom2].type == "output") {
+                  const tmpFrom3 = i - (c.to - c.from);
+                  if (tmpFrom3 >= 0) {
+                    tmpFrom = tmpFrom3;
+                  } else {
+                    let tmpFrom4 = tmpFrom2;
+                    while (offspring.nodes[tmpFrom4].type == "output") {
+                      tmpFrom4--;
+                    }
+
+                    tmpFrom = tmpFrom4;
                   }
+                } else {
+                  tmpFrom = tmpFrom2;
+                }
+              } else {
+                const tmpFrom5 = i - (c.to - c.from);
+                if (tmpFrom5 >= 0) {
+                  tmpFrom = tmpFrom5;
                 }
               }
             }
+
+            if (tmpFrom < 0) {
+              while (true) {
+                const tmpFrom6 = Math.floor((i + 1) * Math.random());
+                if (offspring.nodes[tmpFrom6].type !== "output") {
+                  tmpFrom = tmpFrom6;
+                  break;
+                }
+              }
+            }
+            connectionList.push({
+              from: tmpFrom,
+              to: i,
+              gater: gater,
+              weight: c.weight,
+              type: c.type,
+            });
           }
-        }
+        });
       }
     }
+    offspring.clear();
+
+    connectionList.forEach((c) => {
+      if (offspring.getConnection(c.from, c.to) == null) {
+        const co = offspring.connect(
+          c.from,
+          c.to,
+          c.weight,
+          c.type,
+        );
+
+        co.gater = c.gater;
+      }
+    });
+
     offspring.fix();
+
     return offspring;
   }
 }
