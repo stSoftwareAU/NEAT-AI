@@ -88,7 +88,7 @@ export class Network implements NetworkInterface {
     // Create input nodes
     for (let i = this.input; i--;) {
       const type = "input";
-      const node = new Node(type, 0, this);
+      const node = new Node(`input-${i}`, type, 0, this);
       node.index = this.nodes.length;
       this.nodes.push(node);
     }
@@ -112,6 +112,7 @@ export class Network implements NetworkInterface {
           }
 
           const node = new Node(
+            crypto.randomUUID(),
             "hidden",
             undefined,
             this,
@@ -137,7 +138,13 @@ export class Network implements NetworkInterface {
       // Create output nodes
       for (let i = this.output; i--;) {
         const type = "output";
-        const node = new Node(type, undefined, this, LOGISTIC.NAME);
+        const node = new Node(
+          crypto.randomUUID(),
+          type,
+          undefined,
+          this,
+          LOGISTIC.NAME,
+        );
         node.index = this.nodes.length;
         this.nodes.push(node);
       }
@@ -151,7 +158,13 @@ export class Network implements NetworkInterface {
       // Create output nodes
       for (let i = this.output; i--;) {
         const type = "output";
-        const node = new Node(type, undefined, this, LOGISTIC.NAME);
+        const node = new Node(
+          crypto.randomUUID(),
+          type,
+          undefined,
+          this,
+          LOGISTIC.NAME,
+        );
         node.index = this.nodes.length;
         this.nodes.push(node);
       }
@@ -1434,7 +1447,7 @@ export class Network implements NetworkInterface {
   }
 
   public addNode(focusList?: number[]) {
-    const node = new Node("hidden", undefined, this);
+    const node = new Node(crypto.randomUUID(), "hidden", undefined, this);
 
     // Random squash function
     node.mutate(Mutation.MOD_ACTIVATION.name);
@@ -2137,7 +2150,7 @@ export class Network implements NetworkInterface {
 
     this.nodes = new Array(json.nodes.length);
     for (let i = json.input; i--;) {
-      const n = new Node("input", undefined, this);
+      const n = new Node(`input-${i}`, "input", undefined, this);
       n.index = i;
       this.nodes[i] = n;
     }

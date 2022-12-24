@@ -98,6 +98,7 @@ export class Offspring {
 
       connectionsMap.set(i, (node as Node).network.toConnections(node.index));
       const newNode = new Node(
+        node.uuid ? node.uuid : crypto.randomUUID(),
         node.type,
         node.bias,
         offspring,

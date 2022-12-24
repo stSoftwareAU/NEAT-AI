@@ -12,6 +12,7 @@ export class NetworkUtil {
     }
 
     const json = JSON.parse(JSON.stringify(creature));
+    json.nodes.forEach((n: { uuid?: string }) => delete n.uuid);
     delete json.tags;
     delete json.uuid;
     delete json.score;

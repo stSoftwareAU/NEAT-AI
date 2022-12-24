@@ -8,6 +8,7 @@ export interface CrisprInterface extends TagsInterface {
   mode: "append";
 
   nodes: {
+    uuid?: string;
     index: number;
     type: "output";
     squash: string;
@@ -73,6 +74,7 @@ export class CRISPR {
     dna.nodes.forEach((dnaNode) => {
       const indx = dnaNode.index + adjustIndx;
       const networkNode = new Node(
+        dnaNode.uuid ? dnaNode.uuid : crypto.randomUUID(),
         dnaNode.type,
         dnaNode.bias,
         tmpNetwork,

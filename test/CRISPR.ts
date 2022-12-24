@@ -70,6 +70,7 @@ Deno.test("CRISPR_twice", () => {
 Deno.test("CRISPR-Volume", () => {
   const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
   const network = Network.fromJSON(JSON.parse(networkTXT));
+  Deno.writeTextFileSync("test/data/CRISPR/.network.json", JSON.stringify(network.toJSON(), null, 2));
   network.validate();
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-VOLUME.json");

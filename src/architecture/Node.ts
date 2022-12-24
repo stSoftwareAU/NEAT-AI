@@ -13,6 +13,7 @@ import { Network } from "./Network.ts";
 export class Node implements TagsInterface, NodeInterface {
   readonly network: Network;
   readonly type;
+  readonly uuid: string;
   bias: number;
   squash?: string;
   private squashMethodCache?: NodeActivationInterface | ActivationInterface;
@@ -20,11 +21,13 @@ export class Node implements TagsInterface, NodeInterface {
   public tags = undefined;
 
   constructor(
+    uuid: string,
     type: "input" | "output" | "hidden" | "constant",
     bias: number | undefined,
     network: Network,
     squash?: string,
   ) {
+    this.uuid = uuid;
     if (!type) {
       console.trace();
       throw "type must be defined: " + (typeof type);
@@ -623,6 +626,7 @@ export class Node implements TagsInterface, NodeInterface {
       };
     } else if (this.type === "constant") {
       return {
+        uuid: this.uuid,
         type: this.type,
         bias: this.bias,
         index: this.index,
@@ -630,6 +634,7 @@ export class Node implements TagsInterface, NodeInterface {
       };
     } else {
       return {
+        uuid: this.uuid,
         bias: this.bias,
         index: this.index,
         type: this.type,
@@ -651,7 +656,12 @@ export class Node implements TagsInterface, NodeInterface {
       throw "network must be a Network was: " + (typeof network);
     }
 
-    const node = new Node(json.type, json.bias, network);
+    const node = new Node(
+      json.uuid ? json.uuid : crypto.randomUUID(),
+      json.type,
+      json.bias,
+      network,
+    );
 
     switch (json.type) {
       case "input":

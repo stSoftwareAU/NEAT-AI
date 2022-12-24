@@ -3,6 +3,7 @@
   "mode": "append",
   "nodes": [
     {
+      "uuid": "5a47061e-9c90-4126-93ed-abdfd27a1dae",
       "bias": 0,
       "index": 1000,
       "type": "output",
