@@ -84,13 +84,12 @@ export class Offspring {
     }
 
     const connectionList: ConnectionInterface[] = [];
-    let outputIndx=0;
+    let outputIndx = 0;
     // Assign nodes from parents to offspring
     for (let i = 0; i < size; i++) {
       // Determine if an output node is needed
       let node;
       if (i < size - network1.output) {
-        
         const random = Math.random();
         node = random >= 0.5 ? network1.nodes[i] : network2.nodes[i];
 
@@ -106,9 +105,11 @@ export class Offspring {
         }
       } else {
         if (Math.random() >= 0.5) {
-          node = network1.nodes[network1.nodes.length -network1.output + outputIndx];
+          node = network1
+            .nodes[network1.nodes.length - network1.output + outputIndx];
         } else {
-          node = network2.nodes[network2.nodes.length -network2.output + outputIndx];
+          node = network2
+            .nodes[network2.nodes.length - network2.output + outputIndx];
         }
         outputIndx++;
         if (node.type !== "output") {
@@ -123,13 +124,13 @@ export class Offspring {
         throw "No UUID";
       }
 
-      const currentPos=uuidMap.get( uuid);
-      if( currentPos !== undefined && currentPos > 0){
-        if( uuid.startsWith("input-")){
+      const currentPos = uuidMap.get(uuid);
+      if (currentPos !== undefined && currentPos > 0) {
+        if (uuid.startsWith("input-")) {
           console.trace();
           throw "Duplicate input: " + uuid;
         }
-        uuid=crypto.randomUUID();
+        uuid = crypto.randomUUID();
       }
 
       const newNode = new Node(
@@ -199,14 +200,19 @@ export class Offspring {
             }
 
             if (tmpFrom < 0) {
-              while (true) {
+              for (let attempts = 0; true; attempts++) {
                 const tmpFrom6 = Math.floor((i + 1) * Math.random());
                 if (offspring.nodes[tmpFrom6].type !== "output") {
                   tmpFrom = tmpFrom6;
                   break;
                 }
+
+                if (attempts > 12) {
+                  throw "Can't make from: " + tmpFrom6;
+                }
               }
             }
+
             connectionList.push({
               from: tmpFrom,
               to: i,

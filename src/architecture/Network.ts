@@ -88,7 +88,7 @@ export class Network implements NetworkInterface {
     // Create input nodes
     for (let i = this.input; i--;) {
       const type = "input";
-      const node = new Node(`input-${this.input-i-1}`, type, 0, this);
+      const node = new Node(`input-${this.input - i - 1}`, type, 0, this);
       node.index = this.nodes.length;
       this.nodes.push(node);
     }
@@ -406,37 +406,42 @@ export class Network implements NetworkInterface {
       connections: 0,
     };
 
-    const UUIDs=new Set<string>();
+    const UUIDs = new Set<string>();
     this.nodes.forEach((node, indx) => {
-
-      const uuid=node.uuid;
-      if( !uuid){
+      const uuid = node.uuid;
+      if (!uuid) {
         console.trace();
         throw indx + ") no UUID";
       }
-      if( UUIDs.has( uuid)){
+      if (UUIDs.has(uuid)) {
         console.trace();
 
         if (this.DEBUG) {
           this.DEBUG = false;
-          Deno.writeTextFileSync( ".validate.json", JSON.stringify( this.toJSON(), null, 2));
+          Deno.writeTextFileSync(
+            ".validate.json",
+            JSON.stringify(this.toJSON(), null, 2),
+          );
 
           this.DEBUG = true;
         }
         throw indx + ") duplicate UUID: " + uuid;
       }
-      if( uuid.startsWith( 'input-') && uuid !== 'input-' + indx){
+      if (uuid.startsWith("input-") && uuid !== "input-" + indx) {
         console.trace();
 
         if (this.DEBUG) {
           this.DEBUG = false;
-          Deno.writeTextFileSync( ".validate.json", JSON.stringify( this.toJSON(), null, 2));
+          Deno.writeTextFileSync(
+            ".validate.json",
+            JSON.stringify(this.toJSON(), null, 2),
+          );
 
           this.DEBUG = true;
         }
         throw indx + ") invalid input UUID: " + uuid;
       }
-      UUIDs.add( uuid);
+      UUIDs.add(uuid);
 
       if (node.squash === "IF" && indx > 2) {
         const toList = this.toConnections(indx);
