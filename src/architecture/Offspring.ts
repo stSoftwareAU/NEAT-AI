@@ -14,47 +14,15 @@ export class Offspring {
       throw new Error("Networks don't have the same input/output size!");
     }
 
-    let tmpScore1 = network1.score;
-    if (!tmpScore1) {
-      const previousScoreTxt = getTag(network1, "score");
-      if (previousScoreTxt) {
-        tmpScore1 = parseFloat(previousScoreTxt);
-      }
-    }
-
-    const score1 = tmpScore1 ? tmpScore1 : -1;
-
-    let tmpScore2 = network2.score;
-    if (!tmpScore2) {
-      const previousScoreTxt = getTag(network2, "score");
-      if (previousScoreTxt) {
-        tmpScore2 = parseFloat(previousScoreTxt);
-      }
-    }
-
-    const score2 = tmpScore2 ? tmpScore2 : -1;
-
     // Initialize offspring
     const offspring = new Network(network1.input, network1.output, false);
     offspring.connections = [];
     offspring.nodes = [];
 
-    let size;
-
-    if (network1.nodes.length == network2.nodes.length) {
-      size = network1.nodes.length;
-    } else {
-      if (score1 > score2) {
-        size = network1.nodes.length;
-      } else if (score2 > score1) {
-        size = network2.nodes.length;
-      } else {
-        // Determine offspring node size
-        const max = Math.max(network1.nodes.length, network2.nodes.length);
-        const min = Math.min(network1.nodes.length, network2.nodes.length);
-        size = Math.floor(Math.random() * (max - min + 1) + min);
-      }
-    }
+    // Determine offspring node size
+    const max = Math.max(network1.nodes.length, network2.nodes.length);
+    const min = Math.min(network1.nodes.length, network2.nodes.length);
+    const size = Math.floor(Math.random() * (max - min + 1) + min);
 
     // Rename some variables for easier reading
     const uuidMap = new Map<string, number>();
