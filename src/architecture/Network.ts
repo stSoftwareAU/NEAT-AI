@@ -1499,19 +1499,18 @@ export class Network implements NetworkInterface {
     let fromIndex = -1;
     let toIndex = -1;
 
-    for (let attempts = 0; attempts < 10; attempts++) {
+    for (let attempts = 0; attempts < 12; attempts++) {
       if (attempts >= 9) {
-        tmpFocusList =
-          undefined; /* Should work first time once we remove the "focus" */
+        /* Should work first time once we remove the "focus" */
+        tmpFocusList = undefined;
       }
       if (fromIndex === -1) {
         const pos = Math.floor(
-          Math.random() * (node.index),
+          Math.random() * node.index,
         );
 
-        if (node.index <= pos) {
-          throw "From: " + pos + " should be less than node index: " +
-            node.index;
+        if (node.index <= pos || pos < 0) {
+          throw `From: ${pos} should be less than node index: ${node.index}`;
         }
         if (this.inFocus(pos, tmpFocusList)) {
           fromIndex = pos;
