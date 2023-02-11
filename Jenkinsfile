@@ -1,5 +1,5 @@
 TOOLS_IMAGE = "denoland/deno:latest"
-TOOLS_ARGS = '--init --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
+TOOLS_ARGS = '--volume $HOME/.deno:/deno-dir --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
 
 
 pipeline {
@@ -19,7 +19,9 @@ pipeline {
   }
 
   stages {
-    
+    statge( 'init'){
+      mkdir -p .deno
+    }
     stage('Build') {
       agent {
         docker {
