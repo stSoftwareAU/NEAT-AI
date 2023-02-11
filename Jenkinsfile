@@ -19,7 +19,7 @@ pipeline {
   }
 
   stages {
-    statge( 'init'){
+    stage( 'init'){
       mkdir -p .deno
     }
     stage('Build') {
