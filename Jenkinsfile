@@ -40,7 +40,7 @@ pipeline {
             set -ex
             pwd
             ls -l 
-            
+            ls -lR /deno-dir
             deno test --allow-all test/*
         '''.stripIndent()
       }
