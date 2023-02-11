@@ -1,4 +1,4 @@
-TOOLS_IMAGE = "denoland/deno:alpine"
+TOOLS_IMAGE = "denoland/deno:latest"
 TOOLS_ARGS = '--volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
 
 
