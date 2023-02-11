@@ -1,7 +1,6 @@
 TOOLS_IMAGE = "denoland/deno:latest"
 TOOLS_ARGS = '-e "DENO_DIR=/tmp/deno" --rm -volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
 
-
 pipeline {
   agent {
     label 'ec2-large'
