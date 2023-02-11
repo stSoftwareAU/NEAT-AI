@@ -20,7 +20,9 @@ pipeline {
 
   stages {
     stage( 'init'){
+      sh '''\
       mkdir -p .deno
+      '''
     }
     stage('Build') {
       agent {
