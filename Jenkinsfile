@@ -1,4 +1,4 @@
-TOOLS_IMAGE = "${ECR}/develop/sts-tools:latest"
+TOOLS_IMAGE = "denoland/deno:alpine"
 TOOLS_ARGS = '--volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
 
 
@@ -19,13 +19,22 @@ pipeline {
   }
 
   stages {
+    agent {
+        docker {
+          image TOOLS_IMAGE
+          args TOOLS_ARGS
+        }
+      }
     stage('Build') {
       steps {
 
         sh '''\
             #!/bin/bash
             set -ex
-            echo test
+            pwd
+            ls -l 
+            
+            deno test --allow-all test/*
         '''.stripIndent()
       }
     }
