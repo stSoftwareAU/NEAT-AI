@@ -19,13 +19,14 @@ pipeline {
   }
 
   stages {
-    agent {
+    
+    stage('Build') {
+      agent {
         docker {
           image TOOLS_IMAGE
           args TOOLS_ARGS
         }
       }
-    stage('Build') {
       steps {
 
         sh '''\
