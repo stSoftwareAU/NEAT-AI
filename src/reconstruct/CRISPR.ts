@@ -31,12 +31,14 @@ export class CRISPR {
   constructor(
     network: NetworkInterface,
   ) {
-    this.network = Network.fromJSON((network as Network).toJSON());
+    this.network = Network.fromJSON(
+      (network as Network).toJSON({ verbose: true }),
+    );
   }
 
   apply(dna: CrisprInterface): NetworkInterface {
     const tmpNetwork = Network.fromJSON(
-      (this.network as Network).toJSON(),
+      (this.network as Network).toJSON({ verbose: true }),
     );
 
     let alreadyProcessed = false;

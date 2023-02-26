@@ -2,289 +2,248 @@
   "nodes": [
     {
       "uuid": "3a24d315-665e-4503-a558-c5e6ea66bdee",
-      "bias": 1.9185516935721347,
-      "index": 302,
       "type": "hidden",
+      "bias": 1.9185516935721347,
       "squash": "BENT_IDENTITY"
     },
     {
       "uuid": "ce17b998-e2d1-4ede-aa20-d11c0fc92e46",
-      "bias": 1.9463495773267063,
-      "index": 303,
       "type": "hidden",
+      "bias": 1.9463495773267063,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "46158bc8-5318-4126-b2c6-7d4fd22b9172",
-      "bias": 3.9949474049665565,
-      "index": 304,
       "type": "hidden",
+      "bias": 3.9949474049665565,
       "squash": "BENT_IDENTITY"
     },
     {
       "uuid": "6bef013a-065e-468d-82c8-17e738209ff3",
-      "bias": 1.1141576791403334,
-      "index": 305,
       "type": "hidden",
+      "bias": 1.1141576791403334,
       "squash": "IDENTITY"
     },
     {
       "uuid": "01ed2a84-247a-477a-865d-505bd425193e",
-      "bias": 0.9597364242397421,
-      "index": 306,
       "type": "hidden",
+      "bias": 0.9597364242397421,
       "squash": "SELU"
     },
     {
       "uuid": "5a9bddfb-df45-4e0c-9ab4-1981c37d8a69",
-      "bias": 0.5444459985522923,
-      "index": 307,
       "type": "hidden",
+      "bias": 0.5444459985522923,
       "squash": "ABSOLUTE"
     },
     {
       "uuid": "35571058-e481-4c53-ac82-a138909cf56b",
-      "bias": 0.08490951173432479,
-      "index": 308,
       "type": "hidden",
+      "bias": 0.08490951173432479,
       "squash": "TANH"
     },
     {
       "uuid": "552e1742-2b0d-4f65-bf72-7e262fa908ba",
-      "bias": 0.02873824934343916,
-      "index": 309,
       "type": "hidden",
+      "bias": 0.02873824934343916,
       "squash": "STEP"
     },
     {
       "uuid": "e8833676-9d92-46f6-9db0-f7572c0bfda5",
-      "bias": 0.041505326140407126,
-      "index": 310,
       "type": "hidden",
+      "bias": 0.041505326140407126,
       "squash": "SINUSOID"
     },
     {
       "uuid": "161fd243-c974-4d62-a774-3c510e43ef11",
-      "bias": -21.9370591266884,
-      "index": 311,
       "type": "hidden",
+      "bias": -21.9370591266884,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "e87e28b0-b495-45d6-a6da-4c895ea01892",
-      "bias": -0.028205571924970207,
-      "index": 312,
       "type": "hidden",
+      "bias": -0.028205571924970207,
       "squash": "SELU"
     },
     {
       "uuid": "2ebcba15-7589-45ba-9246-c11ffde9f2f3",
-      "bias": -27.256841095626342,
-      "index": 313,
       "type": "hidden",
+      "bias": -27.256841095626342,
       "squash": "BIPOLAR_SIGMOID"
     },
     {
       "uuid": "914d2ae4-1806-41a8-8ba6-16b762d210f8",
-      "bias": -4.96691977145665,
-      "index": 314,
       "type": "hidden",
+      "bias": -4.96691977145665,
       "squash": "INVERSE"
     },
     {
       "uuid": "37eb278a-d8b0-43c7-bdf8-480a50bf0b22",
-      "bias": 0.20424838465663017,
-      "index": 315,
       "type": "hidden",
+      "bias": 0.20424838465663017,
       "squash": "HARD_TANH"
     },
     {
       "uuid": "4cbde40d-bd57-4e37-831f-a761b7e94de8",
-      "bias": -0.057752784436517685,
-      "index": 316,
       "type": "hidden",
+      "bias": -0.057752784436517685,
       "squash": "IDENTITY"
     },
     {
       "uuid": "ba80f39d-e4b6-4404-8057-b52a31a61585",
-      "bias": 0.257903527943951,
-      "index": 317,
       "type": "hidden",
+      "bias": 0.257903527943951,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "cb9d9bf4-678b-45b5-b01b-f465b207c248",
-      "bias": 0.5456826545559881,
-      "index": 318,
       "type": "hidden",
+      "bias": 0.5456826545559881,
       "squash": "RELU"
     },
     {
       "uuid": "f571bcf9-0223-4ebf-a823-94e295f41a2c",
-      "bias": 0.0384819239948809,
-      "index": 319,
       "type": "hidden",
+      "bias": 0.0384819239948809,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "06acc9bc-9053-4178-9ccd-63725eb9db74",
-      "bias": -1.0221172353151546,
-      "index": 320,
       "type": "hidden",
+      "bias": -1.0221172353151546,
       "squash": "BENT_IDENTITY"
     },
     {
       "uuid": "d1ff15e4-57fa-4dfc-8c74-64baa27e5105",
-      "bias": -0.8625602113152808,
-      "index": 321,
       "type": "hidden",
+      "bias": -0.8625602113152808,
       "squash": "SINUSOID"
     },
     {
       "uuid": "90d4c736-4836-433c-b125-c6ac7f6423dc",
-      "bias": -0.04578047371602305,
-      "index": 322,
       "type": "hidden",
+      "bias": -0.04578047371602305,
       "squash": "ABSOLUTE"
     },
     {
       "uuid": "df91917f-6ea9-4c6b-8ddf-4c6e360a01d5",
-      "bias": 0.08772437169616228,
-      "index": 323,
       "type": "hidden",
+      "bias": 0.08772437169616228,
       "squash": "SOFTSIGN"
     },
     {
       "uuid": "0b0d791a-e3c8-43bf-bc7c-208cfe21f36a",
-      "bias": -1.0401490325958371,
-      "index": 324,
       "type": "hidden",
+      "bias": -1.0401490325958371,
       "squash": "INVERSE"
     },
     {
       "uuid": "b00c1418-4977-468e-9a06-0e99e55afff3",
-      "bias": -13.984946329221591,
-      "index": 325,
       "type": "hidden",
+      "bias": -13.984946329221591,
       "squash": "INVERSE"
     },
     {
       "uuid": "69de588d-91bb-4752-9004-f08bdce40423",
-      "bias": -0.7246866781176714,
-      "index": 326,
       "type": "hidden",
+      "bias": -0.7246866781176714,
       "squash": "INVERSE"
     },
     {
       "uuid": "5f5f20f6-4fe1-49f1-80a2-74393de33aef",
-      "bias": 0.6909162310271064,
-      "index": 327,
       "type": "hidden",
+      "bias": 0.6909162310271064,
       "squash": "HARD_TANH"
     },
     {
       "uuid": "39f7cfc3-82f5-49d9-9f5d-10e273b66577",
-      "bias": -2.208383628417344,
-      "index": 328,
       "type": "hidden",
+      "bias": -2.208383628417344,
       "squash": "MAXIMUM"
     },
     {
       "uuid": "048f97ae-8687-4944-9bc3-0a5a2fca5631",
-      "bias": -0.19036300959766686,
-      "index": 329,
       "type": "hidden",
+      "bias": -0.19036300959766686,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "bf330357-30a2-4a98-9c4b-af8ffbb6b8d0",
-      "bias": 0.6352777552298068,
-      "index": 330,
       "type": "hidden",
+      "bias": 0.6352777552298068,
       "squash": "GAUSSIAN"
     },
     {
       "uuid": "94545b14-26ac-4aef-9b4d-f9c6cbb6775c",
-      "bias": 0.06609974299136966,
-      "index": 331,
       "type": "hidden",
+      "bias": 0.06609974299136966,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "52329f97-9729-46db-9b45-743ecac96bb8",
-      "bias": -0.0336601119843043,
-      "index": 332,
       "type": "hidden",
+      "bias": -0.0336601119843043,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "d2fe16f9-e2e4-4be4-91bf-1bde7410a547",
-      "bias": -0.3470659072110294,
-      "index": 333,
       "type": "hidden",
+      "bias": -0.3470659072110294,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "3feb5cb9-505b-4e3a-85ce-20e68e75a900",
-      "bias": 0.06609974299136966,
-      "index": 334,
       "type": "hidden",
+      "bias": 0.06609974299136966,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "f3f4c6cf-6c77-4005-9ebf-ee191ba8f756",
-      "bias": -0.03719166955923013,
-      "index": 335,
       "type": "hidden",
+      "bias": -0.03719166955923013,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "829f417d-8c6f-446c-8058-c56b7dd9e0d5",
-      "bias": -0.03719166955923013,
-      "index": 336,
       "type": "hidden",
+      "bias": -0.03719166955923013,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "73fa5ca8-f7fa-40f9-b10e-ab3a7fbc1309",
-      "bias": -0.3380189843353069,
-      "index": 337,
       "type": "hidden",
+      "bias": -0.3380189843353069,
       "squash": "IDENTITY"
     },
     {
       "uuid": "f6e4dcff-ea79-4f0f-95c0-a518d308541f",
-      "bias": 0.09695780896990049,
-      "index": 338,
       "type": "hidden",
+      "bias": 0.09695780896990049,
       "squash": "IDENTITY"
     },
     {
       "uuid": "5b431da3-bf75-4886-9c69-267ccf14a1bd",
-      "bias": 1.9113642825043944,
-      "index": 339,
       "type": "hidden",
+      "bias": 1.9113642825043944,
       "squash": "ABSOLUTE"
     },
     {
       "uuid": "13c4c3cd-c57d-491d-b562-06c1b3dac77c",
-      "bias": 0.06609974299136966,
-      "index": 340,
       "type": "hidden",
+      "bias": 0.06609974299136966,
       "squash": "BIPOLAR"
     },
     {
       "uuid": "39596706-90a4-4ffc-9e89-da24d42e0e71",
-      "bias": -0.7628189493328433,
-      "index": 341,
       "type": "hidden",
+      "bias": -0.7628189493328433,
       "squash": "BIPOLAR_SIGMOID"
     },
     {
       "uuid": "378400db-50d3-4765-a6de-bfd54dc617d6",
-      "bias": -0.5,
-      "index": 342,
       "type": "hidden",
+      "bias": -0.5,
       "squash": "LOGISTIC",
       "tags": [
         {
@@ -295,9 +254,8 @@
     },
     {
       "uuid": "974a57cb-a1e1-477b-bbda-d72dacfb162e",
-      "bias": 0,
-      "index": 343,
       "type": "output",
+      "bias": 0,
       "squash": "IF",
       "tags": [
         {

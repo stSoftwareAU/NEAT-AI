@@ -37,6 +37,9 @@ pipeline {
 
         sh '''\
             #!/bin/bash
+            
+            echo "Remove old test files"
+            find test -name ".*.json" -exec rm {} \;
 
             deno fmt --check src test
         '''.stripIndent()

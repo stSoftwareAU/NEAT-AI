@@ -2161,8 +2161,8 @@ export class Network implements NetworkInterface {
     for (let i = this.nodes.length; i--;) {
       const node = this.nodes[i];
       if (!options.verbose && node.type == "input") continue;
-      node.index = i;
-      const tojson = (node as Node).toJSON();
+      // node.index = i;
+      const tojson = (node as Node).toJSON(options);
 
       json.nodes[i - (options.verbose ? 0 : this.input)] = tojson;
     }

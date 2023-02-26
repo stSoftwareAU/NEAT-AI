@@ -39,13 +39,13 @@ Deno.test("knownName", async () => {
       { name: "error", value: "0.5" },
     ],
   });
-
+  //  console.info( JSON.stringify( creature, null, 2));
   const uuid = await NetworkUtil.makeUUID(creature);
 
   console.log("UUID", uuid);
 
   assert(
-    uuid == "29461e8f-296d-5f3f-84db-a3734d6411fb",
+    uuid == "58d874ee-7907-5289-a275-c2f3e4787132",
     "Wrong UUID was: " + uuid,
   );
 });
@@ -98,13 +98,15 @@ Deno.test("ignoreTags", async () => {
     score: -0.1111,
   };
 
-  const clean = JSON.parse(JSON.stringify(creature, null, 4));
+  const clean = JSON.parse(
+    JSON.stringify(Network.fromJSON(creature).toJSON(), null, 4),
+  );
 
   delete clean.uuid;
   delete clean.score;
   delete clean.tags;
 
-  const uuid1 = await NetworkUtil.makeUUID(creature);
+  const uuid1 = await NetworkUtil.makeUUID(Network.fromJSON(creature).toJSON());
   const uuid2 = await NetworkUtil.makeUUID(clean);
 
   console.log("uuid1", uuid1, "uuid2", uuid2);
@@ -118,7 +120,7 @@ Deno.test("ignoreTags", async () => {
 
   /** Manually update if needed. */
   assert(
-    uuid2 == "e6f77bae-5ab2-5425-acc5-0b34c90521d9",
+    uuid2 == "5eb470a4-c737-5966-843a-5f6f4330de7b",
     "Wrong UUID was: " + uuid2,
   );
 });
