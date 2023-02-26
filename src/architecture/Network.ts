@@ -1,5 +1,5 @@
 import { TagInterface } from "../tags/TagInterface.ts";
-import { ConnectionInterface } from "./ConnectionInterface.ts";
+import { ConnectionExport, ConnectionInterface } from "./ConnectionInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
 import { NetworkInterface } from "./NetworkInterface.ts";
 
@@ -2159,7 +2159,7 @@ export class Network implements NetworkInterface {
       nodes: new Array<NodeInterface>(
         this.nodes.length - (options.verbose ? 0 : this.input),
       ),
-      connections: new Array<ConnectionInterface>(this.connections.length),
+      connections: new Array<ConnectionExport>(this.connections.length),
       input: this.input,
       output: this.output,
       tags: this.tags ? this.tags.slice() : undefined,
