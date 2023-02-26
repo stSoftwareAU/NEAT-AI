@@ -109,13 +109,13 @@ Deno.test("REMOVE", () => {
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-IF.json");
 
-  const networkIF = (crispr.apply(JSON.parse(dnaTXT)) as Network);
+  const networkIF = crispr.apply(JSON.parse(dnaTXT)) as Network;
   (networkIF as Network).validate();
 
   console.info(networkIF.toJSON());
 
   for (let pos = networkIF.nodes.length; pos--;) {
-    const node = (networkIF.nodes[pos] as Node);
+    const node = networkIF.nodes[pos] as Node;
     const tag = getTag(node, "CRISPR");
     if (tag) {
       for (let attempts = 0; attempts < 10; attempts++) {

@@ -214,7 +214,7 @@ export class Node implements TagsInterface, NodeInterface {
           value += fromState.activation * c.weight;
         }
 
-        const activationSquash = (squashMethod as ActivationInterface);
+        const activationSquash = squashMethod as ActivationInterface;
         const result = activationSquash.squashAndDerive(value);
         // Squash the values received
         state.activation = result.activation;
@@ -373,7 +373,7 @@ export class Node implements TagsInterface, NodeInterface {
           value += fromState.activation * c.weight;
         }
 
-        const activationSquash = (squashMethod as ActivationInterface);
+        const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
         state.activation = activationSquash.squash(value);
 

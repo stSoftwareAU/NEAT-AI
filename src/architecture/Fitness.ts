@@ -36,7 +36,7 @@ export class Fitness {
 
     const error = responseData.evaluate.error;
     addTag(creature, "error", Math.abs(error).toString());
-    const realCreature = (creature as Network);
+    const realCreature = creature as Network;
     creature.score = -error - (
           creature.nodes.length -
           creature.input -

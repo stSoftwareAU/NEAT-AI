@@ -4,7 +4,7 @@ import { Network } from "../architecture/Network.ts";
 
 export class Upgrade {
   static correct(json: NetworkInterface): NetworkInterface {
-    const json2 = (JSON.parse(JSON.stringify(json)) as NetworkInterface);
+    const json2 = JSON.parse(JSON.stringify(json)) as NetworkInterface;
 
     let otherNodes = 0;
     json2.nodes.forEach((n, indx) => {

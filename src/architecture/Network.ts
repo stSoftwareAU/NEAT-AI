@@ -913,7 +913,7 @@ export class Network implements NetworkInterface {
       let i = this.nodes.length;
       i--;
     ) {
-      const n = (this.nodes[i] as Node);
+      const n = this.nodes[i] as Node;
       if (n.type == "input") break;
       changed ||= n.applyLearnings();
     }
@@ -955,7 +955,7 @@ export class Network implements NetworkInterface {
       i >= this.nodes.length - this.output;
       i--
     ) {
-      const n = (this.nodes[i] as Node);
+      const n = this.nodes[i] as Node;
       n.propagate(
         rate,
         momentum,
@@ -970,7 +970,7 @@ export class Network implements NetworkInterface {
       i >= this.input;
       i--
     ) {
-      const n = (this.nodes[i] as Node);
+      const n = this.nodes[i] as Node;
       n.propagate(rate, momentum, update);
     }
   }
@@ -1290,7 +1290,7 @@ export class Network implements NetworkInterface {
             /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
-          const update = ((i + 1) % batchSize === 0 || i === 0);
+          const update = (i + 1) % batchSize === 0 || i === 0;
 
           const output = this.activate(data.input);
 
