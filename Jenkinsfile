@@ -26,7 +26,7 @@ pipeline {
       '''
        }
     }
-    stage('Build') {
+    stage('Format') {
       agent {
         docker {
           image TOOLS_IMAGE
@@ -37,10 +37,23 @@ pipeline {
 
         sh '''\
             #!/bin/bash
-            set -ex
-            pwd
-            ls -l 
-            ls -lR /deno-dir
+
+            deno fmt --check src test
+        '''.stripIndent()
+      }
+    }
+        stage('Build') {
+      agent {
+        docker {
+          image TOOLS_IMAGE
+          args TOOLS_ARGS
+        }
+      }
+      steps {
+
+        sh '''\
+            #!/bin/bash
+
             deno test --allow-all test/*
         '''.stripIndent()
       }
