@@ -97,7 +97,9 @@ function tuneBias(
       const pn = previousJSON.nodes[i];
 
       if (tn.squash == pn.squash) {
-        if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
+        if (
+          Math.abs((tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0)) > MIN_STEP
+        ) {
           if (Math.random() < rate) {
             if (skipSet) {
               const key = "idx:" + i;
@@ -105,8 +107,8 @@ function tuneBias(
 
               skipSet.add(key);
             }
-            const adjust = tn.bias - pn.bias;
-            const bias = tn.bias + adjust;
+            const adjust = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
+            const bias = (tn.bias ? tn.bias : 0) + adjust;
 
             tn.bias = bias;
             changeBiasCount++;
@@ -170,9 +172,11 @@ function tuneAll(
       const pn = previousJSON.nodes[i];
 
       if (tn.squash == pn.squash) {
-        if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
-          const adjust = tn.bias - pn.bias;
-          const bias = tn.bias + adjust;
+        if (
+          Math.abs((tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0)) > MIN_STEP
+        ) {
+          const adjust = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
+          const bias = (tn.bias ? tn.bias : 0) + adjust;
 
           tn.bias = bias;
           changeBiasCount++;
@@ -392,8 +396,11 @@ export function fineTuneImprovement(
 
         if (fn.squash == pn.squash) {
           if (fn.bias != pn.bias) {
-            const adjust = adjustment(k, fn.bias - pn.bias);
-            const bias = fn.bias + adjust;
+            const adjust = adjustment(
+              k,
+              (fn.bias ? fn.bias : 0) - (pn.bias ? pn.bias : 0),
+            );
+            const bias = (fn.bias ? fn.bias : 0) + adjust;
 
             fn.bias = bias;
             const n = Network.fromJSON(targetJSON);

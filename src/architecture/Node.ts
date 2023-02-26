@@ -618,7 +618,7 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Converts the node to a json object
    */
-  toJSON(options = { verbose: false }) {
+  toJSON(options = { verbose: false }): NodeInterface {
     if (this.type === "input") {
       return {
         type: this.type,

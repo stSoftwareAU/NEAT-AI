@@ -1444,7 +1444,7 @@ export class Network implements NetworkInterface {
     const left = this.nodes.slice(0, indx);
     const right = this.nodes.slice(indx + 1);
     right.forEach((n) => {
-      n.index--;
+      n.index = (n.index ? n.index : 0) - 1;
     });
 
     const full = [...left, ...right];
@@ -1582,7 +1582,7 @@ export class Network implements NetworkInterface {
     const left = this.nodes.slice(0, node.index);
     const right = this.nodes.slice(node.index);
     right.forEach((n) => {
-      n.index++;
+      n.index = (n.index ? n.index : 0) + 1;
     });
 
     const full = [...left, node, ...right];
@@ -1632,9 +1632,11 @@ export class Network implements NetworkInterface {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
+    const indx0 = pair[0].index;
+    const indx1 = pair[1].index;
     this.connect(
-      pair[0].index,
-      pair[1].index,
+      indx0 ? indx0 : 0,
+      indx1 ? indx1 : 0,
       Connection.randomWeight(),
     );
   }
@@ -1777,7 +1779,7 @@ export class Network implements NetworkInterface {
         const node = this.nodes[i];
         if (node.type === "constant") continue;
 
-        const c = this.selfConnection(node.index);
+        const c = this.selfConnection(node.index ? node.index : 0);
         if (c === null) {
           possible.push(node);
         }
@@ -1792,7 +1794,8 @@ export class Network implements NetworkInterface {
     const node = possible[Math.floor(Math.random() * possible.length)];
 
     // Connect it to himself
-    this.connect(node.index, node.index, Connection.randomWeight());
+    const indx = node.index ? node.index : 0;
+    this.connect(indx, indx, Connection.randomWeight());
   }
 
   private subSelfCon(focusList?: number[]) {
@@ -1801,7 +1804,8 @@ export class Network implements NetworkInterface {
     for (let i = this.input; i < this.nodes.length; i++) {
       if (this.inFocus(i, focusList)) {
         const node = this.nodes[i];
-        const c = this.getConnection(node.index, node.index);
+        const indx = node.index ? node.index : 0;
+        const c = this.getConnection(indx, indx);
         if (c !== null) {
           possible.push(node);
         }
@@ -1816,7 +1820,8 @@ export class Network implements NetworkInterface {
     const node = possible[Math.floor(Math.random() * possible.length)];
 
     // Connect it to himself
-    this.disconnect(node.index, node.index);
+    const indx = node.index ? node.index : 0;
+    this.disconnect(indx, indx);
   }
 
   private addGate(focusList?: number[]) {
@@ -1889,7 +1894,7 @@ export class Network implements NetworkInterface {
         for (let j = this.input; j < i; j++) {
           const node2 = this.nodes[j];
           if (node2.type == "output") break;
-          if (this.inFocus(node2.index, focusList)) {
+          if (this.inFocus(node2.index ? node2.index : 0, focusList)) {
             if (!(node2 as Node).isProjectingTo(node1 as Node)) {
               available.push([node2, node1]);
             }
@@ -1903,7 +1908,9 @@ export class Network implements NetworkInterface {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    this.connect(pair[0].index, pair[1].index, Connection.randomWeight());
+    const indx0 = pair[0].index ? pair[0].index : 0;
+    const indx1 = pair[1].index ? pair[1].index : 0;
+    this.connect(indx0, indx1, Connection.randomWeight());
   }
 
   private subBackConn(focusList?: number[]) {
@@ -2149,10 +2156,10 @@ export class Network implements NetworkInterface {
 
     const json = {
       uuid: this.uuid,
-      nodes: new Array(
+      nodes: new Array<NodeInterface>(
         this.nodes.length - (options.verbose ? 0 : this.input),
       ),
-      connections: new Array(this.connections.length),
+      connections: new Array<ConnectionInterface>(this.connections.length),
       input: this.input,
       output: this.output,
       tags: this.tags ? this.tags.slice() : undefined,

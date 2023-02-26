@@ -1,4 +1,4 @@
-import { addTags, getTag } from "../tags/TagsInterface.ts";
+import { addTags } from "../tags/TagsInterface.ts";
 import { ConnectionInterface } from "./ConnectionInterface.ts";
 import { Network } from "./Network.ts";
 import { Node } from "./Node.ts";
@@ -118,7 +118,7 @@ export class Offspring {
 
       if (newNode.type !== "constant") {
         const tmpNetwork = (node as Node).network;
-        tmpNetwork.toConnections(node.index).forEach((c) => {
+        tmpNetwork.toConnections(node.index ? node.index : 0).forEach((c) => {
           const fromUUID = tmpNetwork.nodes[c.from].uuid;
           if (!fromUUID) throw "No UUID";
           const from = uuidMap.get(fromUUID);

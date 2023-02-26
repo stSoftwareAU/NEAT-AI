@@ -41,7 +41,7 @@ export class Connection implements ConnectionInterface {
    * Converts the connection to a json object
    */
   toJSON() {
-    const json = {
+    const json: ConnectionInterface = {
       weight: this.weight,
       from: this.from,
       to: this.to,
