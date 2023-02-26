@@ -1,8 +1,8 @@
 import { TagsInterface } from "../tags/TagsInterface.ts";
-import { ConnectionInterface } from "./ConnectionInterface.ts";
+import { ConnectionExport, ConnectionInterface } from "./ConnectionInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
 
-export interface NetworkInterface extends TagsInterface {
+interface NetworkCommon extends TagsInterface {
   /* ID of this network */
   uuid?: string;
   input: number;
@@ -12,6 +12,14 @@ export interface NetworkInterface extends TagsInterface {
   score?: number;
 
   nodes: NodeInterface[];
+}
+
+export interface NetworkInterface extends NetworkCommon {
 
   connections: ConnectionInterface[];
+}
+
+export interface NetworkExport extends NetworkCommon {
+
+  connections: ConnectionExport[];
 }

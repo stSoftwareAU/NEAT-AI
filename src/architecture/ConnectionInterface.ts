@@ -10,6 +10,6 @@ export interface ConnectionInterface extends ConnectionCommon {
 }
 
 export interface ConnectionExport extends ConnectionCommon {
-  fromUUID: number|string;
+  fromUUID: string;
   toUUID: string;
 }

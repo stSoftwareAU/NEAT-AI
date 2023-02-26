@@ -1,7 +1,7 @@
 import { TagInterface } from "../tags/TagInterface.ts";
 import { ConnectionExport, ConnectionInterface } from "./ConnectionInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
-import { NetworkInterface } from "./NetworkInterface.ts";
+import { NetworkExport, NetworkInterface } from "./NetworkInterface.ts";
 
 import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
@@ -2154,7 +2154,7 @@ export class Network implements NetworkInterface {
       this.validate();
     }
 
-    const json = {
+    const json:NetworkExport = {
       uuid: this.uuid,
       nodes: new Array<NodeInterface>(
         this.nodes.length - (options.verbose ? 0 : this.input),
@@ -2183,7 +2183,7 @@ export class Network implements NetworkInterface {
     return json;
   }
 
-  private loadFrom(json: NetworkInterface, validate: boolean) {
+  private loadFrom(json: NetworkInterface|NetworkExport, validate: boolean) {
     this.uuid = json.uuid;
     this.nodes.length = json.nodes.length;
     if (json.tags) {
@@ -2237,7 +2237,7 @@ export class Network implements NetworkInterface {
   /**
    * Convert a json object to a network
    */
-  static fromJSON(json: NetworkInterface, validate = false) {
+  static fromJSON(json: NetworkInterface|NetworkExport, validate = false) {
     const network = new Network(json.input, json.output, false);
     network.loadFrom(json, validate);
 
