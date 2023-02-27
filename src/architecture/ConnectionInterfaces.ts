@@ -4,7 +4,7 @@ interface ConnectionCommon {
   type?: "positive" | "negative" | "condition";
 }
 
-export interface ConnectionInterface extends ConnectionCommon {
+export interface ConnectionInternal extends ConnectionCommon {
   from: number;
   to: number;
 }

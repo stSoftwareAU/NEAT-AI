@@ -1,9 +1,9 @@
 import {
   ConnectionExport,
-  ConnectionInterface,
-} from "./ConnectionInterface.ts";
+  ConnectionInternal,
+} from "./ConnectionInterfaces.ts";
 
-export class Connection implements ConnectionInterface {
+export class Connection implements ConnectionInternal {
   public from: number;
   public to: number;
   public type?: "positive" | "negative" | "condition";
@@ -58,7 +58,7 @@ export class Connection implements ConnectionInterface {
   }
 
   internalJSON() {
-    const json: ConnectionInterface = {
+    const json: ConnectionInternal = {
       weight: this.weight,
       from: this.from,
       to: this.to,

@@ -1,9 +1,9 @@
 import { TagsInterface } from "../tags/TagsInterface.ts";
 import {
   ConnectionExport,
-  ConnectionInterface,
+  ConnectionInternal,
 } from "./ConnectionInterface.ts";
-import { NodeInterface } from "./NodeInterface.ts";
+import { NodeExport,NodeInternal } from "./NodeInterface.ts";
 
 interface NetworkCommon extends TagsInterface {
   /* ID of this network */
@@ -14,13 +14,16 @@ interface NetworkCommon extends TagsInterface {
   /** The error plus a discount because of the complexity of the genome */
   score?: number;
 
-  nodes: NodeInterface[];
 }
 
-export interface NetworkInterface extends NetworkCommon {
-  connections: ConnectionInterface[];
+export interface NetworkInternal extends NetworkCommon {
+  connections: ConnectionInternal[];
+
+  nodes: NodeInternal[];
 }
 
 export interface NetworkExport extends NetworkCommon {
   connections: ConnectionExport[];
+
+  nodes: NodeExport[];
 }

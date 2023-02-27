@@ -6,11 +6,11 @@ import { ActivationInterface } from "../methods/activations/ActivationInterface.
 import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
 import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
-import { NodeInterface } from "./NodeInterface.ts";
+import { NodeInternal,NodeExport } from "./NodeInterface.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
 
-export class Node implements TagsInterface, NodeInterface {
+export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
   readonly type;
   readonly uuid: string;
@@ -618,7 +618,7 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Converts the node to a json object
    */
-  toJSON(): NodeInterface {
+  toJSON(): NodeExport {
     if (this.type === "input") {
       return {
         type: this.type,
@@ -646,7 +646,7 @@ export class Node implements TagsInterface, NodeInterface {
    * Convert a json object to a node
    */
   static fromJSON(
-    json: NodeInterface,
+    json: NodeExport,
     network: Network,
   ) {
     if (typeof network !== "object") {

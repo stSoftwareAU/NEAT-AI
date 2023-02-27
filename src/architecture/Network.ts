@@ -1,10 +1,10 @@
 import { TagInterface } from "../tags/TagInterface.ts";
 import {
   ConnectionExport,
-  ConnectionInterface,
-} from "./ConnectionInterface.ts";
-import { NodeInterface } from "./NodeInterface.ts";
-import { NetworkExport, NetworkInterface } from "./NetworkInterface.ts";
+  ConnectionInternal,
+} from "./ConnectionInterfaces.ts";
+import { NodeInternal,NodeExport } from "./NodeInterfaces.ts";
+import { NetworkExport, NetworkInternal } from "./NetworkInterfaces.ts";
 
 import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
@@ -39,7 +39,7 @@ export class Network implements NetworkInterface {
 
   input: number;
   output: number;
-  nodes: NodeInterface[];
+  nodes: NodeInternal[];
   tags?: TagInterface[];
   score?: number;
   connections: ConnectionInterface[];
@@ -410,7 +410,8 @@ export class Network implements NetworkInterface {
     };
 
     const UUIDs = new Set<string>();
-    this.nodes.forEach((node, indx) => {
+    this.nodes.forEach((item, indx) => {
+      const node = item as NodeInternal;
       const uuid = node.uuid;
       if (!uuid) {
         console.trace();
@@ -749,7 +750,7 @@ export class Network implements NetworkInterface {
       throw "getNode( " + pos + ") " + (typeof tmp);
     }
 
-    tmp.index = pos;
+    // tmp.index = pos;
 
     return ((tmp as unknown) as Node);
   }
@@ -1422,7 +1423,7 @@ export class Network implements NetworkInterface {
             (this.nodes.length - this.output - this.input) +
           this.input,
       );
-      // const node = network.nodes[index];
+      
       if (!this.inFocus(indx, focusList)) continue;
       this.removeHiddenNode(indx);
       break;
@@ -1446,8 +1447,9 @@ export class Network implements NetworkInterface {
     }
     const left = this.nodes.slice(0, indx);
     const right = this.nodes.slice(indx + 1);
-    right.forEach((n) => {
-      n.index = (n.index ? n.index : 0) - 1;
+    right.forEach((item) => {
+      const node =item as NodeInternal;
+      node.index--;
     });
 
     const full = [...left, ...right];
@@ -1585,7 +1587,7 @@ export class Network implements NetworkInterface {
     const left = this.nodes.slice(0, node.index);
     const right = this.nodes.slice(node.index);
     right.forEach((n) => {
-      n.index = (n.index ? n.index : 0) + 1;
+      (n as NodeInternal).index++;
     });
 
     const full = [...left, node, ...right];
@@ -1608,8 +1610,8 @@ export class Network implements NetworkInterface {
     for (let i = 0; i < this.nodes.length - this.output; i++) {
       const node1 = this.nodes[i];
 
-      if (node1.index != i) {
-        throw i + ") invalid node index: " + node1.index;
+      if ((node1 as NodeInternal) .index != i) {
+        throw i + ") invalid node index: " + (node1 as NodeInternal).index;
       }
 
       if (!this.inFocus(i, focusList)) continue;
@@ -1635,8 +1637,8 @@ export class Network implements NetworkInterface {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    const indx0 = pair[0].index;
-    const indx1 = pair[1].index;
+    const indx0 = (pair[0] as NodeInternal).index;
+    const indx1 = (pair[1] as NodeInternal).index;
     this.connect(
       indx0 ? indx0 : 0,
       indx1 ? indx1 : 0,
@@ -1782,7 +1784,7 @@ export class Network implements NetworkInterface {
         const node = this.nodes[i];
         if (node.type === "constant") continue;
 
-        const c = this.selfConnection(node.index ? node.index : 0);
+        const c = this.selfConnection((node  as NodeInternal).index);
         if (c === null) {
           possible.push(node);
         }
@@ -1797,7 +1799,7 @@ export class Network implements NetworkInterface {
     const node = possible[Math.floor(Math.random() * possible.length)];
 
     // Connect it to himself
-    const indx = node.index ? node.index : 0;
+    const indx = (node as NodeInternal).index;
     this.connect(indx, indx, Connection.randomWeight());
   }
 
@@ -1807,7 +1809,7 @@ export class Network implements NetworkInterface {
     for (let i = this.input; i < this.nodes.length; i++) {
       if (this.inFocus(i, focusList)) {
         const node = this.nodes[i];
-        const indx = node.index ? node.index : 0;
+        const indx = (node as NodeInternal).index;
         const c = this.getConnection(indx, indx);
         if (c !== null) {
           possible.push(node);
@@ -1823,7 +1825,7 @@ export class Network implements NetworkInterface {
     const node = possible[Math.floor(Math.random() * possible.length)];
 
     // Connect it to himself
-    const indx = node.index ? node.index : 0;
+    const indx = (node as NodeInternal).index;
     this.disconnect(indx, indx);
   }
 
@@ -1897,7 +1899,7 @@ export class Network implements NetworkInterface {
         for (let j = this.input; j < i; j++) {
           const node2 = this.nodes[j];
           if (node2.type == "output") break;
-          if (this.inFocus(node2.index ? node2.index : 0, focusList)) {
+          if (this.inFocus((node2 as NodeInternal).index, focusList)) {
             if (!(node2 as Node).isProjectingTo(node1 as Node)) {
               available.push([node2, node1]);
             }
@@ -1911,8 +1913,8 @@ export class Network implements NetworkInterface {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    const indx0 = pair[0].index ? pair[0].index : 0;
-    const indx1 = pair[1].index ? pair[1].index : 0;
+    const indx0 = (pair[0] as NodeInternal).index;
+    const indx1 = (pair[1] as NodeInternal).index;
     this.connect(indx0, indx1, Connection.randomWeight());
   }
 
@@ -2159,7 +2161,7 @@ export class Network implements NetworkInterface {
 
     const json: NetworkExport = {
       uuid: this.uuid,
-      nodes: new Array<NodeInterface>(
+      nodes: new Array<NodeExport>(
         this.nodes.length - this.input,
       ),
       connections: new Array<ConnectionExport>(this.connections.length),
@@ -2197,7 +2199,7 @@ export class Network implements NetworkInterface {
 
     const json: NetworkInterface = {
       uuid: this.uuid,
-      nodes: new Array<NodeInterface>(
+      nodes: new Array<NodeInternal>(
         this.nodes.length - this.input,
       ),
       connections: new Array<ConnectionInterface>(this.connections.length),
