@@ -2152,7 +2152,7 @@ export class Network implements NetworkInterface {
   /**
    * Convert the network to a json object
    */
-  externalJSON(options = { verbose: false }) {
+  externalJSON() {
     if (this.DEBUG) {
       this.validate();
     }
@@ -2160,7 +2160,7 @@ export class Network implements NetworkInterface {
     const json: NetworkExport = {
       uuid: this.uuid,
       nodes: new Array<NodeInterface>(
-        this.nodes.length - (options.verbose ? 0 : this.input),
+        this.nodes.length - this.input,
       ),
       connections: new Array<ConnectionExport>(this.connections.length),
       input: this.input,
@@ -2172,11 +2172,11 @@ export class Network implements NetworkInterface {
     for (let i = this.nodes.length; i--;) {
       const node = this.nodes[i];
       uuidMap.set(i, node.uuid ? node.uuid : `unknown-${i}`);
-      if (!options.verbose && node.type == "input") continue;
-      // node.index = i;
-      const tojson = (node as Node).toJSON(options);
+      if (node.type == "input") continue;
+      
+      const tojson = (node as Node).toJSON();
 
-      json.nodes[i - (options.verbose ? 0 : this.input)] = tojson;
+      json.nodes[i - this.input] = tojson;
     }
 
     for (let i = this.connections.length; i--;) {
@@ -2189,6 +2189,7 @@ export class Network implements NetworkInterface {
 
     return json;
   }
+
   internalJSON(options = { verbose: false }) {
     if (this.DEBUG) {
       this.validate();

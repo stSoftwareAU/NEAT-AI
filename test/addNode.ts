@@ -90,7 +90,7 @@ Deno.test("addNode", () => {
   for (let i = 1000; i--;) {
     network.addNode();
   }
-  const nodes = network.externalJSON({ verbose: true }).nodes;
+  const nodes = network.internalJSON({ verbose: true }).nodes;
   console.info(JSON.stringify(nodes, null, 1));
 
   for (let indx = nodes.length; indx--;) {
