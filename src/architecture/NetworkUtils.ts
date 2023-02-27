@@ -23,7 +23,7 @@ export class NetworkUtil {
     delete json.score;
 
     const txt = JSON.stringify(json, null, 1);
-console.info( "AAA", txt);
+
     const utf8 = NetworkUtil.TE.encode(txt);
 
     const uuid: string = await generateV5(NetworkUtil.NAMESPACE, utf8);

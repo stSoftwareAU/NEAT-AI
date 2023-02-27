@@ -26,6 +26,23 @@ pipeline {
       '''
        }
     }
+    stage('Lint'){
+      agent {
+        docker {
+          image TOOLS_IMAGE
+          args TOOLS_ARGS
+        }
+      }
+      steps {
+
+        sh '''\
+            #!/bin/bash
+            
+            deno lint src
+        '''.stripIndent()
+      }
+      
+    }
     stage('Format') {
       agent {
         docker {
@@ -45,7 +62,7 @@ pipeline {
         '''.stripIndent()
       }
     }
-        stage('Build') {
+    stage('Build') {
       agent {
         docker {
           image TOOLS_IMAGE

@@ -1,6 +1,7 @@
 import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { assert } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
+import { ConnectionInterface } from "../src/architecture/ConnectionInterface.ts";
 
 Deno.test("useUUIDinsteadOfPosition", () => {
   const creature: NetworkInterface = {
@@ -57,8 +58,12 @@ Deno.test("useUUIDinsteadOfPosition", () => {
   console.info(j1);
 
   exported.nodes.forEach((n) => {
-    console.info(n);
     const indx = n.index;
     assert(!Number.isFinite(indx), `should NOT have an index ${indx}`);
+  });
+
+  exported.connections.forEach((c) => {
+    const from = ((c as unknown) as ConnectionInterface).from;
+    assert(!Number.isFinite(from), `should NOT have an from ${from}`);
   });
 });

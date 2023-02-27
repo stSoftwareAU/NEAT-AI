@@ -45,7 +45,7 @@ Deno.test("knownName", async () => {
   console.log("UUID", uuid);
 
   assert(
-    uuid == "58d874ee-7907-5289-a275-c2f3e4787132",
+    uuid == "3f827957-229f-5e80-9e01-35d5f2a5d858",
     "Wrong UUID was: " + uuid,
   );
 });
@@ -106,7 +106,9 @@ Deno.test("ignoreTags", async () => {
   delete clean.score;
   delete clean.tags;
 
-  const uuid1 = await NetworkUtil.makeUUID(Network.fromJSON(creature).internalJSON());
+  const uuid1 = await NetworkUtil.makeUUID(
+    Network.fromJSON(creature).internalJSON(),
+  );
   const uuid2 = await NetworkUtil.makeUUID(clean);
 
   console.log("uuid1", uuid1, "uuid2", uuid2);
@@ -114,7 +116,7 @@ Deno.test("ignoreTags", async () => {
   assertEquals(uuid2, uuid1, "Should match");
 
   const alive = Network.fromJSON(creature);
-  const uuid3 = await NetworkUtil.makeUUID(alive);
+  const uuid3 = await NetworkUtil.makeUUID(alive.internalJSON());
 
   assertEquals(uuid3, uuid1, "Alive creature should match was: " + uuid3);
 

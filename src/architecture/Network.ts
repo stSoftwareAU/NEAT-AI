@@ -2168,10 +2168,10 @@ export class Network implements NetworkInterface {
       tags: this.tags ? this.tags.slice() : undefined,
     };
 
-    const uuidMap=new Map<number,string>();
+    const uuidMap = new Map<number, string>();
     for (let i = this.nodes.length; i--;) {
       const node = this.nodes[i];
-      uuidMap.set( i, node.uuid?node.uuid:`unknown-${i}`);
+      uuidMap.set(i, node.uuid ? node.uuid : `unknown-${i}`);
       if (!options.verbose && node.type == "input") continue;
       // node.index = i;
       const tojson = (node as Node).toJSON(options);
@@ -2180,7 +2180,9 @@ export class Network implements NetworkInterface {
     }
 
     for (let i = this.connections.length; i--;) {
-      const exportJSON = (this.connections[i] as Connection).exportJSON(uuidMap);
+      const exportJSON = (this.connections[i] as Connection).exportJSON(
+        uuidMap,
+      );
 
       json.connections[i] = exportJSON;
     }
@@ -2205,7 +2207,7 @@ export class Network implements NetworkInterface {
 
     for (let i = this.nodes.length; i--;) {
       const node = this.nodes[i];
-      
+
       if (!options.verbose && node.type == "input") continue;
       // node.index = i;
       const tojson = (node as Node).toJSON(options);
@@ -2229,11 +2231,11 @@ export class Network implements NetworkInterface {
       this.tags = [...json.tags];
     }
 
-    const uuidMap=new Map<string, number>();
+    const uuidMap = new Map<string, number>();
     this.nodes = new Array(json.nodes.length);
     for (let i = json.input; i--;) {
-      const key=`input-${i}`;
-      uuidMap.set( key, i);
+      const key = `input-${i}`;
+      uuidMap.set(key, i);
       const n = new Node(key, "input", undefined, this);
       n.index = i;
       this.nodes[i] = n;
@@ -2246,7 +2248,7 @@ export class Network implements NetworkInterface {
       if (jn.type === "input") continue;
 
       const n = Node.fromJSON(jn, this);
-      uuidMap.set( n.uuid, pos);
+      uuidMap.set(n.uuid, pos);
       n.index = pos;
       this.nodes[pos] = n;
       pos++;
@@ -2257,11 +2259,15 @@ export class Network implements NetworkInterface {
     for (let i = 0; i < cLen; i++) {
       const conn = json.connections[i];
 
-      const from=(conn as ConnectionExport).fromUUID?uuidMap.get( (conn as ConnectionExport).fromUUID):(conn as ConnectionInterface).from;
-      const to=(conn as ConnectionExport).toUUID?uuidMap.get( (conn as ConnectionExport).toUUID):(conn as ConnectionInterface).to;
+      const from = (conn as ConnectionExport).fromUUID
+        ? uuidMap.get((conn as ConnectionExport).fromUUID)
+        : (conn as ConnectionInterface).from;
+      const to = (conn as ConnectionExport).toUUID
+        ? uuidMap.get((conn as ConnectionExport).toUUID)
+        : (conn as ConnectionInterface).to;
       const connection = this.connect(
-        from?from:0,
-        to?to:0,
+        from ? from : 0,
+        to ? to : 0,
         conn.weight,
         conn.type,
       );
