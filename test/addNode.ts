@@ -90,11 +90,12 @@ Deno.test("addNode", () => {
   for (let i = 1000; i--;) {
     network.addNode();
   }
-  const nodes = network.internalJSON({ verbose: true }).nodes;
+  const nodes = network.internalJSON().nodes;
   console.info(JSON.stringify(nodes, null, 1));
 
-  for (let indx = nodes.length; indx--;) {
-    const node = nodes[indx];
+  for (let pos = nodes.length; pos--;) {
+    const node = nodes[pos];
+    const indx = network.input + pos;
     const tag = getTag(node, "original");
 
     if (tag === "yes") {

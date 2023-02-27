@@ -618,7 +618,7 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Converts the node to a json object
    */
-  toJSON(options = { verbose: false }): NodeInterface {
+  toJSON(): NodeInterface {
     if (this.type === "input") {
       return {
         type: this.type,
@@ -629,7 +629,6 @@ export class Node implements TagsInterface, NodeInterface {
         uuid: this.uuid,
         type: this.type,
         bias: this.bias,
-        index: options.verbose ? this.index : undefined,
         tags: this.tags ? [...this.tags] : undefined,
       };
     } else {
@@ -637,7 +636,6 @@ export class Node implements TagsInterface, NodeInterface {
         uuid: this.uuid,
         type: this.type,
         bias: this.bias,
-        index: options.verbose ? this.index : undefined,
         squash: this.squash,
         tags: this.tags ? [...this.tags] : undefined,
       };
