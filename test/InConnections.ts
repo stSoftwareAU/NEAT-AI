@@ -37,7 +37,7 @@ Deno.test("inward", () => {
   assert(connects2.length == 3, "expected 3 got " + connects2.length);
 
   network.addNode();
-  console.info(JSON.stringify(network.toJSON(), null, 2));
+  console.info(JSON.stringify(network.externalJSON(), null, 2));
 
   let foundPositive = false;
   let foundNegative = false;

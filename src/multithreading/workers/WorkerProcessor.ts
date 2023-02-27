@@ -65,7 +65,7 @@ export class WorkerProcessor {
       };
 
       const result = network.trainDir(this.dataSetDir, trainOptions);
-      const json = JSON.stringify(network.toJSON());
+      const json = JSON.stringify(network.externalJSON());
 
       network.dispose();
 

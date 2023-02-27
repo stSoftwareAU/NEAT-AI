@@ -89,7 +89,7 @@ export class Neat {
     const tmpFittest = elitists[0];
 
     const fittest = Network.fromJSON(
-      (tmpFittest as Network).toJSON(),
+      (tmpFittest as Network).internalJSON(),
       this.config.debug,
     ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
@@ -368,7 +368,7 @@ export class Neat {
     }
     while (this.population.length < this.config.popSize - 1) {
       const clonedCreature = Network.fromJSON(
-        network.toJSON(),
+        network.internalJSON(),
         this.config.debug,
       );
       const creatures = [clonedCreature];

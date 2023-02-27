@@ -1,4 +1,4 @@
-import { ConnectionInterface } from "./ConnectionInterface.ts";
+import { ConnectionInterface,ConnectionExport } from "./ConnectionInterface.ts";
 
 export class Connection implements ConnectionInterface {
   public from: number;
@@ -40,8 +40,22 @@ export class Connection implements ConnectionInterface {
   /**
    * Converts the connection to a json object
    */
-  toJSON() {
-    const json:ConnectionInterface = {
+  exportJSON(uuidMap:Map<number,string>) {
+    const fromUUID=uuidMap.get(this.from);
+    const toUUID=uuidMap.get(this.to);
+    const json: ConnectionExport = {
+      weight: this.weight,
+      fromUUID: fromUUID?fromUUID:`error-${this.from}`,
+      toUUID: toUUID?toUUID:`error-${this.to}`,
+      gater: this.gater ? this.gater : undefined,
+      type: this.type ? this.type : undefined,
+    };
+
+    return json;
+  }
+
+  internalJSON() {
+    const json: ConnectionInterface = {
       weight: this.weight,
       from: this.from,
       to: this.to,
@@ -51,7 +65,7 @@ export class Connection implements ConnectionInterface {
 
     return json;
   }
-
+  
   /**
    * Returns an innovation ID
    * https://en.wikipedia.org/wiki/Pairing_function (Cantor pairing function)

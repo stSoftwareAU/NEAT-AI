@@ -99,14 +99,14 @@ Deno.test("ignoreTags", async () => {
   };
 
   const clean = JSON.parse(
-    JSON.stringify(Network.fromJSON(creature).toJSON(), null, 4),
+    JSON.stringify(Network.fromJSON(creature).internalJSON(), null, 4),
   );
 
   delete clean.uuid;
   delete clean.score;
   delete clean.tags;
 
-  const uuid1 = await NetworkUtil.makeUUID(Network.fromJSON(creature).toJSON());
+  const uuid1 = await NetworkUtil.makeUUID(Network.fromJSON(creature).internalJSON());
   const uuid2 = await NetworkUtil.makeUUID(clean);
 
   console.log("uuid1", uuid1, "uuid2", uuid2);
@@ -174,7 +174,7 @@ Deno.test("keepUUID", () => {
   };
 
   const n1 = Network.fromJSON(creature);
-  const j1 = n1.toJSON();
+  const j1 = n1.externalJSON();
   const n2 = Network.fromJSON(j1);
 
   assertEquals(

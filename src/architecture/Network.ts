@@ -1,5 +1,8 @@
 import { TagInterface } from "../tags/TagInterface.ts";
-import { ConnectionExport, ConnectionInterface } from "./ConnectionInterface.ts";
+import {
+  ConnectionExport,
+  ConnectionInterface,
+} from "./ConnectionInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
 import { NetworkExport, NetworkInterface } from "./NetworkInterface.ts";
 
@@ -262,7 +265,7 @@ export class Network implements NetworkInterface {
   compact(): Network | null {
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
-    const json = this.toJSON();
+    const json = this.internalJSON();
     this.DEBUG = holdDebug;
     const compactNetwork = Network.fromJSON(json);
     compactNetwork.fix();
@@ -356,7 +359,7 @@ export class Network implements NetworkInterface {
       }
     }
 
-    const json2 = compactNetwork.toJSON();
+    const json2 = compactNetwork.internalJSON();
     if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
       addTag(compactNetwork, "approach", "compact");
       addTag(compactNetwork, "old-nodes", this.nodes.length.toString());
@@ -420,7 +423,7 @@ export class Network implements NetworkInterface {
           this.DEBUG = false;
           Deno.writeTextFileSync(
             ".validate.json",
-            JSON.stringify(this.toJSON(), null, 2),
+            JSON.stringify(this.externalJSON(), null, 2),
           );
 
           this.DEBUG = true;
@@ -434,7 +437,7 @@ export class Network implements NetworkInterface {
           this.DEBUG = false;
           Deno.writeTextFileSync(
             ".validate.json",
-            JSON.stringify(this.toJSON(), null, 2),
+            JSON.stringify(this.externalJSON(), null, 2),
           );
 
           this.DEBUG = true;
@@ -470,7 +473,7 @@ export class Network implements NetworkInterface {
           if (this.DEBUG) {
             this.DEBUG = false;
             console.warn(
-              JSON.stringify(this.toJSON(), null, 2),
+              JSON.stringify(this.externalJSON(), null, 2),
             );
             this.DEBUG = true;
           }
@@ -549,7 +552,7 @@ export class Network implements NetworkInterface {
               this.DEBUG = false;
               console.warn(
                 JSON.stringify(
-                  this.toJSON(),
+                  this.externalJSON(),
                   null,
                   2,
                 ),
@@ -818,7 +821,7 @@ export class Network implements NetworkInterface {
       if (this.DEBUG) {
         this.DEBUG = false;
         console.warn(
-          JSON.stringify(this.toJSON(), null, 2),
+          JSON.stringify(this.externalJSON(), null, 2),
         );
 
         this.DEBUG = true;
@@ -922,7 +925,7 @@ export class Network implements NetworkInterface {
       this.fix();
       const temp = this.compact();
       if (temp != null) {
-        this.loadFrom(temp.toJSON(), true);
+        this.loadFrom(temp.internalJSON(), true);
       }
       addTag(this, "approach", "Learnings");
       addTag(this, "old-nodes", oldNodes.toString());
@@ -1032,7 +1035,7 @@ export class Network implements NetworkInterface {
         }
 
         bestScore = fittest.score ? fittest.score : 0;
-        bestCreature = Network.fromJSON(fittest.toJSON());
+        bestCreature = Network.fromJSON(fittest.externalJSON());
       } else if (fittest.score ? fittest.score : 0 < bestScore) {
         throw "fitness decreased over generations";
       }
@@ -1363,7 +1366,7 @@ export class Network implements NetworkInterface {
     let counter = 1;
     emptyDirSync(dir);
     neat.population.forEach((creature: NetworkInterface) => {
-      const json = (creature as Network).toJSON();
+      const json = (creature as Network).externalJSON();
 
       const txt = JSON.stringify(json, null, 1);
 
@@ -2149,12 +2152,12 @@ export class Network implements NetworkInterface {
   /**
    * Convert the network to a json object
    */
-  toJSON(options = { verbose: false }) {
+  externalJSON(options = { verbose: false }) {
     if (this.DEBUG) {
       this.validate();
     }
 
-    const json:NetworkExport = {
+    const json: NetworkExport = {
       uuid: this.uuid,
       nodes: new Array<NodeInterface>(
         this.nodes.length - (options.verbose ? 0 : this.input),
@@ -2165,8 +2168,10 @@ export class Network implements NetworkInterface {
       tags: this.tags ? this.tags.slice() : undefined,
     };
 
+    const uuidMap=new Map<number,string>();
     for (let i = this.nodes.length; i--;) {
       const node = this.nodes[i];
+      uuidMap.set( i, node.uuid?node.uuid:`unknown-${i}`);
       if (!options.verbose && node.type == "input") continue;
       // node.index = i;
       const tojson = (node as Node).toJSON(options);
@@ -2175,24 +2180,61 @@ export class Network implements NetworkInterface {
     }
 
     for (let i = this.connections.length; i--;) {
-      const tojson = (this.connections[i] as Connection).toJSON();
+      const exportJSON = (this.connections[i] as Connection).exportJSON(uuidMap);
 
-      json.connections[i] = tojson;
+      json.connections[i] = exportJSON;
+    }
+
+    return json;
+  }
+  internalJSON(options = { verbose: false }) {
+    if (this.DEBUG) {
+      this.validate();
+    }
+
+    const json: NetworkInterface = {
+      uuid: this.uuid,
+      nodes: new Array<NodeInterface>(
+        this.nodes.length - (options.verbose ? 0 : this.input),
+      ),
+      connections: new Array<ConnectionInterface>(this.connections.length),
+      input: this.input,
+      output: this.output,
+      tags: this.tags ? this.tags.slice() : undefined,
+    };
+
+    for (let i = this.nodes.length; i--;) {
+      const node = this.nodes[i];
+      
+      if (!options.verbose && node.type == "input") continue;
+      // node.index = i;
+      const tojson = (node as Node).toJSON(options);
+
+      json.nodes[i - (options.verbose ? 0 : this.input)] = tojson;
+    }
+
+    for (let i = this.connections.length; i--;) {
+      const internalJSON = (this.connections[i] as Connection).internalJSON();
+
+      json.connections[i] = internalJSON;
     }
 
     return json;
   }
 
-  private loadFrom(json: NetworkInterface|NetworkExport, validate: boolean) {
+  private loadFrom(json: NetworkInterface | NetworkExport, validate: boolean) {
     this.uuid = json.uuid;
     this.nodes.length = json.nodes.length;
     if (json.tags) {
       this.tags = [...json.tags];
     }
 
+    const uuidMap=new Map<string, number>();
     this.nodes = new Array(json.nodes.length);
     for (let i = json.input; i--;) {
-      const n = new Node(`input-${i}`, "input", undefined, this);
+      const key=`input-${i}`;
+      uuidMap.set( key, i);
+      const n = new Node(key, "input", undefined, this);
       n.index = i;
       this.nodes[i] = n;
     }
@@ -2204,6 +2246,7 @@ export class Network implements NetworkInterface {
       if (jn.type === "input") continue;
 
       const n = Node.fromJSON(jn, this);
+      uuidMap.set( n.uuid, pos);
       n.index = pos;
       this.nodes[pos] = n;
       pos++;
@@ -2214,9 +2257,11 @@ export class Network implements NetworkInterface {
     for (let i = 0; i < cLen; i++) {
       const conn = json.connections[i];
 
+      const from=(conn as ConnectionExport).fromUUID?uuidMap.get( (conn as ConnectionExport).fromUUID):(conn as ConnectionInterface).from;
+      const to=(conn as ConnectionExport).toUUID?uuidMap.get( (conn as ConnectionExport).toUUID):(conn as ConnectionInterface).to;
       const connection = this.connect(
-        conn.from,
-        conn.to,
+        from?from:0,
+        to?to:0,
         conn.weight,
         conn.type,
       );
@@ -2237,7 +2282,7 @@ export class Network implements NetworkInterface {
   /**
    * Convert a json object to a network
    */
-  static fromJSON(json: NetworkInterface|NetworkExport, validate = false) {
+  static fromJSON(json: NetworkInterface | NetworkExport, validate = false) {
     const network = new Network(json.input, json.output, false);
     network.loadFrom(json, validate);
 

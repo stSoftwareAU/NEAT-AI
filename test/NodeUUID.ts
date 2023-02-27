@@ -60,7 +60,7 @@ Deno.test("generateUUID", () => {
     assert(n.uuid, "Must have a UUID");
   });
 
-  const j1 = n1.toJSON();
+  const j1 = n1.externalJSON();
   const n2 = Network.fromJSON(j1);
 
   for (let i = 0; i < n1.nodes.length; i++) {

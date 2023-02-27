@@ -32,7 +32,7 @@ Deno.test("if-bias", () => {
     output: 1,
   };
   const network = Network.fromJSON(json);
-  const tmpJSON = JSON.stringify(network.toJSON(), null, 2);
+  const tmpJSON = JSON.stringify(network.externalJSON(), null, 2);
 
   console.log(tmpJSON);
 
@@ -71,7 +71,7 @@ Deno.test("if/Else", () => {
     output: 1,
   };
   const network1 = Network.fromJSON(json);
-  const tmpJSON = JSON.stringify(network1.toJSON(), null, 2);
+  const tmpJSON = JSON.stringify(network1.externalJSON(), null, 2);
 
   console.log(tmpJSON);
   const network2 = Network.fromJSON(JSON.parse(tmpJSON));
@@ -127,9 +127,9 @@ Deno.test("if-fix", () => {
     network.subConnection();
   }
   network.fix();
-  const network2 = Network.fromJSON(network.toJSON());
+  const network2 = Network.fromJSON(network.externalJSON());
   network2.validate();
-  console.info(JSON.stringify(network2.toJSON(), null, 2));
+  console.info(JSON.stringify(network2.externalJSON(), null, 2));
   const toList = network.toConnections(5);
 
   assert(toList.length > 2, "Should have 3 connections was: " + toList.length);

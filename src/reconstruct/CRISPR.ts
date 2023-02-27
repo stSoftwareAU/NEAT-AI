@@ -32,13 +32,13 @@ export class CRISPR {
     network: NetworkInterface,
   ) {
     this.network = Network.fromJSON(
-      (network as Network).toJSON({ verbose: true }),
+      (network as Network).internalJSON({ verbose: true }),
     );
   }
 
   apply(dna: CrisprInterface): NetworkInterface {
     const tmpNetwork = Network.fromJSON(
-      (this.network as Network).toJSON({ verbose: true }),
+      (this.network as Network).internalJSON({ verbose: true }),
     );
 
     let alreadyProcessed = false;

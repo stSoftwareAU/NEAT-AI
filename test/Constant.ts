@@ -33,7 +33,7 @@ Deno.test("No squash", () => {
 
   assertAlmostEquals(value2, 0.5, 0.00001);
 
-  console.info(JSON.stringify(network.toJSON(), null, 2));
+  console.info(JSON.stringify(network.externalJSON(), null, 2));
 });
 
 Deno.test("Constants", () => {
@@ -60,9 +60,9 @@ Deno.test("Constants", () => {
     network.addConnection();
   }
 
-  console.info(JSON.stringify(network.toJSON(), null, 2));
+  console.info(JSON.stringify(network.externalJSON(), null, 2));
   network.validate();
-  Network.fromJSON(network.toJSON());
+  Network.fromJSON(network.externalJSON());
   assert(
     Math.abs(network.nodes[1].bias ? network.nodes[1].bias : 0) - 0.5 < 0.00001,
     "Should NOT have changed the constant node was: " + network.nodes[1].bias,

@@ -1,5 +1,8 @@
 import { TagsInterface } from "../tags/TagsInterface.ts";
-import { ConnectionExport, ConnectionInterface } from "./ConnectionInterface.ts";
+import {
+  ConnectionExport,
+  ConnectionInterface,
+} from "./ConnectionInterface.ts";
 import { NodeInterface } from "./NodeInterface.ts";
 
 interface NetworkCommon extends TagsInterface {
@@ -15,11 +18,9 @@ interface NetworkCommon extends TagsInterface {
 }
 
 export interface NetworkInterface extends NetworkCommon {
-
   connections: ConnectionInterface[];
 }
 
 export interface NetworkExport extends NetworkCommon {
-
   connections: ConnectionExport[];
 }

@@ -51,7 +51,7 @@ Deno.test("useUUIDinsteadOfPosition", () => {
   };
 
   const n1 = Network.fromJSON(creature);
-  const exported = n1.toJSON();
+  const exported = n1.externalJSON();
   const j1 = JSON.stringify(exported, null, 2);
 
   console.info(j1);

@@ -89,13 +89,13 @@ Deno.test("CompactSimple", () => {
     startOut,
   );
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.toJSON(), null, 2));
+  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   const b = a.compact();
   if (b == null) {
     assert(false, "should have compacted the network");
   } else {
     b.validate();
-    Deno.writeTextFileSync(".b.json", JSON.stringify(b.toJSON(), null, 2));
+    Deno.writeTextFileSync(".b.json", JSON.stringify(b.internalJSON(), null, 2));
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
@@ -165,13 +165,13 @@ Deno.test("RandomizeCompact", () => {
     startOut,
   );
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.toJSON(), null, 2));
+  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   const b = a.compact();
   if (b == null) {
     assert(false, "should have compacted the network");
   } else {
     b.DEBUG = false;
-    Deno.writeTextFileSync(".b.json", JSON.stringify(b.toJSON(), null, 2));
+    Deno.writeTextFileSync(".b.json", JSON.stringify(b.internalJSON(), null, 2));
     b.DEBUG = true;
     b.validate();
     const endNodes = b.nodes.length;
@@ -252,7 +252,7 @@ Deno.test("CompactSelf", () => {
     aOut,
   );
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.toJSON(), null, 2));
+  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   // a.util.fix();
   // Deno.writeTextFileSync(".a2.json", JSON.stringify(a.toJSON(), null, 2));
 
@@ -264,7 +264,7 @@ Deno.test("CompactSelf", () => {
     assert(false, "should have compacted the network");
   } else {
     b.validate();
-    Deno.writeTextFileSync(".b.json", JSON.stringify(b.toJSON(), null, 2));
+    Deno.writeTextFileSync(".b.json", JSON.stringify(b.internalJSON(), null, 2));
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
