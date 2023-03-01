@@ -62,7 +62,7 @@ pipeline {
         '''.stripIndent()
       }
     }
-    stage('Build') {
+    stage('Test') {
       agent {
         docker {
           image TOOLS_IMAGE
