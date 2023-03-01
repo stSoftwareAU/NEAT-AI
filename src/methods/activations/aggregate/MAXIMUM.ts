@@ -2,7 +2,7 @@ import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { Node } from "../../../architecture/Node.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
-import { ConnectionInterface } from "../../../architecture/ConnectionInterface.ts";
+import { ConnectionInternal } from "../../../architecture/ConnectionInterfaces.ts";
 
 export class MAXIMUM
   implements NodeActivationInterface, ApplyLearningsInterface {
@@ -31,7 +31,7 @@ export class MAXIMUM
   activate(node: Node) {
     const toList = node.network.toConnections(node.index);
     let maxValue = Infinity * -1;
-    let usedConnection: ConnectionInterface | null = null;
+    let usedConnection: ConnectionInternal | null = null;
     for (let i = toList.length; i--;) {
       const c = toList[i];
 

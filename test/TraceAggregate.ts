@@ -3,12 +3,12 @@ import {
   assertAlmostEquals,
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("TraceAggregateMINIMUM", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
@@ -79,7 +79,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
 });
 
 Deno.test("TraceAggregateMAXIMUM", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
@@ -140,7 +140,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 });
 
 Deno.test("TraceAggregateIF", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },

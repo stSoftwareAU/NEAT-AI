@@ -3,7 +3,7 @@ import {
   ConnectionExport,
   ConnectionInternal,
 } from "./ConnectionInterfaces.ts";
-import { NodeInternal,NodeExport } from "./NodeInterfaces.ts";
+import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { NetworkExport, NetworkInternal } from "./NetworkInterfaces.ts";
 
 import { DataRecordInterface } from "./DataSet.ts";
@@ -33,7 +33,7 @@ const cacheDataFile = {
   json: {},
 };
 
-export class Network implements NetworkInterface {
+export class Network implements NetworkInternal {
   /* ID of this network */
   uuid?: string;
 
@@ -42,10 +42,10 @@ export class Network implements NetworkInterface {
   nodes: NodeInternal[];
   tags?: TagInterface[];
   score?: number;
-  connections: ConnectionInterface[];
+  connections: ConnectionInternal[];
 
   readonly networkState = new NetworkState();
-  private cache = new Map<string, ConnectionInterface[]>();
+  private cache = new Map<string, ConnectionInternal[]>();
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
   constructor(input: number, output: number, options = {}) {
@@ -279,7 +279,7 @@ export class Network implements NetworkInterface {
         pos++
       ) {
         const fromList = compactNetwork.fromConnections(pos).filter(
-          (c: ConnectionInterface) => {
+          (c: ConnectionInternal) => {
             return c.from !== c.to;
           },
         );
@@ -289,13 +289,13 @@ export class Network implements NetworkInterface {
           complete = false;
         } else {
           const toList = compactNetwork.toConnections(pos).filter(
-            (c: ConnectionInterface) => {
+            (c: ConnectionInternal) => {
               return c.from !== c.to;
             },
           );
           if (toList.length == 1) {
             const fromList = compactNetwork.fromConnections(pos).filter(
-              (c: ConnectionInterface) => {
+              (c: ConnectionInternal) => {
                 return c.from !== c.to;
               },
             );
@@ -647,7 +647,7 @@ export class Network implements NetworkInterface {
     return stats;
   }
 
-  selfConnection(indx: number): ConnectionInterface | null {
+  selfConnection(indx: number): ConnectionInternal | null {
     const key = "self:" + indx;
     let results = this.cache.get(key);
     if (results === undefined) {
@@ -670,7 +670,7 @@ export class Network implements NetworkInterface {
     }
   }
 
-  toConnections(to: number): ConnectionInterface[] {
+  toConnections(to: number): ConnectionInternal[] {
     const key = "to:" + to;
     let results = this.cache.get(key);
     if (results === undefined) {
@@ -687,7 +687,7 @@ export class Network implements NetworkInterface {
     return results;
   }
 
-  fromConnections(from: number): ConnectionInterface[] {
+  fromConnections(from: number): ConnectionInternal[] {
     const key = "from:" + from;
     let results = this.cache.get(key);
     if (results === undefined) {
@@ -704,7 +704,7 @@ export class Network implements NetworkInterface {
     return results;
   }
 
-  gates(): ConnectionInterface[] {
+  gates(): ConnectionInternal[] {
     const key = "gates";
     let results = this.cache.get(key);
     if (results === undefined) {
@@ -721,7 +721,7 @@ export class Network implements NetworkInterface {
     return results;
   }
 
-  gateConnections(indx: number): ConnectionInterface[] {
+  gateConnections(indx: number): ConnectionInternal[] {
     const key = "gate:" + indx;
     let results = this.cache.get(key);
     if (results === undefined) {
@@ -755,7 +755,7 @@ export class Network implements NetworkInterface {
     return ((tmp as unknown) as Node);
   }
 
-  getConnection(from: number, to: number): ConnectionInterface | null {
+  getConnection(from: number, to: number): ConnectionInternal | null {
     if (Number.isInteger(from) == false || from < 0) {
       console.trace();
       throw "FROM should be a non-negative integer was: " + from;
@@ -1024,7 +1024,7 @@ export class Network implements NetworkInterface {
       (!options.iterations || generation < options.iterations)
     ) {
       const fittest: Network = await neat.evolve(
-        bestCreature as (NetworkInterface | undefined),
+        bestCreature as (NetworkInternal | undefined),
       );
 
       if (fittest.score ? fittest.score : 0 > bestScore) {
@@ -1366,7 +1366,7 @@ export class Network implements NetworkInterface {
   private writeCreatures(neat: Neat, dir: string) {
     let counter = 1;
     emptyDirSync(dir);
-    neat.population.forEach((creature: NetworkInterface) => {
+    neat.population.forEach((creature: NetworkInternal) => {
       const json = (creature as Network).externalJSON();
 
       const txt = JSON.stringify(json, null, 1);
@@ -1423,7 +1423,7 @@ export class Network implements NetworkInterface {
             (this.nodes.length - this.output - this.input) +
           this.input,
       );
-      
+
       if (!this.inFocus(indx, focusList)) continue;
       this.removeHiddenNode(indx);
       break;
@@ -1448,7 +1448,7 @@ export class Network implements NetworkInterface {
     const left = this.nodes.slice(0, indx);
     const right = this.nodes.slice(indx + 1);
     right.forEach((item) => {
-      const node =item as NodeInternal;
+      const node = item as NodeInternal;
       node.index--;
     });
 
@@ -1456,7 +1456,7 @@ export class Network implements NetworkInterface {
 
     this.nodes = full;
 
-    const tmpConnections: ConnectionInterface[] = [];
+    const tmpConnections: ConnectionInternal[] = [];
 
     this.connections.forEach((tmpC) => {
       const c = tmpC as Connection;
@@ -1610,7 +1610,7 @@ export class Network implements NetworkInterface {
     for (let i = 0; i < this.nodes.length - this.output; i++) {
       const node1 = this.nodes[i];
 
-      if ((node1 as NodeInternal) .index != i) {
+      if ((node1 as NodeInternal).index != i) {
         throw i + ") invalid node index: " + (node1 as NodeInternal).index;
       }
 
@@ -1784,7 +1784,7 @@ export class Network implements NetworkInterface {
         const node = this.nodes[i];
         if (node.type === "constant") continue;
 
-        const c = this.selfConnection((node  as NodeInternal).index);
+        const c = this.selfConnection((node as NodeInternal).index);
         if (c === null) {
           possible.push(node);
         }
@@ -2176,7 +2176,7 @@ export class Network implements NetworkInterface {
       uuidMap.set(i, node.uuid ? node.uuid : `unknown-${i}`);
       if (node.type == "input") continue;
 
-      const tojson = (node as Node).toJSON();
+      const tojson = (node as Node).exportJSON();
 
       json.nodes[i - this.input] = tojson;
     }
@@ -2197,12 +2197,12 @@ export class Network implements NetworkInterface {
       this.validate();
     }
 
-    const json: NetworkInterface = {
+    const json: NetworkInternal = {
       uuid: this.uuid,
       nodes: new Array<NodeInternal>(
         this.nodes.length - this.input,
       ),
-      connections: new Array<ConnectionInterface>(this.connections.length),
+      connections: new Array<ConnectionInternal>(this.connections.length),
       input: this.input,
       output: this.output,
       tags: this.tags ? this.tags.slice() : undefined,
@@ -2212,8 +2212,8 @@ export class Network implements NetworkInterface {
       const node = this.nodes[i];
 
       if (node.type == "input") continue;
-      // node.index = i;
-      const tojson = (node as Node).toJSON();
+
+      const tojson = (node as Node).internalJSON(i);
 
       json.nodes[i - this.input] = tojson;
     }
@@ -2227,7 +2227,7 @@ export class Network implements NetworkInterface {
     return json;
   }
 
-  private loadFrom(json: NetworkInterface | NetworkExport, validate: boolean) {
+  private loadFrom(json: NetworkInternal | NetworkExport, validate: boolean) {
     this.uuid = json.uuid;
     this.nodes.length = json.nodes.length;
     if (json.tags) {
@@ -2264,10 +2264,10 @@ export class Network implements NetworkInterface {
 
       const from = (conn as ConnectionExport).fromUUID
         ? uuidMap.get((conn as ConnectionExport).fromUUID)
-        : (conn as ConnectionInterface).from;
+        : (conn as ConnectionInternal).from;
       const to = (conn as ConnectionExport).toUUID
         ? uuidMap.get((conn as ConnectionExport).toUUID)
-        : (conn as ConnectionInterface).to;
+        : (conn as ConnectionInternal).to;
       const connection = this.connect(
         from ? from : 0,
         to ? to : 0,
@@ -2291,7 +2291,7 @@ export class Network implements NetworkInterface {
   /**
    * Convert a json object to a network
    */
-  static fromJSON(json: NetworkInterface | NetworkExport, validate = false) {
+  static fromJSON(json: NetworkInternal | NetworkExport, validate = false) {
     const network = new Network(json.input, json.output, false);
     network.loadFrom(json, validate);
 

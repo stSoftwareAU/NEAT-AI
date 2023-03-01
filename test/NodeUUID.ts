@@ -1,4 +1,4 @@
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import {
   assert,
   assertEquals,
@@ -8,7 +8,7 @@ import { Network } from "../src/architecture/Network.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("generateUUID", () => {
-  const creature: NetworkInterface = {
+  const creature: NetworkInternal = {
     nodes: [
       {
         bias: 0,

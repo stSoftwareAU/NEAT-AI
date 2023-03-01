@@ -1,11 +1,11 @@
 import { addTag, getTag } from "../tags/TagsInterface.ts";
 import { Network } from "./Network.ts";
-import { NetworkInterface } from "./NetworkInterface.ts";
+import { NetworkInternal } from "./NetworkInterfaces.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneWeights(
-  fittest: NetworkInterface,
-  previousFittest: NetworkInterface,
+  fittest: NetworkInternal,
+  previousFittest: NetworkInternal,
   oldScore: string,
   rate = 1,
   skipSet: Set<string> | null = null,
@@ -80,8 +80,8 @@ function tuneWeights(
 }
 
 function tuneBias(
-  fittest: NetworkInterface,
-  previousFittest: NetworkInterface,
+  fittest: NetworkInternal,
+  previousFittest: NetworkInternal,
   oldScore: string,
   rate = 1,
   skipSet: Set<string> | null = null,
@@ -156,8 +156,8 @@ function tuneBias(
 }
 
 function tuneAll(
-  fittest: NetworkInterface,
-  previousFittest: NetworkInterface,
+  fittest: NetworkInternal,
+  previousFittest: NetworkInternal,
   oldScore: string,
 ) {
   const previousJSON = (previousFittest as Network).internalJSON();
@@ -237,8 +237,8 @@ function tuneAll(
 }
 
 export function fineTuneImprovement(
-  fittest: NetworkInterface,
-  previousFittest: NetworkInterface | null,
+  fittest: NetworkInternal,
+  previousFittest: NetworkInternal | null,
   popSize = 10,
   showMessage = true,
 ) {

@@ -6,7 +6,7 @@ import { ActivationInterface } from "../methods/activations/ActivationInterface.
 import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
 import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
-import { NodeInternal,NodeExport } from "./NodeInterface.ts";
+import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
 
@@ -618,7 +618,7 @@ export class Node implements TagsInterface, NodeInternal {
   /**
    * Converts the node to a json object
    */
-  toJSON(): NodeExport {
+  exportJSON(): NodeExport {
     if (this.type === "input") {
       return {
         type: this.type,
@@ -626,15 +626,45 @@ export class Node implements TagsInterface, NodeInternal {
       };
     } else if (this.type === "constant") {
       return {
-        uuid: this.uuid,
         type: this.type,
+        uuid: this.uuid,
         bias: this.bias,
         tags: this.tags ? [...this.tags] : undefined,
       };
     } else {
       return {
-        uuid: this.uuid,
         type: this.type,
+        uuid: this.uuid,
+        bias: this.bias,
+        squash: this.squash,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    }
+  }
+
+  /**
+   * Converts the node to a json object
+   */
+  internalJSON(indx: number): NodeInternal {
+    if (this.type === "input") {
+      return {
+        type: this.type,
+        index: indx,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    } else if (this.type === "constant") {
+      return {
+        type: this.type,
+        index: indx,
+        uuid: this.uuid,
+        bias: this.bias,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    } else {
+      return {
+        type: this.type,
+        index: indx,
+        uuid: this.uuid,
         bias: this.bias,
         squash: this.squash,
         tags: this.tags ? [...this.tags] : undefined,

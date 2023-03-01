@@ -4,12 +4,12 @@ import {
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("No squash", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0.5, type: "constant", index: 1 },
       { bias: 0, type: "output", squash: "IDENTITY", index: 2 },
@@ -37,7 +37,7 @@ Deno.test("No squash", () => {
 });
 
 Deno.test("Constants", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0.5, type: "constant", index: 1 },

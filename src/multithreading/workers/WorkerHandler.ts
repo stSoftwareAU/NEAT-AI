@@ -1,4 +1,4 @@
-import { NetworkInterface } from "../../architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../../architecture/NetworkInterfaces.ts";
 import { Network } from "../../architecture/Network.ts";
 import { MockWorker } from "./MockWorker.ts";
 
@@ -164,7 +164,7 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  evaluate(network: NetworkInterface, feedbackLoop: boolean) {
+  evaluate(network: NetworkInternal, feedbackLoop: boolean) {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
@@ -176,7 +176,7 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  train(network: NetworkInterface, rate: number) {
+  train(network: NetworkInternal, rate: number) {
     const json = (network as Network).internalJSON();
 
     delete json.tags;

@@ -5,13 +5,13 @@ import {
   fail,
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 /** Make sure the compact routine remove hidden nodes with no affect */
 Deno.test("removeDanglingHidden", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
@@ -209,7 +209,7 @@ Deno.test("RandomizeCompact", () => {
 });
 
 Deno.test("CompactSelf", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },

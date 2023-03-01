@@ -1,10 +1,10 @@
-import { NetworkInterface } from "../architecture/NetworkInterface.ts";
-import { ConnectionInterface } from "../architecture/ConnectionInterface.ts";
+import { NetworkInternal } from "../architecture/NetworkInterfaces.ts";
+import { ConnectionInternal } from "../architecture/ConnectionInterfaces.ts";
 import { Network } from "../architecture/Network.ts";
 
 export class Upgrade {
-  static correct(json: NetworkInterface): NetworkInterface {
-    const json2 = JSON.parse(JSON.stringify(json)) as NetworkInterface;
+  static correct(json: NetworkInternal): NetworkInternal {
+    const json2 = JSON.parse(JSON.stringify(json)) as NetworkInternal;
 
     let otherNodes = 0;
     json2.nodes.forEach((n, indx) => {
@@ -27,7 +27,7 @@ export class Upgrade {
 
     const firstOutputIndx = json2.input + otherNodes;
 
-    const connections: ConnectionInterface[] = [];
+    const connections: ConnectionInternal[] = [];
     json2.connections.forEach((c) => {
       if (c.from >= firstOutputIndx && c.from !== c.to) {
         console.warn(

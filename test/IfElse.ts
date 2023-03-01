@@ -4,12 +4,12 @@ import {
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("if-bias", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "input", index: 0 },
       { type: "input", index: 1 },
@@ -50,7 +50,7 @@ Deno.test("if-bias", () => {
 });
 
 Deno.test("if/Else", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
@@ -91,7 +91,7 @@ Deno.test("if/Else", () => {
 });
 
 Deno.test("if-fix", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
