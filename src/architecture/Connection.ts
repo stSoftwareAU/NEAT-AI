@@ -50,7 +50,7 @@ export class Connection implements ConnectionInternal {
       weight: this.weight,
       fromUUID: fromUUID ? fromUUID : `error-${this.from}`,
       toUUID: toUUID ? toUUID : `error-${this.to}`,
-      gater: this.gater ? this.gater : undefined,
+      gaterUUID: this.gater ? uuidMap.get(this.gater) : undefined,
       type: this.type ? this.type : undefined,
     };
 

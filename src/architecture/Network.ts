@@ -2275,8 +2275,14 @@ export class Network implements NetworkInternal {
         conn.type,
       );
 
-      if (conn.gater != null) {
-        connection.gater = conn.gater;
+      const gater = (conn as ConnectionInternal).gater;
+      if (Number.isFinite(gater)) {
+        connection.gater = gater;
+      } else {
+        const gaterUUID = (conn as ConnectionExport).gaterUUID;
+        if (gaterUUID) {
+          connection.gater = uuidMap.get(gaterUUID);
+        }
       }
     }
 

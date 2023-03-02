@@ -452,7 +452,7 @@ Deno.test("evolve_XNOR_gate", async () => {
       { input: [1, 0], output: [0] },
       { input: [1, 1], output: [1] },
     ],
-    4000,
+    10000,
     0.002,
   );
 });

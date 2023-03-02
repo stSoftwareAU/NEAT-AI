@@ -30,6 +30,7 @@ Deno.test("useUUIDinsteadOfPosition", () => {
       {
         weight: -0.1,
         from: 1,
+        gater: 3,
         to: 5,
       },
       {
@@ -66,4 +67,30 @@ Deno.test("useUUIDinsteadOfPosition", () => {
     const from = ((c as unknown) as ConnectionInternal).from;
     assert(!Number.isFinite(from), `should NOT have an from ${from}`);
   });
+
+  let foundGaterUUID = false;
+  exported.connections.forEach((c) => {
+    const gater = (c as { gater?: number }).gater;
+    assert(!Number.isFinite(gater), `should NOT have a gater ${gater}`);
+
+    if ((c as { gaterUUID?: string }).gaterUUID) {
+      foundGaterUUID = true;
+    }
+  });
+
+  assert(foundGaterUUID, "didn't find any found gater UUID");
+
+  const n2 = Network.fromJSON(exported);
+  const exported2 = n2.exportJSON();
+  let foundGaterUUID2 = false;
+  exported2.connections.forEach((c) => {
+    const gater = (c as { gater?: number }).gater;
+    assert(!Number.isFinite(gater), `should NOT have a gater ${gater}`);
+
+    if ((c as { gaterUUID?: string }).gaterUUID) {
+      foundGaterUUID2 = true;
+    }
+  });
+
+  assert(foundGaterUUID2, "didn't find any found gater UUID");
 });
