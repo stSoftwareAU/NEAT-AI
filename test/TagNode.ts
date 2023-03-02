@@ -34,10 +34,10 @@ Deno.test("TagNode", () => {
   };
   const network = Network.fromJSON(json);
 
-  const json2 = network.externalJSON();
+  const json2 = network.exportJSON();
 
   const network2 = Network.fromJSON(json2);
-  const json3 = network2.externalJSON();
+  const json3 = network2.exportJSON();
 
   console.info(JSON.stringify(json3, null, 2));
 

@@ -31,7 +31,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.externalJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
   const eOut = network.noTraceActivate(input);
@@ -71,7 +71,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.externalJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -102,7 +102,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.externalJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
   const eOut = network.noTraceActivate(input);
@@ -132,7 +132,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.externalJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -164,7 +164,7 @@ Deno.test("TraceAggregateIF", () => {
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.externalJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
   const eOut = network.noTraceActivate(input);
@@ -194,7 +194,7 @@ Deno.test("TraceAggregateIF", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.externalJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 

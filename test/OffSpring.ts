@@ -140,7 +140,7 @@ Deno.test("CrossOver", () => {
     if (n.squash == "IF") {
       Deno.writeTextFileSync(
         ".cross_over.json",
-        JSON.stringify(c.externalJSON(), null, 2),
+        JSON.stringify(c.exportJSON(), null, 2),
       );
 
       // const list = c.toConnections(n.index);
@@ -238,7 +238,7 @@ function check() {
   const n1 = Network.fromJSON(creature);
   n1.validate();
   n1.fix();
-  console.info(JSON.stringify(n1.externalJSON(), null, 2));
+  console.info(JSON.stringify(n1.exportJSON(), null, 2));
   const n2 = Network.fromJSON(creature);
   n2.validate();
   n2.fix();
@@ -259,7 +259,7 @@ function check() {
 
   const n3 = Offspring.bread(n1, n2);
 
-  console.info("N3", JSON.stringify(n3.externalJSON(), null, 2));
+  console.info("N3", JSON.stringify(n3.exportJSON(), null, 2));
 
   const outputUUID = creature.nodes[2].uuid;
 

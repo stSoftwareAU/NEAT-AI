@@ -424,7 +424,7 @@ export class Network implements NetworkInternal {
           this.DEBUG = false;
           Deno.writeTextFileSync(
             ".validate.json",
-            JSON.stringify(this.externalJSON(), null, 2),
+            JSON.stringify(this.exportJSON(), null, 2),
           );
 
           this.DEBUG = true;
@@ -438,7 +438,7 @@ export class Network implements NetworkInternal {
           this.DEBUG = false;
           Deno.writeTextFileSync(
             ".validate.json",
-            JSON.stringify(this.externalJSON(), null, 2),
+            JSON.stringify(this.exportJSON(), null, 2),
           );
 
           this.DEBUG = true;
@@ -474,7 +474,7 @@ export class Network implements NetworkInternal {
           if (this.DEBUG) {
             this.DEBUG = false;
             console.warn(
-              JSON.stringify(this.externalJSON(), null, 2),
+              JSON.stringify(this.exportJSON(), null, 2),
             );
             this.DEBUG = true;
           }
@@ -553,7 +553,7 @@ export class Network implements NetworkInternal {
               this.DEBUG = false;
               console.warn(
                 JSON.stringify(
-                  this.externalJSON(),
+                  this.exportJSON(),
                   null,
                   2,
                 ),
@@ -822,7 +822,7 @@ export class Network implements NetworkInternal {
       if (this.DEBUG) {
         this.DEBUG = false;
         console.warn(
-          JSON.stringify(this.externalJSON(), null, 2),
+          JSON.stringify(this.exportJSON(), null, 2),
         );
 
         this.DEBUG = true;
@@ -1367,7 +1367,7 @@ export class Network implements NetworkInternal {
     let counter = 1;
     emptyDirSync(dir);
     neat.population.forEach((creature: NetworkInternal) => {
-      const json = (creature as Network).externalJSON();
+      const json = (creature as Network).exportJSON();
 
       const txt = JSON.stringify(json, null, 1);
 
@@ -2154,7 +2154,7 @@ export class Network implements NetworkInternal {
   /**
    * Convert the network to a json object
    */
-  externalJSON() {
+  exportJSON() {
     if (this.DEBUG) {
       this.validate();
     }

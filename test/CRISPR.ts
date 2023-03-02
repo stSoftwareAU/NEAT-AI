@@ -58,7 +58,7 @@ Deno.test("CRISPR_twice", () => {
   );
   const expectedTXT = JSON.stringify(expectedJSON, null, 2);
   const actualTXT = JSON.stringify(
-    (networkIF2 as Network).externalJSON(),
+    (networkIF2 as Network).exportJSON(),
     null,
     2,
   );
