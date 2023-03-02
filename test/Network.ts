@@ -409,7 +409,7 @@ Deno.test("train XOR gate", () => {
       { input: [1, 0], output: [1] },
       { input: [1, 1], output: [0] },
     ],
-    50000,
+    100000,
     0.002,
   );
 });
