@@ -1,13 +1,13 @@
 import { assertAlmostEquals } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { Upgrade } from "../src/reconstruct/Upgrade.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Sum", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0, type: "output", squash: "SUM", index: 3 },
     ],
@@ -19,7 +19,7 @@ Deno.test("Sum", () => {
     input: 3,
     output: 1,
   };
-  const json2 = Upgrade.correct(json);
+  const json2 = Upgrade.correct(Network.fromJSON(json).exportJSON());
   const network = Network.fromJSON(json2);
 
   for (let p = 0; p < 1000; p++) {

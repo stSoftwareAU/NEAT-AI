@@ -1,4 +1,4 @@
-import { NetworkInterface } from "../architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../architecture/NetworkInterfaces.ts";
 import { Network } from "../architecture/Network.ts";
 import { Node } from "../architecture/Node.ts";
 import { addTag, getTag, TagsInterface } from "../tags/TagsInterface.ts";
@@ -29,14 +29,16 @@ export class CRISPR {
   private network;
 
   constructor(
-    network: NetworkInterface,
+    network: NetworkInternal,
   ) {
-    this.network = Network.fromJSON((network as Network).toJSON());
+    this.network = Network.fromJSON(
+      (network as Network).internalJSON(),
+    );
   }
 
-  apply(dna: CrisprInterface): NetworkInterface {
+  apply(dna: CrisprInterface): NetworkInternal {
     const tmpNetwork = Network.fromJSON(
-      (this.network as Network).toJSON(),
+      (this.network as Network).internalJSON(),
     );
 
     let alreadyProcessed = false;

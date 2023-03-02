@@ -2,7 +2,7 @@ import { Neat } from "../src/Neat.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import { assertEquals } from "https://deno.land/std@0.170.0/testing/asserts.ts";
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -140,7 +140,7 @@ Deno.test("CrossOver", () => {
     if (n.squash == "IF") {
       Deno.writeTextFileSync(
         ".cross_over.json",
-        JSON.stringify(c.toJSON(), null, 2),
+        JSON.stringify(c.exportJSON(), null, 2),
       );
 
       // const list = c.toConnections(n.index);
@@ -175,7 +175,7 @@ Deno.test(
 );
 
 function check() {
-  const creature: NetworkInterface = {
+  const creature: NetworkInternal = {
     nodes: [
       {
         uuid: crypto.randomUUID(),
@@ -238,7 +238,7 @@ function check() {
   const n1 = Network.fromJSON(creature);
   n1.validate();
   n1.fix();
-  console.info(JSON.stringify(n1.toJSON(), null, 2));
+  console.info(JSON.stringify(n1.exportJSON(), null, 2));
   const n2 = Network.fromJSON(creature);
   n2.validate();
   n2.fix();
@@ -259,7 +259,7 @@ function check() {
 
   const n3 = Offspring.bread(n1, n2);
 
-  console.info("N3", JSON.stringify(n3.toJSON(), null, 2));
+  console.info("N3", JSON.stringify(n3.exportJSON(), null, 2));
 
   const outputUUID = creature.nodes[2].uuid;
 

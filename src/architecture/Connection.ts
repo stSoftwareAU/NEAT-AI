@@ -1,6 +1,9 @@
-import { ConnectionInterface } from "./ConnectionInterface.ts";
+import {
+  ConnectionExport,
+  ConnectionInternal,
+} from "./ConnectionInterfaces.ts";
 
-export class Connection implements ConnectionInterface {
+export class Connection implements ConnectionInternal {
   public from: number;
   public to: number;
   public type?: "positive" | "negative" | "condition";
@@ -40,8 +43,22 @@ export class Connection implements ConnectionInterface {
   /**
    * Converts the connection to a json object
    */
-  toJSON() {
-    const json = {
+  exportJSON(uuidMap: Map<number, string>) {
+    const fromUUID = uuidMap.get(this.from);
+    const toUUID = uuidMap.get(this.to);
+    const json: ConnectionExport = {
+      weight: this.weight,
+      fromUUID: fromUUID ? fromUUID : `error-${this.from}`,
+      toUUID: toUUID ? toUUID : `error-${this.to}`,
+      gaterUUID: this.gater ? uuidMap.get(this.gater) : undefined,
+      type: this.type ? this.type : undefined,
+    };
+
+    return json;
+  }
+
+  internalJSON() {
+    const json: ConnectionInternal = {
       weight: this.weight,
       from: this.from,
       to: this.to,

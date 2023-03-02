@@ -7,7 +7,7 @@ import { Fitness } from "./architecture/Fitness.ts";
 import { NeatOptions } from "./config/NeatOptions.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
-import { NetworkInterface } from "./architecture/NetworkInterface.ts";
+import { NetworkInternal } from "./architecture/NetworkInterfaces.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import {
@@ -28,7 +28,7 @@ export class Neat {
   readonly workers: WorkerHandler[];
   readonly fitness: Fitness;
   trainRate: number;
-  population: NetworkInterface[];
+  population: Network[];
 
   constructor(
     input: number,
@@ -52,13 +52,17 @@ export class Neat {
     this.trainRate = this.config.trainRate;
 
     // Initialize the genomes
-    this.population = this.config.creatures;
+    this.population = [];
+    this.config.creatures.forEach((c) => {
+      const n = Network.fromJSON(c);
+      this.population.push(n);
+    });
   }
 
   /**
    * Evaluates, selects, breeds and mutates population
    */
-  async evolve(previousFittest?: NetworkInterface) {
+  async evolve(previousFittest?: NetworkInternal) {
     const trainPromises = [];
     for (
       let i = 0;
@@ -89,7 +93,7 @@ export class Neat {
     const tmpFittest = elitists[0];
 
     const fittest = Network.fromJSON(
-      (tmpFittest as Network).toJSON(),
+      (tmpFittest as Network).internalJSON(),
       this.config.debug,
     ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
@@ -166,7 +170,7 @@ export class Neat {
     let tmpPreviousFittest = previousFittest;
 
     if (!tmpPreviousFittest) {
-      tmpPreviousFittest = elitists[1] as NetworkInterface;
+      tmpPreviousFittest = elitists[1] as NetworkInternal;
     } else if (elitists.length > 1) {
       const previousScoreTxt = getTag(tmpPreviousFittest, "score");
       if (previousScoreTxt) {
@@ -175,7 +179,7 @@ export class Neat {
           let pos = Math.floor(Math.random() * elitists.length);
 
           for (; pos < elitists.length; pos++) {
-            tmpPreviousFittest = elitists[pos] as NetworkInterface;
+            tmpPreviousFittest = elitists[pos] as NetworkInternal;
             if (!tmpPreviousFittest) continue;
             const previousScoreTxt3 = getTag(tmpPreviousFittest, "score");
             if (!previousScoreTxt3) continue;
@@ -250,7 +254,7 @@ export class Neat {
     // Replace the old population with the new population
     this.mutate(newPopulation);
 
-    const trainPopulation: NetworkInterface[] = [];
+    const trainPopulation: Network[] = [];
 
     await Promise.all(trainPromises).then((results) => {
       for (let i = results.length; i--;) {
@@ -272,7 +276,7 @@ export class Neat {
     });
 
     this.population = [
-      ...(elitists as NetworkInterface[]),
+      ...(elitists as Network[]),
       ...trainPopulation,
       ...fineTunedPopulation,
       ...newPopulation,
@@ -305,7 +309,7 @@ export class Neat {
     }
   }
 
-  async writeScores(creatures: NetworkInterface[]) {
+  async writeScores(creatures: Network[]) {
     if (this.config.experimentStore) {
       for (let i = creatures.length; i--;) {
         const creature = creatures[i];
@@ -328,7 +332,7 @@ export class Neat {
   /**
    * Mutates the given (or current) population
    */
-  mutate(creatures: NetworkInterface[]) {
+  mutate(creatures: NetworkInternal[]) {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i] as Network;
@@ -368,7 +372,7 @@ export class Neat {
     }
     while (this.population.length < this.config.popSize - 1) {
       const clonedCreature = Network.fromJSON(
-        network.toJSON(),
+        network.internalJSON(),
         this.config.debug,
       );
       const creatures = [clonedCreature];
@@ -434,7 +438,7 @@ export class Neat {
     return creature;
   }
 
-  async deDuplicate(creatures: NetworkInterface[]) {
+  async deDuplicate(creatures: Network[]) {
     if (creatures.length > this.config.popSize + 1) {
       console.info(
         `Over populated ${creatures.length} expected ${this.config.popSize}`,
@@ -470,7 +474,7 @@ export class Neat {
 
             let duplicate2 = unique.has(key2);
             if (!duplicate2 && i > this.config.elitism) {
-              duplicate2 = await this.previousExperiment(key2);
+              duplicate2 = this.previousExperiment(key2);
             }
             if (duplicate2 == false) {
               creatures[i] = p2;
@@ -488,7 +492,7 @@ export class Neat {
   /**
    * Selects a random mutation method for a genome according to the parameters
    */
-  selectMutationMethod(creature: NetworkInterface) {
+  selectMutationMethod(creature: NetworkInternal) {
     const mutationMethods = this.config
       .mutation;
 

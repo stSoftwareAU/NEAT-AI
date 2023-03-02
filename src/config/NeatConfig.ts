@@ -1,7 +1,10 @@
 /*******************************************************************************
                                       CONFIG
 *******************************************************************************/
-import { NetworkInterface } from "../architecture/NetworkInterface.ts";
+import {
+  NetworkExport,
+  NetworkInternal,
+} from "../architecture/NetworkInterfaces.ts";
 import { NeatOptions } from "./NeatOptions.ts";
 import { Mutation, MutationInterface } from "../methods/mutation.ts";
 import { Selection, SelectionInterface } from "../methods/Selection.ts";
@@ -15,7 +18,7 @@ export interface NeatConfig {
   experimentStore?: string;
 
   /** List of creatures to start with */
-  creatures: NetworkInterface[];
+  creatures: NetworkInternal[] | NetworkExport[];
 
   /** number of records per dataset file. default: 2000 */
   dataSetPartitionBreak: number;

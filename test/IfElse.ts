@@ -4,12 +4,12 @@ import {
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("if-bias", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "input", index: 0 },
       { type: "input", index: 1 },
@@ -32,7 +32,7 @@ Deno.test("if-bias", () => {
     output: 1,
   };
   const network = Network.fromJSON(json);
-  const tmpJSON = JSON.stringify(network.toJSON(), null, 2);
+  const tmpJSON = JSON.stringify(network.exportJSON(), null, 2);
 
   console.log(tmpJSON);
 
@@ -50,7 +50,7 @@ Deno.test("if-bias", () => {
 });
 
 Deno.test("if/Else", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
@@ -71,7 +71,7 @@ Deno.test("if/Else", () => {
     output: 1,
   };
   const network1 = Network.fromJSON(json);
-  const tmpJSON = JSON.stringify(network1.toJSON(), null, 2);
+  const tmpJSON = JSON.stringify(network1.exportJSON(), null, 2);
 
   console.log(tmpJSON);
   const network2 = Network.fromJSON(JSON.parse(tmpJSON));
@@ -91,7 +91,7 @@ Deno.test("if/Else", () => {
 });
 
 Deno.test("if-fix", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
@@ -127,9 +127,9 @@ Deno.test("if-fix", () => {
     network.subConnection();
   }
   network.fix();
-  const network2 = Network.fromJSON(network.toJSON());
+  const network2 = Network.fromJSON(network.exportJSON());
   network2.validate();
-  console.info(JSON.stringify(network2.toJSON(), null, 2));
+  console.info(JSON.stringify(network2.exportJSON(), null, 2));
   const toList = network.toConnections(5);
 
   assert(toList.length > 2, "Should have 3 connections was: " + toList.length);

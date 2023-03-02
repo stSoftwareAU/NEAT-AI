@@ -5,13 +5,13 @@ import {
   fail,
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 /** Make sure the compact routine remove hidden nodes with no affect */
 Deno.test("removeDanglingHidden", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
@@ -89,13 +89,16 @@ Deno.test("CompactSimple", () => {
     startOut,
   );
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.toJSON(), null, 2));
+  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   const b = a.compact();
   if (b == null) {
     assert(false, "should have compacted the network");
   } else {
     b.validate();
-    Deno.writeTextFileSync(".b.json", JSON.stringify(b.toJSON(), null, 2));
+    Deno.writeTextFileSync(
+      ".b.json",
+      JSON.stringify(b.internalJSON(), null, 2),
+    );
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
@@ -165,13 +168,16 @@ Deno.test("RandomizeCompact", () => {
     startOut,
   );
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.toJSON(), null, 2));
+  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   const b = a.compact();
   if (b == null) {
     assert(false, "should have compacted the network");
   } else {
     b.DEBUG = false;
-    Deno.writeTextFileSync(".b.json", JSON.stringify(b.toJSON(), null, 2));
+    Deno.writeTextFileSync(
+      ".b.json",
+      JSON.stringify(b.internalJSON(), null, 2),
+    );
     b.DEBUG = true;
     b.validate();
     const endNodes = b.nodes.length;
@@ -203,7 +209,7 @@ Deno.test("RandomizeCompact", () => {
 });
 
 Deno.test("CompactSelf", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
@@ -252,7 +258,7 @@ Deno.test("CompactSelf", () => {
     aOut,
   );
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.toJSON(), null, 2));
+  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   // a.util.fix();
   // Deno.writeTextFileSync(".a2.json", JSON.stringify(a.toJSON(), null, 2));
 
@@ -264,7 +270,10 @@ Deno.test("CompactSelf", () => {
     assert(false, "should have compacted the network");
   } else {
     b.validate();
-    Deno.writeTextFileSync(".b.json", JSON.stringify(b.toJSON(), null, 2));
+    Deno.writeTextFileSync(
+      ".b.json",
+      JSON.stringify(b.internalJSON(), null, 2),
+    );
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 

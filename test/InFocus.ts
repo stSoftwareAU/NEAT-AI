@@ -15,7 +15,7 @@ Deno.test("hidden", () => {
   for (let pos = startPos; pos < endPos; pos++) {
     const n = network.nodes[pos];
 
-    if (network.inFocus(n.index, [1])) {
+    if (network.inFocus(n.index ? n.index : 0, [1])) {
       positiveCount++;
     } else {
       negativeCount++;
@@ -39,7 +39,7 @@ Deno.test("input", () => {
   for (let pos = startPos; pos < endPos; pos++) {
     const n = network.nodes[pos];
 
-    if (network.inFocus(n.index, [1])) {
+    if (network.inFocus(n.index ? n.index : 0, [1])) {
       positiveCount++;
     } else {
       negativeCount++;

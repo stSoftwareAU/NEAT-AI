@@ -1,9 +1,9 @@
 import { Network } from "../src/architecture/Network.ts";
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const json: NetworkInterface = {
+const json: NetworkInternal = {
   nodes: [
     {
       type: "input",
@@ -68,5 +68,5 @@ Deno.test("subNode", () => {
   }
   network.validate({ nodes: 4, connections: 3 });
 
-  console.info(JSON.stringify(network.toJSON(), null, 1));
+  console.info(JSON.stringify(network.exportJSON(), null, 1));
 });

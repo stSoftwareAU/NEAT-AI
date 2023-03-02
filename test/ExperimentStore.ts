@@ -1,5 +1,4 @@
 import { Neat } from "../src/Neat.ts";
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
 import { assert } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
 import { Network } from "../src/architecture/Network.ts";
@@ -8,7 +7,7 @@ import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("previous", async () => {
-  const creature: NetworkInterface = Network.fromJSON({
+  const creature = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -41,7 +40,7 @@ Deno.test("previous", async () => {
 
   const neat = new Neat(1, 1, { experimentStore: ".testExperiments" }, []);
 
-  const p = [creature];
+  const p = [Network.fromJSON(creature)];
   neat.writeScores(p);
 
   const flag = await previousExperiment(creature, neat);
@@ -60,7 +59,7 @@ Deno.test("previous", async () => {
   assert(flag3, "Don't care about tags");
 });
 
-async function previousExperiment(creature: NetworkInterface, neat: Neat) {
+async function previousExperiment(creature: Network, neat: Neat) {
   const key = await NetworkUtil.makeUUID(creature);
 
   return neat.previousExperiment(key);

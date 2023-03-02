@@ -1,4 +1,4 @@
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import {
   assert,
   assertEquals,
@@ -11,7 +11,7 @@ import { Neat } from "../src/Neat.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("knownName", async () => {
-  const creature: NetworkInterface = Network.fromJSON({
+  const creature = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -39,19 +39,20 @@ Deno.test("knownName", async () => {
       { name: "error", value: "0.5" },
     ],
   });
-
+  console.info(creature);
+  //  console.info( JSON.stringify( creature, null, 2));
   const uuid = await NetworkUtil.makeUUID(creature);
 
   console.log("UUID", uuid);
 
   assert(
-    uuid == "29461e8f-296d-5f3f-84db-a3734d6411fb",
+    uuid == "5d82864b-dd93-55aa-af4a-0456ed67dd13",
     "Wrong UUID was: " + uuid,
   );
 });
 
 Deno.test("ignoreTags", async () => {
-  const creature: NetworkInterface = {
+  const creature = Network.fromJSON({
     uuid: crypto.randomUUID(),
     nodes: [
       {
@@ -96,15 +97,17 @@ Deno.test("ignoreTags", async () => {
       { name: "hello", value: "world" },
     ],
     score: -0.1111,
-  };
+  });
 
-  const clean = JSON.parse(JSON.stringify(creature, null, 4));
+  const clean = Network.fromJSON(creature);
 
   delete clean.uuid;
   delete clean.score;
   delete clean.tags;
 
-  const uuid1 = await NetworkUtil.makeUUID(creature);
+  const uuid1 = await NetworkUtil.makeUUID(
+    Network.fromJSON(creature),
+  );
   const uuid2 = await NetworkUtil.makeUUID(clean);
 
   console.log("uuid1", uuid1, "uuid2", uuid2);
@@ -118,13 +121,13 @@ Deno.test("ignoreTags", async () => {
 
   /** Manually update if needed. */
   assert(
-    uuid2 == "e6f77bae-5ab2-5425-acc5-0b34c90521d9",
+    uuid2 == "f5c7dea8-c1d9-51ed-b79f-22751f1d65de",
     "Wrong UUID was: " + uuid2,
   );
 });
 
 Deno.test("keepUUID", () => {
-  const creature: NetworkInterface = {
+  const creature: NetworkInternal = {
     uuid: crypto.randomUUID(),
     nodes: [
       {
@@ -172,7 +175,7 @@ Deno.test("keepUUID", () => {
   };
 
   const n1 = Network.fromJSON(creature);
-  const j1 = n1.toJSON();
+  const j1 = n1.exportJSON();
   const n2 = Network.fromJSON(j1);
 
   assertEquals(
@@ -183,7 +186,7 @@ Deno.test("keepUUID", () => {
 });
 
 Deno.test("generateUUID", async () => {
-  const creature: NetworkInterface = {
+  const creature: NetworkInternal = {
     nodes: [
       {
         bias: 0,

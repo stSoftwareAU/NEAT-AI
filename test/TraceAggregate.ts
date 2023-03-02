@@ -3,12 +3,12 @@ import {
   assertAlmostEquals,
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("TraceAggregateMINIMUM", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
@@ -31,7 +31,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.toJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
   const eOut = network.noTraceActivate(input);
@@ -71,7 +71,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.toJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -79,7 +79,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
 });
 
 Deno.test("TraceAggregateMAXIMUM", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
@@ -102,7 +102,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.toJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
   const eOut = network.noTraceActivate(input);
@@ -132,7 +132,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.toJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -140,7 +140,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 });
 
 Deno.test("TraceAggregateIF", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
@@ -164,7 +164,7 @@ Deno.test("TraceAggregateIF", () => {
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.toJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
   const eOut = network.noTraceActivate(input);
@@ -194,7 +194,7 @@ Deno.test("TraceAggregateIF", () => {
   );
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.toJSON(), null, 2),
+    JSON.stringify(network.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 

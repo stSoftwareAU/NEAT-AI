@@ -1,4 +1,4 @@
-import { NetworkInterface } from "./NetworkInterface.ts";
+import { NetworkInternal } from "./NetworkInterfaces.ts";
 import { Network } from "./Network.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { addTag } from "../tags/TagsInterface.ts";
@@ -6,7 +6,7 @@ import { addTag } from "../tags/TagsInterface.ts";
 type PromiseFunction = (v: unknown) => void;
 
 let calculationData: {
-  queue: NetworkInterface[];
+  queue: NetworkInternal[];
   resolve: PromiseFunction;
   reject: PromiseFunction;
   that: Fitness;
@@ -30,13 +30,13 @@ export class Fitness {
     }
   }
 
-  private async _callWorker(worker: WorkerHandler, creature: NetworkInterface) {
+  private async _callWorker(worker: WorkerHandler, creature: NetworkInternal) {
     const responseData = await worker.evaluate(creature, this.feedbackLoop);
     if (!responseData.evaluate) throw "Invalid response";
 
     const error = responseData.evaluate.error;
     addTag(creature, "error", Math.abs(error).toString());
-    const realCreature = (creature as Network);
+    const realCreature = creature as Network;
     creature.score = -error - (
           creature.nodes.length -
           creature.input -
@@ -77,7 +77,7 @@ export class Fitness {
     }
   }
 
-  calculate(population: NetworkInterface[]) {
+  calculate(population: NetworkInternal[]) {
     return new Promise((resolve, reject) => {
       calculationData = {
         queue: population.slice(),

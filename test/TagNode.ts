@@ -1,12 +1,12 @@
 import { assert } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("TagNode", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
@@ -34,10 +34,10 @@ Deno.test("TagNode", () => {
   };
   const network = Network.fromJSON(json);
 
-  const json2 = network.toJSON();
+  const json2 = network.exportJSON();
 
   const network2 = Network.fromJSON(json2);
-  const json3 = network2.toJSON();
+  const json3 = network2.exportJSON();
 
   console.info(JSON.stringify(json3, null, 2));
 

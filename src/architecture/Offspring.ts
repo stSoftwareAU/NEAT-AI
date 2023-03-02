@@ -1,5 +1,5 @@
-import { addTags, getTag } from "../tags/TagsInterface.ts";
-import { ConnectionInterface } from "./ConnectionInterface.ts";
+import { addTags } from "../tags/TagsInterface.ts";
+import { ConnectionInternal } from "./ConnectionInterfaces.ts";
 import { Network } from "./Network.ts";
 import { Node } from "./Node.ts";
 
@@ -51,7 +51,7 @@ export class Offspring {
       uuidMap.set(node.uuid, node.index * -1);
     }
 
-    const connectionList: ConnectionInterface[] = [];
+    const connectionList: ConnectionInternal[] = [];
     let outputIndx = 0;
     // Assign nodes from parents to offspring
     for (let i = 0; i < size; i++) {
@@ -118,7 +118,7 @@ export class Offspring {
 
       if (newNode.type !== "constant") {
         const tmpNetwork = (node as Node).network;
-        tmpNetwork.toConnections(node.index).forEach((c) => {
+        tmpNetwork.toConnections(node.index ? node.index : 0).forEach((c) => {
           const fromUUID = tmpNetwork.nodes[c.from].uuid;
           if (!fromUUID) throw "No UUID";
           const from = uuidMap.get(fromUUID);

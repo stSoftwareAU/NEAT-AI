@@ -1,11 +1,11 @@
 import { assert } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Maximum", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
@@ -49,7 +49,7 @@ Deno.test("Maximum", () => {
 });
 
 Deno.test("Maximum-fix", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },

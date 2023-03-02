@@ -23,13 +23,13 @@ Deno.test("CRISPR", () => {
   );
 
   const expectedTXT = JSON.stringify(
-    Network.fromJSON(expectedJSON).toJSON(),
+    Network.fromJSON(expectedJSON).internalJSON(),
     null,
     2,
   );
 
   Deno.writeTextFileSync("test/data/CRISPR/.expected-IF.json", expectedTXT);
-  const actualJSON = (networkIF as Network).toJSON();
+  const actualJSON = (networkIF as Network).internalJSON();
 
   const actualTXT = JSON.stringify(
     actualJSON,
@@ -58,7 +58,7 @@ Deno.test("CRISPR_twice", () => {
   );
   const expectedTXT = JSON.stringify(expectedJSON, null, 2);
   const actualTXT = JSON.stringify(
-    (networkIF2 as Network).toJSON(),
+    (networkIF2 as Network).exportJSON(),
     null,
     2,
   );
@@ -72,7 +72,7 @@ Deno.test("CRISPR-Volume", () => {
   const network = Network.fromJSON(JSON.parse(networkTXT));
   Deno.writeTextFileSync(
     "test/data/CRISPR/.network.json",
-    JSON.stringify(network.toJSON(), null, 2),
+    JSON.stringify(network.internalJSON(), null, 2),
   );
   network.validate();
   const crispr = new CRISPR(network);
@@ -85,7 +85,7 @@ Deno.test("CRISPR-Volume", () => {
   );
 
   const expectedTXT = JSON.stringify(
-    Network.fromJSON(expectedJSON).toJSON(),
+    Network.fromJSON(expectedJSON).internalJSON(),
     null,
     2,
   );
@@ -93,7 +93,7 @@ Deno.test("CRISPR-Volume", () => {
   Deno.writeTextFileSync("test/data/CRISPR/.expected-VOLUME.json", expectedTXT);
 
   const actualTXT = JSON.stringify(
-    (networkIF as Network).toJSON(),
+    (networkIF as Network).internalJSON(),
     null,
     2,
   );
@@ -109,13 +109,13 @@ Deno.test("REMOVE", () => {
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-IF.json");
 
-  const networkIF = (crispr.apply(JSON.parse(dnaTXT)) as Network);
+  const networkIF = crispr.apply(JSON.parse(dnaTXT)) as Network;
   (networkIF as Network).validate();
 
-  console.info(networkIF.toJSON());
+  console.info(networkIF.internalJSON());
 
   for (let pos = networkIF.nodes.length; pos--;) {
-    const node = (networkIF.nodes[pos] as Node);
+    const node = networkIF.nodes[pos] as Node;
     const tag = getTag(node, "CRISPR");
     if (tag) {
       for (let attempts = 0; attempts < 10; attempts++) {

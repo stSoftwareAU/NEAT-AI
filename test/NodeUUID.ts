@@ -1,4 +1,4 @@
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import {
   assert,
   assertEquals,
@@ -8,7 +8,7 @@ import { Network } from "../src/architecture/Network.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("generateUUID", () => {
-  const creature: NetworkInterface = {
+  const creature: NetworkInternal = {
     nodes: [
       {
         bias: 0,
@@ -60,7 +60,7 @@ Deno.test("generateUUID", () => {
     assert(n.uuid, "Must have a UUID");
   });
 
-  const j1 = n1.toJSON();
+  const j1 = n1.exportJSON();
   const n2 = Network.fromJSON(j1);
 
   for (let i = 0; i < n1.nodes.length; i++) {

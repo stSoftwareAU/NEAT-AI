@@ -1,12 +1,12 @@
 import { assert } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 import { getTag } from "../src/tags/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const json: NetworkInterface = {
+const json: NetworkInternal = {
   nodes: [
     {
       type: "input",
@@ -90,11 +90,12 @@ Deno.test("addNode", () => {
   for (let i = 1000; i--;) {
     network.addNode();
   }
-  const nodes = network.toJSON({ verbose: true }).nodes;
+  const nodes = network.internalJSON().nodes;
   console.info(JSON.stringify(nodes, null, 1));
 
-  for (let indx = nodes.length; indx--;) {
-    const node = nodes[indx];
+  for (let pos = nodes.length; pos--;) {
+    const node = nodes[pos];
+    const indx = network.input + pos;
     const tag = getTag(node, "original");
 
     if (tag === "yes") {

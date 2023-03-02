@@ -1,17 +1,17 @@
 import { addTag, getTag } from "../tags/TagsInterface.ts";
 import { Network } from "./Network.ts";
-import { NetworkInterface } from "./NetworkInterface.ts";
+import { NetworkInternal } from "./NetworkInterfaces.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneWeights(
-  fittest: NetworkInterface,
-  previousFittest: NetworkInterface,
+  fittest: NetworkInternal,
+  previousFittest: NetworkInternal,
   oldScore: string,
   rate = 1,
   skipSet: Set<string> | null = null,
 ) {
-  const previousJSON = (previousFittest as Network).toJSON();
-  const allJSON = (fittest as Network).toJSON();
+  const previousJSON = (previousFittest as Network).internalJSON();
+  const allJSON = (fittest as Network).internalJSON();
   let changeWeightCount = 0;
 
   for (let i = allJSON.connections.length; i--;) {
@@ -80,14 +80,14 @@ function tuneWeights(
 }
 
 function tuneBias(
-  fittest: NetworkInterface,
-  previousFittest: NetworkInterface,
+  fittest: NetworkInternal,
+  previousFittest: NetworkInternal,
   oldScore: string,
   rate = 1,
   skipSet: Set<string> | null = null,
 ) {
-  const previousJSON = (previousFittest as Network).toJSON();
-  const allJSON = (fittest as Network).toJSON();
+  const previousJSON = (previousFittest as Network).internalJSON();
+  const allJSON = (fittest as Network).internalJSON();
 
   let changeBiasCount = 0;
   for (let i = allJSON.nodes.length; i--;) {
@@ -97,7 +97,9 @@ function tuneBias(
       const pn = previousJSON.nodes[i];
 
       if (tn.squash == pn.squash) {
-        if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
+        if (
+          Math.abs((tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0)) > MIN_STEP
+        ) {
           if (Math.random() < rate) {
             if (skipSet) {
               const key = "idx:" + i;
@@ -105,8 +107,8 @@ function tuneBias(
 
               skipSet.add(key);
             }
-            const adjust = tn.bias - pn.bias;
-            const bias = tn.bias + adjust;
+            const adjust = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
+            const bias = (tn.bias ? tn.bias : 0) + adjust;
 
             tn.bias = bias;
             changeBiasCount++;
@@ -154,12 +156,12 @@ function tuneBias(
 }
 
 function tuneAll(
-  fittest: NetworkInterface,
-  previousFittest: NetworkInterface,
+  fittest: NetworkInternal,
+  previousFittest: NetworkInternal,
   oldScore: string,
 ) {
-  const previousJSON = (previousFittest as Network).toJSON();
-  const allJSON = (fittest as Network).toJSON();
+  const previousJSON = (previousFittest as Network).internalJSON();
+  const allJSON = (fittest as Network).internalJSON();
 
   let changeBiasCount = 0;
   let changeWeightCount = 0;
@@ -170,9 +172,11 @@ function tuneAll(
       const pn = previousJSON.nodes[i];
 
       if (tn.squash == pn.squash) {
-        if (Math.abs(tn.bias - pn.bias) > MIN_STEP) {
-          const adjust = tn.bias - pn.bias;
-          const bias = tn.bias + adjust;
+        if (
+          Math.abs((tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0)) > MIN_STEP
+        ) {
+          const adjust = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
+          const bias = (tn.bias ? tn.bias : 0) + adjust;
 
           tn.bias = bias;
           changeBiasCount++;
@@ -233,8 +237,8 @@ function tuneAll(
 }
 
 export function fineTuneImprovement(
-  fittest: NetworkInterface,
-  previousFittest: NetworkInterface | null,
+  fittest: NetworkInternal,
+  previousFittest: NetworkInternal | null,
   popSize = 10,
   showMessage = true,
 ) {
@@ -306,7 +310,7 @@ export function fineTuneImprovement(
   if (compactNetwork != null) {
     fineTuned.push(compactNetwork);
   }
-  const previousJSON = (previousFittest as Network).toJSON();
+  const previousJSON = (previousFittest as Network).internalJSON();
 
   const resultALL = tuneAll(fittest, previousFittest, fScoreTxt);
   if (resultALL.all) fineTuned.push(resultALL.all);
@@ -382,7 +386,7 @@ export function fineTuneImprovement(
     return fineTuned;
   }
 
-  let targetJSON = (fittest as Network).toJSON();
+  let targetJSON = (fittest as Network).internalJSON();
   for (let k = 0; k < popSize; k++) {
     for (let i = targetJSON.nodes.length; i--;) {
       const fn = targetJSON.nodes[i];
@@ -392,8 +396,11 @@ export function fineTuneImprovement(
 
         if (fn.squash == pn.squash) {
           if (fn.bias != pn.bias) {
-            const adjust = adjustment(k, fn.bias - pn.bias);
-            const bias = fn.bias + adjust;
+            const adjust = adjustment(
+              k,
+              (fn.bias ? fn.bias : 0) - (pn.bias ? pn.bias : 0),
+            );
+            const bias = (fn.bias ? fn.bias : 0) + adjust;
 
             fn.bias = bias;
             const n = Network.fromJSON(targetJSON);
@@ -407,7 +414,7 @@ export function fineTuneImprovement(
             addTag(n, "old-score", fScoreTxt);
             fineTuned.push(n);
             if (fineTuned.length >= popSize) break;
-            targetJSON = (fittest as Network).toJSON();
+            targetJSON = (fittest as Network).internalJSON();
           }
         }
       }
@@ -438,7 +445,7 @@ export function fineTuneImprovement(
               addTag(n, "old-score", fScoreTxt);
               fineTuned.push(n);
               if (fineTuned.length >= popSize) break;
-              targetJSON = (fittest as Network).toJSON();
+              targetJSON = (fittest as Network).internalJSON();
             }
           }
           break;

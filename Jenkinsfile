@@ -1,3 +1,6 @@
+TOOLS_IMAGE = "denoland/deno:latest"
+TOOLS_ARGS = '-e DENO_DIR=${WORKSPACE}/.deno --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
+
 pipeline {
   agent {
     label 'ec2-large'
@@ -15,13 +18,63 @@ pipeline {
   }
 
   stages {
-    stage('Build') {
+    stage( 'init'){
+       steps {
+      sh '''\
+      env
+      mkdir -p .deno
+      '''
+       }
+    }
+    stage('Lint'){
+      agent {
+        docker {
+          image TOOLS_IMAGE
+          args TOOLS_ARGS
+        }
+      }
       steps {
 
         sh '''\
             #!/bin/bash
-            set -ex
-            echo test
+            
+            deno lint src
+        '''.stripIndent()
+      }
+      
+    }
+    stage('Format') {
+      agent {
+        docker {
+          image TOOLS_IMAGE
+          args TOOLS_ARGS
+        }
+      }
+      steps {
+
+        sh '''\
+            #!/bin/bash
+            
+            echo "Remove old test files"
+            find test -name ".*.json" -exec rm {} \\;
+
+            deno fmt --check src test
+        '''.stripIndent()
+      }
+    }
+    stage('Test') {
+      agent {
+        docker {
+          image TOOLS_IMAGE
+          args TOOLS_ARGS
+        }
+      }
+      steps {
+
+        sh '''\
+            #!/bin/bash
+
+            deno test --allow-all test/*
         '''.stripIndent()
       }
     }

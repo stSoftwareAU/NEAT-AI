@@ -4,12 +4,12 @@ import {
 } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("No squash", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0.5, type: "constant", index: 1 },
       { bias: 0, type: "output", squash: "IDENTITY", index: 2 },
@@ -33,11 +33,11 @@ Deno.test("No squash", () => {
 
   assertAlmostEquals(value2, 0.5, 0.00001);
 
-  console.info(JSON.stringify(network.toJSON(), null, 2));
+  console.info(JSON.stringify(network.exportJSON(), null, 2));
 });
 
 Deno.test("Constants", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0.5, type: "constant", index: 1 },
@@ -60,9 +60,9 @@ Deno.test("Constants", () => {
     network.addConnection();
   }
 
-  console.info(JSON.stringify(network.toJSON(), null, 2));
+  console.info(JSON.stringify(network.exportJSON(), null, 2));
   network.validate();
-  Network.fromJSON(network.toJSON());
+  Network.fromJSON(network.exportJSON());
   assert(
     Math.abs(network.nodes[1].bias ? network.nodes[1].bias : 0) - 0.5 < 0.00001,
     "Should NOT have changed the constant node was: " + network.nodes[1].bias,

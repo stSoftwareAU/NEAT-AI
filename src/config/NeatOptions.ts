@@ -1,7 +1,10 @@
 /*******************************************************************************
                                       CONFIG
 *******************************************************************************/
-import { NetworkInterface } from "../architecture/NetworkInterface.ts";
+import {
+  NetworkExport,
+  NetworkInternal,
+} from "../architecture/NetworkInterfaces.ts";
 import { MutationInterface } from "../methods/mutation.ts";
 import { SelectionInterface } from "../methods/Selection.ts";
 
@@ -26,7 +29,7 @@ export interface NeatOptions {
   experimentStore?: string;
 
   /** List of creatures to start with */
-  creatures?: NetworkInterface[];
+  creatures?: NetworkInternal[] | NetworkExport[];
 
   /**
    * Feedback loop ( previous result feeds back into next interaction

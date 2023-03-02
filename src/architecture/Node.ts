@@ -6,11 +6,11 @@ import { ActivationInterface } from "../methods/activations/ActivationInterface.
 import { Mutation } from "../methods/mutation.ts";
 import { Connection } from "./Connection.ts";
 import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
-import { NodeInterface } from "./NodeInterface.ts";
+import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
 
-export class Node implements TagsInterface, NodeInterface {
+export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
   readonly type;
   readonly uuid: string;
@@ -214,7 +214,7 @@ export class Node implements TagsInterface, NodeInterface {
           value += fromState.activation * c.weight;
         }
 
-        const activationSquash = (squashMethod as ActivationInterface);
+        const activationSquash = squashMethod as ActivationInterface;
         const result = activationSquash.squashAndDerive(value);
         // Squash the values received
         state.activation = result.activation;
@@ -373,7 +373,7 @@ export class Node implements TagsInterface, NodeInterface {
           value += fromState.activation * c.weight;
         }
 
-        const activationSquash = (squashMethod as ActivationInterface);
+        const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
         state.activation = activationSquash.squash(value);
 
@@ -618,7 +618,7 @@ export class Node implements TagsInterface, NodeInterface {
   /**
    * Converts the node to a json object
    */
-  toJSON() {
+  exportJSON(): NodeExport {
     if (this.type === "input") {
       return {
         type: this.type,
@@ -626,18 +626,46 @@ export class Node implements TagsInterface, NodeInterface {
       };
     } else if (this.type === "constant") {
       return {
-        uuid: this.uuid,
         type: this.type,
+        uuid: this.uuid,
         bias: this.bias,
-        index: this.index,
         tags: this.tags ? [...this.tags] : undefined,
       };
     } else {
       return {
+        type: this.type,
         uuid: this.uuid,
         bias: this.bias,
-        index: this.index,
+        squash: this.squash,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    }
+  }
+
+  /**
+   * Converts the node to a json object
+   */
+  internalJSON(indx: number): NodeInternal {
+    if (this.type === "input") {
+      return {
         type: this.type,
+        index: indx,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    } else if (this.type === "constant") {
+      return {
+        type: this.type,
+        index: indx,
+        uuid: this.uuid,
+        bias: this.bias,
+        tags: this.tags ? [...this.tags] : undefined,
+      };
+    } else {
+      return {
+        type: this.type,
+        index: indx,
+        uuid: this.uuid,
+        bias: this.bias,
         squash: this.squash,
         tags: this.tags ? [...this.tags] : undefined,
       };
@@ -648,7 +676,7 @@ export class Node implements TagsInterface, NodeInterface {
    * Convert a json object to a node
    */
   static fromJSON(
-    json: NodeInterface,
+    json: NodeExport,
     network: Network,
   ) {
     if (typeof network !== "object") {

@@ -1,12 +1,12 @@
 import { assert } from "https://deno.land/std@0.170.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { NetworkInterface } from "../src/architecture/NetworkInterface.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("inward", () => {
-  const json: NetworkInterface = {
+  const json: NetworkInternal = {
     nodes: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
@@ -37,7 +37,7 @@ Deno.test("inward", () => {
   assert(connects2.length == 3, "expected 3 got " + connects2.length);
 
   network.addNode();
-  console.info(JSON.stringify(network.toJSON(), null, 2));
+  console.info(JSON.stringify(network.exportJSON(), null, 2));
 
   let foundPositive = false;
   let foundNegative = false;
