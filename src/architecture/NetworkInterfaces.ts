@@ -7,18 +7,18 @@ import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 
 interface NetworkCommon extends TagsInterface {
   /* ID of this network */
-  uuid?: string;
   input: number;
   output: number;
-
-  /** The error plus a discount because of the complexity of the genome */
-  score?: number;
 }
 
 export interface NetworkInternal extends NetworkCommon {
+  uuid?: string;
   connections: ConnectionInternal[];
 
   nodes: NodeInternal[];
+
+  /** The error plus a discount because of the complexity of the genome */
+  score?: number;
 }
 
 export interface NetworkExport extends NetworkCommon {

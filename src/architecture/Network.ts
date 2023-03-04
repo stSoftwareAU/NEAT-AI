@@ -529,6 +529,17 @@ export class Network implements NetworkInternal {
             const gateList = this.gateConnections(indx);
             if (gateList.length == 0) {
               console.trace();
+              if (this.DEBUG) {
+                this.DEBUG = false;
+                console.warn(
+                  JSON.stringify(
+                    this.internalJSON(),
+                    null,
+                    2,
+                  ),
+                );
+                this.DEBUG = true;
+              }
               throw indx + ") hidden node has no outward or gate connections";
             }
           }
@@ -1948,7 +1959,7 @@ export class Network implements NetworkInternal {
     this.disconnect(pair[0], pair[1]);
   }
 
-  public swapNodes(focusList?: number[]) {
+  private swapNodes(focusList?: number[]) {
     // Has no effect on input node, so they are excluded
     if (
       (this.nodes.length - this.input < 2) ||
@@ -2087,6 +2098,7 @@ export class Network implements NetworkInternal {
       }
     }
 
+    delete this.uuid;
     this.fix();
     if (this.DEBUG) {
       this.validate();
@@ -2097,6 +2109,10 @@ export class Network implements NetworkInternal {
    * Fix the network
    */
   fix() {
+    const holdDebug = this.DEBUG;
+    this.DEBUG = false;
+    const startTxt = JSON.stringify(this.internalJSON(), null, 2);
+    this.DEBUG = holdDebug;
     const maxTo = this.nodes.length - 1;
     const minTo = this.input;
     const maxFrom = this.nodes.length - this.output;
@@ -2141,6 +2157,11 @@ export class Network implements NetworkInternal {
     this.nodes.forEach((node) => {
       (node as Node).fix();
     });
+
+    const endTxt = JSON.stringify(this.internalJSON(), null, 2);
+    if (startTxt != endTxt) {
+      delete this.uuid;
+    }
   }
 
   outputCount() {
@@ -2160,7 +2181,6 @@ export class Network implements NetworkInternal {
     }
 
     const json: NetworkExport = {
-      uuid: this.uuid,
       nodes: new Array<NodeExport>(
         this.nodes.length - this.input,
       ),
@@ -2228,7 +2248,7 @@ export class Network implements NetworkInternal {
   }
 
   private loadFrom(json: NetworkInternal | NetworkExport, validate: boolean) {
-    this.uuid = json.uuid;
+    this.uuid = (json as NetworkInternal).uuid;
     this.nodes.length = json.nodes.length;
     if (json.tags) {
       this.tags = [...json.tags];

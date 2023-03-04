@@ -100,19 +100,30 @@ Deno.test("ignoreTags", async () => {
   });
 
   const clean = Network.fromJSON(creature);
-
+  assertEquals(
+    creature.uuid,
+    clean.uuid,
+    `Should match creature: ${creature.uuid}, clean: ${clean.uuid}`,
+  );
   delete clean.uuid;
   delete clean.score;
   delete clean.tags;
 
+  const uuid0 = await NetworkUtil.makeUUID(
+    Network.fromJSON(creature),
+  );
+  delete creature.uuid;
   const uuid1 = await NetworkUtil.makeUUID(
     Network.fromJSON(creature),
   );
+
+  assertNotEquals(uuid0, uuid1);
+
   const uuid2 = await NetworkUtil.makeUUID(clean);
 
   console.log("uuid1", uuid1, "uuid2", uuid2);
 
-  assertEquals(uuid2, uuid1, "Should match");
+  assertEquals(uuid2, uuid1, `Should match uuid2: ${uuid2}, uuid1: ${uuid1}`);
 
   const alive = Network.fromJSON(creature);
   const uuid3 = await NetworkUtil.makeUUID(alive);
@@ -175,7 +186,7 @@ Deno.test("keepUUID", () => {
   };
 
   const n1 = Network.fromJSON(creature);
-  const j1 = n1.exportJSON();
+  const j1 = n1.internalJSON();
   const n2 = Network.fromJSON(j1);
 
   assertEquals(
