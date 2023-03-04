@@ -175,7 +175,7 @@ Deno.test("keepUUID", () => {
   };
 
   const n1 = Network.fromJSON(creature);
-  const j1 = n1.exportJSON();
+  const j1 = n1.internalJSON();
   const n2 = Network.fromJSON(j1);
 
   assertEquals(

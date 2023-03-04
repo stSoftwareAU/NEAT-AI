@@ -11,7 +11,9 @@ export class NetworkUtil {
       console.warn(JSON.stringify(creature, null, 2));
       throw "Not an object was: " + (typeof creature);
     }
-
+    if (creature.uuid) {
+      return creature.uuid;
+    }
     const json = JSON.parse(JSON.stringify(creature.internalJSON()));
     json.nodes.forEach(
       (n: { uuid?: string; index?: number }) => {
@@ -27,7 +29,7 @@ export class NetworkUtil {
     const utf8 = NetworkUtil.TE.encode(txt);
 
     const uuid: string = await generateV5(NetworkUtil.NAMESPACE, utf8);
-
+    creature.uuid = uuid;
     return uuid;
   }
 }

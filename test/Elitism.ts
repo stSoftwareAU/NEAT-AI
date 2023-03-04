@@ -1,18 +1,16 @@
-import {
-  makeElitists,
-  ScorableInterface,
-} from "../src/architecture/elitism.ts";
+import { makeElitists } from "../src/architecture/elitism.ts";
 import { assert } from "https://deno.land/std@0.170.0/testing/asserts.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("1make", () => {
-  const population: ScorableInterface[] = [
-    { score: 1, nodes: [], connections: [] },
-    { score: -1, nodes: [], connections: [] },
-    { score: 3, nodes: [], connections: [] },
-    { score: 1, nodes: [], connections: [] },
-    { score: 2, nodes: [], connections: [] },
+  const population: NetworkInternal[] = [
+    { input: 0, output: 0, score: 1, nodes: [], connections: [] },
+    { input: 0, output: 0, score: -1, nodes: [], connections: [] },
+    { input: 0, output: 0, score: 3, nodes: [], connections: [] },
+    { input: 0, output: 0, score: 1, nodes: [], connections: [] },
+    { input: 0, output: 0, score: 2, nodes: [], connections: [] },
   ];
 
   const elitists = makeElitists(population);
@@ -30,12 +28,12 @@ Deno.test("1make", () => {
 });
 
 Deno.test("3make", () => {
-  const population: ScorableInterface[] = [
-    { score: 1, nodes: [], connections: [] },
-    { score: -1, nodes: [], connections: [] },
-    { score: 3, nodes: [], connections: [] },
-    { score: 1, nodes: [], connections: [] },
-    { score: 2, nodes: [], connections: [] },
+  const population: NetworkInternal[] = [
+    { input: 0, output: 0, score: 1, nodes: [], connections: [] },
+    { input: 0, output: 0, score: -1, nodes: [], connections: [] },
+    { input: 0, output: 0, score: 3, nodes: [], connections: [] },
+    { input: 0, output: 0, score: 1, nodes: [], connections: [] },
+    { input: 0, output: 0, score: 2, nodes: [], connections: [] },
   ];
 
   const elitists = makeElitists(population, 3);
@@ -52,10 +50,10 @@ Deno.test("3make", () => {
 });
 
 Deno.test("3make2", () => {
-  const population: ScorableInterface[] = [
-    { score: -3, nodes: [], connections: [] },
-    { score: -2, nodes: [], connections: [] },
-    { score: -1, nodes: [], connections: [] },
+  const population: NetworkInternal[] = [
+    { input: 0, output: 0, score: -3, nodes: [], connections: [] },
+    { input: 0, output: 0, score: -2, nodes: [], connections: [] },
+    { input: 0, output: 0, score: -1, nodes: [], connections: [] },
   ];
 
   const elitists = makeElitists(population, 3);
@@ -72,9 +70,9 @@ Deno.test("3make2", () => {
 });
 
 Deno.test("short", () => {
-  const population: ScorableInterface[] = [
-    { score: -2, nodes: [], connections: [] },
-    { score: -1, nodes: [], connections: [] },
+  const population: NetworkInternal[] = [
+    { input: 0, output: 0, score: -2, nodes: [], connections: [] },
+    { input: 0, output: 0, score: -1, nodes: [], connections: [] },
   ];
 
   const elitists = makeElitists(population, 3);
@@ -90,13 +88,11 @@ Deno.test("short", () => {
 });
 
 Deno.test("backwards", () => {
-  const population: {
-    score: number;
-    nodes: { index: number }[];
-    connections: { from: number; to: number }[];
-  }[] = [];
+  const population: NetworkInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
+      input: 0,
+      output: 0,
       score: i,
       nodes: [],
       connections: [],
@@ -117,9 +113,11 @@ Deno.test("backwards", () => {
 });
 
 Deno.test("forward", () => {
-  const population: ScorableInterface[] = [];
+  const population: NetworkInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
+      input: 0,
+      output: 0,
       score: 1000 - i,
       nodes: [],
       connections: [],
@@ -143,9 +141,11 @@ Deno.test("forward", () => {
 });
 
 Deno.test("performance", () => {
-  const population: ScorableInterface[] = [];
+  const population: NetworkInternal[] = [];
   for (let i = 0; i < 100000; i++) {
     population.push({
+      input: 0,
+      output: 0,
       score: Math.random(),
       nodes: [],
       connections: [],
@@ -173,21 +173,25 @@ Deno.test("performance", () => {
     );
   }
 
-  console.log("Average", totalMS / 10, " Minumum", minMS);
+  console.log("Average", totalMS / 10, " Minimum", minMS);
 });
 
 Deno.test("order", () => {
-  const population: ScorableInterface[] = [];
+  const population: NetworkInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     const v = Math.random();
     if (i % 11 == 0) {
       population.push({
+        input: 0,
+        output: 0,
         score: v,
         nodes: [],
         connections: [],
       });
     }
     population.push({
+      input: 0,
+      output: 0,
       score: v,
       nodes: [],
       connections: [],
@@ -197,6 +201,10 @@ Deno.test("order", () => {
   const elitists = makeElitists(population, 100);
 
   const sortedPopulation = population.slice().sort(function (a, b) {
+    if (b.score == a.score) return 0;
+    if (b.score == undefined) return 1;
+    if (a.score == undefined) return -1;
+
     return b.score - a.score;
   });
   let last = 1;
@@ -204,8 +212,8 @@ Deno.test("order", () => {
     const e = elitists[i];
     assert(e, i + ") " + e);
 
-    assert(e.score <= last, i + ") " + e.score + " > " + last);
-    last = e.score;
+    assert(e.score ? e.score : 1 <= last, i + ") " + e.score + " > " + last);
+    last = e.score ? e.score : 0;
 
     assert(e.score == sortedPopulation[i].score, "not sorted");
   }
@@ -217,69 +225,99 @@ Deno.test("order", () => {
 });
 
 Deno.test("NaN", () => {
-  const population: ScorableInterface[] = [];
+  const population: NetworkInternal[] = [];
 
   population.push({
+    input: 0,
+    output: 0,
     score: NaN,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
+    score: undefined,
+    nodes: [],
+    connections: [],
+  });
+
+  population.push({
+    input: 0,
+    output: 0,
     score: -1,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: NaN,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: -Infinity,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: NaN,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: Infinity,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: NaN,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: 0,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: NaN,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: 1,
     nodes: [],
     connections: [],
   });
 
   population.push({
+    input: 0,
+    output: 0,
     score: NaN,
     nodes: [],
     connections: [],

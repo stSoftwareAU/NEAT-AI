@@ -10,10 +10,7 @@ import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { NetworkInternal } from "./architecture/NetworkInterfaces.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
-import {
-  makeElitists,
-  ScorableInterface,
-} from "../src/architecture/elitism.ts";
+import { makeElitists } from "../src/architecture/elitism.ts";
 import { Network } from "./architecture/Network.ts";
 import { ensureDirSync } from "https://deno.land/std@0.170.0/fs/ensure_dir.ts";
 import { Mutation } from "./methods/mutation.ts";
@@ -83,7 +80,7 @@ export class Neat {
 
     /* Elitism: we need at least 2 on the first run */
     const elitists = makeElitists(
-      (this.population as unknown) as ScorableInterface[],
+      this.population,
       this.config.elitism > 1
         ? this.config.elitism
         : previousFittest
@@ -97,7 +94,9 @@ export class Neat {
       this.config.debug,
     ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
-    addTag(fittest, "score", fittest.score.toString());
+    if (fittest.score != undefined) {
+      addTag(fittest, "score", fittest.score.toString());
+    }
     const error = getTag(fittest, "error");
     addTag(fittest, "error", error ? error : "-1");
 
@@ -452,7 +451,7 @@ export class Neat {
     for (let i = 0; i < creatures.length; i++) {
       const p = creatures[i];
       const key = await NetworkUtil.makeUUID(p);
-      p.uuid = key;
+
       let duplicate = unique.has(key);
       if (!duplicate && i > this.config.elitism) {
         duplicate = this.previousExperiment(key);

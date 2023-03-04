@@ -1,11 +1,7 @@
-export interface ScorableInterface {
-  score: number;
-  nodes: { index: number }[];
-  connections: { from: undefined | number }[];
-}
+import { NetworkInternal } from "./NetworkInterfaces.ts";
 
 export function makeElitists(
-  population: ScorableInterface[],
+  population: NetworkInternal[],
   size = 1,
 ) {
   const elitism = Math.min(Math.max(1, size), population.length);
@@ -20,7 +16,7 @@ export function makeElitists(
             return a.nodes.length - b.nodes.length; //Shorter the better
           }
         }
-        return b.score - a.score;
+        return (b.score as number) - (a.score as number);
       } else {
         return -1;
       }
