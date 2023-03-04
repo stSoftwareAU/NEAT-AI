@@ -529,6 +529,17 @@ export class Network implements NetworkInternal {
             const gateList = this.gateConnections(indx);
             if (gateList.length == 0) {
               console.trace();
+              if (this.DEBUG) {
+                this.DEBUG = false;
+                console.warn(
+                  JSON.stringify(
+                    this.internalJSON(),
+                    null,
+                    2,
+                  ),
+                );
+                this.DEBUG = true;
+              }
               throw indx + ") hidden node has no outward or gate connections";
             }
           }
@@ -2098,7 +2109,10 @@ export class Network implements NetworkInternal {
    * Fix the network
    */
   fix() {
+    const holdDebug=this.DEBUG;
+    this.DEBUG=false;
     const startTxt = JSON.stringify(this.internalJSON(), null, 2);
+    this.DEBUG=holdDebug;
     const maxTo = this.nodes.length - 1;
     const minTo = this.input;
     const maxFrom = this.nodes.length - this.output;
