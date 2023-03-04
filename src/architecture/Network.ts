@@ -2109,10 +2109,10 @@ export class Network implements NetworkInternal {
    * Fix the network
    */
   fix() {
-    const holdDebug=this.DEBUG;
-    this.DEBUG=false;
+    const holdDebug = this.DEBUG;
+    this.DEBUG = false;
     const startTxt = JSON.stringify(this.internalJSON(), null, 2);
-    this.DEBUG=holdDebug;
+    this.DEBUG = holdDebug;
     const maxTo = this.nodes.length - 1;
     const minTo = this.input;
     const maxFrom = this.nodes.length - this.output;
