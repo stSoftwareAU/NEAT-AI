@@ -9,14 +9,7 @@ import { NeatOptions } from "./NeatOptions.ts";
 import { Mutation, MutationInterface } from "../methods/mutation.ts";
 import { Selection, SelectionInterface } from "../methods/Selection.ts";
 
-export interface NeatConfig {
-  clear: boolean;
-  /** The directory to store the creatures (optional) */
-  creatureStore?: string;
-
-  /** The directory to store the experiments (optional) */
-  experimentStore?: string;
-
+export interface NeatConfig extends NeatOptions {
   /** List of creatures to start with */
   creatures: NetworkInternal[] | NetworkExport[];
 
@@ -43,9 +36,6 @@ export interface NeatConfig {
   targetError: number;
 
   growth: number;
-
-  /** Once the number of minutes are reached exit the loop. */
-  timeoutMinutes?: number;
 
   /** Tne maximum number of connections */
   maxConns: number;
@@ -81,7 +71,7 @@ export function make(parameters?: NeatOptions) {
   const options = parameters || {};
 
   const config: NeatConfig = {
-    clear: options.clear || false,
+    // clear: options.clear || false,
 
     creatureStore: options.creatureStore,
     experimentStore: options.experimentStore,
@@ -129,6 +119,7 @@ export function make(parameters?: NeatOptions) {
       ),
     ),
     timeoutMinutes: options.timeoutMinutes,
+    trainStore: options.trainStore,
     trainRate: options.trainRate ? options.trainRate : 0.01,
 
     log: options.log ? options.log : 0,

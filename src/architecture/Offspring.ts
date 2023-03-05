@@ -192,7 +192,7 @@ export class Offspring {
         });
       }
     }
-    offspring.clear();
+    offspring.clearState();
 
     connectionList.forEach((c) => {
       if (offspring.getConnection(c.from, c.to) == null) {

@@ -2,15 +2,20 @@ import { TagInterface } from "../tags/TagInterface.ts";
 import {
   ConnectionExport,
   ConnectionInternal,
+  ConnectionTrace,
 } from "./ConnectionInterfaces.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
-import { NetworkExport, NetworkInternal } from "./NetworkInterfaces.ts";
+import {
+  NetworkExport,
+  NetworkInternal,
+  NetworkTrace,
+} from "./NetworkInterfaces.ts";
 
 import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.170.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.177.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.ts";
 import { getTag } from "../tags/TagsInterface.ts";
@@ -18,7 +23,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findRatePolicy, randomPolicyName } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.170.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.177.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -74,10 +79,10 @@ export class Network implements NetworkInternal {
 
   /* Dispose of the network and all held memory */
   public dispose() {
-    this.clear();
+    this.clearState();
     this.clearCache();
-    this.connections = [];
-    this.nodes = [];
+    this.connections.length = 0;
+    this.nodes.length = 0;
   }
 
   public clearCache() {
@@ -195,7 +200,7 @@ export class Network implements NetworkInternal {
   /**
    * Clear the context of the network
    */
-  clear() {
+  clearState() {
     this.networkState.clear();
   }
 
@@ -998,7 +1003,6 @@ export class Network implements NetworkInternal {
     options: NeatOptions,
   ) {
     const config = makeConfig(options);
-    // Read the options
 
     const start = Date.now();
 
@@ -1260,11 +1264,7 @@ export class Network implements NetworkInternal {
     let iteration = 0;
     let error = 1;
     const EMPTY = { input: [], output: [] };
-    while (
-      Number.isFinite(error) &&
-      error > targetError &&
-      (iterations === 0 || iteration < iterations)
-    ) {
+    while (true) {
       iteration++;
 
       // Update the rate
@@ -1305,18 +1305,23 @@ export class Network implements NetworkInternal {
             /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
-          const update = (i + 1) % batchSize === 0 || i === 0;
+          const update = (i + 1) % batchSize === 0 || (i === 0 && j == 0);
 
           const output = this.activate(data.input);
 
           errorSum += cost.calculate(data.output, output);
 
           this.propagate(currentRate, momentum, update, data.output);
+          /* Clear if we've updated the state batch only */
+          if (update && (i || j)) {
+            /* Hold the last one so we can write it out */
+            this.clearState();
+          }
         }
 
         counter += len;
       }
-      this.applyLearnings();
+
       error = errorSum / counter;
 
       if (
@@ -1332,21 +1337,33 @@ export class Network implements NetworkInternal {
           error,
           "rate",
           currentRate,
-          "clear",
-          options.clear ? true : false,
+          // "clear",
+          // options.clear ? true : false,
           "policy",
           yellow(ratePolicyName),
           "momentum",
           momentum,
         );
       }
+
+      if (
+        Number.isFinite(error) &&
+        error > targetError &&
+        (iterations === 0 || iteration < iterations)
+      ) {
+        this.applyLearnings();
+        this.clearState();
+      } else {
+        const traceJSON = this.traceJSON();
+        this.applyLearnings();
+        this.clearState();
+
+        return {
+          error: error,
+          trace: traceJSON,
+        };
+      }
     }
-
-    if (options.clear) this.clear();
-
-    return {
-      error: error,
-    };
   }
 
   /**
@@ -2212,6 +2229,24 @@ export class Network implements NetworkInternal {
     return json;
   }
 
+  traceJSON(): NetworkTrace {
+    const json = this.exportJSON();
+
+    const traceConnections = Array<ConnectionTrace>(json.connections.length);
+    this.connections.forEach((c, indx) => {
+      const exportConnection = json.connections[indx] as ConnectionTrace;
+      const cs = this.networkState.connection(c.from, c.to);
+      exportConnection.trace = {
+        used: cs.xTrace.used,
+      };
+
+      traceConnections[indx] = exportConnection;
+    });
+    json.connections = traceConnections;
+
+    return json as NetworkTrace;
+  }
+
   internalJSON() {
     if (this.DEBUG) {
       this.validate();
@@ -2254,6 +2289,8 @@ export class Network implements NetworkInternal {
       this.tags = [...json.tags];
     }
 
+    this.clearState();
+
     const uuidMap = new Map<string, number>();
     this.nodes = new Array(json.nodes.length);
     for (let i = json.input; i--;) {
@@ -2294,6 +2331,10 @@ export class Network implements NetworkInternal {
         conn.weight,
         conn.type,
       );
+      if ((conn as ConnectionTrace).trace) {
+        const cs = this.networkState.connection(connection.from, connection.to);
+        cs.xTrace.used = (conn as ConnectionTrace).trace.used;
+      }
 
       const gater = (conn as ConnectionInternal).gater;
       if (Number.isFinite(gater)) {
@@ -2307,7 +2348,6 @@ export class Network implements NetworkInternal {
     }
 
     this.clearCache();
-    this.clear();
 
     if (validate) {
       this.validate();

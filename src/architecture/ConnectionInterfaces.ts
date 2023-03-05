@@ -14,3 +14,10 @@ export interface ConnectionExport extends ConnectionCommon {
   toUUID: string;
   gaterUUID?: string;
 }
+
+export interface ConnectionTrace extends ConnectionExport {
+  trace: {
+    used: boolean;
+    // eligibility: number
+  };
+}

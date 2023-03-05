@@ -12,7 +12,7 @@ export interface NeatOptions {
   /** Target error 0 to 1 */
   error?: number;
 
-  clear?: boolean;
+  // clear?: boolean;
 
   costName?: string;
 
@@ -49,6 +49,9 @@ export interface NeatOptions {
 
   /** Once the number of minutes are reached exit the loop. */
   timeoutMinutes?: number;
+
+  /** The directory to store the trained networks (optional) */
+  trainStore?: string;
 
   /** Tne maximum number of connections */
   maxConns?: number;

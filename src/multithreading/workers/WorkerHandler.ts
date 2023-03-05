@@ -38,6 +38,7 @@ export interface ResponseData {
   train?: {
     network: string;
     error: number;
+    trace: string;
   };
   echo?: {
     message: string;
