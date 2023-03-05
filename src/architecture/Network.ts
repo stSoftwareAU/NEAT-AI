@@ -2,9 +2,14 @@ import { TagInterface } from "../tags/TagInterface.ts";
 import {
   ConnectionExport,
   ConnectionInternal,
+  ConnectionTrace,
 } from "./ConnectionInterfaces.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
-import { NetworkExport, NetworkInternal } from "./NetworkInterfaces.ts";
+import {
+  NetworkExport,
+  NetworkInternal,
+  NetworkTrace,
+} from "./NetworkInterfaces.ts";
 
 import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
@@ -74,10 +79,10 @@ export class Network implements NetworkInternal {
 
   /* Dispose of the network and all held memory */
   public dispose() {
-    this.clear();
+    this.clearState();
     this.clearCache();
-    this.connections = [];
-    this.nodes = [];
+    this.connections.length = 0;
+    this.nodes.length = 0;
   }
 
   public clearCache() {
@@ -195,7 +200,7 @@ export class Network implements NetworkInternal {
   /**
    * Clear the context of the network
    */
-  clear() {
+  clearState() {
     this.networkState.clear();
   }
 
@@ -1260,11 +1265,7 @@ export class Network implements NetworkInternal {
     let iteration = 0;
     let error = 1;
     const EMPTY = { input: [], output: [] };
-    while (
-      Number.isFinite(error) &&
-      error > targetError &&
-      (iterations === 0 || iteration < iterations)
-    ) {
+    while (true) {
       iteration++;
 
       // Update the rate
@@ -1316,7 +1317,7 @@ export class Network implements NetworkInternal {
 
         counter += len;
       }
-      this.applyLearnings();
+
       error = errorSum / counter;
 
       if (
@@ -1332,21 +1333,33 @@ export class Network implements NetworkInternal {
           error,
           "rate",
           currentRate,
-          "clear",
-          options.clear ? true : false,
+          // "clear",
+          // options.clear ? true : false,
           "policy",
           yellow(ratePolicyName),
           "momentum",
           momentum,
         );
       }
+
+      if (
+        Number.isFinite(error) &&
+        error > targetError &&
+        (iterations === 0 || iteration < iterations)
+      ) {
+        this.applyLearnings();
+        this.clearState();
+      } else {
+        const traceJSON = this.traceJSON();
+        this.applyLearnings();
+        this.clearState();
+
+        return {
+          error: error,
+          trace: traceJSON,
+        };
+      }
     }
-
-    if (options.clear) this.clear();
-
-    return {
-      error: error,
-    };
   }
 
   /**
@@ -2212,6 +2225,24 @@ export class Network implements NetworkInternal {
     return json;
   }
 
+  traceJSON(): NetworkTrace {
+    const json = this.exportJSON();
+
+    const traceConnections = Array<ConnectionTrace>(json.connections.length);
+    this.connections.forEach((c, indx) => {
+      const exportConnection = json.connections[indx] as ConnectionTrace;
+      const cs = this.networkState.connection(c.from, c.to);
+      exportConnection.trace = {
+        used: cs.xTrace.used,
+      };
+
+      traceConnections[indx] = exportConnection;
+    });
+    json.connections = traceConnections;
+
+    return json as NetworkTrace;
+  }
+
   internalJSON() {
     if (this.DEBUG) {
       this.validate();
@@ -2307,7 +2338,7 @@ export class Network implements NetworkInternal {
     }
 
     this.clearCache();
-    this.clear();
+    this.clearState();
 
     if (validate) {
       this.validate();

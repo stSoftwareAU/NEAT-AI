@@ -10,7 +10,7 @@ import { Mutation, MutationInterface } from "../methods/mutation.ts";
 import { Selection, SelectionInterface } from "../methods/Selection.ts";
 
 export interface NeatConfig {
-  clear: boolean;
+  // clear: boolean;
   /** The directory to store the creatures (optional) */
   creatureStore?: string;
 
@@ -81,7 +81,7 @@ export function make(parameters?: NeatOptions) {
   const options = parameters || {};
 
   const config: NeatConfig = {
-    clear: options.clear || false,
+    // clear: options.clear || false,
 
     creatureStore: options.creatureStore,
     experimentStore: options.experimentStore,

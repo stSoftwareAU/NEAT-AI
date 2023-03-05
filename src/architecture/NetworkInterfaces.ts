@@ -2,6 +2,7 @@ import { TagsInterface } from "../tags/TagsInterface.ts";
 import {
   ConnectionExport,
   ConnectionInternal,
+  ConnectionTrace,
 } from "./ConnectionInterfaces.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 
@@ -23,6 +24,12 @@ export interface NetworkInternal extends NetworkCommon {
 
 export interface NetworkExport extends NetworkCommon {
   connections: ConnectionExport[];
+
+  nodes: NodeExport[];
+}
+
+export interface NetworkTrace extends NetworkExport {
+  connections: ConnectionTrace[];
 
   nodes: NodeExport[];
 }

@@ -75,6 +75,7 @@ export class WorkerProcessor {
         train: {
           network: json,
           error: result.error,
+          trace: JSON.stringify(result.trace),
         },
       };
     } else if (data.echo) {

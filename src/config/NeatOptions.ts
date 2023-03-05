@@ -12,7 +12,7 @@ export interface NeatOptions {
   /** Target error 0 to 1 */
   error?: number;
 
-  clear?: boolean;
+  // clear?: boolean;
 
   costName?: string;
 

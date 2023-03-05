@@ -63,13 +63,14 @@ export class Neat {
     const trainPromises = [];
     for (
       let i = 0;
-      i < this.population.length && i < this.workers.length;
+      i < this.population.length && i < Math.max(1, this.workers.length / 2);
       i++
     ) {
       const n = this.population[i];
       if (n.score) {
         const trained = getTag(n, "trained");
-        if (trained !== "YES") {
+        if (trained !== "YES" && i == 0) {
+          // console.info( `train ${n.uuid}`);
           const p = this.workers[i].train(n, this.trainRate);
           trainPromises.push(p);
           addTag(n, "trained", "YES");
