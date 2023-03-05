@@ -1,4 +1,4 @@
-import { generate as generateV5 } from "https://deno.land/std@0.170.0/uuid/v5.ts";
+import { generate as generateV5 } from "https://deno.land/std@0.177.0/uuid/v5.ts";
 import { Network } from "./Network.ts";
 
 export class NetworkUtil {
@@ -18,6 +18,11 @@ export class NetworkUtil {
     json.nodes.forEach(
       (n: { uuid?: string; index?: number }) => {
         delete n.uuid;
+      },
+    );
+    json.connections.forEach(
+      (c: { trace?: { used: boolean }; index?: number }) => {
+        delete c.trace;
       },
     );
     delete json.tags;

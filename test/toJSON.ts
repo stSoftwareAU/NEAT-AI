@@ -1,5 +1,5 @@
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
-import { assert } from "https://deno.land/std@0.170.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.177.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { ConnectionInternal } from "../src/architecture/ConnectionInterfaces.ts";
 

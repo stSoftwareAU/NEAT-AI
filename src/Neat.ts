@@ -12,7 +12,7 @@ import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { Network } from "./architecture/Network.ts";
-import { ensureDirSync } from "https://deno.land/std@0.170.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.177.0/fs/ensure_dir.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { Selection } from "./methods/Selection.ts";
 import { Offspring } from "./architecture/Offspring.ts";
@@ -256,7 +256,7 @@ export class Neat {
 
     const trainPopulation: Network[] = [];
 
-    await Promise.all(trainPromises).then((results) => {
+    await Promise.all(trainPromises).then(async (results) => {
       for (let i = results.length; i--;) {
         const r = results[i];
         if (r.train) {
@@ -268,6 +268,20 @@ export class Neat {
             // addTag(json, "duration", r.duration);
 
             trainPopulation.push(Network.fromJSON(json, this.config.debug));
+            if (this.config.trainStore) {
+              if (r.train.trace) {
+                // Deno.writeTextFileSync( ".hack.json", JSON.stringify( JSON.parse( r.train.trace), null, 2));
+                const traceNetwork = Network.fromJSON(
+                  JSON.parse(r.train.trace),
+                );
+                await NetworkUtil.makeUUID(traceNetwork);
+
+                Deno.writeTextFileSync(
+                  `${this.config.trainStore}/${traceNetwork.uuid}.json`,
+                  JSON.stringify(traceNetwork.traceJSON(), null, 2),
+                );
+              }
+            }
           }
         } else {
           throw "No train result";

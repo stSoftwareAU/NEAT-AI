@@ -18,5 +18,6 @@ export interface ConnectionExport extends ConnectionCommon {
 export interface ConnectionTrace extends ConnectionExport {
   trace: {
     used: boolean;
+    // eligibility: number
   };
 }

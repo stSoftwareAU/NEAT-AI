@@ -15,7 +15,7 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.170.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.177.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.ts";
 import { getTag } from "../tags/TagsInterface.ts";
@@ -23,7 +23,7 @@ import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { findRatePolicy, randomPolicyName } from "../config.ts";
-import { emptyDirSync } from "https://deno.land/std@0.170.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.177.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -1003,7 +1003,6 @@ export class Network implements NetworkInternal {
     options: NeatOptions,
   ) {
     const config = makeConfig(options);
-    // Read the options
 
     const start = Date.now();
 
@@ -1306,13 +1305,18 @@ export class Network implements NetworkInternal {
             /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
-          const update = (i + 1) % batchSize === 0 || i === 0;
+          const update = (i + 1) % batchSize === 0 || (i === 0 && j == 0);
 
           const output = this.activate(data.input);
 
           errorSum += cost.calculate(data.output, output);
 
           this.propagate(currentRate, momentum, update, data.output);
+          /* Clear if we've updated the state batch only */
+          if (update && (i || j)) {
+            /* Hold the last one so we can write it out */
+            this.clearState();
+          }
         }
 
         counter += len;
@@ -2285,6 +2289,8 @@ export class Network implements NetworkInternal {
       this.tags = [...json.tags];
     }
 
+    this.clearState();
+
     const uuidMap = new Map<string, number>();
     this.nodes = new Array(json.nodes.length);
     for (let i = json.input; i--;) {
@@ -2325,6 +2331,10 @@ export class Network implements NetworkInternal {
         conn.weight,
         conn.type,
       );
+      if ((conn as ConnectionTrace).trace) {
+        const cs = this.networkState.connection(connection.from, connection.to);
+        cs.xTrace.used = (conn as ConnectionTrace).trace.used;
+      }
 
       const gater = (conn as ConnectionInternal).gater;
       if (Number.isFinite(gater)) {
@@ -2338,7 +2348,6 @@ export class Network implements NetworkInternal {
     }
 
     this.clearCache();
-    this.clearState();
 
     if (validate) {
       this.validate();
