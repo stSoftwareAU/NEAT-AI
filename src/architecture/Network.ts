@@ -1006,7 +1006,6 @@ export class Network implements NetworkInternal {
   async evolveDir(
     dataSetDir: string,
     options: NeatOptions,
-    feedbackLoop: boolean,
   ) {
     const config = makeConfig(options);
 

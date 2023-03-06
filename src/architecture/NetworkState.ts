@@ -138,6 +138,15 @@ export class NetworkState {
     }
   }
 
+  clearTrace() {
+    this.connectionMap.forEach((map) => {
+      map.forEach((cs) => {
+        cs.xTrace.nodes = [];
+        cs.xTrace.used = false;
+        cs.xTrace.values = [];
+      });
+    });
+  }
   clear() {
     this.nodeMap.clear();
     this.connectionMap.clear();
