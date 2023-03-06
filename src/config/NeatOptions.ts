@@ -50,8 +50,8 @@ export interface NeatOptions {
   /** Once the number of minutes are reached exit the loop. */
   timeoutMinutes?: number;
 
-  /** The directory to store the trained networks (optional) */
-  trainStore?: string;
+  /** The directory to store the networks trace information (optional) */
+  traceStore?: string;
 
   /** Tne maximum number of connections */
   maxConns?: number;

@@ -119,7 +119,7 @@ export function make(parameters?: NeatOptions) {
       ),
     ),
     timeoutMinutes: options.timeoutMinutes,
-    trainStore: options.trainStore,
+    traceStore: options.traceStore,
     trainRate: options.trainRate ? options.trainRate : 0.01,
 
     log: options.log ? options.log : 0,
