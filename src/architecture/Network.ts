@@ -215,7 +215,7 @@ export class Network implements NetworkInternal {
     }
 
     if (!feedbackLoop) {
-      this.networkState.clearActivation();
+      this.networkState.clearActivation(this.input);
     }
 
     const output: number[] = new Array(this.output);
@@ -249,7 +249,7 @@ export class Network implements NetworkInternal {
     }
 
     if (!feedbackLoop) {
-      this.networkState.clearActivation();
+      this.networkState.clearActivation(this.input);
     }
 
     const lastHiddenNode = this.nodes.length - this.output;
