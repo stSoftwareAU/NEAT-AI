@@ -138,15 +138,12 @@ export class NetworkState {
     }
   }
 
-  clearTrace() {
-    this.connectionMap.forEach((map) => {
-      map.forEach((cs) => {
-        cs.xTrace.nodes = [];
-        cs.xTrace.used = false;
-        cs.xTrace.values = [];
-      });
+  clearActivation() {
+    this.nodeMap.forEach((state) => {
+      state.activation = 0;
     });
   }
+
   clear() {
     this.nodeMap.clear();
     this.connectionMap.clear();

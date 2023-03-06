@@ -73,7 +73,7 @@ Deno.test("storeTrace", async () => {
         }
       });
 
-      if (usedCount >= 1) {
+      if (usedCount > 1) {
         foundUsed = true;
       }
     }
