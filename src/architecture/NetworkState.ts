@@ -138,6 +138,14 @@ export class NetworkState {
     }
   }
 
+  clearActivation(input: number) {
+    this.nodeMap.forEach((state, indx) => {
+      if (indx >= input) {
+        state.activation = 0;
+      }
+    });
+  }
+
   clear() {
     this.nodeMap.clear();
     this.connectionMap.clear();

@@ -268,7 +268,7 @@ export class Neat {
             // addTag(json, "duration", r.duration);
 
             trainPopulation.push(Network.fromJSON(json, this.config.debug));
-            if (this.config.trainStore) {
+            if (this.config.traceStore) {
               if (r.train.trace) {
                 // Deno.writeTextFileSync( ".hack.json", JSON.stringify( JSON.parse( r.train.trace), null, 2));
                 const traceNetwork = Network.fromJSON(
@@ -277,7 +277,7 @@ export class Neat {
                 await NetworkUtil.makeUUID(traceNetwork);
 
                 Deno.writeTextFileSync(
-                  `${this.config.trainStore}/${traceNetwork.uuid}.json`,
+                  `${this.config.traceStore}/${traceNetwork.uuid}.json`,
                   JSON.stringify(traceNetwork.traceJSON(), null, 2),
                 );
               }

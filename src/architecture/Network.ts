@@ -213,9 +213,11 @@ export class Network implements NetworkInternal {
       throw "Activate input: " + input.length +
         " does not match expected input: " + this.input;
     }
+
     if (!feedbackLoop) {
-      this.networkState.clear();
+      this.networkState.clearActivation(this.input);
     }
+
     const output: number[] = new Array(this.output);
     const ns = this.networkState;
     for (let i = this.input; i--;) {
@@ -240,13 +242,14 @@ export class Network implements NetworkInternal {
    * Activates the network without calculating eligibility traces and such
    */
   noTraceActivate(input: number[], feedbackLoop = false) {
-    if (!feedbackLoop) {
-      this.networkState.clear();
-    }
     const output: number[] = new Array(this.output);
     const ns = this.networkState;
     for (let i = this.input; i--;) {
       ns.node(i).activation = input[i];
+    }
+
+    if (!feedbackLoop) {
+      this.networkState.clearActivation(this.input);
     }
 
     const lastHiddenNode = this.nodes.length - this.output;

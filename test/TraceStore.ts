@@ -6,7 +6,7 @@ import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("storeTrain", async () => {
+Deno.test("storeTrace", async () => {
   const json: NetworkInternal = {
     nodes: [
       { type: "input", index: 0 },
@@ -45,14 +45,14 @@ Deno.test("storeTrain", async () => {
     }
   }
 
-  const trainDir = ".train";
-  emptyDirSync(trainDir);
+  const traceDir = ".trace";
+  emptyDirSync(traceDir);
   const creaturesDir = ".creatures";
   emptyDirSync(creaturesDir);
 
   const options: NeatOptions = {
     iterations: 10,
-    trainStore: trainDir,
+    traceStore: traceDir,
     creatureStore: creaturesDir,
     threads: 1,
     error: 0,
@@ -61,16 +61,21 @@ Deno.test("storeTrain", async () => {
 
   let foundUsed = false;
 
-  for (const dirEntry of Deno.readDirSync(trainDir)) {
+  for (const dirEntry of Deno.readDirSync(traceDir)) {
     if (dirEntry.name.endsWith(".json")) {
       const json = JSON.parse(
-        Deno.readTextFileSync(`${trainDir}/${dirEntry.name}`),
+        Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
       );
+      let usedCount = 0;
       json.connections.forEach((c: { trace: { used: boolean } }) => {
         if (c.trace && c.trace.used) {
-          foundUsed = true;
+          usedCount++;
         }
       });
+
+      if (usedCount > 1) {
+        foundUsed = true;
+      }
     }
   }
   assert(
