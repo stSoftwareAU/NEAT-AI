@@ -31,6 +31,7 @@ export class WorkerProcessor {
       const result = network.testDir(
         this.dataSetDir,
         this.cost,
+        data.evaluate.feedbackLoop,
       );
 
       network.dispose();

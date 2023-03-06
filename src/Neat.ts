@@ -43,6 +43,7 @@ export class Neat {
     this.fitness = new Fitness(
       this.workers,
       this.config.growth,
+      this.config.feedbackLoop,
     );
 
     this.trainRate = this.config.trainRate;

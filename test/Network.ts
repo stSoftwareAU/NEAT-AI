@@ -32,7 +32,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.activate([i / 10, j / 10]);
+      const v = network.activate([i / 10, j / 10], true);
       originalOutput.push(...v);
     }
   }
@@ -51,7 +51,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.activate([i / 10, j / 10]);
+      const v = network.activate([i / 10, j / 10], true);
       mutatedOutput.push(...v);
     }
   }

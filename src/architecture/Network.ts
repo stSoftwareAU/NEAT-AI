@@ -207,8 +207,12 @@ export class Network implements NetworkInternal {
   /**
    * Activates the network
    */
-  activate(input: number[]) {
-    this.clearState();
+  activate(input: number[], feedbackLoop = false) {
+    if (!feedbackLoop) {
+      this.networkState.clear();
+    } else {
+      this.networkState.clearTrace();
+    }
     if (input && input.length != this.input) {
       console.trace();
       throw "Activate input: " + input.length +
@@ -238,8 +242,12 @@ export class Network implements NetworkInternal {
   /**
    * Activates the network without calculating eligibility traces and such
    */
-  noTraceActivate(input: number[]) {
-    this.clearState();
+  noTraceActivate(input: number[], feedbackLoop = false) {
+    if (!feedbackLoop) {
+      this.networkState.clear();
+    } else {
+      this.networkState.clearTrace();
+    }
     const output: number[] = new Array(this.output);
     const ns = this.networkState;
     for (let i = this.input; i--;) {
@@ -998,6 +1006,7 @@ export class Network implements NetworkInternal {
   async evolveDir(
     dataSetDir: string,
     options: NeatOptions,
+    feedbackLoop: boolean,
   ) {
     const config = makeConfig(options);
 
@@ -1168,6 +1177,7 @@ export class Network implements NetworkInternal {
   testDir(
     dataDir: string,
     cost: CostInterface,
+    feedbackLoop: boolean,
   ) {
     let error = 0;
     let counter = 0;
@@ -1206,6 +1216,7 @@ export class Network implements NetworkInternal {
         }
         const output = this.noTraceActivate(
           data.input,
+          feedbackLoop,
         );
         error += cost.calculate(data.output, output);
       }
