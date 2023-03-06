@@ -208,6 +208,7 @@ export class Network implements NetworkInternal {
    * Activates the network
    */
   activate(input: number[]) {
+    this.clearState();
     if (input && input.length != this.input) {
       console.trace();
       throw "Activate input: " + input.length +
@@ -238,7 +239,7 @@ export class Network implements NetworkInternal {
    * Activates the network without calculating eligibility traces and such
    */
   noTraceActivate(input: number[]) {
-
+    this.clearState();
     const output: number[] = new Array(this.output);
     const ns = this.networkState;
     for (let i = this.input; i--;) {
@@ -1166,7 +1167,7 @@ export class Network implements NetworkInternal {
    */
   testDir(
     dataDir: string,
-    cost: CostInterface
+    cost: CostInterface,
   ) {
     let error = 0;
     let counter = 0;

@@ -42,7 +42,7 @@ export class Neat {
     // The fitness function to evaluate the networks
     this.fitness = new Fitness(
       this.workers,
-      this.config.growth
+      this.config.growth,
     );
 
     this.trainRate = this.config.trainRate;

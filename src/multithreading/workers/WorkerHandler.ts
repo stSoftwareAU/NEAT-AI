@@ -168,7 +168,7 @@ export class WorkerHandler {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        network: JSON.stringify((network as Network).internalJSON())
+        network: JSON.stringify((network as Network).internalJSON()),
       },
     };
 

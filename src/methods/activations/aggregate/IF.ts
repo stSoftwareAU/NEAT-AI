@@ -2,6 +2,7 @@ import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { Node } from "../../../architecture/Node.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
+import { Mutation } from "../../mutation.ts";
 
 export class IF implements NodeActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
@@ -124,7 +125,8 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {
-      console.info("missing connections", toList2);
+      // console.info("missing connections", toList2);
+      node.mutate(Mutation.MOD_ACTIVATION.name);
     }
   }
 

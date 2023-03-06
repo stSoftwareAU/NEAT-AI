@@ -66,15 +66,14 @@ Deno.test("storeTrace", async () => {
       const json = JSON.parse(
         Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
       );
-      let usedCount=0;
+      let usedCount = 0;
       json.connections.forEach((c: { trace: { used: boolean } }) => {
         if (c.trace && c.trace.used) {
-          
           usedCount++;
         }
       });
 
-      if( usedCount>=1){
+      if (usedCount >= 1) {
         foundUsed = true;
       }
     }
