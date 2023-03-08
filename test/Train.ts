@@ -63,7 +63,7 @@ Deno.test("train-XOR", () => {
   for (let attempts = 0; true; attempts++) {
     const results = network.train(trainingSet, {
       error: 0.03,
-      iterations: 5000,
+      iterations: 10000,
       momentum: 0,
     });
     console.info(results);

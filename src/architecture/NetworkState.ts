@@ -140,6 +140,10 @@ export class NetworkState {
       this.activations = input.slice();
       this.activations.length = this.network.nodes.length;
       this.activations.fill(0, input.length);
+    } else if (feedbackLoop) {
+      for (let indx = input.length; indx--;) {
+        this.activations[indx] = input[indx];
+      }
     }
   }
 
