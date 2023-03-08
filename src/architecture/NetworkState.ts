@@ -136,11 +136,6 @@ export class NetworkState {
   }
 
   makeActivation(input: number[], feedbackLoop: boolean) {
-    if (input && input.length != this.network.input) {
-      console.trace();
-      throw "Activate input: " + input.length +
-        " does not match expected input: " + this.network.input;
-    }
 
     if (this.activations.length == 0 || feedbackLoop == false) {
       this.activations = input.slice();
@@ -152,5 +147,6 @@ export class NetworkState {
   clear() {
     this.nodeMap.clear();
     this.connectionMap.clear();
+    this.activations.length=0;
   }
 }
