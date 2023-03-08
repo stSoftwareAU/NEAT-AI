@@ -49,7 +49,7 @@ export class Network implements NetworkInternal {
   score?: number;
   connections: ConnectionInternal[];
 
-  readonly networkState = new NetworkState();
+  readonly networkState = new NetworkState(this);
   private cache = new Map<string, ConnectionInternal[]>();
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
@@ -204,25 +204,17 @@ export class Network implements NetworkInternal {
     this.networkState.clear();
   }
 
+  getActivation(indx: number) {
+    return this.networkState.activations[indx];
+  }
+
   /**
    * Activates the network
    */
   activate(input: number[], feedbackLoop = false) {
-    if (input && input.length != this.input) {
-      console.trace();
-      throw "Activate input: " + input.length +
-        " does not match expected input: " + this.input;
-    }
-
-    if (!feedbackLoop) {
-      this.networkState.clearActivation(this.input);
-    }
+    this.networkState.makeActivation(input, feedbackLoop);
 
     const output: number[] = new Array(this.output);
-    const ns = this.networkState;
-    for (let i = this.input; i--;) {
-      ns.node(i).activation = input[i];
-    }
 
     const lastHiddenNode = this.nodes.length - this.output;
 
@@ -243,14 +235,8 @@ export class Network implements NetworkInternal {
    */
   noTraceActivate(input: number[], feedbackLoop = false) {
     const output: number[] = new Array(this.output);
-    const ns = this.networkState;
-    for (let i = this.input; i--;) {
-      ns.node(i).activation = input[i];
-    }
 
-    if (!feedbackLoop) {
-      this.networkState.clearActivation(this.input);
-    }
+    this.networkState.makeActivation(input, feedbackLoop);
 
     const lastHiddenNode = this.nodes.length - this.output;
 
@@ -768,8 +754,6 @@ export class Network implements NetworkInternal {
       console.trace();
       throw "getNode( " + pos + ") " + (typeof tmp);
     }
-
-    // tmp.index = pos;
 
     return ((tmp as unknown) as Node);
   }
@@ -1340,8 +1324,6 @@ export class Network implements NetworkInternal {
           error,
           "rate",
           currentRate,
-          // "clear",
-          // options.clear ? true : false,
           "policy",
           yellow(ratePolicyName),
           "momentum",
@@ -2442,7 +2424,7 @@ export class Network implements NetworkInternal {
         name: node.type === "hidden"
           ? (node.squash ? node.squash : "UNKNOWN")
           : node.type.toUpperCase(),
-        activation: (node as Node).getActivation(),
+        activation: this.getActivation(node.index),
         bias: node.bias ? node.bias : 0,
       });
     }
@@ -2461,7 +2443,7 @@ export class Network implements NetworkInternal {
         (json.nodes as { id: number; activation: number; name: string }[]).push(
           {
             id: index,
-            activation: (this.nodes[index] as Node).getActivation(),
+            activation: this.getActivation(index),
             name: "GATE",
           },
         );
@@ -2485,8 +2467,7 @@ export class Network implements NetworkInternal {
         }[]).push({
           source: connection.gater,
           target: index,
-          weight: (this.nodes[connection.gater] as Node)
-            .getActivation(),
+          weight: this.getActivation(connection.gater),
           gate: true,
         });
       }

@@ -14,7 +14,7 @@ export class HYPOT implements NodeActivationInterface {
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      values[i] = node.network.networkState.node(c.from).activation * c.weight;
+      values[i] = node.network.getActivation(c.from) * c.weight;
     }
 
     const value = Math.hypot(...values);

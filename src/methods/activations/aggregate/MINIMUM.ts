@@ -18,7 +18,7 @@ export class MINIMUM
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.network.networkState.node(c.from).activation *
+      const value = node.network.getActivation(c.from) *
         c.weight;
       if (value < minValue) {
         minValue = value;
@@ -35,7 +35,7 @@ export class MINIMUM
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.network.networkState.node(c.from).activation *
+      const value = node.network.getActivation(c.from) *
         c.weight;
       if (value < minValue) {
         minValue = value;
