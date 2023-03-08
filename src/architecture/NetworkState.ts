@@ -1,3 +1,4 @@
+import { Network } from "./Network.ts";
 import { Node } from "./Node.ts";
 
 class NodeState {
@@ -6,7 +7,6 @@ class NodeState {
   public errorGated: number;
   public old: number;
   public state: number;
-  public activation: number;
 
   constructor() {
     this.errorResponsibility = 0;
@@ -14,7 +14,6 @@ class NodeState {
     this.errorGated = 0;
     this.old = 0;
     this.state = 0;
-    this.activation = 0;
   }
 }
 
@@ -60,7 +59,11 @@ export class NetworkState {
   private connectionMap;
   private nodeMapPersistent;
   private connectionMapPersistent;
-  constructor() {
+  private network;
+  public activations: number[] = [];
+
+  constructor(network: Network) {
+    this.network = network;
     this.nodeMap = new Map<number, NodeState>();
     this.connectionMap = new Map<number, Map<number, ConnectionState>>();
     this.nodeMapPersistent = new Map<number, NodeStatePersistent>();
@@ -107,9 +110,6 @@ export class NetworkState {
   }
 
   nodePersistent(indx: number): NodeStatePersistent {
-    // if (!Number.isInteger(indx) || indx < 0) {
-    //   throw "Invalid index: " + indx;
-    // }
     const state = this.nodeMapPersistent.get(indx);
 
     if (state !== undefined) {
@@ -123,9 +123,6 @@ export class NetworkState {
   }
 
   node(indx: number): NodeState {
-    // if (!Number.isInteger(indx) || indx < 0) {
-    //   throw "Invalid index: " + indx;
-    // }
     const state = this.nodeMap.get(indx);
 
     if (state !== undefined) {
@@ -138,12 +135,18 @@ export class NetworkState {
     }
   }
 
-  clearActivation(input: number) {
-    this.nodeMap.forEach((state, indx) => {
-      if (indx >= input) {
-        state.activation = 0;
-      }
-    });
+  makeActivation(input: number[], feedbackLoop: boolean) {
+    if (input && input.length != this.network.input) {
+      console.trace();
+      throw "Activate input: " + input.length +
+        " does not match expected input: " + this.network.input;
+    }
+
+    if (this.activations.length == 0 || feedbackLoop == false) {
+      this.activations = input.slice();
+      this.activations.length = this.network.nodes.length;
+      this.activations.fill(0, input.length);
+    }
   }
 
   clear() {

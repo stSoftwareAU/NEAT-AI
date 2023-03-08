@@ -245,7 +245,7 @@ Deno.test("CompactSelf", () => {
   const startNodes = a.nodes.length;
   const startConnections = a.connections.length;
 
-  const input = [0.1, 0.2];
+  const input = [0.1, 0.2, 0.3];
   const aOut = a.noTraceActivate(input);
 
   console.info(

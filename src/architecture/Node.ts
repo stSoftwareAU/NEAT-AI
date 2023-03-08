@@ -181,26 +181,20 @@ export class Node implements TagsInterface, NodeInternal {
     return (activation as NodeFixableInterface).fix != undefined;
   }
 
-  getActivation() {
-    const state = this.network.networkState.node(this.index);
-
-    return state.activation;
-  }
-
   /**
    * Activates the node
    */
   activate() {
-    const state = this.network.networkState.node(this.index);
-
+    let activation: number;
     if (this.type == "constant") {
-      state.activation = this.bias;
+      activation = this.bias;
     } else {
       const squashMethod = this.findSquash();
 
       if (this.isNodeActivation(squashMethod)) {
-        state.activation = squashMethod.activate(this) + this.bias;
+        activation = squashMethod.activate(this) + this.bias;
       } else {
+        const state = this.network.networkState.node(this.index);
         state.old = state.state;
 
         const toList = this.network.toConnections(this.index);
@@ -209,28 +203,28 @@ export class Node implements TagsInterface, NodeInternal {
         for (let i = toList.length; i--;) {
           const c = toList[i];
 
-          const fromState = this.network.networkState.node(c.from);
+          const fromActivation = this.network.getActivation(c.from);
 
-          value += fromState.activation * c.weight;
+          value += fromActivation * c.weight;
         }
 
         const activationSquash = squashMethod as ActivationInterface;
         const result = activationSquash.squashAndDerive(value);
         // Squash the values received
-        state.activation = result.activation;
-        if (!Number.isFinite(state.activation)) {
-          if (state.activation === Number.POSITIVE_INFINITY) {
-            state.activation = Number.MAX_SAFE_INTEGER;
-          } else if (state.activation === Number.NEGATIVE_INFINITY) {
-            state.activation = Number.MIN_SAFE_INTEGER;
-          } else if (isNaN(state.activation)) {
-            state.activation = 0;
+        activation = result.activation;
+        if (!Number.isFinite(activation)) {
+          if (activation === Number.POSITIVE_INFINITY) {
+            activation = Number.MAX_SAFE_INTEGER;
+          } else if (activation === Number.NEGATIVE_INFINITY) {
+            activation = Number.MIN_SAFE_INTEGER;
+          } else if (isNaN(activation)) {
+            activation = 0;
           } else {
             console.trace();
-            throw this.index + ") invalid value: + " + state.state +
+            throw this.index + ") invalid value: + " + result +
               ", squash: " +
               this.squash +
-              ", activation: " + state.activation;
+              ", activation: " + activation;
           }
         }
 
@@ -248,13 +242,14 @@ export class Node implements TagsInterface, NodeInternal {
 
           const pos = nodes.indexOf(node);
           if (pos > -1) {
-            const fromState = this.network.networkState.node(c.from);
-            influences[pos] += c.weight * fromState.activation;
+            const fromActivation = this.network.getActivation(c.from);
+            influences[pos] += c.weight * fromActivation;
           } else {
             nodes.push(node);
             const fromState = this.network.networkState.node(c.from);
+            const fromActivation = this.network.getActivation(c.from);
             influences.push(
-              c.weight * fromState.activation +
+              c.weight * fromActivation +
                 (c.gater === this.index ? fromState.old : 0),
             );
           }
@@ -268,11 +263,12 @@ export class Node implements TagsInterface, NodeInternal {
 
         for (let i = 0; i < toList.length; i++) {
           const c = toList[i];
-          const fromState = this.network.networkState.node(c.from);
+          // const fromState = this.network.networkState.node(c.from);
+          const fromActivation = this.network.getActivation(c.from);
           const cs = this.network.networkState.connection(c.from, c.to);
           if (self) {
             cs.eligibility = self.weight * selfState.eligibility +
-              fromState.activation;
+              fromActivation;
 
             if (!Number.isFinite(cs.eligibility)) {
               if (cs.eligibility === Number.POSITIVE_INFINITY) {
@@ -283,13 +279,13 @@ export class Node implements TagsInterface, NodeInternal {
                 cs.eligibility = 0;
               } else {
                 console.trace();
-                console.info(self, c, fromState.activation);
+                console.info(self, c, fromActivation);
                 throw c.from + ":" + c.to + ") invalid eligibility: " +
                   cs.eligibility;
               }
             }
           } else {
-            cs.eligibility = fromState.activation;
+            cs.eligibility = fromActivation;
             if (!Number.isFinite(cs.eligibility)) {
               if (cs.eligibility === Number.POSITIVE_INFINITY) {
                 cs.eligibility = Number.MAX_SAFE_INTEGER;
@@ -299,7 +295,7 @@ export class Node implements TagsInterface, NodeInternal {
                 cs.eligibility = 0;
               } else {
                 console.trace();
-                console.info(c, fromState.activation);
+                console.info(c, fromActivation);
                 throw c.from + ":" + c.to + ") invalid eligibility: " +
                   cs.eligibility;
               }
@@ -332,7 +328,9 @@ export class Node implements TagsInterface, NodeInternal {
         }
       }
     }
-    return state.activation;
+
+    this.network.networkState.activations[this.index] = activation;
+    return activation;
   }
 
   /**
@@ -353,13 +351,14 @@ export class Node implements TagsInterface, NodeInternal {
    * Activates the node without calculating eligibility traces and such
    */
   noTraceActivate() {
-    const state = this.network.networkState.node(this.index);
+    let activation: number;
+
     if (this.type == "constant") {
-      state.activation = this.bias;
+      activation = this.bias;
     } else {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        state.activation = squashMethod.noTraceActivate(this) + this.bias;
+        activation = squashMethod.noTraceActivate(this) + this.bias;
       } else {
         // All activation sources coming from the node itself
 
@@ -368,36 +367,37 @@ export class Node implements TagsInterface, NodeInternal {
 
         for (let i = toList.length; i--;) {
           const c = toList[i];
-          const fromState = this.network.networkState.node(c.from);
+          const fromActivation = this.network.getActivation(c.from);
 
-          value += fromState.activation * c.weight;
+          value += fromActivation * c.weight;
         }
 
         const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
-        state.activation = activationSquash.squash(value);
+        activation = activationSquash.squash(value);
 
-        if (!Number.isFinite(state.activation)) {
-          if (state.activation === Number.POSITIVE_INFINITY) {
-            state.activation = Number.MAX_SAFE_INTEGER;
-          } else if (state.activation === Number.NEGATIVE_INFINITY) {
-            state.activation = Number.MIN_SAFE_INTEGER;
-          } else if (isNaN(state.activation)) {
-            state.activation = 0;
+        if (!Number.isFinite(activation)) {
+          if (activation === Number.POSITIVE_INFINITY) {
+            activation = Number.MAX_SAFE_INTEGER;
+          } else if (activation === Number.NEGATIVE_INFINITY) {
+            activation = Number.MIN_SAFE_INTEGER;
+          } else if (isNaN(activation)) {
+            activation = 0;
           } else {
             const msg = this.index + ") invalid value:" + value +
               ", squash: " +
               this.squash +
               ", activation: " +
-              state.activation;
+              activation;
             console.warn(msg);
             console.trace();
-            state.activation = Number.MAX_SAFE_INTEGER;
+            activation = Number.MAX_SAFE_INTEGER;
           }
         }
       }
     }
-    return state.activation;
+    this.network.networkState.activations[this.index] = activation;
+    return activation;
   }
 
   /**
@@ -415,7 +415,7 @@ export class Node implements TagsInterface, NodeInternal {
     // Output nodes get their error from the environment
     if (this.type === "output") {
       s.errorResponsibility = s.errorProjected = (target ? target : 0) -
-        s.activation;
+        this.network.getActivation(this.index);
     } else { // the rest of the nodes compute their error responsibilities by back propagation
       // error responsibilities from all the connections projected from this node
       const fromList = this.network.fromConnections(this.index);
@@ -458,8 +458,8 @@ export class Node implements TagsInterface, NodeInternal {
         const self = this.network.selfConnection(this.index);
         let influence = self ? toState.old : 0;
 
-        const fromState = this.network.networkState.node(c.from);
-        influence += c.weight * fromState.activation;
+        // const fromState = this.network.networkState.node(c.from);
+        influence += c.weight * this.network.getActivation(c.from);
         error += toState.errorResponsibility * influence;
       }
 
