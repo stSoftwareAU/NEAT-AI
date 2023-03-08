@@ -755,8 +755,6 @@ export class Network implements NetworkInternal {
       throw "getNode( " + pos + ") " + (typeof tmp);
     }
 
-    // tmp.index = pos;
-
     return ((tmp as unknown) as Node);
   }
 
@@ -1326,8 +1324,6 @@ export class Network implements NetworkInternal {
           error,
           "rate",
           currentRate,
-          // "clear",
-          // options.clear ? true : false,
           "policy",
           yellow(ratePolicyName),
           "momentum",
