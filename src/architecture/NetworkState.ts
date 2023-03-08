@@ -136,7 +136,6 @@ export class NetworkState {
   }
 
   makeActivation(input: number[], feedbackLoop: boolean) {
-
     if (this.activations.length == 0 || feedbackLoop == false) {
       this.activations = input.slice();
       this.activations.length = this.network.nodes.length;
@@ -147,6 +146,6 @@ export class NetworkState {
   clear() {
     this.nodeMap.clear();
     this.connectionMap.clear();
-    this.activations.length=0;
+    this.activations.length = 0;
   }
 }
