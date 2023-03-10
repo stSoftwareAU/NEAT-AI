@@ -4,16 +4,10 @@ import { Node } from "./Node.ts";
 class NodeState {
   public errorResponsibility: number;
   public errorProjected: number;
-  public errorGated: number;
-  public old: number;
-  public state: number;
 
   constructor() {
     this.errorResponsibility = 0;
     this.errorProjected = 0;
-    this.errorGated = 0;
-    this.old = 0;
-    this.state = 0;
   }
 }
 
@@ -32,14 +26,13 @@ class NodeStatePersistent {
 class ConnectionState {
   public eligibility: number;
 
-  public xTrace: { nodes: Node[]; values: number[]; used: boolean };
+  public xTrace: { nodes: Node[]; values: number[]; used?: boolean };
 
   constructor() {
     this.eligibility = 0;
     this.xTrace = {
       nodes: [],
       values: [],
-      used: false,
     };
   }
 }

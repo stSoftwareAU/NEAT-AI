@@ -106,23 +106,18 @@ export class Node implements TagsInterface, NodeInternal {
     if (this.type == "hidden") {
       const fromList = this.network.fromConnections(this.index);
       if (fromList.length == 0) {
-        const gateList = this.network.gateConnections(this.index);
-        {
-          if (gateList.length == 0) {
-            const targetIndx = Math.min(
-              1,
-              Math.floor(
-                Math.random() * (this.network.nodeCount() - this.index),
-              ),
-            ) +
-              this.index;
-            this.network.connect(
-              this.index,
-              targetIndx,
-              Connection.randomWeight(),
-            );
-          }
-        }
+        const targetIndx = Math.min(
+          1,
+          Math.floor(
+            Math.random() * (this.network.nodeCount() - this.index),
+          ),
+        ) +
+          this.index;
+        this.network.connect(
+          this.index,
+          targetIndx,
+          Connection.randomWeight(),
+        );
       }
       const toList = this.network.toConnections(this.index);
       if (toList.length == 0) {
@@ -194,9 +189,6 @@ export class Node implements TagsInterface, NodeInternal {
       if (this.isNodeActivation(squashMethod)) {
         activation = squashMethod.activate(this) + this.bias;
       } else {
-        const state = this.network.networkState.node(this.index);
-        state.old = state.state;
-
         const toList = this.network.toConnections(this.index);
         let value = this.bias;
 
@@ -234,26 +226,6 @@ export class Node implements TagsInterface, NodeInternal {
         // Update traces
         const nodes: Node[] = [];
         const influences: number[] = [];
-
-        const gateList = this.network.gateConnections(this.index);
-        for (let i = gateList.length; i--;) {
-          const c = gateList[i];
-          const node = this.network.getNode(c.to);
-
-          const pos = nodes.indexOf(node);
-          if (pos > -1) {
-            const fromActivation = this.network.getActivation(c.from);
-            influences[pos] += c.weight * fromActivation;
-          } else {
-            nodes.push(node);
-            const fromState = this.network.networkState.node(c.from);
-            const fromActivation = this.network.getActivation(c.from);
-            influences.push(
-              c.weight * fromActivation +
-                (c.gater === this.index ? fromState.old : 0),
-            );
-          }
-        }
 
         const self = this.network.selfConnection(this.index);
         const selfState = this.network.networkState.connection(
@@ -410,11 +382,11 @@ export class Node implements TagsInterface, NodeInternal {
     // Error accumulator
     let error = 0;
 
-    const s = this.network.networkState.node(this.index);
+    const ns = this.network.networkState.node(this.index);
     const sp = this.network.networkState.nodePersistent(this.index);
     // Output nodes get their error from the environment
     if (this.type === "output") {
-      s.errorResponsibility = s.errorProjected = (target ? target : 0) -
+      ns.errorResponsibility = ns.errorProjected = (target ? target : 0) -
         this.network.getActivation(this.index);
     } else { // the rest of the nodes compute their error responsibilities by back propagation
       // error responsibilities from all the connections projected from this node
@@ -432,42 +404,27 @@ export class Node implements TagsInterface, NodeInternal {
       }
 
       // Projected error responsibility
-      s.errorProjected = sp.derivative * error;
+      ns.errorProjected = sp.derivative * error;
 
-      if (!Number.isFinite(s.errorProjected)) {
-        if (s.errorProjected === Number.POSITIVE_INFINITY) {
-          s.errorProjected = Number.MAX_SAFE_INTEGER;
-        } else if (s.errorProjected === Number.NEGATIVE_INFINITY) {
-          s.errorProjected = Number.MIN_SAFE_INTEGER;
-        } else if (isNaN(s.errorProjected)) {
-          s.errorProjected = 0;
+      if (!Number.isFinite(ns.errorProjected)) {
+        if (ns.errorProjected === Number.POSITIVE_INFINITY) {
+          ns.errorProjected = Number.MAX_SAFE_INTEGER;
+        } else if (ns.errorProjected === Number.NEGATIVE_INFINITY) {
+          ns.errorProjected = Number.MIN_SAFE_INTEGER;
+        } else if (isNaN(ns.errorProjected)) {
+          ns.errorProjected = 0;
         } else {
           console.trace();
           // console.info(state.error, this.derivative, error);
-          throw this.index + ") invalid error.projected: " + s.errorProjected;
+          throw this.index + ") invalid error.projected: " + ns.errorProjected;
         }
       }
 
       // Error responsibilities from all connections gated by this neuron
       error = 0;
 
-      const gateList = this.network.gateConnections(this.index);
-      for (let i = gateList.length; i--;) {
-        const c = gateList[i];
-        const toState = this.network.networkState.node(c.to);
-        const self = this.network.selfConnection(this.index);
-        let influence = self ? toState.old : 0;
-
-        // const fromState = this.network.networkState.node(c.from);
-        influence += c.weight * this.network.getActivation(c.from);
-        error += toState.errorResponsibility * influence;
-      }
-
-      // Gated error responsibility
-      s.errorGated = sp.derivative * error;
-
       // Error responsibility
-      s.errorResponsibility = s.errorProjected + s.errorGated;
+      ns.errorResponsibility = ns.errorProjected;
     }
 
     if (this.type === "constant") {
@@ -481,7 +438,7 @@ export class Node implements TagsInterface, NodeInternal {
 
       const cs = this.network.networkState.connection(c.from, c.to);
       const csp = this.network.networkState.connectionPersistent(c.from, c.to);
-      let gradient = s.errorProjected * cs.eligibility;
+      let gradient = ns.errorProjected * cs.eligibility;
 
       for (let j = cs.xTrace.nodes.length; j--;) {
         const node = cs.xTrace.nodes[j];
@@ -517,7 +474,7 @@ export class Node implements TagsInterface, NodeInternal {
     }
 
     // Adjust bias
-    const deltaBias = rate * s.errorResponsibility;
+    const deltaBias = rate * ns.errorResponsibility;
     sp.totalDeltaBias += deltaBias;
     if (update) {
       sp.totalDeltaBias += momentum * sp.previousDeltaBias;

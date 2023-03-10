@@ -11,7 +11,6 @@ const temp = {
   },
   SUB_NODE: {
     name: "SUB_NODE",
-    keep_gates: true,
   },
   ADD_CONN: {
     name: "ADD_CONN",
@@ -38,12 +37,6 @@ const temp = {
   SUB_SELF_CONN: {
     name: "SUB_SELF_CONN",
   },
-  ADD_GATE: {
-    name: "ADD_GATE",
-  },
-  SUB_GATE: {
-    name: "SUB_GATE",
-  },
   ADD_BACK_CONN: {
     name: "ADD_BACK_CONN",
   },
@@ -66,8 +59,7 @@ export const Mutation = {
   MOD_ACTIVATION: temp.MOD_ACTIVATION,
   ADD_SELF_CONN: temp.ADD_SELF_CONN,
   SUB_SELF_CONN: temp.SUB_SELF_CONN,
-  ADD_GATE: temp.ADD_GATE,
-  SUB_GATE: temp.SUB_GATE,
+
   ADD_BACK_CONN: temp.ADD_BACK_CONN,
   SUB_BACK_CONN: temp.SUB_BACK_CONN,
   SWAP_NODES: temp.SWAP_NODES,
@@ -90,9 +82,6 @@ export const Mutation = {
     temp.MOD_BIAS,
     temp.MOD_ACTIVATION,
     temp.SWAP_NODES,
-
-    temp.ADD_GATE,
-    temp.SUB_GATE,
 
     temp.ADD_SELF_CONN,
     temp.SUB_SELF_CONN,

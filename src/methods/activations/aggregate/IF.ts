@@ -157,14 +157,14 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     if (condition > 0) {
       for (let i = toList.length; i--;) {
         const c = toList[i];
-
+        const trace = node.network.networkState.connection(c.from, c.to).xTrace;
         switch (c.type) {
           case "condition":
           case "negative":
+            if (trace.used == undefined) trace.used = false;
             break;
           default:
-            node.network.networkState.connection(c.from, c.to).xTrace.used =
-              true;
+            trace.used = true;
         }
       }
       return positive;

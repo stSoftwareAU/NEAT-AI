@@ -123,21 +123,7 @@ export class Offspring {
           if (!fromUUID) throw "No UUID";
           const from = uuidMap.get(fromUUID);
           if (from === undefined) throw "No index for UUID: " + fromUUID;
-          let gater;
-          if (c.gater !== undefined) {
-            const tmpGater1 = Math.abs(c.gater);
-            if (tmpGater1 < i) {
-              const gaterUUID = tmpNetwork.nodes[tmpGater1].uuid;
-              if (!gaterUUID) throw "No gater UUID";
-              const tmpGater2 = uuidMap.get(gaterUUID);
-              if (tmpGater2 !== undefined) {
-                const tmpGater3 = Math.abs(tmpGater2);
-                if (tmpGater3 < i) {
-                  gater = tmpGater3;
-                }
-              }
-            }
-          }
+
           if (from <= i) {
             let tmpFrom = from;
             if (tmpFrom < 0) {
@@ -184,7 +170,6 @@ export class Offspring {
             connectionList.push({
               from: tmpFrom,
               to: i,
-              gater: gater,
               weight: c.weight,
               type: c.type,
             });
@@ -196,14 +181,12 @@ export class Offspring {
 
     connectionList.forEach((c) => {
       if (offspring.getConnection(c.from, c.to) == null) {
-        const co = offspring.connect(
+        offspring.connect(
           c.from,
           c.to,
           c.weight,
           c.type,
         );
-
-        co.gater = c.gater;
       }
     });
 

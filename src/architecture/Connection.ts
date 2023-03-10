@@ -8,7 +8,6 @@ export class Connection implements ConnectionInternal {
   public to: number;
   public type?: "positive" | "negative" | "condition";
   public weight: number;
-  public gater?: number;
 
   public static randomWeight() {
     return Math.random() * 0.2 - 0.1;
@@ -36,8 +35,6 @@ export class Connection implements ConnectionInternal {
     this.to = to;
     this.type = type;
     this.weight = weight;
-
-    this.gater = undefined;
   }
 
   /**
@@ -50,7 +47,6 @@ export class Connection implements ConnectionInternal {
       weight: this.weight,
       fromUUID: fromUUID ? fromUUID : `error-${this.from}`,
       toUUID: toUUID ? toUUID : `error-${this.to}`,
-      gaterUUID: this.gater ? uuidMap.get(this.gater) : undefined,
       type: this.type ? this.type : undefined,
     };
 
@@ -62,7 +58,6 @@ export class Connection implements ConnectionInternal {
       weight: this.weight,
       from: this.from,
       to: this.to,
-      gater: this.gater ? this.gater : undefined,
       type: this.type ? this.type : undefined,
     };
 

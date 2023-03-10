@@ -24,7 +24,7 @@ function checkMutation(method: { name: string }) {
       { count: 4 },
     ],
   });
-  network.mutate(Mutation.ADD_GATE);
+
   network.mutate(Mutation.ADD_BACK_CONN);
   network.mutate(Mutation.ADD_SELF_CONN);
 
@@ -260,14 +260,6 @@ Deno.test("SUB_NODE", () => {
 
 Deno.test("MOD_ACTIVATION", () => {
   checkMutation(Mutation.MOD_ACTIVATION);
-});
-
-Deno.test("ADD_GATE", () => {
-  checkMutation(Mutation.ADD_GATE);
-});
-
-Deno.test("SUB_GATE", () => {
-  checkMutation(Mutation.SUB_GATE);
 });
 
 Deno.test("ADD_SELF_CONN", () => {

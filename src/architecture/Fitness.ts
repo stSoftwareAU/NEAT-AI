@@ -1,5 +1,4 @@
 import { NetworkInternal } from "./NetworkInterfaces.ts";
-import { Network } from "./Network.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { addTag } from "../tags/TagsInterface.ts";
 
@@ -36,13 +35,12 @@ export class Fitness {
 
     const error = responseData.evaluate.error;
     addTag(creature, "error", Math.abs(error).toString());
-    const realCreature = creature as Network;
+
     creature.score = -error - (
           creature.nodes.length -
           creature.input -
           creature.output +
-          creature.connections.length +
-          realCreature.gates().length
+          creature.connections.length
         ) * this.growth;
 
     creature.score = Number.isFinite(creature.score)

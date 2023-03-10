@@ -20,23 +20,22 @@ function tuneWeights(
       const pc = previousJSON.connections[j];
 
       if (tc.from == pc.from && tc.to == pc.to) {
-        if (tc.gater == pc.gater) {
-          if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
-            if (Math.random() < rate) {
-              if (skipSet) {
-                const key = tc.from + ":" + tc.to;
-                if (skipSet.has(key)) continue;
+        if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
+          if (Math.random() < rate) {
+            if (skipSet) {
+              const key = tc.from + ":" + tc.to;
+              if (skipSet.has(key)) continue;
 
-                skipSet.add(key);
-              }
-              const adjust = tc.weight - pc.weight;
-              const weight = tc.weight + adjust;
-
-              tc.weight = weight;
-              changeWeightCount++;
+              skipSet.add(key);
             }
+            const adjust = tc.weight - pc.weight;
+            const weight = tc.weight + adjust;
+
+            tc.weight = weight;
+            changeWeightCount++;
           }
         }
+
         break;
       }
     }
@@ -191,15 +190,14 @@ function tuneAll(
       const pc = previousJSON.connections[j];
 
       if (tc.from == pc.from && tc.to == pc.to) {
-        if (tc.gater == pc.gater) {
-          if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
-            const adjust = tc.weight - pc.weight;
-            const weight = tc.weight + adjust;
+        if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
+          const adjust = tc.weight - pc.weight;
+          const weight = tc.weight + adjust;
 
-            tc.weight = weight;
-            changeWeightCount++;
-          }
+          tc.weight = weight;
+          changeWeightCount++;
         }
+
         break;
       }
     }
@@ -428,26 +426,25 @@ export function fineTuneImprovement(
         const pc = previousJSON.connections[j];
 
         if (fc.from == pc.from && fc.to == pc.to) {
-          if (fc.gater == pc.gater) {
-            if (fc.weight != pc.weight) {
-              const adjust = adjustment(k, fc.weight - pc.weight);
-              const weight = fc.weight + adjust;
+          if (fc.weight != pc.weight) {
+            const adjust = adjustment(k, fc.weight - pc.weight);
+            const weight = fc.weight + adjust;
 
-              fc.weight = weight;
-              const n = Network.fromJSON(targetJSON);
-              addTag(n, "approach", "fine");
-              addTag(n, "adjusted", "weight");
-              addTag(
-                n,
-                "step",
-                k % 3 == 0 ? "large" : k % 3 == 1 ? "small" : "back",
-              );
-              addTag(n, "old-score", fScoreTxt);
-              fineTuned.push(n);
-              if (fineTuned.length >= popSize) break;
-              targetJSON = (fittest as Network).internalJSON();
-            }
+            fc.weight = weight;
+            const n = Network.fromJSON(targetJSON);
+            addTag(n, "approach", "fine");
+            addTag(n, "adjusted", "weight");
+            addTag(
+              n,
+              "step",
+              k % 3 == 0 ? "large" : k % 3 == 1 ? "small" : "back",
+            );
+            addTag(n, "old-score", fScoreTxt);
+            fineTuned.push(n);
+            if (fineTuned.length >= popSize) break;
+            targetJSON = (fittest as Network).internalJSON();
           }
+
           break;
         }
       }

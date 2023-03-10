@@ -35,6 +35,9 @@ export class MAXIMUM
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
+      const trace = node.network.networkState.connection(c.from, c.to).xTrace;
+      if (trace.used == undefined) trace.used = false;
+
       const value = node.network.getActivation(c.from) *
         c.weight;
       if (value > maxValue) {
