@@ -51,15 +51,16 @@ Deno.test("storeTrace", async () => {
   const creaturesDir = ".creatures";
   emptyDirSync(creaturesDir);
 
-  const options: NeatOptions = {
-    iterations: 10,
-    traceStore: traceDir,
-    creatureStore: creaturesDir,
-    threads: 1,
-    error: 0,
-  };
-  await network.evolveDataSet(ts, options);
-
+  for (let counter = 10; counter--;) {
+    const options: NeatOptions = {
+      iterations: 10,
+      traceStore: traceDir,
+      creatureStore: creaturesDir,
+      threads: 1,
+      error: 0,
+    };
+    await network.evolveDataSet(ts, options);
+  }
   let foundUsed = false;
   let eligibilityCount = 0;
   let previousDeltaWeightCount = 0;
