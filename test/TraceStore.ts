@@ -50,6 +50,11 @@ Deno.test("storeTrace", async () => {
   const creaturesDir = ".creatures";
   emptyDirSync(creaturesDir);
 
+  let foundUsed = false;
+  let eligibilityCount = 0;
+  let previousDeltaWeightCount = 0;
+  let totalDeltaWeightCount = 0;
+
   for (let counter = 10; counter--;) {
     const options: NeatOptions = {
       iterations: 10,
@@ -61,49 +66,47 @@ Deno.test("storeTrace", async () => {
     const network = Network.fromJSON(json);
 
     await network.evolveDataSet(ts, options);
-  }
-  let foundUsed = false;
-  let eligibilityCount = 0;
-  let previousDeltaWeightCount = 0;
-  let totalDeltaWeightCount = 0;
 
-  for (const dirEntry of Deno.readDirSync(traceDir)) {
-    if (dirEntry.name.endsWith(".json")) {
-      const json = JSON.parse(
-        Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
-      );
-      let usedCount = 0;
-      json.connections.forEach((c: ConnectionTrace) => {
-        if (c.trace && c.trace.used) {
-          usedCount++;
+    for (const dirEntry of Deno.readDirSync(traceDir)) {
+      if (dirEntry.name.endsWith(".json")) {
+        const json = JSON.parse(
+          Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
+        );
+        let usedCount = 0;
+        json.connections.forEach((c: ConnectionTrace) => {
+          if (c.trace && c.trace.used) {
+            usedCount++;
+          }
+
+          if (
+            Number.isFinite(c.trace.eligibility) &&
+            c.trace.eligibility != 0
+          ) {
+            eligibilityCount++;
+          }
+
+          if (
+            Number.isFinite(c.trace.previousDeltaWeight) &&
+            c.trace.previousDeltaWeight != 0
+          ) {
+            previousDeltaWeightCount++;
+          }
+
+          if (
+            Number.isFinite(c.trace.totalDeltaWeight) &&
+            c.trace.totalDeltaWeight != 0
+          ) {
+            totalDeltaWeightCount++;
+          }
+        });
+
+        if (usedCount > 1) {
+          foundUsed = true;
         }
-
-        if (
-          Number.isFinite(c.trace.eligibility) &&
-          c.trace.eligibility != 0
-        ) {
-          eligibilityCount++;
-        }
-
-        if (
-          Number.isFinite(c.trace.previousDeltaWeight) &&
-          c.trace.previousDeltaWeight != 0
-        ) {
-          previousDeltaWeightCount++;
-        }
-
-        if (
-          Number.isFinite(c.trace.totalDeltaWeight) &&
-          c.trace.totalDeltaWeight != 0
-        ) {
-          totalDeltaWeightCount++;
-        }
-      });
-
-      if (usedCount > 1) {
-        foundUsed = true;
       }
     }
+
+    if( foundUsed && previousDeltaWeightCount ) break;
   }
   assert(
     foundUsed,
