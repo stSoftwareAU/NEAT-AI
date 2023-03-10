@@ -4,7 +4,7 @@ import {
   ConnectionInternal,
   ConnectionTrace,
 } from "./ConnectionInterfaces.ts";
-import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
+import { NodeExport, NodeInternal, NodeTrace } from "./NodeInterfaces.ts";
 
 interface NetworkCommon extends TagsInterface {
   /* ID of this network */
@@ -31,5 +31,5 @@ export interface NetworkExport extends NetworkCommon {
 export interface NetworkTrace extends NetworkExport {
   connections: ConnectionTrace[];
 
-  nodes: NodeExport[];
+  nodes: NodeTrace[];
 }

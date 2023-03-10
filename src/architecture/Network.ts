@@ -4,7 +4,7 @@ import {
   ConnectionInternal,
   ConnectionTrace,
 } from "./ConnectionInterfaces.ts";
-import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
+import { NodeExport, NodeInternal, NodeTrace } from "./NodeInterfaces.ts";
 import {
   NetworkExport,
   NetworkInternal,
@@ -520,22 +520,19 @@ export class Network implements NetworkInternal {
           }
           const fromList = this.fromConnections(indx);
           if (fromList.length == 0) {
-            const gateList = this.gateConnections(indx);
-            if (gateList.length == 0) {
-              console.trace();
-              if (this.DEBUG) {
-                this.DEBUG = false;
-                console.warn(
-                  JSON.stringify(
-                    this.internalJSON(),
-                    null,
-                    2,
-                  ),
-                );
-                this.DEBUG = true;
-              }
-              throw indx + ") hidden node has no outward or gate connections";
+            console.trace();
+            if (this.DEBUG) {
+              this.DEBUG = false;
+              console.warn(
+                JSON.stringify(
+                  this.internalJSON(),
+                  null,
+                  2,
+                ),
+              );
+              this.DEBUG = true;
             }
+            throw indx + ") hidden node has no outward connections";
           }
           if (typeof node.bias === "undefined") {
             console.trace();
@@ -615,13 +612,6 @@ export class Network implements NetworkInternal {
         }
       }
 
-      if (Number.isInteger(c.gater)) {
-        const gaterNode = this.getNode(c.gater as number);
-
-        if (gaterNode.type === "input") {
-          throw indx + ") connection can't be gated by input";
-        }
-      }
       if (c.from < lastFrom) {
         console.info(JSON.stringify(this.connections, null, 1));
         console.trace();
@@ -702,40 +692,6 @@ export class Network implements NetworkInternal {
         const c = tmpList[i];
 
         if (c.from === from) results.push(c);
-      }
-
-      this.cache.set(key, results);
-    }
-    return results;
-  }
-
-  gates(): ConnectionInternal[] {
-    const key = "gates";
-    let results = this.cache.get(key);
-    if (results === undefined) {
-      results = [];
-      const tmpList = this.connections;
-      for (let i = tmpList.length; i--;) {
-        const c = tmpList[i];
-
-        if (c.gater !== undefined) results.push(c);
-      }
-
-      this.cache.set(key, results);
-    }
-    return results;
-  }
-
-  gateConnections(indx: number): ConnectionInternal[] {
-    const key = "gate:" + indx;
-    let results = this.cache.get(key);
-    if (results === undefined) {
-      results = [];
-      const tmpList = this.connections;
-      for (let i = tmpList.length; i--;) {
-        const c = tmpList[i];
-
-        if (c.gater === indx) results.push(c);
       }
 
       this.cache.set(key, results);
@@ -1292,7 +1248,7 @@ export class Network implements NetworkInternal {
             /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
-          const update = (i + 1) % batchSize === 0 || (i === 0 && j == 0);
+          const update = (i + 1) % batchSize === 0 || i === 0;
 
           const output = this.activate(data.input);
 
@@ -1478,20 +1434,7 @@ export class Network implements NetworkInternal {
         if (c.to !== indx) {
           if (c.to > indx) c.to--;
 
-          if (Number.isInteger(c.gater)) {
-            if (typeof c.gater === "undefined") {
-              throw "not an integer: " + c.gater;
-            }
-            let tmpGater: number = c.gater;
-            if (tmpGater !== indx) {
-              if (tmpGater > indx) tmpGater--;
-
-              c.gater = tmpGater;
-              tmpConnections.push(c);
-            }
-          } else {
-            tmpConnections.push(c);
-          }
+          tmpConnections.push(c);
         }
       }
     });
@@ -1610,7 +1553,6 @@ export class Network implements NetworkInternal {
     this.connections.forEach((c) => {
       if (c.from >= node.index) c.from++;
       if (c.to >= node.index) c.to++;
-      if (c.gater && c.gater >= node.index) c.gater++;
     });
 
     this.clearCache();
@@ -1728,8 +1670,7 @@ export class Network implements NetworkInternal {
     const allConnections = this.connections.filter(
       (c) => {
         return this.inFocus(c.from, focusList) ||
-          this.inFocus(c.to, focusList) ||
-          (c.gater && this.inFocus(c.gater, focusList));
+          this.inFocus(c.to, focusList);
       },
     );
     if (allConnections.length > 0) {
@@ -1840,67 +1781,6 @@ export class Network implements NetworkInternal {
     // Connect it to himself
     const indx = (node as NodeInternal).index;
     this.disconnect(indx, indx);
-  }
-
-  private addGate(focusList?: number[]) {
-    // Create a list of all non-gated connections
-    const possible = [];
-    for (let i = this.input; i < this.connections.length; i++) {
-      const conn = this.connections[i];
-      if (!Number.isInteger(conn.gater)) {
-        possible.push(conn);
-      }
-    }
-
-    if (possible.length === 0) {
-      return;
-    }
-
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const conn = possible[Math.floor(Math.random() * possible.length)];
-      if (
-        this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
-      ) {
-        // Select a random gater node and connection, can't be gated by input
-        const index = Math.floor(
-          Math.random() * (conn.to - this.input) +
-            this.input,
-        );
-        conn.gater = index;
-
-        break;
-      }
-    }
-
-    this.clearCache();
-  }
-
-  private subGate(focusList?: number[]) {
-    // Create a list of all non-gated connections
-    const possible = [];
-    for (let i = 0; i < this.connections.length; i++) {
-      const conn = this.connections[i];
-      if (conn.gater ? conn.gater : -1 >= 0) {
-        possible.push(conn);
-      }
-    }
-
-    if (possible.length === 0) {
-      return;
-    }
-
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const conn = possible[Math.floor(Math.random() * possible.length)];
-      if (
-        this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
-      ) {
-        conn.gater = undefined;
-
-        break;
-      }
-    }
-
-    this.clearCache();
   }
 
   private addBackConn(focusList?: number[]) {
@@ -2071,16 +1951,6 @@ export class Network implements NetworkInternal {
 
         break;
       }
-      case Mutation.ADD_GATE.name: {
-        this.addGate(focusList);
-
-        break;
-      }
-      case Mutation.SUB_GATE.name: {
-        this.subGate(focusList);
-
-        break;
-      }
       case Mutation.ADD_BACK_CONN.name: {
         this.addBackConn(focusList);
 
@@ -2217,12 +2087,36 @@ export class Network implements NetworkInternal {
   traceJSON(): NetworkTrace {
     const json = this.exportJSON();
 
+    const traceNodes = Array<NodeTrace>(json.nodes.length);
+    let exportIndex = 0;
+    this.nodes.forEach((n) => {
+      if (n.type !== "input") {
+        const indx = n.index;
+        const ns = this.networkState.node(indx);
+
+        const traceNode: NodeExport = json.nodes[exportIndex] as NodeTrace;
+
+        (traceNode as NodeTrace).trace = {
+          errorProjected: ns ? ns.errorProjected : undefined,
+          errorResponsibility: ns ? ns.errorResponsibility : undefined,
+          derivative: ns ? ns.derivative : undefined,
+          totalDeltaBias: ns ? ns.totalDeltaBias : undefined,
+          previousDeltaBias: ns ? ns.previousDeltaBias : undefined,
+        };
+        traceNodes[exportIndex] = traceNode as NodeTrace;
+        exportIndex++;
+      }
+    });
+    json.nodes = traceNodes;
     const traceConnections = Array<ConnectionTrace>(json.connections.length);
     this.connections.forEach((c, indx) => {
       const exportConnection = json.connections[indx] as ConnectionTrace;
       const cs = this.networkState.connection(c.from, c.to);
       exportConnection.trace = {
-        used: cs.xTrace.used,
+        used: cs.used,
+        eligibility: cs.eligibility,
+        previousDeltaWeight: cs.previousDeltaWeight,
+        totalDeltaWeight: cs.totalDeltaWeight,
       };
 
       traceConnections[indx] = exportConnection;
@@ -2293,8 +2187,23 @@ export class Network implements NetworkInternal {
       if (jn.type === "input") continue;
 
       const n = Node.fromJSON(jn, this);
-      uuidMap.set(n.uuid, pos);
       n.index = pos;
+      if ((jn as NodeTrace).trace) {
+        const trace = (jn as NodeTrace).trace;
+        const ns = this.networkState.node(n.index);
+
+        ns.errorProjected = trace.errorProjected ? trace.errorProjected : 0;
+        ns.errorResponsibility = trace.errorResponsibility
+          ? trace.errorResponsibility
+          : 0;
+        ns.derivative = trace.derivative ? trace.derivative : 0;
+        ns.totalDeltaBias = trace.totalDeltaBias ? trace.totalDeltaBias : 0;
+        ns.previousDeltaBias = trace.previousDeltaBias
+          ? trace.previousDeltaBias
+          : 0;
+      }
+      uuidMap.set(n.uuid, pos);
+
       this.nodes[pos] = n;
       pos++;
     }
@@ -2318,17 +2227,15 @@ export class Network implements NetworkInternal {
       );
       if ((conn as ConnectionTrace).trace) {
         const cs = this.networkState.connection(connection.from, connection.to);
-        cs.xTrace.used = (conn as ConnectionTrace).trace.used;
-      }
-
-      const gater = (conn as ConnectionInternal).gater;
-      if (Number.isFinite(gater)) {
-        connection.gater = gater;
-      } else {
-        const gaterUUID = (conn as ConnectionExport).gaterUUID;
-        if (gaterUUID) {
-          connection.gater = uuidMap.get(gaterUUID);
-        }
+        const trace = (conn as ConnectionTrace).trace;
+        cs.used = trace.used;
+        cs.eligibility = trace.eligibility ? trace.eligibility : 0;
+        cs.previousDeltaWeight = trace.previousDeltaWeight
+          ? trace.previousDeltaWeight
+          : 0;
+        cs.totalDeltaWeight = trace.totalDeltaWeight
+          ? trace.totalDeltaWeight
+          : 0;
       }
     }
 
@@ -2431,46 +2338,12 @@ export class Network implements NetworkInternal {
 
     for (i = 0; i < this.connections.length; i++) {
       const connection = this.connections[i];
-      if (connection.gater == null) {
-        (json.links as { from: number; to: number; weight: number }[]).push({
-          from: connection.from,
-          to: connection.to,
-          weight: connection.weight,
-        });
-      } else {
-        // Add a gater 'node'
-        const index = json.nodes.length;
-        (json.nodes as { id: number; activation: number; name: string }[]).push(
-          {
-            id: index,
-            activation: this.getActivation(index),
-            name: "GATE",
-          },
-        );
-        (json.links as { source: number; target: number; weight: number }[])
-          .push({
-            source: connection.from,
-            target: connection.to,
-            weight: 1 / 2 * connection.weight,
-          });
-        (json.links as { source: number; target: number; weight: number }[])
-          .push({
-            source: index,
-            target: connection.to,
-            weight: 1 / 2 * connection.weight,
-          });
-        (json.links as {
-          source: number;
-          target: number;
-          weight: number;
-          gate: boolean;
-        }[]).push({
-          source: connection.gater,
-          target: index,
-          weight: this.getActivation(connection.gater),
-          gate: true,
-        });
-      }
+
+      (json.links as { from: number; to: number; weight: number }[]).push({
+        from: connection.from,
+        to: connection.to,
+        weight: connection.weight,
+      });
     }
 
     return json;

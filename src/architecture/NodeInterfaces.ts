@@ -10,3 +10,13 @@ export interface NodeExport extends TagsInterface {
 export interface NodeInternal extends NodeExport {
   index: number;
 }
+
+export interface NodeTrace extends NodeExport {
+  trace: {
+    errorResponsibility?: number;
+    errorProjected?: number;
+    derivative?: number;
+    totalDeltaBias?: number;
+    previousDeltaBias?: number;
+  };
+}

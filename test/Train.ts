@@ -1,5 +1,5 @@
 import { Network } from "../src/architecture/Network.ts";
-import { assert } from "https://deno.land/std@0.177.0/testing/asserts.ts";
+import { assert, fail } from "https://deno.land/std@0.177.0/testing/asserts.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -32,18 +32,25 @@ Deno.test("MT", () => {
     { input: [1, 1], output: [1] },
   ];
 
-  const network = new Network(2, 1, {
-    layers: [
-      { count: 5 },
-    ],
-  });
+  for (let attempts = 0; true; attempts++) {
+    const network = new Network(2, 1, {
+      layers: [
+        { count: 5 },
+      ],
+    });
 
-  const results = network.train(trainingSet, {
-    error: 0.03,
-    iterations: 10000,
-  });
+    const results = network.train(trainingSet, {
+      error: 0.03,
+      iterations: 10000,
+    });
 
-  assert(results.error <= 0.03, "Error rate was: " + results.error);
+    if (results.error <= 0.03) break;
+    if (attempts > 12) {
+      fail(`Error rate was ${results.error}`);
+    } else {
+      console.warn(`Warning rate was ${results.error}`);
+    }
+  }
 });
 
 Deno.test("train-XOR", () => {

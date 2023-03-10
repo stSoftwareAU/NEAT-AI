@@ -157,14 +157,14 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     if (condition > 0) {
       for (let i = toList.length; i--;) {
         const c = toList[i];
-
+        const cs = node.network.networkState.connection(c.from, c.to);
         switch (c.type) {
           case "condition":
           case "negative":
+            if (cs.used == undefined) cs.used = false;
             break;
           default:
-            node.network.networkState.connection(c.from, c.to).xTrace.used =
-              true;
+            cs.used = true;
         }
       }
       return positive;
@@ -173,7 +173,7 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
         const c = toList[i];
 
         if (c.type == "negative") {
-          node.network.networkState.connection(c.from, c.to).xTrace.used = true;
+          node.network.networkState.connection(c.from, c.to).used = true;
         }
       }
       return negative;
@@ -221,12 +221,12 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
         case "condition":
           break;
         case "negative":
-          if (cs.xTrace.used) {
+          if (cs.used) {
             foundNegative = true;
           }
           break;
         default:
-          if (cs.xTrace.used) {
+          if (cs.used) {
             foundPositive = true;
           }
       }

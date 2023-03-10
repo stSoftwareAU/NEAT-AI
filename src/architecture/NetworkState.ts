@@ -1,28 +1,16 @@
 import { Network } from "./Network.ts";
-import { Node } from "./Node.ts";
 
 class NodeState {
   public errorResponsibility: number;
   public errorProjected: number;
-  public errorGated: number;
-  public old: number;
-  public state: number;
 
-  constructor() {
-    this.errorResponsibility = 0;
-    this.errorProjected = 0;
-    this.errorGated = 0;
-    this.old = 0;
-    this.state = 0;
-  }
-}
-
-class NodeStatePersistent {
   public derivative: number;
   public totalDeltaBias: number;
   public previousDeltaBias: number;
 
   constructor() {
+    this.errorResponsibility = 0;
+    this.errorProjected = 0;
     this.derivative = 0;
     this.totalDeltaBias = 0;
     this.previousDeltaBias = 0;
@@ -31,24 +19,13 @@ class NodeStatePersistent {
 
 class ConnectionState {
   public eligibility: number;
-
-  public xTrace: { nodes: Node[]; values: number[]; used: boolean };
-
-  constructor() {
-    this.eligibility = 0;
-    this.xTrace = {
-      nodes: [],
-      values: [],
-      used: false,
-    };
-  }
-}
-
-class ConnectionStatePersistent {
   public previousDeltaWeight: number;
   public totalDeltaWeight: number;
 
+  public used?: boolean;
+
   constructor() {
+    this.eligibility = 0;
     this.previousDeltaWeight = 0;
     this.totalDeltaWeight = 0;
   }
@@ -57,8 +34,6 @@ class ConnectionStatePersistent {
 export class NetworkState {
   private nodeMap;
   private connectionMap;
-  private nodeMapPersistent;
-  private connectionMapPersistent;
   private network;
   public activations: number[] = [];
 
@@ -66,29 +41,6 @@ export class NetworkState {
     this.network = network;
     this.nodeMap = new Map<number, NodeState>();
     this.connectionMap = new Map<number, Map<number, ConnectionState>>();
-    this.nodeMapPersistent = new Map<number, NodeStatePersistent>();
-    this.connectionMapPersistent = new Map<
-      number,
-      Map<number, ConnectionStatePersistent>
-    >();
-  }
-
-  connectionPersistent(from: number, to: number): ConnectionStatePersistent {
-    let fromMap = this.connectionMapPersistent.get(from);
-    if (fromMap === undefined) {
-      fromMap = new Map<number, ConnectionStatePersistent>();
-      this.connectionMapPersistent.set(from, fromMap);
-    }
-    const state = fromMap.get(to);
-
-    if (state !== undefined) {
-      return state;
-    } else {
-      const tmpState = new ConnectionStatePersistent();
-
-      fromMap.set(to, tmpState);
-      return tmpState;
-    }
   }
 
   connection(from: number, to: number): ConnectionState {
@@ -105,19 +57,6 @@ export class NetworkState {
       const tmpState = new ConnectionState();
 
       fromMap.set(to, tmpState);
-      return tmpState;
-    }
-  }
-
-  nodePersistent(indx: number): NodeStatePersistent {
-    const state = this.nodeMapPersistent.get(indx);
-
-    if (state !== undefined) {
-      return state;
-    } else {
-      const tmpState = new NodeStatePersistent();
-
-      this.nodeMapPersistent.set(indx, tmpState);
       return tmpState;
     }
   }

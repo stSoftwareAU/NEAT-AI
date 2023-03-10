@@ -3,6 +3,7 @@ import { emptyDirSync } from "https://deno.land/std@0.177.0/fs/empty_dir.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -27,7 +28,6 @@ Deno.test("storeTrace", async () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
 
   const ts = [];
   for (let i = 100; i--;) {
@@ -50,16 +50,22 @@ Deno.test("storeTrace", async () => {
   const creaturesDir = ".creatures";
   emptyDirSync(creaturesDir);
 
-  const options: NeatOptions = {
-    iterations: 10,
-    traceStore: traceDir,
-    creatureStore: creaturesDir,
-    threads: 1,
-    error: 0,
-  };
-  await network.evolveDataSet(ts, options);
+  for (let counter = 10; counter--;) {
+    const options: NeatOptions = {
+      iterations: 10,
+      traceStore: traceDir,
+      creatureStore: creaturesDir,
+      threads: 1,
+      error: 0,
+    };
+    const network = Network.fromJSON(json);
 
+    await network.evolveDataSet(ts, options);
+  }
   let foundUsed = false;
+  let eligibilityCount = 0;
+  let previousDeltaWeightCount = 0;
+  let totalDeltaWeightCount = 0;
 
   for (const dirEntry of Deno.readDirSync(traceDir)) {
     if (dirEntry.name.endsWith(".json")) {
@@ -67,9 +73,30 @@ Deno.test("storeTrace", async () => {
         Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
       );
       let usedCount = 0;
-      json.connections.forEach((c: { trace: { used: boolean } }) => {
+      json.connections.forEach((c: ConnectionTrace) => {
         if (c.trace && c.trace.used) {
           usedCount++;
+        }
+
+        if (
+          Number.isFinite(c.trace.eligibility) &&
+          c.trace.eligibility != 0
+        ) {
+          eligibilityCount++;
+        }
+
+        if (
+          Number.isFinite(c.trace.previousDeltaWeight) &&
+          c.trace.previousDeltaWeight != 0
+        ) {
+          previousDeltaWeightCount++;
+        }
+
+        if (
+          Number.isFinite(c.trace.totalDeltaWeight) &&
+          c.trace.totalDeltaWeight != 0
+        ) {
+          totalDeltaWeightCount++;
         }
       });
 
@@ -82,4 +109,19 @@ Deno.test("storeTrace", async () => {
     foundUsed,
     "Should have traced usage",
   );
+
+  // assert(
+  //   eligibilityCount > 0,
+  //   "Should have eligibilityCount",
+  // );
+
+  assert(
+    previousDeltaWeightCount > 0,
+    "Should have previousDeltaWeightCount",
+  );
+
+  // assert(
+  //   totalDeltaWeightCount > 0,
+  //   "Should have totalDeltaWeightCount",
+  // );
 });

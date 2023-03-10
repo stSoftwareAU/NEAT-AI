@@ -106,23 +106,18 @@ export class Node implements TagsInterface, NodeInternal {
     if (this.type == "hidden") {
       const fromList = this.network.fromConnections(this.index);
       if (fromList.length == 0) {
-        const gateList = this.network.gateConnections(this.index);
-        {
-          if (gateList.length == 0) {
-            const targetIndx = Math.min(
-              1,
-              Math.floor(
-                Math.random() * (this.network.nodeCount() - this.index),
-              ),
-            ) +
-              this.index;
-            this.network.connect(
-              this.index,
-              targetIndx,
-              Connection.randomWeight(),
-            );
-          }
-        }
+        const targetIndx = Math.min(
+          1,
+          Math.floor(
+            Math.random() * (this.network.nodeCount() - this.index),
+          ),
+        ) +
+          this.index;
+        this.network.connect(
+          this.index,
+          targetIndx,
+          Connection.randomWeight(),
+        );
       }
       const toList = this.network.toConnections(this.index);
       if (toList.length == 0) {
@@ -194,9 +189,6 @@ export class Node implements TagsInterface, NodeInternal {
       if (this.isNodeActivation(squashMethod)) {
         activation = squashMethod.activate(this) + this.bias;
       } else {
-        const state = this.network.networkState.node(this.index);
-        state.old = state.state;
-
         const toList = this.network.toConnections(this.index);
         let value = this.bias;
 
@@ -228,32 +220,10 @@ export class Node implements TagsInterface, NodeInternal {
           }
         }
 
-        const sp = this.network.networkState.nodePersistent(this.index);
-        sp.derivative = result.derivative;
+        const ns = this.network.networkState.node(this.index);
+        ns.derivative = result.derivative;
 
         // Update traces
-        const nodes: Node[] = [];
-        const influences: number[] = [];
-
-        const gateList = this.network.gateConnections(this.index);
-        for (let i = gateList.length; i--;) {
-          const c = gateList[i];
-          const node = this.network.getNode(c.to);
-
-          const pos = nodes.indexOf(node);
-          if (pos > -1) {
-            const fromActivation = this.network.getActivation(c.from);
-            influences[pos] += c.weight * fromActivation;
-          } else {
-            nodes.push(node);
-            const fromState = this.network.networkState.node(c.from);
-            const fromActivation = this.network.getActivation(c.from);
-            influences.push(
-              c.weight * fromActivation +
-                (c.gater === this.index ? fromState.old : 0),
-            );
-          }
-        }
 
         const self = this.network.selfConnection(this.index);
         const selfState = this.network.networkState.connection(
@@ -299,30 +269,6 @@ export class Node implements TagsInterface, NodeInternal {
                 throw c.from + ":" + c.to + ") invalid eligibility: " +
                   cs.eligibility;
               }
-            }
-          }
-
-          // Extended trace
-          for (let j = nodes.length; j--;) {
-            const node = nodes[j];
-            const influence = influences[j];
-
-            const index = cs.xTrace.nodes.indexOf(node);
-
-            if (index > -1) {
-              const value = self
-                ? (self.weight *
-                  cs.xTrace.values[index])
-                : 0 +
-                  sp.derivative * cs.eligibility * influence;
-
-              cs.xTrace.values[index] = value;
-            } else {
-              // Does not exist there yet, might be through mutation
-              cs.xTrace.nodes.push(node);
-              cs.xTrace.values.push(
-                sp.derivative * cs.eligibility * influence,
-              );
             }
           }
         }
@@ -410,11 +356,11 @@ export class Node implements TagsInterface, NodeInternal {
     // Error accumulator
     let error = 0;
 
-    const s = this.network.networkState.node(this.index);
-    const sp = this.network.networkState.nodePersistent(this.index);
+    const ns = this.network.networkState.node(this.index);
+    // const sp = this.network.networkState.nodePersistent(this.index);
     // Output nodes get their error from the environment
     if (this.type === "output") {
-      s.errorResponsibility = s.errorProjected = (target ? target : 0) -
+      ns.errorResponsibility = ns.errorProjected = (target ? target : 0) -
         this.network.getActivation(this.index);
     } else { // the rest of the nodes compute their error responsibilities by back propagation
       // error responsibilities from all the connections projected from this node
@@ -432,42 +378,27 @@ export class Node implements TagsInterface, NodeInternal {
       }
 
       // Projected error responsibility
-      s.errorProjected = sp.derivative * error;
+      ns.errorProjected = ns.derivative * error;
 
-      if (!Number.isFinite(s.errorProjected)) {
-        if (s.errorProjected === Number.POSITIVE_INFINITY) {
-          s.errorProjected = Number.MAX_SAFE_INTEGER;
-        } else if (s.errorProjected === Number.NEGATIVE_INFINITY) {
-          s.errorProjected = Number.MIN_SAFE_INTEGER;
-        } else if (isNaN(s.errorProjected)) {
-          s.errorProjected = 0;
+      if (!Number.isFinite(ns.errorProjected)) {
+        if (ns.errorProjected === Number.POSITIVE_INFINITY) {
+          ns.errorProjected = Number.MAX_SAFE_INTEGER;
+        } else if (ns.errorProjected === Number.NEGATIVE_INFINITY) {
+          ns.errorProjected = Number.MIN_SAFE_INTEGER;
+        } else if (isNaN(ns.errorProjected)) {
+          ns.errorProjected = 0;
         } else {
           console.trace();
           // console.info(state.error, this.derivative, error);
-          throw this.index + ") invalid error.projected: " + s.errorProjected;
+          throw this.index + ") invalid error.projected: " + ns.errorProjected;
         }
       }
 
       // Error responsibilities from all connections gated by this neuron
       error = 0;
 
-      const gateList = this.network.gateConnections(this.index);
-      for (let i = gateList.length; i--;) {
-        const c = gateList[i];
-        const toState = this.network.networkState.node(c.to);
-        const self = this.network.selfConnection(this.index);
-        let influence = self ? toState.old : 0;
-
-        // const fromState = this.network.networkState.node(c.from);
-        influence += c.weight * this.network.getActivation(c.from);
-        error += toState.errorResponsibility * influence;
-      }
-
-      // Gated error responsibility
-      s.errorGated = sp.derivative * error;
-
       // Error responsibility
-      s.errorResponsibility = s.errorProjected + s.errorGated;
+      ns.errorResponsibility = ns.errorProjected;
     }
 
     if (this.type === "constant") {
@@ -480,24 +411,17 @@ export class Node implements TagsInterface, NodeInternal {
       const c = toList[i];
 
       const cs = this.network.networkState.connection(c.from, c.to);
-      const csp = this.network.networkState.connectionPersistent(c.from, c.to);
-      let gradient = s.errorProjected * cs.eligibility;
-
-      for (let j = cs.xTrace.nodes.length; j--;) {
-        const node = cs.xTrace.nodes[j];
-        const value = cs.xTrace.values[j];
-        const traceState = this.network.networkState.node(node.index);
-        gradient += traceState.errorResponsibility * value;
-      }
+      // const csp = this.network.networkState.connectionPersistent(c.from, c.to);
+      const gradient = ns.errorProjected * cs.eligibility;
 
       // Adjust weight
       const deltaWeight = rate * gradient;
 
-      csp.totalDeltaWeight += deltaWeight;
+      cs.totalDeltaWeight += deltaWeight;
       if (update) {
-        csp.totalDeltaWeight += momentum *
-          csp.previousDeltaWeight;
-        c.weight += csp.totalDeltaWeight;
+        cs.totalDeltaWeight += momentum *
+          cs.previousDeltaWeight;
+        c.weight += cs.totalDeltaWeight;
         if (!Number.isFinite(c.weight)) {
           if (c.weight === Number.POSITIVE_INFINITY) {
             c.weight = Number.MAX_SAFE_INTEGER;
@@ -511,18 +435,18 @@ export class Node implements TagsInterface, NodeInternal {
           }
         }
 
-        csp.previousDeltaWeight = csp.totalDeltaWeight;
-        csp.totalDeltaWeight = 0;
+        cs.previousDeltaWeight = cs.totalDeltaWeight;
+        cs.totalDeltaWeight = 0;
       }
     }
 
     // Adjust bias
-    const deltaBias = rate * s.errorResponsibility;
-    sp.totalDeltaBias += deltaBias;
+    const deltaBias = rate * ns.errorResponsibility;
+    ns.totalDeltaBias += deltaBias;
     if (update) {
-      sp.totalDeltaBias += momentum * sp.previousDeltaBias;
+      ns.totalDeltaBias += momentum * ns.previousDeltaBias;
 
-      this.bias += sp.totalDeltaBias;
+      this.bias += ns.totalDeltaBias;
       if (!Number.isFinite(this.bias)) {
         if (this.bias === Number.POSITIVE_INFINITY) {
           this.bias = Number.MAX_SAFE_INTEGER;
@@ -536,8 +460,8 @@ export class Node implements TagsInterface, NodeInternal {
         }
       }
 
-      sp.previousDeltaBias = sp.totalDeltaBias;
-      sp.totalDeltaBias = 0;
+      ns.previousDeltaBias = ns.totalDeltaBias;
+      ns.totalDeltaBias = 0;
     }
   }
 
