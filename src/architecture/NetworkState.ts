@@ -13,7 +13,7 @@ class NodeState {
     this.errorProjected = 0;
     this.derivative = 0;
     this.totalDeltaBias = 0;
-    this.previousDeltaBias = 0;    
+    this.previousDeltaBias = 0;
   }
 }
 

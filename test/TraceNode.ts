@@ -79,7 +79,7 @@ Deno.test("traceNode", async () => {
           ) {
             errorResponsibilityCount++;
           }
-          
+
           if (
             Number.isFinite(n.trace.errorProjected) &&
             n.trace.errorProjected != 0
@@ -93,14 +93,14 @@ Deno.test("traceNode", async () => {
           ) {
             derivativeCount++;
           }
-    
+
           if (
             Number.isFinite(n.trace.totalDeltaBias) &&
             n.trace.totalDeltaBias != 0
           ) {
             totalDeltaBiasCount++;
           }
-                    
+
           if (
             Number.isFinite(n.trace.previousDeltaBias) &&
             n.trace.previousDeltaBias != 0

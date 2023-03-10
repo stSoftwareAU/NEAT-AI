@@ -2193,16 +2193,11 @@ export class Network implements NetworkInternal {
         ns.errorResponsibility = trace.errorResponsibility
           ? trace.errorResponsibility
           : 0;
-        ns.derivative = trace.derivative
-          ? trace.derivative
-          : 0;        
-        ns.totalDeltaBias = trace.totalDeltaBias
-          ? trace.totalDeltaBias
-          : 0;        
+        ns.derivative = trace.derivative ? trace.derivative : 0;
+        ns.totalDeltaBias = trace.totalDeltaBias ? trace.totalDeltaBias : 0;
         ns.previousDeltaBias = trace.previousDeltaBias
           ? trace.previousDeltaBias
           : 0;
-
       }
       uuidMap.set(n.uuid, pos);
 
