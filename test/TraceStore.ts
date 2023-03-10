@@ -28,7 +28,6 @@ Deno.test("storeTrace", async () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
 
   const ts = [];
   for (let i = 100; i--;) {
@@ -59,6 +58,8 @@ Deno.test("storeTrace", async () => {
       threads: 1,
       error: 0,
     };
+    const network = Network.fromJSON(json);
+
     await network.evolveDataSet(ts, options);
   }
   let foundUsed = false;
