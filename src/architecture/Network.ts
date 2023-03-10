@@ -2099,6 +2099,9 @@ export class Network implements NetworkInternal {
         (traceNode as NodeTrace).trace = {
           errorProjected: ns ? ns.errorProjected : undefined,
           errorResponsibility: ns ? ns.errorResponsibility : undefined,
+          derivative: ns ? ns.derivative : undefined,
+          totalDeltaBias: ns ? ns.totalDeltaBias : undefined,
+          previousDeltaBias: ns ? ns.previousDeltaBias : undefined,
         };
         traceNodes[exportIndex] = traceNode as NodeTrace;
         exportIndex++;
@@ -2190,6 +2193,16 @@ export class Network implements NetworkInternal {
         ns.errorResponsibility = trace.errorResponsibility
           ? trace.errorResponsibility
           : 0;
+        ns.derivative = trace.derivative
+          ? trace.derivative
+          : 0;        
+        ns.totalDeltaBias = trace.totalDeltaBias
+          ? trace.totalDeltaBias
+          : 0;        
+        ns.previousDeltaBias = trace.previousDeltaBias
+          ? trace.previousDeltaBias
+          : 0;
+
       }
       uuidMap.set(n.uuid, pos);
 

@@ -4,21 +4,16 @@ class NodeState {
   public errorResponsibility: number;
   public errorProjected: number;
 
-  constructor() {
-    this.errorResponsibility = 0;
-    this.errorProjected = 0;
-  }
-}
-
-class NodeStatePersistent {
   public derivative: number;
   public totalDeltaBias: number;
   public previousDeltaBias: number;
 
   constructor() {
+    this.errorResponsibility = 0;
+    this.errorProjected = 0;
     this.derivative = 0;
     this.totalDeltaBias = 0;
-    this.previousDeltaBias = 0;
+    this.previousDeltaBias = 0;    
   }
 }
 
@@ -39,7 +34,6 @@ class ConnectionState {
 export class NetworkState {
   private nodeMap;
   private connectionMap;
-  private nodeMapPersistent;
   private network;
   public activations: number[] = [];
 
@@ -47,7 +41,6 @@ export class NetworkState {
     this.network = network;
     this.nodeMap = new Map<number, NodeState>();
     this.connectionMap = new Map<number, Map<number, ConnectionState>>();
-    this.nodeMapPersistent = new Map<number, NodeStatePersistent>();
   }
 
   connection(from: number, to: number): ConnectionState {
@@ -64,19 +57,6 @@ export class NetworkState {
       const tmpState = new ConnectionState();
 
       fromMap.set(to, tmpState);
-      return tmpState;
-    }
-  }
-
-  nodePersistent(indx: number): NodeStatePersistent {
-    const state = this.nodeMapPersistent.get(indx);
-
-    if (state !== undefined) {
-      return state;
-    } else {
-      const tmpState = new NodeStatePersistent();
-
-      this.nodeMapPersistent.set(indx, tmpState);
       return tmpState;
     }
   }

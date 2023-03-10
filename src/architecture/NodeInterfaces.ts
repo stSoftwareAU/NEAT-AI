@@ -15,5 +15,8 @@ export interface NodeTrace extends NodeExport {
   trace: {
     errorResponsibility?: number;
     errorProjected?: number;
+    derivative?: number;
+    totalDeltaBias?: number;
+    previousDeltaBias?: number;
   };
 }

@@ -61,6 +61,9 @@ Deno.test("traceNode", async () => {
 
   let errorResponsibilityCount = 0;
   let errorProjectedCount = 0;
+  let derivativeCount = 0;
+  let totalDeltaBiasCount = 0;
+  let previousDeltaBiasCount = 0;
 
   for (const dirEntry of Deno.readDirSync(traceDir)) {
     if (dirEntry.name.endsWith(".json")) {
@@ -76,11 +79,33 @@ Deno.test("traceNode", async () => {
           ) {
             errorResponsibilityCount++;
           }
+          
           if (
             Number.isFinite(n.trace.errorProjected) &&
             n.trace.errorProjected != 0
           ) {
             errorProjectedCount++;
+          }
+
+          if (
+            Number.isFinite(n.trace.derivative) &&
+            n.trace.derivative != 0
+          ) {
+            derivativeCount++;
+          }
+    
+          if (
+            Number.isFinite(n.trace.totalDeltaBias) &&
+            n.trace.totalDeltaBias != 0
+          ) {
+            totalDeltaBiasCount++;
+          }
+                    
+          if (
+            Number.isFinite(n.trace.previousDeltaBias) &&
+            n.trace.previousDeltaBias != 0
+          ) {
+            previousDeltaBiasCount++;
           }
         }
       });
@@ -94,5 +119,20 @@ Deno.test("traceNode", async () => {
   assert(
     errorProjectedCount > 0,
     "Should have errorProjectedCount",
+  );
+
+  assert(
+    derivativeCount > 0,
+    "Should have derivativeCount",
+  );
+
+  // assert(
+  //   totalDeltaBiasCount > 0,
+  //   "Should have totalDeltaBiasCount",
+  // );
+
+  assert(
+    previousDeltaBiasCount > 0,
+    "Should have previousDeltaBiasCount",
   );
 });

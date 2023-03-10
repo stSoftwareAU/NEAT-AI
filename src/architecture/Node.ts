@@ -220,8 +220,8 @@ export class Node implements TagsInterface, NodeInternal {
           }
         }
 
-        const sp = this.network.networkState.nodePersistent(this.index);
-        sp.derivative = result.derivative;
+        const ns = this.network.networkState.node(this.index);
+        ns.derivative = result.derivative;
 
         // Update traces
 
@@ -357,7 +357,7 @@ export class Node implements TagsInterface, NodeInternal {
     let error = 0;
 
     const ns = this.network.networkState.node(this.index);
-    const sp = this.network.networkState.nodePersistent(this.index);
+    // const sp = this.network.networkState.nodePersistent(this.index);
     // Output nodes get their error from the environment
     if (this.type === "output") {
       ns.errorResponsibility = ns.errorProjected = (target ? target : 0) -
@@ -378,7 +378,7 @@ export class Node implements TagsInterface, NodeInternal {
       }
 
       // Projected error responsibility
-      ns.errorProjected = sp.derivative * error;
+      ns.errorProjected = ns.derivative * error;
 
       if (!Number.isFinite(ns.errorProjected)) {
         if (ns.errorProjected === Number.POSITIVE_INFINITY) {
@@ -442,11 +442,11 @@ export class Node implements TagsInterface, NodeInternal {
 
     // Adjust bias
     const deltaBias = rate * ns.errorResponsibility;
-    sp.totalDeltaBias += deltaBias;
+    ns.totalDeltaBias += deltaBias;
     if (update) {
-      sp.totalDeltaBias += momentum * sp.previousDeltaBias;
+      ns.totalDeltaBias += momentum * ns.previousDeltaBias;
 
-      this.bias += sp.totalDeltaBias;
+      this.bias += ns.totalDeltaBias;
       if (!Number.isFinite(this.bias)) {
         if (this.bias === Number.POSITIVE_INFINITY) {
           this.bias = Number.MAX_SAFE_INTEGER;
@@ -460,8 +460,8 @@ export class Node implements TagsInterface, NodeInternal {
         }
       }
 
-      sp.previousDeltaBias = sp.totalDeltaBias;
-      sp.totalDeltaBias = 0;
+      ns.previousDeltaBias = ns.totalDeltaBias;
+      ns.totalDeltaBias = 0;
     }
   }
 
