@@ -1,5 +1,4 @@
 import { Network } from "./Network.ts";
-import { Node } from "./Node.ts";
 
 class NodeState {
   public errorResponsibility: number;
@@ -25,23 +24,13 @@ class NodeStatePersistent {
 
 class ConnectionState {
   public eligibility: number;
-
-  public xTrace: { nodes: Node[]; values: number[]; used?: boolean };
-
-  constructor() {
-    this.eligibility = 0;
-    this.xTrace = {
-      nodes: [],
-      values: [],
-    };
-  }
-}
-
-class ConnectionStatePersistent {
   public previousDeltaWeight: number;
   public totalDeltaWeight: number;
 
+  public used?: boolean;
+
   constructor() {
+    this.eligibility = 0;
     this.previousDeltaWeight = 0;
     this.totalDeltaWeight = 0;
   }
@@ -51,7 +40,6 @@ export class NetworkState {
   private nodeMap;
   private connectionMap;
   private nodeMapPersistent;
-  private connectionMapPersistent;
   private network;
   public activations: number[] = [];
 
@@ -60,28 +48,6 @@ export class NetworkState {
     this.nodeMap = new Map<number, NodeState>();
     this.connectionMap = new Map<number, Map<number, ConnectionState>>();
     this.nodeMapPersistent = new Map<number, NodeStatePersistent>();
-    this.connectionMapPersistent = new Map<
-      number,
-      Map<number, ConnectionStatePersistent>
-    >();
-  }
-
-  connectionPersistent(from: number, to: number): ConnectionStatePersistent {
-    let fromMap = this.connectionMapPersistent.get(from);
-    if (fromMap === undefined) {
-      fromMap = new Map<number, ConnectionStatePersistent>();
-      this.connectionMapPersistent.set(from, fromMap);
-    }
-    const state = fromMap.get(to);
-
-    if (state !== undefined) {
-      return state;
-    } else {
-      const tmpState = new ConnectionStatePersistent();
-
-      fromMap.set(to, tmpState);
-      return tmpState;
-    }
   }
 
   connection(from: number, to: number): ConnectionState {

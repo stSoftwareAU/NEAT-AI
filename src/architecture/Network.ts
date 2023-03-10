@@ -2110,7 +2110,7 @@ export class Network implements NetworkInternal {
       const exportConnection = json.connections[indx] as ConnectionTrace;
       const cs = this.networkState.connection(c.from, c.to);
       exportConnection.trace = {
-        used: cs.xTrace.used,
+        used: cs.used,
       };
 
       traceConnections[indx] = exportConnection;
@@ -2216,7 +2216,7 @@ export class Network implements NetworkInternal {
       );
       if ((conn as ConnectionTrace).trace) {
         const cs = this.networkState.connection(connection.from, connection.to);
-        cs.xTrace.used = (conn as ConnectionTrace).trace.used;
+        cs.used = (conn as ConnectionTrace).trace.used;
       }
     }
 

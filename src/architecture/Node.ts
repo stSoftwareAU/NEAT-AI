@@ -224,8 +224,6 @@ export class Node implements TagsInterface, NodeInternal {
         sp.derivative = result.derivative;
 
         // Update traces
-        const nodes: Node[] = [];
-        const influences: number[] = [];
 
         const self = this.network.selfConnection(this.index);
         const selfState = this.network.networkState.connection(
@@ -271,30 +269,6 @@ export class Node implements TagsInterface, NodeInternal {
                 throw c.from + ":" + c.to + ") invalid eligibility: " +
                   cs.eligibility;
               }
-            }
-          }
-
-          // Extended trace
-          for (let j = nodes.length; j--;) {
-            const node = nodes[j];
-            const influence = influences[j];
-
-            const index = cs.xTrace.nodes.indexOf(node);
-
-            if (index > -1) {
-              const value = self
-                ? (self.weight *
-                  cs.xTrace.values[index])
-                : 0 +
-                  sp.derivative * cs.eligibility * influence;
-
-              cs.xTrace.values[index] = value;
-            } else {
-              // Does not exist there yet, might be through mutation
-              cs.xTrace.nodes.push(node);
-              cs.xTrace.values.push(
-                sp.derivative * cs.eligibility * influence,
-              );
             }
           }
         }
@@ -437,24 +411,17 @@ export class Node implements TagsInterface, NodeInternal {
       const c = toList[i];
 
       const cs = this.network.networkState.connection(c.from, c.to);
-      const csp = this.network.networkState.connectionPersistent(c.from, c.to);
-      let gradient = ns.errorProjected * cs.eligibility;
-
-      for (let j = cs.xTrace.nodes.length; j--;) {
-        const node = cs.xTrace.nodes[j];
-        const value = cs.xTrace.values[j];
-        const traceState = this.network.networkState.node(node.index);
-        gradient += traceState.errorResponsibility * value;
-      }
+      // const csp = this.network.networkState.connectionPersistent(c.from, c.to);
+      const gradient = ns.errorProjected * cs.eligibility;
 
       // Adjust weight
       const deltaWeight = rate * gradient;
 
-      csp.totalDeltaWeight += deltaWeight;
+      cs.totalDeltaWeight += deltaWeight;
       if (update) {
-        csp.totalDeltaWeight += momentum *
-          csp.previousDeltaWeight;
-        c.weight += csp.totalDeltaWeight;
+        cs.totalDeltaWeight += momentum *
+          cs.previousDeltaWeight;
+        c.weight += cs.totalDeltaWeight;
         if (!Number.isFinite(c.weight)) {
           if (c.weight === Number.POSITIVE_INFINITY) {
             c.weight = Number.MAX_SAFE_INTEGER;
@@ -468,8 +435,8 @@ export class Node implements TagsInterface, NodeInternal {
           }
         }
 
-        csp.previousDeltaWeight = csp.totalDeltaWeight;
-        csp.totalDeltaWeight = 0;
+        cs.previousDeltaWeight = cs.totalDeltaWeight;
+        cs.totalDeltaWeight = 0;
       }
     }
 

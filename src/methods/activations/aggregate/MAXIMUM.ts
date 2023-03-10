@@ -35,8 +35,8 @@ export class MAXIMUM
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const trace = node.network.networkState.connection(c.from, c.to).xTrace;
-      if (trace.used == undefined) trace.used = false;
+      const cs = node.network.networkState.connection(c.from, c.to);
+      if (cs.used == undefined) cs.used = false;
 
       const value = node.network.getActivation(c.from) *
         c.weight;
@@ -51,7 +51,7 @@ export class MAXIMUM
         usedConnection.from,
         usedConnection.to,
       );
-      cs.xTrace.used = true;
+      cs.used = true;
     }
 
     return maxValue;
@@ -73,10 +73,10 @@ export class MAXIMUM
       const c = toList[i];
       if (node.index != c.to) throw "mismatched index " + c;
       const cs = node.network.networkState.connection(c.from, c.to);
-      if (!cs.xTrace.used) {
+      if (!cs.used) {
         node.network.disconnect(c.from, c.to);
         changed = true;
-        cs.xTrace.used = false;
+        cs.used = false;
       } else {
         usedCount++;
       }
