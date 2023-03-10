@@ -1248,7 +1248,7 @@ export class Network implements NetworkInternal {
             /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
-          const update = (i + 1) % batchSize === 0 || (i === 0 && j == 0);
+          const update = (i + 1) % batchSize === 0 || i === 0;
 
           const output = this.activate(data.input);
 
@@ -2114,6 +2114,9 @@ export class Network implements NetworkInternal {
       const cs = this.networkState.connection(c.from, c.to);
       exportConnection.trace = {
         used: cs.used,
+        eligibility: cs.eligibility,
+        previousDeltaWeight: cs.previousDeltaWeight,
+        totalDeltaWeight: cs.totalDeltaWeight,
       };
 
       traceConnections[indx] = exportConnection;
@@ -2224,7 +2227,15 @@ export class Network implements NetworkInternal {
       );
       if ((conn as ConnectionTrace).trace) {
         const cs = this.networkState.connection(connection.from, connection.to);
-        cs.used = (conn as ConnectionTrace).trace.used;
+        const trace = (conn as ConnectionTrace).trace;
+        cs.used = trace.used;
+        cs.eligibility = trace.eligibility ? trace.eligibility : 0;
+        cs.previousDeltaWeight = trace.previousDeltaWeight
+          ? trace.previousDeltaWeight
+          : 0;
+        cs.totalDeltaWeight = trace.totalDeltaWeight
+          ? trace.totalDeltaWeight
+          : 0;
       }
     }
 
