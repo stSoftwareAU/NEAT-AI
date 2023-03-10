@@ -106,7 +106,7 @@ Deno.test("storeTrace", async () => {
       }
     }
 
-    if( foundUsed && previousDeltaWeightCount ) break;
+    if (foundUsed && previousDeltaWeightCount) break;
   }
   assert(
     foundUsed,
