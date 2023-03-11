@@ -52,7 +52,6 @@ Deno.test("storeTrace", async () => {
 
   let foundUsed = false;
   let eligibilityCount = 0;
-  let previousDeltaWeightCount = 0;
   let totalDeltaWeightCount = 0;
 
   for (let counter = 10; counter--;) {
@@ -86,13 +85,6 @@ Deno.test("storeTrace", async () => {
           }
 
           if (
-            Number.isFinite(c.trace.previousDeltaWeight) &&
-            c.trace.previousDeltaWeight != 0
-          ) {
-            previousDeltaWeightCount++;
-          }
-
-          if (
             Number.isFinite(c.trace.totalDeltaWeight) &&
             c.trace.totalDeltaWeight != 0
           ) {
@@ -106,7 +98,7 @@ Deno.test("storeTrace", async () => {
       }
     }
 
-    if (foundUsed && previousDeltaWeightCount) break;
+    if (foundUsed) break;
   }
   assert(
     foundUsed,
@@ -118,10 +110,10 @@ Deno.test("storeTrace", async () => {
   //   "Should have eligibilityCount",
   // );
 
-  assert(
-    previousDeltaWeightCount > 0,
-    "Should have previousDeltaWeightCount",
-  );
+  // assert(
+  //   previousDeltaWeightCount > 0,
+  //   "Should have previousDeltaWeightCount",
+  // );
 
   // assert(
   //   totalDeltaWeightCount > 0,

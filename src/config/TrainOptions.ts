@@ -14,12 +14,6 @@ export interface TrainOptions {
   /** Sets the amount of iterations the process will maximally run, even when the target error has not been reached. Default: NaN */
   iterations?: number;
 
-  // /** If set to true, will clear the network after every activation. This is useful for training LSTM's, more importantly for timeseries prediction. Default: false */
-  // clear?: boolean;
-
-  /** Sets the momentum of the weight change. More info here. Default: 0 */
-  momentum?: number;
-
   /** Sets the rate policy for your training. This allows your rate to be dynamic, see the rate policies page. Default: methods.rate.FIXED() */
   ratePolicy?: string;
 
