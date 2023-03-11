@@ -7,6 +7,7 @@ class NodeState {
   public derivative: number;
   public totalDeltaBias: number;
   public previousDeltaBias: number;
+  public batchSize: number;
 
   constructor() {
     this.errorResponsibility = 0;
@@ -14,6 +15,7 @@ class NodeState {
     this.derivative = 0;
     this.totalDeltaBias = 0;
     this.previousDeltaBias = 0;
+    this.batchSize = 0;
   }
 }
 

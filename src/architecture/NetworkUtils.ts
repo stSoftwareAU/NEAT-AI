@@ -16,8 +16,9 @@ export class NetworkUtil {
     }
     const json = JSON.parse(JSON.stringify(creature.internalJSON()));
     json.nodes.forEach(
-      (n: { uuid?: string; index?: number }) => {
+      (n: { uuid?: string; trace?: unknown }) => {
         delete n.uuid;
+        delete n.trace;
       },
     );
     json.connections.forEach(

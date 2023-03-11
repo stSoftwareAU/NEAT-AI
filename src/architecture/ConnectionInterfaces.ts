@@ -17,7 +17,6 @@ export interface ConnectionTrace extends ConnectionExport {
   trace: {
     used?: boolean;
     eligibility?: number;
-    previousDeltaWeight?: number;
     totalDeltaWeight?: number;
   };
 }
