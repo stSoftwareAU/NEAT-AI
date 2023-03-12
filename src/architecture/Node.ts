@@ -9,6 +9,7 @@ import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
+import { findRatePolicy } from "../config.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -347,6 +348,10 @@ export class Node implements TagsInterface, NodeInternal {
   }
 
   private limit(delta: number, limit: number) {
+    if (!Number.isFinite(delta)) {
+      return 0;
+    }
+
     const limitedDelta = Math.min(
       Math.max(delta, Math.abs(limit) * -1),
       Math.abs(limit),
@@ -363,111 +368,145 @@ export class Node implements TagsInterface, NodeInternal {
 
       const cs = this.network.networkState.connection(c.from, c.to);
 
-      c.weight += this.limit(cs.totalDeltaWeight, 0.1);
-      if (!Number.isFinite(c.weight)) {
-        if (c.weight === Number.POSITIVE_INFINITY) {
-          c.weight = Number.MAX_SAFE_INTEGER;
-        } else if (c.weight === Number.NEGATIVE_INFINITY) {
-          c.weight = Number.MIN_SAFE_INTEGER;
-        } else if (isNaN(c.weight)) {
-          c.weight = 0;
-        } else {
-          console.trace();
-          throw c.from + ":" + c.to + ") invalid weight: " + c.weight;
-        }
-      }
+      const deltaWeight = cs.totalDeltaWeight / ns.batchSize;
+      c.weight += this.limit(deltaWeight, 0.1);
 
-      cs.previousDeltaWeight = this.limit(cs.totalDeltaWeight, 0.1);
+      cs.previousDeltaWeight = cs.totalDeltaWeight;
       cs.totalDeltaWeight = 0;
     }
 
     const deltaBias = ns.totalDeltaBias / ns.batchSize;
 
-    this.bias += deltaBias;
-    if (!Number.isFinite(this.bias)) {
-      if (this.bias === Number.POSITIVE_INFINITY) {
-        this.bias = Number.MAX_SAFE_INTEGER;
-      } else if (this.bias === Number.NEGATIVE_INFINITY) {
-        this.bias = Number.MIN_SAFE_INTEGER;
-      } else if (isNaN(this.bias)) {
-        this.bias = 0;
-      } else {
-        console.trace();
-        throw this.index + ") invalid this.bias: " + this.bias;
-      }
-    }
+    this.bias += this.limit(deltaBias, 0.1);
 
     ns.totalDeltaBias = 0;
     ns.batchSize = 0;
   }
+
   /**
    * Back-propagate the error, aka learn
    */
-  propagate(rate: number, target?: number) {
-    // Error accumulator
-    let error = 0;
-
+  propagate(rate: number, target: number) {
     const ns = this.network.networkState.node(this.index);
+    const activation = this.network.getActivation(this.index);
+    const error = target -
+      activation;
+    // console.info(`${this.index}: target: ${target}, activation: ${activation}, error: ${error}`);
+    // if (Math.abs(error) > 10) {
+    //   console.info("here");
+    // }
+    const toList = this.network.toConnections(this.index);
 
-    // Output nodes get their error from the environment
-    if (this.type === "output") {
-      const activation = this.network.getActivation(this.index);
-      ns.errorResponsibility = ns.errorProjected = (target ? target : 0) -
-        activation;
-    } else { // the rest of the nodes compute their error responsibilities by back propagation
-      // error responsibilities from all the connections projected from this node
-      const fromList = this.network.fromConnections(this.index);
+    // const ratePerNode=rate/(toList.length + 1);
+    const errorPerNode = error / (toList.length + 1);
 
-      for (let i = fromList.length; i--;) {
-        const c = fromList[i];
-
-        const toState = this.network.networkState.node(c.to);
-
-        const tmpError = error +
-          toState.errorResponsibility * c.weight;
-        error = Number.isFinite(tmpError) ? tmpError : error;
-      }
-
-      // Projected error responsibility
-      ns.errorProjected = ns.derivative * error;
-      if (!Number.isFinite(ns.errorProjected)) {
-        if (ns.errorProjected === Number.POSITIVE_INFINITY) {
-          ns.errorProjected = Number.MAX_SAFE_INTEGER;
-        } else if (ns.errorProjected === Number.NEGATIVE_INFINITY) {
-          ns.errorProjected = Number.MIN_SAFE_INTEGER;
-        } else if (isNaN(ns.errorProjected)) {
-          ns.errorProjected = 0;
-        } else {
-          console.trace();
-
-          throw this.index + ") invalid error.projected: " + ns.errorProjected;
-        }
-      }
-
-      // Error responsibility
-      ns.errorResponsibility = ns.errorProjected;
-    }
-
-    if (this.type !== "constant") {
-      // Adjust all the node's incoming connections
-      const toList = this.network.toConnections(this.index);
-      for (let i = toList.length; i--;) {
-        const c = toList[i];
-
+    ns.totalDeltaBias += errorPerNode;
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+      const fromActivation = this.network.getActivation(c.from);
+      if (fromActivation != 0) {
         const cs = this.network.networkState.connection(c.from, c.to);
+        const fromValue = c.weight * fromActivation;
+        const fromNode = this.network.nodes[c.from];
+        // let weightBiasShare=2;
+        // if( fromNode.type!=='constant' && fromNode.type !== 'input'){
+        //   weightBiasShare=1;
+        // }
+        // const targetActivation = (fromValue + errorPerNode) / c.weight;
 
-        const gradient = ns.errorProjected * cs.eligibility;
+        const targetValue = fromValue + errorPerNode;
+        const targetWeight = targetValue / fromActivation; // * Math.random();
+        let deltaWeight = targetWeight - c.weight;
+        switch (fromNode.type) {
+          case "input":
+          case "constant":
+            break;
+          default: {
+            deltaWeight /= 2;
+
+            const targetActivation = targetValue / targetWeight;
+
+            // const adjustedTargetActivation = fromActivation +(targetActivation - fromActivation);
+            // (this.limit((targetActivation - fromActivation), 0.2) * Math.random());
+            (fromNode as Node).propagate(rate, targetActivation);
+          }
+        }
+        // const gradient = ns.errorProjected * cs.eligibility;
 
         // Adjust weight
-        const deltaWeight = rate * gradient;
+        // const deltaWeight = ratePerNode * gradient;
 
         cs.totalDeltaWeight += deltaWeight;
       }
-
-      // Adjust bias
-      const deltaBias = rate * ns.errorResponsibility;
-      ns.totalDeltaBias += deltaBias;
     }
+
+    //   // Adjust bias
+    //   const deltaBias = rate * ns.errorResponsibility;
+    //   ns.totalDeltaBias += deltaBias;
+    // }
+
+    // // Error accumulator
+    // let error = 0;
+
+    // // Output nodes get their error from the environment
+    // if (this.type === "output") {
+    //   const activation = this.network.getActivation(this.index);
+    //   ns.errorResponsibility = ns.errorProjected = target -
+    //     activation;
+    // } else { // the rest of the nodes compute their error responsibilities by back propagation
+    //   // error responsibilities from all the connections projected from this node
+    //   const fromList = this.network.fromConnections(this.index);
+
+    //   for (let i = fromList.length; i--;) {
+    //     const c = fromList[i];
+
+    //     const toState = this.network.networkState.node(c.to);
+
+    //     const tmpError = error +
+    //       toState.errorResponsibility * c.weight;
+    //     error = Number.isFinite(tmpError) ? tmpError : error;
+    //   }
+
+    //   // Projected error responsibility
+    //   ns.errorProjected = ns.derivative * error;
+    //   if (!Number.isFinite(ns.errorProjected)) {
+    //     if (ns.errorProjected === Number.POSITIVE_INFINITY) {
+    //       ns.errorProjected = Number.MAX_SAFE_INTEGER;
+    //     } else if (ns.errorProjected === Number.NEGATIVE_INFINITY) {
+    //       ns.errorProjected = Number.MIN_SAFE_INTEGER;
+    //     } else if (isNaN(ns.errorProjected)) {
+    //       ns.errorProjected = 0;
+    //     } else {
+    //       console.trace();
+
+    //       throw this.index + ") invalid error.projected: " + ns.errorProjected;
+    //     }
+    //   }
+
+    //   // Error responsibility
+    //   ns.errorResponsibility = ns.errorProjected;
+    // }
+
+    // if (this.type !== "constant") {
+    //   // Adjust all the node's incoming connections
+    //   const toList = this.network.toConnections(this.index);
+    //   for (let i = toList.length; i--;) {
+    //     const c = toList[i];
+
+    //     const cs = this.network.networkState.connection(c.from, c.to);
+
+    //     const gradient = ns.errorProjected * cs.eligibility;
+
+    //     // Adjust weight
+    //     const deltaWeight = rate * gradient;
+
+    //     cs.totalDeltaWeight += deltaWeight;
+    //   }
+
+    //   // Adjust bias
+    //   const deltaBias = rate * ns.errorResponsibility;
+    //   ns.totalDeltaBias += deltaBias;
+    // }
 
     ns.batchSize++;
   }

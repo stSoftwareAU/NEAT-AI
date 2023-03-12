@@ -925,15 +925,15 @@ export class Network implements NetworkInternal {
       );
     }
 
-    // Propagate hidden and input nodes
-    for (
-      let i = this.nodes.length - this.output - 1;
-      i >= this.input;
-      i--
-    ) {
-      const n = this.nodes[i] as Node;
-      n.propagate(rate);
-    }
+    // // Propagate hidden and input nodes
+    // for (
+    //   let i = this.nodes.length - this.output - 1;
+    //   i >= this.input;
+    //   i--
+    // ) {
+    //   const n = this.nodes[i] as Node;
+    //   n.propagate(rate);
+    // }
   }
 
   /**
@@ -1197,7 +1197,10 @@ export class Network implements NetworkInternal {
     }
 
     // Read the options
-    const targetError = options.error || 0.05;
+    const targetError =
+      options.error !== undefined && Number.isFinite(options.error)
+        ? options.error
+        : 0.05;
     const cost = Costs.find(options.cost ? options.cost : "MSE");
     const baseRate = options.rate == undefined ? Math.random() : options.rate;
 
