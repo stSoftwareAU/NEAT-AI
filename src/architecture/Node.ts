@@ -400,7 +400,11 @@ export class Node implements TagsInterface, NodeInternal {
     // const ratePerNode=rate/(toList.length + 1);
     const errorPerNode = error / (toList.length + 1);
 
-    ns.totalDeltaBias += errorPerNode; //(avgDeltaBias + errorPerNode) * (ns.batchSize + 1);
+    ns.totalDeltaBias = (avgDeltaBias * ns.batchSize + errorPerNode) /
+      ((ns.batchSize ? ns.batchSize : 0) + 1);
+
+    ns.batchSize++;
+    //(avgDeltaBias + errorPerNode) * (ns.batchSize + 1);
     // console.info( `${this.index}: ns.totalDeltaBias {${ns.totalDeltaBias}} = (avgDeltaBias{${avgDeltaBias}} + (errorPerNode{${errorPerNode}} -avgDeltaBias{${avgDeltaBias}})) * (ns.batchSize{${ns.batchSize}} + 1)`);
     for (let i = toList.length; i--;) {
       const c = toList[i];
@@ -409,29 +413,30 @@ export class Node implements TagsInterface, NodeInternal {
         (fromState.batchSize ? fromState.batchSize : 1);
       const fromActivation = this.network.getActivation(c.from) +
         avgFromDeltaBias;
-      if (fromActivation != 0) {
-        const cs = this.network.networkState.connection(c.from, c.to);
-        const fromWeight = c.weight +
-          cs.totalDeltaWeight / (cs.count ? cs.count : 1);
-        const fromValue = fromWeight * fromActivation;
-        const fromNode = this.network.nodes[c.from];
-        // let weightBiasShare=2;
-        // if( fromNode.type!=='constant' && fromNode.type !== 'input'){
-        //   weightBiasShare=1;
-        // }
-        // const targetActivation = (fromValue + errorPerNode) / c.weight;
+      // if (fromActivation != 0) {
+      const cs = this.network.networkState.connection(c.from, c.to);
+      const fromWeight = c.weight +
+        cs.totalDeltaWeight / (cs.count ? cs.count : 1);
+      const fromValue = fromWeight * fromActivation;
+      const fromNode = this.network.nodes[c.from];
+      // let weightBiasShare=2;
+      // if( fromNode.type!=='constant' && fromNode.type !== 'input'){
+      //   weightBiasShare=1;
+      // }
+      // const targetActivation = (fromValue + errorPerNode) / c.weight;
 
-        switch (fromNode.type) {
-          case "input":
-          case "constant": {
-            const targetValue = fromValue + errorPerNode;
-            const targetWeight = targetValue / fromActivation; // * Math.random();
-            const deltaWeight = targetWeight - fromWeight;
-            cs.totalDeltaWeight = (avgFromDeltaBias * cs.count + deltaWeight) /
-              (cs.count + 1);
-            break;
-          }
-          default: {
+      switch (fromNode.type) {
+        case "input":
+        case "constant": {
+          const targetValue = fromValue + errorPerNode;
+          const targetWeight = targetValue / fromActivation; // * Math.random();
+          const deltaWeight = targetWeight - fromWeight;
+          cs.totalDeltaWeight = (avgFromDeltaBias * cs.count + deltaWeight) /
+            (cs.count + 1);
+          break;
+        }
+        default:
+          {
             const targetValue = fromValue + errorPerNode;
             const targetWeight = targetValue / fromActivation; // * Math.random();
             const deltaWeight = targetWeight - fromWeight;
@@ -444,12 +449,12 @@ export class Node implements TagsInterface, NodeInternal {
             // (this.limit((targetActivation - fromActivation), 0.2) * Math.random());
             (fromNode as Node).propagate(rate, targetActivation);
           }
-        }
-        // const gradient = ns.errorProjected * cs.eligibility;
+          // }
+          // const gradient = ns.errorProjected * cs.eligibility;
 
-        // Adjust weight
-        // const deltaWeight = ratePerNode * gradient;
-        cs.count++;
+          // Adjust weight
+          // const deltaWeight = ratePerNode * gradient;
+          cs.count++;
       }
     }
 
@@ -520,8 +525,6 @@ export class Node implements TagsInterface, NodeInternal {
     //   const deltaBias = rate * ns.errorResponsibility;
     //   ns.totalDeltaBias += deltaBias;
     // }
-
-    ns.batchSize++;
   }
 
   /**
