@@ -23,6 +23,7 @@ class ConnectionState {
   public eligibility: number;
   public previousDeltaWeight: number;
   public totalDeltaWeight: number;
+  public count: number;
 
   public used?: boolean;
 
@@ -30,6 +31,7 @@ class ConnectionState {
     this.eligibility = 0;
     this.previousDeltaWeight = 0;
     this.totalDeltaWeight = 0;
+    this.count = 0;
   }
 }
 

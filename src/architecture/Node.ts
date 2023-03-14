@@ -9,7 +9,7 @@ import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
-import { findRatePolicy } from "../config.ts";
+// import { findRatePolicy } from "../config.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -389,8 +389,8 @@ export class Node implements TagsInterface, NodeInternal {
   propagate(rate: number, target: number) {
     const ns = this.network.networkState.node(this.index);
     const activation = this.network.getActivation(this.index);
-    const error = target -
-      activation;
+    const avgDeltaBias = ns.totalDeltaBias / (ns.batchSize ? ns.batchSize : 1);
+    const error = target - (activation + avgDeltaBias);
     // console.info(`${this.index}: target: ${target}, activation: ${activation}, error: ${error}`);
     // if (Math.abs(error) > 10) {
     //   console.info("here");
@@ -400,13 +400,20 @@ export class Node implements TagsInterface, NodeInternal {
     // const ratePerNode=rate/(toList.length + 1);
     const errorPerNode = error / (toList.length + 1);
 
-    ns.totalDeltaBias += errorPerNode;
+    ns.totalDeltaBias += errorPerNode; //(avgDeltaBias + errorPerNode) * (ns.batchSize + 1);
+    // console.info( `${this.index}: ns.totalDeltaBias {${ns.totalDeltaBias}} = (avgDeltaBias{${avgDeltaBias}} + (errorPerNode{${errorPerNode}} -avgDeltaBias{${avgDeltaBias}})) * (ns.batchSize{${ns.batchSize}} + 1)`);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const fromActivation = this.network.getActivation(c.from);
+      const fromState = this.network.networkState.node(c.from);
+      const avgFromDeltaBias = fromState.totalDeltaBias /
+        (fromState.batchSize ? fromState.batchSize : 1);
+      const fromActivation = this.network.getActivation(c.from) +
+        avgFromDeltaBias;
       if (fromActivation != 0) {
         const cs = this.network.networkState.connection(c.from, c.to);
-        const fromValue = c.weight * fromActivation;
+        const fromWeight = c.weight +
+          cs.totalDeltaWeight / (cs.count ? cs.count : 1);
+        const fromValue = fromWeight * fromActivation;
         const fromNode = this.network.nodes[c.from];
         // let weightBiasShare=2;
         // if( fromNode.type!=='constant' && fromNode.type !== 'input'){
@@ -414,16 +421,23 @@ export class Node implements TagsInterface, NodeInternal {
         // }
         // const targetActivation = (fromValue + errorPerNode) / c.weight;
 
-        const targetValue = fromValue + errorPerNode;
-        const targetWeight = targetValue / fromActivation; // * Math.random();
-        let deltaWeight = targetWeight - c.weight;
         switch (fromNode.type) {
           case "input":
-          case "constant":
+          case "constant": {
+            const targetValue = fromValue + errorPerNode;
+            const targetWeight = targetValue / fromActivation; // * Math.random();
+            const deltaWeight = targetWeight - fromWeight;
+            cs.totalDeltaWeight = (avgFromDeltaBias * cs.count + deltaWeight) /
+              (cs.count + 1);
             break;
+          }
           default: {
-            deltaWeight /= 2;
-
+            const targetValue = fromValue + errorPerNode;
+            const targetWeight = targetValue / fromActivation; // * Math.random();
+            const deltaWeight = targetWeight - fromWeight;
+            cs.totalDeltaWeight =
+              (avgFromDeltaBias * cs.count + deltaWeight * Math.random()) /
+              (cs.count + 1);
             const targetActivation = targetValue / targetWeight;
 
             // const adjustedTargetActivation = fromActivation +(targetActivation - fromActivation);
@@ -435,8 +449,7 @@ export class Node implements TagsInterface, NodeInternal {
 
         // Adjust weight
         // const deltaWeight = ratePerNode * gradient;
-
-        cs.totalDeltaWeight += deltaWeight;
+        cs.count++;
       }
     }
 
