@@ -869,6 +869,8 @@ export class Network implements NetworkInternal {
   }
 
   applyLearnings() {
+    this.propagateUpdate();
+
     const oldConnections = this.connections.length;
     const oldNodes = this.nodes.length;
     let changed = false;
@@ -1263,21 +1265,12 @@ export class Network implements NetworkInternal {
             /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
-          const update = (i + 1) % batchSize === 0 || i === 0;
 
           const output = this.activate(data.input);
 
           errorSum += cost.calculate(data.output, output);
 
           this.propagate(currentRate, data.output);
-          if (update) {
-            this.propagateUpdate();
-          }
-          /* Clear if we've updated the state batch only */
-          if (update && (i || j)) {
-            /* Hold the last one so we can write it out */
-            this.clearState();
-          }
         }
 
         counter += len;
