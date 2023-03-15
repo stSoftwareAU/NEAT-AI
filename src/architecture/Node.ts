@@ -408,6 +408,8 @@ export class Node implements TagsInterface, NodeInternal {
     // console.info( `${this.index}: ns.totalDeltaBias {${ns.totalDeltaBias}} = (avgDeltaBias{${avgDeltaBias}} + (errorPerNode{${errorPerNode}} -avgDeltaBias{${avgDeltaBias}})) * (ns.batchSize{${ns.batchSize}} + 1)`);
     for (let i = toList.length; i--;) {
       const c = toList[i];
+      /** Skip over self */
+      if( c.from == c.to)continue;
       const fromState = this.network.networkState.node(c.from);
       const avgFromDeltaBias = fromState.totalDeltaBias /
         (fromState.batchSize ? fromState.batchSize : 1);
@@ -443,6 +445,7 @@ export class Node implements TagsInterface, NodeInternal {
             cs.totalDeltaWeight =
               (avgFromDeltaBias * cs.count + deltaWeight * Math.random()) /
               (cs.count + 1);
+            
             const targetActivation = targetValue / targetWeight;
 
             // const adjustedTargetActivation = fromActivation +(targetActivation - fromActivation);
