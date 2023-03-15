@@ -409,7 +409,7 @@ export class Node implements TagsInterface, NodeInternal {
     for (let i = toList.length; i--;) {
       const c = toList[i];
       /** Skip over self */
-      if( c.from == c.to)continue;
+      if( c.from == c.to) continue;
       const fromState = this.network.networkState.node(c.from);
       const avgFromDeltaBias = fromState.totalDeltaBias /
         (fromState.batchSize ? fromState.batchSize : 1);
