@@ -595,7 +595,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
     });
 
     Deno.writeTextFileSync(
-      ".trace/1.json",
+      ".trace/first.json",
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
 
@@ -605,7 +605,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
     });
 
     Deno.writeTextFileSync(
-      ".trace/100.json",
+      ".trace/last.json",
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
     console.info(result1.error, result2.error);

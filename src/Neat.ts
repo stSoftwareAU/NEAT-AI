@@ -71,7 +71,7 @@ export class Neat {
         const trained = getTag(n, "trained");
         if (trained !== "YES" && i == 0) {
           // console.info( `train ${n.uuid}`);
-          const p = this.workers[i].train(n, this.trainRate);
+          const p = this.workers[i].train(n);
           trainPromises.push(p);
           addTag(n, "trained", "YES");
         }

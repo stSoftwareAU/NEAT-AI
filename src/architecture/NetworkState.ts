@@ -21,22 +21,15 @@ class NodeState {
 
 class ConnectionState {
   public eligibility: number;
-  public previousDeltaWeight: number;
   public totalDeltaWeight: number;
   public count: number;
 
   public used?: boolean;
 
-  // public totalValue: number;
-  // public totalActivation: number;
   constructor() {
     this.eligibility = 0;
-    this.previousDeltaWeight = 0;
     this.totalDeltaWeight = 0;
     this.count = 0;
-
-    // this.totalValue = 0;
-    // this.totalActivation = 0;
   }
 }
 

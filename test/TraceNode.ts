@@ -59,8 +59,8 @@ Deno.test("traceNode", async () => {
   };
   await network.evolveDataSet(ts, options);
 
-  let errorResponsibilityCount = 0;
-  let errorProjectedCount = 0;
+  // let errorResponsibilityCount = 0;
+  // let errorProjectedCount = 0;
   let derivativeCount = 0;
   let totalDeltaBiasCount = 0;
 
@@ -72,19 +72,19 @@ Deno.test("traceNode", async () => {
 
       json.nodes.forEach((n: NodeTrace) => {
         if (n.trace) {
-          if (
-            Number.isFinite(n.trace.errorResponsibility) &&
-            n.trace.errorResponsibility != 0
-          ) {
-            errorResponsibilityCount++;
-          }
+          // if (
+          //   Number.isFinite(n.trace.errorResponsibility) &&
+          //   n.trace.errorResponsibility != 0
+          // ) {
+          //   errorResponsibilityCount++;
+          // }
 
-          if (
-            Number.isFinite(n.trace.errorProjected) &&
-            n.trace.errorProjected != 0
-          ) {
-            errorProjectedCount++;
-          }
+          // if (
+          //   Number.isFinite(n.trace.errorProjected) &&
+          //   n.trace.errorProjected != 0
+          // ) {
+          //   errorProjectedCount++;
+          // }
 
           if (
             Number.isFinite(n.trace.derivative) &&
@@ -104,14 +104,14 @@ Deno.test("traceNode", async () => {
     }
   }
   assert(
-    errorResponsibilityCount > 0,
-    "Should have errorResponsibility",
+    totalDeltaBiasCount > 0,
+    "Should have totalDeltaBiasCount",
   );
 
-  assert(
-    errorProjectedCount > 0,
-    "Should have errorProjectedCount",
-  );
+  // assert(
+  //   errorProjectedCount > 0,
+  //   "Should have errorProjectedCount",
+  // );
 
   assert(
     derivativeCount > 0,

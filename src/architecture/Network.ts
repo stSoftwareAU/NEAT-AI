@@ -22,7 +22,6 @@ import { getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
-import { findRatePolicy, randomPolicyName } from "../config.ts";
 import { emptyDirSync } from "https://deno.land/std@0.177.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
@@ -903,7 +902,7 @@ export class Network implements NetworkInternal {
   /**
    * Back propagate the network
    */
-  propagate(rate: number, target: number[]) {
+  propagate(target: number[]) {
     if (
       target === undefined || target.length !== this.output
     ) {
@@ -922,7 +921,6 @@ export class Network implements NetworkInternal {
     ) {
       const n = this.nodes[i] as Node;
       n.propagate(
-        rate,
         target[--targetIndex],
       );
     }
@@ -1204,12 +1202,6 @@ export class Network implements NetworkInternal {
         ? options.error
         : 0.05;
     const cost = Costs.find(options.cost ? options.cost : "MSE");
-    const baseRate = options.rate == undefined ? Math.random() : options.rate;
-
-    const ratePolicyName = options.ratePolicy
-      ? options.ratePolicy
-      : randomPolicyName();
-    const ratePolicy = findRatePolicy(ratePolicyName);
 
     const iterations = options.iterations ? options.iterations : 0;
 
@@ -1223,13 +1215,6 @@ export class Network implements NetworkInternal {
     const EMPTY = { input: [], output: [] };
     while (true) {
       iteration++;
-
-      // Update the rate
-      const currentRate = ratePolicy(baseRate, iteration);
-
-      if (!Number.isFinite(currentRate)) {
-        throw "not a valid rate: " + currentRate;
-      }
 
       let counter = 0;
       let errorSum = 0;
@@ -1254,10 +1239,7 @@ export class Network implements NetworkInternal {
           throw "Set size must be positive";
         }
         const len = json.length;
-        const batchSize = Math.max(
-          options.batchSize ? options.batchSize : Math.round(len / 10),
-          1,
-        );
+
         for (let i = len; i--;) {
           const data = json[i];
 
@@ -1270,7 +1252,7 @@ export class Network implements NetworkInternal {
 
           errorSum += cost.calculate(data.output, output);
 
-          this.propagate(currentRate, data.output);
+          this.propagate(data.output);
         }
 
         counter += len;
@@ -1289,10 +1271,6 @@ export class Network implements NetworkInternal {
           iteration,
           "error",
           error,
-          "rate",
-          currentRate,
-          "policy",
-          yellow(ratePolicyName),
         );
       }
 

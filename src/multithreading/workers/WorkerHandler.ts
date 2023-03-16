@@ -17,7 +17,6 @@ export interface RequestData {
   };
   train?: {
     network: string;
-    rate: number;
   };
   echo?: {
     ms: number;
@@ -177,7 +176,7 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  train(network: NetworkInternal, rate: number) {
+  train(network: NetworkInternal) {
     const json = (network as Network).internalJSON();
 
     delete json.tags;
@@ -189,7 +188,6 @@ export class WorkerHandler {
       taskID: this.taskID++,
       train: {
         network: JSON.stringify(json),
-        rate: rate,
       },
     };
 

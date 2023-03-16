@@ -9,7 +9,6 @@ import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
-// import { findRatePolicy } from "../config.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -368,84 +367,81 @@ export class Node implements TagsInterface, NodeInternal {
 
       const cs = this.network.networkState.connection(c.from, c.to);
 
-      const deltaWeight = cs.totalDeltaWeight / ns.batchSize;
-      c.weight += this.limit(deltaWeight, 0.1);
+      if (cs.count) {
+        const deltaWeight = cs.totalDeltaWeight / cs.count;
 
-      cs.previousDeltaWeight = cs.totalDeltaWeight;
-      cs.totalDeltaWeight = 0;
+        c.weight += this.limit(deltaWeight, 0.1);
+      }
+      cs.count = cs.totalDeltaWeight = 0;
     }
 
     const deltaBias = ns.totalDeltaBias / ns.batchSize;
 
     this.bias += this.limit(deltaBias, 0.1);
 
-    // if( this.index == 9){
-    // console.info( `${this.index}: deltaBias{${deltaBias}} = ns.totalDeltaBias{${ns.totalDeltaBias}} / ns.batchSize{${ns.batchSize}}`)
-    // console.info( `${this.index}: bias{${this.bias}}`)
-    // }
-    ns.totalDeltaBias = 0;
-    ns.batchSize = 0;
+    ns.totalDeltaBias = ns.batchSize = 0;
   }
 
   /**
    * Back-propagate the error, aka learn
    */
-  propagate(rate: number, target: number) {
+  propagate(target: number) {
     const ns = this.network.networkState.node(this.index);
     const activation = this.network.getActivation(this.index);
     const avgDeltaBias = ns.totalDeltaBias / (ns.batchSize ? ns.batchSize : 1);
-    const error = target - activation - avgDeltaBias;
+    const error = target - (activation + avgDeltaBias);
 
-    // if( Math.abs( target) > 10){
-    // console.info(`${this.index}: target: ${target}, activation: ${activation}, avgDeltaBias: ${avgDeltaBias}, error: ${error}`);
-    // }
-    const toList = this.network.toConnections(this.index);
-
-    const errorPerNode = error / (toList.length + 1);
-
-    ns.totalDeltaBias += errorPerNode;
+    const biasError = error;
+    ns.totalDeltaBias += biasError;
 
     ns.batchSize++;
 
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
-      /** Skip over self */
-      if (c.from == c.to) continue;
-      const fromState = this.network.networkState.node(c.from);
-      const avgFromDeltaBias = fromState.totalDeltaBias /
-        (fromState.batchSize ? fromState.batchSize : 1);
-      const fromActivation = this.network.getActivation(c.from) +
-        avgFromDeltaBias;
+    const toList = this.network.toConnections(this.index);
 
-      const cs = this.network.networkState.connection(c.from, c.to);
-      const fromWeight = c.weight +
-        cs.totalDeltaWeight / (cs.count ? cs.count : 1);
-      const fromValue = fromWeight * fromActivation;
-      const fromNode = this.network.nodes[c.from];
+    if (toList.length > 0) {
+      const errorPerLink = (error - biasError) / toList.length;
 
-      cs.count++;
+      for (let i = toList.length; i--;) {
+        const c = toList[i];
+        /** Skip over self */
+        if (c.from == c.to) continue;
+        const fromState = this.network.networkState.node(c.from);
+        const avgFromDeltaBias = fromState.totalDeltaBias /
+          (fromState.batchSize ? fromState.batchSize : 1);
+        const fromActivation = this.network.getActivation(c.from) +
+          avgFromDeltaBias;
 
-      switch (fromNode.type) {
-        case "input":
-        case "constant": {
-          const targetValue = fromValue + errorPerNode;
-          const targetWeight = targetValue / fromActivation;
-          const deltaWeight = targetWeight - fromWeight;
-          cs.totalDeltaWeight += deltaWeight;
-          break;
-        }
-        default: {
-          const targetValue = fromValue + errorPerNode;
-          const targetWeight = targetValue / fromActivation;
-          const deltaWeight = targetWeight - fromWeight;
-          cs.totalDeltaWeight += deltaWeight;
+        const cs = this.network.networkState.connection(c.from, c.to);
+        const fromWeight = c.weight +
+          cs.totalDeltaWeight / (cs.count ? cs.count : 1);
+        const fromValue = fromWeight * fromActivation;
+        const fromNode = this.network.nodes[c.from];
 
-          const targetActivation = targetValue / targetWeight;
-          // if( c.from==8 && c.to ==9){
-          //   console.info( `${this.index}: deltaWeight{${deltaWeight}} = targetWeight{${targetWeight}} - fromWeight{${fromWeight}}`);
-          //   console.info( `${this.index}: targetActivation{${targetActivation}} = targetValue{${targetValue}}/ targetWeight{${targetWeight}}`);
-          // }
-          (fromNode as Node).propagate(rate, targetActivation);
+        switch (fromNode.type) {
+          case "input":
+          case "constant": {
+            const targetValue = fromValue + errorPerLink;
+            const targetWeight = targetValue / fromActivation;
+            const deltaWeight = targetWeight - fromWeight;
+            cs.totalDeltaWeight += deltaWeight;
+            cs.count++;
+            break;
+          }
+          default: {
+            const targetValue = fromValue + errorPerLink;
+
+            if (Math.random() * 2 - 1 > 0) {
+              const targetWeight = targetValue / fromActivation;
+              const deltaWeight = targetWeight - fromWeight;
+
+              cs.totalDeltaWeight += deltaWeight;
+              cs.count++;
+            } else {
+              const targetActivation = targetValue / fromWeight;
+
+              (fromNode as Node).propagate(targetActivation);
+            }
+          }
         }
       }
     }
