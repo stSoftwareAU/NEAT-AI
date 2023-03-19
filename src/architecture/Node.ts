@@ -9,6 +9,8 @@ import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
+import { ConnectionInternal } from "./ConnectionInterfaces.ts";
+import { ConnectionState } from "./NetworkState.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -359,21 +361,38 @@ export class Node implements TagsInterface, NodeInternal {
     return limitedDelta;
   }
 
+  private adjustWeight(c: ConnectionInternal, cs: ConnectionState, limit=0.1) {
+    if (cs.totalActivation) {
+      const deltaWeight = cs.totalValue / cs.totalActivation - c.weight;
+
+      const adjustedWeight = c.weight + this.limit(deltaWeight, limit);
+      if (c.to == 10) {
+        console.info(
+          `${c.from}->${c.to}: adjustedWeight{${adjustedWeight}}; deltaWeight{${deltaWeight}}=cs.totalWeight{${cs.totalValue}} / cs.totalActivation{${cs.totalActivation}} - c.weight{${c.weight}}`,
+        );
+      }
+      return adjustedWeight;
+    } else {
+      return c.weight;
+    }
+  }
+
   propagateUpdate() {
-    const ns = this.network.networkState.node(this.index);
+    console.info(`${this.index}: propagateUpdate`);
     const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
       const cs = this.network.networkState.connection(c.from, c.to);
 
-      if (cs.count) {
-        const deltaWeight = cs.totalDeltaWeight / cs.count;
-
-        c.weight += this.limit(deltaWeight, 0.1);
+      if (cs.totalActivation) {
+        // c.weight = cs.totalWeight / cs.totalActivation;
+        c.weight = this.adjustWeight(c, cs);
       }
-      cs.count = cs.totalDeltaWeight = 0;
+      cs.totalActivation = cs.totalValue = 0;
     }
+
+    const ns = this.network.networkState.node(this.index);
 
     const deltaBias = ns.totalDeltaBias / ns.batchSize;
 
@@ -382,6 +401,7 @@ export class Node implements TagsInterface, NodeInternal {
     ns.totalDeltaBias = ns.batchSize = 0;
   }
 
+  readonly PLANK_CONSTANT = 0.000_000_1;
   /**
    * Back-propagate the error, aka learn
    */
@@ -389,59 +409,110 @@ export class Node implements TagsInterface, NodeInternal {
     const ns = this.network.networkState.node(this.index);
     const activation = this.network.getActivation(this.index);
     const avgDeltaBias = ns.totalDeltaBias / (ns.batchSize ? ns.batchSize : 1);
+    // const squashMethod = this.findSquash();
+    // const activationSquash = squashMethod as ActivationInterface;
+
     const error = target - (activation + avgDeltaBias);
 
-    const biasError = error;
-    ns.totalDeltaBias += biasError;
+    if (Math.abs(error) > this.PLANK_CONSTANT) {
+      if (false && Math.random() * 2 - 1 > 0) {
+        // const biasError = error /2;
+        ns.totalDeltaBias += error;
 
-    ns.batchSize++;
+        ns.batchSize++;
+      } else {
+        const toList = this.network.toConnections(this.index);
 
-    const toList = this.network.toConnections(this.index);
+        if (toList.length > 0) {
+          const errorPerLink = (error) / toList.length; // - biasError
 
-    if (toList.length > 0) {
-      const errorPerLink = (error - biasError) / toList.length;
+          for (let i = toList.length; i--;) {
+            const c = toList[i];
+            /** Skip over self */
+            if (c.from == c.to) continue;
 
-      for (let i = toList.length; i--;) {
-        const c = toList[i];
-        /** Skip over self */
-        if (c.from == c.to) continue;
-        const fromState = this.network.networkState.node(c.from);
-        const avgFromDeltaBias = fromState.totalDeltaBias /
-          (fromState.batchSize ? fromState.batchSize : 1);
-        const fromActivation = this.network.getActivation(c.from) +
-          avgFromDeltaBias;
+            // const fromState = this.network.networkState.node(c.from);
+            // const avgFromDeltaBias = fromState.totalDeltaBias /
+            //   (fromState.batchSize ? fromState.batchSize : 1);
 
-        const cs = this.network.networkState.connection(c.from, c.to);
-        const fromWeight = c.weight +
-          cs.totalDeltaWeight / (cs.count ? cs.count : 1);
-        const fromValue = fromWeight * fromActivation;
-        const fromNode = this.network.nodes[c.from];
+            const fromActivation = this.network.getActivation(c.from)// +
+              // avgFromDeltaBias;
 
-        switch (fromNode.type) {
-          case "input":
-          case "constant": {
-            const targetValue = fromValue + errorPerLink;
-            const targetWeight = targetValue / fromActivation;
-            const deltaWeight = targetWeight - fromWeight;
-            cs.totalDeltaWeight += deltaWeight;
-            cs.count++;
-            break;
-          }
-          default: {
-            const targetValue = fromValue + errorPerLink;
+            const cs = this.network.networkState.connection(c.from, c.to);
+            // const fromWeightDelta = cs.totalWeight /
+            //   (cs.totalActivation ? cs.totalActivation : 1);
+            // const fromWeight = cs cs.totalActivation ? cs.totalWeight/ cs.totalActivation: c.weight;
+            //   cs.totalDeltaWeight / (cs.count ? cs.count : 1);
 
-            if (Math.random() * 2 - 1 > 0) {
-              const targetWeight = targetValue / fromActivation;
-              const deltaWeight = targetWeight - fromWeight;
 
-              cs.totalDeltaWeight += deltaWeight;
-              cs.count++;
+            // switch (fromNode.type) {
+            //   case "input":
+            //   case "constant": {
+            //     const targetWeight = targetValue / fromActivation;
+            //     const deltaWeight = targetWeight - fromWeight;
+            //     cs.totalDeltaWeight += deltaWeight;
+            //     cs.count++;
+            //     break;
+            //   }
+            //   default: {
+            const fromNode = this.network.nodes[c.from];
+            const fromWeight = c.weight;
+            const fromValue = fromWeight * fromActivation;
+            if (              
+              fromActivation && (
+                fromNode.type == "input" ||
+                fromNode.type == "constant" ||
+                Math.random() * 2 - 1 > 0
+              )
+            ) {
+              // const fromWeight = c.weight;//this.adjustWeight(c, cs);
+              
+              
+              const targetValue = fromValue + errorPerLink;
+
+
+              // const targetWeight = targetValue / fromActivation;
+              // const deltaWeight = targetWeight - fromWeight;
+              // const deltaWeight=targetWeight/fromWeight;
+
+              cs.totalValue += targetValue;
+              // cs.totalValue+=targetValue;
+              cs.totalActivation +=fromActivation;
+              if (c.from == 8 && c.to == 10) {
+                console.info(
+                  `${this.index}: fromValue{${fromValue}} = fromWeight{${fromWeight}} * fromActivation{${fromActivation}}`,
+                );
+                // console.info(
+                //   `${this.index}: targetWeight{${targetWeight}} = targetValue{${targetValue}} / fromActivation{${fromActivation}}`,
+                // );
+
+                console.info(
+                  `${this.index}: avg{${
+                    cs.totalValue / cs.totalActivation
+                  }}= totalWeight{${cs.totalValue}}/ fromActivation{${cs.totalActivation}}`,
+                );
+              }
             } else {
-              const targetActivation = targetValue / fromWeight;
 
+              cs.totalValue += fromValue;
+              // cs.totalValue+=targetValue;
+              cs.totalActivation +=fromActivation;
+
+
+              // cs.totalActivation +=fromActivation;
+              // const fromWeight = this.adjustWeight( c, cs, 10);
+              // const fromValue = fromWeight * fromActivation;
+              
+              const targetActivation = fromActivation + errorPerLink/fromWeight;
+              console.info( `${this.index}: targetActivation{${targetActivation}} = fromActivation{${fromActivation}} + errorPerLink{${errorPerLink}}/fromWeight{${fromWeight}}`);
               (fromNode as Node).propagate(targetActivation);
             }
+
+            // }
+            // }
           }
+        } else {
+          console.info(`${this.index}: no error ${error}`);
         }
       }
     }

@@ -1,5 +1,6 @@
 import { Network } from "../src/architecture/Network.ts";
 import { assert, fail } from "https://deno.land/std@0.177.0/testing/asserts.ts";
+import { emptyDirSync } from "https://deno.land/std@0.177.0/fs/empty_dir.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -66,13 +67,23 @@ Deno.test("train-XOR", () => {
       { count: 5 },
     ],
   });
+  const traceDir = ".trace";
+  emptyDirSync(traceDir);
 
+  Deno.writeTextFileSync(
+    `.trace/start.json`,
+    JSON.stringify(network.internalJSON(), null, 2),
+  );
   for (let attempts = 0; true; attempts++) {
     const results = network.train(trainingSet, {
       error: 0.03,
       iterations: 10000,
     });
-    console.info(results);
+    Deno.writeTextFileSync(
+      `.trace/${attempts}.json`,
+      JSON.stringify(results.trace, null, 2),
+    );
+
     if (results.error <= 0.03) {
       break;
     }

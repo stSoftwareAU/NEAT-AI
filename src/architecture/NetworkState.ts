@@ -19,17 +19,19 @@ class NodeState {
   }
 }
 
-class ConnectionState {
+export class ConnectionState {
   public eligibility: number;
-  public totalDeltaWeight: number;
-  public count: number;
+  public totalValue: number;
+  // public totalValue: number; // delete me
+  public totalActivation: number;
+  // public count: number;
 
   public used?: boolean;
 
   constructor() {
     this.eligibility = 0;
-    this.totalDeltaWeight = 0;
-    this.count = 0;
+    this.totalValue= this.totalActivation = 0;
+    // this.count = 0;
   }
 }
 

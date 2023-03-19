@@ -2099,9 +2099,11 @@ export class Network implements NetworkInternal {
       const exportConnection = json.connections[indx] as ConnectionTrace;
       const cs = this.networkState.connection(c.from, c.to);
       exportConnection.trace = {
-        used: cs.used,
         eligibility: cs.eligibility,
-        totalDeltaWeight: cs.totalDeltaWeight,
+
+        used: cs.used,
+        totalWeight: cs.totalValue,
+        totalActivation: cs.totalActivation,
       };
 
       traceConnections[indx] = exportConnection;
@@ -2210,12 +2212,13 @@ export class Network implements NetworkInternal {
       if ((conn as ConnectionTrace).trace) {
         const cs = this.networkState.connection(connection.from, connection.to);
         const trace = (conn as ConnectionTrace).trace;
-        cs.used = trace.used;
+
         cs.eligibility = trace.eligibility ? trace.eligibility : 0;
 
-        cs.totalDeltaWeight = trace.totalDeltaWeight
-          ? trace.totalDeltaWeight
-          : 0;
+        cs.used = trace.used;
+        cs.totalValue = trace.totalWeight ? trace.totalWeight : 0;
+        
+        cs.totalActivation = trace.totalActivation ? trace.totalActivation : 0;
       }
     }
 
