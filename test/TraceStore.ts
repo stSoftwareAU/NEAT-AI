@@ -84,12 +84,12 @@ Deno.test("storeTrace", async () => {
             eligibilityCount++;
           }
 
-          if (
-            Number.isFinite(c.trace.totalDeltaWeight) &&
-            c.trace.totalDeltaWeight != 0
-          ) {
-            totalDeltaWeightCount++;
-          }
+          // if (
+          //   Number.isFinite(c.trace.totalDeltaWeight) &&
+          //   c.trace.totalDeltaWeight != 0
+          // ) {
+          //   totalDeltaWeightCount++;
+          // }
         });
 
         if (usedCount > 1) {
