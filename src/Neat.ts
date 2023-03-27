@@ -12,7 +12,7 @@ import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { Network } from "./architecture/Network.ts";
-import { ensureDirSync } from "https://deno.land/std@0.177.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.181.0/fs/ensure_dir.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { Selection } from "./methods/Selection.ts";
 import { Offspring } from "./architecture/Offspring.ts";

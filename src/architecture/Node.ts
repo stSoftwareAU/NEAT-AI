@@ -361,16 +361,21 @@ export class Node implements TagsInterface, NodeInternal {
     return limitedDelta;
   }
 
-  private adjustWeight(c: ConnectionInternal, cs: ConnectionState, limit=0.1) {
+  private adjustWeight(
+    c: ConnectionInternal,
+    cs: ConnectionState,
+    limit = 0.1,
+  ) {
     if (cs.totalActivation) {
+      // return cs.totalValue / cs.totalActivation;
       const deltaWeight = cs.totalValue / cs.totalActivation - c.weight;
 
       const adjustedWeight = c.weight + this.limit(deltaWeight, limit);
-      if (c.to == 10) {
-        console.info(
-          `${c.from}->${c.to}: adjustedWeight{${adjustedWeight}}; deltaWeight{${deltaWeight}}=cs.totalWeight{${cs.totalValue}} / cs.totalActivation{${cs.totalActivation}} - c.weight{${c.weight}}`,
-        );
-      }
+      // if (c.to == 10) {
+      //   console.info(
+      //     `${c.from}->${c.to}: adjustedWeight{${adjustedWeight}}; deltaWeight{${deltaWeight}}=cs.totalWeight{${cs.totalValue}} / cs.totalActivation{${cs.totalActivation}} - c.weight{${c.weight}}`,
+      //   );
+      // }
       return adjustedWeight;
     } else {
       return c.weight;
@@ -378,18 +383,16 @@ export class Node implements TagsInterface, NodeInternal {
   }
 
   propagateUpdate() {
-    console.info(`${this.index}: propagateUpdate`);
+    // console.info(`${this.index}: propagateUpdate`);
     const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
       const cs = this.network.networkState.connection(c.from, c.to);
 
-      if (cs.totalActivation) {
-        // c.weight = cs.totalWeight / cs.totalActivation;
-        c.weight = this.adjustWeight(c, cs);
-      }
-      cs.totalActivation = cs.totalValue = 0;
+      c.weight = this.adjustWeight(c, cs);
+
+      cs.totalActivation = cs.totalValue = cs.eligibility = 0;
     }
 
     const ns = this.network.networkState.node(this.index);
@@ -402,117 +405,109 @@ export class Node implements TagsInterface, NodeInternal {
   }
 
   readonly PLANK_CONSTANT = 0.000_000_1;
+
+  private toValue( activation: number){
+    if( this.type == 'input' || this.type == 'constant') {
+      return activation;
+    }
+    const squash=this.findSquash();
+    if( (squash as ActivationInterface).squashAndDerive != undefined){
+      const squashActivation=(squash as ActivationInterface);
+      const activationDerivative= squashActivation.squashAndDerive( activation).derivative;
+      // const value=(activation + activationDerivative ) * activationDerivative ;
+      const value=(activation  ) * activationDerivative ;
+      return value;
+    }
+    else{
+      return activation;
+    }
+  }
   /**
    * Back-propagate the error, aka learn
    */
   propagate(target: number) {
     const ns = this.network.networkState.node(this.index);
     const activation = this.network.getActivation(this.index);
-    const avgDeltaBias = ns.totalDeltaBias / (ns.batchSize ? ns.batchSize : 1);
+    // const avgDeltaBias = ns.totalDeltaBias / (ns.batchSize ? ns.batchSize : 1);
     // const squashMethod = this.findSquash();
     // const activationSquash = squashMethod as ActivationInterface;
 
-    const error = target - (activation + avgDeltaBias);
-
-    if (Math.abs(error) > this.PLANK_CONSTANT) {
-      if (false && Math.random() * 2 - 1 > 0) {
-        // const biasError = error /2;
-        ns.totalDeltaBias += error;
-
-        ns.batchSize++;
-      } else {
-        const toList = this.network.toConnections(this.index);
-
-        if (toList.length > 0) {
-          const errorPerLink = (error) / toList.length; // - biasError
-
-          for (let i = toList.length; i--;) {
-            const c = toList[i];
-            /** Skip over self */
-            if (c.from == c.to) continue;
-
-            // const fromState = this.network.networkState.node(c.from);
-            // const avgFromDeltaBias = fromState.totalDeltaBias /
-            //   (fromState.batchSize ? fromState.batchSize : 1);
-
-            const fromActivation = this.network.getActivation(c.from)// +
-              // avgFromDeltaBias;
-
-            const cs = this.network.networkState.connection(c.from, c.to);
-            // const fromWeightDelta = cs.totalWeight /
-            //   (cs.totalActivation ? cs.totalActivation : 1);
-            // const fromWeight = cs cs.totalActivation ? cs.totalWeight/ cs.totalActivation: c.weight;
-            //   cs.totalDeltaWeight / (cs.count ? cs.count : 1);
+    
+    // const error = target - (activation + avgDeltaBias);
+    const error=this.toValue(this.toValue(target) - this.toValue(activation));
 
 
-            // switch (fromNode.type) {
-            //   case "input":
-            //   case "constant": {
-            //     const targetWeight = targetValue / fromActivation;
-            //     const deltaWeight = targetWeight - fromWeight;
-            //     cs.totalDeltaWeight += deltaWeight;
-            //     cs.count++;
-            //     break;
-            //   }
-            //   default: {
-            const fromNode = this.network.nodes[c.from];
-            const fromWeight = c.weight;
-            const fromValue = fromWeight * fromActivation;
-            if (              
-              fromActivation && (
-                fromNode.type == "input" ||
-                fromNode.type == "constant" ||
-                Math.random() * 2 - 1 > 0
-              )
-            ) {
-              // const fromWeight = c.weight;//this.adjustWeight(c, cs);
-              
-              
-              const targetValue = fromValue + errorPerLink;
+    // if (Math.abs(error) > this.PLANK_CONSTANT) {
+    if (Math.random() * 2 - 1 > 0) {
+      // const biasError = error /2;
+      ns.totalDeltaBias += error;
 
+      ns.batchSize++;
+    } else {
+      const toList = this.network.toConnections(this.index);
 
-              // const targetWeight = targetValue / fromActivation;
-              // const deltaWeight = targetWeight - fromWeight;
-              // const deltaWeight=targetWeight/fromWeight;
+      if (toList.length > 0) {
+        const errorPerLink = (error) / toList.length; // - biasError
 
-              cs.totalValue += targetValue;
-              // cs.totalValue+=targetValue;
-              cs.totalActivation +=fromActivation;
-              if (c.from == 8 && c.to == 10) {
-                console.info(
-                  `${this.index}: fromValue{${fromValue}} = fromWeight{${fromWeight}} * fromActivation{${fromActivation}}`,
-                );
-                // console.info(
-                //   `${this.index}: targetWeight{${targetWeight}} = targetValue{${targetValue}} / fromActivation{${fromActivation}}`,
-                // );
+        for (let i = toList.length; i--;) {
+          const c = toList[i];
+          /** Skip over self */
+          if (c.from == c.to) continue;
 
-                console.info(
-                  `${this.index}: avg{${
-                    cs.totalValue / cs.totalActivation
-                  }}= totalWeight{${cs.totalValue}}/ fromActivation{${cs.totalActivation}}`,
-                );
-              }
-            } else {
+          // const fromState = this.network.networkState.node(c.from);
+          // const avgFromDeltaBias = fromState.totalDeltaBias /
+          //   (fromState.batchSize ? fromState.batchSize : 1);
 
-              cs.totalValue += fromValue;
-              // cs.totalValue+=targetValue;
-              cs.totalActivation +=fromActivation;
+          const fromActivation = this.network.getActivation(c.from); // +
+          // avgFromDeltaBias;
 
+          const cs = this.network.networkState.connection(c.from, c.to);
+          // const fromWeightDelta = cs.totalWeight /
+          //   (cs.totalActivation ? cs.totalActivation : 1);
+          // const fromWeight = cs cs.totalActivation ? cs.totalWeight/ cs.totalActivation: c.weight;
+          //   cs.totalDeltaWeight / (cs.count ? cs.count : 1);
 
-              // cs.totalActivation +=fromActivation;
-              // const fromWeight = this.adjustWeight( c, cs, 10);
-              // const fromValue = fromWeight * fromActivation;
-              
-              const targetActivation = fromActivation + errorPerLink/fromWeight;
-              console.info( `${this.index}: targetActivation{${targetActivation}} = fromActivation{${fromActivation}} + errorPerLink{${errorPerLink}}/fromWeight{${fromWeight}}`);
-              (fromNode as Node).propagate(targetActivation);
+          // switch (fromNode.type) {
+          //   case "input":
+          //   case "constant": {
+          //     const targetWeight = targetValue / fromActivation;
+          //     const deltaWeight = targetWeight - fromWeight;
+          //     cs.totalDeltaWeight += deltaWeight;
+          //     cs.count++;
+          //     break;
+          //   }
+          //   default: {
+          const fromNode = this.network.nodes[c.from];
+          const fromWeight = c.weight;
+          const fromValue = fromWeight * (fromNode as Node).toValue(fromActivation);
+
+          if (
+            fromNode.type == "input" ||
+            fromNode.type == "constant"
+          ) {
+            const targetValue = fromValue + errorPerLink;
+
+            cs.totalValue += targetValue;
+            // cs.totalValue+=targetValue;
+            cs.totalActivation += fromActivation;
+          } else {
+            const responsibilty = Math.random();
+
+            const targetValueWeighted = fromValue +
+              errorPerLink * responsibilty;
+            cs.totalValue += targetValueWeighted;
+
+            cs.totalActivation += fromActivation;
+
+            const targetActivation =
+              (fromValue + errorPerLink * (1 - responsibilty)) / fromWeight;
+            if (c.from == 0 && c.to == 5) {
+              console.info(
+                `${this.index}: targetActivation{${targetActivation}} = fromActivation{${fromActivation}} + errorPerLink{${errorPerLink}}/fromWeight{${fromWeight}}`,
+              );
             }
-
-            // }
-            // }
+            (fromNode as Node).propagate(targetActivation);
           }
-        } else {
-          console.info(`${this.index}: no error ${error}`);
         }
       }
     }

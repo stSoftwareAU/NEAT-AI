@@ -1,4 +1,4 @@
-import { parse as parseArgs } from "https://deno.land/std@0.177.0/flags/mod.ts";
+import { parse as parseArgs } from "https://deno.land/std@0.181.0/flags/mod.ts";
 import { addTag } from "./TagsInterface.ts";
 
 interface TagAndReleaseOptions {

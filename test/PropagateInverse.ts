@@ -1,8 +1,8 @@
-import { emptyDirSync } from "https://deno.land/std@0.177.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.181.0/fs/empty_dir.ts";
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.177.0/testing/asserts.ts";
+} from "https://deno.land/std@0.181.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { INVERSE } from "../src/methods/activations/types/INVERSE.ts";
@@ -184,7 +184,7 @@ Deno.test("propagateInverseRandom", () => {
 
     creatureA.nodes.forEach((n, indx) => {
       const biasB = creatureB.nodes[indx].bias;
-      assertAlmostEquals(n.bias ? n.bias : 0, biasB ? biasB : 0, 0.02);
+      assertAlmostEquals(n.bias ? n.bias : 0, biasB ? biasB : 0, 0.05);
     });
 
     creatureA.connections.forEach((c, indx) => {

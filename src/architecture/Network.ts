@@ -15,14 +15,14 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.177.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.181.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.ts";
 import { getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
-import { emptyDirSync } from "https://deno.land/std@0.177.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.181.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -1211,7 +1211,10 @@ export class Network implements NetworkInternal {
 
     // Loops the training process
     let iteration = 0;
-    let error = 1;
+
+    let lastError = Infinity;
+    let bestCreatureJSON = null;
+
     const EMPTY = { input: [], output: [] };
     while (true) {
       iteration++;
@@ -1258,7 +1261,7 @@ export class Network implements NetworkInternal {
         counter += len;
       }
 
-      error = errorSum / counter;
+      const error = errorSum / counter;
 
       if (
         options.log && (
@@ -1274,16 +1277,30 @@ export class Network implements NetworkInternal {
         );
       }
 
+      Deno.writeTextFileSync(
+        `.trace/${iteration}.json`,
+        JSON.stringify(this.traceJSON(), null, 2),
+      );
+      let trainingOk = true;
+      if (lastError < error) {
+        console.warn(`Training made the error worse`);
+        trainingOk = false;
+        if (bestCreatureJSON) this.loadFrom(bestCreatureJSON, false);
+      } else {
+        bestCreatureJSON = this.internalJSON();
+
+        lastError = error;
+      }
       if (
         Number.isFinite(error) &&
         error > targetError &&
         (iterations === 0 || iteration < iterations)
       ) {
-        this.applyLearnings();
+        if (trainingOk) this.applyLearnings();
         this.clearState();
       } else {
         const traceJSON = this.traceJSON();
-        this.applyLearnings();
+        if (trainingOk) this.applyLearnings();
         this.clearState();
 
         return {
@@ -2217,7 +2234,7 @@ export class Network implements NetworkInternal {
 
         cs.used = trace.used;
         cs.totalValue = trace.totalWeight ? trace.totalWeight : 0;
-        
+
         cs.totalActivation = trace.totalActivation ? trace.totalActivation : 0;
       }
     }

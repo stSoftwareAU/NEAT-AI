@@ -30,7 +30,7 @@ export class ConnectionState {
 
   constructor() {
     this.eligibility = 0;
-    this.totalValue= this.totalActivation = 0;
+    this.totalValue = this.totalActivation = 0;
     // this.count = 0;
   }
 }

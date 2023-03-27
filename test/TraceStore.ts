@@ -1,5 +1,5 @@
-import { assert } from "https://deno.land/std@0.177.0/testing/asserts.ts";
-import { emptyDirSync } from "https://deno.land/std@0.177.0/fs/empty_dir.ts";
+import { assert } from "https://deno.land/std@0.181.0/testing/asserts.ts";
+import { emptyDirSync } from "https://deno.land/std@0.181.0/fs/empty_dir.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
@@ -51,8 +51,8 @@ Deno.test("storeTrace", async () => {
   emptyDirSync(creaturesDir);
 
   let foundUsed = false;
-  let eligibilityCount = 0;
-  let totalDeltaWeightCount = 0;
+  let totalActivationCount = 0;
+  // let totalDeltaWeightCount = 0;
 
   for (let counter = 10; counter--;) {
     const options: NeatOptions = {
@@ -78,10 +78,10 @@ Deno.test("storeTrace", async () => {
           }
 
           if (
-            Number.isFinite(c.trace.eligibility) &&
-            c.trace.eligibility != 0
+            Number.isFinite(c.trace.totalActivation) &&
+            c.trace.totalActivation != 0
           ) {
-            eligibilityCount++;
+            totalActivationCount++;
           }
 
           // if (
@@ -105,10 +105,10 @@ Deno.test("storeTrace", async () => {
     "Should have traced usage",
   );
 
-  // assert(
-  //   eligibilityCount > 0,
-  //   "Should have eligibilityCount",
-  // );
+  assert(
+    totalActivationCount > 0,
+    "Should have totalActivationCount",
+  );
 
   // assert(
   //   previousDeltaWeightCount > 0,
