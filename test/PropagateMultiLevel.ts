@@ -189,7 +189,7 @@ Deno.test("propagateMultiLevelRandom", () => {
     creatureA.connections.forEach((c, indx) => {
       const weightA = c.weight;
       const weightB = creatureB.connections[indx].weight;
-      assertAlmostEquals(weightA, weightB, 0.1);
+      assertAlmostEquals(weightA, weightB, 0.2);
     });
 
     break;

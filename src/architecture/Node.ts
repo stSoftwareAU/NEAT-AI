@@ -11,6 +11,7 @@ import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsIn
 import { Network } from "./Network.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
 import { ConnectionState } from "./NetworkState.ts";
+import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -411,11 +412,11 @@ export class Node implements TagsInterface, NodeInternal {
       return activation;
     }
     const squash=this.findSquash();
-    if( (squash as ActivationInterface).squashAndDerive != undefined){
-      const squashActivation=(squash as ActivationInterface);
-      const activationDerivative= squashActivation.squashAndDerive( activation).derivative;
+    if( ((squash as unknown) as UnSquashInterface).unSquash != undefined){
+      const unSquasher=((squash as unknown) as UnSquashInterface);
+      const value= unSquasher.unSquash( activation);
       // const value=(activation + activationDerivative ) * activationDerivative ;
-      const value=(activation  ) * activationDerivative ;
+      // const value=(activation  ) * activationDerivative ;
       return value;
     }
     else{
@@ -426,7 +427,6 @@ export class Node implements TagsInterface, NodeInternal {
    * Back-propagate the error, aka learn
    */
   propagate(target: number) {
-    const ns = this.network.networkState.node(this.index);
     const activation = this.network.getActivation(this.index);
     // const avgDeltaBias = ns.totalDeltaBias / (ns.batchSize ? ns.batchSize : 1);
     // const squashMethod = this.findSquash();
@@ -434,15 +434,14 @@ export class Node implements TagsInterface, NodeInternal {
 
     
     // const error = target - (activation + avgDeltaBias);
-    const error=this.toValue(this.toValue(target) - this.toValue(activation));
+    const error=this.toValue(target) - this.toValue(activation);
 
-
+    const ns = this.network.networkState.node(this.index);
+    ns.batchSize++;
     // if (Math.abs(error) > this.PLANK_CONSTANT) {
     if (Math.random() * 2 - 1 > 0) {
       // const biasError = error /2;
       ns.totalDeltaBias += error;
-
-      ns.batchSize++;
     } else {
       const toList = this.network.toConnections(this.index);
 
@@ -462,24 +461,10 @@ export class Node implements TagsInterface, NodeInternal {
           // avgFromDeltaBias;
 
           const cs = this.network.networkState.connection(c.from, c.to);
-          // const fromWeightDelta = cs.totalWeight /
-          //   (cs.totalActivation ? cs.totalActivation : 1);
-          // const fromWeight = cs cs.totalActivation ? cs.totalWeight/ cs.totalActivation: c.weight;
-          //   cs.totalDeltaWeight / (cs.count ? cs.count : 1);
 
-          // switch (fromNode.type) {
-          //   case "input":
-          //   case "constant": {
-          //     const targetWeight = targetValue / fromActivation;
-          //     const deltaWeight = targetWeight - fromWeight;
-          //     cs.totalDeltaWeight += deltaWeight;
-          //     cs.count++;
-          //     break;
-          //   }
-          //   default: {
           const fromNode = this.network.nodes[c.from];
           const fromWeight = c.weight;
-          const fromValue = fromWeight * (fromNode as Node).toValue(fromActivation);
+          const fromValue = fromWeight * fromActivation;
 
           if (
             fromNode.type == "input" ||
@@ -488,7 +473,7 @@ export class Node implements TagsInterface, NodeInternal {
             const targetValue = fromValue + errorPerLink;
 
             cs.totalValue += targetValue;
-            // cs.totalValue+=targetValue;
+            
             cs.totalActivation += fromActivation;
           } else {
             const responsibilty = Math.random();
