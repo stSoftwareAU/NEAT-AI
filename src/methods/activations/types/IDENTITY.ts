@@ -5,7 +5,7 @@ export class IDENTITY implements ActivationInterface, UnSquashInterface {
   unSquash(activation: number): number {
     return activation;
   }
-  
+
   public static NAME = "IDENTITY";
 
   getName() {

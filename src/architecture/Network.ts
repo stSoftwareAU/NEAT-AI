@@ -924,16 +924,6 @@ export class Network implements NetworkInternal {
         target[--targetIndex],
       );
     }
-
-    // // Propagate hidden and input nodes
-    // for (
-    //   let i = this.nodes.length - this.output - 1;
-    //   i >= this.input;
-    //   i--
-    // ) {
-    //   const n = this.nodes[i] as Node;
-    //   n.propagate(rate);
-    // }
   }
 
   /**
@@ -1213,6 +1203,7 @@ export class Network implements NetworkInternal {
     let iteration = 0;
 
     let lastError = Infinity;
+    let trainingFailed = 0;
     let bestCreatureJSON = null;
 
     const EMPTY = { input: [], output: [] };
@@ -1277,17 +1268,31 @@ export class Network implements NetworkInternal {
         );
       }
 
-      Deno.writeTextFileSync(
-        `.trace/${iteration}.json`,
-        JSON.stringify(this.traceJSON(), null, 2),
-      );
       let trainingOk = true;
       if (lastError < error) {
-        console.warn(`Training made the error worse`);
+        trainingFailed++;
+        console.warn(
+          `Training made the error worse ${trainingFailed} of ${iteration}`,
+        );
         trainingOk = false;
-        if (bestCreatureJSON) this.loadFrom(bestCreatureJSON, false);
+
+        if (options.traceStore) {
+          Deno.writeTextFileSync(
+            `.trace/${trainingFailed}_fail.json`,
+            JSON.stringify(this.traceJSON(), null, 2),
+          );
+        }
+        if (bestCreatureJSON) {
+          if (options.traceStore) {
+            Deno.writeTextFileSync(
+              `.trace/${trainingFailed}_best.json`,
+              JSON.stringify(bestCreatureJSON, null, 2),
+            );
+          }
+          this.loadFrom(bestCreatureJSON, false);
+        }
       } else {
-        bestCreatureJSON = this.internalJSON();
+        bestCreatureJSON = this.traceJSON();
 
         lastError = error;
       }

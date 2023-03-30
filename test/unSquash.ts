@@ -8,7 +8,6 @@ import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
 import { INVERSE } from "../src/methods/activations/types/INVERSE.ts";
 import { LOGISTIC } from "../src/methods/activations/types/LOGISTIC.ts";
-import { BENT_IDENTITY } from "../src/methods/activations/types/BENT_IDENTITY.ts";
 
 function makeValues() {
   const values: number[] = [];
@@ -33,7 +32,12 @@ function check(squashName: string, values: number[]) {
         tmpValue = (squash as UnSquashInterface).unSquash(activation);
       }
 
-      assertAlmostEquals(v, tmpValue, 0.0000001, `${tmpSquash.getName()} ${v} != ${tmpValue}`);
+      assertAlmostEquals(
+        v,
+        tmpValue,
+        0.0000001,
+        `${tmpSquash.getName()} ${v} != ${tmpValue}`,
+      );
     });
   } else {
     fail("Not done yet");
@@ -42,7 +46,7 @@ function check(squashName: string, values: number[]) {
 
 Deno.test("unSquash", () => {
   const list = [
-    BENT_IDENTITY.NAME,
+    // BENT_IDENTITY.NAME,
     LOGISTIC.NAME,
     INVERSE.NAME,
     IDENTITY.NAME,

@@ -1,7 +1,6 @@
 import { ActivationInterface } from "../ActivationInterface.ts";
 
 export class BENT_IDENTITY implements ActivationInterface {
- 
   public static NAME = "BENT_IDENTITY";
 
   getName() {

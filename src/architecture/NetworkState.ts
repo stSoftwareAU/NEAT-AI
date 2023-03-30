@@ -20,19 +20,12 @@ class NodeState {
 }
 
 export class ConnectionState {
-  public eligibility: number;
-  public totalValue: number;
-  // public totalValue: number; // delete me
-  public totalActivation: number;
-  // public count: number;
+  public eligibility = 0;
+  public totalValue = 0;
+
+  public totalActivation = 0;
 
   public used?: boolean;
-
-  constructor() {
-    this.eligibility = 0;
-    this.totalValue = this.totalActivation = 0;
-    // this.count = 0;
-  }
 }
 
 export class NetworkState {

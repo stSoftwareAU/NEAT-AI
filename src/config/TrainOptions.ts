@@ -10,4 +10,7 @@ export interface TrainOptions {
 
   /** Sets the amount of iterations the process will maximally run, even when the target error has not been reached. Default: NaN */
   iterations?: number;
+
+  /** The directory to store the networks trace information (optional) */
+  traceStore?: string;
 }

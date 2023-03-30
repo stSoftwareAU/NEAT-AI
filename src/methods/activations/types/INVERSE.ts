@@ -13,7 +13,7 @@ export class INVERSE implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number): number {
-    return 1-activation;
+    return 1 - activation;
   }
 
   squashAndDerive(x: number) {

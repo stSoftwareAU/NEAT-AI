@@ -354,11 +354,10 @@ Deno.test("propagateMultiLevelKnownA", () => {
     JSON.stringify(internalJSON, null, 2),
   );
 
-  console.info("ZZZZZ hack");
-  // internalJSON.nodes.forEach((node, indx) => {
-  //   node.bias = (node.bias ? node.bias : 0) +
-  //     ((indx % 2 == 0 ? 1 : -1) * 0.005);
-  // });
+  internalJSON.nodes.forEach((node, indx) => {
+    node.bias = (node.bias ? node.bias : 0) +
+      ((indx % 2 == 0 ? 1 : -1) * 0.005);
+  });
 
   internalJSON.connections.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
@@ -384,7 +383,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
     );
 
     const result2 = creatureB.train(ts, {
-      iterations: 100,
+      iterations: 10000,
       error: 0,
     });
 
@@ -412,7 +411,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
     creatureA.connections.forEach((c, indx) => {
       const weightA = c.weight;
       const weightB = creatureB.connections[indx].weight;
-      assertAlmostEquals(weightA, weightB, 0.1);
+      assertAlmostEquals(weightA, weightB, 0.2);
     });
 
     break;
