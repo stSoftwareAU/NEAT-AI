@@ -10,7 +10,6 @@ import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
-import { ConnectionState } from "./NetworkState.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
 export class Node implements TagsInterface, NodeInternal {
@@ -224,9 +223,6 @@ export class Node implements TagsInterface, NodeInternal {
           }
         }
 
-        const ns = this.network.networkState.node(this.index);
-        ns.derivative = result.derivative;
-
         // Update traces
 
         const self = this.network.selfConnection(this.index);
@@ -349,55 +345,63 @@ export class Node implements TagsInterface, NodeInternal {
     return activation;
   }
 
-  private limit(delta: number, limit: number) {
-    if (!Number.isFinite(delta)) {
-      return 0;
-    }
+  // private limit(delta: number, limit: number) {
+  //   if (!Number.isFinite(delta)) {
+  //     return 0;
+  //   }
 
-    const limitedDelta = Math.min(
-      Math.max(delta, Math.abs(limit) * -1),
-      Math.abs(limit),
-    );
+  //   const limitedDelta = Math.min(
+  //     Math.max(delta, Math.abs(limit) * -1),
+  //     Math.abs(limit),
+  //   );
 
-    return limitedDelta;
-  }
+  //   return limitedDelta;
+  // }
 
-  private adjustWeight(
-    c: ConnectionInternal,
-    cs: ConnectionState,
-    limit = this.TRAINING_LIMIT,
+  private adjustedWeight(
+    c: ConnectionInternal
   ) {
+
+    const cs = this.network.networkState.connection(c.from, c.to);
+
+    // if( cs.count){
+    //   const avgWeight=cs.totalValue/cs.totalActivation;
+    //   // return avgWeight;
+    //   return (avgWeight * cs.count+c.weight)/(cs.count+1);
+    // }
+    // if( cs.count){
+    //   const totalWeight=cs.totalValue-cs.totalActivation;
+    //   return (totalWeight+c.weight)/(cs.count+1);
+    // }
     if (cs.totalActivation) {
-      // if( cs.count){
-      // return cs.sumWeight/cs.count;
-      // return cs.totalValue / cs.totalActivation;
-      const deltaWeight = cs.totalValue / cs.totalActivation - c.weight;
 
-      const adjustedWeight = c.weight + this.limit(deltaWeight, limit);
-
-      return adjustedWeight;
-    } else {
+      const adjWeight=cs.totalValue / cs.totalActivation;
+      const totalWeight=adjWeight*cs.count + c.weight;
+      const avgWeight=totalWeight/(cs.count + 1);
+      console.info( `ZZZ ${c.from}:${c.to}) WEIGHT ${adjWeight}=${cs.totalValue}/${Math.abs(cs.totalActivation)} ~ ${avgWeight}`);
+      return avgWeight;
+    } 
+          // const avgValue=cs.totalValue/cs.count;
+      // const avgActivation=cs.totalActivation/cs.count;
+    else {
       return c.weight;
     }
+
+
+    
   }
 
-  private readonly TRAINING_LIMIT = 0.1;
+  // private readonly TRAINING_LIMIT = 0.1;
   propagateUpdate() {
     // console.info(`${this.index}: propagateUpdate`);
     const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const cs = this.network.networkState.connection(c.from, c.to);
-
-      c.weight = this.adjustWeight(c, cs);
+      c.weight = this.adjustedWeight(c);
     }
 
-    const ns = this.network.networkState.node(this.index);
-
-    const deltaBias = ns.totalDeltaBias / ns.batchSize;
-
-    this.bias += this.limit(deltaBias, this.TRAINING_LIMIT);
+    this.bias = this.adjustedBias();
   }
 
   readonly PLANK_CONSTANT = 0.000_000_1;
@@ -416,81 +420,196 @@ export class Node implements TagsInterface, NodeInternal {
       return activation;
     }
   }
+
+  private readonly MAX_ADJUST=2;
+  
+  private limit(delta: number, limit: number) {
+    if (!Number.isFinite(delta)) {
+      return 0;
+    }
+
+    const limitedDelta = Math.min(
+      Math.max(delta, Math.abs(limit) * -1),
+      Math.abs(limit),
+    );
+
+    return limitedDelta;
+  }
+
   /**
    * Back-propagate the error, aka learn
    */
   propagate(target: number) {
-    const activation = this.network.getActivation(this.index);
+    if (this.index == 4) {
+      console.info("here");
+    }
+    const activation = this.adjustedActivation();
 
-    const error = this.toValue(target) - this.toValue(activation);
+    const targetValue = this.toValue(target);
+    const activationValue = this.toValue(activation);
+    const error = targetValue - activationValue;
 
-    const ns = this.network.networkState.node(this.index);
-
-    // if (Math.abs(error) > this.PLANK_CONSTANT) {
+    let correctedError=0;
+    let targetWeightedSum=0;
     const toList = this.network.toConnections(this.index);
 
-    let linkCount = 0;
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    const randomList = toList.slice().filter((c) => {
       /** Skip over self */
-      if (c.from == c.to) continue;
-      linkCount++;
-    }
-    ns.batchSize++;
-    if (linkCount == 0) {
-      // ns.batchSize++;
-      ns.totalDeltaBias += error;
-    } else {
-      const biasResponsibility = Math.random();
-      ns.batchSize += biasResponsibility;
-      const biasError = error * biasResponsibility;
-      // ns.totalDeltaBias += biasError;
-      const errorPerLink = (error - biasError) / linkCount;
+      return c.from != c.to;
+    }).sort(() => Math.random() - 0.5);
 
-      for (let i = toList.length; i--;) {
-        const c = toList[i];
-        /** Skip over self */
-        if (c.from == c.to) continue;
+    if (randomList.length) {
+      const errorPerLink = error / toList.length;
 
-        const fromActivation = this.network.getActivation(c.from);
+      randomList.forEach((c) => {
+        const fromNode = this.network.nodes[c.from] as Node;
+        const fromActivation = fromNode.adjustedActivation();
 
         const cs = this.network.networkState.connection(c.from, c.to);
 
-        const fromNode = this.network.nodes[c.from];
-        const fromWeight = c.weight;
+        const fromWeight = this.adjustedWeight(c);
         const fromValue = fromWeight * fromActivation;
-
+        let weightResponsibility =
+          Math.abs(fromActivation) > this.PLANK_CONSTANT
+            ? Math.min( Math.max(Math.random(), 0.2), 0.8)
+            : 0;
+          
+        if( weightResponsibility != 0 )
+        {
+          //ZZZZ remove
+          weightResponsibility=0.5;
+        }
         if (
           fromNode.type == "input" ||
           fromNode.type == "constant"
         ) {
-          const targetValue = fromValue + errorPerLink;
+          weightResponsibility = 1;
+        } else if( Math.abs(fromWeight) > this.PLANK_CONSTANT) {
 
-          cs.totalValue += targetValue;
-
-          cs.totalActivation += fromActivation;
-        } else {
-          const weightResponsibility =
-            Math.abs(fromActivation) > this.PLANK_CONSTANT
-              ? Math.abs(fromWeight) > this.PLANK_CONSTANT ? Math.random() : 1
-              : 0;
-
-          const weightError = errorPerLink * weightResponsibility;
-          const targetValueWeighted = fromValue + weightError;
-          cs.totalValue += targetValueWeighted;
-
-          cs.totalActivation += fromActivation;
-
-          const activationError = errorPerLink - weightError;
+          if( Math.abs( fromWeight) > this.MAX_ADJUST){
+            if( Math.abs( fromActivation) < this.MAX_ADJUST){
+              weightResponsibility=0;
+            }
+          }
+          const activationResponsibility = 1 - weightResponsibility;
+          const activationError = errorPerLink * activationResponsibility;
           const targetActivationValue = fromValue + activationError;
-          const targetActivation = targetActivationValue / c.weight;
-          // const targetActivation = targetActivationValue / (cs.totalValue/cs.totalActivation);
+          const targetActivationDelta = this.limit(targetActivationValue / fromWeight- fromActivation, 1);
 
-          (fromNode as Node).propagate(targetActivation);
+          const targetActivation=fromActivation+targetActivationDelta;
+          const improvedActivation = (fromNode as Node).propagate(
+            targetActivation,
+          );
+          const improvedValue = improvedActivation * fromWeight;
+          targetWeightedSum+=improvedValue;
+          correctedError+=improvedValue-fromValue;
         }
+        else{
+          console.info( "ZERO weight");
+        }
+
+        cs.count++;
+
+        if (Math.abs(fromValue) > this.PLANK_CONSTANT) {
+          const weightError = errorPerLink * weightResponsibility;
+          const fromTargetValue = fromValue + weightError;
+
+          cs.totalValue += fromTargetValue;
+          cs.totalActivation += fromActivation;//ZZZ Math.abs(fromActivation);
+
+          const currentWeight=this.adjustedWeight(c);
+
+          const improvedValue = fromActivation * currentWeight;
+          targetWeightedSum+=improvedValue;
+          correctedError+=improvedValue-fromValue;
+        }
+        else{          
+          cs.totalActivation += fromActivation;//ZZZ Math.abs(fromActivation);
+        }
+      });
+    }
+
+    const ns = this.network.networkState.node(this.index);
+
+    ns.count++;
+    ns.totalValue += targetValue;// targetWeightedSum+error - correctedError;
+    if( Math.abs( targetValue - (targetWeightedSum+correctedError)) > 0.001){
+console.info( `${this.index}: ${targetValue} ${targetWeightedSum+correctedError}=${targetWeightedSum}+${correctedError}`);
+    }
+    ns.totalWeightedSum += targetWeightedSum;
+    const currentBias=this.adjustedBias();
+
+    const estimatedValue = targetWeightedSum + currentBias;
+
+    const squashMethod = this
+      .findSquash();
+    if (this.isNodeActivation(squashMethod) == false) {
+      return (squashMethod as ActivationInterface).squash(estimatedValue);
+    } else {
+      return estimatedValue;
+    }
+  }
+
+  private adjustedBias():number{
+    if( this.type == 'constant'){
+      return this.bias?this.bias:0;
+    } else {
+
+      const ns = this.network.networkState.node(this.index);
+
+      if( ns.count){
+        const totalBias=ns.totalValue-ns.totalWeightedSum;
+        const avgBias=totalBias/ns.count;
+        if( Math.abs( avgBias) > 2){
+          console.info( `ZZZ ${this.index}: large bias ${avgBias}`);
+        }
+        return avgBias;
+      }
+      else{
+        return this.bias;
       }
     }
-    // }
+  }
+
+  private adjustedActivation() {
+    if (this.type == "input") {
+      return this.network.networkState.activations[this.index];
+    }
+
+    if (this.type == "constant") {
+      return this.bias;
+    } else {
+      
+      const adjustedBias = this.adjustedBias();
+
+      const squashMethod = this.findSquash();
+      if (this.isNodeActivation(squashMethod)) {
+        return squashMethod.noTraceActivate(this) + adjustedBias;
+      } else {
+        // All activation sources coming from the node itself
+
+        const toList = this.network.toConnections(this.index);
+        let value = adjustedBias;
+
+        for (let i = toList.length; i--;) {
+          const c = toList[i];
+          const fromActivation = (this.network.nodes[c.from] as Node)
+            .adjustedActivation();
+
+          const fromWeight=this.adjustedWeight( c);
+      
+          value += fromActivation * fromWeight;
+          // if( Math.abs( value) > 10){
+          //   console.info( `${this.index} VALUE too big ${value}`);
+          // }
+        }
+
+        // console.info( `${this.index}: value: ${value}, bias: ${adjustedBias}`);
+        const activationSquash = squashMethod as ActivationInterface;
+        // Squash the values received
+        return activationSquash.squash(value);
+      }
+    }
   }
 
   /**

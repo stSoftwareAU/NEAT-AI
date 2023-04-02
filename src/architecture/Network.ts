@@ -2106,10 +2106,12 @@ export class Network implements NetworkInternal {
         const traceNode: NodeExport = json.nodes[exportIndex] as NodeTrace;
 
         (traceNode as NodeTrace).trace = {
-          errorProjected: ns ? ns.errorProjected : undefined,
-          errorResponsibility: ns ? ns.errorResponsibility : undefined,
-          derivative: ns ? ns.derivative : undefined,
-          totalDeltaBias: ns ? ns.totalDeltaBias : undefined,
+          // errorProjected: ns ? ns.errorProjected : undefined,
+          // errorResponsibility: ns ? ns.errorResponsibility : undefined,
+          // batchSize: ns ? ns.batchSize : undefined,
+          totalBiasValue: ns ? ns.totalValue : undefined,
+
+          totalRawValue: ns ? ns.totalWeightedSum : undefined,
         };
         traceNodes[exportIndex] = traceNode as NodeTrace;
         exportIndex++;
@@ -2201,12 +2203,12 @@ export class Network implements NetworkInternal {
         const trace = (jn as NodeTrace).trace;
         const ns = this.networkState.node(n.index);
 
-        ns.errorProjected = trace.errorProjected ? trace.errorProjected : 0;
-        ns.errorResponsibility = trace.errorResponsibility
-          ? trace.errorResponsibility
-          : 0;
-        ns.derivative = trace.derivative ? trace.derivative : 0;
-        ns.totalDeltaBias = trace.totalDeltaBias ? trace.totalDeltaBias : 0;
+        // ns.errorProjected = trace.errorProjected ? trace.errorProjected : 0;
+        // ns.errorResponsibility = trace.errorResponsibility
+        //   ? trace.errorResponsibility
+        //   : 0;
+        // ns.derivative = trace.derivative ? trace.derivative : 0;
+        ns.totalValue = trace.totalBiasValue ? trace.totalBiasValue : 0;
       }
       uuidMap.set(n.uuid, pos);
 

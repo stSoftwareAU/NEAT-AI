@@ -1,28 +1,24 @@
 import { Network } from "./Network.ts";
 
 class NodeState {
-  public errorResponsibility: number;
-  public errorProjected: number;
+  // public errorResponsibility=0;
+  // public errorProjected=0;
 
-  public derivative: number;
-  public totalDeltaBias: number;
-  public previousDeltaBias: number;
-  public batchSize: number;
+  // public derivative=0;
+  // public totalDeltaBias=0;
+  // public previousDeltaBias=0;
+  public count=0;
 
-  constructor() {
-    this.errorResponsibility = 0;
-    this.errorProjected = 0;
-    this.derivative = 0;
-    this.totalDeltaBias = 0;
-    this.previousDeltaBias = 0;
-    this.batchSize = 0;
-  }
+  public totalValue =0;
+  public totalWeightedSum=0;
+
+
 }
 
 export class ConnectionState {
   public eligibility = 0;
   public totalValue = 0;
-
+  public count=0;
   public totalActivation = 0;
 
   public used?: boolean;
