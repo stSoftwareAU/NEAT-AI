@@ -77,6 +77,11 @@ export class NetworkState {
   }
 
   makeActivation(input: number[], feedbackLoop: boolean) {
+    if (this.network.input != input.length) {
+      console.trace();
+      throw `Input size missmatch, expected ${this.network.input} was: ${input.length}`;
+    }
+
     if (this.activations.length == 0 || feedbackLoop == false) {
       this.activations = input.slice();
       this.activations.length = this.network.nodes.length;
