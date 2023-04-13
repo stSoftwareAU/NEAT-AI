@@ -3,7 +3,8 @@ import { Network } from "../architecture/Network.ts";
 
 export class Upgrade {
   static correct(json: NetworkExport, input: number): Network {
-    if (!Number.isFinite(input) && input < 1) {
+    if (!Number.isFinite(input) || input < 1) {
+      console.trace();
       throw `Invalid input size ${input}`;
     }
     const json2 = JSON.parse(JSON.stringify(json)) as NetworkExport;
