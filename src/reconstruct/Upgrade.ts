@@ -2,7 +2,11 @@ import { NetworkExport } from "../architecture/NetworkInterfaces.ts";
 import { Network } from "../architecture/Network.ts";
 
 export class Upgrade {
-  static correct(json: NetworkExport): Network {
+  static correct(json: NetworkExport, input: number): Network {
+    if (!Number.isFinite(input) || input < 1 || !Number.isInteger(input)) {
+      console.trace();
+      throw `Invalid input size ${input}`;
+    }
     const json2 = JSON.parse(JSON.stringify(json)) as NetworkExport;
 
     json2.nodes.forEach((n, indx) => {
@@ -18,7 +22,7 @@ export class Upgrade {
 
       if (n.squash == "SUM") n.squash = "IDENTITY";
     });
-
+    json2.input = input;
     const network = Network.fromJSON(json2);
 
     network.fix();
