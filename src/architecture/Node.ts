@@ -266,8 +266,9 @@ export class Node implements TagsInterface, NodeInternal {
               } else {
                 console.trace();
                 console.info(c, fromActivation);
-                throw c.from + ":" + c.to + ") invalid eligibility: " +
-                  cs.eligibility;
+                cs.eligibility = 0;
+                // throw c.from + ":" + c.to + ") invalid eligibility: " +
+                //   cs.eligibility;
               }
             }
           }
