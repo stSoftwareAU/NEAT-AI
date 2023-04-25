@@ -72,7 +72,7 @@ export class Neat {
         if (trained !== "YES") {
           const w: WorkerHandler =
             this.workers[Math.floor(this.workers.length * Math.random())];
-          const p = w.train(n, this.trainRate);
+          const p = w.train(n);
           trainPromises.push(p);
           addTag(n, "trained", "YES");
         }
