@@ -55,6 +55,10 @@ export interface NeatConfig extends NeatOptions {
   costName: string;
   /** the number of workers */
   threads: number;
+
+  /** the number of training per generation. default: 1  */
+  trainPerGen: number;
+
   /** the initial train rate if evolving or the rate to use when training only */
   trainRate: number;
 
@@ -120,6 +124,7 @@ export function make(parameters?: NeatOptions) {
     ),
     timeoutMinutes: options.timeoutMinutes,
     traceStore: options.traceStore,
+    trainPerGen: options.trainPerGen ? options.trainPerGen : 1,
     trainRate: options.trainRate ? options.trainRate : 0.01,
 
     log: options.log ? options.log : 0,

@@ -284,10 +284,12 @@ export class Node implements TagsInterface, NodeInternal {
    * @returns true if changed
    */
   applyLearnings() {
-    const squashMethod = this.findSquash();
+    if (this.type == "hidden" || this.type == "output") {
+      const squashMethod = this.findSquash();
 
-    if (this.hasApplyLearnings(squashMethod)) {
-      return squashMethod.applyLearnings(this);
+      if (this.hasApplyLearnings(squashMethod)) {
+        return squashMethod.applyLearnings(this);
+      }
     }
 
     return false;

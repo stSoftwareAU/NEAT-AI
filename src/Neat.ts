@@ -63,19 +63,22 @@ export class Neat {
     const trainPromises = [];
     for (
       let i = 0;
-      i < this.population.length && i < Math.max(1, this.workers.length / 2);
+      i < this.population.length;
       i++
     ) {
       const n = this.population[i];
       if (n.score) {
         const trained = getTag(n, "trained");
-        if (trained !== "YES" && i == 0) {
-          // console.info( `train ${n.uuid}`);
-          const p = this.workers[i].train(n);
+        if (trained !== "YES") {
+          const w: WorkerHandler =
+            this.workers[Math.floor(this.workers.length * Math.random())];
+          const p = w.train(n, this.trainRate);
           trainPromises.push(p);
           addTag(n, "trained", "YES");
         }
       }
+
+      if (trainPromises.length >= this.config.trainPerGen) break;
     }
     await this.fitness.calculate(this.population);
 
