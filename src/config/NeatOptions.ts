@@ -50,6 +50,9 @@ export interface NeatOptions {
   /** Once the number of minutes are reached exit the loop. */
   timeoutMinutes?: number;
 
+  /** the number of training per generation. default: 1  */
+  trainPerGen?: number;
+
   /** The directory to store the networks trace information (optional) */
   traceStore?: string;
 
