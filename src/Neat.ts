@@ -21,7 +21,6 @@ import { Selection } from "./methods/Selection.ts";
 import { Offspring } from "./architecture/Offspring.ts";
 import { NetworkUtil } from "./architecture/NetworkUtils.ts";
 import { format } from "https://deno.land/std@0.184.0/fmt/duration.ts";
-import { yellow } from "https://deno.land/std@0.184.0/fmt/colors.ts";
 
 export class Neat {
   readonly input: number;
