@@ -63,22 +63,50 @@ export class Neat {
   private trainingInProgress = new Map<string, Promise<void>>();
 
   private trainingComplete: ResponseData[] = [];
-  private trainingID = 0;
+
   /**
    * Evaluates, selects, breeds and mutates population
    */
   async evolve(previousFittest?: NetworkInternal) {
+    await this.fitness.calculate(this.population);
+
+    /* Elitism: we need at least 2 on the first run */
+    const elitists = makeElitists(
+      this.population,
+      this.config.elitism > 1
+        ? this.config.elitism
+        : previousFittest
+        ? this.config.elitism
+        : 2,
+    );
+    const tmpFittest = elitists[0];
+
+    const fittest = Network.fromJSON(
+      (tmpFittest as Network).internalJSON(),
+      this.config.debug,
+    ); // Make a copy so it's not mutated.
+    fittest.score = tmpFittest.score;
+    if (fittest.score != undefined) {
+      addTag(fittest, "score", fittest.score.toString());
+    }
+    const error = getTag(fittest, "error");
+    addTag(fittest, "error", error ? error : "-1");
+
     for (
       let i = 0;
-      this.trainingInProgress.size < this.config.trainPerGen &&
-      i < this.population.length;
+      i < elitists.length;
       i++
     ) {
-      const n = this.population[i];
-      if (n.score) {
+      const n = elitists[i];
+      if (!previousFittest) {
+        /* removed "trained" on the first run */
+        removeTag(n, "trained");
+      }
+
+      if (this.trainingInProgress.size < this.config.trainPerGen && n.score) {
         const trained = getTag(n, "trained");
         if (trained !== "YES") {
-          await NetworkUtil.makeUUID(n);
+          await NetworkUtil.makeUUID(n as Network);
           const w: WorkerHandler =
             this.workers[Math.floor(this.workers.length * Math.random())];
           const key = n.uuid as string;
@@ -112,30 +140,6 @@ export class Neat {
         }
       }
     }
-
-    await this.fitness.calculate(this.population);
-
-    /* Elitism: we need at least 2 on the first run */
-    const elitists = makeElitists(
-      this.population,
-      this.config.elitism > 1
-        ? this.config.elitism
-        : previousFittest
-        ? this.config.elitism
-        : 2,
-    );
-    const tmpFittest = elitists[0];
-
-    const fittest = Network.fromJSON(
-      (tmpFittest as Network).internalJSON(),
-      this.config.debug,
-    ); // Make a copy so it's not mutated.
-    fittest.score = tmpFittest.score;
-    if (fittest.score != undefined) {
-      addTag(fittest, "score", fittest.score.toString());
-    }
-    const error = getTag(fittest, "error");
-    addTag(fittest, "error", error ? error : "-1");
 
     const livePopulation = [];
 
