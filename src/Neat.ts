@@ -6,7 +6,10 @@ import { Fitness } from "./architecture/Fitness.ts";
 
 import { NeatOptions } from "./config/NeatOptions.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
-import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
+import {
+  ResponseData,
+  WorkerHandler,
+} from "./multithreading/workers/WorkerHandler.ts";
 import { NetworkInternal } from "./architecture/NetworkInterfaces.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
@@ -17,6 +20,7 @@ import { Mutation } from "./methods/mutation.ts";
 import { Selection } from "./methods/Selection.ts";
 import { Offspring } from "./architecture/Offspring.ts";
 import { NetworkUtil } from "./architecture/NetworkUtils.ts";
+import { format } from "https://deno.land/std@0.184.0/fmt/duration.ts";
 
 export class Neat {
   readonly input: number;
@@ -56,13 +60,17 @@ export class Neat {
     });
   }
 
+  private trainingInProgress = new Map<string, Promise<void>>();
+
+  private trainingComplete: ResponseData[] = [];
+  private trainingID = 0;
   /**
    * Evaluates, selects, breeds and mutates population
    */
   async evolve(previousFittest?: NetworkInternal) {
-    const trainPromises = [];
     for (
       let i = 0;
+      this.trainingInProgress.size < this.config.trainPerGen &&
       i < this.population.length;
       i++
     ) {
@@ -70,16 +78,41 @@ export class Neat {
       if (n.score) {
         const trained = getTag(n, "trained");
         if (trained !== "YES") {
+          await NetworkUtil.makeUUID(n);
           const w: WorkerHandler =
             this.workers[Math.floor(this.workers.length * Math.random())];
-          const p = w.train(n);
-          trainPromises.push(p);
+          const key = n.uuid as string;
+          if (this.config.verbose) {
+            console.info(`Start training for ${key}`);
+          }
+
+          const p = w.train(n, this.trainRate).then(async (r) => {
+            this.trainingComplete.push(r);
+
+            this.trainingInProgress.delete(key);
+
+            if (this.config.traceStore && r.train) {
+              if (r.train.trace) {
+                const traceNetwork = Network.fromJSON(
+                  JSON.parse(r.train.trace),
+                );
+                await NetworkUtil.makeUUID(traceNetwork);
+
+                await Deno.writeTextFile(
+                  `${this.config.traceStore}/${traceNetwork.uuid}.json`,
+                  JSON.stringify(traceNetwork.traceJSON(), null, 2),
+                );
+              }
+            }
+          });
+
+          this.trainingInProgress.set(key, p);
+
           addTag(n, "trained", "YES");
         }
       }
-
-      if (trainPromises.length >= this.config.trainPerGen) break;
     }
+
     await this.fitness.calculate(this.population);
 
     /* Elitism: we need at least 2 on the first run */
@@ -234,7 +267,7 @@ export class Neat {
         Math.ceil(this.config.popSize / 5),
         this.config.popSize - this.population.length -
           this.config.elitism -
-          trainPromises.length,
+          this.trainingComplete.length,
       ),
       !rebootedFineTune && this.config.verbose,
     );
@@ -243,7 +276,7 @@ export class Neat {
 
     const newPopSize = this.config.popSize -
       elitists.length -
-      trainPromises.length -
+      this.trainingComplete.length -
       fineTunedPopulation.length - 1;
 
     // Breed the next individuals
@@ -259,38 +292,30 @@ export class Neat {
 
     const trainPopulation: Network[] = [];
 
-    await Promise.all(trainPromises).then(async (results) => {
-      for (let i = results.length; i--;) {
-        const r = results[i];
-        if (r.train) {
-          if (Number.isFinite(r.train.error)) {
-            const json = JSON.parse(r.train.network);
-
-            addTag(json, "approach", "trained");
-            addTag(json, "error", Math.abs(r.train.error).toString());
-            // addTag(json, "duration", r.duration);
-
-            trainPopulation.push(Network.fromJSON(json, this.config.debug));
-            if (this.config.traceStore) {
-              if (r.train.trace) {
-                // Deno.writeTextFileSync( ".hack.json", JSON.stringify( JSON.parse( r.train.trace), null, 2));
-                const traceNetwork = Network.fromJSON(
-                  JSON.parse(r.train.trace),
-                );
-                await NetworkUtil.makeUUID(traceNetwork);
-
-                Deno.writeTextFileSync(
-                  `${this.config.traceStore}/${traceNetwork.uuid}.json`,
-                  JSON.stringify(traceNetwork.traceJSON(), null, 2),
-                );
-              }
-            }
+    for (let i = this.trainingComplete.length; i--;) {
+      const r = this.trainingComplete[i];
+      if (r.train) {
+        if (Number.isFinite(r.train.error)) {
+          const json = JSON.parse(r.train.network);
+          if (this.config.verbose) {
+            console.info(
+              `Ended training for ${json.uuid} ${
+                r.duration
+                  ? "after " + format(r.duration, { ignoreZero: true })
+                  : ""
+              }`,
+            );
           }
-        } else {
-          throw "No train result";
+          addTag(json, "approach", "trained");
+          addTag(json, "error", Math.abs(r.train.error).toString());
+
+          trainPopulation.push(Network.fromJSON(json, this.config.debug));
         }
+      } else {
+        throw "No train result";
       }
-    });
+    }
+    this.trainingComplete.length = 0;
 
     this.population = [
       ...(elitists as Network[]),
