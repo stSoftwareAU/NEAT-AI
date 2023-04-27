@@ -15,7 +15,7 @@ import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { Network } from "./architecture/Network.ts";
-import { ensureDirSync } from "https://deno.land/std@0.181.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.184.0/fs/ensure_dir.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { Selection } from "./methods/Selection.ts";
 import { Offspring } from "./architecture/Offspring.ts";
@@ -86,7 +86,7 @@ export class Neat {
             console.info(`Start training for ${key}`);
           }
 
-          const p = w.train(n, this.trainRate).then(async (r) => {
+          const p = w.train(n).then(async (r) => {
             this.trainingComplete.push(r);
 
             this.trainingInProgress.delete(key);
