@@ -7,18 +7,16 @@ class NodeState {
   // public derivative=0;
   // public totalDeltaBias=0;
   // public previousDeltaBias=0;
-  public count=0;
+  public count = 0;
 
-  public totalValue =0;
-  public totalWeightedSum=0;
-
-
+  public totalValue = 0;
+  public totalWeightedSum = 0;
 }
 
 export class ConnectionState {
   public eligibility = 0;
   public totalValue = 0;
-  public count=0;
+  public count = 0;
   public totalActivation = 0;
 
   public used?: boolean;

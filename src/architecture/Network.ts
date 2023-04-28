@@ -15,14 +15,14 @@ import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.184.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.185.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.ts";
 import { getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 
 import { TrainOptions } from "../config/TrainOptions.ts";
-import { emptyDirSync } from "https://deno.land/std@0.184.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.185.0/fs/empty_dir.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { Node } from "../architecture/Node.ts";
 import { Connection } from "./Connection.ts";
@@ -31,7 +31,7 @@ import { NetworkState } from "./NetworkState.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { addTag } from "../tags/TagsInterface.ts";
-import { format } from "https://deno.land/std@0.184.0/fmt/duration.ts";
+import { format } from "https://deno.land/std@0.185.0/fmt/duration.ts";
 
 const cacheDataFile = {
   fn: "",

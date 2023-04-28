@@ -1,8 +1,8 @@
-import { emptyDirSync } from "https://deno.land/std@0.184.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.185.0/fs/empty_dir.ts";
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.184.0/testing/asserts.ts";
+} from "https://deno.land/std@0.185.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { INVERSE } from "../src/methods/activations/types/INVERSE.ts";

@@ -1,5 +1,5 @@
 import { makeElitists } from "../src/architecture/elitism.ts";
-import { assert } from "https://deno.land/std@0.184.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.185.0/testing/asserts.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
