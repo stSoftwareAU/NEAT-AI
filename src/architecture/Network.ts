@@ -31,6 +31,7 @@ import { NetworkState } from "./NetworkState.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { addTag } from "../tags/TagsInterface.ts";
+import { format } from "https://deno.land/std@0.184.0/fmt/duration.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -1015,11 +1016,11 @@ export class Network implements NetworkInternal {
           fittest.score,
           "error",
           error,
-          "avg time",
+          (options.log > 1 ? "avg " : "") + "time",
           yellow(
-            new Intl.NumberFormat().format(
-              Math.round((now - iterationStartMS) / options.log),
-            ) + " ms",
+            format(Math.round((now - iterationStartMS) / options.log), {
+              ignoreZero: true,
+            }),
           ),
         );
 
@@ -1030,23 +1031,23 @@ export class Network implements NetworkInternal {
       generation++;
     }
 
-    const promises: Promise<string>[] = [];
+    // const promises: Promise<string>[] = [];
     for (let i = workers.length; i--;) {
       const w = workers[i];
-      if (w.isBusy()) {
-        const p = new Promise<string>((resolve) => {
-          w.addIdleListener((w) => {
-            w.terminate();
-            resolve("done");
-          });
-        });
-        promises.push(p);
-      } else {
-        w.terminate();
-      }
+      // if (w.isBusy()) {
+      //   const p = new Promise<string>((resolve) => {
+      //     w.addIdleListener((w) => {
+      //       w.terminate();
+      //       resolve("done");
+      //     });
+      //   });
+      //   promises.push(p);
+      // } else {
+      w.terminate();
+      // }
     }
     workers.length = 0; // Release the memory.
-    await Promise.all(promises);
+    // await Promise.all(promises);
     if (bestCreature) {
       this.loadFrom(bestCreature, config.debug);
     }
