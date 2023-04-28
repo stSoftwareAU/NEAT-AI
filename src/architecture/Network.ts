@@ -32,6 +32,7 @@ import { NetworkState } from "./NetworkState.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { addTag } from "../tags/TagsInterface.ts";
+import { format } from "https://deno.land/std@0.184.0/fmt/duration.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -1025,11 +1026,11 @@ export class Network implements NetworkInternal {
           fittest.score,
           "error",
           error,
-          "avg time",
+          (options.log > 1 ? "avg " : "") + "time",
           yellow(
-            new Intl.NumberFormat().format(
-              Math.round((now - iterationStartMS) / options.log),
-            ) + " ms",
+            format(Math.round((now - iterationStartMS) / options.log), {
+              ignoreZero: true,
+            }),
           ),
         );
 
