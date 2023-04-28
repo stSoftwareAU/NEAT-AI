@@ -61,8 +61,8 @@ Deno.test("traceNode", async () => {
 
   // let errorResponsibilityCount = 0;
   // let errorProjectedCount = 0;
-  let derivativeCount = 0;
-  let totalDeltaBiasCount = 0;
+  let batchSizeCount = 0;
+  let totalBiasValueCount = 0;
 
   for (const dirEntry of Deno.readDirSync(traceDir)) {
     if (dirEntry.name.endsWith(".json")) {
@@ -87,25 +87,25 @@ Deno.test("traceNode", async () => {
           // }
 
           if (
-            Number.isFinite(n.trace.derivative) &&
-            n.trace.derivative != 0
+            Number.isFinite(n.trace.batchSize) &&
+            n.trace.batchSize != 0
           ) {
-            derivativeCount++;
+            batchSizeCount++;
           }
 
           if (
-            Number.isFinite(n.trace.totalDeltaBias) &&
-            n.trace.totalDeltaBias != 0
+            Number.isFinite(n.trace.totalBiasValue) &&
+            n.trace.totalBiasValue != 0
           ) {
-            totalDeltaBiasCount++;
+            totalBiasValueCount++;
           }
         }
       });
     }
   }
   assert(
-    totalDeltaBiasCount > 0,
-    "Should have totalDeltaBiasCount",
+    batchSizeCount > 0,
+    "Should have batchSizeCount",
   );
 
   // assert(
@@ -114,7 +114,7 @@ Deno.test("traceNode", async () => {
   // );
 
   assert(
-    derivativeCount > 0,
-    "Should have derivativeCount",
+    totalBiasValueCount > 0,
+    "Should have totalBiasValueCount",
   );
 });
