@@ -36,16 +36,14 @@ export class Fitness {
     const error = responseData.evaluate.error;
     addTag(creature, "error", Math.abs(error).toString());
 
-    creature.score = -error - (
+    const score = -error - (
           creature.nodes.length -
           creature.input -
           creature.output +
           creature.connections.length
         ) * this.growth;
 
-    creature.score = Number.isFinite(creature.score)
-      ? creature.score
-      : -Infinity;
+    creature.score = Number.isFinite(score) ? score : -Infinity;
     addTag(creature, "score", creature.score.toString());
   }
 

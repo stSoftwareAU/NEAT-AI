@@ -294,7 +294,7 @@ export class Neat {
     // Replace the old population with the new population
     this.mutate(newPopulation);
 
-    const trainPopulation: Network[] = [];
+    const trainedPopulation: Network[] = [];
 
     for (let i = this.trainingComplete.length; i--;) {
       const r = this.trainingComplete[i];
@@ -303,17 +303,18 @@ export class Neat {
           const json = JSON.parse(r.train.network);
           if (this.config.verbose) {
             console.info(
-              `Ended training for ${json.uuid} ${
+              `Training completed ${
                 r.duration
                   ? "after " + format(r.duration, { ignoreZero: true })
                   : ""
               }`,
             );
           }
-          addTag(json, "approach", "trained");
-          addTag(json, "error", Math.abs(r.train.error).toString());
+          if (getTag(json, "approach") == null) {
+            addTag(json, "approach", "trained");
+          }
 
-          trainPopulation.push(Network.fromJSON(json, this.config.debug));
+          trainedPopulation.push(Network.fromJSON(json, this.config.debug));
         }
       } else {
         throw "No train result";
@@ -323,7 +324,7 @@ export class Neat {
 
     this.population = [
       ...(elitists as Network[]),
-      ...trainPopulation,
+      ...trainedPopulation,
       ...fineTunedPopulation,
       ...newPopulation,
     ]; // Keep pseudo sorted.
