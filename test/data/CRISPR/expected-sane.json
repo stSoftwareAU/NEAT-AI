@@ -1,0 +1,198 @@
+{
+  "nodes": [
+    {
+      "type": "hidden",
+      "index": 3,
+      "uuid": "h1",
+      "bias": -1,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "index": 4,
+      "uuid": "h2",
+      "bias": -0.5,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "index": 5,
+      "uuid": "h3",
+      "bias": 0,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "index": 6,
+      "uuid": "h4",
+      "bias": 0.5,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "index": 7,
+      "uuid": "h5",
+      "bias": -0.25,
+      "squash": "MEAN"
+    },
+    {
+      "type": "hidden",
+      "index": 8,
+      "uuid": "h6",
+      "bias": 0,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "index": 9,
+      "uuid": "h7",
+      "bias": 0,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "index": 10,
+      "uuid": "h8",
+      "bias": 0,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "index": 11,
+      "uuid": "ed56a8a6-001-4a53-9eab-583c499d231b",
+      "bias": -0.0001,
+      "squash": "MINIMUM",
+      "tags": [
+        {
+          "name": "CRISPR",
+          "value": "Sane Output"
+        }
+      ]
+    },
+    {
+      "type": "output",
+      "index": 12,
+      "uuid": "ed56a8a6-002-4a53-9eab-583c499d231b",
+      "bias": 0,
+      "squash": "MEAN",
+      "tags": [
+        {
+          "name": "CRISPR",
+          "value": "Sane Output"
+        }
+      ]
+    },
+    {
+      "type": "output",
+      "index": 13,
+      "uuid": "ed56a8a6-003-4a53-9eab-583c499d231b",
+      "bias": 0.0001,
+      "squash": "MAXIMUM",
+      "tags": [
+        {
+          "name": "CRISPR",
+          "value": "Sane Output"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "weight": 0.25,
+      "from": 0,
+      "to": 8
+    },
+    {
+      "weight": 0.1,
+      "from": 1,
+      "to": 3
+    },
+    {
+      "weight": 0.5,
+      "from": 1,
+      "to": 6
+    },
+    {
+      "weight": 0.4,
+      "from": 2,
+      "to": 5
+    },
+    {
+      "weight": 0.3,
+      "from": 3,
+      "to": 4
+    },
+    {
+      "weight": 0.2,
+      "from": 3,
+      "to": 8
+    },
+    {
+      "weight": 0.7,
+      "from": 4,
+      "to": 7
+    },
+    {
+      "weight": 0.4,
+      "from": 5,
+      "to": 10
+    },
+    {
+      "weight": 0.8,
+      "from": 6,
+      "to": 8
+    },
+    {
+      "weight": 0.9,
+      "from": 7,
+      "to": 9
+    },
+    {
+      "weight": 1,
+      "from": 8,
+      "to": 11
+    },
+    {
+      "weight": 1,
+      "from": 8,
+      "to": 12
+    },
+    {
+      "weight": 1,
+      "from": 8,
+      "to": 13
+    },
+    {
+      "weight": 1,
+      "from": 9,
+      "to": 11
+    },
+    {
+      "weight": 1,
+      "from": 9,
+      "to": 12
+    },
+    {
+      "weight": 1,
+      "from": 9,
+      "to": 13
+    },
+    {
+      "weight": 1,
+      "from": 10,
+      "to": 11
+    },
+    {
+      "weight": 1,
+      "from": 10,
+      "to": 12
+    },
+    {
+      "weight": 1,
+      "from": 10,
+      "to": 13
+    }
+  ],
+  "input": 3,
+  "output": 3
+}
