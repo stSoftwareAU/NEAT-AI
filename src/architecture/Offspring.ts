@@ -64,12 +64,9 @@ export class Offspring {
         if (node === undefined || node.type === "output") {
           const other = random < 0.5 ? network1.nodes[i] : network2.nodes[i];
 
-          if (other.type === "output") {
-            console.trace();
-            throw i + ") Should not be an 'output' node";
+          if (other != undefined && other.type !== "output") {
+            node = other;
           }
-
-          node = other;
         }
       } else {
         if (Math.random() >= 0.5) {
