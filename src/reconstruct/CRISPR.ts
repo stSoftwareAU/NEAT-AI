@@ -65,8 +65,8 @@ export class CRISPR {
       if (node.type == "output") {
         if (firstNetworkOutputIndex == -1) {
           firstNetworkOutputIndex = indx;
-          ((node as unknown) as { type: string }).type = "hidden";
         }
+        ((node as unknown) as { type: string }).type = "hidden";
       }
     });
 

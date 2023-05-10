@@ -5,7 +5,8 @@ import { Network } from "../src/architecture/Network.ts";
 import { getTag } from "../src/tags/TagsInterface.ts";
 import { Node } from "../src/architecture/Node.ts";
 import { Mutation } from "../src/methods/mutation.ts";
-import { assert } from "https://deno.land/std@0.185.0/_util/asserts.ts";
+import { assert } from "https://deno.land/std@0.177.0/_util/asserts.ts";
+import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -128,4 +129,82 @@ Deno.test("REMOVE", () => {
       }
     }
   }
+});
+
+Deno.test("CRISPR-multi-outputs", () => {
+  const json: NetworkInternal = {
+    nodes: [
+      { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
+      { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4, uuid: "h2" },
+      { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5, uuid: "h3" },
+      { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 6, uuid: "h4" },
+      { type: "hidden", squash: "MEAN", bias: -0.25, index: 7, uuid: "h5" },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        index: 8,
+        uuid: "h6",
+        bias: 0,
+      },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        index: 9,
+        uuid: "h7",
+        bias: 0,
+      },
+      {
+        type: "output",
+        squash: "LOGISTIC",
+        index: 10,
+        uuid: "h8",
+        bias: 0,
+      },
+    ],
+    connections: [
+      { from: 1, to: 3, weight: 0.1 },
+      { from: 3, to: 8, weight: 0.2 },
+      { from: 0, to: 8, weight: 0.25 },
+      { from: 3, to: 4, weight: 0.3 },
+      { from: 2, to: 5, weight: 0.4 },
+      { from: 5, to: 10, weight: 0.4 },
+      { from: 1, to: 6, weight: 0.5 },
+      { from: 4, to: 7, weight: 0.7 },
+      { from: 6, to: 8, weight: 0.8 },
+      { from: 7, to: 9, weight: 0.9 },
+    ],
+    input: 3,
+    output: 3,
+  };
+  const network = Network.fromJSON(json);
+  Deno.writeTextFileSync(
+    "test/data/CRISPR/.network-sane.json",
+    JSON.stringify(network.internalJSON(), null, 2),
+  );
+  network.validate();
+  const crispr = new CRISPR(network);
+  const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-SANE.json");
+
+  const networkSANE = Network.fromJSON(crispr.apply(JSON.parse(dnaTXT)));
+  networkSANE.validate();
+  const expectedJSON = JSON.parse(
+    Deno.readTextFileSync("test/data/CRISPR/expected-sane.json"),
+  );
+
+  const expectedTXT = JSON.stringify(
+    Network.fromJSON(expectedJSON).internalJSON(),
+    null,
+    2,
+  );
+
+  Deno.writeTextFileSync("test/data/CRISPR/.expected-sane.json", expectedTXT);
+
+  const actualTXT = JSON.stringify(
+    networkSANE.internalJSON(),
+    null,
+    2,
+  );
+
+  Deno.writeTextFileSync("test/data/CRISPR/.actual-sane.json", actualTXT);
+  assertEquals(actualTXT, expectedTXT, "should have converted");
 });

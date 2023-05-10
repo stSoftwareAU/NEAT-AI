@@ -1,0 +1,40 @@
+{
+  "id": "Sane Output",
+  "mode": "append",
+  "nodes": [
+    {
+      "uuid": "ed56a8a6-001-4a53-9eab-583c499d231b",
+      "bias": -0.0001,
+      "index": 1000,
+      "type": "output",
+      "squash": "MINIMUM"
+    },
+    {
+      "uuid": "ed56a8a6-002-4a53-9eab-583c499d231b",
+      "bias": 0,
+      "index": 1001,
+      "type": "output",
+      "squash": "MEAN"
+    },
+    {
+      "uuid": "ed56a8a6-003-4a53-9eab-583c499d231b",
+      "bias": 0.0001,
+      "index": 1002,
+      "type": "output",
+      "squash": "MAXIMUM"
+    }
+  ],
+  "connections": [
+    { "fromRelative": 997, "toRelative": 1000, "weight": 1 },
+    { "fromRelative": 998, "toRelative": 1000, "weight": 1 },
+    { "fromRelative": 999, "toRelative": 1000, "weight": 1 },
+
+    { "fromRelative": 997, "toRelative": 1001, "weight": 1 },
+    { "fromRelative": 998, "toRelative": 1001, "weight": 1 },
+    { "fromRelative": 999, "toRelative": 1001, "weight": 1 },
+
+    { "fromRelative": 997, "toRelative": 1002, "weight": 1 },
+    { "fromRelative": 998, "toRelative": 1002, "weight": 1 },
+    { "fromRelative": 999, "toRelative": 1002, "weight": 1 }
+  ]
+}
