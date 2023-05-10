@@ -603,14 +603,14 @@ export class Network implements NetworkInternal {
         console.trace();
         throw indx + ") connection points to an input node";
       }
-      const fromNode = this.getNode(c.from);
+      // const fromNode = this.getNode(c.from);
 
-      if (fromNode.type === "output") {
-        if (c.from != c.to) {
-          console.trace();
-          throw indx + ") connection from an output node";
-        }
-      }
+      // if (fromNode.type === "output") {
+      //   if (c.from != c.to) {
+      //     console.trace();
+      //     throw indx + ") connection from an output node";
+      //   }
+      // }
 
       if (c.from < lastFrom) {
         console.info(JSON.stringify(this.connections, null, 1));
@@ -757,14 +757,14 @@ export class Network implements NetworkInternal {
       throw "to should be a non-negative integer was: " + to;
     }
 
-    const firstOutputIndex = this.nodes.length - this.output;
-    if (from >= firstOutputIndex && from !== to) {
-      console.trace();
-      throw "from should not be from an output node (" + firstOutputIndex +
-        ", len: " + this.nodes.length + ", output: " +
-        this.output +
-        "): " + from;
-    }
+    // const firstOutputIndex = this.nodes.length - this.output;
+    // if (from >= firstOutputIndex && from !== to) {
+    //   console.trace();
+    //   throw "from should not be from an output node (" + firstOutputIndex +
+    //     ", len: " + this.nodes.length + ", output: " +
+    //     this.output +
+    //     "): " + from;
+    // }
 
     if (to < this.input) {
       console.trace();
@@ -1572,7 +1572,7 @@ export class Network implements NetworkInternal {
     // Create an array of all uncreated (feedforward) connections
     const available = [];
 
-    for (let i = 0; i < this.nodes.length - this.output; i++) {
+    for (let i = 0; i < this.nodes.length; i++) {
       const node1 = this.nodes[i];
 
       if ((node1 as NodeInternal).index != i) {
@@ -2024,6 +2024,7 @@ export class Network implements NetworkInternal {
         pos < this.nodes.length - this.output;
         pos++
       ) {
+        if (this.nodes[pos].type == "output") continue;
         if (
           this.fromConnections(pos).filter((c) => {
             return c.from !== c.to;

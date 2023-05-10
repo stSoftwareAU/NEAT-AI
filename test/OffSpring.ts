@@ -285,3 +285,144 @@ function check() {
     throw "Did not find " + missingUUID;
   }
 }
+
+Deno.test(
+  "Many Outputs",
+  () => {
+    const creature: NetworkInternal = {
+      nodes: [
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0,
+          index: 5,
+          type: "hidden",
+          squash: "IDENTITY",
+        },
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.1,
+          index: 6,
+          type: "hidden",
+          squash: "MAXIMUM",
+        },
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.2,
+          index: 7,
+          type: "output",
+          squash: "MINIMUM",
+        },
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.08,
+          index: 8,
+          type: "output",
+          squash: "IDENTITY",
+        },
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.09,
+          index: 9,
+          type: "output",
+          squash: "IDENTITY",
+        },
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.10,
+          index: 10,
+          type: "output",
+          squash: "IDENTITY",
+        },
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.11,
+          index: 11,
+          type: "output",
+          squash: "IDENTITY",
+        },
+
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.12,
+          index: 12,
+          type: "output",
+          squash: "IDENTITY",
+        },
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.13,
+          index: 13,
+          type: "output",
+          squash: "IDENTITY",
+        },
+        {
+          uuid: crypto.randomUUID(),
+          bias: 0.14,
+          index: 14,
+          type: "output",
+          squash: "IDENTITY",
+        },
+      ],
+      connections: [
+        {
+          weight: -0.1,
+          from: 1,
+          to: 5,
+        },
+        {
+          weight: -0.2,
+          from: 2,
+          to: 7,
+        },
+        {
+          weight: -0.3,
+          from: 3,
+          to: 5,
+        },
+        {
+          weight: 0.2,
+          from: 4,
+          to: 7,
+        },
+        {
+          weight: 0.1,
+          from: 5,
+          to: 6,
+        },
+        {
+          weight: 0.3,
+          from: 6,
+          to: 7,
+        },
+      ],
+      input: 5,
+      output: 8,
+    };
+
+    const n1 = Network.fromJSON(creature);
+    n1.fix();
+    n1.validate();
+
+    const n2 = Network.fromJSON(n1.exportJSON());
+
+    n2.validate();
+
+    for (let i = 0; i < 20; i++) {
+      n2.addNode();
+      n2.addConnection();
+      // n1.addConnection();
+    }
+
+    n2.validate();
+
+    for (let i = 0; i < 20; i++) {
+      const child = Offspring.bread(n1, n2);
+      child.validate();
+    }
+
+    for (let i = 0; i < 20; i++) {
+      const child = Offspring.bread(n2, n1);
+      child.validate();
+    }
+  },
+);
