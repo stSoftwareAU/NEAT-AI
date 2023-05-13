@@ -1997,7 +1997,7 @@ export class Network implements NetworkInternal {
     this.DEBUG = holdDebug;
     const maxTo = this.nodes.length - 1;
     const minTo = this.input;
-    const maxFrom = this.nodes.length - this.output;
+    // const maxFrom = this.nodes.length - this.output;
 
     const connections: Connection[] = [];
     this.connections.forEach((c) => {
@@ -2005,8 +2005,8 @@ export class Network implements NetworkInternal {
         console.debug("Ignoring connection to above max", maxTo, c);
       } else if (c.to < minTo) {
         console.debug("Ignoring connection to below min", minTo, c);
-      } else if (c.from > maxFrom) {
-        console.debug("Ignoring connection from above max", maxFrom, c);
+        // } else if (c.from > maxFrom) {
+        //   console.debug("Ignoring connection from above max", maxFrom, c);
       } else {
         connections.push(c as Connection);
       }
