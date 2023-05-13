@@ -16,7 +16,7 @@ import { BIPOLAR_SIGMOID } from "./types/BIPOLAR_SIGMOID.ts";
 
 import { HARD_TANH } from "./types/HARD_TANH.ts";
 import { ABSOLUTE } from "./types/ABSOLUTE.ts";
-
+import { CLIPPED } from "./types/CLIPPED.ts";
 import { MINIMUM } from "./aggregate/MINIMUM.ts";
 import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
 import { MEAN } from "./aggregate/MEAN.ts";
@@ -29,6 +29,7 @@ import { IF } from "./aggregate/IF.ts";
  */
 export class Activations {
   static NAMES = [
+    CLIPPED.NAME,
     LOGISTIC.NAME,
     TANH.NAME,
     IDENTITY.NAME,
@@ -67,7 +68,7 @@ export class Activations {
   private static absolute = new ABSOLUTE();
   private static inverse = new INVERSE();
   private static selu = new SELU();
-
+  private static clipped = new CLIPPED();
   private static minimum = new MINIMUM();
   private static maximum = new MAXIMUM();
   private static mean = new MEAN();
@@ -76,6 +77,8 @@ export class Activations {
 
   static find(name: string) {
     switch (name) {
+      case CLIPPED.NAME:
+        return this.clipped;
       case LOGISTIC.NAME:
         return this.logistic;
       case TANH.NAME:
