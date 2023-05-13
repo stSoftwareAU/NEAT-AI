@@ -1,0 +1,140 @@
+{
+  "nodes": [
+    {
+      "type": "hidden",
+      "index": 3,
+      "uuid": "h1",
+      "bias": -1,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "index": 4,
+      "uuid": "h6",
+      "bias": 0,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "index": 5,
+      "uuid": "h7",
+      "bias": 0,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "index": 6,
+      "uuid": "h8",
+      "bias": 0,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "index": 7,
+      "uuid": "ed56a8a6-001-4a53-9eab-583c499d231b",
+      "bias": -0.0001,
+      "squash": "MINIMUM",
+      "tags": [
+        {
+          "name": "CRISPR",
+          "value": "Sane Output"
+        }
+      ]
+    },
+    {
+      "type": "output",
+      "index": 8,
+      "uuid": "ed56a8a6-002-4a53-9eab-583c499d231b",
+      "bias": 0,
+      "squash": "MEAN",
+      "tags": [
+        {
+          "name": "CRISPR",
+          "value": "Sane Output"
+        }
+      ]
+    },
+    {
+      "type": "output",
+      "index": 9,
+      "uuid": "ed56a8a6-003-4a53-9eab-583c499d231b",
+      "bias": 0.0001,
+      "squash": "MAXIMUM",
+      "tags": [
+        {
+          "name": "CRISPR",
+          "value": "Sane Output"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "weight": 0.1,
+      "from": 1,
+      "to": 3
+    },
+    {
+      "weight": 0.2,
+      "from": 2,
+      "to": 4
+    },
+    {
+      "weight": 0.4,
+      "from": 2,
+      "to": 6
+    },
+    {
+      "weight": 0.3,
+      "from": 3,
+      "to": 5
+    },
+    {
+      "weight": 1,
+      "from": 4,
+      "to": 7
+    },
+    {
+      "weight": 1,
+      "from": 4,
+      "to": 8
+    },
+    {
+      "weight": 1,
+      "from": 4,
+      "to": 9
+    },
+    {
+      "weight": 1,
+      "from": 5,
+      "to": 7
+    },
+    {
+      "weight": 1,
+      "from": 5,
+      "to": 8
+    },
+    {
+      "weight": 1,
+      "from": 5,
+      "to": 9
+    },
+    {
+      "weight": 1,
+      "from": 6,
+      "to": 7
+    },
+    {
+      "weight": 1,
+      "from": 6,
+      "to": 8
+    },
+    {
+      "weight": 1,
+      "from": 6,
+      "to": 9
+    }
+  ],
+  "input": 3,
+  "output": 3
+}
