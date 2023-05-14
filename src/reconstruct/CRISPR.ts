@@ -41,8 +41,10 @@ export class CRISPR {
       (this.network as Network).internalJSON(),
     );
 
+    const UUIDs = new Set<string>();
     let alreadyProcessed = false;
     tmpNetwork.nodes.forEach((node) => {
+      UUIDs.add(node.uuid ? node.uuid : "");
       const id = getTag(node, "CRISPR");
 
       if (id === dna.id) {
@@ -75,8 +77,11 @@ export class CRISPR {
 
     dna.nodes.forEach((dnaNode) => {
       const indx = dnaNode.index + adjustIndx;
+      const uuid = dnaNode.uuid
+        ? UUIDs.has(dnaNode.uuid) ? crypto.randomUUID() : dnaNode.uuid
+        : crypto.randomUUID();
       const networkNode = new Node(
-        dnaNode.uuid ? dnaNode.uuid : crypto.randomUUID(),
+        uuid,
         dnaNode.type,
         dnaNode.bias,
         tmpNetwork,
