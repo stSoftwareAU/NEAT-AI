@@ -129,6 +129,12 @@ Deno.test("REMOVE", () => {
       }
     }
   }
+
+  const crispr2 = new CRISPR(networkIF);
+
+  const networkIF2 = crispr2.apply(JSON.parse(dnaTXT)) as Network;
+
+  (networkIF2 as Network).validate();
 });
 
 Deno.test("CRISPR-multi-outputs1", () => {
