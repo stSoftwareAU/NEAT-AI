@@ -1572,7 +1572,9 @@ export class Network implements NetworkInternal {
     this.clearCache();
   }
 
-  public addConnection(focusList?: number[]) {
+  public addConnection(focusList?: number[], options = {
+    weightScale: 1,
+  }) {
     // Create an array of all uncreated (feedforward) connections
     const available = [];
 
@@ -1608,10 +1610,13 @@ export class Network implements NetworkInternal {
     const pair = available[Math.floor(Math.random() * available.length)];
     const indx0 = (pair[0] as NodeInternal).index;
     const indx1 = (pair[1] as NodeInternal).index;
+    const w = Connection.randomWeight() * options.weightScale
+      ? options.weightScale
+      : 1;
     this.connect(
       indx0 ? indx0 : 0,
       indx1 ? indx1 : 0,
-      Connection.randomWeight(),
+      w,
     );
   }
 

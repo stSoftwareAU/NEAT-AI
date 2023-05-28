@@ -141,6 +141,29 @@ export class Neat {
       }
     }
 
+    if (
+      this.trainingInProgress.size < this.config.trainPerGen &&
+      elitists.length > 0
+    ) {
+      console.info(
+        "Creative thinking required",
+        this.config.focusRate,
+        this.config.focusList,
+      );
+      const n = elitists[0];
+      const creativeThinking = Network.fromJSON((n as Network).exportJSON());
+      const weightScale = 1 / creativeThinking.connections.length;
+      for (let i = 0; i < 12; i++) {
+        creativeThinking.addConnection(
+          Math.random() < this.config.focusRate
+            ? this.config.focusList
+            : undefined,
+          {
+            weightScale: weightScale,
+          },
+        );
+      }
+    }
     const livePopulation = [];
 
     await this.writeScores(
