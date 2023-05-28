@@ -13,6 +13,9 @@ export interface NeatConfig extends NeatOptions {
   /** List of creatures to start with */
   creatures: NetworkInternal[] | NetworkExport[];
 
+  /** How many new links to create durring the creative thinking phase. */
+  creativeThinkingConnectionCount: number;
+
   /** number of records per dataset file. default: 2000 */
   dataSetPartitionBreak: number;
 
@@ -77,6 +80,9 @@ export function make(parameters?: NeatOptions) {
   const config: NeatConfig = {
     // clear: options.clear || false,
 
+    creativeThinkingConnectionCount: options.creativeThinkingConnectionCount
+      ? options.creativeThinkingConnectionCount
+      : 12,
     creatureStore: options.creatureStore,
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
