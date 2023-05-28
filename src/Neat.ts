@@ -64,6 +64,40 @@ export class Neat {
 
   private trainingComplete: ResponseData[] = [];
 
+  async scheduleTraining(creature: NetworkInternal) {
+    await NetworkUtil.makeUUID(creature as Network);
+    const w: WorkerHandler =
+      this.workers[Math.floor(this.workers.length * Math.random())];
+    const key = creature.uuid as string;
+    if (this.config.verbose) {
+      console.info(`Start training for ${key}`);
+    }
+
+    const p = w.train(creature, this.trainRate).then(async (r) => {
+      this.trainingComplete.push(r);
+
+      this.trainingInProgress.delete(key);
+
+      if (this.config.traceStore && r.train) {
+        if (r.train.trace) {
+          const traceNetwork = Network.fromJSON(
+            JSON.parse(r.train.trace),
+          );
+          await NetworkUtil.makeUUID(traceNetwork);
+
+          await Deno.writeTextFile(
+            `${this.config.traceStore}/${traceNetwork.uuid}.json`,
+            JSON.stringify(traceNetwork.traceJSON(), null, 2),
+          );
+        }
+      }
+    });
+
+    this.trainingInProgress.set(key, p);
+
+    addTag(creature, "trained", "YES");
+  }
+
   /**
    * Evaluates, selects, breeds and mutates population
    */
@@ -106,37 +140,7 @@ export class Neat {
       if (this.trainingInProgress.size < this.config.trainPerGen && n.score) {
         const trained = getTag(n, "trained");
         if (trained !== "YES") {
-          await NetworkUtil.makeUUID(n as Network);
-          const w: WorkerHandler =
-            this.workers[Math.floor(this.workers.length * Math.random())];
-          const key = n.uuid as string;
-          if (this.config.verbose) {
-            console.info(`Start training for ${key}`);
-          }
-
-          const p = w.train(n, this.trainRate).then(async (r) => {
-            this.trainingComplete.push(r);
-
-            this.trainingInProgress.delete(key);
-
-            if (this.config.traceStore && r.train) {
-              if (r.train.trace) {
-                const traceNetwork = Network.fromJSON(
-                  JSON.parse(r.train.trace),
-                );
-                await NetworkUtil.makeUUID(traceNetwork);
-
-                await Deno.writeTextFile(
-                  `${this.config.traceStore}/${traceNetwork.uuid}.json`,
-                  JSON.stringify(traceNetwork.traceJSON(), null, 2),
-                );
-              }
-            }
-          });
-
-          this.trainingInProgress.set(key, p);
-
-          addTag(n, "trained", "YES");
+          await this.scheduleTraining(n);
         }
       }
     }
@@ -145,15 +149,17 @@ export class Neat {
       this.trainingInProgress.size < this.config.trainPerGen &&
       elitists.length > 0
     ) {
-      console.info(
-        "Creative thinking required",
-        this.config.focusRate,
-        this.config.focusList,
-      );
+      if (this.config.verbose) {
+        console.info(
+          "Creative thinking required",
+          this.config.focusRate,
+          this.config.focusList,
+        );
+      }
       const n = elitists[0];
       const creativeThinking = Network.fromJSON((n as Network).exportJSON());
       const weightScale = 1 / creativeThinking.connections.length;
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
         creativeThinking.addConnection(
           Math.random() < this.config.focusRate
             ? this.config.focusList
@@ -163,6 +169,8 @@ export class Neat {
           },
         );
       }
+
+      await this.scheduleTraining(creativeThinking);
     }
     const livePopulation = [];
 

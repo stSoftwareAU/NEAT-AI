@@ -15,7 +15,8 @@ export interface NeatOptions {
   // clear?: boolean;
 
   costName?: string;
-
+  /** How many new links to create durring the creative thinking phase. default 12 */
+  creativeThinkingConnectionCount?: number;
   /** The directory to store the creatures (optional) */
   creatureStore?: string;
 
