@@ -13,7 +13,7 @@ export interface NeatConfig extends NeatOptions {
   /** List of creatures to start with */
   creatures: NetworkInternal[] | NetworkExport[];
 
-  /** How many new links to create durring the creative thinking phase. */
+  /** How many new links to create during the creative thinking phase. */
   creativeThinkingConnectionCount: number;
 
   /** number of records per dataset file. default: 2000 */
