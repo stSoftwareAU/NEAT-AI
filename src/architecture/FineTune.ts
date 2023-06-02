@@ -1,6 +1,7 @@
 import { addTag, getTag } from "../tags/TagsInterface.ts";
 import { Network } from "./Network.ts";
 import { NetworkInternal } from "./NetworkInterfaces.ts";
+import { NodeExport } from "./NodeInterfaces.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneWeights(
@@ -10,8 +11,8 @@ function tuneWeights(
   rate = 1,
   skipSet: Set<string> | null = null,
 ) {
-  const previousJSON = (previousFittest as Network).internalJSON();
-  const allJSON = (fittest as Network).internalJSON();
+  const previousJSON = (previousFittest as Network).exportJSON();
+  const allJSON = (fittest as Network).exportJSON();
   let changeWeightCount = 0;
 
   for (let i = allJSON.connections.length; i--;) {
@@ -19,11 +20,11 @@ function tuneWeights(
     for (let j = previousJSON.connections.length; j--;) {
       const pc = previousJSON.connections[j];
 
-      if (tc.from == pc.from && tc.to == pc.to) {
+      if (tc.fromUUID == pc.fromUUID && tc.toUUID == pc.toUUID) {
         if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
           if (Math.random() < rate) {
             if (skipSet) {
-              const key = tc.from + ":" + tc.to;
+              const key = tc.fromUUID + ":" + tc.toUUID;
               if (skipSet.has(key)) continue;
 
               skipSet.add(key);
@@ -85,33 +86,37 @@ function tuneBias(
   rate = 1,
   skipSet: Set<string> | null = null,
 ) {
-  const previousJSON = (previousFittest as Network).internalJSON();
-  const allJSON = (fittest as Network).internalJSON();
+  const previousJSON = (previousFittest as Network).exportJSON();
+  const uuidNodeMap = new Map<string, NodeExport>();
+
+  previousJSON.nodes.forEach((n) => {
+    const uuid = n.uuid ? n.uuid : "";
+    uuidNodeMap.set(uuid, n);
+  });
+
+  const allJSON = (fittest as Network).exportJSON();
 
   let changeBiasCount = 0;
   for (let i = allJSON.nodes.length; i--;) {
     const tn = allJSON.nodes[i];
+    const pn = uuidNodeMap.get(tn.uuid ? tn.uuid : "");
 
-    if (i < previousJSON.nodes.length) {
-      const pn = previousJSON.nodes[i];
+    if (pn && tn.squash == pn.squash) {
+      if (
+        Math.abs((tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0)) > MIN_STEP
+      ) {
+        if (Math.random() < rate) {
+          if (skipSet) {
+            const key = "idx:" + i;
+            if (skipSet.has(key)) continue;
 
-      if (tn.squash == pn.squash) {
-        if (
-          Math.abs((tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0)) > MIN_STEP
-        ) {
-          if (Math.random() < rate) {
-            if (skipSet) {
-              const key = "idx:" + i;
-              if (skipSet.has(key)) continue;
-
-              skipSet.add(key);
-            }
-            const adjust = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
-            const bias = (tn.bias ? tn.bias : 0) + adjust;
-
-            tn.bias = bias;
-            changeBiasCount++;
+            skipSet.add(key);
           }
+          const adjust = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
+          const bias = (tn.bias ? tn.bias : 0) + adjust;
+
+          tn.bias = bias;
+          changeBiasCount++;
         }
       }
     }
@@ -159,27 +164,32 @@ function tuneAll(
   previousFittest: NetworkInternal,
   oldScore: string,
 ) {
-  const previousJSON = (previousFittest as Network).internalJSON();
-  const allJSON = (fittest as Network).internalJSON();
+  const previousJSON = (previousFittest as Network).exportJSON();
+  const allJSON = (fittest as Network).exportJSON();
+
+  const uuidNodeMap = new Map<string, NodeExport>();
+
+  previousJSON.nodes.forEach((n) => {
+    const uuid = n.uuid ? n.uuid : "";
+    uuidNodeMap.set(uuid, n);
+  });
 
   let changeBiasCount = 0;
   let changeWeightCount = 0;
   for (let i = allJSON.nodes.length; i--;) {
     const tn = allJSON.nodes[i];
 
-    if (i < previousJSON.nodes.length) {
-      const pn = previousJSON.nodes[i];
+    const pn = uuidNodeMap.get(tn.uuid ? tn.uuid : "");
 
-      if (tn.squash == pn.squash) {
-        if (
-          Math.abs((tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0)) > MIN_STEP
-        ) {
-          const adjust = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
-          const bias = (tn.bias ? tn.bias : 0) + adjust;
+    if (pn && tn.squash == pn.squash) {
+      if (
+        Math.abs((tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0)) > MIN_STEP
+      ) {
+        const adjust = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
+        const bias = (tn.bias ? tn.bias : 0) + adjust;
 
-          tn.bias = bias;
-          changeBiasCount++;
-        }
+        tn.bias = bias;
+        changeBiasCount++;
       }
     }
   }
@@ -189,7 +199,7 @@ function tuneAll(
     for (let j = previousJSON.connections.length; j--;) {
       const pc = previousJSON.connections[j];
 
-      if (tc.from == pc.from && tc.to == pc.to) {
+      if (tc.fromUUID == pc.fromUUID && tc.toUUID == pc.toUUID) {
         if (Math.abs(tc.weight - pc.weight) > MIN_STEP) {
           const adjust = tc.weight - pc.weight;
           const weight = tc.weight + adjust;
@@ -308,7 +318,7 @@ export function fineTuneImprovement(
   if (compactNetwork != null) {
     fineTuned.push(compactNetwork);
   }
-  const previousJSON = (previousFittest as Network).internalJSON();
+  const previousJSON = (previousFittest as Network).exportJSON();
 
   const resultALL = tuneAll(fittest, previousFittest, fScoreTxt);
   if (resultALL.all) fineTuned.push(resultALL.all);
@@ -384,7 +394,7 @@ export function fineTuneImprovement(
     return fineTuned;
   }
 
-  let targetJSON = (fittest as Network).internalJSON();
+  let targetJSON = (fittest as Network).exportJSON();
   for (let k = 0; k < popSize; k++) {
     for (let i = targetJSON.nodes.length; i--;) {
       const fn = targetJSON.nodes[i];
@@ -412,7 +422,7 @@ export function fineTuneImprovement(
             addTag(n, "old-score", fScoreTxt);
             fineTuned.push(n);
             if (fineTuned.length >= popSize) break;
-            targetJSON = (fittest as Network).internalJSON();
+            targetJSON = (fittest as Network).exportJSON();
           }
         }
       }
@@ -425,7 +435,7 @@ export function fineTuneImprovement(
       for (let j = previousJSON.connections.length; j--;) {
         const pc = previousJSON.connections[j];
 
-        if (fc.from == pc.from && fc.to == pc.to) {
+        if (fc.fromUUID == pc.fromUUID && fc.toUUID == pc.toUUID) {
           if (fc.weight != pc.weight) {
             const adjust = adjustment(k, fc.weight - pc.weight);
             const weight = fc.weight + adjust;
@@ -442,7 +452,7 @@ export function fineTuneImprovement(
             addTag(n, "old-score", fScoreTxt);
             fineTuned.push(n);
             if (fineTuned.length >= popSize) break;
-            targetJSON = (fittest as Network).internalJSON();
+            targetJSON = (fittest as Network).exportJSON();
           }
 
           break;
