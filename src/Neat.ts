@@ -341,9 +341,8 @@ export class Neat {
               }`,
             );
           }
-          if (getTag(json, "approach") == null) {
-            addTag(json, "approach", "trained");
-          }
+
+          addTag(json, "approach", "trained");
 
           trainedPopulation.push(Network.fromJSON(json, this.config.debug));
         }
