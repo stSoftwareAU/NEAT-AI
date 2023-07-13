@@ -1,8 +1,8 @@
-import { emptyDirSync } from "https://deno.land/std@0.186.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.194.0/fs/empty_dir.ts";
 
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
-import { assertAlmostEquals } from "https://deno.land/std@0.186.0/testing/asserts.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.194.0/testing/asserts.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

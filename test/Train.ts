@@ -1,3 +1,4 @@
+import { emptyDirSync } from "https://deno.land/std@0.194.0/fs/empty_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { assert, fail } from "https://deno.land/std@0.194.0/testing/asserts.ts";
 
