@@ -238,63 +238,36 @@ export class Neat {
      * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
      */
     let rebootedFineTune = false;
-    let tmpPreviousFittest = previousFittest;
 
-    if (!tmpPreviousFittest) {
-      tmpPreviousFittest = elitists[1] as NetworkInternal;
-    } else if (elitists.length > 1) {
-      const previousScoreTxt = getTag(tmpPreviousFittest, "score");
-      if (previousScoreTxt) {
-        const previousScore = parseFloat(previousScoreTxt);
-        if (previousScore == fittest.score) {
-          let pos = Math.floor(Math.random() * elitists.length);
+    let tmpPreviousFittest: NetworkInternal | null = null;
 
-          for (; pos < elitists.length; pos++) {
-            tmpPreviousFittest = elitists[pos] as NetworkInternal;
-            if (!tmpPreviousFittest) continue;
-            const previousScoreTxt3 = getTag(tmpPreviousFittest, "score");
-            if (!previousScoreTxt3) continue;
-
-            const previousScore3 = parseFloat(previousScoreTxt3);
-            if (previousScore3 < fittest.score) break;
-          }
-
-          if (tmpPreviousFittest) {
-            const previousScoreTxt2 = getTag(tmpPreviousFittest, "score");
-            if (!previousScoreTxt2) {
-              console.info("No score for elitist", pos);
-            } else {
-              const previousScore2 = parseFloat(previousScoreTxt2);
-              if (previousScore2 < fittest.score) {
-                if (this.config.verbose) {
-                  console.info(
-                    "Rebooting fine tuning, elitist:",
-                    pos,
-                  );
-                }
-                rebootedFineTune = true;
-              } else if (this.config.verbose) {
-                console.info(
-                  "FAILED: Rebooting fine tuning: previous score not less than current",
-                  pos,
-                  previousScore2,
-                  fittest.score,
-                );
-              }
-            }
-          } else {
+    const tmpPopulation = [previousFittest, ...elitists, ...this.population];
+    for (let pos = 0; pos < tmpPopulation.length; pos++) {
+      const tmp = tmpPopulation[pos];
+      if (!tmp) continue;
+      const tmpPreviousFittest2 = tmp as NetworkInternal;
+      const previousScoreTxt2 = getTag(tmpPreviousFittest2, "score");
+      if (previousScoreTxt2) {
+        const previousScore2 = parseFloat(previousScoreTxt2);
+        if (fittest.score && previousScore2 < fittest.score) {
+          if (pos > 0 && this.config.verbose) {
             console.info(
-              "FAILED Rebooting fine tuning: no creature at",
+              "Rebooting fine tuning, population:",
               pos,
-              "of",
-              elitists.length,
             );
+            rebootedFineTune = true;
           }
+          tmpPreviousFittest = tmpPreviousFittest2;
+          break;
         }
       }
     }
 
-    const fineTunedPopulation = fineTuneImprovement(
+    if (!tmpPreviousFittest) {
+      console.warn("Failed to find previous fittest creature");
+    }
+
+    const fineTunedPopulation = await fineTuneImprovement(
       fittest,
       tmpPreviousFittest,
       /** 20% of population or those that just died */

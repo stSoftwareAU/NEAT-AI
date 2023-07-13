@@ -8,7 +8,7 @@ import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("tune", () => {
+Deno.test("tune", async () => {
   const previousFittest: Network = Network.fromJSON({
     nodes: [
       {
@@ -166,7 +166,7 @@ Deno.test("tune", () => {
 
   fittest.validate();
 
-  const fineTuned = fineTuneImprovement(fittest, previousFittest);
+  const fineTuned = await fineTuneImprovement(fittest, previousFittest);
 
   fineTuned.forEach((n) => {
     const en = n.exportJSON();
