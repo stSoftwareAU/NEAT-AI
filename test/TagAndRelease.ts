@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.186.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.194.0/testing/asserts.ts";
 import { TagAndRelease } from "../src/tags/TagAndReleaseApp.ts";
 import { getTag } from "../src/tags/TagsInterface.ts";
 

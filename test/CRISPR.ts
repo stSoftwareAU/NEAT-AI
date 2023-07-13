@@ -1,11 +1,11 @@
-import { assertEquals } from "https://deno.land/std@0.186.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.194.0/testing/asserts.ts";
 
 import { CRISPR } from "../src/reconstruct/CRISPR.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { getTag } from "../src/tags/TagsInterface.ts";
 import { Node } from "../src/architecture/Node.ts";
 import { Mutation } from "../src/methods/mutation.ts";
-import { assert } from "https://deno.land/std@0.186.0/_util/asserts.ts";
+import { assert } from "https://deno.land/std@0.194.0/_util/asserts.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

@@ -4,34 +4,36 @@ import {
   ConnectionInternal,
   ConnectionTrace,
 } from "./ConnectionInterfaces.ts";
-import { NodeExport, NodeInternal, NodeTrace } from "./NodeInterfaces.ts";
 import {
   NetworkExport,
   NetworkInternal,
   NetworkTrace,
 } from "./NetworkInterfaces.ts";
+import { NodeExport, NodeInternal, NodeTrace } from "./NodeInterfaces.ts";
 
-import { DataRecordInterface } from "./DataSet.ts";
 import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
+import { DataRecordInterface } from "./DataSet.ts";
 
-import { yellow } from "https://deno.land/std@0.186.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.194.0/fmt/colors.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { Neat } from "../Neat.ts";
-import { getTag } from "../tags/TagsInterface.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
+import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
+import { getTag } from "../tags/TagsInterface.ts";
 
-import { TrainOptions } from "../config/TrainOptions.ts";
-import { emptyDirSync } from "https://deno.land/std@0.186.0/fs/empty_dir.ts";
-import { Mutation } from "../methods/mutation.ts";
-import { Node } from "../architecture/Node.ts";
-import { Connection } from "./Connection.ts";
-import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
-import { NetworkState } from "./NetworkState.ts";
+import { format } from "https://deno.land/std@0.194.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.194.0/fs/empty_dir.ts";
 import { CostInterface, Costs } from "../Costs.ts";
+import { Node } from "../architecture/Node.ts";
+import { findRatePolicy, randomPolicyName } from "../config.ts";
+import { TrainOptions } from "../config/TrainOptions.ts";
 import { Activations } from "../methods/activations/Activations.ts";
+import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
+import { Mutation } from "../methods/mutation.ts";
 import { addTag } from "../tags/TagsInterface.ts";
-import { format } from "https://deno.land/std@0.186.0/fmt/duration.ts";
+import { Connection } from "./Connection.ts";
+import { NetworkState } from "./NetworkState.ts";
 
 const cacheDataFile = {
   fn: "",

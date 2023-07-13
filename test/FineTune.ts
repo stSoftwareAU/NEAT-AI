@@ -1,13 +1,14 @@
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
-import { assert } from "https://deno.land/std@0.186.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.194.0/testing/asserts.ts";
 import { Network } from "../src/architecture/Network.ts";
+import { addTag } from "../src/tags/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
-Deno.test("tune", () => {
-  const previousFittest: NetworkInternal = Network.fromJSON({
+Deno.test("tune", async () => {
+  const previousFittest: Network = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -32,47 +33,25 @@ Deno.test("tune", () => {
     "input": 2,
     "output": 1,
     tags: [
-      { name: "score", value: "0.5" },
+      { name: "score", value: "-0.5" },
     ],
   });
 
-  const fittest: NetworkInternal = Network.fromJSON({
-    "nodes": [{
-      "bias": 0,
-      "type": "input",
-      "squash": "LOGISTIC",
-      "index": 0,
-    }, {
-      "bias": 0,
-      "type": "input",
-      "squash": "LOGISTIC",
-      "index": 1,
-    }, {
-      "bias": -1.045867615444029,
-      "type": "output",
-      "squash": "BIPOLAR_SIGMOID",
-      "index": 2,
-    }],
-    "connections": [{
-      "weight": 0.9967556172986067,
-      "from": 1,
-      "to": 2,
-    }, { "weight": 0.96764643541, "from": 0, "to": 2 }],
-    "input": 2,
-    "output": 1,
-    tags: [
-      { name: "score", value: "0.6" },
-    ],
-  });
+  const fittest: NetworkInternal = Network.fromJSON(
+    previousFittest.exportJSON(),
+  );
+  addTag(fittest, "score", "-0.4");
+  fittest.nodes[2].bias = 0.001;
+  fittest.connections[0].weight = 0.011;
 
-  const fineTuned = fineTuneImprovement(fittest, previousFittest);
+  const fineTuned = await fineTuneImprovement(fittest, previousFittest);
 
   assert(
     fineTuned.length == 10,
     "We should have made ten changes, was: " + fineTuned.length,
   );
 
-  const fineTuned2 = fineTuneImprovement(fittest, previousFittest, 3);
+  const fineTuned2 = await fineTuneImprovement(fittest, previousFittest, 3);
 
   assert(
     fineTuned2.length == 3,
@@ -80,8 +59,8 @@ Deno.test("tune", () => {
   );
 });
 
-Deno.test("many", () => {
-  const previousFittest: NetworkInternal = Network.fromJSON({
+Deno.test("many", async () => {
+  const previousFittest = Network.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -106,44 +85,17 @@ Deno.test("many", () => {
     "input": 2,
     "output": 1,
     tags: [
-      { name: "score", value: "0.5" },
+      { name: "score", value: "-0.5" },
     ],
   });
+  const fittest: NetworkInternal = Network.fromJSON(
+    previousFittest.exportJSON(),
+  );
+  addTag(fittest, "score", "-0.4");
+  fittest.nodes[2].bias = 0.001;
+  fittest.connections[0].weight = 0.011;
 
-  const fittest: NetworkInternal = Network.fromJSON({
-    "nodes": [{
-      "bias": 0.123,
-      "type": "input",
-      "squash": "LOGISTIC",
-      "index": 0,
-    }, {
-      "bias": 0.456,
-      "type": "input",
-      "squash": "LOGISTIC",
-      "index": 1,
-    }, {
-      "bias": -1.845867615444029,
-      "type": "output",
-      "squash": "BIPOLAR_SIGMOID",
-      "index": 2,
-    }],
-    "connections": [{
-      "weight": 0.8967556172986067,
-      "from": 1,
-      "to": 2,
-    }, {
-      "weight": 0.86764643541,
-      "from": 0,
-      "to": 2,
-    }],
-    "input": 2,
-    "output": 1,
-    tags: [
-      { name: "score", value: "0.6" },
-    ],
-  });
-
-  const fineTuned = fineTuneImprovement(fittest, previousFittest, 7);
+  const fineTuned = await fineTuneImprovement(fittest, previousFittest, 7);
 
   assert(
     fineTuned.length == 7,
