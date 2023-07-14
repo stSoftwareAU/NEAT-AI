@@ -35,8 +35,8 @@ function tuneRandomize(
         Math.abs(step) > MIN_STEP
       ) {
         const bias = (tn.bias ? tn.bias : 0) + step;
-
-        tn.bias = bias;
+        const quantum = Math.round(bias / MIN_STEP);
+        tn.bias = quantum * MIN_STEP;
         changeBiasCount++;
       }
     }
@@ -52,8 +52,9 @@ function tuneRandomize(
         const step = diff * Math.random() * 3 - diff;
         if (Math.abs(step) > MIN_STEP) {
           const weight = tc.weight + step;
+          const quantum = Math.round(weight / MIN_STEP);
 
-          tc.weight = weight;
+          tc.weight = quantum * MIN_STEP;
           changeWeightCount++;
         }
 
@@ -79,11 +80,6 @@ function tuneRandomize(
       ", " + changeBiasCount + " bias" + (changeBiasCount > 1 ? "es" : ""),
   );
 
-  addTag(
-    all,
-    "step",
-    "RANDOMIZE",
-  );
   addTag(all, "old-score", oldScore);
 
   return {
@@ -128,8 +124,6 @@ export async function fineTuneImprovement(
       fScore,
       "adjusted",
       getTag(fittest, "adjusted"),
-      "step",
-      getTag(fittest, "step"),
     );
   } else if (approach == "trained") {
     console.info(

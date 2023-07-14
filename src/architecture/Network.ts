@@ -51,7 +51,10 @@ export class Network implements NetworkInternal {
   connections: ConnectionInternal[];
 
   readonly networkState = new NetworkState(this);
-  private cache = new Map<string, ConnectionInternal[]>();
+  private cacheTo = new Map<number, ConnectionInternal[]>();
+  private cacheFrom = new Map<number, ConnectionInternal[]>();
+  private cacheSelf = new Map<number, ConnectionInternal[]>();
+
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
   constructor(input: number, output: number, options = {}) {
@@ -87,7 +90,9 @@ export class Network implements NetworkInternal {
   }
 
   public clearCache() {
-    this.cache.clear();
+    this.cacheTo.clear();
+    this.cacheFrom.clear();
+    this.cacheSelf.clear();
   }
 
   initialize(options: {
@@ -644,8 +649,7 @@ export class Network implements NetworkInternal {
   }
 
   selfConnection(indx: number): ConnectionInternal | null {
-    const key = "self:" + indx;
-    let results = this.cache.get(key);
+    let results = this.cacheSelf.get(indx);
     if (results === undefined) {
       results = [];
       const tmpList = this.connections;
@@ -656,7 +660,7 @@ export class Network implements NetworkInternal {
         }
       }
 
-      this.cache.set(key, results);
+      this.cacheSelf.set(indx, results);
     }
 
     if (results.length > 0) {
@@ -667,8 +671,7 @@ export class Network implements NetworkInternal {
   }
 
   toConnections(to: number): ConnectionInternal[] {
-    const key = "to:" + to;
-    let results = this.cache.get(key);
+    let results = this.cacheTo.get(to);
     if (results === undefined) {
       results = [];
       const tmpList = this.connections;
@@ -678,14 +681,13 @@ export class Network implements NetworkInternal {
         if (c.to === to) results.push(c);
       }
 
-      this.cache.set(key, results);
+      this.cacheTo.set(to, results);
     }
     return results;
   }
 
   fromConnections(from: number): ConnectionInternal[] {
-    const key = "from:" + from;
-    let results = this.cache.get(key);
+    let results = this.cacheFrom.get(from);
     if (results === undefined) {
       results = [];
       const tmpList = this.connections;
@@ -695,7 +697,7 @@ export class Network implements NetworkInternal {
         if (c.from === from) results.push(c);
       }
 
-      this.cache.set(key, results);
+      this.cacheFrom.set(from, results);
     }
     return results;
   }
