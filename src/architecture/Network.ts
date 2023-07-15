@@ -997,7 +997,7 @@ export class Network implements NetworkInternal {
       (!options.iterations || generation < options.iterations)
     ) {
       const fittest: Network = await neat.evolve(
-        bestCreature as (NetworkInternal | undefined),
+        bestCreature as (Network | undefined),
       );
 
       if (fittest.score ? fittest.score : 0 > bestScore) {

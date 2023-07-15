@@ -1,19 +1,42 @@
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { assert } from "https://deno.land/std@0.194.0/testing/asserts.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
+function make(population: NetworkInternal[]) {
+  const networks: Network[] = [];
+
+  population.forEach((ni) => {
+    if (ni.nodes.length == 0) {
+      ni.nodes.push({
+        index: 1,
+        type: "output",
+        squash: "identity",
+      });
+      ni.connections.push({
+        from: 0,
+        to: 1,
+        weight: 1,
+      });
+    }
+    const network = Network.fromJSON(ni);
+    network.score = ni.score;
+    networks.push(network);
+  });
+  return networks;
+}
 Deno.test("1make", () => {
   const population: NetworkInternal[] = [
-    { input: 0, output: 0, score: 1, nodes: [], connections: [] },
-    { input: 0, output: 0, score: -1, nodes: [], connections: [] },
-    { input: 0, output: 0, score: 3, nodes: [], connections: [] },
-    { input: 0, output: 0, score: 1, nodes: [], connections: [] },
-    { input: 0, output: 0, score: 2, nodes: [], connections: [] },
+    { input: 1, output: 1, score: 1, nodes: [], connections: [] },
+    { input: 1, output: 1, score: -1, nodes: [], connections: [] },
+    { input: 1, output: 1, score: 3, nodes: [], connections: [] },
+    { input: 1, output: 1, score: 1, nodes: [], connections: [] },
+    { input: 1, output: 1, score: 2, nodes: [], connections: [] },
   ];
 
-  const elitists = makeElitists(population);
+  const elitists = makeElitists(make(population));
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
@@ -22,9 +45,9 @@ Deno.test("1make", () => {
 
   assert(
     elitists.length == 1,
-    "Should always find one " + JSON.stringify(elitists),
+    "Should always find one " + JSON.stringify(elitists[0]?.exportJSON()),
   );
-  assert(elitists[0].score == 3, "Wrong elitism " + JSON.stringify(elitists));
+  assert(elitists[0].score == 3, `Wrong elitism score ${elitists[0].score}`);
 });
 
 Deno.test("3make", () => {
@@ -36,17 +59,17 @@ Deno.test("3make", () => {
     { input: 0, output: 0, score: 2, nodes: [], connections: [] },
   ];
 
-  const elitists = makeElitists(population, 3);
+  const elitists = makeElitists(make(population), 3);
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
     assert(e, i + ") " + e);
   }
 
-  assert(elitists.length == 3, "Should find three " + JSON.stringify(elitists));
-  assert(elitists[0].score == 3, "Wrong elitism " + JSON.stringify(elitists));
-  assert(elitists[1].score == 2, "Wrong elitism " + JSON.stringify(elitists));
-  assert(elitists[2].score == 1, "Wrong elitism " + JSON.stringify(elitists));
+  assert(elitists.length == 3, `Wrong number ${elitists.length}`);
+  assert(elitists[0].score == 3, `Wrong score ${elitists[0].score}`);
+  assert(elitists[1].score == 2, `Wrong score ${elitists[1].score}`);
+  assert(elitists[2].score == 1, `Wrong score ${elitists[2].score}`);
 });
 
 Deno.test("3make2", () => {
@@ -56,17 +79,17 @@ Deno.test("3make2", () => {
     { input: 0, output: 0, score: -1, nodes: [], connections: [] },
   ];
 
-  const elitists = makeElitists(population, 3);
+  const elitists = makeElitists(make(population), 3);
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
     assert(e, "Undefined " + e);
   }
 
-  assert(elitists.length == 3, "Should find three " + JSON.stringify(elitists));
-  assert(elitists[0].score == -1, "Wrong elitism " + JSON.stringify(elitists));
-  assert(elitists[1].score == -2, "Wrong elitism " + JSON.stringify(elitists));
-  assert(elitists[2].score == -3, "Wrong elitism " + JSON.stringify(elitists));
+  assert(elitists.length == 3, `Wrong number ${elitists.length}`);
+  assert(elitists[0].score == -1, `Wrong score ${elitists[0].score}`);
+  assert(elitists[1].score == -2, `Wrong score ${elitists[1].score}`);
+  assert(elitists[2].score == -3, `Wrong score ${elitists[2].score}`);
 });
 
 Deno.test("short", () => {
@@ -75,16 +98,16 @@ Deno.test("short", () => {
     { input: 0, output: 0, score: -1, nodes: [], connections: [] },
   ];
 
-  const elitists = makeElitists(population, 3);
+  const elitists = makeElitists(make(population), 3);
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
     assert(e, i + ") " + e);
   }
 
-  assert(elitists.length == 2, "Should find three " + JSON.stringify(elitists));
-  assert(elitists[0].score == -1, "Wrong elitism " + JSON.stringify(elitists));
-  assert(elitists[1].score == -2, "Wrong elitism " + JSON.stringify(elitists));
+  assert(elitists.length == 2, `Wrong count ${elitists.length}`);
+  assert(elitists[0].score == -1, `Wrong score ${elitists[0].score}`);
+  assert(elitists[1].score == -2, `Wrong score ${elitists[1].score}`);
 });
 
 Deno.test("backwards", () => {
@@ -99,17 +122,17 @@ Deno.test("backwards", () => {
     });
   }
 
-  const elitists = makeElitists(population, 3);
+  const elitists = makeElitists(make(population), 3);
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
     assert(e, i + ") " + e);
   }
 
-  assert(elitists.length == 3, "Should find three " + JSON.stringify(elitists));
-  assert(elitists[0].score == 999, "Wrong elitism " + JSON.stringify(elitists));
-  assert(elitists[1].score == 998, "Wrong elitism " + JSON.stringify(elitists));
-  assert(elitists[2].score == 997, "Wrong elitism " + JSON.stringify(elitists));
+  assert(elitists.length == 3, `Wrong count ${elitists.length}`);
+  assert(elitists[0].score == 999, `Wrong score ${elitists[0].score}`);
+  assert(elitists[1].score == 998, `Wrong score ${elitists[1].score}`);
+  assert(elitists[2].score == 997, `Wrong score ${elitists[2].score}`);
 });
 
 Deno.test("forward", () => {
@@ -124,20 +147,20 @@ Deno.test("forward", () => {
     });
   }
 
-  const elitists = makeElitists(population, 3);
+  const elitists = makeElitists(make(population), 3);
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
     assert(e, 1 + ") " + e);
   }
 
-  assert(elitists.length == 3, "Should find three " + JSON.stringify(elitists));
+  assert(elitists.length == 3, `Wrong count ${elitists.length}`);
   assert(
     elitists[0].score == 1000,
-    "Wrong elitism " + JSON.stringify(elitists),
+    `Wrong score ${elitists[0].score}`,
   );
-  assert(elitists[1].score == 999, "Wrong elitism " + JSON.stringify(elitists));
-  assert(elitists[2].score == 998, "Wrong elitism " + JSON.stringify(elitists));
+  assert(elitists[1].score == 999, `Wrong score ${elitists[1].score}`);
+  assert(elitists[2].score == 998, `Wrong score ${elitists[2].score}`);
 });
 
 Deno.test("performance", () => {
@@ -155,7 +178,7 @@ Deno.test("performance", () => {
   let minMS = Infinity;
   for (let j = 10; j--;) {
     performance.mark("start");
-    const elitists = makeElitists(population, 3);
+    const elitists = makeElitists(make(population), 3);
 
     performance.mark("end");
     const ms = performance.measure("start", "end").duration;
@@ -169,7 +192,7 @@ Deno.test("performance", () => {
 
     assert(
       elitists.length == 3,
-      "Should find three " + JSON.stringify(elitists),
+      `Wrong count ${elitists.length}`,
     );
   }
 
@@ -198,7 +221,7 @@ Deno.test("order", () => {
     });
   }
 
-  const elitists = makeElitists(population, 100);
+  const elitists = makeElitists(make(population), 100);
 
   const sortedPopulation = population.slice().sort(function (a, b) {
     if (b.score == a.score) return 0;
@@ -220,7 +243,7 @@ Deno.test("order", () => {
 
   assert(
     elitists.length == 100,
-    "Should find three " + JSON.stringify(elitists),
+    `Wrong count ${elitists.length}`,
   );
 });
 
@@ -323,11 +346,11 @@ Deno.test("NaN", () => {
     connections: [],
   });
 
-  const elitists = makeElitists(population, 3);
+  const elitists = makeElitists(make(population), 3);
 
   assert(
     elitists.length == 3,
-    "Should find three " + JSON.stringify(elitists),
+    `Wrong count ${elitists.length}`,
   );
 
   assert(
