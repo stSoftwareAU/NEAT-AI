@@ -1,7 +1,7 @@
-import { NetworkInternal } from "./NetworkInterfaces.ts";
+import { Network } from "./Network.ts";
 
 export function makeElitists(
-  population: NetworkInternal[],
+  population: Network[],
   size = 1,
 ) {
   const elitism = Math.min(Math.max(1, size), population.length);

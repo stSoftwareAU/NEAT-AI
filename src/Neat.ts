@@ -98,10 +98,160 @@ export class Neat {
     addTag(creature, "trained", "YES");
   }
 
+  async checkAndAdd(
+    fineTunePopulation: Network[],
+    tunedUUID: Set<string>,
+    score: number,
+    network?: Network,
+  ) {
+    if (network) {
+      const previousScoreTxt = getTag(network, "score");
+      if (previousScoreTxt) {
+        const previousScore = parseFloat(previousScoreTxt);
+        if (previousScore < score) {
+          const uuid = await NetworkUtil.makeUUID(network);
+          if (!tunedUUID.has(uuid)) {
+            tunedUUID.add(uuid);
+            fineTunePopulation.push(network);
+          }
+        }
+      }
+    }
+  }
+
+  async makeFineTunePopulation(
+    fittest: Network,
+    previousFittest: Network | undefined,
+    elitists: Network[],
+  ) {
+    let tmpPreviousFittest: NetworkInternal | null = null;
+
+    const tmpFineTunePopulation: Network[] = [];
+    const tunedUUID = new Set<string>();
+
+    tunedUUID.add(await NetworkUtil.makeUUID(fittest));
+
+    const score = fittest.score ? fittest.score : 0;
+    await this.checkAndAdd(
+      tmpFineTunePopulation,
+      tunedUUID,
+      score,
+      previousFittest,
+    );
+
+    for (let i = 0; i < elitists.length; i++) {
+      const network = elitists[i];
+      await this.checkAndAdd(tmpFineTunePopulation, tunedUUID, score, network);
+    }
+
+    for (let i = 0; i < this.population.length; i++) {
+      const network = this.population[i];
+      await this.checkAndAdd(tmpFineTunePopulation, tunedUUID, score, network);
+    }
+
+    tmpPreviousFittest = tmpFineTunePopulation[0];
+
+    /**
+     * If this is the first run then use the second best as the "previous"
+     *
+     * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
+     */
+    const rebootedFineTune = previousFittest
+      ? previousFittest.uuid != tmpPreviousFittest.uuid
+      : false;
+
+    let fineTunedPopulation: Network[] = [];
+    if (!tmpPreviousFittest) {
+      console.warn("Failed to find previous fittest creature");
+    } else {
+      const fineTunePopSize = Math.max(
+        Math.ceil(
+          this.config.popSize / 5,
+        ),
+        this.config.popSize - this.population.length -
+          this.config.elitism -
+          this.trainingComplete.length,
+      );
+      fineTunedPopulation = await fineTuneImprovement(
+        fittest,
+        tmpPreviousFittest,
+        /** 20% of population or those that just died, leave one for the extended */
+        fineTunePopSize - 1,
+        !rebootedFineTune && this.config.verbose,
+      );
+
+      for (let attempts = 0; attempts < 12; attempts++) {
+        const extendedFineTunePopSize = fineTunePopSize -
+          fineTunedPopulation.length;
+        if (extendedFineTunePopSize > 0) {
+          // First, find the minimum score
+          let minScore = 0;
+          for (let i = 0; i < tmpFineTunePopulation.length; i++) {
+            const tmpScore = tmpFineTunePopulation[i].score || 0;
+            if (tmpScore < minScore) {
+              minScore = tmpScore;
+            }
+          }
+
+          // Offset to make scores positive
+          const offset = Math.abs(minScore);
+
+          // Now, compute the total score of all creatures
+          let totalScore = 0;
+          for (let i = 0; i < tmpFineTunePopulation.length; i++) {
+            const tmpScore = tmpFineTunePopulation[i].score || 0;
+            totalScore += tmpScore + offset; // Adding the offset to each score
+          }
+
+          // Choose a random threshold value in the range of totalScore
+          const threshold = Math.random() * totalScore;
+
+          let sum = 0;
+          for (
+            let location = 0;
+            location < tmpFineTunePopulation.length;
+            location++
+          ) {
+            const tmpScore = tmpFineTunePopulation[location].score || 0;
+            sum += tmpScore + offset; // Adding the offset to each score
+            if (sum >= threshold) {
+              // We've found the selected creature
+              if (
+                tmpFineTunePopulation[location].uuid != tmpPreviousFittest.uuid
+              ) {
+                const extendedPreviousFittest = tmpFineTunePopulation[location];
+
+                const extendedTunedPopulation = await fineTuneImprovement(
+                  fittest,
+                  extendedPreviousFittest,
+                  extendedFineTunePopSize,
+                  false,
+                );
+
+                fineTunedPopulation.push(...extendedTunedPopulation);
+                break;
+              }
+            }
+          }
+        } else {
+          break;
+        }
+      }
+
+      // if (fineTunedPopulation.length < fineTunePopSize) {
+      //   console.warn(
+      //     `Fine tuned population ${fineTunedPopulation.length} is less than expected ${fineTunePopSize}`,
+      //   );
+      // }
+    }
+
+    return fineTunedPopulation;
+  }
+
   /**
    * Evaluates, selects, breeds and mutates population
    */
-  async evolve(previousFittest?: NetworkInternal) {
+  async evolve(previousFittest?: Network) {
     await this.fitness.calculate(this.population);
 
     /* Elitism: we need at least 2 on the first run */
@@ -232,96 +382,11 @@ export class Neat {
       console.warn("All creatures died, using zombies");
     }
 
-    /**
-     * If this is the first run then use the second best as the "previous"
-     *
-     * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
-     */
-    let rebootedFineTune = false;
-
-    let tmpPreviousFittest: NetworkInternal | null = null;
-
-    const tmpFineTunePopulation = [
+    const fineTunedPopulation = await this.makeFineTunePopulation(
+      fittest,
       previousFittest,
-      ...elitists,
-      ...this.population,
-    ];
-    for (let pos = 0; pos < tmpFineTunePopulation.length; pos++) {
-      const tmp = tmpFineTunePopulation[pos];
-      if (!tmp) continue;
-      const tmpPreviousFittest2 = tmp as NetworkInternal;
-      const previousScoreTxt2 = getTag(tmpPreviousFittest2, "score");
-      if (previousScoreTxt2) {
-        const previousScore2 = parseFloat(previousScoreTxt2);
-        if (fittest.score && previousScore2 < fittest.score) {
-          if (pos > 0 && this.config.verbose) {
-            // console.info(
-            //   "Rebooting fine tuning, population:",
-            //   pos,
-            // );
-            rebootedFineTune = true;
-          }
-          tmpPreviousFittest = tmpPreviousFittest2;
-          break;
-        }
-      }
-    }
-
-    let fineTunedPopulation: Network[] = [];
-    if (!tmpPreviousFittest) {
-      console.warn("Failed to find previous fittest creature");
-    } else {
-      const fineTunePopSize = Math.max(
-        Math.ceil(this.config.popSize / 5),
-        this.config.popSize - this.population.length -
-          this.config.elitism -
-          this.trainingComplete.length,
-      );
-      fineTunedPopulation = await fineTuneImprovement(
-        fittest,
-        tmpPreviousFittest,
-        /** 20% of population or those that just died */
-        fineTunePopSize,
-        !rebootedFineTune && this.config.verbose,
-      );
-
-      for (let attempts = 0; attempts < 6; attempts++) {
-        if (fineTunedPopulation.length < fineTunePopSize) {
-          const extendedFineTunePopSize = fineTunePopSize -
-            fineTunedPopulation.length;
-
-          const location = Math.floor(
-            tmpFineTunePopulation.length * Math.random(),
-          );
-          const extendedPreviousFittest = tmpFineTunePopulation[
-            location
-          ];
-
-          if (
-            extendedPreviousFittest &&
-            extendedPreviousFittest.uuid != tmpPreviousFittest.uuid
-          ) {
-            const extendedTunedPopulation = await fineTuneImprovement(
-              fittest,
-              extendedPreviousFittest,
-              /** 20% of population or those that just died */
-              extendedFineTunePopSize,
-              false,
-            );
-            if (extendedTunedPopulation.length > 0) {
-              if (this.config.verbose) {
-                console.info(
-                  `Added ${extendedTunedPopulation.length} more fine tuned creatures from ${location} to existing ${fineTunedPopulation.length}`,
-                );
-              }
-              fineTunedPopulation.push(...extendedTunedPopulation);
-            }
-          }
-        } else {
-          break;
-        }
-      }
-    }
+      elitists,
+    );
 
     const newPopulation = [];
 
