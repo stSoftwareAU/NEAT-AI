@@ -1,4 +1,3 @@
-// import { STEP } from "../methods/activations/types/STEP.ts";
 import { addTag, getTag } from "../tags/TagsInterface.ts";
 import { Network } from "./Network.ts";
 import { NetworkInternal } from "./NetworkInterfaces.ts";
