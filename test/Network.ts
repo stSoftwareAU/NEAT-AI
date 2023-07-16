@@ -1,18 +1,18 @@
-import { Network } from "../src/architecture/Network.ts";
 import {
   assert,
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.194.0/testing/asserts.ts";
+import { Network } from "../src/architecture/Network.ts";
 
-import { Mutation } from "../src/methods/mutation.ts";
-import { NeatOptions } from "../src/config/NeatOptions.ts";
-import { DataRecordInterface } from "../src/architecture/DataSet.ts";
-import { addTag, getTag } from "../src/tags/TagsInterface.ts";
-import { Offspring } from "../src/architecture/Offspring.ts";
-import { TrainOptions } from "../src/config/TrainOptions.ts";
 import { emptyDirSync } from "https://deno.land/std@0.194.0/fs/empty_dir.ts";
+import { DataRecordInterface } from "../src/architecture/DataSet.ts";
+import { Offspring } from "../src/architecture/Offspring.ts";
+import { NeatOptions } from "../src/config/NeatOptions.ts";
+import { TrainOptions } from "../src/config/TrainOptions.ts";
+import { Mutation } from "../src/methods/mutation.ts";
+import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
