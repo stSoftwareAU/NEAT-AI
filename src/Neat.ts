@@ -124,8 +124,6 @@ export class Neat {
     previousFittest: Network | undefined,
     elitists: Network[],
   ) {
-    let tmpPreviousFittest: NetworkInternal | null = null;
-
     const tmpFineTunePopulation: Network[] = [];
     const tunedUUID = new Set<string>();
 
@@ -149,14 +147,14 @@ export class Neat {
       await this.checkAndAdd(tmpFineTunePopulation, tunedUUID, score, network);
     }
 
-    tmpPreviousFittest = tmpFineTunePopulation[0];
+    const tmpPreviousFittest = tmpFineTunePopulation[0];
 
     /**
      * If this is the first run then use the second best as the "previous"
      *
      * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
      */
-    const rebootedFineTune = previousFittest
+    const rebootedFineTune = (previousFittest && tmpPreviousFittest)
       ? previousFittest.uuid != tmpPreviousFittest.uuid
       : false;
 
