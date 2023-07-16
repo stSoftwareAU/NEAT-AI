@@ -24,7 +24,7 @@ Deno.test("CRISPR", () => {
   );
 
   const expectedTXT = JSON.stringify(
-    Network.fromJSON(expectedJSON).internalJSON(),
+    clean(Network.fromJSON(expectedJSON).internalJSON()),
     null,
     2,
   );
@@ -33,7 +33,7 @@ Deno.test("CRISPR", () => {
   const actualJSON = (networkIF as Network).internalJSON();
 
   const actualTXT = JSON.stringify(
-    actualJSON,
+    clean(actualJSON),
     null,
     2,
   );
@@ -57,9 +57,9 @@ Deno.test("CRISPR_twice", () => {
   const expectedJSON = JSON.parse(
     Deno.readTextFileSync("test/data/CRISPR/expected-IF.json"),
   );
-  const expectedTXT = JSON.stringify(expectedJSON, null, 2);
+  const expectedTXT = JSON.stringify(clean(expectedJSON), null, 2);
   const actualTXT = JSON.stringify(
-    (networkIF2 as Network).exportJSON(),
+    clean((networkIF2 as Network).exportJSON()),
     null,
     2,
   );
@@ -86,7 +86,7 @@ Deno.test("CRISPR-Volume", () => {
   );
 
   const expectedTXT = JSON.stringify(
-    Network.fromJSON(expectedJSON).internalJSON(),
+    clean(Network.fromJSON(expectedJSON).internalJSON()),
     null,
     2,
   );
@@ -94,7 +94,7 @@ Deno.test("CRISPR-Volume", () => {
   Deno.writeTextFileSync("test/data/CRISPR/.expected-VOLUME.json", expectedTXT);
 
   const actualTXT = JSON.stringify(
-    (networkIF as Network).internalJSON(),
+    clean((networkIF as Network).internalJSON()),
     null,
     2,
   );
@@ -198,7 +198,7 @@ Deno.test("CRISPR-multi-outputs1", () => {
   );
 
   const expectedTXT = JSON.stringify(
-    Network.fromJSON(expectedJSON).internalJSON(),
+    clean(Network.fromJSON(expectedJSON).internalJSON()),
     null,
     2,
   );
@@ -206,7 +206,7 @@ Deno.test("CRISPR-multi-outputs1", () => {
   Deno.writeTextFileSync("test/data/CRISPR/.expected-sane.json", expectedTXT);
 
   const actualTXT = JSON.stringify(
-    networkSANE.internalJSON(),
+    clean(networkSANE.internalJSON()),
     null,
     2,
   );
@@ -214,6 +214,14 @@ Deno.test("CRISPR-multi-outputs1", () => {
   Deno.writeTextFileSync("test/data/CRISPR/.actual-sane.json", actualTXT);
   assertEquals(actualTXT, expectedTXT, "should have converted");
 });
+
+function clean(networkJSON: { nodes: { uuid?: string }[] }) {
+  networkJSON.nodes.forEach((n) => {
+    if (n.uuid && !n.uuid.startsWith("output-")) {
+      delete n.uuid;
+    }
+  });
+}
 
 Deno.test("CRISPR-multi-outputs2", () => {
   const json: NetworkInternal = {
@@ -276,7 +284,7 @@ Deno.test("CRISPR-multi-outputs2", () => {
   );
 
   const expectedTXT = JSON.stringify(
-    Network.fromJSON(expectedJSON).internalJSON(),
+    clean(Network.fromJSON(expectedJSON).internalJSON()),
     null,
     2,
   );
@@ -284,7 +292,7 @@ Deno.test("CRISPR-multi-outputs2", () => {
   Deno.writeTextFileSync("test/data/CRISPR/.expected-sane2.json", expectedTXT);
 
   const actualTXT = JSON.stringify(
-    networkSANE.internalJSON(),
+    clean(networkSANE.internalJSON()),
     null,
     2,
   );
