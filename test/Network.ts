@@ -346,7 +346,7 @@ Deno.test("from/toJSON equivalency", () => {
   copy = Network.fromJSON(original.exportJSON());
   testEquality(original, copy);
 
-  original =  new Network(
+  original = new Network(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
   );

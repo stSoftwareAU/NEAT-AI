@@ -150,7 +150,7 @@ export class Network implements NetworkInternal {
       }
 
       // Create output nodes
-      for (let indx=0; indx< this.output; indx++) {
+      for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
         const node = new Node(
           `output-${indx}`,
@@ -170,7 +170,7 @@ export class Network implements NetworkInternal {
       }
     } else {
       // Create output nodes
-      for (let indx=0; indx< this.output; indx++) {
+      for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
         const node = new Node(
           `output-${indx}`,
@@ -409,7 +409,7 @@ export class Network implements NetworkInternal {
       connections: 0,
     };
 
-    let outputIndx=0;
+    let outputIndx = 0;
     const UUIDs = new Set<string>();
     this.nodes.forEach((item, indx) => {
       const node = item as NodeInternal;
@@ -446,20 +446,20 @@ export class Network implements NetworkInternal {
         }
         throw indx + ") invalid input UUID: " + uuid;
       }
-      
-      if( node.type == 'output'){
-        const expectedUUID=`output-${outputIndx}`;
+
+      if (node.type == "output") {
+        const expectedUUID = `output-${outputIndx}`;
         outputIndx++;
         if (uuid !== expectedUUID) {
           console.trace();
-  
+
           if (this.DEBUG) {
             this.DEBUG = false;
             Deno.writeTextFileSync(
               ".validate.json",
               JSON.stringify(this.exportJSON(), null, 2),
             );
-  
+
             this.DEBUG = true;
           }
           throw indx + ") invalid output UUID: " + uuid;
@@ -2222,15 +2222,15 @@ export class Network implements NetworkInternal {
     }
 
     let pos = json.input;
-    let outputIndx=0;
+    let outputIndx = 0;
     for (let i = 0; i < json.nodes.length; i++) {
       const jn = json.nodes[i];
 
       if (jn.type === "input") continue;
-      if( jn.type == 'output'){
-        if( !jn.uuid || jn.uuid.startsWith("output-") ==false){
-          uuidMap.set(jn.uuid?jn.uuid:"", pos);
-          jn.uuid=`output-${outputIndx}`;
+      if (jn.type == "output") {
+        if (!jn.uuid || jn.uuid.startsWith("output-") == false) {
+          uuidMap.set(jn.uuid ? jn.uuid : "", pos);
+          jn.uuid = `output-${outputIndx}`;
         }
         outputIndx++;
       }

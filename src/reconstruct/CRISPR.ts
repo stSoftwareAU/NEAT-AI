@@ -69,8 +69,8 @@ export class CRISPR {
           firstNetworkOutputIndex = indx;
         }
         ((node as unknown) as { type: string }).type = "hidden";
-        if( node.uuid?.startsWith( "output-")){
-          node.uuid=crypto.randomUUID();
+        if (node.uuid?.startsWith("output-")) {
+          node.uuid = crypto.randomUUID();
         }
       }
     });
@@ -78,20 +78,23 @@ export class CRISPR {
     const adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
       dna.nodes.length;
 
-    let outputIndx=0;
+    let outputIndx = 0;
     dna.nodes.forEach((dnaNode) => {
-      let uuid:string;
+      let uuid: string;
       if (dnaNode.type == "output") {
-        uuid=`output-${outputIndx}`;
+        uuid = `output-${outputIndx}`;
         outputIndx++;
-      }
-      else{
+      } else {
         uuid = dnaNode.uuid
-        ? UUIDs.has(dnaNode.uuid) ? crypto.randomUUID() : dnaNode.uuid
-        : crypto.randomUUID();
+          ? UUIDs.has(dnaNode.uuid) ? crypto.randomUUID() : dnaNode.uuid
+          : crypto.randomUUID();
+
+        if (uuid.startsWith("output-")) {
+          uuid = crypto.randomUUID();
+        }
       }
       const indx = dnaNode.index + adjustIndx;
-      
+
       const networkNode = new Node(
         uuid,
         dnaNode.type,
