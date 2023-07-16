@@ -31,7 +31,7 @@
     {
       "type": "output",
       "index": 7,
-      "uuid": "ed56a8a6-001-4a53-9eab-583c499d231b",
+      "uuid": "output-0",
       "bias": -0.0001,
       "squash": "MINIMUM",
       "tags": [
@@ -44,7 +44,7 @@
     {
       "type": "output",
       "index": 8,
-      "uuid": "ed56a8a6-002-4a53-9eab-583c499d231b",
+      "uuid": "output-1",
       "bias": 0,
       "squash": "MEAN",
       "tags": [
@@ -57,7 +57,7 @@
     {
       "type": "output",
       "index": 9,
-      "uuid": "ed56a8a6-003-4a53-9eab-583c499d231b",
+      "uuid": "output-2",
       "bias": 0.0001,
       "squash": "MAXIMUM",
       "tags": [

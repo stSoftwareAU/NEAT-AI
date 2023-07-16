@@ -1,5 +1,5 @@
-import { NetworkInternal } from "../architecture/NetworkInterfaces.ts";
 import { Network } from "../architecture/Network.ts";
+import { NetworkInternal } from "../architecture/NetworkInterfaces.ts";
 import { Node } from "../architecture/Node.ts";
 import { addTag, getTag, TagsInterface } from "../tags/TagsInterface.ts";
 
@@ -69,17 +69,29 @@ export class CRISPR {
           firstNetworkOutputIndex = indx;
         }
         ((node as unknown) as { type: string }).type = "hidden";
+        if( node.uuid?.startsWith( "output-")){
+          node.uuid=crypto.randomUUID();
+        }
       }
     });
 
     const adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
       dna.nodes.length;
 
+    let outputIndx=0;
     dna.nodes.forEach((dnaNode) => {
-      const indx = dnaNode.index + adjustIndx;
-      const uuid = dnaNode.uuid
+      let uuid:string;
+      if (dnaNode.type == "output") {
+        uuid=`output-${outputIndx}`;
+        outputIndx++;
+      }
+      else{
+        uuid = dnaNode.uuid
         ? UUIDs.has(dnaNode.uuid) ? crypto.randomUUID() : dnaNode.uuid
         : crypto.randomUUID();
+      }
+      const indx = dnaNode.index + adjustIndx;
+      
       const networkNode = new Node(
         uuid,
         dnaNode.type,
