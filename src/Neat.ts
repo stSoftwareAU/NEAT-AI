@@ -147,7 +147,7 @@ export class Neat {
       await this.checkAndAdd(tmpFineTunePopulation, tunedUUID, score, network);
     }
 
-    const tmpPreviousFittest = tmpFineTunePopulation[0];
+    const tmpPreviousFittest = tmpFineTunePopulation.shift();
 
     /**
      * If this is the first run then use the second best as the "previous"
@@ -162,6 +162,7 @@ export class Neat {
     if (!tmpPreviousFittest) {
       console.warn("Failed to find previous fittest creature");
     } else {
+      /** 20% of population or those that just died, leave one for the extended */
       const fineTunePopSize = Math.max(
         Math.ceil(
           this.config.popSize / 5,
@@ -173,7 +174,6 @@ export class Neat {
       fineTunedPopulation = await fineTuneImprovement(
         fittest,
         tmpPreviousFittest,
-        /** 20% of population or those that just died, leave one for the extended */
         fineTunePopSize - 1,
         !rebootedFineTune && this.config.verbose,
       );
@@ -182,65 +182,28 @@ export class Neat {
         const extendedFineTunePopSize = fineTunePopSize -
           fineTunedPopulation.length;
         if (extendedFineTunePopSize > 0) {
-          // First, find the minimum score
-          let minScore = 0;
-          for (let i = 0; i < tmpFineTunePopulation.length; i++) {
-            const tmpScore = tmpFineTunePopulation[i].score || 0;
-            if (tmpScore < minScore) {
-              minScore = tmpScore;
-            }
-          }
+          /* Choose a creature from near the top of the list. */
+          const location = Math.floor(
+            tmpFineTunePopulation.length * Math.random() * Math.random(),
+          );
 
-          // Offset to make scores positive
-          const offset = Math.abs(minScore);
+          const extendedPreviousFittest = tmpFineTunePopulation[location];
 
-          // Now, compute the total score of all creatures
-          let totalScore = 0;
-          for (let i = 0; i < tmpFineTunePopulation.length; i++) {
-            const tmpScore = tmpFineTunePopulation[i].score || 0;
-            totalScore += tmpScore + offset; // Adding the offset to each score
-          }
+          const extendedTunedPopulation = await fineTuneImprovement(
+            fittest,
+            extendedPreviousFittest,
+            extendedFineTunePopSize,
+            false,
+          );
 
-          // Choose a random threshold value in the range of totalScore
-          const threshold = Math.random() * totalScore;
+          fineTunedPopulation.push(...extendedTunedPopulation);
 
-          let sum = 0;
-          for (
-            let location = 0;
-            location < tmpFineTunePopulation.length;
-            location++
-          ) {
-            const tmpScore = tmpFineTunePopulation[location].score || 0;
-            sum += tmpScore + offset; // Adding the offset to each score
-            if (sum >= threshold) {
-              // We've found the selected creature
-              if (
-                tmpFineTunePopulation[location].uuid != tmpPreviousFittest.uuid
-              ) {
-                const extendedPreviousFittest = tmpFineTunePopulation[location];
-
-                const extendedTunedPopulation = await fineTuneImprovement(
-                  fittest,
-                  extendedPreviousFittest,
-                  extendedFineTunePopSize,
-                  false,
-                );
-
-                fineTunedPopulation.push(...extendedTunedPopulation);
-                break;
-              }
-            }
-          }
+          /* Remove the chosen creature from the array */
+          tmpFineTunePopulation.splice(location, 1);
         } else {
           break;
         }
       }
-
-      // if (fineTunedPopulation.length < fineTunePopSize) {
-      //   console.warn(
-      //     `Fine tuned population ${fineTunedPopulation.length} is less than expected ${fineTunePopSize}`,
-      //   );
-      // }
     }
 
     return fineTunedPopulation;
