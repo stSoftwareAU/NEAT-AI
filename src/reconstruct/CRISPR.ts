@@ -122,7 +122,7 @@ export class CRISPR {
         ? c.to
         : ((c.toRelative ? c.toRelative : 0) + adjustIndx);
       if (to == undefined) throw "invalid connection " + c;
-      console.info(c);
+
       tmpNetwork.connect(from, to, c.weight, c.type);
     });
     return tmpNetwork;
