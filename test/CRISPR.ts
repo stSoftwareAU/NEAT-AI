@@ -1,7 +1,7 @@
 import {
   assert,
   assertEquals,
-} from "https://deno.land/std@0.197.0/testing/asserts.ts";
+} from "https://deno.land/std@0.197.0/assert/mod.ts";
 
 import { CRISPR } from "../src/reconstruct/CRISPR.ts";
 import { Network } from "../src/architecture/Network.ts";

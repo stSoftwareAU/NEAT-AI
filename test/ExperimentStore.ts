@@ -1,5 +1,5 @@
 import { Neat } from "../src/Neat.ts";
-import { assert } from "https://deno.land/std@0.197.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.197.0/assert/mod.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";

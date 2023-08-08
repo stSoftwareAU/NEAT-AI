@@ -3,7 +3,7 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.197.0/testing/asserts.ts";
+} from "https://deno.land/std@0.197.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
 import { emptyDirSync } from "https://deno.land/std@0.197.0/fs/empty_dir.ts";

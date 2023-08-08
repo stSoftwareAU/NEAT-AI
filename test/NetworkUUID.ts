@@ -3,7 +3,7 @@ import {
   assert,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.197.0/testing/asserts.ts";
+} from "https://deno.land/std@0.197.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";
 import { Neat } from "../src/Neat.ts";
@@ -46,7 +46,7 @@ Deno.test("knownName", async () => {
   console.log("UUID", uuid);
 
   assert(
-    uuid == "5d82864b-dd93-55aa-af4a-0456ed67dd13",
+    uuid == "7750d0bf-6972-5e4b-92f5-1bbd9da220f7",
     "Wrong UUID was: " + uuid,
   );
 });
@@ -132,7 +132,7 @@ Deno.test("ignoreTags", async () => {
 
   /** Manually update if needed. */
   assert(
-    uuid2 == "f5c7dea8-c1d9-51ed-b79f-22751f1d65de",
+    uuid2 == "91c2c15c-3ba4-52de-bf60-5c1c129875b2",
     "Wrong UUID was: " + uuid2,
   );
 });
