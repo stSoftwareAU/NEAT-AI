@@ -1,5 +1,5 @@
-import { assert } from "https://deno.land/std@0.197.0/assert/mod.ts";
-import { emptyDirSync } from "https://deno.land/std@0.197.0/fs/empty_dir.ts";
+import { assert } from "https://deno.land/std@0.198.0/assert/mod.ts";
+import { emptyDirSync } from "https://deno.land/std@0.198.0/fs/empty_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";

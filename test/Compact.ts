@@ -3,7 +3,7 @@ import {
   assert,
   assertAlmostEquals,
   fail,
-} from "https://deno.land/std@0.197.0/assert/mod.ts";
+} from "https://deno.land/std@0.198.0/assert/mod.ts";
 
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
