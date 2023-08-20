@@ -1,4 +1,4 @@
-import { generate as generateV5 } from "https://deno.land/std@0.194.0/uuid/v5.ts";
+import { generate as generateV5 } from "https://deno.land/std@0.198.0/uuid/v5.ts";
 import { Network } from "./Network.ts";
 
 export class NetworkUtil {
@@ -26,11 +26,12 @@ export class NetworkUtil {
         delete c.trace;
       },
     );
-    delete json.tags;
-    delete json.uuid;
-    delete json.score;
+    const tmp = {
+      nodes: json.nodes,
+      connections: json.connections,
+    };
 
-    const txt = JSON.stringify(json, null, 1);
+    const txt = JSON.stringify(tmp);
 
     const utf8 = NetworkUtil.TE.encode(txt);
 
