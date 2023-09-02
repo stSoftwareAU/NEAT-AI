@@ -1162,6 +1162,54 @@ export class Network implements NetworkInternal {
     };
   }
 
+  async evaluteFile(fn: string, cost: CostInterface, feedbackLoop: boolean) {
+    const json = JSON.parse(await Deno.readTextFile(fn));
+    return this.evaluateData(json, cost, feedbackLoop);
+  }
+  private readonly MAX_CONCURRENT_LOAD = 12;
+  async evaluteInBatches(
+    files: string[],
+    cost: CostInterface,
+    feedbackLoop: boolean,
+  ) {
+    let totalError = 0;
+    let totalCount = 0;
+
+    const promises: Promise<{ error: number; count: number }>[] = [];
+
+    for (let i = 0; i < this.MAX_CONCURRENT_LOAD; i++) {
+      const fn = files.pop();
+      if (fn) {
+        const p = this.evaluteFile(fn, cost, feedbackLoop);
+        promises.push(p);
+      } else break;
+    }
+
+    const results = await Promise.all(promises);
+
+    // Aggregate results
+    for (const result of results) {
+      totalError += result.error;
+      totalCount += result.count;
+    }
+
+    if (files.length) {
+      const batchResults = await this.evaluteInBatches(
+        files,
+        cost,
+        feedbackLoop,
+      );
+
+      totalCount += batchResults.totalCount;
+
+      totalError += batchResults.totalError;
+    }
+    return {
+      totalError: totalError,
+      totalCount: totalCount,
+    };
+  }
+
   /**
    * Tests a set and returns the error and elapsed time
    */
@@ -1186,28 +1234,15 @@ export class Network implements NetworkInternal {
       const result = this.evaluateData(json, cost, feedbackLoop);
       return { error: result.error / result.count };
     } else {
-      let totalError = 0;
-      let totalCount = 0;
       cacheDataFile.fn = "";
       cacheDataFile.json = {};
 
-      const promises = files.map(async (fn) => {
-        const json = JSON.parse(await Deno.readTextFile(fn));
-        return this.evaluateData(json, cost, feedbackLoop);
-      });
-
-      // Wait for all promises to complete
-      const results = await Promise.all(promises);
-
-      // Aggregate results
-      for (const result of results) {
-        totalError += result.error;
-        totalCount += result.count;
-      }
-
-      return {
-        error: totalError / totalCount,
-      };
+      const batchResults = await this.evaluteInBatches(
+        files,
+        cost,
+        feedbackLoop,
+      );
+      return { error: batchResults.totalError / batchResults.totalCount };
     }
   }
 

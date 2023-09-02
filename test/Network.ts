@@ -504,7 +504,7 @@ Deno.test("train_SIN_function", () => {
     });
   }
 
-  trainSet(set, 1000, 0.05);
+  trainSet(set, 10000, 0.05);
 });
 
 Deno.test("evolve_SIN_function", async () => {
@@ -518,7 +518,7 @@ Deno.test("evolve_SIN_function", async () => {
     });
   }
 
-  await evolveSet(set, 1000, 0.05);
+  await evolveSet(set, 10000, 0.05);
 });
 
 Deno.test("train_Bigger_than", () => {
