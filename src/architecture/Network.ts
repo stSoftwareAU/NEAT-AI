@@ -941,7 +941,7 @@ export class Network implements NetworkInternal {
       i >= this.nodes.length - this.output;
       i--
     ) {
-      const n = this.nodes[i] as Node;
+      const n = this.nodes[i];
       n.propagate(
         target[--targetIndex],
       );

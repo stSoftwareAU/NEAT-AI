@@ -3,6 +3,7 @@ import { emptyDirSync } from "https://deno.land/std@0.194.0/fs/empty_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { assertAlmostEquals } from "https://deno.land/std@0.194.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.194.0/_util/asserts.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -61,17 +62,25 @@ function makeOutput(input: number[]) {
   console.info(`i0: ${input[0]}, i1: ${input[1]}, i2: ${input[2]}`);
   console.info(`h3: ${h3}`);
   console.info(`o4: ${o4}, o5: ${o5}`);
+
+  output.forEach( (value, indx) => { assert( Number.isFinite( value), `${indx}: ${value}`)});
   return output;
 }
 
 Deno.test("propagateSingleNeuronKnown", () => {
   const creature = makeCreature();
+  const traceDir = ".trace";
+  emptyDirSync(traceDir);
+
   Deno.writeTextFileSync(
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),
   );
-  const traceDir = ".trace";
-  emptyDirSync(traceDir);
+
+  const inFirst = [-0.5, 0, 0.5];
+  const actualFirst = creature.noTraceActivate(inFirst);
+  const expectedFirst = makeOutput(inFirst);
+  console.info(expectedFirst, actualFirst);
 
   const inA = [0, 0, 0];
   const outA = creature.activate(inA);
@@ -111,7 +120,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
   const inD = [-0.5, 0, 0.5];
   const actualD = creature.noTraceActivate(inD);
   const expectedD = makeOutput(inD);
-  console.info(actualD, expectedD);
+  console.info( expectedD, actualD);
 
   assertAlmostEquals(actualD[0], expectedD[0], 0.5);
   assertAlmostEquals(actualD[1], expectedD[1], 0.5);

@@ -463,7 +463,7 @@ export class Node implements TagsInterface, NodeInternal {
       const errorPerLink = error / toList.length;
 
       randomList.forEach((c) => {
-        const fromNode = this.network.nodes[c.from] as Node;
+        const fromNode = this.network.nodes[c.from];
         const fromActivation = fromNode.adjustedActivation();
 
         const cs = this.network.networkState.connection(c.from, c.to);
@@ -475,10 +475,6 @@ export class Node implements TagsInterface, NodeInternal {
             ? Math.min(Math.max(Math.random(), 0.2), 0.8)
             : 0;
 
-        if (weightResponsibility != 0) {
-          //ZZZZ remove
-          weightResponsibility = 0.5;
-        }
         if (
           fromNode.type == "input" ||
           fromNode.type == "constant"
