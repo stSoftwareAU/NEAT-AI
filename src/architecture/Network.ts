@@ -15,14 +15,14 @@ import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 import { DataRecordInterface } from "./DataSet.ts";
 
-import { yellow } from "https://deno.land/std@0.198.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.201.0/fmt/colors.ts";
 import { Neat } from "../Neat.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { getTag } from "../tags/TagsInterface.ts";
 
-import { format } from "https://deno.land/std@0.198.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.198.0/fs/empty_dir.ts";
+import { format } from "https://deno.land/std@0.201.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.201.0/fs/empty_dir.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Node } from "../architecture/Node.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";
@@ -44,7 +44,7 @@ export class Network implements NetworkInternal {
 
   input: number;
   output: number;
-  nodes: NodeInternal[];
+  nodes: Node[];
   tags?: TagInterface[];
   score?: number;
   connections: ConnectionInternal[];
@@ -246,13 +246,11 @@ export class Network implements NetworkInternal {
     const lastHiddenNode = this.nodes.length - this.output;
 
     /* Activate nodes chronologically */
-    for (let i = this.input; i < lastHiddenNode; i++) {
-      (this.nodes[i] as Node).noTraceActivate();
-    }
-
-    for (let i = 0; i < this.output; i++) {
-      output[i] = (this.nodes[i + lastHiddenNode] as Node)
-        .noTraceActivate();
+    for (let i = this.input; i < this.nodes.length; i++) {
+      const value = this.nodes[i].noTraceActivate();
+      if (i >= lastHiddenNode) {
+        output[i - lastHiddenNode] = value;
+      }
     }
 
     return output;
@@ -1134,65 +1132,107 @@ export class Network implements NetworkInternal {
     return files;
   }
 
-  /**
-   * Tests a set and returns the error and elapsed time
-   */
-  testDir(
-    dataDir: string,
+  private evaluateData(
+    json: { input: number[]; output: number[] }[],
+    cost: CostInterface,
+    feedbackLoop: boolean,
+  ): { error: number; count: number } {
+    let error = 0;
+    const count = json.length;
+
+    for (let i = count; i--;) {
+      const data = json[i];
+      const output = this.noTraceActivate(data.input, feedbackLoop);
+      error += cost.calculate(data.output, output);
+    }
+
+    return {
+      error,
+      count,
+    };
+  }
+
+  async evaluteFile(fn: string, cost: CostInterface, feedbackLoop: boolean) {
+    const json = JSON.parse(await Deno.readTextFile(fn));
+    return this.evaluateData(json, cost, feedbackLoop);
+  }
+
+  private readonly MAX_CONCURRENT_LOAD = 12;
+  async evaluteInBatches(
+    files: string[],
     cost: CostInterface,
     feedbackLoop: boolean,
   ) {
-    let error = 0;
-    let counter = 0;
+    let totalError = 0;
+    let totalCount = 0;
 
+    const pool: Promise<{ error: number; count: number }>[] = [];
+
+    // Fill the pool up to MAX_CONCURRENT_LOAD
+    for (let i = this.MAX_CONCURRENT_LOAD; i--;) {
+      const fn = files.pop();
+      if (fn) {
+        pool.push(this.evaluteFile(fn, cost, feedbackLoop));
+      }
+    }
+
+    while (pool.length > 0) {
+      const finished = await Promise.race(
+        pool.map((p, index) => p.then((value) => ({ value, index }))),
+      );
+      totalError += finished.value.error;
+      totalCount += finished.value.count;
+
+      // Remove the completed promise from the pool
+      pool.splice(finished.index, 1);
+
+      // Add a new promise to the pool, if available
+      const fn = files.pop();
+      if (fn) {
+        pool.push(this.evaluteFile(fn, cost, feedbackLoop));
+      }
+    }
+
+    return {
+      totalError: totalError,
+      totalCount: totalCount,
+    };
+  }
+
+  /**
+   * Tests a set and returns the error and elapsed time
+   */
+  async evaluateDir(
+    dataDir: string,
+    cost: CostInterface,
+    feedbackLoop: boolean,
+  ): Promise<{ error: number }> {
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
-      dataDir + "/" + fn
+      `${dataDir}/${fn}`
     );
 
-    const cached = files.length == 1;
-    if (!cached) {
+    if (files.length === 1) {
+      const fn = files[0];
+      const json = cacheDataFile.fn === fn
+        ? cacheDataFile.json
+        : JSON.parse(await Deno.readTextFile(fn));
+
+      cacheDataFile.fn = fn;
+      cacheDataFile.json = json;
+
+      const result = this.evaluateData(json, cost, feedbackLoop);
+      return { error: result.error / result.count };
+    } else {
       cacheDataFile.fn = "";
       cacheDataFile.json = {};
+
+      const batchResults = await this.evaluteInBatches(
+        files,
+        cost,
+        feedbackLoop,
+      );
+      return { error: batchResults.totalError / batchResults.totalCount };
     }
-    const EMPTY = { input: [], output: [] };
-    for (let j = files.length; j--;) {
-      const fn = files[j];
-
-      const json = cacheDataFile.fn == fn
-        ? cacheDataFile.json
-        : JSON.parse(Deno.readTextFileSync(fn));
-
-      if (cached) {
-        cacheDataFile.fn = fn;
-        cacheDataFile.json = json;
-      }
-
-      if (json.length == 0) {
-        throw "Set size must be positive";
-      }
-
-      for (let i = json.length; i--;) {
-        const data = json[i];
-
-        if (!cached) {
-          json[i] = EMPTY;
-        }
-        const output = this.noTraceActivate(
-          data.input,
-          feedbackLoop,
-        );
-        error += cost.calculate(data.output, output);
-      }
-
-      counter += json.length;
-    }
-
-    const avgError = error / counter;
-    const results = {
-      error: avgError,
-    };
-
-    return results;
   }
 
   /**

@@ -3,10 +3,10 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.198.0/assert/mod.ts";
+} from "https://deno.land/std@0.201.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { emptyDirSync } from "https://deno.land/std@0.198.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.201.0/fs/empty_dir.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
@@ -502,7 +502,7 @@ Deno.test("train_SIN_function", () => {
     });
   }
 
-  trainSet(set, 1000, 0.05);
+  trainSet(set, 10000, 0.05);
 });
 
 Deno.test("evolve_SIN_function", async () => {
@@ -516,7 +516,7 @@ Deno.test("evolve_SIN_function", async () => {
     });
   }
 
-  await evolveSet(set, 1000, 0.05);
+  await evolveSet(set, 10000, 0.05);
 });
 
 Deno.test("train_Bigger_than", () => {
