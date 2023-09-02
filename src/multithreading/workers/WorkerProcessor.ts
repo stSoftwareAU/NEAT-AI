@@ -58,6 +58,8 @@ export class WorkerProcessor {
       const trainOptions: TrainOptions = {
         cost: this.costName,
         iterations: 1,
+        rate: data.train.rate,
+        batchSize: Infinity,
       };
 
       const result = network.trainDir(this.dataSetDir, trainOptions);
