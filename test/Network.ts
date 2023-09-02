@@ -156,7 +156,6 @@ function trainSet(
   set: { input: number[]; output: number[] }[],
   iterations: number,
   error: number,
-  rate = 0.3,
 ) {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
@@ -177,7 +176,6 @@ function trainSet(
     const options: TrainOptions = {
       iterations: iterations,
       error: error,
-      rate: rate,
     };
 
     const results = network.train(set, options);

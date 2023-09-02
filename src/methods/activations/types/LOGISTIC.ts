@@ -1,6 +1,12 @@
 import { ActivationInterface } from "../ActivationInterface.ts";
+import { UnSquashInterface } from "../UnSquashInterface.ts";
 
-export class LOGISTIC implements ActivationInterface {
+export class LOGISTIC implements ActivationInterface, UnSquashInterface {
+  unSquash(activation: number): number {
+    const value = Math.log(activation / (1 - activation));
+    return value;
+  }
+
   public static NAME = "LOGISTIC";
 
   getName() {

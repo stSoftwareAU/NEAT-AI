@@ -1,6 +1,7 @@
 import { ActivationInterface } from "../ActivationInterface.ts";
+import { UnSquashInterface } from "../UnSquashInterface.ts";
 
-export class INVERSE implements ActivationInterface {
+export class INVERSE implements ActivationInterface, UnSquashInterface {
   public static NAME = "INVERSE";
 
   getName() {
@@ -9,6 +10,10 @@ export class INVERSE implements ActivationInterface {
 
   squash(x: number) {
     return 1 - x;
+  }
+
+  unSquash(activation: number): number {
+    return 1 - activation;
   }
 
   squashAndDerive(x: number) {
