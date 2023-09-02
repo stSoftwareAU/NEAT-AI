@@ -1175,35 +1175,33 @@ export class Network implements NetworkInternal {
     let totalError = 0;
     let totalCount = 0;
 
-    const promises: Promise<{ error: number; count: number }>[] = [];
+    const pool: Promise<{ error: number; count: number }>[] = [];
 
+    // Fill the pool up to MAX_CONCURRENT_LOAD
     for (let i = 0; i < this.MAX_CONCURRENT_LOAD; i++) {
       const fn = files.pop();
       if (fn) {
-        const p = this.evaluteFile(fn, cost, feedbackLoop);
-        promises.push(p);
-      } else break;
+        pool.push(this.evaluteFile(fn, cost, feedbackLoop));
+      }
     }
 
-    const results = await Promise.all(promises);
-
-    // Aggregate results
-    for (const result of results) {
-      totalError += result.error;
-      totalCount += result.count;
-    }
-
-    if (files.length) {
-      const batchResults = await this.evaluteInBatches(
-        files,
-        cost,
-        feedbackLoop,
+    while (pool.length > 0) {
+      const finished = await Promise.race(
+        pool.map((p, index) => p.then((value) => ({ value, index }))),
       );
+      totalError += finished.value.error;
+      totalCount += finished.value.count;
 
-      totalCount += batchResults.totalCount;
+      // Remove the completed promise from the pool
+      pool.splice(finished.index, 1);
 
-      totalError += batchResults.totalError;
+      // Add a new promise to the pool, if available
+      const fn = files.pop();
+      if (fn) {
+        pool.push(this.evaluteFile(fn, cost, feedbackLoop));
+      }
     }
+
     return {
       totalError: totalError,
       totalCount: totalCount,
