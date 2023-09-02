@@ -5,11 +5,13 @@ export class MSE implements CostInterface {
   calculate(target: number[], output: number[]): number {
     let error = 0;
     const len = output.length;
+    const invLen = 1 / len;
 
     for (let i = len; i--;) {
-      error += Math.pow(target[i] - output[i], 2);
+      const diff = target[i] - output[i];
+      error += diff * diff;
     }
 
-    return error / len;
+    return error * invLen;
   }
 }
