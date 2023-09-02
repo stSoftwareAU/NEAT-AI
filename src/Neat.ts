@@ -73,7 +73,7 @@ export class Neat {
       console.info(`Start training for ${key}`);
     }
 
-    const p = w.train(creature).then(async (r) => {
+    const p = w.train(creature, this.trainRate).then(async (r) => {
       this.trainingComplete.push(r);
 
       this.trainingInProgress.delete(key);

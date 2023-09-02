@@ -25,6 +25,7 @@ import { format } from "https://deno.land/std@0.201.0/fmt/duration.ts";
 import { emptyDirSync } from "https://deno.land/std@0.201.0/fs/empty_dir.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Node } from "../architecture/Node.ts";
+import { findRatePolicy, randomPolicyName } from "../config.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
@@ -890,8 +891,6 @@ export class Network implements NetworkInternal {
   }
 
   applyLearnings() {
-    this.propagateUpdate();
-
     const oldConnections = this.connections.length;
     const oldNodes = this.nodes.length;
     let changed = false;
@@ -924,7 +923,7 @@ export class Network implements NetworkInternal {
   /**
    * Back propagate the network
    */
-  propagate(target: number[]) {
+  propagate(rate: number, target: number[]) {
     if (
       target === undefined || target.length !== this.output
     ) {
@@ -943,8 +942,19 @@ export class Network implements NetworkInternal {
     ) {
       const n = this.nodes[i] as Node;
       n.propagate(
+        rate,
         target[--targetIndex],
       );
+    }
+
+    // Propagate hidden and input nodes
+    for (
+      let i = this.nodes.length - this.output - 1;
+      i >= this.input;
+      i--
+    ) {
+      const n = this.nodes[i] as Node;
+      n.propagate(rate);
     }
   }
 
@@ -1251,11 +1261,14 @@ export class Network implements NetworkInternal {
     }
 
     // Read the options
-    const targetError =
-      options.error !== undefined && Number.isFinite(options.error)
-        ? options.error
-        : 0.05;
+    const targetError = options.error || 0.05;
     const cost = Costs.find(options.cost ? options.cost : "MSE");
+    const baseRate = options.rate == undefined ? Math.random() : options.rate;
+
+    const ratePolicyName = options.ratePolicy
+      ? options.ratePolicy
+      : randomPolicyName();
+    const ratePolicy = findRatePolicy(ratePolicyName);
 
     const iterations = options.iterations ? options.iterations : 0;
 
@@ -1265,14 +1278,17 @@ export class Network implements NetworkInternal {
 
     // Loops the training process
     let iteration = 0;
-
-    let lastError = Infinity;
-    let trainingFailed = 0;
-    let bestCreatureJSON = null;
-
+    let error = 1;
     const EMPTY = { input: [], output: [] };
     while (true) {
       iteration++;
+
+      // Update the rate
+      const currentRate = ratePolicy(baseRate, iteration);
+
+      if (!Number.isFinite(currentRate)) {
+        throw "not a valid rate: " + currentRate;
+      }
 
       let counter = 0;
       let errorSum = 0;
@@ -1297,7 +1313,10 @@ export class Network implements NetworkInternal {
           throw "Set size must be positive";
         }
         const len = json.length;
-
+        const batchSize = Math.max(
+          options.batchSize ? options.batchSize : Math.round(len / 10),
+          1,
+        );
         for (let i = len; i--;) {
           const data = json[i];
 
@@ -1305,18 +1324,27 @@ export class Network implements NetworkInternal {
             /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
+          const update = (i + 1) % batchSize === 0 || i === 0;
 
           const output = this.activate(data.input);
 
           errorSum += cost.calculate(data.output, output);
 
-          this.propagate(data.output);
+          this.propagate(currentRate, data.output);
+          if (update) {
+            this.propagateUpdate();
+          }
+          /* Clear if we've updated the state batch only */
+          if (update && (i || j)) {
+            /* Hold the last one so we can write it out */
+            this.clearState();
+          }
         }
 
         counter += len;
       }
 
-      const error = errorSum / counter;
+      error = errorSum / counter;
 
       if (
         options.log && (
@@ -1329,47 +1357,23 @@ export class Network implements NetworkInternal {
           iteration,
           "error",
           error,
+          "rate",
+          currentRate,
+          "policy",
+          yellow(ratePolicyName),
         );
       }
 
-      let trainingOk = true;
-      if (lastError < error) {
-        trainingFailed++;
-        console.warn(
-          `Training made the error worse ${trainingFailed} of ${iteration}`,
-        );
-        trainingOk = false;
-
-        if (options.traceStore) {
-          Deno.writeTextFileSync(
-            `.trace/${trainingFailed}_fail.json`,
-            JSON.stringify(this.traceJSON(), null, 2),
-          );
-        }
-        if (bestCreatureJSON) {
-          if (options.traceStore) {
-            Deno.writeTextFileSync(
-              `.trace/${trainingFailed}_best.json`,
-              JSON.stringify(bestCreatureJSON, null, 2),
-            );
-          }
-          this.loadFrom(bestCreatureJSON, false);
-        }
-      } else {
-        bestCreatureJSON = this.traceJSON();
-
-        lastError = error;
-      }
       if (
         Number.isFinite(error) &&
         error > targetError &&
         (iterations === 0 || iteration < iterations)
       ) {
-        if (trainingOk) this.applyLearnings();
+        this.applyLearnings();
         this.clearState();
       } else {
         const traceJSON = this.traceJSON();
-        if (trainingOk) this.applyLearnings();
+        this.applyLearnings();
         this.clearState();
 
         return {
@@ -2176,12 +2180,10 @@ export class Network implements NetworkInternal {
         const traceNode: NodeExport = json.nodes[exportIndex] as NodeTrace;
 
         (traceNode as NodeTrace).trace = {
-          // errorProjected: ns ? ns.errorProjected : undefined,
-          // errorResponsibility: ns ? ns.errorResponsibility : undefined,
-          // batchSize: ns ? ns.batchSize : undefined,
-          totalBiasValue: ns ? ns.totalValue : undefined,
-
-          totalRawValue: ns ? ns.totalWeightedSum : undefined,
+          errorProjected: ns ? ns.errorProjected : undefined,
+          errorResponsibility: ns ? ns.errorResponsibility : undefined,
+          derivative: ns ? ns.derivative : undefined,
+          totalDeltaBias: ns ? ns.totalDeltaBias : undefined,
         };
         traceNodes[exportIndex] = traceNode as NodeTrace;
         exportIndex++;
@@ -2193,11 +2195,9 @@ export class Network implements NetworkInternal {
       const exportConnection = json.connections[indx] as ConnectionTrace;
       const cs = this.networkState.connection(c.from, c.to);
       exportConnection.trace = {
-        eligibility: cs.eligibility,
-
         used: cs.used,
-        totalWeight: cs.totalValue,
-        totalActivation: cs.totalActivation,
+        eligibility: cs.eligibility,
+        totalDeltaWeight: cs.totalDeltaWeight,
       };
 
       traceConnections[indx] = exportConnection;
@@ -2280,12 +2280,12 @@ export class Network implements NetworkInternal {
         const trace = (jn as NodeTrace).trace;
         const ns = this.networkState.node(n.index);
 
-        // ns.errorProjected = trace.errorProjected ? trace.errorProjected : 0;
-        // ns.errorResponsibility = trace.errorResponsibility
-        //   ? trace.errorResponsibility
-        //   : 0;
-        // ns.derivative = trace.derivative ? trace.derivative : 0;
-        ns.totalValue = trace.totalBiasValue ? trace.totalBiasValue : 0;
+        ns.errorProjected = trace.errorProjected ? trace.errorProjected : 0;
+        ns.errorResponsibility = trace.errorResponsibility
+          ? trace.errorResponsibility
+          : 0;
+        ns.derivative = trace.derivative ? trace.derivative : 0;
+        ns.totalDeltaBias = trace.totalDeltaBias ? trace.totalDeltaBias : 0;
       }
       uuidMap.set(n.uuid, pos);
 
@@ -2313,13 +2313,12 @@ export class Network implements NetworkInternal {
       if ((conn as ConnectionTrace).trace) {
         const cs = this.networkState.connection(connection.from, connection.to);
         const trace = (conn as ConnectionTrace).trace;
-
+        cs.used = trace.used;
         cs.eligibility = trace.eligibility ? trace.eligibility : 0;
 
-        cs.used = trace.used;
-        cs.totalValue = trace.totalWeight ? trace.totalWeight : 0;
-
-        cs.totalActivation = trace.totalActivation ? trace.totalActivation : 0;
+        cs.totalDeltaWeight = trace.totalDeltaWeight
+          ? trace.totalDeltaWeight
+          : 0;
       }
     }
 

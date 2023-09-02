@@ -15,10 +15,8 @@ export interface ConnectionExport extends ConnectionCommon {
 
 export interface ConnectionTrace extends ConnectionExport {
   trace: {
-    eligibility?: number;
-
     used?: boolean;
-    totalWeight?: number;
-    totalActivation?: number;
+    eligibility?: number;
+    totalDeltaWeight?: number;
   };
 }
