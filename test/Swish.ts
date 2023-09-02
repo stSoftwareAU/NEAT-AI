@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.198.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.201.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
