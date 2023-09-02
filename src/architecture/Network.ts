@@ -1166,6 +1166,7 @@ export class Network implements NetworkInternal {
     const json = JSON.parse(await Deno.readTextFile(fn));
     return this.evaluateData(json, cost, feedbackLoop);
   }
+
   private readonly MAX_CONCURRENT_LOAD = 12;
   async evaluteInBatches(
     files: string[],
@@ -1178,7 +1179,7 @@ export class Network implements NetworkInternal {
     const pool: Promise<{ error: number; count: number }>[] = [];
 
     // Fill the pool up to MAX_CONCURRENT_LOAD
-    for (let i = 0; i < this.MAX_CONCURRENT_LOAD; i++) {
+    for (let i = this.MAX_CONCURRENT_LOAD; i--;) {
       const fn = files.pop();
       if (fn) {
         pool.push(this.evaluteFile(fn, cost, feedbackLoop));
