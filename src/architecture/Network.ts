@@ -1175,15 +1175,13 @@ export class Network implements NetworkInternal {
     let totalError = 0;
     let totalCount = 0;
 
-    const pool: Promise<{ error: number; count: number }>[] = new Array(
-      this.MAX_CONCURRENT_LOAD,
-    );
+    const pool: Promise<{ error: number; count: number }>[] = [];
 
     // Fill the pool up to MAX_CONCURRENT_LOAD
     for (let i = 0; i < this.MAX_CONCURRENT_LOAD; i++) {
       const fn = files.pop();
       if (fn) {
-        pool[i] = this.evaluteFile(fn, cost, feedbackLoop);
+        pool.push(this.evaluteFile(fn, cost, feedbackLoop));
       }
     }
 
