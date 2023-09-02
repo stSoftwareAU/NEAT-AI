@@ -8,9 +8,15 @@ export interface TrainOptions {
   /** The cost function to use. See cost methods. Default: methods.cost.MSE */
   cost?: string;
 
+  /** Sets the learning rate of the back propagation process. Default: 0.3. */
+  rate?: number;
+
   /** Sets the amount of iterations the process will maximally run, even when the target error has not been reached. Default: NaN */
   iterations?: number;
 
-  /** The directory to store the networks trace information (optional) */
-  traceStore?: string;
+  /** Sets the rate policy for your training. This allows your rate to be dynamic, see the rate policies page. Default: methods.rate.FIXED() */
+  ratePolicy?: string;
+
+  /** Sets the (mini-) batch size of your training. Default: 1 (online training) */
+  batchSize?: number;
 }
