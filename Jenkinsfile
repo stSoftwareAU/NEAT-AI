@@ -26,24 +26,6 @@ pipeline {
       '''
        }
     }
-
-    stage('Test') {
-      agent {
-        docker {
-          image TOOLS_IMAGE
-          args TOOLS_ARGS
-        }
-      }
-      steps {
-
-        sh '''\
-            #!/bin/bash
-
-            deno test --allow-all test/*
-        '''.stripIndent()
-      }
-    }
-
     stage('Lint'){
       agent {
         docker {
@@ -59,8 +41,8 @@ pipeline {
             deno lint src
         '''.stripIndent()
       }
+      
     }
-    
     stage('Format') {
       agent {
         docker {
@@ -77,6 +59,22 @@ pipeline {
             find test -name ".*.json" -exec rm {} \\;
 
             deno fmt --check src test
+        '''.stripIndent()
+      }
+    }
+    stage('Test') {
+      agent {
+        docker {
+          image TOOLS_IMAGE
+          args TOOLS_ARGS
+        }
+      }
+      steps {
+
+        sh '''\
+            #!/bin/bash
+
+            deno test --allow-all test/*
         '''.stripIndent()
       }
     }
