@@ -13,7 +13,7 @@ import { Network } from "./Network.ts";
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
   readonly type;
-  readonly uuid: string;
+  uuid: string;
   bias: number;
   squash?: string;
   private squashMethodCache?: NodeActivationInterface | ActivationInterface;

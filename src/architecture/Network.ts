@@ -15,14 +15,14 @@ import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 import { DataRecordInterface } from "./DataSet.ts";
 
-import { yellow } from "https://deno.land/std@0.198.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.201.0/fmt/colors.ts";
 import { Neat } from "../Neat.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { getTag } from "../tags/TagsInterface.ts";
 
-import { format } from "https://deno.land/std@0.198.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.198.0/fs/empty_dir.ts";
+import { format } from "https://deno.land/std@0.201.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.201.0/fs/empty_dir.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Node } from "../architecture/Node.ts";
 import { findRatePolicy, randomPolicyName } from "../config.ts";
@@ -45,7 +45,7 @@ export class Network implements NetworkInternal {
 
   input: number;
   output: number;
-  nodes: NodeInternal[];
+  nodes: Node[];
   tags?: TagInterface[];
   score?: number;
   connections: ConnectionInternal[];
@@ -247,13 +247,11 @@ export class Network implements NetworkInternal {
     const lastHiddenNode = this.nodes.length - this.output;
 
     /* Activate nodes chronologically */
-    for (let i = this.input; i < lastHiddenNode; i++) {
-      (this.nodes[i] as Node).noTraceActivate();
-    }
-
-    for (let i = 0; i < this.output; i++) {
-      output[i] = (this.nodes[i + lastHiddenNode] as Node)
-        .noTraceActivate();
+    for (let i = this.input; i < this.nodes.length; i++) {
+      const value = this.nodes[i].noTraceActivate();
+      if (i >= lastHiddenNode) {
+        output[i - lastHiddenNode] = value;
+      }
     }
 
     return output;
@@ -1144,65 +1142,73 @@ export class Network implements NetworkInternal {
     return files;
   }
 
+  private evaluateData(
+    json: { input: number[]; output: number[] }[],
+    cost: CostInterface,
+    feedbackLoop: boolean,
+  ): { error: number; count: number } {
+    let error = 0;
+    const count = json.length;
+
+    for (let i = count; i--;) {
+      const data = json[i];
+      const output = this.noTraceActivate(data.input, feedbackLoop);
+      error += cost.calculate(data.output, output);
+    }
+
+    return {
+      error,
+      count,
+    };
+  }
+
   /**
    * Tests a set and returns the error and elapsed time
    */
-  testDir(
+  async evaluateDir(
     dataDir: string,
     cost: CostInterface,
     feedbackLoop: boolean,
-  ) {
-    let error = 0;
-    let counter = 0;
-
+  ): Promise<{ error: number }> {
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
-      dataDir + "/" + fn
+      `${dataDir}/${fn}`
     );
 
-    const cached = files.length == 1;
-    if (!cached) {
+    if (files.length === 1) {
+      const fn = files[0];
+      const json = cacheDataFile.fn === fn
+        ? cacheDataFile.json
+        : JSON.parse(await Deno.readTextFile(fn));
+
+      cacheDataFile.fn = fn;
+      cacheDataFile.json = json;
+
+      const result = this.evaluateData(json, cost, feedbackLoop);
+      return { error: result.error / result.count };
+    } else {
+      let totalError = 0;
+      let totalCount = 0;
       cacheDataFile.fn = "";
       cacheDataFile.json = {};
+
+      const promises = files.map(async (fn) => {
+        const json = JSON.parse(await Deno.readTextFile(fn));
+        return this.evaluateData(json, cost, feedbackLoop);
+      });
+
+      // Wait for all promises to complete
+      const results = await Promise.all(promises);
+
+      // Aggregate results
+      for (const result of results) {
+        totalError += result.error;
+        totalCount += result.count;
+      }
+
+      return {
+        error: totalError / totalCount,
+      };
     }
-    const EMPTY = { input: [], output: [] };
-    for (let j = files.length; j--;) {
-      const fn = files[j];
-
-      const json = cacheDataFile.fn == fn
-        ? cacheDataFile.json
-        : JSON.parse(Deno.readTextFileSync(fn));
-
-      if (cached) {
-        cacheDataFile.fn = fn;
-        cacheDataFile.json = json;
-      }
-
-      if (json.length == 0) {
-        throw "Set size must be positive";
-      }
-
-      for (let i = json.length; i--;) {
-        const data = json[i];
-
-        if (!cached) {
-          json[i] = EMPTY;
-        }
-        const output = this.noTraceActivate(
-          data.input,
-          feedbackLoop,
-        );
-        error += cost.calculate(data.output, output);
-      }
-
-      counter += json.length;
-    }
-
-    const avgError = error / counter;
-    const results = {
-      error: avgError,
-    };
-
-    return results;
   }
 
   /**
