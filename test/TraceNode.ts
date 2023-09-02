@@ -61,7 +61,7 @@ Deno.test("traceNode", async () => {
 
   // let errorResponsibilityCount = 0;
   // let errorProjectedCount = 0;
-  let batchSizeCount = 0;
+  // let batchSizeCount = 0;
   let totalBiasValueCount = 0;
 
   for (const dirEntry of Deno.readDirSync(traceDir)) {
@@ -86,12 +86,12 @@ Deno.test("traceNode", async () => {
           //   errorProjectedCount++;
           // }
 
-          if (
-            Number.isFinite(n.trace.batchSize) &&
-            n.trace.batchSize != 0
-          ) {
-            batchSizeCount++;
-          }
+          // if (
+          //   Number.isFinite(n.trace.batchSize) &&
+          //   n.trace.batchSize != 0
+          // ) {
+          //   batchSizeCount++;
+          // }
 
           if (
             Number.isFinite(n.trace.totalBiasValue) &&
@@ -103,10 +103,10 @@ Deno.test("traceNode", async () => {
       });
     }
   }
-  assert(
-    batchSizeCount > 0,
-    "Should have batchSizeCount",
-  );
+  // assert(
+  //   batchSizeCount > 0,
+  //   "Should have batchSizeCount",
+  // );
 
   // assert(
   //   errorProjectedCount > 0,

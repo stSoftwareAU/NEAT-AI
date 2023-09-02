@@ -379,11 +379,11 @@ export class Node implements TagsInterface, NodeInternal {
       const adjWeight = cs.totalValue / cs.totalActivation;
       const totalWeight = adjWeight * cs.count + c.weight;
       const avgWeight = totalWeight / (cs.count + 1);
-      console.info(
-        `ZZZ ${c.from}:${c.to}) WEIGHT ${adjWeight}=${cs.totalValue}/${
-          Math.abs(cs.totalActivation)
-        } ~ ${avgWeight}`,
-      );
+      // console.info(
+      //   `ZZZ ${c.from}:${c.to}) WEIGHT ${adjWeight}=${cs.totalValue}/${
+      //     Math.abs(cs.totalActivation)
+      //   } ~ ${avgWeight}`,
+      // );
       return avgWeight;
     } // const avgValue=cs.totalValue/cs.count;
     // const avgActivation=cs.totalActivation/cs.count;
@@ -441,9 +441,9 @@ export class Node implements TagsInterface, NodeInternal {
    * Back-propagate the error, aka learn
    */
   propagate(target: number) {
-    if (this.index == 4) {
-      console.info("here");
-    }
+    // if (this.index == 4) {
+    //   console.info("here");
+    // }
     const activation = this.adjustedActivation();
 
     const targetValue = this.toValue(target);
@@ -505,9 +505,9 @@ export class Node implements TagsInterface, NodeInternal {
           const improvedValue = improvedActivation * fromWeight;
           targetWeightedSum += improvedValue;
           correctedError += improvedValue - fromValue;
-        } else {
-          console.info("ZERO weight");
-        }
+        } //else {
+        //   console.info("ZERO weight");
+        // }
 
         cs.count++;
 
@@ -533,13 +533,13 @@ export class Node implements TagsInterface, NodeInternal {
 
     ns.count++;
     ns.totalValue += targetValue; // targetWeightedSum+error - correctedError;
-    if (Math.abs(targetValue - (targetWeightedSum + correctedError)) > 0.001) {
-      console.info(
-        `${this.index}: ${targetValue} ${
-          targetWeightedSum + correctedError
-        }=${targetWeightedSum}+${correctedError}`,
-      );
-    }
+    // if (Math.abs(targetValue - (targetWeightedSum + correctedError)) > 0.001) {
+    //   console.info(
+    //     `${this.index}: ${targetValue} ${
+    //       targetWeightedSum + correctedError
+    //     }=${targetWeightedSum}+${correctedError}`,
+    //   );
+    // }
     ns.totalWeightedSum += targetWeightedSum;
     const currentBias = this.adjustedBias();
 
@@ -563,9 +563,9 @@ export class Node implements TagsInterface, NodeInternal {
       if (ns.count) {
         const totalBias = ns.totalValue - ns.totalWeightedSum;
         const avgBias = totalBias / ns.count;
-        if (Math.abs(avgBias) > 2) {
-          console.info(`ZZZ ${this.index}: large bias ${avgBias}`);
-        }
+        // if (Math.abs(avgBias) > 2) {
+        //   console.info(`ZZZ ${this.index}: large bias ${avgBias}`);
+        // }
         return avgBias;
       } else {
         return this.bias;

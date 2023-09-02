@@ -15,7 +15,7 @@ export interface NodeTrace extends NodeExport {
   trace: {
     // errorResponsibility?: number;
     // errorProjected?: number;
-    batchSize?: number;
+    // batchSize?: number;
     totalBiasValue?: number;
 
     totalRawValue?: number;
