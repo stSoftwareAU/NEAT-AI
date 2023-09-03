@@ -1156,15 +1156,16 @@ export class Network implements NetworkInternal {
     fn: string,
     cost: CostInterface,
     feedbackLoop: boolean,
-  ): Promise<{ error: number; count: number }> {
-    return Deno.readTextFile(fn).then((txt) => {
-      return this.evaluateData(JSON.parse(txt), cost, feedbackLoop);
+  ) {
+    const p = new Promise<{ error: number; count: number }>((resolve) => {
+      const txt = Deno.readTextFileSync(fn);
+      resolve(this.evaluateData(JSON.parse(txt), cost, feedbackLoop));
     });
-    // const json = JSON.parse(await Deno.readTextFile(fn));
-    // return this.evaluateData(json, cost, feedbackLoop);
+
+    return p;
   }
 
-  private readonly MAX_CONCURRENT_LOAD = 12;
+  private readonly MAX_CONCURRENT_LOAD = 6;
   async evaluteInBatches(
     files: string[],
     cost: CostInterface,
