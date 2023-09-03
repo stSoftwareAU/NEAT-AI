@@ -11,6 +11,7 @@ import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsIn
 import { Network } from "./Network.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
+import { PLANK_CONSTANT } from "../config/NeatConfig.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -405,8 +406,6 @@ export class Node implements TagsInterface, NodeInternal {
     this.bias = this.adjustedBias();
   }
 
-  readonly PLANK_CONSTANT = 0.000_000_1;
-
   private toValue(activation: number) {
     if (this.type == "input" || this.type == "constant") {
       return activation;
@@ -416,6 +415,9 @@ export class Node implements TagsInterface, NodeInternal {
       const unSquasher = (squash as unknown) as UnSquashInterface;
       const value = unSquasher.unSquash(activation);
 
+      if( !Number.isFinite( value)){
+        throw `${this.index}: ${this.squash}.unSquash(${activation}) invalid -> ${value}`;
+      }
       return value;
     } else {
       return activation;
@@ -471,7 +473,7 @@ export class Node implements TagsInterface, NodeInternal {
         const fromWeight = this.adjustedWeight(c);
         const fromValue = fromWeight * fromActivation;
         let weightResponsibility =
-          Math.abs(fromActivation) > this.PLANK_CONSTANT
+          Math.abs(fromActivation) > PLANK_CONSTANT
             ? Math.min(Math.max(Math.random(), 0.2), 0.8)
             : 0;
 
@@ -480,7 +482,7 @@ export class Node implements TagsInterface, NodeInternal {
           fromNode.type == "constant"
         ) {
           weightResponsibility = 1;
-        } else if (Math.abs(fromWeight) > this.PLANK_CONSTANT) {
+        } else if (Math.abs(fromWeight) > PLANK_CONSTANT) {
           if (Math.abs(fromWeight) > this.MAX_ADJUST) {
             if (Math.abs(fromActivation) < this.MAX_ADJUST) {
               weightResponsibility = 0;
@@ -507,7 +509,7 @@ export class Node implements TagsInterface, NodeInternal {
 
         cs.count++;
 
-        if (Math.abs(fromValue) > this.PLANK_CONSTANT) {
+        if (Math.abs(fromValue) > PLANK_CONSTANT) {
           const weightError = errorPerLink * weightResponsibility;
           const fromTargetValue = fromValue + weightError;
 
@@ -528,14 +530,13 @@ export class Node implements TagsInterface, NodeInternal {
     const ns = this.network.networkState.node(this.index);
 
     ns.count++;
-    ns.totalValue += targetValue; // targetWeightedSum+error - correctedError;
-    // if (Math.abs(targetValue - (targetWeightedSum + correctedError)) > 0.001) {
-    //   console.info(
-    //     `${this.index}: ${targetValue} ${
-    //       targetWeightedSum + correctedError
-    //     }=${targetWeightedSum}+${correctedError}`,
-    //   );
-    // }
+    ns.totalValue += targetValue; 
+    
+    if( !Number.isFinite( ns.totalValue)){
+      console.trace();
+      throw `${this.index}: Invalid totalValue: ${ns.totalValue}`;
+    }
+
     ns.totalWeightedSum += targetWeightedSum;
     const currentBias = this.adjustedBias();
 
@@ -562,6 +563,10 @@ export class Node implements TagsInterface, NodeInternal {
         // if (Math.abs(avgBias) > 2) {
         //   console.info(`ZZZ ${this.index}: large bias ${avgBias}`);
         // }
+        if( !Number.isFinite(avgBias)){
+          console.trace();
+          throw `${this.index}: invalid adjusted bias: ${avgBias}`;
+        }
         return avgBias;
       } else {
         return this.bias;

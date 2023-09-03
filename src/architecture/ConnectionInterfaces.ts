@@ -18,7 +18,7 @@ export interface ConnectionTrace extends ConnectionExport {
     eligibility?: number;
 
     used?: boolean;
-    totalWeight?: number;
+    totalValue?: number;
     totalActivation?: number;
   };
 }

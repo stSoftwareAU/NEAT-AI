@@ -429,19 +429,26 @@ export class Network implements NetworkInternal {
         }
         throw indx + ") duplicate UUID: " + uuid;
       }
-      if (uuid.startsWith("input-") && uuid !== "input-" + indx) {
-        console.trace();
+      if (uuid.startsWith("input-")){
+        if( uuid !== "input-" + indx) {
+          console.trace();
 
-        if (this.DEBUG) {
-          this.DEBUG = false;
-          Deno.writeTextFileSync(
-            ".validate.json",
-            JSON.stringify(this.exportJSON(), null, 2),
-          );
+          if (this.DEBUG) {
+            this.DEBUG = false;
+            Deno.writeTextFileSync(
+              ".validate.json",
+              JSON.stringify(this.exportJSON(), null, 2),
+            );
 
-          this.DEBUG = true;
+            this.DEBUG = true;
+          }
+          throw indx + ") invalid input UUID: " + uuid;
         }
-        throw indx + ") invalid input UUID: " + uuid;
+      } else {
+        if( !Number.isFinite( node.bias)){
+          console.trace();
+          throw indx + ") invalid bias: " + node.bias;
+        }
       }
 
       if (node.type == "output") {
@@ -2190,9 +2197,9 @@ export class Network implements NetworkInternal {
           // errorProjected: ns ? ns.errorProjected : undefined,
           // errorResponsibility: ns ? ns.errorResponsibility : undefined,
           // batchSize: ns ? ns.batchSize : undefined,
-          totalBiasValue: ns ? ns.totalValue : undefined,
+          totalValue: ns ? ns.totalValue : undefined,
 
-          totalRawValue: ns ? ns.totalWeightedSum : undefined,
+          totalWeightedSum: ns ? ns.totalWeightedSum : undefined,
         };
         traceNodes[exportIndex] = traceNode as NodeTrace;
         exportIndex++;
@@ -2207,7 +2214,7 @@ export class Network implements NetworkInternal {
         eligibility: cs.eligibility,
 
         used: cs.used,
-        totalWeight: cs.totalValue,
+        totalValue: cs.totalValue,
         totalActivation: cs.totalActivation,
       };
 
@@ -2296,7 +2303,7 @@ export class Network implements NetworkInternal {
         //   ? trace.errorResponsibility
         //   : 0;
         // ns.derivative = trace.derivative ? trace.derivative : 0;
-        ns.totalValue = trace.totalBiasValue ? trace.totalBiasValue : 0;
+        ns.totalValue = trace.totalValue ? trace.totalValue : 0;
       }
       uuidMap.set(n.uuid, pos);
 
@@ -2328,7 +2335,7 @@ export class Network implements NetworkInternal {
         cs.eligibility = trace.eligibility ? trace.eligibility : 0;
 
         cs.used = trace.used;
-        cs.totalValue = trace.totalWeight ? trace.totalWeight : 0;
+        cs.totalValue = trace.totalValue ? trace.totalValue : 0;
 
         cs.totalActivation = trace.totalActivation ? trace.totalActivation : 0;
       }

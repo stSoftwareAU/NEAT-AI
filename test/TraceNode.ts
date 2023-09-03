@@ -62,7 +62,7 @@ Deno.test("traceNode", async () => {
   // let errorResponsibilityCount = 0;
   // let errorProjectedCount = 0;
   // let batchSizeCount = 0;
-  let totalBiasValueCount = 0;
+  let totalValueCount = 0;
 
   for (const dirEntry of Deno.readDirSync(traceDir)) {
     if (dirEntry.name.endsWith(".json")) {
@@ -94,10 +94,10 @@ Deno.test("traceNode", async () => {
           // }
 
           if (
-            Number.isFinite(n.trace.totalBiasValue) &&
-            n.trace.totalBiasValue != 0
+            Number.isFinite(n.trace.totalValue) &&
+            n.trace.totalValue != 0
           ) {
-            totalBiasValueCount++;
+            totalValueCount++;
           }
         }
       });
@@ -114,7 +114,7 @@ Deno.test("traceNode", async () => {
   // );
 
   assert(
-    totalBiasValueCount > 0,
+    totalValueCount > 0,
     "Should have totalBiasValueCount",
   );
 });

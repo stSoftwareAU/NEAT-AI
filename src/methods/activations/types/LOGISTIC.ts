@@ -2,11 +2,14 @@ import { ActivationInterface } from "../ActivationInterface.ts";
 import { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LOGISTIC implements ActivationInterface, UnSquashInterface {
+
   unSquash(activation: number): number {
-    const value = Math.log(activation / (1 - activation));
+    // To prevent log(0) and division by zero
+    const safeActivation = Math.min(Math.max(activation, Number.EPSILON), 1 - Number.EPSILON);
+    const value = Math.log(safeActivation / (1 - safeActivation));
     return value;
   }
-
+  
   public static NAME = "LOGISTIC";
 
   getName() {
