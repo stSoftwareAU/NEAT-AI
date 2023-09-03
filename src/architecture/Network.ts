@@ -1162,19 +1162,16 @@ export class Network implements NetworkInternal {
     };
   }
 
-  evaluteFile(
+  async evaluteFile(
     fn: string,
     cost: CostInterface,
     feedbackLoop: boolean,
-  ): Promise<{ error: number; count: number }> {
-    return Deno.readTextFile(fn).then((txt) => {
-      return this.evaluateData(JSON.parse(txt), cost, feedbackLoop);
-    });
-    // const json = JSON.parse(await Deno.readTextFile(fn));
-    // return this.evaluateData(json, cost, feedbackLoop);
+  ) {
+    const txt = await Deno.readTextFile(fn);
+    return this.evaluateData(JSON.parse(txt), cost, feedbackLoop);
   }
 
-  private readonly MAX_CONCURRENT_LOAD = 12;
+  private readonly MAX_CONCURRENT_LOAD = 24;
   async evaluteInBatches(
     files: string[],
     cost: CostInterface,
