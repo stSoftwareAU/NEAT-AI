@@ -2215,12 +2215,6 @@ export class Network implements NetworkInternal {
     });
     json.connections = traceConnections;
 
-    if (true||this.DEBUG) {
-      // this.validate();
-      console.info( "ZZZ validate ");
-      Network.fromJSON( json).validate();
-    }
-
     return json as NetworkTrace;
   }
 
