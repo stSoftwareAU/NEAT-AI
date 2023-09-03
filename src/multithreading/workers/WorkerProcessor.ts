@@ -28,7 +28,7 @@ export class WorkerProcessor {
       const network = Network.fromJSON(JSON.parse(data.evaluate.network));
       /* release some memory*/
       data.evaluate.network = "";
-      const result = await network.evaluateDir(
+      const result = network.evaluateDir(
         this.dataSetDir,
         this.cost,
         data.evaluate.feedbackLoop,

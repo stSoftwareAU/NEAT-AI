@@ -1152,69 +1152,69 @@ export class Network implements NetworkInternal {
     };
   }
 
-  evaluteFile(
-    fn: string,
-    cost: CostInterface,
-    feedbackLoop: boolean,
-  ) {
-    const p = new Promise<{ error: number; count: number }>((resolve) => {
-      const txt = Deno.readTextFileSync(fn);
-      resolve(this.evaluateData(JSON.parse(txt), cost, feedbackLoop));
-    });
+  // evaluteFile(
+  //   fn: string,
+  //   cost: CostInterface,
+  //   feedbackLoop: boolean,
+  // ) {
+  //   const p = new Promise<{ error: number; count: number }>((resolve) => {
+  //     const txt = Deno.readTextFileSync(fn);
+  //     resolve(this.evaluateData(JSON.parse(txt), cost, feedbackLoop));
+  //   });
 
-    return p;
-  }
+  //   return p;
+  // }
 
-  private readonly MAX_CONCURRENT_LOAD = 6;
-  async evaluteInBatches(
-    files: string[],
-    cost: CostInterface,
-    feedbackLoop: boolean,
-  ) {
-    let totalError = 0;
-    let totalCount = 0;
+  // private readonly MAX_CONCURRENT_LOAD = 6;
+  // async evaluteInBatches(
+  //   files: string[],
+  //   cost: CostInterface,
+  //   feedbackLoop: boolean,
+  // ) {
+  //   let totalError = 0;
+  //   let totalCount = 0;
 
-    const pool: Promise<{ error: number; count: number }>[] = [];
+  //   const pool: Promise<{ error: number; count: number }>[] = [];
 
-    // Fill the pool up to MAX_CONCURRENT_LOAD
-    for (let i = this.MAX_CONCURRENT_LOAD; i--;) {
-      const fn = files.pop();
-      if (fn) {
-        pool.push(this.evaluteFile(fn, cost, feedbackLoop));
-      }
-    }
+  //   // Fill the pool up to MAX_CONCURRENT_LOAD
+  //   for (let i = this.MAX_CONCURRENT_LOAD; i--;) {
+  //     const fn = files.pop();
+  //     if (fn) {
+  //       pool.push(this.evaluteFile(fn, cost, feedbackLoop));
+  //     }
+  //   }
 
-    while (pool.length > 0) {
-      const finished = await Promise.race(
-        pool.map((p, index) => p.then((value) => ({ value, index }))),
-      );
-      totalError += finished.value.error;
-      totalCount += finished.value.count;
+  //   while (pool.length > 0) {
+  //     const finished = await Promise.race(
+  //       pool.map((p, index) => p.then((value) => ({ value, index }))),
+  //     );
+  //     totalError += finished.value.error;
+  //     totalCount += finished.value.count;
 
-      // Remove the completed promise from the pool
-      pool.splice(finished.index, 1);
+  //     // Remove the completed promise from the pool
+  //     pool.splice(finished.index, 1);
 
-      // Add a new promise to the pool, if available
-      const fn = files.pop();
-      if (fn) {
-        pool.push(this.evaluteFile(fn, cost, feedbackLoop));
-      }
-    }
+  //     // Add a new promise to the pool, if available
+  //     const fn = files.pop();
+  //     if (fn) {
+  //       pool.push(this.evaluteFile(fn, cost, feedbackLoop));
+  //     }
+  //   }
 
-    return {
-      totalError: totalError,
-      totalCount: totalCount,
-    };
-  }
+  //   return {
+  //     totalError: totalError,
+  //     totalCount: totalCount,
+  //   };
+  // }
 
   /**
    * Tests a set and returns the error and elapsed time
    */
-  async evaluateDir(
+  evaluateDir(
     dataDir: string,
     cost: CostInterface,
     feedbackLoop: boolean,
-  ): Promise<{ error: number }> {
+  ) {
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
       `${dataDir}/${fn}`
     );
@@ -1223,7 +1223,7 @@ export class Network implements NetworkInternal {
       const fn = files[0];
       const json = cacheDataFile.fn === fn
         ? cacheDataFile.json
-        : JSON.parse(await Deno.readTextFile(fn));
+        : JSON.parse(Deno.readTextFileSync(fn));
 
       cacheDataFile.fn = fn;
       cacheDataFile.json = json;
@@ -1233,13 +1233,16 @@ export class Network implements NetworkInternal {
     } else {
       cacheDataFile.fn = "";
       cacheDataFile.json = {};
+      let totalCount = 0;
+      let totalError = 0;
+      for (let i = files.length; i--;) {
+        const json = JSON.parse(Deno.readTextFileSync(files[i]));
 
-      const batchResults = await this.evaluteInBatches(
-        files,
-        cost,
-        feedbackLoop,
-      );
-      return { error: batchResults.totalError / batchResults.totalCount };
+        const result = this.evaluateData(json, cost, feedbackLoop);
+        totalCount += result.count;
+        totalError += result.error;
+      }
+      return { error: totalError / totalCount };
     }
   }
 
