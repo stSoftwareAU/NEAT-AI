@@ -1245,7 +1245,7 @@ export class Network implements NetworkInternal {
       cacheDataFile.json = {};
       let totalCount = 0;
       let totalError = 0;
-      for (let i = files.length; --i;) {
+      for (let i = files.length; i--;) {
         const json = JSON.parse(Deno.readTextFileSync(files[i]));
 
         const result = this.evaluateData(json, cost, feedbackLoop);
@@ -1253,12 +1253,6 @@ export class Network implements NetworkInternal {
         totalError += result.error;
       }
       return { error: totalError / totalCount };
-      // const batchResults = await this.evaluteInBatches(
-      //   files,
-      //   cost,
-      //   feedbackLoop,
-      // );
-      // return { error: batchResults.totalError / batchResults.totalCount };
     }
   }
 
