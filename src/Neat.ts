@@ -386,7 +386,8 @@ export class Neat {
 
           addTag(json, "approach", "trained");
 
-          trainedPopulation.push(Network.fromJSON(json, this.config.debug));
+          trainedPopulation.push(Network.
+            fromJSON(json, this.config.debug));
         }
       } else {
         throw "No train result";
