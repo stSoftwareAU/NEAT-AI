@@ -81,12 +81,13 @@ Deno.test("propagateSingleNeuronKnown", () => {
 
   const inFirst = [-0.5, 0, 0.5];
   const actualFirst = creature.noTraceActivate(inFirst);
+  const actualFirst2 = creature.noTraceActivate(inFirst);
   const expectedFirst = makeOutput(inFirst);
-  console.info(expectedFirst, actualFirst);
+  console.info("FIRST", expectedFirst, actualFirst, actualFirst2);
 
   const inA = [0, 0, 0];
   const outA = creature.activate(inA);
-  console.info(outA);
+  console.info("SECOND", outA);
   creature.propagate(makeOutput(inA));
 
   Deno.writeTextFileSync(
@@ -116,13 +117,13 @@ Deno.test("propagateSingleNeuronKnown", () => {
 
   Deno.writeTextFileSync(
     ".trace/4-done.json",
-    JSON.stringify(creature.internalJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 2),
   );
 
   const inD = [-0.5, 0, 0.5];
   const actualD = creature.noTraceActivate(inD);
   const expectedD = makeOutput(inD);
-  console.info( expectedD, actualD);
+  console.info( "LAST", expectedD, actualD);
 
   assertAlmostEquals(actualD[0], expectedD[0], 0.5);
   assertAlmostEquals(actualD[1], expectedD[1], 0.5);
