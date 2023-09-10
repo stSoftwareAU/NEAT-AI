@@ -17,17 +17,17 @@ export class Upgrade {
 
     const adjIndex = input - json.input;
     if (adjIndex > 0) {
-      json2.nodes.forEach((n: { index: number }) => {
-        if (n.index >= json2.input) {
+      json2.nodes.forEach((n: { index?: number }) => {
+        if (n.index && n.index >= json2.input) {
           n.index = n.index + adjIndex;
         }
       });
 
-      json2.connections.forEach((c: { from: number; to: number }) => {
-        if (c.from >= json2.input) {
+      json2.connections.forEach((c: { from?: number; to?: number }) => {
+        if (c.from&& c.from >= json2.input) {
           c.from = c.from + adjIndex;
         }
-        if (c.to >= json2.input) {
+        if (c.to && c.to >= json2.input) {
           c.to = c.to + adjIndex;
         }
       });
