@@ -1,14 +1,49 @@
+/**
+ * The Swish activation function, sometimes also known as SiLU (Sigmoid Linear Unit).
+ * Swish is defined as: f(x) = x * sigmoid(x), where sigmoid(x) = 1 / (1 + exp(-x)).
+ * It has been found to work well in deep networks, outperforming ReLU in some scenarios.
+ *
+ * Source: "Swish: a Self-Gated Activation Function" by Prajit Ramachandran, Barret Zoph, and Quoc V. Le
+ * Link: https://arxiv.org/abs/1710.05941
+ */
 import { ActivationInterface } from "../ActivationInterface.ts";
+import { UnSquashInterface } from "../UnSquashInterface.ts";
 
-export class Swish implements ActivationInterface {
-  public static NAME = "Swish";
+export class Swish implements ActivationInterface, UnSquashInterface {
+  public static readonly NAME = "Swish";
+  private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
+  private static readonly EPSILON = 1e-6; // Tolerance for Newton-Raphson
+
+  unSquash(activation: number): number {
+    let x = activation; // Initial guess
+
+    for (let i = 0; i < Swish.MAX_ITERATIONS; i++) {
+      const fx = x / (1 + Math.exp(-x)) - activation;
+
+      // Check for convergence
+      if (Math.abs(fx) < Swish.EPSILON) {
+        break;
+      }
+
+      const sigmoid_x = 1 / (1 + Math.exp(-x));
+      const dfx = sigmoid_x + x * Math.exp(-x) / Math.pow(1 + Math.exp(-x), 2);
+
+      x = x - fx / dfx;
+    }
+
+    return x;
+  }
+
+  range(): { low: number; high: number } {
+    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  }
 
   getName() {
     return Swish.NAME;
   }
 
   squash(x: number) {
-    return x / (1 + Math.exp(-x));
+    return x * (1 / (1 + Math.exp(-x)));
   }
 
   squashAndDerive(x: number) {

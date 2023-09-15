@@ -2,6 +2,7 @@ import { LOGISTIC } from "./types/LOGISTIC.ts";
 import { TANH } from "./types/TANH.ts";
 import { IDENTITY } from "./types/IDENTITY.ts";
 import { INVERSE } from "./types/INVERSE.ts";
+import { StdInverse } from "./types/StdInverse.ts";
 import { RELU } from "./types/RELU.ts";
 import { LeakyReLU } from "./types/LeakyReLU.ts";
 
@@ -65,6 +66,7 @@ export class Activations {
     [Softplus.NAME]: new Softplus(),
     [Swish.NAME]: new Swish(),
     [Mish.NAME]: new Mish(),
+    [StdInverse.NAME]: new StdInverse(),
   };
 
   static NAMES = Object.keys(Activations.MAP);
