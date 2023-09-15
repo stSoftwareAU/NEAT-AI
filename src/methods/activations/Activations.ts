@@ -28,6 +28,9 @@ import { ELU } from "./types/ELU.ts";
 import { Softplus } from "./types/Softplus.ts";
 import { Swish } from "./types/Swish.ts";
 import { Mish } from "./types/Mish.ts";
+import { Cosine } from "./types/Cosine.ts";
+import { LogSigmoid } from "./types/LogSigmoid.ts";
+import { Exponential } from "./types/Exponential.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -67,6 +70,9 @@ export class Activations {
     [Swish.NAME]: new Swish(),
     [Mish.NAME]: new Mish(),
     [StdInverse.NAME]: new StdInverse(),
+    [Cosine.NAME]: new Cosine(),
+    [LogSigmoid.NAME]: new LogSigmoid(),
+    [Exponential.NAME]: new Exponential(),
   };
 
   static NAMES = Object.keys(Activations.MAP);
