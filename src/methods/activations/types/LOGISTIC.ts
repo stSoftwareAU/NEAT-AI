@@ -2,6 +2,9 @@ import { ActivationInterface } from "../ActivationInterface.ts";
 import { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LOGISTIC implements ActivationInterface, UnSquashInterface {
+  range(): { low: number; high: number } {
+    return { low: 0, high: 1 };
+  }
 
   unSquash(activation: number): number {
     // To prevent log(0) and division by zero

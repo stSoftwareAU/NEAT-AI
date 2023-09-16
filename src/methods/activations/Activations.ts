@@ -2,6 +2,7 @@ import { LOGISTIC } from "./types/LOGISTIC.ts";
 import { TANH } from "./types/TANH.ts";
 import { IDENTITY } from "./types/IDENTITY.ts";
 import { INVERSE } from "./types/INVERSE.ts";
+import { StdInverse } from "./types/StdInverse.ts";
 import { RELU } from "./types/RELU.ts";
 import { LeakyReLU } from "./types/LeakyReLU.ts";
 
@@ -27,6 +28,9 @@ import { ELU } from "./types/ELU.ts";
 import { Softplus } from "./types/Softplus.ts";
 import { Swish } from "./types/Swish.ts";
 import { Mish } from "./types/Mish.ts";
+import { Cosine } from "./types/Cosine.ts";
+import { LogSigmoid } from "./types/LogSigmoid.ts";
+import { Exponential } from "./types/Exponential.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -65,6 +69,10 @@ export class Activations {
     [Softplus.NAME]: new Softplus(),
     [Swish.NAME]: new Swish(),
     [Mish.NAME]: new Mish(),
+    [StdInverse.NAME]: new StdInverse(),
+    [Cosine.NAME]: new Cosine(),
+    [LogSigmoid.NAME]: new LogSigmoid(),
+    [Exponential.NAME]: new Exponential(),
   };
 
   static NAMES = Object.keys(Activations.MAP);

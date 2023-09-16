@@ -1,6 +1,19 @@
 import { ActivationInterface } from "../ActivationInterface.ts";
+import { UnSquashInterface } from "../UnSquashInterface.ts";
 
-export class ELU implements ActivationInterface {
+/** Exponential Linear(ELU) */
+export class ELU implements ActivationInterface, UnSquashInterface {
+  unSquash(activation: number): number {
+    if (activation > 0) {
+      return activation;
+    } else {
+      return Math.log((activation / ELU.ALPHA) + 1);
+    }
+  }
+
+  range(): { low: number; high: number } {
+    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  }
   public static NAME = "ELU";
 
   private static ALPHA = 1.0; // You can choose a different value if desired
