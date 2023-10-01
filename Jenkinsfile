@@ -80,33 +80,9 @@ pipeline {
       post {
         always {
           junit '.test.xml'
-        }
-      }
-    }
-    stage('Coverage') {
-      agent {
-        docker {
-          image TOOLS_IMAGE
-          args TOOLS_ARGS
-        }
-      }
-      steps {
-
-        sh '''\
-            #!/bin/bash
-
-            deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
-        '''.stripIndent()
-
-      }
-      post {
-        always {
-          junit '.test.xml'
           sh '''\
               #!/bin/bash
               deno coverage .coverage --lcov --output=.coverage.lcov
-              #brew install lcov    
-              #genhtml -o .coverageHTML .coverage.lcov 
           '''.stripIndent()
 
           // Publish Cobertura report
