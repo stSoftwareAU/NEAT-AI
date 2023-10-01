@@ -102,26 +102,15 @@ pipeline {
       post {
         always {
           junit '.test.xml'
+          sh '''\
+              #!/bin/bash
+              deno coverage .coverage --lcov --output=.coverage.lcov
+              #brew install lcov    
+              #genhtml -o .coverageHTML .coverage.lcov 
+          '''.stripIndent()
 
-        sh '''\
-            #!/bin/bash
-            deno coverage .coverage --lcov --output=.coverage.lcov
-        '''.stripIndent()
-
-        cobertura 
-          autoUpdateHealth: false, 
-          autoUpdateStability: false, 
-          coberturaReportFile: '.coverage.lcov', 
-          conditionalCoverageTargets: '70, 0, 0', 
-          failUnhealthy: false, 
-          failUnstable: false, 
-          lineCoverageTargets: '80, 0, 0', 
-          maxNumberOfBuilds: 0, 
-          methodCoverageTargets: '80, 0, 0', 
-          onlyStable: false, 
-          sourceEncoding: 'ASCII', 
-          zoomCoverageChart: false
-        }
+          // Publish Cobertura report
+          cobertura coberturaReportFile: '.coverage.lcov'
       }
     }
   }
