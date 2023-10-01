@@ -77,9 +77,10 @@ pipeline {
             deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
 
             deno coverage .coverage --lcov --output=.coverage.lcov
-
+            env
+            ls -l /usr/local/bin/
             # Convert LCOV to Cobertura XML
-            lcov_cobertura -b . -o coverage.xml .coverage.lcov            
+            /usr/local/bin/lcov_cobertura -b . -o coverage.xml .coverage.lcov            
         '''.stripIndent()
 
         // Publish Cobertura report
