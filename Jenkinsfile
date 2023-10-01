@@ -86,7 +86,7 @@ pipeline {
               deno coverage .coverage --lcov --output=.coverage.lcov
 
               # Convert LCOV to Cobertura XML
-              lcov-to-cobertura-xml -b . -o coverage.xml .coverage.lcov
+              lcov_cobertura -b . -o coverage.xml .coverage.lcov
           '''.stripIndent()
 
           // Publish Cobertura report
