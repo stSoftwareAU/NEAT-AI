@@ -111,6 +111,7 @@ pipeline {
 
           // Publish Cobertura report
           cobertura coberturaReportFile: '.coverage.lcov'
+        }
       }
     }
   }
