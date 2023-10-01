@@ -80,13 +80,18 @@ pipeline {
       post {
         always {
           junit '.test.xml'
+
           sh '''\
               #!/bin/bash
               deno coverage .coverage --lcov --output=.coverage.lcov
+
+              # Convert LCOV to Cobertura XML
+              pip install lcov-to-cobertura-xml
+              lcov-to-cobertura-xml -b . -o coverage.xml .coverage.lcov
           '''.stripIndent()
 
           // Publish Cobertura report
-          cobertura coberturaReportFile: '.coverage.lcov'
+          cobertura coberturaReportFile: 'coverage.xml'
         }
       }
     }
