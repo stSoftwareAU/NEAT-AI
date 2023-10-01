@@ -74,8 +74,13 @@ pipeline {
         sh '''\
             #!/bin/bash
 
-            deno test --allow-all test/*
+            deno test --reporter junit --allow-read --allow-write test/* > .test.xml
         '''.stripIndent()
+      }
+      post {
+        always {
+          junit '.test.xml'
+        }
       }
     }
   }
