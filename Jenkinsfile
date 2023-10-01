@@ -75,22 +75,30 @@ pipeline {
             #!/bin/bash
 
             deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
+
+            deno coverage .coverage --lcov --output=.coverage.lcov
+
+            # Convert LCOV to Cobertura XML
+            lcov_cobertura -b . -o coverage.xml .coverage.lcov            
         '''.stripIndent()
+
+        // Publish Cobertura report
+        cobertura coberturaReportFile: 'coverage.xml'
       }
       post {
         always {
           junit '.test.xml'
 
-          sh '''\
-              #!/bin/bash
-              deno coverage .coverage --lcov --output=.coverage.lcov
+          // sh '''\
+          //     #!/bin/bash
+          //     deno coverage .coverage --lcov --output=.coverage.lcov
 
-              # Convert LCOV to Cobertura XML
-              lcov_cobertura -b . -o coverage.xml .coverage.lcov
-          '''.stripIndent()
+          //     # Convert LCOV to Cobertura XML
+          //     lcov_cobertura -b . -o coverage.xml .coverage.lcov
+          // '''.stripIndent()
 
-          // Publish Cobertura report
-          cobertura coberturaReportFile: 'coverage.xml'
+          // // Publish Cobertura report
+          // cobertura coberturaReportFile: 'coverage.xml'
         }
       }
     }
