@@ -68,7 +68,7 @@ pipeline {
         }
       }
     }
-    
+
     stage('Coverage') {
       agent {
         docker {
@@ -85,11 +85,22 @@ pipeline {
             #!/bin/bash
 
             # Convert LCOV to Cobertura XML
-            lcov_cobertura -b . -o coverage.xml .coverage.lcov            
+            lcov_cobertura -b . -o coverage.xml .coverage.lcov     
+
+            genhtml -o .coverageHTML .coverage.lcov        
         '''.stripIndent()
 
         // Publish Cobertura report
-        cobertura coberturaReportFile: 'coverage.xml'
+        // cobertura coberturaReportFile: 'coverage.xml'
+        // Publish the HTML report
+        publishHTML ([
+          allowMissing: false,
+          alwaysLinkToLastBuild: true,
+          keepAll: true,
+          reportDir: '.coverageHTML',  // Point this to your coverage HTML directory
+          reportFiles: 'index.html',  // This could be your main HTML file
+          reportName: "Coverage Report"
+        ])
       }
     }
   }
