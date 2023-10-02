@@ -15,58 +15,60 @@ pipeline {
   }
 
   stages {
-    parallel {
+    stage('Checks'){
+      parallel {
 
-      stage('Lint & Format'){
-        agent {
-          docker {
-            image DENO_IMAGE
-            args TOOLS_ARGS
-            label "small"
+        stage('Lint & Format'){
+          agent {
+            docker {
+              image DENO_IMAGE
+              args TOOLS_ARGS
+              label "small"
+            }
+          }
+          steps {
+
+            sh '''\
+                #!/bin/bash
+
+                echo "Remove old test files"
+                find test -name ".*.json" -exec rm {} \\;
+                
+                deno lint src
+
+                deno fmt --check src test
+            '''.stripIndent()
           }
         }
-        steps {
 
-          sh '''\
+        stage('Test') {
+          agent {
+            docker {
+              image DENO_IMAGE
+              args TOOLS_ARGS
+              label 'large'
+            }
+          }
+          steps {
+
+            sh '''\
               #!/bin/bash
 
-              echo "Remove old test files"
-              find test -name ".*.json" -exec rm {} \\;
-              
-              deno lint src
+              deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
 
-              deno fmt --check src test
-          '''.stripIndent()
-        }
-      }
-
-      stage('Test') {
-        agent {
-          docker {
-            image DENO_IMAGE
-            args TOOLS_ARGS
-            label 'large'
+              deno coverage .coverage --lcov --output=.coverage.lcov                      
+            '''.stripIndent()
           }
-        }
-        steps {
-
-          sh '''\
-            #!/bin/bash
-
-            deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
-
-            deno coverage .coverage --lcov --output=.coverage.lcov                      
-          '''.stripIndent()
-        }
-        post {
-          always {
-            junit '.test.xml'
-            stash(name: "coverage", includes: ".coverage.lcov")
+          post {
+            always {
+              junit '.test.xml'
+              stash(name: "coverage", includes: ".coverage.lcov")
+            }
           }
         }
       }
     }
-
+    
     stage('Coverage') {
       agent {
         docker {
@@ -76,6 +78,8 @@ pipeline {
         }
       }
       steps {
+        // Unstash the .coverage.lcov file stashed in the 'Test' stage
+        unstash(name: "coverage")
 
         sh '''\
             #!/bin/bash
