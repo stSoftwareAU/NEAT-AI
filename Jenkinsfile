@@ -1,5 +1,6 @@
-TOOLS_IMAGE = "denoland/deno:latest"
+DENO_IMAGE = "denoland/deno:latest"
 TOOLS_ARGS = '-e DENO_DIR=${WORKSPACE}/.deno --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
+TOOLS_IMAGE = "${ECR}/develop/sts-tools:latest"
 
 pipeline {
   agent none
@@ -19,7 +20,7 @@ pipeline {
       stage('Lint & Format'){
         agent {
           docker {
-            image TOOLS_IMAGE
+            image DENO_IMAGE
             args TOOLS_ARGS
             label "small"
           }
@@ -42,45 +43,49 @@ pipeline {
       stage('Test') {
         agent {
           docker {
-            image TOOLS_IMAGE
+            image DENO_IMAGE
             args TOOLS_ARGS
             label 'large'
-            alwaysPull true
           }
         }
         steps {
 
           sh '''\
-              #!/bin/bash
+            #!/bin/bash
 
-              deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
+            deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
 
-              deno coverage .coverage --lcov --output=.coverage.lcov
-              env
-              ls -l /usr/local/bin/
-              # Convert LCOV to Cobertura XML
-              /usr/local/bin/lcov_cobertura -b . -o coverage.xml .coverage.lcov            
+            deno coverage .coverage --lcov --output=.coverage.lcov                      
           '''.stripIndent()
-
-          // Publish Cobertura report
-          cobertura coberturaReportFile: 'coverage.xml'
         }
         post {
           always {
             junit '.test.xml'
-
-            // sh '''\
-            //     #!/bin/bash
-            //     deno coverage .coverage --lcov --output=.coverage.lcov
-
-            //     # Convert LCOV to Cobertura XML
-            //     lcov_cobertura -b . -o coverage.xml .coverage.lcov
-            // '''.stripIndent()
-
-            // // Publish Cobertura report
-            // cobertura coberturaReportFile: 'coverage.xml'
+            stash(name: "coverage", includes: ".coverage.lcov")
           }
         }
+      }
+    }
+
+    stage('Coverage') {
+      agent {
+        docker {
+          image TOOLS_IMAGE
+          args TOOLS_ARGS
+          label 'small'
+        }
+      }
+      steps {
+
+        sh '''\
+            #!/bin/bash
+
+            # Convert LCOV to Cobertura XML
+            lcov_cobertura -b . -o coverage.xml .coverage.lcov            
+        '''.stripIndent()
+
+        // Publish Cobertura report
+        cobertura coberturaReportFile: 'coverage.xml'
       }
     }
   }
