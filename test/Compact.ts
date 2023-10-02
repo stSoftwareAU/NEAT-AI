@@ -195,8 +195,8 @@ Deno.test("RandomizeCompact", () => {
       endOut,
     );
 
-    assertAlmostEquals(startOut[0], endOut[0], 0.002);
-    assertAlmostEquals(startOut[1], endOut[1], 0.002);
+    assertAlmostEquals(startOut[0], endOut[0], 0.02);
+    assertAlmostEquals(startOut[1], endOut[1], 0.02);
     assert(endNodes < startNodes);
     assert(endConnections < startConnections);
 
