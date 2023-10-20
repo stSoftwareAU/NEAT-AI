@@ -1,4 +1,4 @@
-import { generate as generateV5 } from "https://deno.land/std@0.203.0/uuid/v5.ts";
+import { generate as generateV5 } from "https://deno.land/std@0.204.0/uuid/v5.ts";
 import { Network } from "./Network.ts";
 
 export class NetworkUtil {
