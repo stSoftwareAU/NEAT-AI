@@ -2,7 +2,7 @@ import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import {
   assert,
   assertEquals,
-} from "https://deno.land/std@0.203.0/assert/mod.ts";
+} from "https://deno.land/std@0.204.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
