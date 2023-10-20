@@ -3,10 +3,10 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.203.0/assert/mod.ts";
+} from "https://deno.land/std@0.204.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { emptyDirSync } from "https://deno.land/std@0.203.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.204.0/fs/empty_dir.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";

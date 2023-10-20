@@ -1,7 +1,7 @@
 import { Neat } from "../src/Neat.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
-import { assertEquals } from "https://deno.land/std@0.203.0/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.204.0/assert/mod.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

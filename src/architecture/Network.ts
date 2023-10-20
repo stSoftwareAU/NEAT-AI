@@ -15,14 +15,14 @@ import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 import { DataRecordInterface } from "./DataSet.ts";
 
-import { yellow } from "https://deno.land/std@0.203.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.204.0/fmt/colors.ts";
 import { Neat } from "../Neat.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { getTag } from "../tags/TagsInterface.ts";
 
-import { format } from "https://deno.land/std@0.203.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.203.0/fs/empty_dir.ts";
+import { format } from "https://deno.land/std@0.204.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.204.0/fs/empty_dir.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Node } from "../architecture/Node.ts";
 import { findRatePolicy, randomPolicyName } from "../config.ts";
