@@ -65,7 +65,9 @@ function makeOutput(input: number[]) {
   console.info(`h3: ${h3}`);
   console.info(`o4: ${o4}, o5: ${o5}`);
 
-  output.forEach( (value, indx) => { assert( Number.isFinite( value), `${indx}: ${value}`)});
+  output.forEach((value, indx) => {
+    assert(Number.isFinite(value), `${indx}: ${value}`);
+  });
   return output;
 }
 
@@ -123,7 +125,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
   const inD = [-0.5, 0, 0.5];
   const actualD = creature.noTraceActivate(inD);
   const expectedD = makeOutput(inD);
-  console.info( "LAST", expectedD, actualD);
+  console.info("LAST", expectedD, actualD);
 
   assertAlmostEquals(actualD[0], expectedD[0], 0.5);
   assertAlmostEquals(actualD[1], expectedD[1], 0.5);

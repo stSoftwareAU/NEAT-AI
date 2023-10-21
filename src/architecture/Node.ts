@@ -415,7 +415,7 @@ export class Node implements TagsInterface, NodeInternal {
       const unSquasher = (squash as unknown) as UnSquashInterface;
       const value = unSquasher.unSquash(activation);
 
-      if( !Number.isFinite( value)){
+      if (!Number.isFinite(value)) {
         throw `${this.index}: ${this.squash}.unSquash(${activation}) invalid -> ${value}`;
       }
       return value;
@@ -472,10 +472,9 @@ export class Node implements TagsInterface, NodeInternal {
 
         const fromWeight = this.adjustedWeight(c);
         const fromValue = fromWeight * fromActivation;
-        let weightResponsibility =
-          Math.abs(fromActivation) > PLANK_CONSTANT
-            ? Math.min(Math.max(Math.random(), 0.2), 0.8)
-            : 0;
+        let weightResponsibility = Math.abs(fromActivation) > PLANK_CONSTANT
+          ? Math.min(Math.max(Math.random(), 0.2), 0.8)
+          : 0;
 
         if (
           fromNode.type == "input" ||
@@ -530,9 +529,9 @@ export class Node implements TagsInterface, NodeInternal {
     const ns = this.network.networkState.node(this.index);
 
     ns.count++;
-    ns.totalValue += targetValue; 
-    
-    if( !Number.isFinite( ns.totalValue)){
+    ns.totalValue += targetValue;
+
+    if (!Number.isFinite(ns.totalValue)) {
       console.trace();
       throw `${this.index}: Invalid totalValue: ${ns.totalValue}`;
     }
@@ -563,7 +562,7 @@ export class Node implements TagsInterface, NodeInternal {
         // if (Math.abs(avgBias) > 2) {
         //   console.info(`ZZZ ${this.index}: large bias ${avgBias}`);
         // }
-        if( !Number.isFinite(avgBias)){
+        if (!Number.isFinite(avgBias)) {
           console.trace();
           throw `${this.index}: invalid adjusted bias: ${avgBias}`;
         }

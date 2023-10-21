@@ -429,8 +429,8 @@ export class Network implements NetworkInternal {
         }
         throw indx + ") duplicate UUID: " + uuid;
       }
-      if (uuid.startsWith("input-")){
-        if( uuid !== "input-" + indx) {
+      if (uuid.startsWith("input-")) {
+        if (uuid !== "input-" + indx) {
           console.trace();
 
           if (this.DEBUG) {
@@ -445,7 +445,7 @@ export class Network implements NetworkInternal {
           throw indx + ") invalid input UUID: " + uuid;
         }
       } else {
-        if( !Number.isFinite( node.bias)){
+        if (!Number.isFinite(node.bias)) {
           console.trace();
           throw indx + ") invalid bias: " + node.bias;
         }
