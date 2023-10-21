@@ -1770,9 +1770,18 @@ export class Network implements NetworkInternal {
       const pos = Math.floor(Math.random() * allConnections.length);
       const connection = allConnections[pos];
       if (connection) {
-        const modification = Math.random() *
-            (Mutation.MOD_WEIGHT.max - Mutation.MOD_WEIGHT.min) +
-          Mutation.MOD_WEIGHT.min;
+        // Calculate the quantum based on the current weight
+        const weightMagnitude = Math.abs(connection.weight);
+        let quantum = 1;
+
+        if (weightMagnitude >= 1) {
+          // Find the largest power of 10 smaller than the weightMagnitude
+          quantum = Math.pow(10, Math.floor(Math.log10(weightMagnitude)));
+        }
+
+        // Generate a random modification value based on the quantum
+        const modification = (Math.random() * 2 - 1) * quantum;
+
         connection.weight += modification;
       } else {
         console.warn(
