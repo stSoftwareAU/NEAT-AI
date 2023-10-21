@@ -5,57 +5,64 @@ export function calculate(
   error: number,
   growthCost: number,
 ) {
-  const maxOutOfBounds = calculateMaxOutOfBounds(creature);
-  const penalty = calculatePenalty(maxOutOfBounds);
+  const { max, avg } = calculateMaxOutOfBounds(creature);
+  const penalty = calculatePenalty(max, avg);
   const score = calculateScore(error, creature, penalty, growthCost);
 
   return Number.isFinite(score) ? score : -Infinity;
 }
 
-function calculateMaxOutOfBounds(creature: NetworkInternal): number {
-  let maxOutOfBounds = 0;
+function calculateMaxOutOfBounds(
+  creature: NetworkInternal,
+): { max: number; avg: number } {
+  let max = 0;
+  let total = 0;
+  let count = 0;
+
   for (const conn of creature.connections) {
-    const w = Math.abs(conn.weight) - 1;
-    if (w > 0) {
-      maxOutOfBounds = Math.max(maxOutOfBounds, w);
+    const w = Math.abs(conn.weight);
+    if (w > max) {
+      max = w;
     }
+    total += w;
+    count++;
   }
+
   for (const node of creature.nodes) {
     if (node.type != "input") {
-      const b = node.bias ? Math.abs(node.bias) - 1 : 0;
-      if (b > 0) {
-        maxOutOfBounds = Math.max(maxOutOfBounds, b);
+      const b = node.bias ? Math.abs(node.bias) : 0;
+      if (b > max) {
+        max = b;
       }
+      total += b;
+      count++;
     }
   }
-  return maxOutOfBounds;
+
+  const avgOutOfBounds = count > 0 ? total / count : 0;
+
+  return { max: max, avg: avgOutOfBounds };
 }
 
-function calculatePenalty(maxOutOfBounds: number): number {
-  // Calculate the primary penalty using the Exponential function.
-  // This penalty will be in the range [0, this.growth].
-  const primaryPenalty = 1 - Math.exp(-maxOutOfBounds);
+export function valuePenalty(value: number): number {
+  if (value <= 1) return 0;
 
-  // Initialize the multiplier to 1.
-  // This will be used to increase the penalty if primaryPenalty is close to its maximum value.
-  let multiplier = 1;
+  const primaryPenalty = 1 / (1 + Math.exp(-Math.log(value)));
 
-  // If the primaryPenalty is greater than 0.9 (choose an appropriate threshold),
-  // apply an additional multiplier to penalize extremely large weights or biases.
-  if (primaryPenalty > 0.9) {
-    // Calculate the additional multiplier using a sigmoid function applied to the logarithm of maxOutOfBounds.
-    // This will ensure that the multiplier is in the range (1, 2].
-    multiplier += 1 / (1 + Math.exp(-Math.log(maxOutOfBounds + 1)));
-    if (multiplier == 2) {
-      multiplier += 1 / (1 + Math.exp(-Math.log(Math.log(maxOutOfBounds + 1))));
-    }
+  if (primaryPenalty > 0.999) {
+    const compressPenalty = 1 + valuePenalty(Math.log(value));
+
+    return compressPenalty;
+  } else {
+    return primaryPenalty;
   }
+}
 
-  // Calculate the final penalty as the product of the primary penalty and the multiplier.
-  // This ensures that networks with extremely large weights or biases are penalized more heavily.
-  const combinedPenalty = primaryPenalty * multiplier;
+function calculatePenalty(max: number, avg: number): number {
+  const maxPenalty = valuePenalty(max);
+  const avgPenalty = valuePenalty(avg);
 
-  return combinedPenalty;
+  return maxPenalty + avgPenalty;
 }
 
 function calculateScore(
