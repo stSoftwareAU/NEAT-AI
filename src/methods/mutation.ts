@@ -20,13 +20,9 @@ const temp = {
   },
   MOD_WEIGHT: {
     name: "MOD_WEIGHT",
-    min: -1,
-    max: 1,
   },
   MOD_BIAS: {
     name: "MOD_BIAS",
-    min: -1,
-    max: 1,
   },
   MOD_ACTIVATION: {
     name: "MOD_ACTIVATION",

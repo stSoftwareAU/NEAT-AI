@@ -658,10 +658,19 @@ export class Node implements TagsInterface, NodeInternal {
         break;
       }
       case Mutation.MOD_BIAS.name: {
-        const modification =
-          Math.random() * (Mutation.MOD_BIAS.max - Mutation.MOD_BIAS.min) +
-          Mutation.MOD_BIAS.min;
-        this.bias = modification + this.bias;
+        // Calculate the quantum based on the current bias
+        const biasMagnitude = Math.abs(this.bias);
+        let quantum = 1;
+
+        if (biasMagnitude >= 1) {
+          // Find the largest power of 10 smaller than the biasMagnitude
+          quantum = Math.pow(10, Math.floor(Math.log10(biasMagnitude)));
+        }
+
+        // Generate a random modification value based on the quantum
+        const modification = (Math.random() * 2 - 1) * quantum;
+
+        this.bias += modification;
         break;
       }
       default:
