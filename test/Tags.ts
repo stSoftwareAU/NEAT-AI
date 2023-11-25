@@ -9,7 +9,7 @@ import { Network } from "../src/architecture/Network.ts";
 import {
   assert,
   assertEquals,
-} from "https://deno.land/std@0.204.0/assert/mod.ts";
+} from "https://deno.land/std@0.208.0/assert/mod.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("tag", () => {

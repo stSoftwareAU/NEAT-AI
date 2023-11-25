@@ -15,12 +15,12 @@ import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { Network } from "./architecture/Network.ts";
-import { ensureDirSync } from "https://deno.land/std@0.204.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.208.0/fs/ensure_dir.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { Selection } from "./methods/Selection.ts";
 import { Offspring } from "./architecture/Offspring.ts";
 import { NetworkUtil } from "./architecture/NetworkUtils.ts";
-import { format } from "https://deno.land/std@0.204.0/fmt/duration.ts";
+import { format } from "https://deno.land/std@0.208.0/fmt/duration.ts";
 
 export class Neat {
   readonly input: number;
