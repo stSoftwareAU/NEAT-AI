@@ -127,7 +127,7 @@ export class Offspring {
     });
 
     offspring.clearState();
-    // offspring.fix();
+    offspring.fix();
     offspring.validate();
 
     return offspring;
