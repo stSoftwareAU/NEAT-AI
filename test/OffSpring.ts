@@ -39,7 +39,7 @@ Deno.test("OffSpring", async () => {
       { name: "error", value: "0.5" },
     ],
   });
-
+  creature.validate();
   const neat = new Neat(1, 1, {}, []);
 
   await neat.populatePopulation(creature);
@@ -134,6 +134,9 @@ Deno.test("CrossOver", () => {
       { count: 50 },
     ],
   });
+
+  b.fix();
+  b.validate();
 
   for (let i = 0; i < 100; i++) {
     const c = Offspring.bread(a, b);
