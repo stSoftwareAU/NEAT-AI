@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.204.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.208.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

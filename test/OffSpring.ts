@@ -1,8 +1,12 @@
 import { Neat } from "../src/Neat.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
-import { assertEquals } from "https://deno.land/std@0.204.0/assert/mod.ts";
+import {
+  assert,
+  assertEquals,
+} from "https://deno.land/std@0.208.0/assert/mod.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { assertFalse } from "https://deno.land/std@0.208.0/assert/assert_false.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -426,3 +430,183 @@ Deno.test(
     }
   },
 );
+
+Deno.test(
+  "Copy Required Nodes",
+  () => {
+    const left = Network.fromJSON(
+      {
+        nodes: [
+          {
+            type: "hidden",
+            uuid: "A0",
+            bias: 0.1,
+            squash: "IDENTITY",
+          },
+          {
+            type: "hidden",
+            uuid: "A1",
+            bias: 0.11,
+            squash: "IDENTITY",
+          },
+          {
+            type: "hidden",
+            uuid: "B",
+            bias: 0.2,
+            squash: "IDENTITY",
+          },
+          {
+            type: "output",
+            uuid: "output-0",
+            bias: -0.1,
+            squash: "IDENTITY",
+          },
+          {
+            type: "output",
+            uuid: "output-1",
+            bias: -0.2,
+            squash: "IDENTITY",
+          },
+        ],
+        connections: [
+          {
+            weight: 1,
+            fromUUID: "input-0",
+            toUUID: "A0",
+          },
+          {
+            weight: 1,
+            fromUUID: "input-1",
+            toUUID: "B",
+          },
+          {
+            weight: 1,
+            fromUUID: "A0",
+            toUUID: "A1",
+          },
+          {
+            weight: 1,
+            fromUUID: "A1",
+            toUUID: "output-0",
+          },
+          {
+            weight: 1,
+            fromUUID: "B",
+            toUUID: "output-1",
+          },
+        ],
+        input: 3,
+        output: 2,
+      },
+    );
+
+    left.validate();
+
+    const right = Network.fromJSON(
+      {
+        nodes: [
+          {
+            type: "hidden",
+            uuid: "C0",
+            bias: 0.211,
+            squash: "IDENTITY",
+          },
+          {
+            type: "hidden",
+            uuid: "C1",
+            bias: 0.221,
+            squash: "IDENTITY",
+          },
+          {
+            type: "hidden",
+            uuid: "B",
+            bias: 0.21,
+            squash: "IDENTITY",
+          },
+          {
+            type: "output",
+            uuid: "output-0",
+            bias: -0.11,
+            squash: "IDENTITY",
+          },
+          {
+            type: "output",
+            uuid: "output-1",
+            bias: -0.21,
+            squash: "IDENTITY",
+          },
+        ],
+        connections: [
+          {
+            weight: 1,
+            fromUUID: "input-2",
+            toUUID: "C0",
+          },
+          {
+            weight: 0.9,
+            fromUUID: "input-1",
+            toUUID: "B",
+          },
+          {
+            weight: 1,
+            fromUUID: "C0",
+            toUUID: "C1",
+          },
+          {
+            weight: 1,
+            fromUUID: "C1",
+            toUUID: "output-0",
+          },
+          {
+            weight: 1,
+            fromUUID: "B",
+            toUUID: "output-1",
+          },
+        ],
+        input: 3,
+        output: 2,
+      },
+    );
+
+    right.validate();
+
+    for (let i = 0; i < 20; i++) {
+      const child = Offspring.bread(left, right);
+
+      checkChild(child);
+    }
+
+    for (let i = 0; i < 20; i++) {
+      const child = Offspring.bread(right, left);
+
+      checkChild(child);
+    }
+  },
+);
+
+function checkChild(child: Network) {
+  child.validate();
+
+  const json = child.exportJSON();
+
+  let aBranchFound = false;
+  let bBranchFound = false;
+  let cBranchFound = false;
+  json.nodes.forEach((n) => {
+    if (n.uuid == "A1" || n.uuid == "A0") {
+      aBranchFound = true;
+    }
+    if (n.uuid == "B") {
+      bBranchFound = true;
+    }
+    if (n.uuid == "C1" || n.uuid == "C0") {
+      cBranchFound = true;
+    }
+  });
+
+  console.info(child.exportJSON());
+
+  assert(bBranchFound);
+  assert(aBranchFound || cBranchFound);
+  assertFalse(aBranchFound && cBranchFound);
+}
