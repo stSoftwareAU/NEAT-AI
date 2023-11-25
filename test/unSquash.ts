@@ -1,7 +1,7 @@
 import {
   assertAlmostEquals,
   fail,
-} from "https://deno.land/std@0.204.0/testing/asserts.ts";
+} from "https://deno.land/std@0.208.0/testing/asserts.ts";
 import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
