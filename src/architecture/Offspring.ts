@@ -175,6 +175,7 @@ export class Offspring {
       }
     });
 
+    /** Second sort should only change the order of new nodes. */
     child.sort((a: Node, b: Node) => {
       if (a.type == "output") {
         if (b.type != "output") {
