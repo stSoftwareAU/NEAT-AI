@@ -1,5 +1,5 @@
-import { assert } from "https://deno.land/std@0.201.0/assert/mod.ts";
-import { emptyDirSync } from "https://deno.land/std@0.201.0/fs/empty_dir.ts";
+import { assert } from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { emptyDirSync } from "https://deno.land/std@0.208.0/fs/empty_dir.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
