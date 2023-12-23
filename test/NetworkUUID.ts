@@ -3,7 +3,7 @@ import {
   assert,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.208.0/assert/mod.ts";
+} from "https://deno.land/std@0.210.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";
 import { Neat } from "../src/Neat.ts";
