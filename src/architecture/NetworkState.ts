@@ -80,6 +80,7 @@ export class NetworkState {
     if (this.activations.length == 0 || feedbackLoop == false) {
       this.activations = input.slice();
       this.activations.length = this.network.nodes.length;
+      this.activations.fill(0, input.length);
     } else if (feedbackLoop) {
       /** Leave the results from last run */
       const rightArray = this.activations.slice(input.length);
