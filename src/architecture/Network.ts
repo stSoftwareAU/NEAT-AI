@@ -1162,61 +1162,6 @@ export class Network implements NetworkInternal {
     };
   }
 
-  // evaluteFile(
-  //   fn: string,
-  //   cost: CostInterface,
-  //   feedbackLoop: boolean,
-  // ) {
-  //   const p = new Promise<{ error: number; count: number }>((resolve) => {
-  //     const txt = Deno.readTextFileSync(fn);
-  //     resolve(this.evaluateData(JSON.parse(txt), cost, feedbackLoop));
-  //   });
-
-  //   return p;
-  // }
-
-  // private readonly MAX_CONCURRENT_LOAD = 6;
-  // async evaluteInBatches(
-  //   files: string[],
-  //   cost: CostInterface,
-  //   feedbackLoop: boolean,
-  // ) {
-  //   let totalError = 0;
-  //   let totalCount = 0;
-
-  //   const pool: Promise<{ error: number; count: number }>[] = [];
-
-  //   // Fill the pool up to MAX_CONCURRENT_LOAD
-  //   for (let i = this.MAX_CONCURRENT_LOAD; i--;) {
-  //     const fn = files.pop();
-  //     if (fn) {
-  //       pool.push(this.evaluteFile(fn, cost, feedbackLoop));
-  //     }
-  //   }
-
-  //   while (pool.length > 0) {
-  //     const finished = await Promise.race(
-  //       pool.map((p, index) => p.then((value) => ({ value, index }))),
-  //     );
-  //     totalError += finished.value.error;
-  //     totalCount += finished.value.count;
-
-  //     // Remove the completed promise from the pool
-  //     pool.splice(finished.index, 1);
-
-  //     // Add a new promise to the pool, if available
-  //     const fn = files.pop();
-  //     if (fn) {
-  //       pool.push(this.evaluteFile(fn, cost, feedbackLoop));
-  //     }
-  //   }
-
-  //   return {
-  //     totalError: totalError,
-  //     totalCount: totalCount,
-  //   };
-  // }
-
   /**
    * Tests a set and returns the error and elapsed time
    */
