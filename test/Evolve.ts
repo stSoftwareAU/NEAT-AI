@@ -93,7 +93,7 @@ Deno.test("booleanXOR", async () => {
     mutationRate: 0.5,
     error: 0.025,
     threads: 1,
-    iterations: 10000,
+    iterations: 50000,
   });
 
   network.validate();
