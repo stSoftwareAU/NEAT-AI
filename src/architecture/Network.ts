@@ -60,7 +60,7 @@ export class Network implements NetworkInternal {
   constructor(
     input: number,
     output: number,
-    options?: { layers: { squash?: string; count: number }[] },
+    options: { initialize:boolean, layers?: { squash?: string; count: number }[] }={initialize:true},
   ) {
     if (input === undefined || output === undefined) {
       throw new Error("No input or output size given");
@@ -76,7 +76,7 @@ export class Network implements NetworkInternal {
     // Just define a variable.
     this.score = undefined;
 
-    if (options) {
+    if (options.initialize === undefined || options.initialize) {
       this.initialize(options);
 
       if (this.DEBUG) {
@@ -100,7 +100,7 @@ export class Network implements NetworkInternal {
   }
 
   private initialize(options: {
-    layers: { squash?: string; count: number }[];
+    layers?: { squash?: string; count: number }[];
   }) {
     let fixNeeded = false;
     // Create input nodes
