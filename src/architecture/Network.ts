@@ -57,7 +57,11 @@ export class Network implements NetworkInternal {
 
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
-  constructor(input: number, output: number, options = {}) {
+  constructor(
+    input: number,
+    output: number,
+    options?: { layers: { squash?: string; count: number }[] },
+  ) {
     if (input === undefined || output === undefined) {
       throw new Error("No input or output size given");
     }
@@ -95,8 +99,8 @@ export class Network implements NetworkInternal {
     this.cacheSelf.clear();
   }
 
-  initialize(options: {
-    layers?: { squash: string; count: number }[];
+  private initialize(options: {
+    layers: { squash?: string; count: number }[];
   }) {
     let fixNeeded = false;
     // Create input nodes
@@ -2298,7 +2302,7 @@ export class Network implements NetworkInternal {
    * Convert a json object to a network
    */
   static fromJSON(json: NetworkInternal | NetworkExport, validate = false) {
-    const network = new Network(json.input, json.output, false);
+    const network = new Network(json.input, json.output);
     network.loadFrom(json, validate);
 
     return network;

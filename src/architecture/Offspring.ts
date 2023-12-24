@@ -18,7 +18,7 @@ export class Offspring {
     }
 
     // Initialize offspring
-    const offspring = new Network(mother.input, mother.output, false);
+    const offspring = new Network(mother.input, mother.output);
     offspring.connections = [];
     offspring.nodes = [];
 
