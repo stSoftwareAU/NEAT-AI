@@ -260,11 +260,11 @@ export class Network implements NetworkInternal {
     }
 
     for (
-      let indx = lastHiddenNode, outIndx = 0;
-      indx < this.nodes.length;
-      indx++, outIndx++
+      let outIndx = 0;
+      outIndx < this.output;
+      outIndx++
     ) {
-      const value = this.nodes[indx].noTraceActivate();
+      const value = this.nodes[lastHiddenNode + outIndx].noTraceActivate();
       output[outIndx] = value;
     }
     return output;
