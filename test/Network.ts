@@ -574,6 +574,9 @@ Deno.test("NARX Sequence", async () => {
     });
     if (attempts < 12) {
       if (result.error < 0.005) break;
+      console.info(
+        `Error is: ${result.error}, required: ${0.005} RETRY ${attempts} of 12`,
+      );
     } else {
       assert(result.error < 0.005, JSON.stringify(result, null, 2));
     }
