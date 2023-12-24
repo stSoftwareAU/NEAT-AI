@@ -18,7 +18,9 @@ export class Offspring {
     }
 
     // Initialize offspring
-    const offspring = new Network(mother.input, mother.output);
+    const offspring = new Network(mother.input, mother.output, {
+      lazyInitialization: true,
+    });
     offspring.connections = [];
     offspring.nodes = [];
 

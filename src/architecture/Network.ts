@@ -60,7 +60,11 @@ export class Network implements NetworkInternal {
   constructor(
     input: number,
     output: number,
-    options: { initialize:boolean, layers?: { squash?: string; count: number }[] }={initialize:true},
+    options: {
+      /* If true, the network will not be initialized */
+      lazyInitialization?: boolean;
+      layers?: { squash?: string; count: number }[];
+    } = {},
   ) {
     if (input === undefined || output === undefined) {
       throw new Error("No input or output size given");
@@ -76,7 +80,7 @@ export class Network implements NetworkInternal {
     // Just define a variable.
     this.score = undefined;
 
-    if (options.initialize === undefined || options.initialize) {
+    if (!options.lazyInitialization) {
       this.initialize(options);
 
       if (this.DEBUG) {
@@ -251,13 +255,18 @@ export class Network implements NetworkInternal {
     const lastHiddenNode = this.nodes.length - this.output;
 
     /* Activate nodes chronologically */
-    for (let i = this.input; i < this.nodes.length; i++) {
-      const value = this.nodes[i].noTraceActivate();
-      if (i >= lastHiddenNode) {
-        output[i - lastHiddenNode] = value;
-      }
+    for (let indx = this.input; indx < lastHiddenNode; indx++) {
+      this.nodes[indx].noTraceActivate();
     }
 
+    for (
+      let indx = lastHiddenNode, outIndx = 0;
+      indx < this.nodes.length;
+      indx++, outIndx++
+    ) {
+      const value = this.nodes[indx].noTraceActivate();
+      output[outIndx] = value;
+    }
     return output;
   }
 
@@ -2302,102 +2311,11 @@ export class Network implements NetworkInternal {
    * Convert a json object to a network
    */
   static fromJSON(json: NetworkInternal | NetworkExport, validate = false) {
-    const network = new Network(json.input, json.output);
+    const network = new Network(json.input, json.output, {
+      lazyInitialization: true,
+    });
     network.loadFrom(json, validate);
 
     return network;
-  }
-
-  /**
-   * Creates a json that can be used to create a graph with d3 and webcola
-   */
-  graph(width: number, height: number) {
-    let input = 0;
-    let output = 0;
-
-    const json = {
-      nodes: [],
-      links: [],
-      constraints: [{
-        type: "alignment",
-        axis: "x",
-        offsets: [],
-      }, {
-        type: "alignment",
-        axis: "y",
-        offsets: [],
-      }],
-    };
-
-    let i;
-    for (i = 0; i < this.nodes.length; i++) {
-      const node = this.nodes[i];
-
-      if (node.type === "input") {
-        if (this.input === 1) {
-          (json.constraints[0].offsets as { node: number; offset: number }[])
-            .push({
-              node: i,
-              offset: 0,
-            });
-        } else {
-          (json.constraints[0].offsets as { node: number; offset: number }[])
-            .push({
-              node: i,
-              offset: 0.8 * width / (this.input - 1) * input++,
-            });
-        }
-        (json.constraints[1].offsets as { node: number; offset: number }[])
-          .push({
-            node: i,
-            offset: 0,
-          });
-      } else if (node.type === "output") {
-        if (this.output === 1) {
-          (json.constraints[0].offsets as { node: number; offset: number }[])
-            .push({
-              node: i,
-              offset: 0,
-            });
-        } else {
-          (json.constraints[0].offsets as { node: number; offset: number }[])
-            .push({
-              node: i,
-              offset: 0.8 * width / (this.output - 1) * output++,
-            });
-        }
-        (json.constraints[1].offsets as { node: number; offset: number }[])
-          .push({
-            node: i,
-            offset: -0.8 * height,
-          });
-      }
-
-      (json.nodes as {
-        id: number;
-        name: string;
-        activation: number;
-        bias: number;
-      }[]).push({
-        id: i,
-        name: node.type === "hidden"
-          ? (node.squash ? node.squash : "UNKNOWN")
-          : node.type.toUpperCase(),
-        activation: this.getActivation(node.index),
-        bias: node.bias ? node.bias : 0,
-      });
-    }
-
-    for (i = 0; i < this.connections.length; i++) {
-      const connection = this.connections[i];
-
-      (json.links as { from: number; to: number; weight: number }[]).push({
-        from: connection.from,
-        to: connection.to,
-        weight: connection.weight,
-      });
-    }
-
-    return json;
   }
 }
