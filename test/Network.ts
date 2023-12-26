@@ -3,10 +3,10 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.208.0/assert/mod.ts";
+} from "https://deno.land/std@0.210.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { emptyDirSync } from "https://deno.land/std@0.208.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.210.0/fs/empty_dir.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
@@ -574,6 +574,9 @@ Deno.test("NARX Sequence", async () => {
     });
     if (attempts < 12) {
       if (result.error < 0.005) break;
+      console.info(
+        `Error is: ${result.error}, required: ${0.005} RETRY ${attempts} of 12`,
+      );
     } else {
       assert(result.error < 0.005, JSON.stringify(result, null, 2));
     }

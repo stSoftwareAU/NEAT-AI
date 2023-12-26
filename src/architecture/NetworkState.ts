@@ -66,19 +66,14 @@ export class NetworkState {
   }
 
   makeActivation(input: number[], feedbackLoop: boolean) {
-    if (this.network.input != input.length) {
-      console.trace();
-      throw `Input size missmatch, expected ${this.network.input} was: ${input.length}`;
-    }
-
     if (this.activations.length == 0 || feedbackLoop == false) {
       this.activations = input.slice();
       this.activations.length = this.network.nodes.length;
       this.activations.fill(0, input.length);
     } else if (feedbackLoop) {
-      for (let indx = input.length; indx--;) {
-        this.activations[indx] = input[indx];
-      }
+      /** Leave the results from last run */
+      const rightArray = this.activations.slice(input.length);
+      this.activations = input.concat(rightArray);
     }
   }
 

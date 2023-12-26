@@ -15,14 +15,14 @@ import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 import { DataRecordInterface } from "./DataSet.ts";
 
-import { yellow } from "https://deno.land/std@0.208.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.210.0/fmt/colors.ts";
 import { Neat } from "../Neat.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { getTag } from "../tags/TagsInterface.ts";
 
-import { format } from "https://deno.land/std@0.208.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.208.0/fs/empty_dir.ts";
+import { format } from "https://deno.land/std@0.210.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.210.0/fs/empty_dir.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Node } from "../architecture/Node.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";
@@ -56,7 +56,15 @@ export class Network implements NetworkInternal {
 
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
-  constructor(input: number, output: number, options = {}) {
+  constructor(
+    input: number,
+    output: number,
+    options: {
+      /* If true, the network will not be initialized */
+      lazyInitialization?: boolean;
+      layers?: { squash?: string; count: number }[];
+    } = {},
+  ) {
     if (input === undefined || output === undefined) {
       throw new Error("No input or output size given");
     }
@@ -71,7 +79,7 @@ export class Network implements NetworkInternal {
     // Just define a variable.
     this.score = undefined;
 
-    if (options) {
+    if (!options.lazyInitialization) {
       this.initialize(options);
 
       if (this.DEBUG) {
@@ -94,8 +102,8 @@ export class Network implements NetworkInternal {
     this.cacheSelf.clear();
   }
 
-  initialize(options: {
-    layers?: { squash: string; count: number }[];
+  private initialize(options: {
+    layers?: { squash?: string; count: number }[];
   }) {
     let fixNeeded = false;
     // Create input nodes
@@ -246,13 +254,18 @@ export class Network implements NetworkInternal {
     const lastHiddenNode = this.nodes.length - this.output;
 
     /* Activate nodes chronologically */
-    for (let i = this.input; i < this.nodes.length; i++) {
-      const value = this.nodes[i].noTraceActivate();
-      if (i >= lastHiddenNode) {
-        output[i - lastHiddenNode] = value;
-      }
+    for (let indx = this.input; indx < lastHiddenNode; indx++) {
+      this.nodes[indx].noTraceActivate();
     }
 
+    for (
+      let outIndx = 0;
+      outIndx < this.output;
+      outIndx++
+    ) {
+      const value = this.nodes[lastHiddenNode + outIndx].noTraceActivate();
+      output[outIndx] = value;
+    }
     return output;
   }
 
@@ -1158,61 +1171,6 @@ export class Network implements NetworkInternal {
       count,
     };
   }
-
-  // evaluteFile(
-  //   fn: string,
-  //   cost: CostInterface,
-  //   feedbackLoop: boolean,
-  // ) {
-  //   const p = new Promise<{ error: number; count: number }>((resolve) => {
-  //     const txt = Deno.readTextFileSync(fn);
-  //     resolve(this.evaluateData(JSON.parse(txt), cost, feedbackLoop));
-  //   });
-
-  //   return p;
-  // }
-
-  // private readonly MAX_CONCURRENT_LOAD = 6;
-  // async evaluteInBatches(
-  //   files: string[],
-  //   cost: CostInterface,
-  //   feedbackLoop: boolean,
-  // ) {
-  //   let totalError = 0;
-  //   let totalCount = 0;
-
-  //   const pool: Promise<{ error: number; count: number }>[] = [];
-
-  //   // Fill the pool up to MAX_CONCURRENT_LOAD
-  //   for (let i = this.MAX_CONCURRENT_LOAD; i--;) {
-  //     const fn = files.pop();
-  //     if (fn) {
-  //       pool.push(this.evaluteFile(fn, cost, feedbackLoop));
-  //     }
-  //   }
-
-  //   while (pool.length > 0) {
-  //     const finished = await Promise.race(
-  //       pool.map((p, index) => p.then((value) => ({ value, index }))),
-  //     );
-  //     totalError += finished.value.error;
-  //     totalCount += finished.value.count;
-
-  //     // Remove the completed promise from the pool
-  //     pool.splice(finished.index, 1);
-
-  //     // Add a new promise to the pool, if available
-  //     const fn = files.pop();
-  //     if (fn) {
-  //       pool.push(this.evaluteFile(fn, cost, feedbackLoop));
-  //     }
-  //   }
-
-  //   return {
-  //     totalError: totalError,
-  //     totalCount: totalCount,
-  //   };
-  // }
 
   /**
    * Tests a set and returns the error and elapsed time
@@ -2361,102 +2319,11 @@ export class Network implements NetworkInternal {
    * Convert a json object to a network
    */
   static fromJSON(json: NetworkInternal | NetworkExport, validate = false) {
-    const network = new Network(json.input, json.output, false);
+    const network = new Network(json.input, json.output, {
+      lazyInitialization: true,
+    });
     network.loadFrom(json, validate);
 
     return network;
-  }
-
-  /**
-   * Creates a json that can be used to create a graph with d3 and webcola
-   */
-  graph(width: number, height: number) {
-    let input = 0;
-    let output = 0;
-
-    const json = {
-      nodes: [],
-      links: [],
-      constraints: [{
-        type: "alignment",
-        axis: "x",
-        offsets: [],
-      }, {
-        type: "alignment",
-        axis: "y",
-        offsets: [],
-      }],
-    };
-
-    let i;
-    for (i = 0; i < this.nodes.length; i++) {
-      const node = this.nodes[i];
-
-      if (node.type === "input") {
-        if (this.input === 1) {
-          (json.constraints[0].offsets as { node: number; offset: number }[])
-            .push({
-              node: i,
-              offset: 0,
-            });
-        } else {
-          (json.constraints[0].offsets as { node: number; offset: number }[])
-            .push({
-              node: i,
-              offset: 0.8 * width / (this.input - 1) * input++,
-            });
-        }
-        (json.constraints[1].offsets as { node: number; offset: number }[])
-          .push({
-            node: i,
-            offset: 0,
-          });
-      } else if (node.type === "output") {
-        if (this.output === 1) {
-          (json.constraints[0].offsets as { node: number; offset: number }[])
-            .push({
-              node: i,
-              offset: 0,
-            });
-        } else {
-          (json.constraints[0].offsets as { node: number; offset: number }[])
-            .push({
-              node: i,
-              offset: 0.8 * width / (this.output - 1) * output++,
-            });
-        }
-        (json.constraints[1].offsets as { node: number; offset: number }[])
-          .push({
-            node: i,
-            offset: -0.8 * height,
-          });
-      }
-
-      (json.nodes as {
-        id: number;
-        name: string;
-        activation: number;
-        bias: number;
-      }[]).push({
-        id: i,
-        name: node.type === "hidden"
-          ? (node.squash ? node.squash : "UNKNOWN")
-          : node.type.toUpperCase(),
-        activation: this.getActivation(node.index),
-        bias: node.bias ? node.bias : 0,
-      });
-    }
-
-    for (i = 0; i < this.connections.length; i++) {
-      const connection = this.connections[i];
-
-      (json.links as { from: number; to: number; weight: number }[]).push({
-        from: connection.from,
-        to: connection.to,
-        weight: connection.weight,
-      });
-    }
-
-    return json;
   }
 }

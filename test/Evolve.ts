@@ -1,5 +1,5 @@
 import { Network } from "../src/architecture/Network.ts";
-import { assert } from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -93,7 +93,7 @@ Deno.test("booleanXOR", async () => {
     mutationRate: 0.5,
     error: 0.025,
     threads: 1,
-    iterations: 10000,
+    iterations: 50000,
   });
 
   network.validate();
