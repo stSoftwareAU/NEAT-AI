@@ -253,19 +253,16 @@ export class Network implements NetworkInternal {
 
     const lastHiddenNode = this.nodes.length - this.output;
 
-    /* Activate nodes chronologically */
-    for (let indx = this.input; indx < lastHiddenNode; indx++) {
-      this.nodes[indx].noTraceActivate();
+    // Activate hidden nodes
+    for (let i = this.input; i < lastHiddenNode; i++) {
+      this.nodes[i].noTraceActivate();
     }
 
-    for (
-      let outIndx = 0;
-      outIndx < this.output;
-      outIndx++
-    ) {
-      const value = this.nodes[lastHiddenNode + outIndx].noTraceActivate();
-      output[outIndx] = value;
+    // Activate output nodes and store their values in the output array
+    for (let outIndx = 0; outIndx < this.output; outIndx++) {
+      output[outIndx] = this.nodes[lastHiddenNode + outIndx].noTraceActivate();
     }
+
     return output;
   }
 

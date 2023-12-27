@@ -381,9 +381,7 @@ export class Node implements TagsInterface, NodeInternal {
       const totalWeight = adjWeight * cs.count + c.weight;
       const avgWeight = totalWeight / (cs.count + 1);
       // console.info(
-      //   `ZZZ ${c.from}:${c.to}) WEIGHT ${adjWeight}=${cs.totalValue}/${
-      //     Math.abs(cs.totalActivation)
-      //   } ~ ${avgWeight}`,
+      //   `ZZZ ${c.from}:${c.to}) WEIGHT ${cs.totalValue}/${cs.totalActivation} ~= ${avgWeight}`,
       // );
       return avgWeight;
     } // const avgValue=cs.totalValue/cs.count;
@@ -399,7 +397,11 @@ export class Node implements TagsInterface, NodeInternal {
     const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-
+      // console.info(
+      //   `${this.index}: ${c.from} -> ${c.to} ${c.weight} adjusted weight ${
+      //     this.adjustedWeight(c)
+      //   }`,
+      // );
       c.weight = this.adjustedWeight(c);
     }
 
@@ -443,7 +445,7 @@ export class Node implements TagsInterface, NodeInternal {
    * Back-propagate the error, aka learn
    */
   propagate(target: number) {
-    // if (this.index == 4) {
+    // if (this.index == 5) {
     //   console.info("here");
     // }
     const activation = this.adjustedActivation();
@@ -461,10 +463,12 @@ export class Node implements TagsInterface, NodeInternal {
       return c.from != c.to;
     }).sort(() => Math.random() - 0.5);
 
-    if (randomList.length) {
-      const errorPerLink = error / toList.length;
+    const listLength = randomList.length;
+    if (listLength) {
+      const errorPerLink = error / listLength;
 
-      randomList.forEach((c) => {
+      for (let indx = 0; indx < listLength; indx++) {
+        const c = randomList[indx];
         const fromNode = this.network.nodes[c.from];
         const fromActivation = fromNode.adjustedActivation();
 
@@ -487,21 +491,21 @@ export class Node implements TagsInterface, NodeInternal {
               weightResponsibility = 0;
             }
           }
-          const activationResponsibility = 1 - weightResponsibility;
-          const activationError = errorPerLink * activationResponsibility;
-          const targetActivationValue = fromValue + activationError;
-          const targetActivationDelta = this.limit(
-            targetActivationValue / fromWeight - fromActivation,
-            1,
-          );
+          // const activationResponsibility = 1 - weightResponsibility;
+          // const activationError = errorPerLink * activationResponsibility;
+          // const targetActivationValue = fromValue + activationError;
+          // const targetActivationDelta = this.limit(
+          //   targetActivationValue / fromWeight - fromActivation,
+          //   1,
+          // );
 
-          const targetActivation = fromActivation + targetActivationDelta;
-          const improvedActivation = (fromNode as Node).propagate(
-            targetActivation,
-          );
-          const improvedValue = improvedActivation * fromWeight;
-          targetWeightedSum += improvedValue;
-          correctedError += improvedValue - fromValue;
+          // const targetActivation = fromActivation + targetActivationDelta;
+          // const improvedActivation = (fromNode as Node).propagate(
+          //   targetActivation,
+          // );
+          // const improvedValue = improvedActivation * fromWeight;
+          // targetWeightedSum += improvedValue;
+          // correctedError += improvedValue - fromValue;
         } //else {
         //   console.info("ZERO weight");
         // }
@@ -513,17 +517,17 @@ export class Node implements TagsInterface, NodeInternal {
           const fromTargetValue = fromValue + weightError;
 
           cs.totalValue += fromTargetValue;
-          cs.totalActivation += fromActivation; //ZZZ Math.abs(fromActivation);
+          cs.totalActivation += fromActivation; //Math.abs(fromActivation);
 
-          const currentWeight = this.adjustedWeight(c);
+          const adjustedWeight = this.adjustedWeight(c);
 
-          const improvedValue = fromActivation * currentWeight;
+          const improvedValue = fromActivation * adjustedWeight;
           targetWeightedSum += improvedValue;
           correctedError += improvedValue - fromValue;
         } else {
-          cs.totalActivation += fromActivation; //ZZZ Math.abs(fromActivation);
+          cs.totalActivation += fromActivation; //Math.abs(fromActivation);
         }
-      });
+      }
     }
 
     const ns = this.network.networkState.node(this.index);
@@ -537,12 +541,24 @@ export class Node implements TagsInterface, NodeInternal {
     }
 
     ns.totalWeightedSum += targetWeightedSum;
-    const currentBias = this.adjustedBias();
+    const adjustedBias = this.adjustedBias();
 
-    const estimatedValue = targetWeightedSum + currentBias;
+    const estimatedValue = targetWeightedSum + adjustedBias;
+    // if (this.index == 5) {
+    //   console.info(this.index, estimatedValue, targetWeightedSum, adjustedBias);
+    //   console.info(
+    //     `totalValue: ${ns.totalValue}, totalWeightedSum: ${ns.totalWeightedSum}, count: ${ns.count}`,
+    //   );
+    //   console.info(
+    //     `target: ${target}, activation: ${activation}, error: ${error}, correctedError: ${correctedError}`,
+    //   );
+    //   if (Math.abs(estimatedValue - 1.62) > 0.1) {
+    //     console.info(`${this.index} wrong ${estimatedValue}`);
+    //   }
+    // }
 
-    const squashMethod = this
-      .findSquash();
+    const squashMethod = this.findSquash();
+
     if (this.isNodeActivation(squashMethod) == false) {
       return (squashMethod as ActivationInterface).squash(estimatedValue);
     } else {

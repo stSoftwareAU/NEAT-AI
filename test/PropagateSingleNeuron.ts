@@ -71,6 +71,79 @@ function makeOutput(input: number[]) {
   return output;
 }
 
+Deno.test("OneAndDone", () => {
+  const creature = makeCreature();
+  const traceDir = ".trace";
+  emptyDirSync(traceDir);
+
+  Deno.writeTextFileSync(
+    ".trace/0-start.json",
+    JSON.stringify(creature.traceJSON(), null, 2),
+  );
+
+  const inA = [-1, 0, 1];
+  const outA = creature.activate(inA);
+  const expectedA = makeOutput(inA);
+  console.info("SECOND", outA);
+  creature.propagate(expectedA);
+
+  Deno.writeTextFileSync(
+    ".trace/1-inA.json",
+    JSON.stringify(creature.traceJSON(), null, 2),
+  );
+
+  creature.propagateUpdate();
+
+  const actualA = creature.noTraceActivate(inA);
+  console.info(expectedA, actualA);
+
+  Deno.writeTextFileSync(
+    ".trace/4-done.json",
+    JSON.stringify(creature.exportJSON(), null, 2),
+  );
+
+  assertAlmostEquals(expectedA[0], actualA[0], 0.01);
+  assertAlmostEquals(expectedA[1], actualA[1], 0.01);
+});
+
+Deno.test("ManySame", () => {
+  const creature = makeCreature();
+  const traceDir = ".trace";
+  emptyDirSync(traceDir);
+
+  Deno.writeTextFileSync(
+    ".trace/0-start.json",
+    JSON.stringify(creature.traceJSON(), null, 2),
+  );
+
+  const inA = [-1, 0, 1];
+  const expectedA = makeOutput(inA);
+
+  for (let i = 0; i < 100; i++) {
+    creature.activate(inA);
+
+    creature.propagate(expectedA);
+  }
+
+  Deno.writeTextFileSync(
+    ".trace/1-inA.json",
+    JSON.stringify(creature.traceJSON(), null, 2),
+  );
+
+  creature.propagateUpdate();
+
+  const actualA = creature.noTraceActivate(inA);
+  console.info(expectedA, actualA);
+
+  Deno.writeTextFileSync(
+    ".trace/4-done.json",
+    JSON.stringify(creature.exportJSON(), null, 2),
+  );
+
+  assertAlmostEquals(expectedA[0], actualA[0], 0.01);
+  assertAlmostEquals(expectedA[1], actualA[1], 0.01);
+});
+
 Deno.test("propagateSingleNeuronKnown", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
@@ -106,9 +179,11 @@ Deno.test("propagateSingleNeuronKnown", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
   const inC = [-0.3, -0.1, 0.1];
-  creature.activate(inC);
   const expectedC = makeOutput(inC);
-  creature.propagate(expectedC);
+  for (let i = 0; i < 100; i++) {
+    creature.activate(inC);
+    creature.propagate(expectedC);
+  }
 
   Deno.writeTextFileSync(
     ".trace/3-inC.json",
@@ -116,6 +191,8 @@ Deno.test("propagateSingleNeuronKnown", () => {
   );
 
   creature.propagateUpdate();
+  const actualC = creature.noTraceActivate(inC);
+  console.info(expectedC, actualC);
 
   Deno.writeTextFileSync(
     ".trace/4-done.json",
