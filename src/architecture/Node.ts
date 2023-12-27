@@ -517,7 +517,7 @@ export class Node implements TagsInterface, NodeInternal {
           const fromTargetValue = fromValue + weightError;
 
           cs.totalValue += fromTargetValue;
-          cs.totalActivation += fromActivation; //Math.abs(fromActivation);
+          cs.totalActivation += Math.abs(fromActivation);
 
           const adjustedWeight = this.adjustedWeight(c);
 
@@ -525,7 +525,7 @@ export class Node implements TagsInterface, NodeInternal {
           targetWeightedSum += improvedValue;
           correctedError += improvedValue - fromValue;
         } else {
-          cs.totalActivation += fromActivation; //Math.abs(fromActivation);
+          cs.totalActivation += Math.abs(fromActivation);
         }
       }
     }
