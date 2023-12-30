@@ -15,10 +15,10 @@ export interface ConnectionExport extends ConnectionCommon {
 
 export interface ConnectionTrace extends ConnectionExport {
   trace: {
-    eligibility?: number;
-
     used?: boolean;
-    totalValue?: number;
-    totalActivation?: number;
+    totalValue: number;
+    totalActivation: number;
+    absoluteActivation: number;
+    count: number;
   };
 }

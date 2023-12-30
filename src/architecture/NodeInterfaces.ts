@@ -13,11 +13,10 @@ export interface NodeInternal extends NodeExport {
 
 export interface NodeTrace extends NodeExport {
   trace: {
-    // errorResponsibility?: number;
-    // errorProjected?: number;
-    // batchSize?: number;
-    totalValue?: number;
+    totalValue: number;
 
-    totalWeightedSum?: number;
+    totalWeightedSum: number;
+    absoluteWeightedSum: number;
+    count: number;
   };
 }

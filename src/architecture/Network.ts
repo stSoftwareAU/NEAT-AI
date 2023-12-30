@@ -225,26 +225,27 @@ export class Network implements NetworkInternal {
    * Activates the network
    */
   activate(input: number[], feedbackLoop = false) {
-    this.networkState.makeActivation(input, feedbackLoop);
-
     const output: number[] = new Array(this.output);
+
+    this.networkState.makeActivation(input, feedbackLoop);
 
     const lastHiddenNode = this.nodes.length - this.output;
 
-    /* Activate nodes chronologically */
+    // Activate hidden nodes
     for (let i = this.input; i < lastHiddenNode; i++) {
-      (this.nodes[i] as Node).activate();
+      this.nodes[i].activate();
     }
 
-    for (let i = 0; i < this.output; i++) {
-      output[i] = (this.nodes[i + lastHiddenNode] as Node).activate();
+    // Activate output nodes and store their values in the output array
+    for (let outIndx = 0; outIndx < this.output; outIndx++) {
+      output[outIndx] = this.nodes[lastHiddenNode + outIndx].activate();
     }
 
     return output;
   }
 
   /**
-   * Activates the network without calculating eligibility traces and such
+   * Activates the network without calculating traces and such
    */
   noTraceActivate(input: number[], feedbackLoop = false) {
     const output: number[] = new Array(this.output);
@@ -941,7 +942,7 @@ export class Network implements NetworkInternal {
   /**
    * Back propagate the network
    */
-  propagate(target: number[]) {
+  propagate(target: number[], options?: { disableRandomList?: boolean }) {
     if (
       target === undefined || target.length !== this.output
     ) {
@@ -961,6 +962,7 @@ export class Network implements NetworkInternal {
       const n = this.nodes[i];
       n.propagate(
         target[--targetIndex],
+        options,
       );
     }
   }
@@ -1232,6 +1234,7 @@ export class Network implements NetworkInternal {
 
     const iterations = options.iterations ? options.iterations : 0;
 
+    // @TODO Need to randomize files.
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
       dataDir + "/" + fn
     );
@@ -1242,7 +1245,7 @@ export class Network implements NetworkInternal {
     let lastError = Infinity;
     let trainingFailed = 0;
     let bestCreatureJSON = null;
-
+    // @TODO need to apply Stochastic Gradient Descent
     const EMPTY = { input: [], output: [] };
     while (true) {
       iteration++;
@@ -2158,12 +2161,11 @@ export class Network implements NetworkInternal {
         const traceNode: NodeExport = json.nodes[exportIndex] as NodeTrace;
 
         (traceNode as NodeTrace).trace = {
-          // errorProjected: ns ? ns.errorProjected : undefined,
-          // errorResponsibility: ns ? ns.errorResponsibility : undefined,
-          // batchSize: ns ? ns.batchSize : undefined,
-          totalValue: ns ? ns.totalValue : undefined,
+          totalValue: ns.totalValue,
 
-          totalWeightedSum: ns ? ns.totalWeightedSum : undefined,
+          totalWeightedSum: ns.totalWeightedSum,
+          absoluteWeightedSum: ns.absoluteWeightedSum,
+          count: ns.count,
         };
         traceNodes[exportIndex] = traceNode as NodeTrace;
         exportIndex++;
@@ -2175,11 +2177,11 @@ export class Network implements NetworkInternal {
       const exportConnection = json.connections[indx] as ConnectionTrace;
       const cs = this.networkState.connection(c.from, c.to);
       exportConnection.trace = {
-        eligibility: cs.eligibility,
-
         used: cs.used,
         totalValue: cs.totalValue,
         totalActivation: cs.totalActivation,
+        absoluteActivation: cs.absoluteActivation,
+        count: cs.count,
       };
 
       traceConnections[indx] = exportConnection;
@@ -2295,8 +2297,6 @@ export class Network implements NetworkInternal {
       if ((conn as ConnectionTrace).trace) {
         const cs = this.networkState.connection(connection.from, connection.to);
         const trace = (conn as ConnectionTrace).trace;
-
-        cs.eligibility = trace.eligibility ? trace.eligibility : 0;
 
         cs.used = trace.used;
         cs.totalValue = trace.totalValue ? trace.totalValue : 0;
