@@ -5,6 +5,7 @@ import {
 } from "https://deno.land/std@0.210.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkExport } from "../src/architecture/NetworkInterfaces.ts";
+import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -38,7 +39,9 @@ Deno.test("PI", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   emptyDirSync(traceDir);
-
+  const config = new BackPropagationConfig({
+    useAverageValuePerActivation: true,
+  });
   Deno.writeTextFileSync(
     ".trace/0.json",
     JSON.stringify(creature.exportJSON(), null, 2),
@@ -50,14 +53,14 @@ Deno.test("PI", () => {
   const expectedA = makeOutput(inA);
   console.info("FIRST", outA1, outA2, expectedA);
   assertAlmostEquals(outA1[0], outA2[0], 0.0001);
-  creature.propagate(expectedA);
+  creature.propagate(expectedA, config);
 
   Deno.writeTextFileSync(
     ".trace/1.json",
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  creature.propagateUpdate();
+  creature.propagateUpdate(config);
 
   const actualA1 = creature.activate(inA);
   const actualA2 = creature.noTraceActivate(inA);
@@ -87,7 +90,11 @@ Deno.test("PI Multiple", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   emptyDirSync(traceDir);
-
+  const config = new BackPropagationConfig({
+    useAverageValuePerActivation: true,
+    useAverageDifferenceBias: "Yes",
+  });
+  console.info(config);
   Deno.writeTextFileSync(
     ".trace/0.json",
     JSON.stringify(creature.exportJSON(), null, 2),
@@ -100,7 +107,7 @@ Deno.test("PI Multiple", () => {
       Math.random() * 2 - 1,
     ];
     creature.activate(inC);
-    creature.propagate(makeOutput(inC));
+    creature.propagate(makeOutput(inC), config);
   }
 
   Deno.writeTextFileSync(
@@ -108,7 +115,7 @@ Deno.test("PI Multiple", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  creature.propagateUpdate();
+  creature.propagateUpdate(config);
 
   const inA = [-1, 1, 0];
   const expectedA = makeOutput(inA);

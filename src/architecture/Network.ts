@@ -32,6 +32,7 @@ import { Mutation } from "../methods/mutation.ts";
 import { addTag } from "../tags/TagsInterface.ts";
 import { Connection } from "./Connection.ts";
 import { NetworkState } from "./NetworkState.ts";
+import { BackPropagationConfig } from "./BackPropagation.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -907,8 +908,8 @@ export class Network implements NetworkInternal {
     }
   }
 
-  applyLearnings() {
-    this.propagateUpdate();
+  applyLearnings(config: BackPropagationConfig) {
+    this.propagateUpdate(config);
 
     const oldConnections = this.connections.length;
     const oldNodes = this.nodes.length;
@@ -942,7 +943,7 @@ export class Network implements NetworkInternal {
   /**
    * Back propagate the network
    */
-  propagate(target: number[], options?: { disableRandomList?: boolean }) {
+  propagate(target: number[], config: BackPropagationConfig) {
     if (
       target === undefined || target.length !== this.output
     ) {
@@ -962,7 +963,7 @@ export class Network implements NetworkInternal {
       const n = this.nodes[i];
       n.propagate(
         target[--targetIndex],
-        options,
+        config,
       );
     }
   }
@@ -970,14 +971,14 @@ export class Network implements NetworkInternal {
   /**
    * Back propagate the network
    */
-  propagateUpdate() {
+  propagateUpdate(config: BackPropagationConfig) {
     for (
       let indx = this.nodes.length - 1;
       indx >= this.input;
       indx--
     ) {
       const n = this.nodes[indx] as Node;
-      n.propagateUpdate();
+      n.propagateUpdate(config);
     }
   }
 
@@ -1249,6 +1250,7 @@ export class Network implements NetworkInternal {
     const EMPTY = { input: [], output: [] };
     while (true) {
       iteration++;
+      const backPropagationConfig = new BackPropagationConfig();
 
       let counter = 0;
       let errorSum = 0;
@@ -1286,7 +1288,7 @@ export class Network implements NetworkInternal {
 
           errorSum += cost.calculate(data.output, output);
 
-          this.propagate(data.output);
+          this.propagate(data.output, backPropagationConfig);
         }
 
         counter += len;
@@ -1332,7 +1334,7 @@ export class Network implements NetworkInternal {
           this.loadFrom(bestCreatureJSON, false);
         }
       } else {
-        bestCreatureJSON = this.traceJSON();
+        bestCreatureJSON = this.exportJSON();
 
         lastError = error;
       }
@@ -1341,11 +1343,11 @@ export class Network implements NetworkInternal {
         error > targetError &&
         (iterations === 0 || iteration < iterations)
       ) {
-        if (trainingOk) this.applyLearnings();
+        if (trainingOk) this.applyLearnings(backPropagationConfig);
         this.clearState();
       } else {
         const traceJSON = this.traceJSON();
-        if (trainingOk) this.applyLearnings();
+        if (trainingOk) this.applyLearnings(backPropagationConfig);
         this.clearState();
 
         return {
@@ -2160,13 +2162,7 @@ export class Network implements NetworkInternal {
 
         const traceNode: NodeExport = json.nodes[exportIndex] as NodeTrace;
 
-        (traceNode as NodeTrace).trace = {
-          totalValue: ns.totalValue,
-
-          totalWeightedSum: ns.totalWeightedSum,
-          absoluteWeightedSum: ns.absoluteWeightedSum,
-          count: ns.count,
-        };
+        (traceNode as NodeTrace).trace = ns;
         traceNodes[exportIndex] = traceNode as NodeTrace;
         exportIndex++;
       }
@@ -2176,13 +2172,7 @@ export class Network implements NetworkInternal {
     this.connections.forEach((c, indx) => {
       const exportConnection = json.connections[indx] as ConnectionTrace;
       const cs = this.networkState.connection(c.from, c.to);
-      exportConnection.trace = {
-        used: cs.used,
-        totalValue: cs.totalValue,
-        totalActivation: cs.totalActivation,
-        absoluteActivation: cs.absoluteActivation,
-        count: cs.count,
-      };
+      exportConnection.trace = cs;
 
       traceConnections[indx] = exportConnection;
     });

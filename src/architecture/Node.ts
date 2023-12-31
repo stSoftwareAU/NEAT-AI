@@ -12,6 +12,12 @@ import { Network } from "./Network.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { PLANK_CONSTANT } from "../config/NeatConfig.ts";
+import {
+  BackPropagationConfig,
+  BackPropagationOptions,
+  MAX_BIAS,
+  MAX_WEIGHT,
+} from "./BackPropagation.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -320,28 +326,58 @@ export class Node implements TagsInterface, NodeInternal {
 
   private adjustedWeight(
     c: ConnectionInternal,
+    options: BackPropagationOptions,
   ) {
     const cs = this.network.networkState.connection(c.from, c.to);
 
     if (cs.totalActivation) {
-      return cs.totalValue / cs.totalActivation;
-      // return cs.totalValue / Math.abs(cs.totalActivation);
-      // return cs.totalValue / cs.absoluteActivation;
-      // const avgValue = cs.totalValue / cs.count;
-      // const avgActivation = cs.totalActivation / cs.count;
-      // const adjWeight = avgValue / avgActivation;
-      // return adjWeight;
+      // Constants Few expect 4.5
 
-      // const totalWeight = adjWeight * cs.count + c.weight;
-      // const avgWeight = totalWeight / (cs.count + 1);
+      // const weightB= cs.totalValue / Math.abs(cs.totalActivation); // FAILS: Constants Few 1.4
 
-      // return avgWeight;
+      const averageValuePerActivation = cs.totalValue / cs.totalActivation; // BEST so far FAILS: Constants Few -18.6
+      const averageValuePerAbsoluteActivation = cs.totalValue /
+        cs.absoluteActivation; // FAILS: Constants Few 4.5
+
+      // console.info(
+      //   `${this.index}: weight: ${c.weight} averageValuePerActivation ${averageValuePerActivation} averageValuePerAbsoluteActivation ${averageValuePerAbsoluteActivation}`,
+      // );
+
+      // if( true || Math.abs(averageValuePerActivation ) < Math.abs(averageValuePerAbsoluteActivation)){
+      if (options.useAverageValuePerActivation) {
+        //   console.info(`${this.index}: averageValuePerActivation ${averageValuePerActivation}`);
+        if (Number.isFinite(averageValuePerActivation)) {
+          if (Math.abs(averageValuePerActivation) < MAX_WEIGHT) {
+            return averageValuePerActivation;
+          } else if (averageValuePerActivation > 0) {
+            return MAX_WEIGHT;
+          } else {
+            return -MAX_WEIGHT;
+          }
+        } else {
+          console.info(
+            `${this.index}: Invalid Weight : averageValuePerActivation ${averageValuePerActivation}`,
+          );
+          return c.weight;
+        }
+      } else {
+        // console.info(
+        //   `${this.index}: averageValuePerAbsoluteActivation ${averageValuePerAbsoluteActivation}`,
+        // );
+        if (averageValuePerAbsoluteActivation > MAX_WEIGHT) {
+          return MAX_WEIGHT;
+        } else if (averageValuePerAbsoluteActivation < -MAX_WEIGHT) {
+          return -MAX_WEIGHT;
+        } else {
+          return averageValuePerAbsoluteActivation;
+        }
+      }
     } else {
       return c.weight;
     }
   }
 
-  private adjustedBias(): number {
+  private adjustedBias(config: BackPropagationConfig): number {
     if (this.type == "constant") {
       return this.bias ? this.bias : 0;
     } else {
@@ -389,19 +425,96 @@ export class Node implements TagsInterface, NodeInternal {
         //   }`,
         // );
 
-        // return (ns.totalValue / ns.totalWeightedSum) -1;
-        // return 1-(ns.totalValue / Math.abs(ns.totalWeightedSum));
+        // console.info(
+        //   `${this.index}: adjustedBias I: (${ns.totalValue} - ${ns.totalWeightedSum} + ${ns.totalError})/${ns.count}= ${
+        //     (ns.totalValue - ns.totalWeightedSum + ns.totalError) / ns.count
+        //   }`,
+        // );
 
-        // return ns.totalValue / ns.absoluteWeightedSum; // A FAILS: Constants Few -2.14
-        // return ns.totalValue / ns.totalWeightedSum; // B FAILS: Constants Few -1.8
+        // console.info(
+        //   `${this.index}: adjustedBias J: (${ns.totalValue} - ${ns.totalWeightedSum} - ${ns.totalError})/${ns.count}= ${
+        //     (ns.totalValue - ns.totalWeightedSum - ns.totalError) / ns.count
+        //   }`,
+        // );
 
-        return (ns.totalValue - ns.totalWeightedSum) / ns.count; // C best so far FAILS: Constants Few 54
+        // console.info(
+        //   `${this.index}: adjustedBias K: (${ns.totalValue} - ${ns.totalWeightedSum})/${ns.count} - ${ns.totalError}= ${
+        //     (ns.totalValue - ns.totalWeightedSum) / ns.count - ns.totalError
+        //   }`,
+        // );
 
-        // return 1-(ns.totalValue / ns.totalWeightedSum); // D FAILS: Constants Few -26
-        // return 1-(ns.totalValue / ns.absoluteWeightedSum); // E FAILS: Constants Few -233
-        // return (ns.totalValue - ns.absoluteWeightedSum)/ns.count; // F FAILS: PI Multiple badly
-        // return (ns.totalValue - Math.abs(ns.totalWeightedSum))/ns.count; // G
-        // return ((ns.totalValue - ns.totalWeightedSum)/ns.count)-1; // H
+        // console.info(
+        //   `${this.index}: adjustedBias L: (${ns.totalValue} - ${ns.totalWeightedSum})/${ns.count} - ${ns.totalError}= ${
+        //     (ns.totalValue - ns.totalWeightedSum) / ns.count + ns.totalError
+        //   }`,
+        // );
+
+        /* Constant Few expect 4.5 */
+
+        // return ns.totalValue / ns.absoluteWeightedSum; // A FAILS: Constants Few 5
+        // return ns.totalValue / ns.totalWeightedSum; // B FAILS: Constants Few 4.2
+
+        const averageDifferenceBias = (ns.totalValue - ns.totalWeightedSum) /
+          ns.count; // C best so far FAILS: Constants Few 3
+
+        const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum); // D FAILS: Constants Few 4.5 best
+        // const averageError = ns.totalError / ns.count;
+
+        // console.info(
+        //   `${this.index}: bias: ${this.bias} averageDifferenceBias ${averageDifferenceBias} unaccountedRatioBias ${unaccountedRatioBias} error ${ns.totalError} count ${ns.count} averageError ${averageError}`,
+        // );
+        if (
+          Number.isFinite(averageDifferenceBias) == false ||
+          Number.isFinite(unaccountedRatioBias) == false
+        ) {
+          console.info(
+            `${this.index}: Invalid Bias : averageDifferenceBias ${averageDifferenceBias} unaccountedRatioBias ${unaccountedRatioBias}`,
+          );
+        }
+        // if( false && Math.abs(averageError) < 2){
+        if (
+          config.useAverageDifferenceBias == "Yes" ||
+          Number.isFinite(unaccountedRatioBias) == false
+        ) {
+          if (averageDifferenceBias > MAX_BIAS) {
+            return MAX_BIAS;
+          } else if (averageDifferenceBias < -MAX_BIAS) {
+            return -MAX_BIAS;
+          } else {
+            return averageDifferenceBias;
+          }
+        } else if (
+          config.useAverageDifferenceBias == "No" ||
+          (
+            Math.abs(averageDifferenceBias - this.bias) <
+              Math.abs(unaccountedRatioBias - this.bias)
+          )
+        ) {
+          return unaccountedRatioBias;
+        } else {
+          return averageDifferenceBias;
+        }
+
+        // if( Math.abs(averageDifferenceBias-this.bias) < Math.abs(unaccountedRatioBias-this.bias)){
+        // return averageDifferenceBias;
+        // }
+        // else{
+        // }
+        // }
+        // else{
+        // return unaccountedRatioBias;
+        // }
+
+        // return 1-(ns.totalValue / ns.totalWeightedSum); // D FAILS: Constants Few 4.5 best
+        // return 1-(ns.totalValue / ns.absoluteWeightedSum); // E FAILS: Constants Few 0.5
+        // return (ns.totalValue - ns.absoluteWeightedSum)/ns.count; // F FAILS: Constants Few 2.4
+        // return (ns.totalValue - Math.abs(ns.totalWeightedSum))/ns.count; // G FAILS: Constants Few 3
+        // return ((ns.totalValue - ns.totalWeightedSum)/ns.count)-1; // H FAILS: Constants Few 2.5
+        // return (ns.totalValue - ns.totalWeightedSum + ns.totalError) / ns.count; // I FAILS: Constants Few 4.35
+        // return (ns.totalValue - ns.totalWeightedSum - ns.totalError) / ns.count; // J FAILS: Constants Few 1
+
+        // return  (ns.totalValue - ns.totalWeightedSum ) / ns.count - ns.totalError; // K FAILS: Constants Few -3.76
+        // return  (ns.totalValue - ns.totalWeightedSum ) / ns.count + ns.totalError; // L FAILS: Constants Few 8.7
 
         // return ns.totalValue / ns.absoluteWeightedSum - 1;
         // const totalBias = ns.totalValue - ns.totalWeightedSum;
@@ -417,16 +530,16 @@ export class Node implements TagsInterface, NodeInternal {
     }
   }
 
-  propagateUpdate() {
+  propagateUpdate(config: BackPropagationConfig) {
     const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const adjustedWeight = this.adjustedWeight(c);
+      const adjustedWeight = this.adjustedWeight(c, config);
 
       c.weight = adjustedWeight;
     }
 
-    const adjustedBias = this.adjustedBias();
+    const adjustedBias = this.adjustedBias(config);
 
     this.bias = adjustedBias;
   }
@@ -441,6 +554,7 @@ export class Node implements TagsInterface, NodeInternal {
       const value = unSquasher.unSquash(activation);
 
       if (!Number.isFinite(value)) {
+        console.trace();
         throw `${this.index}: ${this.squash}.unSquash(${activation}) invalid -> ${value}`;
       }
       return value;
@@ -469,9 +583,9 @@ export class Node implements TagsInterface, NodeInternal {
    */
   propagate(
     targetActivation: number,
-    options?: { disableRandomList?: boolean },
+    config: BackPropagationConfig,
   ) {
-    const activation = this.adjustedActivation();
+    const activation = this.adjustedActivation(config);
 
     const targetValue = this.toValue(targetActivation);
     const activationValue = this.toValue(activation);
@@ -487,40 +601,44 @@ export class Node implements TagsInterface, NodeInternal {
 
     const listLength = randomList.length;
 
-    if (listLength > 1 && !(options?.disableRandomList)) {
+    if (listLength > 1 && !(config.disableRandomList)) {
       randomList.sort(() => Math.random() - 0.5);
     }
 
+    let remainingError = error;
     if (listLength) {
       const errorPerLink = error / listLength;
 
       for (let indx = 0; indx < listLength; indx++) {
-        // let thisPerLinkError = errorPerLink;
+        let thisPerLinkError = errorPerLink;
 
         const c = randomList[indx];
         const fromNode = this.network.nodes[c.from];
-        const fromActivation = fromNode.adjustedActivation();
+        const fromActivation = fromNode.adjustedActivation(config);
 
         const cs = this.network.networkState.connection(c.from, c.to);
 
-        const fromWeight = this.adjustedWeight(c);
+        const fromWeight = this.adjustedWeight(c, config);
         const fromValue = fromWeight * fromActivation;
 
         let improvedFromActivation = fromActivation;
+        let targetFromActivation = fromActivation;
         const targetFromValue = fromValue + errorPerLink;
         let improvedFromValue = fromValue;
         if (
+          fromWeight &&
           fromNode.type !== "input" &&
           fromNode.type !== "constant"
         ) {
-          const targetFromActivation = targetFromValue / fromWeight;
+          targetFromActivation = targetFromValue / fromWeight;
 
           improvedFromActivation = (fromNode as Node).propagate(
             targetFromActivation,
+            config,
           );
           improvedFromValue = improvedFromActivation * fromWeight;
 
-          // thisPerLinkError = targetFromValue - improvedFromValue;
+          thisPerLinkError = targetFromValue - improvedFromValue;
 
           // if (
           //   !Number.isFinite(thisPerLinkError) ||
@@ -533,31 +651,48 @@ export class Node implements TagsInterface, NodeInternal {
           // fromValue = improvedFromValue;
         }
 
-        if (Math.abs(improvedFromActivation) > PLANK_CONSTANT) {
-          // const targetFromValue = fromValue + thisPerLinkError;
+        if (
+          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
+          Math.abs(fromWeight) > PLANK_CONSTANT
+        ) {
+          const targetFromValue2 = fromValue + thisPerLinkError;
           // const targetFromValue2 = improvedFromValue + errorPerLink;//- thisPerLinkError);
-          const targetFromValue2 = improvedFromValue + errorPerLink;
+          // const targetFromValue2 = improvedFromValue + errorPerLink;
 
           cs.count++;
+          // cs.totalValue += improvedFromValue;
           cs.totalValue += targetFromValue2;
-          cs.totalActivation += improvedFromActivation;
+          cs.totalActivation += targetFromActivation;
+          // cs.totalActivation += improvedFromActivation;
           cs.absoluteActivation += Math.abs(improvedFromActivation);
 
-          const adjustedWeight = this.adjustedWeight(c);
+          const adjustedWeight = this.adjustedWeight(c, config);
 
           const improvedAdjustedFromValue = improvedFromActivation *
             adjustedWeight;
           // const improvedAdjustedFromValue = targetFromValue/fromWeight * adjustedWeight;
 
+          remainingError -= //errorPerLink -
+            targetFromValue - improvedAdjustedFromValue;
           targetWeightedSum += improvedAdjustedFromValue;
           // targetWeightedSum += fromActivation * adjustedWeight;
         }
       }
     }
 
+    // if (remainingError) {
+    //   console.info(
+    //     `${this.index}: propagate: ${targetActivation.toFixed(3)} -> ${
+    //       activation.toFixed(3)
+    //     } -> ${targetValue.toFixed(3)} -> ${activationValue.toFixed(3)} -> ${
+    //       error.toFixed(3)
+    //     } -> ${remainingError.toFixed(3)}`,
+    //   );
+    // }
     const ns = this.network.networkState.node(this.index);
 
     ns.count++;
+    ns.totalError += remainingError;
     ns.totalValue += targetValue;
     ns.totalWeightedSum += targetWeightedSum;
     ns.absoluteWeightedSum += Math.abs(targetWeightedSum);
@@ -567,7 +702,7 @@ export class Node implements TagsInterface, NodeInternal {
       throw `${this.index}: Invalid totalValue: ${ns.totalValue}`;
     }
 
-    const adjustedBias = this.adjustedBias();
+    const adjustedBias = this.adjustedBias(config);
 
     const adjustedActivation = targetWeightedSum + adjustedBias;
 
@@ -584,7 +719,7 @@ export class Node implements TagsInterface, NodeInternal {
     }
   }
 
-  private adjustedActivation() {
+  private adjustedActivation(config: BackPropagationConfig) {
     if (this.type == "input") {
       return this.network.networkState.activations[this.index];
     }
@@ -592,7 +727,7 @@ export class Node implements TagsInterface, NodeInternal {
     if (this.type == "constant") {
       return this.bias;
     } else {
-      const adjustedBias = this.adjustedBias();
+      const adjustedBias = this.adjustedBias(config);
 
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
@@ -606,9 +741,9 @@ export class Node implements TagsInterface, NodeInternal {
         for (let i = toList.length; i--;) {
           const c = toList[i];
           const fromActivation = (this.network.nodes[c.from] as Node)
-            .adjustedActivation();
+            .adjustedActivation(config);
 
-          const fromWeight = this.adjustedWeight(c);
+          const fromWeight = this.adjustedWeight(c, config);
 
           value += fromActivation * fromWeight;
           // if( Math.abs( value) > 10){
@@ -619,7 +754,15 @@ export class Node implements TagsInterface, NodeInternal {
         // console.info( `${this.index}: value: ${value}, bias: ${adjustedBias}`);
         const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
-        return activationSquash.squash(value);
+        const squashedValue = activationSquash.squash(value);
+
+        if (!Number.isFinite(squashedValue)) {
+          console.info(
+            `${this.index}: value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashedValue}`,
+          );
+        }
+
+        return squashedValue;
       }
     }
   }

@@ -1,17 +1,12 @@
 import { Network } from "./Network.ts";
 
-class NodeState {
-  // public errorResponsibility=0;
-  // public errorProjected=0;
-
-  // public derivative=0;
-  // public totalDeltaBias=0;
-  // public previousDeltaBias=0;
+export class NodeState {
   public count = 0;
 
   public totalValue = 0;
   public totalWeightedSum = 0;
   public absoluteWeightedSum = 0;
+  public totalError = 0;
 }
 
 export class ConnectionState {

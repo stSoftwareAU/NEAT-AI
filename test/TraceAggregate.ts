@@ -4,6 +4,7 @@ import {
 } from "https://deno.land/std@0.210.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -58,7 +59,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   // assertAlmostEquals(aOut[0], cOut[0], 0.0001);
   // assertAlmostEquals(aOut[1], cOut[1], 0.0001);
 
-  const changed = network.applyLearnings();
+  const changed = network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
@@ -119,7 +120,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
     aOut,
   );
 
-  const changed = network.applyLearnings();
+  const changed = network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
@@ -181,7 +182,7 @@ Deno.test("TraceAggregateIF", () => {
     aOut,
   );
 
-  const changed = network.applyLearnings();
+  const changed = network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 

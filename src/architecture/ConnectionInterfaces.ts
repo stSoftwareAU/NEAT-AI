@@ -1,3 +1,5 @@
+import { ConnectionState } from "./NetworkState.ts";
+
 interface ConnectionCommon {
   weight: number;
   type?: "positive" | "negative" | "condition";
@@ -14,11 +16,5 @@ export interface ConnectionExport extends ConnectionCommon {
 }
 
 export interface ConnectionTrace extends ConnectionExport {
-  trace: {
-    used?: boolean;
-    totalValue: number;
-    totalActivation: number;
-    absoluteActivation: number;
-    count: number;
-  };
+  trace: ConnectionState;
 }
