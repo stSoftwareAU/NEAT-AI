@@ -1,4 +1,4 @@
-/* groovylint-disable DuplicateNumberLiteral, DuplicateStringLiteral, NestedBlockDepth */
+/* groovylint-disable DuplicateNumberLiteral, DuplicateStringLiteral, GStringExpressionWithinString, NestedBlockDepth */
 /* groovylint-disable-next-line CompileStatic */
 DENO_IMAGE = 'denoland/deno:latest'
 /* groovylint-disable-next-line GStringExpressionWithinString */
@@ -71,10 +71,12 @@ pipeline {
 
     stage('Coverage') {
       agent {
-        docker {
-          image TOOLS_IMAGE
-          args TOOLS_ARGS
-          label 'small'
+        agent {
+          docker {
+            image DENO_IMAGE
+            args TOOLS_ARGS
+            label 'small'
+          }
         }
       }
       steps {
