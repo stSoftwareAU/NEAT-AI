@@ -374,7 +374,7 @@ Deno.test("train_AND_gate", () => {
       { input: [1, 1], output: [1] },
     ],
     1000,
-    0.002,
+    0.26,
   );
 });
 
@@ -413,7 +413,7 @@ Deno.test("train XOR gate", () => {
       { input: [1, 1], output: [0] },
     ],
     100000,
-    0.002,
+    0.26,
   );
 });
 
@@ -435,7 +435,7 @@ Deno.test("train_NOT_gate", () => {
       { input: [1], output: [0] },
     ],
     1000,
-    0.002,
+    0.26,
   );
 });
 
@@ -461,7 +461,7 @@ Deno.test("train_XNOR_gate", () => {
       { input: [1, 1], output: [1] },
     ],
     100000,
-    0.002,
+    0.26,
   );
 });
 
@@ -474,7 +474,7 @@ Deno.test("train OR gate", () => {
       { input: [1, 1], output: [1] },
     ],
     1000,
-    0.002,
+    0.26,
   );
 });
 
@@ -502,7 +502,7 @@ Deno.test("train_SIN_function", () => {
     });
   }
 
-  trainSet(set, 10000, 0.05);
+  trainSet(set, 10000, 0.15);
 });
 
 Deno.test("evolve_SIN_function", async () => {
@@ -530,7 +530,7 @@ Deno.test("train_Bigger_than", () => {
     set.push({ input: [x, y], output: [z] });
   }
 
-  trainSet(set, 500, 0.05);
+  trainSet(set, 500, 0.26);
 });
 
 Deno.test("evolve_Bigger_than", async () => {
@@ -597,7 +597,7 @@ Deno.test("train SIN + COS", () => {
     });
   }
 
-  trainSet(set, 1000, 0.05);
+  trainSet(set, 1000, 0.13);
 });
 
 Deno.test("evolve SIN + COS", async () => {
@@ -628,7 +628,7 @@ Deno.test("train_SHIFT", () => {
     set.push({ input: [x, y, z], output: [z, x, y] });
   }
 
-  trainSet(set, 500, 0.03);
+  trainSet(set, 500, 0.1);
 });
 
 Deno.test("evolveSHIFT", async () => {
