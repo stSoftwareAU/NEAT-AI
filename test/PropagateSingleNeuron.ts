@@ -172,7 +172,9 @@ Deno.test("ManySame", () => {
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
     useAverageValuePerActivation: true,
+    useAverageDifferenceBias: "Maybe",
   });
+  console.info(config);
   Deno.writeTextFileSync(
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),
@@ -181,7 +183,7 @@ Deno.test("ManySame", () => {
   const inA = [-1, 0, 1];
   const expectedA = makeOutput(inA);
 
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 1000; i++) {
     creature.activate(inA);
 
     creature.propagate(expectedA, config);

@@ -33,3 +33,11 @@ export class BackPropagationConfig implements BackPropagationOptions {
     }
   }
 }
+
+export function limitBias(bias: number) {
+  return Math.max(-MAX_BIAS, Math.min(MAX_BIAS, bias));
+}
+
+export function limitWeight(weight: number) {
+  return Math.max(-MAX_WEIGHT, Math.min(MAX_WEIGHT, weight));
+}

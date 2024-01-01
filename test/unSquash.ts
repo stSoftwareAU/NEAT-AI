@@ -1,16 +1,21 @@
 import {
   assertAlmostEquals,
   fail,
-} from "https://deno.land/std@0.210.0/testing/asserts.ts";
+} from "https://deno.land/std@0.210.0/assert/mod.ts";
 import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
 import { INVERSE } from "../src/methods/activations/types/INVERSE.ts";
 import { LOGISTIC } from "../src/methods/activations/types/LOGISTIC.ts";
+import { BIPOLAR_SIGMOID } from "../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
 
 function makeValues() {
   const values: number[] = [];
+  values.push(0);
+  values.push(-1);
+  values.push(1);
+  
   for (let i = 0; i < 1000; i++) {
     values.push(Math.random() * 3 - 1.5);
   }
@@ -50,6 +55,7 @@ Deno.test("unSquash", () => {
     LOGISTIC.NAME,
     INVERSE.NAME,
     IDENTITY.NAME,
+    BIPOLAR_SIGMOID.NAME,
   ];
 
   const values = makeValues();

@@ -15,8 +15,8 @@ import { PLANK_CONSTANT } from "../config/NeatConfig.ts";
 import {
   BackPropagationConfig,
   BackPropagationOptions,
-  MAX_BIAS,
-  MAX_WEIGHT,
+  limitBias,
+  limitWeight,
 } from "./BackPropagation.ts";
 
 export class Node implements TagsInterface, NodeInternal {
@@ -347,13 +347,7 @@ export class Node implements TagsInterface, NodeInternal {
       if (options.useAverageValuePerActivation) {
         //   console.info(`${this.index}: averageValuePerActivation ${averageValuePerActivation}`);
         if (Number.isFinite(averageValuePerActivation)) {
-          if (Math.abs(averageValuePerActivation) < MAX_WEIGHT) {
-            return averageValuePerActivation;
-          } else if (averageValuePerActivation > 0) {
-            return MAX_WEIGHT;
-          } else {
-            return -MAX_WEIGHT;
-          }
+          return limitWeight(averageValuePerActivation);
         } else {
           console.info(
             `${this.index}: Invalid Weight : averageValuePerActivation ${averageValuePerActivation}`,
@@ -361,16 +355,7 @@ export class Node implements TagsInterface, NodeInternal {
           return c.weight;
         }
       } else {
-        // console.info(
-        //   `${this.index}: averageValuePerAbsoluteActivation ${averageValuePerAbsoluteActivation}`,
-        // );
-        if (averageValuePerAbsoluteActivation > MAX_WEIGHT) {
-          return MAX_WEIGHT;
-        } else if (averageValuePerAbsoluteActivation < -MAX_WEIGHT) {
-          return -MAX_WEIGHT;
-        } else {
-          return averageValuePerAbsoluteActivation;
-        }
+        return limitWeight(averageValuePerAbsoluteActivation);
       }
     } else {
       return c.weight;
@@ -476,13 +461,7 @@ export class Node implements TagsInterface, NodeInternal {
           config.useAverageDifferenceBias == "Yes" ||
           Number.isFinite(unaccountedRatioBias) == false
         ) {
-          if (averageDifferenceBias > MAX_BIAS) {
-            return MAX_BIAS;
-          } else if (averageDifferenceBias < -MAX_BIAS) {
-            return -MAX_BIAS;
-          } else {
-            return averageDifferenceBias;
-          }
+          return limitBias(averageDifferenceBias);
         } else if (
           config.useAverageDifferenceBias == "No" ||
           (
@@ -490,40 +469,10 @@ export class Node implements TagsInterface, NodeInternal {
               Math.abs(unaccountedRatioBias - this.bias)
           )
         ) {
-          return unaccountedRatioBias;
+          return limitBias(unaccountedRatioBias);
         } else {
-          return averageDifferenceBias;
+          return limitBias(averageDifferenceBias);
         }
-
-        // if( Math.abs(averageDifferenceBias-this.bias) < Math.abs(unaccountedRatioBias-this.bias)){
-        // return averageDifferenceBias;
-        // }
-        // else{
-        // }
-        // }
-        // else{
-        // return unaccountedRatioBias;
-        // }
-
-        // return 1-(ns.totalValue / ns.totalWeightedSum); // D FAILS: Constants Few 4.5 best
-        // return 1-(ns.totalValue / ns.absoluteWeightedSum); // E FAILS: Constants Few 0.5
-        // return (ns.totalValue - ns.absoluteWeightedSum)/ns.count; // F FAILS: Constants Few 2.4
-        // return (ns.totalValue - Math.abs(ns.totalWeightedSum))/ns.count; // G FAILS: Constants Few 3
-        // return ((ns.totalValue - ns.totalWeightedSum)/ns.count)-1; // H FAILS: Constants Few 2.5
-        // return (ns.totalValue - ns.totalWeightedSum + ns.totalError) / ns.count; // I FAILS: Constants Few 4.35
-        // return (ns.totalValue - ns.totalWeightedSum - ns.totalError) / ns.count; // J FAILS: Constants Few 1
-
-        // return  (ns.totalValue - ns.totalWeightedSum ) / ns.count - ns.totalError; // K FAILS: Constants Few -3.76
-        // return  (ns.totalValue - ns.totalWeightedSum ) / ns.count + ns.totalError; // L FAILS: Constants Few 8.7
-
-        // return ns.totalValue / ns.absoluteWeightedSum - 1;
-        // const totalBias = ns.totalValue - ns.totalWeightedSum;
-        // const avgBias = totalBias / ns.count;
-        // if (!Number.isFinite(avgBias)) {
-        //   console.trace();
-        //   throw `${this.index}: invalid adjusted bias: ${avgBias}`;
-        // }
-        // return avgBias;
       } else {
         return this.bias;
       }
@@ -542,6 +491,9 @@ export class Node implements TagsInterface, NodeInternal {
     const adjustedBias = this.adjustedBias(config);
 
     this.bias = adjustedBias;
+    const ns = this.network.networkState.node(this.index);
+
+    ns.propagated = true;
   }
 
   private toValue(activation: number) {
@@ -585,6 +537,13 @@ export class Node implements TagsInterface, NodeInternal {
     targetActivation: number,
     config: BackPropagationConfig,
   ) {
+    const ns = this.network.networkState.node(this.index);
+
+    if (ns.propagated) {
+      console.trace();
+      throw `Already propagated ${this.index}`;
+    }
+
     const activation = this.adjustedActivation(config);
 
     const targetValue = this.toValue(targetActivation);
@@ -689,7 +648,6 @@ export class Node implements TagsInterface, NodeInternal {
     //     } -> ${remainingError.toFixed(3)}`,
     //   );
     // }
-    const ns = this.network.networkState.node(this.index);
 
     ns.count++;
     ns.totalError += remainingError;

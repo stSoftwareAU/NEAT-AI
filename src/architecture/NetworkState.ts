@@ -7,6 +7,7 @@ export class NodeState {
   public totalWeightedSum = 0;
   public absoluteWeightedSum = 0;
   public totalError = 0;
+  public propagated?: boolean = undefined;
 }
 
 export class ConnectionState {
