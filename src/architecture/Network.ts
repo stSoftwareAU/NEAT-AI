@@ -1239,7 +1239,7 @@ export class Network implements NetworkInternal {
 
     let bestError: number | undefined = undefined;
     let trainingFailed = 0;
-    let bestCreatureJSON = this.exportJSON();
+    let bestCreatureJSON: NetworkExport = this.exportJSON();
     let traceJSON: undefined | NetworkTrace = undefined;
 
     // @TODO need to apply Stochastic Gradient Descent
@@ -1306,37 +1306,35 @@ export class Network implements NetworkInternal {
         );
       }
 
-      if (bestError === undefined) {
-        bestError = error;
-      } else {
-        if (bestError < error) {
-          trainingFailed++;
-          console.warn(
-            `Training made the error ${bestError.toFixed(3)} -> ${error.toFixed(3)} worse ${trainingFailed} of ${iteration}`,
+      if (bestError !== undefined && bestError < error) {
+        trainingFailed++;
+        console.warn(
+          `Training made the error ${bestError.toFixed(3)} -> ${
+            error.toFixed(3)
+          } worse ${trainingFailed} of ${iteration}`,
+        );
+
+        if (options.traceStore) {
+          Deno.writeTextFileSync(
+            `.trace/${trainingFailed}_fail.json`,
+            JSON.stringify(this.exportJSON(), null, 2),
           );
-
-          if (options.traceStore) {
-            Deno.writeTextFileSync(
-              `.trace/${trainingFailed}_fail.json`,
-              JSON.stringify(this.exportJSON(), null, 2),
-            );
-          }
-          this.loadFrom(bestCreatureJSON, false);
-        } else {
-          bestCreatureJSON = this.exportJSON();
-          bestError = error;
-          traceJSON = this.traceJSON();
-          this.applyLearnings(backPropagationConfig);
-          this.clearState();
         }
+        this.loadFrom(bestCreatureJSON, false);
+      } else {
+        bestCreatureJSON = this.exportJSON();
+        bestError = error;
+        traceJSON = this.traceJSON();
+        this.applyLearnings(backPropagationConfig);
+        this.clearState();
+      }
 
-        if (error <= targetError || iteration >= iterations) {
-          return {
-            iteration: iteration,
-            error: error,
-            trace: traceJSON,
-          };
-        }
+      if (error <= targetError || iteration >= iterations) {
+        return {
+          iteration: iteration,
+          error: error,
+          trace: traceJSON,
+        };
       }
     }
   }

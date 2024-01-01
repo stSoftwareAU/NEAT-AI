@@ -23,7 +23,7 @@ Deno.test("AND", () => {
     });
 
     if (results.error > 0.03 && attempts < 12) continue;
-    console.info( results );
+    console.info(results);
     assert(results.error <= 0.03, "Error rate was: " + results.error);
     break;
   }

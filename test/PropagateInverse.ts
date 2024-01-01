@@ -176,7 +176,12 @@ Deno.test("propagateInverseRandom", () => {
       if (result1.error <= result2.error) continue;
     }
 
-    assert(result1.error > result2.error, `Didn't improve error ${result1.error.toFixed(3)} -> ${result2.error.toFixed(3)}`);
+    assert(
+      result1.error > result2.error,
+      `Didn't improve error ${result1.error.toFixed(3)} -> ${
+        result2.error.toFixed(3)
+      }`,
+    );
 
     Deno.writeTextFileSync(
       ".trace/result.json",
