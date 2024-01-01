@@ -1222,15 +1222,12 @@ export class Network implements NetworkInternal {
     options: TrainOptions,
   ) {
     options = options || {};
-    // Warning messages
-    if (options.iterations == undefined) {
-      console.warn(
-        "No target iterations given, running until error is reached!",
-      );
-    }
 
     // Read the options
-    const targetError = options.error || 0.05;
+    const targetError =
+      options.error !== undefined && Number.isFinite(options.error)
+        ? options.error
+        : 0.05;
     const cost = Costs.find(options.cost ? options.cost : "MSE");
     const baseRate = options.rate == undefined ? Math.random() : options.rate;
 
@@ -1238,16 +1235,22 @@ export class Network implements NetworkInternal {
       ? options.ratePolicy
       : randomPolicyName();
     const ratePolicy = findRatePolicy(ratePolicyName);
+    const iterations = Math.max(options.iterations ? options.iterations : 0, 2);
 
-    const iterations = options.iterations ? options.iterations : 0;
-
+    // @TODO Need to randomize files.
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
       dataDir + "/" + fn
     );
 
     // Loops the training process
     let iteration = 0;
-    let error = 1;
+
+    let bestError: number | undefined = undefined;
+    let trainingFailed = 0;
+    let bestCreatureJSON = this.exportJSON();
+    let traceJSON: undefined | NetworkTrace = undefined;
+
+    // @TODO need to apply Stochastic Gradient Descent
     const EMPTY = { input: [], output: [] };
     while (true) {
       iteration++;
@@ -1282,10 +1285,7 @@ export class Network implements NetworkInternal {
           throw "Set size must be positive";
         }
         const len = json.length;
-        const batchSize = Math.max(
-          options.batchSize ? options.batchSize : Math.round(len / 10),
-          1,
-        );
+
         for (let i = len; i--;) {
           const data = json[i];
 
@@ -1293,27 +1293,26 @@ export class Network implements NetworkInternal {
             /* Not cached so we can release memory as we go */
             json[i] = EMPTY;
           }
-          const update = (i + 1) % batchSize === 0 || i === 0;
 
           const output = this.activate(data.input);
 
           errorSum += cost.calculate(data.output, output);
 
           this.propagate(currentRate, data.output);
-          if (update) {
-            this.propagateUpdate();
-          }
-          /* Clear if we've updated the state batch only */
-          if (update && (i || j)) {
-            /* Hold the last one so we can write it out */
-            this.clearState();
-          }
+          // if (update) {
+          //   this.propagateUpdate();
+          // }
+          // /* Clear if we've updated the state batch only */
+          // if (update && (i || j)) {
+          //   /* Hold the last one so we can write it out */
+          //   this.clearState();
+          // }
         }
 
         counter += len;
       }
 
-      error = errorSum / counter;
+      const error = errorSum / counter;
 
       if (
         options.log && (
@@ -1333,22 +1332,31 @@ export class Network implements NetworkInternal {
         );
       }
 
-      if (
-        Number.isFinite(error) &&
-        error > targetError &&
-        (iterations === 0 || iteration < iterations)
-      ) {
-        this.applyLearnings();
-        this.clearState();
+      if (bestError === undefined) {
+        bestError = error;
       } else {
-        const traceJSON = this.traceJSON();
-        this.applyLearnings();
-        this.clearState();
+        if (bestError < error) {
+          trainingFailed++;
+          console.warn(
+            `Training made the error worse ${trainingFailed} of ${iteration}`,
+          );
 
-        return {
-          error: error,
-          trace: traceJSON,
-        };
+          this.loadFrom(bestCreatureJSON, false);
+        } else {
+          bestCreatureJSON = this.exportJSON();
+          bestError = error;
+          traceJSON = this.traceJSON();
+          this.applyLearnings();
+          this.clearState();
+        }
+
+        if (error <= targetError || iteration >= iterations) {
+          return {
+            iteration: iteration,
+            error: error,
+            trace: traceJSON,
+          };
+        }
       }
     }
   }
