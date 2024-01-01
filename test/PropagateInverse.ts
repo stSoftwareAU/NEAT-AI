@@ -171,12 +171,12 @@ Deno.test("propagateInverseRandom", () => {
       ".trace/4-last.json",
       JSON.stringify(creatureB.exportJSON(), null, 2),
     );
-    console.info(result1.error, result2.error);
+    // console.info(result1.error, result2.error);
     if (attempts < 12) {
       if (result1.error <= result2.error) continue;
     }
 
-    assert(result1.error > result2.error, `Didn't improve error`);
+    assert(result1.error > result2.error, `Didn't improve error ${result1.error.toFixed(3)} -> ${result2.error.toFixed(3)}`);
 
     Deno.writeTextFileSync(
       ".trace/result.json",

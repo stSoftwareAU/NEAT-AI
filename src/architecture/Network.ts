@@ -1312,7 +1312,7 @@ export class Network implements NetworkInternal {
         if (bestError < error) {
           trainingFailed++;
           console.warn(
-            `Training made the error worse ${trainingFailed} of ${iteration}`,
+            `Training made the error ${bestError.toFixed(3)} -> ${error.toFixed(3)} worse ${trainingFailed} of ${iteration}`,
           );
 
           if (options.traceStore) {
