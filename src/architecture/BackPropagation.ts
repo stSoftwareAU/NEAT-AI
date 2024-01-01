@@ -4,8 +4,8 @@ export interface BackPropagationOptions {
   useAverageDifferenceBias?: "Yes" | "No" | "Maybe";
 }
 
-export const MAX_WEIGHT = 10_000;
-export const MAX_BIAS = 10_000;
+export const MAX_WEIGHT = 100_000;
+export const MAX_BIAS = 100_000;
 
 export class BackPropagationConfig implements BackPropagationOptions {
   public useAverageValuePerActivation: boolean;

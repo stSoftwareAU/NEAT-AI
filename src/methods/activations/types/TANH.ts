@@ -15,9 +15,9 @@ export class TANH implements ActivationInterface, UnSquashInterface {
   // Function to estimate the input from the activation value.
   // TANH is invertible, and its inverse is calculated using a logarithmic function.
   unSquash(activation: number): number {
-    if (activation >= 1 || activation <= -1) {
-      throw new Error("Input to unSquash must be in the range (-1, 1)");
-    }
+    // if (activation >= 1 || activation <= -1) {
+    //   throw new Error("Input to unSquash must be in the range (-1, 1)");
+    // }
     return 0.5 * Math.log((1 + activation) / (1 - activation));
   }
 

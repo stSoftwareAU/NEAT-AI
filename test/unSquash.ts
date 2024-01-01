@@ -9,13 +9,14 @@ import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.
 import { INVERSE } from "../src/methods/activations/types/INVERSE.ts";
 import { LOGISTIC } from "../src/methods/activations/types/LOGISTIC.ts";
 import { BIPOLAR_SIGMOID } from "../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
+import { TANH } from "../src/methods/activations/types/TANH.ts";
 
 function makeValues() {
   const values: number[] = [];
   values.push(0);
   values.push(-1);
   values.push(1);
-  
+
   for (let i = 0; i < 1000; i++) {
     values.push(Math.random() * 3 - 1.5);
   }
@@ -56,6 +57,7 @@ Deno.test("unSquash", () => {
     INVERSE.NAME,
     IDENTITY.NAME,
     BIPOLAR_SIGMOID.NAME,
+    TANH.NAME,
   ];
 
   const values = makeValues();

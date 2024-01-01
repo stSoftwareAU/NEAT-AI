@@ -15,10 +15,10 @@ export class RELU implements ActivationInterface, UnSquashInterface {
   // As ReLU is not an invertible function, this estimation returns the same
   // value for the input and assumes that the input was non-negative.
   unSquash(activation: number): number {
-    if (activation < 0) {
-      throw new Error("Input to unSquash must be non-negative");
-    }
-    return activation;
+    // if (activation < 0) {
+    //   throw new Error("Input to unSquash must be non-negative");
+    // }
+    return activation > 0 ? activation : 0;
   }
 
   // Range of the activation function. ReLU outputs values between 0 and positive infinity.

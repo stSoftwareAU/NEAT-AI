@@ -31,7 +31,7 @@ import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { addTag } from "../tags/TagsInterface.ts";
 import { Connection } from "./Connection.ts";
-import { NetworkState } from "./NetworkState.ts";
+import { NetworkState, NodeState } from "./NetworkState.ts";
 import { BackPropagationConfig } from "./BackPropagation.ts";
 
 const cacheDataFile = {
@@ -1219,12 +1219,6 @@ export class Network implements NetworkInternal {
     options: TrainOptions,
   ) {
     options = options || {};
-    // Warning messages
-    if (options.iterations == undefined) {
-      console.warn(
-        "No target iterations given, running until error is reached!",
-      );
-    }
 
     // Read the options
     const targetError =
@@ -1233,7 +1227,7 @@ export class Network implements NetworkInternal {
         : 0.05;
     const cost = Costs.find(options.cost ? options.cost : "MSE");
 
-    const iterations = options.iterations ? options.iterations : 0;
+    const iterations = Math.max(options.iterations ? options.iterations : 0, 2);
 
     // @TODO Need to randomize files.
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
@@ -1243,9 +1237,11 @@ export class Network implements NetworkInternal {
     // Loops the training process
     let iteration = 0;
 
-    let lastError = Infinity;
+    let bestError: number | undefined = undefined;
     let trainingFailed = 0;
-    let bestCreatureJSON = null;
+    let bestCreatureJSON = this.exportJSON();
+    let traceJSON: undefined | NetworkTrace = undefined;
+
     // @TODO need to apply Stochastic Gradient Descent
     const EMPTY = { input: [], output: [] };
     while (true) {
@@ -1310,50 +1306,37 @@ export class Network implements NetworkInternal {
         );
       }
 
-      let trainingOk = true;
-      if (lastError < error) {
-        trainingFailed++;
-        console.warn(
-          `Training made the error worse ${trainingFailed} of ${iteration}`,
-        );
-        trainingOk = false;
-
-        if (options.traceStore) {
-          Deno.writeTextFileSync(
-            `.trace/${trainingFailed}_fail.json`,
-            JSON.stringify(this.traceJSON(), null, 2),
+      if (bestError === undefined) {
+        bestError = error;
+      } else {
+        if (bestError < error) {
+          trainingFailed++;
+          console.warn(
+            `Training made the error worse ${trainingFailed} of ${iteration}`,
           );
-        }
-        if (bestCreatureJSON) {
+
           if (options.traceStore) {
             Deno.writeTextFileSync(
-              `.trace/${trainingFailed}_best.json`,
-              JSON.stringify(bestCreatureJSON, null, 2),
+              `.trace/${trainingFailed}_fail.json`,
+              JSON.stringify(this.exportJSON(), null, 2),
             );
           }
           this.loadFrom(bestCreatureJSON, false);
+        } else {
+          bestCreatureJSON = this.exportJSON();
+          bestError = error;
+          traceJSON = this.traceJSON();
+          this.applyLearnings(backPropagationConfig);
+          this.clearState();
         }
-      } else {
-        bestCreatureJSON = this.exportJSON();
 
-        lastError = error;
-      }
-      if (
-        Number.isFinite(error) &&
-        error > targetError &&
-        (iterations === 0 || iteration < iterations)
-      ) {
-        if (trainingOk) this.applyLearnings(backPropagationConfig);
-        this.clearState();
-      } else {
-        const traceJSON = this.traceJSON();
-        if (trainingOk) this.applyLearnings(backPropagationConfig);
-        this.clearState();
-
-        return {
-          error: error,
-          trace: traceJSON,
-        };
+        if (error <= targetError || iteration >= iterations) {
+          return {
+            iteration: iteration,
+            error: error,
+            trace: traceJSON,
+          };
+        }
       }
     }
   }
@@ -2251,16 +2234,11 @@ export class Network implements NetworkInternal {
       const n = Node.fromJSON(jn, this);
       n.index = pos;
       if ((jn as NodeTrace).trace) {
-        const trace = (jn as NodeTrace).trace;
+        const trace: NodeState = (jn as NodeTrace).trace;
         const ns = this.networkState.node(n.index);
-
-        // ns.errorProjected = trace.errorProjected ? trace.errorProjected : 0;
-        // ns.errorResponsibility = trace.errorResponsibility
-        //   ? trace.errorResponsibility
-        //   : 0;
-        // ns.derivative = trace.derivative ? trace.derivative : 0;
-        ns.totalValue = trace.totalValue ? trace.totalValue : 0;
+        Object.assign(ns, trace);
       }
+
       uuidMap.set(n.uuid, pos);
 
       this.nodes[pos] = n;
@@ -2287,11 +2265,7 @@ export class Network implements NetworkInternal {
       if ((conn as ConnectionTrace).trace) {
         const cs = this.networkState.connection(connection.from, connection.to);
         const trace = (conn as ConnectionTrace).trace;
-
-        cs.used = trace.used;
-        cs.totalValue = trace.totalValue ? trace.totalValue : 0;
-
-        cs.totalActivation = trace.totalActivation ? trace.totalActivation : 0;
+        Object.assign(cs, trace);
       }
     }
 

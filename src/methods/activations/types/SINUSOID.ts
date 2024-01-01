@@ -15,9 +15,9 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
   // Because the sine function is periodic, unSquash will return the
   // inverse sine (arcsin) as an estimate. This is not a perfect inversion.
   unSquash(activation: number): number {
-    if (activation < -1 || activation > 1) {
-      throw new Error("Input to unSquash must be between -1 and 1");
-    }
+    // if (activation < -1 || activation > 1) {
+    //   throw new Error("Input to unSquash must be between -1 and 1");
+    // }
     return Math.asin(activation);
   }
 

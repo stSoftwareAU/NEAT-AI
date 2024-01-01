@@ -158,17 +158,18 @@ Deno.test("propagateInverseRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.internalJSON(), null, 2),
+      JSON.stringify(creatureB.exportJSON(), null, 2),
     );
 
     const result2 = creatureB.train(ts, {
       iterations: 100,
       error: 0,
+      traceStore: ".trace",
     });
 
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.internalJSON(), null, 2),
+      JSON.stringify(creatureB.exportJSON(), null, 2),
     );
     console.info(result1.error, result2.error);
     if (attempts < 12) {

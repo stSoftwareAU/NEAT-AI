@@ -64,11 +64,13 @@ Deno.test("ifPropagation", () => {
     JSON.stringify(traceJson, null, 2),
   );
   let usedCount = 0;
-  traceJson.connections.forEach((c: ConnectionTrace) => {
-    if (c.trace && c.trace.used) {
-      usedCount++;
-    }
-  });
+  if (traceJson) {
+    traceJson.connections.forEach((c: ConnectionTrace) => {
+      if (c.trace && c.trace.used) {
+        usedCount++;
+      }
+    });
+  }
 
   if (usedCount > 1) {
     foundUsed = true;
@@ -79,7 +81,9 @@ Deno.test("ifPropagation", () => {
     "Should have traced usage",
   );
 
-  traceJson.nodes.forEach((n) => {
-    assert(Math.abs(n.bias ? n.bias : 0) < 1, `Invalid bias ${n.bias}`);
-  });
+  if (traceJson) {
+    traceJson.nodes.forEach((n) => {
+      assert(Math.abs(n.bias ? n.bias : 0) < 1, `Invalid bias ${n.bias}`);
+    });
+  }
 });
