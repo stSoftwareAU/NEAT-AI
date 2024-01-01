@@ -1,4 +1,7 @@
+/* groovylint-disable DuplicateNumberLiteral, DuplicateStringLiteral, NestedBlockDepth */
+/* groovylint-disable-next-line CompileStatic */
 DENO_IMAGE = 'denoland/deno:latest'
+/* groovylint-disable-next-line GStringExpressionWithinString */
 TOOLS_ARGS = '-e DENO_DIR=${WORKSPACE}/.deno --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
 TOOLS_IMAGE = "${ECR}/develop/sts-tools:latest"
 
