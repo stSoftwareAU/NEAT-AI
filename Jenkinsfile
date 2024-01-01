@@ -93,7 +93,7 @@ pipeline {
         // Publish Cobertura report
         // cobertura coberturaReportFile: 'coverage.xml'
         recordCoverage(
-          tools: [[parser: 'Cobertura']],
+          tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
           id: 'Cobertura',
           name: 'Cobertura Coverage',
           sourceCodeRetention: 'EVERY_BUILD',
