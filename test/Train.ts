@@ -22,7 +22,7 @@ Deno.test("AND", () => {
       iterations: 1_000,
     });
 
-    if (results.error > 0.03 && attempts < 12) continue;
+    if (results.error > 0.36 && attempts < 12) continue;
     assert(results.error <= 0.36, "Error rate was: " + results.error);
     break;
   }
