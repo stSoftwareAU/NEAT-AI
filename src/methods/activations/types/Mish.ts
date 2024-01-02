@@ -38,8 +38,17 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     };
   }
 
-  unSquash(activation: number): number {
-    let guess = activation; // Initial guess
+  unSquash(activation: number, hint?: number): number {
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be a finite number");
+    }
+
+    let guess = hint !== undefined
+      ? hint
+      : (activation >= 0
+        ? activation
+        : (activation < -1 ? -1 : activation / 2)); // Use the hint as the initial guess if provided
+
     const iterations = 200_000; // Number of iterations; you can adjust this
     const tolerance = 0.0001; // Tolerance for convergence; you can adjust this
 
@@ -53,7 +62,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
         break;
       }
 
-      guess -= err / errDerivative;
+      guess -= err / (errDerivative + Number.EPSILON); // Use the constant EPSILON here
 
       if (Math.abs(err) < tolerance) {
         // Converged to the root
@@ -61,7 +70,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
       }
     }
 
-    return guess;
+    return Number.isFinite(guess) ? guess : 0; // Return 0 if guess is not a finite number
   }
 
   range(): { low: number; high: number } {

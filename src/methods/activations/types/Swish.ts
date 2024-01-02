@@ -11,11 +11,13 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Swish implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Swish";
-  private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
+  private static readonly MAX_ITERATIONS = 10_000; // Maximum iterations for Newton-Raphson
   private static readonly EPSILON = 1e-6; // Tolerance for Newton-Raphson
 
-  unSquash(activation: number): number {
-    let x = activation; // Initial guess
+  unSquash(activation: number, hint?: number): number {
+    let x = hint !== undefined
+      ? hint
+      : (activation >= 0 ? activation : activation / 2); // Use the hint as the initial guess if provided
 
     for (let i = 0; i < Swish.MAX_ITERATIONS; i++) {
       const fx = x / (1 + Math.exp(-x)) - activation;

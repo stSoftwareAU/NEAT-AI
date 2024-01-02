@@ -13,13 +13,20 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Activation_function#Comparison_of_activation_functions
  */
 export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
-  // Function to estimate the input from the activation value.
-  // The inverse of Softsign is x = f(x) / (1 - |f(x)|)
+  /* The inverse of Softsign is x = f(x) / (1 - |f(x)|)*/
   unSquash(activation: number): number {
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be a finite number");
+    }
+
+    if (Math.abs(activation) >= 1) {
+      return activation;
+    }
+
     return activation / (1 - Math.abs(activation));
   }
 
-  // Range of the activation function. Softsign outputs values between -1 and +1.
+  /* Range of the activation function. Softsign outputs values between -1 and +1.*/
   range(): { low: number; high: number } {
     return { low: -1, high: 1 };
   }

@@ -2,6 +2,7 @@ export interface BackPropagationOptions {
   useAverageValuePerActivation?: boolean;
   disableRandomList?: boolean;
   useAverageDifferenceBias?: "Yes" | "No" | "Maybe";
+  // @TODO implement generations
 }
 
 export const MAX_WEIGHT = 100_000;

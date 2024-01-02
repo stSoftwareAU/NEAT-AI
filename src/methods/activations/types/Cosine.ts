@@ -18,8 +18,24 @@ export class Cosine implements ActivationInterface, UnSquashInterface {
     return Math.cos(x);
   }
 
-  unSquash(activation: number): number {
-    return Math.acos(activation);
+  unSquash(activation: number, hint?: number): number {
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be a finite number");
+    }
+
+    if (activation < -1 || activation > 1) {
+      return activation; // Return activation as the best guess if it's not in the valid range
+    }
+
+    const acos = Math.acos(activation);
+
+    // If no hint is provided, return the value in the range [0, π]
+    if (hint === undefined) {
+      return acos;
+    }
+
+    // If a hint is provided, return the value with the same sign as the hint
+    return hint >= 0 ? Math.abs(acos) : -Math.abs(acos);
   }
 
   squashAndDerive(x: number) {

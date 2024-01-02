@@ -9,6 +9,25 @@ import { INVERSE } from "../src/methods/activations/types/INVERSE.ts";
 import { LOGISTIC } from "../src/methods/activations/types/LOGISTIC.ts";
 import { Mish } from "../src/methods/activations/types/Mish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
+import { SELU } from "../src/methods/activations/types/SELU.ts";
+import { ABSOLUTE } from "../src/methods/activations/types/ABSOLUTE.ts";
+import { BENT_IDENTITY } from "../src/methods/activations/types/BENT_IDENTITY.ts";
+import { BIPOLAR } from "../src/methods/activations/types/BIPOLAR.ts";
+import { CLIPPED } from "../src/methods/activations/types/CLIPPED.ts";
+import { Cosine } from "../src/methods/activations/types/Cosine.ts";
+import { ELU } from "../src/methods/activations/types/ELU.ts";
+import { Exponential } from "../src/methods/activations/types/Exponential.ts";
+import { GAUSSIAN } from "../src/methods/activations/types/GAUSSIAN.ts";
+import { HARD_TANH } from "../src/methods/activations/types/HARD_TANH.ts";
+import { LeakyReLU } from "../src/methods/activations/types/LeakyReLU.ts";
+import { LogSigmoid } from "../src/methods/activations/types/LogSigmoid.ts";
+import { RELU } from "../src/methods/activations/types/RELU.ts";
+import { SINUSOID } from "../src/methods/activations/types/SINUSOID.ts";
+import { Softplus } from "../src/methods/activations/types/Softplus.ts";
+import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
+import { StdInverse } from "../src/methods/activations/types/StdInverse.ts";
+import { STEP } from "../src/methods/activations/types/STEP.ts";
+import { Swish } from "../src/methods/activations/types/Swish.ts";
 
 function makeValues() {
   const values: number[] = [];
@@ -30,21 +49,92 @@ function check(squashName: string, values: number[]) {
     const tmpSquash = squash as ActivationInterface;
 
     values.forEach((v) => {
+      let tolerancePercent = 0.01;
+      let expected = v;
+      let hint: number | undefined = undefined;
+      switch (squashName) {
+        case "ABSOLUTE":
+          if (v < 0) {
+            tolerancePercent = 200;
+          }
+          break;
+        case "BIPOLAR":
+          expected = v > 0 ? 1 : -1;
+          break;
+        case "CLIPPED":
+          if (v < -1) {
+            expected = -1;
+          } else if (v > 1) {
+            expected = 1;
+          }
+          break;
+        case "Cosine":
+          if (v < 0) {
+            hint = -1;
+          } else {
+            hint = 1;
+          }
+          break;
+        case "GAUSSIAN":
+          if (v < 0) {
+            hint = -1;
+          } else {
+            hint = 1;
+          }
+          break;
+        case "HARD_TANH":
+          if (v < -1) {
+            expected = -1;
+          } else if (v > 1) {
+            expected = 1;
+          }
+          break;
+        case "Mish":
+          tolerancePercent = 50;
+          if (v < 0) {
+            hint = v - Number.EPSILON;
+          }
+          break;
+        case "RELU":
+          if (v < 0) {
+            hint = v;
+          }
+          break;
+        case "STEP":
+          expected = v > 0 ? 1 : 0;
+          break;
+        case "Swish":
+          if (v < 0) {
+            hint = v - Number.EPSILON;
+          }
+          tolerancePercent = 1;
+          break;
+
+        default:
+          tolerancePercent = 1;
+      }
+
       const activation = tmpSquash.squash(v);
 
       let tmpValue = activation;
       if ((squash as UnSquashInterface).unSquash != undefined) {
-        tmpValue = (squash as UnSquashInterface).unSquash(activation);
+        tmpValue = (squash as UnSquashInterface).unSquash(activation, hint);
       }
 
-      const percentage = Math.abs((tmpValue - v) / (v + Number.EPSILON)) * 100;
+      const percentage = Math.abs(
+        (tmpValue - expected) < 0.0001
+          ? 0
+          : (tmpValue - expected) / (expected + Number.EPSILON),
+      ) * 100;
+
+      const options = hint === undefined ? "" : " hint=" + hint.toFixed(3);
       assert(
-        percentage < 1,
-        `${tmpSquash.getName()} Value ${v.toFixed(3)} -> Squash ${
+        percentage <= tolerancePercent + 1e-7,
+        `Activation '${tmpSquash.getName()}' Value ${v.toFixed(3)} -> Squash ${
           activation.toFixed(3)
-        } -> UnSquashed ${tmpValue.toFixed(3)} error of ${
+        } -> UnSquashed ${tmpValue.toFixed(3)}${options} error of ${
           percentage.toFixed(2)
-        }%`,
+        }% is greater than tolerance of ${tolerancePercent}%`,
       );
     });
   } else {
@@ -61,15 +151,124 @@ Deno.test("Mish", () => {
   });
 });
 
+Deno.test("SELU", () => {
+  const activation = Activations.find(SELU.NAME) as UnSquashInterface;
+  const values = [-1.7580993408473766];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(Number.isFinite(tmpValue), `SELU ${v} not finite ${tmpValue}`);
+  });
+});
+
+Deno.test("BIPOLAR_SIGMOID", () => {
+  const activation = Activations.find(
+    BIPOLAR_SIGMOID.NAME,
+  ) as UnSquashInterface;
+  const values = [1];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `BIPOLAR_SIGMOID ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("SINUSOID", () => {
+  const activation = Activations.find(SINUSOID.NAME) as UnSquashInterface;
+  const values = [-64];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(Number.isFinite(tmpValue), `SINUSOID ${v} not finite ${tmpValue}`);
+  });
+});
+
+Deno.test("ELU", () => {
+  const activation = Activations.find(
+    ELU.NAME,
+  ) as UnSquashInterface;
+  const values = [-1];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("Cosine", () => {
+  const activation = Activations.find(
+    Cosine.NAME,
+  ) as UnSquashInterface;
+  const values = [5];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("SOFTSIGN", () => {
+  const activation = Activations.find(
+    SOFTSIGN.NAME,
+  ) as UnSquashInterface;
+
+  const values = [1];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("TANH", () => {
+  const activation = Activations.find(
+    TANH.NAME,
+  ) as UnSquashInterface;
+
+  const values = [1];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
 Deno.test("unSquash", () => {
   const list = [
-    // BENT_IDENTITY.NAME,
-    LOGISTIC.NAME,
-    INVERSE.NAME,
-    IDENTITY.NAME,
+    ABSOLUTE.NAME,
+    BENT_IDENTITY.NAME,
     BIPOLAR_SIGMOID.NAME,
+    BIPOLAR.NAME,
+    CLIPPED.NAME,
+    Cosine.NAME,
+    ELU.NAME,
+    Exponential.NAME,
+    GAUSSIAN.NAME,
+    HARD_TANH.NAME,
+    IDENTITY.NAME,
+    INVERSE.NAME,
+    LeakyReLU.NAME,
+    LOGISTIC.NAME,
+    LogSigmoid.NAME,
+    BIPOLAR_SIGMOID.NAME,
+    Mish.NAME,
+    RELU.NAME,
+    SELU.NAME,
+    SINUSOID.NAME,
+    Softplus.NAME,
+    SOFTSIGN.NAME,
+    StdInverse.NAME,
+    STEP.NAME,
+    Swish.NAME,
     TANH.NAME,
-    // Mish.NAME,
   ];
 
   const values = makeValues();

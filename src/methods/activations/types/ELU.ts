@@ -4,10 +4,14 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
 /** Exponential Linear(ELU) */
 export class ELU implements ActivationInterface, UnSquashInterface {
   unSquash(activation: number): number {
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be a finite number");
+    }
+
     if (activation > 0) {
       return activation;
     } else {
-      return Math.log((activation / ELU.ALPHA) + 1);
+      return Math.log((activation / ELU.ALPHA) + 1 + Number.EPSILON);
     }
   }
 

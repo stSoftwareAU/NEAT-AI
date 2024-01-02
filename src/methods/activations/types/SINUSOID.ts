@@ -11,13 +11,17 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Sine
  */
 export class SINUSOID implements ActivationInterface, UnSquashInterface {
-  // Function to estimate the input from the activation value.
-  // Because the sine function is periodic, unSquash will return the
-  // inverse sine (arcsin) as an estimate. This is not a perfect inversion.
+  /* Function to estimate the input from the activation value.
+   * Because the sine function is periodic, unSquash will return the
+   * inverse sine (arcsin) as an estimate. This is not a perfect inversion.
+   */
   unSquash(activation: number): number {
-    // if (activation < -1 || activation > 1) {
-    //   throw new Error("Input to unSquash must be between -1 and 1");
-    // }
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be a finite number");
+    }
+    if (activation < -1 || activation > 1) {
+      return activation;
+    }
     return Math.asin(activation);
   }
 

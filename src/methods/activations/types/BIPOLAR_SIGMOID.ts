@@ -19,7 +19,13 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number): number {
-    return -Math.log((2 / (activation + 1)) - 1);
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be a finite number");
+    }
+
+    const result = -Math.log((2 / (activation + 1)) - 1);
+
+    return Number.isFinite(result) ? result : activation; // Return activation if result is not a finite number
   }
 
   squash(x: number) {
