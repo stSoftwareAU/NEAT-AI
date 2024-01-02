@@ -5,6 +5,15 @@ import { CostInterface, Costs } from "../../Costs.ts";
 import { Network } from "../../architecture/Network.ts";
 
 export class WorkerProcessor {
+  constructor(name?: string) {
+    if (name) {
+      this.name = name;
+    } else {
+      this.name = "main";
+    }
+  }
+
+  private name: string;
   private costName?: string;
   private dataSetDir: string | null = null;
   private cost?: CostInterface;
@@ -44,6 +53,10 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
+      if( this.name !== "main"){
+        console.log("Training on Thread/Worker ID:", this.name);
+      }
+
       const network = Network.fromJSON(
         JSON.parse(data.train.network),
         data.debug,
