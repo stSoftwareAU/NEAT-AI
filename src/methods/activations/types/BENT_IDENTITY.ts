@@ -18,6 +18,9 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     const epsilon = 1e-6;
 
     for (let i = 0; i < maxIterations; i++) {
+      if (Math.abs(x) >= 1e153) { // 1e153 is a reasonable threshold to prevent overflow
+        return x; // Return x as the best guess if it's too large
+      }
       const d = Math.sqrt(x * x + 1);
       const fx = (d - 1) / 2 + x - activation;
 

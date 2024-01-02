@@ -29,6 +29,10 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
       return activation; // Return activation as the best guess if it's a large positive number
     }
 
+    if (activation < 1e-15) { // 1e-15 is a reasonable threshold to prevent underflow
+      return activation; // Return activation as the best guess if it's a very small positive number
+    }
+
     return Math.log(Math.exp(activation) - 1);
   }
 
@@ -45,6 +49,10 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
   // Softplus function definition
   squash(x: number) {
+    if (x >= 709) { // 709 is a reasonable threshold to prevent overflow, as Math.exp(709) is the largest finite number in JavaScript
+      return Number.MAX_VALUE; // Return a large positive number as the best guess if x is too large
+    }
+
     return Math.log(1 + Math.exp(x));
   }
 

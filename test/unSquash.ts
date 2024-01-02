@@ -291,7 +291,7 @@ Deno.test("LogSigmoid", () => {
     LogSigmoid.NAME,
   ) as UnSquashInterface;
 
-  const values = [131.5581335909996];
+  const values = [131.5581335909996, 23.214287510522993];
   values.forEach((v) => {
     const tmpValue = activation.unSquash(v);
     assert(
@@ -351,17 +351,53 @@ Deno.test("unSquash", () => {
   list.forEach((name) => {
     check(name, values);
     checkKnownActivations(name);
+    checkKnownValues(name);
   });
 });
 
 function checkKnownActivations(squashName: string) {
   const squash = Activations.find(squashName) as UnSquashInterface;
-  const activations = [-1000, 0, 1000, Number.EPSILON, Number.EPSILON * -1];
+  const activations = [
+    -1000,
+    0,
+    1000,
+    Number.EPSILON,
+    Number.EPSILON * -1,
+    -1,
+    1,
+    2,
+    -2,
+    10,
+    -10,
+    23.214287510522993,
+    0.6411813868085767,
+    -0.6411813868085767,
+
+    3.7853263272041134e+306,
+    Number.MAX_VALUE,
+    Number.MIN_VALUE,
+  ];
   activations.forEach((activation) => {
     const tmpValue = squash.unSquash(activation);
     assert(
       Number.isFinite(tmpValue),
-      `${squashName} ${activation} not finite ${tmpValue}`,
+      `${squashName} unSquash ${activation} not finite ${tmpValue}`,
+    );
+  });
+}
+
+function checkKnownValues(squashName: string) {
+  const squasher = Activations.find(squashName) as ActivationInterface;
+  const values = [
+    -10_000,
+    0,
+    10_000,
+  ];
+  values.forEach((value) => {
+    const tmpValue = squasher.squash(value);
+    assert(
+      Number.isFinite(tmpValue),
+      `${squashName} ${value} not finite was: ${tmpValue}`,
     );
   });
 }

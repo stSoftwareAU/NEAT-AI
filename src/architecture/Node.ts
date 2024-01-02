@@ -15,6 +15,7 @@ import { PLANK_CONSTANT } from "../config/NeatConfig.ts";
 import {
   BackPropagationConfig,
   BackPropagationOptions,
+  limitActivation,
   limitBias,
   limitWeight,
 } from "./BackPropagation.ts";
@@ -369,94 +370,20 @@ export class Node implements TagsInterface, NodeInternal {
       const ns = this.network.networkState.node(this.index);
 
       if (ns.count) {
-        // console.info(
-        //   `${this.index}: adjustedBias A: ${ns.totalValue} / ${ns.absoluteWeightedSum} = ${
-        //     ns.totalValue / ns.absoluteWeightedSum
-        //   }`,
-        // );
-        // console.info(
-        //   `${this.index}: adjustedBias B: ${ns.totalValue} / ${ns.totalWeightedSum} = ${
-        //     ns.totalValue / ns.totalWeightedSum
-        //   }`,
-        // );
-        // console.info(
-        //   `${this.index}: adjustedBias C: (${ns.totalValue} - ${ns.totalWeightedSum})/${ns.count} = ${
-        //     (ns.totalValue - ns.totalWeightedSum) / ns.count
-        //   }`,
-        // );
-        // console.info(
-        //   `${this.index}: adjustedBias D: 1-(${ns.totalValue} / ${ns.totalWeightedSum}) = ${
-        //     1 - (ns.totalValue / ns.totalWeightedSum)
-        //   }`,
-        // );
-        // console.info(
-        //   `${this.index}: adjustedBias E: 1-(${ns.totalValue} / ${ns.absoluteWeightedSum}) = ${
-        //     1 - (ns.totalValue / ns.absoluteWeightedSum)
-        //   }`,
-        // );
-        // console.info(
-        //   `${this.index}: adjustedBias F: (${ns.totalValue} - ${ns.absoluteWeightedSum})/${ns.count} = ${
-        //     (ns.totalValue - ns.absoluteWeightedSum) / ns.count
-        //   }`,
-        // );
-        // console.info(
-        //   `${this.index}: adjustedBias G: (${ns.totalValue} - Math.abs(${ns.totalWeightedSum}))/${ns.count} = ${
-        //     (ns.totalValue - Math.abs(ns.totalWeightedSum)) / ns.count
-        //   }`,
-        // );
-        // console.info(
-        //   `${this.index}: adjustedBias H: ((${ns.totalValue} - ${ns.totalWeightedSum})/${ns.count})-1 = ${
-        //     ((ns.totalValue - ns.totalWeightedSum) / ns.count) - 1
-        //   }`,
-        // );
-
-        // console.info(
-        //   `${this.index}: adjustedBias I: (${ns.totalValue} - ${ns.totalWeightedSum} + ${ns.totalError})/${ns.count}= ${
-        //     (ns.totalValue - ns.totalWeightedSum + ns.totalError) / ns.count
-        //   }`,
-        // );
-
-        // console.info(
-        //   `${this.index}: adjustedBias J: (${ns.totalValue} - ${ns.totalWeightedSum} - ${ns.totalError})/${ns.count}= ${
-        //     (ns.totalValue - ns.totalWeightedSum - ns.totalError) / ns.count
-        //   }`,
-        // );
-
-        // console.info(
-        //   `${this.index}: adjustedBias K: (${ns.totalValue} - ${ns.totalWeightedSum})/${ns.count} - ${ns.totalError}= ${
-        //     (ns.totalValue - ns.totalWeightedSum) / ns.count - ns.totalError
-        //   }`,
-        // );
-
-        // console.info(
-        //   `${this.index}: adjustedBias L: (${ns.totalValue} - ${ns.totalWeightedSum})/${ns.count} - ${ns.totalError}= ${
-        //     (ns.totalValue - ns.totalWeightedSum) / ns.count + ns.totalError
-        //   }`,
-        // );
-
-        /* Constant Few expect 4.5 */
-
-        // return ns.totalValue / ns.absoluteWeightedSum; // A FAILS: Constants Few 5
-        // return ns.totalValue / ns.totalWeightedSum; // B FAILS: Constants Few 4.2
-
         const averageDifferenceBias = (ns.totalValue - ns.totalWeightedSum) /
-          ns.count; // C best so far FAILS: Constants Few 3
+          ns.count;
 
-        const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum); // D FAILS: Constants Few 4.5 best
-        // const averageError = ns.totalError / ns.count;
+        const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
 
-        // console.info(
-        //   `${this.index}: bias: ${this.bias} averageDifferenceBias ${averageDifferenceBias} unaccountedRatioBias ${unaccountedRatioBias} error ${ns.totalError} count ${ns.count} averageError ${averageError}`,
-        // );
-        if (
-          Number.isFinite(averageDifferenceBias) == false ||
-          Number.isFinite(unaccountedRatioBias) == false
-        ) {
-          console.info(
-            `${this.index}: Invalid Bias : averageDifferenceBias ${averageDifferenceBias} unaccountedRatioBias ${unaccountedRatioBias}`,
-          );
-        }
-        // if( false && Math.abs(averageError) < 2){
+        // if (
+        //   Number.isFinite(averageDifferenceBias) == false ||
+        //   Number.isFinite(unaccountedRatioBias) == false
+        // ) {
+        //   console.info(
+        //     `${this.index}: Invalid Bias : averageDifferenceBias ${averageDifferenceBias} unaccountedRatioBias ${unaccountedRatioBias} totalWeightedSum ${ns.totalWeightedSum} totalValue ${ns.totalValue} count ${ns.count}`,
+        //   );
+        // }
+
         if (
           config.useAverageDifferenceBias == "Yes" ||
           Number.isFinite(unaccountedRatioBias) == false
@@ -539,7 +466,7 @@ export class Node implements TagsInterface, NodeInternal {
   ) {
     if (Number.isFinite(targetActivation) == false) {
       console.trace();
-      throw `Invalid targetActivation ${targetActivation} for ${this.index} ${this.type} ${this.squash} ${this.bias}`;
+      throw `${this.index} Invalid targetActivation ${targetActivation} for ${this.type} ${this.squash} ${this.bias}`;
     }
 
     const ns = this.network.networkState.node(this.index);
@@ -635,12 +562,9 @@ export class Node implements TagsInterface, NodeInternal {
 
           const improvedAdjustedFromValue = improvedFromActivation *
             adjustedWeight;
-          // const improvedAdjustedFromValue = targetFromValue/fromWeight * adjustedWeight;
 
-          remainingError -= //errorPerLink -
-            targetFromValue - improvedAdjustedFromValue;
+          remainingError -= targetFromValue - improvedAdjustedFromValue;
           targetWeightedSum += improvedAdjustedFromValue;
-          // targetWeightedSum += fromActivation * adjustedWeight;
         }
       }
     }
@@ -658,6 +582,9 @@ export class Node implements TagsInterface, NodeInternal {
     ns.count++;
     ns.totalError += remainingError;
     ns.totalValue += targetValue;
+    if (Number.isFinite(targetWeightedSum) == false) {
+      throw `${this.index} Invalid targetWeightedSum ${targetWeightedSum} for ${this.type} ${this.squash} ${this.bias}`;
+    }
     ns.totalWeightedSum += targetWeightedSum;
     ns.absoluteWeightedSum += Math.abs(targetWeightedSum);
 
@@ -719,14 +646,14 @@ export class Node implements TagsInterface, NodeInternal {
         // console.info( `${this.index}: value: ${value}, bias: ${adjustedBias}`);
         const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
-        const squashedValue = activationSquash.squash(value);
+        const squashed = activationSquash.squash(value);
 
-        if (!Number.isFinite(squashedValue)) {
+        if (!Number.isFinite(squashed)) {
           console.trace();
-          throw `${this.index}: value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashedValue}`;
+          throw `${this.index}: Squasher ${activationSquash.getName()} value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashed}`;
         }
 
-        return squashedValue;
+        return limitActivation(squashed);
       }
     }
   }

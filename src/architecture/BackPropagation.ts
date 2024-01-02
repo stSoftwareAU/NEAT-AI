@@ -36,9 +36,23 @@ export class BackPropagationConfig implements BackPropagationOptions {
 }
 
 export function limitBias(bias: number) {
+  if (!Number.isFinite(bias)) {
+    throw `Bias must be a finite number, got ${bias}`;
+  }
   return Math.max(-MAX_BIAS, Math.min(MAX_BIAS, bias));
 }
 
 export function limitWeight(weight: number) {
+  if (!Number.isFinite(weight)) {
+    throw `Weight must be a finite number, got ${weight}`;
+  }
+
   return Math.max(-MAX_WEIGHT, Math.min(MAX_WEIGHT, weight));
+}
+
+export function limitActivation(activation: number) {
+  if (activation > 1e100) return 1e100;
+  if (activation < -1e100) return -1e100;
+
+  return activation;
 }

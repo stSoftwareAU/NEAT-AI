@@ -15,6 +15,10 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
+    if (x >= 709) { // 709 is a reasonable threshold to prevent overflow, as Math.exp(709) is the largest finite number in JavaScript
+      return Number.MAX_VALUE; // Return a large positive number as the best guess if x is too large
+    }
+
     return Math.exp(x);
   }
 
