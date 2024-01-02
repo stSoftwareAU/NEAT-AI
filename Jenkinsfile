@@ -71,14 +71,13 @@ pipeline {
 
     stage('Coverage') {
       agent {
-        agent {
-          docker {
-            image DENO_IMAGE
-            args TOOLS_ARGS
-            label 'small'
-          }
+        docker {
+          image DENO_IMAGE
+          args TOOLS_ARGS
+          label 'small'
         }
       }
+
       steps {
         // Unstash the .coverage.lcov file stashed in the 'Test' stage
         unstash(name: 'coverage')
