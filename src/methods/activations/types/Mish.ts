@@ -22,10 +22,15 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   }
 
   squashAndDerive(x: number) {
-    const omega = 4 * (x + 1) + 4 * Math.exp(2 * x) + Math.exp(3 * x) +
-      Math.exp(x) * (4 * x + 6);
-    const delta = 2 * Math.exp(x) + Math.exp(2 * x) + 2;
-    const derivative = Math.exp(x) * omega / (delta ** 2);
+    const e_x = Math.exp(x);
+    const e_2x = Math.exp(2 * x);
+    const x_2 = x * x;
+    const x_3 = x * x * x;
+
+    const omega = 4 * e_2x + 4 * e_x * x + e_2x * x_2 + 2 * e_x * x_2 +
+      2 * x_3 + 4 * e_x + 4 * x + 6;
+    const delta = 2 + 2 * e_x + e_2x;
+    const derivative = e_x * omega / (delta ** 2);
 
     return {
       activation: this.squash(x),
@@ -35,12 +40,27 @@ export class Mish implements ActivationInterface, UnSquashInterface {
 
   unSquash(activation: number): number {
     let guess = activation; // Initial guess
-    const iterations = 5; // Number of iterations; you can adjust this
+    const iterations = 200_000; // Number of iterations; you can adjust this
+    const tolerance = 0.0001; // Tolerance for convergence; you can adjust this
+
     for (let i = 0; i < iterations; i++) {
-      const err = this.squash(guess) - activation;
-      const errDerivative = this.squashAndDerive(guess).derivative;
-      guess -= err / (errDerivative + 1e-7); // 1e-7 added to avoid division by zero
+      const { activation: squashGuess, derivative: errDerivative } = this
+        .squashAndDerive(guess);
+      const err = squashGuess - activation;
+
+      if (Math.abs(errDerivative) < Number.EPSILON) {
+        // Derivative is zero, break the loop
+        break;
+      }
+
+      guess -= err / errDerivative;
+
+      if (Math.abs(err) < tolerance) {
+        // Converged to the root
+        break;
+      }
     }
+
     return guess;
   }
 
