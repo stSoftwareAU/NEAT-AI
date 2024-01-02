@@ -60,6 +60,26 @@ export class Neat {
     });
   }
 
+  private doNotStartMoreTraining = false;
+  private trainingCompleteCount = 0;
+
+  finishUp() {
+    this.doNotStartMoreTraining = true;
+    if (this.trainingInProgress.size > 0) {
+      this.trainingCompleteCount = 2;
+      console.info("Waiting for training to complete");
+      return false;
+    }
+    if (this.trainingCompleteCount > 0) {
+      console.info(
+        `Waiting for training clean up ${this.trainingCompleteCount}`,
+      );
+      this.trainingCompleteCount--;
+      return false;
+    }
+    return true;
+  }
+
   private trainingInProgress = new Map<string, Promise<void>>();
 
   private trainingComplete: ResponseData[] = [];
@@ -248,7 +268,10 @@ export class Neat {
         removeTag(n, "trained");
       }
 
-      if (this.trainingInProgress.size < this.config.trainPerGen && n.score) {
+      if (
+        this.doNotStartMoreTraining == false &&
+        this.trainingInProgress.size < this.config.trainPerGen && n.score
+      ) {
         const trained = getTag(n, "trained");
         if (trained !== "YES") {
           await this.scheduleTraining(n);
@@ -257,6 +280,7 @@ export class Neat {
     }
 
     if (
+      this.doNotStartMoreTraining == false &&
       this.trainingInProgress.size < this.config.trainPerGen &&
       elitists.length > 0
     ) {

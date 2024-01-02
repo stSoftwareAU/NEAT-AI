@@ -1068,7 +1068,11 @@ export class Network implements NetworkInternal {
         iterationStartMS = new Date().getTime();
       }
 
-      if (timedOut) break;
+      if (timedOut) {
+        if (neat.finishUp()) {
+          break;
+        }
+      }
       generation++;
     }
 
@@ -1301,9 +1305,9 @@ export class Network implements NetworkInternal {
           iteration === iterations
         )
       ) {
-        const now= Date.now();
+        const now = Date.now();
         const diff = now - startTS;
-        if( diff > 1000) {
+        if (diff > 1000) {
           console.log(
             "iteration",
             iteration,
