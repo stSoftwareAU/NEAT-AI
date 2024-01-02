@@ -6,30 +6,30 @@ TOOLS_ARGS = '-e DENO_DIR=${WORKSPACE}/.deno --rm --volume /var/run/docker.sock:
 TOOLS_IMAGE = "${ECR}/develop/sts-tools:latest"
 
 pipeline {
-  agent none
-  triggers {
-    pollSCM('* * * * *')
-  }
+    agent none
+    triggers {
+        pollSCM('* * * * *')
+    }
 
-  options {
-    timeout(time: 1, unit: 'HOURS')
-    disableConcurrentBuilds()
-    parallelsAlwaysFailFast()
-  }
+    options {
+        timeout(time: 1, unit: 'HOURS')
+        disableConcurrentBuilds()
+        parallelsAlwaysFailFast()
+    }
 
-  stages {
-    stage('Checks') {
-      parallel {
-        stage('Lint & Format') {
-          agent {
-            docker {
-              image DENO_IMAGE
-              args TOOLS_ARGS
-              label 'small'
-            }
-          }
-          steps {
-            sh '''\
+    stages {
+        stage('Checks') {
+            parallel {
+                stage('Lint & Format') {
+                    agent {
+                        docker {
+                            image DENO_IMAGE
+                            args TOOLS_ARGS
+                            label 'small'
+                        }
+                    }
+                    steps {
+                        sh '''\
                 #!/bin/bash
 
                 echo "Remove old test files"
@@ -39,71 +39,68 @@ pipeline {
 
                 deno fmt --check src test
             '''.stripIndent()
-          }
-        }
+                    }
+                }
 
-        stage('Test') {
-          agent {
-            docker {
-              image DENO_IMAGE
-              args TOOLS_ARGS
-              label 'large'
+                stage('Test') {
+                    agent {
+                      docker {
+                        image DENO_IMAGE
+                        args TOOLS_ARGS
+                        label 'large'
+                      }
+                    }
+                    steps {
+                        sh '''\
+                          #!/bin/bash
+
+                          deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
+                          deno coverage .coverage --lcov --output=.cov_profile.lcov
+                        '''.stripIndent()
+                    }
+                    post {
+                        always {
+                            junit '.test.xml'
+                            stash(name: 'coverage', includes: '.cov_profile.lcov')
+                        }
+                    }
+                }
             }
-          }
-          steps {
-            sh '''\
-              #!/bin/bash
+        }
 
-              deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
-
-              deno coverage .coverage --lcov --output=.coverage.lcov
-            '''.stripIndent()
-          }
-          post {
-            always {
-              junit '.test.xml'
-              stash(name: 'coverage', includes: '.coverage.lcov')
+        stage('Coverage') {
+            agent {
+              docker {
+                image TOOLS_IMAGE
+                args TOOLS_ARGS
+                label 'small'
+              }
             }
-          }
+
+            steps {
+                // Unstash the .coverage.lcov file stashed in the 'Test' stage
+                unstash(name: 'coverage')
+
+                sh '''\
+                  #!/bin/bash
+
+                  # Convert LCOV to Cobertura XML
+                  lcov_cobertura -b . -o coverage.xml .cov_profile.lcov
+                '''.stripIndent()
+
+                // Publish Cobertura report
+                // cobertura coberturaReportFile: 'coverage.xml'
+                recordCoverage(
+                  tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
+                  id: 'Cobertura',
+                  name: 'Cobertura Coverage',
+                  sourceCodeRetention: 'EVERY_BUILD',
+                  qualityGates: [
+                    [threshold: 60.0, metric: 'LINE', baseline: 'PROJECT', unstable: true],
+                    [threshold: 60.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: true]
+                  ]
+                )
+            }
         }
-      }
     }
-
-    stage('Coverage') {
-      agent {
-        docker {
-          image DENO_IMAGE
-          args TOOLS_ARGS
-          label 'small'
-        }
-      }
-
-      steps {
-        // Unstash the .coverage.lcov file stashed in the 'Test' stage
-        unstash(name: 'coverage')
-
-        sh '''\
-            #!/bin/bash
-
-            # Convert LCOV to Cobertura XML
-            # lcov_cobertura --base-dir src -o coverage.xml .coverage.lcov
-            deno coverage .coverage --lcov --output=coverage.xml
-            # genhtml -o .coverageHTML .coverage.lcov
-        '''.stripIndent()
-
-        // Publish Cobertura report
-        // cobertura coberturaReportFile: 'coverage.xml'
-        recordCoverage(
-          tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
-          id: 'Cobertura',
-          name: 'Cobertura Coverage',
-          sourceCodeRetention: 'EVERY_BUILD',
-          qualityGates: [
-            [threshold: 60.0, metric: 'LINE', baseline: 'PROJECT', unstable: true],
-            [threshold: 60.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: true]
-          ]
-        )
-      }
-    }
-  }
 }
