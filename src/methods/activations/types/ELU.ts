@@ -11,7 +11,11 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     if (activation > 0) {
       return activation;
     } else {
-      return Math.log((activation / ELU.ALPHA) + 1 + Number.EPSILON);
+      const value = (activation / ELU.ALPHA) + 1 + Number.EPSILON;
+      if (value <= 0) {
+        return activation; // Return activation as the best guess if the argument to Math.log is not positive
+      }
+      return Math.log(value);
     }
   }
 

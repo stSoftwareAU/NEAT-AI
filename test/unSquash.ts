@@ -187,7 +187,7 @@ Deno.test("ELU", () => {
   const activation = Activations.find(
     ELU.NAME,
   ) as UnSquashInterface;
-  const values = [-1];
+  const values = [-1,-1.2026306030839375];
   values.forEach((v) => {
     const tmpValue = activation.unSquash(v);
     assert(
