@@ -40,6 +40,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
 
   unSquash(activation: number, hint?: number): number {
     if (!Number.isFinite(activation)) {
+      console.trace();
       throw new Error("Activation must be a finite number");
     }
 

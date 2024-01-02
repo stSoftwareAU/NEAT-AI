@@ -16,6 +16,7 @@ export class TANH implements ActivationInterface, UnSquashInterface {
   // TANH is invertible, and its inverse is calculated using a logarithmic function.
   unSquash(activation: number): number {
     if (!Number.isFinite(activation)) {
+      console.trace();
       throw new Error("Activation must be a finite number");
     }
 
@@ -23,7 +24,11 @@ export class TANH implements ActivationInterface, UnSquashInterface {
       return activation; // Return activation as the best guess if it's 1 or -1
     }
 
-    return 0.5 * Math.log((1 + activation) / (1 - activation));
+    const value = (1 + activation) / (1 - activation);
+    if (value <= 0) {
+      return activation; // Return activation as the best guess if the argument to Math.log is not positive
+    }
+    return 0.5 * Math.log(value);
   }
 
   // Range of the activation function. TANH outputs values between -1 and 1.

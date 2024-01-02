@@ -19,6 +19,15 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number): number {
+    if (!Number.isFinite(activation)) {
+      console.trace();
+      throw new Error("Activation must be a finite number");
+    }
+
+    if (activation <= 0) {
+      return activation; // Our best guess if activation is 0 or less
+    }
+
     return Math.log(activation);
   }
 

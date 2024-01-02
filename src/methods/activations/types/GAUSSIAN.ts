@@ -22,11 +22,16 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   /* unSquash is non-trivial due to the symmetric nature of Gaussian function. */
   unSquash(activation: number, hint?: number): number {
     if (!Number.isFinite(activation)) {
+      console.trace();
       throw new Error("Activation must be a finite number");
     }
 
-    if (activation === 0) {
-      return 0; // Return 0 as the best guess if activation is 0
+    if (activation <= 0) {
+      return activation; // Return 0 as the best guess if activation is 0
+    }
+
+    if (activation > 1) {
+      return activation; // Return 1 as the best guess if activation is greater than 1
     }
 
     const sqrt = Math.sqrt(-Math.log(activation));

@@ -19,6 +19,23 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number): number {
+    if (!Number.isFinite(activation)) {
+      console.trace();
+      throw new Error("Activation must be a finite number");
+    }
+
+    if (Math.abs(activation) < 1e-15) { // 1e-15 is a reasonable threshold to prevent underflow
+      return 0; // Return 0 as the best guess if activation is a very small positive number
+    }
+
+    if (activation === 0) {
+      return 0; // Return 0 as the best guess if activation is 0
+    }
+
+    if (Math.abs(activation) > 100) { // 100 is a reasonable threshold to prevent overflow
+      return activation; // Return activation as the best guess if it's a large positive number
+    }
+
     return Math.log(Math.exp(activation) / (1 - Math.exp(activation)));
   }
 

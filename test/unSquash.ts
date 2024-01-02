@@ -187,7 +187,7 @@ Deno.test("ELU", () => {
   const activation = Activations.find(
     ELU.NAME,
   ) as UnSquashInterface;
-  const values = [-1,-1.2026306030839375];
+  const values = [-1, -1.2026306030839375];
   values.forEach((v) => {
     const tmpValue = activation.unSquash(v);
     assert(
@@ -231,7 +231,82 @@ Deno.test("TANH", () => {
     TANH.NAME,
   ) as UnSquashInterface;
 
-  const values = [1];
+  const values = [1, -83.97768630033171];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("Swish", () => {
+  const activation = Activations.find(
+    Swish.NAME,
+  ) as UnSquashInterface;
+
+  const values = [-38662.65331045061];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("Exponential", () => {
+  const activation = Activations.find(
+    Exponential.NAME,
+  ) as UnSquashInterface;
+
+  const values = [0, -174.141533603197];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("GAUSSIAN", () => {
+  const activation = Activations.find(
+    GAUSSIAN.NAME,
+  ) as UnSquashInterface;
+
+  const values = [1.0332646339387064];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("LogSigmoid", () => {
+  const activation = Activations.find(
+    LogSigmoid.NAME,
+  ) as UnSquashInterface;
+
+  const values = [131.5581335909996];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+});
+
+Deno.test("Softplus", () => {
+  const activation = Activations.find(
+    Softplus.NAME,
+  ) as UnSquashInterface;
+
+  const values = [0];
   values.forEach((v) => {
     const tmpValue = activation.unSquash(v);
     assert(
@@ -275,5 +350,18 @@ Deno.test("unSquash", () => {
 
   list.forEach((name) => {
     check(name, values);
+    checkKnownActivations(name);
   });
 });
+
+function checkKnownActivations(squashName: string) {
+  const squash = Activations.find(squashName) as UnSquashInterface;
+  const activations = [-1000, 0, 1000, Number.EPSILON, Number.EPSILON * -1];
+  activations.forEach((activation) => {
+    const tmpValue = squash.unSquash(activation);
+    assert(
+      Number.isFinite(tmpValue),
+      `${squashName} ${activation} not finite ${tmpValue}`,
+    );
+  });
+}

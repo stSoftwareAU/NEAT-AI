@@ -31,6 +31,11 @@ export class Swish implements ActivationInterface, UnSquashInterface {
       const dfx = sigmoid_x + x * Math.exp(-x) / Math.pow(1 + Math.exp(-x), 2);
 
       x = x - fx / dfx;
+
+      // If x is not a finite number, return the best guess
+      if (!Number.isFinite(x)) {
+        return activation >= 0 ? activation : activation / 2;
+      }
     }
 
     return x;

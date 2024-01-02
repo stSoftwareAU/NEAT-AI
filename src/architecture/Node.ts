@@ -537,6 +537,11 @@ export class Node implements TagsInterface, NodeInternal {
     targetActivation: number,
     config: BackPropagationConfig,
   ) {
+    if (Number.isFinite(targetActivation) == false) {
+      console.trace();
+      throw `Invalid targetActivation ${targetActivation} for ${this.index} ${this.type} ${this.squash} ${this.bias}`;
+    }
+
     const ns = this.network.networkState.node(this.index);
 
     if (ns.propagated) {
@@ -544,9 +549,10 @@ export class Node implements TagsInterface, NodeInternal {
       throw `Already propagated ${this.index}`;
     }
 
+    const targetValue = this.toValue(targetActivation);
+
     const activation = this.adjustedActivation(config);
 
-    const targetValue = this.toValue(targetActivation);
     const activationValue = this.toValue(activation);
     const error = targetValue - activationValue;
 
@@ -698,6 +704,7 @@ export class Node implements TagsInterface, NodeInternal {
 
         for (let i = toList.length; i--;) {
           const c = toList[i];
+          if (c.from == c.to) continue;
           const fromActivation = (this.network.nodes[c.from] as Node)
             .adjustedActivation(config);
 
@@ -715,9 +722,8 @@ export class Node implements TagsInterface, NodeInternal {
         const squashedValue = activationSquash.squash(value);
 
         if (!Number.isFinite(squashedValue)) {
-          console.info(
-            `${this.index}: value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashedValue}`,
-          );
+          console.trace();
+          throw `${this.index}: value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashedValue}`;
         }
 
         return squashedValue;
