@@ -17,6 +17,7 @@ import {
   BackPropagationOptions,
   limitActivation,
   limitBias,
+  limitValue,
   limitWeight,
 } from "./BackPropagation.ts";
 
@@ -436,7 +437,7 @@ export class Node implements TagsInterface, NodeInternal {
         console.trace();
         throw `${this.index}: ${this.squash}.unSquash(${activation}) invalid -> ${value}`;
       }
-      return value;
+      return limitValue(value);
     } else {
       return activation;
     }
@@ -596,7 +597,9 @@ export class Node implements TagsInterface, NodeInternal {
     const adjustedBias = this.adjustedBias(config);
 
     const adjustedActivation = targetWeightedSum + adjustedBias;
-
+    // if( Math.abs( adjustedActivation) > 1e100){
+    //   console.info( "Here");
+    // }
     const squashMethod = this.findSquash();
 
     if (this.isNodeActivation(squashMethod) == false) {
@@ -604,9 +607,9 @@ export class Node implements TagsInterface, NodeInternal {
         adjustedActivation,
       );
 
-      return squashActivation;
+      return limitActivation(squashActivation);
     } else {
-      return adjustedActivation;
+      return limitActivation(adjustedActivation);
     }
   }
 
