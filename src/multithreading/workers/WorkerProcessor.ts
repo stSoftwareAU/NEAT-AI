@@ -58,6 +58,7 @@ export class WorkerProcessor {
       const trainOptions: TrainOptions = {
         cost: this.costName,
         iterations: 1,
+        log: 1,
       };
 
       const result = network.trainDir(this.dataSetDir, trainOptions);

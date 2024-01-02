@@ -1229,10 +1229,12 @@ export class Network implements NetworkInternal {
 
     const iterations = Math.max(options.iterations ? options.iterations : 0, 2);
 
-    // @TODO Need to randomize files.
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
       dataDir + "/" + fn
     );
+
+    // Randomize the list of files
+    files.sort(() => Math.random() - 0.5);
 
     // Loops the training process
     let iteration = 0;
@@ -1246,6 +1248,7 @@ export class Network implements NetworkInternal {
     const EMPTY = { input: [], output: [] };
     while (true) {
       iteration++;
+      const startTS = Date.now();
       const backPropagationConfig = new BackPropagationConfig();
 
       let counter = 0;
@@ -1298,12 +1301,20 @@ export class Network implements NetworkInternal {
           iteration === iterations
         )
       ) {
-        console.log(
-          "iteration",
-          iteration,
-          "error",
-          error,
-        );
+        const now= Date.now();
+        const diff = now - startTS;
+        if( diff > 1000) {
+          console.log(
+            "iteration",
+            iteration,
+            "error",
+            error,
+            "time",
+            yellow(
+              format(diff, { ignoreZero: true }),
+            ),
+          );
+        }
       }
 
       if (bestError !== undefined && bestError < error) {
