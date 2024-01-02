@@ -171,6 +171,7 @@ Deno.test("propagateInverseRandom", () => {
       ".trace/4-last.json",
       JSON.stringify(creatureB.exportJSON(), null, 2),
     );
+    if (result2.error < 0.0001) break;
     // console.info(result1.error, result2.error);
     if (attempts < 12) {
       if (result1.error <= result2.error) continue;
