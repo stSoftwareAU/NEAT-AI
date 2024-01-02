@@ -1329,10 +1329,10 @@ export class Network implements NetworkInternal {
         this.clearState();
       }
 
-      if (error <= targetError || iteration >= iterations) {
+      if (bestError <= targetError || iteration >= iterations) {
         return {
           iteration: iteration,
-          error: error,
+          error: bestError,
           trace: traceJSON,
         };
       }
