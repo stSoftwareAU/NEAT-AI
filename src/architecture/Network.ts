@@ -1237,9 +1237,6 @@ export class Network implements NetworkInternal {
       dataDir + "/" + fn
     );
 
-    // Randomize the list of files
-    files.sort(() => Math.random() - 0.5);
-
     // Loops the training process
     let iteration = 0;
 
@@ -1263,6 +1260,8 @@ export class Network implements NetworkInternal {
         cacheDataFile.json = {};
       }
 
+      // Randomize the list of files
+      files.sort(() => Math.random() - 0.5);
       for (let j = files.length; j--;) {
         const fn = files[j];
         const json = cacheDataFile.fn == fn
@@ -1324,9 +1323,11 @@ export class Network implements NetworkInternal {
       if (bestError !== undefined && bestError < error) {
         trainingFailed++;
         console.warn(
-          `Training made the error ${bestError.toFixed(3)} -> ${
-            error.toFixed(3)
-          } worse ${trainingFailed} of ${iteration}`,
+          `Training made the error ${yellow(bestError.toFixed(3))} worse ${
+            yellow(error.toFixed(3))
+          } failed ${yellow(trainingFailed.toString())} out of ${
+            yellow(iteration.toString())
+          } iterations`,
         );
 
         if (options.traceStore) {

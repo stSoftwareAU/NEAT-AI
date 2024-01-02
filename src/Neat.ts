@@ -66,7 +66,7 @@ export class Neat {
   finishUp() {
     this.doNotStartMoreTraining = true;
     if (this.trainingInProgress.size > 0) {
-      this.trainingCompleteCount = 2;
+      if (!this.trainingCompleteCount) this.trainingCompleteCount = 2;
       console.info("Waiting for training to complete");
       return false;
     }
