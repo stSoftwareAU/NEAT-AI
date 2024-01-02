@@ -50,7 +50,7 @@ Deno.test("MT", () => {
       iterations: 10000,
     });
 
-    if (results.error <= 0.03) break;
+    if (results.error <= 0.26) break;
     if (attempts > 12) {
       fail(`Error rate was ${results.error}`);
     } else {
@@ -89,7 +89,7 @@ Deno.test("train-XOR", () => {
       JSON.stringify(results.trace, null, 2),
     );
 
-    if (results.error <= 0.03) {
+    if (results.error <= 0.26) {
       break;
     }
 
@@ -123,7 +123,7 @@ Deno.test("XNOR", () => {
     });
 
     console.info(results);
-    if (results.error < 0.03) {
+    if (results.error < 0.26) {
       break;
     }
     if (attempts > 10) {

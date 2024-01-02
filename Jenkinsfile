@@ -1,11 +1,14 @@
-DENO_IMAGE = "denoland/deno:latest"
+/* groovylint-disable DuplicateNumberLiteral, DuplicateStringLiteral, GStringExpressionWithinString, NestedBlockDepth */
+/* groovylint-disable-next-line CompileStatic */
+DENO_IMAGE = 'denoland/deno:latest'
+/* groovylint-disable-next-line GStringExpressionWithinString */
 TOOLS_ARGS = '-e DENO_DIR=${WORKSPACE}/.deno --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
 TOOLS_IMAGE = "${ECR}/develop/sts-tools:latest"
 
 pipeline {
   agent none
   triggers {
-    pollSCM( '* * * * *')
+    pollSCM('* * * * *')
   }
 
   options {
@@ -15,28 +18,26 @@ pipeline {
   }
 
   stages {
-    stage('Checks'){
+    stage('Checks') {
       parallel {
-
-        stage('Lint & Format'){
+        stage('Lint & Format') {
           agent {
             docker {
               image DENO_IMAGE
               args TOOLS_ARGS
-              label "small"
+              label 'small'
             }
           }
           steps {
-
             sh '''\
-                #!/bin/bash
+              #!/bin/bash
 
-                echo "Remove old test files"
-                find test -name ".*.json" -exec rm {} \\;
-                
-                deno lint src
+              echo "Remove old test files"
+              find test -name ".*.json" -exec rm {} \\;
 
-                deno fmt --check src test
+              deno lint src
+
+              deno fmt --check src test
             '''.stripIndent()
           }
         }
@@ -50,19 +51,17 @@ pipeline {
             }
           }
           steps {
-
             sh '''\
               #!/bin/bash
 
               deno test --coverage=.coverage --reporter junit --allow-read --allow-write test/* > .test.xml
-
-              deno coverage .coverage --lcov --output=.coverage.lcov                      
+              deno coverage .coverage --lcov --output=.cov_profile.lcov
             '''.stripIndent()
           }
           post {
             always {
               junit '.test.xml'
-              stash(name: "coverage", includes: ".coverage.lcov")
+              stash(name: 'coverage', includes: '.cov_profile.lcov')
             }
           }
         }
@@ -77,30 +76,29 @@ pipeline {
           label 'small'
         }
       }
+
       steps {
-        // Unstash the .coverage.lcov file stashed in the 'Test' stage
-        unstash(name: "coverage")
+        // Unstash the .cov_profile.lcov file stashed in the 'Test' stage
+        unstash(name: 'coverage')
 
         sh '''\
-            #!/bin/bash
+          #!/bin/bash
 
-            # Convert LCOV to Cobertura XML
-            lcov_cobertura -b . -o coverage.xml .coverage.lcov     
-
-            # genhtml -o .coverageHTML .coverage.lcov        
+          # Convert LCOV to Cobertura XML
+          lcov_cobertura --base-dir src --output coverage.xml .cov_profile.lcov
         '''.stripIndent()
 
         // Publish Cobertura report
-        cobertura coberturaReportFile: 'coverage.xml'
-        // Publish the HTML report
-        // publishHTML ([
-        //   allowMissing: false,
-        //   alwaysLinkToLastBuild: true,
-        //   keepAll: true,
-        //   reportDir: '.coverageHTML',  // Point this to your coverage HTML directory
-        //   reportFiles: 'index.html',  // This could be your main HTML file
-        //   reportName: "Coverage Report"
-        // ])
+        recordCoverage(
+          tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']],
+          id: 'Cobertura',
+          name: 'Cobertura Coverage',
+          sourceCodeRetention: 'EVERY_BUILD',
+          qualityGates: [
+            [threshold: 60.0, metric: 'LINE', baseline: 'PROJECT', unstable: true],
+            [threshold: 60.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: true]
+          ]
+        )
       }
     }
   }
