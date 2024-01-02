@@ -1,6 +1,6 @@
 import { RequestData } from "../WorkerHandler.ts";
 import { WorkerProcessor } from "../WorkerProcessor.ts";
-
+console.info("Worker", self);
 const processor = new WorkerProcessor(self?.name);
 const workerHandler =
   // deno-lint-ignore ban-types

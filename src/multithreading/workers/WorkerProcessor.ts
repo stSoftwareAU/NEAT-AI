@@ -53,7 +53,7 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
-      if( this.name !== "main"){
+      if (this.name !== "main") {
         console.log("Training on Thread/Worker ID:", this.name);
       }
 
