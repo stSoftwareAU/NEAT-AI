@@ -392,6 +392,8 @@ function checkKnownValues(squashName: string) {
     -10_000,
     0,
     10_000,
+    1.3662467824954013e+304,
+    -1.3662467824954013e+304,
   ];
   values.forEach((value) => {
     const tmpValue = squasher.squash(value);

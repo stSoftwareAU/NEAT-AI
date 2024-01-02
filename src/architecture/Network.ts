@@ -1250,6 +1250,7 @@ export class Network implements NetworkInternal {
     while (true) {
       iteration++;
       const startTS = Date.now();
+      let lastTS = startTS;
       const backPropagationConfig = new BackPropagationConfig();
 
       let counter = 0;
@@ -1261,7 +1262,11 @@ export class Network implements NetworkInternal {
       }
 
       // Randomize the list of files
-      files.sort(() => Math.random() - 0.5);
+      for (let i = files.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [files[i], files[j]] = [files[j], files[i]];
+      }
+
       for (let j = files.length; j--;) {
         const fn = files[j];
         const json = cacheDataFile.fn == fn
@@ -1277,48 +1282,55 @@ export class Network implements NetworkInternal {
           throw "Set size must be positive";
         }
         const len = json.length;
+        const indices = Array.from({ length: len }, (_, i) => i); // Create an array of indices
 
+        // Fisher-Yates shuffle algorithm
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+
+        // Iterate over the shuffled indices
         for (let i = len; i--;) {
-          const data = json[i];
+          const indx = indices[i];
+          const data = json[indx];
 
           if (!cached) {
             /* Not cached so we can release memory as we go */
-            json[i] = EMPTY;
+            json[indx] = EMPTY;
           }
 
           const output = this.activate(data.input);
 
           errorSum += cost.calculate(data.output, output);
-
+          counter++;
           this.propagate(data.output, backPropagationConfig);
-        }
 
-        counter += len;
+          const now = Date.now();
+          const diff = now - lastTS;
+
+          if (diff > 60_000) {
+            lastTS = now;
+            const totalTime = now - startTS;
+            console.log(
+              "counter",
+              counter,
+              "error",
+              yellow((errorSum / counter).toFixed(3)),
+              "average time",
+              yellow(
+                format(totalTime / counter, { ignoreZero: true }),
+              ),
+              "total time",
+              yellow(
+                format(totalTime, { ignoreZero: true }),
+              ),
+            );
+          }
+        }
       }
 
       const error = errorSum / counter;
-
-      if (
-        options.log && (
-          iteration % options.log === 0 ||
-          iteration === iterations
-        )
-      ) {
-        const now = Date.now();
-        const diff = now - startTS;
-        if (diff > 1000) {
-          console.log(
-            "iteration",
-            iteration,
-            "error",
-            error,
-            "time",
-            yellow(
-              format(diff, { ignoreZero: true }),
-            ),
-          );
-        }
-      }
 
       if (bestError !== undefined && bestError < error) {
         trainingFailed++;

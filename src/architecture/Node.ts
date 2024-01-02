@@ -495,7 +495,10 @@ export class Node implements TagsInterface, NodeInternal {
     const listLength = randomList.length;
 
     if (listLength > 1 && !(config.disableRandomList)) {
-      randomList.sort(() => Math.random() - 0.5);
+      for (let i = randomList.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [randomList[i], randomList[j]] = [randomList[j], randomList[i]];
+      }
     }
 
     let remainingError = error;
@@ -597,9 +600,7 @@ export class Node implements TagsInterface, NodeInternal {
     const adjustedBias = this.adjustedBias(config);
 
     const adjustedActivation = targetWeightedSum + adjustedBias;
-    // if( Math.abs( adjustedActivation) > 1e100){
-    //   console.info( "Here");
-    // }
+
     const squashMethod = this.findSquash();
 
     if (this.isNodeActivation(squashMethod) == false) {

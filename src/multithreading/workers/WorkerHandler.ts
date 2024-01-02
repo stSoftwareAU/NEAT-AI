@@ -89,6 +89,7 @@ export class WorkerHandler {
         new URL("./deno/worker.ts", import.meta.url).href,
         {
           type: "module",
+          name: "worker-" + this.workerID,
         },
       );
     } else {

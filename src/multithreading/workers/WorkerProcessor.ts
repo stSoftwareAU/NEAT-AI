@@ -7,7 +7,19 @@ import { Network } from "../../architecture/Network.ts";
 export class WorkerProcessor {
   private costName?: string;
   private dataSetDir: string | null = null;
+
   private cost?: CostInterface;
+
+  private workerName: string;
+
+  constructor(workerName?: string) {
+    if (workerName) {
+      this.workerName = workerName;
+    } else {
+      this.workerName = "main";
+    }
+  }
+
   async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();
     if (data.initialize) {
@@ -44,8 +56,9 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
-      console.log("Training on Thread/Worker ID:", Deno.pid);
-
+      if (this.workerName !== "main") {
+        console.log("Training on Thread/Worker ID:", self.name);
+      }
       const network = Network.fromJSON(
         JSON.parse(data.train.network),
         data.debug,
