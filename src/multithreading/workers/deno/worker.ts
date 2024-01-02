@@ -1,7 +1,7 @@
 import { RequestData } from "../WorkerHandler.ts";
 import { WorkerProcessor } from "../WorkerProcessor.ts";
 
-const processor = new WorkerProcessor(self?.name);
+const processor = new WorkerProcessor();
 const workerHandler =
   // deno-lint-ignore ban-types
   (self as unknown) as { onmessage: Function; postMessage: Function };
