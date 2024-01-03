@@ -1309,9 +1309,9 @@ export class Network implements NetworkInternal {
               console.warn(
                 `Training stopped as 'best possible' error ${
                   yellow(bestPossibleError.toFixed(3))
-                } > 'best' error ${
-                  yellow(bestError.toFixed(3))
-                } at counter ${counter} of ${knownSampleCount}`,
+                } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
+                  yellow(counter.toFixed(0))
+                } of ${yellow(knownSampleCount.toFixed(0))}`,
               );
               break;
             }
