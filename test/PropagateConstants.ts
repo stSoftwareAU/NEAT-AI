@@ -58,7 +58,7 @@ Deno.test("Constants", () => {
     const outA1 = creature.noTraceActivate(inA);
     const outA2 = creature.activate(inA);
     const expectedA = makeOutput(inA);
-    console.info("FIRST", outA1, outA2, expectedA);
+
     assertAlmostEquals(outA1[0], outA2[0], 0.0001);
     creature.propagate(expectedA, config);
 
@@ -130,7 +130,6 @@ Deno.test("Constants Same", () => {
     const actualA1 = creature.activate(inA);
     const actualA2 = creature.noTraceActivate(inA);
     const diff = Math.abs(expectedA[0] - actualA1[0]);
-    console.info(expectedA, actualA1, actualA2, diff);
 
     Deno.writeTextFileSync(
       ".trace/3.json",
@@ -180,7 +179,7 @@ Deno.test("Constants Known Few", () => {
     const input = inputs[indx];
     const output = makeOutput(input);
     creature.activate(input);
-    // console.info(output, activation);
+
     creature.propagate(output, config);
   }
 
@@ -199,7 +198,6 @@ Deno.test("Constants Known Few", () => {
   const expected = makeOutput(input);
 
   const actual = creature.noTraceActivate(input);
-  console.info(expected, actual);
 
   Deno.writeTextFileSync(
     ".trace/3.json",
@@ -251,7 +249,6 @@ Deno.test("Constants Many", () => {
   const expected = makeOutput(sampleInput);
 
   const actual = creature.noTraceActivate(sampleInput);
-  console.info(expected, actual);
 
   Deno.writeTextFileSync(
     ".trace/3.json",

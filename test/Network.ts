@@ -44,8 +44,8 @@ function checkMutation(method: { name: string }) {
   }
   const json2 = JSON.stringify(network.exportJSON(), null, 2);
 
-  console.info(json1);
-  console.info(json2);
+  // console.info(json1);
+  // console.info(json2);
   assertNotEquals(json1, json2);
 
   const mutatedOutput = [];
@@ -101,7 +101,7 @@ async function evolveSet(
         ".end.json",
         JSON.stringify(network.exportJSON(), null, 2),
       );
-      console.log(dr.input);
+      // console.log(dr.input);
       const n0 = Network.fromJSON(network.exportJSON()).noTraceActivate(
         dr.input,
       )[0];
@@ -136,12 +136,6 @@ async function evolveSet(
 
     const r2 = network.noTraceActivate(dr.input)[0];
 
-    if (Math.abs(r1 - r2) > 0.0001) {
-      console.log("hello");
-      const r3 = network.activate(dr.input)[0];
-      console.log(r2, r3);
-      console.info(JSON.stringify(network.exportJSON(), null, 2));
-    }
     assertAlmostEquals(
       r1,
       r2,

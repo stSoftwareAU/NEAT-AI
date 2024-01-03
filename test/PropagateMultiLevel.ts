@@ -120,7 +120,7 @@ Deno.test("propagateMultiLevelRandom", () => {
   );
   ts.forEach((item) => {
     const result = creatureA.noTraceActivate(item.input);
-    // console.info(item.input, item.output, result);
+
     assertAlmostEquals(item.output[0], result[0], 0.00001);
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
@@ -169,7 +169,7 @@ Deno.test("propagateMultiLevelRandom", () => {
       ".trace/4-last.json",
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
-    console.info(result1.error, result2.error);
+
     if (result2.error < 0.0001) break;
     if (attempts < 12) {
       if (result1.error <= result2.error) continue;
@@ -392,7 +392,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
       ".trace/4-last.json",
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
-    console.info(result1.error, result2.error);
+
     Deno.writeTextFileSync(
       ".trace/result.json",
       JSON.stringify(result2.trace, null, 2),
@@ -609,7 +609,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
       ".trace/last.json",
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
-    console.info(result1.error, result2.error);
+
     if (result2.error < 0.0001) break;
     if (attempts < 12) {
       if (result1.error <= result2.error) continue;

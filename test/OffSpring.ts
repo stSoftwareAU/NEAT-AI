@@ -150,23 +150,6 @@ Deno.test("CrossOver", () => {
         JSON.stringify(c.exportJSON(), null, 2),
       );
 
-      // const list = c.toConnections(n.index);
-      // list.forEach((c) => {
-      //   console.info(c);
-      //   switch (c.type) {
-      //     case "condition":
-      //       assertEquals(c.from, n.index - 1);
-      //       break;
-      //     case "positive":
-      //       assertEquals(c.from, n.index - 2);
-      //       break;
-      //     case "negative":
-      //       assertEquals(c.from, 1);
-      //       break;
-      //     default:
-      //       fail("unknown type: " + c.type);
-      //   }
-      // });
       break;
     }
   }
@@ -245,13 +228,13 @@ function check() {
   const n1 = Network.fromJSON(creature);
   n1.validate();
   n1.fix();
-  console.info(JSON.stringify(n1.exportJSON(), null, 2));
+
   const n2 = Network.fromJSON(creature);
   n2.validate();
   n2.fix();
 
   const toList2 = n2.toConnections(7);
-  console.info(toList2);
+
   const UUIDs = new Set<string>();
   toList2.forEach((c) => {
     if (n2.nodes[c.from].type == "output") {
@@ -266,8 +249,6 @@ function check() {
 
   const n3 = Offspring.bread(n1, n2);
 
-  console.info("N3", JSON.stringify(n3.exportJSON(), null, 2));
-
   const outputUUID = creature.nodes[2].uuid;
 
   let outputIndex = -1;
@@ -278,7 +259,7 @@ function check() {
   });
 
   const toList3 = n3.toConnections(outputIndex);
-  console.info(toList3);
+
   toList3.forEach((c) => {
     const uuid = n3.nodes[c.from].uuid;
     if (uuid) {
@@ -606,8 +587,6 @@ function checkChild(child: Network) {
       cBranchFound = true;
     }
   });
-
-  console.info(child.exportJSON());
 
   assert(bBranchFound);
   assert(aBranchFound || cBranchFound);

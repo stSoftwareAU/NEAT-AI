@@ -63,9 +63,6 @@ function makeOutput(input: number[]) {
   const o5 = (h3 * -0.6) + (input[2] * 0.7) + 0.8;
 
   const output = [o4, o5];
-  // console.info(`i0: ${input[0]}, i1: ${input[1]}, i2: ${input[2]}`);
-  // console.info(`h3: ${h3}`);
-  // console.info(`o4: ${o4}, o5: ${o5}`);
 
   output.forEach((value, indx) => {
     assert(Number.isFinite(value), `${indx}: ${value}`);
@@ -83,16 +80,16 @@ Deno.test("OneAndDone", () => {
     useAverageValuePerActivation: false,
     useAverageDifferenceBias: "Yes",
   });
-  console.info(config);
+
   Deno.writeTextFileSync(
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
   const inA = [-1, 0, 1];
-  const outA = creature.activate(inA);
+  creature.activate(inA);
   const expectedA = makeOutput(inA);
-  console.info("SECOND", outA);
+
   creature.propagate(expectedA, config);
 
   Deno.writeTextFileSync(
@@ -103,7 +100,6 @@ Deno.test("OneAndDone", () => {
   creature.propagateUpdate(config);
 
   const actualA = creature.noTraceActivate(inA);
-  console.info(expectedA, actualA);
 
   Deno.writeTextFileSync(
     ".trace/4-done.json",
@@ -132,7 +128,7 @@ Deno.test("TwoSame", () => {
     useAverageValuePerActivation: true,
     useAverageDifferenceBias: "Yes",
   });
-  console.info(config);
+
   Deno.writeTextFileSync(
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),
@@ -155,7 +151,6 @@ Deno.test("TwoSame", () => {
   creature.propagateUpdate(config);
 
   const actualA = creature.noTraceActivate(inA);
-  console.info(expectedA, actualA);
 
   Deno.writeTextFileSync(
     ".trace/4-done.json",
@@ -319,7 +314,6 @@ Deno.test("propagateSingleNeuronRandom", () => {
       Math.abs(expectedOutput[0] - actualOutput[0]) > 0.7 ||
       Math.abs(expectedOutput[1] - actualOutput[1]) > 0.7
     ) {
-      console.info("FAIL", expectedOutput, actualOutput);
       if (loop > 12) fail("too many failures");
     }
   }

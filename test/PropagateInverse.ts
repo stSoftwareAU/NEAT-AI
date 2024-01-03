@@ -121,7 +121,7 @@ Deno.test("propagateInverseRandom", () => {
   );
   ts.forEach((item) => {
     const result = creatureA.noTraceActivate(item.input);
-    // console.info(item.input, item.output, result);
+
     assertAlmostEquals(item.output[0], result[0], 0.00001);
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
@@ -172,7 +172,7 @@ Deno.test("propagateInverseRandom", () => {
       JSON.stringify(creatureB.exportJSON(), null, 2),
     );
     if (result2.error < 0.001) break;
-    // console.info(result1.error, result2.error);
+
     if (attempts < 12) {
       if (result1.error <= result2.error) continue;
     }

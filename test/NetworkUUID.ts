@@ -39,8 +39,7 @@ Deno.test("knownName", async () => {
       { name: "error", value: "0.5" },
     ],
   });
-  console.info(creature);
-  //  console.info( JSON.stringify( creature, null, 2));
+
   const uuid = await NetworkUtil.makeUUID(creature);
 
   console.log("UUID", uuid);
@@ -120,8 +119,6 @@ Deno.test("ignoreTags", async () => {
   assertNotEquals(uuid0, uuid1);
 
   const uuid2 = await NetworkUtil.makeUUID(clean);
-
-  console.log("uuid1", uuid1, "uuid2", uuid2);
 
   assertEquals(uuid2, uuid1, `Should match uuid2: ${uuid2}, uuid1: ${uuid1}`);
 
