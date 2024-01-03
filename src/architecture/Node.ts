@@ -565,9 +565,21 @@ export class Node implements TagsInterface, NodeInternal {
 
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        return limitActivation(
-          squashMethod.noTraceActivate(this) + adjustedBias,
-        );
+        const adjustedActivation = squashMethod.noTraceActivate(this);
+
+        if (!Number.isFinite(adjustedActivation)) {
+          console.trace();
+          throw `${this.index}: Squasher ${squashMethod.getName()} adjustedActivation: ${adjustedActivation}, bias: ${adjustedBias}, adjustedBias: ${adjustedBias}`;
+        }
+        const limitedActivation = limitActivation(adjustedActivation) +
+          adjustedBias;
+
+        if (!Number.isFinite(limitedActivation)) {
+          console.trace();
+          throw `${this.index}: Squasher ${squashMethod.getName()} limitedActivation: ${limitedActivation}, bias: ${adjustedBias}, adjustedBias: ${adjustedBias}`;
+        }
+
+        return limitedActivation;
       } else {
         // All activation sources coming from the node itself
 
