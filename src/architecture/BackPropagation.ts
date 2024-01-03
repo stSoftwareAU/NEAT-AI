@@ -46,11 +46,6 @@ export function limitBias(bias: number) {
 }
 
 export function limitWeight(weight: number) {
-  if (!Number.isFinite(weight)) {
-    console.trace();
-    throw `Weight must be a finite number, got ${weight}`;
-  }
-
   if (Math.abs(weight) < MIN_WEIGHT) {
     return 0;
   }
@@ -59,10 +54,6 @@ export function limitWeight(weight: number) {
 }
 
 export function limitActivation(activation: number) {
-  if (!Number.isFinite(activation)) {
-    console.trace();
-    throw `Activation must be a finite number, got ${activation}`;
-  }
   if (activation > 1e12) return 1e12;
   if (activation < -1e12) return -1e12;
 
@@ -70,11 +61,6 @@ export function limitActivation(activation: number) {
 }
 
 export function limitValue(value: number) {
-  if (!Number.isFinite(value)) {
-    console.trace();
-    throw `Value must be a finite number, got ${value}`;
-  }
-
   if (value > 1e12) return 1e12;
   if (value < -1e12) return -1e12;
 

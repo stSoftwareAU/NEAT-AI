@@ -459,7 +459,6 @@ export class Node implements TagsInterface, NodeInternal {
       }
     }
 
-    // let remainingError = error;
     if (listLength) {
       const errorPerLink = error / listLength;
 
@@ -507,7 +506,7 @@ export class Node implements TagsInterface, NodeInternal {
           Math.abs(fromWeight) > PLANK_CONSTANT
         ) {
           const targetFromValue2 = fromValue + thisPerLinkError;
-          // cs.count++;
+
           cs.totalValue += targetFromValue2;
           cs.totalActivation += targetFromActivation;
           cs.absoluteActivation += Math.abs(improvedFromActivation);
@@ -517,24 +516,14 @@ export class Node implements TagsInterface, NodeInternal {
           const improvedAdjustedFromValue = improvedFromActivation *
             adjustedWeight;
 
-          // remainingError -= targetFromValue - improvedAdjustedFromValue;
           targetWeightedSum += improvedAdjustedFromValue;
         }
       }
     }
 
     ns.count++;
-    // ns.totalError += remainingError;
     ns.totalValue += targetValue;
-    // if (Number.isFinite(targetWeightedSum) == false) {
-    //   throw `${this.index} Invalid targetWeightedSum ${targetWeightedSum} for ${this.type} ${this.squash} ${this.bias}`;
-    // }
     ns.totalWeightedSum += targetWeightedSum;
-
-    // if (!Number.isFinite(ns.totalValue)) {
-    //   console.trace();
-    //   throw `${this.index}: Invalid totalValue: ${ns.totalValue}`;
-    // }
 
     const adjustedBias = this.adjustedBias(config);
 
