@@ -1,10 +1,17 @@
+import { ConnectionInternal } from "./ConnectionInterfaces.ts";
+import { NetworkState } from "./NetworkState.ts";
 import { Node } from "./Node.ts";
 
 export interface BackPropagationOptions {
   useAverageValuePerActivation?: boolean;
   disableRandomList?: boolean;
   useAverageDifferenceBias?: "Yes" | "No" | "Maybe";
-  // @TODO implement generations
+
+  /**
+   * The amount of previous generations if not set it'll be a random number between 1-100.
+   * The higher number of generations the lower the learning rate
+   */
+  generations?: number;
 }
 
 export const MAX_WEIGHT = 100_000;
@@ -17,6 +24,7 @@ export class BackPropagationConfig implements BackPropagationOptions {
   public disableRandomList: boolean;
 
   public useAverageDifferenceBias: "Yes" | "No" | "Maybe";
+  public generations: number;
 
   constructor(options?: BackPropagationOptions) {
     this.useAverageValuePerActivation = options?.useAverageValuePerActivation ??
@@ -36,6 +44,11 @@ export class BackPropagationConfig implements BackPropagationOptions {
         ? "No"
         : "Maybe";
     }
+
+    this.generations = Math.max(
+      options?.generations ?? Math.floor(Math.random() * 100) + 1,
+      0,
+    );
   }
 }
 
@@ -49,10 +62,13 @@ export function adjustedBias(
     const ns = node.network.networkState.node(node.index);
 
     if (ns.count) {
-      const averageDifferenceBias = (ns.totalValue - ns.totalWeightedSum) /
-        ns.count;
+      const totalValue = ns.totalValue + (node.bias * config.generations);
+      const samples = ns.count + config.generations;
 
-      const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
+      const averageDifferenceBias = (totalValue - ns.totalWeightedSum) /
+        samples;
+
+      const unaccountedRatioBias = 1 - (totalValue / ns.totalWeightedSum);
 
       if (
         config.useAverageDifferenceBias == "Yes" ||
@@ -73,6 +89,39 @@ export function adjustedBias(
     } else {
       return limitBias(node.bias);
     }
+  }
+}
+
+export function adjustedWeight(
+  networkState: NetworkState,
+  c: ConnectionInternal,
+  config: BackPropagationConfig,
+) {
+  const cs = networkState.connection(c.from, c.to);
+
+  if (cs.totalActivation) {
+    const totalValue = cs.totalValue + (c.weight * config.generations);
+
+    const totalActivation = cs.totalActivation + config.generations;
+    const absoluteActivation = cs.absoluteActivation + config.generations;
+
+    const averageWeightPerActivation = totalValue / totalActivation;
+    const averageWeightPerAbsoluteActivation = totalValue / absoluteActivation;
+
+    if (config.useAverageValuePerActivation) {
+      if (Number.isFinite(averageWeightPerActivation)) {
+        return limitWeight(averageWeightPerActivation);
+      } else {
+        console.info(
+          `${c.to}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation}`,
+        );
+        return limitWeight(c.weight);
+      }
+    } else {
+      return limitWeight(averageWeightPerAbsoluteActivation);
+    }
+  } else {
+    return limitWeight(c.weight);
   }
 }
 

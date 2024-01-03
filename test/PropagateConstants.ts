@@ -53,6 +53,7 @@ Deno.test("Constants", () => {
 
     const config = new BackPropagationConfig({
       disableRandomList: true,
+      generations: 0,
     });
     const inA = [-1, 1, 0];
     const outA1 = creature.noTraceActivate(inA);
@@ -173,6 +174,7 @@ Deno.test("Constants Known Few", () => {
   ];
   const config = new BackPropagationConfig({
     useAverageValuePerActivation: false,
+    generations: 0,
   });
 
   for (let indx = 0; indx < inputs.length; indx++) {

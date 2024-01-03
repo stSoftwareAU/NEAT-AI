@@ -79,6 +79,7 @@ Deno.test("OneAndDone", () => {
     // useAverageValuePerActivation: true,
     useAverageValuePerActivation: false,
     useAverageDifferenceBias: "Yes",
+    generations: 0,
   });
 
   Deno.writeTextFileSync(
@@ -127,6 +128,7 @@ Deno.test("TwoSame", () => {
   const config = new BackPropagationConfig({
     useAverageValuePerActivation: true,
     useAverageDifferenceBias: "Yes",
+    generations: 0,
   });
 
   Deno.writeTextFileSync(
@@ -168,6 +170,7 @@ Deno.test("ManySame", () => {
   const config = new BackPropagationConfig({
     useAverageValuePerActivation: true,
     useAverageDifferenceBias: "Maybe",
+    generations: 0,
   });
 
   Deno.writeTextFileSync(
@@ -209,6 +212,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
   const config = new BackPropagationConfig({
     useAverageValuePerActivation: true,
     useAverageDifferenceBias: "Yes",
+    generations: 0,
   });
 
   Deno.writeTextFileSync(

@@ -9,16 +9,15 @@ import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
-import { ConnectionInternal } from "./ConnectionInterfaces.ts";
+
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { PLANK_CONSTANT } from "../config/NeatConfig.ts";
 import {
   adjustedBias,
+  adjustedWeight,
   BackPropagationConfig,
-  BackPropagationOptions,
   limitActivation,
   limitValue,
-  limitWeight,
 } from "./BackPropagation.ts";
 
 export class Node implements TagsInterface, NodeInternal {
@@ -305,61 +304,16 @@ export class Node implements TagsInterface, NodeInternal {
     }
     this.network.networkState.activations[this.index] = activation;
 
-    // console.info(
-    //   `${this.index}: noTraceActivate ${activation.toFixed(3)}, bias ${
-    //     this.bias.toFixed(3)
-    //   }`,
-    // );
     return activation;
-  }
-
-  // private limit(delta: number, limit: number) {
-  //   if (!Number.isFinite(delta)) {
-  //     return 0;
-  //   }
-
-  //   const limitedDelta = Math.min(
-  //     Math.max(delta, Math.abs(limit) * -1),
-  //     Math.abs(limit),
-  //   );
-
-  //   return limitedDelta;
-  // }
-
-  private adjustedWeight(
-    c: ConnectionInternal,
-    options: BackPropagationOptions,
-  ) {
-    const cs = this.network.networkState.connection(c.from, c.to);
-
-    if (cs.totalActivation) {
-      const averageWeightPerActivation = cs.totalValue / cs.totalActivation; // BEST so far FAILS: Constants Few -18.6
-      const averageWeightPerAbsoluteActivation = cs.totalValue /
-        cs.absoluteActivation; // FAILS: Constants Few 4.5
-      if (options.useAverageValuePerActivation) {
-        if (Number.isFinite(averageWeightPerActivation)) {
-          return limitWeight(averageWeightPerActivation);
-        } else {
-          console.info(
-            `${this.index}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation}`,
-          );
-          return limitWeight(c.weight);
-        }
-      } else {
-        return limitWeight(averageWeightPerAbsoluteActivation);
-      }
-    } else {
-      return limitWeight(c.weight);
-    }
   }
 
   propagateUpdate(config: BackPropagationConfig) {
     const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const adjustedWeight = this.adjustedWeight(c, config);
+      const aWeight = adjustedWeight(this.network.networkState, c, config);
 
-      c.weight = adjustedWeight;
+      c.weight = aWeight;
     }
 
     const aBias = adjustedBias(this, config);
@@ -442,7 +396,7 @@ export class Node implements TagsInterface, NodeInternal {
 
         const cs = this.network.networkState.connection(c.from, c.to);
 
-        const fromWeight = this.adjustedWeight(c, config);
+        const fromWeight = adjustedWeight(this.network.networkState, c, config);
         const fromValue = fromWeight * fromActivation;
 
         let improvedFromActivation = fromActivation;
@@ -477,10 +431,10 @@ export class Node implements TagsInterface, NodeInternal {
           cs.totalActivation += targetFromActivation;
           cs.absoluteActivation += Math.abs(improvedFromActivation);
 
-          const adjustedWeight = this.adjustedWeight(c, config);
+          const aWeight = adjustedWeight(this.network.networkState, c, config);
 
           const improvedAdjustedFromValue = improvedFromActivation *
-            adjustedWeight;
+            aWeight;
 
           targetWeightedSum += improvedAdjustedFromValue;
         }
@@ -538,13 +492,14 @@ export class Node implements TagsInterface, NodeInternal {
           const fromActivation = (this.network.nodes[c.from] as Node)
             .adjustedActivation(config);
 
-          const fromWeight = this.adjustedWeight(c, config);
+          const fromWeight = adjustedWeight(
+            this.network.networkState,
+            c,
+            config,
+          );
 
           value += fromActivation * fromWeight;
-          // if (!Number.isFinite(value)) {
-          //   console.trace();
-          //   throw `${c.from}:${c.to} adjustedBias: ${adjustedBias}, i:${i}, value: ${value}, fromActivation: ${fromActivation}, fromWeight: ${fromWeight}`;
-          // }
+
           value = limitValue(value);
         }
 

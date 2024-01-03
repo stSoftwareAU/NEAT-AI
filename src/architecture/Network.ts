@@ -1245,6 +1245,9 @@ export class Network implements NetworkInternal {
       const startTS = Date.now();
       let lastTS = startTS;
       const config = new BackPropagationConfig();
+      if (options.generation !== undefined) {
+        config.generations = options.generation + iteration;
+      }
 
       let counter = 0;
       let errorSum = 0;

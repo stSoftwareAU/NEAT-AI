@@ -41,6 +41,7 @@ Deno.test("PI", () => {
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
     useAverageValuePerActivation: true,
+    generations: 0,
   });
   Deno.writeTextFileSync(
     ".trace/0.json",
@@ -92,6 +93,7 @@ Deno.test("PI Multiple", () => {
   const config = new BackPropagationConfig({
     useAverageValuePerActivation: true,
     useAverageDifferenceBias: "Yes",
+    generations: 0,
   });
 
   Deno.writeTextFileSync(

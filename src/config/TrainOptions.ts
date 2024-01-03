@@ -18,4 +18,7 @@ export interface TrainOptions {
 
   /** The directory to store the networks trace information (optional) */
   traceStore?: string;
+
+  /** The generation to use for the learning rate. */
+  generation?: number;
 }
