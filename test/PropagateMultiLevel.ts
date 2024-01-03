@@ -151,7 +151,7 @@ Deno.test("propagateMultiLevelRandom", () => {
     creatureB.validate();
 
     const result1 = creatureB.train(ts, {
-      iterations: 1,
+      iterations: 2,
       error: 0,
     });
 
@@ -374,7 +374,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
     creatureB.validate();
 
     const result1 = creatureB.train(ts, {
-      iterations: 1,
+      iterations: 2,
       error: 0,
     });
 
@@ -591,7 +591,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
     creatureB.validate();
 
     const result1 = creatureB.train(ts, {
-      iterations: 1,
+      iterations: 2,
       error: 0,
     });
 

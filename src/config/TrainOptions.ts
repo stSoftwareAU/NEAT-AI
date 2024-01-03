@@ -8,7 +8,12 @@ export interface TrainOptions {
   /** The cost function to use. See cost methods. Default: methods.cost.MSE */
   cost?: string;
 
-  /** Sets the amount of iterations the process will maximally run, even when the target error has not been reached. Default: NaN */
+  /**
+   * Sets the amount of iterations the process will maximally run,
+   * even when the target error has not been reached. Default: 2
+   *
+   * Note: Need to run at least 2 iterations to allow rollback if training makes the network worse.
+   */
   iterations?: number;
 
   /** The directory to store the networks trace information (optional) */

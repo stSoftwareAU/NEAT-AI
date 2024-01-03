@@ -1,3 +1,5 @@
+import { Node } from "./Node.ts";
+
 export interface BackPropagationOptions {
   useAverageValuePerActivation?: boolean;
   disableRandomList?: boolean;
@@ -33,6 +35,43 @@ export class BackPropagationConfig implements BackPropagationOptions {
         : random < -0.75
         ? "No"
         : "Maybe";
+    }
+  }
+}
+
+export function adjustedBias(
+  node: Node,
+  config: BackPropagationConfig,
+): number {
+  if (node.type == "constant") {
+    return node.bias ? node.bias : 0;
+  } else {
+    const ns = node.network.networkState.node(node.index);
+
+    if (ns.count) {
+      const averageDifferenceBias = (ns.totalValue - ns.totalWeightedSum) /
+        ns.count;
+
+      const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
+
+      if (
+        config.useAverageDifferenceBias == "Yes" ||
+        Number.isFinite(unaccountedRatioBias) == false
+      ) {
+        return limitBias(averageDifferenceBias);
+      } else if (
+        config.useAverageDifferenceBias == "No" ||
+        (
+          Math.abs(averageDifferenceBias - node.bias) <
+            Math.abs(unaccountedRatioBias - node.bias)
+        )
+      ) {
+        return limitBias(unaccountedRatioBias);
+      } else {
+        return limitBias(averageDifferenceBias);
+      }
+    } else {
+      return limitBias(node.bias);
     }
   }
 }

@@ -1051,7 +1051,7 @@ export class Network implements NetworkInternal {
       ) {
         const now = new Date().getTime();
         console.log(
-          "iteration",
+          "Training Iteration",
           generation,
           "score",
           fittest.score,
@@ -1224,7 +1224,7 @@ export class Network implements NetworkInternal {
         : 0.05;
     const cost = Costs.find(options.cost ? options.cost : "MSE");
 
-    const iterations = Math.max(options.iterations ? options.iterations : 0, 2);
+    const iterations = Math.max(options.iterations ? options.iterations : 2, 1);
 
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
       dataDir + "/" + fn

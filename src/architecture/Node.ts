@@ -13,10 +13,10 @@ import { ConnectionInternal } from "./ConnectionInterfaces.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { PLANK_CONSTANT } from "../config/NeatConfig.ts";
 import {
+  adjustedBias,
   BackPropagationConfig,
   BackPropagationOptions,
   limitActivation,
-  limitBias,
   limitValue,
   limitWeight,
 } from "./BackPropagation.ts";
@@ -353,40 +353,6 @@ export class Node implements TagsInterface, NodeInternal {
     }
   }
 
-  private adjustedBias(config: BackPropagationConfig): number {
-    if (this.type == "constant") {
-      return this.bias ? this.bias : 0;
-    } else {
-      const ns = this.network.networkState.node(this.index);
-
-      if (ns.count) {
-        const averageDifferenceBias = (ns.totalValue - ns.totalWeightedSum) /
-          ns.count;
-
-        const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
-
-        if (
-          config.useAverageDifferenceBias == "Yes" ||
-          Number.isFinite(unaccountedRatioBias) == false
-        ) {
-          return limitBias(averageDifferenceBias);
-        } else if (
-          config.useAverageDifferenceBias == "No" ||
-          (
-            Math.abs(averageDifferenceBias - this.bias) <
-              Math.abs(unaccountedRatioBias - this.bias)
-          )
-        ) {
-          return limitBias(unaccountedRatioBias);
-        } else {
-          return limitBias(averageDifferenceBias);
-        }
-      } else {
-        return limitBias(this.bias);
-      }
-    }
-  }
-
   propagateUpdate(config: BackPropagationConfig) {
     const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
@@ -396,9 +362,9 @@ export class Node implements TagsInterface, NodeInternal {
       c.weight = adjustedWeight;
     }
 
-    const adjustedBias = this.adjustedBias(config);
+    const aBias = adjustedBias(this, config);
 
-    this.bias = adjustedBias;
+    this.bias = aBias;
   }
 
   private toValue(activation: number) {
@@ -525,9 +491,9 @@ export class Node implements TagsInterface, NodeInternal {
     ns.totalValue += targetValue;
     ns.totalWeightedSum += targetWeightedSum;
 
-    const adjustedBias = this.adjustedBias(config);
+    const aBias = adjustedBias(this, config);
 
-    const adjustedActivation = targetWeightedSum + adjustedBias;
+    const adjustedActivation = targetWeightedSum + aBias;
 
     const squashMethod = this.findSquash();
 
@@ -550,30 +516,21 @@ export class Node implements TagsInterface, NodeInternal {
     if (this.type == "constant") {
       return this.bias;
     } else {
-      const adjustedBias = this.adjustedBias(config);
+      const aBias = adjustedBias(this, config);
 
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
         const adjustedActivation = squashMethod.noTraceActivate(this);
 
-        // if (!Number.isFinite(adjustedActivation)) {
-        //   console.trace();
-        //   throw `${this.index}: Squasher ${squashMethod.getName()} adjustedActivation: ${adjustedActivation}, bias: ${adjustedBias}, adjustedBias: ${adjustedBias}`;
-        // }
         const limitedActivation = limitActivation(adjustedActivation) +
-          adjustedBias;
-
-        // if (!Number.isFinite(limitedActivation)) {
-        //   console.trace();
-        //   throw `${this.index}: Squasher ${squashMethod.getName()} limitedActivation: ${limitedActivation}, bias: ${adjustedBias}, adjustedBias: ${adjustedBias}`;
-        // }
+          aBias;
 
         return limitedActivation;
       } else {
         // All activation sources coming from the node itself
 
         const toList = this.network.toConnections(this.index);
-        let value = adjustedBias;
+        let value = aBias;
 
         for (let i = toList.length; i--;) {
           const c = toList[i];

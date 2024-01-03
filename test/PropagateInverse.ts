@@ -152,7 +152,7 @@ Deno.test("propagateInverseRandom", () => {
     creatureB.validate();
 
     const result1 = creatureB.train(ts, {
-      iterations: 1,
+      iterations: 2,
       error: 0,
     });
 
