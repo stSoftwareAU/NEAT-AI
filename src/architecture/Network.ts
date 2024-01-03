@@ -1076,23 +1076,16 @@ export class Network implements NetworkInternal {
       generation++;
     }
 
-    // const promises: Promise<string>[] = [];
+    neat.finishUp();
+
     for (let i = workers.length; i--;) {
       const w = workers[i];
-      // if (w.isBusy()) {
-      //   const p = new Promise<string>((resolve) => {
-      //     w.addIdleListener((w) => {
-      //       w.terminate();
-      //       resolve("done");
-      //     });
-      //   });
-      //   promises.push(p);
-      // } else {
       w.terminate();
-      // }
     }
     workers.length = 0; // Release the memory.
-    // await Promise.all(promises);
+    if (neat.finishUp() == false) {
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Sleep for 1 second
+    }
     if (bestCreature) {
       this.loadFrom(bestCreature, config.debug);
     }

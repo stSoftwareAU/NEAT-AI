@@ -52,7 +52,6 @@ Deno.test("storeTrace", async () => {
 
   let foundUsed = false;
   let totalActivationCount = 0;
-  // let totalDeltaWeightCount = 0;
 
   for (let counter = 10; counter--;) {
     const options: NeatOptions = {

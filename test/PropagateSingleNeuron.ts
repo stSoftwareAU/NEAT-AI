@@ -169,7 +169,7 @@ Deno.test("ManySame", () => {
     useAverageValuePerActivation: true,
     useAverageDifferenceBias: "Maybe",
   });
-  console.info(config);
+
   Deno.writeTextFileSync(
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),
@@ -192,7 +192,6 @@ Deno.test("ManySame", () => {
   creature.propagateUpdate(config);
 
   const actualA = creature.noTraceActivate(inA);
-  console.info(expectedA, actualA);
 
   Deno.writeTextFileSync(
     ".trace/4-done.json",
@@ -211,7 +210,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
     useAverageValuePerActivation: true,
     useAverageDifferenceBias: "Yes",
   });
-  console.info(config);
+
   Deno.writeTextFileSync(
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),

@@ -39,8 +39,6 @@ Deno.test("TagNode", () => {
   const network2 = Network.fromJSON(json2);
   const json3 = network2.exportJSON();
 
-  console.info(JSON.stringify(json3, null, 2));
-
   const tags = json3.nodes[0].tags;
   assert(tags != null, "Should have tags");
 

@@ -116,8 +116,6 @@ Deno.test("REMOVE", () => {
   const networkIF = crispr.apply(JSON.parse(dnaTXT)) as Network;
   (networkIF as Network).validate();
 
-  console.info(JSON.stringify(networkIF.exportJSON(), null, 2));
-
   for (let pos = networkIF.nodes.length; pos--;) {
     const node = networkIF.nodes[pos] as Node;
     const tag = getTag(node, "CRISPR");

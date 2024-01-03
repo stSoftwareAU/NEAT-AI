@@ -97,7 +97,6 @@ Deno.test("12StepsLimitA", () => {
   const c1 = cost.calculate([1.1], [1.2]);
   const c2 = cost.calculate([1.1], [2]);
 
-  console.info("cost: " + c1);
   assertAlmostEquals(
     c1,
     c2,
@@ -112,7 +111,6 @@ Deno.test("12StepsLimitB", () => {
   const c1 = cost.calculate([1], [1.2]);
   const c2 = cost.calculate([1], [2]);
 
-  console.info("cost: " + c1);
   assertAlmostEquals(
     c1,
     c2,

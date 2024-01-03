@@ -19,9 +19,7 @@ Deno.test("TagDirectory", async () => {
   tar.process({ directory: tempDirPath, tagList: "ABC=123,XYZ=456" });
   const tagged = JSON.parse(Deno.readTextFileSync(tempDirPath + "/2.json"));
 
-  Deno.remove(tempDirPath, { recursive: true });
-
-  console.info(tagged);
+  await Deno.remove(tempDirPath, { recursive: true });
 
   const abc = getTag(tagged, "ABC");
   const xyz = getTag(tagged, "XYZ");

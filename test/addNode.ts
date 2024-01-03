@@ -91,7 +91,6 @@ Deno.test("addNode", () => {
     network.addNode();
   }
   const nodes = network.internalJSON().nodes;
-  console.info(JSON.stringify(nodes, null, 1));
 
   for (let pos = nodes.length; pos--;) {
     const node = nodes[pos];

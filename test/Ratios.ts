@@ -40,7 +40,7 @@ Deno.test("hypotenuse", async () => {
     answer = network.activate(check)[0];
 
     errorPercent = Math.round((1 - answer / 78.1) * 100);
-    console.info("Answer", answer, errorPercent);
+
     if (Math.abs(errorPercent) < 10) break;
   }
 

@@ -129,7 +129,7 @@ Deno.test("if-fix", () => {
   network.fix();
   const network2 = Network.fromJSON(network.exportJSON());
   network2.validate();
-  console.info(JSON.stringify(network2.exportJSON(), null, 2));
+
   const toList = network.toConnections(5);
 
   assert(toList.length > 2, "Should have 3 connections was: " + toList.length);

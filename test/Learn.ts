@@ -73,8 +73,6 @@ Deno.test("Learn", () => {
   console.info(answersA);
   nn.train(dataSet, options);
 
-  // console.info( nn.util.toJSON());
-
   const answersB = nn.noTraceActivate([0.1, 0.2]);
   console.info(answersB);
 });
