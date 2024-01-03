@@ -5,7 +5,10 @@ import { make as makeConfig } from "./config/NeatConfig.ts";
 import { Fitness } from "./architecture/Fitness.ts";
 
 import { format } from "https://deno.land/std@0.210.0/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
+import {
+  ensureDir,
+  ensureDirSync,
+} from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
@@ -102,7 +105,7 @@ export class Neat {
             JSON.parse(r.train.trace),
           );
           await NetworkUtil.makeUUID(traceNetwork);
-
+          await ensureDir(this.config.traceStore);
           await Deno.writeTextFile(
             `${this.config.traceStore}/${traceNetwork.uuid}.json`,
             JSON.stringify(traceNetwork.traceJSON(), null, 2),
