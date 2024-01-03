@@ -581,6 +581,10 @@ export class Node implements TagsInterface, NodeInternal {
           const fromWeight = this.adjustedWeight(c, config);
 
           value += fromActivation * fromWeight;
+          if (!Number.isFinite(value)) {
+            console.trace();
+            throw `${c.from}:${c.to} adjustedBias: ${adjustedBias}, i:${i}, value: ${value}, fromActivation: ${fromActivation}, fromWeight: ${fromWeight}`;
+          }
         }
 
         const activationSquash = squashMethod as ActivationInterface;
