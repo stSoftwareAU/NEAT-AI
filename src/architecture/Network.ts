@@ -1234,7 +1234,7 @@ export class Network implements NetworkInternal {
     let iteration = 0;
 
     let bestError: number | undefined = undefined;
-    let trainingFailed = 0;
+    let trainingFailures = 0;
     let bestCreatureJSON: NetworkExport = this.exportJSON();
     let traceJSON: undefined | NetworkTrace = undefined;
     let knownSampleCount = -1;
@@ -1259,8 +1259,8 @@ export class Network implements NetworkInternal {
         const j = Math.floor(Math.random() * (i + 1));
         [files[i], files[j]] = [files[j], files[i]];
       }
-
-      for (let j = files.length; j--;) {
+      let trainingStopped = false;
+      for (let j = files.length; !trainingStopped && j--;) {
         const fn = files[j];
         const json = cacheDataFile.fn == fn
           ? cacheDataFile.json
@@ -1302,6 +1302,7 @@ export class Network implements NetworkInternal {
             console.warn(
               `Training stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`,
             );
+            trainingStopped = true;
             break;
           } else if (bestError !== undefined) {
             const bestPossibleError = errorSum / knownSampleCount;
@@ -1313,6 +1314,7 @@ export class Network implements NetworkInternal {
                   yellow(counter.toFixed(0))
                 } of ${yellow(knownSampleCount.toFixed(0))}`,
               );
+              trainingStopped = true;
               break;
             }
           }
@@ -1345,18 +1347,18 @@ export class Network implements NetworkInternal {
       const error = errorSum / counter;
 
       if (bestError !== undefined && bestError < error) {
-        trainingFailed++;
+        trainingFailures++;
         console.warn(
           `Training made the error ${yellow(bestError.toFixed(3))} worse ${
             yellow(error.toFixed(3))
-          } failed ${yellow(trainingFailed.toString())} out of ${
+          } failed ${yellow(trainingFailures.toString())} out of ${
             yellow(iteration.toString())
           } iterations`,
         );
 
         if (options.traceStore) {
           Deno.writeTextFileSync(
-            `.trace/${trainingFailed}_fail.json`,
+            `.trace/${trainingFailures}_fail.json`,
             JSON.stringify(this.exportJSON(), null, 2),
           );
         }
