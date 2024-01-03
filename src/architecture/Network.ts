@@ -1051,7 +1051,7 @@ export class Network implements NetworkInternal {
       ) {
         const now = new Date().getTime();
         console.log(
-          "Training Iteration",
+          "Generation",
           generation,
           "score",
           fittest.score,
