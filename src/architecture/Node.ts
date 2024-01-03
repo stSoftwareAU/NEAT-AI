@@ -427,10 +427,10 @@ export class Node implements TagsInterface, NodeInternal {
     targetActivation: number,
     config: BackPropagationConfig,
   ) {
-    if (Number.isFinite(targetActivation) == false) {
-      console.trace();
-      throw `${this.index} Invalid targetActivation ${targetActivation} for ${this.type} ${this.squash} ${this.bias}`;
-    }
+    // if (Number.isFinite(targetActivation) == false) {
+    //   console.trace();
+    //   throw `${this.index} Invalid targetActivation ${targetActivation} for ${this.type} ${this.squash} ${this.bias}`;
+    // }
     const activation = this.adjustedActivation(config);
 
     /** Short circuit  */
@@ -489,9 +489,9 @@ export class Node implements TagsInterface, NodeInternal {
           fromNode.type !== "constant"
         ) {
           targetFromActivation = targetFromValue / fromWeight;
-          if (Number.isFinite(targetFromActivation) == false) {
-            throw `${this.index} targetFromActivation ${targetFromActivation} fromWeight ${fromWeight} targetFromValue ${targetFromValue}`;
-          }
+          // if (Number.isFinite(targetFromActivation) == false) {
+          //   throw `${this.index} targetFromActivation ${targetFromActivation} fromWeight ${fromWeight} targetFromValue ${targetFromValue}`;
+          // }
           improvedFromActivation = (fromNode as Node).propagate(
             targetFromActivation,
             config,
@@ -556,17 +556,17 @@ export class Node implements TagsInterface, NodeInternal {
       if (this.isNodeActivation(squashMethod)) {
         const adjustedActivation = squashMethod.noTraceActivate(this);
 
-        if (!Number.isFinite(adjustedActivation)) {
-          console.trace();
-          throw `${this.index}: Squasher ${squashMethod.getName()} adjustedActivation: ${adjustedActivation}, bias: ${adjustedBias}, adjustedBias: ${adjustedBias}`;
-        }
+        // if (!Number.isFinite(adjustedActivation)) {
+        //   console.trace();
+        //   throw `${this.index}: Squasher ${squashMethod.getName()} adjustedActivation: ${adjustedActivation}, bias: ${adjustedBias}, adjustedBias: ${adjustedBias}`;
+        // }
         const limitedActivation = limitActivation(adjustedActivation) +
           adjustedBias;
 
-        if (!Number.isFinite(limitedActivation)) {
-          console.trace();
-          throw `${this.index}: Squasher ${squashMethod.getName()} limitedActivation: ${limitedActivation}, bias: ${adjustedBias}, adjustedBias: ${adjustedBias}`;
-        }
+        // if (!Number.isFinite(limitedActivation)) {
+        //   console.trace();
+        //   throw `${this.index}: Squasher ${squashMethod.getName()} limitedActivation: ${limitedActivation}, bias: ${adjustedBias}, adjustedBias: ${adjustedBias}`;
+        // }
 
         return limitedActivation;
       } else {
