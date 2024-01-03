@@ -4,23 +4,23 @@ import { make as makeConfig } from "./config/NeatConfig.ts";
 
 import { Fitness } from "./architecture/Fitness.ts";
 
-import { NeatOptions } from "./config/NeatOptions.ts";
+import { format } from "https://deno.land/std@0.210.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
+import { makeElitists } from "../src/architecture/elitism.ts";
+import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
+import { fineTuneImprovement } from "./architecture/FineTune.ts";
+import { Network } from "./architecture/Network.ts";
+import { NetworkInternal } from "./architecture/NetworkInterfaces.ts";
+import { NetworkUtil } from "./architecture/NetworkUtils.ts";
+import { Offspring } from "./architecture/Offspring.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
+import { NeatOptions } from "./config/NeatOptions.ts";
+import { Selection } from "./methods/Selection.ts";
+import { Mutation } from "./methods/mutation.ts";
 import {
   ResponseData,
   WorkerHandler,
 } from "./multithreading/workers/WorkerHandler.ts";
-import { NetworkInternal } from "./architecture/NetworkInterfaces.ts";
-import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
-import { fineTuneImprovement } from "./architecture/FineTune.ts";
-import { makeElitists } from "../src/architecture/elitism.ts";
-import { Network } from "./architecture/Network.ts";
-import { ensureDirSync } from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
-import { Mutation } from "./methods/mutation.ts";
-import { Selection } from "./methods/Selection.ts";
-import { Offspring } from "./architecture/Offspring.ts";
-import { NetworkUtil } from "./architecture/NetworkUtils.ts";
-import { format } from "https://deno.land/std@0.210.0/fmt/duration.ts";
 
 export class Neat {
   readonly input: number;
@@ -28,7 +28,7 @@ export class Neat {
   readonly config: NeatConfig;
   readonly workers: WorkerHandler[];
   readonly fitness: Fitness;
-  trainRate: number;
+
   population: Network[];
 
   constructor(
@@ -49,8 +49,6 @@ export class Neat {
       this.config.growth,
       this.config.feedbackLoop,
     );
-
-    this.trainRate = this.config.trainRate;
 
     // Initialize the genomes
     this.population = [];
@@ -313,8 +311,6 @@ export class Neat {
       this.population,
     );
 
-    let trainingWorked = false;
-
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
 
@@ -326,38 +322,6 @@ export class Neat {
         }
 
         livePopulation.push(p);
-
-        const untrained = getTag(p, "untrained");
-
-        if (untrained) {
-          const error = getTag(p, "error");
-          const currentError = Math.abs(
-            parseFloat(error ? error : Number.MAX_SAFE_INTEGER.toString()),
-          );
-          const previousError = Math.abs(parseFloat(untrained));
-
-          if (currentError < previousError) {
-            // console.info( "Training worked", previousError, currentError );
-            trainingWorked = true;
-          }
-        }
-      }
-    }
-
-    if (previousFittest) {
-      if (trainingWorked) {
-        const nextRate = Math.min(
-          this.trainRate * (1 + Math.random()),
-          0.1,
-        );
-
-        this.trainRate = nextRate;
-      } else {
-        const nextRate = Math.max(
-          this.trainRate * Math.random(),
-          0.000_000_01,
-        );
-        this.trainRate = nextRate;
       }
     }
 

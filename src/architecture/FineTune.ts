@@ -3,6 +3,7 @@ import { Network } from "./Network.ts";
 import { NetworkInternal } from "./NetworkInterfaces.ts";
 import { NetworkUtil } from "./NetworkUtils.ts";
 import { NodeExport } from "./NodeInterfaces.ts";
+import { bold, cyan } from "https://deno.land/std@0.210.0/fmt/colors.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneRandomize(
@@ -126,7 +127,8 @@ export async function fineTuneImprovement(
     );
   } else if (approach == "trained") {
     console.info(
-      "Training increased fitness by",
+      bold(cyan("Training")),
+      "increased fitness by",
       fScore - pScore,
       "to",
       fScore,

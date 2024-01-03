@@ -1,8 +1,6 @@
-import { NetworkInternal } from "../../architecture/NetworkInterfaces.ts";
 import { Network } from "../../architecture/Network.ts";
+import { NetworkInternal } from "../../architecture/NetworkInterfaces.ts";
 import { MockWorker } from "./MockWorker.ts";
-
-import { addTag, getTag } from "../../tags/TagsInterface.ts";
 
 export interface RequestData {
   taskID: number;
@@ -178,13 +176,10 @@ export class WorkerHandler {
   }
 
   train(network: NetworkInternal) {
-    const json = (network as Network).internalJSON();
+    const json = (network as Network).exportJSON();
 
     delete json.tags;
-    const error = getTag(network, "error");
-    if (error) {
-      addTag(json, "untrained", error);
-    }
+
     const data: RequestData = {
       taskID: this.taskID++,
       train: {

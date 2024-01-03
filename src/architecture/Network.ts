@@ -1368,6 +1368,10 @@ export class Network implements NetworkInternal {
         }
         this.loadFrom(bestCreatureJSON, false);
       } else {
+        if (bestError === undefined) {
+          addTag(this, "untrained-error", error.toString());
+        }
+
         bestCreatureJSON = this.exportJSON();
         bestError = error;
         knownSampleCount = counter;
