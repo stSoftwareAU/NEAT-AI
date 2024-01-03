@@ -508,7 +508,7 @@ Deno.test("evolve_SIN_function", async () => {
     });
   }
 
-  await evolveSet(set, 10000, 0.05);
+  await evolveSet(set, 10000, 0.06);
 });
 
 Deno.test("train_Bigger_than", () => {

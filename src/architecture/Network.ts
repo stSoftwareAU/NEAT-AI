@@ -1237,7 +1237,7 @@ export class Network implements NetworkInternal {
     let trainingFailed = 0;
     let bestCreatureJSON: NetworkExport = this.exportJSON();
     let traceJSON: undefined | NetworkTrace = undefined;
-
+    let knownSampleCount = -1;
     // @TODO need to apply Stochastic Gradient Descent
     const EMPTY = { input: [], output: [] };
     while (true) {
@@ -1303,8 +1303,19 @@ export class Network implements NetworkInternal {
               `Training stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`,
             );
             break;
+          } else if (bestError !== undefined) {
+            const bestPossibleError = errorSum / knownSampleCount;
+            if (bestPossibleError > bestError) {
+              console.warn(
+                `Training stopped as 'best possible' error ${
+                  yellow(bestPossibleError.toFixed(3))
+                } > 'best' error ${
+                  yellow(bestError.toFixed(3))
+                } at counter ${counter} of ${knownSampleCount}`,
+              );
+              break;
+            }
           }
-
           this.propagate(data.output, config);
 
           const now = Date.now();
@@ -1353,6 +1364,7 @@ export class Network implements NetworkInternal {
       } else {
         bestCreatureJSON = this.exportJSON();
         bestError = error;
+        knownSampleCount = counter;
         traceJSON = this.traceJSON();
         this.applyLearnings(config);
         this.clearState();
