@@ -3,6 +3,11 @@ import { Node } from "../../../architecture/Node.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 import { Mutation } from "../../mutation.ts";
+import {
+  limitActivation,
+  limitValue,
+  limitWeight,
+} from "../../../architecture/BackPropagation.ts";
 
 export class IF implements NodeActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
@@ -189,18 +194,18 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.network.getActivation(c.from) *
-        c.weight;
+      const value = limitActivation(node.network.getActivation(c.from)) *
+        limitWeight(c.weight);
 
       switch (c.type) {
         case "condition":
-          condition += value;
+          condition = limitValue(condition + value);
           break;
         case "negative":
-          negative += value;
+          negative = limitValue(negative + value);
           break;
         default:
-          positive += value;
+          positive = limitValue(positive + value);
       }
     }
 

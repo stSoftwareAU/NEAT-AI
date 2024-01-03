@@ -1244,7 +1244,7 @@ export class Network implements NetworkInternal {
       iteration++;
       const startTS = Date.now();
       let lastTS = startTS;
-      const backPropagationConfig = new BackPropagationConfig();
+      const config = new BackPropagationConfig();
 
       let counter = 0;
       let errorSum = 0;
@@ -1305,7 +1305,7 @@ export class Network implements NetworkInternal {
             break;
           }
 
-          this.propagate(data.output, backPropagationConfig);
+          this.propagate(data.output, config);
 
           const now = Date.now();
           const diff = now - lastTS;
@@ -1354,7 +1354,7 @@ export class Network implements NetworkInternal {
         bestCreatureJSON = this.exportJSON();
         bestError = error;
         traceJSON = this.traceJSON();
-        this.applyLearnings(backPropagationConfig);
+        this.applyLearnings(config);
         this.clearState();
       }
 
