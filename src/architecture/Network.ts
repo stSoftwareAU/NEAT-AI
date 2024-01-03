@@ -1307,7 +1307,7 @@ export class Network implements NetworkInternal {
             );
             trainingStopped = true;
             break;
-          } else if (bestError !== undefined) {
+          } else if (bestError !== undefined && counter < knownSampleCount) {
             const bestPossibleError = errorSum / knownSampleCount;
             if (bestPossibleError > bestError) {
               console.warn(

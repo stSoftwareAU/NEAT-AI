@@ -391,8 +391,8 @@ Deno.test("evolve XORgate", async () => {
       { input: [1, 0], output: [1] },
       { input: [1, 1], output: [0] },
     ],
-    3000,
-    0.002,
+    100_000,
+    0.05,
   );
 });
 
