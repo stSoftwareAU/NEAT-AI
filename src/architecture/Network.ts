@@ -1313,7 +1313,7 @@ export class Network implements NetworkInternal {
             lastTS = now;
             const totalTime = now - startTS;
             console.log(
-              "counter",
+              "Training samples",
               counter,
               "error",
               yellow((errorSum / counter).toFixed(3)),

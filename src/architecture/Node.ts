@@ -419,9 +419,6 @@ export class Node implements TagsInterface, NodeInternal {
     const adjustedBias = this.adjustedBias(config);
 
     this.bias = adjustedBias;
-    const ns = this.network.networkState.node(this.index);
-
-    ns.propagated = true;
   }
 
   private toValue(activation: number) {
@@ -443,21 +440,6 @@ export class Node implements TagsInterface, NodeInternal {
     }
   }
 
-  private readonly MAX_ADJUST = 2;
-
-  // private limit(delta: number, limit: number) {
-  //   if (!Number.isFinite(delta)) {
-  //     return 0;
-  //   }
-
-  //   const limitedDelta = Math.min(
-  //     Math.max(delta, Math.abs(limit) * -1),
-  //     Math.abs(limit),
-  //   );
-
-  //   return limitedDelta;
-  // }
-
   /**
    * Back-propagate the error, aka learn
    */
@@ -471,11 +453,6 @@ export class Node implements TagsInterface, NodeInternal {
     }
 
     const ns = this.network.networkState.node(this.index);
-
-    if (ns.propagated) {
-      console.trace();
-      throw `Already propagated ${this.index}`;
-    }
 
     const targetValue = this.toValue(targetActivation);
 
@@ -535,16 +512,6 @@ export class Node implements TagsInterface, NodeInternal {
           improvedFromValue = improvedFromActivation * fromWeight;
 
           thisPerLinkError = targetFromValue - improvedFromValue;
-
-          // if (
-          //   !Number.isFinite(thisPerLinkError) ||
-          //   Math.abs(thisPerLinkError) > Math.abs(errorPerLink)
-          // ) {
-          //   console.trace();
-          //   // throw msg;
-          // }
-
-          // fromValue = improvedFromValue;
         }
 
         if (
@@ -552,14 +519,9 @@ export class Node implements TagsInterface, NodeInternal {
           Math.abs(fromWeight) > PLANK_CONSTANT
         ) {
           const targetFromValue2 = fromValue + thisPerLinkError;
-          // const targetFromValue2 = improvedFromValue + errorPerLink;//- thisPerLinkError);
-          // const targetFromValue2 = improvedFromValue + errorPerLink;
-
           cs.count++;
-          // cs.totalValue += improvedFromValue;
           cs.totalValue += targetFromValue2;
           cs.totalActivation += targetFromActivation;
-          // cs.totalActivation += improvedFromActivation;
           cs.absoluteActivation += Math.abs(improvedFromActivation);
 
           const adjustedWeight = this.adjustedWeight(c, config);
@@ -573,16 +535,6 @@ export class Node implements TagsInterface, NodeInternal {
       }
     }
 
-    // if (remainingError) {
-    //   console.info(
-    //     `${this.index}: propagate: ${targetActivation.toFixed(3)} -> ${
-    //       activation.toFixed(3)
-    //     } -> ${targetValue.toFixed(3)} -> ${activationValue.toFixed(3)} -> ${
-    //       error.toFixed(3)
-    //     } -> ${remainingError.toFixed(3)}`,
-    //   );
-    // }
-
     ns.count++;
     ns.totalError += remainingError;
     ns.totalValue += targetValue;
@@ -590,7 +542,7 @@ export class Node implements TagsInterface, NodeInternal {
       throw `${this.index} Invalid targetWeightedSum ${targetWeightedSum} for ${this.type} ${this.squash} ${this.bias}`;
     }
     ns.totalWeightedSum += targetWeightedSum;
-    ns.absoluteWeightedSum += Math.abs(targetWeightedSum);
+    // ns.absoluteWeightedSum += Math.abs(targetWeightedSum);
 
     if (!Number.isFinite(ns.totalValue)) {
       console.trace();

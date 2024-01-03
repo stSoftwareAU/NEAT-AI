@@ -6,6 +6,8 @@ export interface BackPropagationOptions {
 }
 
 export const MAX_WEIGHT = 100_000;
+export const MIN_WEIGHT = 1e-12;
+
 export const MAX_BIAS = 100_000;
 
 export class BackPropagationConfig implements BackPropagationOptions {
@@ -45,6 +47,10 @@ export function limitBias(bias: number) {
 export function limitWeight(weight: number) {
   if (!Number.isFinite(weight)) {
     throw `Weight must be a finite number, got ${weight}`;
+  }
+
+  if (Math.abs(weight) < MIN_WEIGHT) {
+    return 0;
   }
 
   return Math.max(-MAX_WEIGHT, Math.min(MAX_WEIGHT, weight));
