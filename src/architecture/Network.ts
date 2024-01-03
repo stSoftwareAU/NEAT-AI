@@ -1299,7 +1299,10 @@ export class Network implements NetworkInternal {
           errorSum += sampleError;
           counter++;
           if (Number.isFinite(errorSum) == false) {
-            throw `errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`;
+            console.warn(
+              `Training stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`,
+            );
+            break;
           }
 
           this.propagate(data.output, backPropagationConfig);

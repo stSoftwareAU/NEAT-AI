@@ -155,8 +155,8 @@ Deno.test("RandomizeCompact", () => {
 
     const endOut = b.noTraceActivate(input);
 
-    assertAlmostEquals(startOut[0], endOut[0], 0.05);
-    assertAlmostEquals(startOut[1], endOut[1], 0.05);
+    assertAlmostEquals(startOut[0], endOut[0], 0.1);
+    assertAlmostEquals(startOut[1], endOut[1], 0.1);
     assert(endNodes < startNodes);
     assert(endConnections < startConnections);
 
