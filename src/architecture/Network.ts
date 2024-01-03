@@ -1295,8 +1295,13 @@ export class Network implements NetworkInternal {
 
           const output = this.activate(data.input);
 
-          errorSum += cost.calculate(data.output, output);
+          const sampleError = cost.calculate(data.output, output);
+          errorSum += sampleError;
           counter++;
+          if (Number.isFinite(errorSum) == false) {
+            throw `errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`;
+          }
+
           this.propagate(data.output, backPropagationConfig);
 
           const now = Date.now();

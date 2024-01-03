@@ -15,10 +15,20 @@ export class MEAN implements NodeActivationInterface {
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      sum += node.network.getActivation(c.from) * c.weight;
+      const activation = node.network.getActivation(c.from);
+
+      sum += activation * c.weight;
+      if (Number.isFinite(sum) == false) {
+        throw `Node: ${node.uuid} connection: ${
+          c.from + ":" + c.to
+        }, SUM: ${sum} is not finite. Activation: ${activation}, Weight: ${c.weight}`;
+      }
     }
 
     const value = sum / toList.length;
+    if (Number.isFinite(value) == false) {
+      throw `Node: ${node.uuid} MEAN: ${value} is not finite sum: ${sum} toList.length: ${toList.length}`;
+    }
     return value;
   }
 
