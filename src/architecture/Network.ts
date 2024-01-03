@@ -1348,14 +1348,15 @@ export class Network implements NetworkInternal {
 
       if (bestError !== undefined && bestError < error) {
         trainingFailures++;
-        console.warn(
-          `Training made the error ${yellow(bestError.toFixed(3))} worse ${
-            yellow(error.toFixed(3))
-          } failed ${yellow(trainingFailures.toString())} out of ${
-            yellow(iteration.toString())
-          } iterations`,
-        );
-
+        if (trainingStopped == false) {
+          console.warn(
+            `Training made the error ${yellow(bestError.toFixed(3))} worse ${
+              yellow(error.toFixed(3))
+            } failed ${yellow(trainingFailures.toString())} out of ${
+              yellow(iteration.toString())
+            } iterations`,
+          );
+        }
         if (options.traceStore) {
           Deno.writeTextFileSync(
             `.trace/${trainingFailures}_fail.json`,
