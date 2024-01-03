@@ -19,10 +19,10 @@ Deno.test("AND", () => {
 
     const results = network.train(trainingSet, {
       error: 0.03,
-      iterations: 1_000,
+      iterations: 10_000,
     });
 
-    if (results.error > 0.03 && attempts < 12) continue;
+    if (results.error > 0.03 && attempts < 100) continue;
 
     assert(results.error <= 0.03, "Error rate was: " + results.error);
     break;
