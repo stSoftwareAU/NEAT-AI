@@ -333,34 +333,23 @@ export class Node implements TagsInterface, NodeInternal {
     const cs = this.network.networkState.connection(c.from, c.to);
 
     if (cs.totalActivation) {
-      // Constants Few expect 4.5
-
-      // const weightB= cs.totalValue / Math.abs(cs.totalActivation); // FAILS: Constants Few 1.4
-
-      const averageValuePerActivation = cs.totalValue / cs.totalActivation; // BEST so far FAILS: Constants Few -18.6
-      const averageValuePerAbsoluteActivation = cs.totalValue /
+      const averageWeightPerActivation = cs.totalValue / cs.totalActivation; // BEST so far FAILS: Constants Few -18.6
+      const averageWeightPerAbsoluteActivation = cs.totalValue /
         cs.absoluteActivation; // FAILS: Constants Few 4.5
-
-      // console.info(
-      //   `${this.index}: weight: ${c.weight} averageValuePerActivation ${averageValuePerActivation} averageValuePerAbsoluteActivation ${averageValuePerAbsoluteActivation}`,
-      // );
-
-      // if( true || Math.abs(averageValuePerActivation ) < Math.abs(averageValuePerAbsoluteActivation)){
       if (options.useAverageValuePerActivation) {
-        //   console.info(`${this.index}: averageValuePerActivation ${averageValuePerActivation}`);
-        if (Number.isFinite(averageValuePerActivation)) {
-          return limitWeight(averageValuePerActivation);
+        if (Number.isFinite(averageWeightPerActivation)) {
+          return limitWeight(averageWeightPerActivation);
         } else {
           console.info(
-            `${this.index}: Invalid Weight : averageValuePerActivation ${averageValuePerActivation}`,
+            `${this.index}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation}`,
           );
-          return c.weight;
+          return limitWeight(c.weight);
         }
       } else {
-        return limitWeight(averageValuePerAbsoluteActivation);
+        return limitWeight(averageWeightPerAbsoluteActivation);
       }
     } else {
-      return c.weight;
+      return limitWeight(c.weight);
     }
   }
 
@@ -375,15 +364,6 @@ export class Node implements TagsInterface, NodeInternal {
           ns.count;
 
         const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
-
-        // if (
-        //   Number.isFinite(averageDifferenceBias) == false ||
-        //   Number.isFinite(unaccountedRatioBias) == false
-        // ) {
-        //   console.info(
-        //     `${this.index}: Invalid Bias : averageDifferenceBias ${averageDifferenceBias} unaccountedRatioBias ${unaccountedRatioBias} totalWeightedSum ${ns.totalWeightedSum} totalValue ${ns.totalValue} count ${ns.count}`,
-        //   );
-        // }
 
         if (
           config.useAverageDifferenceBias == "Yes" ||
@@ -402,7 +382,7 @@ export class Node implements TagsInterface, NodeInternal {
           return limitBias(averageDifferenceBias);
         }
       } else {
-        return this.bias;
+        return limitBias(this.bias);
       }
     }
   }
@@ -451,12 +431,16 @@ export class Node implements TagsInterface, NodeInternal {
       console.trace();
       throw `${this.index} Invalid targetActivation ${targetActivation} for ${this.type} ${this.squash} ${this.bias}`;
     }
+    const activation = this.adjustedActivation(config);
+
+    /** Short circuit  */
+    if (Math.abs(activation - targetActivation) < 1e-12) {
+      return activation;
+    }
 
     const ns = this.network.networkState.node(this.index);
 
     const targetValue = this.toValue(targetActivation);
-
-    const activation = this.adjustedActivation(config);
 
     const activationValue = this.toValue(activation);
     const error = targetValue - activationValue;
@@ -464,28 +448,30 @@ export class Node implements TagsInterface, NodeInternal {
     let targetWeightedSum = 0;
     const toList = this.network.toConnections(this.index);
 
-    const randomList = toList.slice().filter((c) => {
-      /** Skip over self */
-      return c.from != c.to;
-    });
-
-    const listLength = randomList.length;
+    const listLength = toList.length;
+    const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
 
     if (listLength > 1 && !(config.disableRandomList)) {
-      for (let i = randomList.length - 1; i > 0; i--) {
+      // Fisher-Yates shuffle algorithm
+      for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [randomList[i], randomList[j]] = [randomList[j], randomList[i]];
+        [indices[i], indices[j]] = [indices[j], indices[i]];
       }
     }
 
-    let remainingError = error;
+    // let remainingError = error;
     if (listLength) {
       const errorPerLink = error / listLength;
 
-      for (let indx = 0; indx < listLength; indx++) {
+      // Iterate over the shuffled indices
+      for (let i = listLength; i--;) {
+        const indx = indices[i];
         let thisPerLinkError = errorPerLink;
 
-        const c = randomList[indx];
+        const c = toList[indx];
+
+        if (c.from === c.to) continue;
+
         const fromNode = this.network.nodes[c.from];
         const fromActivation = fromNode.adjustedActivation(config);
 
@@ -504,7 +490,9 @@ export class Node implements TagsInterface, NodeInternal {
           fromNode.type !== "constant"
         ) {
           targetFromActivation = targetFromValue / fromWeight;
-
+          if (Number.isFinite(targetFromActivation) == false) {
+            throw `${this.index} targetFromActivation ${targetFromActivation} fromWeight ${fromWeight} targetFromValue ${targetFromValue}`;
+          }
           improvedFromActivation = (fromNode as Node).propagate(
             targetFromActivation,
             config,
@@ -519,7 +507,7 @@ export class Node implements TagsInterface, NodeInternal {
           Math.abs(fromWeight) > PLANK_CONSTANT
         ) {
           const targetFromValue2 = fromValue + thisPerLinkError;
-          cs.count++;
+          // cs.count++;
           cs.totalValue += targetFromValue2;
           cs.totalActivation += targetFromActivation;
           cs.absoluteActivation += Math.abs(improvedFromActivation);
@@ -529,25 +517,24 @@ export class Node implements TagsInterface, NodeInternal {
           const improvedAdjustedFromValue = improvedFromActivation *
             adjustedWeight;
 
-          remainingError -= targetFromValue - improvedAdjustedFromValue;
+          // remainingError -= targetFromValue - improvedAdjustedFromValue;
           targetWeightedSum += improvedAdjustedFromValue;
         }
       }
     }
 
     ns.count++;
-    ns.totalError += remainingError;
+    // ns.totalError += remainingError;
     ns.totalValue += targetValue;
-    if (Number.isFinite(targetWeightedSum) == false) {
-      throw `${this.index} Invalid targetWeightedSum ${targetWeightedSum} for ${this.type} ${this.squash} ${this.bias}`;
-    }
+    // if (Number.isFinite(targetWeightedSum) == false) {
+    //   throw `${this.index} Invalid targetWeightedSum ${targetWeightedSum} for ${this.type} ${this.squash} ${this.bias}`;
+    // }
     ns.totalWeightedSum += targetWeightedSum;
-    // ns.absoluteWeightedSum += Math.abs(targetWeightedSum);
 
-    if (!Number.isFinite(ns.totalValue)) {
-      console.trace();
-      throw `${this.index}: Invalid totalValue: ${ns.totalValue}`;
-    }
+    // if (!Number.isFinite(ns.totalValue)) {
+    //   console.trace();
+    //   throw `${this.index}: Invalid totalValue: ${ns.totalValue}`;
+    // }
 
     const adjustedBias = this.adjustedBias(config);
 
@@ -594,12 +581,8 @@ export class Node implements TagsInterface, NodeInternal {
           const fromWeight = this.adjustedWeight(c, config);
 
           value += fromActivation * fromWeight;
-          // if( Math.abs( value) > 10){
-          //   console.info( `${this.index} VALUE too big ${value}`);
-          // }
         }
 
-        // console.info( `${this.index}: value: ${value}, bias: ${adjustedBias}`);
         const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
         const squashed = activationSquash.squash(value);

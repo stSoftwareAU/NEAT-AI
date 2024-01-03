@@ -5,12 +5,12 @@ export class NodeState {
 
   public totalValue = 0;
   public totalWeightedSum = 0;
-  public totalError = 0;
+  // public totalError = 0;
 }
 
 export class ConnectionState {
   public totalValue = 0;
-  public count = 0;
+  // public count = 0;
   public totalActivation = 0;
   public absoluteActivation = 0;
 
