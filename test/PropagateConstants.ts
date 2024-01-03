@@ -256,7 +256,7 @@ Deno.test("Constants Many", () => {
   );
 
   assertAlmostEquals(
-    3,
+    expected[0],
     actual[0],
     0.7,
     `0: ${expected[0].toFixed(3)} ${actual[0].toFixed(3)}`,
