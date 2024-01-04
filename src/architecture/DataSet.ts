@@ -17,8 +17,7 @@ export function freezeAndValidate(
       if (
         Number.isFinite(v) == false
       ) {
-        console.trace();
-        throw i + ":" + j + ") Input not within range: " + v;
+        throw new Error(i + ":" + j + ") Input not within range: " + v);
       }
     }
     for (let k = tmpOut.length; k--;) {
@@ -27,8 +26,7 @@ export function freezeAndValidate(
         Number.isFinite(v) == false ||
         typeof v !== "number"
       ) {
-        console.trace();
-        throw i + ":" + k + ") Output not within range: " + v;
+        throw new Error(i + ":" + k + ") Output not within range: " + v);
       }
     }
   }
@@ -41,7 +39,9 @@ export function makeDataDir(
   partitionBreak: number,
 ) {
   if (partitionBreak < 1) {
-    throw "must have a positive partition break was: " + partitionBreak;
+    throw new Error(
+      `must have a positive partition break was: ${partitionBreak}`,
+    );
   }
 
   const dataSetDir = Deno.makeTempDirSync({ prefix: "dataSet-" });

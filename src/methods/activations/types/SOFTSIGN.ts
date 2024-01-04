@@ -16,7 +16,6 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
   /* The inverse of Softsign is x = f(x) / (1 - |f(x)|)*/
   unSquash(activation: number): number {
     if (!Number.isFinite(activation)) {
-      console.trace();
       throw new Error("Activation must be a finite number");
     }
 

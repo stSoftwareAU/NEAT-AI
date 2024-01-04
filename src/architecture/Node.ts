@@ -39,31 +39,32 @@ export class Node implements TagsInterface, NodeInternal {
   ) {
     this.uuid = uuid;
     if (!type) {
-      console.trace();
-      throw "type must be defined: " + (typeof type);
+      throw new Error("type must be defined: " + (typeof type));
     }
 
     if (type !== "input") {
       if (type !== "output" && type !== "hidden" && type !== "constant") {
-        console.trace();
-        throw "invalid type: " + type;
+        throw new Error("invalid type: " + type);
       }
 
       if (bias === undefined) {
         this.bias = Math.random() * 0.2 - 0.1;
       } else {
         if (!Number.isFinite(bias)) {
-          console.trace();
-          throw "bias (other than for 'input') must be a number type: " + type +
-            ", typeof: " +
-            (typeof bias) + ", value: " + bias;
+          throw new Error(
+            "bias (other than for 'input') must be a number type: " + type +
+              ", typeof: " +
+              (typeof bias) + ", value: " + bias,
+          );
         }
         this.bias = bias;
       }
 
       if (type == "constant") {
         if (squash) {
-          throw "constants should not a have a squash was: " + squash;
+          throw new Error(
+            "constants should not a have a squash was: " + squash,
+          );
         }
       } else {
         this.squash = squash;
@@ -73,8 +74,7 @@ export class Node implements TagsInterface, NodeInternal {
     }
 
     if (typeof network !== "object") {
-      console.trace();
-      throw "network must be a Network was: " + (typeof network);
+      throw new Error("network must be a Network was: " + (typeof network));
     }
 
     this.network = network;
@@ -86,8 +86,7 @@ export class Node implements TagsInterface, NodeInternal {
 
   setSquash(name: string) {
     if (this.type == "constant") {
-      console.trace();
-      throw "Can't set the squash of a constant";
+      throw new Error("Can't set the squash of a constant");
     }
     delete this.squashMethodCache;
     this.squash = name;
@@ -223,11 +222,12 @@ export class Node implements TagsInterface, NodeInternal {
           } else if (isNaN(activation)) {
             activation = 0;
           } else {
-            console.trace();
-            throw this.index + ") invalid value: + " + result +
-              ", squash: " +
-              this.squash +
-              ", activation: " + activation;
+            throw new Error(
+              this.index + ") invalid value: + " + result +
+                ", squash: " +
+                this.squash +
+                ", activation: " + activation,
+            );
           }
         }
       }
@@ -296,7 +296,7 @@ export class Node implements TagsInterface, NodeInternal {
               ", activation: " +
               activation;
             console.warn(msg);
-            console.trace();
+
             activation = Number.MAX_SAFE_INTEGER;
           }
         }
@@ -331,8 +331,9 @@ export class Node implements TagsInterface, NodeInternal {
       const value = unSquasher.unSquash(activation);
 
       if (!Number.isFinite(value)) {
-        console.trace();
-        throw `${this.index}: ${this.squash}.unSquash(${activation}) invalid -> ${value}`;
+        throw new Error(
+          `${this.index}: ${this.squash}.unSquash(${activation}) invalid -> ${value}`,
+        );
       }
       return limitValue(value);
     } else {
@@ -347,10 +348,6 @@ export class Node implements TagsInterface, NodeInternal {
     targetActivation: number,
     config: BackPropagationConfig,
   ) {
-    // if (Number.isFinite(targetActivation) == false) {
-    //   console.trace();
-    //   throw `${this.index} Invalid targetActivation ${targetActivation} for ${this.type} ${this.squash} ${this.bias}`;
-    // }
     const activation = this.adjustedActivation(config);
 
     /** Short circuit  */
@@ -409,9 +406,7 @@ export class Node implements TagsInterface, NodeInternal {
           fromNode.type !== "constant"
         ) {
           targetFromActivation = targetFromValue / fromWeight;
-          // if (Number.isFinite(targetFromActivation) == false) {
-          //   throw `${this.index} targetFromActivation ${targetFromActivation} fromWeight ${fromWeight} targetFromValue ${targetFromValue}`;
-          // }
+
           improvedFromActivation = (fromNode as Node).propagate(
             targetFromActivation,
             config,
@@ -508,8 +503,9 @@ export class Node implements TagsInterface, NodeInternal {
         const squashed = activationSquash.squash(value);
 
         if (!Number.isFinite(squashed)) {
-          console.trace();
-          throw `${this.index}: Squasher ${activationSquash.getName()} value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashed}`;
+          throw new Error(
+            `${this.index}: Squasher ${activationSquash.getName()} value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashed}`,
+          );
         }
 
         return limitActivation(squashed);
@@ -532,11 +528,10 @@ export class Node implements TagsInterface, NodeInternal {
    */
   mutate(method: string) {
     if (typeof method !== "string") {
-      console.trace();
-      throw "Mutate method wrong type: " + (typeof method);
+      throw new Error("Mutate method wrong type: " + (typeof method));
     }
     if (this.type == "input") {
-      throw "Mutate on wrong node type: " + this.type;
+      throw new Error("Mutate on wrong node type: " + this.type);
     }
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
@@ -545,7 +540,7 @@ export class Node implements TagsInterface, NodeInternal {
           case "output":
             break;
           default:
-            throw `Can't modify activation for type ${this.type}`;
+            throw new Error(`Can't modify activation for type ${this.type}`);
         }
         // Can't be the same squash
         for (let attempts = 0; attempts < 12; attempts++) {
@@ -578,8 +573,7 @@ export class Node implements TagsInterface, NodeInternal {
         break;
       }
       default:
-        console.trace();
-        throw "Unknown mutate method: " + method;
+        throw new Error("Unknown mutate method: " + method);
     }
     delete this.network.uuid;
   }
@@ -665,8 +659,7 @@ export class Node implements TagsInterface, NodeInternal {
     network: Network,
   ) {
     if (typeof network !== "object") {
-      console.trace();
-      throw "network must be a Network was: " + (typeof network);
+      throw new Error("network must be a Network was: " + (typeof network));
     }
 
     const node = new Node(
@@ -685,7 +678,7 @@ export class Node implements TagsInterface, NodeInternal {
         node.squash = json.squash;
         break;
       default:
-        throw "unknown type: " + json.type;
+        throw new Error("unknown type: " + json.type);
     }
 
     if (json.tags) {

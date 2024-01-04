@@ -357,8 +357,8 @@ Deno.test("from/toJSON equivalency", () => {
   testEquality(original, copy);
 });
 
-Deno.test("train_AND_gate", () => {
-  trainSet(
+Deno.test("train_AND_gate", async () => {
+  await trainSet(
     [
       { input: [0, 0], output: [0] },
       { input: [0, 1], output: [0] },
@@ -396,8 +396,8 @@ Deno.test("evolve XORgate", async () => {
   );
 });
 
-Deno.test("train XOR gate", () => {
-  trainSet(
+Deno.test("train XOR gate", async () => {
+  await trainSet(
     [
       { input: [0, 0], output: [0] },
       { input: [0, 1], output: [1] },
@@ -420,8 +420,8 @@ Deno.test("evolve_NOT_gate", async () => {
   );
 });
 
-Deno.test("train_NOT_gate", () => {
-  trainSet(
+Deno.test("train_NOT_gate", async () => {
+  await trainSet(
     [
       { input: [0], output: [1] },
       { input: [1], output: [0] },
@@ -444,8 +444,8 @@ Deno.test("evolve_XNOR_gate", async () => {
   );
 });
 
-Deno.test("train_XNOR_gate", () => {
-  trainSet(
+Deno.test("train_XNOR_gate", async () => {
+  await trainSet(
     [
       { input: [0, 0], output: [1] },
       { input: [0, 1], output: [0] },
@@ -457,8 +457,8 @@ Deno.test("train_XNOR_gate", () => {
   );
 });
 
-Deno.test("train OR gate", () => {
-  trainSet(
+Deno.test("train OR gate", async () => {
+  await trainSet(
     [
       { input: [0, 0], output: [0] },
       { input: [0, 1], output: [1] },
@@ -483,7 +483,7 @@ Deno.test("evolve OR gate", async () => {
   );
 });
 
-Deno.test("train_SIN_function", () => {
+Deno.test("train_SIN_function", async () => {
   const set = [];
 
   while (set.length < 100) {
@@ -494,7 +494,7 @@ Deno.test("train_SIN_function", () => {
     });
   }
 
-  trainSet(set, 10000, 0.15);
+  await trainSet(set, 10000, 0.15);
 });
 
 Deno.test("evolve_SIN_function", async () => {
@@ -511,7 +511,7 @@ Deno.test("evolve_SIN_function", async () => {
   await evolveSet(set, 10000, 0.06);
 });
 
-Deno.test("train_Bigger_than", () => {
+Deno.test("train_Bigger_than", async () => {
   const set = [];
 
   for (let i = 0; i < 100; i++) {
@@ -522,7 +522,7 @@ Deno.test("train_Bigger_than", () => {
     set.push({ input: [x, y], output: [z] });
   }
 
-  trainSet(set, 500, 0.26);
+  await trainSet(set, 500, 0.26);
 });
 
 Deno.test("evolve_Bigger_than", async () => {
@@ -575,7 +575,7 @@ Deno.test("NARX Sequence", async () => {
   }
 });
 
-Deno.test("train SIN + COS", () => {
+Deno.test("train SIN + COS", async () => {
   const set = [];
 
   while (set.length < 100) {
@@ -589,7 +589,7 @@ Deno.test("train SIN + COS", () => {
     });
   }
 
-  trainSet(set, 1000, 0.13);
+  await trainSet(set, 1000, 0.13);
 });
 
 Deno.test("evolve SIN + COS", async () => {
@@ -609,7 +609,7 @@ Deno.test("evolve SIN + COS", async () => {
   await evolveSet(set, 10_000, 0.05);
 });
 
-Deno.test("train_SHIFT", () => {
+Deno.test("train_SHIFT", async () => {
   const set = [];
 
   for (let i = 0; i < 1000; i++) {
@@ -620,7 +620,7 @@ Deno.test("train_SHIFT", () => {
     set.push({ input: [x, y, z], output: [z, x, y] });
   }
 
-  trainSet(set, 500, 0.1);
+  await trainSet(set, 500, 0.1);
 });
 
 Deno.test("evolveSHIFT", async () => {

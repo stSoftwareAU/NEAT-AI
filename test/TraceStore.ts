@@ -77,7 +77,7 @@ Deno.test("storeTrace", async () => {
           }
 
           if (
-            Number.isFinite(c.trace.totalActivation) &&
+            Number.isFinite(c.trace?.totalActivation) &&
             c.trace.totalActivation != 0
           ) {
             totalActivationCount++;

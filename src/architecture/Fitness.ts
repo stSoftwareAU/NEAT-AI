@@ -46,7 +46,7 @@ export class Fitness {
   }
 
   private async schedule() {
-    if (!calculationData) throw "No calculation data";
+    if (!calculationData) throw new Error("No calculation data");
 
     const data = calculationData;
 

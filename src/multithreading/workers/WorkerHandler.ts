@@ -72,7 +72,7 @@ export class WorkerHandler {
     direct: boolean = false,
   ) {
     if (typeof dataSetDir === "undefined") {
-      throw "dataSet is mandatory";
+      throw new Error("dataSet is mandatory");
     }
     const data: RequestData = {
       taskID: this.taskID++,
@@ -118,7 +118,7 @@ export class WorkerHandler {
     } else {
       const msg = "No callback";
       console.warn(this.workerID, msg);
-      throw msg;
+      throw new Error(msg);
     }
   }
 

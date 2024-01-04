@@ -25,15 +25,19 @@ export class MEAN implements NodeActivationInterface {
 
       sum += activation * limitWeight(c.weight);
       if (Number.isFinite(sum) == false) {
-        throw `Node: ${node.uuid} connection: ${
-          c.from + ":" + c.to
-        }, SUM: ${sum} is not finite. From Activation: ${fromActivation}, Activation: ${activation}, Weight: ${c.weight}`;
+        throw new Error(
+          `Node: ${node.uuid} connection: ${
+            c.from + ":" + c.to
+          }, SUM: ${sum} is not finite. From Activation: ${fromActivation}, Activation: ${activation}, Weight: ${c.weight}`,
+        );
       }
     }
 
     const value = limitValue(sum / toList.length);
     if (Number.isFinite(value) == false) {
-      throw `Node: ${node.uuid} MEAN: ${value} is not finite sum: ${sum} toList.length: ${toList.length}`;
+      throw new Error(
+        `Node: ${node.uuid} MEAN: ${value} is not finite sum: ${sum} toList.length: ${toList.length}`,
+      );
     }
     return value;
   }

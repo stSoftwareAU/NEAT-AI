@@ -80,8 +80,7 @@ export class Activations {
   static find(name: string) {
     const activation = this.MAP[name];
     if (!activation) {
-      console.trace();
-      throw "Unknown activation: " + name;
+      throw new Error("Unknown activation: " + name);
     }
     return activation;
   }

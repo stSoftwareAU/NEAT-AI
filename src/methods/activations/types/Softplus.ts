@@ -17,7 +17,6 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   // The inverse of Softplus is x = ln(exp(f(x)) - 1)
   unSquash(activation: number): number {
     if (!Number.isFinite(activation)) {
-      console.trace();
       throw new Error("Activation must be a finite number");
     }
 

@@ -136,12 +136,16 @@ export function make(parameters?: NeatOptions) {
   };
 
   if (config.mutationAmount < 1) {
-    throw "Mutation Amount must be more than zero was: " +
-      config.mutationAmount;
+    throw new Error(
+      "Mutation Amount must be more than zero was: " +
+        config.mutationAmount,
+    );
   }
 
   if (config.mutationRate <= 0.001) {
-    throw "Mutation Rate must be more than 0.1% was: " + config.mutationRate;
+    throw new Error(
+      "Mutation Rate must be more than 0.1% was: " + config.mutationRate,
+    );
   }
 
   return config;

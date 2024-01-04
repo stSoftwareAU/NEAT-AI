@@ -124,7 +124,7 @@ export class Network implements NetworkInternal {
         const layer = options.layers[i];
 
         if (layer.count <= 0) {
-          throw "Layer count should be positive was: " + layer.count;
+          throw new Error(`Layer count should be positive was: ${layer.count}`);
         }
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
@@ -392,23 +392,24 @@ export class Network implements NetworkInternal {
   validate(options?: { nodes?: number; connections?: number }) {
     if (options && options.nodes) {
       if (this.nodes.length !== options.nodes) {
-        throw "Node length: " + this.nodes.length + " expected: " +
-          options.nodes;
+        throw new Error(
+          `Node length: ${this.nodes.length} expected: ${options.nodes}`,
+        );
       }
     }
 
     if (
       Number.isInteger(this.input) == false || this.input < 1
     ) {
-      console.trace();
-      throw "Must have at least one input nodes was: " + this.input;
+      throw new Error(`Must have at least one input nodes was: ${this.input}`);
     }
 
     if (
       Number.isInteger(this.output) == false || this.output < 1
     ) {
-      console.trace();
-      throw "Must have at least one output nodes was: " + this.output;
+      throw new Error(
+        `Must have at least one output nodes was: ${this.output}`,
+      );
     }
 
     const stats = {
@@ -425,12 +426,9 @@ export class Network implements NetworkInternal {
       const node = item as NodeInternal;
       const uuid = node.uuid;
       if (!uuid) {
-        console.trace();
-        throw indx + ") no UUID";
+        throw new Error(`${indx}) no UUID`);
       }
       if (UUIDs.has(uuid)) {
-        console.trace();
-
         if (this.DEBUG) {
           this.DEBUG = false;
           Deno.writeTextFileSync(
@@ -440,12 +438,10 @@ export class Network implements NetworkInternal {
 
           this.DEBUG = true;
         }
-        throw indx + ") duplicate UUID: " + uuid;
+        throw new Error(`${indx}) duplicate UUID: ${uuid}`);
       }
       if (uuid.startsWith("input-")) {
         if (uuid !== "input-" + indx) {
-          console.trace();
-
           if (this.DEBUG) {
             this.DEBUG = false;
             Deno.writeTextFileSync(
@@ -455,12 +451,11 @@ export class Network implements NetworkInternal {
 
             this.DEBUG = true;
           }
-          throw indx + ") invalid input UUID: " + uuid;
+          throw new Error(`${indx}) invalid input UUID: ${uuid}`);
         }
       } else {
         if (!Number.isFinite(node.bias)) {
-          console.trace();
-          throw indx + ") invalid bias: " + node.bias;
+          throw new Error(`${indx}) invalid bias: ${node.bias}`);
         }
       }
 
@@ -468,8 +463,6 @@ export class Network implements NetworkInternal {
         const expectedUUID = `output-${outputIndx}`;
         outputIndx++;
         if (uuid !== expectedUUID) {
-          console.trace();
-
           if (this.DEBUG) {
             this.DEBUG = false;
             Deno.writeTextFileSync(
@@ -479,7 +472,7 @@ export class Network implements NetworkInternal {
 
             this.DEBUG = true;
           }
-          throw indx + ") invalid output UUID: " + uuid;
+          throw new Error(`${indx} + ") invalid output UUID: ${uuid}`);
         }
       }
 
@@ -488,9 +481,9 @@ export class Network implements NetworkInternal {
       if (node.squash === "IF" && indx > 2) {
         const toList = this.toConnections(indx);
         if (toList.length < 3) {
-          console.trace();
-          throw indx + ") 'IF' should have at least 3 connections was: " +
-            toList.length;
+          throw new Error(
+            `${indx}) 'IF' should have at least 3 connections was: ${toList.length}`,
+          );
         }
 
         let foundPositive = false;
@@ -508,7 +501,6 @@ export class Network implements NetworkInternal {
           }
         }
         if (!foundCondition || !foundPositive || !foundNegative) {
-          console.trace();
           if (this.DEBUG) {
             this.DEBUG = false;
             console.warn(
@@ -517,12 +509,14 @@ export class Network implements NetworkInternal {
             this.DEBUG = true;
           }
         }
-        if (!foundCondition) throw indx + ") 'IF' should have a condition(s)";
+        if (!foundCondition) {
+          throw new Error(`${indx}) 'IF' should have a condition(s)`);
+        }
         if (!foundPositive) {
-          throw indx + ") 'IF' should have a positive connection(s)";
+          throw new Error(`${indx}) 'IF' should have a positive connection(s)`);
         }
         if (!foundNegative) {
-          throw indx + ") 'IF' should have a negative connection(s)";
+          throw new Error(`${indx}) 'IF' should have a negative connection(s)`);
         }
       }
       switch (node.type) {
@@ -530,11 +524,9 @@ export class Network implements NetworkInternal {
           stats.input++;
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
-            console.trace();
-
-            console.info(this.connections);
-            throw indx + ") 'input' node has inward connections: " +
-              toList.length;
+            throw new Error(
+              `${indx}) 'input' node has inward connections: ${toList.length}`,
+            );
           }
           break;
         }
@@ -542,15 +534,14 @@ export class Network implements NetworkInternal {
           stats.constant++;
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
-            console.trace();
-
-            console.info(this.connections);
-            throw indx + ") '" + node.type + "' node has inward connections: " +
-              toList.length;
+            throw new Error(
+              `${indx}) '${node.type}' node has inward connections: ${toList.length}`,
+            );
           }
           if (node.squash) {
-            throw indx + ") '" + node.type + "' has squash: " +
-              node.squash;
+            throw new Error(
+              `${indx}) '${node.type}' has squash: ${node.squash}`,
+            );
           }
           break;
         }
@@ -558,13 +549,10 @@ export class Network implements NetworkInternal {
           stats.hidden++;
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
-            console.trace();
-            console.info(this.connections);
-            throw indx + ") hidden node has no inward connections";
+            throw new Error(`${indx}) hidden node has no inward connections`);
           }
           const fromList = this.fromConnections(indx);
           if (fromList.length == 0) {
-            console.trace();
             if (this.DEBUG) {
               this.DEBUG = false;
               console.warn(
@@ -576,16 +564,17 @@ export class Network implements NetworkInternal {
               );
               this.DEBUG = true;
             }
-            throw indx + ") hidden node has no outward connections";
+            throw new Error(`${indx}) hidden node has no outward connections`);
           }
-          if (typeof node.bias === "undefined") {
-            console.trace();
-            throw indx + ") hidden node should have a bias was: " + node.bias;
+          if (node.bias === undefined) {
+            throw new Error(
+              `${indx}) hidden node should have a bias was: ${node.bias}`,
+            );
           }
           if (!Number.isFinite(node.bias)) {
-            console.trace();
-            throw indx + ") hidden node should have a finite bias was: " +
-              node.bias;
+            throw new Error(
+              `${indx}) hidden node should have a finite bias was: ${node.bias}`,
+            );
           }
 
           break;
@@ -594,7 +583,6 @@ export class Network implements NetworkInternal {
           stats.output++;
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
-            console.trace();
             if (this.DEBUG) {
               this.DEBUG = false;
               console.warn(
@@ -606,34 +594,35 @@ export class Network implements NetworkInternal {
               );
               this.DEBUG = true;
             }
-            throw indx + ") output node has no inward connections";
+            throw new Error(`${indx}) output node has no inward connections`);
           }
           break;
         }
         default:
-          throw indx + ") Invalid type: " + node.type;
+          throw new Error(`${indx}) Invalid type: ${node.type}`);
       }
 
       if (node.index !== indx) {
-        console.trace();
-        throw indx + ") node.index: " + node.index +
-          " does not match expected index";
+        throw new Error(
+          `${indx}) node.index: ${node.index} does not match expected index`,
+        );
       }
+
       if ((node as Node).network !== this) {
-        console.trace();
-        throw indx + ") node.network mismatch";
+        throw new Error(`${indx} node.network mismatch`);
       }
     });
 
     if (stats.input !== this.input) {
-      console.trace();
-      throw "Expected " + this.input + " input nodes found: " +
-        stats.input;
+      throw new Error(
+        `Expected ${this.input} input nodes found: ${stats.input}`,
+      );
     }
+
     if (stats.output !== this.output) {
-      console.trace();
-      throw "Expected " + this.output + " output nodes found: " +
-        stats.output;
+      throw new Error(
+        `Expected ${this.output} output nodes found: ${stats.output}`,
+      );
     }
 
     let lastFrom = -1;
@@ -643,31 +632,17 @@ export class Network implements NetworkInternal {
       const toNode = this.getNode(c.to);
 
       if (toNode.type === "input") {
-        console.info(JSON.stringify(this.connections, null, 1));
-        console.trace();
-        throw indx + ") connection points to an input node";
+        throw new Error(indx + ") connection points to an input node");
       }
-      // const fromNode = this.getNode(c.from);
-
-      // if (fromNode.type === "output") {
-      //   if (c.from != c.to) {
-      //     console.trace();
-      //     throw indx + ") connection from an output node";
-      //   }
-      // }
 
       if (c.from < lastFrom) {
-        console.info(JSON.stringify(this.connections, null, 1));
-        console.trace();
-        throw indx + ") connections not sorted";
+        throw new Error(indx + ") connections not sorted");
       } else if (c.from > lastFrom) {
         lastTo = -1;
       }
 
       if (c.from == lastFrom && c.to <= lastTo) {
-        console.info(JSON.stringify(this.connections, null, 1));
-        console.trace();
-        throw indx + ") connections not sorted";
+        throw new Error(indx + ") connections not sorted");
       }
 
       lastFrom = c.from;
@@ -676,10 +651,11 @@ export class Network implements NetworkInternal {
 
     if (options && Number.isInteger(options.connections)) {
       if (this.connections.length !== options.connections) {
-        console.trace();
-        throw "Connections length: " + this.connections.length +
-          " expected: " +
-          options.connections;
+        throw new Error(
+          "Connections length: " + this.connections.length +
+            " expected: " +
+            options.connections,
+        );
       }
     }
 
@@ -742,14 +718,12 @@ export class Network implements NetworkInternal {
 
   getNode(pos: number): Node {
     if (Number.isInteger(pos) == false || pos < 0) {
-      console.trace();
-      throw "POS should be a non-negative integer was: " + pos;
+      throw new Error("POS should be a non-negative integer was: " + pos);
     }
     const tmp = this.nodes[pos];
 
     if (typeof tmp === "undefined") {
-      console.trace();
-      throw "getNode( " + pos + ") " + (typeof tmp);
+      throw new Error("getNode( " + pos + ") " + (typeof tmp));
     }
 
     return ((tmp as unknown) as Node);
@@ -757,13 +731,11 @@ export class Network implements NetworkInternal {
 
   getConnection(from: number, to: number): ConnectionInternal | null {
     if (Number.isInteger(from) == false || from < 0) {
-      console.trace();
-      throw "FROM should be a non-negative integer was: " + from;
+      throw new Error("FROM should be a non-negative integer was: " + from);
     }
 
     if (Number.isInteger(to) == false || to < 0) {
-      console.trace();
-      throw "TO should be a non-negative integer was: " + to;
+      throw new Error("TO should be a non-negative integer was: " + to);
     }
 
     for (let pos = this.connections.length; pos--;) {
@@ -789,33 +761,22 @@ export class Network implements NetworkInternal {
     if (
       Number.isInteger(from) == false || from < 0
     ) {
-      console.trace();
-      throw "from should be a non-negative integer was: " + from;
+      throw new Error("from should be a non-negative integer was: " + from);
     }
 
     if (Number.isInteger(to) == false || to < 0) {
-      console.trace();
-      throw "to should be a non-negative integer was: " + to;
+      throw new Error("to should be a non-negative integer was: " + to);
     }
 
-    // const firstOutputIndex = this.nodes.length - this.output;
-    // if (from >= firstOutputIndex && from !== to) {
-    //   console.trace();
-    //   throw "from should not be from an output node (" + firstOutputIndex +
-    //     ", len: " + this.nodes.length + ", output: " +
-    //     this.output +
-    //     "): " + from;
-    // }
-
     if (to < this.input) {
-      console.trace();
-      throw "to should not be pointed to any input nodes(" +
-        this.input + "): " + to;
+      throw new Error(
+        "to should not be pointed to any input nodes(" +
+          this.input + "): " + to,
+      );
     }
 
     if (to < from) {
-      console.trace();
-      throw "to: " + to + " should not be less than from: " + from;
+      throw new Error("to: " + to + " should not be less than from: " + from);
     }
 
     if (typeof weight !== "number") {
@@ -827,8 +788,8 @@ export class Network implements NetworkInternal {
 
         this.DEBUG = true;
       }
-      console.trace();
-      throw from + ":" + to + ") weight not a number was: " + weight;
+
+      throw new Error(from + ":" + to + ") weight not a number was: " + weight);
     }
 
     const connection = new Connection(
@@ -851,9 +812,9 @@ export class Network implements NetworkInternal {
           location = indx + 1;
           break;
         } else if (c.to === to) {
-          console.trace();
-
-          throw indx + ") already connected from: " + from + " to: " + to;
+          throw new Error(
+            indx + ") already connected from: " + from + " to: " + to,
+          );
         } else {
           location = indx;
         }
@@ -880,12 +841,10 @@ export class Network implements NetworkInternal {
    */
   disconnect(from: number, to: number) {
     if (Number.isInteger(from) == false || from < 0) {
-      console.trace();
-      throw "from should be a non-negative integer was: " + from;
+      throw new Error("from should be a non-negative integer was: " + from);
     }
     if (Number.isInteger(to) == false || to < 0) {
-      console.trace();
-      throw "to should be a non-negative integer was: " + to;
+      throw new Error("to should be a non-negative integer was: " + to);
     }
 
     // Delete the connection in the network's connection array
@@ -904,8 +863,7 @@ export class Network implements NetworkInternal {
     }
 
     if (!found) {
-      console.trace();
-      throw "No connection from: " + from + ", to: " + to;
+      throw new Error("No connection from: " + from + ", to: " + to);
     }
   }
 
@@ -1035,13 +993,13 @@ export class Network implements NetworkInternal {
         if (errorTmp) {
           error = Number.parseFloat(errorTmp);
         } else {
-          throw "No error: " + errorTmp;
+          throw new Error("No error: " + errorTmp);
         }
 
         bestScore = fittest.score ? fittest.score : 0;
         bestCreature = Network.fromJSON(fittest.internalJSON());
       } else if (fittest.score ? fittest.score : 0 < bestScore) {
-        throw "fitness decreased over generations";
+        throw new Error("fitness decreased over generations");
       }
       const timedOut = endTimeMS ? Date.now() > endTimeMS : false;
 
@@ -1279,7 +1237,7 @@ export class Network implements NetworkInternal {
         }
 
         if (json.length == 0) {
-          throw "Set size must be positive";
+          throw new Error("Set size must be positive");
         }
         const len = json.length;
         const indices = Array.from({ length: len }, (_, i) => i); // Create an array of indices
@@ -1438,8 +1396,7 @@ export class Network implements NetworkInternal {
 
   inFocus(index: number, focusList?: number[], checked = new Set()) {
     if (Number.isInteger(index) == false || index < 0) {
-      console.trace();
-      throw "to should be non-negative was: " + index;
+      throw new Error("to should be non-negative was: " + index);
     }
     if (!focusList || focusList.length == 0) return true;
 
@@ -1493,15 +1450,15 @@ export class Network implements NetworkInternal {
    */
   private removeHiddenNode(indx: number) {
     if (Number.isInteger(indx) == false || indx < 0) {
-      console.trace();
-      throw "Must be a positive integer was: " + indx;
+      throw new Error("Must be a positive integer was: " + indx);
     }
 
     const node = this.nodes[indx];
 
     if (node.type !== "hidden" && node.type !== "constant") {
-      console.trace();
-      throw indx + ") Node must be a 'hidden' type was: " + node.type;
+      throw new Error(
+        indx + ") Node must be a 'hidden' type was: " + node.type,
+      );
     }
     const left = this.nodes.slice(0, indx);
     const right = this.nodes.slice(indx + 1);
@@ -1560,7 +1517,9 @@ export class Network implements NetworkInternal {
         );
 
         if (node.index <= pos || pos < 0) {
-          throw `From: ${pos} should be less than node index: ${node.index}`;
+          throw new Error(
+            `From: ${pos} should be less than node index: ${node.index}`,
+          );
         }
         if (this.inFocus(pos, tmpFocusList)) {
           fromIndex = pos;
@@ -1571,8 +1530,10 @@ export class Network implements NetworkInternal {
         ) + node.index;
 
         if (node.index > pos) {
-          throw "To: " + pos + " should be great than node index: " +
-            node.index;
+          throw new Error(
+            "To: " + pos + " should be great than node index: " +
+              node.index,
+          );
         }
 
         if (this.inFocus(pos, tmpFocusList)) {
@@ -1593,7 +1554,6 @@ export class Network implements NetworkInternal {
         Connection.randomWeight(),
       );
     } else {
-      console.trace();
       console.warn("addNode: Should have a from index");
     }
 
@@ -1605,7 +1565,6 @@ export class Network implements NetworkInternal {
       );
       node.fix();
     } else {
-      console.trace();
       console.warn("addNode: Should have a to index");
     }
   }
@@ -1614,20 +1573,21 @@ export class Network implements NetworkInternal {
     if (
       Number.isInteger(node.index) == false || node.index < this.input
     ) {
-      console.trace();
-      throw "to should be a greater than the input count was: " + node.index;
+      throw new Error(
+        "to should be a greater than the input count was: " + node.index,
+      );
     }
 
     const firstOutputIndex = this.nodes.length - this.output;
     if (node.index > firstOutputIndex) {
-      console.trace();
-      throw "to should be a between than input (" + this.input +
-        ") and output nodes (" + firstOutputIndex + ") was: " + node.index;
+      throw new Error(
+        "to should be a between than input (" + this.input +
+          ") and output nodes (" + firstOutputIndex + ") was: " + node.index,
+      );
     }
 
     if (node.type !== "hidden") {
-      console.trace();
-      throw "Should be a 'hidden' type was: " + node.type;
+      throw new Error("Should be a 'hidden' type was: " + node.type);
     }
     const left = this.nodes.slice(0, node.index);
     const right = this.nodes.slice(node.index);
@@ -2007,8 +1967,7 @@ export class Network implements NetworkInternal {
    */
   mutate(method: { name: string }, focusList?: number[]) {
     if (typeof method.name !== "string") {
-      console.trace();
-      throw "Mutate method wrong type: " + (typeof method);
+      throw new Error("Mutate method wrong type: " + (typeof method));
     }
 
     switch (method.name) {
@@ -2069,7 +2028,7 @@ export class Network implements NetworkInternal {
         break;
       }
       default: {
-        throw "unknown: " + method;
+        throw new Error("unknown: " + method);
       }
     }
 

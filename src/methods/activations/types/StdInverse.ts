@@ -19,7 +19,6 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
 
   unSquash(activation: number): number {
     if (!Number.isFinite(activation)) {
-      console.trace();
       throw new Error("Activation must be a finite number");
     }
 

@@ -16,7 +16,6 @@ export class TANH implements ActivationInterface, UnSquashInterface {
   // TANH is invertible, and its inverse is calculated using a logarithmic function.
   unSquash(activation: number): number {
     if (!Number.isFinite(activation)) {
-      console.trace();
       throw new Error("Activation must be a finite number");
     }
 

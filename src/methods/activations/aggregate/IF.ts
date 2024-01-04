@@ -125,8 +125,9 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     const toList2 = node.network.toConnections(node.index);
 
     if (toList2.length < 3 && node.index > 2) {
-      console.trace();
-      throw "Should have 3 or more connections was: " + toList2.length;
+      throw new Error(
+        "Should have 3 or more connections was: " + toList2.length,
+      );
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {

@@ -22,7 +22,6 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   /* unSquash is non-trivial due to the symmetric nature of Gaussian function. */
   unSquash(activation: number, hint?: number): number {
     if (!Number.isFinite(activation)) {
-      console.trace();
       throw new Error("Activation must be a finite number");
     }
 

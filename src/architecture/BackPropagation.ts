@@ -127,8 +127,7 @@ export function adjustedWeight(
 
 export function limitBias(bias: number) {
   if (!Number.isFinite(bias)) {
-    console.trace();
-    throw `Bias must be a finite number, got ${bias}`;
+    throw new Error(`Bias must be a finite number, got ${bias}`);
   }
   return Math.max(-MAX_BIAS, Math.min(MAX_BIAS, bias));
 }

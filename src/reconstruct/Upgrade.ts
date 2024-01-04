@@ -7,14 +7,13 @@ export class Upgrade {
     input: number,
   ): Network {
     if (!Number.isFinite(input) || input < 1 || !Number.isInteger(input)) {
-      console.trace();
-      throw `Invalid input size ${input}`;
+      throw new Error(`Invalid input size ${input}`);
     }
     const json2 = JSON.parse(JSON.stringify(json));
 
     const adjIndex = input - json.input;
     if (adjIndex < 0) {
-      throw `Can only expand models ${json.input} -> ${input}`;
+      throw new Error(`Can only expand models ${json.input} -> ${input}`);
     }
 
     json2.input = input;

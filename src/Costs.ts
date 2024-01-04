@@ -47,7 +47,7 @@ export class Costs {
       case "12STEPS":
         return new TwelveSteps();
       default:
-        throw "Unknown: " + name;
+        throw new Error(`Unknown: ${name}`);
     }
   }
 }

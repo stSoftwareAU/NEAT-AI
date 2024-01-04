@@ -34,8 +34,8 @@ export class WorkerProcessor {
         },
       };
     } else if (data.evaluate) {
-      if (!this.dataSetDir) throw "no data directory";
-      if (!this.cost) throw "no cost";
+      if (!this.dataSetDir) throw new Error("no data directory");
+      if (!this.cost) throw new Error("no cost");
 
       const network = Network.fromJSON(JSON.parse(data.evaluate.network));
       /* release some memory*/
@@ -66,9 +66,9 @@ export class WorkerProcessor {
       /* release some memory*/
       data.train.network = "";
 
-      if (!this.dataSetDir) throw "No data dir";
+      if (!this.dataSetDir) throw new Error("No data dir");
 
-      if (!this.cost) throw "no cost";
+      if (!this.cost) throw new Error("no cost");
 
       const trainOptions: TrainOptions = {
         cost: this.costName,
@@ -102,7 +102,7 @@ export class WorkerProcessor {
       };
     } else {
       console.error(data);
-      throw "unknown message";
+      throw new Error("unknown message");
     }
   }
 }

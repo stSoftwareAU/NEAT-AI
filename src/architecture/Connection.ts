@@ -20,16 +20,13 @@ export class Connection implements ConnectionInternal {
     type?: "positive" | "negative" | "condition",
   ) {
     if (Number.isInteger(from) == false || from < 0) {
-      console.trace();
-      throw "from should be a non-negative integer was: " + from;
+      throw new Error(`from should be a non-negative integer was: ${from}`);
     }
     if (Number.isInteger(to) == false || to < 0) {
-      console.trace();
-      throw "to should be a non-negative integer was: " + to;
+      throw new Error(`to should be a non-negative integer was: ${to}`);
     }
     if (!Number.isFinite(weight)) {
-      console.trace();
-      throw "weight not a number was: " + weight;
+      throw new Error(`weight not a number was: ${weight}`);
     }
     this.from = from;
     this.to = to;
@@ -62,21 +59,5 @@ export class Connection implements ConnectionInternal {
     };
 
     return json;
-  }
-
-  /**
-   * Returns an innovation ID
-   * https://en.wikipedia.org/wiki/Pairing_function (Cantor pairing function)
-   *
-   * Just a simple key
-   */
-  static innovationID(a: number, b: number) {
-    if (!Number.isInteger(a)) {
-      throw "A) Not a number: " + a;
-    }
-    if (!Number.isInteger(b)) {
-      throw "B) Not a number: " + b;
-    }
-    return a + ":" + b;
   }
 }

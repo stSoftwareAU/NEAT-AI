@@ -70,7 +70,7 @@ export class MINIMUM
     const toList = node.network.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      if (node.index != c.to) throw "mismatched index " + c;
+      if (node.index != c.to) throw new Error("mismatched index " + c);
       const cs = node.network.networkState.connection(c.from, c.to);
       if (!cs.used) {
         node.network.disconnect(c.from, c.to);
@@ -83,7 +83,7 @@ export class MINIMUM
 
     if (usedCount < 2) {
       if (usedCount < 1) {
-        throw "no learnings";
+        throw new Error("no learnings");
       }
       node.setSquash(IDENTITY.NAME);
 

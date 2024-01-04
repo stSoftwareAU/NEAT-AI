@@ -5,10 +5,7 @@ import { make as makeConfig } from "./config/NeatConfig.ts";
 import { Fitness } from "./architecture/Fitness.ts";
 
 import { format } from "https://deno.land/std@0.210.0/fmt/duration.ts";
-import {
-  ensureDir,
-  ensureDirSync,
-} from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
@@ -105,8 +102,8 @@ export class Neat {
             JSON.parse(r.train.trace),
           );
           await NetworkUtil.makeUUID(traceNetwork);
-          await ensureDir(this.config.traceStore);
-          await Deno.writeTextFile(
+          ensureDirSync(this.config.traceStore);
+          Deno.writeTextFileSync(
             `${this.config.traceStore}/${traceNetwork.uuid}.json`,
             JSON.stringify(traceNetwork.traceJSON(), null, 2),
           );
@@ -381,7 +378,7 @@ export class Neat {
             .fromJSON(json, this.config.debug));
         }
       } else {
-        throw "No train result";
+        throw new Error(`No train result`);
       }
     }
     this.trainingComplete.length = 0;
@@ -475,7 +472,7 @@ export class Neat {
    */
   async populatePopulation(network: Network) {
     if (!network) {
-      throw "Network mandatory";
+      throw new Error(`Network mandatory`);
     }
 
     if (this.config.debug) {
@@ -515,7 +512,7 @@ export class Neat {
       for (let pos = 0; pos < this.population.length; pos++) {
         if (this.population[pos]) return (this.population[pos] as Network);
       }
-      throw "Extinction event";
+      throw new Error(`Extinction event`);
     }
 
     let p2 = this.getParent();
@@ -538,7 +535,7 @@ export class Neat {
         if (this.population[pos]) return (this.population[pos] as Network);
       }
 
-      throw "Extinction event";
+      throw new Error(`Extinction event`);
     }
 
     const creature = Offspring.bread(
@@ -713,10 +710,10 @@ export class Neat {
             return individuals[i];
           }
         }
-        throw "No parent found in tournament";
+        throw new Error(`No parent found in tournament`);
       }
       default: {
-        throw "Unknown selection: " + this.config.selection;
+        throw new Error(`Unknown selection: ${this.config.selection}`);
       }
     }
   }
