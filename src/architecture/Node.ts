@@ -389,6 +389,7 @@ export class Node implements TagsInterface, NodeInternal {
         if (c.from === c.to) continue;
 
         const fromNode = this.network.nodes[c.from];
+
         const fromActivation = fromNode.adjustedActivation(config);
 
         const cs = this.network.networkState.connection(c.from, c.to);
@@ -405,6 +406,9 @@ export class Node implements TagsInterface, NodeInternal {
           fromNode.type !== "input" &&
           fromNode.type !== "constant"
         ) {
+          const fromSquash = fromNode.findSquash();
+          if (this.isNodeActivation(fromSquash)) continue; // @TODO We need to handle IF etc.
+
           targetFromActivation = targetFromValue / fromWeight;
 
           improvedFromActivation = (fromNode as Node).propagate(
