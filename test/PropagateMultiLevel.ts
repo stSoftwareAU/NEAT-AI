@@ -74,7 +74,7 @@ function makeCreature() {
   return creatureA;
 }
 
-Deno.test("propagateMultiLevelRandom", () => {
+Deno.test("propagateMultiLevelRandom", async () => {
   const creatureA = makeCreature();
 
   const ts = [];
@@ -150,7 +150,7 @@ Deno.test("propagateMultiLevelRandom", () => {
     const creatureB = Network.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = creatureB.train(ts, {
+    const result1 = await creatureB.train(ts, {
       iterations: 2,
       error: 0,
     });
@@ -160,7 +160,7 @@ Deno.test("propagateMultiLevelRandom", () => {
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
 
-    const result2 = creatureB.train(ts, {
+    const result2 = await creatureB.train(ts, {
       iterations: 100,
       error: 0,
     });
@@ -197,7 +197,7 @@ Deno.test("propagateMultiLevelRandom", () => {
   }
 });
 
-Deno.test("propagateMultiLevelKnownA", () => {
+Deno.test("propagateMultiLevelKnownA", async () => {
   const creatureA = makeCreature();
 
   const ts = [
@@ -373,7 +373,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
     const creatureB = Network.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = creatureB.train(ts, {
+    const result1 = await creatureB.train(ts, {
       iterations: 2,
       error: 0,
     });
@@ -383,7 +383,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
 
-    const result2 = creatureB.train(ts, {
+    const result2 = await creatureB.train(ts, {
       iterations: 10000,
       error: 0,
     });
@@ -419,7 +419,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
   }
 });
 
-Deno.test("propagateMultiLevelKnownB", () => {
+Deno.test("propagateMultiLevelKnownB", async () => {
   const creatureA = makeCreature();
 
   const ts = [
@@ -590,7 +590,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
     const creatureB = Network.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = creatureB.train(ts, {
+    const result1 = await creatureB.train(ts, {
       iterations: 2,
       error: 0,
     });
@@ -600,7 +600,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
 
-    const result2 = creatureB.train(ts, {
+    const result2 = await creatureB.train(ts, {
       iterations: 100,
       error: 0,
     });

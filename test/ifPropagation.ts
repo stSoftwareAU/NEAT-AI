@@ -7,7 +7,7 @@ import { TrainOptions } from "../src/config/TrainOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("ifPropagation", () => {
+Deno.test("ifPropagation", async () => {
   const json: NetworkInternal = {
     nodes: [
       { type: "input", index: 0 },
@@ -56,7 +56,7 @@ Deno.test("ifPropagation", () => {
   };
   const network = Network.fromJSON(json);
 
-  const result = network.train(ts, options);
+  const result = await network.train(ts, options);
 
   const traceJson = result.trace;
   Deno.writeTextFileSync(

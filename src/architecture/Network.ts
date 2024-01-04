@@ -15,7 +15,7 @@ import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 import { DataRecordInterface } from "./DataSet.ts";
 
-import { yellow } from "https://deno.land/std@0.210.0/fmt/colors.ts";
+import { blue, yellow } from "https://deno.land/std@0.210.0/fmt/colors.ts";
 import { Neat } from "../Neat.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
@@ -33,6 +33,7 @@ import { addTag } from "../tags/TagsInterface.ts";
 import { Connection } from "./Connection.ts";
 import { NetworkState, NodeState } from "./NetworkState.ts";
 import { BackPropagationConfig } from "./BackPropagation.ts";
+import { NetworkUtil } from "./NetworkUtils.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -1211,7 +1212,7 @@ export class Network implements NetworkInternal {
   /**
    * Train the given set to this network
    */
-  trainDir(
+  async trainDir(
     dataDir: string,
     options: TrainOptions,
   ) {
@@ -1233,6 +1234,9 @@ export class Network implements NetworkInternal {
     // Loops the training process
     let iteration = 0;
 
+    const uuid = await NetworkUtil.makeUUID(this);
+
+    const ID = uuid.substring(Math.max(0, uuid.length - 8));
     let bestError: number | undefined = undefined;
     let trainingFailures = 0;
     let bestCreatureJSON: NetworkExport = this.exportJSON();
@@ -1303,7 +1307,9 @@ export class Network implements NetworkInternal {
           counter++;
           if (Number.isFinite(errorSum) == false) {
             console.warn(
-              `Training stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`,
+              `Training ${
+                blue(ID)
+              } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`,
             );
             trainingStopped = true;
             break;
@@ -1311,7 +1317,7 @@ export class Network implements NetworkInternal {
             const bestPossibleError = errorSum / knownSampleCount;
             if (bestPossibleError > bestError) {
               console.warn(
-                `Training stopped as 'best possible' error ${
+                `Training ${blue(ID)} stopped as 'best possible' error ${
                   yellow(bestPossibleError.toFixed(3))
                 } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
                   yellow(counter.toFixed(0))
@@ -1330,7 +1336,7 @@ export class Network implements NetworkInternal {
             lastTS = now;
             const totalTime = now - startTS;
             console.log(
-              "Training samples",
+              `Training ${blue(ID)} samples`,
               counter,
               "error",
               yellow((errorSum / counter).toFixed(3)),
@@ -1353,11 +1359,11 @@ export class Network implements NetworkInternal {
         trainingFailures++;
         if (trainingStopped == false) {
           console.warn(
-            `Training made the error ${yellow(bestError.toFixed(3))} worse ${
-              yellow(error.toFixed(3))
-            } failed ${yellow(trainingFailures.toString())} out of ${
-              yellow(iteration.toString())
-            } iterations`,
+            `Training ${blue(ID)} made the error ${
+              yellow(bestError.toFixed(3))
+            } worse ${yellow(error.toFixed(3))} failed ${
+              yellow(trainingFailures.toString())
+            } out of ${yellow(iteration.toString())} iterations`,
           );
         }
         if (options.traceStore) {
@@ -1393,7 +1399,7 @@ export class Network implements NetworkInternal {
   /**
    * Train the given set to this network
    */
-  train(
+  async train(
     dataSet: DataRecordInterface[],
     options: TrainOptions,
   ) {
@@ -1408,7 +1414,7 @@ export class Network implements NetworkInternal {
     const config = makeConfig(options);
     const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
 
-    const result = this.trainDir(dataSetDir, options);
+    const result = await this.trainDir(dataSetDir, options);
 
     Deno.removeSync(dataSetDir, { recursive: true });
 

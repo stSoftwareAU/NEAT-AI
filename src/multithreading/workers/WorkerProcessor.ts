@@ -76,7 +76,7 @@ export class WorkerProcessor {
         log: 1,
       };
 
-      const result = network.trainDir(this.dataSetDir, trainOptions);
+      const result = await network.trainDir(this.dataSetDir, trainOptions);
       network.validate();
       const json = JSON.stringify(network.exportJSON());
 

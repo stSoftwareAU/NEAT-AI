@@ -75,7 +75,7 @@ function makeCreature() {
   return creatureA;
 }
 
-Deno.test("propagateInverseRandom", () => {
+Deno.test("propagateInverseRandom", async () => {
   const creatureA = makeCreature();
   const squash = new INVERSE();
   const ts = [];
@@ -151,7 +151,7 @@ Deno.test("propagateInverseRandom", () => {
     const creatureB = Network.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = creatureB.train(ts, {
+    const result1 = await creatureB.train(ts, {
       iterations: 2,
       error: 0,
     });
@@ -161,7 +161,7 @@ Deno.test("propagateInverseRandom", () => {
       JSON.stringify(creatureB.exportJSON(), null, 2),
     );
 
-    const result2 = creatureB.train(ts, {
+    const result2 = await creatureB.train(ts, {
       iterations: 100,
       error: 0,
       traceStore: ".trace",

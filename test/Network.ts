@@ -144,7 +144,7 @@ async function evolveSet(
   });
 }
 
-function trainSet(
+async function trainSet(
   set: { input: number[]; output: number[] }[],
   iterations: number,
   error: number,
@@ -170,7 +170,7 @@ function trainSet(
       error: error,
     };
 
-    const results = network.train(set, options);
+    const results = await network.train(set, options);
     Deno.writeTextFileSync(
       `.trace/${attempts}.json`,
       JSON.stringify(results.trace, null, 2),
