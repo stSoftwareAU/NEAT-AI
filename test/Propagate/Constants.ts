@@ -3,9 +3,9 @@ import { emptyDirSync } from "https://deno.land/std@0.210.0/fs/empty_dir.ts";
 import {
   assertAlmostEquals,
 } from "https://deno.land/std@0.210.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkExport } from "../src/architecture/NetworkInterfaces.ts";
-import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
+import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { Network } from "../../src/architecture/Network.ts";
+import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

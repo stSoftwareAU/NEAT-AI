@@ -1,6 +1,7 @@
 # Ignore invisible
 .*
 *~
+logback.log
 !.gitignore
 #
 # WARNING: Automatically copied from dga-tools

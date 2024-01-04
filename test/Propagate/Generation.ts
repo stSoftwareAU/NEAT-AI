@@ -5,9 +5,9 @@ import {
   adjustedBias,
   adjustedWeight,
   BackPropagationConfig,
-} from "../src/architecture/BackPropagation.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkTrace } from "../src/architecture/NetworkInterfaces.ts";
+} from "../../src/architecture/BackPropagation.ts";
+import { Network } from "../../src/architecture/Network.ts";
+import { NetworkTrace } from "../../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
