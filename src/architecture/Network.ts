@@ -1198,7 +1198,8 @@ export class Network implements NetworkInternal {
     let bestError: number | undefined = undefined;
     let trainingFailures = 0;
     let bestCreatureJSON: NetworkExport = this.exportJSON();
-    let traceJSON: undefined | NetworkTrace = undefined;
+    let bestTraceJSON = this.traceJSON();
+    let lastTraceJSON = bestTraceJSON;
     let knownSampleCount = -1;
     // @TODO need to apply Stochastic Gradient Descent
     const EMPTY = { input: [], output: [] };
@@ -1206,7 +1207,11 @@ export class Network implements NetworkInternal {
       iteration++;
       const startTS = Date.now();
       let lastTS = startTS;
-      const config = new BackPropagationConfig();
+      const config = new BackPropagationConfig(
+        {
+          disableRandomList: options.disableRandomSamples,
+        },
+      );
       if (options.generation !== undefined) {
         config.generations = options.generation + iteration;
       }
@@ -1220,10 +1225,13 @@ export class Network implements NetworkInternal {
       }
 
       // Randomize the list of files
-      for (let i = files.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [files[i], files[j]] = [files[j], files[i]];
+      if (!options.disableRandomSamples) {
+        for (let i = files.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [files[i], files[j]] = [files[j], files[i]];
+        }
       }
+
       let trainingStopped = false;
       for (let j = files.length; !trainingStopped && j--;) {
         const fn = files[j];
@@ -1242,10 +1250,12 @@ export class Network implements NetworkInternal {
         const len = json.length;
         const indices = Array.from({ length: len }, (_, i) => i); // Create an array of indices
 
-        // Fisher-Yates shuffle algorithm
-        for (let i = indices.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [indices[i], indices[j]] = [indices[j], indices[i]];
+        if (!options.disableRandomSamples) {
+          // Fisher-Yates shuffle algorithm
+          for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+          }
         }
 
         // Iterate over the shuffled indices
@@ -1331,24 +1341,30 @@ export class Network implements NetworkInternal {
           );
         }
         this.loadFrom(bestCreatureJSON, false);
+        lastTraceJSON = bestTraceJSON;
       } else {
         if (bestError === undefined) {
           addTag(this, "untrained-error", error.toString());
         }
+        if (bestError !== undefined && bestError > error) {
+          bestTraceJSON = lastTraceJSON;
+        }
 
+        lastTraceJSON = this.traceJSON();
         bestCreatureJSON = this.exportJSON();
         bestError = error;
         knownSampleCount = counter;
-        traceJSON = this.traceJSON();
+
         this.applyLearnings(config);
         this.clearState();
       }
 
       if (bestError <= targetError || iteration >= iterations) {
+        this.loadFrom(bestCreatureJSON, false);
         return {
           iteration: iteration,
           error: bestError,
-          trace: traceJSON,
+          trace: bestTraceJSON,
         };
       }
     }
@@ -1374,7 +1390,7 @@ export class Network implements NetworkInternal {
 
     const result = await this.trainDir(dataSetDir, options);
 
-    Deno.removeSync(dataSetDir, { recursive: true });
+    await Deno.remove(dataSetDir, { recursive: true });
 
     return result;
   }

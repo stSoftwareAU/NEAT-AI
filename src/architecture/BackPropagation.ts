@@ -1,3 +1,4 @@
+import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
 import { NetworkState } from "./NetworkState.ts";
 import { Node } from "./Node.ts";
@@ -89,6 +90,26 @@ export function adjustedBias(
     } else {
       return limitBias(node.bias);
     }
+  }
+}
+
+export function toValue(node: Node, activation: number) {
+  if (node.type == "input" || node.type == "constant") {
+    return activation;
+  }
+  const squash = node.findSquash();
+  if (((squash as unknown) as UnSquashInterface).unSquash != undefined) {
+    const unSquasher = (squash as unknown) as UnSquashInterface;
+    const value = unSquasher.unSquash(activation);
+
+    if (!Number.isFinite(value)) {
+      throw new Error(
+        `${node.index}: ${node.squash}.unSquash(${activation}) invalid -> ${value}`,
+      );
+    }
+    return limitValue(value);
+  } else {
+    return activation;
   }
 }
 

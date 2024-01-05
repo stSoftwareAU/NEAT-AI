@@ -21,4 +21,7 @@ export interface TrainOptions {
 
   /** The generation to use for the learning rate. */
   generation?: number;
+
+  /** Disable the randomization of samples ( for debugging reasons) */
+  disableRandomSamples?: boolean;
 }

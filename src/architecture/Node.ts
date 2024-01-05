@@ -10,7 +10,6 @@ import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { Network } from "./Network.ts";
 
-import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { PLANK_CONSTANT } from "../config/NeatConfig.ts";
 import {
   adjustedBias,
@@ -18,7 +17,9 @@ import {
   BackPropagationConfig,
   limitActivation,
   limitValue,
+  toValue,
 } from "./BackPropagation.ts";
+import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -26,7 +27,10 @@ export class Node implements TagsInterface, NodeInternal {
   uuid: string;
   bias: number;
   squash?: string;
-  private squashMethodCache?: NodeActivationInterface | ActivationInterface;
+  private squashMethodCache?:
+    | NodeActivationInterface
+    | ActivationInterface
+    | PropagateInterface;
   public index: number;
   public tags = undefined;
 
@@ -162,7 +166,10 @@ export class Node implements TagsInterface, NodeInternal {
   }
 
   private isNodeActivation(
-    activation: NodeActivationInterface | ActivationInterface,
+    activation:
+      | NodeActivationInterface
+      | ActivationInterface
+      | PropagateInterface,
   ): activation is NodeActivationInterface {
     return (activation as NodeActivationInterface).activate != undefined;
   }
@@ -171,7 +178,8 @@ export class Node implements TagsInterface, NodeInternal {
     activation:
       | ApplyLearningsInterface
       | NodeActivationInterface
-      | ActivationInterface,
+      | ActivationInterface
+      | PropagateInterface,
   ): activation is ApplyLearningsInterface {
     return (activation as ApplyLearningsInterface).applyLearnings != undefined;
   }
@@ -180,7 +188,8 @@ export class Node implements TagsInterface, NodeInternal {
     activation:
       | NodeActivationInterface
       | ActivationInterface
-      | NodeFixableInterface,
+      | NodeFixableInterface
+      | PropagateInterface,
   ): activation is NodeFixableInterface {
     return (activation as NodeFixableInterface).fix != undefined;
   }
@@ -321,26 +330,6 @@ export class Node implements TagsInterface, NodeInternal {
     this.bias = aBias;
   }
 
-  private toValue(activation: number) {
-    if (this.type == "input" || this.type == "constant") {
-      return activation;
-    }
-    const squash = this.findSquash();
-    if (((squash as unknown) as UnSquashInterface).unSquash != undefined) {
-      const unSquasher = (squash as unknown) as UnSquashInterface;
-      const value = unSquasher.unSquash(activation);
-
-      if (!Number.isFinite(value)) {
-        throw new Error(
-          `${this.index}: ${this.squash}.unSquash(${activation}) invalid -> ${value}`,
-        );
-      }
-      return limitValue(value);
-    } else {
-      return activation;
-    }
-  }
-
   /**
    * Back-propagate the error, aka learn
    */
@@ -355,11 +344,22 @@ export class Node implements TagsInterface, NodeInternal {
       return activation;
     }
 
+    const squashMethod = this.findSquash();
+
+    if ((squashMethod as PropagateInterface).propagate !== undefined) {
+      const improvedActivation = (squashMethod as PropagateInterface).propagate(
+        this,
+        targetActivation,
+        config,
+      );
+      return limitActivation(improvedActivation);
+    }
+
     const ns = this.network.networkState.node(this.index);
 
-    const targetValue = this.toValue(targetActivation);
+    const targetValue = toValue(this, targetActivation);
 
-    const activationValue = this.toValue(activation);
+    const activationValue = toValue(this, activation);
     const error = targetValue - activationValue;
 
     let targetWeightedSum = 0;
@@ -406,9 +406,6 @@ export class Node implements TagsInterface, NodeInternal {
           fromNode.type !== "input" &&
           fromNode.type !== "constant"
         ) {
-          const fromSquash = fromNode.findSquash();
-          if (this.isNodeActivation(fromSquash)) continue; // @TODO We need to handle IF etc.
-
           targetFromActivation = targetFromValue / fromWeight;
 
           improvedFromActivation = (fromNode as Node).propagate(
@@ -448,8 +445,6 @@ export class Node implements TagsInterface, NodeInternal {
 
     const adjustedActivation = targetWeightedSum + aBias;
 
-    const squashMethod = this.findSquash();
-
     if (this.isNodeActivation(squashMethod) == false) {
       const squashActivation = (squashMethod as ActivationInterface).squash(
         adjustedActivation,
@@ -461,7 +456,7 @@ export class Node implements TagsInterface, NodeInternal {
     }
   }
 
-  private adjustedActivation(config: BackPropagationConfig) {
+  adjustedActivation(config: BackPropagationConfig) {
     if (this.type == "input") {
       return this.network.networkState.activations[this.index];
     }

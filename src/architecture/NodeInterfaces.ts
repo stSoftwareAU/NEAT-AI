@@ -13,11 +13,4 @@ export interface NodeInternal extends NodeExport {
 
 export interface NodeTrace extends NodeExport {
   trace: NodeState;
-  // {
-  //   totalValue: number;
-
-  //   totalWeightedSum: number;
-  //   absoluteWeightedSum: number;
-  //   count: number;
-  // };
 }
