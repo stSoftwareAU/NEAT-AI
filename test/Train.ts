@@ -1,6 +1,6 @@
-import { emptyDirSync } from "https://deno.land/std@0.210.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
-import { assert, fail } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert, fail } from "https://deno.land/std@0.211.0/assert/mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

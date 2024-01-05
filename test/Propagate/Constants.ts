@@ -1,8 +1,8 @@
-import { emptyDirSync } from "https://deno.land/std@0.210.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 
 import {
   assertAlmostEquals,
-} from "https://deno.land/std@0.210.0/assert/mod.ts";
+} from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";

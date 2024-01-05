@@ -4,9 +4,9 @@ import { Offspring } from "../src/architecture/Offspring.ts";
 import {
   assert,
   assertEquals,
-} from "https://deno.land/std@0.210.0/assert/mod.ts";
+} from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
-import { assertFalse } from "https://deno.land/std@0.210.0/assert/assert_false.ts";
+import { assertFalse } from "https://deno.land/std@0.211.0/assert/assert_false.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

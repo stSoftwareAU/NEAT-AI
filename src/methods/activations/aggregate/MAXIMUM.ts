@@ -1,16 +1,16 @@
-import { NodeActivationInterface } from "../NodeActivationInterface.ts";
-import { Node } from "../../../architecture/Node.ts";
-import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
-import { IDENTITY } from "../types/IDENTITY.ts";
-import { ConnectionInternal } from "../../../architecture/ConnectionInterfaces.ts";
 import {
   adjustedBias,
   adjustedWeight,
   BackPropagationConfig,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
+import { ConnectionInternal } from "../../../architecture/ConnectionInterfaces.ts";
+import { Node } from "../../../architecture/Node.ts";
 import { PLANK_CONSTANT } from "../../../config/NeatConfig.ts";
+import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
+import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { PropagateInterface } from "../PropagateInterface.ts";
+import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class MAXIMUM
   implements
@@ -119,6 +119,8 @@ export class MAXIMUM
     const activationValue = toValue(node, activation);
 
     const error = targetValue - activationValue;
+    let remainingError = error;
+
     let targetWeightedSum = 0;
     if (toList.length) {
       let maxValue = -Infinity;
@@ -145,11 +147,6 @@ export class MAXIMUM
         const fromNode = node.network.nodes[mainConnection.from];
         const fromActivation = fromNode.adjustedActivation(config);
 
-        const cs = node.network.networkState.connection(
-          fromNode.index,
-          node.index,
-        );
-
         const fromWeight = adjustedWeight(
           node.network.networkState,
           mainConnection,
@@ -171,14 +168,22 @@ export class MAXIMUM
             targetFromActivation,
             config,
           );
+
+          const improvedFromValue = improvedFromActivation * fromWeight;
+
+          remainingError = targetFromValue - improvedFromValue;
         }
 
         if (
           Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
           Math.abs(fromWeight) > PLANK_CONSTANT
         ) {
-          const targetFromValue2 = fromValue + error;
+          const targetFromValue2 = fromValue + remainingError;
 
+          const cs = node.network.networkState.connection(
+            mainConnection.from,
+            mainConnection.to,
+          );
           cs.totalValue += targetFromValue2;
           cs.totalActivation += targetFromActivation;
           cs.absoluteActivation += Math.abs(improvedFromActivation);

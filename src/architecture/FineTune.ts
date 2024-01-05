@@ -3,7 +3,7 @@ import { Network } from "./Network.ts";
 import { NetworkInternal } from "./NetworkInterfaces.ts";
 import { NetworkUtil } from "./NetworkUtils.ts";
 import { NodeExport } from "./NodeInterfaces.ts";
-import { bold, cyan } from "https://deno.land/std@0.210.0/fmt/colors.ts";
+import { bold, cyan } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneRandomize(

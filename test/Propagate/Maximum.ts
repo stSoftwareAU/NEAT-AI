@@ -1,78 +1,77 @@
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.210.0/assert/mod.ts";
+} from "https://deno.land/std@0.211.0/assert/mod.ts";
 
-import { Network } from "../../src/architecture/Network.ts";
-import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Costs } from "../../src/Costs.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { ensureDirSync } from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
+import { Network } from "../../src/architecture/Network.ts";
+import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("PropagateMaximum", async () => {
-  const creature = makeCreature();
-
-  const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
-  for (let i = 1_000; i--;) {
-    const input = makeInput();
-    const output = creature.noTraceActivate(input);
-
-    ts.push({
-      input,
-      output,
-    });
-  }
-
-  const traceDir = ".trace";
-  ensureDirSync(traceDir);
-
-  Deno.writeTextFileSync(
-    ".trace/data.json",
-    JSON.stringify(ts, null, 2),
-  );
-  ts.forEach((item) => {
-    const result = creature.noTraceActivate(item.input);
-
-    assertAlmostEquals(item.output[0], result[0], 0.00001);
-    assertAlmostEquals(item.output[1], result[1], 0.00001);
-  });
-
-  const exportJSON = creature.exportJSON();
-
-  Deno.writeTextFileSync(
-    ".trace/A-clean.json",
-    JSON.stringify(exportJSON, null, 2),
-  );
-
-  exportJSON.nodes.forEach((node, indx) => {
-    node.bias = (node.bias ? node.bias : 0) +
-      ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  });
-
-  exportJSON.connections.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  });
-
-  Deno.writeTextFileSync(
-    ".trace/B-modified.json",
-    JSON.stringify(exportJSON, null, 2),
-  );
-
-  const creatureB = Network.fromJSON(exportJSON);
-  creatureB.validate();
-
-  const errorB = calculateError(creatureB, ts);
-
+  const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
+    const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
+    for (let i = 1_00; i--;) {
+      const input = makeInput();
+      const output = creatureA.noTraceActivate(input);
+
+      ts.push({
+        input,
+        output,
+      });
+    }
+
+    const traceDir = ".trace";
+    ensureDirSync(traceDir);
+
+    Deno.writeTextFileSync(
+      ".trace/data.json",
+      JSON.stringify(ts, null, 2),
+    );
+    ts.forEach((item) => {
+      const result = creatureA.noTraceActivate(item.input);
+
+      assertAlmostEquals(item.output[0], result[0], 0.00001);
+      assertAlmostEquals(item.output[1], result[1], 0.00001);
+    });
+
+    const exportJSON = creatureA.exportJSON();
+
+    Deno.writeTextFileSync(
+      ".trace/A-clean.json",
+      JSON.stringify(exportJSON, null, 2),
+    );
+
+    exportJSON.nodes.forEach((node, indx) => {
+      node.bias = (node.bias ? node.bias : 0) +
+        ((indx % 2 == 0 ? 1 : -1) * 0.15);
+    });
+
+    exportJSON.connections.forEach((c, indx) => {
+      c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.15);
+    });
+
+    Deno.writeTextFileSync(
+      ".trace/B-modified.json",
+      JSON.stringify(exportJSON, null, 2),
+    );
+
+    const creatureB = Network.fromJSON(exportJSON);
+    creatureB.validate();
+
+    const errorB = calculateError(creatureB, ts);
+
     const creatureC = Network.fromJSON(exportJSON);
     creatureC.validate();
 
     const resultC = await creatureC.train(ts, {
-      iterations: 1000,
+      iterations: 100,
       error: errorB - 0.001,
-      disableRandomSamples: true,
+      // disableRandomSamples: true,
     });
 
     Deno.writeTextFileSync(
@@ -85,8 +84,10 @@ Deno.test("PropagateMaximum", async () => {
       JSON.stringify(creatureC.exportJSON(), null, 2),
     );
 
-    if (attempts < 12) {
-      if (errorB <= resultC.error) continue;
+    const errorC = calculateError(creatureC, ts);
+
+    if (attempts < 24) {
+      if (errorB <= errorC) continue;
     }
 
     if (!resultC.trace) throw new Error("No trace");
@@ -95,13 +96,12 @@ Deno.test("PropagateMaximum", async () => {
     );
     const creatureE = Network.fromJSON(resultC.trace);
     const config = new BackPropagationConfig({
-      useAverageValuePerActivation: false,
-      useAverageDifferenceBias: "Yes",
-      generations: 0,
+      // useAverageValuePerActivation: false,
+      // useAverageDifferenceBias: "Yes",
+      // generations: 50,
     });
 
     creatureE.applyLearnings(config);
-    const errorC = calculateError(creatureC, ts);
     const errorD = calculateError(creatureD, ts);
     const errorE = calculateError(creatureE, ts);
     console.log(
@@ -114,22 +114,17 @@ Deno.test("PropagateMaximum", async () => {
     );
 
     Deno.writeTextFileSync(
-      ".trace/D-trace.json",
-      JSON.stringify(creatureD.traceJSON(), null, 2),
-    );
-
-    Deno.writeTextFileSync(
       ".trace/E-creature.json",
       JSON.stringify(creatureE.exportJSON(), null, 2),
     );
 
     assert(
-      true || errorB > errorC,
+      errorB > errorC,
       `Didn't improve error B->C  start: ${errorB} end: ${errorC}`,
     );
 
     assert(
-      true || errorB > resultC.error,
+      errorB > resultC.error,
       `Didn't improve error B->C *reported*  start: ${errorB} end: ${resultC.error}`,
     );
 

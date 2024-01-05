@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Network } from "../src/architecture/Network.ts";
 

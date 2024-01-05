@@ -4,8 +4,8 @@ import { make as makeConfig } from "./config/NeatConfig.ts";
 
 import { Fitness } from "./architecture/Fitness.ts";
 
-import { format } from "https://deno.land/std@0.210.0/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
+import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";

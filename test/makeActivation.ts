@@ -1,6 +1,6 @@
 import {
   assertAlmostEquals,
-} from "https://deno.land/std@0.210.0/assert/mod.ts";
+} from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkState } from "../src/architecture/NetworkState.ts";
 

@@ -38,12 +38,13 @@ export class BackPropagationConfig implements BackPropagationOptions {
     ) {
       this.useAverageDifferenceBias = options?.useAverageDifferenceBias;
     } else {
-      const random = Math.random() * 2 - 1;
-      this.useAverageDifferenceBias = random > 0.75
-        ? "Yes"
-        : random < -0.75
-        ? "No"
-        : "Maybe";
+      this.useAverageDifferenceBias = "Yes";
+      // const random = Math.random() * 2 - 1;
+      // this.useAverageDifferenceBias = random > 0.75
+      //   ? "Yes"
+      //   : random < -0.75
+      //   ? "No"
+      //   : "Maybe";
     }
 
     this.generations = Math.max(
