@@ -1,9 +1,9 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
-import { NeatOptions } from "../src/config/NeatOptions.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { NodeTrace } from "../src/architecture/NodeInterfaces.ts";
+import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -46,9 +46,9 @@ Deno.test("traceNode", async () => {
   }
 
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const creaturesDir = ".creatures";
-  emptyDirSync(creaturesDir);
+  ensureDirSync(creaturesDir);
 
   const options: NeatOptions = {
     iterations: 10,
@@ -69,7 +69,7 @@ Deno.test("traceNode", async () => {
       const json = JSON.parse(
         Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
       );
-
+      if (!json.nodes) continue;
       json.nodes.forEach((n: NodeTrace) => {
         if (n.trace) {
           // if (

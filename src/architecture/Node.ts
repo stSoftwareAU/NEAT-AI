@@ -16,10 +16,12 @@ import {
   adjustedWeight,
   BackPropagationConfig,
   limitActivation,
+  limitActivationToRange,
   limitValue,
   toValue,
 } from "./BackPropagation.ts";
 import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
+import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -30,7 +32,8 @@ export class Node implements TagsInterface, NodeInternal {
   private squashMethodCache?:
     | NodeActivationInterface
     | ActivationInterface
-    | PropagateInterface;
+    | PropagateInterface
+    | UnSquashInterface;
   public index: number;
   public tags = undefined;
 
@@ -169,7 +172,8 @@ export class Node implements TagsInterface, NodeInternal {
     activation:
       | NodeActivationInterface
       | ActivationInterface
-      | PropagateInterface,
+      | PropagateInterface
+      | UnSquashInterface,
   ): activation is NodeActivationInterface {
     return (activation as NodeActivationInterface).activate != undefined;
   }
@@ -179,7 +183,8 @@ export class Node implements TagsInterface, NodeInternal {
       | ApplyLearningsInterface
       | NodeActivationInterface
       | ActivationInterface
-      | PropagateInterface,
+      | PropagateInterface
+      | UnSquashInterface,
   ): activation is ApplyLearningsInterface {
     return (activation as ApplyLearningsInterface).applyLearnings != undefined;
   }
@@ -189,7 +194,8 @@ export class Node implements TagsInterface, NodeInternal {
       | NodeActivationInterface
       | ActivationInterface
       | NodeFixableInterface
-      | PropagateInterface,
+      | PropagateInterface
+      | UnSquashInterface,
   ): activation is NodeFixableInterface {
     return (activation as NodeFixableInterface).fix != undefined;
   }
@@ -334,10 +340,12 @@ export class Node implements TagsInterface, NodeInternal {
    * Back-propagate the error, aka learn
    */
   propagate(
-    targetActivation: number,
+    requestedActivation: number,
     config: BackPropagationConfig,
   ) {
     const activation = this.adjustedActivation(config);
+
+    const targetActivation = limitActivationToRange(this, requestedActivation);
 
     /** Short circuit  */
     if (Math.abs(activation - targetActivation) < 1e-12) {

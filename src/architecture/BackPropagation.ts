@@ -94,6 +94,30 @@ export function adjustedBias(
   }
 }
 
+export function limitActivationToRange(node: Node, activation: number) {
+  if (node.type == "input" || node.type == "constant") {
+    return activation;
+  }
+  const squash = node.findSquash();
+  if ((squash as UnSquashInterface).range !== undefined) {
+    const unSquasher = squash as UnSquashInterface;
+    const range = unSquasher.range();
+    const limitedActivation = Math.min(
+      Math.max(activation, range.low),
+      range.high,
+    );
+
+    // if (limitedActivation !== activation) {
+    //   console.info(
+    //     `${node.index}: limitActivationToRange(${activation}) squash: ${squash.getName()} -> ${limitedActivation}`,
+    //   );
+    // }
+    return limitedActivation;
+  }
+
+  return activation;
+}
+
 export function toValue(node: Node, activation: number) {
   if (node.type == "input" || node.type == "constant") {
     return activation;
