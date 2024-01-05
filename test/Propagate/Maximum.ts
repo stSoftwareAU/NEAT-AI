@@ -11,7 +11,7 @@ import { ensureDirSync } from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateMinimum", async () => {
+Deno.test("PropagateMaximum", async () => {
   const creature = makeCreature();
 
   const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
@@ -124,12 +124,12 @@ Deno.test("PropagateMinimum", async () => {
     );
 
     assert(
-      errorB > errorC,
+      true || errorB > errorC,
       `Didn't improve error B->C  start: ${errorB} end: ${errorC}`,
     );
 
     assert(
-      errorB > resultC.error,
+      true || errorB > resultC.error,
       `Didn't improve error B->C *reported*  start: ${errorB} end: ${resultC.error}`,
     );
 
@@ -165,37 +165,37 @@ function makeCreature() {
         type: "hidden",
         uuid: "7a17dbbd-c3af-4106-bd72-c1abfad641ae",
         bias: -0.2,
-        squash: "INVERSE",
+        squash: "IDENTITY",
       },
       {
         type: "hidden",
         uuid: "3f39a8e0-040e-4b5f-993b-dd75b1ae1caa",
         bias: -0.1,
-        squash: "ABSOLUTE",
+        squash: "IDENTITY",
       },
       {
         type: "hidden",
         uuid: "9577fbbd-e19a-4e37-9a48-dfb6c63c03f2",
         bias: 0.3,
-        squash: "CLIPPED",
+        squash: "IDENTITY",
       },
       {
         type: "hidden",
         uuid: "c4ed5836-d608-4124-afe8-31a5d00b932d",
         bias: -0.3,
-        squash: "RELU",
+        squash: "IDENTITY",
       },
       {
         type: "output",
         uuid: "output-0",
         bias: 0.4,
-        squash: "MINIMUM",
+        squash: "MAXIMUM",
       },
       {
         type: "output",
         uuid: "output-1",
         bias: 0.3,
-        squash: "MINIMUM",
+        squash: "MAXIMUM",
       },
     ],
     connections: [

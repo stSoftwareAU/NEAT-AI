@@ -17,123 +17,6 @@ export class MINIMUM
     NodeActivationInterface,
     ApplyLearningsInterface,
     PropagateInterface {
-  propagate(
-    node: Node,
-    targetActivation: number,
-    config: BackPropagationConfig,
-  ): number {
-    const toList = node.network.toConnections(node.index);
-
-    const activation = node.adjustedActivation(config);
-
-    const targetValue = toValue(node, targetActivation);
-
-    const activationValue = toValue(node, activation);
-
-    const error = targetValue - activationValue;
-    let targetWeightedSum = 0;
-    if (toList.length) {
-      let minValue = Infinity;
-
-      let mainConnection;
-      for (let indx = toList.length; indx--;) {
-        const c = toList[indx];
-
-        if (c.from === c.to) continue;
-
-        const fromNode = node.network.nodes[c.from];
-
-        const fromActivation = fromNode.adjustedActivation(config);
-
-        // const cs = node.network.networkState.connection(c.from, c.to);
-
-        const fromWeight = adjustedWeight(node.network.networkState, c, config);
-        const fromValue = fromWeight * fromActivation;
-        if (fromValue < minValue) {
-          minValue = fromValue;
-          mainConnection = c;
-        }
-      }
-
-      if (mainConnection) {
-        const fromNode = node.network.nodes[mainConnection.from];
-        const fromActivation = fromNode.adjustedActivation(config);
-
-        const cs = node.network.networkState.connection(
-          fromNode.index,
-          node.index,
-        );
-
-        const fromWeight = adjustedWeight(
-          node.network.networkState,
-          mainConnection,
-          config,
-        );
-        const fromValue = fromWeight * fromActivation;
-
-        let improvedFromActivation = fromActivation;
-        let targetFromActivation = fromActivation;
-        const targetFromValue = fromValue + error;
-        if (
-          fromWeight &&
-          fromNode.type !== "input" &&
-          fromNode.type !== "constant"
-        ) {
-          targetFromActivation = targetFromValue / fromWeight;
-
-          improvedFromActivation = (fromNode as Node).propagate(
-            targetFromActivation,
-            config,
-          );
-        }
-
-        if (
-          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-          Math.abs(fromWeight) > PLANK_CONSTANT
-        ) {
-          const targetFromValue2 = fromValue + error;
-
-          cs.totalValue += targetFromValue2;
-          cs.totalActivation += targetFromActivation;
-          cs.absoluteActivation += Math.abs(improvedFromActivation);
-
-          const aWeight = adjustedWeight(
-            node.network.networkState,
-            mainConnection,
-            config,
-          );
-
-          const improvedAdjustedFromValue = improvedFromActivation *
-            aWeight;
-
-          targetWeightedSum += improvedAdjustedFromValue;
-        }
-
-        // for (let indx = toList.length; indx--;) {
-        //   const c = toList[indx];
-
-        //   if (c.from === mainConnection.from) continue;
-
-        //   const fromNode = node.network.nodes[c.from];
-
-        //   const fromActivation = fromNode.adjustedActivation(config);
-        //   fromNode.propagate(fromActivation, config);
-        // }
-      }
-    }
-
-    const ns = node.network.networkState.node(node.index);
-    ns.count++;
-    ns.totalValue += targetValue;
-    ns.totalWeightedSum += targetWeightedSum;
-
-    const aBias = adjustedBias(node, config);
-
-    const adjustedActivation = targetWeightedSum + aBias;
-
-    return adjustedActivation;
-  }
-
   public static NAME = "MINIMUM";
 
   getName() {
@@ -219,5 +102,109 @@ export class MINIMUM
     }
 
     return changed;
+  }
+
+  propagate(
+    node: Node,
+    targetActivation: number,
+    config: BackPropagationConfig,
+  ): number {
+    const toList = node.network.toConnections(node.index);
+
+    const activation = node.adjustedActivation(config);
+
+    const targetValue = toValue(node, targetActivation);
+
+    const activationValue = toValue(node, activation);
+
+    const error = targetValue - activationValue;
+    let targetWeightedSum = 0;
+    if (toList.length) {
+      let minValue = Infinity;
+
+      let mainConnection;
+      for (let indx = toList.length; indx--;) {
+        const c = toList[indx];
+
+        if (c.from === c.to) continue;
+
+        const fromNode = node.network.nodes[c.from];
+
+        const fromActivation = fromNode.adjustedActivation(config);
+
+        const fromWeight = adjustedWeight(node.network.networkState, c, config);
+        const fromValue = fromWeight * fromActivation;
+        if (fromValue < minValue) {
+          minValue = fromValue;
+          mainConnection = c;
+        }
+      }
+
+      if (mainConnection) {
+        const fromNode = node.network.nodes[mainConnection.from];
+        const fromActivation = fromNode.adjustedActivation(config);
+
+        const cs = node.network.networkState.connection(
+          fromNode.index,
+          node.index,
+        );
+
+        const fromWeight = adjustedWeight(
+          node.network.networkState,
+          mainConnection,
+          config,
+        );
+        const fromValue = fromWeight * fromActivation;
+
+        let improvedFromActivation = fromActivation;
+        let targetFromActivation = fromActivation;
+        const targetFromValue = fromValue + error;
+        if (
+          fromWeight &&
+          fromNode.type !== "input" &&
+          fromNode.type !== "constant"
+        ) {
+          targetFromActivation = targetFromValue / fromWeight;
+
+          improvedFromActivation = (fromNode as Node).propagate(
+            targetFromActivation,
+            config,
+          );
+        }
+
+        if (
+          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
+          Math.abs(fromWeight) > PLANK_CONSTANT
+        ) {
+          const targetFromValue2 = fromValue + error;
+
+          cs.totalValue += targetFromValue2;
+          cs.totalActivation += targetFromActivation;
+          cs.absoluteActivation += Math.abs(improvedFromActivation);
+
+          const aWeight = adjustedWeight(
+            node.network.networkState,
+            mainConnection,
+            config,
+          );
+
+          const improvedAdjustedFromValue = improvedFromActivation *
+            aWeight;
+
+          targetWeightedSum += improvedAdjustedFromValue;
+        }
+      }
+    }
+
+    const ns = node.network.networkState.node(node.index);
+    ns.count++;
+    ns.totalValue += targetValue;
+    ns.totalWeightedSum += targetWeightedSum;
+
+    const aBias = adjustedBias(node, config);
+
+    const adjustedActivation = targetWeightedSum + aBias;
+
+    return adjustedActivation;
   }
 }

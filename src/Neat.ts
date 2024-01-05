@@ -84,8 +84,19 @@ export class Neat {
 
   async scheduleTraining(creature: NetworkInternal) {
     await NetworkUtil.makeUUID(creature as Network);
-    const w: WorkerHandler =
-      this.workers[Math.floor(this.workers.length * Math.random())];
+    let w: WorkerHandler;
+
+    for (let attempts = 0; true; attempts++) {
+      w = this.workers[Math.floor(this.workers.length * Math.random())];
+
+      if (w.isBusy() == false) break;
+
+      if (attempts > 12) {
+        console.warn(`Could not find a non busy worker`);
+        break;
+      }
+    }
+
     const key = creature.uuid as string;
     if (this.config.verbose) {
       console.info(`Start training for ${key}`);
