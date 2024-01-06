@@ -426,7 +426,7 @@ export class Network implements NetworkInternal {
       const node = item as NodeInternal;
       const uuid = node.uuid;
       if (!uuid) {
-        throw new Error(`${indx}) no UUID`);
+        throw new Error(`${uuid}) no UUID`);
       }
       if (UUIDs.has(uuid)) {
         if (this.DEBUG) {
@@ -438,7 +438,7 @@ export class Network implements NetworkInternal {
 
           this.DEBUG = true;
         }
-        throw new Error(`${indx}) duplicate UUID: ${uuid}`);
+        throw new Error(`${uuid}) duplicate UUID: ${uuid}`);
       }
       if (uuid.startsWith("input-")) {
         if (uuid !== "input-" + indx) {
@@ -451,11 +451,11 @@ export class Network implements NetworkInternal {
 
             this.DEBUG = true;
           }
-          throw new Error(`${indx}) invalid input UUID: ${uuid}`);
+          throw new Error(`${uuid}) invalid input UUID: ${uuid}`);
         }
       } else {
         if (!Number.isFinite(node.bias)) {
-          throw new Error(`${indx}) invalid bias: ${node.bias}`);
+          throw new Error(`${uuid}) invalid bias: ${node.bias}`);
         }
       }
 
@@ -472,7 +472,7 @@ export class Network implements NetworkInternal {
 
             this.DEBUG = true;
           }
-          throw new Error(`${indx} + ") invalid output UUID: ${uuid}`);
+          throw new Error(`${uuid} + ") invalid output UUID: ${uuid}`);
         }
       }
 
@@ -482,7 +482,7 @@ export class Network implements NetworkInternal {
         const toList = this.toConnections(indx);
         if (toList.length < 3) {
           throw new Error(
-            `${indx}) 'IF' should have at least 3 connections was: ${toList.length}`,
+            `${uuid}) 'IF' should have at least 3 connections was: ${toList.length}`,
           );
         }
 
@@ -510,13 +510,13 @@ export class Network implements NetworkInternal {
           }
         }
         if (!foundCondition) {
-          throw new Error(`${indx}) 'IF' should have a condition(s)`);
+          throw new Error(`${uuid}) 'IF' should have a condition(s)`);
         }
         if (!foundPositive) {
-          throw new Error(`${indx}) 'IF' should have a positive connection(s)`);
+          throw new Error(`${uuid}) 'IF' should have a positive connection(s)`);
         }
         if (!foundNegative) {
-          throw new Error(`${indx}) 'IF' should have a negative connection(s)`);
+          throw new Error(`${uuid}) 'IF' should have a negative connection(s)`);
         }
       }
       switch (node.type) {
@@ -525,7 +525,7 @@ export class Network implements NetworkInternal {
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
             throw new Error(
-              `${indx}) 'input' node has inward connections: ${toList.length}`,
+              `${uuid}) 'input' node has inward connections: ${toList.length}`,
             );
           }
           break;
@@ -535,12 +535,12 @@ export class Network implements NetworkInternal {
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
             throw new Error(
-              `${indx}) '${node.type}' node has inward connections: ${toList.length}`,
+              `${uuid}) '${node.type}' node has inward connections: ${toList.length}`,
             );
           }
           if (node.squash) {
             throw new Error(
-              `${indx}) '${node.type}' has squash: ${node.squash}`,
+              `${uuid}) '${node.type}' has squash: ${node.squash}`,
             );
           }
           break;
@@ -549,7 +549,7 @@ export class Network implements NetworkInternal {
           stats.hidden++;
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
-            throw new Error(`${indx}) hidden node has no inward connections`);
+            throw new Error(`${uuid}) hidden node has no inward connections`);
           }
           const fromList = this.fromConnections(indx);
           if (fromList.length == 0) {
@@ -564,16 +564,16 @@ export class Network implements NetworkInternal {
               );
               this.DEBUG = true;
             }
-            throw new Error(`${indx}) hidden node has no outward connections`);
+            throw new Error(`${uuid}) hidden node has no outward connections`);
           }
           if (node.bias === undefined) {
             throw new Error(
-              `${indx}) hidden node should have a bias was: ${node.bias}`,
+              `${uuid}) hidden node should have a bias was: ${node.bias}`,
             );
           }
           if (!Number.isFinite(node.bias)) {
             throw new Error(
-              `${indx}) hidden node should have a finite bias was: ${node.bias}`,
+              `${uuid}) hidden node should have a finite bias was: ${node.bias}`,
             );
           }
 
@@ -594,22 +594,22 @@ export class Network implements NetworkInternal {
               );
               this.DEBUG = true;
             }
-            throw new Error(`${indx}) output node has no inward connections`);
+            throw new Error(`${uuid}) output node has no inward connections`);
           }
           break;
         }
         default:
-          throw new Error(`${indx}) Invalid type: ${node.type}`);
+          throw new Error(`${uuid}) Invalid type: ${node.type}`);
       }
 
       if (node.index !== indx) {
         throw new Error(
-          `${indx}) node.index: ${node.index} does not match expected index`,
+          `${uuid}) node.index: ${node.index} does not match expected index`,
         );
       }
 
       if ((node as Node).network !== this) {
-        throw new Error(`${indx} node.network mismatch`);
+        throw new Error(`${uuid} node.network mismatch`);
       }
     });
 
@@ -1209,11 +1209,13 @@ export class Network implements NetworkInternal {
       let lastTS = startTS;
       const config = new BackPropagationConfig(
         {
-          disableRandomList: options.disableRandomSamples,
+          disableRandomSamples: options.disableRandomSamples,
+          useAverageDifferenceBias: options.useAverageDifferenceBias,
+          useAverageValuePerActivation: options.useAverageValuePerActivation,
         },
       );
-      if (options.generation !== undefined) {
-        config.generations = options.generation + iteration;
+      if (options.generations !== undefined) {
+        config.generations = options.generations + iteration;
       }
 
       let counter = 0;

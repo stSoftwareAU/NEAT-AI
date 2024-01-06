@@ -34,7 +34,8 @@ function makeCreature() {
         trace: {
           totalValue: -2.54,
           totalActivation: -0.8,
-          absoluteActivation: 0.8,
+          count: 1,
+          // absoluteActivation: 0.8,
         },
       },
     ],

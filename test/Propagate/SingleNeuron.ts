@@ -75,7 +75,7 @@ Deno.test("OneAndDone", () => {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
-    disableRandomList: true,
+    disableRandomSamples: true,
     // useAverageValuePerActivation: true,
     useAverageValuePerActivation: false,
     useAverageDifferenceBias: "Yes",

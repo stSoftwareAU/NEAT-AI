@@ -1,6 +1,7 @@
 import {
   adjustedBias,
   adjustedWeight,
+  adjustWeight,
   BackPropagationConfig,
   PLANK_CONSTANT,
   toValue,
@@ -188,9 +189,7 @@ export class MAXIMUM
             mainConnection.from,
             mainConnection.to,
           );
-          cs.totalValue += targetFromValue2;
-          cs.totalActivation += targetFromActivation;
-          cs.absoluteActivation += Math.abs(improvedFromActivation);
+          adjustWeight(cs, targetFromValue2, targetFromActivation);
 
           const aWeight = adjustedWeight(
             node.network.networkState,

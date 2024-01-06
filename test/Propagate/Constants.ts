@@ -6,6 +6,7 @@ import {
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -52,7 +53,7 @@ Deno.test("Constants", () => {
     );
 
     const config = new BackPropagationConfig({
-      disableRandomList: true,
+      disableRandomSamples: true,
       generations: 0,
     });
     const inA = [-1, 1, 0];
@@ -104,14 +105,15 @@ Deno.test("Constants Same", () => {
     const creature = makeCreature();
 
     const traceDir = ".trace";
-    emptyDirSync(traceDir);
+    ensureDirSync(traceDir);
 
     Deno.writeTextFileSync(
-      ".trace/0.json",
+      ".trace/0-clean.json",
       JSON.stringify(creature.exportJSON(), null, 2),
     );
     const config = new BackPropagationConfig({
-      disableRandomList: true,
+      disableRandomSamples: true,
+      generations: 100,
     });
     for (let i = 0; i < 1_000; i++) {
       const input = [-0.5, 0, 0.5];
@@ -120,7 +122,7 @@ Deno.test("Constants Same", () => {
     }
 
     Deno.writeTextFileSync(
-      ".trace/2.json",
+      ".trace/2-trace.json",
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
@@ -133,7 +135,7 @@ Deno.test("Constants Same", () => {
     const diff = Math.abs(expectedA[0] - actualA1[0]);
 
     Deno.writeTextFileSync(
-      ".trace/3.json",
+      ".trace/3-updated.json",
       JSON.stringify(creature.exportJSON(), null, 2),
     );
 

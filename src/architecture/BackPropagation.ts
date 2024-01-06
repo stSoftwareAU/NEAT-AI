@@ -1,11 +1,11 @@
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
-import { NetworkState } from "./NetworkState.ts";
+import { ConnectionState, NetworkState } from "./NetworkState.ts";
 import { Node } from "./Node.ts";
 
 export interface BackPropagationOptions {
   useAverageValuePerActivation?: boolean;
-  disableRandomList?: boolean;
+  disableRandomSamples?: boolean;
   useAverageDifferenceBias?: "Yes" | "No" | "Maybe";
 
   /**
@@ -24,7 +24,7 @@ export const MAX_BIAS = 100_000;
 
 export class BackPropagationConfig implements BackPropagationOptions {
   public useAverageValuePerActivation: boolean;
-  public disableRandomList: boolean;
+  public disableRandomSamples: boolean;
 
   public useAverageDifferenceBias: "Yes" | "No" | "Maybe";
   public generations: number;
@@ -32,7 +32,7 @@ export class BackPropagationConfig implements BackPropagationOptions {
   constructor(options?: BackPropagationOptions) {
     this.useAverageValuePerActivation = options?.useAverageValuePerActivation ??
       Math.random() > 0.5;
-    this.disableRandomList = options?.disableRandomList ?? false;
+    this.disableRandomSamples = options?.disableRandomSamples ?? false;
     if (
       options?.useAverageDifferenceBias === "Yes" ||
       options?.useAverageDifferenceBias === "No" ||
@@ -136,37 +136,48 @@ export function toValue(node: Node, activation: number) {
   }
 }
 
-export function adjustedWeightOld(
-  networkState: NetworkState,
-  c: ConnectionInternal,
-  config: BackPropagationConfig,
+export function adjustWeight(
+  cs: ConnectionState,
+  value: number,
+  activation: number,
 ) {
-  const cs = networkState.connection(c.from, c.to);
-  const totalValue = cs.totalValue + (c.weight * config.generations);
-
-  if (Math.abs(cs.totalActivation) > PLANK_CONSTANT) {
-    const totalActivation = cs.totalActivation + config.generations;
-    const absoluteActivation = cs.absoluteActivation + config.generations;
-
-    const averageWeightPerActivation = totalValue / totalActivation;
-    const averageWeightPerAbsoluteActivation = totalValue / absoluteActivation;
-
-    if (config.useAverageValuePerActivation) {
-      if (Number.isFinite(averageWeightPerActivation)) {
-        return limitWeight(averageWeightPerActivation);
-      } else {
-        console.info(
-          `${c.to}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation}`,
-        );
-        return limitWeight(c.weight);
-      }
-    } else {
-      return limitWeight(averageWeightPerAbsoluteActivation);
-    }
-  } else {
-    return limitWeight(c.weight);
-  }
+  cs.totalValue += value;
+  cs.totalActivation += activation;
+  cs.count++;
 }
+
+// export function adjustedWeightOld(
+//   networkState: NetworkState,
+//   c: ConnectionInternal,
+//   config: BackPropagationConfig,
+// ) {
+//   const cs = networkState.connection(c.from, c.to);
+
+//   const totalValue = cs.totalValue + (c.weight * config.generations);
+
+//   if (Math.abs(cs.totalActivation) > PLANK_CONSTANT) {
+//     const totalActivation = cs.totalActivation + config.generations;
+//     const absoluteActivation = cs.absoluteActivation + config.generations;
+
+//     const averageWeightPerActivation = totalValue / totalActivation;
+//     const averageWeightPerAbsoluteActivation = totalValue / absoluteActivation;
+
+//     if (config.useAverageValuePerActivation) {
+//       if (Number.isFinite(averageWeightPerActivation)) {
+//         return limitWeight(averageWeightPerActivation);
+//       } else {
+//         console.info(
+//           `${c.to}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation}`,
+//         );
+//         return limitWeight(c.weight);
+//       }
+//     } else {
+//       return limitWeight(averageWeightPerAbsoluteActivation);
+//     }
+//   } else {
+//     return limitWeight(c.weight);
+//   }
+// }
 
 export function adjustedWeight(
   networkState: NetworkState,
@@ -175,29 +186,14 @@ export function adjustedWeight(
 ) {
   const cs = networkState.connection(c.from, c.to);
 
-  const totalValue = cs.totalValue + (c.weight * config.generations);
+  if (cs.count) {
+    const totalWeight = cs.totalValue - cs.totalActivation;
+    const totalGenerationalWeight = c.weight * config.generations;
 
-  if (config.useAverageValuePerActivation) {
-    const totalActivation = cs.totalActivation + config.generations;
-    if (Math.abs(totalActivation) > PLANK_CONSTANT) {
-      const averageWeightPerActivation = totalValue / totalActivation;
-
-      if (Number.isFinite(averageWeightPerActivation)) {
-        return limitWeight(averageWeightPerActivation);
-      } else {
-        console.info(
-          `${c.to}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation} = totalValue ${totalValue} / totalActivation ${totalActivation} [Generations: ${config.generations}, cs.totalActivation: ${cs.totalActivation}, cs.totalValue: ${cs.totalValue}]`,
-        );
-      }
-    }
-  } else {
-    const absoluteActivation = cs.absoluteActivation + config.generations;
-
-    if (absoluteActivation > PLANK_CONSTANT) {
-      const averageWeightPerAbsoluteActivation = totalValue /
-        absoluteActivation;
-      return limitWeight(averageWeightPerAbsoluteActivation);
-    }
+    const averageWeight = (totalWeight + totalGenerationalWeight) /
+      (cs.count + config.generations);
+    // console.info( `${c.from}:${c.to}) averageWeight: ${averageWeight.toFixed(3)}, totalWeight: ${totalWeight.toFixed(3)}, totalGenerationalWeight: ${totalGenerationalWeight}, c.weight: ${c.weight}, count: ${cs.count}, generations: ${config.generations}`);
+    return limitWeight(averageWeight);
   }
 
   return limitWeight(c.weight);
