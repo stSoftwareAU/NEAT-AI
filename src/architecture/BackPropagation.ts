@@ -18,6 +18,8 @@ export interface BackPropagationOptions {
 export const MAX_WEIGHT = 100_000;
 export const MIN_WEIGHT = 1e-12;
 
+export const PLANK_CONSTANT = 0.000_000_1;
+
 export const MAX_BIAS = 100_000;
 
 export class BackPropagationConfig implements BackPropagationOptions {
@@ -134,16 +136,15 @@ export function toValue(node: Node, activation: number) {
   }
 }
 
-export function adjustedWeight(
+export function adjustedWeightOld(
   networkState: NetworkState,
   c: ConnectionInternal,
   config: BackPropagationConfig,
 ) {
   const cs = networkState.connection(c.from, c.to);
+  const totalValue = cs.totalValue + (c.weight * config.generations);
 
-  if (cs.totalActivation) {
-    const totalValue = cs.totalValue + (c.weight * config.generations);
-
+  if (Math.abs(cs.totalActivation) > PLANK_CONSTANT) {
     const totalActivation = cs.totalActivation + config.generations;
     const absoluteActivation = cs.absoluteActivation + config.generations;
 
@@ -165,6 +166,43 @@ export function adjustedWeight(
   } else {
     return limitWeight(c.weight);
   }
+}
+
+export function adjustedWeight(
+  networkState: NetworkState,
+  c: ConnectionInternal,
+  config: BackPropagationConfig,
+) {
+  const cs = networkState.connection(c.from, c.to);
+
+  const totalValue = cs.totalValue + (c.weight * config.generations);
+
+  if (config.useAverageValuePerActivation) {
+    if (Math.abs(cs.totalActivation) > PLANK_CONSTANT) {
+      const totalActivation = cs.totalActivation + config.generations;
+
+      const averageWeightPerActivation = totalValue / totalActivation;
+
+      if (Number.isFinite(averageWeightPerActivation)) {
+        return limitWeight(averageWeightPerActivation);
+      } else {
+        console.info(
+          `${c.to}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation} = totalValue ${totalValue} / totalActivation ${totalActivation} [Generations: ${config.generations}]`,
+        );
+        return limitWeight(c.weight);
+      }
+    }
+  } else {
+    const absoluteActivation = cs.absoluteActivation + config.generations;
+
+    if (absoluteActivation > PLANK_CONSTANT) {
+      const averageWeightPerAbsoluteActivation = totalValue /
+        absoluteActivation;
+      return limitWeight(averageWeightPerAbsoluteActivation);
+    }
+  }
+
+  return limitWeight(c.weight);
 }
 
 export function limitBias(bias: number) {

@@ -9,8 +9,6 @@ import { NeatOptions } from "./NeatOptions.ts";
 import { Mutation, MutationInterface } from "../methods/mutation.ts";
 import { Selection, SelectionInterface } from "../methods/Selection.ts";
 
-export const PLANK_CONSTANT = 0.000_000_1;
-
 export interface NeatConfig extends NeatOptions {
   /** List of creatures to start with */
   creatures: NetworkInternal[] | NetworkExport[];

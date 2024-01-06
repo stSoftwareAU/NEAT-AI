@@ -1,16 +1,17 @@
 /* Import */
+import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
+import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { NodeActivationInterface } from "../methods/activations/NodeActivationInterface.ts";
 import { NodeFixableInterface } from "../methods/activations/NodeFixableInterface.ts";
-import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
-import { Connection } from "./Connection.ts";
 import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
-import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
-import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
+import { Connection } from "./Connection.ts";
 import { Network } from "./Network.ts";
+import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 
-import { PLANK_CONSTANT } from "../config/NeatConfig.ts";
+import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
+import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import {
   adjustedBias,
   adjustedWeight,
@@ -18,10 +19,9 @@ import {
   limitActivation,
   limitActivationToRange,
   limitValue,
+  PLANK_CONSTANT,
   toValue,
 } from "./BackPropagation.ts";
-import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
-import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;

@@ -2,11 +2,11 @@ import {
   adjustedBias,
   adjustedWeight,
   BackPropagationConfig,
+  PLANK_CONSTANT,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { ConnectionInternal } from "../../../architecture/ConnectionInterfaces.ts";
 import { Node } from "../../../architecture/Node.ts";
-import { PLANK_CONSTANT } from "../../../config/NeatConfig.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { PropagateInterface } from "../PropagateInterface.ts";
