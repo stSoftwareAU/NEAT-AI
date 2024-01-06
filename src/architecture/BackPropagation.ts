@@ -178,18 +178,16 @@ export function adjustedWeight(
   const totalValue = cs.totalValue + (c.weight * config.generations);
 
   if (config.useAverageValuePerActivation) {
-    if (Math.abs(cs.totalActivation) > PLANK_CONSTANT) {
-      const totalActivation = cs.totalActivation + config.generations;
-
+    const totalActivation = cs.totalActivation + config.generations;
+    if (Math.abs(totalActivation) > PLANK_CONSTANT) {
       const averageWeightPerActivation = totalValue / totalActivation;
 
       if (Number.isFinite(averageWeightPerActivation)) {
         return limitWeight(averageWeightPerActivation);
       } else {
         console.info(
-          `${c.to}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation} = totalValue ${totalValue} / totalActivation ${totalActivation} [Generations: ${config.generations}]`,
+          `${c.to}: Invalid Weight : averageValuePerActivation ${averageWeightPerActivation} = totalValue ${totalValue} / totalActivation ${totalActivation} [Generations: ${config.generations}, cs.totalActivation: ${cs.totalActivation}, cs.totalValue: ${cs.totalValue}]`,
         );
-        return limitWeight(c.weight);
       }
     }
   } else {

@@ -81,11 +81,12 @@ export class WorkerProcessor {
       const json = JSON.stringify(network.exportJSON());
 
       network.dispose();
-
+      const uuid = network.uuid ? network.uuid : "UNKNOWN";
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
         train: {
+          ID: uuid.substring(Math.max(0, uuid.length - 8)),
           network: json,
           error: result.error,
           trace: JSON.stringify(result.trace),

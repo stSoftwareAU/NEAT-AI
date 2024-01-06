@@ -4,6 +4,7 @@ import { make as makeConfig } from "./config/NeatConfig.ts";
 
 import { Fitness } from "./architecture/Fitness.ts";
 
+import { blue } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { makeElitists } from "../src/architecture/elitism.ts";
@@ -375,7 +376,7 @@ export class Neat {
           const json = JSON.parse(r.train.network);
           if (this.config.verbose) {
             console.info(
-              `Training completed ${
+              `Training ${blue(r.train.ID)} completed ${
                 r.duration
                   ? "after " + format(r.duration, { ignoreZero: true })
                   : ""

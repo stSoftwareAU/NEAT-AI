@@ -33,6 +33,7 @@ export interface ResponseData {
     error: number;
   };
   train?: {
+    ID: string;
     network: string;
     error: number;
     trace: string;
