@@ -1362,6 +1362,7 @@ export class Network implements NetworkInternal {
       if (bestError <= targetError || iteration >= iterations) {
         this.loadFrom(bestCreatureJSON, false);
         return {
+          ID: ID,
           iteration: iteration,
           error: bestError,
           trace: bestTraceJSON,
