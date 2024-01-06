@@ -188,6 +188,11 @@ export function adjustedWeight(
 
   if (cs.count) {
     const totalWeight = cs.totalValue - cs.totalActivation;
+    const testWeightAverage = totalWeight / cs.count;
+    if( Math.abs(testWeightAverage * cs.totalActivation - cs.totalValue) > 0.0001 ) {
+        console.info( `testWeightAverage: ${testWeightAverage}, totalWeight: ${totalWeight}, cs.totalValue: ${cs.totalValue}, cs.totalActivation: ${cs.totalActivation}, cs.count: ${cs.count}`);
+
+      }
     const totalGenerationalWeight = c.weight * config.generations;
 
     const averageWeight = (totalWeight + totalGenerationalWeight) /

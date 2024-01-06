@@ -432,7 +432,7 @@ export class Node implements TagsInterface, NodeInternal {
         ) {
           const targetFromValue2 = fromValue + thisPerLinkError;
 
-          adjustWeight(cs, targetFromValue2, targetFromActivation);
+          adjustWeight(cs, targetFromValue2, improvedFromActivation);
 
           const aWeight = adjustedWeight(this.network.networkState, c, config);
 
