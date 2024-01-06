@@ -56,9 +56,6 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
-      if (this.workerName !== "main") {
-        console.log("Training on Thread/Worker ID:", self.name);
-      }
       const network = Network.fromJSON(
         JSON.parse(data.train.network),
         data.debug,

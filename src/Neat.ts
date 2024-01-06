@@ -98,15 +98,19 @@ export class Neat {
       }
     }
 
-    const key = creature.uuid as string;
+    const uuid = creature.uuid as string;
     if (this.config.verbose) {
-      console.info(`Start training for ${key}`);
+      console.info(
+        `Training ${
+          blue(uuid.substring(Math.max(0, uuid.length - 8)))
+        } scheduled`,
+      );
     }
 
     const p = w.train(creature).then(async (r) => {
       this.trainingComplete.push(r);
 
-      this.trainingInProgress.delete(key);
+      this.trainingInProgress.delete(uuid);
 
       if (this.config.traceStore && r.train) {
         if (r.train.trace) {
@@ -123,7 +127,7 @@ export class Neat {
       }
     });
 
-    this.trainingInProgress.set(key, p);
+    this.trainingInProgress.set(uuid, p);
 
     addTag(creature, "trained", "YES");
   }
