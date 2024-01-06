@@ -1,6 +1,6 @@
 import {
   assertAlmostEquals,
-} from "https://deno.land/std@0.210.0/assert/mod.ts";
+} from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkState } from "../src/architecture/NetworkState.ts";
 
@@ -45,7 +45,6 @@ Deno.test("makeActivation", () => {
 
   ns.makeActivation([-0.1, -0.2], false);
 
-  console.info(ns.activations);
   assertAlmostEquals(ns.activations[0], -0.1, 0.0000001);
   assertAlmostEquals(ns.activations[1], -0.2, 0.0000001);
   assertAlmostEquals(ns.activations[2], 0, 0.0000001);
@@ -57,8 +56,6 @@ Deno.test("makeActivation", () => {
   ns.activations[4] = 0.3;
   ns.makeActivation([-0.3, -0.4], true);
 
-  console.info(ns.activations);
-
   assertAlmostEquals(ns.activations[0], -0.3, 0.0000001);
   assertAlmostEquals(ns.activations[1], -0.4, 0.0000001);
   assertAlmostEquals(ns.activations[2], 0.1, 0.0000001);
@@ -67,7 +64,6 @@ Deno.test("makeActivation", () => {
 
   ns.makeActivation([-0.5, -0.6], false);
 
-  console.info(ns.activations);
   assertAlmostEquals(ns.activations[0], -0.5, 0.0000001);
   assertAlmostEquals(ns.activations[1], -0.6, 0.0000001);
   assertAlmostEquals(ns.activations[2], 0, 0.0000001);

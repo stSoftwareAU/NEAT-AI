@@ -4,7 +4,7 @@ import { Network } from "../src/architecture/Network.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Learn", () => {
+Deno.test("Learn", async () => {
   const nn = Network.fromJSON(
     {
       nodes: [
@@ -71,9 +71,7 @@ Deno.test("Learn", () => {
 
   const answersA = nn.noTraceActivate([0.1, 0.2]);
   console.info(answersA);
-  nn.train(dataSet, options);
-
-  // console.info( nn.util.toJSON());
+  await nn.train(dataSet, options);
 
   const answersB = nn.noTraceActivate([0.1, 0.2]);
   console.info(answersB);

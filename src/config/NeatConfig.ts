@@ -62,9 +62,6 @@ export interface NeatConfig extends NeatOptions {
   /** the number of training per generation. default: 1  */
   trainPerGen: number;
 
-  /** the initial train rate if evolving or the rate to use when training only */
-  trainRate: number;
-
   selection: SelectionInterface;
   mutation: MutationInterface[];
 
@@ -131,19 +128,22 @@ export function make(parameters?: NeatOptions) {
     timeoutMinutes: options.timeoutMinutes,
     traceStore: options.traceStore,
     trainPerGen: options.trainPerGen ? options.trainPerGen : 1,
-    trainRate: options.trainRate ? options.trainRate : 0.01,
 
     log: options.log ? options.log : 0,
     verbose: options.verbose ? true : false,
   };
 
   if (config.mutationAmount < 1) {
-    throw "Mutation Amount must be more than zero was: " +
-      config.mutationAmount;
+    throw new Error(
+      "Mutation Amount must be more than zero was: " +
+        config.mutationAmount,
+    );
   }
 
   if (config.mutationRate <= 0.001) {
-    throw "Mutation Rate must be more than 0.1% was: " + config.mutationRate;
+    throw new Error(
+      "Mutation Rate must be more than 0.1% was: " + config.mutationRate,
+    );
   }
 
   return config;

@@ -117,11 +117,11 @@ export class CRISPR {
       const from = c.from !== undefined
         ? c.from
         : ((c.fromRelative ? c.fromRelative : 0) + adjustIndx);
-      if (from == undefined) throw "invalid connection " + c;
+      if (from == undefined) throw new Error("invalid connection " + c);
       const to = c.to !== undefined
         ? c.to
         : ((c.toRelative ? c.toRelative : 0) + adjustIndx);
-      if (to == undefined) throw "invalid connection " + c;
+      if (to == undefined) throw new Error("invalid connection " + c);
 
       tmpNetwork.connect(from, to, c.weight, c.type);
     });

@@ -122,8 +122,7 @@ export class Offspring {
             offspring.connect(fromNode, toNode, c.weight, c.type);
           }
         } else {
-          console.trace();
-          throw "Could not find nodes for connection";
+          throw new Error("Could not find nodes for connection");
         }
       });
     });

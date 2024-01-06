@@ -27,8 +27,12 @@ export class SELU implements ActivationInterface, UnSquashInterface {
 
     if (scaledActivation > 0) {
       return scaledActivation;
+    } else if (scaledActivation > -SELU.ALPHA) {
+      return Math.log((scaledActivation / SELU.ALPHA) + 1);
     } else {
-      return Math.log((scaledActivation + SELU.ALPHA) / SELU.ALPHA);
+      // Handle case when scaledActivation <= -ALPHA
+      // This is an approximation and may not be accurate
+      return -1;
     }
   }
 

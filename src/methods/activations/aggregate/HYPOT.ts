@@ -2,6 +2,10 @@ import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { Node } from "../../../architecture/Node.ts";
 
 export class HYPOT implements NodeActivationInterface {
+  range(): { low: number; high: number } {
+    return { low: 0, high: Number.POSITIVE_INFINITY };
+  }
+
   public static NAME = "HYPOT";
 
   getName() {

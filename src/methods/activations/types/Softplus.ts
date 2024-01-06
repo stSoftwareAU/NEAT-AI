@@ -16,6 +16,22 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   // Function to estimate the input from the activation value.
   // The inverse of Softplus is x = ln(exp(f(x)) - 1)
   unSquash(activation: number): number {
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be a finite number");
+    }
+
+    if (activation <= 0) {
+      return activation; // the best guess if activation is 0 or less
+    }
+
+    if (activation > 100) { // 100 is a reasonable threshold to prevent overflow
+      return activation; // Return activation as the best guess if it's a large positive number
+    }
+
+    if (activation < 1e-15) { // 1e-15 is a reasonable threshold to prevent underflow
+      return activation; // Return activation as the best guess if it's a very small positive number
+    }
+
     return Math.log(Math.exp(activation) - 1);
   }
 
@@ -32,6 +48,10 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
   // Softplus function definition
   squash(x: number) {
+    if (x >= 709) { // 709 is a reasonable threshold to prevent overflow, as Math.exp(709) is the largest finite number in JavaScript
+      return Number.MAX_VALUE; // Return a large positive number as the best guess if x is too large
+    }
+
     return Math.log(1 + Math.exp(x));
   }
 

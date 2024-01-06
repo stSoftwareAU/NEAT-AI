@@ -18,7 +18,19 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number): number {
-    return activation !== 0 ? 1 / activation : 0;
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be a finite number");
+    }
+
+    if (activation === 0) {
+      return 0; // Return 0 if activation is 0
+    }
+
+    if (Math.abs(activation) < 1e-15) { // 1e-15 is a reasonable threshold to prevent overflow
+      return activation > 0 ? Number.MAX_VALUE : Number.MIN_VALUE; // Return a large positive or negative number as the best guess if activation is a very small positive or negative number
+    }
+
+    return 1 / activation;
   }
 
   range(): { low: number; high: number } {

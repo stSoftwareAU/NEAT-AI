@@ -1,11 +1,11 @@
-import { emptyDirSync } from "https://deno.land/std@0.210.0/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
-import { assert, fail } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert, fail } from "https://deno.land/std@0.211.0/assert/mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
-Deno.test("AND", () => {
+Deno.test("AND", async () => {
   // Train the AND gate
   const trainingSet = [
     { input: [0, 0], output: [0] },
@@ -17,18 +17,19 @@ Deno.test("AND", () => {
   for (let attempts = 0; true; attempts++) {
     const network = new Network(2, 1);
 
-    const results = network.train(trainingSet, {
+    const results = await network.train(trainingSet, {
       error: 0.03,
-      iterations: 1_000,
+      iterations: 10_000,
     });
 
-    if (results.error > 0.36 && attempts < 12) continue;
-    assert(results.error <= 0.36, "Error rate was: " + results.error);
+    if (results.error > 0.03 && attempts < 100) continue;
+
+    assert(results.error <= 0.03, "Error rate was: " + results.error);
     break;
   }
 });
 
-Deno.test("MT", () => {
+Deno.test("MT", async () => {
   // Train the AND gate
   const trainingSet = [
     { input: [0, 0], output: [0] },
@@ -44,7 +45,7 @@ Deno.test("MT", () => {
       ],
     });
 
-    const results = network.train(trainingSet, {
+    const results = await network.train(trainingSet, {
       error: 0.03,
       iterations: 10000,
     });
@@ -58,7 +59,7 @@ Deno.test("MT", () => {
   }
 });
 
-Deno.test("train-XOR", () => {
+Deno.test("train-XOR", async () => {
   // Train the XOR gate
   const trainingSet = [
     { input: [0, 0], output: [0] },
@@ -79,7 +80,7 @@ Deno.test("train-XOR", () => {
     JSON.stringify(network.internalJSON(), null, 2),
   );
   for (let attempts = 0; true; attempts++) {
-    const results = network.train(trainingSet, {
+    const results = await network.train(trainingSet, {
       error: 0.03,
       iterations: 10000,
     });
@@ -101,7 +102,7 @@ Deno.test("train-XOR", () => {
 /**
  * Train the XNOR gate
  */
-Deno.test("XNOR", () => {
+Deno.test("XNOR", async () => {
   const trainingSet = [
     { input: [0, 0], output: [1] },
     { input: [0, 1], output: [0] },
@@ -116,12 +117,11 @@ Deno.test("XNOR", () => {
       ],
     });
 
-    const results = network.train(trainingSet, {
+    const results = await network.train(trainingSet, {
       error: 0.03,
       iterations: 10_000,
     });
 
-    console.info(results);
     if (results.error < 0.26) {
       break;
     }

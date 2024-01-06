@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 
@@ -91,7 +91,6 @@ Deno.test("addNode", () => {
     network.addNode();
   }
   const nodes = network.internalJSON().nodes;
-  console.info(JSON.stringify(nodes, null, 1));
 
   for (let pos = nodes.length; pos--;) {
     const node = nodes[pos];

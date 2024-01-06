@@ -1,8 +1,6 @@
-import { NetworkInternal } from "../../architecture/NetworkInterfaces.ts";
 import { Network } from "../../architecture/Network.ts";
+import { NetworkInternal } from "../../architecture/NetworkInterfaces.ts";
 import { MockWorker } from "./MockWorker.ts";
-
-import { addTag, getTag } from "../../tags/TagsInterface.ts";
 
 export interface RequestData {
   taskID: number;
@@ -17,7 +15,6 @@ export interface RequestData {
   };
   train?: {
     network: string;
-    rate: number;
   };
   echo?: {
     ms: number;
@@ -36,6 +33,7 @@ export interface ResponseData {
     error: number;
   };
   train?: {
+    ID: string;
     network: string;
     error: number;
     trace: string;
@@ -75,7 +73,7 @@ export class WorkerHandler {
     direct: boolean = false,
   ) {
     if (typeof dataSetDir === "undefined") {
-      throw "dataSet is mandatory";
+      throw new Error("dataSet is mandatory");
     }
     const data: RequestData = {
       taskID: this.taskID++,
@@ -90,6 +88,7 @@ export class WorkerHandler {
         new URL("./deno/worker.ts", import.meta.url).href,
         {
           type: "module",
+          name: "worker-" + this.workerID,
         },
       );
     } else {
@@ -111,10 +110,6 @@ export class WorkerHandler {
   /** Notify listeners when worker no longer busy */
   addIdleListener(callback: WorkerEventListener) {
     this.idleListeners.push(callback);
-    if (this.idleListeners.length > 1) {
-      console.trace();
-      console.warn(`Lots of listeners ${this.idleListeners.length}`);
-    }
   }
 
   private callback(data: ResponseData) {
@@ -124,7 +119,7 @@ export class WorkerHandler {
     } else {
       const msg = "No callback";
       console.warn(this.workerID, msg);
-      throw msg;
+      throw new Error(msg);
     }
   }
 
@@ -181,19 +176,15 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  train(network: NetworkInternal, rate: number) {
-    const json = (network as Network).internalJSON();
+  train(network: NetworkInternal) {
+    const json = (network as Network).exportJSON();
 
     delete json.tags;
-    const error = getTag(network, "error");
-    if (error) {
-      addTag(json, "untrained", error);
-    }
+
     const data: RequestData = {
       taskID: this.taskID++,
       train: {
         network: JSON.stringify(json),
-        rate: rate,
       },
     };
 

@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
@@ -37,7 +37,6 @@ Deno.test("inward", () => {
   assert(connects2.length == 3, "expected 3 got " + connects2.length);
 
   network.addNode();
-  console.info(JSON.stringify(network.exportJSON(), null, 2));
 
   let foundPositive = false;
   let foundNegative = false;

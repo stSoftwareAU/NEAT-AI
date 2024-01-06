@@ -4,23 +4,24 @@ import { make as makeConfig } from "./config/NeatConfig.ts";
 
 import { Fitness } from "./architecture/Fitness.ts";
 
-import { NeatOptions } from "./config/NeatOptions.ts";
+import { blue } from "https://deno.land/std@0.211.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
+import { makeElitists } from "../src/architecture/elitism.ts";
+import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
+import { fineTuneImprovement } from "./architecture/FineTune.ts";
+import { Network } from "./architecture/Network.ts";
+import { NetworkInternal } from "./architecture/NetworkInterfaces.ts";
+import { NetworkUtil } from "./architecture/NetworkUtils.ts";
+import { Offspring } from "./architecture/Offspring.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
+import { NeatOptions } from "./config/NeatOptions.ts";
+import { Selection } from "./methods/Selection.ts";
+import { Mutation } from "./methods/mutation.ts";
 import {
   ResponseData,
   WorkerHandler,
 } from "./multithreading/workers/WorkerHandler.ts";
-import { NetworkInternal } from "./architecture/NetworkInterfaces.ts";
-import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
-import { fineTuneImprovement } from "./architecture/FineTune.ts";
-import { makeElitists } from "../src/architecture/elitism.ts";
-import { Network } from "./architecture/Network.ts";
-import { ensureDirSync } from "https://deno.land/std@0.210.0/fs/ensure_dir.ts";
-import { Mutation } from "./methods/mutation.ts";
-import { Selection } from "./methods/Selection.ts";
-import { Offspring } from "./architecture/Offspring.ts";
-import { NetworkUtil } from "./architecture/NetworkUtils.ts";
-import { format } from "https://deno.land/std@0.210.0/fmt/duration.ts";
 
 export class Neat {
   readonly input: number;
@@ -28,7 +29,7 @@ export class Neat {
   readonly config: NeatConfig;
   readonly workers: WorkerHandler[];
   readonly fitness: Fitness;
-  trainRate: number;
+
   population: Network[];
 
   constructor(
@@ -50,8 +51,6 @@ export class Neat {
       this.config.feedbackLoop,
     );
 
-    this.trainRate = this.config.trainRate;
-
     // Initialize the genomes
     this.population = [];
     this.config.creatures.forEach((c) => {
@@ -60,23 +59,58 @@ export class Neat {
     });
   }
 
+  private doNotStartMoreTraining = false;
+  private trainingCompleteCount = 0;
+
+  finishUp() {
+    this.doNotStartMoreTraining = true;
+    if (this.trainingInProgress.size > 0) {
+      if (!this.trainingCompleteCount) this.trainingCompleteCount = 2;
+      console.info("Waiting for training to complete");
+      return false;
+    }
+    if (this.trainingCompleteCount > 0) {
+      console.info(
+        `Waiting for training clean up ${this.trainingCompleteCount}`,
+      );
+      this.trainingCompleteCount--;
+      return false;
+    }
+    return true;
+  }
+
   private trainingInProgress = new Map<string, Promise<void>>();
 
   private trainingComplete: ResponseData[] = [];
 
   async scheduleTraining(creature: NetworkInternal) {
     await NetworkUtil.makeUUID(creature as Network);
-    const w: WorkerHandler =
-      this.workers[Math.floor(this.workers.length * Math.random())];
-    const key = creature.uuid as string;
-    if (this.config.verbose) {
-      console.info(`Start training for ${key}`);
+    let w: WorkerHandler;
+
+    for (let attempts = 0; true; attempts++) {
+      w = this.workers[Math.floor(this.workers.length * Math.random())];
+
+      if (w.isBusy() == false) break;
+
+      if (attempts > 12) {
+        console.warn(`Could not find a non busy worker`);
+        break;
+      }
     }
 
-    const p = w.train(creature, this.trainRate).then(async (r) => {
+    const uuid = creature.uuid as string;
+    if (this.config.verbose) {
+      console.info(
+        `Training ${
+          blue(uuid.substring(Math.max(0, uuid.length - 8)))
+        } scheduled`,
+      );
+    }
+
+    const p = w.train(creature).then(async (r) => {
       this.trainingComplete.push(r);
 
-      this.trainingInProgress.delete(key);
+      this.trainingInProgress.delete(uuid);
 
       if (this.config.traceStore && r.train) {
         if (r.train.trace) {
@@ -84,8 +118,8 @@ export class Neat {
             JSON.parse(r.train.trace),
           );
           await NetworkUtil.makeUUID(traceNetwork);
-
-          await Deno.writeTextFile(
+          ensureDirSync(this.config.traceStore);
+          Deno.writeTextFileSync(
             `${this.config.traceStore}/${traceNetwork.uuid}.json`,
             JSON.stringify(traceNetwork.traceJSON(), null, 2),
           );
@@ -93,7 +127,7 @@ export class Neat {
       }
     });
 
-    this.trainingInProgress.set(key, p);
+    this.trainingInProgress.set(uuid, p);
 
     addTag(creature, "trained", "YES");
   }
@@ -248,7 +282,10 @@ export class Neat {
         removeTag(n, "trained");
       }
 
-      if (this.trainingInProgress.size < this.config.trainPerGen && n.score) {
+      if (
+        this.doNotStartMoreTraining == false &&
+        this.trainingInProgress.size < this.config.trainPerGen && n.score
+      ) {
         const trained = getTag(n, "trained");
         if (trained !== "YES") {
           await this.scheduleTraining(n);
@@ -257,6 +294,7 @@ export class Neat {
     }
 
     if (
+      this.doNotStartMoreTraining == false &&
       this.trainingInProgress.size < this.config.trainPerGen &&
       elitists.length > 0
     ) {
@@ -289,8 +327,6 @@ export class Neat {
       this.population,
     );
 
-    let trainingWorked = false;
-
     for (let i = 0; i < this.population.length; i++) {
       const p = this.population[i];
 
@@ -302,38 +338,6 @@ export class Neat {
         }
 
         livePopulation.push(p);
-
-        const untrained = getTag(p, "untrained");
-
-        if (untrained) {
-          const error = getTag(p, "error");
-          const currentError = Math.abs(
-            parseFloat(error ? error : Number.MAX_SAFE_INTEGER.toString()),
-          );
-          const previousError = Math.abs(parseFloat(untrained));
-
-          if (currentError < previousError) {
-            // console.info( "Training worked", previousError, currentError );
-            trainingWorked = true;
-          }
-        }
-      }
-    }
-
-    if (previousFittest) {
-      if (trainingWorked) {
-        const nextRate = Math.min(
-          this.trainRate * (1 + Math.random()),
-          0.1,
-        );
-
-        this.trainRate = nextRate;
-      } else {
-        const nextRate = Math.max(
-          this.trainRate * Math.random(),
-          0.000_000_01,
-        );
-        this.trainRate = nextRate;
       }
     }
 
@@ -376,7 +380,7 @@ export class Neat {
           const json = JSON.parse(r.train.network);
           if (this.config.verbose) {
             console.info(
-              `Training completed ${
+              `Training ${blue(r.train.ID)} completed ${
                 r.duration
                   ? "after " + format(r.duration, { ignoreZero: true })
                   : ""
@@ -385,11 +389,13 @@ export class Neat {
           }
 
           addTag(json, "approach", "trained");
+          addTag(json, "trainID", r.train.ID);
 
-          trainedPopulation.push(Network.fromJSON(json, this.config.debug));
+          trainedPopulation.push(Network
+            .fromJSON(json, this.config.debug));
         }
       } else {
-        throw "No train result";
+        throw new Error(`No train result`);
       }
     }
     this.trainingComplete.length = 0;
@@ -483,7 +489,7 @@ export class Neat {
    */
   async populatePopulation(network: Network) {
     if (!network) {
-      throw "Network mandatory";
+      throw new Error(`Network mandatory`);
     }
 
     if (this.config.debug) {
@@ -523,7 +529,7 @@ export class Neat {
       for (let pos = 0; pos < this.population.length; pos++) {
         if (this.population[pos]) return (this.population[pos] as Network);
       }
-      throw "Extinction event";
+      throw new Error(`Extinction event`);
     }
 
     let p2 = this.getParent();
@@ -546,7 +552,7 @@ export class Neat {
         if (this.population[pos]) return (this.population[pos] as Network);
       }
 
-      throw "Extinction event";
+      throw new Error(`Extinction event`);
     }
 
     const creature = Offspring.bread(
@@ -721,10 +727,10 @@ export class Neat {
             return individuals[i];
           }
         }
-        throw "No parent found in tournament";
+        throw new Error(`No parent found in tournament`);
       }
       default: {
-        throw "Unknown selection: " + this.config.selection;
+        throw new Error(`Unknown selection: ${this.config.selection}`);
       }
     }
   }

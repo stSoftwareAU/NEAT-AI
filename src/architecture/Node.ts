@@ -1,14 +1,27 @@
 /* Import */
+import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
+import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { NodeActivationInterface } from "../methods/activations/NodeActivationInterface.ts";
 import { NodeFixableInterface } from "../methods/activations/NodeFixableInterface.ts";
-import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
-import { Connection } from "./Connection.ts";
 import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
-import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
-import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
+import { Connection } from "./Connection.ts";
 import { Network } from "./Network.ts";
+import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
+
+import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
+import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
+import {
+  adjustedBias,
+  adjustedWeight,
+  BackPropagationConfig,
+  limitActivation,
+  limitActivationToRange,
+  limitValue,
+  PLANK_CONSTANT,
+  toValue,
+} from "./BackPropagation.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly network: Network;
@@ -16,7 +29,11 @@ export class Node implements TagsInterface, NodeInternal {
   uuid: string;
   bias: number;
   squash?: string;
-  private squashMethodCache?: NodeActivationInterface | ActivationInterface;
+  private squashMethodCache?:
+    | NodeActivationInterface
+    | ActivationInterface
+    | PropagateInterface
+    | UnSquashInterface;
   public index: number;
   public tags = undefined;
 
@@ -29,31 +46,32 @@ export class Node implements TagsInterface, NodeInternal {
   ) {
     this.uuid = uuid;
     if (!type) {
-      console.trace();
-      throw "type must be defined: " + (typeof type);
+      throw new Error("type must be defined: " + (typeof type));
     }
 
     if (type !== "input") {
       if (type !== "output" && type !== "hidden" && type !== "constant") {
-        console.trace();
-        throw "invalid type: " + type;
+        throw new Error("invalid type: " + type);
       }
 
       if (bias === undefined) {
         this.bias = Math.random() * 0.2 - 0.1;
       } else {
         if (!Number.isFinite(bias)) {
-          console.trace();
-          throw "bias (other than for 'input') must be a number type: " + type +
-            ", typeof: " +
-            (typeof bias) + ", value: " + bias;
+          throw new Error(
+            "bias (other than for 'input') must be a number type: " + type +
+              ", typeof: " +
+              (typeof bias) + ", value: " + bias,
+          );
         }
         this.bias = bias;
       }
 
       if (type == "constant") {
         if (squash) {
-          throw "constants should not a have a squash was: " + squash;
+          throw new Error(
+            "constants should not a have a squash was: " + squash,
+          );
         }
       } else {
         this.squash = squash;
@@ -63,8 +81,7 @@ export class Node implements TagsInterface, NodeInternal {
     }
 
     if (typeof network !== "object") {
-      console.trace();
-      throw "network must be a Network was: " + (typeof network);
+      throw new Error("network must be a Network was: " + (typeof network));
     }
 
     this.network = network;
@@ -76,8 +93,7 @@ export class Node implements TagsInterface, NodeInternal {
 
   setSquash(name: string) {
     if (this.type == "constant") {
-      console.trace();
-      throw "Can't set the squash of a constant";
+      throw new Error("Can't set the squash of a constant");
     }
     delete this.squashMethodCache;
     this.squash = name;
@@ -153,7 +169,11 @@ export class Node implements TagsInterface, NodeInternal {
   }
 
   private isNodeActivation(
-    activation: NodeActivationInterface | ActivationInterface,
+    activation:
+      | NodeActivationInterface
+      | ActivationInterface
+      | PropagateInterface
+      | UnSquashInterface,
   ): activation is NodeActivationInterface {
     return (activation as NodeActivationInterface).activate != undefined;
   }
@@ -162,7 +182,9 @@ export class Node implements TagsInterface, NodeInternal {
     activation:
       | ApplyLearningsInterface
       | NodeActivationInterface
-      | ActivationInterface,
+      | ActivationInterface
+      | PropagateInterface
+      | UnSquashInterface,
   ): activation is ApplyLearningsInterface {
     return (activation as ApplyLearningsInterface).applyLearnings != undefined;
   }
@@ -171,7 +193,9 @@ export class Node implements TagsInterface, NodeInternal {
     activation:
       | NodeActivationInterface
       | ActivationInterface
-      | NodeFixableInterface,
+      | NodeFixableInterface
+      | PropagateInterface
+      | UnSquashInterface,
   ): activation is NodeFixableInterface {
     return (activation as NodeFixableInterface).fix != undefined;
   }
@@ -213,64 +237,12 @@ export class Node implements TagsInterface, NodeInternal {
           } else if (isNaN(activation)) {
             activation = 0;
           } else {
-            console.trace();
-            throw this.index + ") invalid value: + " + result +
-              ", squash: " +
-              this.squash +
-              ", activation: " + activation;
-          }
-        }
-
-        const ns = this.network.networkState.node(this.index);
-        ns.derivative = result.derivative;
-
-        // Update traces
-
-        const self = this.network.selfConnection(this.index);
-        const selfState = this.network.networkState.connection(
-          this.index,
-          this.index,
-        );
-
-        for (let i = 0; i < toList.length; i++) {
-          const c = toList[i];
-          const fromActivation = this.network.getActivation(c.from);
-          const cs = this.network.networkState.connection(c.from, c.to);
-          if (self) {
-            cs.eligibility = self.weight * selfState.eligibility +
-              fromActivation;
-
-            if (!Number.isFinite(cs.eligibility)) {
-              if (cs.eligibility === Number.POSITIVE_INFINITY) {
-                cs.eligibility = Number.MAX_SAFE_INTEGER;
-              } else if (cs.eligibility === Number.NEGATIVE_INFINITY) {
-                cs.eligibility = Number.MIN_SAFE_INTEGER;
-              } else if (isNaN(cs.eligibility)) {
-                cs.eligibility = 0;
-              } else {
-                console.trace();
-                console.info(self, c, fromActivation);
-                throw c.from + ":" + c.to + ") invalid eligibility: " +
-                  cs.eligibility;
-              }
-            }
-          } else {
-            cs.eligibility = fromActivation;
-            if (!Number.isFinite(cs.eligibility)) {
-              if (cs.eligibility === Number.POSITIVE_INFINITY) {
-                cs.eligibility = Number.MAX_SAFE_INTEGER;
-              } else if (cs.eligibility === Number.NEGATIVE_INFINITY) {
-                cs.eligibility = Number.MIN_SAFE_INTEGER;
-              } else if (isNaN(cs.eligibility)) {
-                cs.eligibility = 0;
-              } else {
-                console.trace();
-                console.info(c, fromActivation);
-                cs.eligibility = 0;
-                // throw c.from + ":" + c.to + ") invalid eligibility: " +
-                //   cs.eligibility;
-              }
-            }
+            throw new Error(
+              this.index + ") invalid value: + " + result +
+                ", squash: " +
+                this.squash +
+                ", activation: " + activation,
+            );
           }
         }
       }
@@ -339,140 +311,213 @@ export class Node implements TagsInterface, NodeInternal {
               ", activation: " +
               activation;
             console.warn(msg);
-            console.trace();
+
             activation = Number.MAX_SAFE_INTEGER;
           }
         }
       }
     }
     this.network.networkState.activations[this.index] = activation;
+
     return activation;
   }
 
-  private limit(delta: number, limit: number) {
-    const limitedDelta = Math.min(
-      Math.max(delta, Math.abs(limit) * -1),
-      Math.abs(limit),
-    );
-
-    return limitedDelta;
-  }
-
-  propagateUpdate() {
-    const ns = this.network.networkState.node(this.index);
+  propagateUpdate(config: BackPropagationConfig) {
     const toList = this.network.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
+      const aWeight = adjustedWeight(this.network.networkState, c, config);
 
-      const cs = this.network.networkState.connection(c.from, c.to);
-
-      c.weight += this.limit(cs.totalDeltaWeight, 0.1);
-      if (!Number.isFinite(c.weight)) {
-        if (c.weight === Number.POSITIVE_INFINITY) {
-          c.weight = Number.MAX_SAFE_INTEGER;
-        } else if (c.weight === Number.NEGATIVE_INFINITY) {
-          c.weight = Number.MIN_SAFE_INTEGER;
-        } else if (isNaN(c.weight)) {
-          c.weight = 0;
-        } else {
-          console.trace();
-          throw c.from + ":" + c.to + ") invalid weight: " + c.weight;
-        }
-      }
-
-      cs.previousDeltaWeight = this.limit(cs.totalDeltaWeight, 0.1);
-      cs.totalDeltaWeight = 0;
+      c.weight = aWeight;
     }
 
-    const deltaBias = ns.totalDeltaBias / ns.batchSize;
+    const aBias = adjustedBias(this, config);
 
-    this.bias += deltaBias;
-    if (!Number.isFinite(this.bias)) {
-      if (this.bias === Number.POSITIVE_INFINITY) {
-        this.bias = Number.MAX_SAFE_INTEGER;
-      } else if (this.bias === Number.NEGATIVE_INFINITY) {
-        this.bias = Number.MIN_SAFE_INTEGER;
-      } else if (isNaN(this.bias)) {
-        this.bias = 0;
-      } else {
-        console.trace();
-        throw this.index + ") invalid this.bias: " + this.bias;
-      }
-    }
-
-    ns.totalDeltaBias = 0;
-    ns.batchSize = 0;
+    this.bias = aBias;
   }
+
   /**
    * Back-propagate the error, aka learn
    */
-  propagate(rate: number, target?: number) {
-    // Error accumulator
-    let error = 0;
+  propagate(
+    requestedActivation: number,
+    config: BackPropagationConfig,
+  ) {
+    const activation = this.adjustedActivation(config);
+
+    const targetActivation = limitActivationToRange(this, requestedActivation);
+
+    /** Short circuit  */
+    if (Math.abs(activation - targetActivation) < 1e-12) {
+      return activation;
+    }
+
+    const squashMethod = this.findSquash();
+
+    if ((squashMethod as PropagateInterface).propagate !== undefined) {
+      const improvedActivation = (squashMethod as PropagateInterface).propagate(
+        this,
+        targetActivation,
+        config,
+      );
+      return limitActivation(improvedActivation);
+    }
 
     const ns = this.network.networkState.node(this.index);
 
-    // Output nodes get their error from the environment
-    if (this.type === "output") {
-      const activation = this.network.getActivation(this.index);
-      ns.errorResponsibility = ns.errorProjected = (target ? target : 0) -
-        activation;
-    } else { // the rest of the nodes compute their error responsibilities by back propagation
-      // error responsibilities from all the connections projected from this node
-      const fromList = this.network.fromConnections(this.index);
+    const targetValue = toValue(this, targetActivation);
 
-      for (let i = fromList.length; i--;) {
-        const c = fromList[i];
+    const activationValue = toValue(this, activation);
+    const error = targetValue - activationValue;
 
-        const toState = this.network.networkState.node(c.to);
+    let targetWeightedSum = 0;
+    const toList = this.network.toConnections(this.index);
 
-        const tmpError = error +
-          toState.errorResponsibility * c.weight;
-        error = Number.isFinite(tmpError) ? tmpError : error;
+    const listLength = toList.length;
+    const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
+
+    if (listLength > 1 && !(config.disableRandomList)) {
+      // Fisher-Yates shuffle algorithm
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
       }
-
-      // Projected error responsibility
-      ns.errorProjected = ns.derivative * error;
-      if (!Number.isFinite(ns.errorProjected)) {
-        if (ns.errorProjected === Number.POSITIVE_INFINITY) {
-          ns.errorProjected = Number.MAX_SAFE_INTEGER;
-        } else if (ns.errorProjected === Number.NEGATIVE_INFINITY) {
-          ns.errorProjected = Number.MIN_SAFE_INTEGER;
-        } else if (isNaN(ns.errorProjected)) {
-          ns.errorProjected = 0;
-        } else {
-          console.trace();
-
-          throw this.index + ") invalid error.projected: " + ns.errorProjected;
-        }
-      }
-
-      // Error responsibility
-      ns.errorResponsibility = ns.errorProjected;
     }
 
-    if (this.type !== "constant") {
-      // Adjust all the node's incoming connections
-      const toList = this.network.toConnections(this.index);
-      for (let i = toList.length; i--;) {
-        const c = toList[i];
+    if (listLength) {
+      const errorPerLink = error / listLength;
+
+      // Iterate over the shuffled indices
+      for (let i = listLength; i--;) {
+        const indx = indices[i];
+        let thisPerLinkError = errorPerLink;
+
+        const c = toList[indx];
+
+        if (c.from === c.to) continue;
+
+        const fromNode = this.network.nodes[c.from];
+
+        const fromActivation = fromNode.adjustedActivation(config);
 
         const cs = this.network.networkState.connection(c.from, c.to);
 
-        const gradient = ns.errorProjected * cs.eligibility;
+        const fromWeight = adjustedWeight(this.network.networkState, c, config);
+        const fromValue = fromWeight * fromActivation;
 
-        // Adjust weight
-        const deltaWeight = rate * gradient;
+        let improvedFromActivation = fromActivation;
+        let targetFromActivation = fromActivation;
+        const targetFromValue = fromValue + errorPerLink;
+        let improvedFromValue = fromValue;
+        if (
+          fromWeight &&
+          fromNode.type !== "input" &&
+          fromNode.type !== "constant"
+        ) {
+          targetFromActivation = targetFromValue / fromWeight;
 
-        cs.totalDeltaWeight += deltaWeight;
+          improvedFromActivation = (fromNode as Node).propagate(
+            targetFromActivation,
+            config,
+          );
+          improvedFromValue = improvedFromActivation * fromWeight;
+
+          thisPerLinkError = targetFromValue - improvedFromValue;
+        }
+
+        if (
+          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
+          Math.abs(fromWeight) > PLANK_CONSTANT
+        ) {
+          const targetFromValue2 = fromValue + thisPerLinkError;
+
+          cs.totalValue += targetFromValue2;
+          cs.totalActivation += targetFromActivation;
+          cs.absoluteActivation += Math.abs(improvedFromActivation);
+
+          const aWeight = adjustedWeight(this.network.networkState, c, config);
+
+          const improvedAdjustedFromValue = improvedFromActivation *
+            aWeight;
+
+          targetWeightedSum += improvedAdjustedFromValue;
+        }
       }
-
-      // Adjust bias
-      const deltaBias = rate * ns.errorResponsibility;
-      ns.totalDeltaBias += deltaBias;
     }
 
-    ns.batchSize++;
+    ns.count++;
+    ns.totalValue += targetValue;
+    ns.totalWeightedSum += targetWeightedSum;
+
+    const aBias = adjustedBias(this, config);
+
+    const adjustedActivation = targetWeightedSum + aBias;
+
+    if (this.isNodeActivation(squashMethod) == false) {
+      const squashActivation = (squashMethod as ActivationInterface).squash(
+        adjustedActivation,
+      );
+
+      return limitActivation(squashActivation);
+    } else {
+      return limitActivation(adjustedActivation);
+    }
+  }
+
+  adjustedActivation(config: BackPropagationConfig) {
+    if (this.type == "input") {
+      return this.network.networkState.activations[this.index];
+    }
+
+    if (this.type == "constant") {
+      return this.bias;
+    } else {
+      const aBias = adjustedBias(this, config);
+
+      const squashMethod = this.findSquash();
+      if (this.isNodeActivation(squashMethod)) {
+        const adjustedActivation = squashMethod.noTraceActivate(this);
+
+        const limitedActivation = limitActivation(adjustedActivation) +
+          aBias;
+
+        return limitedActivation;
+      } else {
+        // All activation sources coming from the node itself
+
+        const toList = this.network.toConnections(this.index);
+        let value = aBias;
+
+        for (let i = toList.length; i--;) {
+          const c = toList[i];
+          if (c.from == c.to) continue;
+          const fromActivation = (this.network.nodes[c.from] as Node)
+            .adjustedActivation(config);
+
+          const fromWeight = adjustedWeight(
+            this.network.networkState,
+            c,
+            config,
+          );
+
+          value += fromActivation * fromWeight;
+
+          value = limitValue(value);
+        }
+
+        const activationSquash = squashMethod as ActivationInterface;
+        // Squash the values received
+        const squashed = activationSquash.squash(value);
+
+        if (!Number.isFinite(squashed)) {
+          throw new Error(
+            `${this.index}: Squasher ${activationSquash.getName()} value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashed}`,
+          );
+        }
+
+        return limitActivation(squashed);
+      }
+    }
   }
 
   /**
@@ -490,11 +535,10 @@ export class Node implements TagsInterface, NodeInternal {
    */
   mutate(method: string) {
     if (typeof method !== "string") {
-      console.trace();
-      throw "Mutate method wrong type: " + (typeof method);
+      throw new Error("Mutate method wrong type: " + (typeof method));
     }
     if (this.type == "input") {
-      throw "Mutate on wrong node type: " + this.type;
+      throw new Error("Mutate on wrong node type: " + this.type);
     }
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
@@ -503,7 +547,7 @@ export class Node implements TagsInterface, NodeInternal {
           case "output":
             break;
           default:
-            throw `Can't modify activation for type ${this.type}`;
+            throw new Error(`Can't modify activation for type ${this.type}`);
         }
         // Can't be the same squash
         for (let attempts = 0; attempts < 12; attempts++) {
@@ -536,8 +580,7 @@ export class Node implements TagsInterface, NodeInternal {
         break;
       }
       default:
-        console.trace();
-        throw "Unknown mutate method: " + method;
+        throw new Error("Unknown mutate method: " + method);
     }
     delete this.network.uuid;
   }
@@ -623,8 +666,7 @@ export class Node implements TagsInterface, NodeInternal {
     network: Network,
   ) {
     if (typeof network !== "object") {
-      console.trace();
-      throw "network must be a Network was: " + (typeof network);
+      throw new Error("network must be a Network was: " + (typeof network));
     }
 
     const node = new Node(
@@ -643,7 +685,7 @@ export class Node implements TagsInterface, NodeInternal {
         node.squash = json.squash;
         break;
       default:
-        throw "unknown type: " + json.type;
+        throw new Error("unknown type: " + json.type);
     }
 
     if (json.tags) {

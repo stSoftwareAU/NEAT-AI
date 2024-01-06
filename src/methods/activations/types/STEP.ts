@@ -17,8 +17,14 @@ export class STEP implements ActivationInterface, UnSquashInterface {
   // Function to estimate the input from the activation value.
   // Given the non-invertible nature of the Step function,
   // returning the activation as an estimate.
-  unSquash(activation: number): number {
-    return activation;
+  unSquash(activation: number, hint?: number): number {
+    // If activation is 0 or 1 and no hint is provided, return activation
+    if (hint === undefined) {
+      return activation;
+    }
+
+    // If activation is 0 or 1 and a hint is provided, return the hint
+    return hint;
   }
 
   // Range of the activation function. Step outputs values between 0 and 1.

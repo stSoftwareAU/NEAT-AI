@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Network } from "../src/architecture/Network.ts";
 
@@ -40,7 +40,7 @@ Deno.test("hypotenuse", async () => {
     answer = network.activate(check)[0];
 
     errorPercent = Math.round((1 - answer / 78.1) * 100);
-    console.info("Answer", answer, errorPercent);
+
     if (Math.abs(errorPercent) < 10) break;
   }
 

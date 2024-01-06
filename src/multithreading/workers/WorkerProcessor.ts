@@ -7,7 +7,19 @@ import { Network } from "../../architecture/Network.ts";
 export class WorkerProcessor {
   private costName?: string;
   private dataSetDir: string | null = null;
+
   private cost?: CostInterface;
+
+  private workerName: string;
+
+  constructor(workerName?: string) {
+    if (workerName) {
+      this.workerName = workerName;
+    } else {
+      this.workerName = "main";
+    }
+  }
+
   async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();
     if (data.initialize) {
@@ -22,8 +34,8 @@ export class WorkerProcessor {
         },
       };
     } else if (data.evaluate) {
-      if (!this.dataSetDir) throw "no data directory";
-      if (!this.cost) throw "no cost";
+      if (!this.dataSetDir) throw new Error("no data directory");
+      if (!this.cost) throw new Error("no cost");
 
       const network = Network.fromJSON(JSON.parse(data.evaluate.network));
       /* release some memory*/
@@ -51,19 +63,19 @@ export class WorkerProcessor {
       /* release some memory*/
       data.train.network = "";
 
-      if (!this.dataSetDir) throw "No data dir";
+      if (!this.dataSetDir) throw new Error("No data dir");
 
-      if (!this.cost) throw "no cost";
+      if (!this.cost) throw new Error("no cost");
 
       const trainOptions: TrainOptions = {
         cost: this.costName,
         iterations: 1,
-        rate: data.train.rate,
-        batchSize: Infinity,
+        log: 1,
       };
 
-      const result = network.trainDir(this.dataSetDir, trainOptions);
-      const json = JSON.stringify(network.internalJSON());
+      const result = await network.trainDir(this.dataSetDir, trainOptions);
+      network.validate();
+      const json = JSON.stringify(network.exportJSON());
 
       network.dispose();
 
@@ -71,6 +83,7 @@ export class WorkerProcessor {
         taskID: data.taskID,
         duration: Date.now() - start,
         train: {
+          ID: result.ID,
           network: json,
           error: result.error,
           trace: JSON.stringify(result.trace),
@@ -87,7 +100,7 @@ export class WorkerProcessor {
       };
     } else {
       console.error(data);
-      throw "unknown message";
+      throw new Error("unknown message");
     }
   }
 }

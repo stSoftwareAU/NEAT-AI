@@ -1,7 +1,7 @@
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.210.0/assert/mod.ts";
+} from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
@@ -32,8 +32,6 @@ Deno.test("No squash", () => {
   const value2 = network.activate([Math.random()])[0];
 
   assertAlmostEquals(value2, 0.5, 0.00001);
-
-  console.info(JSON.stringify(network.exportJSON(), null, 2));
 });
 
 Deno.test("Constants", () => {
@@ -60,7 +58,6 @@ Deno.test("Constants", () => {
     network.addConnection();
   }
 
-  console.info(JSON.stringify(network.exportJSON(), null, 2));
   network.validate();
   Network.fromJSON(network.exportJSON());
   assert(

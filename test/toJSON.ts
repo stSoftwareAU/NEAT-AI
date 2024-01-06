@@ -1,5 +1,5 @@
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
-import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { ConnectionInternal } from "../src/architecture/ConnectionInterfaces.ts";
 
@@ -53,9 +53,6 @@ Deno.test("useUUIDinsteadOfPosition", () => {
 
   const n1 = Network.fromJSON(creature);
   const exported = n1.exportJSON();
-  const j1 = JSON.stringify(exported, null, 2);
-
-  console.info(j1);
 
   exported.nodes.forEach((n) => {
     const indx = (n as { index?: number }).index;

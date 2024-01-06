@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { TagAndRelease } from "../src/tags/TagAndReleaseApp.ts";
 import { getTag } from "../src/tags/TagsInterface.ts";
 
@@ -19,9 +19,7 @@ Deno.test("TagDirectory", async () => {
   tar.process({ directory: tempDirPath, tagList: "ABC=123,XYZ=456" });
   const tagged = JSON.parse(Deno.readTextFileSync(tempDirPath + "/2.json"));
 
-  Deno.remove(tempDirPath, { recursive: true });
-
-  console.info(tagged);
+  await Deno.remove(tempDirPath, { recursive: true });
 
   const abc = getTag(tagged, "ABC");
   const xyz = getTag(tagged, "XYZ");

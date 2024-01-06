@@ -3,12 +3,21 @@ import { Node } from "../../../architecture/Node.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 import { Mutation } from "../../mutation.ts";
+import {
+  limitActivation,
+  limitValue,
+  limitWeight,
+} from "../../../architecture/BackPropagation.ts";
 
 export class IF implements NodeActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
 
   getName() {
     return IF.NAME;
+  }
+
+  range(): { low: number; high: number } {
+    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
   fix(node: Node) {
@@ -120,8 +129,9 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     const toList2 = node.network.toConnections(node.index);
 
     if (toList2.length < 3 && node.index > 2) {
-      console.trace();
-      throw "Should have 3 or more connections was: " + toList2.length;
+      throw new Error(
+        "Should have 3 or more connections was: " + toList2.length,
+      );
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {
@@ -189,18 +199,18 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.network.getActivation(c.from) *
-        c.weight;
+      const value = limitActivation(node.network.getActivation(c.from)) *
+        limitWeight(c.weight);
 
       switch (c.type) {
         case "condition":
-          condition += value;
+          condition = limitValue(condition + value);
           break;
         case "negative":
-          negative += value;
+          negative = limitValue(negative + value);
           break;
         default:
-          positive += value;
+          positive = limitValue(positive + value);
       }
     }
 

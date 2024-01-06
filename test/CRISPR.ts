@@ -1,7 +1,7 @@
 import {
   assert,
   assertEquals,
-} from "https://deno.land/std@0.210.0/assert/mod.ts";
+} from "https://deno.land/std@0.211.0/assert/mod.ts";
 
 import { CRISPR } from "../src/reconstruct/CRISPR.ts";
 import { Network } from "../src/architecture/Network.ts";
@@ -116,8 +116,6 @@ Deno.test("REMOVE", () => {
   const networkIF = crispr.apply(JSON.parse(dnaTXT)) as Network;
   (networkIF as Network).validate();
 
-  console.info(networkIF.internalJSON());
-
   for (let pos = networkIF.nodes.length; pos--;) {
     const node = networkIF.nodes[pos] as Node;
     const tag = getTag(node, "CRISPR");
@@ -133,6 +131,7 @@ Deno.test("REMOVE", () => {
     }
   }
 
+  networkIF.fix();
   const crispr2 = new CRISPR(networkIF);
 
   const networkIF2 = crispr2.apply(JSON.parse(dnaTXT)) as Network;

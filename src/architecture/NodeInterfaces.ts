@@ -1,5 +1,5 @@
 import { TagsInterface } from "../tags/TagsInterface.ts";
-
+import { NodeState } from "./NetworkState.ts";
 export interface NodeExport extends TagsInterface {
   readonly type: "input" | "hidden" | "output" | "constant";
   uuid?: string;
@@ -12,10 +12,5 @@ export interface NodeInternal extends NodeExport {
 }
 
 export interface NodeTrace extends NodeExport {
-  trace: {
-    errorResponsibility?: number;
-    errorProjected?: number;
-    derivative?: number;
-    totalDeltaBias?: number;
-  };
+  trace: NodeState;
 }

@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Costs } from "../src/Costs.ts";
 import { MSELimit } from "../src/costs/MSELimit.ts";
 import { TwelveSteps } from "../src/costs/TwelveSteps.ts";
@@ -97,7 +97,6 @@ Deno.test("12StepsLimitA", () => {
   const c1 = cost.calculate([1.1], [1.2]);
   const c2 = cost.calculate([1.1], [2]);
 
-  console.info("cost: " + c1);
   assertAlmostEquals(
     c1,
     c2,
@@ -112,7 +111,6 @@ Deno.test("12StepsLimitB", () => {
   const c1 = cost.calculate([1], [1.2]);
   const c2 = cost.calculate([1], [2]);
 
-  console.info("cost: " + c1);
   assertAlmostEquals(
     c1,
     c2,

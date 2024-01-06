@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
@@ -38,8 +38,6 @@ Deno.test("TagNode", () => {
 
   const network2 = Network.fromJSON(json2);
   const json3 = network2.exportJSON();
-
-  console.info(JSON.stringify(json3, null, 2));
 
   const tags = json3.nodes[0].tags;
   assert(tags != null, "Should have tags");

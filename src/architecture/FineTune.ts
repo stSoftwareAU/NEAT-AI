@@ -3,6 +3,7 @@ import { Network } from "./Network.ts";
 import { NetworkInternal } from "./NetworkInterfaces.ts";
 import { NetworkUtil } from "./NetworkUtils.ts";
 import { NodeExport } from "./NodeInterfaces.ts";
+import { blue, bold, cyan } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneRandomize(
@@ -114,47 +115,51 @@ export async function fineTuneImprovement(
     return [];
   }
 
-  const approach = getTag(fittest, "approach");
-  if (showMessage && approach == "fine") {
-    console.info(
-      "Fine tuning increased fitness by",
-      fScore - pScore,
-      "to",
-      fScore,
-      "adjusted",
-      getTag(fittest, "adjusted"),
-    );
-  } else if (approach == "trained") {
-    console.info(
-      "Training increased fitness by",
-      fScore - pScore,
-      "to",
-      fScore,
-    );
-  } else if (approach == "compact") {
-    console.info(
-      "Compacting increased fitness by",
-      fScore - pScore,
-      "to",
-      fScore,
-      `nodes: ${fittest.nodes.length} was:`,
-      getTag(fittest, "old-nodes"),
-      `connections: ${fittest.connections.length} was:`,
-      getTag(fittest, "old-connections"),
-    );
-  } else if (approach == "Learnings") {
-    console.info(
-      "Learnings increased fitness by",
-      fScore - pScore,
-      "to",
-      fScore,
-      `nodes: ${fittest.nodes.length} was:`,
-      getTag(fittest, "old-nodes"),
-      `connections: ${fittest.connections.length} was:`,
-      getTag(fittest, "old-connections"),
-    );
+  if (showMessage) {
+    const approach = getTag(fittest, "approach");
+    if (approach == "fine") {
+      console.info(
+        "Fine tuning increased fitness by",
+        fScore - pScore,
+        "to",
+        fScore,
+        "adjusted",
+        getTag(fittest, "adjusted"),
+      );
+    } else if (approach == "trained") {
+      const trainID = getTag(fittest, "trainID");
+      console.info(
+        bold(cyan("Training")),
+        blue(trainID ? trainID : "UNKNOWN"),
+        "increased fitness by",
+        fScore - pScore,
+        "to",
+        fScore,
+      );
+    } else if (approach == "compact") {
+      console.info(
+        "Compacting increased fitness by",
+        fScore - pScore,
+        "to",
+        fScore,
+        `nodes: ${fittest.nodes.length} was:`,
+        getTag(fittest, "old-nodes"),
+        `connections: ${fittest.connections.length} was:`,
+        getTag(fittest, "old-connections"),
+      );
+    } else if (approach == "Learnings") {
+      console.info(
+        "Learnings increased fitness by",
+        fScore - pScore,
+        "to",
+        fScore,
+        `nodes: ${fittest.nodes.length} was:`,
+        getTag(fittest, "old-nodes"),
+        `connections: ${fittest.connections.length} was:`,
+        getTag(fittest, "old-connections"),
+      );
+    }
   }
-
   await NetworkUtil.makeUUID(fittest as Network);
   const UUIDs = new Set<string>();
   UUIDs.add(fittest.uuid ? fittest.uuid : "");

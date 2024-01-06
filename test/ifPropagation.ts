@@ -1,5 +1,5 @@
-import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
-import { emptyDirSync } from "https://deno.land/std@0.210.0/fs/empty_dir.ts";
+import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
+import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
@@ -7,7 +7,7 @@ import { TrainOptions } from "../src/config/TrainOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("ifPropagation", () => {
+Deno.test("ifPropagation", async () => {
   const json: NetworkInternal = {
     nodes: [
       { type: "input", index: 0 },
@@ -56,7 +56,7 @@ Deno.test("ifPropagation", () => {
   };
   const network = Network.fromJSON(json);
 
-  const result = network.train(ts, options);
+  const result = await network.train(ts, options);
 
   const traceJson = result.trace;
   Deno.writeTextFileSync(

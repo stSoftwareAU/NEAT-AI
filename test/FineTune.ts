@@ -1,6 +1,6 @@
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
-import { assert } from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
 

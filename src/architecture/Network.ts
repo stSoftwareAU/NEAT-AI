@@ -15,24 +15,25 @@ import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 import { DataRecordInterface } from "./DataSet.ts";
 
-import { yellow } from "https://deno.land/std@0.210.0/fmt/colors.ts";
+import { blue, yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 import { Neat } from "../Neat.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { getTag } from "../tags/TagsInterface.ts";
 
-import { format } from "https://deno.land/std@0.210.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.210.0/fs/empty_dir.ts";
+import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 import { CostInterface, Costs } from "../Costs.ts";
 import { Node } from "../architecture/Node.ts";
-import { findRatePolicy, randomPolicyName } from "../config.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { addTag } from "../tags/TagsInterface.ts";
 import { Connection } from "./Connection.ts";
-import { NetworkState } from "./NetworkState.ts";
+import { NetworkState, NodeState } from "./NetworkState.ts";
+import { BackPropagationConfig } from "./BackPropagation.ts";
+import { NetworkUtil } from "./NetworkUtils.ts";
 
 const cacheDataFile = {
   fn: "",
@@ -123,7 +124,7 @@ export class Network implements NetworkInternal {
         const layer = options.layers[i];
 
         if (layer.count <= 0) {
-          throw "Layer count should be positive was: " + layer.count;
+          throw new Error(`Layer count should be positive was: ${layer.count}`);
         }
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
@@ -226,26 +227,27 @@ export class Network implements NetworkInternal {
    * Activates the network
    */
   activate(input: number[], feedbackLoop = false) {
-    this.networkState.makeActivation(input, feedbackLoop);
-
     const output: number[] = new Array(this.output);
+
+    this.networkState.makeActivation(input, feedbackLoop);
 
     const lastHiddenNode = this.nodes.length - this.output;
 
-    /* Activate nodes chronologically */
+    // Activate hidden nodes
     for (let i = this.input; i < lastHiddenNode; i++) {
-      (this.nodes[i] as Node).activate();
+      this.nodes[i].activate();
     }
 
-    for (let i = 0; i < this.output; i++) {
-      output[i] = (this.nodes[i + lastHiddenNode] as Node).activate();
+    // Activate output nodes and store their values in the output array
+    for (let outIndx = 0; outIndx < this.output; outIndx++) {
+      output[outIndx] = this.nodes[lastHiddenNode + outIndx].activate();
     }
 
     return output;
   }
 
   /**
-   * Activates the network without calculating eligibility traces and such
+   * Activates the network without calculating traces and such
    */
   noTraceActivate(input: number[], feedbackLoop = false) {
     const output: number[] = new Array(this.output);
@@ -254,19 +256,16 @@ export class Network implements NetworkInternal {
 
     const lastHiddenNode = this.nodes.length - this.output;
 
-    /* Activate nodes chronologically */
-    for (let indx = this.input; indx < lastHiddenNode; indx++) {
-      this.nodes[indx].noTraceActivate();
+    // Activate hidden nodes
+    for (let i = this.input; i < lastHiddenNode; i++) {
+      this.nodes[i].noTraceActivate();
     }
 
-    for (
-      let outIndx = 0;
-      outIndx < this.output;
-      outIndx++
-    ) {
-      const value = this.nodes[lastHiddenNode + outIndx].noTraceActivate();
-      output[outIndx] = value;
+    // Activate output nodes and store their values in the output array
+    for (let outIndx = 0; outIndx < this.output; outIndx++) {
+      output[outIndx] = this.nodes[lastHiddenNode + outIndx].noTraceActivate();
     }
+
     return output;
   }
 
@@ -393,23 +392,24 @@ export class Network implements NetworkInternal {
   validate(options?: { nodes?: number; connections?: number }) {
     if (options && options.nodes) {
       if (this.nodes.length !== options.nodes) {
-        throw "Node length: " + this.nodes.length + " expected: " +
-          options.nodes;
+        throw new Error(
+          `Node length: ${this.nodes.length} expected: ${options.nodes}`,
+        );
       }
     }
 
     if (
       Number.isInteger(this.input) == false || this.input < 1
     ) {
-      console.trace();
-      throw "Must have at least one input nodes was: " + this.input;
+      throw new Error(`Must have at least one input nodes was: ${this.input}`);
     }
 
     if (
       Number.isInteger(this.output) == false || this.output < 1
     ) {
-      console.trace();
-      throw "Must have at least one output nodes was: " + this.output;
+      throw new Error(
+        `Must have at least one output nodes was: ${this.output}`,
+      );
     }
 
     const stats = {
@@ -426,12 +426,9 @@ export class Network implements NetworkInternal {
       const node = item as NodeInternal;
       const uuid = node.uuid;
       if (!uuid) {
-        console.trace();
-        throw indx + ") no UUID";
+        throw new Error(`${indx}) no UUID`);
       }
       if (UUIDs.has(uuid)) {
-        console.trace();
-
         if (this.DEBUG) {
           this.DEBUG = false;
           Deno.writeTextFileSync(
@@ -441,29 +438,10 @@ export class Network implements NetworkInternal {
 
           this.DEBUG = true;
         }
-        throw indx + ") duplicate UUID: " + uuid;
+        throw new Error(`${indx}) duplicate UUID: ${uuid}`);
       }
-      if (uuid.startsWith("input-") && uuid !== "input-" + indx) {
-        console.trace();
-
-        if (this.DEBUG) {
-          this.DEBUG = false;
-          Deno.writeTextFileSync(
-            ".validate.json",
-            JSON.stringify(this.exportJSON(), null, 2),
-          );
-
-          this.DEBUG = true;
-        }
-        throw indx + ") invalid input UUID: " + uuid;
-      }
-
-      if (node.type == "output") {
-        const expectedUUID = `output-${outputIndx}`;
-        outputIndx++;
-        if (uuid !== expectedUUID) {
-          console.trace();
-
+      if (uuid.startsWith("input-")) {
+        if (uuid !== "input-" + indx) {
           if (this.DEBUG) {
             this.DEBUG = false;
             Deno.writeTextFileSync(
@@ -473,7 +451,28 @@ export class Network implements NetworkInternal {
 
             this.DEBUG = true;
           }
-          throw indx + ") invalid output UUID: " + uuid;
+          throw new Error(`${indx}) invalid input UUID: ${uuid}`);
+        }
+      } else {
+        if (!Number.isFinite(node.bias)) {
+          throw new Error(`${indx}) invalid bias: ${node.bias}`);
+        }
+      }
+
+      if (node.type == "output") {
+        const expectedUUID = `output-${outputIndx}`;
+        outputIndx++;
+        if (uuid !== expectedUUID) {
+          if (this.DEBUG) {
+            this.DEBUG = false;
+            Deno.writeTextFileSync(
+              ".validate.json",
+              JSON.stringify(this.exportJSON(), null, 2),
+            );
+
+            this.DEBUG = true;
+          }
+          throw new Error(`${indx} + ") invalid output UUID: ${uuid}`);
         }
       }
 
@@ -482,9 +481,9 @@ export class Network implements NetworkInternal {
       if (node.squash === "IF" && indx > 2) {
         const toList = this.toConnections(indx);
         if (toList.length < 3) {
-          console.trace();
-          throw indx + ") 'IF' should have at least 3 connections was: " +
-            toList.length;
+          throw new Error(
+            `${indx}) 'IF' should have at least 3 connections was: ${toList.length}`,
+          );
         }
 
         let foundPositive = false;
@@ -502,7 +501,6 @@ export class Network implements NetworkInternal {
           }
         }
         if (!foundCondition || !foundPositive || !foundNegative) {
-          console.trace();
           if (this.DEBUG) {
             this.DEBUG = false;
             console.warn(
@@ -511,12 +509,14 @@ export class Network implements NetworkInternal {
             this.DEBUG = true;
           }
         }
-        if (!foundCondition) throw indx + ") 'IF' should have a condition(s)";
+        if (!foundCondition) {
+          throw new Error(`${indx}) 'IF' should have a condition(s)`);
+        }
         if (!foundPositive) {
-          throw indx + ") 'IF' should have a positive connection(s)";
+          throw new Error(`${indx}) 'IF' should have a positive connection(s)`);
         }
         if (!foundNegative) {
-          throw indx + ") 'IF' should have a negative connection(s)";
+          throw new Error(`${indx}) 'IF' should have a negative connection(s)`);
         }
       }
       switch (node.type) {
@@ -524,11 +524,9 @@ export class Network implements NetworkInternal {
           stats.input++;
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
-            console.trace();
-
-            console.info(this.connections);
-            throw indx + ") 'input' node has inward connections: " +
-              toList.length;
+            throw new Error(
+              `${indx}) 'input' node has inward connections: ${toList.length}`,
+            );
           }
           break;
         }
@@ -536,15 +534,14 @@ export class Network implements NetworkInternal {
           stats.constant++;
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
-            console.trace();
-
-            console.info(this.connections);
-            throw indx + ") '" + node.type + "' node has inward connections: " +
-              toList.length;
+            throw new Error(
+              `${indx}) '${node.type}' node has inward connections: ${toList.length}`,
+            );
           }
           if (node.squash) {
-            throw indx + ") '" + node.type + "' has squash: " +
-              node.squash;
+            throw new Error(
+              `${indx}) '${node.type}' has squash: ${node.squash}`,
+            );
           }
           break;
         }
@@ -552,13 +549,10 @@ export class Network implements NetworkInternal {
           stats.hidden++;
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
-            console.trace();
-            console.info(this.connections);
-            throw indx + ") hidden node has no inward connections";
+            throw new Error(`${indx}) hidden node has no inward connections`);
           }
           const fromList = this.fromConnections(indx);
           if (fromList.length == 0) {
-            console.trace();
             if (this.DEBUG) {
               this.DEBUG = false;
               console.warn(
@@ -570,16 +564,17 @@ export class Network implements NetworkInternal {
               );
               this.DEBUG = true;
             }
-            throw indx + ") hidden node has no outward connections";
+            throw new Error(`${indx}) hidden node has no outward connections`);
           }
-          if (typeof node.bias === "undefined") {
-            console.trace();
-            throw indx + ") hidden node should have a bias was: " + node.bias;
+          if (node.bias === undefined) {
+            throw new Error(
+              `${indx}) hidden node should have a bias was: ${node.bias}`,
+            );
           }
           if (!Number.isFinite(node.bias)) {
-            console.trace();
-            throw indx + ") hidden node should have a finite bias was: " +
-              node.bias;
+            throw new Error(
+              `${indx}) hidden node should have a finite bias was: ${node.bias}`,
+            );
           }
 
           break;
@@ -588,7 +583,6 @@ export class Network implements NetworkInternal {
           stats.output++;
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
-            console.trace();
             if (this.DEBUG) {
               this.DEBUG = false;
               console.warn(
@@ -600,34 +594,35 @@ export class Network implements NetworkInternal {
               );
               this.DEBUG = true;
             }
-            throw indx + ") output node has no inward connections";
+            throw new Error(`${indx}) output node has no inward connections`);
           }
           break;
         }
         default:
-          throw indx + ") Invalid type: " + node.type;
+          throw new Error(`${indx}) Invalid type: ${node.type}`);
       }
 
       if (node.index !== indx) {
-        console.trace();
-        throw indx + ") node.index: " + node.index +
-          " does not match expected index";
+        throw new Error(
+          `${indx}) node.index: ${node.index} does not match expected index`,
+        );
       }
+
       if ((node as Node).network !== this) {
-        console.trace();
-        throw indx + ") node.network mismatch";
+        throw new Error(`${indx} node.network mismatch`);
       }
     });
 
     if (stats.input !== this.input) {
-      console.trace();
-      throw "Expected " + this.input + " input nodes found: " +
-        stats.input;
+      throw new Error(
+        `Expected ${this.input} input nodes found: ${stats.input}`,
+      );
     }
+
     if (stats.output !== this.output) {
-      console.trace();
-      throw "Expected " + this.output + " output nodes found: " +
-        stats.output;
+      throw new Error(
+        `Expected ${this.output} output nodes found: ${stats.output}`,
+      );
     }
 
     let lastFrom = -1;
@@ -637,31 +632,17 @@ export class Network implements NetworkInternal {
       const toNode = this.getNode(c.to);
 
       if (toNode.type === "input") {
-        console.info(JSON.stringify(this.connections, null, 1));
-        console.trace();
-        throw indx + ") connection points to an input node";
+        throw new Error(indx + ") connection points to an input node");
       }
-      // const fromNode = this.getNode(c.from);
-
-      // if (fromNode.type === "output") {
-      //   if (c.from != c.to) {
-      //     console.trace();
-      //     throw indx + ") connection from an output node";
-      //   }
-      // }
 
       if (c.from < lastFrom) {
-        console.info(JSON.stringify(this.connections, null, 1));
-        console.trace();
-        throw indx + ") connections not sorted";
+        throw new Error(indx + ") connections not sorted");
       } else if (c.from > lastFrom) {
         lastTo = -1;
       }
 
       if (c.from == lastFrom && c.to <= lastTo) {
-        console.info(JSON.stringify(this.connections, null, 1));
-        console.trace();
-        throw indx + ") connections not sorted";
+        throw new Error(indx + ") connections not sorted");
       }
 
       lastFrom = c.from;
@@ -670,10 +651,11 @@ export class Network implements NetworkInternal {
 
     if (options && Number.isInteger(options.connections)) {
       if (this.connections.length !== options.connections) {
-        console.trace();
-        throw "Connections length: " + this.connections.length +
-          " expected: " +
-          options.connections;
+        throw new Error(
+          "Connections length: " + this.connections.length +
+            " expected: " +
+            options.connections,
+        );
       }
     }
 
@@ -736,14 +718,12 @@ export class Network implements NetworkInternal {
 
   getNode(pos: number): Node {
     if (Number.isInteger(pos) == false || pos < 0) {
-      console.trace();
-      throw "POS should be a non-negative integer was: " + pos;
+      throw new Error("POS should be a non-negative integer was: " + pos);
     }
     const tmp = this.nodes[pos];
 
     if (typeof tmp === "undefined") {
-      console.trace();
-      throw "getNode( " + pos + ") " + (typeof tmp);
+      throw new Error("getNode( " + pos + ") " + (typeof tmp));
     }
 
     return ((tmp as unknown) as Node);
@@ -751,13 +731,11 @@ export class Network implements NetworkInternal {
 
   getConnection(from: number, to: number): ConnectionInternal | null {
     if (Number.isInteger(from) == false || from < 0) {
-      console.trace();
-      throw "FROM should be a non-negative integer was: " + from;
+      throw new Error("FROM should be a non-negative integer was: " + from);
     }
 
     if (Number.isInteger(to) == false || to < 0) {
-      console.trace();
-      throw "TO should be a non-negative integer was: " + to;
+      throw new Error("TO should be a non-negative integer was: " + to);
     }
 
     for (let pos = this.connections.length; pos--;) {
@@ -783,33 +761,22 @@ export class Network implements NetworkInternal {
     if (
       Number.isInteger(from) == false || from < 0
     ) {
-      console.trace();
-      throw "from should be a non-negative integer was: " + from;
+      throw new Error("from should be a non-negative integer was: " + from);
     }
 
     if (Number.isInteger(to) == false || to < 0) {
-      console.trace();
-      throw "to should be a non-negative integer was: " + to;
+      throw new Error("to should be a non-negative integer was: " + to);
     }
 
-    // const firstOutputIndex = this.nodes.length - this.output;
-    // if (from >= firstOutputIndex && from !== to) {
-    //   console.trace();
-    //   throw "from should not be from an output node (" + firstOutputIndex +
-    //     ", len: " + this.nodes.length + ", output: " +
-    //     this.output +
-    //     "): " + from;
-    // }
-
     if (to < this.input) {
-      console.trace();
-      throw "to should not be pointed to any input nodes(" +
-        this.input + "): " + to;
+      throw new Error(
+        "to should not be pointed to any input nodes(" +
+          this.input + "): " + to,
+      );
     }
 
     if (to < from) {
-      console.trace();
-      throw "to: " + to + " should not be less than from: " + from;
+      throw new Error("to: " + to + " should not be less than from: " + from);
     }
 
     if (typeof weight !== "number") {
@@ -821,8 +788,8 @@ export class Network implements NetworkInternal {
 
         this.DEBUG = true;
       }
-      console.trace();
-      throw from + ":" + to + ") weight not a number was: " + weight;
+
+      throw new Error(from + ":" + to + ") weight not a number was: " + weight);
     }
 
     const connection = new Connection(
@@ -845,9 +812,9 @@ export class Network implements NetworkInternal {
           location = indx + 1;
           break;
         } else if (c.to === to) {
-          console.trace();
-
-          throw indx + ") already connected from: " + from + " to: " + to;
+          throw new Error(
+            indx + ") already connected from: " + from + " to: " + to,
+          );
         } else {
           location = indx;
         }
@@ -874,12 +841,10 @@ export class Network implements NetworkInternal {
    */
   disconnect(from: number, to: number) {
     if (Number.isInteger(from) == false || from < 0) {
-      console.trace();
-      throw "from should be a non-negative integer was: " + from;
+      throw new Error("from should be a non-negative integer was: " + from);
     }
     if (Number.isInteger(to) == false || to < 0) {
-      console.trace();
-      throw "to should be a non-negative integer was: " + to;
+      throw new Error("to should be a non-negative integer was: " + to);
     }
 
     // Delete the connection in the network's connection array
@@ -898,12 +863,13 @@ export class Network implements NetworkInternal {
     }
 
     if (!found) {
-      console.trace();
-      throw "No connection from: " + from + ", to: " + to;
+      throw new Error("No connection from: " + from + ", to: " + to);
     }
   }
 
-  applyLearnings() {
+  applyLearnings(config: BackPropagationConfig) {
+    this.propagateUpdate(config);
+
     const oldConnections = this.connections.length;
     const oldNodes = this.nodes.length;
     let changed = false;
@@ -936,7 +902,7 @@ export class Network implements NetworkInternal {
   /**
    * Back propagate the network
    */
-  propagate(rate: number, target: number[]) {
+  propagate(target: number[], config: BackPropagationConfig) {
     if (
       target === undefined || target.length !== this.output
     ) {
@@ -953,35 +919,25 @@ export class Network implements NetworkInternal {
       i >= this.nodes.length - this.output;
       i--
     ) {
-      const n = this.nodes[i] as Node;
+      const n = this.nodes[i];
       n.propagate(
-        rate,
         target[--targetIndex],
+        config,
       );
-    }
-
-    // Propagate hidden and input nodes
-    for (
-      let i = this.nodes.length - this.output - 1;
-      i >= this.input;
-      i--
-    ) {
-      const n = this.nodes[i] as Node;
-      n.propagate(rate);
     }
   }
 
   /**
    * Back propagate the network
    */
-  propagateUpdate() {
+  propagateUpdate(config: BackPropagationConfig) {
     for (
       let indx = this.nodes.length - 1;
       indx >= this.input;
       indx--
     ) {
       const n = this.nodes[indx] as Node;
-      n.propagateUpdate();
+      n.propagateUpdate(config);
     }
   }
 
@@ -1037,13 +993,13 @@ export class Network implements NetworkInternal {
         if (errorTmp) {
           error = Number.parseFloat(errorTmp);
         } else {
-          throw "No error: " + errorTmp;
+          throw new Error("No error: " + errorTmp);
         }
 
         bestScore = fittest.score ? fittest.score : 0;
         bestCreature = Network.fromJSON(fittest.internalJSON());
       } else if (fittest.score ? fittest.score : 0 < bestScore) {
-        throw "fitness decreased over generations";
+        throw new Error("fitness decreased over generations");
       }
       const timedOut = endTimeMS ? Date.now() > endTimeMS : false;
 
@@ -1054,7 +1010,7 @@ export class Network implements NetworkInternal {
       ) {
         const now = new Date().getTime();
         console.log(
-          "iteration",
+          "Generation",
           generation,
           "score",
           fittest.score,
@@ -1071,27 +1027,24 @@ export class Network implements NetworkInternal {
         iterationStartMS = new Date().getTime();
       }
 
-      if (timedOut) break;
+      if (timedOut) {
+        if (neat.finishUp()) {
+          break;
+        }
+      }
       generation++;
     }
 
-    // const promises: Promise<string>[] = [];
+    neat.finishUp();
+
     for (let i = workers.length; i--;) {
       const w = workers[i];
-      // if (w.isBusy()) {
-      //   const p = new Promise<string>((resolve) => {
-      //     w.addIdleListener((w) => {
-      //       w.terminate();
-      //       resolve("done");
-      //     });
-      //   });
-      //   promises.push(p);
-      // } else {
       w.terminate();
-      // }
     }
     workers.length = 0; // Release the memory.
-    // await Promise.all(promises);
+    if (neat.finishUp() == false) {
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Sleep for 1 second
+    }
     if (bestCreature) {
       this.loadFrom(bestCreature, config.debug);
     }
@@ -1217,7 +1170,7 @@ export class Network implements NetworkInternal {
   /**
    * Train the given set to this network
    */
-  trainDir(
+  async trainDir(
     dataDir: string,
     options: TrainOptions,
   ) {
@@ -1229,15 +1182,9 @@ export class Network implements NetworkInternal {
         ? options.error
         : 0.05;
     const cost = Costs.find(options.cost ? options.cost : "MSE");
-    const baseRate = options.rate == undefined ? Math.random() : options.rate;
 
-    const ratePolicyName = options.ratePolicy
-      ? options.ratePolicy
-      : randomPolicyName();
-    const ratePolicy = findRatePolicy(ratePolicyName);
-    const iterations = Math.max(options.iterations ? options.iterations : 0, 2);
+    const iterations = Math.max(options.iterations ? options.iterations : 2, 1);
 
-    // @TODO Need to randomize files.
     const files: string[] = this.dataFiles(dataDir).map((fn) =>
       dataDir + "/" + fn
     );
@@ -1245,21 +1192,28 @@ export class Network implements NetworkInternal {
     // Loops the training process
     let iteration = 0;
 
-    let bestError: number | undefined = undefined;
-    let trainingFailed = 0;
-    let bestCreatureJSON = this.exportJSON();
-    let traceJSON: undefined | NetworkTrace = undefined;
+    const uuid = await NetworkUtil.makeUUID(this);
 
+    const ID = uuid.substring(Math.max(0, uuid.length - 8));
+    let bestError: number | undefined = undefined;
+    let trainingFailures = 0;
+    let bestCreatureJSON: NetworkExport = this.exportJSON();
+    let bestTraceJSON = this.traceJSON();
+    let lastTraceJSON = bestTraceJSON;
+    let knownSampleCount = -1;
     // @TODO need to apply Stochastic Gradient Descent
     const EMPTY = { input: [], output: [] };
     while (true) {
       iteration++;
-
-      // Update the rate
-      const currentRate = ratePolicy(baseRate, iteration);
-
-      if (!Number.isFinite(currentRate)) {
-        throw "not a valid rate: " + currentRate;
+      const startTS = Date.now();
+      let lastTS = startTS;
+      const config = new BackPropagationConfig(
+        {
+          disableRandomList: options.disableRandomSamples,
+        },
+      );
+      if (options.generation !== undefined) {
+        config.generations = options.generation + iteration;
       }
 
       let counter = 0;
@@ -1270,7 +1224,16 @@ export class Network implements NetworkInternal {
         cacheDataFile.json = {};
       }
 
-      for (let j = files.length; j--;) {
+      // Randomize the list of files
+      if (!options.disableRandomSamples) {
+        for (let i = files.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [files[i], files[j]] = [files[j], files[i]];
+        }
+      }
+
+      let trainingStopped = false;
+      for (let j = files.length; !trainingStopped && j--;) {
         const fn = files[j];
         const json = cacheDataFile.fn == fn
           ? cacheDataFile.json
@@ -1282,81 +1245,128 @@ export class Network implements NetworkInternal {
         }
 
         if (json.length == 0) {
-          throw "Set size must be positive";
+          throw new Error("Set size must be positive");
         }
         const len = json.length;
+        const indices = Array.from({ length: len }, (_, i) => i); // Create an array of indices
 
+        if (!options.disableRandomSamples) {
+          // Fisher-Yates shuffle algorithm
+          for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+          }
+        }
+
+        // Iterate over the shuffled indices
         for (let i = len; i--;) {
-          const data = json[i];
+          const indx = indices[i];
+          const data = json[indx];
 
           if (!cached) {
             /* Not cached so we can release memory as we go */
-            json[i] = EMPTY;
+            json[indx] = EMPTY;
           }
 
           const output = this.activate(data.input);
 
-          errorSum += cost.calculate(data.output, output);
+          const sampleError = cost.calculate(data.output, output);
+          errorSum += sampleError;
+          counter++;
+          if (Number.isFinite(errorSum) == false) {
+            console.warn(
+              `Training ${
+                blue(ID)
+              } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`,
+            );
+            trainingStopped = true;
+            break;
+          } else if (bestError !== undefined && counter < knownSampleCount) {
+            const bestPossibleError = errorSum / knownSampleCount;
+            if (bestPossibleError > bestError) {
+              console.warn(
+                `Training ${blue(ID)} stopped as 'best possible' error ${
+                  yellow(bestPossibleError.toFixed(3))
+                } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
+                  yellow(counter.toFixed(0))
+                } of ${yellow(knownSampleCount.toFixed(0))}`,
+              );
+              trainingStopped = true;
+              break;
+            }
+          }
+          this.propagate(data.output, config);
 
-          this.propagate(currentRate, data.output);
-          // if (update) {
-          //   this.propagateUpdate();
-          // }
-          // /* Clear if we've updated the state batch only */
-          // if (update && (i || j)) {
-          //   /* Hold the last one so we can write it out */
-          //   this.clearState();
-          // }
+          const now = Date.now();
+          const diff = now - lastTS;
+
+          if (diff > 60_000) {
+            lastTS = now;
+            const totalTime = now - startTS;
+            console.log(
+              `Training ${blue(ID)} samples`,
+              counter,
+              "error",
+              yellow((errorSum / counter).toFixed(3)),
+              "average time",
+              yellow(
+                format(totalTime / counter, { ignoreZero: true }),
+              ),
+              "total time",
+              yellow(
+                format(totalTime, { ignoreZero: true }),
+              ),
+            );
+          }
         }
-
-        counter += len;
       }
 
       const error = errorSum / counter;
 
-      if (
-        options.log && (
-          iteration % options.log === 0 ||
-          iteration === iterations
-        )
-      ) {
-        console.log(
-          "iteration",
-          iteration,
-          "error",
-          error,
-          "rate",
-          currentRate,
-          "policy",
-          yellow(ratePolicyName),
-        );
+      if (bestError !== undefined && bestError < error) {
+        trainingFailures++;
+        if (trainingStopped == false) {
+          console.warn(
+            `Training ${blue(ID)} made the error ${
+              yellow(bestError.toFixed(3))
+            } worse ${yellow(error.toFixed(3))} failed ${
+              yellow(trainingFailures.toString())
+            } out of ${yellow(iteration.toString())} iterations`,
+          );
+        }
+        if (options.traceStore) {
+          Deno.writeTextFileSync(
+            `.trace/${trainingFailures}_fail.json`,
+            JSON.stringify(this.exportJSON(), null, 2),
+          );
+        }
+        this.loadFrom(bestCreatureJSON, false);
+        lastTraceJSON = bestTraceJSON;
+      } else {
+        if (bestError === undefined) {
+          addTag(this, "untrained-error", error.toString());
+        }
+        if (bestError !== undefined && bestError > error) {
+          bestTraceJSON = lastTraceJSON;
+        }
+
+        lastTraceJSON = this.traceJSON();
+        bestCreatureJSON = this.exportJSON();
+        bestError = error;
+        knownSampleCount = counter;
+
+        this.applyLearnings(config);
+        this.clearState();
       }
 
-      if (bestError === undefined) {
-        bestError = error;
-      } else {
-        if (bestError < error) {
-          trainingFailed++;
-          console.warn(
-            `Training made the error worse ${trainingFailed} of ${iteration}`,
-          );
-
-          this.loadFrom(bestCreatureJSON, false);
-        } else {
-          bestCreatureJSON = this.exportJSON();
-          bestError = error;
-          traceJSON = this.traceJSON();
-          this.applyLearnings();
-          this.clearState();
-        }
-
-        if (error <= targetError || iteration >= iterations) {
-          return {
-            iteration: iteration,
-            error: error,
-            trace: traceJSON,
-          };
-        }
+      if (bestError <= targetError || iteration >= iterations) {
+        this.loadFrom(bestCreatureJSON, false);
+        return {
+          ID: ID,
+          iteration: iteration,
+          error: bestError,
+          trace: bestTraceJSON,
+        };
       }
     }
   }
@@ -1364,7 +1374,7 @@ export class Network implements NetworkInternal {
   /**
    * Train the given set to this network
    */
-  train(
+  async train(
     dataSet: DataRecordInterface[],
     options: TrainOptions,
   ) {
@@ -1379,9 +1389,9 @@ export class Network implements NetworkInternal {
     const config = makeConfig(options);
     const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
 
-    const result = this.trainDir(dataSetDir, options);
+    const result = await this.trainDir(dataSetDir, options);
 
-    Deno.removeSync(dataSetDir, { recursive: true });
+    await Deno.remove(dataSetDir, { recursive: true });
 
     return result;
   }
@@ -1403,8 +1413,7 @@ export class Network implements NetworkInternal {
 
   inFocus(index: number, focusList?: number[], checked = new Set()) {
     if (Number.isInteger(index) == false || index < 0) {
-      console.trace();
-      throw "to should be non-negative was: " + index;
+      throw new Error("to should be non-negative was: " + index);
     }
     if (!focusList || focusList.length == 0) return true;
 
@@ -1458,15 +1467,15 @@ export class Network implements NetworkInternal {
    */
   private removeHiddenNode(indx: number) {
     if (Number.isInteger(indx) == false || indx < 0) {
-      console.trace();
-      throw "Must be a positive integer was: " + indx;
+      throw new Error("Must be a positive integer was: " + indx);
     }
 
     const node = this.nodes[indx];
 
     if (node.type !== "hidden" && node.type !== "constant") {
-      console.trace();
-      throw indx + ") Node must be a 'hidden' type was: " + node.type;
+      throw new Error(
+        indx + ") Node must be a 'hidden' type was: " + node.type,
+      );
     }
     const left = this.nodes.slice(0, indx);
     const right = this.nodes.slice(indx + 1);
@@ -1525,7 +1534,9 @@ export class Network implements NetworkInternal {
         );
 
         if (node.index <= pos || pos < 0) {
-          throw `From: ${pos} should be less than node index: ${node.index}`;
+          throw new Error(
+            `From: ${pos} should be less than node index: ${node.index}`,
+          );
         }
         if (this.inFocus(pos, tmpFocusList)) {
           fromIndex = pos;
@@ -1536,8 +1547,10 @@ export class Network implements NetworkInternal {
         ) + node.index;
 
         if (node.index > pos) {
-          throw "To: " + pos + " should be great than node index: " +
-            node.index;
+          throw new Error(
+            "To: " + pos + " should be great than node index: " +
+              node.index,
+          );
         }
 
         if (this.inFocus(pos, tmpFocusList)) {
@@ -1558,7 +1571,6 @@ export class Network implements NetworkInternal {
         Connection.randomWeight(),
       );
     } else {
-      console.trace();
       console.warn("addNode: Should have a from index");
     }
 
@@ -1570,7 +1582,6 @@ export class Network implements NetworkInternal {
       );
       node.fix();
     } else {
-      console.trace();
       console.warn("addNode: Should have a to index");
     }
   }
@@ -1579,20 +1590,21 @@ export class Network implements NetworkInternal {
     if (
       Number.isInteger(node.index) == false || node.index < this.input
     ) {
-      console.trace();
-      throw "to should be a greater than the input count was: " + node.index;
+      throw new Error(
+        "to should be a greater than the input count was: " + node.index,
+      );
     }
 
     const firstOutputIndex = this.nodes.length - this.output;
     if (node.index > firstOutputIndex) {
-      console.trace();
-      throw "to should be a between than input (" + this.input +
-        ") and output nodes (" + firstOutputIndex + ") was: " + node.index;
+      throw new Error(
+        "to should be a between than input (" + this.input +
+          ") and output nodes (" + firstOutputIndex + ") was: " + node.index,
+      );
     }
 
     if (node.type !== "hidden") {
-      console.trace();
-      throw "Should be a 'hidden' type was: " + node.type;
+      throw new Error("Should be a 'hidden' type was: " + node.type);
     }
     const left = this.nodes.slice(0, node.index);
     const right = this.nodes.slice(node.index);
@@ -1972,8 +1984,7 @@ export class Network implements NetworkInternal {
    */
   mutate(method: { name: string }, focusList?: number[]) {
     if (typeof method.name !== "string") {
-      console.trace();
-      throw "Mutate method wrong type: " + (typeof method);
+      throw new Error("Mutate method wrong type: " + (typeof method));
     }
 
     switch (method.name) {
@@ -2034,7 +2045,7 @@ export class Network implements NetworkInternal {
         break;
       }
       default: {
-        throw "unknown: " + method;
+        throw new Error("unknown: " + method);
       }
     }
 
@@ -2165,12 +2176,7 @@ export class Network implements NetworkInternal {
 
         const traceNode: NodeExport = json.nodes[exportIndex] as NodeTrace;
 
-        (traceNode as NodeTrace).trace = {
-          errorProjected: ns ? ns.errorProjected : undefined,
-          errorResponsibility: ns ? ns.errorResponsibility : undefined,
-          derivative: ns ? ns.derivative : undefined,
-          totalDeltaBias: ns ? ns.totalDeltaBias : undefined,
-        };
+        (traceNode as NodeTrace).trace = ns;
         traceNodes[exportIndex] = traceNode as NodeTrace;
         exportIndex++;
       }
@@ -2180,11 +2186,7 @@ export class Network implements NetworkInternal {
     this.connections.forEach((c, indx) => {
       const exportConnection = json.connections[indx] as ConnectionTrace;
       const cs = this.networkState.connection(c.from, c.to);
-      exportConnection.trace = {
-        used: cs.used,
-        eligibility: cs.eligibility,
-        totalDeltaWeight: cs.totalDeltaWeight,
-      };
+      exportConnection.trace = cs;
 
       traceConnections[indx] = exportConnection;
     });
@@ -2263,16 +2265,11 @@ export class Network implements NetworkInternal {
       const n = Node.fromJSON(jn, this);
       n.index = pos;
       if ((jn as NodeTrace).trace) {
-        const trace = (jn as NodeTrace).trace;
+        const trace: NodeState = (jn as NodeTrace).trace;
         const ns = this.networkState.node(n.index);
-
-        ns.errorProjected = trace.errorProjected ? trace.errorProjected : 0;
-        ns.errorResponsibility = trace.errorResponsibility
-          ? trace.errorResponsibility
-          : 0;
-        ns.derivative = trace.derivative ? trace.derivative : 0;
-        ns.totalDeltaBias = trace.totalDeltaBias ? trace.totalDeltaBias : 0;
+        Object.assign(ns, trace);
       }
+
       uuidMap.set(n.uuid, pos);
 
       this.nodes[pos] = n;
@@ -2299,12 +2296,7 @@ export class Network implements NetworkInternal {
       if ((conn as ConnectionTrace).trace) {
         const cs = this.networkState.connection(connection.from, connection.to);
         const trace = (conn as ConnectionTrace).trace;
-        cs.used = trace.used;
-        cs.eligibility = trace.eligibility ? trace.eligibility : 0;
-
-        cs.totalDeltaWeight = trace.totalDeltaWeight
-          ? trace.totalDeltaWeight
-          : 0;
+        Object.assign(cs, trace);
       }
     }
 
