@@ -186,18 +186,23 @@ export function adjustedWeight(
 ) {
   const cs = networkState.connection(c.from, c.to);
 
-  if (cs.count) {
-    const totalWeight = cs.totalValue - cs.totalActivation;
-    const testWeightAverage = totalWeight / cs.count;
-    if( Math.abs(testWeightAverage * cs.totalActivation - cs.totalValue) > 0.0001 ) {
-        console.info( `testWeightAverage: ${testWeightAverage}, totalWeight: ${totalWeight}, cs.totalValue: ${cs.totalValue}, cs.totalActivation: ${cs.totalActivation}, cs.count: ${cs.count}`);
+  if (cs.count && Math.abs(cs.totalActivation) > PLANK_CONSTANT) {
+    const synapseAverageWeightTotal = (cs.totalValue / cs.totalActivation) *
+      cs.count;
 
-      }
     const totalGenerationalWeight = c.weight * config.generations;
 
-    const averageWeight = (totalWeight + totalGenerationalWeight) /
+    const averageWeight =
+      (synapseAverageWeightTotal + totalGenerationalWeight) /
       (cs.count + config.generations);
-    // console.info( `${c.from}:${c.to}) averageWeight: ${averageWeight.toFixed(3)}, totalWeight: ${totalWeight.toFixed(3)}, totalGenerationalWeight: ${totalGenerationalWeight}, c.weight: ${c.weight}, count: ${cs.count}, generations: ${config.generations}`);
+
+    console.info(
+      `${c.from}:${c.to}) averageWeight: ${
+        averageWeight.toFixed(3)
+      }, synapseAverageWeightTotal: ${
+        synapseAverageWeightTotal.toFixed(3)
+      }, totalGenerationalWeight: ${totalGenerationalWeight}, c.weight: ${c.weight}, count: ${cs.count}, generations: ${config.generations}`,
+    );
     return limitWeight(averageWeight);
   }
 
