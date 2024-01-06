@@ -389,6 +389,7 @@ export class Neat {
           }
 
           addTag(json, "approach", "trained");
+          addTag(json, "trainID", r.train.ID);
 
           trainedPopulation.push(Network
             .fromJSON(json, this.config.debug));
