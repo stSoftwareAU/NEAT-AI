@@ -23,6 +23,10 @@ export class MAXIMUM
     return MAXIMUM.NAME;
   }
 
+  range(): { low: number; high: number } {
+    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  }
+
   noTraceActivate(node: Node) {
     const toList = node.network.toConnections(node.index);
     let maxValue = Infinity * -1;

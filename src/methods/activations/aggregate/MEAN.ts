@@ -13,6 +13,10 @@ export class MEAN implements NodeActivationInterface {
     return MEAN.NAME;
   }
 
+  range(): { low: number; high: number } {
+    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  }
+
   noTraceActivate(node: Node) {
     let sum = 0;
 

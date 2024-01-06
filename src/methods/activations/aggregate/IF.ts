@@ -16,6 +16,10 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     return IF.NAME;
   }
 
+  range(): { low: number; high: number } {
+    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  }
+
   fix(node: Node) {
     const toList = node.network.toConnections(node.index);
     const spareList = [];

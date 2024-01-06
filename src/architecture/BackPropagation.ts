@@ -99,23 +99,19 @@ export function limitActivationToRange(node: Node, activation: number) {
     return activation;
   }
   const squash = node.findSquash();
-  if ((squash as UnSquashInterface).range !== undefined) {
-    const unSquasher = squash as UnSquashInterface;
-    const range = unSquasher.range();
-    const limitedActivation = Math.min(
-      Math.max(activation, range.low),
-      range.high,
-    );
+  const unSquasher = squash;
+  const range = unSquasher.range();
+  const limitedActivation = Math.min(
+    Math.max(activation, range.low),
+    range.high,
+  );
 
-    // if (limitedActivation !== activation) {
-    //   console.info(
-    //     `${node.index}: limitActivationToRange(${activation}) squash: ${squash.getName()} -> ${limitedActivation}`,
-    //   );
-    // }
-    return limitedActivation;
-  }
-
-  return activation;
+  // if (limitedActivation !== activation) {
+  //   console.info(
+  //     `${node.index}: limitActivationToRange(${activation}) squash: ${squash.getName()} -> ${limitedActivation}`,
+  //   );
+  // }
+  return limitedActivation;
 }
 
 export function toValue(node: Node, activation: number) {
