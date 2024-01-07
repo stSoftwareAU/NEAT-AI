@@ -40,7 +40,7 @@ Deno.test("PI", () => {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageValuePerActivation: true,
+    useAverageWeight: "Yes",
     generations: 0,
   });
   Deno.writeTextFileSync(
@@ -91,7 +91,7 @@ Deno.test("PI Multiple", () => {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageValuePerActivation: true,
+    useAverageWeight: "Yes",
     useAverageDifferenceBias: "Yes",
     generations: 0,
   });

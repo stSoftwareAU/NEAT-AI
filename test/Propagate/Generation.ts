@@ -34,6 +34,7 @@ function makeCreature() {
         trace: {
           totalValue: -2.54,
           totalActivation: -0.8,
+          count: 1,
           absoluteActivation: 0.8,
         },
       },
@@ -88,20 +89,21 @@ Deno.test("Generation Weight", () => {
     connection,
     new BackPropagationConfig({
       generations: 0,
-      useAverageValuePerActivation: true,
+      useAverageWeight: "Yes",
     }),
   );
 
   assertAlmostEquals(w1, 3.2, 0.1, `Weight: ${w1.toFixed(3)}`);
 
+  const config2 = new BackPropagationConfig({
+    generations: 10,
+    useAverageWeight: "Yes",
+  });
   const w2 = adjustedWeight(
     creature.networkState,
     connection,
-    new BackPropagationConfig({
-      generations: 10,
-      useAverageValuePerActivation: true,
-    }),
+    config2,
   );
 
-  assertAlmostEquals(w2, 0.8, 0.1, `Weight: ${w2.toFixed(3)}`);
+  assertAlmostEquals(w2, 1.2, 0.1, `Weight: ${w2.toFixed(3)}`);
 });

@@ -15,6 +15,7 @@ import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import {
   adjustedBias,
   adjustedWeight,
+  adjustWeight,
   BackPropagationConfig,
   limitActivation,
   limitActivationToRange,
@@ -376,7 +377,7 @@ export class Node implements TagsInterface, NodeInternal {
     const listLength = toList.length;
     const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
 
-    if (listLength > 1 && !(config.disableRandomList)) {
+    if (listLength > 1 && !(config.disableRandomSamples)) {
       // Fisher-Yates shuffle algorithm
       for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -431,9 +432,7 @@ export class Node implements TagsInterface, NodeInternal {
         ) {
           const targetFromValue2 = fromValue + thisPerLinkError;
 
-          cs.totalValue += targetFromValue2;
-          cs.totalActivation += targetFromActivation;
-          cs.absoluteActivation += Math.abs(improvedFromActivation);
+          adjustWeight(cs, targetFromValue2, improvedFromActivation);
 
           const aWeight = adjustedWeight(this.network.networkState, c, config);
 

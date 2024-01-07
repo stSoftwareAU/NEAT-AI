@@ -1,4 +1,6 @@
-export interface TrainOptions {
+import { BackPropagationOptions } from "../architecture/BackPropagation.ts";
+
+export interface TrainOptions extends BackPropagationOptions {
   /** If set to n, will output the training status every n iterations (log : 1 will log every iteration) */
   log?: number;
 
@@ -20,8 +22,9 @@ export interface TrainOptions {
   traceStore?: string;
 
   /** The generation to use for the learning rate. */
-  generation?: number;
+  // generation?: number;
 
-  /** Disable the randomization of samples ( for debugging reasons) */
-  disableRandomSamples?: boolean;
+  // /** Disable the randomization of samples ( for debugging reasons) */
+  // disableRandomSamples?: boolean;
+  // useAverageValuePerActivation?: boolean;
 }

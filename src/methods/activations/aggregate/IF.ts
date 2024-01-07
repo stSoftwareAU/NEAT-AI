@@ -4,12 +4,22 @@ import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 import { Mutation } from "../../mutation.ts";
 import {
+  adjustedBias,
+  adjustedWeight,
+  adjustWeight,
+  BackPropagationConfig,
   limitActivation,
   limitValue,
   limitWeight,
+  toValue,
 } from "../../../architecture/BackPropagation.ts";
+import { PropagateInterface } from "../PropagateInterface.ts";
 
-export class IF implements NodeActivationInterface, ApplyLearningsInterface {
+export class IF
+  implements
+    NodeActivationInterface,
+    ApplyLearningsInterface,
+    PropagateInterface {
   public static NAME = "IF";
 
   getName() {
@@ -268,5 +278,134 @@ export class IF implements NodeActivationInterface, ApplyLearningsInterface {
     node.setSquash(IDENTITY.NAME);
 
     return true;
+  }
+
+  propagate(
+    node: Node,
+    targetActivation: number,
+    config: BackPropagationConfig,
+  ): number {
+    const toList = node.network.toConnections(node.index);
+    let condition = 0;
+    let negativeCount = 0;
+    let positiveCount = 0;
+
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+
+      const value = limitActivation(node.network.getActivation(c.from)) *
+        limitWeight(c.weight);
+
+      switch (c.type) {
+        case "condition":
+          condition = limitValue(condition + value);
+          break;
+        case "negative":
+          negativeCount++;
+          break;
+        default:
+          positiveCount++;
+      }
+    }
+
+    const activation = node.adjustedActivation(config);
+
+    // const ns = node.network.networkState.node(node.index);
+
+    const targetValue = toValue(node, targetActivation);
+
+    const activationValue = toValue(node, activation);
+    const error = targetValue - activationValue;
+
+    let targetWeightedSum = 0;
+
+    const listLength = toList.length;
+    const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
+
+    if (listLength > 1 && !(config.disableRandomSamples)) {
+      // Fisher-Yates shuffle algorithm
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+    }
+
+    const errorPerLink = error /
+      (condition > 0 ? positiveCount : negativeCount);
+    let testWeight = 0;
+    // Iterate over the shuffled indices
+    for (let i = listLength; i--;) {
+      const indx = indices[i];
+      const thisPerLinkError = errorPerLink;
+
+      const c = toList[indx];
+
+      if (c.from === c.to) continue;
+      if (c.type == "condition") continue;
+      if (c.type == "positive" && condition <= 0) continue;
+      if (c.type == "negative" && condition > 0) continue;
+
+      const fromNode = node.network.nodes[c.from];
+      const fromActivation = fromNode.adjustedActivation(config);
+
+      const cs = node.network.networkState.connection(c.from, c.to);
+
+      const fromWeight = adjustedWeight(node.network.networkState, c, config);
+      const fromValue = fromWeight * fromActivation;
+
+      const improvedFromActivation = fromActivation;
+      const targetFromActivation = fromActivation;
+      // const targetFromValue = fromValue + errorPerLink;
+      // const improvedFromValue = fromValue;
+      // if (
+      //   fromWeight &&
+      //   fromNode.type !== "input" &&
+      //   fromNode.type !== "constant"
+      // ) {
+      //   targetFromActivation = targetFromValue / fromWeight;
+
+      //   improvedFromActivation = (fromNode as Node).propagate(
+      //     targetFromActivation,
+      //     config,
+      //   );
+      //   improvedFromValue = improvedFromActivation * fromWeight;
+
+      //   thisPerLinkError = targetFromValue - improvedFromValue;
+      // }
+
+      // if (
+      //   Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
+      //   Math.abs(fromWeight) > PLANK_CONSTANT
+      // ) {
+      const targetFromValue2 = fromValue + thisPerLinkError;
+      adjustWeight(cs, targetFromValue2, targetFromActivation);
+
+      const aWeight = adjustedWeight(node.network.networkState, c, config);
+      testWeight = aWeight;
+      // console.info( `c.from: ${c.from}, c.to: ${c.to}, aWeight: ${aWeight.toFixed(3)}, fromWeight: ${fromWeight.toFixed(3)}, fromActivation: ${fromActivation.toFixed(3)}, improvedFromActivation: ${improvedFromActivation.toFixed(3)}, targetFromActivation: ${targetFromActivation.toFixed(3)}, targetFromValue: ${targetFromValue.toFixed(3)}, targetFromValue2: ${targetFromValue2.toFixed(3)}, thisPerLinkError: ${thisPerLinkError.toFixed(3)}`);
+      const improvedAdjustedFromValue = improvedFromActivation *
+        aWeight;
+
+      targetWeightedSum += improvedAdjustedFromValue;
+      // }
+    }
+
+    // ns.count++;
+    // ns.totalValue += targetValue;
+    // ns.totalWeightedSum += targetWeightedSum;
+
+    const aBias = adjustedBias(node, config);
+
+    const adjustedActivation = targetWeightedSum + aBias;
+    if (node.uuid == "output-1") { //&& Math.abs(targetActivation-adjustedActivation) > Math.abs(targetActivation-activation) ) {
+      console.info(
+        `${node.uuid}: targetActivation: ${
+          targetActivation.toFixed(3)
+        }, activation: ${activation.toFixed(3)}, adjustedActivation: ${
+          adjustedActivation.toFixed(3)
+        }, aBias: ${aBias.toFixed(3)}, testWeight: ${testWeight.toFixed(3)}`,
+      );
+    }
+    return limitActivation(adjustedActivation);
   }
 }
