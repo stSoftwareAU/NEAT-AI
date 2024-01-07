@@ -12,7 +12,7 @@ export class ConnectionState {
   public totalValue = 0;
   public count = 0;
   public totalActivation = 0;
-  // public absoluteActivation = 0;
+  public absoluteActivation = 0;
 
   public used?: boolean;
 }

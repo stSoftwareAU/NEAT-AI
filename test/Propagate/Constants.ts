@@ -175,7 +175,7 @@ Deno.test("Constants Known Few", () => {
     [-0.3625857055962145, -0.31442846346985, -0.4490761153186331],
   ];
   const config = new BackPropagationConfig({
-    useAverageValuePerActivation: false,
+    useAverageValuePerActivation: "No",
     generations: 0,
   });
 
@@ -221,7 +221,7 @@ Deno.test("Constants Many", () => {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageValuePerActivation: false,
+    useAverageValuePerActivation: "No",
     useAverageDifferenceBias: "Yes",
   });
   Deno.writeTextFileSync(

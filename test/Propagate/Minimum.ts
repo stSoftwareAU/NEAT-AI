@@ -95,7 +95,7 @@ Deno.test("PropagateMinimum", async () => {
     );
     const creatureE = Network.fromJSON(resultC.trace);
     const config = new BackPropagationConfig({
-      useAverageValuePerActivation: false,
+      useAverageValuePerActivation: "No",
       useAverageDifferenceBias: "Yes",
       generations: 0,
     });

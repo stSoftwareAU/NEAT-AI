@@ -35,7 +35,7 @@ function makeCreature() {
           totalValue: -2.54,
           totalActivation: -0.8,
           count: 1,
-          // absoluteActivation: 0.8,
+          absoluteActivation: 0.8,
         },
       },
     ],
@@ -89,7 +89,7 @@ Deno.test("Generation Weight", () => {
     connection,
     new BackPropagationConfig({
       generations: 0,
-      useAverageValuePerActivation: true,
+      useAverageValuePerActivation: "Yes",
     }),
   );
 
@@ -100,7 +100,7 @@ Deno.test("Generation Weight", () => {
     connection,
     new BackPropagationConfig({
       generations: 10,
-      useAverageValuePerActivation: true,
+      useAverageValuePerActivation: "Yes",
     }),
   );
 
