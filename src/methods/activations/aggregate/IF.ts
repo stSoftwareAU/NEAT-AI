@@ -336,7 +336,7 @@ export class IF
     // Iterate over the shuffled indices
     for (let i = listLength; i--;) {
       const indx = indices[i];
-      let thisPerLinkError = errorPerLink;
+      const thisPerLinkError = errorPerLink;
 
       const c = toList[indx];
 
@@ -353,10 +353,10 @@ export class IF
       const fromWeight = adjustedWeight(node.network.networkState, c, config);
       const fromValue = fromWeight * fromActivation;
 
-      let improvedFromActivation = fromActivation;
-      let targetFromActivation = fromActivation;
-      const targetFromValue = fromValue + errorPerLink;
-      let improvedFromValue = fromValue;
+      const improvedFromActivation = fromActivation;
+      const targetFromActivation = fromActivation;
+      // const targetFromValue = fromValue + errorPerLink;
+      // const improvedFromValue = fromValue;
       // if (
       //   fromWeight &&
       //   fromNode.type !== "input" &&

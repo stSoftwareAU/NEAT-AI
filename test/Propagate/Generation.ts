@@ -95,14 +95,15 @@ Deno.test("Generation Weight", () => {
 
   assertAlmostEquals(w1, 3.2, 0.1, `Weight: ${w1.toFixed(3)}`);
 
+  const config2 = new BackPropagationConfig({
+    generations: 10,
+    useAverageWeight: "Yes",
+  });
   const w2 = adjustedWeight(
     creature.networkState,
     connection,
-    new BackPropagationConfig({
-      generations: 10,
-      useAverageWeight: "Yes",
-    }),
+    config2,
   );
 
-  assertAlmostEquals(w2, 0.8, 0.1, `Weight: ${w2.toFixed(3)}`);
+  assertAlmostEquals(w2, 1.2, 0.1, `Weight: ${w2.toFixed(3)}`);
 });

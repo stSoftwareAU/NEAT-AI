@@ -224,6 +224,7 @@ Deno.test("Constants Many", () => {
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
   });
+
   Deno.writeTextFileSync(
     ".trace/0.json",
     JSON.stringify(creature.exportJSON(), null, 2),

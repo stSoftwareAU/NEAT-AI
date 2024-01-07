@@ -126,7 +126,7 @@ Deno.test("TwoSame", () => {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageWeight: "Yes",
+    useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
   });
