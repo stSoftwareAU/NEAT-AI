@@ -5,7 +5,7 @@ import {
 
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Costs } from "../../src/Costs.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+// import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
 
@@ -71,10 +71,10 @@ Deno.test("PropagateIF", async () => {
     creatureC.validate();
 
     const resultC = await creatureC.train(ts, {
-      iterations: 1,
+      iterations: 1000,
       error: errorB - 0.01,
       generations: 10,
-      useAverageWeight: "Yes",
+      // useAverageWeight: "Yes",
       // disableRandomSamples: true,
     });
 
@@ -94,43 +94,44 @@ Deno.test("PropagateIF", async () => {
       if (errorB <= errorC) continue;
     }
 
-    if (!resultC.trace) throw new Error("No trace");
-    const creatureD = Network.fromJSON(
-      Network.fromJSON(resultC.trace).exportJSON(),
-    );
-    const creatureE = Network.fromJSON(resultC.trace);
-    const config = new BackPropagationConfig({
-      useAverageWeight: "Yes",
-      // useAverageDifferenceBias: "Yes",
-      generations: 0,
-    });
-    console.info(config);
+    // if (!resultC.trace) throw new Error("No trace");
+    // const creatureD = Network.fromJSON(
+    //   Network.fromJSON(resultC.trace).exportJSON(),
+    // );
+    // const creatureE = Network.fromJSON(resultC.trace);
+    // const config = new BackPropagationConfig({
+    // //  useAverageWeight: "Yes",
+    //   // useAverageDifferenceBias: "Yes",
+    //   // disableRandomSamples:true,
+    //   // generations: 10,
+    // });
+    // // console.info(config);
 
-    creatureE.applyLearnings(config);
-    const errorD = calculateError(creatureD, ts);
-    const errorE = calculateError(creatureE, ts);
+    // creatureE.applyLearnings(config);
+    // const errorD = calculateError(creatureD, ts);
+    // const errorE = calculateError(creatureE, ts);
     console.log(
-      `Error: B: ${errorB}, C: ${errorC}, D: ${errorD}, E: ${errorE}`,
-    );
+      `Error: B: ${errorB}, C: ${errorC}`,
+    ); //, D: ${errorD}, E: ${errorE}`,
+    // );
 
-    Deno.writeTextFileSync(
-      ".trace/D-creature.json",
-      JSON.stringify(creatureD.exportJSON(), null, 2),
-    );
+    // Deno.writeTextFileSync(
+    //   ".trace/D-creature.json",
+    //   JSON.stringify(creatureD.exportJSON(), null, 2),
+    // );
 
-    Deno.writeTextFileSync(
-      ".trace/E-creature.json",
-      JSON.stringify(creatureE.exportJSON(), null, 2),
-    );
+    // Deno.writeTextFileSync(
+    //   ".trace/E-creature.json",
+    //   JSON.stringify(creatureE.exportJSON(), null, 2),
+    // );
 
     assert(
-      true ||
-        errorB > errorC,
+      errorB > errorC,
       `Didn't improve error B->C  start: ${errorB} end: ${errorC}`,
     );
 
     assert(
-      true || errorB > resultC.error,
+      errorB > resultC.error,
       `Didn't improve error B->C *reported*  start: ${errorB} end: ${resultC.error}`,
     );
 
