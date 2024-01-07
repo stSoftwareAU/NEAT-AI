@@ -74,7 +74,7 @@ Deno.test("PropagateIF", async () => {
       iterations: 1,
       error: errorB - 0.01,
       generations: 10,
-      useAverageValuePerActivation: "No",
+      useAverageWeight: "No",
       // disableRandomSamples: true,
     });
 
@@ -100,7 +100,7 @@ Deno.test("PropagateIF", async () => {
     );
     const creatureE = Network.fromJSON(resultC.trace);
     const config = new BackPropagationConfig({
-      useAverageValuePerActivation: "No",
+      useAverageWeight: "No",
       // useAverageDifferenceBias: "Yes",
       generations: 0,
     });

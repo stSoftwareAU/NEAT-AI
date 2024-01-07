@@ -89,7 +89,7 @@ Deno.test("Generation Weight", () => {
     connection,
     new BackPropagationConfig({
       generations: 0,
-      useAverageValuePerActivation: "Yes",
+      useAverageWeight: "Yes",
     }),
   );
 
@@ -100,7 +100,7 @@ Deno.test("Generation Weight", () => {
     connection,
     new BackPropagationConfig({
       generations: 10,
-      useAverageValuePerActivation: "Yes",
+      useAverageWeight: "Yes",
     }),
   );
 

@@ -77,7 +77,7 @@ Deno.test("OneAndDone", () => {
   const config = new BackPropagationConfig({
     disableRandomSamples: true,
     // useAverageValuePerActivation: true,
-    useAverageValuePerActivation: "No",
+    useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
   });
@@ -126,7 +126,7 @@ Deno.test("TwoSame", () => {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageValuePerActivation: "Yes",
+    useAverageWeight: "Yes",
     useAverageDifferenceBias: "Yes",
     generations: 0,
   });
@@ -168,7 +168,7 @@ Deno.test("ManySame", () => {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageValuePerActivation: "Yes",
+    useAverageWeight: "Yes",
     useAverageDifferenceBias: "Maybe",
     generations: 0,
   });
@@ -210,7 +210,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
   const traceDir = ".trace";
   emptyDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageValuePerActivation: "Yes",
+    useAverageWeight: "Yes",
     useAverageDifferenceBias: "Yes",
     generations: 0,
   });
@@ -281,7 +281,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
   const config = new BackPropagationConfig({
-    useAverageValuePerActivation: "Yes",
+    useAverageWeight: "Yes",
   });
   console.info(config);
   const traceDir = ".trace";

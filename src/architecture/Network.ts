@@ -1211,7 +1211,7 @@ export class Network implements NetworkInternal {
         {
           disableRandomSamples: options.disableRandomSamples,
           useAverageDifferenceBias: options.useAverageDifferenceBias,
-          useAverageValuePerActivation: options.useAverageValuePerActivation,
+          useAverageWeight: options.useAverageWeight,
         },
       );
       if (options.generations !== undefined) {
