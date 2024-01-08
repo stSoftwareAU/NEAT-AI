@@ -605,10 +605,7 @@ export class Node implements TagsInterface, NodeInternal {
    */
   exportJSON(): NodeExport {
     if (this.type === "input") {
-      return {
-        type: this.type,
-        tags: this.tags ? [...this.tags] : undefined,
-      };
+      throw new Error(`Should not be exporting 'input'`);
     } else if (this.type === "constant") {
       return {
         type: this.type,
@@ -661,7 +658,7 @@ export class Node implements TagsInterface, NodeInternal {
    * Convert a json object to a node
    */
   static fromJSON(
-    json: NodeExport,
+    json: NodeExport | NodeInternal,
     network: Network,
   ) {
     if (typeof network !== "object") {
@@ -684,7 +681,7 @@ export class Node implements TagsInterface, NodeInternal {
         node.squash = json.squash;
         break;
       default:
-        throw new Error("unknown type: " + json.type);
+        throw new Error("unknown type: " + (json as NodeInternal).type);
     }
 
     if (json.tags) {
