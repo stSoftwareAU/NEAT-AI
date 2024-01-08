@@ -2256,7 +2256,7 @@ export class Network implements NetworkInternal {
     for (let i = 0; i < json.nodes.length; i++) {
       const jn = json.nodes[i];
 
-      if (jn.type === "input") continue;
+      if ((jn as NodeInternal).type === "input") continue;
       if (jn.type == "output") {
         if (!jn.uuid || jn.uuid.startsWith("output-") == false) {
           uuidMap.set(jn.uuid ? jn.uuid : "", pos);
