@@ -6,13 +6,13 @@ import {
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Network } from "../src/architecture/Network.ts";
 
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { TrainOptions } from "../src/config/TrainOptions.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -150,7 +150,7 @@ async function trainSet(
   error: number,
 ) {
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
 
   for (let attempts = 0; true; attempts++) {
     const network = new Network(

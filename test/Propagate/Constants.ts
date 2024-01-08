@@ -1,12 +1,10 @@
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
-
 import {
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
-import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -45,7 +43,7 @@ Deno.test("Constants", () => {
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();
     const traceDir = ".trace";
-    emptyDirSync(traceDir);
+    ensureDirSync(traceDir);
 
     Deno.writeTextFileSync(
       ".trace/0.json",
@@ -161,7 +159,7 @@ Deno.test("Constants Same", () => {
 Deno.test("Constants Known Few", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
 
   Deno.writeTextFileSync(
     ".trace/0.json",
@@ -219,7 +217,7 @@ Deno.test("Constants Known Few", () => {
 Deno.test("Constants Many", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",

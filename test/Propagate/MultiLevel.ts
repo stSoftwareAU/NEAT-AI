@@ -2,7 +2,7 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkInternal } from "../../src/architecture/NetworkInterfaces.ts";
 
@@ -112,7 +112,7 @@ Deno.test("propagateMultiLevelRandom", async () => {
   }
 
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
 
   Deno.writeTextFileSync(
     ".trace/data.json",
@@ -334,12 +334,7 @@ Deno.test("propagateMultiLevelKnownA", async () => {
   ];
 
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
-
-  // Deno.writeTextFileSync(
-  //   ".trace/data.json",
-  //   JSON.stringify(ts, null, 2),
-  // );
+  ensureDirSync(traceDir);
 
   ts.forEach((item) => {
     const result = creatureA.noTraceActivate(item.input);
@@ -556,7 +551,7 @@ Deno.test("propagateMultiLevelKnownB", async () => {
   ];
 
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
 
   ts.forEach((item) => {
     const result = creatureA.noTraceActivate(item.input);
