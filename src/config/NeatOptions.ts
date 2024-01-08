@@ -12,8 +12,6 @@ export interface NeatOptions {
   /** Target error 0 to 1 */
   error?: number;
 
-  // clear?: boolean;
-
   costName?: string;
   /** How many new links to create during the creative thinking phase. default 12 */
   creativeThinkingConnectionCount?: number;
