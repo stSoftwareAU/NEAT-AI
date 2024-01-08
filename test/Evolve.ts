@@ -72,10 +72,6 @@ Deno.test("evolve-XOR", async () => {
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
 
-Deno.test("x", () => {
-  console.log("value", +false);
-});
-
 Deno.test("booleanXOR", async () => {
   // Train the XOR gate
   const trainingSet = [
@@ -123,8 +119,4 @@ Deno.test("XNOR", async () => {
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
-});
-
-Deno.test("check", () => {
-  assert(Number.isFinite(Infinity) == false);
 });

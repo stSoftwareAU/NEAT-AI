@@ -30,9 +30,9 @@ import { Activations } from "../methods/activations/Activations.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "../methods/mutation.ts";
 import { addTag } from "../tags/TagsInterface.ts";
+import { BackPropagationConfig } from "./BackPropagation.ts";
 import { Connection } from "./Connection.ts";
 import { NetworkState, NodeState } from "./NetworkState.ts";
-import { BackPropagationConfig } from "./BackPropagation.ts";
 import { NetworkUtil } from "./NetworkUtils.ts";
 
 const cacheDataFile = {
@@ -911,17 +911,29 @@ export class Network implements NetworkInternal {
       );
     }
 
-    let targetIndex = target.length;
+    const targetLength = target.length;
+    const indices = Array.from({ length: targetLength }, (_, i) => i); // Create an array of indices
 
+    if (targetLength > 1 && !(config.disableRandomSamples)) {
+      // Fisher-Yates shuffle algorithm
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+    }
+
+    const lastOutputIndx = this.nodes.length - this.output;
     // Propagate output nodes
     for (
-      let i = this.nodes.length - 1;
-      i >= this.nodes.length - this.output;
-      i--
+      let i = targetLength;
+      i--;
     ) {
-      const n = this.nodes[i];
+      const targetIndex = indices[i];
+      const nodeIndex = lastOutputIndx + targetIndex;
+
+      const n = this.nodes[nodeIndex];
       n.propagate(
-        target[--targetIndex],
+        target[targetIndex],
         config,
       );
     }
@@ -2068,7 +2080,6 @@ export class Network implements NetworkInternal {
     this.DEBUG = holdDebug;
     const maxTo = this.nodes.length - 1;
     const minTo = this.input;
-    // const maxFrom = this.nodes.length - this.output;
 
     const connections: Connection[] = [];
     this.connections.forEach((c) => {
@@ -2076,8 +2087,6 @@ export class Network implements NetworkInternal {
         console.debug("Ignoring connection to above max", maxTo, c);
       } else if (c.to < minTo) {
         console.debug("Ignoring connection to below min", minTo, c);
-        // } else if (c.from > maxFrom) {
-        //   console.debug("Ignoring connection from above max", maxFrom, c);
       } else {
         connections.push(c as Connection);
       }
