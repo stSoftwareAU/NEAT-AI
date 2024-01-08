@@ -5,7 +5,6 @@ import {
 
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Costs } from "../../src/Costs.ts";
-// import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
 
@@ -46,11 +45,6 @@ Deno.test("PropagateWeightsIF", async () => {
       JSON.stringify(exportJSON, null, 2),
     );
 
-    // exportJSON.nodes.forEach((node, indx) => {
-    //   node.bias = (node.bias ? node.bias : 0) +
-    //     ((indx % 2 == 0 ? 1 : -1) * 0.15);
-    // });
-
     exportJSON.connections.forEach((c, indx) => {
       if (c.type === "positive" || c.type === "negative") {
         c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.25);
@@ -74,8 +68,6 @@ Deno.test("PropagateWeightsIF", async () => {
       iterations: 1000,
       error: errorB - 0.01,
       generations: 10,
-      // useAverageWeight: "Yes",
-      // disableRandomSamples: true,
     });
 
     Deno.writeTextFileSync(
@@ -94,36 +86,9 @@ Deno.test("PropagateWeightsIF", async () => {
       if (errorB <= errorC) continue;
     }
 
-    // if (!resultC.trace) throw new Error("No trace");
-    // const creatureD = Network.fromJSON(
-    //   Network.fromJSON(resultC.trace).exportJSON(),
-    // );
-    // const creatureE = Network.fromJSON(resultC.trace);
-    // const config = new BackPropagationConfig({
-    // //  useAverageWeight: "Yes",
-    //   // useAverageDifferenceBias: "Yes",
-    //   // disableRandomSamples:true,
-    //   // generations: 10,
-    // });
-    // // console.info(config);
-
-    // creatureE.applyLearnings(config);
-    // const errorD = calculateError(creatureD, ts);
-    // const errorE = calculateError(creatureE, ts);
     console.log(
       `Error: B: ${errorB}, C: ${errorC}`,
-    ); //, D: ${errorD}, E: ${errorE}`,
-    // );
-
-    // Deno.writeTextFileSync(
-    //   ".trace/D-creature.json",
-    //   JSON.stringify(creatureD.exportJSON(), null, 2),
-    // );
-
-    // Deno.writeTextFileSync(
-    //   ".trace/E-creature.json",
-    //   JSON.stringify(creatureE.exportJSON(), null, 2),
-    // );
+    );
 
     assert(
       errorB > errorC,
@@ -186,12 +151,6 @@ Deno.test("PropagateBiasIF", async () => {
       }
     });
 
-    // exportJSON.connections.forEach((c, indx) => {
-    //   if (c.type === "positive" || c.type === "negative") {
-    //     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.25);
-    //   }
-    // });
-
     Deno.writeTextFileSync(
       ".trace/B-modified.json",
       JSON.stringify(exportJSON, null, 2),
@@ -209,8 +168,6 @@ Deno.test("PropagateBiasIF", async () => {
       iterations: 1000,
       error: errorB - 0.01,
       generations: 10,
-      // useAverageWeight: "Yes",
-      // disableRandomSamples: true,
     });
 
     Deno.writeTextFileSync(
@@ -395,7 +352,6 @@ function makeCreature() {
   };
 
   const creature = Network.fromJSON(creatureJson);
-  // creature.fix();
   creature.validate();
 
   return creature;
