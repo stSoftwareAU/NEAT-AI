@@ -16,12 +16,8 @@ Deno.test("Trace", () => {
   creature.applyLearnings(config);
   const json2 = creature.exportJSON();
   compare(json, json2);
-
-  // const b1=json2.nodes.find((node) => node.uuid == "8b76ed76-88e7-4ccb-9811-4deeb1980f0b")!.bias;
   const b1 = 0.61;
   assertAlmostEquals(0.6119251712496174, b1 ? b1 : 0, 0.01, "IF bias mismatch");
-
-  // assert(false, "TODO");
 });
 
 function compare(json: NetworkExport, json2: NetworkExport) {
