@@ -1,8 +1,7 @@
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
-
 import {
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
@@ -38,7 +37,7 @@ function makeOutput(input: number[]) {
 Deno.test("PI", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     useAverageWeight: "Yes",
     generations: 0,
@@ -89,7 +88,7 @@ Deno.test("PI", () => {
 Deno.test("PI Multiple", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     useAverageWeight: "Yes",
     useAverageDifferenceBias: "Yes",

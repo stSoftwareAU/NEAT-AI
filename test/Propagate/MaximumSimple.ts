@@ -5,7 +5,7 @@ import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
 
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -25,7 +25,7 @@ Deno.test("PropagateMaximumSimple", () => {
   }
 
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const exportJSON = creatureA.exportJSON();
 
   Deno.writeTextFileSync(

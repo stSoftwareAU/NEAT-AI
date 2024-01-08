@@ -1,10 +1,9 @@
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
-
 import { fail } from "https://deno.land/std@0.211.0/assert/fail.ts";
 import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkInternal } from "../../src/architecture/NetworkInterfaces.ts";
@@ -73,7 +72,7 @@ function makeOutput(input: number[]) {
 Deno.test("OneAndDone", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     disableRandomSamples: true,
     // useAverageValuePerActivation: true,
@@ -124,7 +123,7 @@ Deno.test("OneAndDone", () => {
 Deno.test("TwoSame", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
@@ -166,7 +165,7 @@ Deno.test("TwoSame", () => {
 Deno.test("ManySame", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     useAverageWeight: "Yes",
     useAverageDifferenceBias: "Maybe",
@@ -208,7 +207,7 @@ Deno.test("ManySame", () => {
 Deno.test("propagateSingleNeuronKnown", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     useAverageWeight: "Yes",
     useAverageDifferenceBias: "Yes",
@@ -285,7 +284,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
   });
   console.info(config);
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
 
   for (let i = 0; i < 1_000; i++) {
     const inC = [

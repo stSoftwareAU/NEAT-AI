@@ -1,9 +1,9 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
 import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
 import { TrainOptions } from "../src/config/TrainOptions.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -46,7 +46,7 @@ Deno.test("ifPropagation", async () => {
   }
 
   const traceDir = ".trace";
-  emptyDirSync(traceDir);
+  ensureDirSync(traceDir);
 
   let foundUsed = false;
 
