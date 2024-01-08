@@ -1,5 +1,3 @@
-// import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-
 import { assertAlmostEquals } from "https://deno.land/std@0.211.0/assert/assert_almost_equals.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
