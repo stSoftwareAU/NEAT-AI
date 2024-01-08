@@ -310,7 +310,7 @@ export class IF
 
     const activation = node.adjustedActivation(config);
 
-    // const ns = node.network.networkState.node(node.index);
+    const ns = node.network.networkState.node(node.index);
 
     const targetValue = toValue(node, targetActivation);
 
@@ -332,11 +332,10 @@ export class IF
 
     const errorPerLink = error /
       (condition > 0 ? positiveCount : negativeCount);
-    // let testWeight = 0;
     // Iterate over the shuffled indices
     for (let i = listLength; i--;) {
       const indx = indices[i];
-      const thisPerLinkError = errorPerLink;
+      let thisPerLinkError = errorPerLink;
 
       const c = toList[indx];
 
@@ -353,59 +352,44 @@ export class IF
       const fromWeight = adjustedWeight(node.network.networkState, c, config);
       const fromValue = fromWeight * fromActivation;
 
-      const improvedFromActivation = fromActivation;
-      const targetFromActivation = fromActivation;
-      // const targetFromValue = fromValue + errorPerLink;
-      // const improvedFromValue = fromValue;
-      // if (
-      //   fromWeight &&
-      //   fromNode.type !== "input" &&
-      //   fromNode.type !== "constant"
-      // ) {
-      //   targetFromActivation = targetFromValue / fromWeight;
+      let improvedFromActivation = fromActivation;
+      let targetFromActivation = fromActivation;
+      const targetFromValue = fromValue + errorPerLink;
+      let improvedFromValue = fromValue;
+      if (
+        fromWeight &&
+        fromNode.type !== "input" &&
+        fromNode.type !== "constant"
+      ) {
+        targetFromActivation = targetFromValue / fromWeight;
 
-      //   improvedFromActivation = (fromNode as Node).propagate(
-      //     targetFromActivation,
-      //     config,
-      //   );
-      //   improvedFromValue = improvedFromActivation * fromWeight;
+        improvedFromActivation = (fromNode as Node).propagate(
+          targetFromActivation,
+          config,
+        );
+        improvedFromValue = improvedFromActivation * fromWeight;
 
-      //   thisPerLinkError = targetFromValue - improvedFromValue;
-      // }
+        thisPerLinkError = targetFromValue - improvedFromValue;
+      }
 
-      // if (
-      //   Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-      //   Math.abs(fromWeight) > PLANK_CONSTANT
-      // ) {
       const targetFromValue2 = fromValue + thisPerLinkError;
       adjustWeight(cs, targetFromValue2, targetFromActivation);
 
       const aWeight = adjustedWeight(node.network.networkState, c, config);
-      // testWeight = aWeight;
-      // console.info( `c.from: ${c.from}, c.to: ${c.to}, aWeight: ${aWeight.toFixed(3)}, fromWeight: ${fromWeight.toFixed(3)}, fromActivation: ${fromActivation.toFixed(3)}, improvedFromActivation: ${improvedFromActivation.toFixed(3)}, targetFromActivation: ${targetFromActivation.toFixed(3)}, targetFromValue: ${targetFromValue.toFixed(3)}, targetFromValue2: ${targetFromValue2.toFixed(3)}, thisPerLinkError: ${thisPerLinkError.toFixed(3)}`);
       const improvedAdjustedFromValue = improvedFromActivation *
         aWeight;
 
       targetWeightedSum += improvedAdjustedFromValue;
-      // }
     }
 
-    // ns.count++;
-    // ns.totalValue += targetValue;
-    // ns.totalWeightedSum += targetWeightedSum;
+    ns.count++;
+    ns.totalValue += targetValue;
+    ns.totalWeightedSum += targetWeightedSum;
 
     const aBias = adjustedBias(node, config);
 
     const adjustedActivation = targetWeightedSum + aBias;
-    // if (node.uuid == "output-1") { //&& Math.abs(targetActivation-adjustedActivation) > Math.abs(targetActivation-activation) ) {
-    //   console.info(
-    //     `${node.uuid}: targetActivation: ${
-    //       targetActivation.toFixed(3)
-    //     }, activation: ${activation.toFixed(3)}, adjustedActivation: ${
-    //       adjustedActivation.toFixed(3)
-    //     }, aBias: ${aBias.toFixed(3)}, testWeight: ${testWeight.toFixed(3)}`,
-    //   );
-    // }
+
     return limitActivation(adjustedActivation);
   }
 }
