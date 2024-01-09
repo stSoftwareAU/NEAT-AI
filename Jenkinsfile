@@ -85,7 +85,7 @@ pipeline {
                   #!/bin/bash
 
                   # Convert LCOV to Cobertura XML
-                  lcov_cobertura --base-dir src --excludes "test/.*" --output coverage.xml .cov_profile.lcov
+                  lcov_cobertura --base-dir src --output coverage.xml .cov_profile.lcov
                 '''.stripIndent()
 
                 // Publish Cobertura report
