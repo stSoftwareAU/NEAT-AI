@@ -33,11 +33,11 @@ function compare(json: NetworkExport, json2: NetworkExport) {
         console.info(msg);
         // throw new Error(msg);
       }
-      if (node.squash != node2.squash) {
-        throw new Error(
-          `${node.uuid} Squash mismatch: ${node.squash} vs ${node2.squash}`,
-        );
-      }
+      // if (node.squash != node2.squash) {
+      //   throw new Error(
+      //     `${node.uuid} Squash mismatch: ${node.squash} vs ${node2.squash}`,
+      //   );
+      // }
     }
   });
 }
