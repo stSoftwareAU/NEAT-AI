@@ -214,7 +214,8 @@ Deno.test("ManySame", () => {
       (
         Math.abs(expectedA[0] - actualA[0]) < 0.02 &&
         Math.abs(expectedA[1] - actualA[1]) < 0.02
-     ) || attempts > 12) {
+      ) || attempts > 12
+    ) {
       assertAlmostEquals(expectedA[0], actualA[0], 0.02);
       assertAlmostEquals(expectedA[1], actualA[1], 0.02);
       break;
