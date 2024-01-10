@@ -11,11 +11,10 @@ import {
 } from "./NetworkInterfaces.ts";
 import { NodeExport, NodeInternal, NodeTrace } from "./NodeInterfaces.ts";
 
-import { make as makeConfig } from "../config/NeatConfig.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 import { DataRecordInterface } from "./DataSet.ts";
 
-import { blue, yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 import { Neat } from "../Neat.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
@@ -23,9 +22,8 @@ import { getTag } from "../tags/TagsInterface.ts";
 
 import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
 import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
-import { CostInterface, Costs } from "../Costs.ts";
+import { CostInterface } from "../Costs.ts";
 import { Node } from "../architecture/Node.ts";
-import { TrainOptions } from "../config/TrainOptions.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "../methods/mutation.ts";
@@ -33,12 +31,7 @@ import { addTag } from "../tags/TagsInterface.ts";
 import { BackPropagationConfig } from "./BackPropagation.ts";
 import { Connection } from "./Connection.ts";
 import { NetworkState, NodeState } from "./NetworkState.ts";
-import { NetworkUtil } from "./NetworkUtils.ts";
-
-const cacheDataFile = {
-  fn: "",
-  json: {},
-};
+import { cacheDataFile, dataFiles } from "./Train.ts";
 
 export class Network implements NetworkInternal {
   /* ID of this network */
@@ -960,19 +953,18 @@ export class Network implements NetworkInternal {
     dataSetDir: string,
     options: NeatOptions,
   ) {
-    const config = makeConfig(options);
-
     const start = Date.now();
 
-    const endTimeMS = config.timeoutMinutes
-      ? start + Math.max(1, config.timeoutMinutes) * 60_000
+    const endTimeMS = options.timeoutMinutes
+      ? start + Math.max(1, options.timeoutMinutes) * 60_000
       : 0;
 
     const workers: WorkerHandler[] = [];
 
-    for (let i = config.threads; i--;) {
+    const threads = options.threads ?? 1;
+    for (let i = threads; i--;) {
       workers.push(
-        new WorkerHandler(dataSetDir, config.costName, config.threads == 1),
+        new WorkerHandler(dataSetDir, options.costName ?? "MSE", threads == 1),
       );
     }
 
@@ -993,7 +985,7 @@ export class Network implements NetworkInternal {
     let iterationStartMS = new Date().getTime();
     let generation = 0;
     while (
-      error > config.targetError &&
+      error > (options.targetError ?? 0) &&
       (!options.iterations || generation < options.iterations)
     ) {
       const fittest: Network = await neat.evolve(
@@ -1018,7 +1010,7 @@ export class Network implements NetworkInternal {
       if (
         options.log &&
         (generation % options.log === 0 || timedOut ||
-          error <= config.targetError)
+          error <= (options.targetError ?? 0))
       ) {
         const now = new Date().getTime();
         console.log(
@@ -1058,11 +1050,11 @@ export class Network implements NetworkInternal {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Sleep for 1 second
     }
     if (bestCreature) {
-      this.loadFrom(bestCreature, config.debug);
+      this.loadFrom(bestCreature, options.debug ?? false);
     }
 
-    if (config.creatureStore) {
-      this.writeCreatures(neat, config.creatureStore);
+    if (options.creatureStore) {
+      this.writeCreatures(neat, options.creatureStore);
     }
     return {
       error: error,
@@ -1089,35 +1081,13 @@ export class Network implements NetworkInternal {
       );
     }
 
-    const config = makeConfig(options);
-    const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
+    const dataSetDir = makeDataDir(dataSet, options.dataSetPartitionBreak);
 
     const result = await this.evolveDir(dataSetDir, options);
 
     Deno.removeSync(dataSetDir, { recursive: true });
 
     return result;
-  }
-
-  private dataFiles(dataDir: string) {
-    const files: string[] = [];
-
-    if (cacheDataFile.fn.startsWith(dataDir)) {
-      files.push(
-        cacheDataFile.fn.substring(cacheDataFile.fn.lastIndexOf("/") + 1),
-      );
-    } else {
-      cacheDataFile.fn = "NOT-CACHED";
-      for (const dirEntry of Deno.readDirSync(dataDir)) {
-        if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
-          files.push(dirEntry.name);
-        }
-      }
-
-      files.sort();
-    }
-
-    return files;
   }
 
   private evaluateData(
@@ -1148,9 +1118,7 @@ export class Network implements NetworkInternal {
     cost: CostInterface,
     feedbackLoop: boolean,
   ) {
-    const files: string[] = this.dataFiles(dataDir).map((fn) =>
-      `${dataDir}/${fn}`
-    );
+    const files: string[] = dataFiles(dataDir).map((fn) => `${dataDir}/${fn}`);
 
     if (files.length === 1) {
       const fn = files[0];
@@ -1177,237 +1145,6 @@ export class Network implements NetworkInternal {
       }
       return { error: totalError / totalCount };
     }
-  }
-
-  /**
-   * Train the given set to this network
-   */
-  async trainDir(
-    dataDir: string,
-    options: TrainOptions,
-  ) {
-    options = options || {};
-
-    // Read the options
-    const targetError =
-      options.error !== undefined && Number.isFinite(options.error)
-        ? options.error
-        : 0.05;
-    const cost = Costs.find(options.cost ? options.cost : "MSE");
-
-    const iterations = Math.max(options.iterations ? options.iterations : 2, 1);
-
-    const files: string[] = this.dataFiles(dataDir).map((fn) =>
-      dataDir + "/" + fn
-    );
-
-    // Loops the training process
-    let iteration = 0;
-
-    const uuid = await NetworkUtil.makeUUID(this);
-
-    const ID = uuid.substring(Math.max(0, uuid.length - 8));
-    let bestError: number | undefined = undefined;
-    let trainingFailures = 0;
-    let bestCreatureJSON: NetworkExport = this.exportJSON();
-    let bestTraceJSON = this.traceJSON();
-    let lastTraceJSON = bestTraceJSON;
-    let knownSampleCount = -1;
-    // @TODO need to apply Stochastic Gradient Descent
-    const EMPTY = { input: [], output: [] };
-    while (true) {
-      iteration++;
-      const startTS = Date.now();
-      let lastTS = startTS;
-      const config = new BackPropagationConfig(
-        {
-          disableRandomSamples: options.disableRandomSamples,
-          useAverageDifferenceBias: options.useAverageDifferenceBias,
-          useAverageWeight: options.useAverageWeight,
-        },
-      );
-      if (options.generations !== undefined) {
-        config.generations = options.generations + iteration;
-      }
-
-      let counter = 0;
-      let errorSum = 0;
-      const cached = files.length == 1;
-      if (!cached) {
-        cacheDataFile.fn = "";
-        cacheDataFile.json = {};
-      }
-
-      // Randomize the list of files
-      if (!options.disableRandomSamples) {
-        for (let i = files.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [files[i], files[j]] = [files[j], files[i]];
-        }
-      }
-
-      let trainingStopped = false;
-      for (let j = files.length; !trainingStopped && j--;) {
-        const fn = files[j];
-        const json = cacheDataFile.fn == fn
-          ? cacheDataFile.json
-          : JSON.parse(Deno.readTextFileSync(fn));
-
-        if (cached) {
-          cacheDataFile.fn = fn;
-          cacheDataFile.json = json;
-        }
-
-        if (json.length == 0) {
-          throw new Error("Set size must be positive");
-        }
-        const len = json.length;
-        const indices = Array.from({ length: len }, (_, i) => i); // Create an array of indices
-
-        if (!options.disableRandomSamples) {
-          // Fisher-Yates shuffle algorithm
-          for (let i = indices.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [indices[i], indices[j]] = [indices[j], indices[i]];
-          }
-        }
-
-        // Iterate over the shuffled indices
-        for (let i = len; i--;) {
-          const indx = indices[i];
-          const data = json[indx];
-
-          if (!cached) {
-            /* Not cached so we can release memory as we go */
-            json[indx] = EMPTY;
-          }
-
-          const output = this.activate(data.input);
-
-          const sampleError = cost.calculate(data.output, output);
-          errorSum += sampleError;
-          counter++;
-          if (Number.isFinite(errorSum) == false) {
-            console.warn(
-              `Training ${
-                blue(ID)
-              } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`,
-            );
-            trainingStopped = true;
-            break;
-          } else if (bestError !== undefined && counter < knownSampleCount) {
-            const bestPossibleError = errorSum / knownSampleCount;
-            if (bestPossibleError > bestError) {
-              console.warn(
-                `Training ${blue(ID)} stopped as 'best possible' error ${
-                  yellow(bestPossibleError.toFixed(3))
-                } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
-                  yellow(counter.toFixed(0))
-                } of ${yellow(knownSampleCount.toFixed(0))}`,
-              );
-              trainingStopped = true;
-              break;
-            }
-          }
-          this.propagate(data.output, config);
-
-          const now = Date.now();
-          const diff = now - lastTS;
-
-          if (diff > 60_000) {
-            lastTS = now;
-            const totalTime = now - startTS;
-            console.log(
-              `Training ${blue(ID)} samples`,
-              counter,
-              "error",
-              yellow((errorSum / counter).toFixed(3)),
-              "average time",
-              yellow(
-                format(totalTime / counter, { ignoreZero: true }),
-              ),
-              "total time",
-              yellow(
-                format(totalTime, { ignoreZero: true }),
-              ),
-            );
-          }
-        }
-      }
-
-      const error = errorSum / counter;
-
-      if (bestError !== undefined && bestError < error) {
-        trainingFailures++;
-        if (trainingStopped == false) {
-          console.warn(
-            `Training ${blue(ID)} made the error ${
-              yellow(bestError.toFixed(3))
-            } worse ${yellow(error.toFixed(3))} failed ${
-              yellow(trainingFailures.toString())
-            } out of ${yellow(iteration.toString())} iterations`,
-          );
-        }
-        if (options.traceStore) {
-          Deno.writeTextFileSync(
-            `.trace/${trainingFailures}_fail.json`,
-            JSON.stringify(this.exportJSON(), null, 2),
-          );
-        }
-        this.loadFrom(bestCreatureJSON, false);
-        lastTraceJSON = bestTraceJSON;
-      } else {
-        if (bestError === undefined) {
-          addTag(this, "untrained-error", error.toString());
-        }
-        if (bestError !== undefined && bestError > error) {
-          bestTraceJSON = lastTraceJSON;
-        }
-
-        lastTraceJSON = this.traceJSON();
-        bestCreatureJSON = this.exportJSON();
-        bestError = error;
-        knownSampleCount = counter;
-
-        this.applyLearnings(config);
-        this.clearState();
-      }
-
-      if (bestError <= targetError || iteration >= iterations) {
-        this.loadFrom(bestCreatureJSON, false);
-        return {
-          ID: ID,
-          iteration: iteration,
-          error: bestError,
-          trace: bestTraceJSON,
-        };
-      }
-    }
-  }
-
-  /**
-   * Train the given set to this network
-   */
-  async train(
-    dataSet: DataRecordInterface[],
-    options: TrainOptions,
-  ) {
-    if (
-      dataSet[0].input.length !== this.input ||
-      dataSet[0].output.length !== this.output
-    ) {
-      throw new Error(
-        "Dataset input/output size should be same as network input/output size!",
-      );
-    }
-    const config = makeConfig(options);
-    const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
-
-    const result = await this.trainDir(dataSetDir, options);
-
-    await Deno.remove(dataSetDir, { recursive: true });
-
-    return result;
   }
 
   private writeCreatures(neat: Neat, dir: string) {
@@ -2241,7 +1978,7 @@ export class Network implements NetworkInternal {
     return json;
   }
 
-  private loadFrom(json: NetworkInternal | NetworkExport, validate: boolean) {
+  loadFrom(json: NetworkInternal | NetworkExport, validate: boolean) {
     this.uuid = (json as NetworkInternal).uuid;
     this.nodes.length = json.nodes.length;
     if (json.tags) {

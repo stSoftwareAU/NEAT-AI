@@ -21,7 +21,7 @@ Deno.test("AND", async () => {
     elitism: 10,
     mutationRate: 0.5,
     log: 1,
-    error: 0.03,
+    targetError: 0.03,
     threads: 1,
   });
 
@@ -43,7 +43,7 @@ Deno.test("evolve-MT", async () => {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
-    error: 0.03,
+    targetError: 0.03,
     threads: 1,
   });
 
@@ -64,7 +64,7 @@ Deno.test("evolve-XOR", async () => {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
-    error: 0.03,
+    targetError: 0.03,
     threads: 1,
     iterations: 10000,
   });
@@ -87,7 +87,7 @@ Deno.test("booleanXOR", async () => {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
-    error: 0.025,
+    targetError: 0.025,
     threads: 1,
     iterations: 50000,
   });
@@ -114,7 +114,7 @@ Deno.test("XNOR", async () => {
     mutation: Mutation.FFW,
     elitism: 10,
     mutationRate: 0.5,
-    error: 0.03,
+    targetError: 0.03,
     threads: 1,
   });
 

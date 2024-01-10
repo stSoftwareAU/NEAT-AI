@@ -3,6 +3,7 @@ import { RequestData, ResponseData } from "./WorkerHandler.ts";
 import { TrainOptions } from "../../config/TrainOptions.ts";
 import { CostInterface, Costs } from "../../Costs.ts";
 import { Network } from "../../architecture/Network.ts";
+import { trainDir } from "../../architecture/Train.ts";
 
 export class WorkerProcessor {
   private costName?: string;
@@ -73,7 +74,7 @@ export class WorkerProcessor {
         log: 1,
       };
 
-      const result = await network.trainDir(this.dataSetDir, trainOptions);
+      const result = await trainDir(network, this.dataSetDir, trainOptions);
       network.validate();
       const json = JSON.stringify(network.exportJSON());
 

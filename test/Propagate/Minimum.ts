@@ -8,6 +8,7 @@ import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
 import { Costs } from "../../src/Costs.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
+import { train } from "../../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -69,7 +70,7 @@ Deno.test("PropagateMinimum", async () => {
     const creatureC = Network.fromJSON(exportJSON);
     creatureC.validate();
 
-    const resultC = await creatureC.train(ts, {
+    const resultC = await train(creatureC, ts, {
       iterations: 1000,
       error: errorB - 0.001,
       disableRandomSamples: true,

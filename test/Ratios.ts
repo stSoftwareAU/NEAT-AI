@@ -20,7 +20,7 @@ Deno.test("hypotenuse", async () => {
 
   const options: NeatOptions = {
     iterations: 100,
-    error: 0.002,
+    targetError: 0.002,
     log: 50,
     elitism: 3,
   };

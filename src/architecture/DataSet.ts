@@ -36,7 +36,7 @@ const encoder = new TextEncoder();
 
 export function makeDataDir(
   dataSet: DataRecordInterface[],
-  partitionBreak: number,
+  partitionBreak = 2000,
 ) {
   if (partitionBreak < 1) {
     throw new Error(

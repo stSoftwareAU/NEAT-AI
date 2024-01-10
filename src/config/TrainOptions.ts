@@ -21,10 +21,6 @@ export interface TrainOptions extends BackPropagationOptions {
   /** The directory to store the networks trace information (optional) */
   traceStore?: string;
 
-  /** The generation to use for the learning rate. */
-  // generation?: number;
-
-  // /** Disable the randomization of samples ( for debugging reasons) */
-  // disableRandomSamples?: boolean;
-  // useAverageValuePerActivation?: boolean;
+  /** The percentage of observations that will be used for training. Range 0..1 */
+  trainingSampleRate?: number;
 }

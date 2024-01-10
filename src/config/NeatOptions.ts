@@ -7,14 +7,16 @@ import {
 } from "../architecture/NetworkInterfaces.ts";
 import { MutationInterface } from "../methods/mutation.ts";
 import { SelectionInterface } from "../methods/Selection.ts";
+import { TrainOptions } from "./TrainOptions.ts";
 
-export interface NeatOptions {
+export interface NeatOptions extends TrainOptions {
   /** Target error 0 to 1 */
-  error?: number;
+  targetError?: number;
 
   costName?: string;
   /** How many new links to create during the creative thinking phase. default 12 */
   creativeThinkingConnectionCount?: number;
+
   /** The directory to store the creatures (optional) */
   creatureStore?: string;
 
@@ -43,7 +45,7 @@ export interface NeatOptions {
   focusRate?: number;
 
   /** Cost of growth */
-  growth?: number;
+  costOfGrowth?: number;
   elitism?: number;
 
   /** Once the number of minutes are reached exit the loop. */
@@ -59,7 +61,7 @@ export interface NeatOptions {
   maxConns?: number;
 
   /** Tne maximum number of nodes */
-  maxNodes?: number;
+  maximumNumberOfNodes?: number;
 
   /** Number of changes per Gene */
   mutationAmount?: number;
@@ -68,13 +70,11 @@ export interface NeatOptions {
   mutationRate?: number;
 
   /** The target population size. 50 by default */
-  popSize?: number;
+  populationSize?: number;
 
   /** the number of workers */
   threads?: number;
 
-  /** the initial train rate if evolving or the rate to use when training only; default 0.01 */
-  trainRate?: number;
   selection?: SelectionInterface;
   mutation?: MutationInterface[];
 
