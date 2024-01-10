@@ -7,6 +7,7 @@ import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
+import { train } from "../../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -64,7 +65,7 @@ Deno.test("PropagateWeightsIF", async () => {
     const creatureC = Network.fromJSON(exportJSON);
     creatureC.validate();
 
-    const resultC = await creatureC.train(ts, {
+    const resultC = await train(creatureC, ts, {
       iterations: 1000,
       error: errorB - 0.01,
       generations: 10,
@@ -164,7 +165,7 @@ Deno.test("PropagateBiasIF", async () => {
     const creatureC = Network.fromJSON(exportJSON);
     creatureC.validate();
 
-    const resultC = await creatureC.train(ts, {
+    const resultC = await train(creatureC, ts, {
       iterations: 1000,
       error: errorB - 0.01,
       generations: 10,

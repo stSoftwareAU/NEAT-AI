@@ -4,6 +4,7 @@ import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
 import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
 import { TrainOptions } from "../src/config/TrainOptions.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
+import { train } from "../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -56,7 +57,7 @@ Deno.test("ifPropagation", async () => {
   };
   const network = Network.fromJSON(json);
 
-  const result = await network.train(ts, options);
+  const result = await train(network, ts, options);
 
   const traceJson = result.trace;
   Deno.writeTextFileSync(

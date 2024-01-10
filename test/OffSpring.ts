@@ -43,7 +43,7 @@ Deno.test("OffSpring", async () => {
   const neat = new Neat(1, 1, {}, []);
 
   await neat.populatePopulation(creature);
-  for (let i = 0; i < neat.config.popSize; i++) {
+  for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = neat.offspring();
     await neat.populatePopulation(kid as Network);
   }

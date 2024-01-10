@@ -60,7 +60,7 @@ Deno.test("storeTrace", async () => {
       traceStore: traceDir,
       creatureStore: creaturesDir,
       threads: 1,
-      error: 0,
+      targetError: 0,
     };
     const network = Network.fromJSON(json);
 

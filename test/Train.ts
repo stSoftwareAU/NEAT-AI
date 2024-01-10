@@ -1,6 +1,7 @@
 import { assert, fail } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Network } from "../src/architecture/Network.ts";
+import { train } from "../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -17,7 +18,7 @@ Deno.test("AND", async () => {
   for (let attempts = 0; true; attempts++) {
     const network = new Network(2, 1);
 
-    const results = await network.train(trainingSet, {
+    const results = await train(network, trainingSet, {
       error: 0.1,
       iterations: 10_000,
       learningRate: 1,
@@ -51,7 +52,7 @@ Deno.test("MT", async () => {
       ],
     });
 
-    const results = await network.train(trainingSet, {
+    const results = await train(network, trainingSet, {
       error: 0.03,
       iterations: 10000,
     });
@@ -86,7 +87,7 @@ Deno.test("train-XOR", async () => {
     JSON.stringify(network.internalJSON(), null, 2),
   );
   for (let attempts = 0; true; attempts++) {
-    const results = await network.train(trainingSet, {
+    const results = await train(network, trainingSet, {
       error: 0.03,
       iterations: 10000,
     });
@@ -123,7 +124,7 @@ Deno.test("XNOR", async () => {
       ],
     });
 
-    const results = await network.train(trainingSet, {
+    const results = await train(network, trainingSet, {
       error: 0.03,
       iterations: 10_000,
     });

@@ -1,6 +1,7 @@
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Network } from "../src/architecture/Network.ts";
+import { train } from "../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -71,7 +72,7 @@ Deno.test("Learn", async () => {
 
   const answersA = nn.noTraceActivate([0.1, 0.2]);
   console.info(answersA);
-  await nn.train(dataSet, options);
+  await train(nn, dataSet, options);
 
   const answersB = nn.noTraceActivate([0.1, 0.2]);
   console.info(answersB);

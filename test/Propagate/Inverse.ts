@@ -6,6 +6,7 @@ import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkInternal } from "../../src/architecture/NetworkInterfaces.ts";
 import { INVERSE } from "../../src/methods/activations/types/INVERSE.ts";
+import { train } from "../../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -151,7 +152,7 @@ Deno.test("propagateInverseRandom", async () => {
     const creatureB = Network.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = await creatureB.train(ts, {
+    const result1 = await train(creatureB, ts, {
       iterations: 2,
       error: 0,
     });
@@ -161,7 +162,7 @@ Deno.test("propagateInverseRandom", async () => {
       JSON.stringify(creatureB.exportJSON(), null, 2),
     );
 
-    const result2 = await creatureB.train(ts, {
+    const result2 = await train(creatureB, ts, {
       iterations: 100,
       error: 0,
       traceStore: ".trace",

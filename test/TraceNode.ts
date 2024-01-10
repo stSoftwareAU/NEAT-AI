@@ -55,7 +55,7 @@ Deno.test("traceNode", async () => {
     traceStore: traceDir,
     creatureStore: creaturesDir,
     threads: 1,
-    error: 0,
+    targetError: 0,
   };
   await network.evolveDataSet(ts, options);
 

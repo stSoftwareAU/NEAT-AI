@@ -13,6 +13,7 @@ import { TrainOptions } from "../src/config/TrainOptions.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
+import { train } from "../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -74,7 +75,7 @@ async function evolveSet(
   });
   const options: NeatOptions = {
     iterations: iterations,
-    error: error,
+    targetError: error,
     threads: 1,
   };
 
@@ -170,7 +171,7 @@ async function trainSet(
       error: error,
     };
 
-    const results = await network.train(set, options);
+    const results = await train(network, set, options);
     Deno.writeTextFileSync(
       `.trace/${attempts}.json`,
       JSON.stringify(results.trace, null, 2),
@@ -560,7 +561,7 @@ Deno.test("NARX Sequence", async () => {
 
     const result = await narx.evolveDataSet(trainingData, {
       iterations: 5000,
-      error: 0.005,
+      targetError: 0.005,
       threads: 1,
       feedbackLoop: true,
     });

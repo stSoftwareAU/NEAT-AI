@@ -8,6 +8,7 @@ import { Costs } from "../../src/Costs.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
+import { train } from "../../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -68,7 +69,7 @@ Deno.test("PropagateMaximum", async () => {
     const creatureC = Network.fromJSON(exportJSON);
     creatureC.validate();
 
-    const resultC = await creatureC.train(ts, {
+    const resultC = await train(creatureC, ts, {
       iterations: 100,
       error: errorB - 0.001,
       // disableRandomSamples: true,

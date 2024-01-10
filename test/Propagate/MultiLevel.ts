@@ -5,6 +5,7 @@ import {
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkInternal } from "../../src/architecture/NetworkInterfaces.ts";
+import { train } from "../../src/architecture/Train.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -150,7 +151,7 @@ Deno.test("propagateMultiLevelRandom", async () => {
     const creatureB = Network.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = await creatureB.train(ts, {
+    const result1 = await train(creatureB, ts, {
       iterations: 2,
       error: 0,
     });
@@ -160,7 +161,7 @@ Deno.test("propagateMultiLevelRandom", async () => {
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
 
-    const result2 = await creatureB.train(ts, {
+    const result2 = await train(creatureB, ts, {
       iterations: 100,
       error: 0,
     });
@@ -368,7 +369,7 @@ Deno.test("propagateMultiLevelKnownA", async () => {
     const creatureB = Network.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = await creatureB.train(ts, {
+    const result1 = await train(creatureB, ts, {
       iterations: 2,
       error: 0,
     });
@@ -378,7 +379,7 @@ Deno.test("propagateMultiLevelKnownA", async () => {
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
 
-    const result2 = await creatureB.train(ts, {
+    const result2 = await train(creatureB, ts, {
       iterations: 10000,
       error: 0,
     });
@@ -585,7 +586,7 @@ Deno.test("propagateMultiLevelKnownB", async () => {
     const creatureB = Network.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = await creatureB.train(ts, {
+    const result1 = await train(creatureB, ts, {
       iterations: 2,
       error: 0,
     });
@@ -595,7 +596,7 @@ Deno.test("propagateMultiLevelKnownB", async () => {
       JSON.stringify(creatureB.internalJSON(), null, 2),
     );
 
-    const result2 = await creatureB.train(ts, {
+    const result2 = await train(creatureB, ts, {
       iterations: 100,
       error: 0,
     });

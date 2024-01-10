@@ -1,7 +1,3 @@
-/* Import */
-
-import { make as makeConfig } from "./config/NeatConfig.ts";
-
 import { Fitness } from "./architecture/Fitness.ts";
 
 import { blue } from "https://deno.land/std@0.211.0/fmt/colors.ts";
@@ -11,18 +7,158 @@ import { makeElitists } from "../src/architecture/elitism.ts";
 import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
 import { fineTuneImprovement } from "./architecture/FineTune.ts";
 import { Network } from "./architecture/Network.ts";
-import { NetworkInternal } from "./architecture/NetworkInterfaces.ts";
+import {
+  NetworkExport,
+  NetworkInternal,
+} from "./architecture/NetworkInterfaces.ts";
 import { NetworkUtil } from "./architecture/NetworkUtils.ts";
 import { Offspring } from "./architecture/Offspring.ts";
-import { NeatConfig } from "./config/NeatConfig.ts";
+
 import { NeatOptions } from "./config/NeatOptions.ts";
-import { Selection } from "./methods/Selection.ts";
-import { Mutation } from "./methods/mutation.ts";
+import { Selection, SelectionInterface } from "./methods/Selection.ts";
+import { Mutation, MutationInterface } from "./methods/mutation.ts";
 import {
   ResponseData,
   WorkerHandler,
 } from "./multithreading/workers/WorkerHandler.ts";
 
+class NeatConfig implements NeatOptions {
+  /** List of creatures to start with */
+  creatures: NetworkInternal[] | NetworkExport[];
+
+  /** How many new links to create during the creative thinking phase. */
+  creativeThinkingConnectionCount: number;
+  creatureStore?: string;
+  experimentStore?: string;
+
+  /** number of records per dataset file. default: 2000 */
+  dataSetPartitionBreak?: number;
+
+  /** debug (much slower) */
+  debug: boolean;
+
+  /**
+   * Feedback loop ( previous result feeds back into next interaction
+   * https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html;jsessionid=2d7fa2c64f0bd39c86dec46870cd
+   */
+  feedbackLoop: boolean;
+
+  /** The list of observations to focus one */
+  focusList: number[];
+  /** Focus rate */
+  focusRate: number;
+
+  elitism: number;
+
+  /** Target error 0 to 1 */
+  targetError: number;
+  timeoutMinutes?: number;
+
+  costOfGrowth: number;
+
+  /** Tne maximum number of connections */
+  maxConns: number;
+
+  /** Tne maximum number of nodes */
+  maximumNumberOfNodes: number;
+
+  /** Number of changes per Gene */
+  mutationAmount: number;
+
+  /** Probability of changing a single gene */
+  mutationRate: number;
+
+  /** The target population size. */
+  populationSize: number;
+
+  costName: string;
+  traceStore?: string;
+
+  /** the number of workers */
+  threads: number;
+
+  /** the number of training per generation. default: 1  */
+  trainPerGen: number;
+
+  selection: SelectionInterface;
+  mutation: MutationInterface[];
+
+  iterations: number;
+  log: number;
+  /** verbose logging default: false */
+  verbose: boolean;
+
+  constructor(options: NeatOptions) {
+    this.creativeThinkingConnectionCount =
+      options.creativeThinkingConnectionCount
+        ? options.creativeThinkingConnectionCount
+        : 12;
+    this.creatureStore = options.creatureStore;
+    this.experimentStore = options.experimentStore;
+    this.creatures = options.creatures ? options.creatures : [];
+    this.costName = options.costName || "MSE";
+    this.dataSetPartitionBreak = options.dataSetPartitionBreak;
+
+    this.debug = options.debug
+      ? true
+      : ((globalThis as unknown) as { DEBUG: boolean }).DEBUG
+      ? true
+      : false;
+
+    this.feedbackLoop = options.feedbackLoop || false;
+    this.focusList = options.focusList || [];
+    this.focusRate = options.focusRate || 0.25;
+
+    this.targetError = options.targetError !== undefined
+      ? Math.min(1, Math.max(Math.abs(options.targetError), 0))
+      : 0.05;
+
+    this.costOfGrowth = options.costOfGrowth !== undefined
+      ? options.costOfGrowth
+      : 0.000_1;
+
+    this.iterations = options.iterations ? options.iterations : 0;
+
+    this.populationSize = options.populationSize || 50;
+    this.elitism = options.elitism || 1;
+
+    this.maxConns = options.maxConns || Infinity;
+    this.maximumNumberOfNodes = options.maximumNumberOfNodes || Infinity;
+    this.mutationRate = options.mutationRate || 0.3;
+
+    this.mutationAmount = options.mutationAmount
+      ? options.mutationAmount > 1 ? options.mutationAmount : 1
+      : 1;
+    this.mutation = options.mutation || Mutation.FFW;
+    this.selection = options.selection || Selection.POWER;
+
+    this.threads = Math.round(
+      Math.max(
+        options.threads ? options.threads : navigator.hardwareConcurrency,
+        1,
+      ),
+    );
+    this.timeoutMinutes = options.timeoutMinutes;
+    this.traceStore = options.traceStore;
+    this.trainPerGen = options.trainPerGen ? options.trainPerGen : 1;
+
+    this.log = options.log ? options.log : 0;
+    this.verbose = options.verbose ? true : false;
+
+    if (this.mutationAmount < 1) {
+      throw new Error(
+        "Mutation Amount must be more than zero was: " +
+          this.mutationAmount,
+      );
+    }
+
+    if (this.mutationRate <= 0.001) {
+      throw new Error(
+        "Mutation Rate must be more than 0.1% was: " + this.mutationRate,
+      );
+    }
+  }
+}
 export class Neat {
   readonly input: number;
   readonly output: number;
@@ -42,12 +178,12 @@ export class Neat {
     this.output = output; // The output size of the networks
 
     this.workers = workers ? workers : [];
-    this.config = makeConfig(options);
+    this.config = new NeatConfig(options);
 
     // The fitness function to evaluate the networks
     this.fitness = new Fitness(
       this.workers,
-      this.config.growth,
+      this.config.costOfGrowth,
       this.config.feedbackLoop,
     );
 
@@ -199,9 +335,9 @@ export class Neat {
       /** 20% of population or those that just died, leave one for the extended */
       const fineTunePopSize = Math.max(
         Math.ceil(
-          this.config.popSize / 5,
+          this.config.populationSize / 5,
         ),
-        this.config.popSize - this.population.length -
+        this.config.populationSize - this.population.length -
           this.config.elitism -
           this.trainingComplete.length,
       );
@@ -355,7 +491,7 @@ export class Neat {
 
     const newPopulation = [];
 
-    const newPopSize = this.config.popSize -
+    const newPopSize = this.config.populationSize -
       elitists.length -
       this.trainingComplete.length -
       fineTunedPopulation.length - 1;
@@ -495,7 +631,7 @@ export class Neat {
     if (this.config.debug) {
       network.validate();
     }
-    while (this.population.length < this.config.popSize - 1) {
+    while (this.population.length < this.config.populationSize - 1) {
       const clonedCreature = Network.fromJSON(
         network.internalJSON(),
         this.config.debug,
@@ -564,9 +700,9 @@ export class Neat {
   }
 
   async deDuplicate(creatures: Network[]) {
-    if (creatures.length > this.config.popSize + 1) {
+    if (creatures.length > this.config.populationSize + 1) {
       console.info(
-        `Over populated ${creatures.length} expected ${this.config.popSize}`,
+        `Over populated ${creatures.length} expected ${this.config.populationSize}`,
       );
     }
 
@@ -583,7 +719,7 @@ export class Neat {
         duplicate = this.previousExperiment(key);
       }
       if (duplicate) {
-        if (creatures.length > this.config.popSize) {
+        if (creatures.length > this.config.populationSize) {
           console.info(
             `Culling duplicate creature at ${i} of ${creatures.length}`,
           );
@@ -628,7 +764,7 @@ export class Neat {
 
       if (
         mutationMethod === Mutation.ADD_NODE &&
-        creature.nodes.length >= this.config.maxNodes
+        creature.nodes.length >= this.config.maximumNumberOfNodes
       ) {
         continue;
       }
@@ -698,7 +834,7 @@ export class Neat {
           ] as Network;
       }
       case Selection.TOURNAMENT: {
-        if (Selection.TOURNAMENT.size > this.config.popSize) {
+        if (Selection.TOURNAMENT.size > this.config.populationSize) {
           throw new Error(
             "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
           );
