@@ -237,22 +237,24 @@ export function limitBias(
 
   const difference = adjustedBias - currentBias;
   let limitedBias = adjustedBias;
-  if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
-    if (difference > 0) {
-      limitedBias = currentBias + config.maximumBiasAdjustmentScale;
-    } else {
-      limitedBias = currentBias - config.maximumBiasAdjustmentScale;
+  if (Math.abs(limitedBias) <= config.limitBiasScale) {
+    if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
+      if (difference > 0) {
+        limitedBias = currentBias + config.maximumBiasAdjustmentScale;
+      } else {
+        limitedBias = currentBias - config.maximumBiasAdjustmentScale;
+      }
     }
   }
 
-  if (Math.abs(limitedBias) > config.limitBiasScale) {
+  if (Math.abs(limitedBias) >= config.limitBiasScale) {
     if (limitedBias > 0) {
       if (limitedBias > currentBias) {
         limitedBias = Math.max(currentBias, config.limitBiasScale);
       }
     } else {
       if (limitedBias < currentBias) {
-        limitedBias = currentBias;
+        limitedBias = Math.min(currentBias, config.limitBiasScale * -1);
       }
     }
   }
@@ -273,22 +275,23 @@ export function limitWeight(
 
   const difference = adjustedWeight - currentWeight;
   let limitedWeight = adjustedWeight;
-  if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-    if (difference > 0) {
-      limitedWeight = currentWeight + config.maximumWeightAdjustmentScale;
-    } else {
-      limitedWeight = currentWeight - config.maximumWeightAdjustmentScale;
+  if (Math.abs(limitedWeight) <= config.limitWeightScale) {
+    if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
+      if (difference > 0) {
+        limitedWeight = currentWeight + config.maximumWeightAdjustmentScale;
+      } else {
+        limitedWeight = currentWeight - config.maximumWeightAdjustmentScale;
+      }
     }
   }
-
-  if (Math.abs(limitedWeight) > config.limitWeightScale) {
+  if (Math.abs(limitedWeight) >= config.limitWeightScale) {
     if (limitedWeight > 0) {
       if (limitedWeight > currentWeight) {
         limitedWeight = Math.max(currentWeight, config.limitWeightScale);
       }
     } else {
       if (limitedWeight < currentWeight) {
-        limitedWeight = currentWeight;
+        limitedWeight = Math.min(currentWeight, config.limitWeightScale * -1);
       }
     }
   }

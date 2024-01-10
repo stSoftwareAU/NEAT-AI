@@ -29,5 +29,9 @@ Deno.test("limitBiasScale", () => {
   assertAlmostEquals(-19, bias2, 0.001, `Bias: ${bias2.toFixed(1)}`);
   const bias3 = limitBias(-23, -8, config);
 
-  assertAlmostEquals(-18, bias3, 0.001, `Bias: ${bias3.toFixed(1)}`);
+  assertAlmostEquals(-20, bias3, 0.001, `Bias: ${bias3.toFixed(1)}`);
+
+  const bias4 = limitBias(-63.892, -760.8656, config);
+
+  assertAlmostEquals(-63.892, bias4, 0.01, `Bias: ${bias4.toFixed(1)}`);
 });
