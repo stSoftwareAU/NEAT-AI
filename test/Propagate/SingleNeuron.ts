@@ -79,6 +79,9 @@ Deno.test("OneAndDone", () => {
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
+
+    maximumWeightAdjustmentScale: 2,
+    maximumBiasAdjustmentScale: 2,
   });
 
   Deno.writeTextFileSync(
@@ -180,6 +183,10 @@ Deno.test("ManySame", () => {
       useAverageWeight: "Yes",
       useAverageDifferenceBias: "Maybe",
       generations: 0,
+      maximumWeightAdjustmentScale: 20,
+      maximumBiasAdjustmentScale: 20,
+      limitBiasScale: 100,
+      limitWeightScale: 100,
     });
 
     Deno.writeTextFileSync(
@@ -210,7 +217,12 @@ Deno.test("ManySame", () => {
       JSON.stringify(creature.exportJSON(), null, 2),
     );
 
-    if (Math.abs(expectedA[1] - actualA[1]) < 0.02 || attempts > 12) {
+    if (
+      (
+        Math.abs(expectedA[0] - actualA[0]) < 0.02 &&
+        Math.abs(expectedA[1] - actualA[1]) < 0.02
+      ) || attempts > 12
+    ) {
       assertAlmostEquals(expectedA[0], actualA[0], 0.02);
       assertAlmostEquals(expectedA[1], actualA[1], 0.02);
       break;
@@ -226,6 +238,8 @@ Deno.test("propagateSingleNeuronKnown", () => {
     useAverageWeight: "Yes",
     useAverageDifferenceBias: "Yes",
     generations: 0,
+    maximumWeightAdjustmentScale: 2,
+    maximumBiasAdjustmentScale: 2,
   });
 
   Deno.writeTextFileSync(

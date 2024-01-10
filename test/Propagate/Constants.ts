@@ -53,6 +53,8 @@ Deno.test("Constants", () => {
     const config = new BackPropagationConfig({
       disableRandomSamples: true,
       generations: 0,
+      maximumWeightAdjustmentScale: 2,
+      maximumBiasAdjustmentScale: 2,
     });
     const inA = [-1, 1, 0];
     const outA1 = creature.noTraceActivate(inA);
@@ -112,6 +114,9 @@ Deno.test("Constants Same", () => {
     const config = new BackPropagationConfig({
       disableRandomSamples: true,
       generations: 100,
+
+      maximumWeightAdjustmentScale: 20,
+      maximumBiasAdjustmentScale: 20,
     });
     for (let i = 0; i < 1_000; i++) {
       const input = [-0.5, 0, 0.5];
@@ -175,6 +180,9 @@ Deno.test("Constants Known Few", () => {
   const config = new BackPropagationConfig({
     useAverageWeight: "No",
     generations: 0,
+
+    maximumWeightAdjustmentScale: 20,
+    maximumBiasAdjustmentScale: 20,
   });
 
   for (let indx = 0; indx < inputs.length; indx++) {
@@ -221,6 +229,9 @@ Deno.test("Constants Many", () => {
   const config = new BackPropagationConfig({
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
+
+    maximumWeightAdjustmentScale: 20,
+    maximumBiasAdjustmentScale: 20,
   });
 
   Deno.writeTextFileSync(

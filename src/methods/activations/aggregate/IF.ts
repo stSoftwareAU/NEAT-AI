@@ -10,7 +10,6 @@ import {
   BackPropagationConfig,
   limitActivation,
   limitValue,
-  limitWeight,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { PropagateInterface } from "../PropagateInterface.ts";
@@ -210,7 +209,7 @@ export class IF
       const c = toList[i];
 
       const value = limitActivation(node.network.getActivation(c.from)) *
-        limitWeight(c.weight);
+        c.weight;
 
       switch (c.type) {
         case "condition":
@@ -294,7 +293,7 @@ export class IF
       const c = toList[i];
 
       const value = limitActivation(node.network.getActivation(c.from)) *
-        limitWeight(c.weight);
+        c.weight;
 
       switch (c.type) {
         case "condition":

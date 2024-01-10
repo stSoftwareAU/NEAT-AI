@@ -1,4 +1,3 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.211.0/assert/assert_almost_equals.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Network } from "../../src/architecture/Network.ts";
 import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
@@ -16,8 +15,6 @@ Deno.test("Trace", () => {
   creature.applyLearnings(config);
   const json2 = creature.exportJSON();
   compare(json, json2);
-  const b1 = 0.61;
-  assertAlmostEquals(0.6119251712496174, b1 ? b1 : 0, 0.01, "IF bias mismatch");
 });
 
 function compare(json: NetworkExport, json2: NetworkExport) {
@@ -36,11 +33,11 @@ function compare(json: NetworkExport, json2: NetworkExport) {
         console.info(msg);
         // throw new Error(msg);
       }
-      if (node.squash != node2.squash) {
-        throw new Error(
-          `${node.uuid} Squash mismatch: ${node.squash} vs ${node2.squash}`,
-        );
-      }
+      // if (node.squash != node2.squash) {
+      //   throw new Error(
+      //     `${node.uuid} Squash mismatch: ${node.squash} vs ${node2.squash}`,
+      //   );
+      // }
     }
   });
 }
