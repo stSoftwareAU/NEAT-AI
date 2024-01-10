@@ -185,7 +185,7 @@ Deno.test("Constants Known Few", () => {
 
     maximumWeightAdjustmentScale: 20,
     maximumBiasAdjustmentScale: 20,
-    learningRate: 1
+    learningRate: 1,
   });
 
   for (let indx = 0; indx < inputs.length; indx++) {
