@@ -79,6 +79,9 @@ Deno.test("OneAndDone", () => {
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
+
+    maximumWeightAdjustmentScale: 2,
+    maximumBiasAdjustmentScale: 2,
   });
 
   Deno.writeTextFileSync(
@@ -180,6 +183,10 @@ Deno.test("ManySame", () => {
       useAverageWeight: "Yes",
       useAverageDifferenceBias: "Maybe",
       generations: 0,
+      maximumWeightAdjustmentScale: 20,
+      maximumBiasAdjustmentScale: 20,
+      limitBiasScale: 100,
+      limitWeightScale: 100,
     });
 
     Deno.writeTextFileSync(
@@ -231,6 +238,8 @@ Deno.test("propagateSingleNeuronKnown", () => {
     useAverageWeight: "Yes",
     useAverageDifferenceBias: "Yes",
     generations: 0,
+    maximumWeightAdjustmentScale: 2,
+    maximumBiasAdjustmentScale: 2,
   });
 
   Deno.writeTextFileSync(

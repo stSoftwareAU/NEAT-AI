@@ -3,7 +3,6 @@ import { Node } from "../../../architecture/Node.ts";
 import {
   limitActivation,
   limitValue,
-  limitWeight,
 } from "../../../architecture/BackPropagation.ts";
 
 export class MEAN implements NodeActivationInterface {
@@ -27,7 +26,7 @@ export class MEAN implements NodeActivationInterface {
       const fromActivation = node.network.getActivation(c.from);
       const activation = limitActivation(fromActivation);
 
-      sum += activation * limitWeight(c.weight);
+      sum += activation * c.weight;
       if (Number.isFinite(sum) == false) {
         throw new Error(
           `Node: ${node.uuid} connection: ${

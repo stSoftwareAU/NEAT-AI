@@ -13,6 +13,26 @@ export interface BackPropagationOptions {
    * The higher number of generations the lower the learning rate
    */
   generations?: number;
+
+  /**
+   * The maximum +/- the bias will be adjusted in one training iteration. Default 0.1, Minimum 0.1
+   */
+  maximumBiasAdjustmentScale?: number;
+
+  /**
+   * The maximum +/- the weight will be adjusted in one training iteration. Default 0.1, Minimum 0.1
+   */
+  maximumWeightAdjustmentScale?: number;
+
+  /**
+   * The limit +/- of the bias, training will not adjust beyound this scale. Default 10, Minimum 1
+   */
+  limitBiasScale?: number;
+
+  /**
+   * The limit +/- of the weight, training will not adjust beyound this scale. Default 10, Minimum 1
+   */
+  limitWeightScale?: number;
 }
 
 export const MAX_WEIGHT = 100_000;
@@ -29,6 +49,13 @@ export class BackPropagationConfig implements BackPropagationOptions {
   public useAverageDifferenceBias: "Yes" | "No" | "Maybe";
   public generations: number;
 
+  maximumBiasAdjustmentScale: number;
+
+  maximumWeightAdjustmentScale: number;
+
+  limitBiasScale: number;
+
+  limitWeightScale: number;
   constructor(options?: BackPropagationOptions) {
     const random = Math.random() * 2 - 1;
     this.useAverageWeight = options?.useAverageWeight
@@ -53,6 +80,20 @@ export class BackPropagationConfig implements BackPropagationOptions {
       options?.generations ?? Math.floor(Math.random() * 100) + 1,
       0,
     );
+
+    this.maximumBiasAdjustmentScale = Math.max(
+      options?.maximumBiasAdjustmentScale ?? 0,
+      0.1,
+    );
+
+    this.maximumWeightAdjustmentScale = Math.max(
+      options?.maximumWeightAdjustmentScale ?? 0,
+      0.1,
+    );
+
+    this.limitBiasScale = Math.max(options?.limitBiasScale ?? 10, 1);
+
+    this.limitWeightScale = Math.max(options?.limitWeightScale ?? 10, 1);
   }
 }
 
@@ -78,7 +119,7 @@ export function adjustedBias(
         config.useAverageDifferenceBias == "Yes" ||
         Number.isFinite(unaccountedRatioBias) == false
       ) {
-        return limitBias(averageDifferenceBias);
+        return limitBias(averageDifferenceBias, node.bias, config);
       } else if (
         config.useAverageDifferenceBias == "No" ||
         (
@@ -86,12 +127,12 @@ export function adjustedBias(
             Math.abs(unaccountedRatioBias - node.bias)
         )
       ) {
-        return limitBias(unaccountedRatioBias);
+        return limitBias(unaccountedRatioBias, node.bias, config);
       } else {
-        return limitBias(averageDifferenceBias);
+        return limitBias(averageDifferenceBias, node.bias, config);
       }
     } else {
-      return limitBias(node.bias);
+      return node.bias;
     }
   }
 }
@@ -160,7 +201,7 @@ export function adjustedWeight(
       (cs.count + config.generations);
 
     if (config.useAverageWeight == "Yes") {
-      return limitWeight(averageWeight);
+      return limitWeight(averageWeight, c.weight, config);
     }
 
     const totalValue = cs.totalValue + (c.weight * config.generations);
@@ -172,31 +213,87 @@ export function adjustedWeight(
         Math.abs(averageWeight - c.weight) <=
           Math.abs(absoluteWeight - c.weight)
       ) {
-        return limitWeight(averageWeight);
+        return limitWeight(averageWeight, c.weight, config);
       } else {
-        return limitWeight(absoluteWeight);
+        return limitWeight(absoluteWeight, c.weight, config);
       }
     } else {
-      return limitWeight(absoluteWeight);
+      return limitWeight(absoluteWeight, c.weight, config);
     }
   }
 
-  return limitWeight(c.weight);
+  return c.weight;
 }
 
-export function limitBias(bias: number) {
-  if (!Number.isFinite(bias)) {
-    throw new Error(`Bias must be a finite number, got ${bias}`);
+export function limitBias(
+  targetBias: number,
+  currentBias: number,
+  config: BackPropagationConfig,
+) {
+  if (!Number.isFinite(targetBias)) {
+    throw new Error(`Bias must be a finite number, got ${targetBias}`);
   }
-  return Math.max(-MAX_BIAS, Math.min(MAX_BIAS, bias));
+  const adjustedBias = Math.max(-MAX_BIAS, Math.min(MAX_BIAS, targetBias));
+
+  const difference = adjustedBias - currentBias;
+  let limitedBias = adjustedBias;
+  if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
+    if (difference > 0) {
+      limitedBias = currentBias + config.maximumBiasAdjustmentScale;
+    } else {
+      limitedBias = currentBias - config.maximumBiasAdjustmentScale;
+    }
+  }
+
+  if (Math.abs(limitedBias) > config.limitBiasScale) {
+    if (limitedBias > 0) {
+      if (limitedBias > currentBias) {
+        limitedBias = Math.max(currentBias, config.limitBiasScale);
+      }
+    } else {
+      if (limitedBias < currentBias) {
+        limitedBias = currentBias;
+      }
+    }
+  }
+
+  return limitedBias;
 }
 
-export function limitWeight(weight: number) {
+export function limitWeight(
+  weight: number,
+  currentWeight: number,
+  config: BackPropagationConfig,
+) {
   if (Math.abs(weight) < MIN_WEIGHT) {
     return 0;
   }
 
-  return Math.max(-MAX_WEIGHT, Math.min(MAX_WEIGHT, weight));
+  const adjustedWeight = Math.max(-MAX_WEIGHT, Math.min(MAX_WEIGHT, weight));
+
+  const difference = adjustedWeight - currentWeight;
+  let limitedWeight = adjustedWeight;
+  if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
+    if (difference > 0) {
+      limitedWeight = currentWeight + config.maximumWeightAdjustmentScale;
+    } else {
+      limitedWeight = currentWeight - config.maximumWeightAdjustmentScale;
+    }
+  }
+
+  if (Math.abs(limitedWeight) > config.limitWeightScale) {
+    if (limitedWeight > 0) {
+      if (limitedWeight > currentWeight) {
+        limitedWeight = Math.max(currentWeight, config.limitWeightScale);
+      }
+    } else {
+      if (limitedWeight < currentWeight) {
+        limitedWeight = currentWeight;
+      }
+    }
+  }
+
+  return limitedWeight;
 }
 
 export function limitActivation(activation: number) {
