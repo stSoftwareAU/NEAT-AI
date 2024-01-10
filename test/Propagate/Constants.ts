@@ -118,7 +118,7 @@ Deno.test("Constants Same", () => {
 
       maximumWeightAdjustmentScale: 20,
       maximumBiasAdjustmentScale: 20,
-      learningRate: 1
+      learningRate: 1,
     });
     for (let i = 0; i < 1_000; i++) {
       const input = [-0.5, 0, 0.5];
@@ -185,6 +185,7 @@ Deno.test("Constants Known Few", () => {
 
     maximumWeightAdjustmentScale: 20,
     maximumBiasAdjustmentScale: 20,
+    learningRate: 1
   });
 
   for (let indx = 0; indx < inputs.length; indx++) {
