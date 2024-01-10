@@ -57,9 +57,14 @@ Deno.test("Generation BIAS", () => {
     throw new Error("No output node found");
   }
 
+  const config = new BackPropagationConfig({
+    generations: 0,
+    maximumBiasAdjustmentScale: 2,
+    maximumWeightAdjustmentScale: 2,
+  });
   const bias = adjustedBias(
     outputNode,
-    new BackPropagationConfig({ generations: 0 }),
+    config,
   );
 
   assertAlmostEquals(bias, 0, 0.0001);
@@ -69,6 +74,8 @@ Deno.test("Generation BIAS", () => {
     new BackPropagationConfig({
       generations: 1,
       useAverageDifferenceBias: "Yes",
+      maximumBiasAdjustmentScale: 2,
+      maximumWeightAdjustmentScale: 2,
     }),
   );
 
@@ -90,6 +97,8 @@ Deno.test("Generation Weight", () => {
     new BackPropagationConfig({
       generations: 0,
       useAverageWeight: "Yes",
+      maximumBiasAdjustmentScale: 5,
+      maximumWeightAdjustmentScale: 5,
     }),
   );
 
@@ -98,6 +107,8 @@ Deno.test("Generation Weight", () => {
   const config2 = new BackPropagationConfig({
     generations: 10,
     useAverageWeight: "Yes",
+    maximumBiasAdjustmentScale: 2,
+    maximumWeightAdjustmentScale: 2,
   });
   const w2 = adjustedWeight(
     creature.networkState,
