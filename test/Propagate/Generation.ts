@@ -61,6 +61,7 @@ Deno.test("Generation BIAS", () => {
     generations: 0,
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
+    learningRate: 1,
   });
   const bias = adjustedBias(
     outputNode,
@@ -76,6 +77,7 @@ Deno.test("Generation BIAS", () => {
       useAverageDifferenceBias: "Yes",
       maximumBiasAdjustmentScale: 2,
       maximumWeightAdjustmentScale: 2,
+      learningRate: 1,
     }),
   );
 
@@ -99,6 +101,7 @@ Deno.test("Generation Weight", () => {
       useAverageWeight: "Yes",
       maximumBiasAdjustmentScale: 5,
       maximumWeightAdjustmentScale: 5,
+      learningRate: 1,
     }),
   );
 
@@ -109,6 +112,7 @@ Deno.test("Generation Weight", () => {
     useAverageWeight: "Yes",
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
+    learningRate: 1,
   });
   const w2 = adjustedWeight(
     creature.networkState,

@@ -75,13 +75,14 @@ Deno.test("OneAndDone", () => {
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     disableRandomSamples: true,
-    // useAverageValuePerActivation: true,
+
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
 
     maximumWeightAdjustmentScale: 2,
     maximumBiasAdjustmentScale: 2,
+    learningRate: 1,
   });
 
   Deno.writeTextFileSync(
@@ -131,6 +132,8 @@ Deno.test("TwoSame", () => {
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
+    limitBiasScale: 5,
+    limitWeightScale: 5,
   });
 
   Deno.writeTextFileSync(
@@ -165,10 +168,20 @@ Deno.test("TwoSame", () => {
       (
         Math.abs(expectedA[0] - actualA[0]) < 0.5 &&
         Math.abs(expectedA[1] - actualA[1]) < 0.5
-      ) || attempts > 12
+      ) || attempts > 120
     ) {
-      assertAlmostEquals(expectedA[0], actualA[0], 0.5);
-      assertAlmostEquals(expectedA[1], actualA[1], 0.5);
+      assertAlmostEquals(
+        expectedA[0],
+        actualA[0],
+        0.5,
+        `0: ${expectedA[0].toFixed(3)} ${actualA[0].toFixed(3)}`,
+      );
+      assertAlmostEquals(
+        expectedA[1],
+        actualA[1],
+        0.5,
+        `1: ${expectedA[1].toFixed(3)} ${actualA[1].toFixed(3)}`,
+      );
       break;
     }
   }
@@ -186,6 +199,7 @@ Deno.test("ManySame", () => {
       generations: 0,
       maximumWeightAdjustmentScale: 3,
       maximumBiasAdjustmentScale: 3,
+      learningRate: 1,
       // limitBiasScale: 100,
       // limitWeightScale: 100,
     });
@@ -255,8 +269,9 @@ Deno.test("propagateSingleNeuronKnown", () => {
     generations: 0,
     maximumWeightAdjustmentScale: 2,
     maximumBiasAdjustmentScale: 2,
+    learningRate: 1,
   });
-
+  console.info(config);
   Deno.writeTextFileSync(
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),

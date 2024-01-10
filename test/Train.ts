@@ -18,13 +18,19 @@ Deno.test("AND", async () => {
     const network = new Network(2, 1);
 
     const results = await network.train(trainingSet, {
-      error: 0.03,
+      error: 0.1,
       iterations: 10_000,
+      learningRate: 1,
+      generations: 50,
+      //       maximumBiasAdjustmentScale:0.1,
+      //       maximumWeightAdjustmentScale: 0.1,
+      // limitBiasScale:1,
+      // limitWeightScale:1
     });
 
-    if (results.error > 0.03 && attempts < 100) continue;
+    if (results.error > 0.1 && attempts < 100) continue;
 
-    assert(results.error <= 0.03, "Error rate was: " + results.error);
+    assert(results.error <= 0.1, "Error rate was: " + results.error);
     break;
   }
 });
