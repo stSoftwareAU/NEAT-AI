@@ -20,6 +20,7 @@ Deno.test("AND", async () => {
     const results = await network.train(trainingSet, {
       error: 0.03,
       iterations: 10_000,
+      learningRate: 1
     });
 
     if (results.error > 0.03 && attempts < 100) continue;
