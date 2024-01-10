@@ -19,6 +19,7 @@ Deno.test("limitWeightScale", () => {
   const config = new BackPropagationConfig({
     limitWeightScale: 20,
     maximumWeightAdjustmentScale: 10,
+    learningRate: 1,
   });
   console.info(config);
   const weight = limitWeight(21, 11, config);

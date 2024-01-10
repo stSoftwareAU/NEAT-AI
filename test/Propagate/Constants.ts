@@ -55,6 +55,7 @@ Deno.test("Constants", () => {
       generations: 0,
       maximumWeightAdjustmentScale: 2,
       maximumBiasAdjustmentScale: 2,
+      learningRate: 1,
     });
     const inA = [-1, 1, 0];
     const outA1 = creature.noTraceActivate(inA);

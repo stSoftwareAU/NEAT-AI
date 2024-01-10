@@ -98,8 +98,8 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
     this.learningRate = Math.min(
       Math.max(
-        options?.learningRate ?? Math.random(),
-        0,
+        options?.learningRate ?? (100 * Math.min(Math.random(), 0.25)) / 100,
+        0.01,
       ),
       1,
     );

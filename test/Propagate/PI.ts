@@ -43,6 +43,7 @@ Deno.test("PI", () => {
     generations: 0,
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
+    learningRate: 1,
   });
   Deno.writeTextFileSync(
     ".trace/0.json",
@@ -97,6 +98,7 @@ Deno.test("PI Multiple", () => {
     generations: 0,
     maximumBiasAdjustmentScale: 5,
     maximumWeightAdjustmentScale: 5,
+    learningRate: 1,
   });
 
   Deno.writeTextFileSync(

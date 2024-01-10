@@ -19,6 +19,7 @@ Deno.test("limitBiasScale", () => {
   const config = new BackPropagationConfig({
     limitBiasScale: 20,
     maximumBiasAdjustmentScale: 10,
+    learningRate: 1,
   });
   console.info(config);
   const bias = limitBias(21, 11, config);
