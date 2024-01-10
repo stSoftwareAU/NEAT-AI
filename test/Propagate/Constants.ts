@@ -233,7 +233,7 @@ Deno.test("Constants Many", () => {
 
     maximumWeightAdjustmentScale: 20,
     maximumBiasAdjustmentScale: 20,
-    learningRate: 1
+    learningRate: 1,
   });
 
   Deno.writeTextFileSync(
