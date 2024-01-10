@@ -133,6 +133,7 @@ export async function trainDir(
         }
 
         if (len != json.length) {
+          tmpIndices.length=len; /* no need to cache what we wont use */
           indxMap.set(fn, tmpIndices);
         }
       }
