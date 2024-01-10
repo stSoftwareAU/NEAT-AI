@@ -15,32 +15,32 @@ export interface BackPropagationOptions {
   generations?: number;
 
   /**
-   * The maximum +/- the bias will be adjusted in one training iteration. Default 0.1, Minimum 0.1
+   * The learning rate. Between 0..1, Default random number.
+   */
+  learningRate?: number;
+
+  /**
+   * The maximum +/- the bias will be adjusted in one training iteration. Default 10, Minimum 0.1
    */
   maximumBiasAdjustmentScale?: number;
 
   /**
-   * The maximum +/- the weight will be adjusted in one training iteration. Default 0.1, Minimum 0.1
+   * The maximum +/- the weight will be adjusted in one training iteration. Default 10, Minimum 0.1
    */
   maximumWeightAdjustmentScale?: number;
 
   /**
-   * The limit +/- of the bias, training will not adjust beyound this scale. Default 10, Minimum 1
+   * The limit +/- of the bias, training will not adjust beyound this scale. Default 10_000, Minimum 1
    */
   limitBiasScale?: number;
 
   /**
-   * The limit +/- of the weight, training will not adjust beyound this scale. Default 10, Minimum 1
+   * The limit +/- of the weight, training will not adjust beyound this scale. Default 100_000, Minimum 1
    */
   limitWeightScale?: number;
 }
 
-export const MAX_WEIGHT = 100_000;
-export const MIN_WEIGHT = 1e-12;
-
 export const PLANK_CONSTANT = 0.000_000_1;
-
-export const MAX_BIAS = 100_000;
 
 export class BackPropagationConfig implements BackPropagationOptions {
   public useAverageWeight: "Yes" | "No" | "Maybe";
@@ -48,6 +48,8 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
   public useAverageDifferenceBias: "Yes" | "No" | "Maybe";
   public generations: number;
+
+  learningRate: number;
 
   maximumBiasAdjustmentScale: number;
 
@@ -65,8 +67,7 @@ export class BackPropagationConfig implements BackPropagationOptions {
       : random < -0.75
       ? "No"
       : "Maybe";
-    // this.useAverageValuePerActivation = options?.useAverageValuePerActivation ??
-    //   Math.random() > 0.5;
+
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
     if (
       options?.useAverageDifferenceBias
@@ -82,18 +83,26 @@ export class BackPropagationConfig implements BackPropagationOptions {
     );
 
     this.maximumBiasAdjustmentScale = Math.max(
-      options?.maximumBiasAdjustmentScale ?? 0,
-      0.1,
+      options?.maximumBiasAdjustmentScale ?? 10,
+      0,
     );
 
     this.maximumWeightAdjustmentScale = Math.max(
-      options?.maximumWeightAdjustmentScale ?? 0,
-      0.1,
+      options?.maximumWeightAdjustmentScale ?? 10,
+      0,
     );
 
-    this.limitBiasScale = Math.max(options?.limitBiasScale ?? 10, 1);
+    this.limitBiasScale = Math.max(options?.limitBiasScale ?? 10_000, 1);
 
-    this.limitWeightScale = Math.max(options?.limitWeightScale ?? 10, 1);
+    this.limitWeightScale = Math.max(options?.limitWeightScale ?? 100_000, 1);
+
+    this.learningRate = Math.min(
+      Math.max(
+        options?.learningRate ?? Math.random(),
+        0,
+      ),
+      1,
+    );
   }
 }
 
@@ -233,10 +242,13 @@ export function limitBias(
   if (!Number.isFinite(targetBias)) {
     throw new Error(`Bias must be a finite number, got ${targetBias}`);
   }
-  const adjustedBias = Math.max(-MAX_BIAS, Math.min(MAX_BIAS, targetBias));
 
-  const difference = adjustedBias - currentBias;
-  let limitedBias = adjustedBias;
+  if (Math.abs(targetBias) < PLANK_CONSTANT) {
+    return 0;
+  }
+
+  const difference = config.learningRate * (targetBias - currentBias);
+  let limitedBias = currentBias + difference;
   if (Math.abs(limitedBias) <= config.limitBiasScale) {
     if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
       if (difference > 0) {
@@ -263,18 +275,16 @@ export function limitBias(
 }
 
 export function limitWeight(
-  weight: number,
+  targetWeight: number,
   currentWeight: number,
   config: BackPropagationConfig,
 ) {
-  if (Math.abs(weight) < MIN_WEIGHT) {
+  if (Math.abs(targetWeight) < PLANK_CONSTANT) {
     return 0;
   }
 
-  const adjustedWeight = Math.max(-MAX_WEIGHT, Math.min(MAX_WEIGHT, weight));
-
-  const difference = adjustedWeight - currentWeight;
-  let limitedWeight = adjustedWeight;
+  const difference = config.learningRate * (targetWeight - currentWeight);
+  let limitedWeight = currentWeight + difference;
   if (Math.abs(limitedWeight) <= config.limitWeightScale) {
     if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
       if (difference > 0) {

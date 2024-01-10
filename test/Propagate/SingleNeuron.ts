@@ -131,6 +131,8 @@ Deno.test("TwoSame", () => {
     useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
+    limitBiasScale: 5,
+    limitWeightScale: 5,
   });
 
   Deno.writeTextFileSync(
@@ -165,10 +167,20 @@ Deno.test("TwoSame", () => {
       (
         Math.abs(expectedA[0] - actualA[0]) < 0.5 &&
         Math.abs(expectedA[1] - actualA[1]) < 0.5
-      ) || attempts > 12
+      ) || attempts > 120
     ) {
-      assertAlmostEquals(expectedA[0], actualA[0], 0.5);
-      assertAlmostEquals(expectedA[1], actualA[1], 0.5);
+      assertAlmostEquals(
+        expectedA[0],
+        actualA[0],
+        0.5,
+        `0: ${expectedA[0].toFixed(3)} ${actualA[0].toFixed(3)}`,
+      );
+      assertAlmostEquals(
+        expectedA[1],
+        actualA[1],
+        0.5,
+        `1: ${expectedA[1].toFixed(3)} ${actualA[1].toFixed(3)}`,
+      );
       break;
     }
   }
