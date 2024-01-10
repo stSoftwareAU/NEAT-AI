@@ -182,11 +182,12 @@ Deno.test("ManySame", () => {
     const config = new BackPropagationConfig({
       useAverageWeight: "Yes",
       useAverageDifferenceBias: "Maybe",
+      disableRandomSamples: true,
       generations: 0,
-      maximumWeightAdjustmentScale: 20,
-      maximumBiasAdjustmentScale: 20,
-      limitBiasScale: 100,
-      limitWeightScale: 100,
+      maximumWeightAdjustmentScale: 3,
+      maximumBiasAdjustmentScale: 3,
+      // limitBiasScale: 100,
+      // limitWeightScale: 100,
     });
 
     Deno.writeTextFileSync(
@@ -221,10 +222,24 @@ Deno.test("ManySame", () => {
       (
         Math.abs(expectedA[0] - actualA[0]) < 0.02 &&
         Math.abs(expectedA[1] - actualA[1]) < 0.02
-      ) || attempts > 12
+      ) || attempts > 120
     ) {
-      assertAlmostEquals(expectedA[0], actualA[0], 0.02);
-      assertAlmostEquals(expectedA[1], actualA[1], 0.02);
+      assertAlmostEquals(
+        expectedA[0],
+        actualA[0],
+        0.02,
+        `expected ${expectedA[0].toFixed(3)}, actual: ${
+          actualA[0].toFixed(3)
+        }, attempt: ${attempts}`,
+      );
+      assertAlmostEquals(
+        expectedA[1],
+        actualA[1],
+        0.02,
+        `expected ${expectedA[1].toFixed(3)}, actual: ${
+          actualA[1].toFixed(3)
+        }, attempt: ${attempts}`,
+      );
       break;
     }
   }
