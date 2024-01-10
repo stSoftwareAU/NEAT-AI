@@ -24,3 +24,5 @@ This project is designed to be used in a DenoJS environment. Please refer to the
 ## Contributions
 
 Contributions are welcome. Please submit a pull request or open an issue to discuss potential changes/additions.
+
+[![Built with the Deno Standard Library](https://raw.githubusercontent.com/denoland/deno_std/main/badge.svg)](https://deno.land/std)
