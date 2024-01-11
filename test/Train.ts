@@ -19,7 +19,7 @@ Deno.test("AND", async () => {
     const network = new Network(2, 1);
 
     const results = await train(network, trainingSet, {
-      error: 0.1,
+      targetError: 0.1,
       iterations: 10_000,
       learningRate: 1,
       generations: 50,
@@ -53,7 +53,7 @@ Deno.test("MT", async () => {
     });
 
     const results = await train(network, trainingSet, {
-      error: 0.03,
+      targetError: 0.03,
       iterations: 10000,
     });
 
@@ -88,7 +88,7 @@ Deno.test("train-XOR", async () => {
   );
   for (let attempts = 0; true; attempts++) {
     const results = await train(network, trainingSet, {
-      error: 0.03,
+      targetError: 0.03,
       iterations: 10000,
     });
     Deno.writeTextFileSync(
@@ -125,7 +125,7 @@ Deno.test("XNOR", async () => {
     });
 
     const results = await train(network, trainingSet, {
-      error: 0.03,
+      targetError: 0.03,
       iterations: 10_000,
     });
 

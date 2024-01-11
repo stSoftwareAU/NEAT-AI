@@ -53,7 +53,7 @@ Deno.test("ifPropagation", async () => {
 
   const options: TrainOptions = {
     iterations: 1,
-    error: 0,
+    targetError: 0,
   };
   const network = Network.fromJSON(json);
 

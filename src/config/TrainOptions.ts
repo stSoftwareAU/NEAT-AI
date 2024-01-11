@@ -4,8 +4,8 @@ export interface TrainOptions extends BackPropagationOptions {
   /** If set to n, will output the training status every n iterations (log : 1 will log every iteration) */
   log?: number;
 
-  /** The target error to reach, once the network falls below this error, the process is stopped. Default: 0.03 */
-  error?: number;
+  /** The target error to reach, once the network falls below this error, the process is stopped. Default: 0.05, Range 0..1 */
+  targetError?: number;
 
   /** The cost function to use. See cost methods. Default: methods.cost.MSE */
   cost?: string;

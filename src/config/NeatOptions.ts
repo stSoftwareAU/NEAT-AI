@@ -10,9 +10,6 @@ import { SelectionInterface } from "../methods/Selection.ts";
 import { TrainOptions } from "./TrainOptions.ts";
 
 export interface NeatOptions extends TrainOptions {
-  /** Target error 0 to 1 */
-  targetError?: number;
-
   costName?: string;
   /** How many new links to create during the creative thinking phase. default 12 */
   creativeThinkingConnectionCount?: number;
