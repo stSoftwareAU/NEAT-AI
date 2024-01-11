@@ -21,6 +21,7 @@ import {
   ResponseData,
   WorkerHandler,
 } from "./multithreading/workers/WorkerHandler.ts";
+import { TrainOptions } from "./config/TrainOptions.ts";
 
 class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
@@ -234,7 +235,14 @@ export class Neat {
       );
     }
 
-    const p = w.train(creature, this.config).then(async (r) => {
+    const trainOptions: TrainOptions = {
+      cost: this.config.costName,
+      log: this.config.log,
+      traceStore: this.config.traceStore,
+      iterations: 1,
+      targetError: this.config.targetError,
+    };
+    const p = w.train(creature, trainOptions).then(async (r) => {
       this.trainingComplete.push(r);
 
       this.trainingInProgress.delete(uuid);

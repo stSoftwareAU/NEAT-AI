@@ -51,9 +51,6 @@ export interface NeatOptions extends TrainOptions {
   /** the number of training per generation. default: 1  */
   trainPerGen?: number;
 
-  /** The directory to store the networks trace information (optional) */
-  traceStore?: string;
-
   /** Tne maximum number of connections */
   maxConns?: number;
 
