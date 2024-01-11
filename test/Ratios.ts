@@ -1,6 +1,6 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -28,7 +28,7 @@ Deno.test("hypotenuse", async () => {
   let errorPercent = 0;
   let answer = 0;
   for (let attempts = 0; attempts < 12; attempts++) {
-    const network = new Network(2, 1, {
+    const network = new Creature(2, 1, {
       layers: [
         { count: 2 },
       ],

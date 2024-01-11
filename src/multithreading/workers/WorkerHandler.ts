@@ -1,5 +1,5 @@
-import { Network } from "../../architecture/Network.ts";
-import { NetworkInternal } from "../../architecture/NetworkInterfaces.ts";
+import { Creature } from "../../Creature.ts";
+import { CreatureInternal } from "../../architecture/CreatureInterfaces.ts";
 import { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
 
@@ -166,11 +166,11 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  evaluate(network: NetworkInternal, feedbackLoop: boolean) {
+  evaluate(network: CreatureInternal, feedbackLoop: boolean) {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        network: JSON.stringify((network as Network).internalJSON()),
+        network: JSON.stringify((network as Creature).internalJSON()),
         feedbackLoop,
       },
     };
@@ -178,8 +178,8 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  train(network: NetworkInternal, options: TrainOptions) {
-    const json = (network as Network).exportJSON();
+  train(network: CreatureInternal, options: TrainOptions) {
+    const json = (network as Creature).exportJSON();
 
     delete json.tags;
 

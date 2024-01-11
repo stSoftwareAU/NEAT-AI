@@ -2,14 +2,14 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("if-bias", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "input", index: 0 },
       { type: "input", index: 1 },
@@ -31,7 +31,7 @@ Deno.test("if-bias", () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   const tmpJSON = JSON.stringify(network.exportJSON(), null, 2);
 
   console.log(tmpJSON);
@@ -50,7 +50,7 @@ Deno.test("if-bias", () => {
 });
 
 Deno.test("if/Else", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
@@ -70,11 +70,11 @@ Deno.test("if/Else", () => {
     input: 3,
     output: 1,
   };
-  const network1 = Network.fromJSON(json);
+  const network1 = Creature.fromJSON(json);
   const tmpJSON = JSON.stringify(network1.exportJSON(), null, 2);
 
   console.log(tmpJSON);
-  const network2 = Network.fromJSON(JSON.parse(tmpJSON));
+  const network2 = Creature.fromJSON(JSON.parse(tmpJSON));
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;
@@ -91,7 +91,7 @@ Deno.test("if/Else", () => {
 });
 
 Deno.test("if-fix", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
@@ -113,7 +113,7 @@ Deno.test("if-fix", () => {
     input: 5,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
 
   for (let i = 0; i < 10; i++) {
     network.subConnection();
@@ -127,7 +127,7 @@ Deno.test("if-fix", () => {
     network.subConnection();
   }
   network.fix();
-  const network2 = Network.fromJSON(network.exportJSON());
+  const network2 = Creature.fromJSON(network.exportJSON());
   network2.validate();
 
   const toList = network.toConnections(5);

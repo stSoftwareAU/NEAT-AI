@@ -1,10 +1,10 @@
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 import { ConnectionInternal } from "../src/architecture/ConnectionInterfaces.ts";
 
 Deno.test("useUUIDinsteadOfPosition", () => {
-  const creature: NetworkInternal = {
+  const creature: CreatureInternal = {
     uuid: "60d9fde3-465a-4022-956a-c425fc8e62cc",
     nodes: [
       {
@@ -51,7 +51,7 @@ Deno.test("useUUIDinsteadOfPosition", () => {
     score: -0.1111,
   };
 
-  const n1 = Network.fromJSON(creature);
+  const n1 = Creature.fromJSON(creature);
   const exported = n1.exportJSON();
 
   exported.nodes.forEach((n) => {

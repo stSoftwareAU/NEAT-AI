@@ -1,31 +1,28 @@
-import { Fitness } from "./architecture/Fitness.ts";
+import { Fitness } from "./Fitness.ts";
 
 import { blue } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
-import { makeElitists } from "../src/architecture/elitism.ts";
-import { addTag, getTag, removeTag } from "../src/tags/TagsInterface.ts";
-import { fineTuneImprovement } from "./architecture/FineTune.ts";
-import { Network } from "./architecture/Network.ts";
-import {
-  NetworkExport,
-  NetworkInternal,
-} from "./architecture/NetworkInterfaces.ts";
-import { NetworkUtil } from "./architecture/NetworkUtils.ts";
-import { Offspring } from "./architecture/Offspring.ts";
+import { makeElitists } from "./ElitismUtils.ts";
+import { addTag, getTag, removeTag } from "../tags/TagsInterface.ts";
+import { fineTuneImprovement } from "./FineTune.ts";
+import { Creature } from "../Creature.ts";
+import { CreatureExport, CreatureInternal } from "./CreatureInterfaces.ts";
+import { CreatureUtil } from "./CreatureUtils.ts";
+import { Offspring } from "./Offspring.ts";
 
-import { NeatOptions } from "./config/NeatOptions.ts";
-import { Selection, SelectionInterface } from "./methods/Selection.ts";
-import { Mutation, MutationInterface } from "./methods/mutation.ts";
+import { NeatOptions } from "../config/NeatOptions.ts";
+import { Selection, SelectionInterface } from "../methods/Selection.ts";
+import { Mutation, MutationInterface } from "../methods/mutation.ts";
 import {
   ResponseData,
   WorkerHandler,
-} from "./multithreading/workers/WorkerHandler.ts";
-import { TrainOptions } from "./config/TrainOptions.ts";
+} from "../multithreading/workers/WorkerHandler.ts";
+import { TrainOptions } from "../config/TrainOptions.ts";
 
 class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
-  creatures: NetworkInternal[] | NetworkExport[];
+  creatures: CreatureInternal[] | CreatureExport[];
 
   /** How many new links to create during the creative thinking phase. */
   creativeThinkingConnectionCount: number;
@@ -161,7 +158,7 @@ export class Neat {
   readonly workers: WorkerHandler[];
   readonly fitness: Fitness;
 
-  population: Network[];
+  population: Creature[];
 
   constructor(
     input: number,
@@ -185,7 +182,7 @@ export class Neat {
     // Initialize the genomes
     this.population = [];
     this.config.creatures.forEach((c) => {
-      const n = Network.fromJSON(c);
+      const n = Creature.fromJSON(c);
       this.population.push(n);
     });
   }
@@ -214,8 +211,8 @@ export class Neat {
 
   private trainingComplete: ResponseData[] = [];
 
-  async scheduleTraining(creature: NetworkInternal) {
-    await NetworkUtil.makeUUID(creature as Network);
+  async scheduleTraining(creature: CreatureInternal) {
+    await CreatureUtil.makeUUID(creature as Creature);
     let w: WorkerHandler;
 
     for (let attempts = 0; true; attempts++) {
@@ -255,10 +252,10 @@ export class Neat {
 
       if (this.config.traceStore && r.train) {
         if (r.train.trace) {
-          const traceNetwork = Network.fromJSON(
+          const traceNetwork = Creature.fromJSON(
             JSON.parse(r.train.trace),
           );
-          await NetworkUtil.makeUUID(traceNetwork);
+          await CreatureUtil.makeUUID(traceNetwork);
           ensureDirSync(this.config.traceStore);
           Deno.writeTextFileSync(
             `${this.config.traceStore}/${traceNetwork.uuid}.json`,
@@ -274,17 +271,17 @@ export class Neat {
   }
 
   async checkAndAdd(
-    fineTunePopulation: Network[],
+    fineTunePopulation: Creature[],
     tunedUUID: Set<string>,
     score: number,
-    network?: Network,
+    network?: Creature,
   ) {
     if (network) {
       const previousScoreTxt = getTag(network, "score");
       if (previousScoreTxt) {
         const previousScore = parseFloat(previousScoreTxt);
         if (previousScore < score) {
-          const uuid = await NetworkUtil.makeUUID(network);
+          const uuid = await CreatureUtil.makeUUID(network);
           if (!tunedUUID.has(uuid)) {
             tunedUUID.add(uuid);
             fineTunePopulation.push(network);
@@ -295,14 +292,14 @@ export class Neat {
   }
 
   async makeFineTunePopulation(
-    fittest: Network,
-    previousFittest: Network | undefined,
-    elitists: Network[],
+    fittest: Creature,
+    previousFittest: Creature | undefined,
+    elitists: Creature[],
   ) {
-    const tmpFineTunePopulation: Network[] = [];
+    const tmpFineTunePopulation: Creature[] = [];
     const tunedUUID = new Set<string>();
 
-    tunedUUID.add(await NetworkUtil.makeUUID(fittest));
+    tunedUUID.add(await CreatureUtil.makeUUID(fittest));
 
     const score = fittest.score ? fittest.score : 0;
     await this.checkAndAdd(
@@ -333,7 +330,7 @@ export class Neat {
       ? previousFittest.uuid != tmpPreviousFittest.uuid
       : false;
 
-    let fineTunedPopulation: Network[] = [];
+    let fineTunedPopulation: Creature[] = [];
     if (!tmpPreviousFittest) {
       console.warn("Failed to find previous fittest creature");
     } else {
@@ -387,7 +384,7 @@ export class Neat {
   /**
    * Evaluates, selects, breeds and mutates population
    */
-  async evolve(previousFittest?: Network) {
+  async evolve(previousFittest?: Creature) {
     await this.fitness.calculate(this.population);
 
     /* Elitism: we need at least 2 on the first run */
@@ -401,8 +398,8 @@ export class Neat {
     );
     const tmpFittest = elitists[0];
 
-    const fittest = Network.fromJSON(
-      (tmpFittest as Network).internalJSON(),
+    const fittest = Creature.fromJSON(
+      (tmpFittest as Creature).internalJSON(),
       this.config.debug,
     ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
@@ -447,7 +444,7 @@ export class Neat {
         );
       }
       const n = elitists[0];
-      const creativeThinking = Network.fromJSON((n as Network).exportJSON());
+      const creativeThinking = Creature.fromJSON((n as Creature).exportJSON());
       const weightScale = 1 / creativeThinking.connections.length;
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
         creativeThinking.addConnection(
@@ -512,7 +509,7 @@ export class Neat {
     // Replace the old population with the new population
     this.mutate(newPopulation);
 
-    const trainedPopulation: Network[] = [];
+    const trainedPopulation: Creature[] = [];
 
     for (let i = this.trainingComplete.length; i--;) {
       const r = this.trainingComplete[i];
@@ -532,8 +529,7 @@ export class Neat {
           addTag(json, "approach", "trained");
           addTag(json, "trainID", r.train.ID);
 
-          trainedPopulation.push(Network
-            .fromJSON(json, this.config.debug));
+          trainedPopulation.push(Creature.fromJSON(json, this.config.debug));
         }
       } else {
         throw new Error(`No train result`);
@@ -542,7 +538,7 @@ export class Neat {
     this.trainingComplete.length = 0;
 
     this.population = [
-      ...(elitists as Network[]),
+      ...(elitists as Creature[]),
       ...trainedPopulation,
       ...fineTunedPopulation,
       ...newPopulation,
@@ -575,12 +571,12 @@ export class Neat {
     }
   }
 
-  async writeScores(creatures: Network[]) {
+  async writeScores(creatures: Creature[]) {
     if (this.config.experimentStore) {
       for (let i = creatures.length; i--;) {
         const creature = creatures[i];
 
-        const name = await NetworkUtil.makeUUID(creature);
+        const name = await CreatureUtil.makeUUID(creature);
         ensureDirSync(
           this.config.experimentStore + "/score/" +
             name.substring(0, 3),
@@ -598,10 +594,10 @@ export class Neat {
   /**
    * Mutates the given (or current) population
    */
-  mutate(creatures: NetworkInternal[]) {
+  mutate(creatures: CreatureInternal[]) {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
-        const creature = creatures[i] as Network;
+        const creature = creatures[i] as Creature;
         if (this.config.debug) {
           creature.validate();
         }
@@ -628,7 +624,7 @@ export class Neat {
   /**
    * Create the initial pool of genomes
    */
-  async populatePopulation(network: Network) {
+  async populatePopulation(network: Creature) {
     if (!network) {
       throw new Error(`Network mandatory`);
     }
@@ -637,7 +633,7 @@ export class Neat {
       network.validate();
     }
     while (this.population.length < this.config.populationSize - 1) {
-      const clonedCreature = Network.fromJSON(
+      const clonedCreature = Creature.fromJSON(
         network.internalJSON(),
         this.config.debug,
       );
@@ -654,7 +650,7 @@ export class Neat {
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
-  offspring(): Network {
+  offspring(): Creature {
     const p1 = this.getParent();
 
     if (p1 === undefined) {
@@ -668,7 +664,7 @@ export class Neat {
         console.info(pos, this.population[pos] ? true : false);
       }
       for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return (this.population[pos] as Network);
+        if (this.population[pos]) return (this.population[pos] as Creature);
       }
       throw new Error(`Extinction event`);
     }
@@ -690,7 +686,7 @@ export class Neat {
         console.info(pos, this.population[pos] ? true : false);
       }
       for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return (this.population[pos] as Network);
+        if (this.population[pos]) return (this.population[pos] as Creature);
       }
 
       throw new Error(`Extinction event`);
@@ -704,7 +700,7 @@ export class Neat {
     return creature;
   }
 
-  async deDuplicate(creatures: Network[]) {
+  async deDuplicate(creatures: Creature[]) {
     if (creatures.length > this.config.populationSize + 1) {
       console.info(
         `Over populated ${creatures.length} expected ${this.config.populationSize}`,
@@ -717,7 +713,7 @@ export class Neat {
      */
     for (let i = 0; i < creatures.length; i++) {
       const p = creatures[i];
-      const key = await NetworkUtil.makeUUID(p);
+      const key = await CreatureUtil.makeUUID(p);
 
       let duplicate = unique.has(key);
       if (!duplicate && i > this.config.elitism) {
@@ -736,7 +732,7 @@ export class Neat {
             this.mutate(tmpPopulation);
 
             const p2 = tmpPopulation[0];
-            const key2 = await NetworkUtil.makeUUID(p2);
+            const key2 = await CreatureUtil.makeUUID(p2);
 
             let duplicate2 = unique.has(key2);
             if (!duplicate2 && i > this.config.elitism) {
@@ -758,7 +754,7 @@ export class Neat {
   /**
    * Selects a random mutation method for a genome according to the parameters
    */
-  selectMutationMethod(creature: NetworkInternal) {
+  selectMutationMethod(creature: CreatureInternal) {
     const mutationMethods = this.config
       .mutation;
 
@@ -789,7 +785,7 @@ export class Neat {
    * Gets a genome based on the selection function
    * @return {Network} genome
    */
-  getParent(): Network {
+  getParent(): Creature {
     switch (this.config.selection) {
       case Selection.POWER: {
         const r = Math.random();
@@ -798,7 +794,7 @@ export class Neat {
             this.population.length,
         );
 
-        return this.population[index] as Network;
+        return this.population[index] as Creature;
       }
       case Selection.FITNESS_PROPORTIONATE: {
         /**
@@ -827,7 +823,7 @@ export class Neat {
           if (genome.score !== undefined) {
             value += genome.score + adjustFitness;
             if (random < value) {
-              return genome as Network;
+              return genome as Creature;
             }
           }
         }
@@ -836,7 +832,7 @@ export class Neat {
         return this
           .population[
             Math.floor(Math.random() * this.population.length)
-          ] as Network;
+          ] as Creature;
       }
       case Selection.TOURNAMENT: {
         if (Selection.TOURNAMENT.size > this.config.populationSize) {

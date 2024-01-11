@@ -2,8 +2,8 @@ import { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 // import { TrainOptions } from "../../config/TrainOptions.ts";
 import { CostInterface, Costs } from "../../Costs.ts";
-import { Network } from "../../architecture/Network.ts";
-import { trainDir } from "../../architecture/Train.ts";
+import { Creature } from "../../Creature.ts";
+import { trainDir } from "../../architecture/Training.ts";
 
 export class WorkerProcessor {
   private costName?: string;
@@ -38,7 +38,7 @@ export class WorkerProcessor {
       if (!this.dataSetDir) throw new Error("no data directory");
       if (!this.cost) throw new Error("no cost");
 
-      const network = Network.fromJSON(JSON.parse(data.evaluate.network));
+      const network = Creature.fromJSON(JSON.parse(data.evaluate.network));
       /* release some memory*/
       data.evaluate.network = "";
       const result = network.evaluateDir(
@@ -57,7 +57,7 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
-      const network = Network.fromJSON(
+      const network = Creature.fromJSON(
         JSON.parse(data.train.network),
         data.debug,
       );
@@ -66,14 +66,7 @@ export class WorkerProcessor {
 
       if (!this.dataSetDir) throw new Error("No data dir");
 
-      // if (!this.cost) throw new Error("no cost");
-
-      // const trainOptions: TrainOptions = {
-      //   cost: this.costName,
-      //   iterations: 1,
-      //   log: 1,
-      // };
-
+      network.validate();
       const result = await trainDir(
         network,
         this.dataSetDir,

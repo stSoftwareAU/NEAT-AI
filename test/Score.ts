@@ -2,11 +2,11 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 import { calculate, valuePenalty } from "../src/architecture/Score.ts";
 
 function setupCreature() {
-  return Network.fromJSON(
+  return Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/large.json")),
   );
 }

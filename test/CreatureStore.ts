@@ -1,12 +1,12 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("storePopulation", async () => {
-  const network = new Network(2, 1, {
+  const network = new Creature(2, 1, {
     layers: [
       { count: 2 },
     ],

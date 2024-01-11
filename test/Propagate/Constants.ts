@@ -3,13 +3,13 @@ import {
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { Network } from "../../src/architecture/Network.ts";
-import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 function makeCreature() {
-  const creatureJSON: NetworkExport = {
+  const creatureJSON: CreatureExport = {
     nodes: [
       {
         type: "output",
@@ -26,7 +26,7 @@ function makeCreature() {
     input: 3,
     output: 1,
   };
-  const creature = Network.fromJSON(creatureJSON);
+  const creature = Creature.fromJSON(creatureJSON);
   creature.validate();
 
   return creature;

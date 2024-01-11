@@ -1,7 +1,7 @@
 import { assert, fail } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { train } from "../src/architecture/Train.ts";
+import { Creature } from "../src/Creature.ts";
+import { train } from "../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -16,7 +16,7 @@ Deno.test("AND", async () => {
   ];
 
   for (let attempts = 0; true; attempts++) {
-    const network = new Network(2, 1);
+    const network = new Creature(2, 1);
 
     const results = await train(network, trainingSet, {
       targetError: 0.1,
@@ -46,7 +46,7 @@ Deno.test("MT", async () => {
   ];
 
   for (let attempts = 0; true; attempts++) {
-    const network = new Network(2, 1, {
+    const network = new Creature(2, 1, {
       layers: [
         { count: 5 },
       ],
@@ -74,7 +74,7 @@ Deno.test("train-XOR", async () => {
     { input: [1, 0], output: [1] },
     { input: [1, 1], output: [0] },
   ];
-  const network = new Network(2, 1, {
+  const network = new Creature(2, 1, {
     layers: [
       { count: 5 },
     ],
@@ -118,7 +118,7 @@ Deno.test("XNOR", async () => {
   ];
 
   for (let attempts = 0; attempts < 12; attempts++) {
-    const network = new Network(2, 1, {
+    const network = new Creature(2, 1, {
       layers: [
         { count: 5 },
       ],

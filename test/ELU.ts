@@ -1,13 +1,13 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { ELU } from "../src/methods/activations/types/ELU.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("ELU", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0, type: "output", squash: "ELU", index: 3 },
     ],
@@ -17,7 +17,7 @@ Deno.test("ELU", () => {
     input: 1,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   const activation = new ELU();
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 4 - 2;

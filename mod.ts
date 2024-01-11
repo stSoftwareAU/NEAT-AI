@@ -4,13 +4,12 @@
  * @module
  */
 
-export { Network } from "./src/architecture/Network.ts";
+export { Creature } from "./src/Creature.ts";
 export type {
-  NetworkExport,
-  NetworkInternal,
-  NetworkTrace,
-} from "./src/architecture/NetworkInterfaces.ts";
-export { NetworkUtil } from "./src/architecture/NetworkUtils.ts";
+  CreatureExport,
+  CreatureTrace,
+} from "./src/architecture/CreatureInterfaces.ts";
+export { CreatureUtil } from "./src/architecture/CreatureUtils.ts";
 export type { NeatOptions } from "./src/config/NeatOptions.ts";
 export { Selection } from "./src/methods/Selection.ts";
 export { Mutation } from "./src/methods/mutation.ts";

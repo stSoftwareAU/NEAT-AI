@@ -6,13 +6,13 @@ import {
 } from "./ConnectionInterfaces.ts";
 import { NodeExport, NodeInternal, NodeTrace } from "./NodeInterfaces.ts";
 
-interface NetworkCommon extends TagsInterface {
+interface CreatureCommon extends TagsInterface {
   /* ID of this network */
   input: number;
   output: number;
 }
 
-export interface NetworkInternal extends NetworkCommon {
+export interface CreatureInternal extends CreatureCommon {
   uuid?: string;
   connections: ConnectionInternal[];
 
@@ -22,13 +22,13 @@ export interface NetworkInternal extends NetworkCommon {
   score?: number;
 }
 
-export interface NetworkExport extends NetworkCommon {
+export interface CreatureExport extends CreatureCommon {
   connections: ConnectionExport[];
 
   nodes: NodeExport[];
 }
 
-export interface NetworkTrace extends NetworkExport {
+export interface CreatureTrace extends CreatureExport {
   connections: ConnectionTrace[];
 
   nodes: NodeTrace[];

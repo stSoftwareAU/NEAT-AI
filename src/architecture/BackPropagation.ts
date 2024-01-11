@@ -1,6 +1,6 @@
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
-import { ConnectionState, NetworkState } from "./NetworkState.ts";
+import { ConnectionState, CreatureState } from "./CreatureState.ts";
 import { Node } from "./Node.ts";
 
 export interface BackPropagationOptions {
@@ -193,7 +193,7 @@ export function adjustWeight(
 }
 
 export function adjustedWeight(
-  networkState: NetworkState,
+  networkState: CreatureState,
   c: ConnectionInternal,
   config: BackPropagationConfig,
 ) {

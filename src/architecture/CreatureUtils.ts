@@ -1,11 +1,11 @@
 import { generate as generateV5 } from "https://deno.land/std@0.211.0/uuid/v5.ts";
-import { Network } from "./Network.ts";
+import { Creature } from "../Creature.ts";
 
-export class NetworkUtil {
+export class CreatureUtil {
   private static TE = new TextEncoder();
   private static NAMESPACE = "843dc7df-f60b-47f6-823d-2992e0a4295c";
 
-  static async makeUUID(creature: Network) {
+  static async makeUUID(creature: Creature) {
     if (creature.uuid) {
       return creature.uuid;
     }
@@ -33,9 +33,9 @@ export class NetworkUtil {
 
     const txt = JSON.stringify(tmp);
 
-    const utf8 = NetworkUtil.TE.encode(txt);
+    const utf8 = CreatureUtil.TE.encode(txt);
 
-    const uuid: string = await generateV5(NetworkUtil.NAMESPACE, utf8);
+    const uuid: string = await generateV5(CreatureUtil.NAMESPACE, utf8);
     creature.uuid = uuid;
     return uuid;
   }

@@ -5,7 +5,7 @@ import {
   removeTag,
   TagsInterface,
 } from "../src/tags/TagsInterface.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 import {
   assert,
   assertEquals,
@@ -42,14 +42,14 @@ Deno.test("tags", () => {
 });
 
 Deno.test("keep", () => {
-  const n = new Network(2, 2);
+  const n = new Creature(2, 2);
 
   addTag(n, "hello", "world");
 
   assert(getTag(n, "hello") == "world", "Expecting a value.");
   const json = n.exportJSON();
 
-  const n2 = Network.fromJSON(json);
+  const n2 = Creature.fromJSON(json);
 
   assert(getTag(n2, "hello") == "world", "Expecting a value.");
 

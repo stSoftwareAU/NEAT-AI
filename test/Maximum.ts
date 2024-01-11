@@ -1,11 +1,11 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Maximum", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
@@ -20,7 +20,7 @@ Deno.test("Maximum", () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;
@@ -49,7 +49,7 @@ Deno.test("Maximum", () => {
 });
 
 Deno.test("Maximum-fix", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
@@ -62,7 +62,7 @@ Deno.test("Maximum-fix", () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
 
   network.fix();
   const toList = network.toConnections(3);

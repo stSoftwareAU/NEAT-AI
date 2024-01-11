@@ -1,18 +1,18 @@
 import { addTag, getTag } from "../tags/TagsInterface.ts";
-import { Network } from "./Network.ts";
-import { NetworkInternal } from "./NetworkInterfaces.ts";
-import { NetworkUtil } from "./NetworkUtils.ts";
+import { Creature } from "../Creature.ts";
+import { CreatureInternal } from "./CreatureInterfaces.ts";
+import { CreatureUtil } from "./CreatureUtils.ts";
 import { NodeExport } from "./NodeInterfaces.ts";
 import { blue, bold, cyan } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneRandomize(
-  fittest: NetworkInternal,
-  previousFittest: NetworkInternal,
+  fittest: CreatureInternal,
+  previousFittest: CreatureInternal,
   oldScore: string,
 ) {
-  const previousJSON = (previousFittest as Network).exportJSON();
-  const fittestJSON = (fittest as Network).exportJSON();
+  const previousJSON = (previousFittest as Creature).exportJSON();
+  const fittestJSON = (fittest as Creature).exportJSON();
 
   const uuidNodeMap = new Map<string, NodeExport>();
 
@@ -71,7 +71,7 @@ function tuneRandomize(
     };
   }
 
-  const all = Network.fromJSON(fittestJSON);
+  const all = Creature.fromJSON(fittestJSON);
   addTag(all, "approach", "fine");
   addTag(
     all,
@@ -90,8 +90,8 @@ function tuneRandomize(
 }
 
 export async function fineTuneImprovement(
-  fittest: NetworkInternal,
-  previousFittest: NetworkInternal | null,
+  fittest: CreatureInternal,
+  previousFittest: CreatureInternal | null,
   popSize = 10,
   showMessage = true,
 ) {
@@ -160,14 +160,14 @@ export async function fineTuneImprovement(
       );
     }
   }
-  await NetworkUtil.makeUUID(fittest as Network);
+  await CreatureUtil.makeUUID(fittest as Creature);
   const UUIDs = new Set<string>();
   UUIDs.add(fittest.uuid ? fittest.uuid : "");
 
-  const fineTuned: Network[] = [];
-  const compactNetwork = (fittest as Network).compact();
+  const fineTuned: Creature[] = [];
+  const compactNetwork = (fittest as Creature).compact();
   if (compactNetwork != null) {
-    await NetworkUtil.makeUUID(compactNetwork);
+    await CreatureUtil.makeUUID(compactNetwork);
     const uuid = compactNetwork.uuid ? compactNetwork.uuid : "";
     if (!UUIDs.has(uuid)) {
       UUIDs.add(uuid);
@@ -178,7 +178,7 @@ export async function fineTuneImprovement(
   for (let attempt = 0; attempt < popSize; attempt++) {
     const resultRandomize = tuneRandomize(fittest, previousFittest, fScoreTxt);
     if (resultRandomize.tuned) {
-      await NetworkUtil.makeUUID(resultRandomize.tuned);
+      await CreatureUtil.makeUUID(resultRandomize.tuned);
       const uuid = resultRandomize.tuned.uuid ? resultRandomize.tuned.uuid : "";
       if (!UUIDs.has(uuid)) {
         UUIDs.add(uuid);

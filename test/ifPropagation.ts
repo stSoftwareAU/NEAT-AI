@@ -1,15 +1,15 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
 import { TrainOptions } from "../src/config/TrainOptions.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
-import { train } from "../src/architecture/Train.ts";
+import { train } from "../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("ifPropagation", async () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "input", index: 0 },
       { type: "input", index: 1 },
@@ -55,7 +55,7 @@ Deno.test("ifPropagation", async () => {
     iterations: 1,
     targetError: 0,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
 
   const result = await train(network, ts, options);
 

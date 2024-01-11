@@ -4,7 +4,7 @@ import {
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
@@ -13,13 +13,13 @@ import { TrainOptions } from "../src/config/TrainOptions.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 import { addTag, getTag } from "../src/tags/TagsInterface.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
-import { train } from "../src/architecture/Train.ts";
+import { train } from "../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 /* Functions used in the testing process */
 function checkMutation(method: { name: string }) {
-  const network = new Network(2, 2, {
+  const network = new Creature(2, 2, {
     layers: [
       { count: 4 },
       { count: 4 },
@@ -68,7 +68,7 @@ async function evolveSet(
   iterations: number,
   error: number,
 ) {
-  const network = new Network(set[0].input.length, set[0].output.length, {
+  const network = new Creature(set[0].input.length, set[0].output.length, {
     layers: [
       { count: 5 },
     ],
@@ -101,16 +101,16 @@ async function evolveSet(
         JSON.stringify(network.exportJSON(), null, 2),
       );
       // console.log(dr.input);
-      const n0 = Network.fromJSON(network.exportJSON()).noTraceActivate(
+      const n0 = Creature.fromJSON(network.exportJSON()).noTraceActivate(
         dr.input,
       )[0];
 
       network.clearCache();
       const c1 = network.noTraceActivate(dr.input)[0];
-      const n1 = Network.fromJSON(network.exportJSON()).noTraceActivate(
+      const n1 = Creature.fromJSON(network.exportJSON()).noTraceActivate(
         dr.input,
       )[0];
-      const network2 = Network.fromJSON(network.exportJSON());
+      const network2 = Creature.fromJSON(network.exportJSON());
       const n2 = network2.noTraceActivate(dr.input)[0];
       const n2b = network2.noTraceActivate(dr.input)[0];
       assertAlmostEquals(
@@ -154,7 +154,7 @@ async function trainSet(
   ensureDirSync(traceDir);
 
   for (let attempts = 0; true; attempts++) {
-    const network = new Network(
+    const network = new Creature(
       set[0].input.length,
       set[0].output.length,
       {
@@ -202,7 +202,7 @@ async function trainSet(
   }
 }
 
-function testEquality(original: Network, copied: Network) {
+function testEquality(original: Creature, copied: Creature) {
   for (let j = 0; j < 50; j++) {
     const input = [];
     let a;
@@ -220,7 +220,7 @@ function testEquality(original: Network, copied: Network) {
     assertEquals(
       ORout,
       COout,
-      copied instanceof Network
+      copied instanceof Creature
         ? "Original and JSON copied networks are not the same!"
         : "Original and standalone networks are not the same!",
     );
@@ -279,8 +279,8 @@ Deno.test("SWAP_NODES", () => {
 });
 
 Deno.test("gender-tag", () => {
-  const network1 = new Network(2, 2);
-  const network2 = new Network(2, 2);
+  const network1 = new Creature(2, 2);
+  const network2 = new Creature(2, 2);
 
   addTag(network1.nodes[0], "gender", "male");
 
@@ -295,8 +295,8 @@ Deno.test("gender-tag", () => {
 });
 
 Deno.test("Feed-forward", () => {
-  const network1 = new Network(2, 2);
-  const network2 = new Network(2, 2);
+  const network1 = new Creature(2, 2);
+  const network2 = new Creature(2, 2);
 
   // mutate it a couple of times
   let i;
@@ -324,7 +324,7 @@ Deno.test("Feed-forward", () => {
 
 Deno.test("from/toJSON equivalency", () => {
   let original, copy;
-  original = new Network(
+  original = new Creature(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
     {
@@ -334,17 +334,17 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = Network.fromJSON(original.exportJSON());
+  copy = Creature.fromJSON(original.exportJSON());
   testEquality(original, copy);
 
-  original = new Network(
+  original = new Creature(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
   );
-  copy = Network.fromJSON(original.exportJSON());
+  copy = Creature.fromJSON(original.exportJSON());
   testEquality(original, copy);
 
-  original = new Network(
+  original = new Creature(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
     {
@@ -354,7 +354,7 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = Network.fromJSON(original.exportJSON());
+  copy = Creature.fromJSON(original.exportJSON());
   testEquality(original, copy);
 });
 
@@ -553,7 +553,7 @@ Deno.test("NARX Sequence", async () => {
   ];
 
   for (let attempts = 0; true; attempts++) {
-    const narx = new Network(1, 1, {
+    const narx = new Creature(1, 1, {
       layers: [
         { count: 5 },
       ],
@@ -639,7 +639,7 @@ Deno.test("evolveSHIFT", async () => {
 });
 
 Deno.test("from-to", () => {
-  const network = new Network(1000, 10);
+  const network = new Creature(1000, 10);
   const startJson = network.exportJSON();
   const startTxt = JSON.stringify(startJson, null, 1);
   let fromTotalMS = 0;
@@ -652,7 +652,7 @@ Deno.test("from-to", () => {
   ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = false;
   for (let i = LOOPS; i--;) {
     performance.mark("from-start");
-    const currentNetwork = Network.fromJSON(currentJson);
+    const currentNetwork = Creature.fromJSON(currentJson);
     performance.mark("from-end");
     const fromMS = performance.measure("", "from-start", "from-end").duration;
     fromMinMS = fromMinMS > fromMS ? fromMS : fromMinMS;

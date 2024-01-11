@@ -5,7 +5,7 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
  * Scaled Exponential Linear Unit (SELU) activation function.
  *
  * This implementation uses constants ALPHA and SCALE, which are pre-defined values derived
- * from the paper "Self-Normalizing Neural Networks" by Günter Klambauer, Thomas Unterthiner,
+ * from the paper "Self-Normalizing Neural Creatures" by Günter Klambauer, Thomas Unterthiner,
  * Andreas Mayr, and Sepp Hochreiter.
  *
  * - ALPHA = 1.6732632423543772848170429916717

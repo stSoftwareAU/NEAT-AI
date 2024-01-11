@@ -1,17 +1,17 @@
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 import {
   assert,
   assertAlmostEquals,
   fail,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
 
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 /** Make sure the compact routine remove hidden nodes with no affect */
 Deno.test("removeDanglingHidden", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
@@ -45,7 +45,7 @@ Deno.test("removeDanglingHidden", () => {
     input: 3,
     output: 2,
   };
-  const a = Network.fromJSON(json);
+  const a = Creature.fromJSON(json);
 
   const b = a.compact();
   if (b !== null) {
@@ -56,7 +56,7 @@ Deno.test("removeDanglingHidden", () => {
 });
 
 Deno.test("CompactSimple", () => {
-  const a = new Network(2, 2, {
+  const a = new Creature(2, 2, {
     layers: [
       { count: 1 },
       { count: 1 },
@@ -105,7 +105,7 @@ Deno.test("CompactSimple", () => {
 });
 
 Deno.test("RandomizeCompact", () => {
-  const a = new Network(2, 2, {
+  const a = new Creature(2, 2, {
     layers: [
       { count: 1, squash: "*" },
       { count: 1, squash: "*" },
@@ -169,7 +169,7 @@ Deno.test("RandomizeCompact", () => {
 });
 
 Deno.test("CompactSelf", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
@@ -198,7 +198,7 @@ Deno.test("CompactSelf", () => {
     input: 3,
     output: 1,
   };
-  const a = Network.fromJSON(json);
+  const a = Creature.fromJSON(json);
 
   a.validate();
 

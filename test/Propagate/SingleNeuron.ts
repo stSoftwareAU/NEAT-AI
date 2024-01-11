@@ -5,8 +5,8 @@ import {
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { Network } from "../../src/architecture/Network.ts";
-import { NetworkInternal } from "../../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -17,7 +17,7 @@ function makeCreature() {
    *  o4=(h3 * 0.4) - 0.5
    *  o5=(h3 * -0.6) + (i2 * 0.7 ) + 0.8
    */
-  const creatureJsonA: NetworkInternal = {
+  const creatureJsonA: CreatureInternal = {
     nodes: [
       { type: "hidden", index: 3, squash: "IDENTITY", bias: 0 },
 
@@ -49,7 +49,7 @@ function makeCreature() {
     input: 3,
     output: 2,
   };
-  const creature = Network.fromJSON(creatureJsonA);
+  const creature = Creature.fromJSON(creatureJsonA);
   creature.validate();
 
   return creature;

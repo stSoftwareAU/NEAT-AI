@@ -6,13 +6,13 @@ import {
   adjustedWeight,
   BackPropagationConfig,
 } from "../../src/architecture/BackPropagation.ts";
-import { Network } from "../../src/architecture/Network.ts";
-import { NetworkTrace } from "../../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 function makeCreature() {
-  const creatureJSON: NetworkTrace = {
+  const creatureJSON: CreatureTrace = {
     nodes: [
       {
         type: "output",
@@ -42,7 +42,7 @@ function makeCreature() {
     input: 3,
     output: 1,
   };
-  const creature = Network.fromJSON(creatureJSON);
+  const creature = Creature.fromJSON(creatureJSON);
   creature.validate();
 
   return creature;

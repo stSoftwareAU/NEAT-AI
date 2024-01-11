@@ -1,4 +1,4 @@
-import { Network } from "./Network.ts";
+import { Creature } from "../Creature.ts";
 
 export class NodeState {
   public count = 0;
@@ -17,13 +17,13 @@ export class ConnectionState {
   public used?: boolean;
 }
 
-export class NetworkState {
+export class CreatureState {
   private nodeMap;
   private connectionMap;
   private network;
   public activations: number[] = [];
 
-  constructor(network: Network) {
+  constructor(network: Creature) {
     this.network = network;
     this.nodeMap = new Map<number, NodeState>();
     this.connectionMap = new Map<number, Map<number, ConnectionState>>();

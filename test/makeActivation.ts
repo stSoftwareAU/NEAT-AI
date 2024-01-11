@@ -1,13 +1,13 @@
 import {
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkState } from "../src/architecture/NetworkState.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureState } from "../src/architecture/CreatureState.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("makeActivation", () => {
-  const creature = Network.fromJSON({
+  const creature = Creature.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "hidden",
@@ -41,7 +41,7 @@ Deno.test("makeActivation", () => {
   });
 
   creature.validate();
-  const ns = new NetworkState(creature);
+  const ns = new CreatureState(creature);
 
   ns.makeActivation([-0.1, -0.2], false);
 

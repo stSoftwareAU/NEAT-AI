@@ -2,8 +2,8 @@ import { blue } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 import { Costs } from "../Costs.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";
 import { BackPropagationConfig } from "./BackPropagation.ts";
-import { Network } from "./Network.ts";
-import { NetworkUtil } from "./NetworkUtils.ts";
+import { Creature } from "../Creature.ts";
+import { CreatureUtil } from "./CreatureUtils.ts";
 import { yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
 import { addTag } from "../tags/TagsInterface.ts";
@@ -40,7 +40,7 @@ export function dataFiles(dataDir: string) {
  * Train the given set to this network
  */
 export async function trainDir(
-  network: Network,
+  network: Creature,
   dataDir: string,
   options: TrainOptions,
 ) {
@@ -77,7 +77,7 @@ export async function trainDir(
   // Loops the training process
   let iteration = 0;
 
-  const uuid = await NetworkUtil.makeUUID(network);
+  const uuid = await CreatureUtil.makeUUID(network);
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
   let bestError: number | undefined = undefined;
@@ -269,7 +269,7 @@ export async function trainDir(
  * Train the given set to this network
  */
 export async function train(
-  network: Network,
+  network: Creature,
   dataSet: DataRecordInterface[],
   options: TrainOptions,
 ) {

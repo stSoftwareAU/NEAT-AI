@@ -7,7 +7,7 @@ import { NodeFixableInterface } from "../methods/activations/NodeFixableInterfac
 import { Mutation } from "../methods/mutation.ts";
 import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { Connection } from "./Connection.ts";
-import { Network } from "./Network.ts";
+import { Creature } from "../Creature.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 
 import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
@@ -25,7 +25,7 @@ import {
 } from "./BackPropagation.ts";
 
 export class Node implements TagsInterface, NodeInternal {
-  readonly network: Network;
+  readonly network: Creature;
   readonly type;
   uuid: string;
   bias: number;
@@ -42,7 +42,7 @@ export class Node implements TagsInterface, NodeInternal {
     uuid: string,
     type: "input" | "output" | "hidden" | "constant",
     bias: number | undefined,
-    network: Network,
+    network: Creature,
     squash?: string,
   ) {
     this.uuid = uuid;
@@ -82,7 +82,7 @@ export class Node implements TagsInterface, NodeInternal {
     }
 
     if (typeof network !== "object") {
-      throw new Error("network must be a Network was: " + (typeof network));
+      throw new Error("network must be a Creature was: " + (typeof network));
     }
 
     this.network = network;
@@ -90,6 +90,10 @@ export class Node implements TagsInterface, NodeInternal {
     this.type = type;
 
     this.index = -1;
+  }
+
+  ID() {
+    return this.uuid.substring(Math.max(0, this.uuid.length - 8));
   }
 
   setSquash(name: string) {
@@ -659,10 +663,10 @@ export class Node implements TagsInterface, NodeInternal {
    */
   static fromJSON(
     json: NodeExport | NodeInternal,
-    network: Network,
+    network: Creature,
   ) {
     if (typeof network !== "object") {
-      throw new Error("network must be a Network was: " + (typeof network));
+      throw new Error("network must be a Creature was: " + (typeof network));
     }
 
     const node = new Node(

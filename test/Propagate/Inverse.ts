@@ -3,10 +3,10 @@ import {
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
-import { Network } from "../../src/architecture/Network.ts";
-import { NetworkInternal } from "../../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { INVERSE } from "../../src/methods/activations/types/INVERSE.ts";
-import { train } from "../../src/architecture/Train.ts";
+import { train } from "../../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -20,7 +20,7 @@ function makeCreature() {
    *  o9=(h8 * -0.5) + h5
    *  o10=(h8 * -0.4) + (h7 * 0.2) + 0.3
    */
-  const creatureJsonA: NetworkInternal = {
+  const creatureJsonA: CreatureInternal = {
     nodes: [
       { type: "hidden", index: 5, squash: "INVERSE", bias: -0.2 },
       { type: "hidden", index: 6, squash: "INVERSE", bias: -0.1 },
@@ -70,7 +70,7 @@ function makeCreature() {
     input: 5,
     output: 2,
   };
-  const creatureA = Network.fromJSON(creatureJsonA);
+  const creatureA = Creature.fromJSON(creatureJsonA);
   creatureA.validate();
 
   return creatureA;
@@ -149,7 +149,7 @@ Deno.test("propagateInverseRandom", async () => {
   );
 
   for (let attempts = 0; true; attempts++) {
-    const creatureB = Network.fromJSON(internalJSON);
+    const creatureB = Creature.fromJSON(internalJSON);
     creatureB.validate();
 
     const result1 = await train(creatureB, ts, {

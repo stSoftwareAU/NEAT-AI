@@ -1,14 +1,14 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { NodeTrace } from "../src/architecture/NodeInterfaces.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("traceNode", async () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "hidden", index: 3, squash: "IDENTITY" },
       { type: "hidden", index: 4, squash: "IDENTITY" },
@@ -29,7 +29,7 @@ Deno.test("traceNode", async () => {
     input: 3,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   network.validate();
 
   const ts = [];

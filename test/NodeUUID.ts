@@ -1,14 +1,14 @@
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import {
   assert,
   assertEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("generateUUID", () => {
-  const creature: NetworkInternal = {
+  const creature: CreatureInternal = {
     nodes: [
       {
         bias: 0,
@@ -54,14 +54,14 @@ Deno.test("generateUUID", () => {
     score: -0.1111,
   };
 
-  const n1 = Network.fromJSON(creature);
+  const n1 = Creature.fromJSON(creature);
 
   n1.nodes.forEach((n) => {
     assert(n.uuid, "Must have a UUID");
   });
 
   const j1 = n1.exportJSON();
-  const n2 = Network.fromJSON(j1);
+  const n2 = Creature.fromJSON(j1);
 
   for (let i = 0; i < n1.nodes.length; i++) {
     assertEquals(n1.nodes[i].uuid, n2.nodes[i].uuid);

@@ -1,10 +1,10 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("hidden", () => {
   const json = JSON.parse(Deno.readTextFileSync("./test/data/inFocus.json"));
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
 
   let positiveCount = 0;
   let negativeCount = 0;
@@ -28,7 +28,7 @@ Deno.test("hidden", () => {
 
 Deno.test("input", () => {
   const json = JSON.parse(Deno.readTextFileSync("./test/data/inFocus.json"));
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
 
   let positiveCount = 0;
   let negativeCount = 0;

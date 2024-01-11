@@ -1,4 +1,4 @@
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 
@@ -14,7 +14,7 @@ Deno.test("AND", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  const network = new Network(2, 1);
+  const network = new Creature(2, 1);
 
   const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
@@ -37,7 +37,7 @@ Deno.test("evolve-MT", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  const network = new Network(2, 1);
+  const network = new Creature(2, 1);
 
   const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
@@ -59,7 +59,7 @@ Deno.test("evolve-XOR", async () => {
     { input: [1, 1], output: [0] },
   ];
 
-  const network = new Network(2, 1);
+  const network = new Creature(2, 1);
   const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
     elitism: 10,
@@ -81,7 +81,7 @@ Deno.test("booleanXOR", async () => {
     { input: [1, 1], output: [0] },
   ];
 
-  const network = new Network(2, 1);
+  const network = new Creature(2, 1);
   network.validate();
   const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
@@ -109,7 +109,7 @@ Deno.test("XNOR", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  const network = new Network(2, 1);
+  const network = new Creature(2, 1);
   const results = await network.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
     elitism: 10,

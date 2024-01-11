@@ -2,14 +2,14 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("No squash", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0.5, type: "constant", index: 1 },
       { bias: 0, type: "output", squash: "IDENTITY", index: 2 },
@@ -20,7 +20,7 @@ Deno.test("No squash", () => {
     input: 1,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   network.validate();
   network.fix();
   network.validate();
@@ -35,7 +35,7 @@ Deno.test("No squash", () => {
 });
 
 Deno.test("Constants", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0.5, type: "constant", index: 1 },
@@ -50,7 +50,7 @@ Deno.test("Constants", () => {
     input: 1,
     output: 1,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   network.validate();
 
   for (let i = 100; i--;) {
@@ -59,7 +59,7 @@ Deno.test("Constants", () => {
   }
 
   network.validate();
-  Network.fromJSON(network.exportJSON());
+  Creature.fromJSON(network.exportJSON());
   assert(
     Math.abs(network.nodes[1].bias ? network.nodes[1].bias : 0) - 0.5 < 0.00001,
     "Should NOT have changed the constant node was: " + network.nodes[1].bias,

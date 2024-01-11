@@ -4,12 +4,12 @@ import {
   fail,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("tune", async () => {
-  const previousFittest: Network = Network.fromJSON({
+  const previousFittest: Creature = Creature.fromJSON({
     nodes: [
       {
         type: "hidden",
@@ -88,7 +88,7 @@ Deno.test("tune", async () => {
 
   previousFittest.validate();
 
-  const fittest: Network = Network.fromJSON({
+  const fittest: Creature = Creature.fromJSON({
     nodes: [
       {
         type: "hidden",
