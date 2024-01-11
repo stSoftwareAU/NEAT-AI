@@ -1,39 +1,43 @@
-import { TagInterface } from "../tags/TagInterface.ts";
+import { TagInterface } from "./tags/TagInterface.ts";
 import {
   ConnectionExport,
   ConnectionInternal,
   ConnectionTrace,
-} from "./ConnectionInterfaces.ts";
+} from "./architecture/ConnectionInterfaces.ts";
 import {
-  NetworkExport,
-  NetworkInternal,
-  NetworkTrace,
-} from "./NetworkInterfaces.ts";
-import { NodeExport, NodeInternal, NodeTrace } from "./NodeInterfaces.ts";
+  CreatureExport,
+  CreatureInternal,
+  CreatureTrace,
+} from "./architecture/CreatureInterfaces.ts";
+import {
+  NodeExport,
+  NodeInternal,
+  NodeTrace,
+} from "./architecture/NodeInterfaces.ts";
 
-import { NeatOptions } from "../config/NeatOptions.ts";
-import { DataRecordInterface } from "./DataSet.ts";
+import { NeatOptions } from "./config/NeatOptions.ts";
+import { DataRecordInterface } from "./architecture/DataSet.ts";
 
 import { yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
-import { Neat } from "../Neat.ts";
-import { makeDataDir } from "../architecture/DataSet.ts";
-import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import { getTag } from "../tags/TagsInterface.ts";
+import { Neat } from "./architecture/Neat.ts";
+import { makeDataDir } from "./architecture/DataSet.ts";
+import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
+import { getTag } from "./tags/TagsInterface.ts";
 
 import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
 import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
-import { CostInterface } from "../Costs.ts";
-import { Node } from "../architecture/Node.ts";
-import { Activations } from "../methods/activations/Activations.ts";
-import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
-import { Mutation } from "../methods/mutation.ts";
-import { addTag } from "../tags/TagsInterface.ts";
-import { BackPropagationConfig } from "./BackPropagation.ts";
-import { Connection } from "./Connection.ts";
-import { NetworkState, NodeState } from "./NetworkState.ts";
-import { cacheDataFile, dataFiles } from "./Train.ts";
+import { CostInterface } from "./Costs.ts";
+import { Node } from "./architecture/Node.ts";
+import { Activations } from "./methods/activations/Activations.ts";
+import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
+import { Mutation } from "./methods/mutation.ts";
+import { addTag } from "./tags/TagsInterface.ts";
+import { BackPropagationConfig } from "./architecture/BackPropagation.ts";
+import { Connection } from "./architecture/Connection.ts";
+import { CreatureState, NodeState } from "./architecture/CreatureState.ts";
+import { cacheDataFile, dataFiles } from "./architecture/Training.ts";
 
-export class Network implements NetworkInternal {
+export class Creature implements CreatureInternal {
   /* ID of this network */
   uuid?: string;
 
@@ -44,7 +48,7 @@ export class Network implements NetworkInternal {
   score?: number;
   connections: ConnectionInternal[];
 
-  readonly networkState = new NetworkState(this);
+  readonly networkState = new CreatureState(this);
   private cacheTo = new Map<number, ConnectionInternal[]>();
   private cacheFrom = new Map<number, ConnectionInternal[]>();
   private cacheSelf = new Map<number, ConnectionInternal[]>();
@@ -265,12 +269,12 @@ export class Network implements NetworkInternal {
   /**
    * Compact the network.
    */
-  compact(): Network | null {
+  compact(): Creature | null {
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
     const json = this.internalJSON();
     this.DEBUG = holdDebug;
-    const compactNetwork = Network.fromJSON(json);
+    const compactNetwork = Creature.fromJSON(json);
     compactNetwork.fix();
 
     let complete = false;
@@ -416,10 +420,10 @@ export class Network implements NetworkInternal {
     let outputIndx = 0;
     const UUIDs = new Set<string>();
     this.nodes.forEach((item, indx) => {
-      const node = item as NodeInternal;
+      const node = item as Node;
       const uuid = node.uuid;
       if (!uuid) {
-        throw new Error(`${uuid}) no UUID`);
+        throw new Error(`${node.ID()}) no UUID`);
       }
       if (UUIDs.has(uuid)) {
         if (this.DEBUG) {
@@ -431,7 +435,7 @@ export class Network implements NetworkInternal {
 
           this.DEBUG = true;
         }
-        throw new Error(`${uuid}) duplicate UUID: ${uuid}`);
+        throw new Error(`${node.ID()}) duplicate UUID: ${uuid}`);
       }
       if (uuid.startsWith("input-")) {
         if (uuid !== "input-" + indx) {
@@ -444,11 +448,11 @@ export class Network implements NetworkInternal {
 
             this.DEBUG = true;
           }
-          throw new Error(`${uuid}) invalid input UUID: ${uuid}`);
+          throw new Error(`${node.ID()}) invalid input UUID: ${uuid}`);
         }
       } else {
         if (!Number.isFinite(node.bias)) {
-          throw new Error(`${uuid}) invalid bias: ${node.bias}`);
+          throw new Error(`${node.ID()}) invalid bias: ${node.bias}`);
         }
       }
 
@@ -475,7 +479,7 @@ export class Network implements NetworkInternal {
         const toList = this.toConnections(indx);
         if (toList.length < 3) {
           throw new Error(
-            `${uuid}) 'IF' should have at least 3 connections was: ${toList.length}`,
+            `${node.ID()}) 'IF' should have at least 3 connections was: ${toList.length}`,
           );
         }
 
@@ -503,13 +507,17 @@ export class Network implements NetworkInternal {
           }
         }
         if (!foundCondition) {
-          throw new Error(`${uuid}) 'IF' should have a condition(s)`);
+          throw new Error(`${node.ID()}) 'IF' should have a condition(s)`);
         }
         if (!foundPositive) {
-          throw new Error(`${uuid}) 'IF' should have a positive connection(s)`);
+          throw new Error(
+            `${node.ID()}) 'IF' should have a positive connection(s)`,
+          );
         }
         if (!foundNegative) {
-          throw new Error(`${uuid}) 'IF' should have a negative connection(s)`);
+          throw new Error(
+            `${node.ID()}) 'IF' should have a negative connection(s)`,
+          );
         }
       }
       switch (node.type) {
@@ -518,7 +526,7 @@ export class Network implements NetworkInternal {
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
             throw new Error(
-              `${uuid}) 'input' node has inward connections: ${toList.length}`,
+              `'input' node ${node.ID()} has inward connections: ${toList.length}`,
             );
           }
           break;
@@ -528,12 +536,12 @@ export class Network implements NetworkInternal {
           const toList = this.toConnections(indx);
           if (toList.length > 0) {
             throw new Error(
-              `${uuid}) '${node.type}' node has inward connections: ${toList.length}`,
+              `'${node.type}' node ${node.ID()}  has inward connections: ${toList.length}`,
             );
           }
           if (node.squash) {
             throw new Error(
-              `${uuid}) '${node.type}' has squash: ${node.squash}`,
+              `Node ${node.ID()} '${node.type}' has squash: ${node.squash}`,
             );
           }
           break;
@@ -542,7 +550,9 @@ export class Network implements NetworkInternal {
           stats.hidden++;
           const toList = this.toConnections(indx);
           if (toList.length == 0) {
-            throw new Error(`${uuid}) hidden node has no inward connections`);
+            throw new Error(
+              `hidden node ${node.ID()} has no inward connections`,
+            );
           }
           const fromList = this.fromConnections(indx);
           if (fromList.length == 0) {
@@ -557,16 +567,18 @@ export class Network implements NetworkInternal {
               );
               this.DEBUG = true;
             }
-            throw new Error(`${uuid}) hidden node has no outward connections`);
+            throw new Error(
+              `hidden node ${node.ID()} has no outward connections`,
+            );
           }
           if (node.bias === undefined) {
             throw new Error(
-              `${uuid}) hidden node should have a bias was: ${node.bias}`,
+              `hidden node ${node.ID()} should have a bias was: ${node.bias}`,
             );
           }
           if (!Number.isFinite(node.bias)) {
             throw new Error(
-              `${uuid}) hidden node should have a finite bias was: ${node.bias}`,
+              `${node.ID()}) hidden node should have a finite bias was: ${node.bias}`,
             );
           }
 
@@ -587,22 +599,24 @@ export class Network implements NetworkInternal {
               );
               this.DEBUG = true;
             }
-            throw new Error(`${uuid}) output node has no inward connections`);
+            throw new Error(
+              `${node.ID()}) output node has no inward connections`,
+            );
           }
           break;
         }
         default:
-          throw new Error(`${uuid}) Invalid type: ${node.type}`);
+          throw new Error(`${node.ID()}) Invalid type: ${node.type}`);
       }
 
       if (node.index !== indx) {
         throw new Error(
-          `${uuid}) node.index: ${node.index} does not match expected index`,
+          `${node.ID()}) node.index: ${node.index} does not match expected index`,
         );
       }
 
       if ((node as Node).network !== this) {
-        throw new Error(`${uuid} node.network mismatch`);
+        throw new Error(`node ${node.ID()} network mismatch`);
       }
     });
 
@@ -879,7 +893,8 @@ export class Network implements NetworkInternal {
       this.fix();
       const temp = this.compact();
       if (temp != null) {
-        this.loadFrom(temp.internalJSON(), true);
+        temp.fix();
+        this.loadFrom(temp.exportJSON(), true);
       }
       addTag(this, "approach", "Learnings");
       addTag(this, "old-nodes", oldNodes.toString());
@@ -994,8 +1009,8 @@ export class Network implements NetworkInternal {
       error > (options.targetError ?? 0) &&
       (!options.iterations || generation < options.iterations)
     ) {
-      const fittest: Network = await neat.evolve(
-        bestCreature as (Network | undefined),
+      const fittest: Creature = await neat.evolve(
+        bestCreature as (Creature | undefined),
       );
 
       if (fittest.score ? fittest.score : 0 > bestScore) {
@@ -1007,7 +1022,7 @@ export class Network implements NetworkInternal {
         }
 
         bestScore = fittest.score ? fittest.score : 0;
-        bestCreature = Network.fromJSON(fittest.internalJSON());
+        bestCreature = Creature.fromJSON(fittest.internalJSON());
       } else if (fittest.score ? fittest.score : 0 < bestScore) {
         throw new Error("fitness decreased over generations");
       }
@@ -1156,8 +1171,8 @@ export class Network implements NetworkInternal {
   private writeCreatures(neat: Neat, dir: string) {
     let counter = 1;
     emptyDirSync(dir);
-    neat.population.forEach((creature: NetworkInternal) => {
-      const json = (creature as Network).exportJSON();
+    neat.population.forEach((creature: CreatureInternal) => {
+      const json = (creature as Creature).exportJSON();
 
       const txt = JSON.stringify(json, null, 1);
 
@@ -1494,7 +1509,7 @@ export class Network implements NetworkInternal {
   }
 
   private modWeight(focusList?: number[]) {
-    // const network = this.network as Network;
+    // const network = this.network as Creature;
     const allConnections = this.connections.filter(
       (c) => {
         return this.inFocus(c.from, focusList) ||
@@ -1886,7 +1901,7 @@ export class Network implements NetworkInternal {
       this.validate();
     }
 
-    const json: NetworkExport = {
+    const json: CreatureExport = {
       nodes: new Array<NodeExport>(
         this.nodes.length - this.input,
       ),
@@ -1918,7 +1933,7 @@ export class Network implements NetworkInternal {
     return json;
   }
 
-  traceJSON(): NetworkTrace {
+  traceJSON(): CreatureTrace {
     const json = this.exportJSON();
 
     const traceNodes = Array<NodeTrace>(json.nodes.length);
@@ -1946,7 +1961,7 @@ export class Network implements NetworkInternal {
     });
     json.connections = traceConnections;
 
-    return json as NetworkTrace;
+    return json as CreatureTrace;
   }
 
   internalJSON() {
@@ -1954,7 +1969,7 @@ export class Network implements NetworkInternal {
       this.validate();
     }
 
-    const json: NetworkInternal = {
+    const json: CreatureInternal = {
       uuid: this.uuid,
       nodes: new Array<NodeInternal>(
         this.nodes.length - this.input,
@@ -1984,8 +1999,8 @@ export class Network implements NetworkInternal {
     return json;
   }
 
-  loadFrom(json: NetworkInternal | NetworkExport, validate: boolean) {
-    this.uuid = (json as NetworkInternal).uuid;
+  loadFrom(json: CreatureInternal | CreatureExport, validate: boolean) {
+    this.uuid = (json as CreatureInternal).uuid;
     this.nodes.length = json.nodes.length;
     if (json.tags) {
       this.tags = [...json.tags];
@@ -2064,8 +2079,8 @@ export class Network implements NetworkInternal {
   /**
    * Convert a json object to a network
    */
-  static fromJSON(json: NetworkInternal | NetworkExport, validate = false) {
-    const network = new Network(json.input, json.output, {
+  static fromJSON(json: CreatureInternal | CreatureExport, validate = false) {
+    const network = new Creature(json.input, json.output, {
       lazyInitialization: true,
     });
     network.loadFrom(json, validate);

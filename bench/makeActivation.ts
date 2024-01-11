@@ -1,14 +1,14 @@
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkState } from "../src/architecture/NetworkState.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureState } from "../src/architecture/CreatureState.ts";
 
 const inputs: number[] = [];
 for (let i = 0; i < 1000; i++) {
   inputs[i] = Math.random();
 }
 
-const creature=new Network(inputs.length, 3, { layers:[{count: 1000}]});
+const creature=new Creature(inputs.length, 3, { layers:[{count: 1000}]});
 
-const ns = new NetworkState(creature);
+const ns = new CreatureState(creature);
 
 Deno.bench( "makeActivation",
   ()=> {

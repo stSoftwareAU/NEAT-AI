@@ -1,4 +1,4 @@
-import { ConnectionState } from "./NetworkState.ts";
+import { ConnectionState } from "./CreatureState.ts";
 
 interface ConnectionCommon {
   weight: number;

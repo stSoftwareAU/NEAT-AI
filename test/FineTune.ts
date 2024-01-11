@@ -1,14 +1,14 @@
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
 Deno.test("tune", async () => {
-  const previousFittest: Network = Network.fromJSON({
+  const previousFittest: Creature = Creature.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -37,7 +37,7 @@ Deno.test("tune", async () => {
     ],
   });
 
-  const fittest: NetworkInternal = Network.fromJSON(
+  const fittest: CreatureInternal = Creature.fromJSON(
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
@@ -60,7 +60,7 @@ Deno.test("tune", async () => {
 });
 
 Deno.test("many", async () => {
-  const previousFittest = Network.fromJSON({
+  const previousFittest = Creature.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -88,7 +88,7 @@ Deno.test("many", async () => {
       { name: "score", value: "-0.5" },
     ],
   });
-  const fittest: NetworkInternal = Network.fromJSON(
+  const fittest: CreatureInternal = Creature.fromJSON(
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");

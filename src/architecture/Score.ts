@@ -1,7 +1,7 @@
-import { NetworkInternal } from "./NetworkInterfaces.ts";
+import { CreatureInternal } from "./CreatureInterfaces.ts";
 
 export function calculate(
-  creature: NetworkInternal,
+  creature: CreatureInternal,
   error: number,
   growthCost: number,
 ): number {
@@ -13,7 +13,7 @@ export function calculate(
 }
 
 function calculateMaxOutOfBounds(
-  creature: NetworkInternal,
+  creature: CreatureInternal,
 ): { max: number; avg: number } {
   let max = 0;
   let total = 0;
@@ -61,7 +61,7 @@ function calculatePenalty(max: number, avg: number): number {
 
 function calculateScore(
   error: number,
-  creature: NetworkInternal,
+  creature: CreatureInternal,
   penalty: number,
   growthCost: number,
 ): number {

@@ -2,8 +2,8 @@ import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 
 import { Costs } from "../../src/Costs.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { Network } from "../../src/architecture/Network.ts";
-import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 
@@ -52,12 +52,12 @@ Deno.test("PropagateMaximumSimple", () => {
     JSON.stringify(exportJSON, null, 2),
   );
 
-  const creatureB = Network.fromJSON(exportJSON);
+  const creatureB = Creature.fromJSON(exportJSON);
   creatureB.validate();
 
   const errorB = calculateError(creatureB, ts);
 
-  const creatureC = Network.fromJSON(creatureB.exportJSON());
+  const creatureC = Creature.fromJSON(creatureB.exportJSON());
   const config = new BackPropagationConfig({
     // disableRandomList: true,
     // useAverageValuePerActivation: true,
@@ -79,7 +79,7 @@ Deno.test("PropagateMaximumSimple", () => {
 
   creatureC.propagateUpdate(config);
 
-  const creatureD = Network.fromJSON(creatureC.exportJSON());
+  const creatureD = Creature.fromJSON(creatureC.exportJSON());
 
   Deno.writeTextFileSync(
     ".trace/D-creature.json",
@@ -92,7 +92,7 @@ Deno.test("PropagateMaximumSimple", () => {
 });
 
 function calculateError(
-  creature: Network,
+  creature: Creature,
   json: { input: number[]; output: number[] }[],
 ) {
   let error = 0;
@@ -108,7 +108,7 @@ function calculateError(
 }
 
 function makeCreature() {
-  const creatureJson: NetworkExport = {
+  const creatureJson: CreatureExport = {
     nodes: [
       {
         type: "hidden",
@@ -155,7 +155,7 @@ function makeCreature() {
     output: 1,
   };
 
-  const creature = Network.fromJSON(creatureJson);
+  const creature = Creature.fromJSON(creatureJson);
   creature.validate();
 
   return creature;

@@ -3,14 +3,14 @@ import {
   ConnectionExport,
   ConnectionInternal,
 } from "./ConnectionInterfaces.ts";
-import { Network } from "./Network.ts";
+import { Creature } from "../Creature.ts";
 import { Node } from "./Node.ts";
 
 export class Offspring {
   /**
    * Create an offspring from two parent networks
    */
-  static bread(mother: Network, father: Network) {
+  static bread(mother: Creature, father: Creature) {
     if (
       mother.input !== father.input || mother.output !== father.output
     ) {
@@ -18,7 +18,7 @@ export class Offspring {
     }
 
     // Initialize offspring
-    const offspring = new Network(mother.input, mother.output, {
+    const offspring = new Creature(mother.input, mother.output, {
       lazyInitialization: true,
     });
     offspring.connections = [];
@@ -27,7 +27,7 @@ export class Offspring {
     const nodeMap = new Map<string, Node>();
     const connectionsMap = new Map<string, ConnectionExport[]>();
     function cloneConnections(
-      creature: Network,
+      creature: Creature,
       connections: ConnectionInternal[],
     ): ConnectionExport[] {
       const tmpConnections: ConnectionExport[] = [];

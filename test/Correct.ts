@@ -1,13 +1,13 @@
 import { assertAlmostEquals } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Creature } from "../src/Creature.ts";
 
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { Upgrade } from "../src/reconstruct/Upgrade.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("correctExport", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0, type: "output", squash: "IDENTITY", index: 3 },
     ],
@@ -19,8 +19,8 @@ Deno.test("correctExport", () => {
     input: 3,
     output: 1,
   };
-  const json2 = Upgrade.correct(Network.fromJSON(json).exportJSON(), 5);
-  const network = Network.fromJSON(json2);
+  const json2 = Upgrade.correct(Creature.fromJSON(json).exportJSON(), 5);
+  const network = Creature.fromJSON(json2);
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;

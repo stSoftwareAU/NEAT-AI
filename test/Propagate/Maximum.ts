@@ -6,9 +6,9 @@ import {
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { Costs } from "../../src/Costs.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { Network } from "../../src/architecture/Network.ts";
-import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
-import { train } from "../../src/architecture/Train.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { train } from "../../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -61,12 +61,12 @@ Deno.test("PropagateMaximum", async () => {
       JSON.stringify(exportJSON, null, 2),
     );
 
-    const creatureB = Network.fromJSON(exportJSON);
+    const creatureB = Creature.fromJSON(exportJSON);
     creatureB.validate();
 
     const errorB = calculateError(creatureB, ts);
 
-    const creatureC = Network.fromJSON(exportJSON);
+    const creatureC = Creature.fromJSON(exportJSON);
     creatureC.validate();
 
     const resultC = await train(creatureC, ts, {
@@ -92,10 +92,10 @@ Deno.test("PropagateMaximum", async () => {
     }
 
     if (!resultC.trace) throw new Error("No trace");
-    const creatureD = Network.fromJSON(
-      Network.fromJSON(resultC.trace).exportJSON(),
+    const creatureD = Creature.fromJSON(
+      Creature.fromJSON(resultC.trace).exportJSON(),
     );
-    const creatureE = Network.fromJSON(resultC.trace);
+    const creatureE = Creature.fromJSON(resultC.trace);
     const config = new BackPropagationConfig({
       // useAverageValuePerActivation: false,
       // useAverageDifferenceBias: "Yes",
@@ -139,7 +139,7 @@ Deno.test("PropagateMaximum", async () => {
 });
 
 function calculateError(
-  creature: Network,
+  creature: Creature,
   json: { input: number[]; output: number[] }[],
 ) {
   let error = 0;
@@ -155,7 +155,7 @@ function calculateError(
 }
 
 function makeCreature() {
-  const creatureJson: NetworkExport = {
+  const creatureJson: CreatureExport = {
     nodes: [
       {
         type: "hidden",
@@ -265,7 +265,7 @@ function makeCreature() {
     output: 2,
   };
 
-  const creature = Network.fromJSON(creatureJson);
+  const creature = Creature.fromJSON(creatureJson);
   creature.validate();
 
   return creature;

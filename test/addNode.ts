@@ -1,12 +1,12 @@
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 import { getTag } from "../src/tags/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const json: NetworkInternal = {
+const json: CreatureInternal = {
   nodes: [
     {
       type: "input",
@@ -76,7 +76,7 @@ const json: NetworkInternal = {
 
 Deno.test("addNodeValidate", () => {
   for (let j = 10; j--;) {
-    const network = Network.fromJSON(json);
+    const network = Creature.fromJSON(json);
     for (let i = 1000; i--;) {
       network.addNode();
     }
@@ -85,7 +85,7 @@ Deno.test("addNodeValidate", () => {
 });
 
 Deno.test("addNode", () => {
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
 
   for (let i = 1000; i--;) {
     network.addNode();

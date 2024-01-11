@@ -1,9 +1,9 @@
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const json: NetworkInternal = {
+const json: CreatureInternal = {
   nodes: [
     {
       type: "input",
@@ -52,7 +52,7 @@ const json: NetworkInternal = {
 };
 
 Deno.test("subNode", () => {
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   network.validate({ nodes: 4, connections: 3 });
   network.subNode();
   network.validate({ nodes: 4 });

@@ -2,14 +2,14 @@ import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
 import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("storeTrace", async () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "input", index: 0 },
       { type: "input", index: 1 },
@@ -62,7 +62,7 @@ Deno.test("storeTrace", async () => {
       threads: 1,
       targetError: 0,
     };
-    const network = Network.fromJSON(json);
+    const network = Creature.fromJSON(json);
 
     await network.evolveDataSet(ts, options);
 

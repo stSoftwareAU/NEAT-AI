@@ -1,12 +1,12 @@
 import { yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { Network } from "../../src/architecture/Network.ts";
-import { NetworkExport } from "../../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Trace", () => {
-  const creature = Network.fromJSON(
+  const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
 
@@ -20,7 +20,7 @@ Deno.test("Trace", () => {
   compare(json, json2);
 });
 
-function stats(creature: NetworkExport) {
+function stats(creature: CreatureExport) {
   const biases: number[] = [];
   const weights: number[] = [];
 
@@ -96,7 +96,7 @@ function stdDev(arr: number[]): number {
   return Math.sqrt(sum / (arr.length - 1));
 }
 
-function compare(creature1: NetworkExport, creature2: NetworkExport) {
+function compare(creature1: CreatureExport, creature2: CreatureExport) {
   creature1.nodes.forEach((node) => {
     const node2 = creature2.nodes.find((node2) => node2.uuid == node.uuid);
     if (!node2) {

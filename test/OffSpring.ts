@@ -1,17 +1,17 @@
-import { Neat } from "../src/Neat.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { Neat } from "../src/architecture/Neat.ts";
+import { Creature } from "../src/Creature.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import {
   assert,
   assertEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { assertFalse } from "https://deno.land/std@0.211.0/assert/assert_false.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("OffSpring", async () => {
-  const creature = Network.fromJSON({
+  const creature = Creature.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -45,12 +45,12 @@ Deno.test("OffSpring", async () => {
   await neat.populatePopulation(creature);
   for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = neat.offspring();
-    await neat.populatePopulation(kid as Network);
+    await neat.populatePopulation(kid as Creature);
   }
 });
 
 Deno.test("CrossOver", () => {
-  const a = Network.fromJSON({
+  const a = Creature.fromJSON({
     "nodes": [
       {
         "bias": 0.1,
@@ -129,7 +129,7 @@ Deno.test("CrossOver", () => {
   a.fix();
   a.validate();
 
-  const b = new Network(2, 2, {
+  const b = new Creature(2, 2, {
     layers: [
       { count: 50 },
     ],
@@ -165,7 +165,7 @@ Deno.test(
 );
 
 function check() {
-  const creature: NetworkInternal = {
+  const creature: CreatureInternal = {
     nodes: [
       {
         uuid: crypto.randomUUID(),
@@ -225,11 +225,11 @@ function check() {
     output: 1,
   };
 
-  const n1 = Network.fromJSON(creature);
+  const n1 = Creature.fromJSON(creature);
   n1.validate();
   n1.fix();
 
-  const n2 = Network.fromJSON(creature);
+  const n2 = Creature.fromJSON(creature);
   n2.validate();
   n2.fix();
 
@@ -277,7 +277,7 @@ function check() {
 Deno.test(
   "Many Outputs",
   () => {
-    const creature: NetworkInternal = {
+    const creature: CreatureInternal = {
       nodes: [
         {
           uuid: crypto.randomUUID(),
@@ -387,11 +387,11 @@ Deno.test(
       output: 8,
     };
 
-    const n1 = Network.fromJSON(creature);
+    const n1 = Creature.fromJSON(creature);
     n1.fix();
     n1.validate();
 
-    const n2 = Network.fromJSON(n1.exportJSON());
+    const n2 = Creature.fromJSON(n1.exportJSON());
 
     n2.validate();
 
@@ -418,7 +418,7 @@ Deno.test(
 Deno.test(
   "Copy Required Nodes",
   () => {
-    const left = Network.fromJSON(
+    const left = Creature.fromJSON(
       {
         nodes: [
           {
@@ -486,7 +486,7 @@ Deno.test(
 
     left.validate();
 
-    const right = Network.fromJSON(
+    const right = Creature.fromJSON(
       {
         nodes: [
           {
@@ -568,7 +568,7 @@ Deno.test(
   },
 );
 
-function checkChild(child: Network) {
+function checkChild(child: Creature) {
   child.validate();
 
   const json = child.exportJSON();

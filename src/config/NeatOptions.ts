@@ -2,9 +2,9 @@
                                       CONFIG
 *******************************************************************************/
 import {
-  NetworkExport,
-  NetworkInternal,
-} from "../architecture/NetworkInterfaces.ts";
+  CreatureExport,
+  CreatureInternal,
+} from "../architecture/CreatureInterfaces.ts";
 import { MutationInterface } from "../methods/mutation.ts";
 import { SelectionInterface } from "../methods/Selection.ts";
 import { TrainOptions } from "./TrainOptions.ts";
@@ -27,7 +27,7 @@ export interface NeatOptions extends TrainOptions {
   experimentStore?: string;
 
   /** List of creatures to start with */
-  creatures?: NetworkInternal[] | NetworkExport[];
+  creatures?: CreatureInternal[] | CreatureExport[];
 
   /**
    * Feedback loop ( previous result feeds back into next interaction

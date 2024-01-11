@@ -1,12 +1,12 @@
-import { makeElitists } from "../src/architecture/elitism.ts";
+import { makeElitists } from "../src/architecture/ElitismUtils.ts";
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
-import { Network } from "../src/architecture/Network.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-function make(population: NetworkInternal[]) {
-  const networks: Network[] = [];
+function make(population: CreatureInternal[]) {
+  const networks: Creature[] = [];
 
   population.forEach((ni) => {
     if (ni.nodes.length == 0) {
@@ -21,14 +21,14 @@ function make(population: NetworkInternal[]) {
         weight: 1,
       });
     }
-    const network = Network.fromJSON(ni);
+    const network = Creature.fromJSON(ni);
     network.score = ni.score;
     networks.push(network);
   });
   return networks;
 }
 Deno.test("1make", () => {
-  const population: NetworkInternal[] = [
+  const population: CreatureInternal[] = [
     { input: 1, output: 1, score: 1, nodes: [], connections: [] },
     { input: 1, output: 1, score: -1, nodes: [], connections: [] },
     { input: 1, output: 1, score: 3, nodes: [], connections: [] },
@@ -51,7 +51,7 @@ Deno.test("1make", () => {
 });
 
 Deno.test("3make", () => {
-  const population: NetworkInternal[] = [
+  const population: CreatureInternal[] = [
     { input: 0, output: 0, score: 1, nodes: [], connections: [] },
     { input: 0, output: 0, score: -1, nodes: [], connections: [] },
     { input: 0, output: 0, score: 3, nodes: [], connections: [] },
@@ -73,7 +73,7 @@ Deno.test("3make", () => {
 });
 
 Deno.test("3make2", () => {
-  const population: NetworkInternal[] = [
+  const population: CreatureInternal[] = [
     { input: 0, output: 0, score: -3, nodes: [], connections: [] },
     { input: 0, output: 0, score: -2, nodes: [], connections: [] },
     { input: 0, output: 0, score: -1, nodes: [], connections: [] },
@@ -93,7 +93,7 @@ Deno.test("3make2", () => {
 });
 
 Deno.test("short", () => {
-  const population: NetworkInternal[] = [
+  const population: CreatureInternal[] = [
     { input: 0, output: 0, score: -2, nodes: [], connections: [] },
     { input: 0, output: 0, score: -1, nodes: [], connections: [] },
   ];
@@ -111,7 +111,7 @@ Deno.test("short", () => {
 });
 
 Deno.test("backwards", () => {
-  const population: NetworkInternal[] = [];
+  const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
       input: 0,
@@ -136,7 +136,7 @@ Deno.test("backwards", () => {
 });
 
 Deno.test("forward", () => {
-  const population: NetworkInternal[] = [];
+  const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
       input: 0,
@@ -164,7 +164,7 @@ Deno.test("forward", () => {
 });
 
 Deno.test("performance", () => {
-  const population: NetworkInternal[] = [];
+  const population: CreatureInternal[] = [];
   for (let i = 0; i < 100000; i++) {
     population.push({
       input: 0,
@@ -200,7 +200,7 @@ Deno.test("performance", () => {
 });
 
 Deno.test("order", () => {
-  const population: NetworkInternal[] = [];
+  const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     const v = Math.random();
     if (i % 11 == 0) {
@@ -248,7 +248,7 @@ Deno.test("order", () => {
 });
 
 Deno.test("NaN", () => {
-  const population: NetworkInternal[] = [];
+  const population: CreatureInternal[] = [];
 
   population.push({
     input: 0,

@@ -1,13 +1,13 @@
-import { Neat } from "../src/Neat.ts";
+import { Neat } from "../src/architecture/Neat.ts";
 import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
 import { addTag } from "../src/tags/TagsInterface.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkUtil } from "../src/architecture/NetworkUtils.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("previous", async () => {
-  const creature = Network.fromJSON({
+  const creature = Creature.fromJSON({
     "nodes": [{
       "bias": 0,
       "type": "input",
@@ -40,7 +40,7 @@ Deno.test("previous", async () => {
 
   const neat = new Neat(1, 1, { experimentStore: ".testExperiments" }, []);
 
-  const p = [Network.fromJSON(creature)];
+  const p = [Creature.fromJSON(creature)];
   neat.writeScores(p);
 
   const flag = await previousExperiment(creature, neat);
@@ -59,8 +59,8 @@ Deno.test("previous", async () => {
   assert(flag3, "Don't care about tags");
 });
 
-async function previousExperiment(creature: Network, neat: Neat) {
-  const key = await NetworkUtil.makeUUID(creature);
+async function previousExperiment(creature: Creature, neat: Neat) {
+  const key = await CreatureUtil.makeUUID(creature);
 
   return neat.previousExperiment(key);
 }

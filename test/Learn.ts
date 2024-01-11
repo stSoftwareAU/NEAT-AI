@@ -1,12 +1,12 @@
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { train } from "../src/architecture/Train.ts";
+import { Creature } from "../src/Creature.ts";
+import { train } from "../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Learn", async () => {
-  const nn = Network.fromJSON(
+  const nn = Creature.fromJSON(
     {
       nodes: [
         {

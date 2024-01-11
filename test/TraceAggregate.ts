@@ -2,14 +2,14 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("TraceAggregateMINIMUM", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
@@ -28,7 +28,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
     input: 2,
     output: 2,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
@@ -55,7 +55,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
 });
 
 Deno.test("TraceAggregateMAXIMUM", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
@@ -74,7 +74,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
     input: 2,
     output: 2,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
@@ -101,7 +101,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 });
 
 Deno.test("TraceAggregateIF", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
@@ -121,7 +121,7 @@ Deno.test("TraceAggregateIF", () => {
     input: 2,
     output: 2,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
   network.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",

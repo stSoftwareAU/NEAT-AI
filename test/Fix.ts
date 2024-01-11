@@ -1,12 +1,12 @@
 import { assertEquals } from "https://deno.land/std@0.211.0/assert/mod.ts";
 
-import { Network } from "../src/architecture/Network.ts";
-import { NetworkInternal } from "../src/architecture/NetworkInterfaces.ts";
+import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("FromFrom", () => {
-  const json: NetworkInternal = {
+  const json: CreatureInternal = {
     nodes: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
 
@@ -41,7 +41,7 @@ Deno.test("FromFrom", () => {
     input: 3,
     output: 3,
   };
-  const network = Network.fromJSON(json);
+  const network = Creature.fromJSON(json);
 
   network.validate();
 

@@ -1,11 +1,11 @@
-import { NetworkExport } from "../architecture/NetworkInterfaces.ts";
-import { Network } from "../architecture/Network.ts";
+import { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { Creature } from "../Creature.ts";
 
 export class Upgrade {
   static correct(
-    json: NetworkExport,
+    json: CreatureExport,
     input: number,
-  ): Network {
+  ): Creature {
     if (!Number.isFinite(input) || input < 1 || !Number.isInteger(input)) {
       throw new Error(`Invalid input size ${input}`);
     }
@@ -17,7 +17,7 @@ export class Upgrade {
     }
 
     json2.input = input;
-    const network = Network.fromJSON(json2);
+    const network = Creature.fromJSON(json2);
 
     network.fix();
     network.validate();

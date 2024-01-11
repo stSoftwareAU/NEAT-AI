@@ -1,7 +1,7 @@
-import { Network } from "./Network.ts";
+import { Creature } from "../Creature.ts";
 
 export function makeElitists(
-  population: Network[],
+  population: Creature[],
   size = 1,
 ) {
   const elitism = Math.min(Math.max(1, size), population.length);

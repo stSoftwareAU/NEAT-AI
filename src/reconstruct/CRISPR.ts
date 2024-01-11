@@ -1,5 +1,5 @@
-import { Network } from "../architecture/Network.ts";
-import { NetworkInternal } from "../architecture/NetworkInterfaces.ts";
+import { Creature } from "../Creature.ts";
+import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
 import { Node } from "../architecture/Node.ts";
 import { addTag, getTag, TagsInterface } from "../tags/TagsInterface.ts";
 
@@ -29,16 +29,16 @@ export class CRISPR {
   private network;
 
   constructor(
-    network: NetworkInternal,
+    network: CreatureInternal,
   ) {
-    this.network = Network.fromJSON(
-      (network as Network).internalJSON(),
+    this.network = Creature.fromJSON(
+      (network as Creature).internalJSON(),
     );
   }
 
-  apply(dna: CrisprInterface): NetworkInternal {
-    const tmpNetwork = Network.fromJSON(
-      (this.network as Network).internalJSON(),
+  apply(dna: CrisprInterface): CreatureInternal {
+    const tmpNetwork = Creature.fromJSON(
+      (this.network as Creature).internalJSON(),
     );
 
     const UUIDs = new Set<string>();
