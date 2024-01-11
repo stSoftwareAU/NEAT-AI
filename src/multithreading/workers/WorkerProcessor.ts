@@ -1,6 +1,6 @@
 import { RequestData, ResponseData } from "./WorkerHandler.ts";
 
-import { TrainOptions } from "../../config/TrainOptions.ts";
+// import { TrainOptions } from "../../config/TrainOptions.ts";
 import { CostInterface, Costs } from "../../Costs.ts";
 import { Network } from "../../architecture/Network.ts";
 import { trainDir } from "../../architecture/Train.ts";
@@ -66,15 +66,19 @@ export class WorkerProcessor {
 
       if (!this.dataSetDir) throw new Error("No data dir");
 
-      if (!this.cost) throw new Error("no cost");
+      // if (!this.cost) throw new Error("no cost");
 
-      const trainOptions: TrainOptions = {
-        cost: this.costName,
-        iterations: 1,
-        log: 1,
-      };
+      // const trainOptions: TrainOptions = {
+      //   cost: this.costName,
+      //   iterations: 1,
+      //   log: 1,
+      // };
 
-      const result = await trainDir(network, this.dataSetDir, trainOptions);
+      const result = await trainDir(
+        network,
+        this.dataSetDir,
+        data.train.options,
+      );
       network.validate();
       const json = JSON.stringify(network.exportJSON());
 

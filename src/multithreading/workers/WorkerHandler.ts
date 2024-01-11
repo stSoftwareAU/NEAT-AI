@@ -1,5 +1,6 @@
 import { Network } from "../../architecture/Network.ts";
 import { NetworkInternal } from "../../architecture/NetworkInterfaces.ts";
+import { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
 
 export interface RequestData {
@@ -15,6 +16,7 @@ export interface RequestData {
   };
   train?: {
     network: string;
+    options: TrainOptions;
   };
   echo?: {
     ms: number;
@@ -176,7 +178,7 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  train(network: NetworkInternal) {
+  train(network: NetworkInternal, options: TrainOptions) {
     const json = (network as Network).exportJSON();
 
     delete json.tags;
@@ -185,6 +187,7 @@ export class WorkerHandler {
       taskID: this.taskID++,
       train: {
         network: JSON.stringify(json),
+        options: options,
       },
     };
 
