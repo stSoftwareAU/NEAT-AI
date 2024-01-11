@@ -961,7 +961,13 @@ export class Network implements NetworkInternal {
 
     const workers: WorkerHandler[] = [];
 
-    const threads = options.threads ?? 1;
+    const threads = Math.round(
+      Math.max(
+        options.threads ? options.threads : navigator.hardwareConcurrency,
+        1,
+      ),
+    );
+
     for (let i = threads; i--;) {
       workers.push(
         new WorkerHandler(dataSetDir, options.costName ?? "MSE", threads == 1),

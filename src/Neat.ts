@@ -74,9 +74,6 @@ class NeatConfig implements NeatOptions {
   costName: string;
   traceStore?: string;
 
-  /** the number of workers */
-  threads: number;
-
   /** the number of training per generation. default: 1  */
   trainPerGen: number;
 
@@ -132,12 +129,6 @@ class NeatConfig implements NeatOptions {
     this.mutation = options.mutation || Mutation.FFW;
     this.selection = options.selection || Selection.POWER;
 
-    this.threads = Math.round(
-      Math.max(
-        options.threads ? options.threads : navigator.hardwareConcurrency,
-        1,
-      ),
-    );
     this.timeoutMinutes = options.timeoutMinutes;
     this.traceStore = options.traceStore;
     this.trainPerGen = options.trainPerGen ? options.trainPerGen : 1;
@@ -243,7 +234,7 @@ export class Neat {
       );
     }
 
-    const p = w.train(creature).then(async (r) => {
+    const p = w.train(creature, this.config).then(async (r) => {
       this.trainingComplete.push(r);
 
       this.trainingInProgress.delete(uuid);

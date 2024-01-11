@@ -194,17 +194,17 @@ export async function trainDir(
                 : ""
             }${
               trainingSampleRate < 1
-                ? " sample rate " +
-                  yellow((trainingSampleRate * 100).toFixed(1) + "%")
+                ? "( rate " +
+                  yellow((trainingSampleRate * 100).toFixed(1) + "% )")
                 : ""
             }`,
             "error",
             yellow((errorSum / counter).toFixed(3)),
-            "average time",
+            "time average:",
             yellow(
               format(totalTime / counter, { ignoreZero: true }),
             ),
-            "total time",
+            "total:",
             yellow(
               format(totalTime, { ignoreZero: true }),
             ),
