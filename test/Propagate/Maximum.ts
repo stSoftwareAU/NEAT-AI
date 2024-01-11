@@ -71,7 +71,7 @@ Deno.test("PropagateMaximum", async () => {
 
     const resultC = await train(creatureC, ts, {
       iterations: 100,
-      error: errorB - 0.001,
+      targetError: errorB - 0.001,
       // disableRandomSamples: true,
     });
 

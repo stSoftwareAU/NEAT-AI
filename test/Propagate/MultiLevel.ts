@@ -153,7 +153,7 @@ Deno.test("propagateMultiLevelRandom", async () => {
 
     const result1 = await train(creatureB, ts, {
       iterations: 2,
-      error: 0,
+      targetError: 0,
     });
 
     Deno.writeTextFileSync(
@@ -163,7 +163,7 @@ Deno.test("propagateMultiLevelRandom", async () => {
 
     const result2 = await train(creatureB, ts, {
       iterations: 100,
-      error: 0,
+      targetError: 0,
     });
 
     Deno.writeTextFileSync(
@@ -371,7 +371,7 @@ Deno.test("propagateMultiLevelKnownA", async () => {
 
     const result1 = await train(creatureB, ts, {
       iterations: 2,
-      error: 0,
+      targetError: 0,
     });
 
     Deno.writeTextFileSync(
@@ -381,7 +381,7 @@ Deno.test("propagateMultiLevelKnownA", async () => {
 
     const result2 = await train(creatureB, ts, {
       iterations: 10000,
-      error: 0,
+      targetError: 0,
     });
 
     Deno.writeTextFileSync(
@@ -588,7 +588,7 @@ Deno.test("propagateMultiLevelKnownB", async () => {
 
     const result1 = await train(creatureB, ts, {
       iterations: 2,
-      error: 0,
+      targetError: 0,
     });
 
     Deno.writeTextFileSync(
@@ -598,7 +598,7 @@ Deno.test("propagateMultiLevelKnownB", async () => {
 
     const result2 = await train(creatureB, ts, {
       iterations: 100,
-      error: 0,
+      targetError: 0,
     });
 
     Deno.writeTextFileSync(

@@ -45,8 +45,8 @@ export async function trainDir(
 ) {
   // Read the options
   const targetError =
-    options.error !== undefined && Number.isFinite(options.error)
-      ? options.error
+    options.targetError !== undefined && Number.isFinite(options.targetError)
+      ? options.targetError
       : 0.05;
   const cost = Costs.find(options.cost ? options.cost : "MSE");
 

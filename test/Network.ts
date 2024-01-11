@@ -168,7 +168,7 @@ async function trainSet(
 
     const options: TrainOptions = {
       iterations: iterations,
-      error: error,
+      targetError: error,
     };
 
     const results = await train(network, set, options);

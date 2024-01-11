@@ -72,7 +72,7 @@ Deno.test("PropagateMinimum", async () => {
 
     const resultC = await train(creatureC, ts, {
       iterations: 1000,
-      error: errorB - 0.001,
+      targetError: errorB - 0.001,
       disableRandomSamples: true,
     });
 

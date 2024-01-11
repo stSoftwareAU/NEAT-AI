@@ -67,7 +67,7 @@ Deno.test("PropagateWeightsIF", async () => {
 
     const resultC = await train(creatureC, ts, {
       iterations: 1000,
-      error: errorB - 0.01,
+      targetError: errorB - 0.01,
       generations: 10,
     });
 
@@ -167,7 +167,7 @@ Deno.test("PropagateBiasIF", async () => {
 
     const resultC = await train(creatureC, ts, {
       iterations: 1000,
-      error: errorB - 0.01,
+      targetError: errorB - 0.01,
       generations: 10,
     });
 
