@@ -8,6 +8,7 @@ import { yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
 import { addTag } from "../tags/TagsInterface.ts";
 import { DataRecordInterface, makeDataDir } from "./DataSet.ts";
+import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 
 export const cacheDataFile = {
   fn: "",
@@ -227,6 +228,7 @@ export async function trainDir(
         );
       }
       if (options.traceStore) {
+        ensureDirSync(options.traceStore);
         Deno.writeTextFileSync(
           `.trace/${trainingFailures}_fail.json`,
           JSON.stringify(network.exportJSON(), null, 2),
