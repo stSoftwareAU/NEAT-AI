@@ -34,7 +34,7 @@ class NeatConfig implements NeatOptions {
 
   /** number of records per dataset file. default: 2000 */
   dataSetPartitionBreak?: number;
-
+  disableRandomSamples?: boolean;
   /** debug (much slower) */
   debug: boolean;
 
@@ -85,6 +85,7 @@ class NeatConfig implements NeatOptions {
   log: number;
   /** verbose logging default: false */
   verbose: boolean;
+  trainingSampleRate?: number;
 
   constructor(options: NeatOptions) {
     this.creativeThinkingConnectionCount =
@@ -96,6 +97,8 @@ class NeatConfig implements NeatOptions {
     this.creatures = options.creatures ? options.creatures : [];
     this.costName = options.costName || "MSE";
     this.dataSetPartitionBreak = options.dataSetPartitionBreak;
+    this.disableRandomSamples = options.disableRandomSamples;
+    this.trainingSampleRate = options.trainingSampleRate;
 
     this.debug = options.debug
       ? true
@@ -241,7 +244,10 @@ export class Neat {
       traceStore: this.config.traceStore,
       iterations: 1,
       targetError: this.config.targetError,
+      trainingSampleRate: this.config.trainingSampleRate,
+      disableRandomSamples: this.config.disableRandomSamples,
     };
+
     const p = w.train(creature, trainOptions).then(async (r) => {
       this.trainingComplete.push(r);
 
