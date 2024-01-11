@@ -192,12 +192,13 @@ export async function trainDir(
               knownSampleCount > 0
                 ? "of " + yellow(knownSampleCount.toLocaleString()) + " "
                 : ""
-            }error${
+            }${
               trainingSampleRate < 1
                 ? " sample rate " +
                   yellow((trainingSampleRate * 100).toFixed(1) + "%")
                 : ""
             }`,
+            "error",
             yellow((errorSum / counter).toFixed(3)),
             "average time",
             yellow(
