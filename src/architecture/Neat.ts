@@ -215,14 +215,15 @@ export class Neat {
     await CreatureUtil.makeUUID(creature as Creature);
     let w: WorkerHandler;
 
-    for (let attempts = 0; true; attempts++) {
-      w = this.workers[Math.floor(this.workers.length * Math.random())];
+    w = this.workers[Math.floor(this.workers.length * Math.random())];
 
-      if (w.isBusy() == false) break;
-
-      if (attempts > 12) {
-        console.warn(`Could not find a non busy worker`);
-        break;
+    if (w.isBusy()) {
+      for (let i = this.workers.length; i--;) {
+        const tmpWorker = this.workers[i];
+        if (!tmpWorker.isBusy()) {
+          w = tmpWorker;
+          break;
+        }
       }
     }
 

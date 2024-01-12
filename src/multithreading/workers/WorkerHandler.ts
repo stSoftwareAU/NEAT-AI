@@ -129,8 +129,8 @@ export class WorkerHandler {
     this.busyCount++;
     const p = new Promise<ResponseData>((resolve) => {
       const call = (result: ResponseData) => {
-        resolve(result);
         this.busyCount--;
+        resolve(result);
 
         if (!this.isBusy()) {
           this.idleListeners.forEach((listener) => listener(this));
