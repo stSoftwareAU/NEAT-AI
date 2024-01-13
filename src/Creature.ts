@@ -36,6 +36,7 @@ import { BackPropagationConfig } from "./architecture/BackPropagation.ts";
 import { Connection } from "./architecture/Connection.ts";
 import { CreatureState, NodeState } from "./architecture/CreatureState.ts";
 import { cacheDataFile, dataFiles } from "./architecture/Training.ts";
+import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this network */
@@ -309,10 +310,13 @@ export class Creature implements CreatureInternal {
             if (fromList.length == 1) {
               const to = fromList[0].to;
               const from = toList[0].from;
+
+              const fromSquash = compactNetwork.nodes[from].squash;
               if (
                 from > this.input &&
-                compactNetwork.nodes[from].type ==
-                  compactNetwork.nodes[pos].type
+                fromSquash ==
+                  compactNetwork.nodes[pos].squash &&
+                (fromSquash == IDENTITY.NAME || fromSquash == LOGISTIC.NAME)
               ) {
                 if (compactNetwork.getConnection(from, to) == null) {
                   let weightA = fromList[0].weight * toList[0].weight;
@@ -1001,7 +1005,7 @@ export class Creature implements CreatureInternal {
 
     let error = Infinity;
     let bestScore = -Infinity;
-    let bestCreature = null;
+    let bestCreature: Creature | undefined;
 
     let iterationStartMS = new Date().getTime();
     let generation = 0;
@@ -1010,7 +1014,7 @@ export class Creature implements CreatureInternal {
       (!options.iterations || generation < options.iterations)
     ) {
       const fittest: Creature = await neat.evolve(
-        bestCreature as (Creature | undefined),
+        bestCreature,
       );
 
       if (fittest.score ? fittest.score : 0 > bestScore) {
@@ -1022,18 +1026,18 @@ export class Creature implements CreatureInternal {
         }
 
         bestScore = fittest.score ? fittest.score : 0;
-        bestCreature = Creature.fromJSON(fittest.internalJSON());
+        bestCreature = Creature.fromJSON(fittest.exportJSON());
       } else if (fittest.score ? fittest.score : 0 < bestScore) {
         throw new Error("fitness decreased over generations");
       }
-      const timedOut = endTimeMS ? Date.now() > endTimeMS : false;
+      const now = Date.now();
+      const timedOut = endTimeMS ? now > endTimeMS : false;
 
       if (
         options.log &&
         (generation % options.log === 0 || timedOut ||
           error <= (options.targetError ?? 0))
       ) {
-        const now = new Date().getTime();
         console.log(
           "Generation",
           generation,
@@ -1049,7 +1053,7 @@ export class Creature implements CreatureInternal {
           ),
         );
 
-        iterationStartMS = new Date().getTime();
+        iterationStartMS = now;
       }
 
       if (timedOut) {
@@ -1171,8 +1175,8 @@ export class Creature implements CreatureInternal {
   private writeCreatures(neat: Neat, dir: string) {
     let counter = 1;
     emptyDirSync(dir);
-    neat.population.forEach((creature: CreatureInternal) => {
-      const json = (creature as Creature).exportJSON();
+    neat.population.forEach((creature) => {
+      const json = creature.exportJSON();
 
       const txt = JSON.stringify(json, null, 1);
 

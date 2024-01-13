@@ -11,7 +11,7 @@ import { TrainOptions } from "./TrainOptions.ts";
 
 export interface NeatOptions extends TrainOptions {
   costName?: string;
-  /** How many new links to create during the creative thinking phase. default 12 */
+  /** How many new links to create during the creative thinking phase */
   creativeThinkingConnectionCount?: number;
 
   /** The directory to store the creatures (optional) */
