@@ -1,6 +1,6 @@
-import { assert } from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
-import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
+import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
+import { emptyDirSync } from "https://deno.land/std@0.212.0/fs/empty_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";

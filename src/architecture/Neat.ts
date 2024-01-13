@@ -1,24 +1,24 @@
 import { Fitness } from "./Fitness.ts";
 
-import { blue } from "https://deno.land/std@0.211.0/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
-import { makeElitists } from "./ElitismUtils.ts";
-import { addTag, getTag, removeTag } from "../tags/TagsInterface.ts";
-import { fineTuneImprovement } from "./FineTune.ts";
+import { blue } from "https://deno.land/std@0.212.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.212.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { Creature } from "../Creature.ts";
+import { addTag, getTag, removeTag } from "../tags/TagsInterface.ts";
 import { CreatureExport, CreatureInternal } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
+import { makeElitists } from "./ElitismUtils.ts";
+import { fineTuneImprovement } from "./FineTune.ts";
 import { Offspring } from "./Offspring.ts";
 
 import { NeatOptions } from "../config/NeatOptions.ts";
+import { TrainOptions } from "../config/TrainOptions.ts";
 import { Selection, SelectionInterface } from "../methods/Selection.ts";
 import { Mutation, MutationInterface } from "../methods/mutation.ts";
 import {
   ResponseData,
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
-import { TrainOptions } from "../config/TrainOptions.ts";
 
 class NeatConfig implements NeatOptions {
   /** List of creatures to start with */

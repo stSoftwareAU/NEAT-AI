@@ -1,9 +1,9 @@
-import { fail } from "https://deno.land/std@0.211.0/assert/fail.ts";
+import { fail } from "https://deno.land/std@0.212.0/assert/fail.ts";
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.211.0/assert/mod.ts";
-import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
+} from "https://deno.land/std@0.212.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";

@@ -1,4 +1,5 @@
 /* Import */
+import { Creature } from "../Creature.ts";
 import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
@@ -7,7 +8,6 @@ import { NodeFixableInterface } from "../methods/activations/NodeFixableInterfac
 import { Mutation } from "../methods/mutation.ts";
 import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
 import { Connection } from "./Connection.ts";
-import { Creature } from "../Creature.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 
 import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";

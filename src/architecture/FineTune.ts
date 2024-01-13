@@ -1,9 +1,9 @@
-import { addTag, getTag } from "../tags/TagsInterface.ts";
+import { blue, bold, cyan } from "https://deno.land/std@0.212.0/fmt/colors.ts";
 import { Creature } from "../Creature.ts";
+import { addTag, getTag } from "../tags/TagsInterface.ts";
 import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { NodeExport } from "./NodeInterfaces.ts";
-import { blue, bold, cyan } from "https://deno.land/std@0.211.0/fmt/colors.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneRandomize(
