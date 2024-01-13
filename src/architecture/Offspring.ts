@@ -1,9 +1,9 @@
+import { Creature } from "../Creature.ts";
 import { addTags } from "../tags/TagsInterface.ts";
 import {
   ConnectionExport,
   ConnectionInternal,
 } from "./ConnectionInterfaces.ts";
-import { Creature } from "../Creature.ts";
 import { Node } from "./Node.ts";
 
 export class Offspring {

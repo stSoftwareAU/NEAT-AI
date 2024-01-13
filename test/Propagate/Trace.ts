@@ -1,4 +1,4 @@
-import { yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
+import { yellow } from "https://deno.land/std@0.212.0/fmt/colors.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";

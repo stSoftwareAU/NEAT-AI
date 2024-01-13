@@ -3,7 +3,7 @@ import {
   assert,
   assertAlmostEquals,
   fail,
-} from "https://deno.land/std@0.211.0/assert/mod.ts";
+} from "https://deno.land/std@0.212.0/assert/mod.ts";
 
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 

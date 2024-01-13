@@ -1,14 +1,13 @@
-import { blue } from "https://deno.land/std@0.211.0/fmt/colors.ts";
+import { blue, yellow } from "https://deno.land/std@0.212.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.212.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { Costs } from "../Costs.ts";
-import { TrainOptions } from "../config/TrainOptions.ts";
-import { BackPropagationConfig } from "./BackPropagation.ts";
 import { Creature } from "../Creature.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
-import { yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
+import { TrainOptions } from "../config/TrainOptions.ts";
 import { addTag } from "../tags/TagsInterface.ts";
+import { BackPropagationConfig } from "./BackPropagation.ts";
+import { CreatureUtil } from "./CreatureUtils.ts";
 import { DataRecordInterface, makeDataDir } from "./DataSet.ts";
-import { ensureDirSync } from "https://deno.land/std@0.211.0/fs/ensure_dir.ts";
 
 export const cacheDataFile = {
   fn: "",

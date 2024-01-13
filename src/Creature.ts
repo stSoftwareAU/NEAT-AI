@@ -1,4 +1,3 @@
-import { TagInterface } from "./tags/TagInterface.ts";
 import {
   ConnectionExport,
   ConnectionInternal,
@@ -14,29 +13,30 @@ import {
   NodeInternal,
   NodeTrace,
 } from "./architecture/NodeInterfaces.ts";
+import { TagInterface } from "./tags/TagInterface.ts";
 
-import { NeatOptions } from "./config/NeatOptions.ts";
 import { DataRecordInterface } from "./architecture/DataSet.ts";
+import { NeatOptions } from "./config/NeatOptions.ts";
 
-import { yellow } from "https://deno.land/std@0.211.0/fmt/colors.ts";
-import { Neat } from "./architecture/Neat.ts";
+import { yellow } from "https://deno.land/std@0.212.0/fmt/colors.ts";
 import { makeDataDir } from "./architecture/DataSet.ts";
+import { Neat } from "./architecture/Neat.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { getTag } from "./tags/TagsInterface.ts";
 
-import { format } from "https://deno.land/std@0.211.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.211.0/fs/empty_dir.ts";
+import { format } from "https://deno.land/std@0.212.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.212.0/fs/empty_dir.ts";
 import { CostInterface } from "./Costs.ts";
-import { Node } from "./architecture/Node.ts";
-import { Activations } from "./methods/activations/Activations.ts";
-import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
-import { Mutation } from "./methods/mutation.ts";
-import { addTag } from "./tags/TagsInterface.ts";
 import { BackPropagationConfig } from "./architecture/BackPropagation.ts";
 import { Connection } from "./architecture/Connection.ts";
 import { CreatureState, NodeState } from "./architecture/CreatureState.ts";
+import { Node } from "./architecture/Node.ts";
 import { cacheDataFile, dataFiles } from "./architecture/Training.ts";
+import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
+import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
+import { Mutation } from "./methods/mutation.ts";
+import { addTag } from "./tags/TagsInterface.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this network */

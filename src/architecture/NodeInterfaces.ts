@@ -1,5 +1,6 @@
 import { TagsInterface } from "../tags/TagsInterface.ts";
 import { NodeState } from "./CreatureState.ts";
+
 interface NodeAbstract extends TagsInterface {
   uuid?: string;
   bias?: number;

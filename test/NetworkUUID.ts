@@ -3,7 +3,7 @@ import {
   assert,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.211.0/assert/mod.ts";
+} from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/architecture/Neat.ts";

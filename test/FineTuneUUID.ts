@@ -2,7 +2,7 @@ import {
   assertAlmostEquals,
   assertEquals,
   fail,
-} from "https://deno.land/std@0.211.0/assert/mod.ts";
+} from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 import { Creature } from "../src/Creature.ts";
 

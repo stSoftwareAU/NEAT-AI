@@ -1,6 +1,6 @@
-import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { addTag } from "../tags/TagsInterface.ts";
+import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { calculate as calculateScore } from "./Score.ts";
 
 type PromiseFunction = (v: unknown) => void;
