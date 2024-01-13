@@ -47,7 +47,7 @@ export async function trainDir(
   // Read the options
   const targetError =
     options.targetError !== undefined && Number.isFinite(options.targetError)
-      ? options.targetError
+      ? Math.max(options.targetError, 0.000_001)
       : 0.05;
   const cost = Costs.find(options.cost ? options.cost : "MSE");
 
@@ -220,11 +220,13 @@ export async function trainDir(
       trainingFailures++;
       if (trainingStopped == false) {
         console.warn(
-          `Training ${blue(ID)} made the error ${
+          `Training ${blue(ID)} made the error: ${
             yellow(bestError.toFixed(3))
-          } worse ${yellow(error.toFixed(3))} failed ${
-            yellow(trainingFailures.toString())
-          } out of ${yellow(iteration.toString())} iterations`,
+          }, worse: ${yellow(error.toFixed(3))}, target: ${
+            yellow(targetError.toString())
+          }, failed: ${yellow(trainingFailures.toString())} out of ${
+            yellow(iteration.toString())
+          } iterations`,
         );
       }
       if (options.traceStore) {

@@ -24,7 +24,6 @@ class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
   creatures: CreatureInternal[] | CreatureExport[];
 
-  /** How many new links to create during the creative thinking phase. */
   creativeThinkingConnectionCount: number;
   creatureStore?: string;
   experimentStore?: string;
@@ -86,9 +85,7 @@ class NeatConfig implements NeatOptions {
 
   constructor(options: NeatOptions) {
     this.creativeThinkingConnectionCount =
-      options.creativeThinkingConnectionCount
-        ? options.creativeThinkingConnectionCount
-        : 12;
+      options.creativeThinkingConnectionCount ?? 1;
     this.creatureStore = options.creatureStore;
     this.experimentStore = options.experimentStore;
     this.creatures = options.creatures ? options.creatures : [];
@@ -212,7 +209,8 @@ export class Neat {
   private trainingComplete: ResponseData[] = [];
 
   async scheduleTraining(creature: CreatureInternal) {
-    await CreatureUtil.makeUUID(creature as Creature);
+    const uuid = await CreatureUtil.makeUUID(creature as Creature);
+    if (this.trainingInProgress.has(uuid)) return;
     let w: WorkerHandler;
 
     w = this.workers[Math.floor(this.workers.length * Math.random())];
@@ -227,7 +225,6 @@ export class Neat {
       }
     }
 
-    const uuid = creature.uuid as string;
     if (this.config.verbose) {
       console.info(
         `Training ${
@@ -267,8 +264,6 @@ export class Neat {
     });
 
     this.trainingInProgress.set(uuid, p);
-
-    addTag(creature, "trained", "YES");
   }
 
   async checkAndAdd(
@@ -400,7 +395,7 @@ export class Neat {
     const tmpFittest = elitists[0];
 
     const fittest = Creature.fromJSON(
-      (tmpFittest as Creature).internalJSON(),
+      (tmpFittest as Creature).exportJSON(),
       this.config.debug,
     ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
@@ -416,36 +411,21 @@ export class Neat {
       i++
     ) {
       const n = elitists[i];
-      if (!previousFittest) {
-        /* removed "trained" on the first run */
-        removeTag(n, "trained");
-      }
 
       if (
         this.doNotStartMoreTraining == false &&
-        this.trainingInProgress.size < this.config.trainPerGen && n.score
+        this.trainingInProgress.size < this.config.trainPerGen
       ) {
-        const trained = getTag(n, "trained");
-        if (trained !== "YES") {
-          await this.scheduleTraining(n);
-        }
+        await this.scheduleTraining(n);
       }
     }
 
+    const newPopulation = [];
     if (
-      this.doNotStartMoreTraining == false &&
-      this.trainingInProgress.size < this.config.trainPerGen &&
       elitists.length > 0
     ) {
-      if (this.config.verbose) {
-        console.info(
-          "Creative thinking required",
-          this.config.focusRate,
-          this.config.focusList,
-        );
-      }
       const n = elitists[0];
-      const creativeThinking = Creature.fromJSON((n as Creature).exportJSON());
+      const creativeThinking = Creature.fromJSON(n.exportJSON());
       const weightScale = 1 / creativeThinking.connections.length;
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
         creativeThinking.addConnection(
@@ -458,8 +438,9 @@ export class Neat {
         );
       }
 
-      await this.scheduleTraining(creativeThinking);
+      newPopulation.push(creativeThinking);
     }
+
     const livePopulation = [];
 
     await this.writeScores(
@@ -492,12 +473,11 @@ export class Neat {
       elitists,
     );
 
-    const newPopulation = [];
-
     const newPopSize = this.config.populationSize -
       elitists.length -
       this.trainingComplete.length -
-      fineTunedPopulation.length - 1;
+      fineTunedPopulation.length - 1 -
+      newPopulation.length;
 
     // Breed the next individuals
     for (
@@ -539,7 +519,7 @@ export class Neat {
     this.trainingComplete.length = 0;
 
     this.population = [
-      ...(elitists as Creature[]),
+      ...elitists,
       ...trainedPopulation,
       ...fineTunedPopulation,
       ...newPopulation,
