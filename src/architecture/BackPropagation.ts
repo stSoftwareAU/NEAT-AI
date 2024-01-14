@@ -4,7 +4,6 @@ import { ConnectionState, CreatureState } from "./CreatureState.ts";
 import { Node } from "./Node.ts";
 
 export interface BackPropagationOptions {
-  // useAverageWeight?: "Yes" | "No" | "Maybe";
   disableRandomSamples?: boolean;
   useAverageDifferenceBias?: "Yes" | "No" | "Maybe";
 
@@ -43,7 +42,6 @@ export interface BackPropagationOptions {
 export const PLANK_CONSTANT = 0.000_000_1;
 
 export class BackPropagationConfig implements BackPropagationOptions {
-  // useAverageWeight: "Yes" | "No" | "Maybe";
   disableRandomSamples: boolean;
 
   useAverageDifferenceBias: "Yes" | "No" | "Maybe";
@@ -59,15 +57,6 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
   limitWeightScale: number;
   constructor(options?: BackPropagationOptions) {
-    // const random = Math.random() * 2 - 1;
-    // this.useAverageWeight = options?.useAverageWeight
-    //   ? options?.useAverageWeight
-    //   : random > 0.75
-    //   ? "Yes"
-    //   : random < -0.75
-    //   ? "No"
-    //   : "Maybe";
-
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
     if (
       options?.useAverageDifferenceBias

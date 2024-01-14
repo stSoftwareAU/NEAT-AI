@@ -232,8 +232,7 @@ export class Node implements TagsInterface, NodeInternal {
 
         const activationSquash = squashMethod as ActivationInterface;
         activation = activationSquash.squash(value);
-        // Squash the values received
-        // activation = result.activation;
+
         if (!Number.isFinite(activation)) {
           if (activation === Number.POSITIVE_INFINITY) {
             activation = Number.MAX_SAFE_INTEGER;
@@ -395,7 +394,6 @@ export class Node implements TagsInterface, NodeInternal {
       // Iterate over the shuffled indices
       for (let i = listLength; i--;) {
         const indx = indices[i];
-        // let thisPerLinkError = errorPerLink;
 
         const c = toList[indx];
 
@@ -409,9 +407,9 @@ export class Node implements TagsInterface, NodeInternal {
         const fromValue = fromWeight * fromActivation;
 
         let improvedFromActivation = fromActivation;
-        // let targetFromActivation = fromActivation;
+
         const targetFromValue = fromValue + errorPerLink;
-        // let improvedFromValue = fromValue;
+
         if (
           fromWeight &&
           fromNode.type !== "input" &&
@@ -423,20 +421,14 @@ export class Node implements TagsInterface, NodeInternal {
             targetFromActivation,
             config,
           );
-          // improvedFromValue = improvedFromActivation * fromWeight;
-
-          // thisPerLinkError = targetFromValue - improvedFromValue;
         }
 
         if (
           Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
           Math.abs(fromWeight) > PLANK_CONSTANT
         ) {
-          // const targetFromValue2 = fromValue + thisPerLinkError;
           const cs = this.creature.state.connection(c.from, c.to);
           accumulateWeight(cs, targetFromValue, improvedFromActivation);
-
-          // adjustWeight(cs, targetFromValue2, improvedFromActivation);
           const aWeight = adjustedWeight(this.creature.state, c, config);
 
           const improvedFromValue = improvedFromActivation *
