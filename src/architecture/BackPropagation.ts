@@ -193,7 +193,6 @@ export function accumulateWeight(
 }
 
 export function adjustedWeight(
-  // cs: ConnectionState,
   networkState: CreatureState,
   c: ConnectionInternal,
   config: BackPropagationConfig,
