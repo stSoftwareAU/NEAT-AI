@@ -186,12 +186,9 @@ export function accumulateWeight(
   value: number,
   activation: number,
 ) {
-  cs.totalValue += value;
-  cs.totalActivation += activation;
   const w = value / activation;
 
   cs.averageWeight = ((cs.averageWeight * cs.count) + w) / (cs.count + 1);
-  // cs.absoluteActivation += Math.abs(activation);
   cs.count++;
 }
 
@@ -203,9 +200,7 @@ export function adjustedWeight(
 ) {
   const cs = networkState.connection(c.from, c.to);
 
-  if (cs.count && Math.abs(cs.totalActivation) > PLANK_CONSTANT) {
-    // const synapseAverageWeightTotal = (cs.totalValue / cs.totalActivation) *
-    //   cs.count;
+  if (cs.count) {
     const synapseAverageWeightTotal = cs.averageWeight * cs.count;
 
     const totalGenerationalWeight = c.weight * config.generations;
@@ -214,31 +209,7 @@ export function adjustedWeight(
       (synapseAverageWeightTotal + totalGenerationalWeight) /
       (cs.count + config.generations);
 
-    // if( Math.abs( cs.averageWeight-averageWeight) >0.001){
-    //   // console.info(averageWeight, cs);
-    //   return limitWeight(cs.averageWeight, c.weight, config);
-    // }
-    // if (config.useAverageWeight == "Yes") {
     return limitWeight(averageWeight, c.weight, config);
-    // }
-
-    //     const totalValue = cs.totalValue + (c.weight * config.generations);
-    //     const absoluteActivation = cs.absoluteActivation + config.generations;
-    //     const absoluteWeight = totalValue / absoluteActivation;
-    // console.info( `${c.from}:${c.to}) averageWeight: ${averageWeight}, absoluteWeight: ${absoluteWeight}, cs.totalValue: ${cs.totalValue}/ cs.totalActivation: ${cs.totalActivation}, c.weight: ${c.weight}`);
-
-    //     if (config.useAverageWeight == "Maybe") {
-    //       if (
-    //         Math.abs(averageWeight - c.weight) <=
-    //           Math.abs(absoluteWeight - c.weight)
-    //       ) {
-    //         return limitWeight(averageWeight, c.weight, config);
-    //       } else {
-    //         return limitWeight(absoluteWeight, c.weight, config);
-    //       }
-    //     } else {
-    //       return limitWeight(absoluteWeight, c.weight, config);
-    //     }
   }
 
   return c.weight;

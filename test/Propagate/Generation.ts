@@ -32,8 +32,6 @@ function makeCreature() {
         toUUID: "output-0",
         weight: 1,
         trace: {
-          totalValue: -2.54,
-          totalActivation: -0.8,
           averageWeight: 0.1,
           count: 1,
         },
