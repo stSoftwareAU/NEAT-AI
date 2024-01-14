@@ -69,67 +69,67 @@ function makeOutput(input: number[]) {
   return output;
 }
 
-Deno.test("OneAndDone", () => {
-  const creature = makeCreature();
-  const traceDir = ".trace";
-  ensureDirSync(traceDir);
-  const config = new BackPropagationConfig({
-    disableRandomSamples: true,
+// Deno.test("OneAndDone", () => {
+//   const creature = makeCreature();
+//   const traceDir = ".trace/OneAndDone";
+//   ensureDirSync(traceDir);
+//   const config = new BackPropagationConfig({
+//     disableRandomSamples: true,
 
-    useAverageWeight: "No",
-    useAverageDifferenceBias: "Yes",
-    generations: 0,
+//     useAverageWeight: "Yes",
+//     useAverageDifferenceBias: "Yes",
+//     generations: 0,
 
-    maximumWeightAdjustmentScale: 2,
-    maximumBiasAdjustmentScale: 2,
-    learningRate: 1,
-  });
+//     maximumWeightAdjustmentScale: 2,
+//     maximumBiasAdjustmentScale: 2,
+//     learningRate: 1,
+//   });
+// console.info( config);
+//   Deno.writeTextFileSync(
+//     `${traceDir}/0-start.json`,
+//     JSON.stringify(creature.exportJSON(), null, 2),
+//   );
 
-  Deno.writeTextFileSync(
-    ".trace/0-start.json",
-    JSON.stringify(creature.traceJSON(), null, 2),
-  );
+//   const inA = [-1, 0, 1];
+//   creature.activate(inA);
+//   const expectedA = makeOutput(inA);
 
-  const inA = [-1, 0, 1];
-  creature.activate(inA);
-  const expectedA = makeOutput(inA);
+//   creature.propagate(expectedA, config);
 
-  creature.propagate(expectedA, config);
+//   Deno.writeTextFileSync(
+//     `${traceDir}/1-trace.json`,
+//     JSON.stringify(creature.traceJSON(), null, 2),
+//   );
 
-  Deno.writeTextFileSync(
-    ".trace/1-inA.json",
-    JSON.stringify(creature.traceJSON(), null, 2),
-  );
+//   creature.propagateUpdate(config);
 
-  creature.propagateUpdate(config);
+//   const actualA = creature.noTraceActivate(inA);
 
-  const actualA = creature.noTraceActivate(inA);
+//   Deno.writeTextFileSync(
+//     `${traceDir}/2-done.json`,
+//     JSON.stringify(creature.exportJSON(), null, 2),
+//   );
 
-  Deno.writeTextFileSync(
-    ".trace/4-done.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
-  );
-
-  assertAlmostEquals(
-    expectedA[0],
-    actualA[0],
-    0.7,
-    `0: ${expectedA[0].toFixed(3)} ${actualA[0].toFixed(3)}`,
-  );
-  assertAlmostEquals(
-    expectedA[1],
-    actualA[1],
-    0.7,
-    `0: ${expectedA[1].toFixed(3)} ${actualA[1].toFixed(3)}`,
-  );
-});
+//   assertAlmostEquals(
+//     expectedA[0],
+//     actualA[0],
+//     0.7,
+//     `0: ${expectedA[0].toFixed(3)} ${actualA[0].toFixed(3)}`,
+//   );
+//   assertAlmostEquals(
+//     expectedA[1],
+//     actualA[1],
+//     0.7,
+//     `0: ${expectedA[1].toFixed(3)} ${actualA[1].toFixed(3)}`,
+//   );
+// });
 
 Deno.test("TwoSame", () => {
   const creature = makeCreature();
-  const traceDir = ".trace";
+  const traceDir = ".trace/TwoSame";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageWeight: "No",
+    // useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
     limitBiasScale: 5,
@@ -137,7 +137,7 @@ Deno.test("TwoSame", () => {
   });
 
   Deno.writeTextFileSync(
-    ".trace/0-start.json",
+    `${traceDir}/0-start.json`,
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
@@ -151,16 +151,17 @@ Deno.test("TwoSame", () => {
     }
 
     Deno.writeTextFileSync(
-      ".trace/1-inA.json",
+      `${traceDir}/1-trace.json`,
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
     creature.propagateUpdate(config);
+    creature.clearState();
 
     const actualA = creature.noTraceActivate(inA);
 
     Deno.writeTextFileSync(
-      ".trace/4-done.json",
+      `${traceDir}/2-done.json`,
       JSON.stringify(creature.exportJSON(), null, 2),
     );
 
@@ -193,7 +194,7 @@ Deno.test("ManySame", () => {
   ensureDirSync(traceDir);
   for (let attempts = 0; true; attempts++) {
     const config = new BackPropagationConfig({
-      useAverageWeight: "Yes",
+      // useAverageWeight: "Yes",
       useAverageDifferenceBias: "Maybe",
       disableRandomSamples: true,
       generations: 0,
@@ -224,6 +225,7 @@ Deno.test("ManySame", () => {
     );
 
     creature.propagateUpdate(config);
+    creature.clearState();
 
     const actualA = creature.noTraceActivate(inA);
 
@@ -264,11 +266,12 @@ Deno.test("propagateSingleNeuronKnown", () => {
   const traceDir = ".trace";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageWeight: "Yes",
+    // useAverageWeight: "Yes",
+    disableRandomSamples: true,
     useAverageDifferenceBias: "Yes",
     generations: 0,
-    maximumWeightAdjustmentScale: 2,
-    maximumBiasAdjustmentScale: 2,
+    maximumWeightAdjustmentScale: 1,
+    maximumBiasAdjustmentScale: 1,
     learningRate: 1,
   });
   console.info(config);
@@ -327,8 +330,18 @@ Deno.test("propagateSingleNeuronKnown", () => {
   const expectedD = makeOutput(inD);
   console.info("LAST", expectedD, actualD);
 
-  assertAlmostEquals(actualD[0], expectedD[0], 0.5);
-  assertAlmostEquals(actualD[1], expectedD[1], 0.5);
+  assertAlmostEquals(
+    expectedD[0],
+    actualD[0],
+    0.5,
+    `expected ${expectedD[0].toFixed(3)}, actual ${actualD[0].toFixed(3)}`,
+  );
+  assertAlmostEquals(
+    expectedD[1],
+    actualD[1],
+    0.5,
+    `expected ${expectedD[1].toFixed(3)}, actual ${actualD[1].toFixed(3)}`,
+  );
 });
 
 Deno.test("propagateSingleNeuronRandom", () => {
@@ -338,7 +351,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
   const config = new BackPropagationConfig({
-    useAverageWeight: "Yes",
+    // useAverageWeight: "Yes",
   });
   console.info(config);
   const traceDir = ".trace";

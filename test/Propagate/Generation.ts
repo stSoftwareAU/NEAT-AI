@@ -34,8 +34,8 @@ function makeCreature() {
         trace: {
           totalValue: -2.54,
           totalActivation: -0.8,
+          averageWeight: 0.1,
           count: 1,
-          absoluteActivation: 0.8,
         },
       },
     ],
@@ -94,11 +94,11 @@ Deno.test("Generation Weight", () => {
   }
 
   const w1 = adjustedWeight(
-    creature.networkState,
+    creature.state,
     connection,
     new BackPropagationConfig({
       generations: 0,
-      useAverageWeight: "Yes",
+      // useAverageWeight: "Yes",
       maximumBiasAdjustmentScale: 5,
       maximumWeightAdjustmentScale: 5,
       learningRate: 1,
@@ -109,13 +109,13 @@ Deno.test("Generation Weight", () => {
 
   const config2 = new BackPropagationConfig({
     generations: 10,
-    useAverageWeight: "Yes",
+    // useAverageWeight: "Yes",
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
     learningRate: 1,
   });
   const w2 = adjustedWeight(
-    creature.networkState,
+    creature.state,
     connection,
     config2,
   );

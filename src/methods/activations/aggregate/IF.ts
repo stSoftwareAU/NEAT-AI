@@ -4,9 +4,9 @@ import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 import { Mutation } from "../../mutation.ts";
 import {
+  accumulateWeight,
   adjustedBias,
   adjustedWeight,
-  adjustWeight,
   BackPropagationConfig,
   limitActivation,
   limitValue,
@@ -30,7 +30,7 @@ export class IF
   }
 
   fix(node: Node) {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     const spareList = [];
     let foundPositive = false;
     let foundCondition = false;
@@ -87,7 +87,7 @@ export class IF
     }
 
     if (!foundCondition) {
-      const c = node.network.makeRandomConnection(node.index);
+      const c = node.creature.makeRandomConnection(node.index);
       if (c) {
         c.type = "condition";
         foundCondition = true;
@@ -95,7 +95,7 @@ export class IF
     }
 
     if (!foundNegative) {
-      const c = node.network.makeRandomConnection(node.index);
+      const c = node.creature.makeRandomConnection(node.index);
 
       if (c) {
         c.type = "negative";
@@ -104,7 +104,7 @@ export class IF
     }
 
     if (!foundPositive) {
-      const c = node.network.makeRandomConnection(node.index);
+      const c = node.creature.makeRandomConnection(node.index);
 
       if (c) {
         c.type = "positive";
@@ -135,7 +135,7 @@ export class IF
       }
     }
 
-    const toList2 = node.network.toConnections(node.index);
+    const toList2 = node.creature.toConnections(node.index);
 
     if (toList2.length < 3 && node.index > 2) {
       throw new Error(
@@ -154,11 +154,11 @@ export class IF
     let negative = 0;
     let positive = 0;
 
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.network.getActivation(c.from) *
+      const value = node.creature.getActivation(c.from) *
         c.weight;
 
       switch (c.type) {
@@ -176,7 +176,7 @@ export class IF
     if (condition > 0) {
       for (let i = toList.length; i--;) {
         const c = toList[i];
-        const cs = node.network.networkState.connection(c.from, c.to);
+        const cs = node.creature.state.connection(c.from, c.to);
         switch (c.type) {
           case "condition":
           case "negative":
@@ -192,7 +192,7 @@ export class IF
         const c = toList[i];
 
         if (c.type == "negative") {
-          node.network.networkState.connection(c.from, c.to).used = true;
+          node.creature.state.connection(c.from, c.to).used = true;
         }
       }
       return negative;
@@ -204,11 +204,11 @@ export class IF
     let negative = 0;
     let positive = 0;
 
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = limitActivation(node.network.getActivation(c.from)) *
+      const value = limitActivation(node.creature.getActivation(c.from)) *
         c.weight;
 
       switch (c.type) {
@@ -227,7 +227,7 @@ export class IF
   }
 
   applyLearnings(node: Node): boolean {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
 
     let foundPositive = false;
 
@@ -235,7 +235,7 @@ export class IF
 
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = node.network.networkState.connection(c.from, c.to);
+      const cs = node.creature.state.connection(c.from, c.to);
       switch (c.type) {
         case "condition":
           break;
@@ -260,16 +260,16 @@ export class IF
 
       switch (c.type) {
         case "condition":
-          node.network.disconnect(c.from, c.to);
+          node.creature.disconnect(c.from, c.to);
           break;
         case "negative":
           if (foundPositive) {
-            node.network.disconnect(c.from, c.to);
+            node.creature.disconnect(c.from, c.to);
           }
           break;
         default:
           if (foundNegative) {
-            node.network.disconnect(c.from, c.to);
+            node.creature.disconnect(c.from, c.to);
           }
       }
     }
@@ -284,7 +284,7 @@ export class IF
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     let condition = 0;
     let negativeCount = 0;
     let positiveCount = 0;
@@ -292,7 +292,7 @@ export class IF
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = limitActivation(node.network.getActivation(c.from)) *
+      const value = limitActivation(node.creature.getActivation(c.from)) *
         c.weight;
 
       switch (c.type) {
@@ -309,7 +309,7 @@ export class IF
 
     const activation = node.adjustedActivation(config);
 
-    const ns = node.network.networkState.node(node.index);
+    const ns = node.creature.state.node(node.index);
 
     const targetValue = toValue(node, targetActivation);
 
@@ -343,12 +343,12 @@ export class IF
       if (c.type == "positive" && condition <= 0) continue;
       if (c.type == "negative" && condition > 0) continue;
 
-      const fromNode = node.network.nodes[c.from];
+      const fromNode = node.creature.nodes[c.from];
       const fromActivation = fromNode.adjustedActivation(config);
 
-      const cs = node.network.networkState.connection(c.from, c.to);
+      const cs = node.creature.state.connection(c.from, c.to);
 
-      const fromWeight = adjustedWeight(node.network.networkState, c, config);
+      const fromWeight = adjustedWeight(node.creature.state, c, config);
       const fromValue = fromWeight * fromActivation;
 
       let improvedFromActivation = fromActivation;
@@ -372,9 +372,9 @@ export class IF
       }
 
       const targetFromValue2 = fromValue + thisPerLinkError;
-      adjustWeight(cs, targetFromValue2, targetFromActivation);
+      accumulateWeight(cs, targetFromValue2, targetFromActivation);
 
-      const aWeight = adjustedWeight(node.network.networkState, c, config);
+      const aWeight = adjustedWeight(node.creature.state, c, config);
       const improvedAdjustedFromValue = improvedFromActivation *
         aWeight;
 

@@ -13,12 +13,12 @@ export class HYPOT implements NodeActivationInterface {
   }
 
   noTraceActivate(node: Node) {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     const values: number[] = new Array(toList.length);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      values[i] = node.network.getActivation(c.from) * c.weight;
+      values[i] = node.creature.getActivation(c.from) * c.weight;
     }
 
     const value = Math.hypot(...values);
@@ -30,10 +30,10 @@ export class HYPOT implements NodeActivationInterface {
   }
 
   fix(node: Node) {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
 
     if (toList.length < 2) {
-      node.network.makeRandomConnection(node.index);
+      node.creature.makeRandomConnection(node.index);
     }
   }
 }

@@ -49,7 +49,7 @@ export class Creature implements CreatureInternal {
   score?: number;
   connections: ConnectionInternal[];
 
-  readonly networkState = new CreatureState(this);
+  readonly state = new CreatureState(this);
   private cacheTo = new Map<number, ConnectionInternal[]>();
   private cacheFrom = new Map<number, ConnectionInternal[]>();
   private cacheSelf = new Map<number, ConnectionInternal[]>();
@@ -214,11 +214,11 @@ export class Creature implements CreatureInternal {
    * Clear the context of the network
    */
   clearState() {
-    this.networkState.clear();
+    this.state.clear();
   }
 
   getActivation(indx: number) {
-    return this.networkState.activations[indx];
+    return this.state.activations[indx];
   }
 
   /**
@@ -227,7 +227,7 @@ export class Creature implements CreatureInternal {
   activate(input: number[], feedbackLoop = false) {
     const output: number[] = new Array(this.output);
 
-    this.networkState.makeActivation(input, feedbackLoop);
+    this.state.makeActivation(input, feedbackLoop);
 
     const lastHiddenNode = this.nodes.length - this.output;
 
@@ -250,7 +250,7 @@ export class Creature implements CreatureInternal {
   noTraceActivate(input: number[], feedbackLoop = false) {
     const output: number[] = new Array(this.output);
 
-    this.networkState.makeActivation(input, feedbackLoop);
+    this.state.makeActivation(input, feedbackLoop);
 
     const lastHiddenNode = this.nodes.length - this.output;
 
@@ -619,7 +619,7 @@ export class Creature implements CreatureInternal {
         );
       }
 
-      if ((node as Node).network !== this) {
+      if ((node as Node).creature !== this) {
         throw new Error(`node ${node.ID()} network mismatch`);
       }
     });
@@ -926,7 +926,7 @@ export class Creature implements CreatureInternal {
     const targetLength = target.length;
     const indices = Array.from({ length: targetLength }, (_, i) => i); // Create an array of indices
 
-    if (targetLength > 1 && !(config.disableRandomSamples)) {
+    if (targetLength > 1 && !config.disableRandomSamples) {
       // Fisher-Yates shuffle algorithm
       for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -955,6 +955,8 @@ export class Creature implements CreatureInternal {
    * Back propagate the network
    */
   propagateUpdate(config: BackPropagationConfig) {
+    if (this.state.propagated) throw new Error(`Already propagated`);
+
     for (
       let indx = this.nodes.length - 1;
       indx >= this.input;
@@ -963,6 +965,7 @@ export class Creature implements CreatureInternal {
       const n = this.nodes[indx] as Node;
       n.propagateUpdate(config);
     }
+    this.state.propagated = true;
   }
 
   /**
@@ -1945,7 +1948,7 @@ export class Creature implements CreatureInternal {
     this.nodes.forEach((n) => {
       if (n.type !== "input") {
         const indx = n.index;
-        const ns = this.networkState.node(indx);
+        const ns = this.state.node(indx);
 
         const traceNode: NodeExport = json.nodes[exportIndex] as NodeTrace;
 
@@ -1958,7 +1961,7 @@ export class Creature implements CreatureInternal {
     const traceConnections = Array<ConnectionTrace>(json.connections.length);
     this.connections.forEach((c, indx) => {
       const exportConnection = json.connections[indx] as ConnectionTrace;
-      const cs = this.networkState.connection(c.from, c.to);
+      const cs = this.state.connection(c.from, c.to);
       exportConnection.trace = cs;
 
       traceConnections[indx] = exportConnection;
@@ -2039,7 +2042,7 @@ export class Creature implements CreatureInternal {
       n.index = pos;
       if ((jn as NodeTrace).trace) {
         const trace: NodeState = (jn as NodeTrace).trace;
-        const ns = this.networkState.node(n.index);
+        const ns = this.state.node(n.index);
         Object.assign(ns, trace);
       }
 
@@ -2067,7 +2070,7 @@ export class Creature implements CreatureInternal {
         conn.type,
       );
       if ((conn as ConnectionTrace).trace) {
-        const cs = this.networkState.connection(connection.from, connection.to);
+        const cs = this.state.connection(connection.from, connection.to);
         const trace = (conn as ConnectionTrace).trace;
         Object.assign(cs, trace);
       }
