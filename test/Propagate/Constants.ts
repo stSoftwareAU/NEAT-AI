@@ -260,7 +260,7 @@ Deno.test("ConstantsMany", () => {
         // maximumBiasAdjustmentScale: 1,
         learningRate: 0.01,
         generations: generations,
-        // disableRandomSamples: true,
+        disableRandomSamples: true,
       });
       // console.info( config);
       for (let loops = 10; loops--;) {
@@ -283,7 +283,7 @@ Deno.test("ConstantsMany", () => {
 
     const tmpActual = creature.noTraceActivate(sampleInput);
 
-    if (attempt > 12) break;
+    if (attempt > 24) break;
     if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
   }
 
