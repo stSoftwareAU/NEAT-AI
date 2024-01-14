@@ -177,10 +177,12 @@ export function accumulateWeight(
   value: number,
   activation: number,
 ) {
-  const w = value / activation;
+  if (Math.abs(activation) > PLANK_CONSTANT) {
+    const w = value / activation;
 
-  cs.averageWeight = ((cs.averageWeight * cs.count) + w) / (cs.count + 1);
-  cs.count++;
+    cs.averageWeight = ((cs.averageWeight * cs.count) + w) / (cs.count + 1);
+    cs.count++;
+  }
 }
 
 export function adjustedWeight(

@@ -273,7 +273,7 @@ export class Creature implements CreatureInternal {
   compact(): Creature | null {
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
-    const json = this.internalJSON();
+    const json = this.exportJSON();
     this.DEBUG = holdDebug;
     const compactNetwork = Creature.fromJSON(json);
     compactNetwork.fix();
