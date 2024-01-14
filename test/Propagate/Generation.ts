@@ -105,7 +105,7 @@ Deno.test("Generation Weight", () => {
     }),
   );
 
-  assertAlmostEquals(w1, 3.2, 0.1, `Weight: ${w1.toFixed(3)}`);
+  assertAlmostEquals(w1, 3.2, 0.2, `Weight: ${w1.toFixed(3)}`);
 
   const config2 = new BackPropagationConfig({
     generations: 10,

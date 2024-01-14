@@ -64,6 +64,7 @@ Deno.test("PropagateMaximumSimple", () => {
     // useAverageValuePerActivation: false,
     // useAverageDifferenceBias: "Yes",
     generations: 10,
+    learningRate: 0.1
   });
   console.info(config);
 
