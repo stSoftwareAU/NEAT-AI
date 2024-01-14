@@ -52,7 +52,7 @@ Deno.test("storeTrace", async () => {
   emptyDirSync(creaturesDir);
 
   let foundUsed = false;
-  let totalActivationCount = 0;
+  let totalCount = 0;
 
   for (let counter = 10; counter--;) {
     const options: NeatOptions = {
@@ -79,10 +79,10 @@ Deno.test("storeTrace", async () => {
           }
 
           if (
-            Number.isFinite(c.trace?.totalActivation) &&
-            c.trace.totalActivation != 0
+            Number.isFinite(c.trace?.count) &&
+            c.trace.count != 0
           ) {
-            totalActivationCount++;
+            totalCount++;
           }
 
           // if (
@@ -107,8 +107,8 @@ Deno.test("storeTrace", async () => {
   );
 
   assert(
-    totalActivationCount > 0,
-    "Should have totalActivationCount",
+    totalCount > 0,
+    "Should have totalCount",
   );
 
   // assert(

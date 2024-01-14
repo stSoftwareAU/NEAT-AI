@@ -4,7 +4,6 @@ import { ConnectionState, CreatureState } from "./CreatureState.ts";
 import { Node } from "./Node.ts";
 
 export interface BackPropagationOptions {
-  useAverageWeight?: "Yes" | "No" | "Maybe";
   disableRandomSamples?: boolean;
   useAverageDifferenceBias?: "Yes" | "No" | "Maybe";
 
@@ -43,11 +42,10 @@ export interface BackPropagationOptions {
 export const PLANK_CONSTANT = 0.000_000_1;
 
 export class BackPropagationConfig implements BackPropagationOptions {
-  public useAverageWeight: "Yes" | "No" | "Maybe";
-  public disableRandomSamples: boolean;
+  disableRandomSamples: boolean;
 
-  public useAverageDifferenceBias: "Yes" | "No" | "Maybe";
-  public generations: number;
+  useAverageDifferenceBias: "Yes" | "No" | "Maybe";
+  generations: number;
 
   learningRate: number;
 
@@ -59,15 +57,6 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
   limitWeightScale: number;
   constructor(options?: BackPropagationOptions) {
-    const random = Math.random() * 2 - 1;
-    this.useAverageWeight = options?.useAverageWeight
-      ? options?.useAverageWeight
-      : random > 0.75
-      ? "Yes"
-      : random < -0.75
-      ? "No"
-      : "Maybe";
-
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
     if (
       options?.useAverageDifferenceBias
@@ -98,7 +87,7 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
     this.learningRate = Math.min(
       Math.max(
-        options?.learningRate ?? (100 * Math.min(Math.random(), 0.25)) / 100,
+        options?.learningRate ?? Math.random(),
         0.01,
       ),
       1,
@@ -113,7 +102,7 @@ export function adjustedBias(
   if (node.type == "constant") {
     return node.bias ? node.bias : 0;
   } else {
-    const ns = node.network.networkState.node(node.index);
+    const ns = node.creature.state.node(node.index);
 
     if (ns.count) {
       const totalValue = ns.totalValue + (node.bias * config.generations);
@@ -181,14 +170,14 @@ export function toValue(node: Node, activation: number) {
   }
 }
 
-export function adjustWeight(
+export function accumulateWeight(
   cs: ConnectionState,
   value: number,
   activation: number,
 ) {
-  cs.totalValue += value;
-  cs.totalActivation += activation;
-  cs.absoluteActivation += Math.abs(activation);
+  const w = value / activation;
+
+  cs.averageWeight = ((cs.averageWeight * cs.count) + w) / (cs.count + 1);
   cs.count++;
 }
 
@@ -199,9 +188,8 @@ export function adjustedWeight(
 ) {
   const cs = networkState.connection(c.from, c.to);
 
-  if (cs.count && Math.abs(cs.totalActivation) > PLANK_CONSTANT) {
-    const synapseAverageWeightTotal = (cs.totalValue / cs.totalActivation) *
-      cs.count;
+  if (cs.count) {
+    const synapseAverageWeightTotal = cs.averageWeight * cs.count;
 
     const totalGenerationalWeight = c.weight * config.generations;
 
@@ -209,26 +197,7 @@ export function adjustedWeight(
       (synapseAverageWeightTotal + totalGenerationalWeight) /
       (cs.count + config.generations);
 
-    if (config.useAverageWeight == "Yes") {
-      return limitWeight(averageWeight, c.weight, config);
-    }
-
-    const totalValue = cs.totalValue + (c.weight * config.generations);
-    const absoluteActivation = cs.absoluteActivation + config.generations;
-    const absoluteWeight = totalValue / absoluteActivation;
-
-    if (config.useAverageWeight == "Maybe") {
-      if (
-        Math.abs(averageWeight - c.weight) <=
-          Math.abs(absoluteWeight - c.weight)
-      ) {
-        return limitWeight(averageWeight, c.weight, config);
-      } else {
-        return limitWeight(absoluteWeight, c.weight, config);
-      }
-    } else {
-      return limitWeight(absoluteWeight, c.weight, config);
-    }
+    return limitWeight(averageWeight, c.weight, config);
   }
 
   return c.weight;

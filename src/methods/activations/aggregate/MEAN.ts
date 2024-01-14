@@ -19,11 +19,11 @@ export class MEAN implements NodeActivationInterface {
   noTraceActivate(node: Node) {
     let sum = 0;
 
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const fromActivation = node.network.getActivation(c.from);
+      const fromActivation = node.creature.getActivation(c.from);
       const activation = limitActivation(fromActivation);
 
       sum += activation * c.weight;
@@ -50,10 +50,10 @@ export class MEAN implements NodeActivationInterface {
   }
 
   fix(node: Node) {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
 
     if (toList.length < 2) {
-      node.network.makeRandomConnection(node.index);
+      node.creature.makeRandomConnection(node.index);
     }
   }
 }

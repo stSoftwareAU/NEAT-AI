@@ -32,10 +32,8 @@ function makeCreature() {
         toUUID: "output-0",
         weight: 1,
         trace: {
-          totalValue: -2.54,
-          totalActivation: -0.8,
+          averageWeight: 0.1,
           count: 1,
-          absoluteActivation: 0.8,
         },
       },
     ],
@@ -94,31 +92,31 @@ Deno.test("Generation Weight", () => {
   }
 
   const w1 = adjustedWeight(
-    creature.networkState,
+    creature.state,
     connection,
     new BackPropagationConfig({
       generations: 0,
-      useAverageWeight: "Yes",
+      // useAverageWeight: "Yes",
       maximumBiasAdjustmentScale: 5,
       maximumWeightAdjustmentScale: 5,
       learningRate: 1,
     }),
   );
 
-  assertAlmostEquals(w1, 3.2, 0.1, `Weight: ${w1.toFixed(3)}`);
+  assertAlmostEquals(w1, 0.1, 0.2, `Weight: ${w1.toFixed(3)}`);
 
   const config2 = new BackPropagationConfig({
     generations: 10,
-    useAverageWeight: "Yes",
+    // useAverageWeight: "Yes",
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
     learningRate: 1,
   });
   const w2 = adjustedWeight(
-    creature.networkState,
+    creature.state,
     connection,
     config2,
   );
 
-  assertAlmostEquals(w2, 1.2, 0.1, `Weight: ${w2.toFixed(3)}`);
+  assertAlmostEquals(w2, 0.92, 0.1, `Weight: ${w2.toFixed(3)}`);
 });

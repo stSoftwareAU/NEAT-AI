@@ -8,11 +8,9 @@ export class NodeState {
 }
 
 export class ConnectionState {
-  public totalValue = 0;
-  public count = 0;
-  public totalActivation = 0;
-  public absoluteActivation = 0;
+  count = 0;
 
+  averageWeight = 0;
   public used?: boolean;
 }
 
@@ -21,6 +19,7 @@ export class CreatureState {
   private connectionMap;
   private network;
   public activations: number[] = [];
+  public propagated = false;
 
   constructor(network: Creature) {
     this.network = network;
@@ -75,5 +74,6 @@ export class CreatureState {
     this.nodeMap.clear();
     this.connectionMap.clear();
     this.activations.length = 0;
+    this.propagated = false;
   }
 }

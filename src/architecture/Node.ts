@@ -13,9 +13,9 @@ import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import {
+  accumulateWeight,
   adjustedBias,
   adjustedWeight,
-  adjustWeight,
   BackPropagationConfig,
   limitActivation,
   limitActivationToRange,
@@ -25,7 +25,7 @@ import {
 } from "./BackPropagation.ts";
 
 export class Node implements TagsInterface, NodeInternal {
-  readonly network: Creature;
+  readonly creature: Creature;
   readonly type;
   uuid: string;
   bias: number;
@@ -85,7 +85,7 @@ export class Node implements TagsInterface, NodeInternal {
       throw new Error("network must be a Creature was: " + (typeof network));
     }
 
-    this.network = network;
+    this.creature = network;
 
     this.type = type;
 
@@ -118,45 +118,45 @@ export class Node implements TagsInterface, NodeInternal {
     delete this.squashMethodCache;
 
     if (this.squash !== "IF") {
-      const toList = this.network.toConnections(this.index);
+      const toList = this.creature.toConnections(this.index);
       toList.forEach((c) => {
         delete c.type;
       });
     }
 
     if (this.type == "hidden") {
-      const fromList = this.network.fromConnections(this.index);
+      const fromList = this.creature.fromConnections(this.index);
       if (fromList.length == 0) {
         const targetIndx = Math.min(
           1,
           Math.floor(
-            Math.random() * (this.network.nodeCount() - this.index),
+            Math.random() * (this.creature.nodeCount() - this.index),
           ),
         ) +
           this.index;
-        this.network.connect(
+        this.creature.connect(
           this.index,
           targetIndx,
           Connection.randomWeight(),
         );
       }
-      const toList = this.network.toConnections(this.index);
+      const toList = this.creature.toConnections(this.index);
       if (toList.length == 0) {
         const fromIndx = Math.floor(Math.random() * this.index);
-        this.network.connect(
+        this.creature.connect(
           fromIndx,
           this.index,
           Connection.randomWeight(),
         );
       }
     } else if (this.type == "output") {
-      const toList = this.network.toConnections(this.index);
+      const toList = this.creature.toConnections(this.index);
       if (toList.length == 0) {
         const fromIndx = Math.floor(
           Math.random() *
-            (this.network.nodeCount() - this.network.outputCount()),
+            (this.creature.nodeCount() - this.creature.outputCount()),
         );
-        this.network.connect(
+        this.creature.connect(
           fromIndx,
           this.index,
           Connection.randomWeight(),
@@ -219,21 +219,20 @@ export class Node implements TagsInterface, NodeInternal {
         const squashActivation = squashMethod.activate(this);
         activation = squashActivation + this.bias;
       } else {
-        const toList = this.network.toConnections(this.index);
+        const toList = this.creature.toConnections(this.index);
         let value = this.bias;
 
         for (let i = toList.length; i--;) {
           const c = toList[i];
 
-          const fromActivation = this.network.getActivation(c.from);
+          const fromActivation = this.creature.getActivation(c.from);
 
           value += fromActivation * c.weight;
         }
 
         const activationSquash = squashMethod as ActivationInterface;
-        const result = activationSquash.squashAndDerive(value);
-        // Squash the values received
-        activation = result.activation;
+        activation = activationSquash.squash(value);
+
         if (!Number.isFinite(activation)) {
           if (activation === Number.POSITIVE_INFINITY) {
             activation = Number.MAX_SAFE_INTEGER;
@@ -243,7 +242,7 @@ export class Node implements TagsInterface, NodeInternal {
             activation = 0;
           } else {
             throw new Error(
-              this.index + ") invalid value: + " + result +
+              this.index + ") invalid value: + " + value +
                 ", squash: " +
                 this.squash +
                 ", activation: " + activation,
@@ -253,7 +252,7 @@ export class Node implements TagsInterface, NodeInternal {
       }
     }
 
-    this.network.networkState.activations[this.index] = activation;
+    this.creature.state.activations[this.index] = activation;
     return activation;
   }
 
@@ -288,12 +287,12 @@ export class Node implements TagsInterface, NodeInternal {
       } else {
         // All activation sources coming from the node itself
 
-        const toList = this.network.toConnections(this.index);
+        const toList = this.creature.toConnections(this.index);
         let value = this.bias;
 
         for (let i = toList.length; i--;) {
           const c = toList[i];
-          const fromActivation = this.network.getActivation(c.from);
+          const fromActivation = this.creature.getActivation(c.from);
 
           value += fromActivation * c.weight;
         }
@@ -322,16 +321,16 @@ export class Node implements TagsInterface, NodeInternal {
         }
       }
     }
-    this.network.networkState.activations[this.index] = activation;
+    this.creature.state.activations[this.index] = activation;
 
     return activation;
   }
 
   propagateUpdate(config: BackPropagationConfig) {
-    const toList = this.network.toConnections(this.index);
+    const toList = this.creature.toConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const aWeight = adjustedWeight(this.network.networkState, c, config);
+      const aWeight = adjustedWeight(this.creature.state, c, config);
 
       c.weight = aWeight;
     }
@@ -368,20 +367,20 @@ export class Node implements TagsInterface, NodeInternal {
       return limitActivation(improvedActivation);
     }
 
-    const ns = this.network.networkState.node(this.index);
+    const ns = this.creature.state.node(this.index);
 
     const targetValue = toValue(this, targetActivation);
 
-    const activationValue = toValue(this, activation);
-    const error = targetValue - activationValue;
+    const currentValue = toValue(this, activation);
+    const error = targetValue - currentValue;
 
-    let targetWeightedSum = 0;
-    const toList = this.network.toConnections(this.index);
+    let improvedValue = adjustedBias(this, config);
+    const toList = this.creature.toConnections(this.index);
 
     const listLength = toList.length;
     const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
 
-    if (listLength > 1 && !(config.disableRandomSamples)) {
+    if (listLength > 1 && !config.disableRandomSamples) {
       // Fisher-Yates shuffle algorithm
       for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -395,81 +394,72 @@ export class Node implements TagsInterface, NodeInternal {
       // Iterate over the shuffled indices
       for (let i = listLength; i--;) {
         const indx = indices[i];
-        let thisPerLinkError = errorPerLink;
 
         const c = toList[indx];
 
         if (c.from === c.to) continue;
 
-        const fromNode = this.network.nodes[c.from];
+        const fromNode = this.creature.nodes[c.from];
 
         const fromActivation = fromNode.adjustedActivation(config);
 
-        const cs = this.network.networkState.connection(c.from, c.to);
-
-        const fromWeight = adjustedWeight(this.network.networkState, c, config);
+        const fromWeight = adjustedWeight(this.creature.state, c, config);
         const fromValue = fromWeight * fromActivation;
 
         let improvedFromActivation = fromActivation;
-        let targetFromActivation = fromActivation;
+
         const targetFromValue = fromValue + errorPerLink;
-        let improvedFromValue = fromValue;
+
         if (
           fromWeight &&
           fromNode.type !== "input" &&
           fromNode.type !== "constant"
         ) {
-          targetFromActivation = targetFromValue / fromWeight;
+          const targetFromActivation = targetFromValue / fromWeight;
 
           improvedFromActivation = (fromNode as Node).propagate(
             targetFromActivation,
             config,
           );
-          improvedFromValue = improvedFromActivation * fromWeight;
-
-          thisPerLinkError = targetFromValue - improvedFromValue;
         }
 
         if (
           Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
           Math.abs(fromWeight) > PLANK_CONSTANT
         ) {
-          const targetFromValue2 = fromValue + thisPerLinkError;
+          const cs = this.creature.state.connection(c.from, c.to);
+          accumulateWeight(cs, targetFromValue, improvedFromActivation);
+          const aWeight = adjustedWeight(this.creature.state, c, config);
 
-          adjustWeight(cs, targetFromValue2, improvedFromActivation);
-
-          const aWeight = adjustedWeight(this.network.networkState, c, config);
-
-          const improvedAdjustedFromValue = improvedFromActivation *
+          const improvedFromValue = improvedFromActivation *
             aWeight;
 
-          targetWeightedSum += improvedAdjustedFromValue;
+          improvedValue += improvedFromValue;
         }
       }
     }
 
     ns.count++;
     ns.totalValue += targetValue;
-    ns.totalWeightedSum += targetWeightedSum;
+    ns.totalWeightedSum += improvedValue;
 
     const aBias = adjustedBias(this, config);
 
-    const adjustedActivation = targetWeightedSum + aBias;
-
     if (this.isNodeActivation(squashMethod) == false) {
       const squashActivation = (squashMethod as ActivationInterface).squash(
-        adjustedActivation,
+        improvedValue + aBias,
       );
 
       return limitActivation(squashActivation);
     } else {
+      const adjustedActivation = squashMethod.activate(this) + aBias;
       return limitActivation(adjustedActivation);
     }
   }
 
   adjustedActivation(config: BackPropagationConfig) {
     if (this.type == "input") {
-      return this.network.networkState.activations[this.index];
+      return this.creature.state.activations[this.index];
     }
 
     if (this.type == "constant") {
@@ -488,17 +478,17 @@ export class Node implements TagsInterface, NodeInternal {
       } else {
         // All activation sources coming from the node itself
 
-        const toList = this.network.toConnections(this.index);
+        const toList = this.creature.toConnections(this.index);
         let value = aBias;
 
         for (let i = toList.length; i--;) {
           const c = toList[i];
           if (c.from == c.to) continue;
-          const fromActivation = (this.network.nodes[c.from] as Node)
+          const fromActivation = (this.creature.nodes[c.from] as Node)
             .adjustedActivation(config);
 
           const fromWeight = adjustedWeight(
-            this.network.networkState,
+            this.creature.state,
             c,
             config,
           );
@@ -527,9 +517,9 @@ export class Node implements TagsInterface, NodeInternal {
    * Disconnects this node from the other node
    */
   disconnect(to: number, twoSided: boolean) {
-    this.network.disconnect(this.index, to);
+    this.creature.disconnect(this.index, to);
     if (twoSided) {
-      this.network.disconnect(to, this.index);
+      this.creature.disconnect(to, this.index);
     }
   }
 
@@ -585,14 +575,14 @@ export class Node implements TagsInterface, NodeInternal {
       default:
         throw new Error("Unknown mutate method: " + method);
     }
-    delete this.network.uuid;
+    delete this.creature.uuid;
   }
 
   /**
    * Checks if this node is projecting to the given node
    */
   isProjectingTo(node: Node) {
-    const c = this.network.getConnection(this.index, node.index);
+    const c = this.creature.getConnection(this.index, node.index);
     return c != null;
   }
 
@@ -600,7 +590,7 @@ export class Node implements TagsInterface, NodeInternal {
    * Checks if the given node is projecting to this node
    */
   isProjectedBy(node: Node) {
-    const c = this.network.getConnection(node.index, this.index);
+    const c = this.creature.getConnection(node.index, this.index);
     return c != null;
   }
 

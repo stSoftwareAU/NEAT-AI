@@ -39,7 +39,7 @@ Deno.test("PI", () => {
   const traceDir = ".trace";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageWeight: "Yes",
+    // useAverageWeight: "Yes",
     generations: 0,
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
@@ -93,7 +93,7 @@ Deno.test("PI Multiple", () => {
   const traceDir = ".trace";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
-    useAverageWeight: "Yes",
+    // useAverageWeight: "Yes",
     useAverageDifferenceBias: "Yes",
     generations: 0,
     maximumBiasAdjustmentScale: 5,

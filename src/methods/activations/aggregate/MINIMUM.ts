@@ -1,7 +1,7 @@
 import {
+  accumulateWeight,
   adjustedBias,
   adjustedWeight,
-  adjustWeight,
   BackPropagationConfig,
   PLANK_CONSTANT,
   toValue,
@@ -29,12 +29,12 @@ export class MINIMUM
   }
 
   noTraceActivate(node: Node): number {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     let minValue = Infinity;
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.network.getActivation(c.from) *
+      const value = node.creature.getActivation(c.from) *
         c.weight;
       if (value < minValue) {
         minValue = value;
@@ -45,15 +45,15 @@ export class MINIMUM
   }
 
   activate(node: Node) {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     let minValue = Infinity;
     let usedConnection: ConnectionInternal | null = null;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = node.network.networkState.connection(c.from, c.to);
+      const cs = node.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
-      const value = node.network.getActivation(c.from) *
+      const value = node.creature.getActivation(c.from) *
         c.weight;
       if (value < minValue) {
         minValue = value;
@@ -62,7 +62,7 @@ export class MINIMUM
     }
 
     if (usedConnection != null) {
-      const cs = node.network.networkState.connection(
+      const cs = node.creature.state.connection(
         usedConnection.from,
         usedConnection.to,
       );
@@ -73,23 +73,23 @@ export class MINIMUM
   }
 
   fix(node: Node) {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
 
     if (toList.length < 2) {
-      node.network.makeRandomConnection(node.index);
+      node.creature.makeRandomConnection(node.index);
     }
   }
 
   applyLearnings(node: Node): boolean {
     let changed = false;
     let usedCount = 0;
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
       if (node.index != c.to) throw new Error("mismatched index " + c);
-      const cs = node.network.networkState.connection(c.from, c.to);
+      const cs = node.creature.state.connection(c.from, c.to);
       if (!cs.used) {
-        node.network.disconnect(c.from, c.to);
+        node.creature.disconnect(c.from, c.to);
         changed = true;
         cs.used = false;
       } else {
@@ -114,7 +114,7 @@ export class MINIMUM
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = node.network.toConnections(node.index);
+    const toList = node.creature.toConnections(node.index);
 
     const activation = node.adjustedActivation(config);
 
@@ -135,11 +135,11 @@ export class MINIMUM
 
         if (c.from === c.to) continue;
 
-        const fromNode = node.network.nodes[c.from];
+        const fromNode = node.creature.nodes[c.from];
 
         const fromActivation = fromNode.adjustedActivation(config);
 
-        const fromWeight = adjustedWeight(node.network.networkState, c, config);
+        const fromWeight = adjustedWeight(node.creature.state, c, config);
         const fromValue = fromWeight * fromActivation;
         if (fromValue < minValue) {
           minValue = fromValue;
@@ -148,11 +148,11 @@ export class MINIMUM
       }
 
       if (mainConnection) {
-        const fromNode = node.network.nodes[mainConnection.from];
+        const fromNode = node.creature.nodes[mainConnection.from];
         const fromActivation = fromNode.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(
-          node.network.networkState,
+          node.creature.state,
           mainConnection,
           config,
         );
@@ -184,14 +184,14 @@ export class MINIMUM
         ) {
           const targetFromValue2 = fromValue + remainingError;
 
-          const cs = node.network.networkState.connection(
+          const cs = node.creature.state.connection(
             mainConnection.from,
             mainConnection.to,
           );
-          adjustWeight(cs, targetFromValue2, targetFromActivation);
+          accumulateWeight(cs, targetFromValue2, targetFromActivation);
 
           const aWeight = adjustedWeight(
-            node.network.networkState,
+            node.creature.state,
             mainConnection,
             config,
           );
@@ -204,7 +204,7 @@ export class MINIMUM
       }
     }
 
-    const ns = node.network.networkState.node(node.index);
+    const ns = node.creature.state.node(node.index);
     ns.count++;
     ns.totalValue += targetValue;
     ns.totalWeightedSum += targetWeightedSum;
