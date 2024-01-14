@@ -273,7 +273,7 @@ export class Creature implements CreatureInternal {
   compact(): Creature | null {
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
-    const json = this.internalJSON();
+    const json = this.exportJSON();
     this.DEBUG = holdDebug;
     const compactNetwork = Creature.fromJSON(json);
     compactNetwork.fix();
@@ -370,7 +370,7 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    const json2 = compactNetwork.internalJSON();
+    const json2 = compactNetwork.exportJSON();
     if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
       addTag(compactNetwork, "approach", "compact");
       addTag(compactNetwork, "old-nodes", this.nodes.length.toString());
