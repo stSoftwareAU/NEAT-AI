@@ -117,7 +117,9 @@ export function adjustedBias(
         config.useAverageDifferenceBias == "Yes" ||
         Number.isFinite(unaccountedRatioBias) == false
       ) {
-        return limitBias(averageDifferenceBias, node.bias, config);
+        if (Number.isFinite(averageDifferenceBias)) {
+          return limitBias(averageDifferenceBias, node.bias, config);
+        }
       } else if (
         config.useAverageDifferenceBias == "No" ||
         (
@@ -129,9 +131,9 @@ export function adjustedBias(
       } else {
         return limitBias(averageDifferenceBias, node.bias, config);
       }
-    } else {
-      return node.bias;
     }
+
+    return node.bias;
   }
 }
 
