@@ -5,8 +5,9 @@ import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts
 Deno.test("maximumBiasAdjustmentScale", () => {
   const config = new BackPropagationConfig({
     maximumBiasAdjustmentScale: 0.2,
+    learningRate: 0.05,
   });
-  console.info(config);
+
   const bias = limitBias(10, 0.5, config);
 
   assertAlmostEquals(0.7, bias, 0.001, `Bias: ${bias.toFixed(3)}`);
