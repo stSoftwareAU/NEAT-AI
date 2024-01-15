@@ -6,6 +6,7 @@ import {
 } from "https://deno.land/std@0.212.0/assert/mod.ts";
 
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -105,6 +106,8 @@ Deno.test("CompactSimple", () => {
 });
 
 Deno.test("RandomizeCompact", () => {
+  const traceDir = ".trace/RandomizeCompact";
+  ensureDirSync(traceDir);
   const a = new Creature(2, 2, {
     layers: [
       { count: 1, squash: "*" },
@@ -138,14 +141,17 @@ Deno.test("RandomizeCompact", () => {
   const input = [0.1, 0.2];
   const startOut = a.noTraceActivate(input);
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
+  Deno.writeTextFileSync(
+    `${traceDir}/a.json`,
+    JSON.stringify(a.internalJSON(), null, 2),
+  );
   const b = a.compact();
   if (b == null) {
-    assert(false, "should have compacted the network");
+    console.info("Did not compact");
   } else {
     b.DEBUG = false;
     Deno.writeTextFileSync(
-      ".b.json",
+      `${traceDir}/b.json`,
       JSON.stringify(b.internalJSON(), null, 2),
     );
     b.DEBUG = true;

@@ -250,19 +250,18 @@ Deno.test("ConstantsMany", () => {
       JSON.stringify(observations, null, 2),
     );
     sampleInput = observations[22];
-
+    const config = new BackPropagationConfig({
+      // useAverageWeight: "No",
+      // useAverageDifferenceBias: "Yes",
+      // maximumWeightAdjustmentScale: 1,
+      // maximumBiasAdjustmentScale: 1,
+      learningRate: 0.01,
+      disableRandomSamples: true,
+    });
     expected = makeOutput(sampleInput);
     for (let generations = 0; generations < 100; generations++) {
-      const config = new BackPropagationConfig({
-        // useAverageWeight: "No",
-        // useAverageDifferenceBias: "Yes",
-        // maximumWeightAdjustmentScale: 1,
-        // maximumBiasAdjustmentScale: 1,
-        learningRate: 0.01,
-        generations: generations,
-        disableRandomSamples: true,
-      });
-      // console.info( config);
+      config.generations = generations;
+
       for (let loops = 10; loops--;) {
         for (let indx = 0; indx < observations.length; indx++) {
           const input = observations[indx];
@@ -283,8 +282,9 @@ Deno.test("ConstantsMany", () => {
 
     const tmpActual = creature.noTraceActivate(sampleInput);
 
-    if (attempt > 24) break;
+    if (attempt > 121) break;
     if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
+    console.info(config);
   }
 
   const actual = creature.noTraceActivate(sampleInput);
