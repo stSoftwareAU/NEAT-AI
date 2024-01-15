@@ -260,8 +260,8 @@ Deno.test("ConstantsMany", () => {
     });
     expected = makeOutput(sampleInput);
     for (let generations = 0; generations < 100; generations++) {
-     config.generations=generations
-      
+      config.generations = generations;
+
       for (let loops = 10; loops--;) {
         for (let indx = 0; indx < observations.length; indx++) {
           const input = observations[indx];
@@ -284,7 +284,7 @@ Deno.test("ConstantsMany", () => {
 
     if (attempt > 121) break;
     if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
-    console.info( config);
+    console.info(config);
   }
 
   const actual = creature.noTraceActivate(sampleInput);
