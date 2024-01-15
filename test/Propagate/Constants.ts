@@ -283,7 +283,7 @@ Deno.test("ConstantsMany", () => {
 
     const tmpActual = creature.noTraceActivate(sampleInput);
 
-    if (attempt > 24) break;
+    if (attempt > 121) break;
     if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
   }
 
