@@ -15,5 +15,3 @@ export { Selection } from "./src/methods/Selection.ts";
 export { Mutation } from "./src/methods/mutation.ts";
 export { CRISPR } from "./src/reconstruct/CRISPR.ts";
 export { Upgrade } from "./src/reconstruct/Upgrade.ts";
-
-export { addTag, getTag, removeTag } from "./src/tags/TagsInterface.ts";
