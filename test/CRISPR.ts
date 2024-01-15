@@ -5,7 +5,7 @@ import {
 
 import { CRISPR } from "../src/reconstruct/CRISPR.ts";
 import { Creature } from "../src/Creature.ts";
-import { getTag } from "../src/tags/TagsInterface.ts";
+import { getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Node } from "../src/architecture/Node.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 

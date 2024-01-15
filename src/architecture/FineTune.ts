@@ -1,6 +1,6 @@
 import { blue, bold, cyan } from "https://deno.land/std@0.212.0/fmt/colors.ts";
+import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
-import { addTag, getTag } from "../tags/TagsInterface.ts";
 import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { NodeExport } from "./NodeInterfaces.ts";

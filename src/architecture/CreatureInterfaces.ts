@@ -1,4 +1,4 @@
-import { TagsInterface } from "../tags/TagsInterface.ts";
+import { TagsInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import {
   ConnectionExport,
   ConnectionInternal,

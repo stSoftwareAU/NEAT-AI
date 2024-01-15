@@ -1,4 +1,9 @@
 import {
+  addTag,
+  getTag,
+  TagInterface,
+} from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import {
   ConnectionExport,
   ConnectionInternal,
   ConnectionTrace,
@@ -13,7 +18,6 @@ import {
   NodeInternal,
   NodeTrace,
 } from "./architecture/NodeInterfaces.ts";
-import { TagInterface } from "./tags/TagInterface.ts";
 
 import { DataRecordInterface } from "./architecture/DataSet.ts";
 import { NeatOptions } from "./config/NeatOptions.ts";
@@ -22,7 +26,6 @@ import { yellow } from "https://deno.land/std@0.212.0/fmt/colors.ts";
 import { makeDataDir } from "./architecture/DataSet.ts";
 import { Neat } from "./architecture/Neat.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
-import { getTag } from "./tags/TagsInterface.ts";
 
 import { format } from "https://deno.land/std@0.212.0/fmt/duration.ts";
 import { emptyDirSync } from "https://deno.land/std@0.212.0/fs/empty_dir.ts";
@@ -36,7 +39,6 @@ import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "./methods/mutation.ts";
-import { addTag } from "./tags/TagsInterface.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this network */
