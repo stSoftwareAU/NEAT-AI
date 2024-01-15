@@ -256,8 +256,8 @@ Deno.test("ConstantsMany", () => {
       const config = new BackPropagationConfig({
         // useAverageWeight: "No",
         // useAverageDifferenceBias: "Yes",
-        // maximumWeightAdjustmentScale: 1,
-        // maximumBiasAdjustmentScale: 1,
+        maximumWeightAdjustmentScale: 1,
+        maximumBiasAdjustmentScale: 1,
         learningRate: 0.01,
         generations: generations,
         disableRandomSamples: true,
