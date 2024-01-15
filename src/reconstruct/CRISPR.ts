@@ -1,7 +1,11 @@
+import {
+  addTag,
+  getTag,
+  TagsInterface,
+} from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
 import { Node } from "../architecture/Node.ts";
-import { addTag, getTag, TagsInterface } from "../tags/TagsInterface.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;

@@ -6,7 +6,11 @@ import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsIn
 import { NodeActivationInterface } from "../methods/activations/NodeActivationInterface.ts";
 import { NodeFixableInterface } from "../methods/activations/NodeFixableInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
-import { addTags, removeTag, TagsInterface } from "../tags/TagsInterface.ts";
+import {
+  addTags,
+  removeTag,
+  TagsInterface,
+} from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Connection } from "./Connection.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 

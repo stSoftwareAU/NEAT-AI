@@ -1,5 +1,5 @@
+import { addTags } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
-import { addTags } from "../tags/TagsInterface.ts";
 import {
   ConnectionExport,
   ConnectionInternal,

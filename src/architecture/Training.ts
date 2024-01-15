@@ -1,10 +1,10 @@
 import { blue, yellow } from "https://deno.land/std@0.212.0/fmt/colors.ts";
 import { format } from "https://deno.land/std@0.212.0/fmt/duration.ts";
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
+import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Costs } from "../Costs.ts";
 import { Creature } from "../Creature.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";
-import { addTag } from "../tags/TagsInterface.ts";
 import { BackPropagationConfig } from "./BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { DataRecordInterface, makeDataDir } from "./DataSet.ts";

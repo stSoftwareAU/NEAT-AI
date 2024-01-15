@@ -1,5 +1,5 @@
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import { addTag } from "../tags/TagsInterface.ts";
+import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { calculate as calculateScore } from "./Score.ts";
 

@@ -1,8 +1,8 @@
-import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
+import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../src/Creature.ts";
-import { addTag } from "../src/tags/TagsInterface.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
