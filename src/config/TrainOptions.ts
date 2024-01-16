@@ -23,4 +23,7 @@ export interface TrainOptions extends BackPropagationOptions {
 
   /** The percentage of observations that will be used for training. Range 0..1 */
   trainingSampleRate?: number;
+
+  /** The maximum number of minutes to train for */
+  trainingTimeOutMinutes?: number;
 }
