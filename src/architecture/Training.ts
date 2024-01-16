@@ -76,6 +76,7 @@ export async function trainDir(
   // Loops the training process
   let iteration = 0;
 
+  let timedOut=false;
   let timeoutTS = 0;
   if (options.trainingTimeOutMinutes ?? 0 > 0) {
     timeoutTS = Date.now() + (options.trainingTimeOutMinutes ?? 0) * 60 * 1000;
@@ -215,6 +216,7 @@ export async function trainDir(
           );
 
           if (timeoutTS && now > timeoutTS) {
+            timedOut=true;
             console.log(
               `Training ${blue(ID)} timed out`,
             );
@@ -266,7 +268,7 @@ export async function trainDir(
       network.clearState();
     }
 
-    if (bestError <= targetError || iteration >= iterations) {
+    if (timedOut || bestError <= targetError || iteration >= iterations) {
       network.loadFrom(bestCreatureJSON, false);
       return {
         ID: ID,
