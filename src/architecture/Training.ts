@@ -76,6 +76,10 @@ export async function trainDir(
   // Loops the training process
   let iteration = 0;
 
+  let timeoutTS = 0;
+  if (options.trainingTimeOutMinutes ?? 0 > 0) {
+    timeoutTS = Date.now() + (options.trainingTimeOutMinutes ?? 0) * 60 * 1000;
+  }
   const uuid = await CreatureUtil.makeUUID(network);
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
@@ -209,6 +213,14 @@ export async function trainDir(
               format(totalTime, { ignoreZero: true }),
             ),
           );
+
+          if (timeoutTS && now > timeoutTS) {
+            console.log(
+              `Training ${blue(ID)} timed out`,
+            );
+            trainingStopped = true;
+            break;
+          }
         }
       }
     }

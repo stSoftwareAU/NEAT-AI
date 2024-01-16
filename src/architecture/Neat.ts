@@ -157,6 +157,7 @@ export class Neat {
   readonly workers: WorkerHandler[];
   readonly fitness: Fitness;
 
+  readonly endTimeTS: number;
   population: Creature[];
 
   constructor(
@@ -184,6 +185,10 @@ export class Neat {
       const n = Creature.fromJSON(c);
       this.population.push(n);
     });
+
+    this.endTimeTS = options.timeoutMinutes
+      ? Date.now() + Math.max(1, options.timeoutMinutes) * 60_000
+      : 0;
   }
 
   private doNotStartMoreTraining = false;
@@ -235,6 +240,12 @@ export class Neat {
       );
     }
 
+    let trainingTimeOutMinutes = 0;
+    if (this.endTimeTS) {
+      const diff = this.endTimeTS - Date.now();
+      trainingTimeOutMinutes = Math.max(Math.ceil(diff / 60_000), 1);
+    }
+
     const trainOptions: TrainOptions = {
       cost: this.config.costName,
       log: this.config.log,
@@ -243,6 +254,7 @@ export class Neat {
       targetError: this.config.targetError,
       trainingSampleRate: this.config.trainingSampleRate,
       disableRandomSamples: this.config.disableRandomSamples,
+      trainingTimeOutMinutes: trainingTimeOutMinutes,
     };
 
     const p = w.train(creature, trainOptions).then(async (r) => {
