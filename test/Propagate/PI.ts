@@ -51,8 +51,8 @@ Deno.test("PI", () => {
   );
 
   const inA = [-1, 1, 0];
-  const outA1 = creature.noTraceActivate(inA);
-  const outA2 = creature.activate(inA);
+  const outA1 = creature.activate(inA);
+  const outA2 = creature.activateAndTrace(inA);
   const expectedA = makeOutput(inA);
 
   assertAlmostEquals(outA1[0], outA2[0], 0.0001);
@@ -65,8 +65,8 @@ Deno.test("PI", () => {
 
   creature.propagateUpdate(config);
 
-  const actualA1 = creature.activate(inA);
-  const actualA2 = creature.noTraceActivate(inA);
+  const actualA1 = creature.activateAndTrace(inA);
+  const actualA2 = creature.activate(inA);
 
   Deno.writeTextFileSync(
     ".trace/2.json",
@@ -112,7 +112,7 @@ Deno.test("PI Multiple", () => {
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
     ];
-    creature.activate(inC);
+    creature.activateAndTrace(inC);
     creature.propagate(makeOutput(inC), config);
   }
 
@@ -125,8 +125,8 @@ Deno.test("PI Multiple", () => {
 
   const inA = [-1, 1, 0];
   const expectedA = makeOutput(inA);
-  const actualA1 = creature.activate(inA);
-  const actualA2 = creature.noTraceActivate(inA);
+  const actualA1 = creature.activateAndTrace(inA);
+  const actualA2 = creature.activate(inA);
   console.info(expectedA, actualA1, actualA2);
 
   Deno.writeTextFileSync(

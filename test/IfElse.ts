@@ -38,13 +38,13 @@ Deno.test("if-bias", () => {
 
   const input1 = [-1, 0.4, 1];
 
-  const r1 = network.activate(input1)[0];
+  const r1 = network.activateAndTrace(input1)[0];
 
   assertAlmostEquals(r1, -1, 0.0001, "should handle bias");
 
   const input2 = [-1, 0.6, 1];
 
-  const r2 = network.activate(input2)[0];
+  const r2 = network.activateAndTrace(input2)[0];
 
   assertAlmostEquals(r2, 1, 0.0001, "should handle bias");
 });
@@ -83,7 +83,7 @@ Deno.test("if/Else", () => {
 
     const expected = flag > 0 ? b : a;
 
-    const actual = network2.activate([a, flag, b])[0];
+    const actual = network2.activateAndTrace([a, flag, b])[0];
 
     const diff = Math.abs(expected - actual);
     assert(diff < 0.00001, p + ") If/Else didn't work " + diff);

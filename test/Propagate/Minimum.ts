@@ -18,7 +18,7 @@ Deno.test("PropagateMinimum", async () => {
   const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
   for (let i = 1_000; i--;) {
     const input = makeInput();
-    const output = creature.noTraceActivate(input);
+    const output = creature.activate(input);
 
     ts.push({
       input,
@@ -34,7 +34,7 @@ Deno.test("PropagateMinimum", async () => {
     JSON.stringify(ts, null, 2),
   );
   ts.forEach((item) => {
-    const result = creature.noTraceActivate(item.input);
+    const result = creature.activate(item.input);
 
     assertAlmostEquals(item.output[0], result[0], 0.00001);
     assertAlmostEquals(item.output[1], result[1], 0.00001);
@@ -152,7 +152,7 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.noTraceActivate(data.input, false);
+    const output = creature.activate(data.input, false);
     error += mse.calculate(data.output, output);
   }
 

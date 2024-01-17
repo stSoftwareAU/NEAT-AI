@@ -70,10 +70,10 @@ Deno.test("Learn", async () => {
     dataSet.push(dr);
   }
 
-  const answersA = nn.noTraceActivate([0.1, 0.2]);
+  const answersA = nn.activate([0.1, 0.2]);
   console.info(answersA);
   await train(nn, dataSet, options);
 
-  const answersB = nn.noTraceActivate([0.1, 0.2]);
+  const answersB = nn.activate([0.1, 0.2]);
   console.info(answersB);
 });

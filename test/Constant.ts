@@ -25,11 +25,11 @@ Deno.test("No squash", () => {
   network.fix();
   network.validate();
 
-  const value = network.noTraceActivate([Math.random()])[0];
+  const value = network.activate([Math.random()])[0];
 
   assertAlmostEquals(value, 0.5, 0.00001);
 
-  const value2 = network.activate([Math.random()])[0];
+  const value2 = network.activateAndTrace([Math.random()])[0];
 
   assertAlmostEquals(value2, 0.5, 0.00001);
 });

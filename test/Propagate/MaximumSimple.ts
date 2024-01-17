@@ -16,7 +16,7 @@ Deno.test("PropagateMaximumSimple", () => {
   const inputs = makeInputs();
   for (let i = inputs.length; i--;) {
     const input = inputs[i];
-    const output = creatureA.noTraceActivate(input);
+    const output = creatureA.activate(input);
 
     ts.push({
       input,
@@ -69,7 +69,7 @@ Deno.test("PropagateMaximumSimple", () => {
   console.info(config);
 
   ts.forEach((item) => {
-    creatureC.activate(item.input, false);
+    creatureC.activateAndTrace(item.input, false);
     creatureC.propagate(item.output, config);
   });
 
@@ -101,7 +101,7 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.noTraceActivate(data.input, false);
+    const output = creature.activate(data.input, false);
     error += mse.calculate(data.output, output);
   }
 

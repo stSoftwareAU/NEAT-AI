@@ -212,7 +212,7 @@ export class Node implements TagsInterface, NodeInternal {
   /**
    * Activates the node
    */
-  activate() {
+  activateAndTrace() {
     let activation: number;
     if (this.type == "constant") {
       activation = this.bias;
@@ -279,7 +279,7 @@ export class Node implements TagsInterface, NodeInternal {
   /**
    * Activates the node without calculating eligibility traces and such
    */
-  noTraceActivate() {
+  activate() {
     let activation: number;
 
     if (this.type == "constant") {
@@ -449,16 +449,31 @@ export class Node implements TagsInterface, NodeInternal {
 
     const aBias = adjustedBias(this, config);
 
+    let limitedActivation: number;
     if (this.isNodeActivation(squashMethod) == false) {
       const squashActivation = (squashMethod as ActivationInterface).squash(
         improvedValue + aBias,
       );
 
-      return limitActivation(squashActivation);
+      limitedActivation = limitActivation(squashActivation);
     } else {
       const adjustedActivation = squashMethod.activate(this) + aBias;
-      return limitActivation(adjustedActivation);
+      limitedActivation = limitActivation(adjustedActivation);
     }
+
+    if (limitedActivation > ns.maximumActivation) {
+      ns.maximumActivation = limitedActivation;
+    }
+
+    if (limitedActivation < ns.minimumActivation) {
+      ns.minimumActivation = limitedActivation;
+    }
+    const totalActivation = (ns.count - 1) * ns.averageActivation +
+      limitedActivation;
+
+    ns.averageActivation = totalActivation / ns.count;
+
+    return limitedActivation;
   }
 
   adjustedActivation(config: BackPropagationConfig) {

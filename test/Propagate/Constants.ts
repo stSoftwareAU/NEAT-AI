@@ -58,8 +58,8 @@ Deno.test("Constants", () => {
       learningRate: 1,
     });
     const inA = [-1, 1, 0];
-    const outA1 = creature.noTraceActivate(inA);
-    const outA2 = creature.activate(inA);
+    const outA1 = creature.activate(inA);
+    const outA2 = creature.activateAndTrace(inA);
     const expectedA = makeOutput(inA);
 
     assertAlmostEquals(outA1[0], outA2[0], 0.0001);
@@ -72,8 +72,8 @@ Deno.test("Constants", () => {
 
     creature.propagateUpdate(config);
 
-    const actualA1 = creature.activate(inA);
-    const actualA2 = creature.noTraceActivate(inA);
+    const actualA1 = creature.activateAndTrace(inA);
+    const actualA2 = creature.activate(inA);
     const diff = Math.abs(expectedA[0] - actualA1[0]);
     console.info(expectedA, actualA1, actualA2, diff);
 
@@ -122,7 +122,7 @@ Deno.test("Constants Same", () => {
     });
     for (let i = 0; i < 1_000; i++) {
       const input = [-0.5, 0, 0.5];
-      creature.activate(input);
+      creature.activateAndTrace(input);
       creature.propagate(makeOutput(input), config);
     }
 
@@ -135,8 +135,8 @@ Deno.test("Constants Same", () => {
 
     const inA = [-1, 1, 0];
     const expectedA = makeOutput(inA);
-    const actualA1 = creature.activate(inA);
-    const actualA2 = creature.noTraceActivate(inA);
+    const actualA1 = creature.activateAndTrace(inA);
+    const actualA2 = creature.activate(inA);
     const diff = Math.abs(expectedA[0] - actualA1[0]);
 
     Deno.writeTextFileSync(
@@ -192,7 +192,7 @@ Deno.test("Constants Known Few", () => {
     for (let indx = 0; indx < inputs.length; indx++) {
       const input = inputs[indx];
       const output = makeOutput(input);
-      creature.activate(input);
+      creature.activateAndTrace(input);
 
       creature.propagate(output, config);
     }
@@ -212,7 +212,7 @@ Deno.test("Constants Known Few", () => {
   ];
   const expected = makeOutput(input);
 
-  const actual = creature.noTraceActivate(input);
+  const actual = creature.activate(input);
 
   Deno.writeTextFileSync(
     ".trace/3.json",
@@ -266,7 +266,7 @@ Deno.test("ConstantsMany", () => {
         for (let indx = 0; indx < observations.length; indx++) {
           const input = observations[indx];
 
-          creature.activate(input);
+          creature.activateAndTrace(input);
           const output = makeOutput(input);
           creature.propagate(output, config);
         }
@@ -280,14 +280,14 @@ Deno.test("ConstantsMany", () => {
       creature.clearState();
     }
 
-    const tmpActual = creature.noTraceActivate(sampleInput);
+    const tmpActual = creature.activate(sampleInput);
 
     if (attempt > 121) break;
     if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
     console.info(config);
   }
 
-  const actual = creature.noTraceActivate(sampleInput);
+  const actual = creature.activate(sampleInput);
 
   Deno.writeTextFileSync(
     `${traceDir}/2-end.json`,
