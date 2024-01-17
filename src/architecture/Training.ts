@@ -269,6 +269,9 @@ export async function trainDir(
     }
 
     if (timedOut || bestError <= targetError || iteration >= iterations) {
+      if( iterations > 1 ){
+        network.loadFrom(bestCreatureJSON, false); // If not called via the worker.
+      }
       return {
         ID: ID,
         iteration: iteration,
