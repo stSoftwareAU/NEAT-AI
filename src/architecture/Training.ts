@@ -272,11 +272,15 @@ export async function trainDir(
       if (iterations > 1) {
         network.loadFrom(bestCreatureJSON, false); // If not called via the worker.
       }
+
+      const compact = Creature.fromJSON(lastTraceJSON).compact();
+
       return {
         ID: ID,
         iteration: iteration,
         error: bestError,
         trace: bestTraceJSON,
+        compact: compact ? compact.exportJSON() : undefined,
       };
     }
   }

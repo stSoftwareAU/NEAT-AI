@@ -526,6 +526,26 @@ export class Neat {
           addTag(json, "trained", "YES");
 
           trainedPopulation.push(Creature.fromJSON(json, this.config.debug));
+
+          const compactJSON = r.train.compact
+            ? JSON.parse(r.train.compact)
+            : undefined;
+
+          if (compactJSON) {
+            if (this.config.verbose) {
+              console.info(
+                `Training ${blue(r.train.ID)} compacted`,
+              );
+            }
+
+            addTag(compactJSON, "approach", "compacted");
+            addTag(compactJSON, "trainID", r.train.ID);
+            addTag(compactJSON, "trained", "YES");
+
+            trainedPopulation.push(
+              Creature.fromJSON(compactJSON, this.config.debug),
+            );
+          }
         }
       } else {
         throw new Error(`No train result`);

@@ -84,6 +84,7 @@ export class WorkerProcessor {
           network: json,
           error: result.error,
           trace: JSON.stringify(result.trace),
+          compact: result.compact ? JSON.stringify(result.compact) : undefined,
         },
       };
     } else if (data.echo) {

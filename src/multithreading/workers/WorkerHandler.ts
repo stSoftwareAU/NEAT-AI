@@ -39,6 +39,7 @@ export interface ResponseData {
     network: string;
     error: number;
     trace: string;
+    compact?: string;
   };
   echo?: {
     message: string;
