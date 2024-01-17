@@ -269,7 +269,6 @@ export async function trainDir(
     }
 
     if (timedOut || bestError <= targetError || iteration >= iterations) {
-      network.loadFrom(bestCreatureJSON, false);
       return {
         ID: ID,
         iteration: iteration,
