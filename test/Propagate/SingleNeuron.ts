@@ -145,7 +145,7 @@ Deno.test("TwoSame", () => {
   const expectedA = makeOutput(inA);
   for (let attempts = 0; true; attempts++) {
     for (let i = 0; i < 2; i++) {
-      creature.activate(inA);
+      creature.activateAndTrace(inA);
 
       creature.propagate(expectedA, config);
     }
@@ -158,7 +158,7 @@ Deno.test("TwoSame", () => {
     creature.propagateUpdate(config);
     creature.clearState();
 
-    const actualA = creature.noTraceActivate(inA);
+    const actualA = creature.activate(inA);
 
     Deno.writeTextFileSync(
       `${traceDir}/2-done.json`,
@@ -214,7 +214,7 @@ Deno.test("ManySame", () => {
     const expectedA = makeOutput(inA);
 
     for (let i = 0; i < 1000; i++) {
-      creature.activate(inA);
+      creature.activateAndTrace(inA);
 
       creature.propagate(expectedA, config);
     }
@@ -227,7 +227,7 @@ Deno.test("ManySame", () => {
     creature.propagateUpdate(config);
     creature.clearState();
 
-    const actualA = creature.noTraceActivate(inA);
+    const actualA = creature.activate(inA);
 
     Deno.writeTextFileSync(
       ".trace/4-done.json",
@@ -281,13 +281,13 @@ Deno.test("propagateSingleNeuronKnown", () => {
   );
 
   const inFirst = [-0.5, 0, 0.5];
-  const actualFirst = creature.noTraceActivate(inFirst);
-  const actualFirst2 = creature.noTraceActivate(inFirst);
+  const actualFirst = creature.activate(inFirst);
+  const actualFirst2 = creature.activate(inFirst);
   const expectedFirst = makeOutput(inFirst);
   console.info("FIRST", expectedFirst, actualFirst, actualFirst2);
 
   const inA = [0, 0, 0];
-  const outA = creature.activate(inA);
+  const outA = creature.activateAndTrace(inA);
   console.info("SECOND", outA);
   creature.propagate(makeOutput(inA), config);
 
@@ -296,7 +296,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
   const inB = [1, 1, 1];
-  creature.activate(inB);
+  creature.activateAndTrace(inB);
   const expectedB = makeOutput(inB);
   creature.propagate(expectedB, config);
 
@@ -307,7 +307,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
   const inC = [-0.3, -0.1, 0.1];
   const expectedC = makeOutput(inC);
   for (let i = 0; i < 1000; i++) {
-    creature.activate(inC);
+    creature.activateAndTrace(inC);
     creature.propagate(expectedC, config);
   }
 
@@ -317,7 +317,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
   );
 
   creature.propagateUpdate(config);
-  const actualC = creature.noTraceActivate(inC);
+  const actualC = creature.activate(inC);
   console.info(expectedC, actualC);
 
   Deno.writeTextFileSync(
@@ -326,7 +326,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
   );
 
   const inD = [-0.5, 0, 0.5];
-  const actualD = creature.noTraceActivate(inD);
+  const actualD = creature.activate(inD);
   const expectedD = makeOutput(inD);
   console.info("LAST", expectedD, actualD);
 
@@ -363,7 +363,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
     ];
-    creature.activate(inC);
+    creature.activateAndTrace(inC);
     creature.propagate(makeOutput(inC), config);
   }
 
@@ -381,7 +381,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
       Math.random() * 2 - 1,
     ];
     const expectedOutput = makeOutput(inD);
-    const actualOutput = creature.noTraceActivate(inD);
+    const actualOutput = creature.activate(inD);
 
     if (
       Math.abs(expectedOutput[0] - actualOutput[0]) > 0.7 ||

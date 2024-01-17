@@ -35,15 +35,15 @@ Deno.test("TraceAggregateMINIMUM", () => {
     JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  network.noTraceActivate(input);
+  network.activate(input);
 
-  const aOut = network.activate(input);
+  const aOut = network.activateAndTrace(input);
 
   const changed = network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
-  const dOut = network.noTraceActivate(input);
+  const dOut = network.activate(input);
 
   Deno.writeTextFileSync(
     "test/data/.d.json",
@@ -81,15 +81,15 @@ Deno.test("TraceAggregateMAXIMUM", () => {
     JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  network.noTraceActivate(input);
+  network.activate(input);
 
-  const aOut = network.activate(input);
+  const aOut = network.activateAndTrace(input);
 
   const changed = network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
-  const dOut = network.noTraceActivate(input);
+  const dOut = network.activate(input);
 
   Deno.writeTextFileSync(
     "test/data/.d.json",
@@ -128,14 +128,14 @@ Deno.test("TraceAggregateIF", () => {
     JSON.stringify(network.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  network.noTraceActivate(input);
-  const aOut = network.activate(input);
+  network.activate(input);
+  const aOut = network.activateAndTrace(input);
 
   const changed = network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
-  const dOut = network.noTraceActivate(input);
+  const dOut = network.activate(input);
 
   Deno.writeTextFileSync(
     "test/data/.d.json",

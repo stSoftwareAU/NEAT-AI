@@ -95,7 +95,7 @@ Deno.test("booleanXOR", async () => {
   network.validate();
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 
-  const value = network.activate([1, 0])[0];
+  const value = network.activateAndTrace([1, 0])[0];
 
   assert(value > 0.65, "Should be more than 0.65 was: " + value);
 });

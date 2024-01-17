@@ -28,7 +28,7 @@ Deno.test("correctExport", () => {
     const c = Math.random() * 2 - 1;
 
     const data = [a, b, c, a + b, b + c];
-    const actual = network.activate(data)[0];
+    const actual = network.activateAndTrace(data)[0];
 
     assertAlmostEquals(actual, a + b + c, 0.00001);
   }

@@ -1,8 +1,13 @@
+import { yellow } from "https://deno.land/std@0.212.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.212.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.212.0/fs/empty_dir.ts";
 import {
   addTag,
   getTag,
   TagInterface,
 } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { BackPropagationConfig } from "./architecture/BackPropagation.ts";
+import { Connection } from "./architecture/Connection.ts";
 import {
   ConnectionExport,
   ConnectionInternal,
@@ -13,32 +18,23 @@ import {
   CreatureInternal,
   CreatureTrace,
 } from "./architecture/CreatureInterfaces.ts";
+import { CreatureState, NodeState } from "./architecture/CreatureState.ts";
+import { DataRecordInterface, makeDataDir } from "./architecture/DataSet.ts";
+import { Neat } from "./architecture/Neat.ts";
+import { Node } from "./architecture/Node.ts";
 import {
   NodeExport,
   NodeInternal,
   NodeTrace,
 } from "./architecture/NodeInterfaces.ts";
-
-import { DataRecordInterface } from "./architecture/DataSet.ts";
-import { NeatOptions } from "./config/NeatOptions.ts";
-
-import { yellow } from "https://deno.land/std@0.212.0/fmt/colors.ts";
-import { makeDataDir } from "./architecture/DataSet.ts";
-import { Neat } from "./architecture/Neat.ts";
-import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
-
-import { format } from "https://deno.land/std@0.212.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.212.0/fs/empty_dir.ts";
-import { CostInterface } from "./Costs.ts";
-import { BackPropagationConfig } from "./architecture/BackPropagation.ts";
-import { Connection } from "./architecture/Connection.ts";
-import { CreatureState, NodeState } from "./architecture/CreatureState.ts";
-import { Node } from "./architecture/Node.ts";
 import { cacheDataFile, dataFiles } from "./architecture/Training.ts";
+import { NeatOptions } from "./config/NeatOptions.ts";
+import { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "./methods/mutation.ts";
+import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this network */
@@ -226,6 +222,29 @@ export class Creature implements CreatureInternal {
   /**
    * Activates the network
    */
+  activateAndTrace(input: number[], feedbackLoop = false) {
+    const output: number[] = new Array(this.output);
+
+    this.state.makeActivation(input, feedbackLoop);
+
+    const lastHiddenNode = this.nodes.length - this.output;
+
+    // Activate hidden nodes
+    for (let i = this.input; i < lastHiddenNode; i++) {
+      this.nodes[i].activateAndTrace();
+    }
+
+    // Activate output nodes and store their values in the output array
+    for (let outIndx = 0; outIndx < this.output; outIndx++) {
+      output[outIndx] = this.nodes[lastHiddenNode + outIndx].activateAndTrace();
+    }
+
+    return output;
+  }
+
+  /**
+   * Activates the network without calculating traces and such
+   */
   activate(input: number[], feedbackLoop = false) {
     const output: number[] = new Array(this.output);
 
@@ -241,29 +260,6 @@ export class Creature implements CreatureInternal {
     // Activate output nodes and store their values in the output array
     for (let outIndx = 0; outIndx < this.output; outIndx++) {
       output[outIndx] = this.nodes[lastHiddenNode + outIndx].activate();
-    }
-
-    return output;
-  }
-
-  /**
-   * Activates the network without calculating traces and such
-   */
-  noTraceActivate(input: number[], feedbackLoop = false) {
-    const output: number[] = new Array(this.output);
-
-    this.state.makeActivation(input, feedbackLoop);
-
-    const lastHiddenNode = this.nodes.length - this.output;
-
-    // Activate hidden nodes
-    for (let i = this.input; i < lastHiddenNode; i++) {
-      this.nodes[i].noTraceActivate();
-    }
-
-    // Activate output nodes and store their values in the output array
-    for (let outIndx = 0; outIndx < this.output; outIndx++) {
-      output[outIndx] = this.nodes[lastHiddenNode + outIndx].noTraceActivate();
     }
 
     return output;
@@ -1130,7 +1126,7 @@ export class Creature implements CreatureInternal {
 
     for (let i = count; i--;) {
       const data = json[i];
-      const output = this.noTraceActivate(data.input, feedbackLoop);
+      const output = this.activate(data.input, feedbackLoop);
       error += cost.calculate(data.output, output);
     }
 

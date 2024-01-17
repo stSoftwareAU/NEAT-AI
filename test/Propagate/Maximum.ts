@@ -18,7 +18,7 @@ Deno.test("PropagateMaximum", async () => {
     const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
     for (let i = 1_00; i--;) {
       const input = makeInput();
-      const output = creatureA.noTraceActivate(input);
+      const output = creatureA.activate(input);
 
       ts.push({
         input,
@@ -34,7 +34,7 @@ Deno.test("PropagateMaximum", async () => {
       JSON.stringify(ts, null, 2),
     );
     ts.forEach((item) => {
-      const result = creatureA.noTraceActivate(item.input);
+      const result = creatureA.activate(item.input);
 
       assertAlmostEquals(item.output[0], result[0], 0.00001);
       assertAlmostEquals(item.output[1], result[1], 0.00001);
@@ -147,7 +147,7 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.noTraceActivate(data.input, false);
+    const output = creature.activate(data.input, false);
     error += mse.calculate(data.output, output);
   }
 

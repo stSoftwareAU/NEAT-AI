@@ -78,7 +78,7 @@ Deno.test("CompactSimple", () => {
   const startConnections = a.connections.length;
 
   const input = [0.1, 0.2];
-  const startOut = a.noTraceActivate(input);
+  const startOut = a.activate(input);
 
   Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   const b = a.compact();
@@ -93,7 +93,7 @@ Deno.test("CompactSimple", () => {
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
-    const endOut = b.noTraceActivate(input);
+    const endOut = b.activate(input);
 
     assertAlmostEquals(startOut[0], endOut[0], 0.001);
     assertAlmostEquals(startOut[1], endOut[1], 0.001);
@@ -139,7 +139,7 @@ Deno.test("RandomizeCompact", () => {
   const startConnections = a.connections.length;
 
   const input = [0.1, 0.2];
-  const startOut = a.noTraceActivate(input);
+  const startOut = a.activate(input);
 
   Deno.writeTextFileSync(
     `${traceDir}/a.json`,
@@ -159,7 +159,7 @@ Deno.test("RandomizeCompact", () => {
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
-    const endOut = b.noTraceActivate(input);
+    const endOut = b.activate(input);
 
     assertAlmostEquals(startOut[0], endOut[0], 0.1);
     assertAlmostEquals(startOut[1], endOut[1], 0.1);
@@ -212,11 +212,11 @@ Deno.test("CompactSelf", () => {
   const startConnections = a.connections.length;
 
   const input = [0.1, 0.2, 0.3];
-  const aOut = a.noTraceActivate(input);
+  const aOut = a.activate(input);
 
   Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
 
-  const aOut2 = a.noTraceActivate(input);
+  const aOut2 = a.activate(input);
 
   assertAlmostEquals(aOut[0], aOut2[0], 0.001);
   const b = a.compact();
@@ -231,7 +231,7 @@ Deno.test("CompactSelf", () => {
     const endNodes = b.nodes.length;
     const endConnections = b.connections.length;
 
-    const endOut = b.noTraceActivate(input);
+    const endOut = b.activate(input);
 
     assertAlmostEquals(aOut[0], endOut[0], 0.001);
     assert(endNodes < startNodes);

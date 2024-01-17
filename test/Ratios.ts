@@ -37,7 +37,7 @@ Deno.test("hypotenuse", async () => {
     await network.evolveDataSet(ts, options);
 
     const check = [50, 60];
-    answer = network.activate(check)[0];
+    answer = network.activateAndTrace(check)[0];
 
     errorPercent = Math.round((1 - answer / 78.1) * 100);
 

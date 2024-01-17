@@ -155,7 +155,7 @@ export async function trainDir(
           json[indx] = EMPTY;
         }
 
-        const output = network.activate(data.input);
+        const output = network.activateAndTrace(data.input);
 
         const sampleError = cost.calculate(data.output, output);
         errorSum += sampleError;

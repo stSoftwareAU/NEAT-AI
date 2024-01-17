@@ -22,8 +22,8 @@ Deno.test("Leaky ReLU:", () => {
     const a = Math.random() * 4 - 2;
 
     const data = [a];
-    const actual = network.activate(data)[0];
-    const actual2 = network.activate(data)[0];
+    const actual = network.activateAndTrace(data)[0];
+    const actual2 = network.activateAndTrace(data)[0];
 
     assert(
       Math.abs(actual - actual2) < 0.00000001,
@@ -32,7 +32,7 @@ Deno.test("Leaky ReLU:", () => {
     const expected = a > 0 ? a : a * 0.01;
 
     if (Math.abs(expected - actual) >= 0.00001) {
-      const actual3 = network.activate(data)[0];
+      const actual3 = network.activateAndTrace(data)[0];
       console.info(actual3);
     }
     assert(
