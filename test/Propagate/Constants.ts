@@ -228,7 +228,7 @@ Deno.test("Constants Known Few", () => {
 });
 
 Deno.test("ConstantsMany", () => {
-  const creature = makeCreature();
+
   const traceDir = ".trace/ConstantsMany";
   ensureDirSync(traceDir);
 
@@ -241,21 +241,15 @@ Deno.test("ConstantsMany", () => {
 
   let expected;
   for (let attempt = 0; true; attempt++) {
+    const creature = makeCreature();
     const observations = makeInputs();
-    // const observations = JSON.parse(
-    //   Deno.readTextFileSync(`${traceDir}/observations.json`),
-    // );
+
     Deno.writeTextFileSync(
       `${traceDir}/observations.json`,
       JSON.stringify(observations, null, 2),
     );
     sampleInput = observations[22];
     const config = new BackPropagationConfig({
-      // useAverageWeight: "No",
-      // useAverageDifferenceBias: "Yes",
-      // maximumWeightAdjustmentScale: 1,
-      // maximumBiasAdjustmentScale: 1,
-      learningRate: 0.01,
       disableRandomSamples: true,
     });
     expected = makeOutput(sampleInput);
