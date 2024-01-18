@@ -235,6 +235,7 @@ Deno.test("ConstantsMany", () => {
   let sampleInput;
 
   let expected;
+  let actual;
   for (let attempt = 0; true; attempt++) {
     const creature = makeCreature();
     
@@ -277,7 +278,7 @@ Deno.test("ConstantsMany", () => {
 
     const tmpActual = creature.activate(sampleInput);
 
-    const actual = creature.activate(sampleInput);
+    actual = creature.activate(sampleInput);
 
     Deno.writeTextFileSync(
       `${traceDir}/2-end.json`,
