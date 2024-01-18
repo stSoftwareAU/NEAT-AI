@@ -231,11 +231,10 @@ Deno.test("ConstantsMany", () => {
   const traceDir = ".trace/ConstantsMany";
   ensureDirSync(traceDir);
 
-
   let sampleInput;
-
   let expected;
   let actual;
+
   for (let attempt = 0; true; attempt++) {
     const creature = makeCreature();
     
