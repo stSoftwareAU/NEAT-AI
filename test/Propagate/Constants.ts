@@ -228,34 +228,29 @@ Deno.test("Constants Known Few", () => {
 });
 
 Deno.test("ConstantsMany", () => {
-  const creature = makeCreature();
   const traceDir = ".trace/ConstantsMany";
   ensureDirSync(traceDir);
 
-  Deno.writeTextFileSync(
-    `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
-  );
-
   let sampleInput;
-
   let expected;
+  let actual;
+
   for (let attempt = 0; true; attempt++) {
+    const creature = makeCreature();
+
+    Deno.writeTextFileSync(
+      `${traceDir}/0-start.json`,
+      JSON.stringify(creature.exportJSON(), null, 2),
+    );
+
     const observations = makeInputs();
-    // const observations = JSON.parse(
-    //   Deno.readTextFileSync(`${traceDir}/observations.json`),
-    // );
+
     Deno.writeTextFileSync(
       `${traceDir}/observations.json`,
       JSON.stringify(observations, null, 2),
     );
     sampleInput = observations[22];
     const config = new BackPropagationConfig({
-      // useAverageWeight: "No",
-      // useAverageDifferenceBias: "Yes",
-      // maximumWeightAdjustmentScale: 1,
-      // maximumBiasAdjustmentScale: 1,
-      learningRate: 0.01,
       disableRandomSamples: true,
     });
     expected = makeOutput(sampleInput);
@@ -282,17 +277,17 @@ Deno.test("ConstantsMany", () => {
 
     const tmpActual = creature.activate(sampleInput);
 
+    actual = creature.activate(sampleInput);
+
+    Deno.writeTextFileSync(
+      `${traceDir}/2-end.json`,
+      JSON.stringify(creature.exportJSON(), null, 2),
+    );
+
     if (attempt > 121) break;
     if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
     console.info(config);
   }
-
-  const actual = creature.activate(sampleInput);
-
-  Deno.writeTextFileSync(
-    `${traceDir}/2-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
-  );
 
   assertAlmostEquals(
     expected[0],
