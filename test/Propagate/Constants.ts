@@ -228,7 +228,6 @@ Deno.test("Constants Known Few", () => {
 });
 
 Deno.test("ConstantsMany", () => {
-
   const traceDir = ".trace/ConstantsMany";
   ensureDirSync(traceDir);
 
