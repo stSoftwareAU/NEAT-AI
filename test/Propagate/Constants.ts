@@ -277,17 +277,17 @@ Deno.test("ConstantsMany", () => {
 
     const tmpActual = creature.activate(sampleInput);
 
+    const actual = creature.activate(sampleInput);
+
+    Deno.writeTextFileSync(
+      `${traceDir}/2-end.json`,
+      JSON.stringify(creature.exportJSON(), null, 2),
+    );
+
     if (attempt > 121) break;
     if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
     console.info(config);
   }
-
-  const actual = creature.activate(sampleInput);
-
-  Deno.writeTextFileSync(
-    `${traceDir}/2-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
-  );
 
   assertAlmostEquals(
     expected[0],
