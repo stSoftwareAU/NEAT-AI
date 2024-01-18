@@ -231,16 +231,18 @@ Deno.test("ConstantsMany", () => {
   const traceDir = ".trace/ConstantsMany";
   ensureDirSync(traceDir);
 
-  Deno.writeTextFileSync(
-    `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
-  );
 
   let sampleInput;
 
   let expected;
   for (let attempt = 0; true; attempt++) {
     const creature = makeCreature();
+    
+    Deno.writeTextFileSync(
+      `${traceDir}/0-start.json`,
+      JSON.stringify(creature.exportJSON(), null, 2),
+    );
+
     const observations = makeInputs();
 
     Deno.writeTextFileSync(
