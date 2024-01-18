@@ -237,7 +237,7 @@ Deno.test("ConstantsMany", () => {
 
   for (let attempt = 0; true; attempt++) {
     const creature = makeCreature();
-    
+
     Deno.writeTextFileSync(
       `${traceDir}/0-start.json`,
       JSON.stringify(creature.exportJSON(), null, 2),
