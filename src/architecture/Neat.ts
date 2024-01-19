@@ -243,7 +243,6 @@ export class Neat {
     }
 
     if (trainingTimeOutMinutes != -1) { // If not timed out already
-
       if (this.config.verbose) {
         console.info(
           `Training ${
