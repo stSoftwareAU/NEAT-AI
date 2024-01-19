@@ -232,14 +232,6 @@ export class Neat {
       }
     }
 
-    if (this.config.verbose) {
-      console.info(
-        `Training ${
-          blue(uuid.substring(Math.max(0, uuid.length - 8)))
-        } scheduled`,
-      );
-    }
-
     let trainingTimeOutMinutes = 0;
     if (this.endTimeTS) {
       const diff = this.endTimeTS - Date.now();
@@ -251,6 +243,15 @@ export class Neat {
     }
 
     if (trainingTimeOutMinutes != -1) { // If not timed out already
+
+      if (this.config.verbose) {
+        console.info(
+          `Training ${
+            blue(uuid.substring(Math.max(0, uuid.length - 8)))
+          } scheduled`,
+        );
+      }
+
       const trainOptions: TrainOptions = {
         cost: this.config.costName,
         log: this.config.log,
