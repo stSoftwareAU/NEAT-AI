@@ -28,7 +28,7 @@ export class MINIMUM
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
-  noTraceActivate(node: Node): number {
+  activate(node: Node): number {
     const toList = node.creature.toConnections(node.index);
     let minValue = Infinity;
     for (let i = toList.length; i--;) {
@@ -44,7 +44,7 @@ export class MINIMUM
     return minValue;
   }
 
-  activate(node: Node) {
+  activateAndTrace(node: Node) {
     const toList = node.creature.toConnections(node.index);
     let minValue = Infinity;
     let usedConnection: ConnectionInternal | null = null;

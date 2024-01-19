@@ -1,36 +1,33 @@
-import { LOGISTIC } from "./types/LOGISTIC.ts";
-import { TANH } from "./types/TANH.ts";
-import { IDENTITY } from "./types/IDENTITY.ts";
-import { INVERSE } from "./types/INVERSE.ts";
-import { StdInverse } from "./types/StdInverse.ts";
-import { RELU } from "./types/RELU.ts";
-import { LeakyReLU } from "./types/LeakyReLU.ts";
-
-import { SELU } from "./types/SELU.ts";
-import { STEP } from "./types/STEP.ts";
-import { SOFTSIGN } from "./types/SOFTSIGN.ts";
-import { SINUSOID } from "./types/SINUSOID.ts";
-import { GAUSSIAN } from "./types/GAUSSIAN.ts";
-import { BENT_IDENTITY } from "./types/BENT_IDENTITY.ts";
-import { BIPOLAR } from "./types/BIPOLAR.ts";
-
-import { BIPOLAR_SIGMOID } from "./types/BIPOLAR_SIGMOID.ts";
-
-import { HARD_TANH } from "./types/HARD_TANH.ts";
-import { ABSOLUTE } from "./types/ABSOLUTE.ts";
-import { CLIPPED } from "./types/CLIPPED.ts";
-import { MINIMUM } from "./aggregate/MINIMUM.ts";
-import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
-import { MEAN } from "./aggregate/MEAN.ts";
 import { HYPOT } from "./aggregate/HYPOT.ts";
 import { IF } from "./aggregate/IF.ts";
-import { ELU } from "./types/ELU.ts";
-import { Softplus } from "./types/Softplus.ts";
-import { Swish } from "./types/Swish.ts";
-import { Mish } from "./types/Mish.ts";
+import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
+import { MEAN } from "./aggregate/MEAN.ts";
+import { MINIMUM } from "./aggregate/MINIMUM.ts";
+import { ABSOLUTE } from "./types/ABSOLUTE.ts";
+import { BENT_IDENTITY } from "./types/BENT_IDENTITY.ts";
+import { BIPOLAR } from "./types/BIPOLAR.ts";
+import { BIPOLAR_SIGMOID } from "./types/BIPOLAR_SIGMOID.ts";
+import { CLIPPED } from "./types/CLIPPED.ts";
 import { Cosine } from "./types/Cosine.ts";
-import { LogSigmoid } from "./types/LogSigmoid.ts";
+import { ELU } from "./types/ELU.ts";
 import { Exponential } from "./types/Exponential.ts";
+import { GAUSSIAN } from "./types/GAUSSIAN.ts";
+import { HARD_TANH } from "./types/HARD_TANH.ts";
+import { IDENTITY } from "./types/IDENTITY.ts";
+import { INVERSE } from "./types/INVERSE.ts";
+import { LOGISTIC } from "./types/LOGISTIC.ts";
+import { LeakyReLU } from "./types/LeakyReLU.ts";
+import { LogSigmoid } from "./types/LogSigmoid.ts";
+import { Mish } from "./types/Mish.ts";
+import { RELU } from "./types/RELU.ts";
+import { SELU } from "./types/SELU.ts";
+import { SINUSOID } from "./types/SINUSOID.ts";
+import { SOFTSIGN } from "./types/SOFTSIGN.ts";
+import { STEP } from "./types/STEP.ts";
+import { Softplus } from "./types/Softplus.ts";
+import { StdInverse } from "./types/StdInverse.ts";
+import { Swish } from "./types/Swish.ts";
+import { TANH } from "./types/TANH.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function

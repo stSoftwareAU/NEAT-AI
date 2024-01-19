@@ -149,7 +149,7 @@ export class IF
     }
   }
 
-  activate(node: Node) {
+  activateAndTrace(node: Node) {
     let condition = 0;
     let negative = 0;
     let positive = 0;
@@ -199,7 +199,7 @@ export class IF
     }
   }
 
-  noTraceActivate(node: Node): number {
+  activate(node: Node): number {
     let condition = 0;
     let negative = 0;
     let positive = 0;

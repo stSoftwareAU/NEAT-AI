@@ -28,7 +28,7 @@ export class MAXIMUM
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
-  noTraceActivate(node: Node) {
+  activate(node: Node) {
     const toList = node.creature.toConnections(node.index);
     let maxValue = Infinity * -1;
     for (let i = toList.length; i--;) {
@@ -44,7 +44,7 @@ export class MAXIMUM
     return maxValue;
   }
 
-  activate(node: Node) {
+  activateAndTrace(node: Node) {
     const toList = node.creature.toConnections(node.index);
     let maxValue = Infinity * -1;
     let usedConnection: ConnectionInternal | null = null;
