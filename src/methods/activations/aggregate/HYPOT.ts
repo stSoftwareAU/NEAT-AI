@@ -12,7 +12,7 @@ export class HYPOT implements NodeActivationInterface {
     return HYPOT.NAME;
   }
 
-  noTraceActivate(node: Node) {
+  activate(node: Node) {
     const toList = node.creature.toConnections(node.index);
     const values: number[] = new Array(toList.length);
     for (let i = toList.length; i--;) {
@@ -25,8 +25,8 @@ export class HYPOT implements NodeActivationInterface {
     return value;
   }
 
-  activate(node: Node) {
-    return this.noTraceActivate(node);
+  activateAndTrace(node: Node) {
+    return this.activate(node);
   }
 
   fix(node: Node) {

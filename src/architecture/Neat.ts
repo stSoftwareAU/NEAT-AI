@@ -243,41 +243,47 @@ export class Neat {
     let trainingTimeOutMinutes = 0;
     if (this.endTimeTS) {
       const diff = this.endTimeTS - Date.now();
-      trainingTimeOutMinutes = Math.max(Math.ceil(diff / 60_000), 1);
+      trainingTimeOutMinutes = Math.round(diff / 60_000);
+
+      if (trainingTimeOutMinutes < 1) {
+        trainingTimeOutMinutes = -1;
+      }
     }
 
-    const trainOptions: TrainOptions = {
-      cost: this.config.costName,
-      log: this.config.log,
-      traceStore: this.config.traceStore,
-      iterations: 1,
-      targetError: this.config.targetError,
-      trainingSampleRate: this.config.trainingSampleRate,
-      disableRandomSamples: this.config.disableRandomSamples,
-      trainingTimeOutMinutes: trainingTimeOutMinutes,
-    };
+    if (trainingTimeOutMinutes != -1) { // If not timed out already
+      const trainOptions: TrainOptions = {
+        cost: this.config.costName,
+        log: this.config.log,
+        traceStore: this.config.traceStore,
+        iterations: 1,
+        targetError: this.config.targetError,
+        trainingSampleRate: this.config.trainingSampleRate,
+        disableRandomSamples: this.config.disableRandomSamples,
+        trainingTimeOutMinutes: trainingTimeOutMinutes,
+      };
 
-    const p = w.train(creature, trainOptions).then(async (r) => {
-      this.trainingComplete.push(r);
+      const p = w.train(creature, trainOptions).then(async (r) => {
+        this.trainingComplete.push(r);
 
-      this.trainingInProgress.delete(uuid);
+        this.trainingInProgress.delete(uuid);
 
-      if (this.config.traceStore && r.train) {
-        if (r.train.trace) {
-          const traceNetwork = Creature.fromJSON(
-            JSON.parse(r.train.trace),
-          );
-          await CreatureUtil.makeUUID(traceNetwork);
-          ensureDirSync(this.config.traceStore);
-          Deno.writeTextFileSync(
-            `${this.config.traceStore}/${traceNetwork.uuid}.json`,
-            JSON.stringify(traceNetwork.traceJSON(), null, 2),
-          );
+        if (this.config.traceStore && r.train) {
+          if (r.train.trace) {
+            const traceNetwork = Creature.fromJSON(
+              JSON.parse(r.train.trace),
+            );
+            await CreatureUtil.makeUUID(traceNetwork);
+            ensureDirSync(this.config.traceStore);
+            Deno.writeTextFileSync(
+              `${this.config.traceStore}/${traceNetwork.uuid}.json`,
+              JSON.stringify(traceNetwork.traceJSON(), null, 2),
+            );
+          }
         }
-      }
-    });
+      });
 
-    this.trainingInProgress.set(uuid, p);
+      this.trainingInProgress.set(uuid, p);
+    }
   }
 
   async checkAndAdd(

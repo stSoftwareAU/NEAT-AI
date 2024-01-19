@@ -16,7 +16,7 @@ export class MEAN implements NodeActivationInterface {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
-  noTraceActivate(node: Node) {
+  activate(node: Node) {
     let sum = 0;
 
     const toList = node.creature.toConnections(node.index);
@@ -45,8 +45,8 @@ export class MEAN implements NodeActivationInterface {
     return value;
   }
 
-  activate(node: Node) {
-    return this.noTraceActivate(node);
+  activateAndTrace(node: Node) {
+    return this.activate(node);
   }
 
   fix(node: Node) {

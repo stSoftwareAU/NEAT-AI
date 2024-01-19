@@ -184,7 +184,8 @@ export class Node implements TagsInterface, NodeInternal {
       | PropagateInterface
       | UnSquashInterface,
   ): activation is NodeActivationInterface {
-    return (activation as NodeActivationInterface).activate != undefined;
+    return (activation as NodeActivationInterface).activateAndTrace !=
+      undefined;
   }
 
   private hasApplyLearnings(
@@ -220,7 +221,7 @@ export class Node implements TagsInterface, NodeInternal {
       const squashMethod = this.findSquash();
 
       if (this.isNodeActivation(squashMethod)) {
-        const squashActivation = squashMethod.activate(this);
+        const squashActivation = squashMethod.activateAndTrace(this);
         activation = squashActivation + this.bias;
       } else {
         const toList = this.creature.toConnections(this.index);
@@ -287,7 +288,7 @@ export class Node implements TagsInterface, NodeInternal {
     } else {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        activation = squashMethod.noTraceActivate(this) + this.bias;
+        activation = squashMethod.activate(this) + this.bias;
       } else {
         // All activation sources coming from the node itself
 
@@ -361,6 +362,8 @@ export class Node implements TagsInterface, NodeInternal {
     }
 
     const squashMethod = this.findSquash();
+    let limitedActivation: number;
+    const ns = this.creature.state.node(this.index);
 
     if ((squashMethod as PropagateInterface).propagate !== undefined) {
       const improvedActivation = (squashMethod as PropagateInterface).propagate(
@@ -368,99 +371,95 @@ export class Node implements TagsInterface, NodeInternal {
         targetActivation,
         config,
       );
-      return limitActivation(improvedActivation);
-    }
-
-    const ns = this.creature.state.node(this.index);
-
-    const targetValue = toValue(this, targetActivation);
-
-    const currentValue = toValue(this, activation);
-    const error = targetValue - currentValue;
-
-    let improvedValue = adjustedBias(this, config);
-    const toList = this.creature.toConnections(this.index);
-
-    const listLength = toList.length;
-    const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
-
-    if (listLength > 1 && !config.disableRandomSamples) {
-      // Fisher-Yates shuffle algorithm
-      for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-      }
-    }
-
-    if (listLength) {
-      const errorPerLink = error / listLength;
-
-      // Iterate over the shuffled indices
-      for (let i = listLength; i--;) {
-        const indx = indices[i];
-
-        const c = toList[indx];
-
-        if (c.from === c.to) continue;
-
-        const fromNode = this.creature.nodes[c.from];
-
-        const fromActivation = fromNode.adjustedActivation(config);
-
-        const fromWeight = adjustedWeight(this.creature.state, c, config);
-        const fromValue = fromWeight * fromActivation;
-
-        let improvedFromActivation = fromActivation;
-
-        const targetFromValue = fromValue + errorPerLink;
-
-        if (
-          fromWeight &&
-          fromNode.type !== "input" &&
-          fromNode.type !== "constant"
-        ) {
-          const targetFromActivation = targetFromValue / fromWeight;
-
-          improvedFromActivation = (fromNode as Node).propagate(
-            targetFromActivation,
-            config,
-          );
-        }
-
-        if (
-          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-          Math.abs(fromWeight) > PLANK_CONSTANT
-        ) {
-          const cs = this.creature.state.connection(c.from, c.to);
-          accumulateWeight(cs, targetFromValue, improvedFromActivation);
-          const aWeight = adjustedWeight(this.creature.state, c, config);
-
-          const improvedFromValue = improvedFromActivation *
-            aWeight;
-
-          improvedValue += improvedFromValue;
-        }
-      }
-    }
-
-    ns.count++;
-    ns.totalValue += targetValue;
-    ns.totalWeightedSum += improvedValue;
-
-    const aBias = adjustedBias(this, config);
-
-    let limitedActivation: number;
-    if (this.isNodeActivation(squashMethod) == false) {
-      const squashActivation = (squashMethod as ActivationInterface).squash(
-        improvedValue + aBias,
-      );
-
-      limitedActivation = limitActivation(squashActivation);
+      limitedActivation = limitActivation(improvedActivation);
     } else {
-      const adjustedActivation = squashMethod.activate(this) + aBias;
-      limitedActivation = limitActivation(adjustedActivation);
-    }
+      const targetValue = toValue(this, targetActivation);
 
+      const currentValue = toValue(this, activation);
+      const error = targetValue - currentValue;
+
+      let improvedValue = adjustedBias(this, config);
+      const toList = this.creature.toConnections(this.index);
+
+      const listLength = toList.length;
+      const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
+
+      if (listLength > 1 && !config.disableRandomSamples) {
+        // Fisher-Yates shuffle algorithm
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+      }
+
+      if (listLength) {
+        const errorPerLink = error / listLength;
+
+        // Iterate over the shuffled indices
+        for (let i = listLength; i--;) {
+          const indx = indices[i];
+
+          const c = toList[indx];
+
+          if (c.from === c.to) continue;
+
+          const fromNode = this.creature.nodes[c.from];
+
+          const fromActivation = fromNode.adjustedActivation(config);
+
+          const fromWeight = adjustedWeight(this.creature.state, c, config);
+          const fromValue = fromWeight * fromActivation;
+
+          let improvedFromActivation = fromActivation;
+
+          const targetFromValue = fromValue + errorPerLink;
+
+          if (
+            fromWeight &&
+            fromNode.type !== "input" &&
+            fromNode.type !== "constant"
+          ) {
+            const targetFromActivation = targetFromValue / fromWeight;
+
+            improvedFromActivation = (fromNode as Node).propagate(
+              targetFromActivation,
+              config,
+            );
+          }
+
+          if (
+            Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
+            Math.abs(fromWeight) > PLANK_CONSTANT
+          ) {
+            const cs = this.creature.state.connection(c.from, c.to);
+            accumulateWeight(cs, targetFromValue, improvedFromActivation);
+            const aWeight = adjustedWeight(this.creature.state, c, config);
+
+            const improvedFromValue = improvedFromActivation *
+              aWeight;
+
+            improvedValue += improvedFromValue;
+          }
+        }
+      }
+
+      ns.count++;
+      ns.totalValue += targetValue;
+      ns.totalWeightedSum += improvedValue;
+
+      const aBias = adjustedBias(this, config);
+
+      if (this.isNodeActivation(squashMethod) == false) {
+        const squashActivation = (squashMethod as ActivationInterface).squash(
+          improvedValue + aBias,
+        );
+
+        limitedActivation = limitActivation(squashActivation);
+      } else {
+        const adjustedActivation = squashMethod.activateAndTrace(this) + aBias;
+        limitedActivation = limitActivation(adjustedActivation);
+      }
+    }
     if (limitedActivation > ns.maximumActivation) {
       ns.maximumActivation = limitedActivation;
     }
@@ -488,7 +487,7 @@ export class Node implements TagsInterface, NodeInternal {
 
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        const adjustedActivation = squashMethod.noTraceActivate(this);
+        const adjustedActivation = squashMethod.activate(this);
 
         const limitedActivation = limitActivation(adjustedActivation) +
           aBias;
