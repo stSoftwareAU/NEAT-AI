@@ -218,7 +218,9 @@ export async function trainDir(
           if (timeoutTS && now > timeoutTS) {
             timedOut = true;
             console.log(
-              `Training ${blue(ID)} timed out`,
+              `Training ${blue(ID)} timed out after ${
+                yellow(format(totalTime, { ignoreZero: true }))
+              }`,
             );
             trainingStopped = true;
             break;
