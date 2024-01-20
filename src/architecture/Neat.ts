@@ -243,15 +243,6 @@ export class Neat {
       );
     }
 
-    if (this.config.traceStore) {
-      const scheduledTrainingDir = `${this.config.traceStore}/scheduled`;
-      ensureDirSync(scheduledTrainingDir);
-      Deno.writeTextFileSync(
-        `${scheduledTrainingDir}/${uuid}.json`,
-        JSON.stringify(creature.exportJSON(), null, 2),
-      );
-    }
-
     const trainOptions: TrainOptions = {
       cost: this.config.costName,
       log: this.config.log,
