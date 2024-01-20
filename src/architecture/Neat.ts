@@ -216,10 +216,10 @@ export class Neat {
   private trainingComplete: ResponseData[] = [];
 
   async scheduleTraining(
-    creature: CreatureInternal,
+    creature: Creature,
     trainingTimeOutMinutes: number,
   ) {
-    const uuid = await CreatureUtil.makeUUID(creature as Creature);
+    const uuid = await CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
     let w: WorkerHandler;
 
@@ -240,6 +240,15 @@ export class Neat {
         `Training ${
           blue(uuid.substring(Math.max(0, uuid.length - 8)))
         } scheduled`,
+      );
+    }
+
+    if (this.config.traceStore) {
+      const scheduledTrainingDir = `${this.config.traceStore}/scheduled`;
+      ensureDirSync(scheduledTrainingDir);
+      Deno.writeTextFileSync(
+        `${scheduledTrainingDir}/${uuid}.json`,
+        JSON.stringify(creature.exportJSON(), null, 2),
       );
     }
 

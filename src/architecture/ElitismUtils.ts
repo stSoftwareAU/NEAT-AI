@@ -1,12 +1,13 @@
-import { getTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
-import { Creature } from "../Creature.ts";
 import {
   blue,
+  bold,
   green,
   red,
   white,
   yellow,
 } from "https://deno.land/std@0.212.0/fmt/colors.ts";
+import { getTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
+import { Creature } from "../Creature.ts";
 
 export function makeElitists(
   creatures: Creature[],
@@ -45,7 +46,7 @@ export function makeElitists(
         }, Error: ${yellow(untrainedError ? untrainedError : "unknown")} -> ${
           yellow(error ? error : "unknown")
         }` + (diff > 0
-          ? ` ${"improved " + green(diff.toString())}`
+          ? ` ${"improved " + bold(green(diff.toString()))}`
           : diff < 0
           ? ` ${"regression " + red(diff.toString())}`
           : white(" neutral")),
