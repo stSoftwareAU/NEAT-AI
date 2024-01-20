@@ -11,6 +11,7 @@ import {
 export function makeElitists(
   creatures: Creature[],
   size = 1,
+  verbose = false,
 ) {
   const elitism = Math.min(Math.max(1, size), creatures.length);
 
@@ -28,28 +29,30 @@ export function makeElitists(
     }
   });
 
-  for (let indx = 0; indx < creatures.length; indx++) {
-    const trainID = getTag(creatures[indx], "trainID");
-    if (trainID) {
-      const score = creatures[indx].score;
+  if (verbose) {
+    for (let indx = 0; indx < creatures.length; indx++) {
+      const trainID = getTag(creatures[indx], "trainID");
+      if (trainID) {
+        const score = creatures[indx].score;
 
-      const approach = getTag(creatures[indx], "approach");
-      const untrainedError = getTag(creatures[indx], "untrained-error");
-      const error = getTag(creatures[indx], "error");
-      const diff =
-        Number.parseFloat(untrainedError ? untrainedError : "99999") -
-        Number.parseFloat(error ? error : "99999");
-      console.info(
-        `${approach} ${blue(trainID)} Score: ${
-          yellow(score ? score.toString() : "undefined")
-        }, Error: ${yellow(untrainedError ? untrainedError : "unknown")} -> ${
-          yellow(error ? error : "unknown")
-        }` + (diff > 0
-          ? ` ${"improved " + green(diff.toString())}`
-          : diff < 0
-          ? ` ${"regression " + red(diff.toString())}`
-          : white(" neutral")),
-      );
+        const approach = getTag(creatures[indx], "approach");
+        const untrainedError = getTag(creatures[indx], "untrained-error");
+        const error = getTag(creatures[indx], "error");
+        const diff =
+          Number.parseFloat(untrainedError ? untrainedError : "99999") -
+          Number.parseFloat(error ? error : "99999");
+        console.info(
+          `${approach} ${blue(trainID)} Score: ${
+            yellow(score ? score.toString() : "undefined")
+          }, Error: ${yellow(untrainedError ? untrainedError : "unknown")} -> ${
+            yellow(error ? error : "unknown")
+          }` + (diff > 0
+            ? ` ${"improved " + green(diff.toString())}`
+            : diff < 0
+            ? ` ${"regression " + red(diff.toString())}`
+            : white(" neutral")),
+        );
+      }
     }
   }
 
