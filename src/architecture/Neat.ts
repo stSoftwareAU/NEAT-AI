@@ -215,7 +215,10 @@ export class Neat {
 
   private trainingComplete: ResponseData[] = [];
 
-  async scheduleTraining(creature: CreatureInternal) {
+  async scheduleTraining(
+    creature: CreatureInternal,
+    trainingTimeOutMinutes: number,
+  ) {
     const uuid = await CreatureUtil.makeUUID(creature as Creature);
     if (this.trainingInProgress.has(uuid)) return;
     let w: WorkerHandler;
@@ -232,58 +235,46 @@ export class Neat {
       }
     }
 
-    let trainingTimeOutMinutes = 0;
-    if (this.endTimeTS) {
-      const diff = this.endTimeTS - Date.now();
-      trainingTimeOutMinutes = Math.round(diff / 60_000);
-
-      if (trainingTimeOutMinutes < 1) {
-        trainingTimeOutMinutes = -1;
-      }
+    if (this.config.verbose) {
+      console.info(
+        `Training ${
+          blue(uuid.substring(Math.max(0, uuid.length - 8)))
+        } scheduled`,
+      );
     }
 
-    if (trainingTimeOutMinutes != -1) { // If not timed out already
-      if (this.config.verbose) {
-        console.info(
-          `Training ${
-            blue(uuid.substring(Math.max(0, uuid.length - 8)))
-          } scheduled`,
-        );
-      }
+    const trainOptions: TrainOptions = {
+      cost: this.config.costName,
+      log: this.config.log,
+      traceStore: this.config.traceStore,
+      iterations: 1,
+      targetError: this.config.targetError,
+      trainingSampleRate: this.config.trainingSampleRate,
+      disableRandomSamples: this.config.disableRandomSamples,
+      trainingTimeOutMinutes: trainingTimeOutMinutes,
+    };
 
-      const trainOptions: TrainOptions = {
-        cost: this.config.costName,
-        log: this.config.log,
-        traceStore: this.config.traceStore,
-        iterations: 1,
-        targetError: this.config.targetError,
-        trainingSampleRate: this.config.trainingSampleRate,
-        disableRandomSamples: this.config.disableRandomSamples,
-        trainingTimeOutMinutes: trainingTimeOutMinutes,
-      };
+    const p = w.train(creature, trainOptions).then(async (r) => {
+      this.trainingComplete.push(r);
 
-      const p = w.train(creature, trainOptions).then(async (r) => {
-        this.trainingComplete.push(r);
+      this.trainingInProgress.delete(uuid);
 
-        this.trainingInProgress.delete(uuid);
-
-        if (this.config.traceStore && r.train) {
-          if (r.train.trace) {
-            const traceNetwork = Creature.fromJSON(
-              JSON.parse(r.train.trace),
-            );
-            await CreatureUtil.makeUUID(traceNetwork);
-            ensureDirSync(this.config.traceStore);
-            Deno.writeTextFileSync(
-              `${this.config.traceStore}/${traceNetwork.uuid}.json`,
-              JSON.stringify(traceNetwork.traceJSON(), null, 2),
-            );
-          }
+      if (this.config.traceStore && r.train) {
+        if (r.train.trace) {
+          const traceNetwork = Creature.fromJSON(
+            JSON.parse(r.train.trace),
+          );
+          await CreatureUtil.makeUUID(traceNetwork);
+          ensureDirSync(this.config.traceStore);
+          Deno.writeTextFileSync(
+            `${this.config.traceStore}/${traceNetwork.uuid}.json`,
+            JSON.stringify(traceNetwork.traceJSON(), null, 2),
+          );
         }
-      });
+      }
+    });
 
-      this.trainingInProgress.set(uuid, p);
-    }
+    this.trainingInProgress.set(uuid, p);
   }
 
   async checkAndAdd(
@@ -425,18 +416,30 @@ export class Neat {
     const error = getTag(fittest, "error");
     addTag(fittest, "error", error ? error : "-1");
 
-    for (
-      let i = 0;
-      i < elitists.length;
-      i++
-    ) {
-      const n = elitists[i];
+    let trainingTimeOutMinutes = 0;
+    if (this.endTimeTS) {
+      const diff = this.endTimeTS - Date.now();
+      trainingTimeOutMinutes = Math.round(diff / 60_000);
 
-      if (
-        this.doNotStartMoreTraining == false &&
-        this.trainingInProgress.size < this.config.trainPerGen
+      if (trainingTimeOutMinutes < 1) {
+        trainingTimeOutMinutes = -1;
+      }
+    }
+
+    if (trainingTimeOutMinutes != -1) { // If not timed out already
+      for (
+        let i = 0;
+        i < elitists.length;
+        i++
       ) {
-        await this.scheduleTraining(n);
+        const n = elitists[i];
+
+        if (
+          this.doNotStartMoreTraining == false &&
+          this.trainingInProgress.size < this.config.trainPerGen
+        ) {
+          await this.scheduleTraining(n, trainingTimeOutMinutes);
+        }
       }
     }
 
@@ -552,6 +555,14 @@ export class Neat {
               Creature.fromJSON(compactJSON, this.config.debug),
             );
           }
+        } else {
+          console.warn(
+            `Training ${blue(r.train.ID)} FAILED ${
+              r.duration
+                ? "after " + format(r.duration, { ignoreZero: true })
+                : ""
+            }`,
+          );
         }
       } else {
         throw new Error(`No train result`);
