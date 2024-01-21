@@ -29,12 +29,12 @@ export interface BackPropagationOptions {
   maximumWeightAdjustmentScale?: number;
 
   /**
-   * The limit +/- of the bias, training will not adjust beyound this scale. Default 10_000, Minimum 1
+   * The limit +/- of the bias, training will not adjust beyond this scale. Default 10_000, Minimum 1
    */
   limitBiasScale?: number;
 
   /**
-   * The limit +/- of the weight, training will not adjust beyound this scale. Default 100_000, Minimum 1
+   * The limit +/- of the weight, training will not adjust beyond this scale. Default 100_000, Minimum 1
    */
   limitWeightScale?: number;
 }
@@ -99,6 +99,9 @@ export function adjustedBias(
   node: Node,
   config: BackPropagationConfig,
 ): number {
+  if (node.uuid == "6a0672c0-a2cb-4472-87af-b03fbaeaa49e") {
+    console.log("adjustedBias", node.uuid, node.bias);
+  }
   if (node.type == "constant") {
     return node.bias ? node.bias : 0;
   } else {
@@ -223,16 +226,17 @@ export function limitBias(
   }
 
   const difference = config.learningRate * (targetBias - currentBias);
-  let limitedBias = currentBias + difference;
-  if (Math.abs(limitedBias) <= config.limitBiasScale) {
-    if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
-      if (difference > 0) {
-        limitedBias = currentBias + config.maximumBiasAdjustmentScale;
-      } else {
-        limitedBias = currentBias - config.maximumBiasAdjustmentScale;
-      }
+  const learntBias = currentBias + difference;
+  let limitedBias = learntBias;
+  // if (Math.abs(learntBias) <= config.limitBiasScale) {
+  if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
+    if (difference > 0) {
+      limitedBias = currentBias + config.maximumBiasAdjustmentScale;
+    } else {
+      limitedBias = currentBias - config.maximumBiasAdjustmentScale;
     }
   }
+  // }
 
   if (Math.abs(limitedBias) >= config.limitBiasScale) {
     if (limitedBias > 0) {
@@ -260,13 +264,11 @@ export function limitWeight(
 
   const difference = config.learningRate * (targetWeight - currentWeight);
   let limitedWeight = currentWeight + difference;
-  if (Math.abs(limitedWeight) <= config.limitWeightScale) {
-    if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-      if (difference > 0) {
-        limitedWeight = currentWeight + config.maximumWeightAdjustmentScale;
-      } else {
-        limitedWeight = currentWeight - config.maximumWeightAdjustmentScale;
-      }
+  if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
+    if (difference > 0) {
+      limitedWeight = currentWeight + config.maximumWeightAdjustmentScale;
+    } else {
+      limitedWeight = currentWeight - config.maximumWeightAdjustmentScale;
     }
   }
   if (Math.abs(limitedWeight) >= config.limitWeightScale) {

@@ -402,6 +402,7 @@ export class Neat {
         : previousFittest
         ? this.config.elitism
         : 2,
+      this.config.verbose,
     );
     const tmpFittest = elitists[0];
 

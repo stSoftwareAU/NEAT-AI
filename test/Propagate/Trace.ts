@@ -13,11 +13,18 @@ Deno.test("Trace", () => {
   const json = creature.exportJSON();
 
   stats(json);
-  const config = new BackPropagationConfig();
+  const config = new BackPropagationConfig({
+    useAverageDifferenceBias: "Yes",
+    learningRate: 0.02,
+  });
   creature.applyLearnings(config);
   const json2 = creature.exportJSON();
   stats(json2);
   compare(json, json2);
+  Deno.writeTextFileSync(
+    "test/data/.learned.json",
+    JSON.stringify(json2, null, 2),
+  );
 });
 
 function stats(creature: CreatureExport) {
