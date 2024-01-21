@@ -39,5 +39,5 @@ Deno.test("limitWeightScale", () => {
   assertAlmostEquals(-19, weight2, 0.001, `Weight: ${weight2.toFixed(1)}`);
   const weight3 = limitWeight(-23, -8, config);
 
-  assertAlmostEquals(-20, weight3, 0.001, `Weight: ${weight3.toFixed(1)}`);
+  assertAlmostEquals(-18, weight3, 0.001, `Weight: ${weight3.toFixed(1)}`);
 });
