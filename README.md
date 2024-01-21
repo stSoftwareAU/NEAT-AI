@@ -13,7 +13,7 @@ This project is a unique implementation of a neural network based on the NEAT (N
 
 3. **Life Long Learning**: Unlike many pre-trained neural networks, this project is designed for continuous learning, making it adaptable and potentially more effective in changing environments.
 
-4. **Efficient Model Utilization**: Once trained, the current best model can be utilized efficiently by calling the `noTraceActivate` function.
+4. **Efficient Model Utilization**: Once trained, the current best model can be utilized efficiently by calling the `activate` function.
 
 5. **Unique Squash Functions**: The neural network supports unique squash functions such as IF, MEAN, MAX, MIN, and HYPOT. These functions provide more options for the activation function, which can lead to different network behaviours.
 
