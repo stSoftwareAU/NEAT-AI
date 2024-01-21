@@ -12,7 +12,6 @@ import { Creature } from "../Creature.ts";
 export function makeElitists(
   creatures: Creature[],
   size = 1,
-  verbose = false,
 ) {
   const elitism = Math.min(Math.max(1, size), creatures.length);
 
@@ -30,11 +29,10 @@ export function makeElitists(
     }
   });
 
-  if (verbose) {
-    for (let indx = 0; indx < creatures.length; indx++) {
-      const trainID = getTag(creatures[indx], "trainID");
-      if (trainID) {
-        const score = creatures[indx].score;
+  for (let indx = 0; indx < creatures.length; indx++) {
+    const trainID = getTag(creatures[indx], "trainID");
+    if (trainID) {
+      const score = creatures[indx].score;
 
       const approach = getTag(creatures[indx], "approach");
       const untrainedError = getTag(creatures[indx], "untrained-error");
