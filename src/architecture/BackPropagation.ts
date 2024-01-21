@@ -99,7 +99,7 @@ export function adjustedBias(
   node: Node,
   config: BackPropagationConfig,
 ): number {
-  if( node.uuid=="6a0672c0-a2cb-4472-87af-b03fbaeaa49e"){
+  if (node.uuid == "6a0672c0-a2cb-4472-87af-b03fbaeaa49e") {
     console.log("adjustedBias", node.uuid, node.bias);
   }
   if (node.type == "constant") {
