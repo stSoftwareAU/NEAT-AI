@@ -15,6 +15,15 @@ Deno.test("maximumWeightAdjustmentScale", () => {
   assertAlmostEquals(-0.3, weight2, 0.001, `Weight: ${weight.toFixed(3)}`);
 });
 
+Deno.test("maximumWeightAdjustmentScaleV2", () => {
+  const config = new BackPropagationConfig({
+    maximumWeightAdjustmentScale: 0.2,
+  });
+  console.info(config);
+  const weight = limitWeight(500_000, 0.5, config);
+  assertAlmostEquals(0.7, weight, 0.001, `Weight: ${weight.toFixed(3)}`);
+});
+
 Deno.test("limitWeightScale", () => {
   const config = new BackPropagationConfig({
     limitWeightScale: 20,

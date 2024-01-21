@@ -16,6 +16,16 @@ Deno.test("maximumBiasAdjustmentScale", () => {
   assertAlmostEquals(-0.3, bias2, 0.001, `Bias: ${bias.toFixed(3)}`);
 });
 
+Deno.test("maximumBiasAdjustmentScaleV2", () => {
+  const config = new BackPropagationConfig({
+    limitBiasScale: 10000,
+    learningRate: 0.02,
+  });
+  const bias = limitBias(-784335, 11, config);
+
+  assertAlmostEquals(1, bias, 0.001, `Bias: ${bias.toFixed(3)}`);
+});
+
 Deno.test("limitBiasScale", () => {
   const config = new BackPropagationConfig({
     limitBiasScale: 20,
