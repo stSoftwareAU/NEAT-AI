@@ -127,10 +127,22 @@ export class WorkerHandler {
   }
 
   private makePromise(data: RequestData) {
+    if (this.busyCount < 0) {
+      throw new Error(
+        `${data.taskID.toString()} invalid busy count ${this.busyCount}`,
+      );
+    }
     this.busyCount++;
     const p = new Promise<ResponseData>((resolve) => {
+      let alreadyCalled = false;
       const call = (result: ResponseData) => {
-        this.busyCount--;
+        if (!alreadyCalled) {
+          this.busyCount--;
+          alreadyCalled = true;
+        } else {
+          throw new Error(`${data.taskID.toString()} already called`);
+        }
+
         resolve(result);
 
         if (!this.isBusy()) {
@@ -139,6 +151,7 @@ export class WorkerHandler {
       };
 
       this.callbacks[data.taskID.toString()] = call;
+      return call;
     });
 
     this.worker.postMessage(data);
