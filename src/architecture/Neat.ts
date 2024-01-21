@@ -216,10 +216,10 @@ export class Neat {
   private trainingComplete: ResponseData[] = [];
 
   async scheduleTraining(
-    creature: CreatureInternal,
+    creature: Creature,
     trainingTimeOutMinutes: number,
   ) {
-    const uuid = await CreatureUtil.makeUUID(creature as Creature);
+    const uuid = await CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
     let w: WorkerHandler;
 

@@ -1,21 +1,17 @@
-/* Import */
+import {
+  addTags,
+  removeTag,
+  TagsInterface,
+} from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import { NodeActivationInterface } from "../methods/activations/NodeActivationInterface.ts";
 import { NodeFixableInterface } from "../methods/activations/NodeFixableInterface.ts";
-import { Mutation } from "../methods/mutation.ts";
-import {
-  addTags,
-  removeTag,
-  TagsInterface,
-} from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { Connection } from "./Connection.ts";
-import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
-
 import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
+import { Mutation } from "../methods/mutation.ts";
 import {
   accumulateWeight,
   adjustedBias,
@@ -27,6 +23,8 @@ import {
   PLANK_CONSTANT,
   toValue,
 } from "./BackPropagation.ts";
+import { Connection } from "./Connection.ts";
+import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly creature: Creature;

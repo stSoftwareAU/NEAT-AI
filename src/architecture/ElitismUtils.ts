@@ -1,12 +1,13 @@
-import { getTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
-import { Creature } from "../Creature.ts";
 import {
   blue,
+  bold,
   green,
   red,
   white,
   yellow,
 } from "https://deno.land/std@0.212.0/fmt/colors.ts";
+import { getTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
+import { Creature } from "../Creature.ts";
 
 export function makeElitists(
   creatures: Creature[],
@@ -35,24 +36,23 @@ export function makeElitists(
       if (trainID) {
         const score = creatures[indx].score;
 
-        const approach = getTag(creatures[indx], "approach");
-        const untrainedError = getTag(creatures[indx], "untrained-error");
-        const error = getTag(creatures[indx], "error");
-        const diff =
-          Number.parseFloat(untrainedError ? untrainedError : "99999") -
-          Number.parseFloat(error ? error : "99999");
-        console.info(
-          `${approach} ${blue(trainID)} Score: ${
-            yellow(score ? score.toString() : "undefined")
-          }, Error: ${yellow(untrainedError ? untrainedError : "unknown")} -> ${
-            yellow(error ? error : "unknown")
-          }` + (diff > 0
-            ? ` ${"improved " + green(diff.toString())}`
-            : diff < 0
-            ? ` ${"regression " + red(diff.toString())}`
-            : white(" neutral")),
-        );
-      }
+      const approach = getTag(creatures[indx], "approach");
+      const untrainedError = getTag(creatures[indx], "untrained-error");
+      const error = getTag(creatures[indx], "error");
+      const diff =
+        Number.parseFloat(untrainedError ? untrainedError : "99999") -
+        Number.parseFloat(error ? error : "99999");
+      console.info(
+        `${approach} ${blue(trainID)} Score: ${
+          yellow(score ? score.toString() : "undefined")
+        }, Error: ${yellow(untrainedError ? untrainedError : "unknown")} -> ${
+          yellow(error ? error : "unknown")
+        }` + (diff > 0
+          ? ` ${"improved " + bold(green(diff.toString()))}`
+          : diff < 0
+          ? ` ${"regression " + red(diff.toString())}`
+          : white(" neutral")),
+      );
     }
   }
 
