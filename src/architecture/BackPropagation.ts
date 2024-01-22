@@ -208,9 +208,6 @@ export function accumulateWeight(
   config: BackPropagationConfig,
 ) {
   const targetWeight = value / activation;
-  if (!Number.isFinite(targetWeight)) {
-    throw new Error(`Weight must be a finite number, got ${targetWeight}`);
-  }
 
   let difference = targetWeight - weight;
 
