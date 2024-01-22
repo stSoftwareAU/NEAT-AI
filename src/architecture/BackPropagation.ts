@@ -173,25 +173,29 @@ export function toValue(node: Node, activation: number) {
 }
 
 export function accumulateWeight(
+  weight: number,
   cs: ConnectionState,
   value: number,
   activation: number,
   config: BackPropagationConfig,
 ) {
-  let w = 0;
+  let targetWeight = 0;
   if (Math.abs(activation) > PLANK_CONSTANT) {
-    w = value / activation;
+    targetWeight = value / activation;
   }
 
-  if (Math.abs(w) > config.maximumWeightAdjustmentScale) {
-    if (w > 0) {
-      w = config.maximumWeightAdjustmentScale;
+  const adjustment = targetWeight - weight;
+  // @TO releative to current weight.
+  if (Math.abs(adjustment) > config.maximumWeightAdjustmentScale) {
+    if (adjustment > 0) {
+      targetWeight = weight + config.maximumWeightAdjustmentScale;
     } else {
-      w = config.maximumWeightAdjustmentScale * -1;
+      targetWeight = weight - config.maximumWeightAdjustmentScale;
     }
   }
 
-  cs.averageWeight = ((cs.averageWeight * cs.count) + w) / (cs.count + 1);
+  cs.averageWeight = ((cs.averageWeight * cs.count) + targetWeight) /
+    (cs.count + 1);
 
   cs.count++;
 }

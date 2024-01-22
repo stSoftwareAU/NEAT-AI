@@ -201,7 +201,13 @@ export class MINIMUM
             mainConnection.from,
             mainConnection.to,
           );
-          accumulateWeight(cs, targetFromValue2, targetFromActivation, config);
+          accumulateWeight(
+            mainConnection.weight,
+            cs,
+            targetFromValue2,
+            targetFromActivation,
+            config,
+          );
 
           const aWeight = adjustedWeight(
             node.creature.state,

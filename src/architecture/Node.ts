@@ -431,6 +431,7 @@ export class Node implements TagsInterface, NodeInternal {
           ) {
             const cs = this.creature.state.connection(c.from, c.to);
             accumulateWeight(
+              c.weight,
               cs,
               targetFromValue,
               improvedFromActivation,

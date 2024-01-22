@@ -380,7 +380,13 @@ export class IF
       }
 
       const targetFromValue2 = fromValue + thisPerLinkError;
-      accumulateWeight(cs, targetFromValue2, targetFromActivation, config);
+      accumulateWeight(
+        c.weight,
+        cs,
+        targetFromValue2,
+        targetFromActivation,
+        config,
+      );
 
       const aWeight = adjustedWeight(node.creature.state, c, config);
       const improvedAdjustedFromValue = improvedFromActivation *

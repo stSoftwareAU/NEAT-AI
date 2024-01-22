@@ -8,7 +8,7 @@ Deno.test("AccumulateWeight-Standard", () => {
   cs.averageWeight = 1;
   cs.count = 1;
   const config = new BackPropagationConfig();
-  accumulateWeight(cs, 4, 2, config);
+  accumulateWeight(1, cs, 4, 2, config);
 
   assertAlmostEquals(cs.averageWeight, 1.5, 0.1, JSON.stringify(cs, null, 2));
 });
@@ -20,7 +20,7 @@ Deno.test("AccumulateWeight-Limited", () => {
   cs.averageWeight = 3;
   cs.count = 1;
 
-  accumulateWeight(cs, 40, 2, config);
+  accumulateWeight(0, cs, 40, 2, config);
 
   const unlimitedExpected = (3 + (40 / 2)) / 2;
   const expected = (3 + 5) / 2;
@@ -28,6 +28,6 @@ Deno.test("AccumulateWeight-Limited", () => {
     cs.averageWeight,
     expected,
     0.1,
-    `Unlimited: ${unlimitedExpected} expected: ${expected}`,
+    `Unlimited: ${unlimitedExpected} expected: ${expected}, average: ${cs.averageWeight}`,
   );
 });
