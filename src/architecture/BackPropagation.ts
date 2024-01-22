@@ -1,6 +1,6 @@
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
-import { ConnectionState, CreatureState } from "./CreatureState.ts";
+import { ConnectionState, CreatureState, NodeState } from "./CreatureState.ts";
 import { Node } from "./Node.ts";
 
 export interface BackPropagationOptions {
@@ -172,17 +172,51 @@ export function toValue(node: Node, activation: number) {
   }
 }
 
+export function accumulateBias(
+  ns: NodeState,
+  targetValue: number,
+  improvedValue: number,
+  config: BackPropagationConfig,
+) {
+  let adjustment = targetValue - improvedValue;
+
+  if (Math.abs(adjustment) > config.maximumBiasAdjustmentScale) {
+    if (adjustment > 0) {
+      adjustment = config.maximumBiasAdjustmentScale;
+    } else {
+      adjustment = config.maximumBiasAdjustmentScale * -1;
+    }
+  }
+
+  ns.count++;
+  ns.totalValue += improvedValue + adjustment;
+  ns.totalWeightedSum += improvedValue;
+}
+
 export function accumulateWeight(
+  weight: number,
   cs: ConnectionState,
   value: number,
   activation: number,
+  config: BackPropagationConfig,
 ) {
-  let w = 0;
+  let targetWeight = 0;
   if (Math.abs(activation) > PLANK_CONSTANT) {
-    w = value / activation;
+    targetWeight = value / activation;
   }
 
-  cs.averageWeight = ((cs.averageWeight * cs.count) + w) / (cs.count + 1);
+  const adjustment = targetWeight - weight;
+
+  if (Math.abs(adjustment) > config.maximumWeightAdjustmentScale) {
+    if (adjustment > 0) {
+      targetWeight = weight + config.maximumWeightAdjustmentScale;
+    } else {
+      targetWeight = weight - config.maximumWeightAdjustmentScale;
+    }
+  }
+
+  cs.averageWeight = ((cs.averageWeight * cs.count) + targetWeight) /
+    (cs.count + 1);
 
   cs.count++;
 }

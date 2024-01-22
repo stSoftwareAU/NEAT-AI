@@ -1,9 +1,9 @@
-import { NodeActivationInterface } from "../NodeActivationInterface.ts";
-import { Node } from "../../../architecture/Node.ts";
 import {
   limitActivation,
   limitValue,
 } from "../../../architecture/BackPropagation.ts";
+import { Node } from "../../../architecture/Node.ts";
+import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 
 export class MEAN implements NodeActivationInterface {
   public static NAME = "MEAN";
@@ -22,7 +22,7 @@ export class MEAN implements NodeActivationInterface {
     const toList = node.creature.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-
+      if (c.from == c.to) continue;
       const fromActivation = node.creature.getActivation(c.from);
       const activation = limitActivation(fromActivation);
 
@@ -50,10 +50,22 @@ export class MEAN implements NodeActivationInterface {
   }
 
   fix(node: Node) {
-    const toList = node.creature.toConnections(node.index);
+    const toListA = node.creature.toConnections(node.index);
+    for (let i = toListA.length; i--;) {
+      const c = toListA[i];
+      if (c.from == c.to) {
+        node.creature.disconnect(c.from, c.to);
+      }
+    }
 
-    if (toList.length < 2) {
-      node.creature.makeRandomConnection(node.index);
+    for (let attempts = 12; attempts--;) {
+      const toList = node.creature.toConnections(node.index);
+
+      if (toList.length < 2) {
+        node.creature.makeRandomConnection(node.index);
+      } else {
+        break;
+      }
     }
   }
 }

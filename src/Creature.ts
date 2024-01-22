@@ -1325,7 +1325,7 @@ export class Creature implements CreatureInternal {
 
         if (node.index > pos) {
           throw new Error(
-            "To: " + pos + " should be great than node index: " +
+            "To: " + pos + " should be greater than node index: " +
               node.index,
           );
         }
@@ -1358,6 +1358,18 @@ export class Creature implements CreatureInternal {
         Connection.randomWeight(),
       );
       node.fix();
+      const connection = this.getConnection(node.index, toIndex);
+      if (!connection) {
+        /* If the self connection was removed */
+        const toIndex2 = Math.floor(
+          Math.random() * (this.nodes.length - node.index - 1),
+        ) + node.index + 1;
+        this.connect(
+          node.index,
+          toIndex2,
+          Connection.randomWeight(),
+        );
+      }
     } else {
       console.warn("addNode: Should have a to index");
     }

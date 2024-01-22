@@ -1,4 +1,5 @@
 import {
+  accumulateBias,
   accumulateWeight,
   adjustedBias,
   adjustedWeight,
@@ -33,7 +34,7 @@ export class MINIMUM
     let minValue = Infinity;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-
+      if (c.from == c.to) continue;
       const value = node.creature.getActivation(c.from) *
         c.weight;
       if (value < minValue) {
@@ -50,6 +51,7 @@ export class MINIMUM
     let usedConnection: ConnectionInternal | null = null;
     for (let i = toList.length; i--;) {
       const c = toList[i];
+      if (c.from == c.to) continue;
       const cs = node.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
@@ -73,10 +75,22 @@ export class MINIMUM
   }
 
   fix(node: Node) {
-    const toList = node.creature.toConnections(node.index);
+    const toListA = node.creature.toConnections(node.index);
+    for (let i = toListA.length; i--;) {
+      const c = toListA[i];
+      if (c.from == c.to) {
+        node.creature.disconnect(c.from, c.to);
+      }
+    }
 
-    if (toList.length < 2) {
-      node.creature.makeRandomConnection(node.index);
+    for (let attempts = 12; attempts--;) {
+      const toList = node.creature.toConnections(node.index);
+
+      if (toList.length < 2) {
+        node.creature.makeRandomConnection(node.index);
+      } else {
+        break;
+      }
     }
   }
 
@@ -188,7 +202,13 @@ export class MINIMUM
             mainConnection.from,
             mainConnection.to,
           );
-          accumulateWeight(cs, targetFromValue2, targetFromActivation);
+          accumulateWeight(
+            mainConnection.weight,
+            cs,
+            targetFromValue2,
+            targetFromActivation,
+            config,
+          );
 
           const aWeight = adjustedWeight(
             node.creature.state,
@@ -205,9 +225,7 @@ export class MINIMUM
     }
 
     const ns = node.creature.state.node(node.index);
-    ns.count++;
-    ns.totalValue += targetValue;
-    ns.totalWeightedSum += targetWeightedSum;
+    accumulateBias(ns, targetValue, targetWeightedSum, config);
 
     const aBias = adjustedBias(node, config);
 
