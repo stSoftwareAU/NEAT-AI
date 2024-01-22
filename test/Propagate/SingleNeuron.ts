@@ -270,7 +270,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
     useAverageDifferenceBias: "Yes",
     generations: 0,
     maximumWeightAdjustmentScale: 100,
-    maximumBiasAdjustmentScale: 1,
+    maximumBiasAdjustmentScale: 100,
     learningRate: 0.755,
   });
   console.info(config);
