@@ -25,6 +25,7 @@ import {
 } from "./BackPropagation.ts";
 import { Connection } from "./Connection.ts";
 import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
+import { accumulateBias } from "./BackPropagation.ts";
 
 export class Node implements TagsInterface, NodeInternal {
   readonly creature: Creature;
@@ -447,9 +448,7 @@ export class Node implements TagsInterface, NodeInternal {
         }
       }
 
-      ns.count++;
-      ns.totalValue += targetValue;
-      ns.totalWeightedSum += improvedValue;
+      accumulateBias(ns, targetValue, improvedValue, config);
 
       const aBias = adjustedBias(this, config);
 

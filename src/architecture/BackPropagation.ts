@@ -1,6 +1,6 @@
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { ConnectionInternal } from "./ConnectionInterfaces.ts";
-import { ConnectionState, CreatureState } from "./CreatureState.ts";
+import { ConnectionState, CreatureState, NodeState } from "./CreatureState.ts";
 import { Node } from "./Node.ts";
 
 export interface BackPropagationOptions {
@@ -170,6 +170,27 @@ export function toValue(node: Node, activation: number) {
   } else {
     return activation;
   }
+}
+
+export function accumulateBias(
+  ns: NodeState,
+  targetValue: number,
+  improvedValue: number,
+  config: BackPropagationConfig,
+) {
+  let adjustment = targetValue - improvedValue;
+
+  if (Math.abs(adjustment) > config.maximumBiasAdjustmentScale) {
+    if (adjustment > 0) {
+      adjustment = config.maximumBiasAdjustmentScale;
+    } else {
+      adjustment = config.maximumBiasAdjustmentScale * -1;
+    }
+  }
+
+  ns.count++;
+  ns.totalValue += improvedValue + adjustment;
+  ns.totalWeightedSum += improvedValue;
 }
 
 export function accumulateWeight(
