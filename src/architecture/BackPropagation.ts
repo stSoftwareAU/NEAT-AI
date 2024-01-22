@@ -185,7 +185,7 @@ export function accumulateWeight(
   }
 
   const adjustment = targetWeight - weight;
-  // @TO releative to current weight.
+
   if (Math.abs(adjustment) > config.maximumWeightAdjustmentScale) {
     if (adjustment > 0) {
       targetWeight = weight + config.maximumWeightAdjustmentScale;
