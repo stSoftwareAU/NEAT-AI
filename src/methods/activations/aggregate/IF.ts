@@ -13,6 +13,7 @@ import {
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { PropagateInterface } from "../PropagateInterface.ts";
+import { accumulateBias } from "../../../architecture/BackPropagation.ts";
 
 export class IF
   implements
@@ -395,9 +396,7 @@ export class IF
       targetWeightedSum += improvedAdjustedFromValue;
     }
 
-    ns.count++;
-    ns.totalValue += targetValue;
-    ns.totalWeightedSum += targetWeightedSum;
+    accumulateBias(ns, targetValue, targetWeightedSum, config);
 
     const aBias = adjustedBias(node, config);
 
