@@ -176,10 +176,19 @@ export function accumulateWeight(
   cs: ConnectionState,
   value: number,
   activation: number,
+  config: BackPropagationConfig,
 ) {
   let w = 0;
   if (Math.abs(activation) > PLANK_CONSTANT) {
     w = value / activation;
+  }
+
+  if (Math.abs(w) > config.maximumWeightAdjustmentScale) {
+    if (w > 0) {
+      w = config.maximumWeightAdjustmentScale;
+    } else {
+      w = config.maximumWeightAdjustmentScale * -1;
+    }
   }
 
   cs.averageWeight = ((cs.averageWeight * cs.count) + w) / (cs.count + 1);

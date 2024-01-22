@@ -1,5 +1,5 @@
-import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { Node } from "../../../architecture/Node.ts";
+import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 
 export class HYPOT implements NodeActivationInterface {
   range(): { low: number; high: number } {
@@ -30,10 +30,22 @@ export class HYPOT implements NodeActivationInterface {
   }
 
   fix(node: Node) {
-    const toList = node.creature.toConnections(node.index);
+    const toListA = node.creature.toConnections(node.index);
+    for (let i = toListA.length; i--;) {
+      const c = toListA[i];
+      if (c.from == c.to) {
+        node.creature.disconnect(c.from, c.to);
+      }
+    }
 
-    if (toList.length < 2) {
-      node.creature.makeRandomConnection(node.index);
+    for (let attempts = 12; attempts--;) {
+      const toList = node.creature.toConnections(node.index);
+
+      if (toList.length < 2) {
+        node.creature.makeRandomConnection(node.index);
+      } else {
+        break;
+      }
     }
   }
 }

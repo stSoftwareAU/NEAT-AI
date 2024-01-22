@@ -33,7 +33,7 @@ export class MAXIMUM
     let maxValue = Infinity * -1;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-
+      if (c.from == c.to) continue;
       const value = node.creature.getActivation(c.from) *
         c.weight;
       if (value > maxValue) {
@@ -50,7 +50,7 @@ export class MAXIMUM
     let usedConnection: ConnectionInternal | null = null;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-
+      if (c.from == c.to) continue;
       const cs = node.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
@@ -74,10 +74,22 @@ export class MAXIMUM
   }
 
   fix(node: Node) {
-    const toList = node.creature.toConnections(node.index);
+    const toListA = node.creature.toConnections(node.index);
+    for (let i = toListA.length; i--;) {
+      const c = toListA[i];
+      if (c.from == c.to) {
+        node.creature.disconnect(c.from, c.to);
+      }
+    }
 
-    if (toList.length < 2) {
-      node.creature.makeRandomConnection(node.index);
+    for (let attempts = 12; attempts--;) {
+      const toList = node.creature.toConnections(node.index);
+
+      if (toList.length < 2) {
+        node.creature.makeRandomConnection(node.index);
+      } else {
+        break;
+      }
     }
   }
 
@@ -189,7 +201,7 @@ export class MAXIMUM
             mainConnection.from,
             mainConnection.to,
           );
-          accumulateWeight(cs, targetFromValue2, targetFromActivation);
+          accumulateWeight(cs, targetFromValue2, targetFromActivation, config);
 
           const aWeight = adjustedWeight(
             node.creature.state,

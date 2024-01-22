@@ -430,7 +430,12 @@ export class Node implements TagsInterface, NodeInternal {
             Math.abs(fromWeight) > PLANK_CONSTANT
           ) {
             const cs = this.creature.state.connection(c.from, c.to);
-            accumulateWeight(cs, targetFromValue, improvedFromActivation);
+            accumulateWeight(
+              cs,
+              targetFromValue,
+              improvedFromActivation,
+              config,
+            );
             const aWeight = adjustedWeight(this.creature.state, c, config);
 
             const improvedFromValue = improvedFromActivation *

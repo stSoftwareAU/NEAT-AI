@@ -266,13 +266,12 @@ Deno.test("propagateSingleNeuronKnown", () => {
   const traceDir = ".trace";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
-    // useAverageWeight: "Yes",
     disableRandomSamples: true,
     useAverageDifferenceBias: "Yes",
     generations: 0,
-    maximumWeightAdjustmentScale: 1,
+    maximumWeightAdjustmentScale: 100,
     maximumBiasAdjustmentScale: 1,
-    learningRate: 1,
+    learningRate: 0.755,
   });
   console.info(config);
   Deno.writeTextFileSync(
@@ -326,21 +325,21 @@ Deno.test("propagateSingleNeuronKnown", () => {
   );
 
   const inD = [-0.5, 0, 0.5];
-  const actualD = creature.activate(inD);
-  const expectedD = makeOutput(inD);
-  console.info("LAST", expectedD, actualD);
+  const actual = creature.activate(inD);
+  const expected = makeOutput(inD);
+  console.info("LAST", expected, actual);
 
   assertAlmostEquals(
-    expectedD[0],
-    actualD[0],
+    actual[0],
+    expected[0],
     0.5,
-    `expected ${expectedD[0].toFixed(3)}, actual ${actualD[0].toFixed(3)}`,
+    `expected ${expected[0].toFixed(3)}, actual ${actual[0].toFixed(3)}`,
   );
   assertAlmostEquals(
-    expectedD[1],
-    actualD[1],
+    actual[1],
+    expected[1],
     0.5,
-    `expected ${expectedD[1].toFixed(3)}, actual ${actualD[1].toFixed(3)}`,
+    `expected ${expected[1].toFixed(3)}, actual ${actual[1].toFixed(3)}`,
   );
 });
 

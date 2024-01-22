@@ -79,6 +79,7 @@ Deno.test("addNodeValidate", () => {
     for (let i = 1000; i--;) {
       network.addNode();
     }
+
     network.validate();
   }
 });
@@ -89,6 +90,7 @@ Deno.test("addNode", () => {
   for (let i = 1000; i--;) {
     network.addNode();
   }
+
   const nodes = network.internalJSON().nodes;
 
   for (let pos = nodes.length; pos--;) {

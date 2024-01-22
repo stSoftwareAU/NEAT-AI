@@ -30,6 +30,14 @@ export class IF
   }
 
   fix(node: Node) {
+    const toListA = node.creature.toConnections(node.index);
+    for (let i = toListA.length; i--;) {
+      const c = toListA[i];
+      if (c.from == c.to) {
+        node.creature.disconnect(c.from, c.to);
+      }
+    }
+
     const toList = node.creature.toConnections(node.index);
     const spareList = [];
     let foundPositive = false;
@@ -372,7 +380,7 @@ export class IF
       }
 
       const targetFromValue2 = fromValue + thisPerLinkError;
-      accumulateWeight(cs, targetFromValue2, targetFromActivation);
+      accumulateWeight(cs, targetFromValue2, targetFromActivation, config);
 
       const aWeight = adjustedWeight(node.creature.state, c, config);
       const improvedAdjustedFromValue = improvedFromActivation *
