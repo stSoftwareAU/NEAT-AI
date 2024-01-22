@@ -19,7 +19,7 @@ Deno.test("AccumulateBias-Limited", () => {
 
   accumulateBias(ns, 40, 2, config);
 
-  const expected = 7;
+  const expected = 12;
   assertAlmostEquals(
     ns.totalValue,
     expected,

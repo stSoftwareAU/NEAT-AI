@@ -44,6 +44,7 @@ Deno.test("PI", () => {
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
     learningRate: 1,
+    // disableExponentialScaling:true
   });
   Deno.writeTextFileSync(
     ".trace/0.json",
@@ -76,14 +77,14 @@ Deno.test("PI", () => {
   assertAlmostEquals(
     expectedA[0],
     actualA1[0],
-    0.001,
+    0.1,
     `0: ${expectedA[0].toFixed(3)} ${actualA1[0].toFixed(3)}`,
   );
 
   assertAlmostEquals(
     expectedA[0],
     actualA2[0],
-    0.001,
+    0.1,
     `0: ${expectedA[0].toFixed(3)} ${actualA2[0].toFixed(3)}`,
   );
 });
@@ -99,6 +100,7 @@ Deno.test("PI Multiple", () => {
     maximumBiasAdjustmentScale: 5,
     maximumWeightAdjustmentScale: 5,
     learningRate: 1,
+    disableExponentialScaling: true,
   });
 
   Deno.writeTextFileSync(

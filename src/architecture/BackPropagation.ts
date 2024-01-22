@@ -37,6 +37,9 @@ export interface BackPropagationOptions {
    * The limit +/- of the weight, training will not adjust beyond this scale. Default 100_000, Minimum 1
    */
   limitWeightScale?: number;
+
+  /** When limiting the weight/bias use exponential scaling, Default enabled */
+  disableExponentialScaling?: boolean;
 }
 
 export const PLANK_CONSTANT = 0.000_000_1;
@@ -56,6 +59,8 @@ export class BackPropagationConfig implements BackPropagationOptions {
   limitBiasScale: number;
 
   limitWeightScale: number;
+  disableExponentialScaling?: boolean;
+
   constructor(options?: BackPropagationOptions) {
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
     if (
@@ -92,6 +97,8 @@ export class BackPropagationConfig implements BackPropagationOptions {
       ),
       1,
     );
+
+    this.disableExponentialScaling = options?.disableExponentialScaling;
   }
 }
 
@@ -178,18 +185,18 @@ export function accumulateBias(
   improvedValue: number,
   config: BackPropagationConfig,
 ) {
-  let adjustment = targetValue - improvedValue;
-
-  if (Math.abs(adjustment) > config.maximumBiasAdjustmentScale) {
-    if (adjustment > 0) {
-      adjustment = config.maximumBiasAdjustmentScale;
-    } else {
-      adjustment = config.maximumBiasAdjustmentScale * -1;
-    }
+  let difference = targetValue - improvedValue;
+  if (!config.disableExponentialScaling) {
+    // Squash the difference using the hyperbolic tangent function and scale it
+    difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
+      config.maximumWeightAdjustmentScale;
+  } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
+    // Limit the difference to the maximum scale
+    difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
   }
 
   ns.count++;
-  ns.totalValue += improvedValue + adjustment;
+  ns.totalValue += improvedValue + difference;
   ns.totalWeightedSum += improvedValue;
 }
 
@@ -200,22 +207,25 @@ export function accumulateWeight(
   activation: number,
   config: BackPropagationConfig,
 ) {
-  let targetWeight = 0;
-  if (Math.abs(activation) > PLANK_CONSTANT) {
-    targetWeight = value / activation;
+  const targetWeight = value / activation;
+  if (!Number.isFinite(targetWeight)) {
+    throw new Error(`Weight must be a finite number, got ${targetWeight}`);
   }
 
-  const adjustment = targetWeight - weight;
+  let difference = targetWeight - weight;
 
-  if (Math.abs(adjustment) > config.maximumWeightAdjustmentScale) {
-    if (adjustment > 0) {
-      targetWeight = weight + config.maximumWeightAdjustmentScale;
-    } else {
-      targetWeight = weight - config.maximumWeightAdjustmentScale;
-    }
+  if (!config.disableExponentialScaling) {
+    // Squash the difference using the hyperbolic tangent function and scale it
+    difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
+      config.maximumWeightAdjustmentScale;
+  } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
+    // Limit the difference to the maximum scale
+    difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
   }
 
-  cs.averageWeight = ((cs.averageWeight * cs.count) + targetWeight) /
+  const adjustedWeight = weight + difference;
+
+  cs.averageWeight = ((cs.averageWeight * cs.count) + adjustedWeight) /
     (cs.count + 1);
 
   cs.count++;
