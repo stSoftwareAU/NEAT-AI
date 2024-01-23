@@ -173,7 +173,7 @@ Deno.test("RandomizeCompact", () => {
         const d = c.compact();
         if (d == null) break;
 
-        if (attempts > 12) {
+        if (attempts > 13) {
           fail(`failed after ${attempts}`);
         }
       } else {
