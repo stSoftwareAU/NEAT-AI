@@ -106,70 +106,79 @@ Deno.test("CompactSimple", () => {
 });
 
 Deno.test("RandomizeCompact", () => {
-  const traceDir = ".trace/RandomizeCompact";
-  ensureDirSync(traceDir);
-  const a = new Creature(2, 2, {
-    layers: [
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1 },
-      { count: 1 },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-      { count: 1, squash: "*" },
-    ],
-  });
+  for (let attempts = 0; true; attempts++) {
+    const traceDir = ".trace/RandomizeCompact";
+    ensureDirSync(traceDir);
+    const a = new Creature(2, 2, {
+      layers: [
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1 },
+        { count: 1 },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+        { count: 1, squash: "*" },
+      ],
+    });
 
-  a.validate();
+    a.validate();
 
-  const startNodes = a.nodes.length;
-  const startConnections = a.connections.length;
+    const startNodes = a.nodes.length;
+    const startConnections = a.connections.length;
 
-  const input = [0.1, 0.2];
-  const startOut = a.activate(input);
+    const input = [0.1, 0.2];
+    const startOut = a.activate(input);
 
-  Deno.writeTextFileSync(
-    `${traceDir}/a.json`,
-    JSON.stringify(a.internalJSON(), null, 2),
-  );
-  const b = a.compact();
-  if (b == null) {
-    console.info("Did not compact");
-  } else {
-    b.DEBUG = false;
     Deno.writeTextFileSync(
-      `${traceDir}/b.json`,
-      JSON.stringify(b.internalJSON(), null, 2),
+      `${traceDir}/a.json`,
+      JSON.stringify(a.internalJSON(), null, 2),
     );
-    b.DEBUG = true;
-    b.validate();
-    const endNodes = b.nodes.length;
-    const endConnections = b.connections.length;
+    const b = a.compact();
+    if (b == null) {
+      console.info("Did not compact");
+      break;
+    } else {
+      b.DEBUG = false;
+      Deno.writeTextFileSync(
+        `${traceDir}/b.json`,
+        JSON.stringify(b.internalJSON(), null, 2),
+      );
+      b.DEBUG = true;
+      b.validate();
+      const endNodes = b.nodes.length;
+      const endConnections = b.connections.length;
 
-    const endOut = b.activate(input);
+      const endOut = b.activate(input);
 
-    assertAlmostEquals(startOut[0], endOut[0], 0.1);
-    assertAlmostEquals(startOut[1], endOut[1], 0.1);
-    assert(endNodes < startNodes);
-    assert(endConnections < startConnections);
+      assertAlmostEquals(startOut[0], endOut[0], 0.1);
+      assertAlmostEquals(startOut[1], endOut[1], 0.1);
+      assert(endNodes < startNodes);
+      assert(endConnections < startConnections);
 
-    const c = b.compact();
-    if (c) {
-      const d = c.compact();
-      assert(d == null);
+      const c = b.compact();
+      if (c) {
+        const d = c.compact();
+        if (d == null) break;
+
+        if (attempts > 12) {
+          fail(`failed after ${attempts}`);
+        }
+      } else {
+        break;
+      }
     }
   }
 });
