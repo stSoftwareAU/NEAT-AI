@@ -34,7 +34,6 @@ export class MINIMUM
     let minValue = Infinity;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      if (c.from == c.to) continue;
       const value = node.creature.getActivation(c.from) *
         c.weight;
       if (value < minValue) {
@@ -51,7 +50,6 @@ export class MINIMUM
     let usedConnection: ConnectionInternal | null = null;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      if (c.from == c.to) continue;
       const cs = node.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
@@ -146,8 +144,6 @@ export class MINIMUM
       let mainConnection;
       for (let indx = toList.length; indx--;) {
         const c = toList[indx];
-
-        if (c.from === c.to) continue;
 
         const fromNode = node.creature.nodes[c.from];
 
