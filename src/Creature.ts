@@ -1010,10 +1010,10 @@ export class Creature implements CreatureInternal {
 
     let iterationStartMS = new Date().getTime();
     let generation = 0;
-    while (
-      error > (options.targetError ?? 0) &&
-      (!options.iterations || generation < options.iterations)
-    ) {
+    const targetError = options.targetError ?? 0;
+    const iterations = options.iterations ?? Number.POSITIVE_INFINITY;
+
+    while (true) {
       const fittest: Creature = await neat.evolve(
         bestCreature,
       );
@@ -1057,15 +1057,14 @@ export class Creature implements CreatureInternal {
         iterationStartMS = now;
       }
 
-      if (timedOut) {
+      generation++;
+
+      if (timedOut || error <= targetError || generation >= iterations) {
         if (neat.finishUp()) {
           break;
         }
       }
-      generation++;
     }
-
-    neat.finishUp();
 
     for (let i = workers.length; i--;) {
       const w = workers[i];
