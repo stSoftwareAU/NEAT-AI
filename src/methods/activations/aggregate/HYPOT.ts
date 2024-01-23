@@ -1,4 +1,4 @@
-import { Node } from "../../../architecture/Node.ts";
+import { Neuron } from "../../../architecture/Neuron.ts";
 import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 
 export class HYPOT implements NodeActivationInterface {
@@ -12,7 +12,7 @@ export class HYPOT implements NodeActivationInterface {
     return HYPOT.NAME;
   }
 
-  activate(node: Node) {
+  activate(node: Neuron) {
     const toList = node.creature.toConnections(node.index);
     const values: number[] = new Array(toList.length);
     for (let i = toList.length; i--;) {
@@ -25,11 +25,11 @@ export class HYPOT implements NodeActivationInterface {
     return value;
   }
 
-  activateAndTrace(node: Node) {
+  activateAndTrace(node: Neuron) {
     return this.activate(node);
   }
 
-  fix(node: Node) {
+  fix(node: Neuron) {
     const toListA = node.creature.toConnections(node.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];

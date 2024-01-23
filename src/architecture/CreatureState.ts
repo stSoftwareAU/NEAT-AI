@@ -1,6 +1,6 @@
 import { Creature } from "../Creature.ts";
 
-export class NodeState {
+export class NeuronState {
   public count = 0;
 
   public totalValue = 0;
@@ -20,7 +20,7 @@ export class NodeState {
   averageActivation = 0;
 }
 
-export class ConnectionState {
+export class SynapseState {
   count = 0;
 
   averageWeight = 0;
@@ -36,14 +36,14 @@ export class CreatureState {
 
   constructor(network: Creature) {
     this.network = network;
-    this.nodeMap = new Map<number, NodeState>();
-    this.connectionMap = new Map<number, Map<number, ConnectionState>>();
+    this.nodeMap = new Map<number, NeuronState>();
+    this.connectionMap = new Map<number, Map<number, SynapseState>>();
   }
 
-  connection(from: number, to: number): ConnectionState {
+  connection(from: number, to: number): SynapseState {
     let fromMap = this.connectionMap.get(from);
     if (fromMap === undefined) {
-      fromMap = new Map<number, ConnectionState>();
+      fromMap = new Map<number, SynapseState>();
       this.connectionMap.set(from, fromMap);
     }
     const state = fromMap.get(to);
@@ -51,20 +51,20 @@ export class CreatureState {
     if (state !== undefined) {
       return state;
     } else {
-      const tmpState = new ConnectionState();
+      const tmpState = new SynapseState();
 
       fromMap.set(to, tmpState);
       return tmpState;
     }
   }
 
-  node(indx: number): NodeState {
+  node(indx: number): NeuronState {
     const state = this.nodeMap.get(indx);
 
     if (state !== undefined) {
       return state;
     } else {
-      const tmpState = new NodeState();
+      const tmpState = new NeuronState();
 
       this.nodeMap.set(indx, tmpState);
       return tmpState;

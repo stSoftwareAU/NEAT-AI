@@ -2,7 +2,7 @@ import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
-import { NodeTrace } from "../src/architecture/NodeInterfaces.ts";
+import { NeuronTrace } from "../src/architecture/NeuronInterfaces.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -70,7 +70,7 @@ Deno.test("traceNode", async () => {
         Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
       );
       if (!json.nodes) continue;
-      json.nodes.forEach((n: NodeTrace) => {
+      json.nodes.forEach((n: NeuronTrace) => {
         if (n.trace) {
           // if (
           //   Number.isFinite(n.trace.errorResponsibility) &&

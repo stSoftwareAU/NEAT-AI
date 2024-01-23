@@ -7,8 +7,8 @@ import {
   PLANK_CONSTANT,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
-import { ConnectionInternal } from "../../../architecture/ConnectionInterfaces.ts";
-import { Node } from "../../../architecture/Node.ts";
+import { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
+import { Neuron } from "../../../architecture/Neuron.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 import { PropagateInterface } from "../PropagateInterface.ts";
@@ -29,7 +29,7 @@ export class MAXIMUM
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
-  activate(node: Node) {
+  activate(node: Neuron) {
     const toList = node.creature.toConnections(node.index);
     let maxValue = Infinity * -1;
     for (let i = toList.length; i--;) {
@@ -44,10 +44,10 @@ export class MAXIMUM
     return maxValue;
   }
 
-  activateAndTrace(node: Node) {
+  activateAndTrace(node: Neuron) {
     const toList = node.creature.toConnections(node.index);
     let maxValue = Infinity * -1;
-    let usedConnection: ConnectionInternal | null = null;
+    let usedConnection: SynapseInternal | null = null;
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const cs = node.creature.state.connection(c.from, c.to);
@@ -72,7 +72,7 @@ export class MAXIMUM
     return maxValue;
   }
 
-  fix(node: Node) {
+  fix(node: Neuron) {
     const toListA = node.creature.toConnections(node.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
@@ -92,7 +92,7 @@ export class MAXIMUM
     }
   }
 
-  applyLearnings(node: Node): boolean {
+  applyLearnings(node: Neuron): boolean {
     let changed = false;
     let usedCount = 0;
     const toList = node.creature.toConnections(node.index);
@@ -122,7 +122,7 @@ export class MAXIMUM
   }
 
   propagate(
-    node: Node,
+    node: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
@@ -178,10 +178,12 @@ export class MAXIMUM
         ) {
           targetFromActivation = targetFromValue / fromWeight;
 
-          improvedFromActivation = (fromNode as Node).propagate(
-            targetFromActivation,
-            config,
-          );
+          if (mainConnection.from != mainConnection.to) {
+            improvedFromActivation = (fromNode as Neuron).propagate(
+              targetFromActivation,
+              config,
+            );
+          }
 
           const improvedFromValue = improvedFromActivation * fromWeight;
 

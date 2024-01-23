@@ -127,6 +127,20 @@ export class WorkerHandler {
   }
 
   private makePromise(data: RequestData) {
+    // const type = data.debug
+    //   ? "debug"
+    //   : data.echo
+    //   ? "echo"
+    //   : data.evaluate
+    //   ? "evaluate"
+    //   : data.initialize
+    //   ? "initialize"
+    //   : data.train
+    //   ? "train"
+    //   : "unknown";
+    // console.info(
+    //   `Starting  task: ${data.taskID.toString()} on worker ${this.workerID} type: ${type}`,
+    // );
     if (this.busyCount < 0) {
       throw new Error(
         `${data.taskID.toString()} invalid busy count ${this.busyCount}`,
@@ -136,6 +150,9 @@ export class WorkerHandler {
     const p = new Promise<ResponseData>((resolve) => {
       let alreadyCalled = false;
       const call = (result: ResponseData) => {
+        // console.info(
+        //   `Completed task: ${data.taskID.toString()} on worker ${this.workerID} busy: ${this.busyCount}, already: ${alreadyCalled}`,
+        // );
         if (!alreadyCalled) {
           this.busyCount--;
           alreadyCalled = true;
@@ -161,7 +178,9 @@ export class WorkerHandler {
 
   terminate() {
     if (this.isBusy()) {
-      console.warn(this.workerID, "terminated but still busy", this.busyCount);
+      throw new Error(
+        `${this.workerID} terminated but still busy ${this.busyCount}`,
+      );
     }
 
     this.worker.terminate();

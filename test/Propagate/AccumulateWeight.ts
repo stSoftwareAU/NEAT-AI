@@ -1,10 +1,10 @@
 import { assertAlmostEquals } from "https://deno.land/std@0.212.0/assert/assert_almost_equals.ts";
 import { accumulateWeight } from "../../src/architecture/BackPropagation.ts";
-import { ConnectionState } from "../../src/architecture/CreatureState.ts";
+import { SynapseState } from "../../src/architecture/CreatureState.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
 Deno.test("AccumulateWeight-Standard", () => {
-  const cs = new ConnectionState();
+  const cs = new SynapseState();
   cs.averageWeight = 1;
   cs.count = 1;
   const config = new BackPropagationConfig();
@@ -16,7 +16,7 @@ Deno.test("AccumulateWeight-Standard", () => {
 Deno.test("AccumulateWeight-Limited", () => {
   const config = new BackPropagationConfig();
   config.maximumWeightAdjustmentScale = 5;
-  const cs = new ConnectionState();
+  const cs = new SynapseState();
   cs.averageWeight = 3;
   cs.count = 1;
 

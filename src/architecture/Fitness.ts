@@ -17,6 +17,7 @@ export class Fitness {
   private growth: number;
   private feedbackLoop: boolean;
 
+  private calledWorkers = 0;
   constructor(workers: WorkerHandler[], growth: number, feedbackLoop: boolean) {
     this.workers = workers;
     this.feedbackLoop = feedbackLoop;
@@ -31,8 +32,9 @@ export class Fitness {
   }
 
   private async _callWorker(worker: WorkerHandler, creature: CreatureInternal) {
+    this.calledWorkers++;
     const responseData = await worker.evaluate(creature, this.feedbackLoop);
-
+    this.calledWorkers--;
     if (!responseData.evaluate) {
       throw new Error("Invalid response from worker.");
     }
@@ -67,7 +69,20 @@ export class Fitness {
     await Promise.all(promises);
 
     if (data.queue.length == 0) {
-      data.resolve("");
+      // let stillBusy = false;
+      // for (let i = this.workers.length; i--;) {
+      //   const w = this.workers[i];
+      //   if (w.isBusy()) {
+      //     stillBusy = true;
+      //     break;
+      //   }
+      // }
+      // if (!stillBusy) {
+      //   data.resolve("");
+      // } else
+      if (this.calledWorkers == 0) {
+        data.resolve("");
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import { ConnectionInternal } from "./ConnectionInterfaces.ts";
-import { ConnectionState, CreatureState, NodeState } from "./CreatureState.ts";
-import { Node } from "./Node.ts";
+import { SynapseInternal } from "./SynapseInterfaces.ts";
+import { CreatureState, NeuronState, SynapseState } from "./CreatureState.ts";
+import { Neuron } from "./Neuron.ts";
 
 export interface BackPropagationOptions {
   disableRandomSamples?: boolean;
@@ -103,7 +103,7 @@ export class BackPropagationConfig implements BackPropagationOptions {
 }
 
 export function adjustedBias(
-  node: Node,
+  node: Neuron,
   config: BackPropagationConfig,
 ): number {
   if (node.type == "constant") {
@@ -144,7 +144,7 @@ export function adjustedBias(
   }
 }
 
-export function limitActivationToRange(node: Node, activation: number) {
+export function limitActivationToRange(node: Neuron, activation: number) {
   if (node.type == "input" || node.type == "constant") {
     return activation;
   }
@@ -159,7 +159,7 @@ export function limitActivationToRange(node: Node, activation: number) {
   return limitedActivation;
 }
 
-export function toValue(node: Node, activation: number) {
+export function toValue(node: Neuron, activation: number) {
   if (node.type == "input" || node.type == "constant") {
     return activation;
   }
@@ -180,7 +180,7 @@ export function toValue(node: Node, activation: number) {
 }
 
 export function accumulateBias(
-  ns: NodeState,
+  ns: NeuronState,
   targetValue: number,
   improvedValue: number,
   config: BackPropagationConfig,
@@ -202,7 +202,7 @@ export function accumulateBias(
 
 export function accumulateWeight(
   weight: number,
-  cs: ConnectionState,
+  cs: SynapseState,
   value: number,
   activation: number,
   config: BackPropagationConfig,
@@ -230,7 +230,7 @@ export function accumulateWeight(
 
 export function adjustedWeight(
   networkState: CreatureState,
-  c: ConnectionInternal,
+  c: SynapseInternal,
   config: BackPropagationConfig,
 ) {
   const cs = networkState.connection(c.from, c.to);

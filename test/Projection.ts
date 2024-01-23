@@ -2,7 +2,7 @@ import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
 
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
-import { Node } from "../src/architecture/Node.ts";
+import { Neuron } from "../src/architecture/Neuron.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("projection", () => {
@@ -32,15 +32,15 @@ Deno.test("projection", () => {
 
   const inNode0 = network.nodes[0];
 
-  const flag0to3 = (inNode0 as Node).isProjectingTo(outNode as Node);
+  const flag0to3 = (inNode0 as Neuron).isProjectingTo(outNode as Neuron);
 
   assert(flag0to3, "0 -> 3");
 
-  const flag3to0 = (outNode as Node).isProjectingTo(inNode0 as Node);
+  const flag3to0 = (outNode as Neuron).isProjectingTo(inNode0 as Neuron);
 
   assert(!flag3to0, "3 -> 0 should not be associated");
 
-  const project3by0 = (outNode as Node).isProjectedBy(inNode0 as Node);
+  const project3by0 = (outNode as Neuron).isProjectedBy(inNode0 as Neuron);
 
   assert(project3by0, "3 is projected by 0");
 });

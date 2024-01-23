@@ -5,7 +5,7 @@ import {
 } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
-import { Node } from "../architecture/Node.ts";
+import { Neuron } from "../architecture/Neuron.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;
@@ -99,7 +99,7 @@ export class CRISPR {
       }
       const indx = dnaNode.index + adjustIndx;
 
-      const networkNode = new Node(
+      const networkNode = new Neuron(
         uuid,
         dnaNode.type,
         dnaNode.bias,

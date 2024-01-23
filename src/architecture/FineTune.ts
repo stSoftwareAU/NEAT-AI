@@ -3,7 +3,7 @@ import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { NodeExport } from "./NodeInterfaces.ts";
+import { NeuronExport } from "./NeuronInterfaces.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneRandomize(
@@ -14,7 +14,7 @@ function tuneRandomize(
   const previousJSON = (previousFittest as Creature).exportJSON();
   const fittestJSON = (fittest as Creature).exportJSON();
 
-  const uuidNodeMap = new Map<string, NodeExport>();
+  const uuidNodeMap = new Map<string, NeuronExport>();
 
   previousJSON.nodes.forEach((n) => {
     const uuid = n.uuid ? n.uuid : "";

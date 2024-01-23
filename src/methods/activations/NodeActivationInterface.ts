@@ -1,7 +1,7 @@
 import { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
-import { Node } from "../../architecture/Node.ts";
+import { Neuron } from "../../architecture/Neuron.ts";
 
 export interface NodeActivationInterface extends AbstractActivationInterface {
-  activateAndTrace(node: Node): number;
-  activate(node: Node): number;
+  activateAndTrace(node: Neuron): number;
+  activate(node: Neuron): number;
 }
