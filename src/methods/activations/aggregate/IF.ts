@@ -153,7 +153,6 @@ export class IF
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {
-      // console.info("missing connections", toList2);
       node.mutate(Mutation.MOD_ACTIVATION.name);
     }
   }

@@ -14,7 +14,6 @@ pipeline {
     options {
         timeout(time: 1, unit: 'HOURS')
         disableConcurrentBuilds()
-        // parallelsAlwaysFailFast()
     }
 
     stages {
@@ -78,7 +77,6 @@ pipeline {
             }
 
             steps {
-                // Unstash the .cov_profile.lcov file stashed in the 'Test' stage
                 unstash(name: 'coverage')
 
                 sh '''\

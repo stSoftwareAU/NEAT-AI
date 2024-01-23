@@ -22,7 +22,6 @@ export class MEAN implements NodeActivationInterface {
     const toList = node.creature.toConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      if (c.from == c.to) continue;
       const fromActivation = node.creature.getActivation(c.from);
       const activation = limitActivation(fromActivation);
 
