@@ -1,9 +1,6 @@
-import {
-  ConnectionExport,
-  ConnectionInternal,
-} from "./ConnectionInterfaces.ts";
+import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
-export class Connection implements ConnectionInternal {
+export class Synapse implements SynapseInternal {
   public from: number;
   public to: number;
   public type?: "positive" | "negative" | "condition";
@@ -31,7 +28,7 @@ export class Connection implements ConnectionInternal {
   exportJSON(uuidMap: Map<number, string>) {
     const fromUUID = uuidMap.get(this.from);
     const toUUID = uuidMap.get(this.to);
-    const json: ConnectionExport = {
+    const json: SynapseExport = {
       weight: this.weight,
       fromUUID: fromUUID ? fromUUID : `error-${this.from}`,
       toUUID: toUUID ? toUUID : `error-${this.to}`,
@@ -42,7 +39,7 @@ export class Connection implements ConnectionInternal {
   }
 
   internalJSON() {
-    const json: ConnectionInternal = {
+    const json: SynapseInternal = {
       weight: this.weight,
       from: this.from,
       to: this.to,

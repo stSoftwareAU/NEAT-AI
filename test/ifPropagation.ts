@@ -1,7 +1,7 @@
 import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
-import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
+import { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import { TrainOptions } from "../src/config/TrainOptions.ts";
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { train } from "../src/architecture/Training.ts";
@@ -66,7 +66,7 @@ Deno.test("ifPropagation", async () => {
   );
   let usedCount = 0;
   if (traceJson) {
-    traceJson.connections.forEach((c: ConnectionTrace) => {
+    traceJson.connections.forEach((c: SynapseTrace) => {
       if (c.trace && c.trace.used) {
         usedCount++;
       }

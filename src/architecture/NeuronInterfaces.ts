@@ -1,23 +1,24 @@
 import { TagsInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { NodeState } from "./CreatureState.ts";
+import { NeuronState } from "./CreatureState.ts";
 
-interface NodeAbstract extends TagsInterface {
+interface NeuronAbstract extends TagsInterface {
   uuid?: string;
   bias?: number;
   squash?: string;
 }
-export interface NodeExport extends NodeAbstract {
+
+export interface NeuronExport extends NeuronAbstract {
   readonly type: "hidden" | "output" | "constant";
   uuid: string;
   bias: number;
   squash?: string;
 }
 
-export interface NodeInternal extends NodeAbstract {
+export interface NeuronInternal extends NeuronAbstract {
   readonly type: "input" | "hidden" | "output" | "constant";
   index: number;
 }
 
-export interface NodeTrace extends NodeExport {
-  trace: NodeState;
+export interface NeuronTrace extends NeuronExport {
+  trace: NeuronState;
 }

@@ -1,7 +1,7 @@
 import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { emptyDirSync } from "https://deno.land/std@0.212.0/fs/empty_dir.ts";
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
-import { ConnectionTrace } from "../src/architecture/ConnectionInterfaces.ts";
+import { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
@@ -73,7 +73,7 @@ Deno.test("storeTrace", async () => {
         );
         let usedCount = 0;
         if (json.connections == undefined) continue;
-        json.connections.forEach((c: ConnectionTrace) => {
+        json.connections.forEach((c: SynapseTrace) => {
           if (c.trace && c.trace.used) {
             usedCount++;
           }

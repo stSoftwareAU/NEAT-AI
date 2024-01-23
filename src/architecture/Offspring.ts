@@ -1,10 +1,7 @@
 import { addTags } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
-import {
-  ConnectionExport,
-  ConnectionInternal,
-} from "./ConnectionInterfaces.ts";
-import { Node } from "./Node.ts";
+import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import { Neuron } from "./Neuron.ts";
 
 export class Offspring {
   /**
@@ -24,16 +21,16 @@ export class Offspring {
     offspring.connections = [];
     offspring.nodes = [];
 
-    const nodeMap = new Map<string, Node>();
-    const connectionsMap = new Map<string, ConnectionExport[]>();
+    const nodeMap = new Map<string, Neuron>();
+    const connectionsMap = new Map<string, SynapseExport[]>();
     function cloneConnections(
       creature: Creature,
-      connections: ConnectionInternal[],
-    ): ConnectionExport[] {
-      const tmpConnections: ConnectionExport[] = [];
+      connections: SynapseInternal[],
+    ): SynapseExport[] {
+      const tmpConnections: SynapseExport[] = [];
 
       connections.forEach((connection) => {
-        const c: ConnectionExport = {
+        const c: SynapseExport = {
           fromUUID: creature.nodes[connection.from].uuid,
           toUUID: creature.nodes[connection.to].uuid,
           weight: connection.weight,
@@ -63,9 +60,9 @@ export class Offspring {
       }
     }
 
-    const tmpNodes: Node[] = [];
+    const tmpNodes: Neuron[] = [];
     const tmpUUIDs = new Set<string>();
-    function cloneNode(node: Node) {
+    function cloneNode(node: Neuron) {
       if (!tmpUUIDs.has(node.uuid)) {
         tmpUUIDs.add(node.uuid);
         tmpNodes.push(node);
@@ -95,7 +92,7 @@ export class Offspring {
     offspring.nodes.length = tmpNodes.length;
     const indxMap = new Map<string, number>();
     tmpNodes.forEach((node, indx) => {
-      const newNode = new Node(
+      const newNode = new Neuron(
         node.uuid,
         node.type,
         node.bias,
@@ -134,7 +131,7 @@ export class Offspring {
     return offspring;
   }
 
-  static sortNodes(child: Node[], mother: Node[], father: Node[]) {
+  static sortNodes(child: Neuron[], mother: Neuron[], father: Neuron[]) {
     const childMap = new Map<string, number>();
     const motherMap = new Map<string, number>();
     const fatherMap = new Map<string, number>();
@@ -148,7 +145,7 @@ export class Offspring {
     });
 
     /* Sort output to the end and input to the beginning */
-    child.sort((a: Node, b: Node) => {
+    child.sort((a: Neuron, b: Neuron) => {
       if (a.type == "output") {
         if (b.type != "output") {
           return 1;
@@ -177,7 +174,7 @@ export class Offspring {
     });
 
     /** Second sort should only change the order of new nodes. */
-    child.sort((a: Node, b: Node) => {
+    child.sort((a: Neuron, b: Neuron) => {
       if (a.type == "output") {
         if (b.type != "output") {
           return 1;

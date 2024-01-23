@@ -1,7 +1,7 @@
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
-import { ConnectionInternal } from "../src/architecture/ConnectionInterfaces.ts";
+import { SynapseInternal } from "../src/architecture/SynapseInterfaces.ts";
 
 Deno.test("useUUIDinsteadOfPosition", () => {
   const creature: CreatureInternal = {
@@ -60,7 +60,7 @@ Deno.test("useUUIDinsteadOfPosition", () => {
   });
 
   exported.connections.forEach((c) => {
-    const from = ((c as unknown) as ConnectionInternal).from;
+    const from = ((c as unknown) as SynapseInternal).from;
     assert(!Number.isFinite(from), `should NOT have an from ${from}`);
   });
 });

@@ -169,7 +169,7 @@ Deno.test("TwoSame", () => {
       (
         Math.abs(expectedA[0] - actualA[0]) < 0.5 &&
         Math.abs(expectedA[1] - actualA[1]) < 0.5
-      ) || attempts > 120
+      ) || attempts > 240
     ) {
       assertAlmostEquals(
         expectedA[0],

@@ -1,6 +1,6 @@
 import { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
-import { Node } from "../../architecture/Node.ts";
+import { Neuron } from "../../architecture/Neuron.ts";
 
 export interface NodeFixableInterface extends AbstractActivationInterface {
-  fix(node: Node): void;
+  fix(node: Neuron): void;
 }

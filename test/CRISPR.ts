@@ -6,7 +6,7 @@ import {
 import { CRISPR } from "../src/reconstruct/CRISPR.ts";
 import { Creature } from "../src/Creature.ts";
 import { getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { Node } from "../src/architecture/Node.ts";
+import { Neuron } from "../src/architecture/Neuron.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
@@ -117,7 +117,7 @@ Deno.test("REMOVE", () => {
   (networkIF as Creature).validate();
 
   for (let pos = networkIF.nodes.length; pos--;) {
-    const node = networkIF.nodes[pos] as Node;
+    const node = networkIF.nodes[pos] as Neuron;
     const tag = getTag(node, "CRISPR");
     if (tag) {
       for (let attempts = 0; attempts < 10; attempts++) {

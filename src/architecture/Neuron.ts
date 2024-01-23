@@ -23,11 +23,11 @@ import {
   PLANK_CONSTANT,
   toValue,
 } from "./BackPropagation.ts";
-import { Connection } from "./Connection.ts";
-import { NodeExport, NodeInternal } from "./NodeInterfaces.ts";
+import { Synapse } from "./Synapse.ts";
+import { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { accumulateBias } from "./BackPropagation.ts";
 
-export class Node implements TagsInterface, NodeInternal {
+export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
   readonly type;
   uuid: string;
@@ -140,7 +140,7 @@ export class Node implements TagsInterface, NodeInternal {
         this.creature.connect(
           this.index,
           targetIndx,
-          Connection.randomWeight(),
+          Synapse.randomWeight(),
         );
       }
       const toList = this.creature.toConnections(this.index);
@@ -149,7 +149,7 @@ export class Node implements TagsInterface, NodeInternal {
         this.creature.connect(
           fromIndx,
           this.index,
-          Connection.randomWeight(),
+          Synapse.randomWeight(),
         );
       }
     } else if (this.type == "output") {
@@ -162,7 +162,7 @@ export class Node implements TagsInterface, NodeInternal {
         this.creature.connect(
           fromIndx,
           this.index,
-          Connection.randomWeight(),
+          Synapse.randomWeight(),
         );
       }
     }
@@ -420,7 +420,7 @@ export class Node implements TagsInterface, NodeInternal {
           ) {
             const targetFromActivation = targetFromValue / fromWeight;
 
-            improvedFromActivation = (fromNode as Node).propagate(
+            improvedFromActivation = (fromNode as Neuron).propagate(
               targetFromActivation,
               config,
             );
@@ -505,7 +505,7 @@ export class Node implements TagsInterface, NodeInternal {
         for (let i = toList.length; i--;) {
           const c = toList[i];
           if (c.from == c.to) continue;
-          const fromActivation = (this.creature.nodes[c.from] as Node)
+          const fromActivation = (this.creature.nodes[c.from] as Neuron)
             .adjustedActivation(config);
 
           const fromWeight = adjustedWeight(
@@ -602,7 +602,7 @@ export class Node implements TagsInterface, NodeInternal {
   /**
    * Checks if this node is projecting to the given node
    */
-  isProjectingTo(node: Node) {
+  isProjectingTo(node: Neuron) {
     const c = this.creature.getConnection(this.index, node.index);
     return c != null;
   }
@@ -610,7 +610,7 @@ export class Node implements TagsInterface, NodeInternal {
   /**
    * Checks if the given node is projecting to this node
    */
-  isProjectedBy(node: Node) {
+  isProjectedBy(node: Neuron) {
     const c = this.creature.getConnection(node.index, this.index);
     return c != null;
   }
@@ -618,7 +618,7 @@ export class Node implements TagsInterface, NodeInternal {
   /**
    * Converts the node to a json object
    */
-  exportJSON(): NodeExport {
+  exportJSON(): NeuronExport {
     if (this.type === "input") {
       throw new Error(`Should not be exporting 'input'`);
     } else if (this.type === "constant") {
@@ -642,7 +642,7 @@ export class Node implements TagsInterface, NodeInternal {
   /**
    * Converts the node to a json object
    */
-  internalJSON(indx: number): NodeInternal {
+  internalJSON(indx: number): NeuronInternal {
     if (this.type === "input") {
       return {
         type: this.type,
@@ -673,14 +673,14 @@ export class Node implements TagsInterface, NodeInternal {
    * Convert a json object to a node
    */
   static fromJSON(
-    json: NodeExport | NodeInternal,
+    json: NeuronExport | NeuronInternal,
     network: Creature,
   ) {
     if (typeof network !== "object") {
       throw new Error("network must be a Creature was: " + (typeof network));
     }
 
-    const node = new Node(
+    const node = new Neuron(
       json.uuid ? json.uuid : crypto.randomUUID(),
       json.type,
       json.bias,
@@ -696,7 +696,7 @@ export class Node implements TagsInterface, NodeInternal {
         node.squash = json.squash;
         break;
       default:
-        throw new Error("unknown type: " + (json as NodeInternal).type);
+        throw new Error("unknown type: " + (json as NeuronInternal).type);
     }
 
     if (json.tags) {

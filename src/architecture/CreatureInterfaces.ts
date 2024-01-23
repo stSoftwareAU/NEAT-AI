@@ -1,10 +1,14 @@
 import { TagsInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import {
-  ConnectionExport,
-  ConnectionInternal,
-  ConnectionTrace,
-} from "./ConnectionInterfaces.ts";
-import { NodeExport, NodeInternal, NodeTrace } from "./NodeInterfaces.ts";
+  SynapseExport,
+  SynapseInternal,
+  SynapseTrace,
+} from "./SynapseInterfaces.ts";
+import {
+  NeuronExport,
+  NeuronInternal,
+  NeuronTrace,
+} from "./NeuronInterfaces.ts";
 
 interface CreatureCommon extends TagsInterface {
   /* ID of this network */
@@ -14,22 +18,22 @@ interface CreatureCommon extends TagsInterface {
 
 export interface CreatureInternal extends CreatureCommon {
   uuid?: string;
-  connections: ConnectionInternal[];
+  connections: SynapseInternal[];
 
-  nodes: NodeInternal[];
+  nodes: NeuronInternal[];
 
   /** The error plus a discount because of the complexity of the genome */
   score?: number;
 }
 
 export interface CreatureExport extends CreatureCommon {
-  connections: ConnectionExport[];
+  connections: SynapseExport[];
 
-  nodes: NodeExport[];
+  nodes: NeuronExport[];
 }
 
 export interface CreatureTrace extends CreatureExport {
-  connections: ConnectionTrace[];
+  connections: SynapseTrace[];
 
-  nodes: NodeTrace[];
+  nodes: NeuronTrace[];
 }

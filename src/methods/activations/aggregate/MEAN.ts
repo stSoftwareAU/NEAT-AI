@@ -2,7 +2,7 @@ import {
   limitActivation,
   limitValue,
 } from "../../../architecture/BackPropagation.ts";
-import { Node } from "../../../architecture/Node.ts";
+import { Neuron } from "../../../architecture/Neuron.ts";
 import { NodeActivationInterface } from "../NodeActivationInterface.ts";
 
 export class MEAN implements NodeActivationInterface {
@@ -16,7 +16,7 @@ export class MEAN implements NodeActivationInterface {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
-  activate(node: Node) {
+  activate(node: Neuron) {
     let sum = 0;
 
     const toList = node.creature.toConnections(node.index);
@@ -44,11 +44,11 @@ export class MEAN implements NodeActivationInterface {
     return value;
   }
 
-  activateAndTrace(node: Node) {
+  activateAndTrace(node: Neuron) {
     return this.activate(node);
   }
 
-  fix(node: Node) {
+  fix(node: Neuron) {
     const toListA = node.creature.toConnections(node.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];

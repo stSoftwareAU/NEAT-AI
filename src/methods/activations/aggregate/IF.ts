@@ -1,5 +1,5 @@
 import { NodeActivationInterface } from "../NodeActivationInterface.ts";
-import { Node } from "../../../architecture/Node.ts";
+import { Neuron } from "../../../architecture/Neuron.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 import { Mutation } from "../../mutation.ts";
@@ -30,7 +30,7 @@ export class IF
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
-  fix(node: Node) {
+  fix(node: Neuron) {
     const toListA = node.creature.toConnections(node.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
@@ -157,7 +157,7 @@ export class IF
     }
   }
 
-  activateAndTrace(node: Node) {
+  activateAndTrace(node: Neuron) {
     let condition = 0;
     let negative = 0;
     let positive = 0;
@@ -207,7 +207,7 @@ export class IF
     }
   }
 
-  activate(node: Node): number {
+  activate(node: Neuron): number {
     let condition = 0;
     let negative = 0;
     let positive = 0;
@@ -234,7 +234,7 @@ export class IF
     return condition > 0 ? positive : negative;
   }
 
-  applyLearnings(node: Node): boolean {
+  applyLearnings(node: Neuron): boolean {
     const toList = node.creature.toConnections(node.index);
 
     let foundPositive = false;
@@ -288,7 +288,7 @@ export class IF
   }
 
   propagate(
-    node: Node,
+    node: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
@@ -370,7 +370,7 @@ export class IF
       ) {
         targetFromActivation = targetFromValue / fromWeight;
 
-        improvedFromActivation = (fromNode as Node).propagate(
+        improvedFromActivation = (fromNode as Neuron).propagate(
           targetFromActivation,
           config,
         );
