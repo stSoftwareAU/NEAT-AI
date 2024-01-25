@@ -1,18 +1,17 @@
 import { blue, bold, cyan } from "https://deno.land/std@0.212.0/fmt/colors.ts";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
-import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { NeuronExport } from "./NeuronInterfaces.ts";
 const MIN_STEP = 0.000_000_1;
 
 function tuneRandomize(
-  fittest: CreatureInternal,
-  previousFittest: CreatureInternal,
+  fittest: Creature,
+  previousFittest: Creature,
   oldScore: string,
 ) {
-  const previousJSON = (previousFittest as Creature).exportJSON();
-  const fittestJSON = (fittest as Creature).exportJSON();
+  const previousJSON = previousFittest.exportJSON();
+  const fittestJSON = fittest.exportJSON();
 
   const uuidNodeMap = new Map<string, NeuronExport>();
 
@@ -90,8 +89,8 @@ function tuneRandomize(
 }
 
 export async function fineTuneImprovement(
-  fittest: CreatureInternal,
-  previousFittest: CreatureInternal | null,
+  fittest: Creature,
+  previousFittest: Creature | null,
   popSize = 10,
   showMessage = true,
 ) {
@@ -160,12 +159,12 @@ export async function fineTuneImprovement(
       );
     }
   }
-  await CreatureUtil.makeUUID(fittest as Creature);
+  await CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
   UUIDs.add(fittest.uuid ? fittest.uuid : "");
 
   const fineTuned: Creature[] = [];
-  const compactNetwork = (fittest as Creature).compact();
+  const compactNetwork = fittest.compact();
   if (compactNetwork != null) {
     await CreatureUtil.makeUUID(compactNetwork);
     const uuid = compactNetwork.uuid ? compactNetwork.uuid : "";

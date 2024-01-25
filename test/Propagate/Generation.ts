@@ -24,7 +24,6 @@ function makeCreature() {
           totalValue: -2.54,
           totalWeightedSum: -2.54,
           minimumActivation: 0,
-          averageActivation: 0.5,
           maximumActivation: 1,
         },
       },

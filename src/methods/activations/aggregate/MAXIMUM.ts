@@ -145,9 +145,9 @@ export class MAXIMUM
       for (let indx = toList.length; indx--;) {
         const c = toList[indx];
 
-        const fromNode = node.creature.nodes[c.from];
+        const fromNeuron = node.creature.nodes[c.from];
 
-        const fromActivation = fromNode.adjustedActivation(config);
+        const fromActivation = fromNeuron.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(node.creature.state, c, config);
         const fromValue = fromWeight * fromActivation;
@@ -158,8 +158,8 @@ export class MAXIMUM
       }
 
       if (mainConnection) {
-        const fromNode = node.creature.nodes[mainConnection.from];
-        const fromActivation = fromNode.adjustedActivation(config);
+        const fromNeuron = node.creature.nodes[mainConnection.from];
+        const fromActivation = fromNeuron.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(
           node.creature.state,
@@ -173,13 +173,13 @@ export class MAXIMUM
         const targetFromValue = fromValue + error;
         if (
           fromWeight &&
-          fromNode.type !== "input" &&
-          fromNode.type !== "constant"
+          fromNeuron.type !== "input" &&
+          fromNeuron.type !== "constant"
         ) {
           targetFromActivation = targetFromValue / fromWeight;
 
           if (mainConnection.from != mainConnection.to) {
-            improvedFromActivation = (fromNode as Neuron).propagate(
+            improvedFromActivation = fromNeuron.propagate(
               targetFromActivation,
               config,
             );

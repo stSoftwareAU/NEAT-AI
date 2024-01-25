@@ -130,11 +130,7 @@ export async function trainDir(
         tmpIndices = Array.from({ length: len }, (_, i) => i); // Create an array of indices
 
         if (!options.disableRandomSamples) {
-          // Fisher-Yates shuffle algorithm
-          for (let i = tmpIndices.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [tmpIndices[i], tmpIndices[j]] = [tmpIndices[j], tmpIndices[i]];
-          }
+          CreatureUtil.shuffle(tmpIndices);
         }
 
         if (len != json.length) {

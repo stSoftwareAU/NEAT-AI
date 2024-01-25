@@ -3,9 +3,8 @@ import {
   getTag,
   TagsInterface,
 } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { Creature } from "../Creature.ts";
-import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
 import { Neuron } from "../architecture/Neuron.ts";
+import { Creature } from "../Creature.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;
@@ -30,19 +29,19 @@ export interface CrisprInterface extends TagsInterface {
 }
 
 export class CRISPR {
-  private network;
+  private creature;
 
   constructor(
-    network: CreatureInternal,
+    creature: Creature,
   ) {
-    this.network = Creature.fromJSON(
-      (network as Creature).internalJSON(),
+    this.creature = Creature.fromJSON(
+      creature.internalJSON(),
     );
   }
 
-  apply(dna: CrisprInterface): CreatureInternal {
+  apply(dna: CrisprInterface): Creature {
     const tmpNetwork = Creature.fromJSON(
-      (this.network as Creature).internalJSON(),
+      this.creature.internalJSON(),
     );
 
     const UUIDs = new Set<string>();

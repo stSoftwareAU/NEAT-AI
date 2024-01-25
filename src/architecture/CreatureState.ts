@@ -13,11 +13,6 @@ export class NeuronState {
    * The minimum activation value for the creature state.
    */
   minimumActivation = Infinity;
-
-  /**
-   * The average activation of the creature.
-   */
-  averageActivation = 0;
 }
 
 export class SynapseState {
