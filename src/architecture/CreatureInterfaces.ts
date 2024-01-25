@@ -11,7 +11,7 @@ import {
 } from "./NeuronInterfaces.ts";
 
 interface CreatureCommon extends TagsInterface {
-  /* ID of this network */
+  /* ID of this creature */
   input: number;
   output: number;
 }

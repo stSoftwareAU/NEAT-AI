@@ -19,13 +19,13 @@ import {
   BackPropagationConfig,
   limitActivation,
   limitActivationToRange,
-  limitValue,
   PLANK_CONSTANT,
   toValue,
 } from "./BackPropagation.ts";
 import { Synapse } from "./Synapse.ts";
 import { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { accumulateBias } from "./BackPropagation.ts";
+import { CreatureUtil } from "./CreatureUtils.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -345,7 +345,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   /**
-   * Back-propagate the error, aka learn
+   * Back-propagate the known activation, aka learn
    */
   propagate(
     requestedActivation: number,
@@ -381,17 +381,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const toList = this.creature.toConnections(this.index);
 
       const listLength = toList.length;
-      const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
-
-      if (listLength > 1 && !config.disableRandomSamples) {
-        // Fisher-Yates shuffle algorithm
-        for (let i = indices.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [indices[i], indices[j]] = [indices[j], indices[i]];
-        }
-      }
 
       if (listLength) {
+        const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
+
+        if (!config.disableRandomSamples) {
+          CreatureUtil.shuffle(indices);
+        }
+
         const errorPerLink = error / listLength;
 
         // Iterate over the shuffled indices
@@ -402,9 +399,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
           if (c.from === c.to) continue;
 
-          const fromNode = this.creature.nodes[c.from];
+          const fromNeuron = this.creature.nodes[c.from];
 
-          const fromActivation = fromNode.adjustedActivation(config);
+          const fromActivation = fromNeuron.adjustedActivation(config);
 
           const fromWeight = adjustedWeight(this.creature.state, c, config);
           const fromValue = fromWeight * fromActivation;
@@ -415,12 +412,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
           if (
             fromWeight &&
-            fromNode.type !== "input" &&
-            fromNode.type !== "constant"
+            fromNeuron.type !== "input" &&
+            fromNeuron.type !== "constant"
           ) {
             const targetFromActivation = targetFromValue / fromWeight;
 
-            improvedFromActivation = (fromNode as Neuron).propagate(
+            improvedFromActivation = fromNeuron.propagate(
               targetFromActivation,
               config,
             );
@@ -470,10 +467,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (limitedActivation < ns.minimumActivation) {
       ns.minimumActivation = limitedActivation;
     }
-    const totalActivation = (ns.count - 1) * ns.averageActivation +
-      limitedActivation;
-
-    ns.averageActivation = totalActivation / ns.count;
 
     return limitedActivation;
   }
@@ -505,7 +498,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         for (let i = toList.length; i--;) {
           const c = toList[i];
           if (c.from == c.to) continue;
-          const fromActivation = (this.creature.nodes[c.from] as Neuron)
+          const fromActivation = this.creature.nodes[c.from]
             .adjustedActivation(config);
 
           const fromWeight = adjustedWeight(
@@ -514,22 +507,21 @@ export class Neuron implements TagsInterface, NeuronInternal {
             config,
           );
 
-          value += fromActivation * fromWeight;
-
-          value = limitValue(value);
+          const fromValue = fromActivation * fromWeight;
+          value += fromValue;
         }
 
         const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
-        const squashed = activationSquash.squash(value);
+        const activation = activationSquash.squash(value);
 
-        if (!Number.isFinite(squashed)) {
+        if (!Number.isFinite(activation)) {
           throw new Error(
-            `${this.index}: Squasher ${activationSquash.getName()} value: ${value}, bias: ${adjustedBias}, squashedValue: ${squashed}`,
+            `${this.index}: Squasher ${activationSquash.getName()} value: ${value}, bias: ${adjustedBias}, activation: ${activation}`,
           );
         }
 
-        return limitActivation(squashed);
+        return limitActivation(activation);
       }
     }
   }

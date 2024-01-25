@@ -407,7 +407,7 @@ export class Neat {
     const tmpFittest = elitists[0];
 
     const fittest = Creature.fromJSON(
-      (tmpFittest as Creature).exportJSON(),
+      tmpFittest.exportJSON(),
       this.config.debug,
     ); // Make a copy so it's not mutated.
     fittest.score = tmpFittest.score;
@@ -628,10 +628,10 @@ export class Neat {
   /**
    * Mutates the given (or current) population
    */
-  mutate(creatures: CreatureInternal[]) {
+  mutate(creatures: Creature[]) {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
-        const creature = creatures[i] as Creature;
+        const creature = creatures[i];
         if (this.config.debug) {
           creature.validate();
         }
@@ -698,7 +698,7 @@ export class Neat {
         console.info(pos, this.population[pos] ? true : false);
       }
       for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return (this.population[pos] as Creature);
+        if (this.population[pos]) return this.population[pos];
       }
       throw new Error(`Extinction event`);
     }
@@ -720,7 +720,7 @@ export class Neat {
         console.info(pos, this.population[pos] ? true : false);
       }
       for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return (this.population[pos] as Creature);
+        if (this.population[pos]) return this.population[pos];
       }
 
       throw new Error(`Extinction event`);
@@ -828,7 +828,7 @@ export class Neat {
             this.population.length,
         );
 
-        return this.population[index] as Creature;
+        return this.population[index];
       }
       case Selection.FITNESS_PROPORTIONATE: {
         /**
@@ -857,7 +857,7 @@ export class Neat {
           if (genome.score !== undefined) {
             value += genome.score + adjustFitness;
             if (random < value) {
-              return genome as Creature;
+              return genome;
             }
           }
         }
@@ -866,7 +866,7 @@ export class Neat {
         return this
           .population[
             Math.floor(Math.random() * this.population.length)
-          ] as Creature;
+          ];
       }
       case Selection.TOURNAMENT: {
         if (Selection.TOURNAMENT.size > this.config.populationSize) {

@@ -14,6 +14,7 @@ import {
 } from "../../../architecture/BackPropagation.ts";
 import { PropagateInterface } from "../PropagateInterface.ts";
 import { accumulateBias } from "../../../architecture/BackPropagation.ts";
+import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
 
 export class IF
   implements
@@ -329,12 +330,8 @@ export class IF
     const listLength = toList.length;
     const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
 
-    if (listLength > 1 && !(config.disableRandomSamples)) {
-      // Fisher-Yates shuffle algorithm
-      for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-      }
+    if (!config.disableRandomSamples) {
+      CreatureUtil.shuffle(indices);
     }
 
     const errorPerLink = error /
@@ -351,8 +348,8 @@ export class IF
       if (c.type == "positive" && condition <= 0) continue;
       if (c.type == "negative" && condition > 0) continue;
 
-      const fromNode = node.creature.nodes[c.from];
-      const fromActivation = fromNode.adjustedActivation(config);
+      const fromNeuron = node.creature.nodes[c.from];
+      const fromActivation = fromNeuron.adjustedActivation(config);
 
       const cs = node.creature.state.connection(c.from, c.to);
 
@@ -365,12 +362,12 @@ export class IF
       let improvedFromValue = fromValue;
       if (
         fromWeight &&
-        fromNode.type !== "input" &&
-        fromNode.type !== "constant"
+        fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant"
       ) {
         targetFromActivation = targetFromValue / fromWeight;
 
-        improvedFromActivation = (fromNode as Neuron).propagate(
+        improvedFromActivation = fromNeuron.propagate(
           targetFromActivation,
           config,
         );

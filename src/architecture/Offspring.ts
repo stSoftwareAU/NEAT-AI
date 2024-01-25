@@ -68,9 +68,9 @@ export class Offspring {
         tmpNodes.push(node);
         const connections = connectionsMap.get(node.uuid);
         connections?.forEach((connection) => {
-          const fromNode = nodeMap.get(connection.fromUUID);
-          if (fromNode && fromNode?.type !== "input") {
-            cloneNode(fromNode);
+          const fromNeuron = nodeMap.get(connection.fromUUID);
+          if (fromNeuron && fromNeuron?.type !== "input") {
+            cloneNode(fromNeuron);
           }
         });
       }
@@ -111,12 +111,12 @@ export class Offspring {
       const connections = connectionsMap.get(node.uuid);
 
       connections?.forEach((c) => {
-        const fromNode = indxMap.get(c.fromUUID);
+        const fromNeuron = indxMap.get(c.fromUUID);
         const toNode = indxMap.get(c.toUUID);
 
-        if (fromNode != null && toNode != null) {
-          if (fromNode <= toNode) {
-            offspring.connect(fromNode, toNode, c.weight, c.type);
+        if (fromNeuron != null && toNode != null) {
+          if (fromNeuron <= toNode) {
+            offspring.connect(fromNeuron, toNode, c.weight, c.type);
           }
         } else {
           throw new Error("Could not find nodes for connection");
