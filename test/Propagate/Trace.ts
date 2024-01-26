@@ -31,14 +31,14 @@ function stats(creature: CreatureExport) {
   const biases: number[] = [];
   const weights: number[] = [];
 
-  creature.nodes.forEach((node) => {
-    if (node.bias) {
-      biases.push(node.bias);
+  creature.neurons.forEach((neuron) => {
+    if (neuron.bias) {
+      biases.push(neuron.bias);
     }
   });
-  creature.connections.forEach((c) => {
-    if (c.weight) {
-      weights.push(c.weight);
+  creature.synapses.forEach((s) => {
+    if (s.weight) {
+      weights.push(s.weight);
     }
   });
 
@@ -104,16 +104,18 @@ function stdDev(arr: number[]): number {
 }
 
 function compare(creature1: CreatureExport, creature2: CreatureExport) {
-  creature1.nodes.forEach((node) => {
-    const node2 = creature2.nodes.find((node2) => node2.uuid == node.uuid);
+  creature1.neurons.forEach((neuron) => {
+    const node2 = creature2.neurons.find((neuron2) =>
+      neuron2.uuid == neuron.uuid
+    );
     if (!node2) {
-      console.info(`Node not found: ${node.uuid}`);
+      console.info(`Node not found: ${neuron.uuid}`);
     } else {
-      const b1 = node.bias ? node.bias : 0;
+      const b1 = neuron.bias ? neuron.bias : 0;
       const b2 = node2.bias ? node2.bias : 0;
 
       if (Math.abs(b1 - b2) > 0.0001) {
-        const msg = `${node.uuid} Bias mismatch: ${b1.toFixed(4)} vs ${
+        const msg = `${neuron.uuid} Bias mismatch: ${b1.toFixed(4)} vs ${
           b2.toFixed(4)
         }`;
         console.info(msg);
@@ -128,6 +130,10 @@ function compare(creature1: CreatureExport, creature2: CreatureExport) {
   });
 }
 
+/**
+ * Quantiles are points in a distribution that relate to the rank order of values in that distribution. For a sample, you can find any quantile by sorting the sample.
+ * The middle value of the sorted sample (middle quantile, 50th percentile) is known as the median. The limits are the minimum and maximum values.
+ */
 function quantile(arr: number[], q: number) {
   const sorted = arr.sort((a, b) => a - b);
   const pos = (sorted.length - 1) * q;

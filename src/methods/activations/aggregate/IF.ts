@@ -348,7 +348,7 @@ export class IF
       if (c.type == "positive" && condition <= 0) continue;
       if (c.type == "negative" && condition > 0) continue;
 
-      const fromNeuron = node.creature.nodes[c.from];
+      const fromNeuron = node.creature.neurons[c.from];
       const fromActivation = fromNeuron.adjustedActivation(config);
 
       const cs = node.creature.state.connection(c.from, c.to);

@@ -7,7 +7,7 @@ import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 Deno.test("inward", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
       { type: "input", squash: "LOGISTIC", index: 2 },
@@ -18,7 +18,7 @@ Deno.test("inward", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 2, to: 3, weight: 1, type: "positive" },
       { from: 1, to: 3, weight: 1, type: "condition" },
       { from: 0, to: 3, weight: 1, type: "negative" },
@@ -41,7 +41,7 @@ Deno.test("inward", () => {
   let foundPositive = false;
   let foundNegative = false;
   let foundCondition = false;
-  network.connections.forEach((c) => {
+  network.synapses.forEach((c) => {
     if (c.type == "positive") {
       foundPositive = true;
     } else if (c.type == "condition") {

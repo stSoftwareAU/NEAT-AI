@@ -20,25 +20,25 @@ export class CreatureUtil {
       return creature.uuid;
     }
 
-    if (!creature.connections) {
+    if (!creature.synapses) {
       throw new Error("Not an object was: " + (typeof creature));
     }
 
-    const json = JSON.parse(JSON.stringify(creature.internalJSON()));
-    json.nodes.forEach(
+    const json = creature.internalJSON();
+    json.neurons.forEach(
       (n: { uuid?: string; trace?: unknown }) => {
         delete n.uuid;
         delete n.trace;
       },
     );
-    json.connections.forEach(
-      (c: { trace?: { used: boolean }; index?: number }) => {
-        delete c.trace;
-      },
-    );
+    // json.synapses.forEach(
+    //   (c: { trace?: { used: boolean }; index?: number }) => {
+    //     delete c.trace;
+    //   },
+    // );
     const tmp = {
-      nodes: json.nodes,
-      connections: json.connections,
+      neurons: json.neurons,
+      synapses: json.synapses,
     };
 
     const txt = JSON.stringify(tmp);

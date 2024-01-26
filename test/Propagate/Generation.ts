@@ -6,14 +6,14 @@ import {
   adjustedWeight,
   BackPropagationConfig,
 } from "../../src/architecture/BackPropagation.ts";
-import { Creature } from "../../src/Creature.ts";
 import { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 function makeCreature() {
   const creatureJSON: CreatureTrace = {
-    nodes: [
+    neurons: [
       {
         type: "output",
         squash: "IDENTITY",
@@ -28,7 +28,7 @@ function makeCreature() {
         },
       },
     ],
-    connections: [
+    synapses: [
       {
         fromUUID: "input-1",
         toUUID: "output-0",
@@ -51,7 +51,7 @@ function makeCreature() {
 Deno.test("Generation BIAS", () => {
   const creature = makeCreature();
 
-  const outputNode = creature.nodes.find((node) => node.type === "output");
+  const outputNode = creature.neurons.find((node) => node.type === "output");
 
   if (!outputNode) {
     throw new Error("No output node found");
@@ -87,7 +87,7 @@ Deno.test("Generation BIAS", () => {
 Deno.test("Generation Weight", () => {
   const creature = makeCreature();
 
-  const connection = creature.getConnection(1, 3);
+  const connection = creature.getSynapse(1, 3);
 
   if (!connection) {
     throw new Error("No connection found");

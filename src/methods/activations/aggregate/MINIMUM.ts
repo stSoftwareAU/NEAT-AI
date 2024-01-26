@@ -145,7 +145,7 @@ export class MINIMUM
       for (let indx = toList.length; indx--;) {
         const c = toList[indx];
 
-        const fromNeuron = node.creature.nodes[c.from];
+        const fromNeuron = node.creature.neurons[c.from];
 
         const fromActivation = fromNeuron.adjustedActivation(config);
 
@@ -158,7 +158,7 @@ export class MINIMUM
       }
 
       if (mainConnection) {
-        const fromNeuron = node.creature.nodes[mainConnection.from];
+        const fromNeuron = node.creature.neurons[mainConnection.from];
         const fromActivation = fromNeuron.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(

@@ -10,14 +10,14 @@ import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 
 Deno.test("TraceAggregateMINIMUM", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
       { bias: 0.3, type: "hidden", squash: "MINIMUM", index: 4 },
       { bias: -0.4, type: "output", squash: "LOGISTIC", index: 5 },
       { bias: 0.5, type: "output", squash: "LOGISTIC", index: 6 },
     ],
-    connections: [
+    synapses: [
       { weight: 0.1, from: 0, to: 2 },
       { weight: -0.2, from: 1, to: 3 },
       { weight: 0.3, from: 2, to: 4 },
@@ -56,14 +56,14 @@ Deno.test("TraceAggregateMINIMUM", () => {
 
 Deno.test("TraceAggregateMAXIMUM", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
       { bias: 0.3, type: "hidden", squash: "MAXIMUM", index: 4 },
       { bias: -0.4, type: "output", squash: "LOGISTIC", index: 5 },
       { bias: 0.5, type: "output", squash: "LOGISTIC", index: 6 },
     ],
-    connections: [
+    synapses: [
       { weight: 0.1, from: 0, to: 2 },
       { weight: -0.2, from: 1, to: 3 },
       { weight: 0.3, from: 2, to: 4 },
@@ -102,14 +102,14 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 
 Deno.test("TraceAggregateIF", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: -0.2, type: "hidden", squash: "LOGISTIC", index: 3 },
       { bias: 0.3, type: "hidden", squash: "IF", index: 4 },
       { bias: -0.4, type: "output", squash: "LOGISTIC", index: 5 },
       { bias: 0.5, type: "output", squash: "LOGISTIC", index: 6 },
     ],
-    connections: [
+    synapses: [
       { weight: 0.1, from: 0, to: 2 },
       { weight: -0.2, from: 1, to: 3 },
       { weight: 0.15, from: 1, to: 4, type: "condition" },

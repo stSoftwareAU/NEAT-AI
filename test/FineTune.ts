@@ -8,7 +8,7 @@ import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 // Compact form: name and function
 Deno.test("tune", async () => {
   const previousFittest: Creature = Creature.fromJSON({
-    "nodes": [{
+    "neurons": [{
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
@@ -24,7 +24,7 @@ Deno.test("tune", async () => {
       "squash": "BIPOLAR_SIGMOID",
       "index": 2,
     }],
-    "connections": [{
+    "synapses": [{
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,
@@ -40,8 +40,8 @@ Deno.test("tune", async () => {
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
-  fittest.nodes[2].bias = 0.001;
-  fittest.connections[0].weight = 0.011;
+  fittest.neurons[2].bias = 0.001;
+  fittest.synapses[0].weight = 0.011;
 
   const fineTuned = await fineTuneImprovement(fittest, previousFittest);
 
@@ -60,7 +60,7 @@ Deno.test("tune", async () => {
 
 Deno.test("many", async () => {
   const previousFittest = Creature.fromJSON({
-    "nodes": [{
+    "neurons": [{
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
@@ -76,7 +76,7 @@ Deno.test("many", async () => {
       "squash": "BIPOLAR_SIGMOID",
       "index": 2,
     }],
-    "connections": [{
+    "synapses": [{
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,
@@ -91,8 +91,8 @@ Deno.test("many", async () => {
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
-  fittest.nodes[2].bias = 0.001;
-  fittest.connections[0].weight = 0.011;
+  fittest.neurons[2].bias = 0.001;
+  fittest.synapses[0].weight = 0.011;
 
   const fineTuned = await fineTuneImprovement(fittest, previousFittest, 7);
 

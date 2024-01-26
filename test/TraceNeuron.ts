@@ -9,7 +9,7 @@ import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 Deno.test("traceNode", async () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "hidden", index: 3, squash: "IDENTITY" },
       { type: "hidden", index: 4, squash: "IDENTITY" },
       { type: "hidden", index: 5, squash: "IDENTITY" },
@@ -20,7 +20,7 @@ Deno.test("traceNode", async () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 0, to: 3, weight: 0.9 },
       { from: 3, to: 4, weight: 1.1 },
       { from: 4, to: 5, weight: 0.95 },
@@ -69,8 +69,8 @@ Deno.test("traceNode", async () => {
       const json = JSON.parse(
         Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
       );
-      if (!json.nodes) continue;
-      json.nodes.forEach((n: NeuronTrace) => {
+      if (!json.neurons) continue;
+      json.neurons.forEach((n: NeuronTrace) => {
         if (n.trace) {
           // if (
           //   Number.isFinite(n.trace.errorResponsibility) &&

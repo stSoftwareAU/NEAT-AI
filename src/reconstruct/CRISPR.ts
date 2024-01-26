@@ -46,7 +46,7 @@ export class CRISPR {
 
     const UUIDs = new Set<string>();
     let alreadyProcessed = false;
-    tmpNetwork.nodes.forEach((node) => {
+    tmpNetwork.neurons.forEach((node) => {
       UUIDs.add(node.uuid ? node.uuid : "");
       const id = getTag(node, "CRISPR");
 
@@ -66,7 +66,7 @@ export class CRISPR {
       }
     });
     let firstNetworkOutputIndex = -1;
-    tmpNetwork.nodes.forEach((node, indx) => {
+    tmpNetwork.neurons.forEach((node, indx) => {
       if (node.type == "output") {
         if (firstNetworkOutputIndex == -1) {
           firstNetworkOutputIndex = indx;
@@ -108,7 +108,7 @@ export class CRISPR {
       networkNode.index = indx;
 
       addTag(networkNode, "CRISPR", dna.id);
-      tmpNetwork.nodes.push(networkNode);
+      tmpNetwork.neurons.push(networkNode);
       if (dnaNode.type == "output") {
         if (firstDnaOutputIndex == -1) {
           firstDnaOutputIndex = indx;

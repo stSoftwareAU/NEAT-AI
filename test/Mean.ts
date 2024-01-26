@@ -7,13 +7,13 @@ import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 Deno.test("Mean", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 2 },
       { bias: 0, type: "output", squash: "MEAN", index: 3 },
     ],
-    connections: [
+    synapses: [
       { weight: 1, from: 0, to: 3 },
       { weight: 1, from: 1, to: 3 },
       { weight: 1, from: 2, to: 3 },

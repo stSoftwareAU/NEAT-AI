@@ -2,11 +2,10 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.212.0/assert/mod.ts";
-
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { Costs } from "../../src/Costs.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Creature } from "../../src/Creature.ts";
+import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { train } from "../../src/architecture/Training.ts";
 
@@ -47,12 +46,12 @@ Deno.test("PropagateMaximum", async () => {
       JSON.stringify(exportJSON, null, 2),
     );
 
-    exportJSON.nodes.forEach((node, indx) => {
+    exportJSON.neurons.forEach((node, indx) => {
       node.bias = (node.bias ? node.bias : 0) +
         ((indx % 2 == 0 ? 1 : -1) * 0.15);
     });
 
-    exportJSON.connections.forEach((c, indx) => {
+    exportJSON.synapses.forEach((c, indx) => {
       c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.15);
     });
 
@@ -156,7 +155,7 @@ function calculateError(
 
 function makeCreature() {
   const creatureJson: CreatureExport = {
-    nodes: [
+    neurons: [
       {
         type: "hidden",
         uuid: "7a17dbbd-c3af-4106-bd72-c1abfad641ae",
@@ -194,7 +193,7 @@ function makeCreature() {
         squash: "MAXIMUM",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.7,
         fromUUID: "input-0",

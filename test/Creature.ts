@@ -282,14 +282,14 @@ Deno.test("gender-tag", () => {
   const network1 = new Creature(2, 2);
   const network2 = new Creature(2, 2);
 
-  addTag(network1.nodes[0], "gender", "male");
+  addTag(network1.neurons[0], "gender", "male");
 
-  addTag(network2.nodes[0], "gender", "female");
+  addTag(network2.neurons[0], "gender", "female");
 
   // Crossover
   const network = Offspring.bread(network1, network2);
 
-  const gender = getTag(network.nodes[0], "gender");
+  const gender = getTag(network.neurons[0], "gender");
 
   assert(gender == "male" || gender == "female", "No gender: " + gender);
 });
@@ -313,9 +313,9 @@ Deno.test("Feed-forward", () => {
   const network = Offspring.bread(network1, network2);
 
   // Check if the network is feed-forward correctly
-  for (i = 0; i < network.connections.length; i++) {
-    const from = network.connections[i].from;
-    const to = network.connections[i].to;
+  for (i = 0; i < network.synapses.length; i++) {
+    const from = network.synapses[i].from;
+    const to = network.synapses[i].to;
 
     // Exception will be made for memory connections soon
     assert(from <= to, "network is not feeding forward correctly");

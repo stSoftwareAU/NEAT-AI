@@ -18,8 +18,8 @@ export class Offspring {
     const offspring = new Creature(mother.input, mother.output, {
       lazyInitialization: true,
     });
-    offspring.connections = [];
-    offspring.nodes = [];
+    offspring.synapses = [];
+    offspring.neurons = [];
 
     const nodeMap = new Map<string, Neuron>();
     const connectionsMap = new Map<string, SynapseExport[]>();
@@ -31,8 +31,8 @@ export class Offspring {
 
       connections.forEach((connection) => {
         const c: SynapseExport = {
-          fromUUID: creature.nodes[connection.from].uuid,
-          toUUID: creature.nodes[connection.to].uuid,
+          fromUUID: creature.neurons[connection.from].uuid,
+          toUUID: creature.neurons[connection.to].uuid,
           weight: connection.weight,
           type: connection.type,
         };
@@ -42,7 +42,7 @@ export class Offspring {
       return tmpConnections;
     }
 
-    for (const node of mother.nodes) {
+    for (const node of mother.neurons) {
       if (node.type !== "input") {
         nodeMap.set(node.uuid, node);
         const connections = mother.toConnections(node.index);
@@ -50,7 +50,7 @@ export class Offspring {
       }
     }
 
-    for (const node of father.nodes) {
+    for (const node of father.neurons) {
       if (node.type !== "input") {
         if (nodeMap.has(node.uuid) == false || Math.random() >= 0.5) {
           nodeMap.set(node.uuid, node);
@@ -77,7 +77,7 @@ export class Offspring {
     }
 
     for (let indx = 0; indx < mother.input; indx++) {
-      tmpNodes.push(mother.nodes[indx]);
+      tmpNodes.push(mother.neurons[indx]);
     }
 
     for (let indx = mother.output; indx--;) {
@@ -87,9 +87,9 @@ export class Offspring {
       }
     }
 
-    Offspring.sortNodes(tmpNodes, mother.nodes, father.nodes);
+    Offspring.sortNodes(tmpNodes, mother.neurons, father.neurons);
 
-    offspring.nodes.length = tmpNodes.length;
+    offspring.neurons.length = tmpNodes.length;
     const indxMap = new Map<string, number>();
     tmpNodes.forEach((node, indx) => {
       const newNode = new Neuron(
@@ -103,11 +103,11 @@ export class Offspring {
       addTags(newNode, node);
 
       newNode.index = indx;
-      offspring.nodes[indx] = newNode;
+      offspring.neurons[indx] = newNode;
       indxMap.set(node.uuid, indx);
     });
 
-    offspring.nodes.forEach((node) => {
+    offspring.neurons.forEach((node) => {
       const connections = connectionsMap.get(node.uuid);
 
       connections?.forEach((c) => {

@@ -10,7 +10,7 @@ import { train } from "../src/architecture/Training.ts";
 
 Deno.test("ifPropagation", async () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "input", index: 0 },
       { type: "input", index: 1 },
       { type: "input", index: 2 },
@@ -21,7 +21,7 @@ Deno.test("ifPropagation", async () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 0, to: 3, weight: 0.9, type: "condition" },
       { from: 1, to: 3, weight: 1.1, type: "positive" },
       { from: 2, to: 3, weight: 0.95, type: "negative" },
@@ -66,7 +66,7 @@ Deno.test("ifPropagation", async () => {
   );
   let usedCount = 0;
   if (traceJson) {
-    traceJson.connections.forEach((c: SynapseTrace) => {
+    traceJson.synapses.forEach((c: SynapseTrace) => {
       if (c.trace && c.trace.used) {
         usedCount++;
       }
@@ -83,7 +83,7 @@ Deno.test("ifPropagation", async () => {
   );
 
   if (traceJson) {
-    traceJson.nodes.forEach((n) => {
+    traceJson.neurons.forEach((n) => {
       assert(Math.abs(n.bias ? n.bias : 0) < 1, `Invalid bias ${n.bias}`);
     });
   }

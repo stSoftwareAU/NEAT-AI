@@ -18,7 +18,7 @@ function makeCreature() {
    *  o5=(h3 * -0.6) + (i2 * 0.7 ) + 0.8
    */
   const json: CreatureExport = {
-    nodes: [
+    neurons: [
       { type: "hidden", uuid: "hidden-3", squash: "IDENTITY", bias: 0 },
 
       {
@@ -34,7 +34,7 @@ function makeCreature() {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       /* h3=(i0 * -0.1) + (i1 * 0.2) - 0.3 */
       { fromUUID: "input-0", toUUID: "hidden-3", weight: -1 },
       { fromUUID: "input-1", toUUID: "hidden-3", weight: 0 },

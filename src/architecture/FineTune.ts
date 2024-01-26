@@ -15,15 +15,15 @@ function tuneRandomize(
 
   const uuidNodeMap = new Map<string, NeuronExport>();
 
-  previousJSON.nodes.forEach((n) => {
+  previousJSON.neurons.forEach((n) => {
     const uuid = n.uuid ? n.uuid : "";
     uuidNodeMap.set(uuid, n);
   });
 
   let changeBiasCount = 0;
   let changeWeightCount = 0;
-  for (let i = fittestJSON.nodes.length; i--;) {
-    const tn = fittestJSON.nodes[i];
+  for (let i = fittestJSON.neurons.length; i--;) {
+    const tn = fittestJSON.neurons[i];
 
     const pn = uuidNodeMap.get(tn.uuid ? tn.uuid : "");
 
@@ -41,10 +41,10 @@ function tuneRandomize(
     }
   }
 
-  for (let i = fittestJSON.connections.length; i--;) {
-    const tc = fittestJSON.connections[i];
-    for (let j = previousJSON.connections.length; j--;) {
-      const pc = previousJSON.connections[j];
+  for (let i = fittestJSON.synapses.length; i--;) {
+    const tc = fittestJSON.synapses[i];
+    for (let j = previousJSON.synapses.length; j--;) {
+      const pc = previousJSON.synapses[j];
 
       if (tc.fromUUID == pc.fromUUID && tc.toUUID == pc.toUUID) {
         const diff = tc.weight - pc.weight;
@@ -141,9 +141,9 @@ export async function fineTuneImprovement(
         fScore - pScore,
         "to",
         fScore,
-        `nodes: ${fittest.nodes.length} was:`,
+        `nodes: ${fittest.neurons.length} was:`,
         getTag(fittest, "old-nodes"),
-        `connections: ${fittest.connections.length} was:`,
+        `connections: ${fittest.synapses.length} was:`,
         getTag(fittest, "old-connections"),
       );
     } else if (approach == "Learnings") {
@@ -152,9 +152,9 @@ export async function fineTuneImprovement(
         fScore - pScore,
         "to",
         fScore,
-        `nodes: ${fittest.nodes.length} was:`,
+        `nodes: ${fittest.neurons.length} was:`,
         getTag(fittest, "old-nodes"),
-        `connections: ${fittest.connections.length} was:`,
+        `connections: ${fittest.synapses.length} was:`,
         getTag(fittest, "old-connections"),
       );
     }

@@ -7,7 +7,7 @@ import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 Deno.test("FromFrom", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
 
       {
@@ -32,7 +32,7 @@ Deno.test("FromFrom", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 1, to: 3, weight: 0.1 },
       { from: 3, to: 4, weight: 0.2 },
       { from: 4, to: 5, weight: 0.3 },

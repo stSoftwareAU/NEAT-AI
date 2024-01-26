@@ -1,7 +1,7 @@
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import { SynapseInternal } from "./SynapseInterfaces.ts";
 import { CreatureState, NeuronState, SynapseState } from "./CreatureState.ts";
 import { Neuron } from "./Neuron.ts";
+import { Synapse } from "./Synapse.ts";
 
 export interface BackPropagationOptions {
   disableRandomSamples?: boolean;
@@ -188,11 +188,11 @@ export function accumulateBias(
   let difference = targetValue - improvedValue;
   if (!config.disableExponentialScaling) {
     // Squash the difference using the hyperbolic tangent function and scale it
-    difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
-      config.maximumWeightAdjustmentScale;
-  } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
+    difference = Math.tanh(difference / config.maximumBiasAdjustmentScale) *
+      config.maximumBiasAdjustmentScale;
+  } else if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
     // Limit the difference to the maximum scale
-    difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
+    difference = Math.sign(difference) * config.maximumBiasAdjustmentScale;
   }
 
   ns.count++;
@@ -229,11 +229,11 @@ export function accumulateWeight(
 }
 
 export function adjustedWeight(
-  networkState: CreatureState,
-  c: SynapseInternal,
+  creatureState: CreatureState,
+  c: Synapse,
   config: BackPropagationConfig,
 ) {
-  const cs = networkState.connection(c.from, c.to);
+  const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
     const synapseAverageWeightTotal = cs.averageWeight * cs.count;

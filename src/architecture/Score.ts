@@ -19,14 +19,14 @@ function calculateMaxOutOfBounds(
   let total = 0;
   let count = 0;
 
-  for (const conn of creature.connections) {
+  for (const conn of creature.synapses) {
     const w = Math.abs(conn.weight);
     max = Math.max(max, w);
     total += w;
     count++;
   }
 
-  for (const node of creature.nodes) {
+  for (const node of creature.neurons) {
     if (
       node.type !== "input" && node.bias !== undefined && node.bias !== null
     ) {
@@ -65,8 +65,8 @@ function calculateScore(
   penalty: number,
   growthCost: number,
 ): number {
-  const complexityCount = creature.nodes.length - creature.input -
-    creature.output + creature.connections.length + penalty;
+  const complexityCount = creature.neurons.length - creature.input -
+    creature.output + creature.synapses.length + penalty;
 
   return -error - complexityCount * growthCost;
 }

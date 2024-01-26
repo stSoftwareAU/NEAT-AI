@@ -6,7 +6,7 @@ import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 const json: CreatureInternal = {
-  nodes: [
+  neurons: [
     {
       type: "input",
       squash: "LOGISTIC",
@@ -39,7 +39,7 @@ const json: CreatureInternal = {
       index: 4,
     },
   ],
-  connections: [
+  synapses: [
     {
       weight: 1,
       from: 2,
@@ -91,7 +91,7 @@ Deno.test("addNode", () => {
     network.addNode();
   }
 
-  const nodes = network.internalJSON().nodes;
+  const nodes = network.internalJSON().neurons;
 
   for (let pos = nodes.length; pos--;) {
     const node = nodes[pos];
