@@ -7,10 +7,10 @@ import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 Deno.test("Leaky ReLU:", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0, type: "output", squash: "LeakyReLU", index: 3 },
     ],
-    connections: [
+    synapses: [
       { weight: 1, from: 0, to: 1 },
     ],
     input: 1,

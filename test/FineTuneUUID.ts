@@ -10,7 +10,7 @@ import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 
 Deno.test("tune", async () => {
   const previousFittest: Creature = Creature.fromJSON({
-    nodes: [
+    neurons: [
       {
         type: "hidden",
         uuid: "previous-0001",
@@ -42,7 +42,7 @@ Deno.test("tune", async () => {
         squash: "BIPOLAR_SIGMOID",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.67556172986067,
         fromUUID: "input-0",
@@ -89,7 +89,7 @@ Deno.test("tune", async () => {
   previousFittest.validate();
 
   const fittest: Creature = Creature.fromJSON({
-    nodes: [
+    neurons: [
       {
         type: "hidden",
         uuid: "41a4f3dd-f253-491e-b04f-c9651b72eaaa",
@@ -121,7 +121,7 @@ Deno.test("tune", async () => {
         squash: "BIPOLAR_SIGMOID",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.67556172986067,
         fromUUID: "input-0",
@@ -171,7 +171,7 @@ Deno.test("tune", async () => {
   fineTuned.forEach((n) => {
     const en = n.exportJSON();
 
-    en.nodes.forEach((node) => {
+    en.neurons.forEach((node) => {
       if (node.uuid == "41a4f3dd-f253-491e-b04f-c9651b72eaaa") {
         assertAlmostEquals(node.bias ? node.bias : 0, 0.1, 0.0000001, n.uuid);
       }
@@ -191,7 +191,7 @@ Deno.test("tune", async () => {
       }
     });
 
-    en.connections.forEach((c) => {
+    en.synapses.forEach((c) => {
       if (
         c.fromUUID == "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff" &&
         c.toUUID == "0a858bc2-3bdc-417c-85b0-e9c513828d29"

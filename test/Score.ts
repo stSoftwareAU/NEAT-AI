@@ -22,7 +22,7 @@ Deno.test("Score: Weight change should affect score", () => {
   const initialScore = calculate(creature, 0.603, 0.000_000_1);
 
   // Modify weight of a specific connection
-  creature.connections.forEach((c) => {
+  creature.synapses.forEach((c) => {
     if (c.from === 636 && c.to === 860) {
       c.weight /= 2;
     }

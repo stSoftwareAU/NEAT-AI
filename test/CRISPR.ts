@@ -116,8 +116,8 @@ Deno.test("REMOVE", () => {
   const networkIF = crispr.apply(JSON.parse(dnaTXT)) as Creature;
   (networkIF as Creature).validate();
 
-  for (let pos = networkIF.nodes.length; pos--;) {
-    const node = networkIF.nodes[pos] as Neuron;
+  for (let pos = networkIF.neurons.length; pos--;) {
+    const node = networkIF.neurons[pos] as Neuron;
     const tag = getTag(node, "CRISPR");
     if (tag) {
       for (let attempts = 0; attempts < 10; attempts++) {
@@ -141,7 +141,7 @@ Deno.test("REMOVE", () => {
 
 Deno.test("CRISPR-multi-outputs1", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4, uuid: "h2" },
       { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5, uuid: "h3" },
@@ -169,7 +169,7 @@ Deno.test("CRISPR-multi-outputs1", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 1, to: 3, weight: 0.1 },
       { from: 3, to: 8, weight: 0.2 },
       { from: 0, to: 8, weight: 0.25 },
@@ -217,8 +217,15 @@ Deno.test("CRISPR-multi-outputs1", () => {
   assertEquals(actualTXT, expectedTXT, "should have converted");
 });
 
-function clean(networkJSON: { nodes: { uuid?: string }[] }) {
-  networkJSON.nodes.forEach((n) => {
+function clean(
+  networkJSON: { neurons?: { uuid?: string }[]; nodes?: { uuid?: string }[] },
+) {
+  const neurons = networkJSON.neurons
+    ? networkJSON.neurons
+    : networkJSON.nodes
+    ? networkJSON.nodes
+    : [];
+  neurons.forEach((n) => {
     if (n.uuid && !n.uuid.startsWith("output-")) {
       delete n.uuid;
     }
@@ -227,7 +234,7 @@ function clean(networkJSON: { nodes: { uuid?: string }[] }) {
 
 Deno.test("CRISPR-multi-outputs2", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
       // { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4, uuid: "h2" },
       // { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5, uuid: "h3" },
@@ -255,7 +262,7 @@ Deno.test("CRISPR-multi-outputs2", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 1, to: 3, weight: 0.1 },
       { from: 2, to: 4, weight: 0.2 },
       { from: 3, to: 5, weight: 0.3 },

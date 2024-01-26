@@ -20,7 +20,7 @@ function makeCreature() {
    *  o10=(h8 * -0.4) + (h7 * 0.2) + 0.3
    */
   const creatureJsonA: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "hidden", index: 5, squash: "IDENTITY", bias: -0.2 },
       { type: "hidden", index: 6, squash: "IDENTITY", bias: -0.1 },
       { type: "hidden", index: 7, squash: "IDENTITY", bias: 0.1 },
@@ -40,7 +40,7 @@ function makeCreature() {
         bias: 0.3,
       },
     ],
-    connections: [
+    synapses: [
       /* h5=i0 + i1 - 0.2 */
       { from: 0, to: 5, weight: 1 },
       { from: 1, to: 5, weight: 1 },
@@ -133,12 +133,12 @@ Deno.test("propagateMultiLevelRandom", async () => {
     JSON.stringify(internalJSON, null, 2),
   );
 
-  internalJSON.nodes.forEach((node, indx) => {
+  internalJSON.neurons.forEach((node, indx) => {
     node.bias = (node.bias ? node.bias : 0) +
       ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
-  internalJSON.connections.forEach((c, indx) => {
+  internalJSON.synapses.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
@@ -351,12 +351,12 @@ Deno.test("propagateMultiLevelKnownA", async () => {
     JSON.stringify(internalJSON, null, 2),
   );
 
-  internalJSON.nodes.forEach((node, indx) => {
+  internalJSON.neurons.forEach((node, indx) => {
     node.bias = (node.bias ? node.bias : 0) +
       ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
-  internalJSON.connections.forEach((c, indx) => {
+  internalJSON.synapses.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
@@ -568,12 +568,12 @@ Deno.test("propagateMultiLevelKnownB", async () => {
     JSON.stringify(internalJSON, null, 2),
   );
 
-  internalJSON.nodes.forEach((node, indx) => {
+  internalJSON.neurons.forEach((node, indx) => {
     node.bias = (node.bias ? node.bias : 0) +
       ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
-  internalJSON.connections.forEach((c, indx) => {
+  internalJSON.synapses.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 

@@ -43,15 +43,15 @@ export class Creature implements CreatureInternal {
 
   input: number;
   output: number;
-  nodes: Neuron[];
+  neurons: Neuron[];
   tags?: TagInterface[];
   score?: number;
-  connections: SynapseInternal[];
+  synapses: Synapse[];
 
   readonly state = new CreatureState(this);
-  private cacheTo = new Map<number, SynapseInternal[]>();
-  private cacheFrom = new Map<number, SynapseInternal[]>();
-  private cacheSelf = new Map<number, SynapseInternal[]>();
+  private cacheTo = new Map<number, Synapse[]>();
+  private cacheFrom = new Map<number, Synapse[]>();
+  private cacheSelf = new Map<number, Synapse[]>();
 
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
@@ -70,8 +70,8 @@ export class Creature implements CreatureInternal {
 
     this.input = input;
     this.output = output;
-    this.nodes = [];
-    this.connections = [];
+    this.neurons = [];
+    this.synapses = [];
 
     this.tags = undefined;
 
@@ -91,8 +91,8 @@ export class Creature implements CreatureInternal {
   public dispose() {
     this.clearState();
     this.clearCache();
-    this.connections.length = 0;
-    this.nodes.length = 0;
+    this.synapses.length = 0;
+    this.neurons.length = 0;
   }
 
   public clearCache() {
@@ -109,13 +109,13 @@ export class Creature implements CreatureInternal {
     for (let i = this.input; i--;) {
       const type = "input";
       const node = new Neuron(`input-${this.input - i - 1}`, type, 0, this);
-      node.index = this.nodes.length;
-      this.nodes.push(node);
+      node.index = this.neurons.length;
+      this.neurons.push(node);
     }
 
     if (options.layers) {
       let lastStartIndx = 0;
-      let lastEndIndx = this.nodes.length - 1;
+      let lastEndIndx = this.neurons.length - 1;
 
       for (let i = 0; i < options.layers.length; i++) {
         const layer = options.layers[i];
@@ -138,21 +138,21 @@ export class Creature implements CreatureInternal {
             this,
             tmpSquash,
           );
-          node.index = this.nodes.length;
-          this.nodes.push(node);
+          node.index = this.neurons.length;
+          this.neurons.push(node);
         }
 
         const tmpOutput = this.output;
         this.output = 0;
 
         for (let k = lastStartIndx; k <= lastEndIndx; k++) {
-          for (let l = lastEndIndx + 1; l < this.nodes.length; l++) {
+          for (let l = lastEndIndx + 1; l < this.neurons.length; l++) {
             this.connect(k, l, Synapse.randomWeight());
           }
         }
         this.output = tmpOutput;
         lastStartIndx = lastEndIndx + 1;
-        lastEndIndx = this.nodes.length - 1;
+        lastEndIndx = this.neurons.length - 1;
       }
 
       // Create output nodes
@@ -165,12 +165,12 @@ export class Creature implements CreatureInternal {
           this,
           LOGISTIC.NAME,
         );
-        node.index = this.nodes.length;
-        this.nodes.push(node);
+        node.index = this.neurons.length;
+        this.neurons.push(node);
       }
 
       for (let k = lastStartIndx; k <= lastEndIndx; k++) {
-        for (let l = lastEndIndx + 1; l < this.nodes.length; l++) {
+        for (let l = lastEndIndx + 1; l < this.neurons.length; l++) {
           this.connect(k, l, Synapse.randomWeight());
         }
       }
@@ -185,8 +185,8 @@ export class Creature implements CreatureInternal {
           this,
           LOGISTIC.NAME,
         );
-        node.index = this.nodes.length;
-        this.nodes.push(node);
+        node.index = this.neurons.length;
+        this.neurons.push(node);
       }
 
       // Connect input nodes with output nodes directly
@@ -229,16 +229,17 @@ export class Creature implements CreatureInternal {
 
     this.state.makeActivation(input, feedbackLoop);
 
-    const lastHiddenNode = this.nodes.length - this.output;
+    const lastHiddenNode = this.neurons.length - this.output;
 
     // Activate hidden nodes
     for (let i = this.input; i < lastHiddenNode; i++) {
-      this.nodes[i].activateAndTrace();
+      this.neurons[i].activateAndTrace();
     }
 
     // Activate output nodes and store their values in the output array
     for (let outIndx = 0; outIndx < this.output; outIndx++) {
-      output[outIndx] = this.nodes[lastHiddenNode + outIndx].activateAndTrace();
+      output[outIndx] = this.neurons[lastHiddenNode + outIndx]
+        .activateAndTrace();
     }
 
     return output;
@@ -252,16 +253,16 @@ export class Creature implements CreatureInternal {
 
     this.state.makeActivation(input, feedbackLoop);
 
-    const lastHiddenNode = this.nodes.length - this.output;
+    const lastHiddenNode = this.neurons.length - this.output;
 
     // Activate hidden nodes
     for (let i = this.input; i < lastHiddenNode; i++) {
-      this.nodes[i].activate();
+      this.neurons[i].activate();
     }
 
     // Activate output nodes and store their values in the output array
     for (let outIndx = 0; outIndx < this.output; outIndx++) {
-      output[outIndx] = this.nodes[lastHiddenNode + outIndx].activate();
+      output[outIndx] = this.neurons[lastHiddenNode + outIndx].activate();
     }
 
     return output;
@@ -283,7 +284,7 @@ export class Creature implements CreatureInternal {
       complete = true;
       for (
         let pos = compactCreature.input;
-        pos < compactCreature.nodes.length - compactCreature.output;
+        pos < compactCreature.neurons.length - compactCreature.output;
         pos++
       ) {
         const fromList = compactCreature.fromConnections(pos).filter(
@@ -311,18 +312,18 @@ export class Creature implements CreatureInternal {
               const to = fromList[0].to;
               const from = toList[0].from;
 
-              const fromSquash = compactCreature.nodes[from].squash;
+              const fromSquash = compactCreature.neurons[from].squash;
               if (
                 from > this.input &&
                 fromSquash ==
-                  compactCreature.nodes[pos].squash &&
+                  compactCreature.neurons[pos].squash &&
                 (fromSquash == IDENTITY.NAME || fromSquash == LOGISTIC.NAME)
               ) {
-                if (compactCreature.getConnection(from, to) == null) {
+                if (compactCreature.getSynapse(from, to) == null) {
                   let weightA = fromList[0].weight * toList[0].weight;
 
-                  const tmpFromBias = compactCreature.nodes[from].bias;
-                  const tmpToBias = compactCreature.nodes[pos].bias;
+                  const tmpFromBias = compactCreature.neurons[from].bias;
+                  const tmpToBias = compactCreature.neurons[pos].bias;
                   let biasA =
                     (tmpFromBias ? tmpFromBias : 0) * toList[0].weight +
                     (tmpToBias ? tmpToBias : 0);
@@ -335,7 +336,7 @@ export class Creature implements CreatureInternal {
                     biasA = 0;
                   }
 
-                  compactCreature.nodes[from].bias = biasA;
+                  compactCreature.neurons[from].bias = biasA;
 
                   compactCreature.removeHiddenNode(pos);
                   let adjustedTo = to;
@@ -373,11 +374,11 @@ export class Creature implements CreatureInternal {
     const json2 = compactCreature.exportJSON();
     if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
       addTag(compactCreature, "approach", "compact");
-      addTag(compactCreature, "old-nodes", this.nodes.length.toString());
+      addTag(compactCreature, "old-nodes", this.neurons.length.toString());
       addTag(
         compactCreature,
         "old-connections",
-        this.connections.length.toString(),
+        this.synapses.length.toString(),
       );
 
       return compactCreature;
@@ -392,9 +393,9 @@ export class Creature implements CreatureInternal {
    */
   validate(options?: { nodes?: number; connections?: number }) {
     if (options && options.nodes) {
-      if (this.nodes.length !== options.nodes) {
+      if (this.neurons.length !== options.nodes) {
         throw new Error(
-          `Node length: ${this.nodes.length} expected: ${options.nodes}`,
+          `Node length: ${this.neurons.length} expected: ${options.nodes}`,
         );
       }
     }
@@ -423,7 +424,7 @@ export class Creature implements CreatureInternal {
 
     let outputIndx = 0;
     const UUIDs = new Set<string>();
-    this.nodes.forEach((node, indx) => {
+    this.neurons.forEach((node, indx) => {
       const uuid = node.uuid;
       if (!uuid) {
         throw new Error(`${node.ID()}) no UUID`);
@@ -637,9 +638,9 @@ export class Creature implements CreatureInternal {
 
     let lastFrom = -1;
     let lastTo = -1;
-    this.connections.forEach((c, indx) => {
+    this.synapses.forEach((c, indx) => {
       stats.connections++;
-      const toNode = this.getNode(c.to);
+      const toNode = this.getNeuron(c.to);
 
       if (toNode.type === "input") {
         throw new Error(indx + ") connection points to an input node");
@@ -660,9 +661,9 @@ export class Creature implements CreatureInternal {
     });
 
     if (options && Number.isInteger(options.connections)) {
-      if (this.connections.length !== options.connections) {
+      if (this.synapses.length !== options.connections) {
         throw new Error(
-          "Connections length: " + this.connections.length +
+          "Connections length: " + this.synapses.length +
             " expected: " +
             options.connections,
         );
@@ -676,7 +677,7 @@ export class Creature implements CreatureInternal {
     let results = this.cacheSelf.get(indx);
     if (results === undefined) {
       results = [];
-      const tmpList = this.connections;
+      const tmpList = this.synapses;
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
         if (c.to === indx && c.from == indx) {
@@ -694,11 +695,11 @@ export class Creature implements CreatureInternal {
     }
   }
 
-  toConnections(to: number): SynapseInternal[] {
+  toConnections(to: number): Synapse[] {
     let results = this.cacheTo.get(to);
     if (results === undefined) {
       results = [];
-      const tmpList = this.connections;
+      const tmpList = this.synapses;
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
 
@@ -710,11 +711,11 @@ export class Creature implements CreatureInternal {
     return results;
   }
 
-  fromConnections(from: number): SynapseInternal[] {
+  fromConnections(from: number): Synapse[] {
     let results = this.cacheFrom.get(from);
     if (results === undefined) {
       results = [];
-      const tmpList = this.connections;
+      const tmpList = this.synapses;
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
 
@@ -726,20 +727,20 @@ export class Creature implements CreatureInternal {
     return results;
   }
 
-  getNode(pos: number): Neuron {
+  getNeuron(pos: number): Neuron {
     if (Number.isInteger(pos) == false || pos < 0) {
       throw new Error("POS should be a non-negative integer was: " + pos);
     }
-    const tmp = this.nodes[pos];
+    const tmp = this.neurons[pos];
 
     if (tmp === undefined) {
-      throw new Error("getNode( " + pos + ") " + (typeof tmp));
+      throw new Error("getNeuron( " + pos + ") " + (typeof tmp));
     }
 
     return tmp;
   }
 
-  getConnection(from: number, to: number): SynapseInternal | null {
+  getSynapse(from: number, to: number): Synapse | null {
     if (Number.isInteger(from) == false || from < 0) {
       throw new Error("FROM should be a non-negative integer was: " + from);
     }
@@ -748,8 +749,8 @@ export class Creature implements CreatureInternal {
       throw new Error("TO should be a non-negative integer was: " + to);
     }
 
-    for (let pos = this.connections.length; pos--;) {
-      const c = this.connections[pos];
+    for (let pos = this.synapses.length; pos--;) {
+      const c = this.synapses[pos];
 
       if (c.from == from && c.to == to) {
         return c;
@@ -811,8 +812,8 @@ export class Creature implements CreatureInternal {
 
     let location = -1;
 
-    for (let indx = this.connections.length; indx--;) {
-      const c = this.connections[indx];
+    for (let indx = this.synapses.length; indx--;) {
+      const c = this.synapses[indx];
 
       if (c.from < from) {
         location = indx + 1;
@@ -832,13 +833,13 @@ export class Creature implements CreatureInternal {
         location = indx;
       }
     }
-    if (location !== -1 && location < this.connections.length) {
-      const left = this.connections.slice(0, location);
-      const right = this.connections.slice(location);
+    if (location !== -1 && location < this.synapses.length) {
+      const left = this.synapses.slice(0, location);
+      const right = this.synapses.slice(location);
 
-      this.connections = [...left, connection, ...right];
+      this.synapses = [...left, connection, ...right];
     } else {
-      this.connections.push(connection);
+      this.synapses.push(connection);
     }
 
     this.clearCache();
@@ -858,7 +859,7 @@ export class Creature implements CreatureInternal {
     }
 
     // Delete the connection in the creature's connection array
-    const connections = this.connections;
+    const connections = this.synapses;
 
     let found = false;
     for (let i = 0; i < connections.length; i++) {
@@ -880,14 +881,14 @@ export class Creature implements CreatureInternal {
   applyLearnings(config: BackPropagationConfig) {
     this.propagateUpdate(config);
 
-    const oldConnections = this.connections.length;
-    const oldNodes = this.nodes.length;
+    const oldConnections = this.synapses.length;
+    const oldNodes = this.neurons.length;
     let changed = false;
     for (
-      let i = this.nodes.length;
+      let i = this.neurons.length;
       i--;
     ) {
-      const n = this.nodes[i];
+      const n = this.neurons[i];
       if (n.type == "input") break;
       changed ||= n.applyLearnings();
     }
@@ -928,7 +929,7 @@ export class Creature implements CreatureInternal {
       CreatureUtil.shuffle(indices);
     }
 
-    const lastOutputIndx = this.nodes.length - this.output;
+    const lastOutputIndx = this.neurons.length - this.output;
     for (let attempts = this.output; attempts--;) {
       // for (let attempts = 12; attempts--;) {
       // Propagate output nodes
@@ -939,7 +940,7 @@ export class Creature implements CreatureInternal {
         const expectedIndex = indices[i];
         const nodeIndex = lastOutputIndx + expectedIndex;
 
-        const n = this.nodes[nodeIndex];
+        const n = this.neurons[nodeIndex];
 
         n.propagate(
           expected[expectedIndex],
@@ -956,11 +957,11 @@ export class Creature implements CreatureInternal {
     if (this.state.propagated) throw new Error(`Already propagated`);
 
     for (
-      let indx = this.nodes.length - 1;
+      let indx = this.neurons.length - 1;
       indx >= this.input;
       indx--
     ) {
-      const n = this.nodes[indx];
+      const n = this.neurons[indx];
       n.propagateUpdate(config);
     }
     this.state.propagated = true;
@@ -1225,7 +1226,7 @@ export class Creature implements CreatureInternal {
 
   public subNode(focusList?: number[]) {
     // Check if there are nodes left to remove
-    if (this.nodes.length === this.input + this.output) {
+    if (this.neurons.length === this.input + this.output) {
       return;
     }
 
@@ -1233,7 +1234,7 @@ export class Creature implements CreatureInternal {
       // Select a node which isn't an input or output node
       const indx = Math.floor(
         Math.random() *
-            (this.nodes.length - this.output - this.input) +
+            (this.neurons.length - this.output - this.input) +
           this.input,
       );
 
@@ -1251,15 +1252,15 @@ export class Creature implements CreatureInternal {
       throw new Error("Must be a positive integer was: " + indx);
     }
 
-    const node = this.nodes[indx];
+    const node = this.neurons[indx];
 
     if (node.type !== "hidden" && node.type !== "constant") {
       throw new Error(
         indx + ") Node must be a 'hidden' type was: " + node.type,
       );
     }
-    const left = this.nodes.slice(0, indx);
-    const right = this.nodes.slice(indx + 1);
+    const left = this.neurons.slice(0, indx);
+    const right = this.neurons.slice(indx + 1);
     right.forEach((item) => {
       const node = item;
       node.index--;
@@ -1267,11 +1268,11 @@ export class Creature implements CreatureInternal {
 
     const full = [...left, ...right];
 
-    this.nodes = full;
+    this.neurons = full;
 
-    const tmpConnections: SynapseInternal[] = [];
+    const tmpConnections: Synapse[] = [];
 
-    this.connections.forEach((c) => {
+    this.synapses.forEach((c) => {
       if (c.from !== indx) {
         if (c.from > indx) c.from--;
         if (c.to !== indx) {
@@ -1282,7 +1283,7 @@ export class Creature implements CreatureInternal {
       }
     });
 
-    this.connections = tmpConnections;
+    this.synapses = tmpConnections;
     this.clearCache();
   }
 
@@ -1294,7 +1295,7 @@ export class Creature implements CreatureInternal {
 
     node.index = Math.floor(
       Math.random() *
-        (this.nodes.length - this.output - this.input + 1),
+        (this.neurons.length - this.output - this.input + 1),
     ) + this.input;
 
     this._insertNode(node);
@@ -1323,7 +1324,7 @@ export class Creature implements CreatureInternal {
         }
       } else if (toIndex === -1) {
         const pos = Math.floor(
-          Math.random() * (this.nodes.length - node.index),
+          Math.random() * (this.neurons.length - node.index),
         ) + node.index;
 
         if (node.index > pos) {
@@ -1334,7 +1335,7 @@ export class Creature implements CreatureInternal {
         }
 
         if (this.inFocus(pos, tmpFocusList)) {
-          const toNode = this.getNode(pos);
+          const toNode = this.getNeuron(pos);
           if (toNode.type !== "constant") {
             toIndex = pos;
           }
@@ -1361,11 +1362,11 @@ export class Creature implements CreatureInternal {
         Synapse.randomWeight(),
       );
       node.fix();
-      const connection = this.getConnection(node.index, toIndex);
+      const connection = this.getSynapse(node.index, toIndex);
       if (!connection) {
         /* If the self connection was removed */
         const toIndex2 = Math.floor(
-          Math.random() * (this.nodes.length - node.index - 1),
+          Math.random() * (this.neurons.length - node.index - 1),
         ) + node.index + 1;
         this.connect(
           node.index,
@@ -1387,7 +1388,7 @@ export class Creature implements CreatureInternal {
       );
     }
 
-    const firstOutputIndex = this.nodes.length - this.output;
+    const firstOutputIndex = this.neurons.length - this.output;
     if (node.index > firstOutputIndex) {
       throw new Error(
         "to should be a between than input (" + this.input +
@@ -1398,17 +1399,17 @@ export class Creature implements CreatureInternal {
     if (node.type !== "hidden") {
       throw new Error("Should be a 'hidden' type was: " + node.type);
     }
-    const left = this.nodes.slice(0, node.index);
-    const right = this.nodes.slice(node.index);
+    const left = this.neurons.slice(0, node.index);
+    const right = this.neurons.slice(node.index);
     right.forEach((n) => {
       n.index++;
     });
 
     const full = [...left, node, ...right];
 
-    this.nodes = full;
+    this.neurons = full;
 
-    this.connections.forEach((c) => {
+    this.synapses.forEach((c) => {
       if (c.from >= node.index) c.from++;
       if (c.to >= node.index) c.to++;
     });
@@ -1422,8 +1423,8 @@ export class Creature implements CreatureInternal {
     // Create an array of all uncreated (feedforward) connections
     const available = [];
 
-    for (let i = 0; i < this.nodes.length; i++) {
-      const node1 = this.nodes[i];
+    for (let i = 0; i < this.neurons.length; i++) {
+      const node1 = this.neurons[i];
 
       if (node1.index != i) {
         throw i + ") invalid node index: " + node1.index;
@@ -1433,11 +1434,11 @@ export class Creature implements CreatureInternal {
 
       for (
         let j = Math.max(i + 1, this.input);
-        j < this.nodes.length;
+        j < this.neurons.length;
         j++
       ) {
         if (!this.inFocus(j, focusList)) continue;
-        const node2 = this.nodes[j];
+        const node2 = this.neurons[j];
 
         if (node2.type === "constant") continue;
 
@@ -1467,10 +1468,10 @@ export class Creature implements CreatureInternal {
   public makeRandomConnection(indx: number) {
     for (let attempts = 0; attempts < 12; attempts++) {
       const from = Math.min(
-        this.nodes.length - this.output - 1,
+        this.neurons.length - this.output - 1,
         Math.floor(Math.random() * indx + 1),
       );
-      const c = this.getConnection(from, indx);
+      const c = this.getSynapse(from, indx);
       if (c === null) {
         return this.connect(
           from,
@@ -1479,10 +1480,10 @@ export class Creature implements CreatureInternal {
         );
       }
     }
-    const firstOutputIndex = this.nodes.length - this.output;
+    const firstOutputIndex = this.neurons.length - this.output;
     for (let from = 0; from <= indx; from++) {
       if (from >= firstOutputIndex && from !== indx) continue;
-      const c = this.getConnection(from, indx);
+      const c = this.getSynapse(from, indx);
       if (c === null) {
         return this.connect(
           from,
@@ -1498,8 +1499,8 @@ export class Creature implements CreatureInternal {
     // List of possible connections that can be removed
     const possible = [];
 
-    for (let i = 0; i < this.connections.length; i++) {
-      const conn = this.connections[i];
+    for (let i = 0; i < this.synapses.length; i++) {
+      const conn = this.synapses[i];
       // Check if it is not disabling a node
       if (
         conn.to > conn.from
@@ -1511,7 +1512,7 @@ export class Creature implements CreatureInternal {
           if (
             (
               this.fromConnections(conn.from).length > 1 ||
-              this.nodes[conn.from].type === "input"
+              this.neurons[conn.from].type === "input"
             ) && this.toConnections(conn.to).length > 1
           ) {
             possible.push(conn);
@@ -1529,7 +1530,7 @@ export class Creature implements CreatureInternal {
   }
 
   private modWeight(focusList?: number[]) {
-    const allConnections = this.connections.filter(
+    const allConnections = this.synapses.filter(
       (c) => {
         return this.inFocus(c.from, focusList) ||
           this.inFocus(c.to, focusList);
@@ -1567,10 +1568,10 @@ export class Creature implements CreatureInternal {
     for (let attempts = 0; attempts < 12; attempts++) {
       // Has no effect on input node, so they are excluded
       const index = Math.floor(
-        Math.random() * (this.nodes.length - this.input) +
+        Math.random() * (this.neurons.length - this.input) +
           this.input,
       );
-      const node = this.nodes[index];
+      const node = this.neurons[index];
       if (node.type === "constant") continue;
       if (!this.inFocus(index, focusList) && attempts < 6) continue;
       node.mutate(Mutation.MOD_BIAS.name);
@@ -1582,11 +1583,11 @@ export class Creature implements CreatureInternal {
     for (let attempts = 0; attempts < 12; attempts++) {
       const index = Math.floor(
         Math.random() * (
-              this.nodes.length -
+              this.neurons.length -
               this.input
             ) + this.input,
       );
-      const node = this.nodes[index];
+      const node = this.neurons[index];
 
       if (node.type == "constant") continue;
 
@@ -1602,11 +1603,11 @@ export class Creature implements CreatureInternal {
     const possible = [];
     for (
       let i = this.input;
-      i < this.nodes.length - this.output;
+      i < this.neurons.length - this.output;
       i++
     ) {
       if (this.inFocus(i, focusList)) {
-        const node = this.nodes[i];
+        const node = this.neurons[i];
         if (node.type === "constant") continue;
 
         const c = this.selfConnection(node.index);
@@ -1631,11 +1632,11 @@ export class Creature implements CreatureInternal {
   private subSelfCon(focusList?: number[]) {
     // Check which nodes aren't self connected yet
     const possible = [];
-    for (let i = this.input; i < this.nodes.length; i++) {
+    for (let i = this.input; i < this.neurons.length; i++) {
       if (this.inFocus(i, focusList)) {
-        const node = this.nodes[i];
+        const node = this.neurons[i];
         const indx = node.index;
-        const c = this.getConnection(indx, indx);
+        const c = this.getSynapse(indx, indx);
         if (c !== null) {
           possible.push(node);
         }
@@ -1657,11 +1658,11 @@ export class Creature implements CreatureInternal {
   private addBackConn(focusList?: number[]) {
     // Create an array of all uncreated (back feed) connections
     const available = [];
-    for (let i = this.input; i < this.nodes.length; i++) {
+    for (let i = this.input; i < this.neurons.length; i++) {
       if (this.inFocus(i, focusList)) {
-        const node1 = this.nodes[i];
+        const node1 = this.neurons[i];
         for (let j = this.input; j < i; j++) {
-          const node2 = this.nodes[j];
+          const node2 = this.neurons[j];
           if (node2.type == "output") break;
           if (this.inFocus(node2.index, focusList)) {
             if (!node2.isProjectingTo(node1)) {
@@ -1685,17 +1686,17 @@ export class Creature implements CreatureInternal {
   private subBackConn(focusList?: number[]) {
     // Create an array of all uncreated (back fed) connections
     const available = [];
-    for (let to = this.input; to < this.nodes.length; to++) {
+    for (let to = this.input; to < this.neurons.length; to++) {
       if (this.inFocus(to, focusList)) {
         for (let from = 0; from < to; from++) {
           if (this.inFocus(from, focusList)) {
             if (
               (
                 this.fromConnections(from).length > 1 ||
-                this.nodes[from].type === "input"
+                this.neurons[from].type === "input"
               ) && this.toConnections(to).length > 1
             ) {
-              if (this.getConnection(from, to) != null) {
+              if (this.getSynapse(from, to) != null) {
                 available.push([from, to]);
               }
             }
@@ -1715,8 +1716,8 @@ export class Creature implements CreatureInternal {
   private swapNodes(focusList?: number[]) {
     // Has no effect on input node, so they are excluded
     if (
-      (this.nodes.length - this.input < 2) ||
-      (this.nodes.length - this.input - this.output < 2)
+      (this.neurons.length - this.input < 2) ||
+      (this.neurons.length - this.input - this.output < 2)
     ) {
       return;
     }
@@ -1725,12 +1726,12 @@ export class Creature implements CreatureInternal {
     for (let attempts = 0; attempts < 12; attempts++) {
       const index1 = Math.floor(
         Math.random() *
-            (this.nodes.length -
+            (this.neurons.length -
               this.input - this.output) + this.input,
       );
 
       if (this.inFocus(index1, focusList)) {
-        const tmpNode = this.nodes[index1];
+        const tmpNode = this.neurons[index1];
         if (tmpNode.type == "hidden") {
           node1 = tmpNode;
           break;
@@ -1742,12 +1743,12 @@ export class Creature implements CreatureInternal {
     for (let attempts = 0; attempts < 12; attempts++) {
       const index2 = Math.floor(
         Math.random() *
-            (this.nodes.length -
+            (this.neurons.length -
               this.input - this.output) + this.input,
       );
 
       if (this.inFocus(index2, focusList)) {
-        const tmpNode = this.nodes[index2];
+        const tmpNode = this.neurons[index2];
         if (tmpNode.type == "hidden") {
           node2 = tmpNode;
           break;
@@ -1855,11 +1856,11 @@ export class Creature implements CreatureInternal {
     this.DEBUG = false;
     const startTxt = JSON.stringify(this.internalJSON(), null, 2);
     this.DEBUG = holdDebug;
-    const maxTo = this.nodes.length - 1;
+    const maxTo = this.neurons.length - 1;
     const minTo = this.input;
 
     const connections: Synapse[] = [];
-    this.connections.forEach((c) => {
+    this.synapses.forEach((c) => {
       if (c.to > maxTo) {
         console.debug("Ignoring connection to above max", maxTo, c);
       } else if (c.to < minTo) {
@@ -1869,7 +1870,7 @@ export class Creature implements CreatureInternal {
       }
     });
 
-    this.connections = connections;
+    this.synapses = connections;
     this.clearCache();
 
     let nodeRemoved = true;
@@ -1878,10 +1879,10 @@ export class Creature implements CreatureInternal {
       nodeRemoved = false;
       for (
         let pos = this.input;
-        pos < this.nodes.length - this.output;
+        pos < this.neurons.length - this.output;
         pos++
       ) {
-        if (this.nodes[pos].type == "output") continue;
+        if (this.neurons[pos].type == "output") continue;
         if (
           this.fromConnections(pos).filter((c) => {
             return c.from !== c.to;
@@ -1894,7 +1895,7 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    this.nodes.forEach((node) => {
+    this.neurons.forEach((node) => {
       node.fix();
     });
 
@@ -1909,7 +1910,7 @@ export class Creature implements CreatureInternal {
   }
 
   nodeCount() {
-    return this.nodes.length;
+    return this.neurons.length;
   }
 
   /**
@@ -1921,32 +1922,32 @@ export class Creature implements CreatureInternal {
     }
 
     const json: CreatureExport = {
-      nodes: new Array<NeuronExport>(
-        this.nodes.length - this.input,
+      neurons: new Array<NeuronExport>(
+        this.neurons.length - this.input,
       ),
-      connections: new Array<SynapseExport>(this.connections.length),
+      synapses: new Array<SynapseExport>(this.synapses.length),
       input: this.input,
       output: this.output,
       tags: this.tags ? this.tags.slice() : undefined,
     };
 
     const uuidMap = new Map<number, string>();
-    for (let i = this.nodes.length; i--;) {
-      const node = this.nodes[i];
-      uuidMap.set(i, node.uuid ? node.uuid : `unknown-${i}`);
-      if (node.type == "input") continue;
+    for (let i = this.neurons.length; i--;) {
+      const neuron = this.neurons[i];
+      uuidMap.set(i, neuron.uuid ? neuron.uuid : `unknown-${i}`);
+      if (neuron.type == "input") continue;
 
-      const tojson = node.exportJSON();
+      const tojson = neuron.exportJSON();
 
-      json.nodes[i - this.input] = tojson;
+      json.neurons[i - this.input] = tojson;
     }
 
-    for (let i = this.connections.length; i--;) {
-      const exportJSON = (this.connections[i] as Synapse).exportJSON(
+    for (let i = this.synapses.length; i--;) {
+      const exportJSON = (this.synapses[i] as Synapse).exportJSON(
         uuidMap,
       );
 
-      json.connections[i] = exportJSON;
+      json.synapses[i] = exportJSON;
     }
 
     return json;
@@ -1955,30 +1956,31 @@ export class Creature implements CreatureInternal {
   traceJSON(): CreatureTrace {
     const json = this.exportJSON();
 
-    const traceNodes = Array<NeuronTrace>(json.nodes.length);
+    const traceNeurons = Array<NeuronTrace>(json.neurons.length);
     let exportIndex = 0;
-    this.nodes.forEach((n) => {
+    this.neurons.forEach((n) => {
       if (n.type !== "input") {
         const indx = n.index;
         const ns = this.state.node(indx);
 
-        const traceNode: NeuronExport = json.nodes[exportIndex] as NeuronTrace;
+        const traceNeuron: NeuronExport = json
+          .neurons[exportIndex] as NeuronTrace;
 
-        (traceNode as NeuronTrace).trace = ns;
-        traceNodes[exportIndex] = traceNode as NeuronTrace;
+        (traceNeuron as NeuronTrace).trace = ns;
+        traceNeurons[exportIndex] = traceNeuron as NeuronTrace;
         exportIndex++;
       }
     });
-    json.nodes = traceNodes;
-    const traceConnections = Array<SynapseTrace>(json.connections.length);
-    this.connections.forEach((c, indx) => {
-      const exportConnection = json.connections[indx] as SynapseTrace;
+    json.neurons = traceNeurons;
+    const traceConnections = Array<SynapseTrace>(json.synapses.length);
+    this.synapses.forEach((c, indx) => {
+      const exportConnection = json.synapses[indx] as SynapseTrace;
       const cs = this.state.connection(c.from, c.to);
       exportConnection.trace = cs;
 
       traceConnections[indx] = exportConnection;
     });
-    json.connections = traceConnections;
+    json.synapses = traceConnections;
 
     return json as CreatureTrace;
   }
@@ -1990,29 +1992,29 @@ export class Creature implements CreatureInternal {
 
     const json: CreatureInternal = {
       uuid: this.uuid,
-      nodes: new Array<NeuronInternal>(
-        this.nodes.length - this.input,
+      neurons: new Array<NeuronInternal>(
+        this.neurons.length - this.input,
       ),
-      connections: new Array<SynapseInternal>(this.connections.length),
+      synapses: new Array<SynapseInternal>(this.synapses.length),
       input: this.input,
       output: this.output,
       tags: this.tags ? this.tags.slice() : undefined,
     };
 
-    for (let i = this.nodes.length; i--;) {
-      const node = this.nodes[i];
+    for (let i = this.neurons.length; i--;) {
+      const node = this.neurons[i];
 
       if (node.type == "input") continue;
 
       const tojson = node.internalJSON(i);
 
-      json.nodes[i - this.input] = tojson;
+      json.neurons[i - this.input] = tojson;
     }
 
-    for (let i = this.connections.length; i--;) {
-      const internalJSON = (this.connections[i] as Synapse).internalJSON();
+    for (let i = this.synapses.length; i--;) {
+      const internalJSON = (this.synapses[i] as Synapse).internalJSON();
 
-      json.connections[i] = internalJSON;
+      json.synapses[i] = internalJSON;
     }
 
     return json;
@@ -2020,7 +2022,7 @@ export class Creature implements CreatureInternal {
 
   loadFrom(json: CreatureInternal | CreatureExport, validate: boolean) {
     this.uuid = (json as CreatureInternal).uuid;
-    this.nodes.length = json.nodes.length;
+    this.neurons.length = json.neurons.length;
     if (json.tags) {
       this.tags = [...json.tags];
     }
@@ -2028,21 +2030,22 @@ export class Creature implements CreatureInternal {
     this.clearState();
 
     const uuidMap = new Map<string, number>();
-    this.nodes = new Array(json.nodes.length);
+    this.neurons = new Array(this.neurons.length);
     for (let i = json.input; i--;) {
       const key = `input-${i}`;
       uuidMap.set(key, i);
       const n = new Neuron(key, "input", undefined, this);
       n.index = i;
-      this.nodes[i] = n;
+      this.neurons[i] = n;
     }
 
     let pos = json.input;
     let outputIndx = 0;
-    for (let i = 0; i < json.nodes.length; i++) {
-      const jn = json.nodes[i];
+    const neurons = json.neurons;
+    for (let i = 0; i < neurons.length; i++) {
+      const jn = neurons[i];
 
-      if ((jn as NeuronInternal).type === "input") continue;
+      if (jn.type === "input") continue;
       if (jn.type == "output") {
         if (!jn.uuid || jn.uuid.startsWith("output-") == false) {
           uuidMap.set(jn.uuid ? jn.uuid : "", pos);
@@ -2060,30 +2063,31 @@ export class Creature implements CreatureInternal {
 
       uuidMap.set(n.uuid, pos);
 
-      this.nodes[pos] = n;
+      this.neurons[pos] = n;
       pos++;
     }
 
-    this.connections.length = 0;
-    const cLen = json.connections.length;
+    this.synapses.length = 0;
+    const cLen = json.synapses.length;
+    const synapses = json.synapses;
     for (let i = 0; i < cLen; i++) {
-      const conn = json.connections[i];
+      const synapse = synapses[i];
 
-      const from = (conn as SynapseExport).fromUUID
-        ? uuidMap.get((conn as SynapseExport).fromUUID)
-        : (conn as SynapseInternal).from;
-      const to = (conn as SynapseExport).toUUID
-        ? uuidMap.get((conn as SynapseExport).toUUID)
-        : (conn as SynapseInternal).to;
+      const from = (synapse as SynapseExport).fromUUID
+        ? uuidMap.get((synapse as SynapseExport).fromUUID)
+        : (synapse as SynapseInternal).from;
+      const to = (synapse as SynapseExport).toUUID
+        ? uuidMap.get((synapse as SynapseExport).toUUID)
+        : (synapse as SynapseInternal).to;
       const connection = this.connect(
         from ? from : 0,
         to ? to : 0,
-        conn.weight,
-        conn.type,
+        synapse.weight,
+        synapse.type,
       );
-      if ((conn as SynapseTrace).trace) {
+      if ((synapse as SynapseTrace).trace) {
         const cs = this.state.connection(connection.from, connection.to);
-        const trace = (conn as SynapseTrace).trace;
+        const trace = (synapse as SynapseTrace).trace;
         Object.assign(cs, trace);
       }
     }
@@ -2102,6 +2106,21 @@ export class Creature implements CreatureInternal {
     const creature = new Creature(json.input, json.output, {
       lazyInitialization: true,
     });
+
+    const legacy = (json as unknown) as {
+      nodes?: [];
+      neurons?: [];
+      connections?: [];
+      synapses?: [];
+    };
+    if (legacy.nodes) {
+      legacy.neurons = legacy.nodes;
+      delete legacy.nodes;
+    }
+    if (legacy.connections) {
+      legacy.synapses = legacy.connections;
+      delete legacy.connections;
+    }
     creature.loadFrom(json, validate);
 
     return creature;

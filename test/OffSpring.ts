@@ -12,7 +12,7 @@ import { assertFalse } from "https://deno.land/std@0.212.0/assert/assert_false.t
 
 Deno.test("OffSpring", async () => {
   const creature = Creature.fromJSON({
-    "nodes": [{
+    "neurons": [{
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
@@ -28,7 +28,7 @@ Deno.test("OffSpring", async () => {
       "squash": "BIPOLAR_SIGMOID",
       "index": 2,
     }],
-    "connections": [{
+    "synapses": [{
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,
@@ -51,7 +51,7 @@ Deno.test("OffSpring", async () => {
 
 Deno.test("CrossOver", () => {
   const a = Creature.fromJSON({
-    "nodes": [
+    "neurons": [
       {
         "bias": 0.1,
         "index": 2,
@@ -77,7 +77,7 @@ Deno.test("CrossOver", () => {
         "squash": "LOGISTIC",
       },
     ],
-    "connections": [
+    "synapses": [
       {
         "weight": -0.05643947781091945,
         "from": 0,
@@ -141,7 +141,7 @@ Deno.test("CrossOver", () => {
   for (let i = 0; i < 100; i++) {
     const c = Offspring.bread(a, b);
 
-    const n = c.nodes[c.nodes.length - 2];
+    const n = c.neurons[c.neurons.length - 2];
     assertEquals(n.type, "output");
 
     if (n.squash == "IF") {
@@ -166,7 +166,7 @@ Deno.test(
 
 function check() {
   const creature: CreatureInternal = {
-    nodes: [
+    neurons: [
       {
         uuid: crypto.randomUUID(),
         bias: 0,
@@ -189,7 +189,7 @@ function check() {
         squash: "MINIMUM",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.1,
         from: 1,
@@ -237,8 +237,8 @@ function check() {
 
   const UUIDs = new Set<string>();
   toList2.forEach((c) => {
-    if (n2.nodes[c.from].type == "output") {
-      const uuid = n2.nodes[c.from].uuid;
+    if (n2.neurons[c.from].type == "output") {
+      const uuid = n2.neurons[c.from].uuid;
       UUIDs.add(uuid ? uuid : "unknown");
     }
   });
@@ -249,10 +249,10 @@ function check() {
 
   const n3 = Offspring.bread(n1, n2);
 
-  const outputUUID = creature.nodes[2].uuid;
+  const outputUUID = creature.neurons[2].uuid;
 
   let outputIndex = -1;
-  n3.nodes.forEach((n, idx) => {
+  n3.neurons.forEach((n, idx) => {
     if (n.uuid == outputUUID) {
       outputIndex = idx;
     }
@@ -261,7 +261,7 @@ function check() {
   const toList3 = n3.toConnections(outputIndex);
 
   toList3.forEach((c) => {
-    const uuid = n3.nodes[c.from].uuid;
+    const uuid = n3.neurons[c.from].uuid;
     if (uuid) {
       UUIDs.delete(uuid);
     }
@@ -278,7 +278,7 @@ Deno.test(
   "Many Outputs",
   () => {
     const creature: CreatureInternal = {
-      nodes: [
+      neurons: [
         {
           uuid: crypto.randomUUID(),
           bias: 0,
@@ -351,7 +351,7 @@ Deno.test(
           squash: "IDENTITY",
         },
       ],
-      connections: [
+      synapses: [
         {
           weight: -0.1,
           from: 1,
@@ -420,7 +420,7 @@ Deno.test(
   () => {
     const left = Creature.fromJSON(
       {
-        nodes: [
+        neurons: [
           {
             type: "hidden",
             uuid: "A0",
@@ -452,7 +452,7 @@ Deno.test(
             squash: "IDENTITY",
           },
         ],
-        connections: [
+        synapses: [
           {
             weight: 1,
             fromUUID: "input-0",
@@ -488,7 +488,7 @@ Deno.test(
 
     const right = Creature.fromJSON(
       {
-        nodes: [
+        neurons: [
           {
             type: "hidden",
             uuid: "C0",
@@ -520,7 +520,7 @@ Deno.test(
             squash: "IDENTITY",
           },
         ],
-        connections: [
+        synapses: [
           {
             weight: 1,
             fromUUID: "input-2",
@@ -576,7 +576,7 @@ function checkChild(child: Creature) {
   let aBranchFound = false;
   let bBranchFound = false;
   let cBranchFound = false;
-  json.nodes.forEach((n) => {
+  json.neurons.forEach((n) => {
     if (n.uuid == "A1" || n.uuid == "A0") {
       aBranchFound = true;
     }

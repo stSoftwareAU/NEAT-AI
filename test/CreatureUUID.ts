@@ -1,10 +1,10 @@
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import {
   assert,
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/architecture/Neat.ts";
 
@@ -12,7 +12,7 @@ import { Neat } from "../src/architecture/Neat.ts";
 
 Deno.test("knownName", async () => {
   const creature = Creature.fromJSON({
-    "nodes": [{
+    "neurons": [{
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
@@ -28,7 +28,7 @@ Deno.test("knownName", async () => {
       "squash": "BIPOLAR_SIGMOID",
       "index": 2,
     }],
-    "connections": [{
+    "synapses": [{
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,
@@ -45,7 +45,7 @@ Deno.test("knownName", async () => {
   console.log("UUID", uuid);
 
   assert(
-    uuid == "7750d0bf-6972-5e4b-92f5-1bbd9da220f7",
+    uuid == "df3405ad-5650-549a-975d-f46211716cd4",
     "Wrong UUID was: " + uuid,
   );
 });
@@ -53,7 +53,7 @@ Deno.test("knownName", async () => {
 Deno.test("ignoreTags", async () => {
   const creature = Creature.fromJSON({
     uuid: crypto.randomUUID(),
-    nodes: [
+    neurons: [
       {
         bias: 0,
         index: 5,
@@ -73,7 +73,7 @@ Deno.test("ignoreTags", async () => {
         squash: "IDENTITY",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.1,
         from: 1,
@@ -129,7 +129,7 @@ Deno.test("ignoreTags", async () => {
 
   /** Manually update if needed. */
   assert(
-    uuid2 == "91c2c15c-3ba4-52de-bf60-5c1c129875b2",
+    uuid2 == "87dc2a04-b5a2-5bf9-bfb5-dd9419f2f962",
     "Wrong UUID was: " + uuid2,
   );
 });
@@ -137,7 +137,7 @@ Deno.test("ignoreTags", async () => {
 Deno.test("keepUUID", () => {
   const creature: CreatureInternal = {
     uuid: crypto.randomUUID(),
-    nodes: [
+    neurons: [
       {
         bias: 0,
         index: 5,
@@ -157,7 +157,7 @@ Deno.test("keepUUID", () => {
         squash: "IDENTITY",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.1,
         from: 1,
@@ -195,7 +195,7 @@ Deno.test("keepUUID", () => {
 
 Deno.test("generateUUID", async () => {
   const creature: CreatureInternal = {
-    nodes: [
+    neurons: [
       {
         bias: 0,
         index: 5,
@@ -215,7 +215,7 @@ Deno.test("generateUUID", async () => {
         squash: "IDENTITY",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.1,
         from: 1,

@@ -9,7 +9,7 @@ import { Creature } from "../src/Creature.ts";
 
 Deno.test("generateUUID", () => {
   const creature: CreatureInternal = {
-    nodes: [
+    neurons: [
       {
         bias: 0,
         index: 5,
@@ -29,7 +29,7 @@ Deno.test("generateUUID", () => {
         squash: "IDENTITY",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.1,
         from: 1,
@@ -56,14 +56,14 @@ Deno.test("generateUUID", () => {
 
   const n1 = Creature.fromJSON(creature);
 
-  n1.nodes.forEach((n) => {
+  n1.neurons.forEach((n) => {
     assert(n.uuid, "Must have a UUID");
   });
 
   const j1 = n1.exportJSON();
   const n2 = Creature.fromJSON(j1);
 
-  for (let i = 0; i < n1.nodes.length; i++) {
-    assertEquals(n1.nodes[i].uuid, n2.nodes[i].uuid);
+  for (let i = 0; i < n1.neurons.length; i++) {
+    assertEquals(n1.neurons[i].uuid, n2.neurons[i].uuid);
   }
 });

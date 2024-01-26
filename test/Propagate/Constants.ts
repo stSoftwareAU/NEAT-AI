@@ -2,15 +2,15 @@ import {
   assertAlmostEquals,
 } from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Creature } from "../../src/Creature.ts";
+import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 function makeCreature() {
   const creatureJSON: CreatureExport = {
-    nodes: [
+    neurons: [
       {
         type: "output",
         squash: "IDENTITY",
@@ -18,7 +18,7 @@ function makeCreature() {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
       { fromUUID: "input-1", toUUID: "output-0", weight: 1 },
       { fromUUID: "input-2", toUUID: "output-0", weight: 1 },

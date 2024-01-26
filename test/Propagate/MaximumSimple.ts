@@ -1,11 +1,9 @@
 import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
-
-import { Costs } from "../../src/Costs.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
+import { Costs } from "../../src/Costs.ts";
+import { Creature } from "../../src/Creature.ts";
+import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -38,12 +36,12 @@ Deno.test("PropagateMaximumSimple", () => {
     JSON.stringify(ts, null, 2),
   );
 
-  exportJSON.nodes.forEach((node, indx) => {
+  exportJSON.neurons.forEach((node, indx) => {
     node.bias = (node.bias ? node.bias : 0) +
       ((indx % 2 == 0 ? 1 : -1) * 0.1);
   });
 
-  exportJSON.connections.forEach((c, indx) => {
+  exportJSON.synapses.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
   });
 
@@ -110,7 +108,7 @@ function calculateError(
 
 function makeCreature() {
   const creatureJson: CreatureExport = {
-    nodes: [
+    neurons: [
       {
         type: "hidden",
         uuid: "hidden-A",
@@ -130,7 +128,7 @@ function makeCreature() {
         squash: "MAXIMUM",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.7,
         fromUUID: "input-0",

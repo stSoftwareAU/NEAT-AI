@@ -9,13 +9,13 @@ function make(population: CreatureInternal[]) {
   const networks: Creature[] = [];
 
   population.forEach((ni) => {
-    if (ni.nodes.length == 0) {
-      ni.nodes.push({
+    if (ni.neurons.length == 0) {
+      ni.neurons.push({
         index: 1,
         type: "output",
         squash: "identity",
       });
-      ni.connections.push({
+      ni.synapses.push({
         from: 0,
         to: 1,
         weight: 1,
@@ -29,11 +29,11 @@ function make(population: CreatureInternal[]) {
 }
 Deno.test("1make", () => {
   const population: CreatureInternal[] = [
-    { input: 1, output: 1, score: 1, nodes: [], connections: [] },
-    { input: 1, output: 1, score: -1, nodes: [], connections: [] },
-    { input: 1, output: 1, score: 3, nodes: [], connections: [] },
-    { input: 1, output: 1, score: 1, nodes: [], connections: [] },
-    { input: 1, output: 1, score: 2, nodes: [], connections: [] },
+    { input: 1, output: 1, score: 1, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: 3, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: 1, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: 2, neurons: [], synapses: [] },
   ];
 
   const elitists = makeElitists(make(population));
@@ -52,11 +52,11 @@ Deno.test("1make", () => {
 
 Deno.test("3make", () => {
   const population: CreatureInternal[] = [
-    { input: 0, output: 0, score: 1, nodes: [], connections: [] },
-    { input: 0, output: 0, score: -1, nodes: [], connections: [] },
-    { input: 0, output: 0, score: 3, nodes: [], connections: [] },
-    { input: 0, output: 0, score: 1, nodes: [], connections: [] },
-    { input: 0, output: 0, score: 2, nodes: [], connections: [] },
+    { input: 0, output: 0, score: 1, neurons: [], synapses: [] },
+    { input: 0, output: 0, score: -1, neurons: [], synapses: [] },
+    { input: 0, output: 0, score: 3, neurons: [], synapses: [] },
+    { input: 0, output: 0, score: 1, neurons: [], synapses: [] },
+    { input: 0, output: 0, score: 2, neurons: [], synapses: [] },
   ];
 
   const elitists = makeElitists(make(population), 3);
@@ -74,9 +74,9 @@ Deno.test("3make", () => {
 
 Deno.test("3make2", () => {
   const population: CreatureInternal[] = [
-    { input: 0, output: 0, score: -3, nodes: [], connections: [] },
-    { input: 0, output: 0, score: -2, nodes: [], connections: [] },
-    { input: 0, output: 0, score: -1, nodes: [], connections: [] },
+    { input: 0, output: 0, score: -3, neurons: [], synapses: [] },
+    { input: 0, output: 0, score: -2, neurons: [], synapses: [] },
+    { input: 0, output: 0, score: -1, neurons: [], synapses: [] },
   ];
 
   const elitists = makeElitists(make(population), 3);
@@ -94,8 +94,8 @@ Deno.test("3make2", () => {
 
 Deno.test("short", () => {
   const population: CreatureInternal[] = [
-    { input: 0, output: 0, score: -2, nodes: [], connections: [] },
-    { input: 0, output: 0, score: -1, nodes: [], connections: [] },
+    { input: 0, output: 0, score: -2, neurons: [], synapses: [] },
+    { input: 0, output: 0, score: -1, neurons: [], synapses: [] },
   ];
 
   const elitists = makeElitists(make(population), 3);
@@ -117,8 +117,8 @@ Deno.test("backwards", () => {
       input: 0,
       output: 0,
       score: i,
-      nodes: [],
-      connections: [],
+      neurons: [],
+      synapses: [],
     });
   }
 
@@ -142,8 +142,8 @@ Deno.test("forward", () => {
       input: 0,
       output: 0,
       score: 1000 - i,
-      nodes: [],
-      connections: [],
+      neurons: [],
+      synapses: [],
     });
   }
 
@@ -170,8 +170,8 @@ Deno.test("performance", () => {
       input: 0,
       output: 0,
       score: Math.random(),
-      nodes: [],
-      connections: [],
+      neurons: [],
+      synapses: [],
     });
   }
   let totalMS = 0;
@@ -208,16 +208,16 @@ Deno.test("order", () => {
         input: 0,
         output: 0,
         score: v,
-        nodes: [],
-        connections: [],
+        neurons: [],
+        synapses: [],
       });
     }
     population.push({
       input: 0,
       output: 0,
       score: v,
-      nodes: [],
-      connections: [],
+      neurons: [],
+      synapses: [],
     });
   }
 
@@ -254,96 +254,96 @@ Deno.test("NaN", () => {
     input: 0,
     output: 0,
     score: NaN,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: undefined,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: -1,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: NaN,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: -Infinity,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: NaN,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: Infinity,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: NaN,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: 0,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: NaN,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: 1,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   population.push({
     input: 0,
     output: 0,
     score: NaN,
-    nodes: [],
-    connections: [],
+    neurons: [],
+    synapses: [],
   });
 
   const elitists = makeElitists(make(population), 3);

@@ -8,10 +8,10 @@ import { Softplus } from "../src/methods/activations/types/Softplus.ts";
 
 Deno.test("Softplus", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0, type: "output", squash: "Softplus", index: 3 },
     ],
-    connections: [
+    synapses: [
       { weight: 1, from: 0, to: 1 },
     ],
     input: 1,

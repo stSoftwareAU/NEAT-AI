@@ -10,7 +10,7 @@ import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 function makeCreature() {
   const creatureJSON: CreatureExport = {
-    nodes: [
+    neurons: [
       {
         type: "output",
         squash: "IDENTITY",
@@ -18,7 +18,7 @@ function makeCreature() {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { fromUUID: "input-1", toUUID: "output-0", weight: 1 },
     ],
     input: 3,
@@ -39,12 +39,10 @@ Deno.test("PI", () => {
   const traceDir = ".trace";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
-    // useAverageWeight: "Yes",
     generations: 0,
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
     learningRate: 1,
-    // disableExponentialScaling:true
   });
   Deno.writeTextFileSync(
     ".trace/0.json",

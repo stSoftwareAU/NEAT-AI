@@ -6,7 +6,7 @@ import { SynapseInternal } from "../src/architecture/SynapseInterfaces.ts";
 Deno.test("useUUIDinsteadOfPosition", () => {
   const creature: CreatureInternal = {
     uuid: "60d9fde3-465a-4022-956a-c425fc8e62cc",
-    nodes: [
+    neurons: [
       {
         bias: 0,
         index: 5,
@@ -26,7 +26,7 @@ Deno.test("useUUIDinsteadOfPosition", () => {
         squash: "IDENTITY",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.1,
         from: 1,
@@ -54,12 +54,12 @@ Deno.test("useUUIDinsteadOfPosition", () => {
   const n1 = Creature.fromJSON(creature);
   const exported = n1.exportJSON();
 
-  exported.nodes.forEach((n) => {
+  exported.neurons.forEach((n) => {
     const indx = (n as { index?: number }).index;
     assert(!Number.isFinite(indx), `should NOT have an index ${indx}`);
   });
 
-  exported.connections.forEach((c) => {
+  exported.synapses.forEach((c) => {
     const from = ((c as unknown) as SynapseInternal).from;
     assert(!Number.isFinite(from), `should NOT have an from ${from}`);
   });

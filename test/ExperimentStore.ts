@@ -8,7 +8,7 @@ import { Neat } from "../src/architecture/Neat.ts";
 
 Deno.test("previous", async () => {
   const creature = Creature.fromJSON({
-    "nodes": [{
+    "neurons": [{
       "bias": 0,
       "type": "input",
       "squash": "LOGISTIC",
@@ -24,7 +24,7 @@ Deno.test("previous", async () => {
       "squash": "BIPOLAR_SIGMOID",
       "index": 2,
     }],
-    "connections": [{
+    "synapses": [{
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,

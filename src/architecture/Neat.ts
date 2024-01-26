@@ -450,7 +450,7 @@ export class Neat {
     ) {
       const n = elitists[0];
       const creativeThinking = Creature.fromJSON(n.exportJSON());
-      const weightScale = 1 / creativeThinking.connections.length;
+      const weightScale = 1 / creativeThinking.synapses.length;
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
         creativeThinking.addConnection(
           Math.random() < this.config.focusRate
@@ -799,14 +799,14 @@ export class Neat {
 
       if (
         mutationMethod === Mutation.ADD_NODE &&
-        creature.nodes.length >= this.config.maximumNumberOfNodes
+        creature.neurons.length >= this.config.maximumNumberOfNodes
       ) {
         continue;
       }
 
       if (
         mutationMethod === Mutation.ADD_CONN &&
-        creature.connections.length >= this.config.maxConns
+        creature.synapses.length >= this.config.maxConns
       ) {
         continue;
       }

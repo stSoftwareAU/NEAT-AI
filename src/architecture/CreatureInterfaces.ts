@@ -18,22 +18,22 @@ interface CreatureCommon extends TagsInterface {
 
 export interface CreatureInternal extends CreatureCommon {
   uuid?: string;
-  connections: SynapseInternal[];
+  synapses: SynapseInternal[];
 
-  nodes: NeuronInternal[];
+  neurons: NeuronInternal[];
 
   /** The error plus a discount because of the complexity of the genome */
   score?: number;
 }
 
 export interface CreatureExport extends CreatureCommon {
-  connections: SynapseExport[];
+  synapses: SynapseExport[];
 
-  nodes: NeuronExport[];
+  neurons: NeuronExport[];
 }
 
 export interface CreatureTrace extends CreatureExport {
-  connections: SynapseTrace[];
+  synapses: SynapseTrace[];
 
-  nodes: NeuronTrace[];
+  neurons: NeuronTrace[];
 }

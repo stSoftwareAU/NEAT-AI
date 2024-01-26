@@ -13,7 +13,7 @@ import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 /** Make sure the compact routine remove hidden nodes with no affect */
 Deno.test("removeDanglingHidden", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
       { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5 },
@@ -32,7 +32,7 @@ Deno.test("removeDanglingHidden", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 1, to: 3, weight: 0.1 },
       { from: 3, to: 8, weight: 0.2 },
       { from: 0, to: 8, weight: 0.25 },
@@ -74,8 +74,8 @@ Deno.test("CompactSimple", () => {
 
   a.validate();
 
-  const startNodes = a.nodes.length;
-  const startConnections = a.connections.length;
+  const startNodes = a.neurons.length;
+  const startConnections = a.synapses.length;
 
   const input = [0.1, 0.2];
   const startOut = a.activate(input);
@@ -90,8 +90,8 @@ Deno.test("CompactSimple", () => {
       ".b.json",
       JSON.stringify(b.internalJSON(), null, 2),
     );
-    const endNodes = b.nodes.length;
-    const endConnections = b.connections.length;
+    const endNodes = b.neurons.length;
+    const endConnections = b.synapses.length;
 
     const endOut = b.activate(input);
 
@@ -136,8 +136,8 @@ Deno.test("RandomizeCompact", () => {
 
     a.validate();
 
-    const startNodes = a.nodes.length;
-    const startConnections = a.connections.length;
+    const startNodes = a.neurons.length;
+    const startConnections = a.synapses.length;
 
     const input = [0.1, 0.2];
     const startOut = a.activate(input);
@@ -158,8 +158,8 @@ Deno.test("RandomizeCompact", () => {
       );
       b.DEBUG = true;
       b.validate();
-      const endNodes = b.nodes.length;
-      const endConnections = b.connections.length;
+      const endNodes = b.neurons.length;
+      const endConnections = b.synapses.length;
 
       const endOut = b.activate(input);
 
@@ -185,7 +185,7 @@ Deno.test("RandomizeCompact", () => {
 
 Deno.test("CompactSelf", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
       { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5 },
@@ -198,7 +198,7 @@ Deno.test("CompactSelf", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 1, to: 3, weight: 0.1 },
       { from: 3, to: 8, weight: 0.2, type: "positive" },
       { from: 0, to: 8, weight: 0.25, type: "positive" },
@@ -217,8 +217,8 @@ Deno.test("CompactSelf", () => {
 
   a.validate();
 
-  const startNodes = a.nodes.length;
-  const startConnections = a.connections.length;
+  const startNodes = a.neurons.length;
+  const startConnections = a.synapses.length;
 
   const input = [0.1, 0.2, 0.3];
   const aOut = a.activate(input);
@@ -237,8 +237,8 @@ Deno.test("CompactSelf", () => {
       ".b.json",
       JSON.stringify(b.internalJSON(), null, 2),
     );
-    const endNodes = b.nodes.length;
-    const endConnections = b.connections.length;
+    const endNodes = b.neurons.length;
+    const endConnections = b.synapses.length;
 
     const endOut = b.activate(input);
 

@@ -8,7 +8,7 @@ import { CreatureState } from "../src/architecture/CreatureState.ts";
 
 Deno.test("makeActivation", () => {
   const creature = Creature.fromJSON({
-    "nodes": [{
+    "neurons": [{
       "bias": 0,
       "type": "hidden",
       "squash": "LOGISTIC",
@@ -24,7 +24,7 @@ Deno.test("makeActivation", () => {
       "squash": "BIPOLAR_SIGMOID",
       "index": 4,
     }],
-    "connections": [{
+    "synapses": [{
       "weight": 0.9967556172986067,
       "from": 1,
       "to": 2,

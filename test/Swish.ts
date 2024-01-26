@@ -8,10 +8,10 @@ import { Swish } from "../src/methods/activations/types/Swish.ts";
 
 Deno.test("Swish", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0, type: "output", squash: "Swish", index: 3 },
     ],
-    connections: [
+    synapses: [
       { weight: 1, from: 0, to: 1 },
     ],
     input: 1,

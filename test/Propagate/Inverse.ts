@@ -21,7 +21,7 @@ function makeCreature() {
    *  o10=(h8 * -0.4) + (h7 * 0.2) + 0.3
    */
   const creatureJsonA: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "hidden", index: 5, squash: "INVERSE", bias: -0.2 },
       { type: "hidden", index: 6, squash: "INVERSE", bias: -0.1 },
       { type: "hidden", index: 7, squash: "INVERSE", bias: 0.1 },
@@ -41,7 +41,7 @@ function makeCreature() {
         bias: 0.3,
       },
     ],
-    connections: [
+    synapses: [
       /* h5=i0 + i1 - 0.2 */
       { from: 0, to: 5, weight: 1 },
       { from: 1, to: 5, weight: 1 },
@@ -134,12 +134,12 @@ Deno.test("propagateInverseRandom", async () => {
     JSON.stringify(internalJSON, null, 2),
   );
 
-  internalJSON.nodes.forEach((node, indx) => {
+  internalJSON.neurons.forEach((node, indx) => {
     node.bias = (node.bias ? node.bias : 0) +
       ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
-  internalJSON.connections.forEach((c, indx) => {
+  internalJSON.synapses.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
@@ -190,14 +190,14 @@ Deno.test("propagateInverseRandom", async () => {
       JSON.stringify(result2.trace, null, 2),
     );
 
-    creatureA.nodes.forEach((n, indx) => {
-      const biasB = creatureB.nodes[indx].bias;
+    creatureA.neurons.forEach((n, indx) => {
+      const biasB = creatureB.neurons[indx].bias;
       assertAlmostEquals(n.bias ? n.bias : 0, biasB ? biasB : 0, 0.05);
     });
 
-    creatureA.connections.forEach((c, indx) => {
+    creatureA.synapses.forEach((c, indx) => {
       const weightA = c.weight;
-      const weightB = creatureB.connections[indx].weight;
+      const weightB = creatureB.synapses[indx].weight;
       assertAlmostEquals(weightA, weightB, 1);
     });
 

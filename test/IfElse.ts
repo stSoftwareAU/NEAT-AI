@@ -10,7 +10,7 @@ import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 Deno.test("if-bias", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "input", index: 0 },
       { type: "input", index: 1 },
       { type: "input", index: 2 },
@@ -22,7 +22,7 @@ Deno.test("if-bias", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 1, to: 3, weight: 1 },
       { from: 2, to: 4, weight: 1, type: "positive" },
       { from: 3, to: 4, weight: 1, type: "condition" },
@@ -51,7 +51,7 @@ Deno.test("if-bias", () => {
 
 Deno.test("if/Else", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
       { type: "input", squash: "LOGISTIC", index: 2 },
@@ -62,7 +62,7 @@ Deno.test("if/Else", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 2, to: 3, weight: 1, type: "positive" },
       { from: 1, to: 3, weight: 1, type: "condition" },
       { from: 0, to: 3, weight: 1, type: "negative" },
@@ -92,7 +92,7 @@ Deno.test("if/Else", () => {
 
 Deno.test("if-fix", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
       { type: "input", squash: "LOGISTIC", index: 2 },
@@ -105,7 +105,7 @@ Deno.test("if-fix", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 2, to: 5, weight: 1, type: "positive" },
       { from: 1, to: 5, weight: 1, type: "condition" },
       { from: 4, to: 5, weight: 1, type: "negative" },

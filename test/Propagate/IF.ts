@@ -2,7 +2,6 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.212.0/assert/mod.ts";
-
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -46,7 +45,7 @@ Deno.test("PropagateWeightsIF", async () => {
       JSON.stringify(exportJSON, null, 2),
     );
 
-    exportJSON.connections.forEach((c, indx) => {
+    exportJSON.synapses.forEach((c, indx) => {
       if (c.type === "positive" || c.type === "negative") {
         c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.25);
       }
@@ -145,7 +144,7 @@ Deno.test("PropagateBiasIF", async () => {
       JSON.stringify(exportJSON, null, 2),
     );
 
-    exportJSON.nodes.forEach((node, indx) => {
+    exportJSON.neurons.forEach((node, indx) => {
       if (node.type == "hidden") {
         node.bias = (node.bias ? node.bias : 0) +
           ((indx % 2 == 0 ? 1 : -1) * 0.25);
@@ -206,9 +205,9 @@ Deno.test("PropagateBiasIF", async () => {
       JSON.stringify(resultC.trace, null, 2),
     );
 
-    const aHidden1 = creatureA.nodes.find((node) => node.uuid === "hidden-1");
-    const bHidden1 = creatureB.nodes.find((node) => node.uuid === "hidden-1");
-    const cHidden1 = creatureC.nodes.find((node) => node.uuid === "hidden-1");
+    const aHidden1 = creatureA.neurons.find((node) => node.uuid === "hidden-1");
+    const bHidden1 = creatureB.neurons.find((node) => node.uuid === "hidden-1");
+    const cHidden1 = creatureC.neurons.find((node) => node.uuid === "hidden-1");
 
     const diffAB = Math.abs((aHidden1?.bias ?? 0) - (bHidden1?.bias ?? 0));
     const diffAC = Math.abs((aHidden1?.bias ?? 0) - (cHidden1?.bias ?? 0));
@@ -237,7 +236,7 @@ function calculateError(
 
 function makeCreature() {
   const creatureJson: CreatureExport = {
-    nodes: [
+    neurons: [
       {
         type: "hidden",
         uuid: "hidden-0",
@@ -275,7 +274,7 @@ function makeCreature() {
         squash: "IF",
       },
     ],
-    connections: [
+    synapses: [
       {
         weight: -0.7,
         fromUUID: "input-0",

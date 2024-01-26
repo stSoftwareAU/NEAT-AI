@@ -8,10 +8,10 @@ import { Upgrade } from "../src/reconstruct/Upgrade.ts";
 
 Deno.test("correctExport", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0, type: "output", squash: "IDENTITY", index: 3 },
     ],
-    connections: [
+    synapses: [
       { weight: 1, from: 0, to: 3 },
       { weight: 1, from: 1, to: 3 },
       { weight: 1, from: 2, to: 3 },

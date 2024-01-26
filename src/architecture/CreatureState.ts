@@ -69,7 +69,7 @@ export class CreatureState {
   makeActivation(input: number[], feedbackLoop: boolean) {
     if (this.activations.length == 0 || feedbackLoop == false) {
       this.activations = input.slice();
-      this.activations.length = this.network.nodes.length;
+      this.activations.length = this.network.neurons.length;
       this.activations.fill(0, input.length);
     } else if (feedbackLoop) {
       /** Leave the results from last run */

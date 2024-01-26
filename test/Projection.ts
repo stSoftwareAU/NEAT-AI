@@ -7,7 +7,7 @@ import { Neuron } from "../src/architecture/Neuron.ts";
 
 Deno.test("projection", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "input", squash: "LOGISTIC", index: 0 },
       { type: "input", squash: "LOGISTIC", index: 1 },
       { type: "input", squash: "LOGISTIC", index: 2 },
@@ -18,7 +18,7 @@ Deno.test("projection", () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 2, to: 3, weight: 1, type: "positive" },
       { from: 1, to: 3, weight: 1, type: "condition" },
       { from: 0, to: 3, weight: 1, type: "negative" },
@@ -28,9 +28,9 @@ Deno.test("projection", () => {
   };
   const network = Creature.fromJSON(json);
 
-  const outNode = network.nodes[3];
+  const outNode = network.neurons[3];
 
-  const inNode0 = network.nodes[0];
+  const inNode0 = network.neurons[0];
 
   const flag0to3 = (inNode0 as Neuron).isProjectingTo(outNode as Neuron);
 

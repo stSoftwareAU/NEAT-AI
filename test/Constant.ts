@@ -10,11 +10,11 @@ import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 Deno.test("No squash", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0.5, type: "constant", index: 1 },
       { bias: 0, type: "output", squash: "IDENTITY", index: 2 },
     ],
-    connections: [
+    synapses: [
       { weight: 1, from: 1, to: 2 },
     ],
     input: 1,
@@ -36,13 +36,13 @@ Deno.test("No squash", () => {
 
 Deno.test("Constants", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0.5, type: "constant", index: 1 },
       { bias: 0.6, type: "hidden", squash: "LOGISTIC", index: 2 },
       { bias: 0, type: "output", squash: "MAXIMUM", index: 3 },
     ],
-    connections: [
+    synapses: [
       { weight: 1, from: 0, to: 2 },
       { weight: 1, from: 1, to: 3 },
       { weight: 1, from: 2, to: 3 },
@@ -61,14 +61,15 @@ Deno.test("Constants", () => {
   network.validate();
   Creature.fromJSON(network.exportJSON());
   assert(
-    Math.abs(network.nodes[1].bias ? network.nodes[1].bias : 0) - 0.5 < 0.00001,
-    "Should NOT have changed the constant node was: " + network.nodes[1].bias,
+    Math.abs(network.neurons[1].bias ? network.neurons[1].bias : 0) - 0.5 <
+      0.00001,
+    "Should NOT have changed the constant node was: " + network.neurons[1].bias,
   );
 
   assert(
-    (network.nodes[2].bias ? network.nodes[2].bias : 0) > 0.60001 ||
-      (network.nodes[2].bias ? network.nodes[2].bias : 0) < 0.59999,
-    "Should have changed the hidden node was: " + network.nodes[2].bias,
+    (network.neurons[2].bias ? network.neurons[2].bias : 0) > 0.60001 ||
+      (network.neurons[2].bias ? network.neurons[2].bias : 0) < 0.59999,
+    "Should have changed the hidden node was: " + network.neurons[2].bias,
   );
 
   assert(

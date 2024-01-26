@@ -7,7 +7,7 @@ import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 
 Deno.test("TagNode", () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
       { bias: 0, type: "input", squash: "LOGISTIC", index: 2 },
@@ -24,7 +24,7 @@ Deno.test("TagNode", () => {
         ],
       },
     ],
-    connections: [
+    synapses: [
       { weight: 1, from: 0, to: 3 },
       { weight: 1, from: 1, to: 3 },
       { weight: 1, from: 2, to: 3 },
@@ -39,7 +39,7 @@ Deno.test("TagNode", () => {
   const network2 = Creature.fromJSON(json2);
   const json3 = network2.exportJSON();
 
-  const tags = json3.nodes[0].tags;
+  const tags = json3.neurons[0].tags;
   assert(tags != null, "Should have tags");
 
   assert(tags.length == 1, "Should have one tag");

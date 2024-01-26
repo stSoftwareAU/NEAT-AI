@@ -399,7 +399,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
           if (c.from === c.to) continue;
 
-          const fromNeuron = this.creature.nodes[c.from];
+          const fromNeuron = this.creature.neurons[c.from];
 
           const fromActivation = fromNeuron.adjustedActivation(config);
 
@@ -498,7 +498,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         for (let i = toList.length; i--;) {
           const c = toList[i];
           if (c.from == c.to) continue;
-          const fromActivation = this.creature.nodes[c.from]
+          const fromActivation = this.creature.neurons[c.from]
             .adjustedActivation(config);
 
           const fromWeight = adjustedWeight(
@@ -595,7 +595,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Checks if this node is projecting to the given node
    */
   isProjectingTo(node: Neuron) {
-    const c = this.creature.getConnection(this.index, node.index);
+    const c = this.creature.getSynapse(this.index, node.index);
     return c != null;
   }
 
@@ -603,7 +603,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Checks if the given node is projecting to this node
    */
   isProjectedBy(node: Neuron) {
-    const c = this.creature.getConnection(node.index, this.index);
+    const c = this.creature.getSynapse(node.index, this.index);
     return c != null;
   }
 

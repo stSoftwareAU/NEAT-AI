@@ -1,16 +1,16 @@
 import { assert } from "https://deno.land/std@0.212.0/assert/mod.ts";
 import { emptyDirSync } from "https://deno.land/std@0.212.0/fs/empty_dir.ts";
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
-import { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("storeTrace", async () => {
   const json: CreatureInternal = {
-    nodes: [
+    neurons: [
       { type: "input", index: 0 },
       { type: "input", index: 1 },
       { type: "input", index: 2 },
@@ -21,7 +21,7 @@ Deno.test("storeTrace", async () => {
         bias: 0,
       },
     ],
-    connections: [
+    synapses: [
       { from: 0, to: 3, weight: 0.9, type: "condition" },
       { from: 1, to: 3, weight: 1.1, type: "positive" },
       { from: 2, to: 3, weight: 0.95, type: "negative" },
@@ -72,8 +72,8 @@ Deno.test("storeTrace", async () => {
           Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
         );
         let usedCount = 0;
-        if (json.connections == undefined) continue;
-        json.connections.forEach((c: SynapseTrace) => {
+        if (json.synapses == undefined) continue;
+        json.synapses.forEach((c: SynapseTrace) => {
           if (c.trace && c.trace.used) {
             usedCount++;
           }

@@ -8,7 +8,7 @@ import { train } from "../src/architecture/Training.ts";
 Deno.test("Learn", async () => {
   const nn = Creature.fromJSON(
     {
-      nodes: [
+      neurons: [
         {
           bias: -0.05601433047338172,
           index: 2,
@@ -34,7 +34,7 @@ Deno.test("Learn", async () => {
           squash: "IDENTITY",
         },
       ],
-      connections: [
+      synapses: [
         { weight: 2.0458515029017104, from: 0, to: 2 },
         { weight: -0.07677399122336755, from: 1, to: 3 },
         { weight: -0.5014045264238365, from: 1, to: 4 },
