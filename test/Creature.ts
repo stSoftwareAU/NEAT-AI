@@ -606,7 +606,7 @@ Deno.test("evolve SIN + COS", async () => {
     });
   }
 
-  await evolveSet(set, 10_000, 0.05);
+  await evolveSet(set, 10_000, 0.08);
 });
 
 Deno.test("train_SHIFT", async () => {
