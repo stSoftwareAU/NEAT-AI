@@ -8,7 +8,12 @@ export async function compactUnused(traced: CreatureTrace) {
   const clean = Creature.fromJSON(start.exportJSON());
   const compacted = Creature.fromJSON(clean.exportJSON());
 
-  for (const neuron of traced.neurons) {
+  const indices = Array.from({ length: traced.neurons.length }, (_, i) => i); // Create an array of indices
+
+  CreatureUtil.shuffle(indices);
+
+  for (let i = indices.length; i--;) {
+    const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
     if (neuron.trace.count > 1) {
       if (
