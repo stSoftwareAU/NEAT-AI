@@ -5,7 +5,7 @@ import {
   red,
   white,
   yellow,
-} from "https://deno.land/std@0.212.0/fmt/colors.ts";
+} from "https://deno.land/std@0.213.0/fmt/colors.ts";
 import { getTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
 import { Creature } from "../Creature.ts";
 

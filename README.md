@@ -5,7 +5,7 @@
 This project is a unique implementation of a neural network based on the NEAT (NeuroEvolution of Augmenting Topologies) algorithm, written in DenoJS using TypeScript. 
 </p>
 
-## Unique Features
+## Features Highlights
 
 1. **Extendable Observations**: The observations can be extended over time as the indexing is done via UUIDs, not numbers. This allows for a more flexible and dynamic neural network structure.
 
@@ -16,6 +16,8 @@ This project is a unique implementation of a neural network based on the NEAT (N
 4. **Efficient Model Utilization**: Once trained, the current best model can be utilized efficiently by calling the `activate` function.
 
 5. **Unique Squash Functions**: The neural network supports unique squash functions such as IF, MEAN, MAX, MIN, and HYPOT. These functions provide more options for the activation function, which can lead to different network behaviours.
+
+6. **Neuron Pruning**: Neurons whose activations don't vary during training are removed and the biases in the associated neurons are adjusted.
 
 ## Usage
 
