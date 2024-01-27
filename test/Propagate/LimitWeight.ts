@@ -5,6 +5,7 @@ import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts
 Deno.test("maximumWeightAdjustmentScale", () => {
   const config = new BackPropagationConfig({
     maximumWeightAdjustmentScale: 0.2,
+    learningRate: 1,
   });
   console.info(config);
   const weight = limitWeight(10, 0.5, config);
@@ -18,6 +19,7 @@ Deno.test("maximumWeightAdjustmentScale", () => {
 Deno.test("maximumWeightAdjustmentScaleV2", () => {
   const config = new BackPropagationConfig({
     maximumWeightAdjustmentScale: 0.2,
+    learningRate: 1,
   });
   console.info(config);
   const weight = limitWeight(500_000, 0.5, config);
