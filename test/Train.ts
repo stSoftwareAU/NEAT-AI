@@ -23,10 +23,6 @@ Deno.test("AND", async () => {
       iterations: 10_000,
       learningRate: 1,
       generations: 50,
-      //       maximumBiasAdjustmentScale:0.1,
-      //       maximumWeightAdjustmentScale: 0.1,
-      // limitBiasScale:1,
-      // limitWeightScale:1
     });
 
     if (results.error > 0.1 && attempts < 100) continue;
