@@ -1,6 +1,6 @@
-import { yellow } from "https://deno.land/std@0.212.0/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.212.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.212.0/fs/empty_dir.ts";
+import { yellow } from "https://deno.land/std@0.213.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.213.0/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.213.0/fs/empty_dir.ts";
 import {
   addTag,
   getTag,
