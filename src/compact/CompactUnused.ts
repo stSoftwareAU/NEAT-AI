@@ -24,6 +24,12 @@ export async function compactUnused(traced: CreatureTrace) {
         addTag(compacted, "unused", neuron.uuid);
 
         removeNeuron(neuron.uuid, compacted, neuron.trace.maximumActivation);
+        try {
+          compacted.validate();
+        } catch (e) {
+          console.warn("compactUnused", e.message);
+          compacted.fix();
+        }
         break;
       }
     }
@@ -51,6 +57,16 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
     const fromList = creature.fromConnections(neuron.index);
 
     for (const synapse of fromList) {
+      const squash = creature.neurons[synapse.to].squash;
+      switch (squash) {
+        case "IF":
+        case "MAXIMUM":
+        case "MINIMUM":
+          return false;
+      }
+    }
+
+    for (const synapse of fromList) {
       const adjustedBias = synapse.weight * activation;
       creature.neurons[synapse.to].bias += adjustedBias;
 
@@ -62,5 +78,7 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
     }
 
     removeHiddenNode(creature, neuron.index);
+    return true;
   }
+  return false;
 }
