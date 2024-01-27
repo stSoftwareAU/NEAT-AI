@@ -21,16 +21,18 @@ export async function compactUnused(traced: CreatureTrace) {
           neuron.trace.maximumActivation - neuron.trace.minimumActivation,
         ) < PLANK_CONSTANT
       ) {
-        addTag(compacted, "unused", neuron.uuid);
-
-        removeNeuron(neuron.uuid, compacted, neuron.trace.maximumActivation);
-        try {
-          compacted.validate();
-        } catch (e) {
-          console.warn("compactUnused", e.message);
-          compacted.fix();
+        if (
+          removeNeuron(neuron.uuid, compacted, neuron.trace.maximumActivation)
+        ) {
+          addTag(compacted, "unused", neuron.uuid);
+          try {
+            compacted.validate();
+          } catch (e) {
+            console.warn("compactUnused", e.message);
+            compacted.fix();
+          }
+          break;
         }
-        break;
       }
     }
   }
@@ -59,8 +61,10 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
     for (const synapse of fromList) {
       const squash = creature.neurons[synapse.to].squash;
       switch (squash) {
+        case "HYPOT":
         case "IF":
         case "MAXIMUM":
+        case "MEAN":
         case "MINIMUM":
           return false;
       }
