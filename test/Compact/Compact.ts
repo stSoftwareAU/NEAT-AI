@@ -1,12 +1,11 @@
-import { Creature } from "../src/Creature.ts";
 import {
   assert,
   assertAlmostEquals,
   fail,
 } from "https://deno.land/std@0.212.0/assert/mod.ts";
-
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -49,7 +48,7 @@ Deno.test("removeDanglingHidden", () => {
   const a = Creature.fromJSON(json);
 
   const b = a.compact();
-  if (b !== null) {
+  if (b) {
     b.validate();
   } else {
     fail("Should have compacted");
@@ -82,7 +81,7 @@ Deno.test("CompactSimple", () => {
 
   Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   const b = a.compact();
-  if (b == null) {
+  if (!b) {
     assert(false, "should have compacted the network");
   } else {
     b.validate();
@@ -101,7 +100,7 @@ Deno.test("CompactSimple", () => {
     assert(endConnections < startConnections);
 
     const c = b.compact();
-    assert(c == null);
+    assert(!c);
   }
 });
 
@@ -147,7 +146,7 @@ Deno.test("RandomizeCompact", () => {
       JSON.stringify(a.internalJSON(), null, 2),
     );
     const b = a.compact();
-    if (b == null) {
+    if (!b) {
       console.info("Did not compact");
       break;
     } else {
@@ -171,7 +170,7 @@ Deno.test("RandomizeCompact", () => {
       const c = b.compact();
       if (c) {
         const d = c.compact();
-        if (d == null) break;
+        if (!d) break;
 
         if (attempts > 13) {
           fail(`failed after ${attempts}`);
@@ -229,7 +228,7 @@ Deno.test("CompactSelf", () => {
 
   assertAlmostEquals(aOut[0], aOut2[0], 0.001);
   const b = a.compact();
-  if (b == null) {
+  if (!b) {
     assert(false, "should have compacted the network");
   } else {
     b.validate();
@@ -247,6 +246,6 @@ Deno.test("CompactSelf", () => {
     assert(endConnections < startConnections);
 
     const c = b.compact();
-    assert(c == null);
+    assert(!c);
   }
 });

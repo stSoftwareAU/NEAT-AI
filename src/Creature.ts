@@ -18,7 +18,7 @@ import {
   CreatureInternal,
   CreatureTrace,
 } from "./architecture/CreatureInterfaces.ts";
-import { CreatureState, NeuronState } from "./architecture/CreatureState.ts";
+import { CreatureState } from "./architecture/CreatureState.ts";
 import { DataRecordInterface, makeDataDir } from "./architecture/DataSet.ts";
 import { Neat } from "./architecture/Neat.ts";
 import { Neuron } from "./architecture/Neuron.ts";
@@ -36,6 +36,9 @@ import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { CreatureUtil } from "../mod.ts";
+import { NeuronStateInterface } from "./architecture/CreatureState.ts";
+import { removeHiddenNode } from "./compact/CompactUtils.ts";
+import { compactUnused } from "./compact/CompactUnused.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this creature */
@@ -267,7 +270,7 @@ export class Creature implements CreatureInternal {
   /**
    * Compact the creature.
    */
-  compact(): Creature | null {
+  compact(): Creature | undefined {
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
     const json = this.exportJSON();
@@ -290,7 +293,7 @@ export class Creature implements CreatureInternal {
         );
 
         if (fromList.length == 0) {
-          compactCreature.removeHiddenNode(pos);
+          removeHiddenNode(compactCreature, pos);
           complete = false;
         } else {
           const toList = compactCreature.toConnections(pos).filter(
@@ -334,7 +337,7 @@ export class Creature implements CreatureInternal {
 
                   compactCreature.neurons[from].bias = biasA;
 
-                  compactCreature.removeHiddenNode(pos);
+                  removeHiddenNode(compactCreature, pos);
                   let adjustedTo = to;
                   if (adjustedTo > pos) {
                     adjustedTo--;
@@ -379,7 +382,7 @@ export class Creature implements CreatureInternal {
 
       return compactCreature;
     } else {
-      return null;
+      return undefined;
     }
   }
 
@@ -868,8 +871,14 @@ export class Creature implements CreatureInternal {
     }
   }
 
-  applyLearnings(config: BackPropagationConfig) {
+  async applyLearnings(config: BackPropagationConfig) {
     this.propagateUpdate(config);
+
+    const compacted = await compactUnused(this.traceJSON());
+    if (compacted) {
+      this.loadFrom(compacted.exportJSON(), false);
+      return true;
+    }
 
     const oldConnections = this.synapses.length;
     const oldNodes = this.neurons.length;
@@ -883,7 +892,7 @@ export class Creature implements CreatureInternal {
     if (changed) {
       this.fix();
       const temp = this.compact();
-      if (temp != null) {
+      if (temp) {
         temp.fix();
         this.loadFrom(temp.exportJSON(), true);
       }
@@ -1215,52 +1224,9 @@ export class Creature implements CreatureInternal {
       );
 
       if (!this.inFocus(indx, focusList)) continue;
-      this.removeHiddenNode(indx);
+      removeHiddenNode(this, indx);
       break;
     }
-  }
-
-  /**
-   *  Removes a node from the creature
-   */
-  private removeHiddenNode(indx: number) {
-    if (Number.isInteger(indx) == false || indx < 0) {
-      throw new Error("Must be a positive integer was: " + indx);
-    }
-
-    const node = this.neurons[indx];
-
-    if (node.type !== "hidden" && node.type !== "constant") {
-      throw new Error(
-        indx + ") Node must be a 'hidden' type was: " + node.type,
-      );
-    }
-    const left = this.neurons.slice(0, indx);
-    const right = this.neurons.slice(indx + 1);
-    right.forEach((item) => {
-      const node = item;
-      node.index--;
-    });
-
-    const full = [...left, ...right];
-
-    this.neurons = full;
-
-    const tmpConnections: Synapse[] = [];
-
-    this.synapses.forEach((c) => {
-      if (c.from !== indx) {
-        if (c.from > indx) c.from--;
-        if (c.to !== indx) {
-          if (c.to > indx) c.to--;
-
-          tmpConnections.push(c);
-        }
-      }
-    });
-
-    this.synapses = tmpConnections;
-    this.clearCache();
   }
 
   public addNode(focusList?: number[]) {
@@ -1852,7 +1818,7 @@ export class Creature implements CreatureInternal {
             return c.from !== c.to;
           }).length == 0
         ) {
-          this.removeHiddenNode(pos);
+          removeHiddenNode(this, pos);
           nodeRemoved = true;
           break;
         }
@@ -2020,7 +1986,7 @@ export class Creature implements CreatureInternal {
       const n = Neuron.fromJSON(jn, this);
       n.index = pos;
       if ((jn as NeuronTrace).trace) {
-        const trace: NeuronState = (jn as NeuronTrace).trace;
+        const trace: NeuronStateInterface = (jn as NeuronTrace).trace;
         const ns = this.state.node(n.index);
         Object.assign(ns, trace);
       }

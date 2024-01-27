@@ -8,6 +8,7 @@ import { TrainOptions } from "../config/TrainOptions.ts";
 import { BackPropagationConfig } from "./BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { DataRecordInterface, makeDataDir } from "./DataSet.ts";
+import { compactUnused } from "../compact/CompactUnused.ts";
 
 export const cacheDataFile = {
   fn: "",
@@ -251,7 +252,7 @@ export async function trainDir(
       bestError = error;
       knownSampleCount = counter;
 
-      network.applyLearnings(config);
+      await network.applyLearnings(config);
       network.clearState();
     }
 
@@ -260,7 +261,10 @@ export async function trainDir(
         network.loadFrom(bestCreatureJSON, false); // If not called via the worker.
       }
 
-      const compact = Creature.fromJSON(lastTraceJSON).compact();
+      let compact = await compactUnused(lastTraceJSON);
+      if (!compact) {
+        compact = Creature.fromJSON(lastTraceJSON).compact();
+      }
 
       return {
         ID: ID,

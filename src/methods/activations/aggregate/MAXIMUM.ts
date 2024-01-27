@@ -1,5 +1,4 @@
 import {
-  accumulateBias,
   accumulateWeight,
   adjustedBias,
   adjustedWeight,
@@ -223,7 +222,7 @@ export class MAXIMUM
     }
 
     const ns = node.creature.state.node(node.index);
-    accumulateBias(ns, targetValue, targetWeightedSum, config);
+    ns.accumulateBias(targetValue, targetWeightedSum, config);
 
     const aBias = adjustedBias(node, config);
 

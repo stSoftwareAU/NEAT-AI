@@ -1,5 +1,5 @@
 import { TagsInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { NeuronState } from "./CreatureState.ts";
+import { NeuronStateInterface } from "./CreatureState.ts";
 
 interface NeuronAbstract extends TagsInterface {
   uuid?: string;
@@ -20,5 +20,5 @@ export interface NeuronInternal extends NeuronAbstract {
 }
 
 export interface NeuronTrace extends NeuronExport {
-  trace: NeuronState;
+  trace: NeuronStateInterface;
 }

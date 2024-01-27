@@ -1,10 +1,19 @@
 import { Creature } from "../Creature.ts";
+import { BackPropagationConfig } from "./BackPropagation.ts";
 
-export class NeuronState {
-  public count = 0;
+export interface NeuronStateInterface {
+  count: number;
+  totalValue: number;
+  totalWeightedSum: number;
+  maximumActivation: number;
+  minimumActivation: number;
+}
 
-  public totalValue = 0;
-  public totalWeightedSum = 0;
+export class NeuronState implements NeuronStateInterface {
+  count = 0;
+
+  totalValue = 0;
+  totalWeightedSum = 0;
   /**
    * The maximum activation value for the creature state.
    */
@@ -13,6 +22,36 @@ export class NeuronState {
    * The minimum activation value for the creature state.
    */
   minimumActivation = Infinity;
+
+  traceActivation(activation: number) {
+    if (activation > this.maximumActivation) {
+      this.maximumActivation = activation;
+    }
+
+    if (activation < this.minimumActivation) {
+      this.minimumActivation = activation;
+    }
+  }
+
+  accumulateBias(
+    targetValue: number,
+    value: number,
+    config: BackPropagationConfig,
+  ) {
+    let difference = targetValue - value;
+    if (!config.disableExponentialScaling) {
+      // Squash the difference using the hyperbolic tangent function and scale it
+      difference = Math.tanh(difference / config.maximumBiasAdjustmentScale) *
+        config.maximumBiasAdjustmentScale;
+    } else if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
+      // Limit the difference to the maximum scale
+      difference = Math.sign(difference) * config.maximumBiasAdjustmentScale;
+    }
+
+    this.count++;
+    this.totalValue += value + difference;
+    this.totalWeightedSum += value;
+  }
 }
 
 export class SynapseState {

@@ -4,10 +4,9 @@ import {
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.212.0/assert/mod.ts";
-import { Creature } from "../src/Creature.ts";
-
 import { ensureDirSync } from "https://deno.land/std@0.212.0/fs/ensure_dir.ts";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { Creature } from "../src/Creature.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import { train } from "../src/architecture/Training.ts";
