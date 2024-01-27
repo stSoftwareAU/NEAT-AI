@@ -67,10 +67,7 @@ export async function trainDir(
 
   // Randomize the list of files
   if (!options.disableRandomSamples) {
-    for (let i = files.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [files[i], files[j]] = [files[j], files[i]];
-    }
+    CreatureUtil.shuffle(files);
   }
 
   // Loops the training process
@@ -90,8 +87,7 @@ export async function trainDir(
   let bestTraceJSON = network.traceJSON();
   let lastTraceJSON = bestTraceJSON;
   let knownSampleCount = -1;
-  // @TODO need to apply Stochastic Gradient Descent
-  const EMPTY = { input: [], output: [] };
+
   while (true) {
     iteration++;
     const startTS = Date.now();
@@ -124,32 +120,25 @@ export async function trainDir(
         Math.max(1000, Math.floor(json.length * trainingSampleRate)),
       );
 
-      let tmpIndices = indxMap.get(fn);
+      let indices = indxMap.get(fn);
 
-      if (!tmpIndices) {
-        tmpIndices = Array.from({ length: len }, (_, i) => i); // Create an array of indices
+      if (!indices) {
+        indices = Array.from({ length: json.length }, (_, i) => i); // Create an array of indices
 
         if (!options.disableRandomSamples) {
-          CreatureUtil.shuffle(tmpIndices);
+          CreatureUtil.shuffle(indices);
         }
-
+        indices.length = len;
         if (len != json.length) {
-          tmpIndices.length = len; /* No need to cache what we wont use */
-          indxMap.set(fn, tmpIndices);
+          /* No need to cache what we wont use */
+          indxMap.set(fn, indices);
         }
       }
-
-      const indices = tmpIndices;
 
       // Iterate over the shuffled indices
       for (let i = len; i--;) {
         const indx = indices[i];
         const data = json[indx];
-
-        if (!cached) {
-          /* Not cached so we can release memory as we go */
-          json[indx] = EMPTY;
-        }
 
         const output = network.activateAndTrace(data.input);
 

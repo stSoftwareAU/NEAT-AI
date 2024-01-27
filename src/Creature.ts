@@ -191,11 +191,7 @@ export class Creature implements CreatureInternal {
 
       // Connect input nodes with output nodes directly
       for (let i = 0; i < this.input; i++) {
-        for (
-          let j = this.input;
-          j < this.output + this.input;
-          j++
-        ) {
+        for (let j = this.input; j < this.output + this.input; j++) {
           /** https://stats.stackexchange.com/a/248040/147931 */
           const weight = Math.random() * this.input *
             Math.sqrt(2 / this.input);
@@ -400,15 +396,11 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    if (
-      Number.isInteger(this.input) == false || this.input < 1
-    ) {
+    if (Number.isInteger(this.input) == false || this.input < 1) {
       throw new Error(`Must have at least one input nodes was: ${this.input}`);
     }
 
-    if (
-      Number.isInteger(this.output) == false || this.output < 1
-    ) {
+    if (Number.isInteger(this.output) == false || this.output < 1) {
       throw new Error(
         `Must have at least one output nodes was: ${this.output}`,
       );
@@ -769,9 +761,7 @@ export class Creature implements CreatureInternal {
     weight: number,
     type?: "positive" | "negative" | "condition",
   ) {
-    if (
-      Number.isInteger(from) == false || from < 0
-    ) {
+    if (Number.isInteger(from) == false || from < 0) {
       throw new Error("from should be a non-negative integer was: " + from);
     }
 
@@ -884,10 +874,7 @@ export class Creature implements CreatureInternal {
     const oldConnections = this.synapses.length;
     const oldNodes = this.neurons.length;
     let changed = false;
-    for (
-      let i = this.neurons.length;
-      i--;
-    ) {
+    for (let i = this.neurons.length; i--;) {
       const n = this.neurons[i];
       if (n.type == "input") break;
       changed ||= n.applyLearnings();
@@ -915,9 +902,7 @@ export class Creature implements CreatureInternal {
    * Back propagate the creature
    */
   propagate(expected: number[], config: BackPropagationConfig) {
-    if (
-      expected === undefined || expected.length !== this.output
-    ) {
+    if (expected === undefined || expected.length !== this.output) {
       throw new Error(
         `Expected length should match creature's output length: ${this.output} was: ${expected?.length}`,
       );
@@ -931,12 +916,7 @@ export class Creature implements CreatureInternal {
 
     const lastOutputIndx = this.neurons.length - this.output;
     for (let attempts = this.output; attempts--;) {
-      // for (let attempts = 12; attempts--;) {
-      // Propagate output nodes
-      for (
-        let i = this.output;
-        i--;
-      ) {
+      for (let i = this.output; i--;) {
         const expectedIndex = indices[i];
         const nodeIndex = lastOutputIndx + expectedIndex;
 
@@ -956,11 +936,7 @@ export class Creature implements CreatureInternal {
   propagateUpdate(config: BackPropagationConfig) {
     if (this.state.propagated) throw new Error(`Already propagated`);
 
-    for (
-      let indx = this.neurons.length - 1;
-      indx >= this.input;
-      indx--
-    ) {
+    for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];
       n.propagateUpdate(config);
     }
@@ -977,7 +953,7 @@ export class Creature implements CreatureInternal {
     const start = Date.now();
 
     const endTimeMS = options.timeoutMinutes
-      ? start + Math.max(1, options.timeoutMinutes) * 60_000
+      ? start + Math.max(1, options.timeoutMinutes) * 60000
       : 0;
 
     const workers: WorkerHandler[] = [];
@@ -1380,9 +1356,7 @@ export class Creature implements CreatureInternal {
   }
 
   private _insertNode(node: Neuron) {
-    if (
-      Number.isInteger(node.index) == false || node.index < this.input
-    ) {
+    if (Number.isInteger(node.index) == false || node.index < this.input) {
       throw new Error(
         "to should be a greater than the input count was: " + node.index,
       );
@@ -1432,11 +1406,7 @@ export class Creature implements CreatureInternal {
 
       if (!this.inFocus(i, focusList)) continue;
 
-      for (
-        let j = Math.max(i + 1, this.input);
-        j < this.neurons.length;
-        j++
-      ) {
+      for (let j = Math.max(i + 1, this.input); j < this.neurons.length; j++) {
         if (!this.inFocus(j, focusList)) continue;
         const node2 = this.neurons[j];
 
@@ -1502,9 +1472,7 @@ export class Creature implements CreatureInternal {
     for (let i = 0; i < this.synapses.length; i++) {
       const conn = this.synapses[i];
       // Check if it is not disabling a node
-      if (
-        conn.to > conn.from
-      ) {
+      if (conn.to > conn.from) {
         if (
           this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
         ) {
@@ -1601,11 +1569,7 @@ export class Creature implements CreatureInternal {
   private addSelfCon(focusList?: number[]) {
     // Check which nodes aren't self connected yet
     const possible = [];
-    for (
-      let i = this.input;
-      i < this.neurons.length - this.output;
-      i++
-    ) {
+    for (let i = this.input; i < this.neurons.length - this.output; i++) {
       if (this.inFocus(i, focusList)) {
         const node = this.neurons[i];
         if (node.type === "constant") continue;
