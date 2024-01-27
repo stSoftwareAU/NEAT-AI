@@ -101,7 +101,7 @@ Deno.test("PropagateMaximum", async () => {
       // generations: 50,
     });
 
-    creatureE.applyLearnings(config);
+    await creatureE.applyLearnings(config);
     const errorD = calculateError(creatureD, ts);
     const errorE = calculateError(creatureE, ts);
     console.log(

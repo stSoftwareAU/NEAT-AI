@@ -1,7 +1,6 @@
 import { assertAlmostEquals } from "https://deno.land/std@0.212.0/assert/assert_almost_equals.ts";
 import { CreatureExport } from "../../mod.ts";
 import {
-  accumulateBias,
   adjustedBias,
   BackPropagationConfig,
 } from "../../src/architecture/BackPropagation.ts";
@@ -12,7 +11,7 @@ Deno.test("AccumulateBias-Standard", () => {
   const ns = new NeuronState();
 
   const config = new BackPropagationConfig();
-  accumulateBias(ns, 4, 2, config);
+  ns.accumulateBias(4, 2, config);
 
   assertAlmostEquals(ns.totalValue, 4, 0.1, JSON.stringify(ns, null, 2));
 });
@@ -22,7 +21,7 @@ Deno.test("AccumulateBias-Limited", () => {
   config.maximumBiasAdjustmentScale = 5;
   const ns = new NeuronState();
 
-  accumulateBias(ns, 40, 2, config);
+  ns.accumulateBias(40, 2, config);
 
   const expected = 7;
   assertAlmostEquals(
@@ -211,9 +210,9 @@ Deno.test("AccumulateBias-average", () => {
     ];
     values.forEach((targetValue) => {
       const currentValue = targetValue - bias;
-      accumulateBias(ns, targetValue, currentValue, config);
+      ns.accumulateBias(targetValue, currentValue, config);
 
-      accumulateBias(ns, targetValue * -1, targetValue * -1 - bias, config);
+      ns.accumulateBias(targetValue * -1, targetValue * -1 - bias, config);
     });
 
     const aBias = adjustedBias(node, config);

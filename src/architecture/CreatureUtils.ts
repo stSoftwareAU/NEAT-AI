@@ -26,16 +26,11 @@ export class CreatureUtil {
 
     const json = creature.internalJSON();
     json.neurons.forEach(
-      (n: { uuid?: string; trace?: unknown }) => {
+      (n: { uuid?: string }) => {
         delete n.uuid;
-        delete n.trace;
       },
     );
-    // json.synapses.forEach(
-    //   (c: { trace?: { used: boolean }; index?: number }) => {
-    //     delete c.trace;
-    //   },
-    // );
+
     const tmp = {
       neurons: json.neurons,
       synapses: json.synapses,

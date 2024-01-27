@@ -24,7 +24,6 @@ import {
 } from "./BackPropagation.ts";
 import { Synapse } from "./Synapse.ts";
 import { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
-import { accumulateBias } from "./BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
@@ -354,15 +353,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const activation = this.adjustedActivation(config);
 
     const targetActivation = limitActivationToRange(this, requestedActivation);
+    const ns = this.creature.state.node(this.index);
 
     /** Short circuit  */
     if (Math.abs(activation - targetActivation) < 1e-12) {
+      ns.traceActivation(activation);
+      ns.accumulateBias(this.bias, 0, config);
       return activation;
     }
 
     const squashMethod = this.findSquash();
     let limitedActivation: number;
-    const ns = this.creature.state.node(this.index);
 
     if ((squashMethod as PropagateInterface).propagate !== undefined) {
       const improvedActivation = (squashMethod as PropagateInterface).propagate(
@@ -445,7 +446,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         }
       }
 
-      accumulateBias(ns, targetValue, improvedValue, config);
+      ns.accumulateBias(targetValue, improvedValue, config);
 
       const aBias = adjustedBias(this, config);
 
@@ -460,13 +461,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         limitedActivation = limitActivation(adjustedActivation);
       }
     }
-    if (limitedActivation > ns.maximumActivation) {
-      ns.maximumActivation = limitedActivation;
-    }
-
-    if (limitedActivation < ns.minimumActivation) {
-      ns.minimumActivation = limitedActivation;
-    }
+    ns.traceActivation(limitedActivation);
 
     return limitedActivation;
   }

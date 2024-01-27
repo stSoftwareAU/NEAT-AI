@@ -165,7 +165,7 @@ export async function fineTuneImprovement(
 
   const fineTuned: Creature[] = [];
   const compactNetwork = fittest.compact();
-  if (compactNetwork != null) {
+  if (compactNetwork) {
     await CreatureUtil.makeUUID(compactNetwork);
     const uuid = compactNetwork.uuid ? compactNetwork.uuid : "";
     if (!UUIDs.has(uuid)) {

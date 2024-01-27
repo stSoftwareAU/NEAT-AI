@@ -5,7 +5,7 @@ import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Trace", () => {
+Deno.test("Trace", async () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
@@ -17,7 +17,8 @@ Deno.test("Trace", () => {
     useAverageDifferenceBias: "Yes",
     learningRate: 0.02,
   });
-  creature.applyLearnings(config);
+  await creature.applyLearnings(config);
+  creature.validate();
   const json2 = creature.exportJSON();
   stats(json2);
   compare(json, json2);

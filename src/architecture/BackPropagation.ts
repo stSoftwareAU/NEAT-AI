@@ -1,5 +1,5 @@
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import { CreatureState, NeuronState, SynapseState } from "./CreatureState.ts";
+import { CreatureState, SynapseState } from "./CreatureState.ts";
 import { Neuron } from "./Neuron.ts";
 import { Synapse } from "./Synapse.ts";
 
@@ -177,27 +177,6 @@ export function toValue(node: Neuron, activation: number) {
   } else {
     return activation;
   }
-}
-
-export function accumulateBias(
-  ns: NeuronState,
-  targetValue: number,
-  improvedValue: number,
-  config: BackPropagationConfig,
-) {
-  let difference = targetValue - improvedValue;
-  if (!config.disableExponentialScaling) {
-    // Squash the difference using the hyperbolic tangent function and scale it
-    difference = Math.tanh(difference / config.maximumBiasAdjustmentScale) *
-      config.maximumBiasAdjustmentScale;
-  } else if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
-    // Limit the difference to the maximum scale
-    difference = Math.sign(difference) * config.maximumBiasAdjustmentScale;
-  }
-
-  ns.count++;
-  ns.totalValue += improvedValue + difference;
-  ns.totalWeightedSum += improvedValue;
 }
 
 export function accumulateWeight(

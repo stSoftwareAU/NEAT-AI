@@ -8,7 +8,7 @@ import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("TraceAggregateMINIMUM", () => {
+Deno.test("TraceAggregateMINIMUM", async () => {
   const json: CreatureInternal = {
     neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
@@ -39,7 +39,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
 
   const aOut = network.activateAndTrace(input);
 
-  const changed = network.applyLearnings(new BackPropagationConfig());
+  const changed = await network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
@@ -54,7 +54,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   assertAlmostEquals(aOut[1], dOut[1], 0.0001);
 });
 
-Deno.test("TraceAggregateMAXIMUM", () => {
+Deno.test("TraceAggregateMAXIMUM", async () => {
   const json: CreatureInternal = {
     neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
@@ -85,7 +85,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 
   const aOut = network.activateAndTrace(input);
 
-  const changed = network.applyLearnings(new BackPropagationConfig());
+  const changed = await network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
@@ -100,7 +100,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   assertAlmostEquals(aOut[1], dOut[1], 0.0001);
 });
 
-Deno.test("TraceAggregateIF", () => {
+Deno.test("TraceAggregateIF", async () => {
   const json: CreatureInternal = {
     neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
@@ -131,7 +131,7 @@ Deno.test("TraceAggregateIF", () => {
   network.activate(input);
   const aOut = network.activateAndTrace(input);
 
-  const changed = network.applyLearnings(new BackPropagationConfig());
+  const changed = await network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 

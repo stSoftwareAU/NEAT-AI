@@ -101,7 +101,7 @@ Deno.test("PropagateMinimum", async () => {
       generations: 0,
     });
 
-    creatureE.applyLearnings(config);
+    await creatureE.applyLearnings(config);
     const errorC = calculateError(creatureC, ts);
     const errorD = calculateError(creatureD, ts);
     const errorE = calculateError(creatureE, ts);
