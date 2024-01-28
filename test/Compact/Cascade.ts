@@ -9,8 +9,8 @@ import { compactUnused } from "../../src/compact/CompactUnused.ts";
 function makeCreature() {
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: "hidden-3", squash: "CLIPPED", bias: 2 },
-      { type: "hidden", uuid: "hidden-4", squash: "IF", bias: 0 },
+      { type: "hidden", uuid: "hidden-3", squash: "Cosine", bias: 2 },
+      { type: "hidden", uuid: "hidden-4", squash: "CLIPPED", bias: 2 },
 
       {
         type: "output",
@@ -27,27 +27,10 @@ function makeCreature() {
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
-      {
-        fromUUID: "input-0",
-        toUUID: "hidden-4",
-        weight: -0.3,
-        type: "condition",
-      },
       { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
-      {
-        fromUUID: "input-1",
-        toUUID: "hidden-4",
-        weight: 0.3,
-        type: "positive",
-      },
 
-      { fromUUID: "hidden-3", toUUID: "output-0", weight: 0.6 },
-      {
-        fromUUID: "hidden-3",
-        toUUID: "hidden-4",
-        weight: 0.3,
-        type: "negative",
-      },
+      { fromUUID: "hidden-3", toUUID: "hidden-4", weight: -0.5 },
+      { fromUUID: "hidden-4", toUUID: "output-0", weight: 0.6 },
 
       { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
       { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
@@ -70,7 +53,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("FixIF", async () => {
+Deno.test("CompactCascade", async () => {
   const creature = makeCreature();
   const data = makeData();
 
@@ -97,7 +80,7 @@ Deno.test("FixIF", async () => {
     );
   }
 
-  const traceDir = ".trace/compact/FixIF";
+  const traceDir = ".trace/compact/cascade";
   ensureDirSync(traceDir);
 
   Deno.writeTextFileSync(
@@ -110,6 +93,7 @@ Deno.test("FixIF", async () => {
   if (!compacted) {
     fail("Should have compacted");
   }
+  compacted.validate();
   Deno.writeTextFileSync(
     `${traceDir}/compacted.json`,
     JSON.stringify(compacted.exportJSON(), null, 2),
