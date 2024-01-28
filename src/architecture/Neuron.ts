@@ -356,22 +356,22 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const ns = this.creature.state.node(this.index);
 
     /** Short circuit  */
-    if (Math.abs(activation - targetActivation) < 1e-12) {
-      ns.traceActivation(activation);
-      ns.accumulateBias(this.bias, 0, config);
+    // if (Math.abs(activation - targetActivation) < 1e-12) {
+    //   ns.traceActivation(activation);
+    //   ns.accumulateBias(this.bias, 0, config);
 
-      const toList = this.creature.toConnections(this.index);
-      for (let indx = toList.length; indx--;) {
-        const c = toList[indx];
+    //   const toList = this.creature.toConnections(this.index);
+    //   for (let indx = toList.length; indx--;) {
+    //     const c = toList[indx];
 
-        if (c.from === c.to) continue;
+    //     if (c.from === c.to) continue;
 
-        const fromNeuron = this.creature.neurons[c.from];
-        const fromActivation = fromNeuron.adjustedActivation(config);
-        fromNeuron.propagate(fromActivation, config);
-      }
-      return activation;
-    }
+    //     const fromNeuron = this.creature.neurons[c.from];
+    //     const fromActivation = fromNeuron.adjustedActivation(config);
+    //     fromNeuron.propagate(fromActivation, config);
+    //   }
+    //   return activation;
+    // }
 
     const squashMethod = this.findSquash();
     let limitedActivation: number;
