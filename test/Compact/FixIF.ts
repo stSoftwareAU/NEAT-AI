@@ -97,7 +97,7 @@ Deno.test("FixIF", async () => {
     );
   }
 
-  const traceDir = ".trace/FixIF";
+  const traceDir = ".trace/compact/FixIF";
   ensureDirSync(traceDir);
 
   Deno.writeTextFileSync(
@@ -107,7 +107,28 @@ Deno.test("FixIF", async () => {
 
   const compacted = await compactUnused(creature.traceJSON());
 
-  if (compacted) {
-    fail("Should NOT have compacted");
+  if (!compacted) {
+    fail("Should have compacted");
+  }
+  Deno.writeTextFileSync(
+    `${traceDir}/compacted.json`,
+    JSON.stringify(compacted.exportJSON(), null, 2),
+  );
+
+  for (let i = data.length; i--;) {
+    const actual = compacted.activate(data[i]);
+
+    assertAlmostEquals(
+      actual[0],
+      outputs[i][0],
+      0.000_001,
+      `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+    );
+    assertAlmostEquals(
+      actual[1],
+      outputs[i][1],
+      0.000_001,
+      `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+    );
   }
 });
