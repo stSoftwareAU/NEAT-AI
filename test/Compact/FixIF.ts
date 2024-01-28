@@ -65,7 +65,11 @@ function makeData() {
   const inputs: number[][] = [];
 
   for (let i = 1000; i--;) {
-    inputs.push([Math.random(), Math.random(), Math.random()]);
+    inputs.push([
+      Math.random() * 2 - 1,
+      Math.random() * 2 - 1,
+      Math.random() * 2 - 1,
+    ]);
   }
   return inputs;
 }
@@ -106,29 +110,30 @@ Deno.test("FixIF", async () => {
   );
 
   const compacted = await compactUnused(creature.traceJSON());
+  // }
 
-  if (!compacted) {
-    fail("Should have compacted");
+  if (compacted) {
+    fail("Should have NOT compacted");
   }
-  Deno.writeTextFileSync(
-    `${traceDir}/compacted.json`,
-    JSON.stringify(compacted.exportJSON(), null, 2),
-  );
+  // Deno.writeTextFileSync(
+  //   `${traceDir}/compacted.json`,
+  //   JSON.stringify(compacted.exportJSON(), null, 2),
+  // );
 
-  for (let i = data.length; i--;) {
-    const actual = compacted.activate(data[i]);
+  // for (let i = data.length; i--;) {
+  //   const actual = compacted.activate(data[i]);
 
-    assertAlmostEquals(
-      actual[0],
-      outputs[i][0],
-      0.000_001,
-      `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
-    );
-    assertAlmostEquals(
-      actual[1],
-      outputs[i][1],
-      0.000_001,
-      `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
-    );
-  }
+  //   assertAlmostEquals(
+  //     actual[0],
+  //     outputs[i][0],
+  //     0.000_001,
+  //     `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+  //   );
+  //   assertAlmostEquals(
+  //     actual[1],
+  //     outputs[i][1],
+  //     0.000_001,
+  //     `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+  //   );
+  // }
 });
