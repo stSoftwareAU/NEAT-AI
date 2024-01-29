@@ -27,7 +27,7 @@ Deno.test("hypotenuse", async () => {
 
   let errorPercent = 0;
   let answer = 0;
-  for (let attempts = 0; attempts < 12; attempts++) {
+  for (let attempts = 0; attempts < 240; attempts++) {
     const network = new Creature(2, 1, {
       layers: [
         { count: 2 },
