@@ -186,6 +186,15 @@ export function accumulateWeight(
   activation: number,
   config: BackPropagationConfig,
 ) {
+  if (
+    !Number.isFinite(weight)     || 
+    !Number.isFinite(value)      ||
+    !Number.isFinite(activation)
+  ) {
+    throw new Error(
+      `Invalid weight: ${weight}, value: ${value}, activation: ${activation}`,
+    );
+  }
   const targetWeight = value / activation;
 
   let difference = targetWeight - weight;
