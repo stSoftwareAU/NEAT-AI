@@ -5,11 +5,11 @@
 This project is a unique implementation of a neural network based on the NEAT (NeuroEvolution of Augmenting Topologies) algorithm, written in DenoJS using TypeScript. 
 </p>
 
-## Features Highlights
+## Feature Highlights
 
-1. **Extendable Observations**: The observations can be extended over time as the indexing is done via UUIDs, not numbers. This allows for a more flexible and dynamic neural network structure.
+1. **Extendable Observations**: The observations can be extended over time as the indexing is done via UUIDs, not numbers. This prevents the need to restart the evolution process as new observations are added.
 
-2. **Distributed Training**: Training and evolution can be run on multiple independent nodes. The best-of-breed creatures can later be combined on a centralized master node. This feature allows for distributed computing and potentially faster training times.
+2. **Distributed Training**: Training and evolution can be run on multiple independent nodes. The best-of-breed creatures can later be combined on a centralized controller node. This feature allows for distributed computing and potentially faster training times.
 
 3. **Life Long Learning**: Unlike many pre-trained neural networks, this project is designed for continuous learning, making it adaptable and potentially more effective in changing environments.
 
@@ -17,11 +17,13 @@ This project is a unique implementation of a neural network based on the NEAT (N
 
 5. **Unique Squash Functions**: The neural network supports unique squash functions such as IF, MEAN, MAX, MIN, and HYPOT. These functions provide more options for the activation function, which can lead to different network behaviours.
 
-6. **Neuron Pruning**: Neurons whose activations don't vary during training are removed and the biases in the associated neurons are adjusted.
+6. **Neuron Pruning**: Neurons whose activations don't vary during training are removed, and the biases in the associated neurons are adjusted.
+
+7. **CRISPR**: Allows injection of genes into a population of creatures during evolution.
 
 ## Usage
 
-This project is designed to be used in a DenoJS environment. Please refer to the DenoJS documentation for setup and usage instructions.
+This project is designed to be used in a DenoJS environment. Please take a look at the DenoJS documentation for setup and usage instructions.
 
 ## Contributions
 
