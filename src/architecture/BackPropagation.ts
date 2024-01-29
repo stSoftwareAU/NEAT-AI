@@ -186,6 +186,15 @@ export function accumulateWeight(
   activation: number,
   config: BackPropagationConfig,
 ) {
+  if (
+    !Number.isFinite(weight) ||
+    !Number.isFinite(value) ||
+    !Number.isFinite(activation)
+  ) {
+    throw new Error(
+      `Invalid weight: ${weight}, value: ${value}, activation: ${activation}`,
+    );
+  }
   const targetWeight = value / activation;
 
   let difference = targetWeight - weight;
@@ -215,15 +224,22 @@ export function adjustedWeight(
   const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
-    const synapseAverageWeightTotal = cs.averageWeight * cs.count;
+    if (Number.isFinite(cs.averageWeight)) {
+      const synapseAverageWeightTotal = cs.averageWeight * cs.count;
 
-    const totalGenerationalWeight = c.weight * config.generations;
+      const totalGenerationalWeight = c.weight * config.generations;
 
-    const averageWeight =
-      (synapseAverageWeightTotal + totalGenerationalWeight) /
-      (cs.count + config.generations);
+      const averageWeight =
+        (synapseAverageWeightTotal + totalGenerationalWeight) /
+        (cs.count + config.generations);
 
-    return limitWeight(averageWeight, c.weight, config);
+      return limitWeight(averageWeight, c.weight, config);
+    } else {
+      throw Error(
+        `${c.from}:${c.to}) invalid averageWeight: ${cs.averageWeight} ` +
+          JSON.stringify(cs, null, 2),
+      );
+    }
   }
 
   return c.weight;
@@ -275,6 +291,23 @@ export function limitWeight(
 ) {
   if (Math.abs(targetWeight) < PLANK_CONSTANT) {
     return 0;
+  }
+
+  if (!Number.isFinite(currentWeight)) {
+    if (Number.isFinite(targetWeight)) {
+      throw new Error(
+        `Invalid current: ${currentWeight} retruning target: ${targetWeight}`,
+      );
+    } else {
+      throw new Error(
+        `Invalid current: ${currentWeight} and target: ${targetWeight} returning zero`,
+      );
+    }
+  }
+  if (!Number.isFinite(targetWeight)) {
+    throw new Error(
+      `Invalid target: ${targetWeight} retruning current ${currentWeight}`,
+    );
   }
 
   const difference = config.learningRate * (targetWeight - currentWeight);
