@@ -215,15 +215,23 @@ export function adjustedWeight(
   const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
-    const synapseAverageWeightTotal = cs.averageWeight * cs.count;
+    if (Number.isFinite(cs.averageWeight)) {
+      const synapseAverageWeightTotal = cs.averageWeight * cs.count;
 
-    const totalGenerationalWeight = c.weight * config.generations;
+      const totalGenerationalWeight = c.weight * config.generations;
 
-    const averageWeight =
-      (synapseAverageWeightTotal + totalGenerationalWeight) /
-      (cs.count + config.generations);
+      const averageWeight =
+        (synapseAverageWeightTotal + totalGenerationalWeight) /
+        (cs.count + config.generations);
 
-    return limitWeight(averageWeight, c.weight, config);
+      return limitWeight(averageWeight, c.weight, config);
+    } else {
+      console.warn(
+        `${c.from}:${c.to}) invalid averageWeight: ${cs.averageWeight}`,
+        cs,
+      );
+      console.trace();
+    }
   }
 
   return c.weight;
@@ -275,6 +283,26 @@ export function limitWeight(
 ) {
   if (Math.abs(targetWeight) < PLANK_CONSTANT) {
     return 0;
+  }
+
+  if (!Number.isFinite(currentWeight)) {
+    if (Number.isFinite(targetWeight)) {
+      console.warn(
+        `Invalid current: ${currentWeight} retruning target: ${targetWeight}`,
+      );
+      return targetWeight;
+    } else {
+      console.warn(
+        `Invalid current: ${currentWeight} and target: ${targetWeight} returning zero`,
+      );
+      return 0;
+    }
+  }
+  if (!Number.isFinite(targetWeight)) {
+    console.warn(
+      `Invalid target: ${targetWeight} retruning current ${currentWeight}`,
+    );
+    return currentWeight;
   }
 
   const difference = config.learningRate * (targetWeight - currentWeight);

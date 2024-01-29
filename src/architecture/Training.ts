@@ -40,7 +40,7 @@ export function dataFiles(dataDir: string) {
  * Train the given set to this network
  */
 export async function trainDir(
-  network: Creature,
+  creature: Creature,
   dataDir: string,
   options: TrainOptions,
 ) {
@@ -79,13 +79,13 @@ export async function trainDir(
   if (options.trainingTimeOutMinutes ?? 0 > 0) {
     timeoutTS = Date.now() + (options.trainingTimeOutMinutes ?? 0) * 60 * 1000;
   }
-  const uuid = await CreatureUtil.makeUUID(network);
+  const uuid = await CreatureUtil.makeUUID(creature);
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
   let bestError: number | undefined = undefined;
   let trainingFailures = 0;
-  let bestCreatureJSON = network.exportJSON();
-  let bestTraceJSON = network.traceJSON();
+  let bestCreatureJSON = creature.exportJSON();
+  let bestTraceJSON = creature.traceJSON();
   let lastTraceJSON = bestTraceJSON;
   let knownSampleCount = -1;
 
@@ -141,7 +141,7 @@ export async function trainDir(
         const indx = indices[i];
         const data = json[indx];
 
-        const output = network.activateAndTrace(data.input);
+        const output = creature.activateAndTrace(data.input);
 
         const sampleError = cost.calculate(data.output, output);
         errorSum += sampleError;
@@ -168,7 +168,7 @@ export async function trainDir(
             break;
           }
         }
-        network.propagate(data.output, config);
+        creature.propagate(data.output, config);
 
         const now = Date.now();
         const diff = now - lastTS;
@@ -234,31 +234,31 @@ export async function trainDir(
         ensureDirSync(options.traceStore);
         Deno.writeTextFileSync(
           `.trace/${trainingFailures}_fail.json`,
-          JSON.stringify(network.exportJSON(), null, 2),
+          JSON.stringify(creature.exportJSON(), null, 2),
         );
       }
-      network.loadFrom(bestCreatureJSON, false);
+      creature.loadFrom(bestCreatureJSON, false);
       lastTraceJSON = bestTraceJSON;
     } else {
       if (bestError === undefined) {
-        addTag(network, "untrained-error", error.toString());
+        addTag(creature, "untrained-error", error.toString());
       }
       if (bestError !== undefined && bestError > error) {
         bestTraceJSON = lastTraceJSON;
       }
 
-      lastTraceJSON = network.traceJSON();
-      bestCreatureJSON = network.exportJSON();
+      lastTraceJSON = creature.traceJSON();
+      bestCreatureJSON = creature.exportJSON();
       bestError = error;
       knownSampleCount = counter;
 
-      await network.applyLearnings(config);
-      network.clearState();
+      await creature.applyLearnings(config);
+      creature.clearState();
     }
 
     if (timedOut || bestError <= targetError || iteration >= iterations) {
       if (iterations > 1) {
-        network.loadFrom(bestCreatureJSON, false); // If not called via the worker.
+        creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
       }
 
       let compact = await compactUnused(lastTraceJSON);
