@@ -195,25 +195,27 @@ export function accumulateWeight(
       `Invalid weight: ${weight}, value: ${value}, activation: ${activation}`,
     );
   }
-  const targetWeight = value / activation;
+  if (Math.abs(activation) > PLANK_CONSTANT) {
+    const targetWeight = value / activation;
 
-  let difference = targetWeight - weight;
+    let difference = targetWeight - weight;
 
-  if (!config.disableExponentialScaling) {
-    // Squash the difference using the hyperbolic tangent function and scale it
-    difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
-      config.maximumWeightAdjustmentScale;
-  } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-    // Limit the difference to the maximum scale
-    difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
+    if (!config.disableExponentialScaling) {
+      // Squash the difference using the hyperbolic tangent function and scale it
+      difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
+        config.maximumWeightAdjustmentScale;
+    } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
+      // Limit the difference to the maximum scale
+      difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
+    }
+
+    const adjustedWeight = weight + difference;
+
+    cs.averageWeight = ((cs.averageWeight * cs.count) + adjustedWeight) /
+      (cs.count + 1);
+
+    cs.count++;
   }
-
-  const adjustedWeight = weight + difference;
-
-  cs.averageWeight = ((cs.averageWeight * cs.count) + adjustedWeight) /
-    (cs.count + 1);
-
-  cs.count++;
 }
 
 export function adjustedWeight(
