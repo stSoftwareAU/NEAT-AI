@@ -122,7 +122,6 @@ Deno.test("TwoSame", () => {
   const traceDir = ".trace/TwoSame";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
-    // useAverageWeight: "No",
     useAverageDifferenceBias: "Yes",
     generations: 0,
     limitBiasScale: 5,
@@ -189,15 +188,12 @@ Deno.test("ManySame", () => {
   ensureDirSync(traceDir);
   for (let attempts = 0; true; attempts++) {
     const config = new BackPropagationConfig({
-      // useAverageWeight: "Yes",
       useAverageDifferenceBias: "Maybe",
       disableRandomSamples: true,
       generations: 0,
       maximumWeightAdjustmentScale: 3,
       maximumBiasAdjustmentScale: 3,
       learningRate: 1,
-      // limitBiasScale: 100,
-      // limitWeightScale: 100,
     });
 
     Deno.writeTextFileSync(
@@ -366,9 +362,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),
   );
-  const config = new BackPropagationConfig({
-    // useAverageWeight: "Yes",
-  });
+  const config = new BackPropagationConfig({});
   console.info(config);
   const traceDir = ".trace";
   ensureDirSync(traceDir);
