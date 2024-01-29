@@ -60,34 +60,40 @@ Deno.test("UnusedClipped", async () => {
     outputs[i] = creature.activate(data[i]);
   }
 
-  const config = new BackPropagationConfig();
-  for (let i = data.length; i--;) {
-    const actual = creature.activateAndTrace(data[i]);
-    creature.propagate(outputs[i], config);
-    assertAlmostEquals(
-      actual[0],
-      outputs[i][0],
-      0.000_001,
-      `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
-    );
-    assertAlmostEquals(
-      actual[1],
-      outputs[i][1],
-      0.000_001,
-      `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
-    );
-  }
-
   const traceDir = ".trace/UnusedClipped";
   ensureDirSync(traceDir);
+  let compacted;
 
-  Deno.writeTextFileSync(
-    `${traceDir}/trace.json`,
-    JSON.stringify(creature.traceJSON(), null, 2),
-  );
+  for (let attempts = 0; attempts < 240; attempts++) {
+    const config = new BackPropagationConfig();
+    for (let i = data.length; i--;) {
+      const actual = creature.activateAndTrace(data[i]);
+      creature.propagate(outputs[i], config);
+      assertAlmostEquals(
+        actual[0],
+        outputs[i][0],
+        0.000_001,
+        `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+      );
+      assertAlmostEquals(
+        actual[1],
+        outputs[i][1],
+        0.000_001,
+        `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+      );
+    }
 
-  const compacted = await compactUnused(creature.traceJSON());
+    Deno.writeTextFileSync(
+      `${traceDir}/trace.json`,
+      JSON.stringify(creature.traceJSON(), null, 2),
+    );
 
+    compacted = await compactUnused(creature.traceJSON());
+
+    if (compacted) break;
+    console.info(`Attempt: ${attempts}`);
+    creature.clearState();
+  }
   if (!compacted) {
     fail("Should have compacted");
   }

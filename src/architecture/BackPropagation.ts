@@ -187,8 +187,8 @@ export function accumulateWeight(
   config: BackPropagationConfig,
 ) {
   if (
-    !Number.isFinite(weight)     || 
-    !Number.isFinite(value)      ||
+    !Number.isFinite(weight) ||
+    !Number.isFinite(value) ||
     !Number.isFinite(activation)
   ) {
     throw new Error(
@@ -235,11 +235,10 @@ export function adjustedWeight(
 
       return limitWeight(averageWeight, c.weight, config);
     } else {
-      console.warn(
-        `${c.from}:${c.to}) invalid averageWeight: ${cs.averageWeight}`,
-        cs,
+      throw Error(
+        `${c.from}:${c.to}) invalid averageWeight: ${cs.averageWeight} ` +
+          JSON.stringify(cs, null, 2),
       );
-      console.trace();
     }
   }
 
@@ -296,22 +295,19 @@ export function limitWeight(
 
   if (!Number.isFinite(currentWeight)) {
     if (Number.isFinite(targetWeight)) {
-      console.warn(
+      throw new Error(
         `Invalid current: ${currentWeight} retruning target: ${targetWeight}`,
       );
-      return targetWeight;
     } else {
-      console.warn(
+      throw new Error(
         `Invalid current: ${currentWeight} and target: ${targetWeight} returning zero`,
       );
-      return 0;
     }
   }
   if (!Number.isFinite(targetWeight)) {
-    console.warn(
+    throw new Error(
       `Invalid target: ${targetWeight} retruning current ${currentWeight}`,
     );
-    return currentWeight;
   }
 
   const difference = config.learningRate * (targetWeight - currentWeight);
