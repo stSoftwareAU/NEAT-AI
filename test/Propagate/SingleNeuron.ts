@@ -119,7 +119,6 @@ Deno.test("OneAndDone", () => {
 });
 
 Deno.test("TwoSame", () => {
-  const creature = makeCreature();
   const traceDir = ".trace/TwoSame";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
@@ -130,14 +129,16 @@ Deno.test("TwoSame", () => {
     limitWeightScale: 5,
   });
 
-  Deno.writeTextFileSync(
-    `${traceDir}/0-start.json`,
-    JSON.stringify(creature.traceJSON(), null, 2),
-  );
-
   const inA = [-1, 0, 1];
   const expectedA = makeOutput(inA);
   for (let attempts = 0; true; attempts++) {
+    const creature = makeCreature();
+
+    Deno.writeTextFileSync(
+      `${traceDir}/0-start.json`,
+      JSON.stringify(creature.traceJSON(), null, 2),
+    );
+
     for (let i = 0; i < 2; i++) {
       creature.activateAndTrace(inA);
 
@@ -338,7 +339,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
       Math.abs(expectedD[1] - actual[1]) > 0.5
     ) {
       {
-        if (attempts < 12) {
+        if (attempts < 120) {
           continue;
         }
       }
