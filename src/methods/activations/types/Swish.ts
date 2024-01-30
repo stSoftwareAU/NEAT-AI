@@ -53,11 +53,11 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     return x * (1 / (1 + Math.exp(-x)));
   }
 
-  squashAndDerive(x: number) {
-    const sigmoid_x = 1 / (1 + Math.exp(-x));
-    return {
-      activation: this.squash(x),
-      derivative: sigmoid_x * (1 + x * (1 - sigmoid_x)),
-    };
-  }
+  // squashAndDerive(x: number) {
+  //   const sigmoid_x = 1 / (1 + Math.exp(-x));
+  //   return {
+  //     activation: this.squash(x),
+  //     derivative: sigmoid_x * (1 + x * (1 - sigmoid_x)),
+  //   };
+  // }
 }

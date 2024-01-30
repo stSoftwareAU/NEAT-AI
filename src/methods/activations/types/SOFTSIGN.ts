@@ -44,13 +44,13 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
   }
 
   // Function to calculate the activation and its derivative
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
-    const d = 1 + Math.abs(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
+  //   const d = 1 + Math.abs(x);
 
-    return {
-      activation: fx,
-      derivative: 1 / Math.pow(d, 2),
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: 1 / Math.pow(d, 2),
+  //   };
+  // }
 }

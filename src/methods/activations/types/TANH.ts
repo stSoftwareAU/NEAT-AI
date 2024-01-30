@@ -46,13 +46,13 @@ export class TANH implements ActivationInterface, UnSquashInterface {
     return Math.tanh(x);
   }
 
-  // Function to calculate the activation and its derivative
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // // Function to calculate the activation and its derivative
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: 1 - Math.pow(fx, 2),
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: 1 - Math.pow(fx, 2),
+  //   };
+  // }
 }

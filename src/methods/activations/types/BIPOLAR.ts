@@ -28,13 +28,13 @@ export class BIPOLAR implements ActivationInterface, UnSquashInterface {
     return x > 0 ? 1 : -1;
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    // The derivative is technically undefined at zero
-    return {
-      activation: fx,
-      derivative: 0,
-    };
-  }
+  //   // The derivative is technically undefined at zero
+  //   return {
+  //     activation: fx,
+  //     derivative: 0,
+  //   };
+  // }
 }

@@ -27,12 +27,12 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
     return fx;
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: fx * (1 - fx),
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: fx * (1 - fx),
+  //   };
+  // }
 }

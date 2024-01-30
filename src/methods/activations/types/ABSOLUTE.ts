@@ -30,12 +30,12 @@ export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
     return Math.abs(x);
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: x < 0 ? -1 : 1,
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: x < 0 ? -1 : 1,
+  //   };
+  // }
 }

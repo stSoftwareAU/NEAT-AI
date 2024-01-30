@@ -3,35 +3,6 @@ export interface DataRecordInterface {
   output: number[];
 }
 
-export function freezeAndValidate(
-  dataSet: DataRecordInterface[],
-) {
-  Object.freeze(dataSet);
-  for (let i = dataSet.length; i--;) {
-    const tmpIn = dataSet[i].input;
-    const tmpOut = dataSet[i].output;
-    Object.freeze(tmpIn);
-    Object.freeze(tmpOut);
-    for (let j = tmpIn.length; j--;) {
-      const v = tmpIn[j];
-      if (
-        Number.isFinite(v) == false
-      ) {
-        throw new Error(i + ":" + j + ") Input not within range: " + v);
-      }
-    }
-    for (let k = tmpOut.length; k--;) {
-      const v = tmpOut[k];
-      if (
-        Number.isFinite(v) == false ||
-        typeof v !== "number"
-      ) {
-        throw new Error(i + ":" + k + ") Output not within range: " + v);
-      }
-    }
-  }
-}
-
 const encoder = new TextEncoder();
 
 export function makeDataDir(

@@ -21,10 +21,10 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
     return x > 0 ? x : LeakyReLU.ALPHA * x;
   }
 
-  squashAndDerive(x: number) {
-    return {
-      activation: this.squash(x),
-      derivative: x > 0 ? 1 : LeakyReLU.ALPHA,
-    };
-  }
+  // squashAndDerive(x: number) {
+  //   return {
+  //     activation: this.squash(x),
+  //     derivative: x > 0 ? 1 : LeakyReLU.ALPHA,
+  //   };
+  // }
 }

@@ -34,10 +34,10 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     return x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
   }
 
-  squashAndDerive(x: number) {
-    return {
-      activation: this.squash(x),
-      derivative: x > 0 ? 1 : this.squash(x) + ELU.ALPHA,
-    };
-  }
+  // squashAndDerive(x: number) {
+  //   return {
+  //     activation: this.squash(x),
+  //     derivative: x > 0 ? 1 : this.squash(x) + ELU.ALPHA,
+  //   };
+  // }
 }

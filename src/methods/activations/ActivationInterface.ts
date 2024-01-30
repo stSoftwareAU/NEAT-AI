@@ -6,6 +6,6 @@ interface SquashAndDeriveResult {
 }
 
 export interface ActivationInterface extends AbstractActivationInterface {
-  squashAndDerive(x: number): SquashAndDeriveResult;
+  // squashAndDerive(x: number): SquashAndDeriveResult;
   squash(x: number): number;
 }

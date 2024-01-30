@@ -52,13 +52,13 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     return (d - 1) / 2 + x;
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
-    const d = Math.sqrt(Math.pow(x, 2) + 1);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
+  //   const d = Math.sqrt(Math.pow(x, 2) + 1);
 
-    return {
-      activation: fx,
-      derivative: x / (2 * d) + 1,
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: x / (2 * d) + 1,
+  //   };
+  // }
 }
