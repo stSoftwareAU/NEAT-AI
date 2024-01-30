@@ -42,11 +42,11 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
   }
 
   // Function to calculate the activation and its derivative
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
-    return {
-      activation: fx,
-      derivative: Math.cos(x),
-    };
-  }
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
+  //   return {
+  //     activation: fx,
+  //     derivative: Math.cos(x),
+  //   };
+  // }
 }

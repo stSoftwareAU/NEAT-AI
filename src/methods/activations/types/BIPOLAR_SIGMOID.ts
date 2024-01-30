@@ -32,12 +32,12 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     return 2 / (1 + Math.exp(-x)) - 1;
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: 0.5 * (1 + fx) * (1 - fx),
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: 0.5 * (1 + fx) * (1 - fx),
+  //   };
+  // }
 }

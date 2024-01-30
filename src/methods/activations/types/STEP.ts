@@ -43,13 +43,13 @@ export class STEP implements ActivationInterface, UnSquashInterface {
     return x > 0 ? 1 : 0;
   }
 
-  // Function to calculate the activation and its derivative
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // // Function to calculate the activation and its derivative
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: 0,
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: 0,
+  //   };
+  // }
 }

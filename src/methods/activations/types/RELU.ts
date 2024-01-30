@@ -46,11 +46,11 @@ export class RELU implements ActivationInterface, UnSquashInterface {
   }
 
   // Function to calculate the activation and its derivative
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
-    return {
-      activation: fx,
-      derivative: x > 0 ? 1 : 0,
-    };
-  }
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
+  //   return {
+  //     activation: fx,
+  //     derivative: x > 0 ? 1 : 0,
+  //   };
+  // }
 }

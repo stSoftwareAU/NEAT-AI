@@ -28,13 +28,13 @@ export class CLIPPED implements ActivationInterface, UnSquashInterface {
     return Math.max(-1, Math.min(1, x));
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    // The derivative is 1 for x in [-1, 1] and 0 otherwise.
-    return {
-      activation: fx,
-      derivative: x > -1 && x < 1 ? 1 : 0,
-    };
-  }
+  //   // The derivative is 1 for x in [-1, 1] and 0 otherwise.
+  //   return {
+  //     activation: fx,
+  //     derivative: x > -1 && x < 1 ? 1 : 0,
+  //   };
+  // }
 }

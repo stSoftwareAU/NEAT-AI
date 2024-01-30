@@ -56,10 +56,10 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   }
 
   // Function to calculate the activation and its derivative
-  squashAndDerive(x: number) {
-    return {
-      activation: this.squash(x),
-      derivative: 1 / (1 + Math.exp(-x)),
-    };
-  }
+  // squashAndDerive(x: number) {
+  //   return {
+  //     activation: this.squash(x),
+  //     derivative: 1 / (1 + Math.exp(-x)),
+  //   };
+  // }
 }

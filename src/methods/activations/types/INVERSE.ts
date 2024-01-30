@@ -25,12 +25,12 @@ export class INVERSE implements ActivationInterface, UnSquashInterface {
     return { low: -Infinity, high: 2 };
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: -1,
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: -1,
+  //   };
+  // }
 }

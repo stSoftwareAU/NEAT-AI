@@ -37,12 +37,12 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
     return { low: 0, high: Infinity };
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: x !== 0 ? -1 / (x * x) : 0,
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: x !== 0 ? -1 / (x * x) : 0,
+  //   };
+  // }
 }

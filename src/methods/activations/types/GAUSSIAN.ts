@@ -48,12 +48,12 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
     return Math.exp(-Math.pow(x, 2));
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: -2 * x * fx,
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: -2 * x * fx,
+  //   };
+  // }
 }

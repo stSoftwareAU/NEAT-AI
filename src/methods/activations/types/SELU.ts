@@ -50,14 +50,14 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     return fx * SELU.SCALE;
   }
 
-  squashAndDerive(x: number) {
-    const fx = this.squash(x);
+  // squashAndDerive(x: number) {
+  //   const fx = this.squash(x);
 
-    return {
-      activation: fx,
-      derivative: x > 0
-        ? SELU.SCALE
-        : (fx / SELU.SCALE + SELU.ALPHA) * SELU.SCALE,
-    };
-  }
+  //   return {
+  //     activation: fx,
+  //     derivative: x > 0
+  //       ? SELU.SCALE
+  //       : (fx / SELU.SCALE + SELU.ALPHA) * SELU.SCALE,
+  //   };
+  // }
 }
