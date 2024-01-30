@@ -121,12 +121,6 @@ Deno.test("OneAndDone", () => {
 Deno.test("TwoSame", () => {
   const traceDir = ".trace/TwoSame";
   ensureDirSync(traceDir);
-  const config = new BackPropagationConfig({
-    useAverageDifferenceBias: "Yes",
-    generations: 0,
-    limitBiasScale: 5,
-    limitWeightScale: 5,
-  });
 
   const inA = [-1, 0, 1];
   const expectedA = makeOutput(inA);
@@ -137,6 +131,13 @@ Deno.test("TwoSame", () => {
       `${traceDir}/0-start.json`,
       JSON.stringify(creature.traceJSON(), null, 2),
     );
+    const config = new BackPropagationConfig({
+      useAverageDifferenceBias: "Yes",
+      generations: 0,
+      learningRate: 1,
+      limitBiasScale: 5,
+      limitWeightScale: 5,
+    });
 
     for (let i = 0; i < 2; i++) {
       creature.activateAndTrace(inA);
@@ -169,13 +170,17 @@ Deno.test("TwoSame", () => {
         expectedA[0],
         actualA[0],
         0.5,
-        `0: ${expectedA[0].toFixed(3)} ${actualA[0].toFixed(3)}`,
+        `0: ${expectedA[0].toFixed(3)} ${
+          actualA[0].toFixed(3)
+        }, attempts: ${attempts}`,
       );
       assertAlmostEquals(
         expectedA[1],
         actualA[1],
         0.5,
-        `1: ${expectedA[1].toFixed(3)} ${actualA[1].toFixed(3)}`,
+        `1: ${expectedA[1].toFixed(3)} ${
+          actualA[1].toFixed(3)
+        }, attempts: ${attempts}`,
       );
       break;
     }
