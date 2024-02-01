@@ -37,9 +37,9 @@ export class WorkerProcessor {
       if (!this.dataSetDir) throw new Error("no data directory");
       if (!this.cost) throw new Error("no cost");
 
-      const network = Creature.fromJSON(JSON.parse(data.evaluate.network));
+      const network = Creature.fromJSON(JSON.parse(data.evaluate.creature));
       /* release some memory*/
-      data.evaluate.network = "";
+      data.evaluate.creature = "";
       const result = network.evaluateDir(
         this.dataSetDir,
         this.cost,
@@ -57,11 +57,11 @@ export class WorkerProcessor {
       };
     } else if (data.train) {
       const network = Creature.fromJSON(
-        JSON.parse(data.train.network),
+        JSON.parse(data.train.creature),
         data.debug,
       );
       /* release some memory*/
-      data.train.network = "";
+      data.train.creature = "";
 
       if (!this.dataSetDir) throw new Error("No data dir");
 

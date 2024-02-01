@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.213.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.214.0/assert/mod.ts";
 import { WorkerHandler } from "../src/multithreading/workers/WorkerHandler.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

@@ -1,5 +1,5 @@
+import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../../Creature.ts";
-import { CreatureInternal } from "../../architecture/CreatureInterfaces.ts";
 import { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
 
@@ -11,11 +11,11 @@ export interface RequestData {
     costName: string;
   };
   evaluate?: {
-    network: string;
+    creature: string;
     feedbackLoop: boolean;
   };
   train?: {
-    network: string;
+    creature: string;
     options: TrainOptions;
   };
   echo?: {
@@ -127,20 +127,6 @@ export class WorkerHandler {
   }
 
   private makePromise(data: RequestData) {
-    // const type = data.debug
-    //   ? "debug"
-    //   : data.echo
-    //   ? "echo"
-    //   : data.evaluate
-    //   ? "evaluate"
-    //   : data.initialize
-    //   ? "initialize"
-    //   : data.train
-    //   ? "train"
-    //   : "unknown";
-    // console.info(
-    //   `Starting  task: ${data.taskID.toString()} on worker ${this.workerID} type: ${type}`,
-    // );
     if (this.busyCount < 0) {
       throw new Error(
         `${data.taskID.toString()} invalid busy count ${this.busyCount}`,
@@ -150,9 +136,6 @@ export class WorkerHandler {
     const p = new Promise<ResponseData>((resolve) => {
       let alreadyCalled = false;
       const call = (result: ResponseData) => {
-        // console.info(
-        //   `Completed task: ${data.taskID.toString()} on worker ${this.workerID} busy: ${this.busyCount}, already: ${alreadyCalled}`,
-        // );
         if (!alreadyCalled) {
           this.busyCount--;
           alreadyCalled = true;
@@ -199,11 +182,11 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  evaluate(network: CreatureInternal, feedbackLoop: boolean) {
+  evaluate(creature: Creature, feedbackLoop: boolean) {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        network: JSON.stringify((network as Creature).internalJSON()),
+        creature: JSON.stringify(creature.internalJSON()),
         feedbackLoop,
       },
     };
@@ -211,15 +194,26 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  train(network: CreatureInternal, options: TrainOptions) {
-    const json = (network as Creature).exportJSON();
+  train(creature: Creature, options: TrainOptions) {
+    const json = creature.exportJSON();
 
     delete json.tags;
+
+    addTag(
+      json,
+      "untrained-error",
+      getTag(creature, "error") || Number.MAX_SAFE_INTEGER.toString(),
+    );
+    addTag(
+      json,
+      "untrained-score",
+      creature.score?.toString() || Number.MIN_SAFE_INTEGER.toString(),
+    );
 
     const data: RequestData = {
       taskID: this.taskID++,
       train: {
-        network: JSON.stringify(json),
+        creature: JSON.stringify(json),
         options: options,
       },
     };

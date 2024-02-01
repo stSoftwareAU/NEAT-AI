@@ -1,6 +1,6 @@
-import { blue } from "https://deno.land/std@0.213.0/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.213.0/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.213.0/fs/ensure_dir.ts";
+import { blue } from "https://deno.land/std@0.214.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.214.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.214.0/fs/ensure_dir.ts";
 import {
   addTag,
   getTag,
@@ -437,7 +437,8 @@ export class Neat {
 
         if (
           this.doNotStartMoreTraining == false &&
-          this.trainingInProgress.size < this.config.trainPerGen
+          this.trainingInProgress.size < this.config.trainPerGen &&
+          Number.isFinite(n.score)
         ) {
           await this.scheduleTraining(n, trainingTimeOutMinutes);
         }

@@ -1,4 +1,4 @@
-import { blue, bold, cyan } from "https://deno.land/std@0.213.0/fmt/colors.ts";
+import { blue, bold, cyan } from "https://deno.land/std@0.214.0/fmt/colors.ts";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";

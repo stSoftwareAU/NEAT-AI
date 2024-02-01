@@ -1,12 +1,12 @@
 import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { Creature } from "../Creature.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { calculate as calculateScore } from "./Score.ts";
 
 type PromiseFunction = (v: unknown) => void;
 
 let calculationData: {
-  queue: CreatureInternal[];
+  queue: Creature[];
   resolve: PromiseFunction;
   reject: PromiseFunction;
   that: Fitness;
@@ -31,7 +31,7 @@ export class Fitness {
     }
   }
 
-  private async _callWorker(worker: WorkerHandler, creature: CreatureInternal) {
+  private async _callWorker(worker: WorkerHandler, creature: Creature) {
     this.calledWorkers++;
     const responseData = await worker.evaluate(creature, this.feedbackLoop);
     this.calledWorkers--;
@@ -69,24 +69,13 @@ export class Fitness {
     await Promise.all(promises);
 
     if (data.queue.length == 0) {
-      // let stillBusy = false;
-      // for (let i = this.workers.length; i--;) {
-      //   const w = this.workers[i];
-      //   if (w.isBusy()) {
-      //     stillBusy = true;
-      //     break;
-      //   }
-      // }
-      // if (!stillBusy) {
-      //   data.resolve("");
-      // } else
       if (this.calledWorkers == 0) {
         data.resolve("");
       }
     }
   }
 
-  calculate(population: CreatureInternal[]) {
+  calculate(population: Creature[]) {
     return new Promise((resolve, reject) => {
       calculationData = {
         queue: population.slice(),
