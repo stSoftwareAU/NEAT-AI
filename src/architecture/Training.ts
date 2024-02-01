@@ -1,7 +1,6 @@
-import { blue, yellow } from "https://deno.land/std@0.213.0/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.213.0/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.213.0/fs/ensure_dir.ts";
-import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { blue, yellow } from "https://deno.land/std@0.214.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.214.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.214.0/fs/ensure_dir.ts";
 import { Costs } from "../Costs.ts";
 import { Creature } from "../Creature.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";
@@ -240,9 +239,6 @@ export async function trainDir(
       creature.loadFrom(bestCreatureJSON, false);
       lastTraceJSON = bestTraceJSON;
     } else {
-      if (bestError === undefined) {
-        addTag(creature, "untrained-error", error.toString());
-      }
       if (bestError !== undefined && bestError > error) {
         bestTraceJSON = lastTraceJSON;
       }

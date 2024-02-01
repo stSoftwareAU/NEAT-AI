@@ -1,13 +1,13 @@
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.213.0/assert/mod.ts";
+} from "https://deno.land/std@0.214.0/assert/mod.ts";
 
 import { Creature } from "../../src/Creature.ts";
 import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Costs } from "../../src/Costs.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { ensureDirSync } from "https://deno.land/std@0.213.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.214.0/fs/ensure_dir.ts";
 import { train } from "../../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
