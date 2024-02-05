@@ -13,8 +13,11 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
 export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
   public static NAME = "ABSOLUTE";
 
-  unSquash(activation: number): number {
-    // Not a unique inverse, so we return the positive version
+  unSquash(activation: number, hint?: number): number {
+    if ((hint ? hint : 0) < 0) {
+      return -activation;
+    }
+
     return activation;
   }
 

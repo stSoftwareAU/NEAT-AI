@@ -222,7 +222,14 @@ export class MINIMUM
     }
 
     const ns = node.creature.state.node(node.index);
-    ns.accumulateBias(targetValue, targetWeightedSum, config);
+    ns.accumulateBias(
+      targetValue,
+      targetWeightedSum,
+      config,
+      targetActivation,
+      activation,
+      adjustedBias(node, config),
+    );
 
     const aBias = adjustedBias(node, config);
 

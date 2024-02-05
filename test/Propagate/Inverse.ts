@@ -5,7 +5,7 @@ import {
 import { ensureDirSync } from "https://deno.land/std@0.214.0/fs/ensure_dir.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { INVERSE } from "../../src/methods/activations/types/INVERSE.ts";
+import { COMPLEMENT } from "../../src/methods/activations/types/COMPLEMENT.ts";
 import { train } from "../../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -78,7 +78,7 @@ function makeCreature() {
 
 Deno.test("propagateInverseRandom", async () => {
   const creatureA = makeCreature();
-  const squash = new INVERSE();
+  const squash = new COMPLEMENT();
   const ts = [];
   for (let i = 10; i--;) {
     const i0 = Math.random() * 2 - 1;

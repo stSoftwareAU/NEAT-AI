@@ -167,10 +167,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
 
     if (this.squash) {
-      const activation = this.findSquash();
-
-      if (this.isFixableActivation(activation)) {
-        activation.fix(this);
+      const squashFunction = this.findSquash();
+      this.squash = squashFunction.getName();
+      if (this.isFixableActivation(squashFunction)) {
+        squashFunction.fix(this);
       }
     }
   }
@@ -334,11 +334,21 @@ export class Neuron implements TagsInterface, NeuronInternal {
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const aWeight = adjustedWeight(this.creature.state, c, config);
-
+      if (Math.abs(c.weight - aWeight) > 1e-12) {
+        console.info(
+          `propagateUpdate: ${this.uuid} - ${c.from}:${c.to})  weight: ${c.weight} -> ${aWeight}`,
+        );
+      }
       c.weight = aWeight;
     }
 
     const aBias = adjustedBias(this, config);
+
+    if (Math.abs(this.bias - aBias) > 1e-12) {
+      console.info(
+        `propagateUpdate: ${this.uuid}) bias: ${this.bias} -> ${aBias}`,
+      );
+    }
 
     this.bias = aBias;
   }
@@ -350,11 +360,18 @@ export class Neuron implements TagsInterface, NeuronInternal {
     requestedActivation: number,
     config: BackPropagationConfig,
   ) {
+    if (this.uuid == "hidden-3") {
+      console.info("propagate: hidden-3");
+    }
     const activation = this.adjustedActivation(config);
 
     const targetActivation = limitActivationToRange(this, requestedActivation);
     const ns = this.creature.state.node(this.index);
-
+    // if (Math.abs(activation - targetActivation) > 1e-12) {
+    //   console.info(
+    //     `propagate: ${this.index}) ${activation} -> ${targetActivation}`,
+    //   );
+    // }
     /** Short circuit  */
     // if (Math.abs(activation - targetActivation) < 1e-12) {
     //   ns.traceActivation(activation);
@@ -376,20 +393,24 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const squashMethod = this.findSquash();
     let limitedActivation: number;
 
-    if ((squashMethod as PropagateInterface).propagate !== undefined) {
-      const improvedActivation = (squashMethod as PropagateInterface).propagate(
+    const propagateUpdateMethod = squashMethod as PropagateInterface;
+    if (propagateUpdateMethod.propagate !== undefined) {
+      const aBias = adjustedBias(this, config);
+      const fromTargetActivation = targetActivation - aBias;
+      const improvedActivation = propagateUpdateMethod.propagate(
         this,
-        targetActivation,
+        fromTargetActivation,
         config,
       );
-      limitedActivation = limitActivation(improvedActivation);
+      limitedActivation = limitActivation(improvedActivation + aBias);
     } else {
       const targetValue = toValue(this, targetActivation);
 
       const currentValue = toValue(this, activation);
       const error = targetValue - currentValue;
 
-      let improvedValue = adjustedBias(this, config);
+      const currentBias = adjustedBias(this, config);
+      let improvedValue = currentBias;
       const toList = this.creature.toConnections(this.index);
 
       const listLength = toList.length;
@@ -457,17 +478,25 @@ export class Neuron implements TagsInterface, NeuronInternal {
         }
       }
 
-      ns.accumulateBias(targetValue, improvedValue, config);
+      ns.accumulateBias(
+        targetValue,
+        improvedValue,
+        config,
+        targetActivation,
+        activation,
+        currentBias,
+      );
 
       const aBias = adjustedBias(this, config);
 
       if (this.isNodeActivation(squashMethod) == false) {
         const squashActivation = (squashMethod as ActivationInterface).squash(
-          improvedValue + aBias,
+          improvedValue + aBias - currentBias,
         );
 
         limitedActivation = limitActivation(squashActivation);
       } else {
+        console.info(`${this.squash} is not a NodeActivationInterface`);
         const adjustedActivation = squashMethod.activateAndTrace(this) + aBias;
         limitedActivation = limitActivation(adjustedActivation);
       }

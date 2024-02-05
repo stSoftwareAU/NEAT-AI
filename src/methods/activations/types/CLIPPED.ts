@@ -18,14 +18,15 @@ export class CLIPPED implements ActivationInterface, UnSquashInterface {
     return { low: -1, high: 1 };
   }
 
-  unSquash(activation: number): number {
-    // Note that unSquash is not applicable since CLIPPED is a clipping function.
-    // It does not have a unique inverse, so we'll just return the activation itself.
+  unSquash(activation: number, hint?: number): number {
+    if (Math.abs(hint ? hint : 0) > 1) return hint ? hint : 0;
     return activation;
   }
 
   squash(x: number) {
-    return Math.max(-1, Math.min(1, x));
+    const v = Math.max(-1, Math.min(1, x));
+
+    return v;
   }
 
   // squashAndDerive(x: number) {

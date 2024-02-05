@@ -18,9 +18,9 @@ export class BIPOLAR implements ActivationInterface, UnSquashInterface {
     return { low: -1, high: 1 };
   }
 
-  unSquash(activation: number): number {
-    // Note that the unSquash for a step function like BIPOLAR isn't well-defined.
-    // We'll return 1 for 1 and -1 for -1, but this is an arbitrary choice.
+  unSquash(activation: number, hint?: number): number {
+    if (Number.isFinite(hint)) return hint ? hint : 0;
+
     return activation;
   }
 

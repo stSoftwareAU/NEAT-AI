@@ -1,3 +1,4 @@
+import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { CreatureState, SynapseState } from "./CreatureState.ts";
 import { Neuron } from "./Neuron.ts";
@@ -118,7 +119,60 @@ export function adjustedBias(
       const averageDifferenceBias = (totalValue - ns.totalWeightedSum) /
         samples;
 
+      if (Math.abs(averageDifferenceBias - node.bias) > 0.0001) {
+        console.info(
+          `averageDifferenceBias: ${averageDifferenceBias} node.bias: ${node.bias}`,
+        );
+      }
       const unaccountedRatioBias = 1 - (totalValue / ns.totalWeightedSum);
+
+      if (
+        config.useAverageDifferenceBias == "Yes" ||
+        Number.isFinite(unaccountedRatioBias) == false
+      ) {
+        if (Number.isFinite(averageDifferenceBias)) {
+          return limitBias(averageDifferenceBias, node.bias, config);
+        }
+      } else if (
+        config.useAverageDifferenceBias == "No" ||
+        (
+          Math.abs(averageDifferenceBias - node.bias) <
+            Math.abs(unaccountedRatioBias - node.bias)
+        )
+      ) {
+        return limitBias(unaccountedRatioBias, node.bias, config);
+      } else {
+        return limitBias(averageDifferenceBias, node.bias, config);
+      }
+    }
+
+    return node.bias;
+  }
+}
+
+export function adjustedBiasV2(
+  node: Neuron,
+  config: BackPropagationConfig,
+): number {
+  if (node.type == "constant") {
+    return node.bias ? node.bias : 0;
+  } else {
+    const ns = node.creature.state.node(node.index);
+
+    if (ns.count) {
+      const totalDifferenceBias = ns.totalValue - ns.totalWeightedSum;
+      const totalBias = totalDifferenceBias + (node.bias * config.generations);
+      const samples = ns.count + config.generations;
+
+      const averageDifferenceBias = totalBias /
+        samples;
+
+      // if (Math.abs(averageDifferenceBias - node.bias) > 0.0001) {
+      //   console.info(
+      //     `averageDifferenceBias: ${averageDifferenceBias} node.bias: ${node.bias}`,
+      //   );
+      // }
+      const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
 
       if (
         config.useAverageDifferenceBias == "Yes" ||
@@ -159,24 +213,33 @@ export function limitActivationToRange(node: Neuron, activation: number) {
   return limitedActivation;
 }
 
-export function toValue(node: Neuron, activation: number) {
-  if (node.type == "input" || node.type == "constant") {
+export function toValue(neuron: Neuron, activation: number, hint?: number) {
+  if (neuron.type == "input" || neuron.type == "constant") {
     return activation;
   }
-  const squash = node.findSquash();
+  const squash = neuron.findSquash();
   if (((squash as unknown) as UnSquashInterface).unSquash != undefined) {
     const unSquasher = (squash as unknown) as UnSquashInterface;
-    const value = unSquasher.unSquash(activation);
+    const value = unSquasher.unSquash(activation, hint);
 
     if (!Number.isFinite(value)) {
       throw new Error(
-        `${node.index}: ${node.squash}.unSquash(${activation}) invalid -> ${value}`,
+        `${neuron.index}: ${neuron.squash}.unSquash(${activation}) invalid -> ${value}`,
       );
     }
     return limitValue(value);
   } else {
     return activation;
   }
+}
+export function toActivation(neuron: Neuron, value: number) {
+  const squash = neuron.findSquash();
+
+  const squashedActivation = (squash as ActivationInterface).squash(
+    value,
+  );
+
+  return limitActivation(squashedActivation);
 }
 
 export function accumulateWeight(
@@ -298,7 +361,7 @@ export function limitWeight(
   if (!Number.isFinite(currentWeight)) {
     if (Number.isFinite(targetWeight)) {
       throw new Error(
-        `Invalid current: ${currentWeight} retruning target: ${targetWeight}`,
+        `Invalid current: ${currentWeight} returning target: ${targetWeight}`,
       );
     } else {
       throw new Error(
@@ -308,7 +371,7 @@ export function limitWeight(
   }
   if (!Number.isFinite(targetWeight)) {
     throw new Error(
-      `Invalid target: ${targetWeight} retruning current ${currentWeight}`,
+      `Invalid target: ${targetWeight} returning current ${currentWeight}`,
     );
   }
 

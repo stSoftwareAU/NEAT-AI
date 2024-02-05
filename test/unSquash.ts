@@ -5,7 +5,7 @@ import { Activations } from "../src/methods/activations/Activations.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
 import { BIPOLAR_SIGMOID } from "../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
 import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
-import { INVERSE } from "../src/methods/activations/types/INVERSE.ts";
+import { COMPLEMENT } from "../src/methods/activations/types/COMPLEMENT.ts";
 import { LOGISTIC } from "../src/methods/activations/types/LOGISTIC.ts";
 import { Mish } from "../src/methods/activations/types/Mish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
@@ -55,7 +55,9 @@ function check(squashName: string, values: number[]) {
       switch (squashName) {
         case "ABSOLUTE":
           if (v < 0) {
-            tolerancePercent = 200;
+            hint = -1;
+          } else if (v > 1) {
+            hint = 1;
           }
           break;
         case "BIPOLAR":
@@ -172,6 +174,41 @@ Deno.test("BIPOLAR_SIGMOID", () => {
       `BIPOLAR_SIGMOID ${v} not finite ${tmpValue}`,
     );
   });
+
+  const v = activation.unSquash(1, 0.3);
+
+  assert(v === 0.3, `BIPOLAR_SIGMOID hint not working ${v}`);
+});
+
+Deno.test("BIPOLAR", () => {
+  const activation = Activations.find(
+    BIPOLAR.NAME,
+  ) as UnSquashInterface;
+  const values = [1];
+  values.forEach((v) => {
+    const tmpValue = activation.unSquash(v);
+    assert(
+      Number.isFinite(tmpValue),
+      `${activation.getName()} ${v} not finite ${tmpValue}`,
+    );
+  });
+
+  const v = activation.unSquash(1, 0.3);
+
+  assert(v === 0.3, `${activation.getName()} hint not working ${v}`);
+});
+
+Deno.test("CLIPPED", () => {
+  const activation = Activations.find(
+    CLIPPED.NAME,
+  ) as UnSquashInterface;
+
+  const v = activation.unSquash(1, 1.3);
+
+  assert(v === 1.3, `${activation.getName()} hint not working ${v}`);
+  const v2 = activation.unSquash(-1, -1.3);
+
+  assert(v2 === -1.3, `${activation.getName()} hint not working ${v2}`);
 });
 
 Deno.test("SINUSOID", () => {
@@ -329,7 +366,7 @@ Deno.test("unSquash", () => {
     GAUSSIAN.NAME,
     HARD_TANH.NAME,
     IDENTITY.NAME,
-    INVERSE.NAME,
+    COMPLEMENT.NAME,
     LeakyReLU.NAME,
     LOGISTIC.NAME,
     LogSigmoid.NAME,

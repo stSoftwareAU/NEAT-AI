@@ -14,7 +14,7 @@ import { Exponential } from "./types/Exponential.ts";
 import { GAUSSIAN } from "./types/GAUSSIAN.ts";
 import { HARD_TANH } from "./types/HARD_TANH.ts";
 import { IDENTITY } from "./types/IDENTITY.ts";
-import { INVERSE } from "./types/INVERSE.ts";
+import { COMPLEMENT } from "./types/COMPLEMENT.ts";
 import { LOGISTIC } from "./types/LOGISTIC.ts";
 import { LeakyReLU } from "./types/LeakyReLU.ts";
 import { LogSigmoid } from "./types/LogSigmoid.ts";
@@ -35,24 +35,23 @@ import { TANH } from "./types/TANH.ts";
  */
 export class Activations {
   private static MAP = {
+    [ABSOLUTE.NAME]: new ABSOLUTE(),
+    [BENT_IDENTITY.NAME]: new BENT_IDENTITY(),
+    [BIPOLAR.NAME]: new BIPOLAR(),
+    [BIPOLAR_SIGMOID.NAME]: new BIPOLAR_SIGMOID(),
     [CLIPPED.NAME]: new CLIPPED(),
     [LOGISTIC.NAME]: new LOGISTIC(),
     [TANH.NAME]: new TANH(),
-
     [IDENTITY.NAME]: new IDENTITY(),
-    [INVERSE.NAME]: new INVERSE(),
-
+    [COMPLEMENT.NAME]: new COMPLEMENT(),
+    ["INVERSE"]: new COMPLEMENT(),
     [RELU.NAME]: new RELU(),
     [STEP.NAME]: new STEP(),
     [SELU.NAME]: new SELU(),
     [SOFTSIGN.NAME]: new SOFTSIGN(),
     [SINUSOID.NAME]: new SINUSOID(),
     [GAUSSIAN.NAME]: new GAUSSIAN(),
-    [BENT_IDENTITY.NAME]: new BENT_IDENTITY(),
-    [BIPOLAR.NAME]: new BIPOLAR(),
-    [BIPOLAR_SIGMOID.NAME]: new BIPOLAR_SIGMOID(),
     [HARD_TANH.NAME]: new HARD_TANH(),
-    [ABSOLUTE.NAME]: new ABSOLUTE(),
 
     [MINIMUM.NAME]: new MINIMUM(),
 
@@ -72,7 +71,8 @@ export class Activations {
     [Exponential.NAME]: new Exponential(),
   };
 
-  static NAMES = Object.keys(Activations.MAP);
+  static readonly NAMES = Object.keys(Activations.MAP)
+    .filter((key) => key !== "INVERSE");
 
   static find(name: string) {
     const activation = this.MAP[name];
