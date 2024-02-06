@@ -46,25 +46,25 @@ export class NeuronState implements NeuronStateInterface {
     const activationDifference = Math.abs(targetActivation - activation);
     if (activationDifference < PLANK_CONSTANT) {
       difference = 0;
-    } else {
-      const activationPercent = activationDifference /
-        Math.max(Math.abs(targetActivation), Math.abs(activation));
-      const valuePercent = Math.abs(difference) /
-        Math.max(Math.abs(targetValue), Math.abs(value));
+    } //else {
+    // const activationPercent = activationDifference /
+    //   Math.max(Math.abs(targetActivation), Math.abs(activation));
+    // const valuePercent = Math.abs(difference) /
+    //   Math.max(Math.abs(targetValue), Math.abs(value));
 
-      if (activationPercent > valuePercent) {
-        const originalDifference = difference;
-        const adjustPercent = valuePercent / activationPercent;
-        difference = originalDifference * adjustPercent;
-        console.info(
-          `restrict ${originalDifference} to ${difference} as activation percentage ${
-            activationPercent.toFixed(3)
-          } versus ${valuePercent.toFixed(3)} adjustPercent ${
-            adjustPercent.toFixed(3)
-          }`,
-        );
-      }
-    }
+    // if (activationPercent > valuePercent) {
+    //   const originalDifference = difference;
+    //   const adjustPercent = valuePercent / activationPercent;
+    //   difference = originalDifference * adjustPercent;
+    // console.info(
+    //   `restrict ${originalDifference} to ${difference} as activation percentage ${
+    //     activationPercent.toFixed(3)
+    //   } versus ${valuePercent.toFixed(3)} adjustPercent ${
+    //     adjustPercent.toFixed(3)
+    //   }`,
+    // );
+    // }
+    // }
 
     // if (Math.abs(difference) > PLANK_CONSTANT) {
     //   console.info(

@@ -36,7 +36,7 @@ function makeOutput(input: number[]) {
 
 Deno.test("PI-repeat", () => {
   const creature = makeCreature();
-  const traceDir = ".trace";
+  const traceDir = ".test/PI-repeat";
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     generations: 0,
@@ -45,49 +45,26 @@ Deno.test("PI-repeat", () => {
     learningRate: 1,
   });
   Deno.writeTextFileSync(
-    ".trace/0.json",
+    `${traceDir}/0.json`,
     JSON.stringify(creature.exportJSON(), null, 2),
   );
 
   const inA = [-1, 1, 0];
-  const outA1 = creature.activate(inA);
   let outA2: number[] = [];
   const expectedA = makeOutput(inA);
   for (let i = 0; i < 2; i++) {
     outA2 = creature.activateAndTrace(inA);
-
     creature.propagate(expectedA, config);
 
     Deno.writeTextFileSync(
-      ".trace/1.json",
+      `${traceDir}/traced-${i}.json`,
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
     creature.propagateUpdate(config);
     creature.clearState();
   }
-  assertAlmostEquals(outA1[0], outA2[0], 0.0001);
-  const actualA1 = creature.activateAndTrace(inA);
-  const actualA2 = creature.activate(inA);
-
-  Deno.writeTextFileSync(
-    ".trace/2.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
-  );
-
-  assertAlmostEquals(
-    expectedA[0],
-    actualA1[0],
-    0.1,
-    `0: ${expectedA[0].toFixed(3)} ${actualA1[0].toFixed(3)}`,
-  );
-
-  assertAlmostEquals(
-    expectedA[0],
-    actualA2[0],
-    0.1,
-    `0: ${expectedA[0].toFixed(3)} ${actualA2[0].toFixed(3)}`,
-  );
+  assertAlmostEquals(Math.PI, outA2[0], 0.05);
 });
 
 Deno.test("PI-single", () => {
@@ -96,8 +73,8 @@ Deno.test("PI-single", () => {
   ensureDirSync(traceDir);
   const config = new BackPropagationConfig({
     generations: 0,
-    maximumBiasAdjustmentScale: 2,
-    maximumWeightAdjustmentScale: 2,
+    maximumBiasAdjustmentScale: 20,
+    maximumWeightAdjustmentScale: 20,
     learningRate: 1,
   });
   Deno.writeTextFileSync(

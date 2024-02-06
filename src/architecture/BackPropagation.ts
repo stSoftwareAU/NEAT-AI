@@ -119,11 +119,11 @@ export function adjustedBias(
       const averageDifferenceBias = (totalValue - ns.totalWeightedSum) /
         samples;
 
-      if (Math.abs(averageDifferenceBias - node.bias) > 0.0001) {
-        console.info(
-          `averageDifferenceBias: ${averageDifferenceBias} node.bias: ${node.bias}`,
-        );
-      }
+      // if (Math.abs(averageDifferenceBias - node.bias) > 0.0001) {
+      //   console.info(
+      //     `averageDifferenceBias: ${averageDifferenceBias} node.bias: ${node.bias}`,
+      //   );
+      // }
       const unaccountedRatioBias = 1 - (totalValue / ns.totalWeightedSum);
 
       if (

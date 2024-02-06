@@ -334,21 +334,21 @@ export class Neuron implements TagsInterface, NeuronInternal {
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const aWeight = adjustedWeight(this.creature.state, c, config);
-      if (Math.abs(c.weight - aWeight) > 1e-12) {
-        console.info(
-          `propagateUpdate: ${this.uuid} - ${c.from}:${c.to})  weight: ${c.weight} -> ${aWeight}`,
-        );
-      }
+      // if (Math.abs(c.weight - aWeight) > 1e-12) {
+      //   console.info(
+      //     `propagateUpdate: ${this.uuid} - ${c.from}:${c.to})  weight: ${c.weight} -> ${aWeight}`,
+      //   );
+      // }
       c.weight = aWeight;
     }
 
     const aBias = adjustedBias(this, config);
 
-    if (Math.abs(this.bias - aBias) > 1e-12) {
-      console.info(
-        `propagateUpdate: ${this.uuid}) bias: ${this.bias} -> ${aBias}`,
-      );
-    }
+    // if (Math.abs(this.bias - aBias) > 1e-12) {
+    //   console.info(
+    //     `propagateUpdate: ${this.uuid}) bias: ${this.bias} -> ${aBias}`,
+    //   );
+    // }
 
     this.bias = aBias;
   }
@@ -360,9 +360,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
     requestedActivation: number,
     config: BackPropagationConfig,
   ) {
-    if (this.uuid == "hidden-3") {
-      console.info("propagate: hidden-3");
-    }
+    // if (this.uuid == "hidden-3") {
+    //   console.info("propagate: hidden-3");
+    // }
     const activation = this.adjustedActivation(config);
 
     const targetActivation = limitActivationToRange(this, requestedActivation);
@@ -496,7 +496,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
         limitedActivation = limitActivation(squashActivation);
       } else {
-        console.info(`${this.squash} is not a NodeActivationInterface`);
+        // console.info(`${this.squash} is not a NodeActivationInterface`);
         const adjustedActivation = squashMethod.activateAndTrace(this) + aBias;
         limitedActivation = limitActivation(adjustedActivation);
       }
