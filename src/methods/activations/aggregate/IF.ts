@@ -391,7 +391,14 @@ export class IF
       targetWeightedSum += improvedAdjustedFromValue;
     }
 
-    ns.accumulateBias(targetValue, targetWeightedSum, config);
+    ns.accumulateBias(
+      targetValue,
+      targetWeightedSum,
+      config,
+      targetActivation,
+      activation,
+      adjustedBias(node, config),
+    );
 
     const aBias = adjustedBias(node, config);
 

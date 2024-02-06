@@ -944,12 +944,13 @@ export class Creature implements CreatureInternal {
    */
   propagateUpdate(config: BackPropagationConfig) {
     if (this.state.propagated) throw new Error(`Already propagated`);
+    this.state.propagated = true;
 
+    // @TODO randomize the order of the nodes
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];
       n.propagateUpdate(config);
     }
-    this.state.propagated = true;
   }
 
   /**
