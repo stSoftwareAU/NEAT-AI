@@ -119,11 +119,6 @@ export function adjustedBias(
       const averageDifferenceBias = (totalValue - ns.totalWeightedSum) /
         samples;
 
-      // if (Math.abs(averageDifferenceBias - node.bias) > 0.0001) {
-      //   console.info(
-      //     `averageDifferenceBias: ${averageDifferenceBias} node.bias: ${node.bias}`,
-      //   );
-      // }
       const unaccountedRatioBias = 1 - (totalValue / ns.totalWeightedSum);
 
       if (
@@ -150,53 +145,53 @@ export function adjustedBias(
   }
 }
 
-export function adjustedBiasV2(
-  node: Neuron,
-  config: BackPropagationConfig,
-): number {
-  if (node.type == "constant") {
-    return node.bias ? node.bias : 0;
-  } else {
-    const ns = node.creature.state.node(node.index);
+// export function adjustedBiasV2(
+//   node: Neuron,
+//   config: BackPropagationConfig,
+// ): number {
+//   if (node.type == "constant") {
+//     return node.bias ? node.bias : 0;
+//   } else {
+//     const ns = node.creature.state.node(node.index);
 
-    if (ns.count) {
-      const totalDifferenceBias = ns.totalValue - ns.totalWeightedSum;
-      const totalBias = totalDifferenceBias + (node.bias * config.generations);
-      const samples = ns.count + config.generations;
+//     if (ns.count) {
+//       const totalDifferenceBias = ns.totalValue - ns.totalWeightedSum;
+//       const totalBias = totalDifferenceBias + (node.bias * config.generations);
+//       const samples = ns.count + config.generations;
 
-      const averageDifferenceBias = totalBias /
-        samples;
+//       const averageDifferenceBias = totalBias /
+//         samples;
 
-      // if (Math.abs(averageDifferenceBias - node.bias) > 0.0001) {
-      //   console.info(
-      //     `averageDifferenceBias: ${averageDifferenceBias} node.bias: ${node.bias}`,
-      //   );
-      // }
-      const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
+//       // if (Math.abs(averageDifferenceBias - node.bias) > 0.0001) {
+//       //   console.info(
+//       //     `averageDifferenceBias: ${averageDifferenceBias} node.bias: ${node.bias}`,
+//       //   );
+//       // }
+//       const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
 
-      if (
-        config.useAverageDifferenceBias == "Yes" ||
-        Number.isFinite(unaccountedRatioBias) == false
-      ) {
-        if (Number.isFinite(averageDifferenceBias)) {
-          return limitBias(averageDifferenceBias, node.bias, config);
-        }
-      } else if (
-        config.useAverageDifferenceBias == "No" ||
-        (
-          Math.abs(averageDifferenceBias - node.bias) <
-            Math.abs(unaccountedRatioBias - node.bias)
-        )
-      ) {
-        return limitBias(unaccountedRatioBias, node.bias, config);
-      } else {
-        return limitBias(averageDifferenceBias, node.bias, config);
-      }
-    }
+//       if (
+//         config.useAverageDifferenceBias == "Yes" ||
+//         Number.isFinite(unaccountedRatioBias) == false
+//       ) {
+//         if (Number.isFinite(averageDifferenceBias)) {
+//           return limitBias(averageDifferenceBias, node.bias, config);
+//         }
+//       } else if (
+//         config.useAverageDifferenceBias == "No" ||
+//         (
+//           Math.abs(averageDifferenceBias - node.bias) <
+//             Math.abs(unaccountedRatioBias - node.bias)
+//         )
+//       ) {
+//         return limitBias(unaccountedRatioBias, node.bias, config);
+//       } else {
+//         return limitBias(averageDifferenceBias, node.bias, config);
+//       }
+//     }
 
-    return node.bias;
-  }
-}
+//     return node.bias;
+//   }
+// }
 
 export function limitActivationToRange(node: Neuron, activation: number) {
   if (node.type == "input" || node.type == "constant") {

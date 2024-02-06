@@ -1,4 +1,4 @@
-import { NodeActivationInterface } from "../NodeActivationInterface.ts";
+import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { Neuron } from "../../../architecture/Neuron.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
@@ -12,14 +12,9 @@ import {
   limitValue,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
-import { PropagateInterface } from "../PropagateInterface.ts";
 import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
 
-export class IF
-  implements
-    NodeActivationInterface,
-    ApplyLearningsInterface,
-    PropagateInterface {
+export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
 
   getName() {
@@ -318,10 +313,10 @@ export class IF
     const activation = node.adjustedActivation(config);
 
     const ns = node.creature.state.node(node.index);
+    const currentBias = adjustedBias(node, config);
+    const targetValue = toValue(node, targetActivation - currentBias);
 
-    const targetValue = toValue(node, targetActivation);
-
-    const activationValue = toValue(node, activation);
+    const activationValue = toValue(node, activation - currentBias);
     const error = targetValue - activationValue;
 
     let targetWeightedSum = 0;

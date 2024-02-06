@@ -7,8 +7,6 @@ for (let i = 0; i < 1000; i++) {
 
 const mse = Costs.find("MSE");
 
-Deno.bench( "MSE",
-  ()=> {
-    mse.calculate(samples, samples);
-  }
-);
+Deno.bench("MSE", () => {
+  mse.calculate(samples, samples);
+});

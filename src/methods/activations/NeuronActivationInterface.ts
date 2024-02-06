@@ -2,8 +2,9 @@ import { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
 import { Neuron } from "../../architecture/Neuron.ts";
 import { BackPropagationConfig } from "../../architecture/BackPropagation.ts";
 
-/** Apply any learnings from the training */
-export interface PropagateInterface extends AbstractActivationInterface {
+export interface NeuronActivationInterface extends AbstractActivationInterface {
+  activateAndTrace(node: Neuron): number;
+  activate(node: Neuron): number;
   propagate(
     node: Neuron,
     targetActivation: number,

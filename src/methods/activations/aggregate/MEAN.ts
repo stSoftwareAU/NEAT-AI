@@ -1,11 +1,12 @@
 import {
+  BackPropagationConfig,
   limitActivation,
   limitValue,
 } from "../../../architecture/BackPropagation.ts";
 import { Neuron } from "../../../architecture/Neuron.ts";
-import { NodeActivationInterface } from "../NodeActivationInterface.ts";
+import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 
-export class MEAN implements NodeActivationInterface {
+export class MEAN implements NeuronActivationInterface {
   public static NAME = "MEAN";
 
   getName() {
@@ -44,10 +45,6 @@ export class MEAN implements NodeActivationInterface {
     return value;
   }
 
-  activateAndTrace(node: Neuron) {
-    return this.activate(node);
-  }
-
   fix(node: Neuron) {
     const toListA = node.creature.toConnections(node.index);
     for (let i = toListA.length; i--;) {
@@ -66,5 +63,29 @@ export class MEAN implements NodeActivationInterface {
         break;
       }
     }
+  }
+
+  activateAndTrace(node: Neuron) {
+    const activation = this.activate(node);
+
+    const toList = node.creature.toConnections(node.index);
+    for (let i = toList.length; i--;) {
+      const c = toList[i];
+      const cs = node.creature.state.connection(
+        c.from,
+        c.to,
+      );
+      cs.used = true;
+    }
+
+    return activation;
+  }
+
+  propagate(
+    node: Neuron,
+    _targetActivation: number,
+    config: BackPropagationConfig,
+  ): number {
+    return node.adjustedActivation(config);
   }
 }
