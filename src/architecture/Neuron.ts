@@ -7,9 +7,8 @@ import { Creature } from "../Creature.ts";
 import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
-import { NodeActivationInterface } from "../methods/activations/NodeActivationInterface.ts";
-import { NodeFixableInterface } from "../methods/activations/NodeFixableInterface.ts";
-import { PropagateInterface } from "../methods/activations/PropagateInterface.ts";
+import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
 import {
@@ -33,9 +32,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
   bias: number;
   squash?: string;
   private squashMethodCache?:
-    | NodeActivationInterface
+    | NeuronActivationInterface
     | ActivationInterface
-    | PropagateInterface
     | UnSquashInterface;
   public index: number;
   public tags = undefined;
@@ -177,21 +175,19 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
   private isNodeActivation(
     activation:
-      | NodeActivationInterface
+      | NeuronActivationInterface
       | ActivationInterface
-      | PropagateInterface
       | UnSquashInterface,
-  ): activation is NodeActivationInterface {
-    return (activation as NodeActivationInterface).activateAndTrace !=
+  ): activation is NeuronActivationInterface {
+    return (activation as NeuronActivationInterface).activateAndTrace !=
       undefined;
   }
 
   private hasApplyLearnings(
     activation:
       | ApplyLearningsInterface
-      | NodeActivationInterface
+      | NeuronActivationInterface
       | ActivationInterface
-      | PropagateInterface
       | UnSquashInterface,
   ): activation is ApplyLearningsInterface {
     return (activation as ApplyLearningsInterface).applyLearnings != undefined;
@@ -199,13 +195,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
   private isFixableActivation(
     activation:
-      | NodeActivationInterface
+      | NeuronActivationInterface
       | ActivationInterface
-      | NodeFixableInterface
-      | PropagateInterface
+      | NeuronFixableInterface
       | UnSquashInterface,
-  ): activation is NodeFixableInterface {
-    return (activation as NodeFixableInterface).fix != undefined;
+  ): activation is NeuronFixableInterface {
+    return (activation as NeuronFixableInterface).fix != undefined;
   }
 
   /**
@@ -295,9 +290,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
         for (let i = toList.length; i--;) {
           const c = toList[i];
-          const fromActivation = this.creature.getActivation(c.from);
 
-          value += fromActivation * c.weight;
+          value += this.creature.state.activations[c.from] * c.weight;
         }
 
         const activationSquash = squashMethod as ActivationInterface;
@@ -360,43 +354,49 @@ export class Neuron implements TagsInterface, NeuronInternal {
     requestedActivation: number,
     config: BackPropagationConfig,
   ) {
-    // if (this.uuid == "hidden-3") {
-    //   console.info("propagate: hidden-3");
-    // }
     const activation = this.adjustedActivation(config);
 
     const targetActivation = limitActivationToRange(this, requestedActivation);
     const ns = this.creature.state.node(this.index);
-    // if (Math.abs(activation - targetActivation) > 1e-12) {
+    // if (Math.abs(activation - targetActivation) > 1e-10) {
     //   console.info(
     //     `propagate: ${this.index}) ${activation} -> ${targetActivation}`,
     //   );
     // }
     /** Short circuit  */
-    // if (Math.abs(activation - targetActivation) < 1e-12) {
-    //   ns.traceActivation(activation);
-    //   ns.accumulateBias(this.bias, 0, config);
+    if (Math.abs(activation - targetActivation) < 1e-12) {
+      ns.traceActivation(activation);
+      const currentBias = adjustedBias(this, config);
+      ns.accumulateBias(
+        currentBias,
+        0,
+        config,
+        targetActivation,
+        activation,
+        currentBias,
+      );
 
-    //   const toList = this.creature.toConnections(this.index);
-    //   for (let indx = toList.length; indx--;) {
-    //     const c = toList[indx];
+      const toList = this.creature.toConnections(this.index);
+      for (let indx = toList.length; indx--;) {
+        const c = toList[indx];
 
-    //     if (c.from === c.to) continue;
+        if (c.from === c.to) continue;
 
-    //     const fromNeuron = this.creature.neurons[c.from];
-    //     const fromActivation = fromNeuron.adjustedActivation(config);
-    //     fromNeuron.propagate(fromActivation, config);
-    //   }
-    //   return activation;
-    // }
+        const fromNeuron = this.creature.neurons[c.from];
+        const fromActivation = fromNeuron.adjustedActivation(config);
+        fromNeuron.propagate(fromActivation, config);
+      }
+      return activation;
+    }
 
     const squashMethod = this.findSquash();
     let limitedActivation: number;
 
-    const propagateUpdateMethod = squashMethod as PropagateInterface;
+    const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
     if (propagateUpdateMethod.propagate !== undefined) {
       const aBias = adjustedBias(this, config);
-      const fromTargetActivation = targetActivation - aBias;
+      const fromTargetActivation = targetActivation;
+      // const fromTargetActivation = targetActivation - aBias;
       const improvedActivation = propagateUpdateMethod.propagate(
         this,
         fromTargetActivation,
@@ -496,9 +496,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
         limitedActivation = limitActivation(squashActivation);
       } else {
-        // console.info(`${this.squash} is not a NodeActivationInterface`);
-        const adjustedActivation = squashMethod.activateAndTrace(this) + aBias;
-        limitedActivation = limitActivation(adjustedActivation);
+        throw new Error(`${this.ID} - ${this.type}, squash: ${this.squash}`);
+        // const adjustedActivation = squashMethod.activateAndTrace(this) + aBias;
+        // limitedActivation = limitActivation(adjustedActivation);
       }
     }
     ns.traceActivation(limitedActivation);

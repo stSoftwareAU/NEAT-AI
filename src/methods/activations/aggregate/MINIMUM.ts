@@ -9,15 +9,11 @@ import {
 import { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
 import { Neuron } from "../../../architecture/Neuron.ts";
 import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
-import { NodeActivationInterface } from "../NodeActivationInterface.ts";
-import { PropagateInterface } from "../PropagateInterface.ts";
+import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class MINIMUM
-  implements
-    NodeActivationInterface,
-    ApplyLearningsInterface,
-    PropagateInterface {
+  implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "MINIMUM";
 
   getName() {

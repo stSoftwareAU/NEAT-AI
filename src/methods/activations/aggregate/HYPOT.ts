@@ -1,7 +1,16 @@
+import { BackPropagationConfig } from "../../../architecture/BackPropagation.ts";
 import { Neuron } from "../../../architecture/Neuron.ts";
-import { NodeActivationInterface } from "../NodeActivationInterface.ts";
+import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 
-export class HYPOT implements NodeActivationInterface {
+export class HYPOT implements NeuronActivationInterface {
+  propagate(
+    node: Neuron,
+    _targetActivation: number,
+    config: BackPropagationConfig,
+  ): number {
+    return node.adjustedActivation(config);
+  }
+
   range(): { low: number; high: number } {
     return { low: 0, high: Number.POSITIVE_INFINITY };
   }
