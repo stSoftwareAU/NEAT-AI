@@ -106,7 +106,7 @@ export class MEAN implements NeuronActivationInterface {
     let totalValue = 0;
     for (let indx = toList.length; indx--;) {
       const c = toList[indx];
-
+      if (c.from === c.to) continue;
       const fromNeuron = node.creature.neurons[c.from];
 
       const fromActivation = fromNeuron.adjustedActivation(config);
