@@ -79,6 +79,9 @@ function makeData() {
 Deno.test("PropagateMean", () => {
   const creature = makeCreature();
   const traceDir = ".test/PropagateMean";
+
+  ensureDirSync(traceDir);
+
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
     JSON.stringify(creature.exportJSON(), null, 2),
@@ -101,8 +104,6 @@ Deno.test("PropagateMean", () => {
     creature.activateAndTrace(data[i]);
     creature.propagate(outputs[i], config);
   }
-
-  ensureDirSync(traceDir);
 
   const traced = creature.traceJSON();
   Deno.writeTextFileSync(
