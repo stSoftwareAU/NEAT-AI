@@ -4,9 +4,9 @@ import { Offspring } from "../src/architecture/Offspring.ts";
 import {
   assert,
   assertEquals,
-} from "https://deno.land/std@0.214.0/assert/mod.ts";
+} from "https://deno.land/std@0.215.0/assert/mod.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
-import { assertFalse } from "https://deno.land/std@0.214.0/assert/assert_false.ts";
+import { assertFalse } from "https://deno.land/std@0.215.0/assert/assert_false.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
