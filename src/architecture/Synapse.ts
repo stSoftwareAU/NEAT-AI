@@ -26,12 +26,12 @@ export class Synapse implements SynapseInternal {
    * Converts the connection to a json object
    */
   exportJSON(uuidMap: Map<number, string>) {
-    const fromUUID = uuidMap.get(this.from);
-    const toUUID = uuidMap.get(this.to);
+    const fromUUID = uuidMap.get(this.from) as string;
+    const toUUID = uuidMap.get(this.to) as string;
     const json: SynapseExport = {
       weight: this.weight,
-      fromUUID: fromUUID ? fromUUID : `error-${this.from}`,
-      toUUID: toUUID ? toUUID : `error-${this.to}`,
+      fromUUID: fromUUID,
+      toUUID: toUUID,
       type: this.type,
     };
 
