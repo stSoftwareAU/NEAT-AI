@@ -136,13 +136,13 @@ export class MEAN implements NeuronActivationInterface {
           remainingError = targetFromValue - improvedFromValue;
         }
 
+        const targetFromValue2 = fromValue + remainingError;
         if (
           Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
           Math.abs(fromWeight) > PLANK_CONSTANT &&
-          Math.abs(fromValue) < 1e100
+          Math.abs(targetFromValue2) < 1e100 &&
+          Math.abs(targetFromActivation) < 1e100
         ) {
-          const targetFromValue2 = fromValue + remainingError;
-
           const cs = node.creature.state.connection(
             c.from,
             c.to,
