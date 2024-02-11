@@ -121,6 +121,7 @@ export class MEAN implements NeuronActivationInterface {
         const targetFromActivation = targetFromValue / fromWeight;
 
         if (
+          Number.isFinite(targetFromActivation) &&
           fromWeight &&
           fromNeuron.type !== "input" &&
           fromNeuron.type !== "constant"
