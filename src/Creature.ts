@@ -2007,15 +2007,29 @@ export class Creature implements CreatureInternal {
       const from = (synapse as SynapseExport).fromUUID
         ? uuidMap.get((synapse as SynapseExport).fromUUID)
         : (synapse as SynapseInternal).from;
+
+      if (from === undefined) {
+        throw new Error(
+          (synapse as SynapseExport).fromUUID + ") FROM is undefined",
+        );
+      }
       const to = (synapse as SynapseExport).toUUID
         ? uuidMap.get((synapse as SynapseExport).toUUID)
         : (synapse as SynapseInternal).to;
+
+      if (to === undefined) {
+        throw new Error(
+          (synapse as SynapseExport).toUUID + ") TO is undefined",
+        );
+      }
+
       const connection = this.connect(
-        from ? from : 0,
-        to ? to : 0,
+        from,
+        to,
         synapse.weight,
         synapse.type,
       );
+
       if ((synapse as SynapseTrace).trace) {
         const cs = this.state.connection(connection.from, connection.to);
         const trace = (synapse as SynapseTrace).trace;

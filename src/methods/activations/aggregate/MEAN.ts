@@ -1,7 +1,12 @@
 import {
+  accumulateWeight,
+  adjustedBias,
+  adjustedWeight,
   BackPropagationConfig,
   limitActivation,
   limitValue,
+  PLANK_CONSTANT,
+  toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { Neuron } from "../../../architecture/Neuron.ts";
 import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
@@ -83,9 +88,99 @@ export class MEAN implements NeuronActivationInterface {
 
   propagate(
     node: Neuron,
-    _targetActivation: number,
+    targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    return node.adjustedActivation(config);
+    const toList = node.creature.toConnections(node.index);
+
+    const activation = node.adjustedActivation(config);
+
+    const targetMean = toValue(node, targetActivation);
+
+    const activationValue = toValue(node, activation);
+
+    const error = targetMean - activationValue;
+    const errorPerSynapse = error / toList.length;
+
+    let remainingError = error;
+    let totalValue = 0;
+    for (let indx = toList.length; indx--;) {
+      const c = toList[indx];
+
+      const fromNeuron = node.creature.neurons[c.from];
+
+      const fromActivation = fromNeuron.adjustedActivation(config);
+
+      const fromWeight = adjustedWeight(node.creature.state, c, config);
+
+      const fromValue = fromWeight * fromActivation;
+
+      const targetFromValue = fromValue + errorPerSynapse;
+      let improvedFromActivation = fromActivation;
+      const targetFromActivation = targetFromValue / fromWeight;
+
+      if (
+        fromWeight &&
+        fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant"
+      ) {
+        improvedFromActivation = fromNeuron.propagate(
+          targetFromActivation,
+          config,
+        );
+
+        const improvedFromValue = improvedFromActivation * fromWeight;
+
+        remainingError = targetFromValue - improvedFromValue;
+      }
+
+      if (
+        Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
+        Math.abs(fromWeight) > PLANK_CONSTANT
+      ) {
+        const targetFromValue2 = fromValue + remainingError;
+
+        const cs = node.creature.state.connection(
+          c.from,
+          c.to,
+        );
+        accumulateWeight(
+          c.weight,
+          cs,
+          targetFromValue2,
+          targetFromActivation,
+          config,
+        );
+
+        const aWeight = adjustedWeight(
+          node.creature.state,
+          c,
+          config,
+        );
+
+        const improvedAdjustedFromValue = improvedFromActivation *
+          aWeight;
+
+        totalValue += improvedAdjustedFromValue;
+      }
+    }
+
+    const adjustedMean = totalValue / toList.length;
+
+    const ns = node.creature.state.node(node.index);
+    ns.accumulateBias(
+      targetMean,
+      adjustedMean,
+      config,
+      targetActivation,
+      activation,
+      adjustedBias(node, config),
+    );
+
+    const aBias = adjustedBias(node, config);
+
+    const adjustedActivation = adjustedMean + aBias;
+
+    return adjustedActivation;
   }
 }
