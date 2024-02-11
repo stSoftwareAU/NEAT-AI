@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.214.0/assert/assert_almost_equals.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.215.0/assert/assert_almost_equals.ts";
 import { limitWeight } from "../../src/architecture/BackPropagation.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 

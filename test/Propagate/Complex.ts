@@ -1,5 +1,5 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.214.0/assert/assert_almost_equals.ts";
-import { emptyDirSync } from "https://deno.land/std@0.214.0/fs/empty_dir.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.215.0/assert/assert_almost_equals.ts";
+import { emptyDirSync } from "https://deno.land/std@0.215.0/fs/empty_dir.ts";
 import { Creature } from "../../src/Creature.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 

@@ -1,5 +1,5 @@
 import { makeElitists } from "../src/architecture/ElitismUtils.ts";
-import { assert } from "https://deno.land/std@0.214.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.215.0/assert/mod.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../src/Creature.ts";
 
