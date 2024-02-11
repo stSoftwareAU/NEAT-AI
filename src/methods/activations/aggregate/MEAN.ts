@@ -138,7 +138,8 @@ export class MEAN implements NeuronActivationInterface {
 
         if (
           Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-          Math.abs(fromWeight) > PLANK_CONSTANT
+          Math.abs(fromWeight) > PLANK_CONSTANT &&
+          Math.abs(fromValue) < 1e100
         ) {
           const targetFromValue2 = fromValue + remainingError;
 
