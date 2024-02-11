@@ -117,41 +117,42 @@ export class MEAN implements NeuronActivationInterface {
 
       const targetFromValue = fromValue + errorPerSynapse;
       let improvedFromActivation = fromActivation;
-      const targetFromActivation = targetFromValue / fromWeight;
+      if (Math.abs(fromWeight) > PLANK_CONSTANT) {
+        const targetFromActivation = targetFromValue / fromWeight;
 
-      if (
-        fromWeight &&
-        fromNeuron.type !== "input" &&
-        fromNeuron.type !== "constant"
-      ) {
-        improvedFromActivation = fromNeuron.propagate(
-          targetFromActivation,
-          config,
-        );
+        if (
+          fromWeight &&
+          fromNeuron.type !== "input" &&
+          fromNeuron.type !== "constant"
+        ) {
+          improvedFromActivation = fromNeuron.propagate(
+            targetFromActivation,
+            config,
+          );
 
-        const improvedFromValue = improvedFromActivation * fromWeight;
+          const improvedFromValue = improvedFromActivation * fromWeight;
 
-        remainingError = targetFromValue - improvedFromValue;
-      }
+          remainingError = targetFromValue - improvedFromValue;
+        }
 
-      if (
-        Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-        Math.abs(fromWeight) > PLANK_CONSTANT
-      ) {
-        const targetFromValue2 = fromValue + remainingError;
+        if (
+          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
+          Math.abs(fromWeight) > PLANK_CONSTANT
+        ) {
+          const targetFromValue2 = fromValue + remainingError;
 
-        const cs = node.creature.state.connection(
-          c.from,
-          c.to,
-        );
-        accumulateWeight(
-          c.weight,
-          cs,
-          targetFromValue2,
-          targetFromActivation,
-          config,
-        );
-
+          const cs = node.creature.state.connection(
+            c.from,
+            c.to,
+          );
+          accumulateWeight(
+            c.weight,
+            cs,
+            targetFromValue2,
+            targetFromActivation,
+            config,
+          );
+        }
         const aWeight = adjustedWeight(
           node.creature.state,
           c,
