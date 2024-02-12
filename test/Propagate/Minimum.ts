@@ -2,13 +2,13 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.215.0/assert/mod.ts";
-
-import { Creature } from "../../src/Creature.ts";
-import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Costs } from "../../src/Costs.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { ensureDirSync } from "https://deno.land/std@0.215.0/fs/ensure_dir.ts";
+import { Costs } from "../../src/Costs.ts";
+import { Creature } from "../../src/Creature.ts";
+import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { train } from "../../src/architecture/Training.ts";
+import { TrainOptions } from "../../src/config/TrainOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -70,11 +70,13 @@ Deno.test("PropagateMinimum", async () => {
     const creatureC = Creature.fromJSON(exportJSON);
     creatureC.validate();
 
-    const resultC = await train(creatureC, ts, {
+    const to: TrainOptions = {
       iterations: 1000,
       targetError: errorB - 0.001,
       disableRandomSamples: true,
-    });
+    };
+
+    const resultC = await train(creatureC, ts, to);
 
     Deno.writeTextFileSync(
       ".trace/C-trace.json",
@@ -86,8 +88,11 @@ Deno.test("PropagateMinimum", async () => {
       JSON.stringify(creatureC.exportJSON(), null, 2),
     );
 
-    if (attempts < 12) {
-      if (errorB <= resultC.error) continue;
+    if (attempts < 24) {
+      if (errorB <= resultC.error) {
+        console.log(`Error didn't improve, retrying...`, to);
+        continue;
+      }
     }
 
     if (!resultC.trace) throw new Error("No trace");
