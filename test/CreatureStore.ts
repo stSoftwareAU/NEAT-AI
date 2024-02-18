@@ -1,5 +1,5 @@
-import { assert } from "https://deno.land/std@0.215.0/assert/mod.ts";
-import { emptyDirSync } from "https://deno.land/std@0.215.0/fs/empty_dir.ts";
+import { assert } from "https://deno.land/std@0.216.0/assert/mod.ts";
+import { emptyDirSync } from "https://deno.land/std@0.216.0/fs/empty_dir.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Creature } from "../src/Creature.ts";
 

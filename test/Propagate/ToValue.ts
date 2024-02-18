@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.215.0/assert/assert_almost_equals.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.216.0/assert/assert_almost_equals.ts";
 import { Creature, CreatureExport } from "../../mod.ts";
 import {
   toActivation,
