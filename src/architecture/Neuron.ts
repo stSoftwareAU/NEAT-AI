@@ -356,47 +356,62 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ) {
     const activation = this.adjustedActivation(config);
 
-    const targetActivation = limitActivationToRange(this, requestedActivation);
+    const rangeLimitedActivation = limitActivationToRange(
+      this,
+      requestedActivation,
+    );
+    const momentum = 1;
+    const targetActivation = activation +
+      (rangeLimitedActivation - activation) * momentum;
+
     const ns = this.creature.state.node(this.index);
     // if (Math.abs(activation - targetActivation) > 1e-10) {
     //   console.info(
     //     `propagate: ${this.index}) ${activation} -> ${targetActivation}`,
     //   );
     // }
-    /** Short circuit  */
-    if (Math.abs(activation - targetActivation) < 1e-12) {
-      ns.traceActivation(activation);
-      const currentBias = adjustedBias(this, config);
-      ns.accumulateBias(
-        currentBias,
-        0,
-        config,
-        targetActivation,
-        activation,
-        currentBias,
-      );
-
-      const toList = this.creature.toConnections(this.index);
-      for (let indx = toList.length; indx--;) {
-        const c = toList[indx];
-
-        if (c.from === c.to) continue;
-
-        const fromNeuron = this.creature.neurons[c.from];
-        const fromActivation = fromNeuron.adjustedActivation(config);
-        fromNeuron.propagate(fromActivation, config);
-      }
-      return activation;
-    }
 
     const squashMethod = this.findSquash();
+
+    /** Short circuit  */
+    // if (Math.abs(activation - targetActivation) < 1e-12) {
+    //   ns.traceActivation(rangeLimitedActivation);
+    //   const value = toValue(this, rangeLimitedActivation);
+    //   const currentBias = adjustedBias(this, config);
+    //   ns.accumulateBias(
+    //     value,
+    //     value,
+    //     config,
+    //     activation,
+    //     activation,
+    //     currentBias,
+    //   );
+
+    //   const toList = this.creature.toConnections(this.index);
+    //   for (let indx = toList.length; indx--;) {
+    //     const c = toList[indx];
+
+    //     if (c.from === c.to) continue;
+
+    //     const fromNeuron = this.creature.neurons[c.from];
+    //     if (
+    //       fromNeuron.type !== "input" &&
+    //       fromNeuron.type !== "constant"
+    //     ) {
+    //       const fromActivation = fromNeuron.adjustedActivation(config);
+    //       fromNeuron.propagate(fromActivation, config);
+    //     }
+    //   }
+    //   return rangeLimitedActivation;
+    // }
+
     let limitedActivation: number;
 
     const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
     if (propagateUpdateMethod.propagate !== undefined) {
       const aBias = adjustedBias(this, config);
       const fromTargetActivation = targetActivation;
-      // const fromTargetActivation = targetActivation - aBias;
+
       const improvedActivation = propagateUpdateMethod.propagate(
         this,
         fromTargetActivation,
@@ -497,13 +512,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
         limitedActivation = limitActivation(squashActivation);
       } else {
         throw new Error(`${this.ID} - ${this.type}, squash: ${this.squash}`);
-        // const adjustedActivation = squashMethod.activateAndTrace(this) + aBias;
-        // limitedActivation = limitActivation(adjustedActivation);
       }
     }
     ns.traceActivation(limitedActivation);
 
     return limitedActivation;
+    // return targetActivation;
+    // return requestedActivation;
+    // return rangeLimitedActivation;
   }
 
   adjustedActivation(config: BackPropagationConfig) {
