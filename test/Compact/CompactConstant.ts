@@ -112,7 +112,10 @@ Deno.test("CompactConstants", async () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  const _compacted = await compactUnused(creature.traceJSON());
+  const _compacted = await compactUnused(
+    creature.traceJSON(),
+    config.plankConstant,
+  );
 
   // if (!compacted) {
   //   fail("Should have compacted");

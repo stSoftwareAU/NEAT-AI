@@ -1,9 +1,11 @@
 import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature, CreatureTrace, CreatureUtil } from "../../mod.ts";
-import { PLANK_CONSTANT } from "../architecture/BackPropagation.ts";
 import { removeHiddenNode } from "./CompactUtils.ts";
 
-export async function compactUnused(traced: CreatureTrace) {
+export async function compactUnused(
+  traced: CreatureTrace,
+  plankConstant: number,
+) {
   const start = Creature.fromJSON(traced);
   const clean = Creature.fromJSON(start.exportJSON());
   const compacted = Creature.fromJSON(clean.exportJSON());
@@ -19,7 +21,7 @@ export async function compactUnused(traced: CreatureTrace) {
       if (
         Math.abs(
           neuron.trace.maximumActivation - neuron.trace.minimumActivation,
-        ) < PLANK_CONSTANT
+        ) < plankConstant
       ) {
         if (
           removeNeuron(neuron.uuid, compacted, neuron.trace.maximumActivation)

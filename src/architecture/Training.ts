@@ -257,7 +257,7 @@ export async function trainDir(
         creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
       }
 
-      let compact = await compactUnused(lastTraceJSON);
+      let compact = await compactUnused(lastTraceJSON, config.plankConstant);
       if (!compact) {
         compact = Creature.fromJSON(lastTraceJSON).compact();
       }

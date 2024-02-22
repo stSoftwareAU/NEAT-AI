@@ -3,7 +3,6 @@ import {
   adjustedBias,
   adjustedWeight,
   BackPropagationConfig,
-  PLANK_CONSTANT,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
@@ -186,8 +185,8 @@ export class MAXIMUM
         }
 
         if (
-          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-          Math.abs(fromWeight) > PLANK_CONSTANT
+          Math.abs(improvedFromActivation) > config.plankConstant &&
+          Math.abs(fromWeight) > config.plankConstant
         ) {
           const targetFromValue2 = fromValue + remainingError;
 

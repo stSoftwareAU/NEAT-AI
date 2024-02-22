@@ -1,4 +1,5 @@
 import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { CreatureState, SynapseState } from "./CreatureState.ts";
 import { Neuron } from "./Neuron.ts";
@@ -41,9 +42,10 @@ export interface BackPropagationOptions {
 
   /** When limiting the weight/bias use exponential scaling, Default enabled */
   disableExponentialScaling?: boolean;
-}
 
-export const PLANK_CONSTANT = 0.000_000_1;
+  /** the minimum unit of weights/baises */
+  plankConstant?: number;
+}
 
 export class BackPropagationConfig implements BackPropagationOptions {
   disableRandomSamples: boolean;
@@ -61,6 +63,8 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
   limitWeightScale: number;
   disableExponentialScaling?: boolean;
+
+  plankConstant: number;
 
   constructor(options?: BackPropagationOptions) {
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
@@ -100,6 +104,8 @@ export class BackPropagationConfig implements BackPropagationOptions {
     );
 
     this.disableExponentialScaling = options?.disableExponentialScaling;
+
+    this.plankConstant = options?.plankConstant ?? 0.000_000_1;
   }
 }
 
@@ -200,12 +206,25 @@ export function limitActivationToRange(node: Neuron, activation: number) {
   const squash = node.findSquash();
   const unSquasher = squash;
   const range = unSquasher.range();
-  const limitedActivation = Math.min(
-    Math.max(activation, range.low),
-    range.high,
-  );
 
-  return limitedActivation;
+  const propagateUpdateMethod = squash as NeuronActivationInterface;
+  if (propagateUpdateMethod.propagate !== undefined) {
+    const value = activation - node.bias;
+
+    const limitedActivation = Math.min(
+      Math.max(value, range.low),
+      range.high,
+    ) + node.bias;
+
+    return limitedActivation;
+  } else {
+    const limitedActivation = Math.min(
+      Math.max(activation, range.low),
+      range.high,
+    );
+
+    return limitedActivation;
+  }
 }
 
 export function toValue(neuron: Neuron, activation: number, hint?: number) {
@@ -253,7 +272,7 @@ export function accumulateWeight(
       `Invalid weight: ${weight}, value: ${value}, activation: ${activation}`,
     );
   }
-  if (Math.abs(activation) > PLANK_CONSTANT) {
+  if (Math.abs(activation) > config.plankConstant) {
     const targetWeight = value / activation;
 
     let difference = targetWeight - weight;
@@ -314,7 +333,7 @@ export function limitBias(
     throw new Error(`Bias must be a finite number, got ${targetBias}`);
   }
 
-  if (Math.abs(targetBias) < PLANK_CONSTANT) {
+  if (Math.abs(targetBias) < config.plankConstant) {
     return 0;
   }
 
@@ -349,7 +368,7 @@ export function limitWeight(
   currentWeight: number,
   config: BackPropagationConfig,
 ) {
-  if (Math.abs(targetWeight) < PLANK_CONSTANT) {
+  if (Math.abs(targetWeight) < config.plankConstant) {
     return 0;
   }
 
