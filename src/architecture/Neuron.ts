@@ -18,7 +18,6 @@ import {
   BackPropagationConfig,
   limitActivation,
   limitActivationToRange,
-  PLANK_CONSTANT,
   toValue,
 } from "./BackPropagation.ts";
 import { Synapse } from "./Synapse.ts";
@@ -361,14 +360,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
       requestedActivation,
     );
     const momentum = 1;
-    const targetActivation = activation +
+    let targetActivation = activation +
       (rangeLimitedActivation - activation) * momentum;
 
     const ns = this.creature.state.node(this.index);
-    // if (Math.abs(activation - targetActivation) > 1e-10) {
+    if (Math.abs(activation - targetActivation) < config.plankConstant) {
+      targetActivation = activation;
+    }
+    // else{
     //   console.info(
-    //     `propagate: ${this.index}) ${activation} -> ${targetActivation}`,
-    //   );
+    //       `propagate: ${this.index}) ${activation} -> ${targetActivation}`,
+    //     );
     // }
 
     const squashMethod = this.findSquash();
@@ -409,15 +411,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
     if (propagateUpdateMethod.propagate !== undefined) {
-      const aBias = adjustedBias(this, config);
-      const fromTargetActivation = targetActivation;
+      // const aBias = adjustedBias(this, config);
+      // const fromTargetActivation = targetActivation;
 
       const improvedActivation = propagateUpdateMethod.propagate(
         this,
-        fromTargetActivation,
+        targetActivation,
         config,
       );
-      limitedActivation = limitActivation(improvedActivation + aBias);
+      limitedActivation = limitActivation(improvedActivation);
     } else {
       const targetValue = toValue(this, targetActivation);
 
@@ -472,8 +474,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
           }
 
           if (
-            Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-            Math.abs(fromWeight) > PLANK_CONSTANT
+            Math.abs(improvedFromActivation) > config.plankConstant &&
+            Math.abs(fromWeight) > config.plankConstant
           ) {
             const cs = this.creature.state.connection(c.from, c.to);
             accumulateWeight(

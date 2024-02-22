@@ -3,7 +3,6 @@ import {
   adjustedBias,
   adjustedWeight,
   BackPropagationConfig,
-  PLANK_CONSTANT,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
@@ -117,17 +116,20 @@ export class MINIMUM
   }
 
   propagate(
-    node: Neuron,
+    neuron: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = node.creature.toConnections(node.index);
+    const activation = neuron.adjustedActivation(config);
 
-    const activation = node.adjustedActivation(config);
+    if (Math.abs(targetActivation - activation) < config.plankConstant) {
+      return targetActivation;
+    }
 
-    const targetValue = toValue(node, targetActivation);
+    const toList = neuron.creature.toConnections(neuron.index);
+    const targetValue = toValue(neuron, targetActivation);
 
-    const activationValue = toValue(node, activation);
+    const activationValue = toValue(neuron, activation);
 
     const error = targetValue - activationValue;
     let remainingError = error;
@@ -140,11 +142,11 @@ export class MINIMUM
       for (let indx = toList.length; indx--;) {
         const c = toList[indx];
 
-        const fromNeuron = node.creature.neurons[c.from];
+        const fromNeuron = neuron.creature.neurons[c.from];
 
         const fromActivation = fromNeuron.adjustedActivation(config);
 
-        const fromWeight = adjustedWeight(node.creature.state, c, config);
+        const fromWeight = adjustedWeight(neuron.creature.state, c, config);
         const fromValue = fromWeight * fromActivation;
         if (fromValue < minValue) {
           minValue = fromValue;
@@ -153,11 +155,11 @@ export class MINIMUM
       }
 
       if (mainConnection) {
-        const fromNeuron = node.creature.neurons[mainConnection.from];
+        const fromNeuron = neuron.creature.neurons[mainConnection.from];
         const fromActivation = fromNeuron.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(
-          node.creature.state,
+          neuron.creature.state,
           mainConnection,
           config,
         );
@@ -185,49 +187,49 @@ export class MINIMUM
           remainingError = targetFromValue - improvedFromValue;
         }
 
-        if (
-          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-          Math.abs(fromWeight) > PLANK_CONSTANT
-        ) {
-          const targetFromValue2 = fromValue + remainingError;
+        // if (
+        //   Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
+        //   Math.abs(fromWeight) > PLANK_CONSTANT
+        // ) {
+        const targetFromValue2 = fromValue + remainingError;
 
-          const cs = node.creature.state.connection(
-            mainConnection.from,
-            mainConnection.to,
-          );
-          accumulateWeight(
-            mainConnection.weight,
-            cs,
-            targetFromValue2,
-            targetFromActivation,
-            config,
-          );
+        const cs = neuron.creature.state.connection(
+          mainConnection.from,
+          mainConnection.to,
+        );
+        accumulateWeight(
+          mainConnection.weight,
+          cs,
+          targetFromValue2,
+          targetFromActivation,
+          config,
+        );
 
-          const aWeight = adjustedWeight(
-            node.creature.state,
-            mainConnection,
-            config,
-          );
+        const aWeight = adjustedWeight(
+          neuron.creature.state,
+          mainConnection,
+          config,
+        );
 
-          const improvedAdjustedFromValue = improvedFromActivation *
-            aWeight;
+        const improvedAdjustedFromValue = improvedFromActivation *
+          aWeight;
 
-          targetWeightedSum += improvedAdjustedFromValue;
-        }
+        targetWeightedSum = improvedAdjustedFromValue;
+        // }
       }
     }
-
-    const ns = node.creature.state.node(node.index);
+    // console.info( `${neuron.index} ${targetValue} ${targetWeightedSum}`);
+    const ns = neuron.creature.state.node(neuron.index);
     ns.accumulateBias(
       targetValue,
       targetWeightedSum,
       config,
       targetActivation,
       activation,
-      adjustedBias(node, config),
+      adjustedBias(neuron, config),
     );
 
-    const aBias = adjustedBias(node, config);
+    const aBias = adjustedBias(neuron, config);
 
     const adjustedActivation = targetWeightedSum + aBias;
 

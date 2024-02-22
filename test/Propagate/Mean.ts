@@ -95,7 +95,7 @@ Deno.test("PropagateMean", () => {
   }
 
   const neuron = creature.neurons.find((n) => n.uuid === "absolute-5");
-  if (!neuron) fail("neuron not found");
+  if (!neuron) throw new Error("neuron not found");
 
   neuron.bias = 0;
 

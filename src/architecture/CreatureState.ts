@@ -1,5 +1,5 @@
 import { Creature } from "../Creature.ts";
-import { BackPropagationConfig, PLANK_CONSTANT } from "./BackPropagation.ts";
+import { BackPropagationConfig } from "./BackPropagation.ts";
 
 export interface NeuronStateInterface {
   count: number;
@@ -44,7 +44,7 @@ export class NeuronState implements NeuronStateInterface {
     let difference = targetValue - value;
 
     const activationDifference = Math.abs(targetActivation - activation);
-    if (activationDifference < PLANK_CONSTANT) {
+    if (activationDifference < config.plankConstant) {
       difference = 0;
     } //else {
     // const activationPercent = activationDifference /

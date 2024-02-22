@@ -109,7 +109,10 @@ Deno.test("FixIF", async () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  const compacted = await compactUnused(creature.traceJSON());
+  const compacted = await compactUnused(
+    creature.traceJSON(),
+    config.plankConstant,
+  );
   // }
 
   if (compacted) {

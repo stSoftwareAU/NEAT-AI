@@ -5,7 +5,6 @@ import {
   BackPropagationConfig,
   limitActivation,
   limitValue,
-  PLANK_CONSTANT,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { Neuron } from "../../../architecture/Neuron.ts";
@@ -117,7 +116,7 @@ export class MEAN implements NeuronActivationInterface {
 
       const targetFromValue = fromValue + errorPerSynapse;
       let improvedFromActivation = fromActivation;
-      if (Math.abs(fromWeight) > PLANK_CONSTANT) {
+      if (Math.abs(fromWeight) > config.plankConstant) {
         const targetFromActivation = targetFromValue / fromWeight;
 
         if (
@@ -138,8 +137,8 @@ export class MEAN implements NeuronActivationInterface {
 
         const targetFromValue2 = fromValue + remainingError;
         if (
-          Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-          Math.abs(fromWeight) > PLANK_CONSTANT &&
+          Math.abs(improvedFromActivation) > config.plankConstant &&
+          Math.abs(fromWeight) > config.plankConstant &&
           Math.abs(targetFromValue2) < 1e100 &&
           Math.abs(targetFromActivation) < 1e100
         ) {

@@ -874,7 +874,10 @@ export class Creature implements CreatureInternal {
   async applyLearnings(config: BackPropagationConfig) {
     this.propagateUpdate(config);
 
-    const compacted = await compactUnused(this.traceJSON());
+    const compacted = await compactUnused(
+      this.traceJSON(),
+      config.plankConstant,
+    );
     if (compacted) {
       this.loadFrom(compacted.exportJSON(), false);
       return true;
