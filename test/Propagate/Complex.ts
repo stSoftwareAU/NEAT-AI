@@ -1,10 +1,10 @@
-// import { assertAlmostEquals } from "https://deno.land/std@0.216.0/assert/assert_almost_equals.ts";
+// import { assertAlmostEquals } from "https://deno.land/std@0.217.0/assert/assert_almost_equals.ts";
 import { Creature } from "../../src/Creature.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import {
   ensureDirSync,
   existsSync,
-} from "https://deno.land/std@0.216.0/fs/mod.ts";
+} from "https://deno.land/std@0.217.0/fs/mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

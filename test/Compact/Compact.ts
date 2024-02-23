@@ -2,8 +2,8 @@ import {
   assert,
   assertAlmostEquals,
   fail,
-} from "https://deno.land/std@0.216.0/assert/mod.ts";
-import { ensureDirSync } from "https://deno.land/std@0.216.0/fs/ensure_dir.ts";
+} from "https://deno.land/std@0.217.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.217.0/fs/ensure_dir.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 
