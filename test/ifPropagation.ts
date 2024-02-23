@@ -1,9 +1,9 @@
-import { assert } from "https://deno.land/std@0.216.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.217.0/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import { TrainOptions } from "../src/config/TrainOptions.ts";
-import { ensureDirSync } from "https://deno.land/std@0.216.0/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.217.0/fs/ensure_dir.ts";
 import { train } from "../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

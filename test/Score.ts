@@ -1,7 +1,7 @@
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.216.0/assert/mod.ts";
+} from "https://deno.land/std@0.217.0/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { calculate, valuePenalty } from "../src/architecture/Score.ts";
 
