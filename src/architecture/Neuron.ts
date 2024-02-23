@@ -327,21 +327,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const aWeight = adjustedWeight(this.creature.state, c, config);
-      // if (Math.abs(c.weight - aWeight) > 1e-12) {
-      //   console.info(
-      //     `propagateUpdate: ${this.uuid} - ${c.from}:${c.to})  weight: ${c.weight} -> ${aWeight}`,
-      //   );
-      // }
       c.weight = aWeight;
     }
 
     const aBias = adjustedBias(this, config);
-
-    // if (Math.abs(this.bias - aBias) > 1e-12) {
-    //   console.info(
-    //     `propagateUpdate: ${this.uuid}) bias: ${this.bias} -> ${aBias}`,
-    //   );
-    // }
 
     this.bias = aBias;
   }
@@ -367,53 +356,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (Math.abs(activation - targetActivation) < config.plankConstant) {
       targetActivation = activation;
     }
-    // else{
-    //   console.info(
-    //       `propagate: ${this.index}) ${activation} -> ${targetActivation}`,
-    //     );
-    // }
 
     const squashMethod = this.findSquash();
-
-    /** Short circuit  */
-    // if (Math.abs(activation - targetActivation) < 1e-12) {
-    //   ns.traceActivation(rangeLimitedActivation);
-    //   const value = toValue(this, rangeLimitedActivation);
-    //   const currentBias = adjustedBias(this, config);
-    //   ns.accumulateBias(
-    //     value,
-    //     value,
-    //     config,
-    //     activation,
-    //     activation,
-    //     currentBias,
-    //   );
-
-    //   const toList = this.creature.toConnections(this.index);
-    //   for (let indx = toList.length; indx--;) {
-    //     const c = toList[indx];
-
-    //     if (c.from === c.to) continue;
-
-    //     const fromNeuron = this.creature.neurons[c.from];
-    //     if (
-    //       fromNeuron.type !== "input" &&
-    //       fromNeuron.type !== "constant"
-    //     ) {
-    //       const fromActivation = fromNeuron.adjustedActivation(config);
-    //       fromNeuron.propagate(fromActivation, config);
-    //     }
-    //   }
-    //   return rangeLimitedActivation;
-    // }
 
     let limitedActivation: number;
 
     const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
     if (propagateUpdateMethod.propagate !== undefined) {
-      // const aBias = adjustedBias(this, config);
-      // const fromTargetActivation = targetActivation;
-
       const improvedActivation = propagateUpdateMethod.propagate(
         this,
         targetActivation,
@@ -519,9 +468,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     ns.traceActivation(limitedActivation);
 
     return limitedActivation;
-    // return targetActivation;
-    // return requestedActivation;
-    // return rangeLimitedActivation;
   }
 
   adjustedActivation(config: BackPropagationConfig) {
