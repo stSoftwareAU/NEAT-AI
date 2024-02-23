@@ -42,6 +42,7 @@ Deno.test("Complex Back Propagation", () => {
       JSON.stringify(generated, null, 2),
     );
   }
+
   const inputs = JSON.parse(
     Deno.readTextFileSync(`${traceDir}/input.json`),
   ) as number[][];
@@ -80,9 +81,6 @@ Deno.test("Complex Back Propagation", () => {
     const expected = outputs[i];
     for (let y = 0; y < expected.length; y++) {
       if (Math.abs(actual[y] - expected[y]) > 0.3) {
-        // console.info(
-        //   `@TODO: ${i}:${y} ${actual[y].toFixed(3)}, ${expected[y].toFixed(3)}`,
-        // );
         assertAlmostEquals(
           actual[y],
           expected[y],
