@@ -1,4 +1,8 @@
-import { ensureDirSync } from "https://deno.land/std@0.217.0/fs/ensure_dir.ts";
+import { fail } from "https://deno.land/std@0.217.0/assert/mod.ts";
+import {
+  ensureDirSync,
+  existsSync,
+} from "https://deno.land/std@0.217.0/fs/mod.ts";
 import { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
@@ -62,7 +66,7 @@ function makeCreature() {
   return creature;
 }
 
-function makeData() {
+function makeInputs() {
   const inputs: number[][] = [];
 
   for (let i = 1000; i--;) {
@@ -86,11 +90,21 @@ Deno.test("PropagateMean", () => {
     JSON.stringify(creature.exportJSON(), null, 2),
   );
 
-  const data = makeData();
+  if (!existsSync(`${traceDir}/input.json`)) {
+    const generated = makeInputs();
+    Deno.writeTextFileSync(
+      `${traceDir}/input.json`,
+      JSON.stringify(generated, null, 2),
+    );
+  }
 
-  const outputs: number[][] = new Array(data.length);
-  for (let i = data.length; i--;) {
-    outputs[i] = creature.activate(data[i]);
+  const inputs = JSON.parse(
+    Deno.readTextFileSync(`${traceDir}/input.json`),
+  ) as number[][];
+
+  const outputs: number[][] = new Array(inputs.length);
+  for (let i = inputs.length; i--;) {
+    outputs[i] = creature.activate(inputs[i]);
   }
 
   const neuron = creature.neurons.find((n) => n.uuid === "absolute-5");
@@ -98,9 +112,10 @@ Deno.test("PropagateMean", () => {
 
   neuron.bias = 0;
 
-  const config = new BackPropagationConfig();
-  for (let i = data.length; i--;) {
-    creature.activateAndTrace(data[i]);
+  const config = new BackPropagationConfig({ learningRate: 0.1 });
+  console.info(config);
+  for (let i = inputs.length; i--;) {
+    creature.activateAndTrace(inputs[i]);
     creature.propagate(outputs[i], config);
   }
 
@@ -118,6 +133,6 @@ Deno.test("PropagateMean", () => {
   );
 
   if (neuron.bias < 0.00001 || neuron.bias > 1) {
-    console.info(`@TODO neuron.bias ${neuron.bias} not in range`);
+    fail(`neuron.bias ${neuron.bias} not in range`);
   }
 });
