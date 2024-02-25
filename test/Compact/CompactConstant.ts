@@ -5,6 +5,7 @@ import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
 import {
   assertAlmostEquals,
+  fail,
   // fail,
 } from "https://deno.land/std@0.217.0/assert/mod.ts";
 
@@ -119,27 +120,27 @@ Deno.test("CompactConstants", async () => {
   );
 
   if (!compacted) {
-    console.info("@TODO Should have compacted");
+    fail("Should have compacted");
   }
-  // Deno.writeTextFileSync(
-  //   `${traceDir}/compacted.json`,
-  //   JSON.stringify(compacted.exportJSON(), null, 2),
-  // );
+  Deno.writeTextFileSync(
+    `${traceDir}/compacted.json`,
+    JSON.stringify(compacted.exportJSON(), null, 2),
+  );
 
-  // for (let i = data.length; i--;) {
-  //   const actual = compacted.activate(data[i]);
+  for (let i = data.length; i--;) {
+    const actual = compacted.activate(data[i]);
 
-  //   assertAlmostEquals(
-  //     actual[0],
-  //     outputs[i][0],
-  //     0.000_001,
-  //     `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
-  //   );
-  //   assertAlmostEquals(
-  //     actual[1],
-  //     outputs[i][1],
-  //     0.000_001,
-  //     `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
-  //   );
-  // }
+    assertAlmostEquals(
+      actual[0],
+      outputs[i][0],
+      0.000_001,
+      `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+    );
+    assertAlmostEquals(
+      actual[1],
+      outputs[i][1],
+      0.000_001,
+      `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+    );
+  }
 });

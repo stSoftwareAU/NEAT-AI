@@ -59,6 +59,7 @@ export async function compactUnused(
 function removeNeuron(uuid: string, creature: Creature, activation: number) {
   const neuron = creature.neurons.find((n) => n.uuid === uuid);
   if (neuron?.index) {
+    let useConstant = false;
     const fromList = creature.fromConnections(neuron.index);
 
     for (const synapse of fromList) {
@@ -66,20 +67,26 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
 
       const propagateUpdateMethod = squash as NeuronActivationInterface;
       if (propagateUpdateMethod.propagate !== undefined) {
-        return false;
+        useConstant = true;
+        break;
       }
     }
 
-    for (const synapse of fromList) {
-      const adjustedBias = synapse.weight * activation;
-      creature.neurons[synapse.to].bias += adjustedBias;
+    if (useConstant) {
+      console.log("useConstant");
+      return false;
+    } else {
+      for (const synapse of fromList) {
+        const adjustedBias = synapse.weight * activation;
+        creature.neurons[synapse.to].bias += adjustedBias;
 
-      const toList = creature.toConnections(synapse.to);
-      if (toList.length < 2) {
-        const randomFromIndx = Math.floor(Math.random() * creature.input);
+        const toList = creature.toConnections(synapse.to);
+        if (toList.length < 2) {
+          const randomFromIndx = Math.floor(Math.random() * creature.input);
 
-        /* Add a new connection which will be removed later because weight is zero */
-        creature.connect(randomFromIndx, synapse.to, 0);
+          /* Add a new connection which will be removed later because weight is zero */
+          creature.connect(randomFromIndx, synapse.to, 0);
+        }
       }
     }
 
