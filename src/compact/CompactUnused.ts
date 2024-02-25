@@ -1,6 +1,7 @@
 import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature, CreatureTrace, CreatureUtil } from "../../mod.ts";
 import { removeHiddenNode } from "./CompactUtils.ts";
+import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 
 export async function compactUnused(
   traced: CreatureTrace,
@@ -61,14 +62,11 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
     const fromList = creature.fromConnections(neuron.index);
 
     for (const synapse of fromList) {
-      const squash = creature.neurons[synapse.to].squash;
-      switch (squash) {
-        case "HYPOT":
-        case "IF":
-        case "MAXIMUM":
-        case "MEAN":
-        case "MINIMUM":
-          return false;
+      const squash = creature.neurons[synapse.to].findSquash();
+
+      const propagateUpdateMethod = squash as NeuronActivationInterface;
+      if (propagateUpdateMethod.propagate !== undefined) {
+        return false;
       }
     }
 
@@ -79,6 +77,8 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
       const toList = creature.toConnections(synapse.to);
       if (toList.length < 2) {
         const randomFromIndx = Math.floor(Math.random() * creature.input);
+
+        /* Add a new connection which will be removed later because weight is zero */
         creature.connect(randomFromIndx, synapse.to, 0);
       }
     }
