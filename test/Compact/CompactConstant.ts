@@ -1,10 +1,12 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.217.0/assert/assert_almost_equals.ts";
 import { ensureDirSync } from "https://deno.land/std@0.217.0/fs/ensure_dir.ts";
 import { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-// import { fail } from "https://deno.land/std@0.217.0/assert/fail.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
+import {
+  assertAlmostEquals,
+  // fail,
+} from "https://deno.land/std@0.217.0/assert/mod.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -77,7 +79,6 @@ function makeData() {
 }
 
 Deno.test("CompactConstants", async () => {
-  console.info("@TODO");
   const creature = makeCreature();
   const data = makeData();
 
@@ -112,14 +113,14 @@ Deno.test("CompactConstants", async () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  const _compacted = await compactUnused(
+  const compacted = await compactUnused(
     creature.traceJSON(),
     config.plankConstant,
   );
 
-  // if (!compacted) {
-  //   fail("Should have compacted");
-  // }
+  if (!compacted) {
+    console.info("@TODO Should have compacted");
+  }
   // Deno.writeTextFileSync(
   //   `${traceDir}/compacted.json`,
   //   JSON.stringify(compacted.exportJSON(), null, 2),
