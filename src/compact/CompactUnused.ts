@@ -1,6 +1,6 @@
 import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature, CreatureTrace, CreatureUtil } from "../../mod.ts";
-import { removeHiddenNode } from "./CompactUtils.ts";
+import { createConstantOne, removeHiddenNode } from "./CompactUtils.ts";
 import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 
 export async function compactUnused(
@@ -68,13 +68,40 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
       const propagateUpdateMethod = squash as NeuronActivationInterface;
       if (propagateUpdateMethod.propagate !== undefined) {
         useConstant = true;
+
         break;
       }
     }
 
     if (useConstant) {
-      console.log("useConstant");
-      return false;
+      let constantNeuron = createConstantOne(creature, 0);
+      for (let count = 1; count < 3; count++) {
+        for (const synapse of fromList) {
+          if (creature.getSynapse(constantNeuron.index, synapse.to)) {
+            constantNeuron = createConstantOne(creature, count);
+          } else {
+            break;
+          }
+        }
+      }
+
+      for (const synapse of fromList) {
+        if (creature.getSynapse(constantNeuron.index, synapse.to)) {
+          return false;
+        }
+      }
+
+      for (const synapse of fromList) {
+        creature.connect(
+          constantNeuron.index,
+          synapse.to,
+          synapse.weight * activation,
+          synapse.type,
+        );
+      }
+      removeHiddenNode(creature, neuron.index);
+
+      return true;
     } else {
       for (const synapse of fromList) {
         const adjustedBias = synapse.weight * activation;

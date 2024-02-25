@@ -1900,7 +1900,9 @@ export class Creature implements CreatureInternal {
         const traceNeuron: NeuronExport = json
           .neurons[exportIndex] as NeuronTrace;
 
-        (traceNeuron as NeuronTrace).trace = ns;
+        if (n.type !== "constant") {
+          (traceNeuron as NeuronTrace).trace = ns;
+        }
         traceNeurons[exportIndex] = traceNeuron as NeuronTrace;
         exportIndex++;
       }

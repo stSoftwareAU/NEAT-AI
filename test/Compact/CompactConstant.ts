@@ -83,6 +83,14 @@ Deno.test("CompactConstants", async () => {
   const creature = makeCreature();
   const data = makeData();
 
+  const traceDir = ".test/CompactConstants";
+  ensureDirSync(traceDir);
+
+  Deno.writeTextFileSync(
+    `${traceDir}/0-start.json`,
+    JSON.stringify(creature.exportJSON(), null, 2),
+  );
+
   const outputs: number[][] = new Array(data.length);
   for (let i = data.length; i--;) {
     outputs[i] = creature.activate(data[i]);
@@ -106,11 +114,8 @@ Deno.test("CompactConstants", async () => {
     );
   }
 
-  const traceDir = ".test/CompactConstants";
-  ensureDirSync(traceDir);
-
   Deno.writeTextFileSync(
-    `${traceDir}/trace.json`,
+    `${traceDir}/1-trace.json`,
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
@@ -123,7 +128,7 @@ Deno.test("CompactConstants", async () => {
     fail("Should have compacted");
   }
   Deno.writeTextFileSync(
-    `${traceDir}/compacted.json`,
+    `${traceDir}/2-compacted.json`,
     JSON.stringify(compacted.exportJSON(), null, 2),
   );
 
@@ -142,5 +147,56 @@ Deno.test("CompactConstants", async () => {
       0.000_001,
       `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
     );
+  }
+
+  for (let i = data.length; i--;) {
+    const actual = compacted.activateAndTrace(data[i]);
+    compacted.propagate(outputs[i], config);
+    assertAlmostEquals(
+      actual[0],
+      outputs[i][0],
+      0.000_001,
+      `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+    );
+    assertAlmostEquals(
+      actual[1],
+      outputs[i][1],
+      0.000_001,
+      `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+    );
+  }
+
+  Deno.writeTextFileSync(
+    `${traceDir}/3-trace.json`,
+    JSON.stringify(compacted.traceJSON(), null, 2),
+  );
+
+  const compacted2 = await compactUnused(
+    compacted.traceJSON(),
+    config.plankConstant,
+  );
+
+  if (compacted2) {
+    Deno.writeTextFileSync(
+      `${traceDir}/4-compacted.json`,
+      JSON.stringify(compacted2.exportJSON(), null, 2),
+    );
+
+    for (let i = data.length; i--;) {
+      const actual = compacted2.activate(data[i]);
+
+      assertAlmostEquals(
+        actual[0],
+        outputs[i][0],
+        0.000_001,
+        `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+      );
+      assertAlmostEquals(
+        actual[1],
+        outputs[i][1],
+        0.000_001,
+        `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+      );
+    }
   }
 });
