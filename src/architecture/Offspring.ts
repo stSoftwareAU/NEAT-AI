@@ -116,7 +116,10 @@ export class Offspring {
 
         if (fromNeuron != null && toNode != null) {
           if (fromNeuron <= toNode) {
-            offspring.connect(fromNeuron, toNode, c.weight, c.type);
+            const toType = offspring.neurons[toNode].type;
+            if (toType == "hidden" || toType == "output") {
+              offspring.connect(fromNeuron, toNode, c.weight, c.type);
+            }
           }
         } else {
           throw new Error("Could not find nodes for connection");

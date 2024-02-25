@@ -763,7 +763,7 @@ export class Creature implements CreatureInternal {
     to: number,
     weight: number,
     type?: "positive" | "negative" | "condition",
-  ) {
+  ): Synapse {
     if (Number.isInteger(from) == false || from < 0) {
       throw new Error("from should be a non-negative integer was: " + from);
     }
@@ -794,6 +794,18 @@ export class Creature implements CreatureInternal {
       }
 
       throw new Error(from + ":" + to + ") weight not a number was: " + weight);
+    }
+
+    const toNeuron = this.neurons[to];
+    if (toNeuron) {
+      const toType = toNeuron.type;
+      if (toType == "constant" || toType == "input") {
+        throw new Error(`Can not connect ${from}->${to} with type ${toType}`);
+      }
+    } else {
+      console.warn(
+        `@TODO Can't connect to index: ${to} of length: ${this.neurons.length}`,
+      );
     }
 
     const connection = new Synapse(
@@ -1393,19 +1405,23 @@ export class Creature implements CreatureInternal {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    const indx0 = pair[0].index;
-    const indx1 = pair[1].index;
+    const fromIndx = pair[0].index;
+    const toIndx = pair[1].index;
     const w = Synapse.randomWeight() * options.weightScale
       ? options.weightScale
       : 1;
     this.connect(
-      indx0 ? indx0 : 0,
-      indx1 ? indx1 : 0,
+      fromIndx,
+      toIndx,
       w,
     );
   }
 
   public makeRandomConnection(indx: number) {
+    const toType = this.neurons[indx].type;
+    if (toType == "constant" || toType == "input") {
+      throw new Error(`Can't connect to ${toType}`);
+    }
     for (let attempts = 0; attempts < 12; attempts++) {
       const from = Math.min(
         this.neurons.length - this.output - 1,
