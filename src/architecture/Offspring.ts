@@ -112,13 +112,13 @@ export class Offspring {
 
       connections?.forEach((c) => {
         const fromNeuron = indxMap.get(c.fromUUID);
-        const toNode = indxMap.get(c.toUUID);
+        const toNeuron = indxMap.get(c.toUUID);
 
-        if (fromNeuron != null && toNode != null) {
-          if (fromNeuron <= toNode) {
-            const toType = offspring.neurons[toNode].type;
+        if (fromNeuron != null && toNeuron != null) {
+          if (fromNeuron <= toNeuron) {
+            const toType = offspring.neurons[toNeuron].type;
             if (toType == "hidden" || toType == "output") {
-              offspring.connect(fromNeuron, toNode, c.weight, c.type);
+              offspring.connect(fromNeuron, toNeuron, c.weight, c.type);
             }
           }
         } else {

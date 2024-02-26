@@ -1246,17 +1246,21 @@ export class Creature implements CreatureInternal {
   }
 
   public addNode(focusList?: number[]) {
-    const node = new Neuron(crypto.randomUUID(), "hidden", undefined, this);
+    const neuron = new Neuron(crypto.randomUUID(), "hidden", undefined, this);
 
     // Random squash function
-    node.mutate(Mutation.MOD_ACTIVATION.name);
+    neuron.mutate(Mutation.MOD_ACTIVATION.name);
 
-    node.index = Math.floor(
+    let indx = Math.floor(
       Math.random() *
         (this.neurons.length - this.output - this.input + 1),
     ) + this.input;
 
-    this._insertNode(node);
+    while (this.neurons[indx].type == "constant") {
+      indx++;
+    }
+    neuron.index = indx;
+    this.insertNeuron(neuron);
 
     let tmpFocusList = focusList;
     let fromIndex = -1;
@@ -1269,12 +1273,12 @@ export class Creature implements CreatureInternal {
       }
       if (fromIndex === -1) {
         const pos = Math.floor(
-          Math.random() * node.index,
+          Math.random() * neuron.index,
         );
 
-        if (node.index <= pos || pos < 0) {
+        if (neuron.index <= pos || pos < 0) {
           throw new Error(
-            `From: ${pos} should be less than node index: ${node.index}`,
+            `From: ${pos} should be less than node index: ${neuron.index}`,
           );
         }
         if (this.inFocus(pos, tmpFocusList)) {
@@ -1282,19 +1286,19 @@ export class Creature implements CreatureInternal {
         }
       } else if (toIndex === -1) {
         const pos = Math.floor(
-          Math.random() * (this.neurons.length - node.index),
-        ) + node.index;
+          Math.random() * (this.neurons.length - neuron.index),
+        ) + neuron.index;
 
-        if (node.index > pos) {
+        if (neuron.index > pos) {
           throw new Error(
             "To: " + pos + " should be greater than node index: " +
-              node.index,
+              neuron.index,
           );
         }
 
         if (this.inFocus(pos, tmpFocusList)) {
-          const toNode = this.getNeuron(pos);
-          if (toNode.type !== "constant") {
+          const toNeuron = this.getNeuron(pos);
+          if (toNeuron.type !== "constant") {
             toIndex = pos;
           }
         }
@@ -1306,7 +1310,7 @@ export class Creature implements CreatureInternal {
     if (fromIndex !== -1) {
       this.connect(
         fromIndex,
-        node.index,
+        neuron.index,
         Synapse.randomWeight(),
       );
     } else {
@@ -1315,19 +1319,19 @@ export class Creature implements CreatureInternal {
 
     if (toIndex !== -1) {
       this.connect(
-        node.index,
+        neuron.index,
         toIndex,
         Synapse.randomWeight(),
       );
-      node.fix();
-      const connection = this.getSynapse(node.index, toIndex);
+      neuron.fix();
+      const connection = this.getSynapse(neuron.index, toIndex);
       if (!connection) {
         /* If the self connection was removed */
         const toIndex2 = Math.floor(
-          Math.random() * (this.neurons.length - node.index - 1),
-        ) + node.index + 1;
+          Math.random() * (this.neurons.length - neuron.index - 1),
+        ) + neuron.index + 1;
         this.connect(
-          node.index,
+          neuron.index,
           toIndex2,
           Synapse.randomWeight(),
         );
@@ -1337,37 +1341,37 @@ export class Creature implements CreatureInternal {
     }
   }
 
-  private _insertNode(node: Neuron) {
-    if (Number.isInteger(node.index) == false || node.index < this.input) {
+  private insertNeuron(neuron: Neuron) {
+    if (Number.isInteger(neuron.index) == false || neuron.index < this.input) {
       throw new Error(
-        "to should be a greater than the input count was: " + node.index,
+        "to should be a greater than the input count was: " + neuron.index,
       );
     }
 
     const firstOutputIndex = this.neurons.length - this.output;
-    if (node.index > firstOutputIndex) {
+    if (neuron.index > firstOutputIndex) {
       throw new Error(
         "to should be a between than input (" + this.input +
-          ") and output nodes (" + firstOutputIndex + ") was: " + node.index,
+          ") and output nodes (" + firstOutputIndex + ") was: " + neuron.index,
       );
     }
 
-    if (node.type !== "hidden") {
-      throw new Error("Should be a 'hidden' type was: " + node.type);
+    if (neuron.type !== "hidden") {
+      throw new Error("Should be a 'hidden' type was: " + neuron.type);
     }
-    const left = this.neurons.slice(0, node.index);
-    const right = this.neurons.slice(node.index);
+    const left = this.neurons.slice(0, neuron.index);
+    const right = this.neurons.slice(neuron.index);
     right.forEach((n) => {
       n.index++;
     });
 
-    const full = [...left, node, ...right];
+    const full = [...left, neuron, ...right];
 
     this.neurons = full;
 
     this.synapses.forEach((c) => {
-      if (c.from >= node.index) c.from++;
-      if (c.to >= node.index) c.to++;
+      if (c.from >= neuron.index) c.from++;
+      if (c.to >= neuron.index) c.to++;
     });
 
     this.clearCache();
@@ -1380,22 +1384,22 @@ export class Creature implements CreatureInternal {
     const available = [];
 
     for (let i = 0; i < this.neurons.length; i++) {
-      const node1 = this.neurons[i];
+      const neuronFrom = this.neurons[i];
 
-      if (node1.index != i) {
-        throw i + ") invalid node index: " + node1.index;
+      if (neuronFrom.index != i) {
+        throw i + ") invalid node index: " + neuronFrom.index;
       }
 
       if (!this.inFocus(i, focusList)) continue;
 
       for (let j = Math.max(i + 1, this.input); j < this.neurons.length; j++) {
         if (!this.inFocus(j, focusList)) continue;
-        const node2 = this.neurons[j];
+        const neuronTo = this.neurons[j];
 
-        if (node2.type === "constant") continue;
+        if (neuronTo.type === "constant") continue;
 
-        if (!node1.isProjectingTo(node2)) {
-          available.push([node1, node2]);
+        if (!neuronFrom.isProjectingTo(neuronTo)) {
+          available.push([neuronFrom, neuronTo]);
         }
       }
     }
@@ -1557,12 +1561,12 @@ export class Creature implements CreatureInternal {
     const possible = [];
     for (let i = this.input; i < this.neurons.length - this.output; i++) {
       if (this.inFocus(i, focusList)) {
-        const node = this.neurons[i];
-        if (node.type === "constant") continue;
+        const neuron = this.neurons[i];
+        if (neuron.type === "constant") continue;
 
-        const c = this.selfConnection(node.index);
+        const c = this.selfConnection(neuron.index);
         if (c === null) {
-          possible.push(node);
+          possible.push(neuron);
         }
       }
     }
@@ -1572,10 +1576,10 @@ export class Creature implements CreatureInternal {
     }
 
     // Select a random node
-    const node = possible[Math.floor(Math.random() * possible.length)];
+    const neuron = possible[Math.floor(Math.random() * possible.length)];
 
     // Connect it to himself
-    const indx = node.index;
+    const indx = neuron.index;
     this.connect(indx, indx, Synapse.randomWeight());
   }
 
@@ -1608,15 +1612,16 @@ export class Creature implements CreatureInternal {
   private addBackConn(focusList?: number[]) {
     // Create an array of all uncreated (back feed) connections
     const available = [];
-    for (let i = this.input; i < this.neurons.length; i++) {
-      if (this.inFocus(i, focusList)) {
-        const node1 = this.neurons[i];
-        for (let j = this.input; j < i; j++) {
-          const node2 = this.neurons[j];
-          if (node2.type == "output") break;
-          if (this.inFocus(node2.index, focusList)) {
-            if (!node2.isProjectingTo(node1)) {
-              available.push([node2, node1]);
+    for (let toIndx = this.input; toIndx < this.neurons.length; toIndx++) {
+      if (this.inFocus(toIndx, focusList)) {
+        const neuronTo = this.neurons[toIndx];
+        for (let fromIndx = this.input; fromIndx < toIndx; fromIndx++) {
+          const neuronFrom = this.neurons[fromIndx];
+          if (neuronFrom.type == "output") break;
+          if (neuronTo.type == "constant") continue;
+          if (this.inFocus(neuronFrom.index, focusList)) {
+            if (!neuronFrom.isProjectingTo(neuronTo)) {
+              available.push([neuronFrom, neuronTo]);
             }
           }
         }
@@ -1628,9 +1633,9 @@ export class Creature implements CreatureInternal {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    const indx0 = pair[0].index;
-    const indx1 = pair[1].index;
-    this.connect(indx0, indx1, Synapse.randomWeight());
+    const fromIndx = pair[0].index;
+    const toIndx = pair[1].index;
+    this.connect(fromIndx, toIndx, Synapse.randomWeight());
   }
 
   private subBackConn(focusList?: number[]) {
