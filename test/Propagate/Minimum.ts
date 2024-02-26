@@ -13,60 +13,60 @@ import { TrainOptions } from "../../src/config/TrainOptions.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("PropagateMinimum", async () => {
-  const creature = makeCreature();
-
-  const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
-  for (let i = 1_000; i--;) {
-    const input = makeInput();
-    const output = creature.activate(input);
-
-    ts.push({
-      input,
-      output,
-    });
-  }
-
-  const traceDir = ".trace";
-  ensureDirSync(traceDir);
-
-  Deno.writeTextFileSync(
-    ".trace/data.json",
-    JSON.stringify(ts, null, 2),
-  );
-  ts.forEach((item) => {
-    const result = creature.activate(item.input);
-
-    assertAlmostEquals(item.output[0], result[0], 0.00001);
-    assertAlmostEquals(item.output[1], result[1], 0.00001);
-  });
-
-  const exportJSON = creature.exportJSON();
-
-  Deno.writeTextFileSync(
-    ".trace/A-clean.json",
-    JSON.stringify(exportJSON, null, 2),
-  );
-
-  exportJSON.neurons.forEach((neuron, indx) => {
-    neuron.bias = (neuron.bias ? neuron.bias : 0) +
-      ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  });
-
-  exportJSON.synapses.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  });
-
-  Deno.writeTextFileSync(
-    ".trace/B-modified.json",
-    JSON.stringify(exportJSON, null, 2),
-  );
-
-  const creatureB = Creature.fromJSON(exportJSON);
-  creatureB.validate();
-
-  const errorB = calculateError(creatureB, ts);
-
   for (let attempts = 0; true; attempts++) {
+    const creature = makeCreature();
+
+    const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
+    for (let i = 1_000; i--;) {
+      const input = makeInput();
+      const output = creature.activate(input);
+
+      ts.push({
+        input,
+        output,
+      });
+    }
+
+    const traceDir = ".trace";
+    ensureDirSync(traceDir);
+
+    Deno.writeTextFileSync(
+      ".trace/data.json",
+      JSON.stringify(ts, null, 2),
+    );
+    ts.forEach((item) => {
+      const result = creature.activate(item.input);
+
+      assertAlmostEquals(item.output[0], result[0], 0.00001);
+      assertAlmostEquals(item.output[1], result[1], 0.00001);
+    });
+
+    const exportJSON = creature.exportJSON();
+
+    Deno.writeTextFileSync(
+      ".trace/A-clean.json",
+      JSON.stringify(exportJSON, null, 2),
+    );
+
+    exportJSON.neurons.forEach((neuron, indx) => {
+      neuron.bias = (neuron.bias ? neuron.bias : 0) +
+        ((indx % 2 == 0 ? 1 : -1) * 0.1);
+    });
+
+    exportJSON.synapses.forEach((c, indx) => {
+      c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
+    });
+
+    Deno.writeTextFileSync(
+      ".trace/B-modified.json",
+      JSON.stringify(exportJSON, null, 2),
+    );
+
+    const creatureB = Creature.fromJSON(exportJSON);
+    creatureB.validate();
+
+    const errorB = calculateError(creatureB, ts);
+
     const creatureC = Creature.fromJSON(exportJSON);
     creatureC.validate();
 

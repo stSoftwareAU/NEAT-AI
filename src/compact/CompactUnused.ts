@@ -1,6 +1,6 @@
 import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature, CreatureTrace, CreatureUtil } from "../../mod.ts";
-import { removeHiddenNode } from "./CompactUtils.ts";
+import { createConstantOne, removeHiddenNode } from "./CompactUtils.ts";
 import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 
 export async function compactUnused(
@@ -59,6 +59,7 @@ export async function compactUnused(
 function removeNeuron(uuid: string, creature: Creature, activation: number) {
   const neuron = creature.neurons.find((n) => n.uuid === uuid);
   if (neuron?.index) {
+    let useConstant = false;
     const fromList = creature.fromConnections(neuron.index);
 
     for (const synapse of fromList) {
@@ -66,20 +67,53 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
 
       const propagateUpdateMethod = squash as NeuronActivationInterface;
       if (propagateUpdateMethod.propagate !== undefined) {
-        return false;
+        useConstant = true;
+
+        break;
       }
     }
 
-    for (const synapse of fromList) {
-      const adjustedBias = synapse.weight * activation;
-      creature.neurons[synapse.to].bias += adjustedBias;
+    if (useConstant) {
+      let constantNeuron = createConstantOne(creature, 0);
+      for (let count = 1; count < 3; count++) {
+        for (const synapse of fromList) {
+          if (creature.getSynapse(constantNeuron.index, synapse.to)) {
+            constantNeuron = createConstantOne(creature, count);
+          } else {
+            break;
+          }
+        }
+      }
 
-      const toList = creature.toConnections(synapse.to);
-      if (toList.length < 2) {
-        const randomFromIndx = Math.floor(Math.random() * creature.input);
+      for (const synapse of fromList) {
+        if (creature.getSynapse(constantNeuron.index, synapse.to)) {
+          return false;
+        }
+      }
 
-        /* Add a new connection which will be removed later because weight is zero */
-        creature.connect(randomFromIndx, synapse.to, 0);
+      for (const synapse of fromList) {
+        creature.connect(
+          constantNeuron.index,
+          synapse.to,
+          synapse.weight * activation,
+          synapse.type,
+        );
+      }
+      removeHiddenNode(creature, neuron.index);
+
+      return true;
+    } else {
+      for (const synapse of fromList) {
+        const adjustedBias = synapse.weight * activation;
+        creature.neurons[synapse.to].bias += adjustedBias;
+
+        const toList = creature.toConnections(synapse.to);
+        if (toList.length < 2) {
+          const randomFromIndx = Math.floor(Math.random() * creature.input);
+
+          /* Add a new connection which will be removed later because weight is zero */
+          creature.connect(randomFromIndx, synapse.to, 0);
+        }
       }
     }
 
