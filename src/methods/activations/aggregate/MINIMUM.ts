@@ -187,10 +187,6 @@ export class MINIMUM
           remainingError = targetFromValue - improvedFromValue;
         }
 
-        // if (
-        //   Math.abs(improvedFromActivation) > PLANK_CONSTANT &&
-        //   Math.abs(fromWeight) > PLANK_CONSTANT
-        // ) {
         const targetFromValue2 = fromValue + remainingError;
 
         const cs = neuron.creature.state.connection(
@@ -215,10 +211,9 @@ export class MINIMUM
           aWeight;
 
         targetWeightedSum = improvedAdjustedFromValue;
-        // }
       }
     }
-    // console.info( `${neuron.index} ${targetValue} ${targetWeightedSum}`);
+
     const ns = neuron.creature.state.node(neuron.index);
     ns.accumulateBias(
       targetValue,
