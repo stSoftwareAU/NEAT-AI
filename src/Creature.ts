@@ -543,6 +543,23 @@ export class Creature implements CreatureInternal {
               `Node ${node.ID()} '${node.type}' has squash: ${node.squash}`,
             );
           }
+          const fromList = this.fromConnections(indx);
+          if (fromList.length == 0) {
+            if (this.DEBUG) {
+              this.DEBUG = false;
+              console.warn(
+                JSON.stringify(
+                  this.internalJSON(),
+                  null,
+                  2,
+                ),
+              );
+              this.DEBUG = true;
+            }
+            throw new Error(
+              `constants node ${node.ID()} has no outward connections`,
+            );
+          }
           break;
         }
         case "hidden": {
@@ -803,8 +820,8 @@ export class Creature implements CreatureInternal {
         throw new Error(`Can not connect ${from}->${to} with type ${toType}`);
       }
     } else {
-      console.warn(
-        `@TODO Can't connect to index: ${to} of length: ${this.neurons.length}`,
+      throw new Error(
+        `Can't connect to index: ${to} of length: ${this.neurons.length}`,
       );
     }
 
@@ -829,7 +846,8 @@ export class Creature implements CreatureInternal {
           break;
         } else if (c.to === to) {
           throw new Error(
-            indx + ") already connected from: " + from + " to: " + to,
+            indx + ") already connected from: " + this.neurons[from].ID() +
+              " to: " + this.neurons[to].ID(),
           );
         } else {
           location = indx;
