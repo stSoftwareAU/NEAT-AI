@@ -1,7 +1,7 @@
-import { makeElitists } from "../src/architecture/ElitismUtils.ts";
 import { assert } from "https://deno.land/std@0.217.0/assert/mod.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { makeElitists } from "../src/architecture/ElitismUtils.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -52,11 +52,11 @@ Deno.test("1make", () => {
 
 Deno.test("3make", () => {
   const population: CreatureInternal[] = [
-    { input: 0, output: 0, score: 1, neurons: [], synapses: [] },
-    { input: 0, output: 0, score: -1, neurons: [], synapses: [] },
-    { input: 0, output: 0, score: 3, neurons: [], synapses: [] },
-    { input: 0, output: 0, score: 1, neurons: [], synapses: [] },
-    { input: 0, output: 0, score: 2, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: 1, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: 3, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: 1, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: 2, neurons: [], synapses: [] },
   ];
 
   const elitists = makeElitists(make(population), 3);
@@ -74,9 +74,9 @@ Deno.test("3make", () => {
 
 Deno.test("3make2", () => {
   const population: CreatureInternal[] = [
-    { input: 0, output: 0, score: -3, neurons: [], synapses: [] },
-    { input: 0, output: 0, score: -2, neurons: [], synapses: [] },
-    { input: 0, output: 0, score: -1, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: -3, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: -2, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
   ];
 
   const elitists = makeElitists(make(population), 3);
@@ -94,8 +94,8 @@ Deno.test("3make2", () => {
 
 Deno.test("short", () => {
   const population: CreatureInternal[] = [
-    { input: 0, output: 0, score: -2, neurons: [], synapses: [] },
-    { input: 0, output: 0, score: -1, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: -2, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
   ];
 
   const elitists = makeElitists(make(population), 3);
@@ -114,8 +114,8 @@ Deno.test("backwards", () => {
   const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
-      input: 0,
-      output: 0,
+      input: 1,
+      output: 1,
       score: i,
       neurons: [],
       synapses: [],
@@ -139,8 +139,8 @@ Deno.test("forward", () => {
   const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
-      input: 0,
-      output: 0,
+      input: 1,
+      output: 1,
       score: 1000 - i,
       neurons: [],
       synapses: [],
@@ -167,8 +167,8 @@ Deno.test("performance", () => {
   const population: CreatureInternal[] = [];
   for (let i = 0; i < 100000; i++) {
     population.push({
-      input: 0,
-      output: 0,
+      input: 1,
+      output: 1,
       score: Math.random(),
       neurons: [],
       synapses: [],
@@ -205,16 +205,16 @@ Deno.test("order", () => {
     const v = Math.random();
     if (i % 11 == 0) {
       population.push({
-        input: 0,
-        output: 0,
+        input: 1,
+        output: 1,
         score: v,
         neurons: [],
         synapses: [],
       });
     }
     population.push({
-      input: 0,
-      output: 0,
+      input: 1,
+      output: 1,
       score: v,
       neurons: [],
       synapses: [],
@@ -251,96 +251,96 @@ Deno.test("NaN", () => {
   const population: CreatureInternal[] = [];
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: NaN,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: undefined,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: -1,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: NaN,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: -Infinity,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: NaN,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: Infinity,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: NaN,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: 0,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: NaN,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: 1,
     neurons: [],
     synapses: [],
   });
 
   population.push({
-    input: 0,
-    output: 0,
+    input: 1,
+    output: 1,
     score: NaN,
     neurons: [],
     synapses: [],

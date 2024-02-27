@@ -54,7 +54,7 @@ export class Offspring {
       if (node.type !== "input") {
         if (nodeMap.has(node.uuid) == false || Math.random() >= 0.5) {
           nodeMap.set(node.uuid, node);
-          const connections = mother.toConnections(node.index);
+          const connections = father.toConnections(node.index);
           connectionsMap.set(node.uuid, cloneConnections(father, connections));
         }
       }
