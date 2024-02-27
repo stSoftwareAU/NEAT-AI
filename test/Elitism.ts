@@ -1,7 +1,7 @@
-import { makeElitists } from "../src/architecture/ElitismUtils.ts";
 import { assert } from "https://deno.land/std@0.217.0/assert/mod.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../src/Creature.ts";
+import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { makeElitists } from "../src/architecture/ElitismUtils.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
