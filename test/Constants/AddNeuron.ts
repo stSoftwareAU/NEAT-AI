@@ -1,10 +1,13 @@
 import { ensureDirSync } from "https://deno.land/std@0.217.0/fs/ensure_dir.ts";
 import { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
+import { assertEquals } from "https://deno.land/std@0.217.0/assert/mod.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
     neurons: [
+      { type: "constant", uuid: "skip-me", bias: 1 },
+      { type: "constant", uuid: "skip-me2", bias: 1 },
       { type: "hidden", uuid: "hidden-0", squash: "CLIPPED", bias: 2.5 },
 
       { type: "constant", uuid: "third-one", bias: 1 },
@@ -27,6 +30,8 @@ function makeCreature() {
       },
     ],
     synapses: [
+      { fromUUID: "skip-me", toUUID: "output-0", weight: -0.5 },
+      { fromUUID: "skip-me2", toUUID: "output-0", weight: -0.4 },
       { fromUUID: "input-0", toUUID: "hidden-0", weight: -0.3 },
       { fromUUID: "input-0", toUUID: "hidden-1", weight: -0.2 },
       { fromUUID: "input-0", toUUID: "hidden-2", weight: -0.1 },
@@ -66,5 +71,11 @@ Deno.test("AddNeuron", () => {
     const tmpCreature = Creature.fromJSON(creature.exportJSON());
     tmpCreature.addNeuron();
     tmpCreature.validate();
+    assertEquals("skip-me", tmpCreature.neurons[3].uuid);
+    assertEquals("skip-me2", tmpCreature.neurons[4].uuid);
+
+    if (tmpCreature.neurons.length <= creature.neurons.length) {
+      throw new Error("Neuron not added");
+    }
   }
 });
