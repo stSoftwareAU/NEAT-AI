@@ -659,13 +659,13 @@ export class Creature implements CreatureInternal {
       }
 
       if (c.from < lastFrom) {
-        throw new Error(indx + ") connections not sorted");
+        throw new Error(indx + ") synapses not sorted");
       } else if (c.from > lastFrom) {
         lastTo = -1;
       }
 
       if (c.from == lastFrom && c.to <= lastTo) {
-        throw new Error(indx + ") connections not sorted");
+        throw new Error(indx + ") synapses not sorted");
       }
 
       lastFrom = c.from;
@@ -675,7 +675,7 @@ export class Creature implements CreatureInternal {
     if (options && Number.isInteger(options.connections)) {
       if (this.synapses.length !== options.connections) {
         throw new Error(
-          "Connections length: " + this.synapses.length +
+          "Synapses length: " + this.synapses.length +
             " expected: " +
             options.connections,
         );

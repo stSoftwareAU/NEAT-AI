@@ -15,6 +15,7 @@ export function createConstantOne(creature: Creature, count: number) {
       uuid = "first-one";
   }
   let firstHiddenIndx = -1;
+  let foundConstant;
   for (let indx = creature.input; indx < creature.neurons.length; indx++) {
     const n = creature.neurons[indx];
     if (firstHiddenIndx == -1) {
@@ -26,8 +27,13 @@ export function createConstantOne(creature: Creature, count: number) {
       if (n.type !== "constant") {
         throw new Error(`Must be a constant was: ${n.type}`);
       }
-      n.bias = 1;
-      return n;
+      foundConstant = n;
+      foundConstant.bias = 1;
+      if (firstHiddenIndx === -1) {
+        firstHiddenIndx = foundConstant.index;
+      }
+
+      break;
     }
   }
 
@@ -50,6 +56,28 @@ export function createConstantOne(creature: Creature, count: number) {
     if (c.from >= firstHiddenIndx) c.from++;
     if (c.to >= firstHiddenIndx) c.to++;
   });
+
+  if (foundConstant) {
+    let firstIndx = -1;
+    for (let indx = creature.input; indx < creature.neurons.length; indx++) {
+      const n = creature.neurons[indx];
+      if (n.uuid == uuid) {
+        if (firstIndx === -1) {
+          firstIndx = n.index;
+        } else {
+          creature.synapses.forEach((c) => {
+            if (c.from === n.index) {
+              c.from = firstIndx;
+            }
+          });
+
+          creature.clearCache();
+          removeHiddenNode(creature, n.index);
+          break;
+        }
+      }
+    }
+  }
 
   creature.clearCache();
 
@@ -74,8 +102,7 @@ export function removeHiddenNode(creature: Creature, indx: number) {
   const left = creature.neurons.slice(0, indx);
   const right = creature.neurons.slice(indx + 1);
   right.forEach((item) => {
-    const node = item;
-    node.index--;
+    item.index--;
   });
 
   const full = [...left, ...right];
