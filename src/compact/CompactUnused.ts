@@ -1,6 +1,6 @@
 import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature, CreatureTrace, CreatureUtil } from "../../mod.ts";
-import { createConstantOne, removeHiddenNode } from "./CompactUtils.ts";
+import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
 import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 
 export async function compactUnused(
@@ -99,7 +99,7 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
           synapse.type,
         );
       }
-      removeHiddenNode(creature, neuron.index);
+      removeHiddenNeuron(creature, neuron.index);
 
       return true;
     } else {
@@ -117,7 +117,7 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
       }
     }
 
-    removeHiddenNode(creature, neuron.index);
+    removeHiddenNeuron(creature, neuron.index);
     return true;
   }
   return false;

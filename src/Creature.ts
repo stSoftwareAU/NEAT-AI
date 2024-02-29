@@ -37,7 +37,7 @@ import { Mutation } from "./methods/mutation.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { CreatureUtil } from "../mod.ts";
 import { NeuronStateInterface } from "./architecture/CreatureState.ts";
-import { removeHiddenNode } from "./compact/CompactUtils.ts";
+import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import { compactUnused } from "./compact/CompactUnused.ts";
 
 export class Creature implements CreatureInternal {
@@ -158,7 +158,7 @@ export class Creature implements CreatureInternal {
         lastEndIndx = this.neurons.length - 1;
       }
 
-      // Create output nodes
+      // Create output neurons
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
         const neuron = new Neuron(
@@ -178,7 +178,7 @@ export class Creature implements CreatureInternal {
         }
       }
     } else {
-      // Create output nodes
+      // Create output neurons
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
         const neuron = new Neuron(
@@ -192,7 +192,7 @@ export class Creature implements CreatureInternal {
         this.neurons.push(neuron);
       }
 
-      // Connect input nodes with output nodes directly
+      // Connect input neurons with output neurons directly
       for (let i = 0; i < this.input; i++) {
         for (let j = this.input; j < this.output + this.input; j++) {
           /** https://stats.stackexchange.com/a/248040/147931 */
@@ -230,12 +230,12 @@ export class Creature implements CreatureInternal {
 
     const lastHiddenNode = this.neurons.length - this.output;
 
-    // Activate hidden nodes
+    // Activate hidden neurons
     for (let i = this.input; i < lastHiddenNode; i++) {
       this.neurons[i].activateAndTrace();
     }
 
-    // Activate output nodes and store their values in the output array
+    // Activate output neurons and store their values in the output array
     for (let outIndx = 0; outIndx < this.output; outIndx++) {
       output[outIndx] = this.neurons[lastHiddenNode + outIndx]
         .activateAndTrace();
@@ -254,12 +254,12 @@ export class Creature implements CreatureInternal {
 
     const lastHiddenNode = this.neurons.length - this.output;
 
-    // Activate hidden nodes
+    // Activate hidden neurons
     for (let i = this.input; i < lastHiddenNode; i++) {
       this.neurons[i].activate();
     }
 
-    // Activate output nodes and store their values in the output array
+    // Activate output neurons and store their values in the output array
     for (let outIndx = 0; outIndx < this.output; outIndx++) {
       output[outIndx] = this.neurons[lastHiddenNode + outIndx].activate();
     }
@@ -293,7 +293,7 @@ export class Creature implements CreatureInternal {
         );
 
         if (fromList.length == 0) {
-          removeHiddenNode(compactCreature, pos);
+          removeHiddenNeuron(compactCreature, pos);
           complete = false;
         } else {
           const toList = compactCreature.toConnections(pos).filter(
@@ -337,7 +337,7 @@ export class Creature implements CreatureInternal {
 
                   compactCreature.neurons[from].bias = biasA;
 
-                  removeHiddenNode(compactCreature, pos);
+                  removeHiddenNeuron(compactCreature, pos);
                   let adjustedTo = to;
                   if (adjustedTo > pos) {
                     adjustedTo--;
@@ -390,22 +390,24 @@ export class Creature implements CreatureInternal {
    * Validate the creature
    * @param options specific values to check
    */
-  validate(options?: { nodes?: number; connections?: number }) {
-    if (options && options.nodes) {
-      if (this.neurons.length !== options.nodes) {
+  validate(options?: { neurons?: number; connections?: number }) {
+    if (options && options.neurons) {
+      if (this.neurons.length !== options.neurons) {
         throw new Error(
-          `Node length: ${this.neurons.length} expected: ${options.nodes}`,
+          `Node length: ${this.neurons.length} expected: ${options.neurons}`,
         );
       }
     }
 
     if (Number.isInteger(this.input) == false || this.input < 1) {
-      throw new Error(`Must have at least one input nodes was: ${this.input}`);
+      throw new Error(
+        `Must have at least one input neurons was: ${this.input}`,
+      );
     }
 
     if (Number.isInteger(this.output) == false || this.output < 1) {
       throw new Error(
-        `Must have at least one output nodes was: ${this.output}`,
+        `Must have at least one output neurons was: ${this.output}`,
       );
     }
 
@@ -638,13 +640,13 @@ export class Creature implements CreatureInternal {
 
     if (stats.input !== this.input) {
       throw new Error(
-        `Expected ${this.input} input nodes found: ${stats.input}`,
+        `Expected ${this.input} input neurons found: ${stats.input}`,
       );
     }
 
     if (stats.output !== this.output) {
       throw new Error(
-        `Expected ${this.output} output nodes found: ${stats.output}`,
+        `Expected ${this.output} output neurons found: ${stats.output}`,
       );
     }
 
@@ -791,7 +793,7 @@ export class Creature implements CreatureInternal {
 
     if (to < this.input) {
       throw new Error(
-        "to should not be pointed to any input nodes(" +
+        "to should not be pointed to any input neurons(" +
           this.input + "): " + to,
       );
     }
@@ -979,7 +981,7 @@ export class Creature implements CreatureInternal {
     if (this.state.propagated) throw new Error(`Already propagated`);
     this.state.propagated = true;
 
-    // @TODO randomize the order of the nodes
+    // @TODO randomize the order of the neurons
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];
       n.propagateUpdate(config);
@@ -1243,14 +1245,14 @@ export class Creature implements CreatureInternal {
     return false;
   }
 
-  public subNode(focusList?: number[]) {
-    // Check if there are nodes left to remove
+  public subNeuron(focusList?: number[]) {
+    // Check if there are neurons left to remove
     if (this.neurons.length === this.input + this.output) {
       return;
     }
 
     for (let attempts = 0; attempts < 12; attempts++) {
-      // Select a neuron which isn't an input or output node
+      // Select a neuron which isn't an input or output neuron
       const indx = Math.floor(
         Math.random() *
             (this.neurons.length - this.output - this.input) +
@@ -1258,7 +1260,7 @@ export class Creature implements CreatureInternal {
       );
 
       if (!this.inFocus(indx, focusList)) continue;
-      removeHiddenNode(this, indx);
+      removeHiddenNeuron(this, indx);
       break;
     }
   }
@@ -1375,7 +1377,8 @@ export class Creature implements CreatureInternal {
     if (neuron.index > firstOutputIndex) {
       throw new Error(
         "to should be a between than input (" + this.input +
-          ") and output nodes (" + firstOutputIndex + ") was: " + neuron.index,
+          ") and output neurons (" + firstOutputIndex + ") was: " +
+          neuron.index,
       );
     }
 
@@ -1607,7 +1610,7 @@ export class Creature implements CreatureInternal {
   }
 
   private subSelfCon(focusList?: number[]) {
-    // Check which nodes aren't self connected yet
+    // Check which neurons aren't self connected yet
     const possible = [];
     for (let i = this.input; i < this.neurons.length; i++) {
       if (this.inFocus(i, focusList)) {
@@ -1763,7 +1766,7 @@ export class Creature implements CreatureInternal {
         break;
       }
       case Mutation.SUB_NODE.name: {
-        this.subNode(focusList);
+        this.subNeuron(focusList);
 
         break;
       }
@@ -1866,7 +1869,7 @@ export class Creature implements CreatureInternal {
             return c.from !== c.to;
           }).length == 0
         ) {
-          removeHiddenNode(this, pos);
+          removeHiddenNeuron(this, pos);
           nodeRemoved = true;
           break;
         }

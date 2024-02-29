@@ -53,18 +53,18 @@ const json: CreatureInternal = {
 
 Deno.test("subNode", () => {
   const network = Creature.fromJSON(json);
-  network.validate({ nodes: 4, connections: 3 });
-  network.subNode();
-  network.validate({ nodes: 4 });
+  network.validate({ neurons: 4, connections: 3 });
+  network.subNeuron();
+  network.validate({ neurons: 4 });
   for (let i = 100; i--;) {
     network.validate();
     network.addNeuron();
   }
 
-  network.validate({ nodes: 104 });
+  network.validate({ neurons: 104 });
 
   for (let i = 110; i--;) {
-    network.subNode();
+    network.subNeuron();
   }
-  network.validate({ nodes: 4, connections: 3 });
+  network.validate({ neurons: 4, connections: 3 });
 });
