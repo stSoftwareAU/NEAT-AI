@@ -1315,10 +1315,7 @@ export class Creature implements CreatureInternal {
         }
 
         if (this.inFocus(pos, tmpFocusList)) {
-          const toNeuron = this.getNeuron(pos);
-          if (toNeuron.type !== "constant") {
-            toIndex = pos;
-          }
+          toIndex = pos;
         }
       } else {
         break;
@@ -1345,7 +1342,7 @@ export class Creature implements CreatureInternal {
         Synapse.randomWeight(),
       );
       neuron.fix();
-      const connection = this.getSynapse(neuron.index, toIndex);
+      const connection = this.getSynapse(neuron.index, nonConstantIndx);
       if (!connection) {
         /* If the self connection was removed */
         const toIndex2 = Math.floor(
