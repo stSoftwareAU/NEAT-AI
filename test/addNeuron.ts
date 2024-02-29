@@ -77,7 +77,7 @@ Deno.test("addNodeValidate", () => {
   for (let j = 10; j--;) {
     const network = Creature.fromJSON(json);
     for (let i = 1000; i--;) {
-      network.addNode();
+      network.addNeuron();
     }
 
     network.validate();
@@ -88,7 +88,7 @@ Deno.test("addNode", () => {
   const network = Creature.fromJSON(json);
 
   for (let i = 1000; i--;) {
-    network.addNode();
+    network.addNeuron();
   }
 
   const nodes = network.internalJSON().neurons;

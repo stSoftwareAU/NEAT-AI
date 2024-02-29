@@ -36,7 +36,7 @@ Deno.test("inward", () => {
 
   assert(connects2.length == 3, "expected 3 got " + connects2.length);
 
-  network.addNode();
+  network.addNeuron();
 
   let foundPositive = false;
   let foundNegative = false;

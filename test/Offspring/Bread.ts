@@ -244,7 +244,7 @@ function check() {
   });
 
   for (let i = 0; i < 20; i++) {
-    n2.addNode();
+    n2.addNeuron();
   }
 
   const n3 = Offspring.bread(n1, n2);
@@ -396,7 +396,7 @@ Deno.test(
     n2.validate();
 
     for (let i = 0; i < 20; i++) {
-      n2.addNode();
+      n2.addNeuron();
       n2.addConnection();
       // n1.addConnection();
     }

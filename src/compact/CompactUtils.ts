@@ -72,7 +72,7 @@ export function createConstantOne(creature: Creature, count: number) {
           });
 
           creature.clearCache();
-          removeHiddenNode(creature, n.index);
+          removeHiddenNeuron(creature, n.index);
           break;
         }
       }
@@ -87,7 +87,7 @@ export function createConstantOne(creature: Creature, count: number) {
 /**
  *  Removes a node from the creature
  */
-export function removeHiddenNode(creature: Creature, indx: number) {
+export function removeHiddenNeuron(creature: Creature, indx: number) {
   if (Number.isInteger(indx) == false || indx < 0) {
     throw new Error("Must be a positive integer was: " + indx);
   }

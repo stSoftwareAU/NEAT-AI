@@ -5,7 +5,7 @@ Deno.test("addConnection", () => {
   const network = new Creature(2, 1);
   network.validate();
   for (let i = 10; i--;) {
-    network.addNode();
+    network.addNeuron();
   }
 
   for (let i = 10; i--;) {
