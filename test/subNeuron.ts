@@ -58,7 +58,7 @@ Deno.test("subNode", () => {
   network.validate({ nodes: 4 });
   for (let i = 100; i--;) {
     network.validate();
-    network.addNode();
+    network.addNeuron();
   }
 
   network.validate({ nodes: 104 });
