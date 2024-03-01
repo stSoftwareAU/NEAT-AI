@@ -1852,6 +1852,16 @@ export class Creature implements CreatureInternal {
     });
 
     this.synapses = connections;
+
+    /* Make sure the synapses are sorted */
+    this.synapses.sort((a, b) => {
+      if (a.from === b.from) {
+        return a.to - b.to;
+      } else {
+        return a.from - b.from;
+      }
+    });
+
     this.clearCache();
 
     let nodeRemoved = true;

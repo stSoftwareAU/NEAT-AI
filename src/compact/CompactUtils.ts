@@ -77,6 +77,14 @@ export function createConstantOne(creature: Creature, count: number) {
         }
       }
     }
+
+    creature.synapses.sort((a, b) => {
+      if (a.from === b.from) {
+        return a.to - b.to;
+      } else {
+        return a.from - b.from;
+      }
+    });
   }
 
   creature.clearCache();
