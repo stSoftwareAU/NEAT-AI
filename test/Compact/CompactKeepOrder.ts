@@ -129,6 +129,7 @@ Deno.test("CompactKeepOrder", async () => {
   if (!compacted) {
     fail("Should have compacted");
   }
+  compacted.validate();
   Deno.writeTextFileSync(
     `${traceDir}/2-compacted.json`,
     JSON.stringify(compacted.exportJSON(), null, 2),
