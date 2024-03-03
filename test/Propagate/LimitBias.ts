@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.217.0/assert/assert_almost_equals.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.218.0/assert/assert_almost_equals.ts";
 import { limitBias } from "../../src/architecture/BackPropagation.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
