@@ -1,4 +1,4 @@
-import { fail } from "https://deno.land/std@0.217.0/assert/fail.ts";
+import { fail } from "https://deno.land/std@0.218.0/assert/fail.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 
 Deno.test("ActivationNames", () => {

@@ -1,8 +1,8 @@
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.217.0/assert/mod.ts";
-import { ensureDirSync } from "https://deno.land/std@0.217.0/fs/ensure_dir.ts";
+} from "https://deno.land/std@0.218.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.218.0/fs/ensure_dir.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
