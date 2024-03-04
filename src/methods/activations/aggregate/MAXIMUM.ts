@@ -24,7 +24,7 @@ export class MAXIMUM
   }
 
   activate(node: Neuron) {
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     let maxValue = Infinity * -1;
     for (let i = toList.length; i--;) {
       const c = toList[i];
@@ -39,7 +39,7 @@ export class MAXIMUM
   }
 
   activateAndTrace(node: Neuron) {
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     let maxValue = Infinity * -1;
     let usedConnection: SynapseInternal | null = null;
     for (let i = toList.length; i--;) {
@@ -67,7 +67,7 @@ export class MAXIMUM
   }
 
   fix(node: Neuron) {
-    const toListA = node.creature.toConnections(node.index);
+    const toListA = node.creature.inwardConnections(node.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
       if (c.from == c.to) {
@@ -76,7 +76,7 @@ export class MAXIMUM
     }
 
     for (let attempts = 12; attempts--;) {
-      const toList = node.creature.toConnections(node.index);
+      const toList = node.creature.inwardConnections(node.index);
 
       if (toList.length < 2) {
         node.creature.makeRandomConnection(node.index);
@@ -89,7 +89,7 @@ export class MAXIMUM
   applyLearnings(node: Neuron): boolean {
     let changed = false;
     let usedCount = 0;
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
       if (node.index != c.to) throw new Error("mismatched index " + c);
@@ -120,7 +120,7 @@ export class MAXIMUM
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
 
     const activation = node.adjustedActivation(config);
 

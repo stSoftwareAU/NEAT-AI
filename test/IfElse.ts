@@ -130,7 +130,7 @@ Deno.test("if-fix", () => {
   const network2 = Creature.fromJSON(network.exportJSON());
   network2.validate();
 
-  const toList = network.toConnections(5);
+  const toList = network.inwardConnections(5);
 
   assert(toList.length > 2, "Should have 3 connections was: " + toList.length);
 });

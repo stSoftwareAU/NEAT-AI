@@ -114,7 +114,7 @@ Deno.test("addNode", () => {
       );
     }
 
-    const to = network.toConnections(indx);
+    const to = network.inwardConnections(indx);
 
     if (node.type !== "input") {
       assert(to.length >= 1, indx + ") expected at least 1 got " + to.length);
@@ -126,7 +126,7 @@ Deno.test("addNode", () => {
       );
     }
 
-    const from = network.fromConnections(indx);
+    const from = network.efferentConnections(indx);
 
     if (node.type !== "output") {
       assert(

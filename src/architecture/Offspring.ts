@@ -45,20 +45,62 @@ export class Offspring {
     for (const node of mother.neurons) {
       if (node.type !== "input") {
         nodeMap.set(node.uuid, node);
-        const connections = mother.toConnections(node.index);
+        const connections = mother.inwardConnections(node.index);
         connectionsMap.set(node.uuid, cloneConnections(mother, connections));
       }
     }
 
     for (const node of father.neurons) {
       if (node.type !== "input") {
-        if (nodeMap.has(node.uuid) == false || Math.random() >= 0.5) {
+        if (Math.random() >= 0.5) {
+          const connections = father.inwardConnections(node.index);
+          const tmpConnections = cloneConnections(father, connections);
+
           nodeMap.set(node.uuid, node);
-          const connections = father.toConnections(node.index);
-          connectionsMap.set(node.uuid, cloneConnections(father, connections));
+          connectionsMap.set(node.uuid, tmpConnections);
         }
       }
     }
+
+    let addedMissing;
+    do {
+      addedMissing = false;
+      for (const key of nodeMap.keys()) {
+        const connections = connectionsMap.get(key);
+        if (connections) {
+          for (const connection of connections) {
+            let fromNeuron = nodeMap.get(connection.fromUUID);
+            if (!fromNeuron) {
+              const motherNeuron = mother.neurons.find((neuron) => {
+                return neuron.uuid == connection.fromUUID;
+              });
+              fromNeuron = motherNeuron;
+              let parent = mother;
+              if (!fromNeuron || Math.random() >= 0.5) {
+                const fatherNeuron = father.neurons.find((neuron) => {
+                  return neuron.uuid == connection.fromUUID;
+                });
+                if (fatherNeuron) {
+                  fromNeuron = fatherNeuron;
+                  parent = father;
+                }
+              }
+              if (!fromNeuron) {
+                throw new Error(`Can't find ${connection.fromUUID}`);
+              }
+
+              nodeMap.set(fromNeuron.uuid, fromNeuron);
+              const connections = parent.inwardConnections(fromNeuron.index);
+              connectionsMap.set(
+                fromNeuron.uuid,
+                cloneConnections(parent, connections),
+              );
+              addedMissing = true;
+            }
+          }
+        }
+      }
+    } while (addedMissing);
 
     const tmpNodes: Neuron[] = [];
     const tmpUUIDs = new Set<string>();
@@ -109,16 +151,15 @@ export class Offspring {
 
     offspring.neurons.forEach((node) => {
       const connections = connectionsMap.get(node.uuid);
-
       connections?.forEach((c) => {
-        const fromNeuron = indxMap.get(c.fromUUID);
-        const toNeuron = indxMap.get(c.toUUID);
+        const fromIndx = indxMap.get(c.fromUUID);
+        const toIndx = indxMap.get(c.toUUID);
 
-        if (fromNeuron != null && toNeuron != null) {
-          if (fromNeuron <= toNeuron) {
-            const toType = offspring.neurons[toNeuron].type;
+        if (fromIndx != null && toIndx != null) {
+          if (fromIndx <= toIndx) {
+            const toType = offspring.neurons[toIndx].type;
             if (toType == "hidden" || toType == "output") {
-              offspring.connect(fromNeuron, toNeuron, c.weight, c.type);
+              offspring.connect(fromIndx, toIndx, c.weight, c.type);
             }
           }
         } else {
@@ -128,10 +169,31 @@ export class Offspring {
     });
 
     offspring.clearState();
-    offspring.fix();
-    offspring.validate();
+    // offspring.fix();
+    try {
+      offspring.validate();
 
-    return offspring;
+      return offspring;
+    } catch (e) {
+      switch (e.name) {
+        case "NO_OUTWARD_CONNECTIONS":
+          return undefined;
+        case "IF_CONDITIONS":
+          offspring.fix();
+          offspring.validate();
+          return offspring;
+        default:
+          console.info(e);
+          offspring.DEBUG = false;
+          Deno.writeTextFileSync(
+            ".offspring.json",
+            JSON.stringify(offspring.exportJSON(), null, 2),
+          );
+          // return offspring;
+          return undefined;
+          // throw e;
+      }
+    }
   }
 
   static sortNodes(child: Neuron[], mother: Neuron[], father: Neuron[]) {
@@ -169,8 +231,10 @@ export class Offspring {
 
         if (motherIndx && fatherIndx) {
           lastIndx = Math.max(motherIndx, fatherIndx);
+        } else if (motherIndx) {
+          lastIndx += 0.1;
         } else {
-          lastIndx += 0.000_000_1;
+          lastIndx += 0.2;
         }
         childMap.set(node.uuid, lastIndx);
       }

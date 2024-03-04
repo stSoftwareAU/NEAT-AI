@@ -28,11 +28,11 @@ Deno.test("inward", () => {
   };
   const network = Creature.fromJSON(json);
 
-  const connects = network.toConnections(3);
+  const connects = network.inwardConnections(3);
 
   assert(connects.length == 3, "expected 3 got " + connects.length);
 
-  const connects2 = network.toConnections(3);
+  const connects2 = network.inwardConnections(3);
 
   assert(connects2.length == 3, "expected 3 got " + connects2.length);
 
@@ -56,7 +56,7 @@ Deno.test("inward", () => {
   assert(foundNegative, "should have found a negative link");
 
   assert(foundCondition, "should have found a condition link");
-  const connects4 = network.toConnections(4);
+  const connects4 = network.inwardConnections(4);
 
   assert(connects4.length >= 3, "expected at least 3 got " + connects4.length);
 

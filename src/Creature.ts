@@ -39,6 +39,7 @@ import { CreatureUtil } from "../mod.ts";
 import { NeuronStateInterface } from "./architecture/CreatureState.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import { compactUnused } from "./compact/CompactUnused.ts";
+import { ValidationError } from "./errors/ValidationError.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this creature */
@@ -286,7 +287,7 @@ export class Creature implements CreatureInternal {
         pos < compactCreature.neurons.length - compactCreature.output;
         pos++
       ) {
-        const fromList = compactCreature.fromConnections(pos).filter(
+        const fromList = compactCreature.efferentConnections(pos).filter(
           (c: SynapseInternal) => {
             return c.from !== c.to;
           },
@@ -296,13 +297,13 @@ export class Creature implements CreatureInternal {
           removeHiddenNeuron(compactCreature, pos);
           complete = false;
         } else {
-          const toList = compactCreature.toConnections(pos).filter(
+          const toList = compactCreature.inwardConnections(pos).filter(
             (c: SynapseInternal) => {
               return c.from !== c.to;
             },
           );
           if (toList.length == 1) {
-            const fromList = compactCreature.fromConnections(pos).filter(
+            const fromList = compactCreature.efferentConnections(pos).filter(
               (c: SynapseInternal) => {
                 return c.from !== c.to;
               },
@@ -477,10 +478,11 @@ export class Creature implements CreatureInternal {
       UUIDs.add(uuid);
 
       if (node.squash === "IF" && indx > 2) {
-        const toList = this.toConnections(indx);
+        const toList = this.inwardConnections(indx);
         if (toList.length < 3) {
-          throw new Error(
-            `${node.ID()}) 'IF' should have at least 3 connections was: ${toList.length}`,
+          throw new ValidationError(
+            `${node.ID()}) 'IF' should have at least 3 inward connections was: ${toList.length}`,
+            "IF_CONDITIONS",
           );
         }
 
@@ -508,23 +510,28 @@ export class Creature implements CreatureInternal {
           }
         }
         if (!foundCondition) {
-          throw new Error(`${node.ID()}) 'IF' should have a condition(s)`);
+          throw new ValidationError(
+            `${node.ID()}) 'IF' should have a condition(s)`,
+            "IF_CONDITIONS",
+          );
         }
         if (!foundPositive) {
-          throw new Error(
+          throw new ValidationError(
             `${node.ID()}) 'IF' should have a positive connection(s)`,
+            "IF_CONDITIONS",
           );
         }
         if (!foundNegative) {
-          throw new Error(
+          throw new ValidationError(
             `${node.ID()}) 'IF' should have a negative connection(s)`,
+            "IF_CONDITIONS",
           );
         }
       }
       switch (node.type) {
         case "input": {
           stats.input++;
-          const toList = this.toConnections(indx);
+          const toList = this.inwardConnections(indx);
           if (toList.length > 0) {
             throw new Error(
               `'input' neuron ${node.ID()} has inward connections: ${toList.length}`,
@@ -534,7 +541,7 @@ export class Creature implements CreatureInternal {
         }
         case "constant": {
           stats.constant++;
-          const toList = this.toConnections(indx);
+          const toList = this.inwardConnections(indx);
           if (toList.length > 0) {
             throw new Error(
               `'${node.type}' neuron ${node.ID()}  has inward connections: ${toList.length}`,
@@ -545,7 +552,7 @@ export class Creature implements CreatureInternal {
               `Node ${node.ID()} '${node.type}' has squash: ${node.squash}`,
             );
           }
-          const fromList = this.fromConnections(indx);
+          const fromList = this.efferentConnections(indx);
           if (fromList.length == 0) {
             if (this.DEBUG) {
               this.DEBUG = false;
@@ -566,27 +573,29 @@ export class Creature implements CreatureInternal {
         }
         case "hidden": {
           stats.hidden++;
-          const toList = this.toConnections(indx);
+          const toList = this.inwardConnections(indx);
           if (toList.length == 0) {
-            throw new Error(
+            throw new ValidationError(
               `hidden neuron ${node.ID()} has no inward connections`,
+              "NO_INWARD_CONNECTIONS",
             );
           }
-          const fromList = this.fromConnections(indx);
+          const fromList = this.efferentConnections(indx);
           if (fromList.length == 0) {
             if (this.DEBUG) {
               this.DEBUG = false;
               console.warn(
                 JSON.stringify(
-                  this.internalJSON(),
+                  this.exportJSON(),
                   null,
                   2,
                 ),
               );
               this.DEBUG = true;
             }
-            throw new Error(
+            throw new ValidationError(
               `hidden neuron ${node.ID()} has no outward connections`,
+              "NO_OUTWARD_CONNECTIONS",
             );
           }
           if (node.bias === undefined) {
@@ -604,7 +613,7 @@ export class Creature implements CreatureInternal {
         }
         case "output": {
           stats.output++;
-          const toList = this.toConnections(indx);
+          const toList = this.inwardConnections(indx);
           if (toList.length == 0) {
             if (this.DEBUG) {
               this.DEBUG = false;
@@ -709,46 +718,66 @@ export class Creature implements CreatureInternal {
     }
   }
 
-  toConnections(to: number): Synapse[] {
-    let results = this.cacheTo.get(to);
+  /**
+   * Afferent Connections (Incoming): These are connections to a neuron.
+   * The term "afferent" is derived from Latin, where "ad-" means "to" and "ferre" means "carry."
+   * So, afferent connections carry signals to a neuron. In the context of biological neuroscience,
+   * these would correspond to the synapses that receive signals from the axons of other neurons
+   * onto a neuron's dendrites or cell body (soma).
+   *
+   * @param toIndx the connections to this neuron by index
+   * @returns the list of connections to the neuron.
+   */
+  inwardConnections(toIndx: number): Synapse[] {
+    let results = this.cacheTo.get(toIndx);
     if (results === undefined) {
       results = [];
       const tmpList = this.synapses;
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
 
-        if (c.to === to) results.push(c);
+        if (c.to === toIndx) results.push(c);
       }
 
-      this.cacheTo.set(to, results);
+      this.cacheTo.set(toIndx, results);
     }
     return results;
   }
 
-  fromConnections(from: number): Synapse[] {
-    let results = this.cacheFrom.get(from);
+  /**
+   * Efferent Connections (Outgoing): These are connections from a neuron to other neurons.
+   * The term "efferent" comes from "ex-" meaning "out of" and "ferre."
+   * Efferent connections carry signals away from the neuron.
+   * In biological terms, these would be the synapses where a neuron's axon terminals make connections
+   * with other neurons' dendrites or cell bodies, transmitting the signal onward.
+   *
+   * @param fromIndx the connections from this neuron by index
+   * @returns the list of connections from the neuron.
+   */
+  efferentConnections(fromIndx: number): Synapse[] {
+    let results = this.cacheFrom.get(fromIndx);
     if (results === undefined) {
       results = [];
       const tmpList = this.synapses;
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
 
-        if (c.from === from) results.push(c);
+        if (c.from === fromIndx) results.push(c);
       }
 
-      this.cacheFrom.set(from, results);
+      this.cacheFrom.set(fromIndx, results);
     }
     return results;
   }
 
-  getNeuron(pos: number): Neuron {
-    if (Number.isInteger(pos) == false || pos < 0) {
-      throw new Error("POS should be a non-negative integer was: " + pos);
+  getNeuron(indx: number): Neuron {
+    if (Number.isInteger(indx) == false || indx < 0) {
+      throw new Error("POS should be a non-negative integer was: " + indx);
     }
-    const tmp = this.neurons[pos];
+    const tmp = this.neurons[indx];
 
     if (tmp === undefined) {
-      throw new Error("getNeuron( " + pos + ") " + (typeof tmp));
+      throw new Error("getNeuron( " + indx + ") " + (typeof tmp));
     }
 
     return tmp;
@@ -1231,7 +1260,7 @@ export class Creature implements CreatureInternal {
         return true;
       }
 
-      const toList = this.toConnections(index);
+      const toList = this.inwardConnections(index);
 
       for (let i = toList.length; i--;) {
         const checkIndx: number = toList[i].from;
@@ -1495,9 +1524,9 @@ export class Creature implements CreatureInternal {
           /** Each neuron must have at least one from/to connection */
           if (
             (
-              this.fromConnections(conn.from).length > 1 ||
+              this.efferentConnections(conn.from).length > 1 ||
               this.neurons[conn.from].type === "input"
-            ) && this.toConnections(conn.to).length > 1
+            ) && this.inwardConnections(conn.to).length > 1
           ) {
             possible.push(conn);
           }
@@ -1673,9 +1702,9 @@ export class Creature implements CreatureInternal {
           if (this.inFocus(from, focusList)) {
             if (
               (
-                this.fromConnections(from).length > 1 ||
+                this.efferentConnections(from).length > 1 ||
                 this.neurons[from].type === "input"
-              ) && this.toConnections(to).length > 1
+              ) && this.inwardConnections(to).length > 1
             ) {
               if (this.getSynapse(from, to) != null) {
                 available.push([from, to]);
@@ -1875,7 +1904,7 @@ export class Creature implements CreatureInternal {
       ) {
         if (this.neurons[pos].type == "output") continue;
         if (
-          this.fromConnections(pos).filter((c) => {
+          this.efferentConnections(pos).filter((c) => {
             return c.from !== c.to;
           }).length == 0
         ) {

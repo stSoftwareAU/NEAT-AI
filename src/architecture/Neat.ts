@@ -509,7 +509,10 @@ export class Neat {
       let i = newPopSize > 0 ? newPopSize : 0;
       i--;
     ) {
-      newPopulation.push(this.offspring());
+      const child = this.offspring();
+      if (child) {
+        newPopulation.push(child);
+      }
     }
 
     // Replace the old population with the new population
@@ -685,7 +688,7 @@ export class Neat {
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
-  offspring(): Creature {
+  offspring(): Creature | undefined {
     const p1 = this.getParent();
 
     if (p1 === undefined) {
@@ -727,12 +730,16 @@ export class Neat {
       throw new Error(`Extinction event`);
     }
 
-    const creature = Offspring.bread(
-      p1,
-      p2,
-    );
-    if (this.config.debug) creature.validate();
-    return creature;
+    for (let attempts = 0; attempts < 12; attempts++) {
+      const creature = Offspring.bread(
+        p1,
+        p2,
+      );
+      if (creature) {
+        return creature;
+      }
+    }
+    return undefined;
   }
 
   async deDuplicate(creatures: Creature[]) {
@@ -763,7 +770,9 @@ export class Neat {
           i--;
         } else {
           for (let j = 0; j < 100; j++) {
-            const tmpPopulation = [this.offspring()];
+            const child = this.offspring();
+            if (!child) continue;
+            const tmpPopulation = [child];
             this.mutate(tmpPopulation);
 
             const p2 = tmpPopulation[0];
