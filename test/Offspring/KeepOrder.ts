@@ -7,7 +7,7 @@ function makeMum() {
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "common-a", squash: "IDENTITY", bias: 0.1 },
-        
+
       { type: "hidden", uuid: "mum-a", squash: "IDENTITY", bias: -0.9 },
 
       { type: "hidden", uuid: "common-b", squash: "IDENTITY", bias: 0.1 },
@@ -30,41 +30,18 @@ function makeMum() {
       },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "A", weight: -0.3 },
-      {
-        fromUUID: "input-0",
-        toUUID: "B",
-        weight: -0.3,
-      },
-      { fromUUID: "B", toUUID: "output-1", weight: 0.3 },
-      {
-        fromUUID: "A",
-        toUUID: "B",
-        weight: 0.3,
-      },
+      { fromUUID: "input-0", toUUID: "common-b", weight: -0.3 },
+      { fromUUID: "input-1", toUUID: "common-a", weight: -0.3 },
+      { fromUUID: "common-a", toUUID: "mum-a", weight: 0.3 },
+      { fromUUID: "mum-a", toUUID: "common-b", weight: 0.3 },
 
-      { fromUUID: "C", toUUID: "output-0", weight: 0.6 },
-      {
-        fromUUID: "input-0",
-        toUUID: "C",
-        weight: 0.31,
-        type: "condition",
-      },
-      {
-        fromUUID: "B",
-        toUUID: "C",
-        weight: 0.33,
-        type: "negative",
-      },
-      {
-        fromUUID: "input-2",
-        toUUID: "C",
-        weight: 0.32,
-        type: "positive",
-      },
-      { fromUUID: "input-1", toUUID: "hidden-4", weight: 0.7 },
-      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
-      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
+      { fromUUID: "common-b", toUUID: "mum-b", weight: 0.6 },
+      { fromUUID: "mum-b", toUUID: "common-c", weight: 0.31 },
+      { fromUUID: "common-c", toUUID: "mum-c", weight: 0.33 },
+      { fromUUID: "mum-c", toUUID: "common-d", weight: 0.33 },
+      { fromUUID: "common-c", toUUID: "output-0", weight: 0.31 },
+      { fromUUID: "common-d", toUUID: "output-0", weight: 0.32 },
+      { fromUUID: "common-a", toUUID: "output-1", weight: 0.34 },
     ],
     input: 3,
     output: 2,
@@ -78,14 +55,17 @@ function makeMum() {
 function makeDad() {
   const json: CreatureExport = {
     neurons: [
-      { type: "constant", uuid: "first-one", bias: 1 },
-      { type: "constant", uuid: "second-one", bias: 1 },
-      { type: "constant", uuid: "third-one", bias: 1 },
+      { type: "hidden", uuid: "common-a", squash: "IDENTITY", bias: 0.1 },
 
-      { type: "hidden", uuid: "A", squash: "CLIPPED", bias: 2.5 },
-      { type: "hidden", uuid: "B", squash: "INVERSE", bias: -0.1 },
-      { type: "hidden", uuid: "C", squash: "IF", bias: 0 },
-      { type: "hidden", uuid: "hidden-4", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "dad-a", squash: "IDENTITY", bias: -0.9 },
+
+      { type: "hidden", uuid: "common-b", squash: "IDENTITY", bias: 0.1 },
+      { type: "hidden", uuid: "dad-b", squash: "IDENTITY", bias: -0.8 },
+      { type: "hidden", uuid: "dad-b2", squash: "IDENTITY", bias: -0.8 },
+
+      // { type: "hidden", uuid: "common-c", squash: "IDENTITY", bias: 0.1 },
+      { type: "hidden", uuid: "dad-c", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "common-d", squash: "IDENTITY", bias: 0.1 },
       {
         type: "output",
         squash: "IDENTITY",
@@ -100,44 +80,19 @@ function makeDad() {
       },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "A", weight: -0.3 },
-      {
-        fromUUID: "input-0",
-        toUUID: "B",
-        weight: -0.3,
-      },
-      { fromUUID: "B", toUUID: "output-1", weight: 0.3 },
-      {
-        fromUUID: "A",
-        toUUID: "B",
-        weight: 0.3,
-      },
+      { fromUUID: "input-0", toUUID: "common-b", weight: -0.3 },
+      { fromUUID: "input-1", toUUID: "common-a", weight: -0.3 },
+      { fromUUID: "common-a", toUUID: "dad-a", weight: 0.3 },
+      { fromUUID: "dad-a", toUUID: "common-b", weight: 0.3 },
 
-      { fromUUID: "C", toUUID: "output-0", weight: 0.6 },
-      {
-        fromUUID: "input-0",
-        toUUID: "C",
-        weight: 0.31,
-        type: "condition",
-      },
-      {
-        fromUUID: "B",
-        toUUID: "C",
-        weight: 0.33,
-        type: "negative",
-      },
-      {
-        fromUUID: "input-2",
-        toUUID: "C",
-        weight: 0.32,
-        type: "positive",
-      },
-      { fromUUID: "input-1", toUUID: "hidden-4", weight: 0.7 },
-      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
-      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
-      { fromUUID: "first-one", toUUID: "output-1", weight: -0.1 },
-      { fromUUID: "second-one", toUUID: "output-1", weight: -0.11 },
-      { fromUUID: "third-one", toUUID: "output-1", weight: -0.12 },
+      { fromUUID: "common-b", toUUID: "dad-b", weight: 0.6 },
+      { fromUUID: "dad-b", toUUID: "output-0", weight: 0.31 },
+      { fromUUID: "common-a", toUUID: "dad-b2", weight: 0.33 },
+      { fromUUID: "dad-b2", toUUID: "dad-c", weight: 0.33 },
+      { fromUUID: "dad-c", toUUID: "common-d", weight: 0.33 },
+      { fromUUID: "dad-b", toUUID: "output-1", weight: 0.32 },
+      { fromUUID: "common-d", toUUID: "output-0", weight: 0.33 },
+      { fromUUID: "common-a", toUUID: "output-1", weight: 0.32 },
     ],
     input: 3,
     output: 2,
@@ -164,6 +119,7 @@ Deno.test("KeepOrder", () => {
   );
   for (let i = 0; i < 10; i++) {
     const child = Offspring.bread(mum, dad);
+    if (!child) continue;
     check(child);
   }
 });

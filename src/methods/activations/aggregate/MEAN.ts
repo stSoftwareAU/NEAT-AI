@@ -24,7 +24,7 @@ export class MEAN implements NeuronActivationInterface {
   activate(node: Neuron) {
     let sum = 0;
 
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const fromActivation = node.creature.getActivation(c.from);
@@ -50,7 +50,7 @@ export class MEAN implements NeuronActivationInterface {
   }
 
   fix(node: Neuron) {
-    const toListA = node.creature.toConnections(node.index);
+    const toListA = node.creature.inwardConnections(node.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
       if (c.from == c.to) {
@@ -59,7 +59,7 @@ export class MEAN implements NeuronActivationInterface {
     }
 
     for (let attempts = 12; attempts--;) {
-      const toList = node.creature.toConnections(node.index);
+      const toList = node.creature.inwardConnections(node.index);
 
       if (toList.length < 2) {
         node.creature.makeRandomConnection(node.index);
@@ -72,7 +72,7 @@ export class MEAN implements NeuronActivationInterface {
   activateAndTrace(node: Neuron) {
     const activation = this.activate(node);
 
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const cs = node.creature.state.connection(
@@ -90,7 +90,7 @@ export class MEAN implements NeuronActivationInterface {
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
 
     const activation = node.adjustedActivation(config);
 

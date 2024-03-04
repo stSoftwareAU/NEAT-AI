@@ -26,7 +26,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   }
 
   fix(node: Neuron) {
-    const toListA = node.creature.toConnections(node.index);
+    const toListA = node.creature.inwardConnections(node.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
       if (c.from == c.to) {
@@ -34,7 +34,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       }
     }
 
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     const spareList = [];
     let foundPositive = false;
     let foundCondition = false;
@@ -139,7 +139,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       }
     }
 
-    const toList2 = node.creature.toConnections(node.index);
+    const toList2 = node.creature.inwardConnections(node.index);
 
     if (toList2.length < 3 && node.index > 2) {
       throw new Error(
@@ -157,7 +157,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let negative = 0;
     let positive = 0;
 
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
@@ -207,7 +207,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let negative = 0;
     let positive = 0;
 
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
@@ -230,7 +230,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   }
 
   applyLearnings(node: Neuron): boolean {
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
 
     let foundPositive = false;
 
@@ -287,7 +287,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     let condition = 0;
     let negativeCount = 0;
     let positiveCount = 0;

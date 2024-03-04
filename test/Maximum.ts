@@ -65,7 +65,7 @@ Deno.test("Maximum-fix", () => {
   const network = Creature.fromJSON(json);
 
   network.fix();
-  const toList = network.toConnections(3);
+  const toList = network.inwardConnections(3);
 
   assert(
     toList.length >= 2,

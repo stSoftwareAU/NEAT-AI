@@ -73,7 +73,7 @@ Deno.test("Constants", () => {
   );
 
   assert(
-    network.toConnections(1).length === 0,
+    network.inwardConnections(1).length === 0,
     "Should not have any inward connections",
   );
 });

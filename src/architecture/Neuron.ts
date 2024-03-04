@@ -117,14 +117,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
     delete this.squashMethodCache;
 
     if (this.squash !== "IF") {
-      const toList = this.creature.toConnections(this.index);
+      const toList = this.creature.inwardConnections(this.index);
       toList.forEach((c) => {
         delete c.type;
       });
     }
 
     if (this.type == "hidden") {
-      const fromList = this.creature.fromConnections(this.index);
+      const fromList = this.creature.efferentConnections(this.index);
       if (fromList.length == 0) {
         const targetIndx = Math.min(
           1,
@@ -139,7 +139,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           Synapse.randomWeight(),
         );
       }
-      const toList = this.creature.toConnections(this.index);
+      const toList = this.creature.inwardConnections(this.index);
       if (toList.length == 0) {
         const fromIndx = Math.floor(Math.random() * this.index);
         this.creature.connect(
@@ -149,7 +149,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         );
       }
     } else if (this.type == "output") {
-      const toList = this.creature.toConnections(this.index);
+      const toList = this.creature.inwardConnections(this.index);
       if (toList.length == 0) {
         const fromIndx = Math.floor(
           Math.random() *
@@ -216,7 +216,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const squashActivation = squashMethod.activateAndTrace(this);
         activation = squashActivation + this.bias;
       } else {
-        const toList = this.creature.toConnections(this.index);
+        const toList = this.creature.inwardConnections(this.index);
         let value = this.bias;
 
         for (let i = toList.length; i--;) {
@@ -284,7 +284,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       } else {
         // All activation sources coming from the node itself
 
-        const toList = this.creature.toConnections(this.index);
+        const toList = this.creature.inwardConnections(this.index);
         let value = this.bias;
 
         for (let i = toList.length; i--;) {
@@ -323,7 +323,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   propagateUpdate(config: BackPropagationConfig) {
-    const toList = this.creature.toConnections(this.index);
+    const toList = this.creature.inwardConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const aWeight = adjustedWeight(this.creature.state, c, config);
@@ -377,7 +377,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
       const currentBias = adjustedBias(this, config);
       let improvedValue = currentBias;
-      const toList = this.creature.toConnections(this.index);
+      const toList = this.creature.inwardConnections(this.index);
 
       const listLength = toList.length;
 
@@ -491,7 +491,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       } else {
         // All activation sources coming from the node itself
 
-        const toList = this.creature.toConnections(this.index);
+        const toList = this.creature.inwardConnections(this.index);
         let value = aBias;
 
         for (let i = toList.length; i--;) {

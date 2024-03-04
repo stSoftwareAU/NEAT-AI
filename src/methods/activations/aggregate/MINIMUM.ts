@@ -24,7 +24,7 @@ export class MINIMUM
   }
 
   activate(node: Neuron): number {
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     let minValue = Infinity;
     for (let i = toList.length; i--;) {
       const c = toList[i];
@@ -39,7 +39,7 @@ export class MINIMUM
   }
 
   activateAndTrace(node: Neuron) {
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     let minValue = Infinity;
     let usedConnection: SynapseInternal | null = null;
     for (let i = toList.length; i--;) {
@@ -67,7 +67,7 @@ export class MINIMUM
   }
 
   fix(node: Neuron) {
-    const toListA = node.creature.toConnections(node.index);
+    const toListA = node.creature.inwardConnections(node.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
       if (c.from == c.to) {
@@ -76,7 +76,7 @@ export class MINIMUM
     }
 
     for (let attempts = 12; attempts--;) {
-      const toList = node.creature.toConnections(node.index);
+      const toList = node.creature.inwardConnections(node.index);
 
       if (toList.length < 2) {
         node.creature.makeRandomConnection(node.index);
@@ -89,7 +89,7 @@ export class MINIMUM
   applyLearnings(node: Neuron): boolean {
     let changed = false;
     let usedCount = 0;
-    const toList = node.creature.toConnections(node.index);
+    const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
       if (node.index != c.to) throw new Error("mismatched index " + c);
@@ -126,7 +126,7 @@ export class MINIMUM
       return targetActivation;
     }
 
-    const toList = neuron.creature.toConnections(neuron.index);
+    const toList = neuron.creature.inwardConnections(neuron.index);
     const targetValue = toValue(neuron, targetActivation);
 
     const activationValue = toValue(neuron, activation);

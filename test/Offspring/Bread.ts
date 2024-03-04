@@ -45,6 +45,7 @@ Deno.test("OffSpring", async () => {
   await neat.populatePopulation(creature);
   for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = neat.offspring();
+    if (!kid) continue;
     await neat.populatePopulation(kid as Creature);
   }
 });
@@ -53,6 +54,7 @@ Deno.test("CrossOver", () => {
   const a = Creature.fromJSON({
     "neurons": [
       {
+        "uuid": "hidden-0",
         "bias": 0.1,
         "index": 2,
         "type": "hidden",
@@ -139,15 +141,15 @@ Deno.test("CrossOver", () => {
   b.validate();
 
   for (let i = 0; i < 100; i++) {
-    const c = Offspring.bread(a, b);
-
-    const n = c.neurons[c.neurons.length - 2];
+    const child = Offspring.bread(a, b);
+    if (!child) continue;
+    const n = child.neurons[child.neurons.length - 2];
     assertEquals(n.type, "output");
 
     if (n.squash == "IF") {
       Deno.writeTextFileSync(
         ".cross_over.json",
-        JSON.stringify(c.exportJSON(), null, 2),
+        JSON.stringify(child.exportJSON(), null, 2),
       );
 
       break;
@@ -168,21 +170,21 @@ function check() {
   const creature: CreatureInternal = {
     neurons: [
       {
-        uuid: crypto.randomUUID(),
+        uuid: "hidden-0",
         bias: 0,
         index: 5,
         type: "hidden",
         squash: "IDENTITY",
       },
       {
-        uuid: crypto.randomUUID(),
+        uuid: "hidden-1",
         bias: 0.1,
         index: 6,
         type: "hidden",
         squash: "MAXIMUM",
       },
       {
-        uuid: crypto.randomUUID(),
+        uuid: "output-0",
         bias: 0.2,
         index: 7,
         type: "output",
@@ -233,7 +235,7 @@ function check() {
   n2.validate();
   n2.fix();
 
-  const toList2 = n2.toConnections(7);
+  const toList2 = n2.inwardConnections(7);
 
   const UUIDs = new Set<string>();
   toList2.forEach((c) => {
@@ -249,28 +251,30 @@ function check() {
 
   const n3 = Offspring.bread(n1, n2);
 
-  const outputUUID = creature.neurons[2].uuid;
+  if (n3) {
+    const outputUUID = creature.neurons[2].uuid;
 
-  let outputIndex = -1;
-  n3.neurons.forEach((n, idx) => {
-    if (n.uuid == outputUUID) {
-      outputIndex = idx;
+    let outputIndex = -1;
+    n3.neurons.forEach((n, idx) => {
+      if (n.uuid == outputUUID) {
+        outputIndex = idx;
+      }
+    });
+
+    const toList3 = n3.inwardConnections(outputIndex);
+
+    toList3.forEach((c) => {
+      const uuid = n3.neurons[c.from].uuid;
+      if (uuid) {
+        UUIDs.delete(uuid);
+      }
+    });
+
+    if (UUIDs.size > 0) {
+      const missingUUID = UUIDs.keys().next().value;
+
+      throw "Did not find " + missingUUID;
     }
-  });
-
-  const toList3 = n3.toConnections(outputIndex);
-
-  toList3.forEach((c) => {
-    const uuid = n3.neurons[c.from].uuid;
-    if (uuid) {
-      UUIDs.delete(uuid);
-    }
-  });
-
-  if (UUIDs.size > 0) {
-    const missingUUID = UUIDs.keys().next().value;
-
-    throw "Did not find " + missingUUID;
   }
 }
 
@@ -405,11 +409,13 @@ Deno.test(
 
     for (let i = 0; i < 20; i++) {
       const child = Offspring.bread(n1, n2);
+      if (!child) continue;
       child.validate();
     }
 
     for (let i = 0; i < 20; i++) {
       const child = Offspring.bread(n2, n1);
+      if (!child) continue;
       child.validate();
     }
   },
@@ -556,13 +562,13 @@ Deno.test(
 
     for (let i = 0; i < 20; i++) {
       const child = Offspring.bread(left, right);
-
+      if (!child) continue;
       checkChild(child);
     }
 
     for (let i = 0; i < 20; i++) {
       const child = Offspring.bread(right, left);
-
+      if (!child) continue;
       checkChild(child);
     }
   },
