@@ -21,7 +21,7 @@ export class Offspring {
     offspring.synapses = [];
     offspring.neurons = [];
 
-    const nodeMap = new Map<string, Neuron>();
+    const neuronMap = new Map<string, Neuron>();
     const connectionsMap = new Map<string, SynapseExport[]>();
     function cloneConnections(
       creature: Creature,
@@ -44,7 +44,7 @@ export class Offspring {
 
     for (const node of mother.neurons) {
       if (node.type !== "input") {
-        nodeMap.set(node.uuid, node);
+        neuronMap.set(node.uuid, node);
         const connections = mother.inwardConnections(node.index);
         connectionsMap.set(node.uuid, cloneConnections(mother, connections));
       }
@@ -56,7 +56,7 @@ export class Offspring {
           const connections = father.inwardConnections(node.index);
           const tmpConnections = cloneConnections(father, connections);
 
-          nodeMap.set(node.uuid, node);
+          neuronMap.set(node.uuid, node);
           connectionsMap.set(node.uuid, tmpConnections);
         }
       }
@@ -65,11 +65,11 @@ export class Offspring {
     let addedMissing;
     do {
       addedMissing = false;
-      for (const key of nodeMap.keys()) {
-        const connections = connectionsMap.get(key);
+      for (const uuid of neuronMap.keys()) {
+        const connections = connectionsMap.get(uuid);
         if (connections) {
           for (const connection of connections) {
-            let fromNeuron = nodeMap.get(connection.fromUUID);
+            let fromNeuron = neuronMap.get(connection.fromUUID);
             if (!fromNeuron) {
               const motherNeuron = mother.neurons.find((neuron) => {
                 return neuron.uuid == connection.fromUUID;
@@ -89,7 +89,7 @@ export class Offspring {
                 throw new Error(`Can't find ${connection.fromUUID}`);
               }
 
-              nodeMap.set(fromNeuron.uuid, fromNeuron);
+              neuronMap.set(fromNeuron.uuid, fromNeuron);
               const connections = parent.inwardConnections(fromNeuron.index);
               connectionsMap.set(
                 fromNeuron.uuid,
@@ -98,34 +98,74 @@ export class Offspring {
               addedMissing = true;
             }
           }
+        } else {
+          throw new Error(`Can't find connections for ${uuid}`);
         }
       }
     } while (addedMissing);
 
+    // console.info( "NeuronMap", neuronMap.keys());
+    try {
+      Deno.removeSync(".offspring-neuronMap.txt");
+    } catch (e) {
+      console.info(e);
+    }
+    try {
+      Deno.removeSync(".offspring-cloneNode.txt");
+    } catch (e) {
+      console.info(e);
+    }
+    neuronMap.forEach((neuron, uuid) => {
+      const connections = connectionsMap.get(neuron.uuid);
+      let line = uuid + "=";
+
+      connections?.forEach((connection) => {
+        line += connection.fromUUID + ",";
+      });
+      Deno.writeTextFileSync(
+        ".offspring-neuronMap.txt",
+        line + "\n",
+        { append: true },
+      );
+    });
     const tmpNodes: Neuron[] = [];
     const tmpUUIDs = new Set<string>();
-    function cloneNode(node: Neuron) {
-      if (!tmpUUIDs.has(node.uuid)) {
-        tmpUUIDs.add(node.uuid);
-        tmpNodes.push(node);
-        const connections = connectionsMap.get(node.uuid);
-        connections?.forEach((connection) => {
-          const fromNeuron = nodeMap.get(connection.fromUUID);
-          if (fromNeuron && fromNeuron?.type !== "input") {
+    function cloneNode(neuron: Neuron) {
+      if (!tmpUUIDs.has(neuron.uuid)) {
+        Deno.writeTextFileSync(
+          ".offspring-cloneNode.txt",
+          neuron.uuid + "\n",
+          { append: true },
+        );
+        const connections = connectionsMap.get(neuron.uuid);
+        if (!connections) {
+          throw new Error(`Can't find connections for ${neuron.uuid}`);
+        }
+        tmpUUIDs.add(neuron.uuid);
+        connections.forEach((connection) => {
+          const fromNeuron = neuronMap.get(connection.fromUUID);
+          if (!fromNeuron) {
+            throw new Error(`Can't find ${connection.fromUUID}`);
+          } else if (fromNeuron.type !== "input") {
             cloneNode(fromNeuron);
           }
         });
+        tmpNodes.push(neuron);
       }
     }
 
     for (let indx = 0; indx < mother.input; indx++) {
-      tmpNodes.push(mother.neurons[indx]);
+      const input = mother.neurons[indx];
+      tmpNodes.push(input);
+      tmpUUIDs.add(input.uuid);
     }
 
     for (let indx = mother.output; indx--;) {
-      const node = nodeMap.get(`output-${indx}`);
+      const node = neuronMap.get(`output-${indx}`);
       if (node != null) {
         cloneNode(node);
+      } else {
+        throw new Error(`Can't find output-${indx}`);
       }
     }
 
@@ -149,23 +189,32 @@ export class Offspring {
       indxMap.set(node.uuid, indx);
     });
 
-    offspring.neurons.forEach((node) => {
-      const connections = connectionsMap.get(node.uuid);
-      connections?.forEach((c) => {
-        const fromIndx = indxMap.get(c.fromUUID);
-        const toIndx = indxMap.get(c.toUUID);
-
-        if (fromIndx != null && toIndx != null) {
-          if (fromIndx <= toIndx) {
-            const toType = offspring.neurons[toIndx].type;
-            if (toType == "hidden" || toType == "output") {
-              offspring.connect(fromIndx, toIndx, c.weight, c.type);
-            }
-          }
-        } else {
-          throw new Error("Could not find nodes for connection");
+    offspring.neurons.forEach((neuron) => {
+      if (neuron.type !== "input") {
+        const connections = connectionsMap.get(neuron.uuid);
+        if (!connections) {
+          throw new Error(`Can't find connections for ${neuron.uuid}`);
         }
-      });
+        connections.forEach((c) => {
+          const fromIndx = indxMap.get(c.fromUUID);
+          const toIndx = indxMap.get(c.toUUID);
+
+          if (fromIndx != null && toIndx != null) {
+            if (fromIndx <= toIndx) {
+              const toType = offspring.neurons[toIndx].type;
+              if (toType == "hidden" || toType == "output") {
+                offspring.connect(fromIndx, toIndx, c.weight, c.type);
+              }
+            } else {
+              console.info(
+                `${neuron.ID()} fromIndx=${fromIndx} > toIndx=${toIndx}`,
+              );
+            }
+          } else {
+            throw new Error("Could not find nodes for connection");
+          }
+        });
+      }
     });
 
     offspring.clearState();
@@ -186,12 +235,20 @@ export class Offspring {
           console.info(e);
           offspring.DEBUG = false;
           Deno.writeTextFileSync(
-            ".offspring.json",
+            ".offspring-mother.json",
+            JSON.stringify(mother.exportJSON(), null, 2),
+          );
+          Deno.writeTextFileSync(
+            ".offspring-child.json",
             JSON.stringify(offspring.exportJSON(), null, 2),
           );
+          Deno.writeTextFileSync(
+            ".offspring-father.json",
+            JSON.stringify(father.exportJSON(), null, 2),
+          );
           // return offspring;
-          return undefined;
-          // throw e;
+          // return undefined;
+          throw e;
       }
     }
   }
