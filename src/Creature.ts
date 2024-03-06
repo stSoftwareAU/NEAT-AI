@@ -565,8 +565,9 @@ export class Creature implements CreatureInternal {
               );
               this.DEBUG = true;
             }
-            throw new Error(
+            throw new ValidationError(
               `constants neuron ${node.ID()} has no outward connections`,
+              "NO_OUTWARD_CONNECTIONS",
             );
           }
           break;

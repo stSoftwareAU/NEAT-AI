@@ -21,7 +21,7 @@ export class Offspring {
     offspring.synapses = [];
     offspring.neurons = [];
 
-    const nodeMap = new Map<string, Neuron>();
+    const neuronMap = new Map<string, Neuron>();
     const connectionsMap = new Map<string, SynapseExport[]>();
     function cloneConnections(
       creature: Creature,
@@ -44,7 +44,7 @@ export class Offspring {
 
     for (const node of mother.neurons) {
       if (node.type !== "input") {
-        nodeMap.set(node.uuid, node);
+        neuronMap.set(node.uuid, node);
         const connections = mother.inwardConnections(node.index);
         connectionsMap.set(node.uuid, cloneConnections(mother, connections));
       }
@@ -56,7 +56,7 @@ export class Offspring {
           const connections = father.inwardConnections(node.index);
           const tmpConnections = cloneConnections(father, connections);
 
-          nodeMap.set(node.uuid, node);
+          neuronMap.set(node.uuid, node);
           connectionsMap.set(node.uuid, tmpConnections);
         }
       }
@@ -65,11 +65,11 @@ export class Offspring {
     let addedMissing;
     do {
       addedMissing = false;
-      for (const key of nodeMap.keys()) {
-        const connections = connectionsMap.get(key);
+      for (const uuid of neuronMap.keys()) {
+        const connections = connectionsMap.get(uuid);
         if (connections) {
           for (const connection of connections) {
-            let fromNeuron = nodeMap.get(connection.fromUUID);
+            let fromNeuron = neuronMap.get(connection.fromUUID);
             if (!fromNeuron) {
               const motherNeuron = mother.neurons.find((neuron) => {
                 return neuron.uuid == connection.fromUUID;
@@ -89,7 +89,7 @@ export class Offspring {
                 throw new Error(`Can't find ${connection.fromUUID}`);
               }
 
-              nodeMap.set(fromNeuron.uuid, fromNeuron);
+              neuronMap.set(fromNeuron.uuid, fromNeuron);
               const connections = parent.inwardConnections(fromNeuron.index);
               connectionsMap.set(
                 fromNeuron.uuid,
@@ -98,78 +98,103 @@ export class Offspring {
               addedMissing = true;
             }
           }
+        } else {
+          throw new Error(`Can't find connections for ${uuid}`);
         }
       }
     } while (addedMissing);
 
     const tmpNodes: Neuron[] = [];
     const tmpUUIDs = new Set<string>();
-    function cloneNode(node: Neuron) {
-      if (!tmpUUIDs.has(node.uuid)) {
-        tmpUUIDs.add(node.uuid);
-        tmpNodes.push(node);
-        const connections = connectionsMap.get(node.uuid);
-        connections?.forEach((connection) => {
-          const fromNeuron = nodeMap.get(connection.fromUUID);
-          if (fromNeuron && fromNeuron?.type !== "input") {
+    function cloneNode(neuron: Neuron) {
+      if (!tmpUUIDs.has(neuron.uuid)) {
+        const connections = connectionsMap.get(neuron.uuid);
+        if (!connections) {
+          throw new Error(`Can't find connections for ${neuron.uuid}`);
+        }
+        tmpUUIDs.add(neuron.uuid);
+        connections.forEach((connection) => {
+          const fromNeuron = neuronMap.get(connection.fromUUID);
+          if (!fromNeuron) {
+            throw new Error(`Can't find ${connection.fromUUID}`);
+          } else if (fromNeuron.type !== "input") {
             cloneNode(fromNeuron);
           }
         });
+        tmpNodes.push(neuron);
       }
     }
 
     for (let indx = 0; indx < mother.input; indx++) {
-      tmpNodes.push(mother.neurons[indx]);
+      const input = mother.neurons[indx];
+      tmpNodes.push(input);
+      tmpUUIDs.add(input.uuid);
     }
 
     for (let indx = mother.output; indx--;) {
-      const node = nodeMap.get(`output-${indx}`);
+      const node = neuronMap.get(`output-${indx}`);
       if (node != null) {
         cloneNode(node);
+      } else {
+        throw new Error(`Can't find output-${indx}`);
       }
     }
 
-    Offspring.sortNodes(tmpNodes, mother.neurons, father.neurons);
+    Offspring.sortNodes(
+      tmpNodes,
+      mother.neurons,
+      father.neurons,
+      connectionsMap,
+    );
 
     offspring.neurons.length = tmpNodes.length;
     const indxMap = new Map<string, number>();
-    tmpNodes.forEach((node, indx) => {
+    tmpNodes.forEach((neuron, indx) => {
       const newNode = new Neuron(
-        node.uuid,
-        node.type,
-        node.bias,
+        neuron.uuid,
+        neuron.type,
+        neuron.bias,
         offspring,
-        node.squash,
+        neuron.squash,
       );
 
-      addTags(newNode, node);
+      addTags(newNode, neuron);
 
       newNode.index = indx;
       offspring.neurons[indx] = newNode;
-      indxMap.set(node.uuid, indx);
+      indxMap.set(neuron.uuid, indx);
     });
 
-    offspring.neurons.forEach((node) => {
-      const connections = connectionsMap.get(node.uuid);
-      connections?.forEach((c) => {
-        const fromIndx = indxMap.get(c.fromUUID);
-        const toIndx = indxMap.get(c.toUUID);
-
-        if (fromIndx != null && toIndx != null) {
-          if (fromIndx <= toIndx) {
-            const toType = offspring.neurons[toIndx].type;
-            if (toType == "hidden" || toType == "output") {
-              offspring.connect(fromIndx, toIndx, c.weight, c.type);
-            }
-          }
-        } else {
-          throw new Error("Could not find nodes for connection");
+    offspring.neurons.forEach((neuron) => {
+      if (neuron.type !== "input") {
+        const connections = connectionsMap.get(neuron.uuid);
+        if (!connections) {
+          throw new Error(`Can't find connections for ${neuron.uuid}`);
         }
-      });
+        connections.forEach((c) => {
+          const fromIndx = indxMap.get(c.fromUUID);
+          const toIndx = indxMap.get(c.toUUID);
+
+          if (fromIndx != null && toIndx != null) {
+            if (fromIndx <= toIndx) {
+              const toType = offspring.neurons[toIndx].type;
+              if (toType == "hidden" || toType == "output") {
+                offspring.connect(fromIndx, toIndx, c.weight, c.type);
+              }
+            } else {
+              console.info(
+                `${neuron.ID()} fromIndx=${fromIndx} > toIndx=${toIndx}`,
+              );
+            }
+          } else {
+            throw new Error("Could not find nodes for connection");
+          }
+        });
+      }
     });
 
     offspring.clearState();
-    // offspring.fix();
+
     try {
       offspring.validate();
 
@@ -178,6 +203,7 @@ export class Offspring {
       switch (e.name) {
         case "NO_OUTWARD_CONNECTIONS":
           return undefined;
+        case "NO_INWARD_CONNECTIONS":
         case "IF_CONDITIONS":
           offspring.fix();
           offspring.validate();
@@ -186,17 +212,29 @@ export class Offspring {
           console.info(e);
           offspring.DEBUG = false;
           Deno.writeTextFileSync(
-            ".offspring.json",
+            ".offspring-mother.json",
+            JSON.stringify(mother.exportJSON(), null, 2),
+          );
+          Deno.writeTextFileSync(
+            ".offspring-child.json",
             JSON.stringify(offspring.exportJSON(), null, 2),
           );
-          // return offspring;
-          return undefined;
-          // throw e;
+          Deno.writeTextFileSync(
+            ".offspring-father.json",
+            JSON.stringify(father.exportJSON(), null, 2),
+          );
+
+          throw e;
       }
     }
   }
 
-  static sortNodes(child: Neuron[], mother: Neuron[], father: Neuron[]) {
+  static sortNodes(
+    child: Neuron[],
+    mother: Neuron[],
+    father: Neuron[],
+    connectionsMap: Map<string, SynapseExport[]>,
+  ) {
     const childMap = new Map<string, number>();
     const motherMap = new Map<string, number>();
     const fatherMap = new Map<string, number>();
@@ -223,23 +261,49 @@ export class Offspring {
       return a.index - b.index;
     });
 
-    let lastIndx = 0;
-    child.forEach((node) => {
-      if (node.type != "input" && node.type != "output") {
-        const motherIndx = motherMap.get(node.uuid);
-        const fatherIndx = fatherMap.get(node.uuid);
+    for (let attempts = 0; attempts < 12; attempts++) {
+      let missing = false;
+      child.forEach((neuron) => {
+        if (neuron.type != "input" && neuron.type != "output") {
+          const uuid = neuron.uuid;
 
-        if (motherIndx && fatherIndx) {
-          lastIndx = Math.max(motherIndx, fatherIndx);
-        } else if (motherIndx) {
-          lastIndx += 0.1;
-        } else {
-          lastIndx += 0.2;
+          if (!childMap.has(uuid)) {
+            const motherIndx = motherMap.get(uuid);
+            const fatherIndx = fatherMap.get(uuid);
+
+            let indx = 0;
+            if (motherIndx) {
+              indx = motherIndx;
+            } else if (fatherIndx) {
+              indx = fatherIndx;
+            } else {
+              throw new Error(
+                `Can't find ${uuid} in fatehr or mother networks!`,
+              );
+            }
+            connectionsMap.get(uuid)?.forEach((connection) => {
+              const fromUUID = connection.fromUUID;
+              if (!fromUUID.startsWith("input-") && !childMap.has(fromUUID)) {
+                const dependantIndx = childMap.get(fromUUID);
+                if (dependantIndx == undefined) {
+                  indx = -1;
+                } else if (dependantIndx > indx) {
+                  indx = dependantIndx + 1;
+                }
+              }
+            });
+            if (indx >= 0) {
+              childMap.set(uuid, indx);
+            } else {
+              missing = true;
+            }
+          }
         }
-        childMap.set(node.uuid, lastIndx);
+      });
+      if (!missing) {
+        break;
       }
-    });
-
+    }
     /** Second sort should only change the order of new nodes. */
     child.sort((a: Neuron, b: Neuron) => {
       if (a.type == "output") {
