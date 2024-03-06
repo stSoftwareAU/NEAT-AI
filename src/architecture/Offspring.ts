@@ -104,17 +104,6 @@ export class Offspring {
       }
     } while (addedMissing);
 
-    // console.info( "NeuronMap", neuronMap.keys());
-    try {
-      Deno.removeSync(".offspring-neuronMap.txt");
-    } catch (e) {
-      console.info(e);
-    }
-    try {
-      Deno.removeSync(".offspring-cloneNode.txt");
-    } catch (e) {
-      console.info(e);
-    }
     neuronMap.forEach((neuron, uuid) => {
       const connections = connectionsMap.get(neuron.uuid);
       let line = uuid + "=";
@@ -122,21 +111,11 @@ export class Offspring {
       connections?.forEach((connection) => {
         line += connection.fromUUID + ",";
       });
-      Deno.writeTextFileSync(
-        ".offspring-neuronMap.txt",
-        line + "\n",
-        { append: true },
-      );
     });
     const tmpNodes: Neuron[] = [];
     const tmpUUIDs = new Set<string>();
     function cloneNode(neuron: Neuron) {
       if (!tmpUUIDs.has(neuron.uuid)) {
-        Deno.writeTextFileSync(
-          ".offspring-cloneNode.txt",
-          neuron.uuid + "\n",
-          { append: true },
-        );
         const connections = connectionsMap.get(neuron.uuid);
         if (!connections) {
           throw new Error(`Can't find connections for ${neuron.uuid}`);
@@ -169,24 +148,29 @@ export class Offspring {
       }
     }
 
-    Offspring.sortNodes(tmpNodes, mother.neurons, father.neurons);
+    Offspring.sortNodes(
+      tmpNodes,
+      mother.neurons,
+      father.neurons,
+      connectionsMap,
+    );
 
     offspring.neurons.length = tmpNodes.length;
     const indxMap = new Map<string, number>();
-    tmpNodes.forEach((node, indx) => {
+    tmpNodes.forEach((neuron, indx) => {
       const newNode = new Neuron(
-        node.uuid,
-        node.type,
-        node.bias,
+        neuron.uuid,
+        neuron.type,
+        neuron.bias,
         offspring,
-        node.squash,
+        neuron.squash,
       );
 
-      addTags(newNode, node);
+      addTags(newNode, neuron);
 
       newNode.index = indx;
       offspring.neurons[indx] = newNode;
-      indxMap.set(node.uuid, indx);
+      indxMap.set(neuron.uuid, indx);
     });
 
     offspring.neurons.forEach((neuron) => {
@@ -227,6 +211,7 @@ export class Offspring {
       switch (e.name) {
         case "NO_OUTWARD_CONNECTIONS":
           return undefined;
+        case "NO_INWARD_CONNECTIONS":
         case "IF_CONDITIONS":
           offspring.fix();
           offspring.validate();
@@ -253,7 +238,12 @@ export class Offspring {
     }
   }
 
-  static sortNodes(child: Neuron[], mother: Neuron[], father: Neuron[]) {
+  static sortNodes(
+    child: Neuron[],
+    mother: Neuron[],
+    father: Neuron[],
+    connectionsMap: Map<string, SynapseExport[]>,
+  ) {
     const childMap = new Map<string, number>();
     const motherMap = new Map<string, number>();
     const fatherMap = new Map<string, number>();
@@ -280,23 +270,49 @@ export class Offspring {
       return a.index - b.index;
     });
 
-    let lastIndx = 0;
-    child.forEach((node) => {
-      if (node.type != "input" && node.type != "output") {
-        const motherIndx = motherMap.get(node.uuid);
-        const fatherIndx = fatherMap.get(node.uuid);
+    for (let attempts = 0; attempts < 12; attempts++) {
+      let missing = false;
+      child.forEach((neuron) => {
+        if (neuron.type != "input" && neuron.type != "output") {
+          const uuid = neuron.uuid;
 
-        if (motherIndx && fatherIndx) {
-          lastIndx = Math.max(motherIndx, fatherIndx);
-        } else if (motherIndx) {
-          lastIndx += 0.1;
-        } else {
-          lastIndx += 0.2;
+          if (!childMap.has(uuid)) {
+            const motherIndx = motherMap.get(uuid);
+            const fatherIndx = fatherMap.get(uuid);
+
+            let indx = 0;
+            if (motherIndx) {
+              indx = motherIndx;
+            } else if (fatherIndx) {
+              indx = fatherIndx;
+            } else {
+              throw new Error(
+                `Can't find ${uuid} in fatehr or mother networks!`,
+              );
+            }
+            connectionsMap.get(uuid)?.forEach((connection) => {
+              const fromUUID = connection.fromUUID;
+              if (!fromUUID.startsWith("input-") && !childMap.has(fromUUID)) {
+                const dependantIndx = childMap.get(fromUUID);
+                if (dependantIndx == undefined) {
+                  indx = -1;
+                } else if (dependantIndx > indx) {
+                  indx = dependantIndx + 1;
+                }
+              }
+            });
+            if (indx >= 0) {
+              childMap.set(uuid, indx);
+            } else {
+              missing = true;
+            }
+          }
         }
-        childMap.set(node.uuid, lastIndx);
+      });
+      if (!missing) {
+        break;
       }
-    });
-
+    }
     /** Second sort should only change the order of new nodes. */
     child.sort((a: Neuron, b: Neuron) => {
       if (a.type == "output") {
