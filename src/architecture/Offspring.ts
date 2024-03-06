@@ -260,8 +260,8 @@ export class Offspring {
       }
       return a.index - b.index;
     });
-
-    for (let attempts = 0; attempts < 12; attempts++) {
+    const usedIndx = new Set<number>();
+    for (let attempts = 0; attempts < child.length; attempts++) {
       let missing = false;
       child.forEach((neuron) => {
         if (neuron.type != "input" && neuron.type != "output") {
@@ -278,7 +278,7 @@ export class Offspring {
               indx = fatherIndx;
             } else {
               throw new Error(
-                `Can't find ${uuid} in fatehr or mother networks!`,
+                `Can't find ${uuid} in fatehr or mother creatures!`,
               );
             }
             connectionsMap.get(uuid)?.forEach((connection) => {
@@ -293,6 +293,10 @@ export class Offspring {
               }
             });
             if (indx >= 0) {
+              while (usedIndx.has(indx)) {
+                indx++;
+              }
+              usedIndx.add(indx);
               childMap.set(uuid, indx);
             } else {
               missing = true;
