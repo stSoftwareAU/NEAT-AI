@@ -202,7 +202,7 @@ export class Offspring {
     });
 
     offspring.clearState();
-    // offspring.fix();
+
     try {
       offspring.validate();
 
@@ -231,8 +231,7 @@ export class Offspring {
             ".offspring-father.json",
             JSON.stringify(father.exportJSON(), null, 2),
           );
-          // return offspring;
-          // return undefined;
+
           throw e;
       }
     }
