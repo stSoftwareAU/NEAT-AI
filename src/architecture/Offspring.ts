@@ -104,14 +104,6 @@ export class Offspring {
       }
     } while (addedMissing);
 
-    neuronMap.forEach((neuron, uuid) => {
-      const connections = connectionsMap.get(neuron.uuid);
-      let line = uuid + "=";
-
-      connections?.forEach((connection) => {
-        line += connection.fromUUID + ",";
-      });
-    });
     const tmpNodes: Neuron[] = [];
     const tmpUUIDs = new Set<string>();
     function cloneNode(neuron: Neuron) {
