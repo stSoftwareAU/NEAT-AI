@@ -16,8 +16,7 @@ function tuneRandomize(
   const uuidNodeMap = new Map<string, NeuronExport>();
 
   previousJSON.neurons.forEach((n) => {
-    const uuid = n.uuid ? n.uuid : "";
-    uuidNodeMap.set(uuid, n);
+    uuidNodeMap.set(n.uuid, n);
   });
 
   let changeBiasCount = 0;
@@ -25,15 +24,15 @@ function tuneRandomize(
   for (let i = fittestJSON.neurons.length; i--;) {
     const tn = fittestJSON.neurons[i];
 
-    const pn = uuidNodeMap.get(tn.uuid ? tn.uuid : "");
+    const pn = uuidNodeMap.get(tn.uuid);
 
     if (pn && tn.squash == pn.squash) {
-      const diff = (tn.bias ? tn.bias : 0) - (pn.bias ? pn.bias : 0);
+      const diff = tn.bias - pn.bias;
       const step = diff * Math.random() * 3 - diff;
       if (
         Math.abs(step) > MIN_STEP
       ) {
-        const bias = (tn.bias ? tn.bias : 0) + step;
+        const bias = tn.bias + step;
         const quantum = Math.round(bias / MIN_STEP);
         tn.bias = quantum * MIN_STEP;
         changeBiasCount++;
@@ -159,17 +158,17 @@ export async function fineTuneImprovement(
       );
     }
   }
-  await CreatureUtil.makeUUID(fittest);
+  const fittestUUID = await CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
-  UUIDs.add(fittest.uuid ? fittest.uuid : "");
+  UUIDs.add(fittestUUID);
 
   const fineTuned: Creature[] = [];
   const compactNetwork = fittest.compact();
   if (compactNetwork) {
-    await CreatureUtil.makeUUID(compactNetwork);
-    const uuid = compactNetwork.uuid ? compactNetwork.uuid : "";
-    if (!UUIDs.has(uuid)) {
-      UUIDs.add(uuid);
+    const compactUUID = await CreatureUtil.makeUUID(compactNetwork);
+
+    if (!UUIDs.has(compactUUID)) {
+      UUIDs.add(compactUUID);
       fineTuned.push(compactNetwork);
     }
   }
@@ -177,10 +176,9 @@ export async function fineTuneImprovement(
   for (let attempt = 0; attempt < popSize; attempt++) {
     const resultRandomize = tuneRandomize(fittest, previousFittest, fScoreTxt);
     if (resultRandomize.tuned) {
-      await CreatureUtil.makeUUID(resultRandomize.tuned);
-      const uuid = resultRandomize.tuned.uuid ? resultRandomize.tuned.uuid : "";
-      if (!UUIDs.has(uuid)) {
-        UUIDs.add(uuid);
+      const randomUUID = await CreatureUtil.makeUUID(resultRandomize.tuned);
+      if (!UUIDs.has(randomUUID)) {
+        UUIDs.add(randomUUID);
         fineTuned.push(resultRandomize.tuned);
       }
     }
