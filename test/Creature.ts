@@ -278,18 +278,18 @@ Deno.test("SWAP_NODES", () => {
 });
 
 Deno.test("gender-tag", () => {
-  const network1 = new Creature(2, 2);
-  const network2 = new Creature(2, 2);
+  const mum = new Creature(2, 2);
+  const dad = new Creature(2, 2);
 
-  addTag(network1.neurons[0], "gender", "male");
+  addTag(mum.neurons[3], "gender", "male");
 
-  addTag(network2.neurons[0], "gender", "female");
+  addTag(dad.neurons[3], "gender", "female");
 
   // Crossover
-  const child = Offspring.bread(network1, network2);
+  const child = Offspring.bread(mum, dad);
 
   if (child) {
-    const gender = getTag(child.neurons[0], "gender");
+    const gender = getTag(child.neurons[3], "gender");
 
     assert(gender == "male" || gender == "female", "No gender: " + gender);
   }

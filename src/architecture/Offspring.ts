@@ -3,11 +3,20 @@ import { Creature } from "../Creature.ts";
 import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";
 
+class OffspringError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OffspringError";
+  }
+}
+
 export class Offspring {
   /**
    * Create an offspring from two parent networks
    */
-  static bread(mother: Creature, father: Creature) {
+  static bread(mum: Creature, dad: Creature) {
+    const mother = Creature.fromJSON(mum.exportJSON());
+    const father = Creature.fromJSON(dad.exportJSON());
     if (
       mother.input !== father.input || mother.output !== father.output
     ) {
@@ -140,12 +149,20 @@ export class Offspring {
       }
     }
 
-    Offspring.sortNodes(
-      tmpNodes,
-      mother.neurons,
-      father.neurons,
-      connectionsMap,
-    );
+    try {
+      Offspring.sortNodes(
+        tmpNodes,
+        mother.neurons,
+        father.neurons,
+        connectionsMap,
+      );
+    } catch (e) {
+      if (e instanceof OffspringError) {
+        return undefined;
+      }
+      console.warn(e.message);
+      throw e;
+    }
 
     offspring.neurons.length = tmpNodes.length;
     const indxMap = new Map<string, number>();
@@ -175,19 +192,23 @@ export class Offspring {
           const fromIndx = indxMap.get(c.fromUUID);
           const toIndx = indxMap.get(c.toUUID);
 
-          if (fromIndx != null && toIndx != null) {
+          if (fromIndx !== undefined && toIndx !== undefined) {
             if (fromIndx <= toIndx) {
               const toType = offspring.neurons[toIndx].type;
               if (toType == "hidden" || toType == "output") {
-                offspring.connect(fromIndx, toIndx, c.weight, c.type);
+                if (!offspring.getSynapse(fromIndx, toIndx)) {
+                  offspring.connect(fromIndx, toIndx, c.weight, c.type);
+                }
+              } else {
+                throw new Error(
+                  `Can't connect to ${toType} neuron at indx=${toIndx} of type ${toType}!`,
+                );
               }
             } else {
-              console.info(
+              throw new Error(
                 `${neuron.ID()} fromIndx=${fromIndx} > toIndx=${toIndx}`,
               );
             }
-          } else {
-            throw new Error("Could not find nodes for connection");
           }
         });
       }
@@ -236,6 +257,11 @@ export class Offspring {
     connectionsMap: Map<string, SynapseExport[]>,
   ) {
     const childMap = new Map<string, number>();
+
+    mother.forEach((neuron, indx) => {
+      if (neuron.type == "input") childMap.set(neuron.uuid, indx);
+    });
+
     const motherMap = new Map<string, number>();
     const fatherMap = new Map<string, number>();
 
@@ -261,8 +287,9 @@ export class Offspring {
       return a.index - b.index;
     });
     const usedIndx = new Set<number>();
-    for (let attempts = 0; attempts < child.length; attempts++) {
-      let missing = false;
+    let missing = true;
+    for (let attempts = 0; missing && attempts < child.length; attempts++) {
+      missing = false;
       child.forEach((neuron) => {
         if (neuron.type != "input" && neuron.type != "output") {
           const uuid = neuron.uuid;
@@ -272,29 +299,38 @@ export class Offspring {
             const fatherIndx = fatherMap.get(uuid);
 
             let indx = 0;
-            if (motherIndx) {
+            if (motherIndx !== undefined) {
               indx = motherIndx;
-            } else if (fatherIndx) {
+            } else if (fatherIndx !== undefined) {
               indx = fatherIndx;
             } else {
               throw new Error(
-                `Can't find ${uuid} in fatehr or mother creatures!`,
+                `Can't find ${uuid} in father or mother creatures!`,
               );
             }
             connectionsMap.get(uuid)?.forEach((connection) => {
-              const fromUUID = connection.fromUUID;
-              if (!fromUUID.startsWith("input-") && !childMap.has(fromUUID)) {
-                const dependantIndx = childMap.get(fromUUID);
-                if (dependantIndx == undefined) {
-                  indx = -1;
-                } else if (dependantIndx > indx) {
-                  indx = dependantIndx + 1;
+              if (indx >= 0) {
+                const fromUUID = connection.fromUUID;
+                if (!fromUUID.startsWith("input-")) {
+                  const dependantIndx = childMap.get(fromUUID);
+                  if (dependantIndx == undefined) {
+                    indx = -1;
+                  } else if (dependantIndx >= indx) {
+                    indx = dependantIndx + 1;
+                  }
                 }
               }
             });
             if (indx >= 0) {
-              while (usedIndx.has(indx)) {
-                indx++;
+              if (usedIndx.has(indx)) {
+                childMap.forEach((childIndx, uuid) => {
+                  if (childIndx >= indx) {
+                    usedIndx.delete(childIndx);
+                    childIndx++;
+                    usedIndx.add(childIndx);
+                  }
+                  childMap.set(uuid, childIndx);
+                });
               }
               usedIndx.add(indx);
               childMap.set(uuid, indx);
@@ -304,31 +340,38 @@ export class Offspring {
           }
         }
       });
-      if (!missing) {
-        break;
-      }
     }
+
+    if (missing) {
+      throw new OffspringError("Can't find a solution to sort the nodes!");
+    }
+
     /** Second sort should only change the order of new nodes. */
     child.sort((a: Neuron, b: Neuron) => {
       if (a.type == "output") {
         if (b.type != "output") {
           return 1;
         }
-        return Number.parseInt(a.uuid.substring(7)) -
-          Number.parseInt(b.uuid.substring(7));
+        const aIndx = Number.parseInt(a.uuid.substring(7));
+        const bIndx = Number.parseInt(b.uuid.substring(7));
+
+        return aIndx - bIndx;
       } else if (b.type == "output") {
         return -1;
-      } else if (a.type == "input" || b.type == "input") {
+      } else if (a.type == "input" && b.type == "input") {
         return a.index - b.index;
       } else {
         const aIndx = childMap.get(a.uuid);
+        if (aIndx == undefined) throw new Error(`Can't find ${a.uuid}`);
         const bIndx = childMap.get(b.uuid);
+        if (bIndx == undefined) throw new Error(`Can't find ${b.uuid}`);
+
         /*
          * Sort by index in child array, if not input or output.
          * This will ensure that the order of the nodes is the same as the order of the nodes in the mother and father networks.
          * This is important for the crossover function to work correctly.
          */
-        return (aIndx ? aIndx : 0) - (bIndx ? bIndx : 0);
+        return aIndx - bIndx;
       }
     });
   }

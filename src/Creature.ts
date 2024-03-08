@@ -627,8 +627,9 @@ export class Creature implements CreatureInternal {
               );
               this.DEBUG = true;
             }
-            throw new Error(
+            throw new ValidationError(
               `${node.ID()}) output neuron has no inward connections`,
+              "NO_INWARD_CONNECTIONS",
             );
           }
           break;
@@ -639,7 +640,7 @@ export class Creature implements CreatureInternal {
 
       if (node.index !== indx) {
         throw new Error(
-          `${node.ID()}) node.index: ${node.index} does not match expected index`,
+          `${node.ID()}) node.index: ${node.index} does not match expected index ${indx}`,
         );
       }
 
