@@ -1,7 +1,7 @@
 import {
   assert,
   assertAlmostEquals,
-} from "https://deno.land/std@0.218.0/assert/mod.ts";
+} from "https://deno.land/std@0.219.1/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";

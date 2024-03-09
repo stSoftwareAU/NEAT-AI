@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.218.0/assert/assert_almost_equals.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.219.1/assert/assert_almost_equals.ts";
 import { accumulateWeight } from "../../src/architecture/BackPropagation.ts";
 import { SynapseState } from "../../src/architecture/CreatureState.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
