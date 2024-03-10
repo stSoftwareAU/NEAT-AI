@@ -32,30 +32,15 @@ export class Offspring {
 
     const neuronMap = new Map<string, Neuron>();
     const connectionsMap = new Map<string, SynapseExport[]>();
-    function cloneConnections(
-      creature: Creature,
-      connections: SynapseInternal[],
-    ): SynapseExport[] {
-      const tmpConnections: SynapseExport[] = [];
-
-      connections.forEach((connection) => {
-        const c: SynapseExport = {
-          fromUUID: creature.neurons[connection.from].uuid,
-          toUUID: creature.neurons[connection.to].uuid,
-          weight: connection.weight,
-          type: connection.type,
-        };
-        tmpConnections.push(c);
-      });
-
-      return tmpConnections;
-    }
 
     for (const node of mother.neurons) {
       if (node.type !== "input") {
         neuronMap.set(node.uuid, node);
         const connections = mother.inwardConnections(node.index);
-        connectionsMap.set(node.uuid, cloneConnections(mother, connections));
+        connectionsMap.set(
+          node.uuid,
+          Offspring.cloneConnections(mother, connections),
+        );
       }
     }
 
@@ -63,7 +48,10 @@ export class Offspring {
       if (node.type !== "input") {
         if (Math.random() >= 0.5) {
           const connections = father.inwardConnections(node.index);
-          const tmpConnections = cloneConnections(father, connections);
+          const tmpConnections = Offspring.cloneConnections(
+            father,
+            connections,
+          );
 
           neuronMap.set(node.uuid, node);
           connectionsMap.set(node.uuid, tmpConnections);
@@ -102,7 +90,7 @@ export class Offspring {
               const connections = parent.inwardConnections(fromNeuron.index);
               connectionsMap.set(
                 fromNeuron.uuid,
-                cloneConnections(parent, connections),
+                Offspring.cloneConnections(parent, connections),
               );
               addedMissing = true;
             }
@@ -150,7 +138,7 @@ export class Offspring {
     }
 
     try {
-      Offspring.sortNodes(
+      Offspring.sortNeurons(
         tmpNodes,
         mother.neurons,
         father.neurons,
@@ -250,7 +238,26 @@ export class Offspring {
     }
   }
 
-  static sortNodes(
+  public static cloneConnections(
+    creature: Creature,
+    connections: SynapseInternal[],
+  ): SynapseExport[] {
+    const tmpConnections: SynapseExport[] = [];
+
+    connections.forEach((connection) => {
+      const c: SynapseExport = {
+        fromUUID: creature.neurons[connection.from].uuid,
+        toUUID: creature.neurons[connection.to].uuid,
+        weight: connection.weight,
+        type: connection.type,
+      };
+      tmpConnections.push(c);
+    });
+
+    return tmpConnections;
+  }
+
+  public static sortNeurons(
     child: Neuron[],
     mother: Neuron[],
     father: Neuron[],
@@ -283,6 +290,30 @@ export class Offspring {
           Number.parseInt(b.uuid.substring(7));
       } else if (b.type == "output") {
         return -1;
+      }
+      if (a.index == b.index) {
+        if (a.uuid == b.uuid) {
+          throw new Error(`Duplicate uuid ${a.uuid}`);
+        }
+        const mumIndxA = motherMap.get(a.uuid);
+        if (mumIndxA == undefined) {
+          return -1;
+        }
+        const dadIndxA = fatherMap.get(a.uuid);
+        if (dadIndxA == undefined) {
+          return 1;
+        }
+        const mumIndxB = motherMap.get(b.uuid);
+        if (mumIndxB == undefined) {
+          return -1;
+        }
+
+        const dadIndxB = fatherMap.get(b.uuid);
+        if (dadIndxB == undefined) {
+          return 1;
+        }
+
+        return mumIndxA - mumIndxB;
       }
       return a.index - b.index;
     });
