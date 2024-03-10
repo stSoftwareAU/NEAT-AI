@@ -2,6 +2,7 @@ import { assert } from "https://deno.land/std@0.219.1/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { makeElitists } from "../src/architecture/ElitismUtils.ts";
+import { addTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -98,7 +99,12 @@ Deno.test("short", () => {
     { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
   ];
 
-  const elitists = makeElitists(make(population), 3);
+  population.forEach((c, i) => {
+    addTag(c, "trainID", "ID" + i);
+    addTag(c, "approach", "A" + i);
+  });
+
+  const elitists = makeElitists(make(population), 3, true);
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
@@ -212,13 +218,15 @@ Deno.test("order", () => {
         synapses: [],
       });
     }
-    population.push({
+    const c: CreatureInternal = {
       input: 1,
       output: 1,
       score: v,
       neurons: [],
       synapses: [],
-    });
+    };
+
+    population.push(c);
   }
 
   const elitists = makeElitists(make(population), 100);

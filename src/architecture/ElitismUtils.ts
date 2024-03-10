@@ -39,14 +39,13 @@ export function makeElitists(
         const approach = getTag(creatures[indx], "approach");
         const untrainedError = getTag(creatures[indx], "untrained-error");
         const error = getTag(creatures[indx], "error");
-        const diff =
-          Number.parseFloat(untrainedError ? untrainedError : "99999") -
-          Number.parseFloat(error ? error : "99999");
+        const diff = Number.parseFloat(untrainedError ?? "99999") -
+          Number.parseFloat(error ?? "99999");
         console.info(
           `${approach} ${blue(trainID)} Score: ${
             yellow(score ? score.toString() : "undefined")
-          }, Error: ${yellow(untrainedError ? untrainedError : "unknown")} -> ${
-            yellow(error ? error : "unknown")
+          }, Error: ${yellow(untrainedError ?? "unknown")} -> ${
+            yellow(error ?? "unknown")
           }` + (diff > 0
             ? ` ${"improved " + bold(green(diff.toString()))}`
             : diff < 0
