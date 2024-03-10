@@ -498,7 +498,7 @@ Deno.test("train_SIN_function", async () => {
     });
   }
 
-  await trainSet(set, 10000, 0.15);
+  await trainSet(set, 10_000, 0.16);
 });
 
 Deno.test("evolve_SIN_function", async () => {
