@@ -98,7 +98,7 @@ export class CreatureState {
   private nodeMap;
   private connectionMap;
   private network;
-  public activations: number[] = [];
+  public activations: Float32Array = new Float32Array(0);
   public propagated = false;
 
   constructor(network: Creature) {
@@ -139,21 +139,17 @@ export class CreatureState {
   }
 
   makeActivation(input: number[], feedbackLoop: boolean) {
-    if (this.activations.length == 0 || feedbackLoop == false) {
-      this.activations = input.slice();
-      this.activations.length = this.network.neurons.length;
-      this.activations.fill(0, input.length);
-    } else if (feedbackLoop) {
-      /** Leave the results from last run */
-      const rightArray = this.activations.slice(input.length);
-      this.activations = input.concat(rightArray);
+    if (feedbackLoop == false || this.activations.length == 0) {
+      this.activations = new Float32Array(this.network.neurons.length);
     }
+
+    this.activations.set(input);
   }
 
   clear() {
     this.nodeMap.clear();
     this.connectionMap.clear();
-    this.activations.length = 0;
+    this.activations = new Float32Array(0);
     this.propagated = false;
   }
 }

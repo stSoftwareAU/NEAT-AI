@@ -24,10 +24,11 @@ export class HYPOT implements NeuronActivationInterface {
   activate(node: Neuron) {
     const toList = node.creature.inwardConnections(node.index);
     const values: number[] = new Array(toList.length);
+    const activations = node.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      values[i] = node.creature.getActivation(c.from) * c.weight;
+      values[i] = activations[c.from] * c.weight;
     }
 
     const value = Math.hypot(...values);

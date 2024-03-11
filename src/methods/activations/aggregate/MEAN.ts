@@ -27,7 +27,8 @@ export class MEAN implements NeuronActivationInterface {
     const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const fromActivation = node.creature.getActivation(c.from);
+      const fromActivation = //node.creature.getActivation(c.from);
+        node.creature.state.activations[c.from];
       const activation = limitActivation(fromActivation);
 
       sum += activation * c.weight;

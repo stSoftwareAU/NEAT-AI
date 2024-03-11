@@ -219,10 +219,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const toList = this.creature.inwardConnections(this.index);
         let value = this.bias;
 
+        const activations = this.creature.state.activations;
         for (let i = toList.length; i--;) {
           const c = toList[i];
 
-          const fromActivation = this.creature.getActivation(c.from);
+          const fromActivation = activations[c.from];
 
           value += fromActivation * c.weight;
         }
@@ -348,9 +349,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
       this,
       requestedActivation,
     );
-    const momentum = 1;
+
     let targetActivation = activation +
-      (rangeLimitedActivation - activation) * momentum;
+      (rangeLimitedActivation - activation);
 
     const ns = this.creature.state.node(this.index);
     if (Math.abs(activation - targetActivation) < config.plankConstant) {
