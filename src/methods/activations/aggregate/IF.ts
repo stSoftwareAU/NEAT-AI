@@ -157,12 +157,12 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let negative = 0;
     let positive = 0;
 
+    const activations = node.creature.state.activations;
     const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = node.creature.getActivation(c.from) *
-        c.weight;
+      const value = activations[c.from] * c.weight;
 
       switch (c.type) {
         case "condition":
@@ -207,12 +207,12 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let negative = 0;
     let positive = 0;
 
+    const activations = node.creature.state.activations;
     const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = limitActivation(node.creature.getActivation(c.from)) *
-        c.weight;
+      const value = limitActivation(activations[c.from]) * c.weight;
 
       switch (c.type) {
         case "condition":
@@ -291,12 +291,11 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let condition = 0;
     let negativeCount = 0;
     let positiveCount = 0;
-
+    const activations = node.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      const value = limitActivation(node.creature.getActivation(c.from)) *
-        c.weight;
+      const value = limitActivation(activations[c.from]) * c.weight;
 
       switch (c.type) {
         case "condition":

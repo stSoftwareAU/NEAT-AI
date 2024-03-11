@@ -26,10 +26,10 @@ export class MINIMUM
   activate(node: Neuron): number {
     const toList = node.creature.inwardConnections(node.index);
     let minValue = Infinity;
+    const activations = node.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const value = node.creature.getActivation(c.from) *
-        c.weight;
+      const value = activations[c.from] * c.weight;
       if (value < minValue) {
         minValue = value;
       }
@@ -42,13 +42,13 @@ export class MINIMUM
     const toList = node.creature.inwardConnections(node.index);
     let minValue = Infinity;
     let usedConnection: SynapseInternal | null = null;
+    const activations = node.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const cs = node.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
-      const value = node.creature.getActivation(c.from) *
-        c.weight;
+      const value = activations[c.from] * c.weight;
       if (value < minValue) {
         minValue = value;
         usedConnection = c;

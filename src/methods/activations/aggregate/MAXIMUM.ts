@@ -25,11 +25,11 @@ export class MAXIMUM
 
   activate(node: Neuron) {
     const toList = node.creature.inwardConnections(node.index);
-    let maxValue = Infinity * -1;
+    let maxValue = Number.NEGATIVE_INFINITY;
+    const activations = node.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const value = node.creature.getActivation(c.from) *
-        c.weight;
+      const value = activations[c.from] * c.weight;
       if (value > maxValue) {
         maxValue = value;
       }
@@ -42,13 +42,13 @@ export class MAXIMUM
     const toList = node.creature.inwardConnections(node.index);
     let maxValue = Infinity * -1;
     let usedConnection: SynapseInternal | null = null;
+    const activations = node.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const cs = node.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
-      const value = node.creature.getActivation(c.from) *
-        c.weight;
+      const value = activations[c.from] * c.weight;
       if (value > maxValue) {
         maxValue = value;
         usedConnection = c;
