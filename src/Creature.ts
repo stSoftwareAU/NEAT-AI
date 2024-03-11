@@ -217,9 +217,9 @@ export class Creature implements CreatureInternal {
     this.state.clear();
   }
 
-  getActivation(indx: number) {
-    return this.state.activations[indx];
-  }
+  // getActivation(indx: number) {
+  //   return this.state.activations[indx];
+  // }
 
   /**
    * Activates the creature
