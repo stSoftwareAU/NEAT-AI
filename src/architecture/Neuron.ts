@@ -348,9 +348,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
       this,
       requestedActivation,
     );
-    const momentum = 1;
+
     let targetActivation = activation +
-      (rangeLimitedActivation - activation) * momentum;
+      (rangeLimitedActivation - activation);
 
     const ns = this.creature.state.node(this.index);
     if (Math.abs(activation - targetActivation) < config.plankConstant) {
