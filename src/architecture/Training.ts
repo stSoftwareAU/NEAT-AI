@@ -57,7 +57,7 @@ export async function trainDir(
     Math.max(0, options.trainingSampleRate ?? Math.max(Math.random(), 0.3)),
   );
 
-  const indxMap = new Map<string, number[]>();
+  const indxMap = new Map<string, Int32Array>();
   const files: string[] = dataFiles(dataDir).map((fn) => dataDir + "/" + fn);
   const cached = files.length == 1;
   if (!cached) {
@@ -67,7 +67,10 @@ export async function trainDir(
 
   // Randomize the list of files
   if (!options.disableRandomSamples) {
-    CreatureUtil.shuffle(files);
+    for (let i = files.length; i--;) {
+      const j = Math.round(Math.random() * i);
+      [files[i], files[j]] = [files[j], files[i]];
+    }
   }
 
   // Loops the training process
@@ -123,12 +126,16 @@ export async function trainDir(
       let indices = indxMap.get(fn);
 
       if (!indices) {
-        indices = Array.from({ length: json.length }, (_, i) => i); // Create an array of indices
+        const tmpIndexes = Int32Array.from(
+          { length: json.length },
+          (_, i) => i,
+        ); // Create an array of indices
 
         if (!options.disableRandomSamples) {
-          CreatureUtil.shuffle(indices);
+          CreatureUtil.shuffle(tmpIndexes);
         }
-        indices.length = len;
+        indices = tmpIndexes.slice(0, len);
+
         if (len != json.length) {
           /* No need to cache what we wont use */
           indxMap.set(fn, indices);

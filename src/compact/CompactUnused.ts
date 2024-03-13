@@ -11,7 +11,10 @@ export async function compactUnused(
   const clean = Creature.fromJSON(start.exportJSON());
   const compacted = Creature.fromJSON(clean.exportJSON());
 
-  const indices = Array.from({ length: traced.neurons.length }, (_, i) => i); // Create an array of indices
+  const indices = Int32Array.from(
+    { length: traced.neurons.length },
+    (_, i) => i,
+  ); // Create an array of indices
 
   CreatureUtil.shuffle(indices);
 

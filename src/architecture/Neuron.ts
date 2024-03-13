@@ -383,7 +383,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const listLength = toList.length;
 
       if (listLength) {
-        const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
+        const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
 
         if (!config.disableRandomSamples) {
           CreatureUtil.shuffle(indices);
@@ -467,16 +467,33 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
     }
     ns.traceActivation(limitedActivation);
+    if (Math.abs(limitedActivation - activation) > config.plankConstant) {
+      this.creature.state.cacheAdjustedActivation.delete(this.index);
+    }
 
     return limitedActivation;
   }
 
+  /**
+   * Adjusts the activation based on the current state
+   */
   adjustedActivation(config: BackPropagationConfig) {
+    const adjustedActivationValue = this.creature.state.cacheAdjustedActivation
+      .get(this.index);
+
+    if (adjustedActivationValue !== undefined) {
+      return adjustedActivationValue;
+    }
+    const value = this.rawAdjustedActivation(config);
+
+    this.creature.state.cacheAdjustedActivation.set(this.index, value);
+    return value;
+  }
+
+  rawAdjustedActivation(config: BackPropagationConfig) {
     if (this.type == "input") {
       return this.creature.state.activations[this.index];
-    }
-
-    if (this.type == "constant") {
+    } else if (this.type == "constant") {
       return this.bias;
     } else {
       const aBias = adjustedBias(this, config);

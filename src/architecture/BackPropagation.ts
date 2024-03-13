@@ -114,7 +114,7 @@ export function adjustedBias(
   config: BackPropagationConfig,
 ): number {
   if (node.type == "constant") {
-    return node.bias ? node.bias : 0;
+    return node.bias;
   } else {
     const ns = node.creature.state.node(node.index);
 
@@ -151,54 +151,6 @@ export function adjustedBias(
   }
 }
 
-// export function adjustedBiasV2(
-//   node: Neuron,
-//   config: BackPropagationConfig,
-// ): number {
-//   if (node.type == "constant") {
-//     return node.bias ? node.bias : 0;
-//   } else {
-//     const ns = node.creature.state.node(node.index);
-
-//     if (ns.count) {
-//       const totalDifferenceBias = ns.totalValue - ns.totalWeightedSum;
-//       const totalBias = totalDifferenceBias + (node.bias * config.generations);
-//       const samples = ns.count + config.generations;
-
-//       const averageDifferenceBias = totalBias /
-//         samples;
-
-//       // if (Math.abs(averageDifferenceBias - node.bias) > 0.0001) {
-//       //   console.info(
-//       //     `averageDifferenceBias: ${averageDifferenceBias} node.bias: ${node.bias}`,
-//       //   );
-//       // }
-//       const unaccountedRatioBias = 1 - (ns.totalValue / ns.totalWeightedSum);
-
-//       if (
-//         config.useAverageDifferenceBias == "Yes" ||
-//         Number.isFinite(unaccountedRatioBias) == false
-//       ) {
-//         if (Number.isFinite(averageDifferenceBias)) {
-//           return limitBias(averageDifferenceBias, node.bias, config);
-//         }
-//       } else if (
-//         config.useAverageDifferenceBias == "No" ||
-//         (
-//           Math.abs(averageDifferenceBias - node.bias) <
-//             Math.abs(unaccountedRatioBias - node.bias)
-//         )
-//       ) {
-//         return limitBias(unaccountedRatioBias, node.bias, config);
-//       } else {
-//         return limitBias(averageDifferenceBias, node.bias, config);
-//       }
-//     }
-
-//     return node.bias;
-//   }
-// }
-
 export function limitActivationToRange(node: Neuron, activation: number) {
   if (node.type == "input" || node.type == "constant") {
     return activation;
@@ -232,15 +184,10 @@ export function toValue(neuron: Neuron, activation: number, hint?: number) {
     return activation;
   }
   const squash = neuron.findSquash();
-  if (((squash as unknown) as UnSquashInterface).unSquash != undefined) {
-    const unSquasher = (squash as unknown) as UnSquashInterface;
-    const value = unSquasher.unSquash(activation, hint);
+  const unSquash = (squash as UnSquashInterface).unSquash;
+  if (unSquash !== undefined) {
+    const value = unSquash.call(squash, activation, hint);
 
-    if (!Number.isFinite(value)) {
-      throw new Error(
-        `${neuron.index}: ${neuron.squash}.unSquash(${activation}) invalid -> ${value}`,
-      );
-    }
     return limitValue(value);
   } else {
     return activation;

@@ -321,7 +321,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let targetWeightedSum = 0;
 
     const listLength = toList.length;
-    const indices = Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
+    const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
 
     if (!config.disableRandomSamples) {
       CreatureUtil.shuffle(indices);
