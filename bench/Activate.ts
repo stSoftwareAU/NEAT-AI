@@ -18,7 +18,7 @@ const inputs = makeInputs(creature);
 
 export function perform() {
   const config = new BackPropagationConfig();
-  for (let i = 0; i < 10000; i++) {
+  for (let i = 0; i < 50; i++) {
     const input = inputs[i % inputs.length];
     creature.activateAndTrace(input);
     creature.propagate([i % 2], config);

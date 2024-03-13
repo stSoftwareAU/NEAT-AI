@@ -46,31 +46,7 @@ export class NeuronState implements NeuronStateInterface {
     const activationDifference = Math.abs(targetActivation - activation);
     if (activationDifference < config.plankConstant) {
       difference = 0;
-    } //else {
-    // const activationPercent = activationDifference /
-    //   Math.max(Math.abs(targetActivation), Math.abs(activation));
-    // const valuePercent = Math.abs(difference) /
-    //   Math.max(Math.abs(targetValue), Math.abs(value));
-
-    // if (activationPercent > valuePercent) {
-    //   const originalDifference = difference;
-    //   const adjustPercent = valuePercent / activationPercent;
-    //   difference = originalDifference * adjustPercent;
-    // console.info(
-    //   `restrict ${originalDifference} to ${difference} as activation percentage ${
-    //     activationPercent.toFixed(3)
-    //   } versus ${valuePercent.toFixed(3)} adjustPercent ${
-    //     adjustPercent.toFixed(3)
-    //   }`,
-    // );
-    // }
-    // }
-
-    // if (Math.abs(difference) > PLANK_CONSTANT) {
-    //   console.info(
-    //     `difference ${difference} targetValue ${targetValue} value ${value} targetActivation ${targetActivation} activation ${activation}`,
-    //   );
-    // }
+    }
 
     if (!config.disableExponentialScaling) {
       // Squash the difference using the hyperbolic tangent function and scale it
@@ -100,11 +76,13 @@ export class CreatureState {
   private network;
   public activations: Float32Array = new Float32Array(0);
   public propagated = false;
+  readonly cacheAdjustedActivation;
 
   constructor(network: Creature) {
     this.network = network;
     this.nodeMap = new Map<number, NeuronState>();
     this.connectionMap = new Map<number, Map<number, SynapseState>>();
+    this.cacheAdjustedActivation = new Map<number, number>();
   }
 
   connection(from: number, to: number): SynapseState {

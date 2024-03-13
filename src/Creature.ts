@@ -983,7 +983,8 @@ export class Creature implements CreatureInternal {
       );
     }
 
-    const indices = Array.from({ length: this.output }, (_, i) => i); // Create an array of indices
+    this.state.cacheAdjustedActivation.clear();
+    const indices = Int32Array.from({ length: this.output }, (_, i) => i); // Create an array of indices
 
     if (!config.disableRandomSamples) {
       CreatureUtil.shuffle(indices);

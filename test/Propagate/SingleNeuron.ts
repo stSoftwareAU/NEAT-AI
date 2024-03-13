@@ -258,7 +258,7 @@ Deno.test("ManySame", () => {
 });
 
 Deno.test("propagateSingleNeuronKnown", () => {
-  const traceDir = ".trace/propagateSingleNeuronKnown";
+  const traceDir = ".test/propagateSingleNeuronKnown";
   ensureDirSync(traceDir);
 
   for (let attempts = 0; true; attempts++) {
