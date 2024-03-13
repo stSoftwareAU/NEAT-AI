@@ -478,15 +478,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Adjusts the activation based on the current state
    */
   adjustedActivation(config: BackPropagationConfig) {
-    const adjustedActivationValue = this.creature.state.cacheAdjustedActivation
-      .get(this.index);
+    const cache = this.creature.state.cacheAdjustedActivation;
+    const cachedValue = cache.get(this.index);
 
-    if (adjustedActivationValue !== undefined) {
-      return adjustedActivationValue;
+    if (cachedValue !== undefined) {
+      return cachedValue;
     }
     const value = this.rawAdjustedActivation(config);
 
-    this.creature.state.cacheAdjustedActivation.set(this.index, value);
+    cache.set(this.index, value);
     return value;
   }
 
