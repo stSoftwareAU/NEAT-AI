@@ -466,6 +466,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         throw new Error(`${this.ID} - ${this.type}, squash: ${this.squash}`);
       }
     }
+    
     ns.traceActivation(limitedActivation);
     if (Math.abs(limitedActivation - activation) > config.plankConstant) {
       this.creature.state.cacheAdjustedActivation.delete(this.index);
