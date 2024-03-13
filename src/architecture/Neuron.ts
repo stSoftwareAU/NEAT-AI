@@ -205,13 +205,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Activates the node
    */
-  activateAndTrace() {
-    let activation: number;
-    if (this.type == "constant") {
-      activation = this.bias;
+  activateAndTrace(): number {
+    if (this.type == "input") {
+      throw new Error("Can't activate an input node");
+    } else if (this.type == "constant") {
+      return this.bias;
     } else {
+      let activation: number;
       const squashMethod = this.findSquash();
 
+      const activations = this.creature.state.activations;
       if (this.isNodeActivation(squashMethod)) {
         const squashActivation = squashMethod.activateAndTrace(this);
         activation = squashActivation + this.bias;
@@ -219,7 +222,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const toList = this.creature.inwardConnections(this.index);
         let value = this.bias;
 
-        const activations = this.creature.state.activations;
         for (let i = toList.length; i--;) {
           const c = toList[i];
 
@@ -248,10 +250,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
           }
         }
       }
+      activations[this.index] = activation;
+      return activation;
     }
-
-    this.creature.state.activations[this.index] = activation;
-    return activation;
   }
 
   /**
@@ -273,12 +274,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Activates the node without calculating eligibility traces and such
    */
-  activate() {
-    let activation: number;
-
-    if (this.type == "constant") {
-      activation = this.bias;
+  activate(): number {
+    if (this.type == "input") {
+      throw new Error("Can't activate an input node");
+    } else if (this.type == "constant") {
+      return this.bias;
     } else {
+      const activations = this.creature.state.activations;
+      let activation: number;
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
         activation = squashMethod.activate(this) + this.bias;
@@ -291,7 +294,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         for (let i = toList.length; i--;) {
           const c = toList[i];
 
-          value += this.creature.state.activations[c.from] * c.weight;
+          value += activations[c.from] * c.weight;
         }
 
         const activationSquash = squashMethod as ActivationInterface;
@@ -317,10 +320,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
           }
         }
       }
+      activations[this.index] = activation;
+      return activation;
     }
-    this.creature.state.activations[this.index] = activation;
-
-    return activation;
   }
 
   propagateUpdate(config: BackPropagationConfig) {
@@ -466,7 +468,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         throw new Error(`${this.ID} - ${this.type}, squash: ${this.squash}`);
       }
     }
-    
+
     ns.traceActivation(limitedActivation);
     if (Math.abs(limitedActivation - activation) > config.plankConstant) {
       this.creature.state.cacheAdjustedActivation.delete(this.index);
