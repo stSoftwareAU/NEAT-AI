@@ -138,13 +138,13 @@ Deno.test("CompactConstants", async () => {
       actual[0],
       outputs[i][0],
       0.000_001,
-      `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+      `${i}a) actual: ${actual[0]}, expected: ${outputs[i][0]}`,
     );
     assertAlmostEquals(
       actual[1],
       outputs[i][1],
       0.000_001,
-      `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+      `${i}b) actual: ${actual[1]}, expected: ${outputs[i][1]}`,
     );
   }
 
