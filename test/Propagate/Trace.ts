@@ -112,8 +112,8 @@ function compare(creature1: CreatureExport, creature2: CreatureExport) {
     if (!node2) {
       console.info(`Node not found: ${neuron.uuid}`);
     } else {
-      const b1 = neuron.bias ? neuron.bias : 0;
-      const b2 = node2.bias ? node2.bias : 0;
+      const b1 = neuron.bias;
+      const b2 = node2.bias;
 
       if (Math.abs(b1 - b2) > 0.0001) {
         const msg = `${neuron.uuid} Bias mismatch: ${b1.toFixed(4)} vs ${

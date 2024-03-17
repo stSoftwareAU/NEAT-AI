@@ -173,19 +173,19 @@ Deno.test("tune", async () => {
 
     en.neurons.forEach((node) => {
       if (node.uuid == "41a4f3dd-f253-491e-b04f-c9651b72eaaa") {
-        assertAlmostEquals(node.bias ? node.bias : 0, 0.1, 0.0000001, n.uuid);
+        assertAlmostEquals(node.bias, 0.1, 0.0000001, n.uuid);
       }
 
       if (node.uuid == "74d01774-086b-4ddb-bb18-367abb63a75a") {
         assertAlmostEquals(
-          node.bias ? node.bias : 0,
+          node.bias,
           -0.49135010426905,
           0.0000001,
           n.uuid,
         );
       }
       if (node.uuid == "0a858bc2-3bdc-417c-85b0-e9c513828d29") {
-        if (Math.abs(node.bias ? node.bias : 0 - 0.32) < 0.000001) {
+        if (Math.abs(node.bias - 0.32) < 0.000001) {
           fail("Should have changed bias from 0.32");
         }
       }

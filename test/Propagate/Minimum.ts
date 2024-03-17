@@ -49,7 +49,7 @@ Deno.test("PropagateMinimum", async () => {
     );
 
     exportJSON.neurons.forEach((neuron, indx) => {
-      neuron.bias = (neuron.bias ? neuron.bias : 0) +
+      neuron.bias = neuron.bias +
         ((indx % 2 == 0 ? 1 : -1) * 0.1);
     });
 

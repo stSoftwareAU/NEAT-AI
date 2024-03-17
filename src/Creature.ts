@@ -324,9 +324,7 @@ export class Creature implements CreatureInternal {
 
                   const tmpFromBias = compactCreature.neurons[from].bias;
                   const tmpToBias = compactCreature.neurons[pos].bias;
-                  let biasA =
-                    (tmpFromBias ? tmpFromBias : 0) * toList[0].weight +
-                    (tmpToBias ? tmpToBias : 0);
+                  let biasA = tmpFromBias * toList[0].weight + tmpToBias;
 
                   if (biasA === Number.POSITIVE_INFINITY) {
                     biasA = Number.MAX_SAFE_INTEGER;
