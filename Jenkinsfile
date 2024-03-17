@@ -54,6 +54,7 @@ pipeline {
                     steps {
                         sh '''\
                           #!/bin/bash
+                          env
                           pwd
                           ls -l 
                           typos src --exclude src/Costs.ts,src/costs/MAPE.ts --format json > .typos.json
