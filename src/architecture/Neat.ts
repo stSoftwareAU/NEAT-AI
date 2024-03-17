@@ -55,10 +55,10 @@ class NeatConfig implements NeatOptions {
 
   costOfGrowth: number;
 
-  /** Tne maximum number of connections */
+  /** The maximum number of connections */
   maxConns: number;
 
-  /** Tne maximum number of nodes */
+  /** The maximum number of nodes */
   maximumNumberOfNodes: number;
 
   /** Number of changes per Gene */
