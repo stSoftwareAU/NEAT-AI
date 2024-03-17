@@ -1,3 +1,4 @@
+import { TagInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 export class Synapse implements SynapseInternal {
@@ -5,6 +6,8 @@ export class Synapse implements SynapseInternal {
   public to: number;
   public type?: "positive" | "negative" | "condition";
   public weight: number;
+
+  public tags?: TagInterface[];
 
   public static randomWeight() {
     return Math.random() * 0.2 - 0.1;
@@ -33,6 +36,7 @@ export class Synapse implements SynapseInternal {
       fromUUID: fromUUID,
       toUUID: toUUID,
       type: this.type,
+      tags: this.tags ? this.tags.slice() : undefined,
     };
 
     return json;
@@ -44,6 +48,7 @@ export class Synapse implements SynapseInternal {
       from: this.from,
       to: this.to,
       type: this.type,
+      tags: this.tags ? this.tags.slice() : undefined,
     };
 
     return json;

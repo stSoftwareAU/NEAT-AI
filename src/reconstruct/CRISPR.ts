@@ -8,9 +8,9 @@ import { Creature } from "../Creature.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;
-  mode: "append";
+  // mode: "append";
 
-  nodes: {
+  neurons?: {
     uuid?: string;
     index: number;
     type: "output";
@@ -18,11 +18,13 @@ export interface CrisprInterface extends TagsInterface {
     bias: number;
   }[];
 
-  connections: {
+  synapses: {
     from?: number;
     fromRelative?: number;
+    fromUUID?: string;
     to?: number;
     toRelative?: number;
+    toUUID?: string;
     weight: number;
     type?: "positive" | "negative" | "condition";
   }[];
@@ -40,14 +42,29 @@ export class CRISPR {
   }
 
   apply(dna: CrisprInterface): Creature {
-    const tmpNetwork = Creature.fromJSON(
-      this.creature.internalJSON(),
+    /* Legacy */
+    if ((dna as unknown as { nodes: { squash: string }[] }).nodes) {
+      (dna as unknown as { neurons: { squash: string }[] }).neurons =
+        (dna as unknown as { nodes: { squash: string }[] }).nodes;
+    }
+
+    if ((dna as unknown as { connections: { weight: number }[] }).connections) {
+      (dna as unknown as { synapses: { weight: number }[] }).synapses =
+        (dna as unknown as { connections: { weight: number }[] }).connections;
+    }
+
+    /* End Version 1 */
+
+    const tmpCreature = Creature.fromJSON(
+      this.creature.exportJSON(),
     );
 
-    const UUIDs = new Set<string>();
+    const UUIDs = new Map<string, number>();
     let alreadyProcessed = false;
-    tmpNetwork.neurons.forEach((node) => {
-      UUIDs.add(node.uuid ? node.uuid : "");
+    tmpCreature.neurons.forEach((node) => {
+      if (!node.uuid) throw new Error("missing uuid");
+
+      UUIDs.set(node.uuid, node.index);
       const id = getTag(node, "CRISPR");
 
       if (id === dna.id) {
@@ -55,79 +72,124 @@ export class CRISPR {
       }
     });
 
-    if (alreadyProcessed) return tmpNetwork;
+    if (!alreadyProcessed) {
+      tmpCreature.synapses.forEach((synapse) => {
+        const id = getTag(synapse, "CRISPR");
 
-    let firstDnaOutputIndex = -1;
-    dna.nodes.forEach((node) => {
-      if (node.type == "output") {
-        if (firstDnaOutputIndex == -1) {
-          firstDnaOutputIndex = node.index;
+        if (id === dna.id) {
+          alreadyProcessed = true;
+        }
+      });
+    }
+    if (alreadyProcessed) return tmpCreature;
+
+    if (dna.neurons) {
+      let firstDnaOutputIndex: number = -1;
+      dna.neurons.forEach((neuron) => {
+        if (neuron.type == "output") {
+          if (firstDnaOutputIndex == -1 && neuron.index !== undefined) {
+            firstDnaOutputIndex = neuron.index;
+          }
+        }
+      });
+
+      let firstNetworkOutputIndex: number = -1;
+      tmpCreature.neurons.forEach((neuron, indx) => {
+        if (neuron.type == "output") {
+          if (firstNetworkOutputIndex == -1) {
+            firstNetworkOutputIndex = indx;
+          }
+          ((neuron as unknown) as { type: string }).type = "hidden";
+          if (neuron.uuid?.startsWith("output-")) {
+            neuron.uuid = crypto.randomUUID();
+          }
+        }
+      });
+
+      const adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
+        dna.neurons.length;
+
+      let outputIndx: number = 0;
+      dna.neurons.forEach((dnaNeuron) => {
+        let uuid: string;
+        if (dnaNeuron.type == "output") {
+          uuid = `output-${outputIndx}`;
+          outputIndx++;
+        } else {
+          uuid = dnaNeuron.uuid
+            ? UUIDs.has(dnaNeuron.uuid) ? crypto.randomUUID() : dnaNeuron.uuid
+            : crypto.randomUUID();
+
+          if (uuid.startsWith("output-")) {
+            uuid = crypto.randomUUID();
+          }
+        }
+        const indx = dnaNeuron.index + adjustIndx;
+
+        const networkNode = new Neuron(
+          uuid,
+          dnaNeuron.type,
+          dnaNeuron.bias,
+          tmpCreature,
+          dnaNeuron.squash,
+        );
+        networkNode.index = indx;
+
+        addTag(networkNode, "CRISPR", dna.id);
+        tmpCreature.neurons.push(networkNode);
+        if (dnaNeuron.type == "output") {
+          if (firstDnaOutputIndex == -1) {
+            firstDnaOutputIndex = indx;
+          }
+        }
+      });
+
+      dna.synapses.forEach((c) => {
+        const from = c.from !== undefined
+          ? c.from
+          : ((c.fromRelative ? c.fromRelative : 0) + adjustIndx);
+        if (from == undefined) throw new Error("invalid connection " + c);
+        const to = c.to !== undefined
+          ? c.to
+          : ((c.toRelative ? c.toRelative : 0) + adjustIndx);
+        if (to == undefined) throw new Error("invalid connection " + c);
+
+        tmpCreature.connect(from, to, c.weight, c.type);
+      });
+    }
+
+    dna.synapses.forEach((c) => {
+      let toIndx: number = -1;
+      if (c.toUUID) {
+        const indx = UUIDs.get(c.toUUID);
+        if (indx === undefined) {
+          throw new Error("missing toUUID " + c.toUUID);
+        }
+        toIndx = indx;
+      }
+
+      let fromIndx: number = -1;
+      if (c.fromUUID) {
+        const indx = UUIDs.get(c.fromUUID);
+        if (indx === undefined) {
+          throw new Error("missing fromUUID " + c.fromUUID);
+        }
+        fromIndx = indx;
+      }
+
+      if (fromIndx !== -1 && toIndx !== -1) {
+        if (!tmpCreature.getSynapse(fromIndx, toIndx)) {
+          const synapse = tmpCreature.connect(
+            fromIndx,
+            toIndx,
+            c.weight,
+            c.type,
+          );
+          addTag(synapse, "CRISPR", dna.id);
         }
       }
     });
-    let firstNetworkOutputIndex = -1;
-    tmpNetwork.neurons.forEach((node, indx) => {
-      if (node.type == "output") {
-        if (firstNetworkOutputIndex == -1) {
-          firstNetworkOutputIndex = indx;
-        }
-        ((node as unknown) as { type: string }).type = "hidden";
-        if (node.uuid?.startsWith("output-")) {
-          node.uuid = crypto.randomUUID();
-        }
-      }
-    });
 
-    const adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
-      dna.nodes.length;
-
-    let outputIndx = 0;
-    dna.nodes.forEach((dnaNode) => {
-      let uuid: string;
-      if (dnaNode.type == "output") {
-        uuid = `output-${outputIndx}`;
-        outputIndx++;
-      } else {
-        uuid = dnaNode.uuid
-          ? UUIDs.has(dnaNode.uuid) ? crypto.randomUUID() : dnaNode.uuid
-          : crypto.randomUUID();
-
-        if (uuid.startsWith("output-")) {
-          uuid = crypto.randomUUID();
-        }
-      }
-      const indx = dnaNode.index + adjustIndx;
-
-      const networkNode = new Neuron(
-        uuid,
-        dnaNode.type,
-        dnaNode.bias,
-        tmpNetwork,
-        dnaNode.squash,
-      );
-      networkNode.index = indx;
-
-      addTag(networkNode, "CRISPR", dna.id);
-      tmpNetwork.neurons.push(networkNode);
-      if (dnaNode.type == "output") {
-        if (firstDnaOutputIndex == -1) {
-          firstDnaOutputIndex = indx;
-        }
-      }
-    });
-
-    dna.connections.forEach((c) => {
-      const from = c.from !== undefined
-        ? c.from
-        : ((c.fromRelative ? c.fromRelative : 0) + adjustIndx);
-      if (from == undefined) throw new Error("invalid connection " + c);
-      const to = c.to !== undefined
-        ? c.to
-        : ((c.toRelative ? c.toRelative : 0) + adjustIndx);
-      if (to == undefined) throw new Error("invalid connection " + c);
-
-      tmpNetwork.connect(from, to, c.weight, c.type);
-    });
-    return tmpNetwork;
+    return tmpCreature;
   }
 }

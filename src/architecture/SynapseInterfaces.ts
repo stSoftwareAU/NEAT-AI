@@ -1,8 +1,11 @@
+import { TagInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { SynapseState } from "./CreatureState.ts";
 
 interface SynapseCommon {
   weight: number;
   type?: "positive" | "negative" | "condition";
+
+  tags?: TagInterface[];
 }
 
 export interface SynapseInternal extends SynapseCommon {

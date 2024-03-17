@@ -1,0 +1,8 @@
+{
+  "id": "from-to",
+
+  "synapses": [
+    { "fromUUID": "input-299", "toUUID": "output-0", "weight": 0.123 },
+    { "fromUUID": "input-123", "toUUID": "output-0", "weight": 0.456 }
+  ]
+}

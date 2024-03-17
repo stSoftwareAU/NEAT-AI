@@ -63,7 +63,7 @@ function removeNeuron(uuid: string, creature: Creature, activation: number) {
   const neuron = creature.neurons.find((n) => n.uuid === uuid);
   if (neuron?.index) {
     let useConstant = false;
-    const fromList = creature.efferentConnections(neuron.index);
+    const fromList = creature.outwardConnections(neuron.index);
 
     for (const synapse of fromList) {
       const squash = creature.neurons[synapse.to].findSquash();

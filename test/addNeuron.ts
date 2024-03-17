@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.219.1/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
@@ -126,7 +126,7 @@ Deno.test("addNode", () => {
       );
     }
 
-    const from = network.efferentConnections(indx);
+    const from = network.outwardConnections(indx);
 
     if (node.type !== "output") {
       assert(

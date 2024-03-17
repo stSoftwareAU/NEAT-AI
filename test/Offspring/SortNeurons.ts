@@ -1,7 +1,7 @@
+import { assertEquals } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { Creature, CreatureExport } from "../../mod.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 import { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
-import { assertEquals } from "https://deno.land/std@0.219.1/assert/assert_equals.ts";
 
 function makeMum() {
   const json: CreatureExport = {

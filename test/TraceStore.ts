@@ -1,8 +1,8 @@
-import { assert } from "https://deno.land/std@0.219.1/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import {
   emptyDirSync,
   ensureDirSync,
-} from "https://deno.land/std@0.219.1/fs/mod.ts";
+} from "https://deno.land/std@0.220.1/fs/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
