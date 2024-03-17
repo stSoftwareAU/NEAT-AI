@@ -1,6 +1,6 @@
 import {
   assertAlmostEquals,
-} from "https://deno.land/std@0.219.1/assert/mod.ts";
+} from "https://deno.land/std@0.220.1/assert/mod.ts";
 import {
   adjustedBias,
   adjustedWeight,

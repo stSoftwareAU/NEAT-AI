@@ -1,15 +1,15 @@
 import {
   assert,
   assertEquals,
-} from "https://deno.land/std@0.219.1/assert/mod.ts";
+} from "https://deno.land/std@0.220.1/assert/mod.ts";
 
-import { CRISPR } from "../src/reconstruct/CRISPR.ts";
-import { Creature } from "../src/Creature.ts";
+import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
+import { Creature } from "../../src/Creature.ts";
 import { getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { Neuron } from "../src/architecture/Neuron.ts";
-import { Mutation } from "../src/methods/mutation.ts";
+import { Neuron } from "../../src/architecture/Neuron.ts";
+import { Mutation } from "../../src/methods/mutation.ts";
 
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -1,6 +1,6 @@
-import { yellow } from "https://deno.land/std@0.219.1/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.219.1/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.219.1/fs/empty_dir.ts";
+import { yellow } from "https://deno.land/std@0.220.1/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.220.1/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.220.1/fs/empty_dir.ts";
 import {
   addTag,
   getTag,
@@ -287,7 +287,7 @@ export class Creature implements CreatureInternal {
         pos < compactCreature.neurons.length - compactCreature.output;
         pos++
       ) {
-        const fromList = compactCreature.efferentConnections(pos).filter(
+        const fromList = compactCreature.outwardConnections(pos).filter(
           (c: SynapseInternal) => {
             return c.from !== c.to;
           },
@@ -303,7 +303,7 @@ export class Creature implements CreatureInternal {
             },
           );
           if (toList.length == 1) {
-            const fromList = compactCreature.efferentConnections(pos).filter(
+            const fromList = compactCreature.outwardConnections(pos).filter(
               (c: SynapseInternal) => {
                 return c.from !== c.to;
               },
@@ -552,7 +552,7 @@ export class Creature implements CreatureInternal {
               `Node ${node.ID()} '${node.type}' has squash: ${node.squash}`,
             );
           }
-          const fromList = this.efferentConnections(indx);
+          const fromList = this.outwardConnections(indx);
           if (fromList.length == 0) {
             if (this.DEBUG) {
               this.DEBUG = false;
@@ -581,7 +581,7 @@ export class Creature implements CreatureInternal {
               "NO_INWARD_CONNECTIONS",
             );
           }
-          const fromList = this.efferentConnections(indx);
+          const fromList = this.outwardConnections(indx);
           if (fromList.length == 0) {
             if (this.DEBUG) {
               this.DEBUG = false;
@@ -756,7 +756,7 @@ export class Creature implements CreatureInternal {
    * @param fromIndx the connections from this neuron by index
    * @returns the list of connections from the neuron.
    */
-  efferentConnections(fromIndx: number): Synapse[] {
+  outwardConnections(fromIndx: number): Synapse[] {
     let results = this.cacheFrom.get(fromIndx);
     if (results === undefined) {
       results = [];
@@ -1527,7 +1527,7 @@ export class Creature implements CreatureInternal {
           /** Each neuron must have at least one from/to connection */
           if (
             (
-              this.efferentConnections(conn.from).length > 1 ||
+              this.outwardConnections(conn.from).length > 1 ||
               this.neurons[conn.from].type === "input"
             ) && this.inwardConnections(conn.to).length > 1
           ) {
@@ -1705,7 +1705,7 @@ export class Creature implements CreatureInternal {
           if (this.inFocus(from, focusList)) {
             if (
               (
-                this.efferentConnections(from).length > 1 ||
+                this.outwardConnections(from).length > 1 ||
                 this.neurons[from].type === "input"
               ) && this.inwardConnections(to).length > 1
             ) {
@@ -1907,7 +1907,7 @@ export class Creature implements CreatureInternal {
       ) {
         if (this.neurons[pos].type == "output") continue;
         if (
-          this.efferentConnections(pos).filter((c) => {
+          this.outwardConnections(pos).filter((c) => {
             return c.from !== c.to;
           }).length == 0
         ) {
@@ -1966,7 +1966,7 @@ export class Creature implements CreatureInternal {
     }
 
     for (let i = this.synapses.length; i--;) {
-      const exportJSON = (this.synapses[i] as Synapse).exportJSON(
+      const exportJSON = this.synapses[i].exportJSON(
         uuidMap,
       );
 
@@ -2037,7 +2037,7 @@ export class Creature implements CreatureInternal {
     }
 
     for (let i = this.synapses.length; i--;) {
-      const internalJSON = (this.synapses[i] as Synapse).internalJSON();
+      const internalJSON = this.synapses[i].internalJSON();
 
       json.synapses[i] = internalJSON;
     }
@@ -2123,6 +2123,10 @@ export class Creature implements CreatureInternal {
         synapse.weight,
         synapse.type,
       );
+
+      if (synapse.tags) {
+        connection.tags = synapse.tags.slice();
+      }
 
       if ((synapse as SynapseTrace).trace) {
         const cs = this.state.connection(connection.from, connection.to);

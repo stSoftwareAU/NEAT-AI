@@ -1,5 +1,5 @@
-import { assert } from "https://deno.land/std@0.219.1/assert/assert.ts";
-import { fail } from "https://deno.land/std@0.219.1/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
+import { fail } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";

@@ -124,7 +124,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
 
     if (this.type == "hidden") {
-      const fromList = this.creature.efferentConnections(this.index);
+      const fromList = this.creature.outwardConnections(this.index);
       if (fromList.length == 0) {
         const targetIndx = Math.min(
           1,

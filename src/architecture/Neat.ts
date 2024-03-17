@@ -1,6 +1,6 @@
-import { blue } from "https://deno.land/std@0.219.1/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.219.1/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.219.1/fs/ensure_dir.ts";
+import { blue } from "https://deno.land/std@0.220.1/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.220.1/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.220.1/fs/ensure_dir.ts";
 import {
   addTag,
   getTag,
