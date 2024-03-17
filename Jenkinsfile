@@ -57,7 +57,13 @@ pipeline {
                             --exclude Costs.ts \
                             --exclude "**/MAPE.ts" \
                             > .typos.json
-                          jq . < .typos.json
+
+                          issue_count=$(jq '. | length' < .typos.json)
+
+                          if [ "$issue_count" -gt 1 ]; then
+                            jq . < .typos.json
+                            exit 1
+                          fi
                         '''.stripIndent()
                     }
                 }
