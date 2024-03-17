@@ -53,15 +53,13 @@ pipeline {
                         sh '''\
                           #!/bin/bash
 
-                          docker run --rm -t -v $(pwd)/src:/src imunew/typos-cli /src --format json \
+                          docker run --rm -t -v $(pwd)/src:/src imunew/typos-cli /src --format brief \
                             --exclude Costs.ts \
                             --exclude "**/MAPE.ts" \
-                            > .typos.json
+                            > .typos.txt
 
-                          issue_count=$(jq '. | length' < .typos.json)
-
-                          if [ "$issue_count" -gt 1 ]; then
-                            jq . < .typos.json
+                          if [ -s .typos.txt ]; then
+                            cat .typos.txt
                             exit 1
                           fi
                         '''.stripIndent()
