@@ -1,6 +1,8 @@
+import {
+  assert,
+  assertNotEquals,
+} from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
-import { assertNotEquals } from "https://deno.land/std@0.220.1/assert/assert_not_equals.ts";
-import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
 
 Deno.test("ActivationNames", () => {
   Activations.NAMES.forEach((name) => {

@@ -1,10 +1,10 @@
-import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
-
-import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
-import { Creature } from "../../src/Creature.ts";
-
-import { assertAlmostEquals } from "https://deno.land/std@0.220.1/assert/assert_almost_equals.ts";
+import {
+  assert,
+  assertAlmostEquals,
+} from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { getTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -1,11 +1,12 @@
-import { fail } from "https://deno.land/std@0.220.1/assert/fail.ts";
 import { ensureDirSync } from "https://deno.land/std@0.220.1/fs/ensure_dir.ts";
-import { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
+import { Creature, CreatureExport } from "../../mod.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
+import {
+  assert,
+  assertAlmostEquals,
+  fail,
+} from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { Costs } from "../../src/Costs.ts";
-import { assertAlmostEquals } from "https://deno.land/std@0.220.1/assert/assert_almost_equals.ts";
 
 const NODE_ID = "identity-6";
 function makeCreature() {

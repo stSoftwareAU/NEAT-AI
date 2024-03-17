@@ -1,11 +1,10 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.220.1/assert/assert_almost_equals.ts";
-import { CreatureExport } from "../../mod.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.220.1/assert/mod.ts";
+import { Creature, CreatureExport } from "../../mod.ts";
 import {
   adjustedBias,
   BackPropagationConfig,
 } from "../../src/architecture/BackPropagation.ts";
 import { NeuronState } from "../../src/architecture/CreatureState.ts";
-import { Creature } from "../../src/Creature.ts";
 
 Deno.test("AccumulateBias-Standard", () => {
   const ns = new NeuronState();

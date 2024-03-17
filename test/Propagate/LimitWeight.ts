@@ -1,6 +1,8 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.220.1/assert/assert_almost_equals.ts";
-import { limitWeight } from "../../src/architecture/BackPropagation.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.220.1/assert/mod.ts";
+import {
+  BackPropagationConfig,
+  limitWeight,
+} from "../../src/architecture/BackPropagation.ts";
 
 Deno.test("maximumWeightAdjustmentScale", () => {
   const config = new BackPropagationConfig({

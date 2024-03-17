@@ -1,7 +1,7 @@
-import { fail } from "https://deno.land/std@0.220.1/assert/fail.ts";
 import {
   assert,
   assertAlmostEquals,
+  fail,
 } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { ensureDirSync } from "https://deno.land/std@0.220.1/fs/ensure_dir.ts";
 import { CreatureExport } from "../../mod.ts";
