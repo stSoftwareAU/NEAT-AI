@@ -45,7 +45,7 @@ Deno.test("knownName", async () => {
   console.log("UUID", uuid);
 
   assert(
-    uuid == "df3405ad-5650-549a-975d-f46211716cd4",
+    uuid == "49b13413-88b9-5688-92f5-ba59bb761639",
     "Wrong UUID was: " + uuid,
   );
 });
@@ -55,18 +55,21 @@ Deno.test("ignoreTags", async () => {
     uuid: crypto.randomUUID(),
     neurons: [
       {
+        uuid: "hidden-0",
         bias: 0,
         index: 5,
         type: "hidden",
         squash: "IDENTITY",
       },
       {
+        uuid: "output-0",
         bias: 0.1,
         index: 6,
         type: "output",
         squash: "IDENTITY",
       },
       {
+        uuid: "output-1",
         bias: 0.2,
         index: 7,
         type: "output",
@@ -99,6 +102,7 @@ Deno.test("ignoreTags", async () => {
   });
 
   const clean = Creature.fromJSON(creature);
+  clean.validate();
   assertEquals(
     creature.uuid,
     clean.uuid,
@@ -129,7 +133,7 @@ Deno.test("ignoreTags", async () => {
 
   /** Manually update if needed. */
   assert(
-    uuid2 == "87dc2a04-b5a2-5bf9-bfb5-dd9419f2f962",
+    uuid2 == "b08e3db1-f508-5106-b5c6-dfec158a1334",
     "Wrong UUID was: " + uuid2,
   );
 });
