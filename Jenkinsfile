@@ -5,6 +5,9 @@ DENO_IMAGE = 'denoland/deno:latest'
 TOOLS_ARGS = '-e DENO_DIR=${WORKSPACE}/.deno --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
 TOOLS_IMAGE = "${ECR}/develop/sts-tools:latest"
 
+TYPOS_IMAGE = 'imunew/typos-cli:latest'
+TYPOS_ARGS = '--rm'
+
 pipeline {
     agent none
     triggers {
@@ -40,7 +43,22 @@ pipeline {
                         '''.stripIndent()
                     }
                 }
-
+                stage('Typos') {
+                    agent {
+                        docker {
+                            image TYPOS_IMAGE
+                            args TYPOS_ARGS
+                            label 'small'
+                        }
+                    }
+                    steps {
+                        sh '''\
+                          #!/bin/bash
+                          pwd
+                          ls -l 
+                        '''.stripIndent()
+                    }
+                }
                 stage('Test') {
                     agent {
                         docker {
