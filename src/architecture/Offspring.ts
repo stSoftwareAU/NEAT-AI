@@ -185,7 +185,14 @@ export class Offspring {
               const toType = offspring.neurons[toIndx].type;
               if (toType == "hidden" || toType == "output") {
                 if (!offspring.getSynapse(fromIndx, toIndx)) {
-                  offspring.connect(fromIndx, toIndx, c.weight, c.type);
+                  const babySynapse = offspring.connect(
+                    fromIndx,
+                    toIndx,
+                    c.weight,
+                    c.type,
+                  );
+
+                  addTags(babySynapse, c);
                 }
               } else {
                 throw new Error(
@@ -250,6 +257,7 @@ export class Offspring {
         toUUID: creature.neurons[connection.to].uuid,
         weight: connection.weight,
         type: connection.type,
+        tags: connection.tags,
       };
       tmpConnections.push(c);
     });

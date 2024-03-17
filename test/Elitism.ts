@@ -2,7 +2,7 @@ import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { makeElitists } from "../src/architecture/ElitismUtils.ts";
-import { addTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
+import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

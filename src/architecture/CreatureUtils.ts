@@ -20,14 +20,28 @@ export class CreatureUtil {
       return creature.uuid;
     }
 
-    if (!creature.synapses) {
-      throw new Error("Not an object was: " + (typeof creature));
+    if (!creature.synapses || !creature.neurons) {
+      throw new Error("Not a creature was: " + (typeof creature));
     }
 
-    const json = creature.internalJSON();
+    const json = creature.exportJSON();
+    json.neurons.sort((a, b) => a.uuid.localeCompare(b.uuid));
+    json.synapses.sort((a, b) => {
+      if (a.fromUUID == b.fromUUID) {
+        return a.toUUID.localeCompare(b.toUUID);
+      } else {
+        return a.fromUUID.localeCompare(b.fromUUID);
+      }
+    });
     json.neurons.forEach(
-      (n: { uuid?: string }) => {
-        delete n.uuid;
+      (n) => {
+        delete n.tags;
+      },
+    );
+
+    json.synapses.forEach(
+      (s) => {
+        delete s.tags;
       },
     );
 
