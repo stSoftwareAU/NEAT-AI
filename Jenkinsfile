@@ -47,7 +47,7 @@ pipeline {
                     agent {
                         docker {
                             image TYPOS_IMAGE
-                            args TYPOS_ARGS
+                            // args TYPOS_ARGS
                             label 'small'
                         }
                     }
