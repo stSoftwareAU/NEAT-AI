@@ -127,29 +127,29 @@ Deno.test("propagateInverseRandom", async () => {
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
 
-  const internalJSON = creatureA.internalJSON();
+  const exportJSON = creatureA.exportJSON();
 
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
-    JSON.stringify(internalJSON, null, 2),
+    JSON.stringify(exportJSON, null, 2),
   );
 
-  internalJSON.neurons.forEach((node, indx) => {
-    node.bias = (node.bias ? node.bias : 0) +
+  exportJSON.neurons.forEach((node, indx) => {
+    node.bias = node.bias +
       ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
-  internalJSON.synapses.forEach((c, indx) => {
+  exportJSON.synapses.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
   });
 
   Deno.writeTextFileSync(
     ".trace/2-modified.json",
-    JSON.stringify(internalJSON, null, 2),
+    JSON.stringify(exportJSON, null, 2),
   );
 
   for (let attempts = 0; true; attempts++) {
-    const creatureB = Creature.fromJSON(internalJSON);
+    const creatureB = Creature.fromJSON(exportJSON);
     creatureB.validate();
 
     const result1 = await train(creatureB, ts, {
