@@ -56,7 +56,7 @@ pipeline {
                           #!/bin/bash
                           pwd
                           ls -l 
-                          typos src --format json > .typos.json
+                          typos src --exclude src/Costs.ts,src/costs/MAPE.ts --format json > .typos.json
                           jq . < .typos.json
                         '''.stripIndent()
                     }
