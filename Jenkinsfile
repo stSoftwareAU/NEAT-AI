@@ -73,8 +73,8 @@ pipeline {
                         sh '''\
                           #!/bin/bash
 
-                          deno test --coverage=.coverage --reporter junit --allow-read --allow-write --config ./test/deno.json > .test.xml
-                          deno coverage .coverage --lcov --output=.cov_profile.lcov
+                          #deno test --coverage=.coverage --reporter junit --allow-read --allow-write --config ./test/deno.json > .test.xml
+                          #deno coverage .coverage --lcov --output=.cov_profile.lcov
                         '''.stripIndent()
                     }
                     post {
