@@ -61,14 +61,14 @@ Deno.test("Constants", () => {
   network.validate();
   Creature.fromJSON(network.exportJSON());
   assert(
-    Math.abs(network.neurons[1].bias ? network.neurons[1].bias : 0) - 0.5 <
+    Math.abs(network.neurons[1].bias) - 0.5 <
       0.00001,
     "Should NOT have changed the constant node was: " + network.neurons[1].bias,
   );
 
   assert(
-    (network.neurons[2].bias ? network.neurons[2].bias : 0) > 0.60001 ||
-      (network.neurons[2].bias ? network.neurons[2].bias : 0) < 0.59999,
+    (network.neurons[2].bias) > 0.60001 ||
+      (network.neurons[2].bias) < 0.59999,
     "Should have changed the hidden node was: " + network.neurons[2].bias,
   );
 

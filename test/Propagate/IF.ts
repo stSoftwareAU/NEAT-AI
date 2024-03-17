@@ -146,7 +146,7 @@ Deno.test("PropagateBiasIF", async () => {
 
     exportJSON.neurons.forEach((node, indx) => {
       if (node.type == "hidden") {
-        node.bias = (node.bias ? node.bias : 0) +
+        node.bias = node.bias +
           ((indx % 2 == 0 ? 1 : -1) * 0.25);
       }
     });

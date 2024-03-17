@@ -84,7 +84,7 @@ Deno.test("ifPropagation", async () => {
 
   if (traceJson) {
     traceJson.neurons.forEach((n) => {
-      assert(Math.abs(n.bias ? n.bias : 0) < 1, `Invalid bias ${n.bias}`);
+      assert(Math.abs(n.bias) < 1, `Invalid bias ${n.bias}`);
     });
   }
 });

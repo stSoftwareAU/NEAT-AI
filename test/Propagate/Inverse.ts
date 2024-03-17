@@ -192,7 +192,7 @@ Deno.test("propagateInverseRandom", async () => {
 
     creatureA.neurons.forEach((n, indx) => {
       const biasB = creatureB.neurons[indx].bias;
-      assertAlmostEquals(n.bias ? n.bias : 0, biasB ? biasB : 0, 0.05);
+      assertAlmostEquals(n.bias, biasB, 0.05);
     });
 
     creatureA.synapses.forEach((c, indx) => {

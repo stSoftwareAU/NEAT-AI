@@ -37,7 +37,7 @@ Deno.test("PropagateMaximumSimple", () => {
   );
 
   exportJSON.neurons.forEach((node, indx) => {
-    node.bias = (node.bias ? node.bias : 0) +
+    node.bias = node.bias +
       ((indx % 2 == 0 ? 1 : -1) * 0.1);
   });
 
