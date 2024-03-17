@@ -56,6 +56,8 @@ pipeline {
                           #!/bin/bash
                           pwd
                           ls -l 
+                          typos src --format json > .typos.json
+                          jq . < .typos.json
                         '''.stripIndent()
                     }
                 }
