@@ -168,7 +168,7 @@ export class MEAN implements NeuronActivationInterface {
       }
     }
 
-    const adjustedMean = totalValue / toList.length;
+    const adjustedMean = toList.length ? (totalValue / toList.length) : 0;
 
     const ns = node.creature.state.node(node.index);
     ns.accumulateBias(
