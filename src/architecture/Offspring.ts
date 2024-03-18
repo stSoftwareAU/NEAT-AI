@@ -277,16 +277,23 @@ export class Offspring {
       if (neuron.type == "input") childMap.set(neuron.uuid, indx);
     });
 
-    const motherMap = new Map<string, number>();
-    const fatherMap = new Map<string, number>();
+    const mumMap = new Map<string, number>();
+    const dadMap = new Map<string, number>();
 
     mother.forEach((node, indx) => {
-      motherMap.set(node.uuid, indx);
+      mumMap.set(node.uuid, indx);
     });
 
     father.forEach((node, indx) => {
-      fatherMap.set(node.uuid, indx);
+      dadMap.set(node.uuid, indx);
     });
+
+    let firstMap = mumMap;
+    let secondMap = dadMap;
+    if (mumMap.size < dadMap.size) {
+      firstMap = dadMap;
+      secondMap = mumMap;
+    }
 
     /* Sort output to the end and input to the beginning */
     child.sort((a: Neuron, b: Neuron) => {
@@ -299,32 +306,29 @@ export class Offspring {
       } else if (b.type == "output") {
         return -1;
       }
-      if (a.index == b.index) {
-        if (a.uuid == b.uuid) {
-          throw new Error(`Duplicate uuid ${a.uuid}`);
-        }
-        const mumIndxA = motherMap.get(a.uuid);
-        if (mumIndxA == undefined) {
-          return -1;
-        }
-        const dadIndxA = fatherMap.get(a.uuid);
-        if (dadIndxA == undefined) {
-          return 1;
-        }
-        const mumIndxB = motherMap.get(b.uuid);
-        if (mumIndxB == undefined) {
-          return -1;
-        }
-
-        const dadIndxB = fatherMap.get(b.uuid);
-        if (dadIndxB == undefined) {
-          return 1;
-        }
-
-        return mumIndxA - mumIndxB;
+      // if (a.index == b.index) {
+      if (a.uuid == b.uuid) {
+        throw new Error(`Duplicate uuid ${a.uuid}`);
       }
-      return a.index - b.index;
+      let indxA = firstMap.get(a.uuid);
+      if (indxA == undefined) {
+        indxA = secondMap.get(a.uuid);
+        if (indxA == undefined) throw new Error(`Can't find ${a.uuid}`);
+        indxA += 0.1;
+      }
+
+      let indxB = firstMap.get(b.uuid);
+      if (indxB == undefined) {
+        indxB = secondMap.get(b.uuid);
+        if (indxB == undefined) throw new Error(`Can't find ${b.uuid}`);
+        indxB += 0.1;
+      }
+
+      if (indxA == indxB) throw new Error(`Duplicate index ${indxA}`);
+
+      return indxA - indxB;
     });
+
     const usedIndx = new Set<number>();
     let missing = true;
     for (let attempts = 0; missing && attempts < child.length; attempts++) {
@@ -334,14 +338,14 @@ export class Offspring {
           const uuid = neuron.uuid;
 
           if (!childMap.has(uuid)) {
-            const motherIndx = motherMap.get(uuid);
-            const fatherIndx = fatherMap.get(uuid);
+            const firstIndx = firstMap.get(uuid);
+            const secondIndx = secondMap.get(uuid);
 
             let indx = 0;
-            if (motherIndx !== undefined) {
-              indx = motherIndx;
-            } else if (fatherIndx !== undefined) {
-              indx = fatherIndx;
+            if (firstIndx !== undefined) {
+              indx = firstIndx;
+            } else if (secondIndx !== undefined) {
+              indx = secondIndx;
             } else {
               throw new Error(
                 `Can't find ${uuid} in father or mother creatures!`,

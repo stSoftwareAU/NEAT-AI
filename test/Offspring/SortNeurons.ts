@@ -196,7 +196,7 @@ Deno.test(
     assertEquals(sorted[4].uuid, "dad-a");
     assertEquals(sorted[5].uuid, "mum-a");
 
-    assertEquals(sorted[sorted.length - 3].uuid, "dad-c");
+    assertEquals(sorted[sorted.length - 3].uuid, "common-d");
     assertEquals(sorted[sorted.length - 2].uuid, "output-0");
     assertEquals(sorted[sorted.length - 1].uuid, "output-1");
   },
