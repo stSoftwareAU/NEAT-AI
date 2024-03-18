@@ -314,17 +314,19 @@ export class Offspring {
       if (indxA == undefined) {
         indxA = secondMap.get(a.uuid);
         if (indxA == undefined) throw new Error(`Can't find ${a.uuid}`);
+        indxA += 0.1;
       }
 
       let indxB = firstMap.get(b.uuid);
       if (indxB == undefined) {
         indxB = secondMap.get(b.uuid);
         if (indxB == undefined) throw new Error(`Can't find ${b.uuid}`);
+        indxB += 0.1;
       }
 
+      if (indxA == indxB) throw new Error(`Duplicate index ${indxA}`);
+
       return indxA - indxB;
-      // }
-      // return a.index - b.index;
     });
 
     const usedIndx = new Set<number>();
