@@ -23,7 +23,7 @@ import { Fitness } from "./Fitness.ts";
 import { Offspring } from "./Offspring.ts";
 import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
 
-class NeatConfig implements NeatOptions {
+export class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
   creatures: CreatureInternal[] | CreatureExport[];
 

@@ -29,6 +29,7 @@ import {
 } from "./architecture/NeuronInterfaces.ts";
 import { cacheDataFile, dataFiles } from "./architecture/Training.ts";
 import { NeatOptions } from "./config/NeatOptions.ts";
+import { NeatConfig } from "./architecture/Neat.ts";
 import { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
@@ -1022,7 +1023,7 @@ export class Creature implements CreatureInternal {
       : 0;
 
     const workers: WorkerHandler[] = [];
-
+    const config = new NeatConfig(options);
     const threads = Math.round(
       Math.max(
         options.threads ? options.threads : navigator.hardwareConcurrency,
@@ -1032,7 +1033,7 @@ export class Creature implements CreatureInternal {
 
     for (let i = threads; i--;) {
       workers.push(
-        new WorkerHandler(dataSetDir, options.costName ?? "MSE", threads == 1),
+        new WorkerHandler(dataSetDir, config.costName, threads == 1),
       );
     }
 
