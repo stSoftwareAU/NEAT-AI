@@ -93,7 +93,7 @@ pipeline {
                     post {
                         always {
                             junit '.test.xml'
-                            stash(name: 'coverage', includes: '.coverage')
+                            stash(name: 'coverage', includes: '.coverage/**')
                         }
                     }
                 }
