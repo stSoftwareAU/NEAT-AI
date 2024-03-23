@@ -3,6 +3,7 @@ import { RequestData, ResponseData } from "./WorkerHandler.ts";
 import { CostInterface, Costs } from "../../Costs.ts";
 import { Creature } from "../../Creature.ts";
 import { trainDir } from "../../architecture/Training.ts";
+import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
 
 export class WorkerProcessor {
   private dataSetDir: string | null = null;
@@ -22,7 +23,7 @@ export class WorkerProcessor {
         },
       };
     } else if (data.evaluate) {
-      if (!this.dataSetDir) throw new Error("no data directory");
+      assert(this.dataSetDir, "No data dir");
       if (!this.cost) throw new Error("no cost");
 
       const network = Creature.fromJSON(JSON.parse(data.evaluate.creature));
@@ -51,7 +52,7 @@ export class WorkerProcessor {
       /* release some memory*/
       data.train.creature = "";
 
-      if (!this.dataSetDir) throw new Error("No data dir");
+      assert(this.dataSetDir, "No data dir");
 
       network.validate();
       const result = await trainDir(
