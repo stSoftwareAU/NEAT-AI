@@ -5,25 +5,13 @@ import { Creature } from "../../Creature.ts";
 import { trainDir } from "../../architecture/Training.ts";
 
 export class WorkerProcessor {
-  private costName?: string;
   private dataSetDir: string | null = null;
 
   private cost?: CostInterface;
 
-  private workerName: string;
-
-  constructor(workerName?: string) {
-    if (workerName) {
-      this.workerName = workerName;
-    } else {
-      this.workerName = "main";
-    }
-  }
-
   async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();
     if (data.initialize) {
-      this.costName = data.initialize.costName;
       this.cost = Costs.find(data.initialize.costName);
       this.dataSetDir = data.initialize.dataSetDir;
       return {
@@ -97,7 +85,6 @@ export class WorkerProcessor {
         },
       };
     } else {
-      console.error(data);
       throw new Error("unknown message");
     }
   }

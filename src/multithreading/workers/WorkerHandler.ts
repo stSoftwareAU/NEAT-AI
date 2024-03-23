@@ -2,6 +2,7 @@ import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../../Creature.ts";
 import { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
+import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
 
 export interface RequestData {
   taskID: number;
@@ -75,9 +76,7 @@ export class WorkerHandler {
     costName: string,
     direct: boolean = false,
   ) {
-    if (typeof dataSetDir === "undefined") {
-      throw new Error("dataSet is mandatory");
-    }
+    assert(dataSetDir, "dataSet is mandatory");
     const data: RequestData = {
       taskID: this.taskID++,
       initialize: {
@@ -202,12 +201,12 @@ export class WorkerHandler {
     addTag(
       json,
       "untrained-error",
-      getTag(creature, "error") || Number.MAX_SAFE_INTEGER.toString(),
+      `${getTag(creature, "error")}`,
     );
     addTag(
       json,
       "untrained-score",
-      creature.score?.toString() || Number.MIN_SAFE_INTEGER.toString(),
+      `${creature.score}`,
     );
 
     const data: RequestData = {
