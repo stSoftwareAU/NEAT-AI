@@ -116,13 +116,8 @@ export class WorkerHandler {
 
   private callback(data: ResponseData) {
     const call = this.callbacks[data.taskID.toString()];
-    if (call) {
-      call(data);
-    } else {
-      const msg = "No callback";
-      console.warn(this.workerID, msg);
-      throw new Error(msg);
-    }
+    assert(call, "No callback");
+    call(data);
   }
 
   private makePromise(data: RequestData) {

@@ -27,17 +27,11 @@ export class MEAN implements NeuronActivationInterface {
     const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const fromActivation = //node.creature.getActivation(c.from);
-        node.creature.state.activations[c.from];
-      const activation = limitActivation(fromActivation);
+      const fromActivation = node.creature.state.activations[c.from];
+      if (fromActivation) {
+        const activation = limitActivation(fromActivation);
 
-      sum += activation * c.weight;
-      if (Number.isFinite(sum) == false) {
-        throw new Error(
-          `Node: ${node.uuid} connection: ${
-            c.from + ":" + c.to
-          }, SUM: ${sum} is not finite. From Activation: ${fromActivation}, Activation: ${activation}, Weight: ${c.weight}`,
-        );
+        sum += activation * c.weight;
       }
     }
 
