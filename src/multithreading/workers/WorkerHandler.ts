@@ -74,7 +74,7 @@ export class WorkerHandler {
   constructor(
     dataSetDir: string,
     costName: string,
-    direct: boolean = false,
+    direct: boolean,
   ) {
     assert(dataSetDir, "dataSet is mandatory");
     const data: RequestData = {
