@@ -201,12 +201,12 @@ export class WorkerHandler {
     addTag(
       json,
       "untrained-error",
-      `${getTag(creature, "error")}`
+      `${getTag(creature, "error")}`,
     );
     addTag(
       json,
       "untrained-score",
-      `${creature.score}`
+      `${creature.score}`,
     );
 
     const data: RequestData = {
