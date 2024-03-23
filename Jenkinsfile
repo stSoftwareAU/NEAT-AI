@@ -77,14 +77,23 @@ pipeline {
                         sh '''\
                           #!/bin/bash
 
-                          deno test --coverage=.coverage --reporter junit --allow-read --allow-write --config ./test/deno.json > .test.xml
-                          deno coverage .coverage --lcov --output=.cov_profile.lcov
+                          deno test \
+                            --allow-read \
+                            --allow-write \
+                            --trace-leaks \
+                            --v8-flags=--max-old-space-size=8192 \
+                            --parallel \
+                            --config ./test/deno.json \
+                            --coverage=.coverage \
+                            --doc \
+                            --reporter junit > .test.xml
+
                         '''.stripIndent()
                     }
                     post {
                         always {
                             junit '.test.xml'
-                            stash(name: 'coverage', includes: '.cov_profile.lcov')
+                            stash(name: 'coverage', includes: '.coverage')
                         }
                     }
                 }
@@ -106,8 +115,12 @@ pipeline {
                 sh '''\
                   #!/bin/bash
 
+                  deno coverage .coverage --lcov --output=.cov.lcov
+
                   # Convert LCOV to Cobertura XML
-                  lcov_cobertura --base-dir src --output coverage.xml .cov_profile.lcov
+                  lcov_cobertura --base-dir src --output coverage.xml .cov.lcov
+
+                  deno coverage --html .coverage
                 '''.stripIndent()
 
                 // Publish Cobertura report
@@ -120,6 +133,17 @@ pipeline {
                     [threshold: 60.0, metric: 'LINE', baseline: 'PROJECT', unstable: true],
                     [threshold: 60.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: true]
                   ]
+                )
+
+                publishHTML(
+                    target : [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: '.coverage/html',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage'
+                    ]
                 )
             }
         }
