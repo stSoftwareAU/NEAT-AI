@@ -48,11 +48,8 @@ Deno.test("removeDanglingHidden", () => {
   const a = Creature.fromJSON(json);
 
   const b = a.compact();
-  if (b) {
-    b.validate();
-  } else {
-    fail("Should have compacted");
-  }
+  assert(b, "should have compacted the network");
+  b.validate();
 });
 
 Deno.test("CompactSimple", () => {
@@ -81,27 +78,26 @@ Deno.test("CompactSimple", () => {
 
   Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
   const b = a.compact();
-  if (!b) {
-    assert(false, "should have compacted the network");
-  } else {
-    b.validate();
-    Deno.writeTextFileSync(
-      ".b.json",
-      JSON.stringify(b.internalJSON(), null, 2),
-    );
-    const endNodes = b.neurons.length;
-    const endConnections = b.synapses.length;
 
-    const endOut = b.activate(input);
+  assert(b, "should have compacted the network");
 
-    assertAlmostEquals(startOut[0], endOut[0], 0.001);
-    assertAlmostEquals(startOut[1], endOut[1], 0.001);
-    assert(endNodes < startNodes);
-    assert(endConnections < startConnections);
+  b.validate();
+  Deno.writeTextFileSync(
+    ".b.json",
+    JSON.stringify(b.internalJSON(), null, 2),
+  );
+  const endNodes = b.neurons.length;
+  const endConnections = b.synapses.length;
 
-    const c = b.compact();
-    assert(!c);
-  }
+  const endOut = b.activate(input);
+
+  assertAlmostEquals(startOut[0], endOut[0], 0.001);
+  assertAlmostEquals(startOut[1], endOut[1], 0.001);
+  assert(endNodes < startNodes);
+  assert(endConnections < startConnections);
+
+  const c = b.compact();
+  assert(!c);
 });
 
 Deno.test("RandomizeCompact", () => {
@@ -228,24 +224,23 @@ Deno.test("CompactSelf", () => {
 
   assertAlmostEquals(aOut[0], aOut2[0], 0.001);
   const b = a.compact();
-  if (!b) {
-    assert(false, "should have compacted the network");
-  } else {
-    b.validate();
-    Deno.writeTextFileSync(
-      ".b.json",
-      JSON.stringify(b.internalJSON(), null, 2),
-    );
-    const endNodes = b.neurons.length;
-    const endConnections = b.synapses.length;
 
-    const endOut = b.activate(input);
+  assert(b, "should have compacted the network");
 
-    assertAlmostEquals(aOut[0], endOut[0], 0.001);
-    assert(endNodes < startNodes);
-    assert(endConnections < startConnections);
+  b.validate();
+  Deno.writeTextFileSync(
+    ".b.json",
+    JSON.stringify(b.internalJSON(), null, 2),
+  );
+  const endNodes = b.neurons.length;
+  const endConnections = b.synapses.length;
 
-    const c = b.compact();
-    assert(!c);
-  }
+  const endOut = b.activate(input);
+
+  assertAlmostEquals(aOut[0], endOut[0], 0.001);
+  assert(endNodes < startNodes);
+  assert(endConnections < startConnections);
+
+  const c = b.compact();
+  assert(!c);
 });
