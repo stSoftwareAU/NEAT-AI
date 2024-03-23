@@ -123,9 +123,7 @@ Deno.test("REMOVE", () => {
       }
 
       const tag = getTag(node, "CRISPR");
-      if (tag) {
-        assert(false, "Should have removed CRISPER");
-      }
+      assert(!tag, "Should have removed CRISPER");
     }
   }
 

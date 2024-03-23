@@ -38,10 +38,6 @@ Deno.test("Hypot", () => {
     );
     const expected = Math.hypot(a, b, c);
 
-    if (Math.abs(expected - actual) >= 0.00001) {
-      const actual3 = network.activateAndTrace(data)[0];
-      console.info(actual3);
-    }
     assert(
       Math.abs(expected - actual) < 0.00001,
       p + ") Expected: " + expected + ", actual: " + actual + ", data: " + data,

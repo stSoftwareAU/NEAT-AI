@@ -59,9 +59,6 @@ Deno.test("traceNode", async () => {
   };
   await network.evolveDataSet(ts, options);
 
-  // let errorResponsibilityCount = 0;
-  // let errorProjectedCount = 0;
-  // let batchSizeCount = 0;
   let totalValueCount = 0;
 
   for (const dirEntry of Deno.readDirSync(traceDir)) {
@@ -72,27 +69,6 @@ Deno.test("traceNode", async () => {
       if (!json.neurons) continue;
       json.neurons.forEach((n: NeuronTrace) => {
         if (n.trace) {
-          // if (
-          //   Number.isFinite(n.trace.errorResponsibility) &&
-          //   n.trace.errorResponsibility != 0
-          // ) {
-          //   errorResponsibilityCount++;
-          // }
-
-          // if (
-          //   Number.isFinite(n.trace.errorProjected) &&
-          //   n.trace.errorProjected != 0
-          // ) {
-          //   errorProjectedCount++;
-          // }
-
-          // if (
-          //   Number.isFinite(n.trace.batchSize) &&
-          //   n.trace.batchSize != 0
-          // ) {
-          //   batchSizeCount++;
-          // }
-
           if (
             Number.isFinite(n.trace.totalValue) &&
             n.trace.totalValue != 0
@@ -103,15 +79,6 @@ Deno.test("traceNode", async () => {
       });
     }
   }
-  // assert(
-  //   batchSizeCount > 0,
-  //   "Should have batchSizeCount",
-  // );
-
-  // assert(
-  //   errorProjectedCount > 0,
-  //   "Should have errorProjectedCount",
-  // );
 
   assert(
     totalValueCount > 0,

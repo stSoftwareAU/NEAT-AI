@@ -29,6 +29,7 @@ import {
 } from "./architecture/NeuronInterfaces.ts";
 import { cacheDataFile, dataFiles } from "./architecture/Training.ts";
 import { NeatOptions } from "./config/NeatOptions.ts";
+import { NeatConfig } from "./architecture/Neat.ts";
 import { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
@@ -660,7 +661,7 @@ export class Creature implements CreatureInternal {
     let lastTo = -1;
     this.synapses.forEach((c, indx) => {
       stats.connections++;
-      const toNode = this.getNeuron(c.to);
+      const toNode = this.neurons[c.to];
 
       if (toNode.type === "input") {
         throw new Error(indx + ") connection points to an input node");
@@ -767,19 +768,6 @@ export class Creature implements CreatureInternal {
     return results;
   }
 
-  getNeuron(indx: number): Neuron {
-    if (Number.isInteger(indx) == false || indx < 0) {
-      throw new Error("POS should be a non-negative integer was: " + indx);
-    }
-    const tmp = this.neurons[indx];
-
-    if (tmp === undefined) {
-      throw new Error("getNeuron( " + indx + ") " + (typeof tmp));
-    }
-
-    return tmp;
-  }
-
   getSynapse(from: number, to: number): Synapse | null {
     if (Number.isInteger(from) == false || from < 0) {
       throw new Error("FROM should be a non-negative integer was: " + from);
@@ -792,8 +780,14 @@ export class Creature implements CreatureInternal {
     for (let pos = this.synapses.length; pos--;) {
       const c = this.synapses[pos];
 
-      if (c.from == from && c.to == to) {
-        return c;
+      if (c.from == from) {
+        if (c.to == to) {
+          return c;
+        } else if (c.to < to) {
+          break;
+        }
+      } else if (c.from < from) {
+        break;
       }
     }
 
@@ -1029,7 +1023,7 @@ export class Creature implements CreatureInternal {
       : 0;
 
     const workers: WorkerHandler[] = [];
-
+    const config = new NeatConfig(options);
     const threads = Math.round(
       Math.max(
         options.threads ? options.threads : navigator.hardwareConcurrency,
@@ -1039,7 +1033,7 @@ export class Creature implements CreatureInternal {
 
     for (let i = threads; i--;) {
       workers.push(
-        new WorkerHandler(dataSetDir, options.costName ?? "MSE", threads == 1),
+        new WorkerHandler(dataSetDir, config.costName, threads == 1),
       );
     }
 
