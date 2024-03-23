@@ -93,7 +93,22 @@ pipeline {
                     post {
                         always {
                             junit '.test.xml'
+                            sh 'deno coverage .coverage --lcov --output=.coverage/cov.lcov'
+
+                            sh 'deno coverage --html .coverage'
+
                             stash(name: 'coverage', includes: '.coverage/**')
+
+                            publishHTML(
+                                target : [
+                                    allowMissing: false,
+                                    alwaysLinkToLastBuild: true,
+                                    keepAll: true,
+                                    reportDir: '.coverage/html',
+                                    reportFiles: 'index.html',
+                                    reportName: 'Coverage'
+                                ]
+                            )
                         }
                     }
                 }
@@ -115,12 +130,9 @@ pipeline {
                 sh '''\
                   #!/bin/bash
 
-                  deno coverage .coverage --lcov --output=.cov.lcov
-
                   # Convert LCOV to Cobertura XML
-                  lcov_cobertura --base-dir src --output coverage.xml .cov.lcov
+                  lcov_cobertura --base-dir src --output coverage.xml .coverage/cov.lcov
 
-                  deno coverage --html .coverage
                 '''.stripIndent()
 
                 // Publish Cobertura report
@@ -133,17 +145,6 @@ pipeline {
                     [threshold: 60.0, metric: 'LINE', baseline: 'PROJECT', unstable: true],
                     [threshold: 60.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: true]
                   ]
-                )
-
-                publishHTML(
-                    target : [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: '.coverage/html',
-                        reportFiles: 'index.html',
-                        reportName: 'Coverage'
-                    ]
                 )
             }
         }
