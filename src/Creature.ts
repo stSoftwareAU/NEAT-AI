@@ -40,6 +40,7 @@ import { NeuronStateInterface } from "./architecture/CreatureState.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import { compactUnused } from "./compact/CompactUnused.ts";
 import { ValidationError } from "./errors/ValidationError.ts";
+import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this creature */
@@ -68,9 +69,7 @@ export class Creature implements CreatureInternal {
       layers?: { squash?: string; count: number }[];
     } = {},
   ) {
-    if (input === undefined || output === undefined) {
-      throw new Error("No input or output size given");
-    }
+    assert(input && output, "No input or output size given");
 
     this.input = input;
     this.output = output;
@@ -124,9 +123,11 @@ export class Creature implements CreatureInternal {
       for (let i = 0; i < options.layers.length; i++) {
         const layer = options.layers[i];
 
-        if (layer.count <= 0) {
-          throw new Error(`Layer count should be positive was: ${layer.count}`);
-        }
+        assert(
+          layer.count > 0,
+          "Layer count should be positive",
+        );
+
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
           if (tmpSquash == "*") {
@@ -216,10 +217,6 @@ export class Creature implements CreatureInternal {
     this.score = undefined;
     this.state.clear();
   }
-
-  // getActivation(indx: number) {
-  //   return this.state.activations[indx];
-  // }
 
   /**
    * Activates the creature
@@ -1008,7 +1005,7 @@ export class Creature implements CreatureInternal {
    * Back propagate the creature
    */
   propagateUpdate(config: BackPropagationConfig) {
-    if (this.state.propagated) throw new Error(`Already propagated`);
+    assert(!this.state.propagated, "Already propagated");
     this.state.propagated = true;
 
     // @TODO randomize the order of the neurons
@@ -1070,7 +1067,7 @@ export class Creature implements CreatureInternal {
         bestCreature,
       );
 
-      const fittestScore = fittest.score ? fittest.score : -Infinity;
+      const fittestScore = fittest.score ?? -Infinity;
       if (fittestScore > bestScore) {
         const errorTmp = getTag(fittest, "error");
         if (errorTmp) {
@@ -1151,18 +1148,6 @@ export class Creature implements CreatureInternal {
     dataSet: DataRecordInterface[],
     options: NeatOptions,
   ) {
-    if (
-      dataSet[0].input.length !== this.input ||
-      dataSet[0].output.length !== this.output
-    ) {
-      throw new Error(
-        "Dataset input(" + dataSet[0].input.length + ")/output(" +
-          dataSet[0].output.length +
-          ") size should be same as creature input(" +
-          this.input + ")/output(" + this.output + ") size!",
-      );
-    }
-
     const dataSetDir = makeDataDir(dataSet, options.dataSetPartitionBreak);
 
     const result = await this.evolveDir(dataSetDir, options);
@@ -1245,9 +1230,6 @@ export class Creature implements CreatureInternal {
   }
 
   inFocus(index: number, focusList?: number[], checked = new Set()) {
-    if (Number.isInteger(index) == false || index < 0) {
-      throw new Error("to should be non-negative was: " + index);
-    }
     if (!focusList || focusList.length == 0) return true;
 
     if (checked.has(index)) return false;
@@ -1955,7 +1937,7 @@ export class Creature implements CreatureInternal {
     const uuidMap = new Map<number, string>();
     for (let i = this.neurons.length; i--;) {
       const neuron = this.neurons[i];
-      uuidMap.set(i, neuron.uuid ? neuron.uuid : `unknown-${i}`);
+      uuidMap.set(i, neuron.uuid ?? `unknown-${i}`);
       if (neuron.type == "input") continue;
 
       const tojson = neuron.exportJSON();

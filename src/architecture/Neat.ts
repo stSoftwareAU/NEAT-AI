@@ -21,6 +21,7 @@ import { makeElitists } from "./ElitismUtils.ts";
 import { fineTuneImprovement } from "./FineTune.ts";
 import { Fitness } from "./Fitness.ts";
 import { Offspring } from "./Offspring.ts";
+import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
 
 class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
@@ -106,15 +107,14 @@ class NeatConfig implements NeatOptions {
     this.focusList = options.focusList || [];
     this.focusRate = options.focusRate || 0.25;
 
-    this.targetError = options.targetError !== undefined
-      ? Math.min(1, Math.max(Math.abs(options.targetError), 0))
-      : 0.05;
+    this.targetError = Math.min(
+      1,
+      Math.max(Math.abs(options.targetError ?? 0.05), 0),
+    );
 
-    this.costOfGrowth = options.costOfGrowth !== undefined
-      ? options.costOfGrowth
-      : 0.000_1;
+    this.costOfGrowth = options.costOfGrowth ?? 0.000_1;
 
-    this.iterations = options.iterations ? options.iterations : 0;
+    this.iterations = options.iterations ?? 0;
 
     this.populationSize = options.populationSize || 50;
     this.elitism = options.elitism || 1;
@@ -127,13 +127,24 @@ class NeatConfig implements NeatOptions {
       ? options.mutationAmount > 1 ? options.mutationAmount : 1
       : 1;
     this.mutation = options.mutation || Mutation.FFW;
-    this.selection = options.selection || Selection.POWER;
+    if (options.selection) {
+      this.selection = options.selection;
+    } else {
+      const r0 = Math.random();
+      if (r0 < 0.33) {
+        this.selection = Selection.FITNESS_PROPORTIONATE;
+      } else if (r0 < 0.66) {
+        this.selection = Selection.TOURNAMENT;
+      } else {
+        this.selection = Selection.POWER;
+      }
+    }
 
     this.timeoutMinutes = options.timeoutMinutes;
     this.traceStore = options.traceStore;
-    this.trainPerGen = options.trainPerGen ? options.trainPerGen : 1;
+    this.trainPerGen = options.trainPerGen ?? 1;
 
-    this.log = options.log ? options.log : 0;
+    this.log = options.log ?? 0;
     this.verbose = options.verbose ? true : false;
 
     if (this.mutationAmount < 1) {
@@ -622,7 +633,7 @@ export class Neat {
         const filePath = this.config.experimentStore + "/score/" +
           name.substring(0, 3) + "/" +
           name.substring(3) + ".txt";
-        const sTxt = creature.score ? creature.score.toString() : "unknown";
+        const sTxt = `${creature.score}`;
 
         Deno.writeTextFileSync(filePath, sTxt);
       }
@@ -663,9 +674,7 @@ export class Neat {
    * Create the initial pool of genomes
    */
   async populatePopulation(network: Creature) {
-    if (!network) {
-      throw new Error(`Network mandatory`);
-    }
+    assert(network, "Network mandatory");
 
     if (this.config.debug) {
       network.validate();
