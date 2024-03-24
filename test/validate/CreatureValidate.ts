@@ -9,7 +9,7 @@ Deno.test("Neuron length", () => {
     creatureValidate(creature, { neurons: 9 });
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -20,7 +20,7 @@ Deno.test("Neuron length", () => {
     creatureValidate(creature, { neurons: 9 });
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -31,7 +31,7 @@ Deno.test("Input", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -42,7 +42,7 @@ Deno.test("Output", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -53,7 +53,7 @@ Deno.test("No UUID", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -66,7 +66,7 @@ Deno.test("Duplicate UUID", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -79,7 +79,7 @@ Deno.test("invalid input UUID", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -91,7 +91,7 @@ Deno.test("Bias", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -103,7 +103,7 @@ Deno.test("Output Index", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -114,7 +114,7 @@ Deno.test("connections length", () => {
     creatureValidate(creature, { connections: 9 });
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -128,7 +128,7 @@ Deno.test("output inward", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "NO_INWARD_CONNECTIONS", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -141,7 +141,7 @@ Deno.test("expected index", () => {
     creatureValidate(creature, { connections: 9 });
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });
 
@@ -154,6 +154,6 @@ Deno.test("expected index", () => {
     creatureValidate(creature, { connections: 9 });
     fail("Expected error");
   } catch (e) {
-    assert(e.name === "OTHER", "Expected error name to be OTHER was " + e.name);
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
   }
 });

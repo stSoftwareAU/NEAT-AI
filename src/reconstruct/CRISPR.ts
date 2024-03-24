@@ -9,7 +9,6 @@ import { Creature } from "../Creature.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;
-  // mode: "append";
 
   neurons?: {
     uuid?: string;
