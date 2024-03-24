@@ -1,3 +1,4 @@
+import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import {
   addTag,
   getTag,
@@ -62,7 +63,7 @@ export class CRISPR {
     const UUIDs = new Map<string, number>();
     let alreadyProcessed = false;
     tmpCreature.neurons.forEach((node) => {
-      if (!node.uuid) throw new Error("missing uuid");
+      assert(node.uuid !== undefined, "missing uuid");
 
       UUIDs.set(node.uuid, node.index);
       const id = getTag(node, "CRISPR");
@@ -148,11 +149,19 @@ export class CRISPR {
         const from = c.from !== undefined
           ? c.from
           : ((c.fromRelative ? c.fromRelative : 0) + adjustIndx);
-        if (from == undefined) throw new Error("invalid connection " + c);
+        assert(
+          from !== undefined,
+          "Invalid connection (from): " + JSON.stringify(c),
+        );
+
         const to = c.to !== undefined
           ? c.to
           : ((c.toRelative ? c.toRelative : 0) + adjustIndx);
-        if (to == undefined) throw new Error("invalid connection " + c);
+
+        assert(
+          to !== undefined,
+          "Invalid connection (to): " + JSON.stringify(c),
+        );
 
         tmpCreature.connect(from, to, c.weight, c.type);
       });
@@ -162,18 +171,14 @@ export class CRISPR {
       let toIndx: number = -1;
       if (c.toUUID) {
         const indx = UUIDs.get(c.toUUID);
-        if (indx === undefined) {
-          throw new Error("missing toUUID " + c.toUUID);
-        }
+        assert(indx !== undefined, "missing toUUID " + c.toUUID);
         toIndx = indx;
       }
 
       let fromIndx: number = -1;
       if (c.fromUUID) {
         const indx = UUIDs.get(c.fromUUID);
-        if (indx === undefined) {
-          throw new Error("missing fromUUID " + c.fromUUID);
-        }
+        assert(indx !== undefined, "missing fromUUID " + c.fromUUID);
         fromIndx = indx;
       }
 

@@ -1,8 +1,8 @@
+import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../../Creature.ts";
 import { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
-import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
 
 export interface RequestData {
   taskID: number;
@@ -121,21 +121,15 @@ export class WorkerHandler {
   }
 
   private makePromise(data: RequestData) {
-    if (this.busyCount < 0) {
-      throw new Error(
-        `${data.taskID.toString()} invalid busy count ${this.busyCount}`,
-      );
-    }
+    assert(this.busyCount >= 0, "Invalid busy count");
+
     this.busyCount++;
     const p = new Promise<ResponseData>((resolve) => {
       let alreadyCalled = false;
       const call = (result: ResponseData) => {
-        if (!alreadyCalled) {
-          this.busyCount--;
-          alreadyCalled = true;
-        } else {
-          throw new Error(`${data.taskID.toString()} already called`);
-        }
+        assert(!alreadyCalled, "Already called");
+        this.busyCount--;
+        alreadyCalled = true;
 
         resolve(result);
 
@@ -154,11 +148,7 @@ export class WorkerHandler {
   }
 
   terminate() {
-    if (this.isBusy()) {
-      throw new Error(
-        `${this.workerID} terminated but still busy ${this.busyCount}`,
-      );
-    }
+    assert(!this.isBusy(), "Worker is busy");
 
     this.worker.terminate();
     this.idleListeners.length = 0;
