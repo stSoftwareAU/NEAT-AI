@@ -16,6 +16,20 @@ Deno.test("Neuron length", () => {
   }
 });
 
+Deno.test("Neuron length", () => {
+  const creature = new Creature(10, 2);
+  creatureValidate(creature);
+  try {
+    creatureValidate(creature, { neurons: 9 });
+    fail("Expected error");
+  } catch (e) {
+    if (e.name !== "OTHER") {
+      console.log(e);
+      fail("Expected error name to be OTHER");
+    }
+  }
+});
+
 Deno.test("Input", () => {
   const creature = new Creature(10, 2);
   creature.input = -1;
@@ -138,12 +152,45 @@ Deno.test("output inward", () => {
   const creature = new Creature(10, 2);
   creatureValidate(creature);
   creature.synapses.length = 0;
+  creature.DEBUG = true;
   creature.clearCache();
   try {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
     if (e.name !== "NO_INWARD_CONNECTIONS") {
+      console.log(e);
+      fail("Expected error name to be OTHER");
+    }
+  }
+});
+
+Deno.test("expected index", () => {
+  const creature = new Creature(10, 2);
+  creature.DEBUG = true;
+  creatureValidate(creature);
+  creature.neurons[0].index = 10;
+  try {
+    creatureValidate(creature, { connections: 9 });
+    fail("Expected error");
+  } catch (e) {
+    if (e.name !== "OTHER") {
+      console.log(e);
+      fail("Expected error name to be OTHER");
+    }
+  }
+});
+
+Deno.test("expected index", () => {
+  const creature = new Creature(10, 2);
+  creature.DEBUG = true;
+  creatureValidate(creature);
+  creature.neurons[0].index = 10;
+  try {
+    creatureValidate(creature, { connections: 9 });
+    fail("Expected error");
+  } catch (e) {
+    if (e.name !== "OTHER") {
       console.log(e);
       fail("Expected error name to be OTHER");
     }
