@@ -22,6 +22,7 @@ import { fineTuneImprovement } from "./FineTune.ts";
 import { Fitness } from "./Fitness.ts";
 import { Offspring } from "./Offspring.ts";
 import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
+import { creatureValidate } from "./CreatureValidate.ts";
 
 export class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
@@ -648,7 +649,7 @@ export class Neat {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i];
         if (this.config.debug) {
-          creature.validate();
+          creatureValidate(creature);
         }
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
@@ -662,7 +663,7 @@ export class Neat {
         }
 
         if (this.config.debug) {
-          creature.validate();
+          creatureValidate(creature);
         }
 
         removeTag(creature, "approach");
@@ -673,15 +674,15 @@ export class Neat {
   /**
    * Create the initial pool of genomes
    */
-  async populatePopulation(network: Creature) {
-    assert(network, "Network mandatory");
+  async populatePopulation(creature: Creature) {
+    assert(creature, "Network mandatory");
 
     if (this.config.debug) {
-      network.validate();
+      creatureValidate(creature);
     }
     while (this.population.length < this.config.populationSize - 1) {
       const clonedCreature = Creature.fromJSON(
-        network.internalJSON(),
+        creature.internalJSON(),
         this.config.debug,
       );
       const creatures = [clonedCreature];
@@ -689,7 +690,7 @@ export class Neat {
       this.population.push(creatures[0]);
     }
 
-    this.population.unshift(network);
+    this.population.unshift(creature);
 
     await this.deDuplicate(this.population);
   }

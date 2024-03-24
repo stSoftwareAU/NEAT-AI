@@ -2,6 +2,7 @@ import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature, CreatureTrace, CreatureUtil } from "../../mod.ts";
 import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
 import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import { creatureValidate } from "../architecture/CreatureValidate.ts";
 
 export async function compactUnused(
   traced: CreatureTrace,
@@ -32,7 +33,7 @@ export async function compactUnused(
         ) {
           addTag(compacted, "unused", neuron.uuid);
           try {
-            compacted.validate();
+            creatureValidate(compacted);
           } catch (e) {
             console.warn("compactUnused", e.message);
             compacted.fix();

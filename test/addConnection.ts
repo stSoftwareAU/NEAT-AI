@@ -1,16 +1,17 @@
 import { Creature } from "../src/Creature.ts";
+import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("addConnection", () => {
-  const network = new Creature(2, 1);
-  network.validate();
+  const creature = new Creature(2, 1);
+  creatureValidate(creature);
   for (let i = 10; i--;) {
-    network.addNeuron();
+    creature.addNeuron();
   }
 
   for (let i = 10; i--;) {
-    network.addConnection();
+    creature.addConnection();
   }
 
-  network.validate();
+  creatureValidate(creature);
 });

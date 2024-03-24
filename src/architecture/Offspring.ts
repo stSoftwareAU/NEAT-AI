@@ -2,6 +2,7 @@ import { addTags } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";
+import { creatureValidate } from "./CreatureValidate.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -212,7 +213,7 @@ export class Offspring {
     offspring.clearState();
 
     try {
-      offspring.validate();
+      creatureValidate(offspring);
 
       return offspring;
     } catch (e) {
@@ -222,7 +223,7 @@ export class Offspring {
         case "NO_INWARD_CONNECTIONS":
         case "IF_CONDITIONS":
           offspring.fix();
-          offspring.validate();
+          creatureValidate(offspring);
           return offspring;
         default:
           console.info(e);

@@ -1,5 +1,6 @@
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -52,19 +53,19 @@ const json: CreatureInternal = {
 };
 
 Deno.test("subNode", () => {
-  const network = Creature.fromJSON(json);
-  network.validate({ neurons: 4, connections: 3 });
-  network.subNeuron();
-  network.validate({ neurons: 4 });
+  const creature = Creature.fromJSON(json);
+  creatureValidate(creature, { neurons: 4, connections: 3 });
+  creature.subNeuron();
+  creatureValidate(creature, { neurons: 4 });
   for (let i = 100; i--;) {
-    network.validate();
-    network.addNeuron();
+    creature.validate();
+    creature.addNeuron();
   }
 
-  network.validate({ neurons: 104 });
+  creatureValidate(creature, { neurons: 104 });
 
   for (let i = 110; i--;) {
-    network.subNeuron();
+    creature.subNeuron();
   }
-  network.validate({ neurons: 4, connections: 3 });
+  creatureValidate(creature, { neurons: 4, connections: 3 });
 });

@@ -13,6 +13,7 @@ import { train } from "../src/architecture/Training.ts";
 import { NeatOptions } from "../src/config/NeatOptions.ts";
 import { TrainOptions } from "../src/config/TrainOptions.ts";
 import { Mutation } from "../src/methods/mutation.ts";
+import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -67,7 +68,7 @@ async function evolveSet(
   iterations: number,
   error: number,
 ) {
-  const network = new Creature(set[0].input.length, set[0].output.length, {
+  const creature = new Creature(set[0].input.length, set[0].output.length, {
     layers: [
       { count: 5 },
     ],
@@ -78,38 +79,38 @@ async function evolveSet(
     threads: 1,
   };
 
-  const results = await network.evolveDataSet(set, options);
+  const results = await creature.evolveDataSet(set, options);
 
   assert(results.error <= error, `expected: ${error}, was: ${results.error}`);
 
   set.forEach((dr) => {
-    const nt0 = network.activate(dr.input)[0];
+    const nt0 = creature.activate(dr.input)[0];
 
-    const nt1 = network.activate(dr.input)[0];
-    network.validate();
+    const nt1 = creature.activate(dr.input)[0];
+    creatureValidate(creature);
 
     if (Math.abs(nt0 - nt1) > 0.0001) {
       Deno.writeTextFileSync(
         ".start.json",
-        JSON.stringify(network.exportJSON(), null, 2),
+        JSON.stringify(creature.exportJSON(), null, 2),
       );
-      const nt2 = network.activate(dr.input)[0];
+      const nt2 = creature.activate(dr.input)[0];
 
       Deno.writeTextFileSync(
         ".end.json",
-        JSON.stringify(network.exportJSON(), null, 2),
+        JSON.stringify(creature.exportJSON(), null, 2),
       );
       // console.log(dr.input);
-      const n0 = Creature.fromJSON(network.exportJSON()).activate(
+      const n0 = Creature.fromJSON(creature.exportJSON()).activate(
         dr.input,
       )[0];
 
-      network.clearCache();
-      const c1 = network.activate(dr.input)[0];
-      const n1 = Creature.fromJSON(network.exportJSON()).activate(
+      creature.clearCache();
+      const c1 = creature.activate(dr.input)[0];
+      const n1 = Creature.fromJSON(creature.exportJSON()).activate(
         dr.input,
       )[0];
-      const network2 = Creature.fromJSON(network.exportJSON());
+      const network2 = Creature.fromJSON(creature.exportJSON());
       const n2 = network2.activate(dr.input)[0];
       const n2b = network2.activate(dr.input)[0];
       assertAlmostEquals(
@@ -122,8 +123,8 @@ async function evolveSet(
       );
     }
 
-    const r0 = network.activateAndTrace(dr.input)[0];
-    const r1 = network.activateAndTrace(dr.input)[0];
+    const r0 = creature.activateAndTrace(dr.input)[0];
+    const r1 = creature.activateAndTrace(dr.input)[0];
     assertAlmostEquals(
       r0,
       r1,
@@ -132,7 +133,7 @@ async function evolveSet(
         r1,
     );
 
-    const r2 = network.activate(dr.input)[0];
+    const r2 = creature.activate(dr.input)[0];
 
     assertAlmostEquals(
       r1,

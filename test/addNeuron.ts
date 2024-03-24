@@ -2,6 +2,7 @@ import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -75,12 +76,12 @@ const json: CreatureInternal = {
 
 Deno.test("addNodeValidate", () => {
   for (let j = 10; j--;) {
-    const network = Creature.fromJSON(json);
+    const creature = Creature.fromJSON(json);
     for (let i = 1000; i--;) {
-      network.addNeuron();
+      creature.addNeuron();
     }
 
-    network.validate();
+    creatureValidate(creature);
   }
 });
 
