@@ -617,14 +617,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   /**
-   * Checks if the given node is projecting to this node
-   */
-  isProjectedBy(node: Neuron) {
-    const c = this.creature.getSynapse(node.index, this.index);
-    return c != null;
-  }
-
-  /**
    * Converts the node to a json object
    */
   exportJSON(): NeuronExport {

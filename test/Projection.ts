@@ -39,8 +39,4 @@ Deno.test("projection", () => {
   const flag3to0 = (outNode as Neuron).isProjectingTo(inNode0 as Neuron);
 
   assert(!flag3to0, "3 -> 0 should not be associated");
-
-  const project3by0 = (outNode as Neuron).isProjectedBy(inNode0 as Neuron);
-
-  assert(project3by0, "3 is projected by 0");
 });

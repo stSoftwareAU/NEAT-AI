@@ -730,9 +730,9 @@ export class Creature implements CreatureInternal {
     let results = this.cacheTo.get(toIndx);
     if (results === undefined) {
       results = [];
-      const tmpList = this.synapses;
-      for (let i = tmpList.length; i--;) {
-        const c = tmpList[i];
+
+      for (let i = this.synapses.length; i--;) {
+        const c = this.synapses[i];
 
         if (c.to === toIndx) results.push(c);
       }
@@ -760,33 +760,27 @@ export class Creature implements CreatureInternal {
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
 
-        if (c.from === fromIndx) results.push(c);
+        if (c.from === fromIndx) {
+          results.push(c);
+        } else if (c.from < fromIndx) {
+          break;
+        }
       }
 
+      results.reverse();
       this.cacheFrom.set(fromIndx, results);
     }
     return results;
   }
 
   getSynapse(from: number, to: number): Synapse | null {
-    if (Number.isInteger(from) == false || from < 0) {
-      throw new Error("FROM should be a non-negative integer was: " + from);
-    }
+    const outwardConnections = this.outwardConnections(from);
 
-    if (Number.isInteger(to) == false || to < 0) {
-      throw new Error("TO should be a non-negative integer was: " + to);
-    }
-
-    for (let pos = this.synapses.length; pos--;) {
-      const c = this.synapses[pos];
-
-      if (c.from == from) {
-        if (c.to == to) {
-          return c;
-        } else if (c.to < to) {
-          break;
-        }
-      } else if (c.from < from) {
+    for (let indx = outwardConnections.length; indx--;) {
+      const c = outwardConnections[indx];
+      if (c.to == to) {
+        return c;
+      } else if (c.to < to) {
         break;
       }
     }
