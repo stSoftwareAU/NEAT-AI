@@ -7,6 +7,7 @@ Deno.test("Neuron length", () => {
   creatureValidate(creature);
   try {
     creatureValidate(creature, { neurons: 9 });
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
       console.log(e);
@@ -20,6 +21,7 @@ Deno.test("Input", () => {
   creature.input = -1;
   try {
     creatureValidate(creature);
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
       console.log(e);
@@ -33,6 +35,7 @@ Deno.test("Output", () => {
   creature.output = -1;
   try {
     creatureValidate(creature);
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
       console.log(e);
@@ -46,6 +49,7 @@ Deno.test("No UUID", () => {
   creature.neurons[0].uuid = "";
   try {
     creatureValidate(creature);
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
       console.log(e);
@@ -61,6 +65,7 @@ Deno.test("Duplicate UUID", () => {
   creature.neurons[11].uuid = "A";
   try {
     creatureValidate(creature);
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
       console.log(e);
@@ -76,6 +81,7 @@ Deno.test("invalid input UUID", () => {
 
   try {
     creatureValidate(creature);
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
       console.log(e);
@@ -90,6 +96,7 @@ Deno.test("Bias", () => {
   creature.neurons[10].bias = Infinity;
   try {
     creatureValidate(creature);
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
       console.log(e);
@@ -104,6 +111,7 @@ Deno.test("Output Index", () => {
   creature.neurons[11].uuid = "output-10";
   try {
     creatureValidate(creature);
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
       console.log(e);
@@ -117,8 +125,25 @@ Deno.test("connections length", () => {
   creatureValidate(creature);
   try {
     creatureValidate(creature, { connections: 9 });
+    fail("Expected error");
   } catch (e) {
     if (e.name !== "OTHER") {
+      console.log(e);
+      fail("Expected error name to be OTHER");
+    }
+  }
+});
+
+Deno.test("output inward", () => {
+  const creature = new Creature(10, 2);
+  creatureValidate(creature);
+  creature.synapses.length = 0;
+  creature.clearCache();
+  try {
+    creatureValidate(creature);
+    fail("Expected error");
+  } catch (e) {
+    if (e.name !== "NO_INWARD_CONNECTIONS") {
       console.log(e);
       fail("Expected error name to be OTHER");
     }
