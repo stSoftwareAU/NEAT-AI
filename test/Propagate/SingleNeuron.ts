@@ -85,10 +85,13 @@ Deno.test("OneAndDone", () => {
   );
 
   const input = [-1, 0, 1];
-  creature.activate(input);
   const expected = makeOutput(input);
 
-  creature.propagate(expected, config);
+  for (let i = 0; i < 100; i++) {
+    creature.activateAndTrace(input);
+
+    creature.propagate(expected, config);
+  }
 
   Deno.writeTextFileSync(
     `${traceDir}/1-trace.json`,
