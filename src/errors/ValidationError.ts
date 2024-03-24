@@ -1,4 +1,5 @@
 type ValidationErrorName =
+  | "OTHER"
   | "NO_OUTWARD_CONNECTIONS"
   | "NO_INWARD_CONNECTIONS"
   | "IF_CONDITIONS";

@@ -11,21 +11,24 @@ export function creatureValidate(
 ) {
   if (options && options.neurons) {
     if (creature.neurons.length !== options.neurons) {
-      throw new Error(
-        `Node length: ${creature.neurons.length} expected: ${options.neurons}`,
+      throw new ValidationError(
+        `Neurons length: ${creature.neurons.length} expected: ${options.neurons}`,
+        "OTHER",
       );
     }
   }
 
   if (Number.isInteger(creature.input) == false || creature.input < 1) {
-    throw new Error(
+    throw new ValidationError(
       `Must have at least one input neurons was: ${creature.input}`,
+      "OTHER",
     );
   }
 
   if (Number.isInteger(creature.output) == false || creature.output < 1) {
-    throw new Error(
+    throw new ValidationError(
       `Must have at least one output neurons was: ${creature.output}`,
+      "OTHER",
     );
   }
 
@@ -42,7 +45,7 @@ export function creatureValidate(
   creature.neurons.forEach((node, indx) => {
     const uuid = node.uuid;
     if (!uuid) {
-      throw new Error(`${node.ID()}) no UUID`);
+      throw new ValidationError(`${node.ID()}) no UUID`, "OTHER");
     }
     if (UUIDs.has(uuid)) {
       if (creature.DEBUG) {
@@ -54,7 +57,10 @@ export function creatureValidate(
 
         creature.DEBUG = true;
       }
-      throw new Error(`${node.ID()}) duplicate UUID: ${uuid}`);
+      throw new ValidationError(
+        `${node.ID()}) duplicate UUID: ${uuid}`,
+        "OTHER",
+      );
     }
     if (uuid.startsWith("input-")) {
       if (uuid !== "input-" + indx) {
@@ -67,7 +73,10 @@ export function creatureValidate(
 
           creature.DEBUG = true;
         }
-        throw new Error(`${node.ID()}) invalid input UUID: ${uuid}`);
+        throw new ValidationError(
+          `${node.ID()}) invalid input UUID: ${uuid}`,
+          "OTHER",
+        );
       }
     } else {
       if (!Number.isFinite(node.bias)) {
