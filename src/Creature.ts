@@ -921,14 +921,6 @@ export class Creature implements CreatureInternal {
    * Disconnects the from neuron from the to node
    */
   disconnect(from: number, to: number) {
-    if (Number.isInteger(from) == false || from < 0) {
-      throw new Error("from should be a non-negative integer was: " + from);
-    }
-    if (Number.isInteger(to) == false || to < 0) {
-      throw new Error("to should be a non-negative integer was: " + to);
-    }
-
-    // Delete the connection in the creature's connection array
     const connections = this.synapses;
 
     let found = false;
