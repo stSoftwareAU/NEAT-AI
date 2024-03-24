@@ -55,7 +55,7 @@ Deno.test("TagSynapse", async () => {
   const babyUUID = await CreatureUtil.makeUUID(baby);
 
   const message = getTag(baby.synapses[0], "hello");
-  assert(message == "mum" || message == "dad", `Lost name ${message}`);
+  assert(/^(mum|dad)$/.test(`${message}`), `Lost name ${message}`);
 
   assertEquals(mumUUID, dadUUID);
 
