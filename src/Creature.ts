@@ -937,15 +937,13 @@ export class Creature implements CreatureInternal {
       if (connection.from === from && connection.to === to) {
         found = true;
         connections.splice(i, 1);
-        this.clearCache();
+        this.clearCache(from, to);
 
         break;
       }
     }
 
-    if (!found) {
-      throw new Error("No connection from: " + from + ", to: " + to);
-    }
+    assert(found, "Can't disconnect");
   }
 
   async applyLearnings(config: BackPropagationConfig) {
