@@ -128,7 +128,7 @@ export async function fineTuneImprovement(
       const trainID = getTag(fittest, "trainID");
       console.info(
         bold(cyan("Training")),
-        blue(trainID ? trainID : "UNKNOWN"),
+        blue(`${trainID}`),
         "increased fitness by",
         fScore - pScore,
         "to",

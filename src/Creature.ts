@@ -680,6 +680,7 @@ export class Creature implements CreatureInternal {
 
     const workers: WorkerHandler[] = [];
     const config = new NeatConfig(options);
+
     const threads = Math.round(
       Math.max(
         options.threads ? options.threads : navigator.hardwareConcurrency,

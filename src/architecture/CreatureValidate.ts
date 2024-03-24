@@ -271,8 +271,9 @@ export function creatureValidate(
     }
 
     if (node.index !== indx) {
-      throw new Error(
+      throw new ValidationError(
         `${node.ID()}) node.index: ${node.index} does not match expected index ${indx}`,
+        "OTHER",
       );
     }
 
@@ -282,8 +283,9 @@ export function creatureValidate(
   });
 
   if (stats.input !== creature.input) {
-    throw new Error(
+    throw new ValidationError(
       `Expected ${creature.input} input neurons found: ${stats.input}`,
+      "OTHER",
     );
   }
 
