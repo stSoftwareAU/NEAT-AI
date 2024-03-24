@@ -828,50 +828,6 @@ export class Creature implements CreatureInternal {
     weight: number,
     type?: "positive" | "negative" | "condition",
   ): Synapse {
-    if (Number.isInteger(from) == false || from < 0) {
-      throw new Error("from should be a non-negative integer was: " + from);
-    }
-
-    if (Number.isInteger(to) == false || to < 0) {
-      throw new Error("to should be a non-negative integer was: " + to);
-    }
-
-    if (to < this.input) {
-      throw new Error(
-        "to should not be pointed to any input neurons(" +
-          this.input + "): " + to,
-      );
-    }
-
-    if (to < from) {
-      throw new Error("to: " + to + " should not be less than from: " + from);
-    }
-
-    if (typeof weight !== "number") {
-      if (this.DEBUG) {
-        this.DEBUG = false;
-        console.warn(
-          JSON.stringify(this.exportJSON(), null, 2),
-        );
-
-        this.DEBUG = true;
-      }
-
-      throw new Error(from + ":" + to + ") weight not a number was: " + weight);
-    }
-
-    const toNeuron = this.neurons[to];
-    if (toNeuron) {
-      const toType = toNeuron.type;
-      if (toType == "constant" || toType == "input") {
-        throw new Error(`Can not connect ${from}->${to} with type ${toType}`);
-      }
-    } else {
-      throw new Error(
-        `Can't connect to index: ${to} of length: ${this.neurons.length}`,
-      );
-    }
-
     const connection = new Synapse(
       from,
       to,
