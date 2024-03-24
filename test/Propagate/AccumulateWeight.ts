@@ -1,9 +1,9 @@
 import { assertAlmostEquals } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { accumulateWeight } from "../../src/architecture/BackPropagation.ts";
-import { SynapseState } from "../../src/architecture/CreatureState.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Creature, CreatureExport } from "../../mod.ts";
 import { adjustedWeight } from "../../src/architecture/BackPropagation.ts";
+import { SynapseState } from "../../src/propagate/SynapseState.ts";
 
 Deno.test("AccumulateWeight-Standard", () => {
   const cs = new SynapseState();

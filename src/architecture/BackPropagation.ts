@@ -1,7 +1,8 @@
 import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import { CreatureState, SynapseState } from "./CreatureState.ts";
+import { SynapseState } from "../propagate/SynapseState.ts";
+import { CreatureState } from "./CreatureState.ts";
 import { Neuron } from "./Neuron.ts";
 import { Synapse } from "./Synapse.ts";
 

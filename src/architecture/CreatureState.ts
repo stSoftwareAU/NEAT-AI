@@ -1,4 +1,5 @@
 import { Creature } from "../Creature.ts";
+import { SynapseState } from "../propagate/SynapseState.ts";
 import { BackPropagationConfig } from "./BackPropagation.ts";
 
 export interface NeuronStateInterface {
@@ -61,13 +62,6 @@ export class NeuronState implements NeuronStateInterface {
     this.totalValue += value + difference;
     this.totalWeightedSum += value - currentBias;
   }
-}
-
-export class SynapseState {
-  count = 0;
-
-  averageWeight = 0;
-  public used?: boolean;
 }
 
 export class CreatureState {

@@ -630,12 +630,6 @@ export class Creature implements CreatureInternal {
    * Back propagate the creature
    */
   propagate(expected: number[], config: BackPropagationConfig) {
-    if (expected === undefined || expected.length !== this.output) {
-      throw new Error(
-        `Expected length should match creature's output length: ${this.output} was: ${expected?.length}`,
-      );
-    }
-
     this.state.cacheAdjustedActivation.clear();
     const indices = Int32Array.from({ length: this.output }, (_, i) => i); // Create an array of indices
 
@@ -644,18 +638,16 @@ export class Creature implements CreatureInternal {
     }
 
     const lastOutputIndx = this.neurons.length - this.output;
-    for (let attempts = this.output; attempts--;) {
-      for (let i = this.output; i--;) {
-        const expectedIndex = indices[i];
-        const nodeIndex = lastOutputIndx + expectedIndex;
+    for (let i = this.output; i--;) {
+      const expectedIndex = indices[i];
+      const nodeIndex = lastOutputIndx + expectedIndex;
 
-        const n = this.neurons[nodeIndex];
+      const n = this.neurons[nodeIndex];
 
-        n.propagate(
-          expected[expectedIndex],
-          config,
-        );
-      }
+      n.propagate(
+        expected[expectedIndex],
+        config,
+      );
     }
   }
 
