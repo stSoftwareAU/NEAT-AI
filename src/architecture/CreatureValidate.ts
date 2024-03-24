@@ -80,7 +80,10 @@ export function creatureValidate(
       }
     } else {
       if (!Number.isFinite(node.bias)) {
-        throw new Error(`${node.ID()}) invalid bias: ${node.bias}`);
+        throw new ValidationError(
+          `${node.ID()}) invalid bias: ${node.bias}`,
+          "OTHER",
+        );
       }
     }
 
@@ -97,7 +100,10 @@ export function creatureValidate(
 
           creature.DEBUG = true;
         }
-        throw new Error(`${uuid} + ") invalid output UUID: ${uuid}`);
+        throw new ValidationError(
+          `${uuid} + ") invalid output UUID: ${uuid}`,
+          "OTHER",
+        );
       }
     }
 
@@ -313,10 +319,11 @@ export function creatureValidate(
 
   if (options && Number.isInteger(options.connections)) {
     if (creature.synapses.length !== options.connections) {
-      throw new Error(
+      throw new ValidationError(
         "Synapses length: " + creature.synapses.length +
           " expected: " +
           options.connections,
+        "OTHER",
       );
     }
   }

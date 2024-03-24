@@ -83,3 +83,44 @@ Deno.test("invalid input UUID", () => {
     }
   }
 });
+
+Deno.test("Bias", () => {
+  const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
+  creature.DEBUG = true;
+  creature.neurons[10].bias = Infinity;
+  try {
+    creatureValidate(creature);
+  } catch (e) {
+    if (e.name !== "OTHER") {
+      console.log(e);
+      fail("Expected error name to be OTHER");
+    }
+  }
+});
+
+Deno.test("Output Index", () => {
+  const creature = new Creature(10, 2);
+  creature.DEBUG = true;
+  creature.neurons[11].uuid = "output-10";
+  try {
+    creatureValidate(creature);
+  } catch (e) {
+    if (e.name !== "OTHER") {
+      console.log(e);
+      fail("Expected error name to be OTHER");
+    }
+  }
+});
+
+Deno.test("connections length", () => {
+  const creature = new Creature(10, 2);
+  creatureValidate(creature);
+  try {
+    creatureValidate(creature, { connections: 9 });
+  } catch (e) {
+    if (e.name !== "OTHER") {
+      console.log(e);
+      fail("Expected error name to be OTHER");
+    }
+  }
+});
