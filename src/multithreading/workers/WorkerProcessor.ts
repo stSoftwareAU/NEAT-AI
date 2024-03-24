@@ -4,6 +4,7 @@ import { CostInterface, Costs } from "../../Costs.ts";
 import { Creature } from "../../Creature.ts";
 import { trainDir } from "../../architecture/Training.ts";
 import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
+import { creatureValidate } from "../../architecture/CreatureValidate.ts";
 
 export class WorkerProcessor {
   private dataSetDir: string | null = null;
@@ -45,7 +46,7 @@ export class WorkerProcessor {
         },
       };
     } else if (data.train) {
-      const network = Creature.fromJSON(
+      const creature = Creature.fromJSON(
         JSON.parse(data.train.creature),
         data.debug,
       );
@@ -54,16 +55,16 @@ export class WorkerProcessor {
 
       assert(this.dataSetDir, "No data dir");
 
-      network.validate();
+      creatureValidate(creature);
       const result = await trainDir(
-        network,
+        creature,
         this.dataSetDir,
         data.train.options,
       );
-      network.validate();
-      const json = JSON.stringify(network.exportJSON());
+      creatureValidate(creature);
+      const json = JSON.stringify(creature.exportJSON());
 
-      network.dispose();
+      creature.dispose();
 
       return {
         taskID: data.taskID,

@@ -1,6 +1,7 @@
 import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
 import { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { Creature } from "../Creature.ts";
+import { creatureValidate } from "../architecture/CreatureValidate.ts";
 
 export class Upgrade {
   static correct(
@@ -15,10 +16,10 @@ export class Upgrade {
     assert(adjIndex >= 0, `Can only expand models ${json.input} -> ${input}`);
 
     json2.input = input;
-    const network = Creature.fromJSON(json2);
+    const creature = Creature.fromJSON(json2);
 
-    network.fix();
-    network.validate();
-    return network;
+    creature.fix();
+    creatureValidate(creature);
+    return creature;
   }
 }

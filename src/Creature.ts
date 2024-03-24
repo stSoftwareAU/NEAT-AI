@@ -40,8 +40,8 @@ import { CreatureUtil } from "../mod.ts";
 import { NeuronStateInterface } from "./architecture/CreatureState.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import { compactUnused } from "./compact/CompactUnused.ts";
-import { ValidationError } from "./errors/ValidationError.ts";
 import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
+import { creatureValidate } from "./architecture/CreatureValidate.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this creature */
@@ -86,7 +86,7 @@ export class Creature implements CreatureInternal {
       this.initialize(options);
 
       if (this.DEBUG) {
-        this.validate();
+        creatureValidate(this);
       }
     }
   }
@@ -389,315 +389,8 @@ export class Creature implements CreatureInternal {
     }
   }
 
-  /**
-   * Validate the creature
-   * @param options specific values to check
-   */
-  validate(options?: { neurons?: number; connections?: number }) {
-    if (options && options.neurons) {
-      if (this.neurons.length !== options.neurons) {
-        throw new Error(
-          `Node length: ${this.neurons.length} expected: ${options.neurons}`,
-        );
-      }
-    }
-
-    if (Number.isInteger(this.input) == false || this.input < 1) {
-      throw new Error(
-        `Must have at least one input neurons was: ${this.input}`,
-      );
-    }
-
-    if (Number.isInteger(this.output) == false || this.output < 1) {
-      throw new Error(
-        `Must have at least one output neurons was: ${this.output}`,
-      );
-    }
-
-    const stats = {
-      input: 0,
-      constant: 0,
-      hidden: 0,
-      output: 0,
-      connections: 0,
-    };
-
-    let outputIndx = 0;
-    const UUIDs = new Set<string>();
-    this.neurons.forEach((node, indx) => {
-      const uuid = node.uuid;
-      if (!uuid) {
-        throw new Error(`${node.ID()}) no UUID`);
-      }
-      if (UUIDs.has(uuid)) {
-        if (this.DEBUG) {
-          this.DEBUG = false;
-          Deno.writeTextFileSync(
-            ".validate.json",
-            JSON.stringify(this.exportJSON(), null, 2),
-          );
-
-          this.DEBUG = true;
-        }
-        throw new Error(`${node.ID()}) duplicate UUID: ${uuid}`);
-      }
-      if (uuid.startsWith("input-")) {
-        if (uuid !== "input-" + indx) {
-          if (this.DEBUG) {
-            this.DEBUG = false;
-            Deno.writeTextFileSync(
-              ".validate.json",
-              JSON.stringify(this.exportJSON(), null, 2),
-            );
-
-            this.DEBUG = true;
-          }
-          throw new Error(`${node.ID()}) invalid input UUID: ${uuid}`);
-        }
-      } else {
-        if (!Number.isFinite(node.bias)) {
-          throw new Error(`${node.ID()}) invalid bias: ${node.bias}`);
-        }
-      }
-
-      if (node.type == "output") {
-        const expectedUUID = `output-${outputIndx}`;
-        outputIndx++;
-        if (uuid !== expectedUUID) {
-          if (this.DEBUG) {
-            this.DEBUG = false;
-            Deno.writeTextFileSync(
-              ".validate.json",
-              JSON.stringify(this.exportJSON(), null, 2),
-            );
-
-            this.DEBUG = true;
-          }
-          throw new Error(`${uuid} + ") invalid output UUID: ${uuid}`);
-        }
-      }
-
-      UUIDs.add(uuid);
-
-      if (node.squash === "IF" && indx > 2) {
-        const toList = this.inwardConnections(indx);
-        if (toList.length < 3) {
-          throw new ValidationError(
-            `${node.ID()}) 'IF' should have at least 3 inward connections was: ${toList.length}`,
-            "IF_CONDITIONS",
-          );
-        }
-
-        let foundPositive = false;
-        let foundCondition = false;
-        let foundNegative = false;
-
-        for (let i = toList.length; i--;) {
-          const c = toList[i];
-          if (c.type == "condition") {
-            foundCondition = true;
-          } else if (c.type == "negative") {
-            foundNegative = true;
-          } else if (c.type == "positive") {
-            foundPositive = true;
-          }
-        }
-        if (!foundCondition || !foundPositive || !foundNegative) {
-          if (this.DEBUG) {
-            this.DEBUG = false;
-            console.warn(
-              JSON.stringify(this.exportJSON(), null, 2),
-            );
-            this.DEBUG = true;
-          }
-        }
-        if (!foundCondition) {
-          throw new ValidationError(
-            `${node.ID()}) 'IF' should have a condition(s)`,
-            "IF_CONDITIONS",
-          );
-        }
-        if (!foundPositive) {
-          throw new ValidationError(
-            `${node.ID()}) 'IF' should have a positive connection(s)`,
-            "IF_CONDITIONS",
-          );
-        }
-        if (!foundNegative) {
-          throw new ValidationError(
-            `${node.ID()}) 'IF' should have a negative connection(s)`,
-            "IF_CONDITIONS",
-          );
-        }
-      }
-      switch (node.type) {
-        case "input": {
-          stats.input++;
-          const toList = this.inwardConnections(indx);
-          if (toList.length > 0) {
-            throw new Error(
-              `'input' neuron ${node.ID()} has inward connections: ${toList.length}`,
-            );
-          }
-          break;
-        }
-        case "constant": {
-          stats.constant++;
-          const toList = this.inwardConnections(indx);
-          if (toList.length > 0) {
-            throw new Error(
-              `'${node.type}' neuron ${node.ID()}  has inward connections: ${toList.length}`,
-            );
-          }
-          if (node.squash) {
-            throw new Error(
-              `Node ${node.ID()} '${node.type}' has squash: ${node.squash}`,
-            );
-          }
-          const fromList = this.outwardConnections(indx);
-          if (fromList.length == 0) {
-            if (this.DEBUG) {
-              this.DEBUG = false;
-              console.warn(
-                JSON.stringify(
-                  this.internalJSON(),
-                  null,
-                  2,
-                ),
-              );
-              this.DEBUG = true;
-            }
-            throw new ValidationError(
-              `constants neuron ${node.ID()} has no outward connections`,
-              "NO_OUTWARD_CONNECTIONS",
-            );
-          }
-          break;
-        }
-        case "hidden": {
-          stats.hidden++;
-          const toList = this.inwardConnections(indx);
-          if (toList.length == 0) {
-            throw new ValidationError(
-              `hidden neuron ${node.ID()} has no inward connections`,
-              "NO_INWARD_CONNECTIONS",
-            );
-          }
-          const fromList = this.outwardConnections(indx);
-          if (fromList.length == 0) {
-            if (this.DEBUG) {
-              this.DEBUG = false;
-              console.warn(
-                JSON.stringify(
-                  this.exportJSON(),
-                  null,
-                  2,
-                ),
-              );
-              this.DEBUG = true;
-            }
-            throw new ValidationError(
-              `hidden neuron ${node.ID()} has no outward connections`,
-              "NO_OUTWARD_CONNECTIONS",
-            );
-          }
-          if (node.bias === undefined) {
-            throw new Error(
-              `hidden neuron ${node.ID()} should have a bias was: ${node.bias}`,
-            );
-          }
-          if (!Number.isFinite(node.bias)) {
-            throw new Error(
-              `${node.ID()}) hidden neuron should have a finite bias was: ${node.bias}`,
-            );
-          }
-
-          break;
-        }
-        case "output": {
-          stats.output++;
-          const toList = this.inwardConnections(indx);
-          if (toList.length == 0) {
-            if (this.DEBUG) {
-              this.DEBUG = false;
-              console.warn(
-                JSON.stringify(
-                  this.exportJSON(),
-                  null,
-                  2,
-                ),
-              );
-              this.DEBUG = true;
-            }
-            throw new ValidationError(
-              `${node.ID()}) output neuron has no inward connections`,
-              "NO_INWARD_CONNECTIONS",
-            );
-          }
-          break;
-        }
-        default:
-          throw new Error(`${node.ID()}) Invalid type: ${node.type}`);
-      }
-
-      if (node.index !== indx) {
-        throw new Error(
-          `${node.ID()}) node.index: ${node.index} does not match expected index ${indx}`,
-        );
-      }
-
-      if (node.creature !== this) {
-        throw new Error(`node ${node.ID()} creature mismatch`);
-      }
-    });
-
-    if (stats.input !== this.input) {
-      throw new Error(
-        `Expected ${this.input} input neurons found: ${stats.input}`,
-      );
-    }
-
-    if (stats.output !== this.output) {
-      throw new Error(
-        `Expected ${this.output} output neurons found: ${stats.output}`,
-      );
-    }
-
-    let lastFrom = -1;
-    let lastTo = -1;
-    this.synapses.forEach((c, indx) => {
-      stats.connections++;
-      const toNode = this.neurons[c.to];
-
-      if (toNode.type === "input") {
-        throw new Error(indx + ") connection points to an input node");
-      }
-
-      if (c.from < lastFrom) {
-        throw new Error(indx + ") synapses not sorted");
-      } else if (c.from > lastFrom) {
-        lastTo = -1;
-      }
-
-      if (c.from == lastFrom && c.to <= lastTo) {
-        throw new Error(indx + ") synapses not sorted");
-      }
-
-      lastFrom = c.from;
-      lastTo = c.to;
-    });
-
-    if (options && Number.isInteger(options.connections)) {
-      if (this.synapses.length !== options.connections) {
-        throw new Error(
-          "Synapses length: " + this.synapses.length +
-            " expected: " +
-            options.connections,
-        );
-      }
-    }
-
-    return stats;
+  validate() {
+    creatureValidate(this);
   }
 
   selfConnection(indx: number): SynapseInternal | null {
@@ -1725,7 +1418,7 @@ export class Creature implements CreatureInternal {
 
       node1.fix();
       node2.fix();
-      if (this.DEBUG) this.validate();
+      if (this.DEBUG) creatureValidate(this);
     }
   }
 
@@ -1802,7 +1495,7 @@ export class Creature implements CreatureInternal {
     delete this.uuid;
     this.fix();
     if (this.DEBUG) {
-      this.validate();
+      creatureValidate(this);
     }
   }
 
@@ -1886,7 +1579,7 @@ export class Creature implements CreatureInternal {
    */
   exportJSON() {
     if (this.DEBUG) {
-      this.validate();
+      creatureValidate(this);
     }
 
     const json: CreatureExport = {
@@ -1957,7 +1650,7 @@ export class Creature implements CreatureInternal {
 
   internalJSON() {
     if (this.DEBUG) {
-      this.validate();
+      creatureValidate(this);
     }
 
     const json: CreatureInternal = {
@@ -2083,7 +1776,7 @@ export class Creature implements CreatureInternal {
     this.clearCache();
 
     if (validate) {
-      this.validate();
+      creatureValidate(this);
     }
   }
 
