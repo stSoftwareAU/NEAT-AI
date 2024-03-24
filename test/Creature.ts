@@ -557,13 +557,13 @@ Deno.test("NARX Sequence", async () => {
   ];
 
   for (let attempts = 0; true; attempts++) {
-    const narx = new Creature(1, 1, {
+    const creature = new Creature(1, 1, {
       layers: [
         { count: 5 },
       ],
     });
 
-    const result = await narx.evolveDataSet(trainingData, {
+    const result = await creature.evolveDataSet(trainingData, {
       iterations: 5000,
       targetError: 0.005,
       threads: 1,

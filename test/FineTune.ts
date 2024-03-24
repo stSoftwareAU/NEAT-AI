@@ -1,5 +1,5 @@
 import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
-import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { fineTuneImprovement } from "../src/architecture/FineTune.ts";
 
@@ -40,21 +40,46 @@ Deno.test("tune", async () => {
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
+  addTag(fittest, "approach", "Learnings");
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
 
-  const fineTuned = await fineTuneImprovement(fittest, previousFittest);
+  const fineTuned = await fineTuneImprovement(
+    fittest,
+    previousFittest,
+    10,
+    true,
+  );
 
   assert(
     fineTuned.length == 10,
     "We should have made ten changes, was: " + fineTuned.length,
   );
-
-  const fineTuned2 = await fineTuneImprovement(fittest, previousFittest, 3);
+  addTag(fittest, "approach", "trained");
+  const approach = getTag(fittest, "approach");
+  assert(approach == "trained", "Approach was: " + approach);
+  const fineTuned2 = await fineTuneImprovement(
+    fittest,
+    previousFittest,
+    3,
+    true,
+  );
 
   assert(
     fineTuned2.length == 3,
     "We should have detected THREE changes was: " + fineTuned2.length,
+  );
+  addTag(fittest, "approach", "compact");
+  const fineTuned3 = await fineTuneImprovement(
+    fittest,
+    previousFittest,
+    4,
+    true,
+  );
+
+  assert(
+    fineTuned3.length == 4,
+    "We should have detected FOUR changes was: " + fineTuned3.length,
   );
 });
 
@@ -91,10 +116,16 @@ Deno.test("many", async () => {
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
+  addTag(fittest, "approach", "fine");
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
 
-  const fineTuned = await fineTuneImprovement(fittest, previousFittest, 7);
+  const fineTuned = await fineTuneImprovement(
+    fittest,
+    previousFittest,
+    7,
+    true,
+  );
 
   assert(
     fineTuned.length == 7,
