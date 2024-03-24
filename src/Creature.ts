@@ -99,10 +99,16 @@ export class Creature implements CreatureInternal {
     this.neurons.length = 0;
   }
 
-  public clearCache() {
-    this.cacheTo.clear();
-    this.cacheFrom.clear();
-    this.cacheSelf.clear();
+  public clearCache(from = -1, to = -1) {
+    if (from == -1 || to == -1) {
+      this.cacheTo.clear();
+      this.cacheFrom.clear();
+      this.cacheSelf.clear();
+    } else {
+      this.cacheTo.delete(to);
+      this.cacheFrom.delete(from);
+      this.cacheSelf.delete(from);
+    }
   }
 
   private initialize(options: {
@@ -730,9 +736,9 @@ export class Creature implements CreatureInternal {
     let results = this.cacheTo.get(toIndx);
     if (results === undefined) {
       results = [];
-      const tmpList = this.synapses;
-      for (let i = tmpList.length; i--;) {
-        const c = tmpList[i];
+
+      for (let i = this.synapses.length; i--;) {
+        const c = this.synapses[i];
 
         if (c.to === toIndx) results.push(c);
       }
@@ -755,12 +761,20 @@ export class Creature implements CreatureInternal {
   outwardConnections(fromIndx: number): Synapse[] {
     let results = this.cacheFrom.get(fromIndx);
     if (results === undefined) {
-      results = [];
-      const tmpList = this.synapses;
-      for (let i = tmpList.length; i--;) {
-        const c = tmpList[i];
+      const startIndex = this.binarySearchForStartIndex(fromIndx);
 
-        if (c.from === fromIndx) results.push(c);
+      if (startIndex !== -1) {
+        results = [];
+        for (let i = startIndex; i < this.synapses.length; i++) {
+          const tmp = this.synapses[i];
+          if (tmp.from === fromIndx) {
+            results.push(tmp);
+          } else {
+            break; // Since it's sorted, no need to continue once 'from' changes
+          }
+        }
+      } else {
+        results = []; // No connections found
       }
 
       this.cacheFrom.set(fromIndx, results);
@@ -768,25 +782,36 @@ export class Creature implements CreatureInternal {
     return results;
   }
 
+  private binarySearchForStartIndex(fromIndx: number): number {
+    let low = 0;
+    let high = this.synapses.length - 1;
+    let result = -1; // Default to -1 if not found
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const midValue = this.synapses[mid];
+
+      if (midValue.from < fromIndx) {
+        low = mid + 1;
+      } else if (midValue.from > fromIndx) {
+        high = mid - 1;
+      } else {
+        result = mid; // Found a matching 'from', but need the first occurrence
+        high = mid - 1; // Look left to find the first match
+      }
+    }
+
+    return result;
+  }
+
   getSynapse(from: number, to: number): Synapse | null {
-    if (Number.isInteger(from) == false || from < 0) {
-      throw new Error("FROM should be a non-negative integer was: " + from);
-    }
+    const outwardConnections = this.outwardConnections(from);
 
-    if (Number.isInteger(to) == false || to < 0) {
-      throw new Error("TO should be a non-negative integer was: " + to);
-    }
-
-    for (let pos = this.synapses.length; pos--;) {
-      const c = this.synapses[pos];
-
-      if (c.from == from) {
-        if (c.to == to) {
-          return c;
-        } else if (c.to < to) {
-          break;
-        }
-      } else if (c.from < from) {
+    for (let indx = outwardConnections.length; indx--;) {
+      const c = outwardConnections[indx];
+      if (c.to == to) {
+        return c;
+      } else if (c.to < to) {
         break;
       }
     }
@@ -803,50 +828,6 @@ export class Creature implements CreatureInternal {
     weight: number,
     type?: "positive" | "negative" | "condition",
   ): Synapse {
-    if (Number.isInteger(from) == false || from < 0) {
-      throw new Error("from should be a non-negative integer was: " + from);
-    }
-
-    if (Number.isInteger(to) == false || to < 0) {
-      throw new Error("to should be a non-negative integer was: " + to);
-    }
-
-    if (to < this.input) {
-      throw new Error(
-        "to should not be pointed to any input neurons(" +
-          this.input + "): " + to,
-      );
-    }
-
-    if (to < from) {
-      throw new Error("to: " + to + " should not be less than from: " + from);
-    }
-
-    if (typeof weight !== "number") {
-      if (this.DEBUG) {
-        this.DEBUG = false;
-        console.warn(
-          JSON.stringify(this.exportJSON(), null, 2),
-        );
-
-        this.DEBUG = true;
-      }
-
-      throw new Error(from + ":" + to + ") weight not a number was: " + weight);
-    }
-
-    const toNeuron = this.neurons[to];
-    if (toNeuron) {
-      const toType = toNeuron.type;
-      if (toType == "constant" || toType == "input") {
-        throw new Error(`Can not connect ${from}->${to} with type ${toType}`);
-      }
-    } else {
-      throw new Error(
-        `Can't connect to index: ${to} of length: ${this.neurons.length}`,
-      );
-    }
-
     const connection = new Synapse(
       from,
       to,
@@ -887,7 +868,7 @@ export class Creature implements CreatureInternal {
       this.synapses.push(connection);
     }
 
-    this.clearCache();
+    this.clearCache(from, to);
 
     return connection;
   }
@@ -896,14 +877,6 @@ export class Creature implements CreatureInternal {
    * Disconnects the from neuron from the to node
    */
   disconnect(from: number, to: number) {
-    if (Number.isInteger(from) == false || from < 0) {
-      throw new Error("from should be a non-negative integer was: " + from);
-    }
-    if (Number.isInteger(to) == false || to < 0) {
-      throw new Error("to should be a non-negative integer was: " + to);
-    }
-
-    // Delete the connection in the creature's connection array
     const connections = this.synapses;
 
     let found = false;
@@ -912,15 +885,13 @@ export class Creature implements CreatureInternal {
       if (connection.from === from && connection.to === to) {
         found = true;
         connections.splice(i, 1);
-        this.clearCache();
+        this.clearCache(from, to);
 
         break;
       }
     }
 
-    if (!found) {
-      throw new Error("No connection from: " + from + ", to: " + to);
-    }
+    assert(found, "Can't disconnect");
   }
 
   async applyLearnings(config: BackPropagationConfig) {

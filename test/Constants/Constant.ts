@@ -50,30 +50,31 @@ Deno.test("Constants", () => {
     input: 1,
     output: 1,
   };
-  const network = Creature.fromJSON(json);
-  network.validate();
+  const creature = Creature.fromJSON(json);
+  creature.validate();
 
   for (let i = 100; i--;) {
-    network.modBias();
-    network.addConnection();
+    creature.modBias();
+    creature.addConnection();
   }
 
-  network.validate();
-  Creature.fromJSON(network.exportJSON());
+  creature.validate();
+  Creature.fromJSON(creature.exportJSON());
   assert(
-    Math.abs(network.neurons[1].bias) - 0.5 <
+    Math.abs(creature.neurons[1].bias) - 0.5 <
       0.00001,
-    "Should NOT have changed the constant node was: " + network.neurons[1].bias,
+    "Should NOT have changed the constant node was: " +
+      creature.neurons[1].bias,
   );
 
   assert(
-    (network.neurons[2].bias) > 0.60001 ||
-      (network.neurons[2].bias) < 0.59999,
-    "Should have changed the hidden node was: " + network.neurons[2].bias,
+    (creature.neurons[2].bias) > 0.60001 ||
+      (creature.neurons[2].bias) < 0.59999,
+    "Should have changed the hidden node was: " + creature.neurons[2].bias,
   );
 
   assert(
-    network.inwardConnections(1).length === 0,
+    creature.inwardConnections(1).length === 0,
     "Should not have any inward connections",
   );
 });
