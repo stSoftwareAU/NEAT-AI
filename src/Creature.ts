@@ -758,26 +758,6 @@ export class Creature implements CreatureInternal {
    * @param fromIndx the connections from this neuron by index
    * @returns the list of connections from the neuron.
    */
-  // outwardConnections(fromIndx: number): Synapse[] {
-  //   let results = this.cacheFrom.get(fromIndx);
-  //   if (results === undefined) {
-  //     results = [];
-  //     const tmpList = this.synapses;
-  //     for (let i = tmpList.length; i--;) {
-  //       const c = tmpList[i];
-
-  //       if (c.from === fromIndx) {
-  //         results.push(c);
-  //       } else if (c.from < fromIndx) {
-  //         break;
-  //       }
-  //     }
-
-  //     results.reverse();
-  //     this.cacheFrom.set(fromIndx, results);
-  //   }
-  //   return results;
-  // }
   outwardConnections(fromIndx: number): Synapse[] {
     let results = this.cacheFrom.get(fromIndx);
     if (results === undefined) {
