@@ -43,7 +43,7 @@ export interface BackPropagationOptions {
   /** When limiting the weight/bias use exponential scaling, Default enabled */
   disableExponentialScaling?: boolean;
 
-  /** the minimum unit of weights/baises */
+  /** the minimum unit of weights/biases */
   plankConstant?: number;
 }
 
