@@ -99,10 +99,16 @@ export class Creature implements CreatureInternal {
     this.neurons.length = 0;
   }
 
-  public clearCache() {
-    this.cacheTo.clear();
-    this.cacheFrom.clear();
-    this.cacheSelf.clear();
+  public clearCache(from = -1, to = -1) {
+    if (from == -1 || to == -1) {
+      this.cacheTo.clear();
+      this.cacheFrom.clear();
+      this.cacheSelf.clear();
+    } else {
+      this.cacheTo.delete(to);
+      this.cacheFrom.delete(from);
+      this.cacheSelf.delete(from);
+    }
   }
 
   private initialize(options: {
@@ -752,25 +758,70 @@ export class Creature implements CreatureInternal {
    * @param fromIndx the connections from this neuron by index
    * @returns the list of connections from the neuron.
    */
+  // outwardConnections(fromIndx: number): Synapse[] {
+  //   let results = this.cacheFrom.get(fromIndx);
+  //   if (results === undefined) {
+  //     results = [];
+  //     const tmpList = this.synapses;
+  //     for (let i = tmpList.length; i--;) {
+  //       const c = tmpList[i];
+
+  //       if (c.from === fromIndx) {
+  //         results.push(c);
+  //       } else if (c.from < fromIndx) {
+  //         break;
+  //       }
+  //     }
+
+  //     results.reverse();
+  //     this.cacheFrom.set(fromIndx, results);
+  //   }
+  //   return results;
+  // }
   outwardConnections(fromIndx: number): Synapse[] {
     let results = this.cacheFrom.get(fromIndx);
     if (results === undefined) {
-      results = [];
-      const tmpList = this.synapses;
-      for (let i = tmpList.length; i--;) {
-        const c = tmpList[i];
+      const startIndex = this.binarySearchForStartIndex(fromIndx);
 
-        if (c.from === fromIndx) {
-          results.push(c);
-        } else if (c.from < fromIndx) {
-          break;
+      if (startIndex !== -1) {
+        results = [];
+        for (let i = startIndex; i < this.synapses.length; i++) {
+          const tmp = this.synapses[i];
+          if (tmp.from === fromIndx) {
+            results.push(tmp);
+          } else {
+            break; // Since it's sorted, no need to continue once 'from' changes
+          }
         }
+      } else {
+        results = []; // No connections found
       }
 
-      results.reverse();
       this.cacheFrom.set(fromIndx, results);
     }
     return results;
+  }
+
+  private binarySearchForStartIndex(fromIndx: number): number {
+    let low = 0;
+    let high = this.synapses.length - 1;
+    let result = -1; // Default to -1 if not found
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const midValue = this.synapses[mid];
+
+      if (midValue.from < fromIndx) {
+        low = mid + 1;
+      } else if (midValue.from > fromIndx) {
+        high = mid - 1;
+      } else {
+        result = mid; // Found a matching 'from', but need the first occurrence
+        high = mid - 1; // Look left to find the first match
+      }
+    }
+
+    return result;
   }
 
   getSynapse(from: number, to: number): Synapse | null {
@@ -881,7 +932,7 @@ export class Creature implements CreatureInternal {
       this.synapses.push(connection);
     }
 
-    this.clearCache();
+    this.clearCache(from, to);
 
     return connection;
   }
