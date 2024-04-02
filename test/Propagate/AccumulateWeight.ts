@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.220.1/assert/mod.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.221.0/assert/mod.ts";
 import { accumulateWeight } from "../../src/architecture/BackPropagation.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Creature, CreatureExport } from "../../mod.ts";

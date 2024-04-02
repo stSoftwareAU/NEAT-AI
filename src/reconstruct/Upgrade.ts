@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.220.1/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.221.0/assert/mod.ts";
 import { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";

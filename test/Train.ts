@@ -1,5 +1,5 @@
-import { assert, fail } from "https://deno.land/std@0.220.1/assert/mod.ts";
-import { ensureDirSync } from "https://deno.land/std@0.220.1/fs/ensure_dir.ts";
+import { assert, fail } from "https://deno.land/std@0.221.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.221.0/fs/ensure_dir.ts";
 import { Creature } from "../src/Creature.ts";
 import { train } from "../src/architecture/Training.ts";
 
