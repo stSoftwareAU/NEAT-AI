@@ -2,7 +2,7 @@
 set -e
 
 deno fmt src test bench mod.ts
-deno lint src test bench mod.ts
+deno lint --fix src test bench mod.ts
 rm -rf .trace .test .coverage
 deno test \
   --allow-read \

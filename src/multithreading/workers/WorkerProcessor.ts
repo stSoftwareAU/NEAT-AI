@@ -3,7 +3,7 @@ import { RequestData, ResponseData } from "./WorkerHandler.ts";
 import { CostInterface, Costs } from "../../Costs.ts";
 import { Creature } from "../../Creature.ts";
 import { trainDir } from "../../architecture/Training.ts";
-import { assert } from "https://deno.land/std@0.220.1/assert/assert.ts";
+import { assert } from "https://deno.land/std@0.221.0/assert/assert.ts";
 import { creatureValidate } from "../../architecture/CreatureValidate.ts";
 
 export class WorkerProcessor {
