@@ -68,7 +68,7 @@ export class WorkerHandler {
   private taskID = 1;
   private workerID = ++globalWorkerID;
   private busyCount = 0;
-  private callbacks: { [key: string]: CallableFunction } = {};
+  private callbacks = new Map<number, CallableFunction>();
   private idleListeners: WorkerEventListener[] = [];
 
   constructor(
@@ -115,9 +115,10 @@ export class WorkerHandler {
   }
 
   private callback(data: ResponseData) {
-    const call = this.callbacks[data.taskID.toString()];
+    const call = this.callbacks.get(data.taskID);
     assert(call, "No callback");
     call(data);
+    this.callbacks.delete(data.taskID);
   }
 
   private makePromise(data: RequestData) {
@@ -138,7 +139,7 @@ export class WorkerHandler {
         }
       };
 
-      this.callbacks[data.taskID.toString()] = call;
+      this.callbacks.set(data.taskID, call);
       return call;
     });
 
