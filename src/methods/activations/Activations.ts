@@ -28,6 +28,7 @@ import { Softplus } from "./types/Softplus.ts";
 import { StdInverse } from "./types/StdInverse.ts";
 import { Swish } from "./types/Swish.ts";
 import { TANH } from "./types/TANH.ts";
+import { ReLU6 } from "./types/ReLU6.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -46,6 +47,7 @@ export class Activations {
     [COMPLEMENT.NAME]: new COMPLEMENT(),
     ["INVERSE"]: new COMPLEMENT(),
     [RELU.NAME]: new RELU(),
+    [ReLU6.NAME]: new ReLU6(),
     [STEP.NAME]: new STEP(),
     [SELU.NAME]: new SELU(),
     [SOFTSIGN.NAME]: new SOFTSIGN(),
