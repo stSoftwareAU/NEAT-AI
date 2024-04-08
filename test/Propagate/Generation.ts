@@ -21,6 +21,7 @@ function makeCreature() {
         bias: 1,
         trace: {
           count: 1,
+          hintValue: -0.5,
           totalValue: -2.54,
           totalWeightedSum: -2.54,
           minimumActivation: 0,
