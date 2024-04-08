@@ -5,6 +5,7 @@ import { BackPropagationConfig } from "./BackPropagation.ts";
 export interface NeuronStateInterface {
   count: number;
   totalValue: number;
+  hintValue: number;
   totalWeightedSum: number;
   maximumActivation: number;
   minimumActivation: number;
@@ -14,6 +15,7 @@ export class NeuronState implements NeuronStateInterface {
   count = 0;
 
   totalValue = 0;
+  hintValue = 0;
   totalWeightedSum = 0;
   /**
    * The maximum activation value for the creature state.
