@@ -1,7 +1,7 @@
 import {
   assert,
   assertNotEquals,
-} from "https://deno.land/std@0.221.0/assert/mod.ts";
+} from "https://deno.land/std@0.222.1/assert/mod.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 
 Deno.test("ActivationNames", () => {
