@@ -1,5 +1,5 @@
 import { Creature } from "../src/Creature.ts";
-import { assert } from "https://deno.land/std@0.221.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.222.1/assert/mod.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

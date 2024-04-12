@@ -1,8 +1,8 @@
-import { fail } from "https://deno.land/std@0.221.0/assert/mod.ts";
+import { fail } from "https://deno.land/std@0.222.1/assert/mod.ts";
 import {
   ensureDirSync,
   existsSync,
-} from "https://deno.land/std@0.221.0/fs/mod.ts";
+} from "https://deno.land/std@0.222.1/fs/mod.ts";
 import { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
