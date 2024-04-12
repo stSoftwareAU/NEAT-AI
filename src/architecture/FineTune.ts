@@ -22,37 +22,37 @@ function tuneRandomize(
   let changeBiasCount = 0;
   let changeWeightCount = 0;
   for (let i = fittestJSON.neurons.length; i--;) {
-    const tn = fittestJSON.neurons[i];
+    const fittestNeuron = fittestJSON.neurons[i];
 
-    const pn = uuidNodeMap.get(tn.uuid);
+    const previousNeuron = uuidNodeMap.get(fittestNeuron.uuid);
 
-    if (pn && tn.squash == pn.squash) {
-      const diff = tn.bias - pn.bias;
+    if (previousNeuron && fittestNeuron.squash == previousNeuron.squash) {
+      const diff = fittestNeuron.bias - previousNeuron.bias;
       const step = diff * Math.random() * 3 - diff;
       if (
         Math.abs(step) > MIN_STEP
       ) {
-        const bias = tn.bias + step;
+        const bias = fittestNeuron.bias + step;
         const quantum = Math.round(bias / MIN_STEP);
-        tn.bias = quantum * MIN_STEP;
+        fittestNeuron.bias = quantum * MIN_STEP;
         changeBiasCount++;
       }
     }
   }
 
   for (let i = fittestJSON.synapses.length; i--;) {
-    const tc = fittestJSON.synapses[i];
+    const fittestSynapse = fittestJSON.synapses[i];
     for (let j = previousJSON.synapses.length; j--;) {
-      const pc = previousJSON.synapses[j];
+      const previousSynapse = previousJSON.synapses[j];
 
-      if (tc.fromUUID == pc.fromUUID && tc.toUUID == pc.toUUID) {
-        const diff = tc.weight - pc.weight;
+      if (fittestSynapse.fromUUID == previousSynapse.fromUUID && fittestSynapse.toUUID == previousSynapse.toUUID) {
+        const diff = fittestSynapse.weight - previousSynapse.weight;
         const step = diff * Math.random() * 3 - diff;
         if (Math.abs(step) > MIN_STEP) {
-          const weight = tc.weight + step;
+          const weight = fittestSynapse.weight + step;
           const quantum = Math.round(weight / MIN_STEP);
 
-          tc.weight = quantum * MIN_STEP;
+          fittestSynapse.weight = quantum * MIN_STEP;
           changeWeightCount++;
         }
 
