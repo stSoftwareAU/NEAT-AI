@@ -1,6 +1,6 @@
 import {
   assertAlmostEquals,
-} from "https://deno.land/std@0.221.0/assert/mod.ts";
+} from "https://deno.land/std@0.222.1/assert/mod.ts";
 import {
   adjustedBias,
   adjustedWeight,
@@ -21,6 +21,7 @@ function makeCreature() {
         bias: 1,
         trace: {
           count: 1,
+          hintValue: -0.5,
           totalValue: -2.54,
           totalWeightedSum: -2.54,
           minimumActivation: 0,

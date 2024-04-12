@@ -228,6 +228,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
           value += fromActivation * c.weight;
         }
 
+        const ns = this.creature.state.node(this.index);
+        ns.hintValue = value;
         const activationSquash = squashMethod as ActivationInterface;
         activation = activationSquash.squash(value);
 
@@ -370,9 +372,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
       );
       limitedActivation = limitActivation(improvedActivation);
     } else {
-      const targetValue = toValue(this, targetActivation);
+      const targetValue = toValue(this, targetActivation, ns.hintValue);
 
-      const currentValue = toValue(this, activation);
+      const currentValue = toValue(this, activation, ns.hintValue);
       const error = targetValue - currentValue;
 
       const currentBias = adjustedBias(this, config);

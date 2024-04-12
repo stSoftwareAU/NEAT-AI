@@ -1,4 +1,4 @@
-import { assert, fail } from "https://deno.land/std@0.221.0/assert/mod.ts";
+import { assert, fail } from "https://deno.land/std@0.222.1/assert/mod.ts";
 import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
@@ -27,6 +27,7 @@ import { Softplus } from "../src/methods/activations/types/Softplus.ts";
 import { StdInverse } from "../src/methods/activations/types/StdInverse.ts";
 import { Swish } from "../src/methods/activations/types/Swish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
+import { ReLU6 } from "../src/methods/activations/types/ReLU6.ts";
 
 function makeValues() {
   const values: number[] = [];
@@ -96,7 +97,8 @@ function check(squashName: string, values: number[]) {
             hint = v - Number.EPSILON;
           }
           break;
-        case "RELU":
+        case RELU.NAME:
+        case ReLU6.NAME:
           if (v < 0) {
             hint = v;
           }
@@ -372,6 +374,7 @@ Deno.test("unSquash", () => {
     BIPOLAR_SIGMOID.NAME,
     Mish.NAME,
     RELU.NAME,
+    ReLU6.NAME,
     SELU.NAME,
     SINUSOID.NAME,
     Softplus.NAME,

@@ -1,6 +1,6 @@
-import { yellow } from "https://deno.land/std@0.221.0/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.221.0/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.221.0/fs/empty_dir.ts";
+import { yellow } from "https://deno.land/std@0.222.1/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.222.1/fmt/duration.ts";
+import { emptyDirSync } from "https://deno.land/std@0.222.1/fs/empty_dir.ts";
 import {
   addTag,
   getTag,
@@ -40,7 +40,7 @@ import { CreatureUtil } from "../mod.ts";
 import { NeuronStateInterface } from "./architecture/CreatureState.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import { compactUnused } from "./compact/CompactUnused.ts";
-import { assert } from "https://deno.land/std@0.221.0/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.222.1/assert/mod.ts";
 import { creatureValidate } from "./architecture/CreatureValidate.ts";
 
 export class Creature implements CreatureInternal {
