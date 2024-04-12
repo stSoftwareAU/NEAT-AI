@@ -45,7 +45,10 @@ function tuneRandomize(
     for (let j = previousJSON.synapses.length; j--;) {
       const previousSynapse = previousJSON.synapses[j];
 
-      if (fittestSynapse.fromUUID == previousSynapse.fromUUID && fittestSynapse.toUUID == previousSynapse.toUUID) {
+      if (
+        fittestSynapse.fromUUID == previousSynapse.fromUUID &&
+        fittestSynapse.toUUID == previousSynapse.toUUID
+      ) {
         const diff = fittestSynapse.weight - previousSynapse.weight;
         const step = diff * Math.random() * 3 - diff;
         if (Math.abs(step) > MIN_STEP) {
