@@ -257,7 +257,7 @@ export async function trainDir(
       bestError = error;
       knownSampleCount = counter;
 
-      await creature.applyLearnings(config);
+      creature.applyLearnings(config);
       creature.clearState();
     }
 
