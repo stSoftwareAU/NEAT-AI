@@ -590,8 +590,6 @@ export class Creature implements CreatureInternal {
   applyLearnings(config: BackPropagationConfig) {
     this.propagateUpdate(config);
 
-    const oldConnections = this.synapses.length;
-    const oldNodes = this.neurons.length;
     let changed = false;
     for (let i = this.neurons.length; i--;) {
       const n = this.neurons[i];
@@ -601,19 +599,8 @@ export class Creature implements CreatureInternal {
 
     if (changed) {
       this.fix();
-      const temp = this.compact();
-      if (temp) {
-        temp.fix();
-        this.loadFrom(temp.exportJSON(), true);
-      }
-      addTag(this, "approach", "Learnings");
-      addTag(this, "old-nodes", oldNodes.toString());
-      addTag(
-        this,
-        "old-connections",
-        oldConnections.toString(),
-      );
     }
+
     return changed;
   }
 
