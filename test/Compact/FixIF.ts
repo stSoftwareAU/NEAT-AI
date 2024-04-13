@@ -2,7 +2,7 @@ import {
   assertAlmostEquals,
   fail,
 } from "https://deno.land/std@0.222.1/assert/mod.ts";
-import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
 import { Creature, CreatureExport } from "../../mod.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";

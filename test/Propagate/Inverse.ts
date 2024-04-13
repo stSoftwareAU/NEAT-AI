@@ -2,11 +2,11 @@ import {
   assert,
   assertAlmostEquals,
 } from "https://deno.land/std@0.222.1/assert/mod.ts";
-import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/ensure_dir.ts";
+import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { COMPLEMENT } from "../../src/methods/activations/types/COMPLEMENT.ts";
 import { train } from "../../src/architecture/Training.ts";
+import { COMPLEMENT } from "../../src/methods/activations/types/COMPLEMENT.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -172,11 +172,8 @@ Deno.test("propagateInverseRandom", async () => {
       ".trace/4-last.json",
       JSON.stringify(creatureB.exportJSON(), null, 2),
     );
-    if (result2.error < 0.001) break;
 
-    if (attempts < 12) {
-      if (result1.error <= result2.error) continue;
-    }
+    if (result1.error <= result2.error && attempts < 12) continue;
 
     assert(
       result1.error > result2.error,

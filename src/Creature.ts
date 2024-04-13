@@ -1,7 +1,7 @@
 import { assert } from "https://deno.land/std@0.222.1/assert/mod.ts";
 import { yellow } from "https://deno.land/std@0.222.1/fmt/colors.ts";
 import { format } from "https://deno.land/std@0.222.1/fmt/duration.ts";
-import { emptyDirSync } from "https://deno.land/std@0.222.1/fs/empty_dir.ts";
+import { emptyDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
 import {
   addTag,
   getTag,
