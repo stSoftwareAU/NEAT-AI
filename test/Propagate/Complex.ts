@@ -1,10 +1,7 @@
 import { assertAlmostEquals } from "https://deno.land/std@0.222.1/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import {
-  ensureDirSync,
-  existsSync,
-} from "https://deno.land/std@0.222.1/fs/mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -35,13 +32,13 @@ Deno.test("Complex Back Propagation", () => {
     JSON.stringify(creature.exportJSON(), null, 2),
   );
 
-  if (!existsSync(`${traceDir}/input.json`)) {
-    const generated = makeInputs(creature);
-    Deno.writeTextFileSync(
-      `${traceDir}/input.json`,
-      JSON.stringify(generated, null, 2),
-    );
-  }
+  // if (!existsSync(`${traceDir}/input.json`)) {
+  const generated = makeInputs(creature);
+  Deno.writeTextFileSync(
+    `${traceDir}/input.json`,
+    JSON.stringify(generated, null, 2),
+  );
+  // }
 
   const inputs = JSON.parse(
     Deno.readTextFileSync(`${traceDir}/input.json`),

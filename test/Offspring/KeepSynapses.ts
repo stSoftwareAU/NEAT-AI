@@ -1,8 +1,8 @@
-import { fail } from "https://deno.land/std@0.222.1/assert/mod.ts";
+import { assert } from "https://deno.land/std@0.222.1/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
 import { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
-import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
 
 function makeMum() {
   const json: CreatureExport = {
@@ -182,19 +182,8 @@ function check(child: Creature) {
   });
 
   const a2b = child.getSynapse(a?.index ?? 0, b?.index ?? 0);
-  if (!a2b) {
-    Deno.writeTextFileSync(
-      `${testDir}/child.json`,
-      JSON.stringify(child.exportJSON(), null, 2),
-    );
-    fail("A no longer points to B");
-  }
+  assert(a2b, "A no longer points to B");
+
   const b2c = child.getSynapse(b?.index ?? 0, c?.index ?? 0);
-  if (!b2c) {
-    Deno.writeTextFileSync(
-      `${testDir}/child.json`,
-      JSON.stringify(child.exportJSON(), null, 2),
-    );
-    fail("B no longer points to C");
-  }
+  assert(b2c, "B no longer points to C");
 }
