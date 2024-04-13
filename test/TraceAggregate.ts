@@ -8,7 +8,7 @@ import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("TraceAggregateMINIMUM", async () => {
+Deno.test("TraceAggregateMINIMUM", () => {
   const json: CreatureInternal = {
     neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
@@ -39,7 +39,7 @@ Deno.test("TraceAggregateMINIMUM", async () => {
 
   const aOut = network.activateAndTrace(input);
 
-  const changed = await network.applyLearnings(new BackPropagationConfig());
+  const changed = network.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
@@ -54,7 +54,7 @@ Deno.test("TraceAggregateMINIMUM", async () => {
   assertAlmostEquals(aOut[1], dOut[1], 0.0001);
 });
 
-Deno.test("TraceAggregateMAXIMUM", async () => {
+Deno.test("TraceAggregateMAXIMUM", () => {
   const json: CreatureInternal = {
     neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
@@ -74,33 +74,33 @@ Deno.test("TraceAggregateMAXIMUM", async () => {
     input: 2,
     output: 2,
   };
-  const network = Creature.fromJSON(json);
-  network.validate();
+  const creature = Creature.fromJSON(json);
+  creature.validate();
   Deno.writeTextFileSync(
-    "test/data/.a.json",
-    JSON.stringify(network.exportJSON(), null, 2),
+    "test/data/.A.json",
+    JSON.stringify(creature.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  network.activate(input);
+  creature.activate(input);
 
-  const aOut = network.activateAndTrace(input);
+  const aOut = creature.activateAndTrace(input);
 
-  const changed = await network.applyLearnings(new BackPropagationConfig());
+  const changed = creature.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
-  const dOut = network.activate(input);
+  const dOut = creature.activate(input);
 
   Deno.writeTextFileSync(
-    "test/data/.d.json",
-    JSON.stringify(network.exportJSON(), null, 2),
+    "test/data/.B.json",
+    JSON.stringify(creature.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
   assertAlmostEquals(aOut[1], dOut[1], 0.0001);
 });
 
-Deno.test("TraceAggregateIF", async () => {
+Deno.test("TraceAggregateIF", () => {
   const json: CreatureInternal = {
     neurons: [
       { bias: 0.1, type: "hidden", squash: "LOGISTIC", index: 2 },
@@ -121,25 +121,25 @@ Deno.test("TraceAggregateIF", async () => {
     input: 2,
     output: 2,
   };
-  const network = Creature.fromJSON(json);
-  network.validate();
+  const creature = Creature.fromJSON(json);
+  creature.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  network.activate(input);
-  const aOut = network.activateAndTrace(input);
+  creature.activate(input);
+  const aOut = creature.activateAndTrace(input);
 
-  const changed = await network.applyLearnings(new BackPropagationConfig());
+  const changed = creature.applyLearnings(new BackPropagationConfig());
 
   assert(changed, "should have changed");
 
-  const dOut = network.activate(input);
+  const dOut = creature.activate(input);
 
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 

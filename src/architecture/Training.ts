@@ -237,10 +237,12 @@ export async function trainDir(
         );
       }
       if (options.traceStore) {
-        ensureDirSync(options.traceStore);
+        const failedDir = `${options.traceStore}/failed`;
+        ensureDirSync(failedDir);
+        await CreatureUtil.makeUUID(creature);
         Deno.writeTextFileSync(
-          `.trace/${trainingFailures}_fail.json`,
-          JSON.stringify(creature.exportJSON(), null, 2),
+          `${failedDir}/${creature.uuid}.json`,
+          JSON.stringify(creature.traceJSON(), null, 2),
         );
       }
       creature.loadFrom(bestCreatureJSON, false);
@@ -255,7 +257,7 @@ export async function trainDir(
       bestError = error;
       knownSampleCount = counter;
 
-      await creature.applyLearnings(config);
+      creature.applyLearnings(config);
       creature.clearState();
     }
 
