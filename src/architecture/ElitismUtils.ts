@@ -32,13 +32,14 @@ export function makeElitists(
 
   if (verbose) {
     for (let indx = 0; indx < creatures.length; indx++) {
-      const trainID = getTag(creatures[indx], "trainID");
+      const creature = creatures[indx];
+      const trainID = getTag(creature, "trainID");
       if (trainID) {
-        const score = creatures[indx].score;
+        const score = creature.score;
 
-        const approach = getTag(creatures[indx], "approach");
-        const untrainedError = getTag(creatures[indx], "untrained-error");
-        const error = getTag(creatures[indx], "error");
+        const approach = getTag(creature, "approach");
+        const untrainedError = getTag(creature, "untrained-error");
+        const error = getTag(creature, "error");
         const diff = Number.parseFloat(untrainedError ?? "99999") -
           Number.parseFloat(error ?? "99999");
         console.info(

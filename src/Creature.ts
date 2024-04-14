@@ -594,7 +594,9 @@ export class Creature implements CreatureInternal {
     for (let i = this.neurons.length; i--;) {
       const n = this.neurons[i];
       if (n.type == "input") break;
-      changed ||= n.applyLearnings();
+      if (config.trainingMutationRate > Math.random()) {
+        changed ||= n.applyLearnings();
+      }
     }
 
     if (changed) {
