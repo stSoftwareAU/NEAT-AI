@@ -6,7 +6,7 @@ import {
   white,
   yellow,
 } from "https://deno.land/std@0.222.1/fmt/colors.ts";
-import { getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 
 export function makeElitists(
@@ -35,6 +35,11 @@ export function makeElitists(
       const creature = creatures[indx];
       const trainID = getTag(creature, "trainID");
       if (trainID) {
+        const notified = getTag(creature, "notified");
+        if (notified === "Yes") {
+          continue;
+        }
+        addTag(creature, "notified", "Yes");
         const score = creature.score;
 
         const approach = getTag(creature, "approach");
