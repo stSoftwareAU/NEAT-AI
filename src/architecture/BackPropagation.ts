@@ -46,6 +46,9 @@ export interface BackPropagationOptions {
 
   /** the minimum unit of weights/biases */
   plankConstant?: number;
+
+  /** Probability of changing a gene */
+  trainingMutationRate?: number;
 }
 
 export class BackPropagationConfig implements BackPropagationOptions {
@@ -66,6 +69,7 @@ export class BackPropagationConfig implements BackPropagationOptions {
   disableExponentialScaling?: boolean;
 
   plankConstant: number;
+  trainingMutationRate: number;
 
   constructor(options?: BackPropagationOptions) {
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
@@ -99,6 +103,14 @@ export class BackPropagationConfig implements BackPropagationOptions {
     this.learningRate = Math.min(
       Math.max(
         options?.learningRate ?? Math.random(),
+        0.01,
+      ),
+      1,
+    );
+
+    this.trainingMutationRate = Math.min(
+      Math.max(
+        options?.trainingMutationRate ?? Math.random(),
         0.01,
       ),
       1,

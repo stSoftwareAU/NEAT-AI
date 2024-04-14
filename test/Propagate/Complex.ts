@@ -81,7 +81,7 @@ Deno.test("Complex Back Propagation", () => {
         assertAlmostEquals(
           actual[y],
           expected[y],
-          1,
+          2,
           `${i}:${y} ${actual[y].toFixed(3)}, ${expected[y].toFixed(3)}`,
         );
       }

@@ -39,7 +39,9 @@ Deno.test("TraceAggregateMINIMUM", () => {
 
   const aOut = network.activateAndTrace(input);
 
-  const changed = network.applyLearnings(new BackPropagationConfig());
+  const changed = network.applyLearnings(
+    new BackPropagationConfig({ trainingMutationRate: 1 }),
+  );
 
   assert(changed, "should have changed");
 
@@ -85,7 +87,9 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 
   const aOut = creature.activateAndTrace(input);
 
-  const changed = creature.applyLearnings(new BackPropagationConfig());
+  const changed = creature.applyLearnings(
+    new BackPropagationConfig({ trainingMutationRate: 1 }),
+  );
 
   assert(changed, "should have changed");
 
@@ -131,7 +135,9 @@ Deno.test("TraceAggregateIF", () => {
   creature.activate(input);
   const aOut = creature.activateAndTrace(input);
 
-  const changed = creature.applyLearnings(new BackPropagationConfig());
+  const changed = creature.applyLearnings(
+    new BackPropagationConfig({ trainingMutationRate: 1 }),
+  );
 
   assert(changed, "should have changed");
 
