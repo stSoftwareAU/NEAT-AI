@@ -35,7 +35,7 @@ Deno.test("Complex Back Propagation", () => {
   // if (!existsSync(`${traceDir}/input.json`)) {
   const generated = makeInputs(creature);
   Deno.writeTextFileSync(
-    `${traceDir}/input.json`,
+    `${testDir}/input.json`,
     JSON.stringify(generated, null, 2),
   );
   // }
