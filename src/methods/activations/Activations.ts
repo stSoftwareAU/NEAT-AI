@@ -29,6 +29,7 @@ import { StdInverse } from "./types/StdInverse.ts";
 import { Swish } from "./types/Swish.ts";
 import { TANH } from "./types/TANH.ts";
 import { ReLU6 } from "./types/ReLU6.ts";
+import { GELU } from "./types/GELU.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -41,6 +42,7 @@ export class Activations {
     [BIPOLAR.NAME]: new BIPOLAR(),
     [BIPOLAR_SIGMOID.NAME]: new BIPOLAR_SIGMOID(),
     [CLIPPED.NAME]: new CLIPPED(),
+    [GELU.NAME]: new GELU(),
     [LOGISTIC.NAME]: new LOGISTIC(),
     [TANH.NAME]: new TANH(),
     [IDENTITY.NAME]: new IDENTITY(),

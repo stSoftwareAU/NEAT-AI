@@ -2,32 +2,29 @@ import { assert, fail } from "https://deno.land/std@0.223.0/assert/mod.ts";
 import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
-import { ABSOLUTE } from "../src/methods/activations/types/ABSOLUTE.ts";
-import { BENT_IDENTITY } from "../src/methods/activations/types/BENT_IDENTITY.ts";
 import { BIPOLAR } from "../src/methods/activations/types/BIPOLAR.ts";
 import { BIPOLAR_SIGMOID } from "../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
 import { CLIPPED } from "../src/methods/activations/types/CLIPPED.ts";
-import { COMPLEMENT } from "../src/methods/activations/types/COMPLEMENT.ts";
 import { Cosine } from "../src/methods/activations/types/Cosine.ts";
 import { ELU } from "../src/methods/activations/types/ELU.ts";
 import { Exponential } from "../src/methods/activations/types/Exponential.ts";
 import { GAUSSIAN } from "../src/methods/activations/types/GAUSSIAN.ts";
-import { HARD_TANH } from "../src/methods/activations/types/HARD_TANH.ts";
-import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
-import { LOGISTIC } from "../src/methods/activations/types/LOGISTIC.ts";
-import { LeakyReLU } from "../src/methods/activations/types/LeakyReLU.ts";
 import { LogSigmoid } from "../src/methods/activations/types/LogSigmoid.ts";
 import { Mish } from "../src/methods/activations/types/Mish.ts";
 import { RELU } from "../src/methods/activations/types/RELU.ts";
 import { SELU } from "../src/methods/activations/types/SELU.ts";
 import { SINUSOID } from "../src/methods/activations/types/SINUSOID.ts";
 import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
-import { STEP } from "../src/methods/activations/types/STEP.ts";
 import { Softplus } from "../src/methods/activations/types/Softplus.ts";
-import { StdInverse } from "../src/methods/activations/types/StdInverse.ts";
 import { Swish } from "../src/methods/activations/types/Swish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
 import { ReLU6 } from "../src/methods/activations/types/ReLU6.ts";
+import { MINIMUM } from "../src/methods/activations/aggregate/MINIMUM.ts";
+import { MAXIMUM } from "../src/methods/activations/aggregate/MAXIMUM.ts";
+import { HYPOT } from "../src/methods/activations/aggregate/HYPOT.ts";
+import { MEAN } from "../src/methods/activations/aggregate/MEAN.ts";
+import { IF } from "../src/methods/activations/aggregate/IF.ts";
+import { GELU } from "../src/methods/activations/types/GELU.ts";
 
 function makeValues() {
   const values: number[] = [];
@@ -76,6 +73,12 @@ function check(squashName: string, values: number[]) {
           } else {
             hint = 1;
           }
+          break;
+        case GELU.NAME:
+          tolerancePercent = 90;
+          // if (v < 0) {
+          //   hint = v - Number.EPSILON;
+          // }
           break;
         case "GAUSSIAN":
           if (v < 0) {
@@ -141,7 +144,7 @@ function check(squashName: string, values: number[]) {
       );
     });
   } else {
-    fail("Not done yet");
+    fail(`${squashName} not implemented yet`);
   }
 }
 
@@ -355,39 +358,18 @@ Deno.test("Softplus", () => {
 });
 
 Deno.test("unSquash", () => {
-  const list = [
-    ABSOLUTE.NAME,
-    BENT_IDENTITY.NAME,
-    BIPOLAR_SIGMOID.NAME,
-    BIPOLAR.NAME,
-    CLIPPED.NAME,
-    Cosine.NAME,
-    ELU.NAME,
-    Exponential.NAME,
-    GAUSSIAN.NAME,
-    HARD_TANH.NAME,
-    IDENTITY.NAME,
-    COMPLEMENT.NAME,
-    LeakyReLU.NAME,
-    LOGISTIC.NAME,
-    LogSigmoid.NAME,
-    BIPOLAR_SIGMOID.NAME,
-    Mish.NAME,
-    RELU.NAME,
-    ReLU6.NAME,
-    SELU.NAME,
-    SINUSOID.NAME,
-    Softplus.NAME,
-    SOFTSIGN.NAME,
-    StdInverse.NAME,
-    STEP.NAME,
-    Swish.NAME,
-    TANH.NAME,
-  ];
-
   const values = makeValues();
 
-  list.forEach((name) => {
+  Activations.NAMES.forEach((name) => {
+    if (
+      name == MINIMUM.NAME ||
+      name == MAXIMUM.NAME ||
+      name == HYPOT.NAME ||
+      name == MEAN.NAME ||
+      name == IF.NAME
+    ) {
+      return;
+    }
     check(name, values);
     checkKnownActivations(name);
     checkKnownValues(name);

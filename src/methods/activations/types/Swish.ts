@@ -14,27 +14,47 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   private static readonly MAX_ITERATIONS = 10_000; // Maximum iterations for Newton-Raphson
   private static readonly EPSILON = 1e-6; // Tolerance for Newton-Raphson
 
+  /**
+   * Computes the Swish activation function.
+   * Swish is defined as f(x) = x * sigmoid(x), where sigmoid(x) = 1 / (1 + exp(-x)).
+   * This implementation guards against overflow in the exp(-x) calculation.
+   * @param x The input value to the activation function.
+   * @returns The output of the Swish activation function.
+   */
+  squash(x: number): number {
+    // Guard against overflow in exp(-x) when x is a large negative number.
+    const expNegX = x < -20 ? 0 : Math.exp(-x);
+    return x / (1 + expNegX);
+  }
+
+  /**
+   * Attempts to compute the inverse of the Swish function using the Newton-Raphson method.
+   * This is not commonly required for neural network applications, but can be useful
+   * for analytical purposes or specific scenarios where the pre-activation value needs to be inferred.
+   * @param activation The output value from the Swish function.
+   * @param hint An optional initial guess for the Newton-Raphson method.
+   * @returns The estimated input value that would produce the given activation output.
+   */
   unSquash(activation: number, hint?: number): number {
     let x = hint !== undefined
       ? hint
-      : (activation >= 0 ? activation : activation / 2); // Use the hint as the initial guess if provided
+      : (activation >= 0 ? activation : activation / 2);
 
     for (let i = 0; i < Swish.MAX_ITERATIONS; i++) {
-      const fx = x / (1 + Math.exp(-x)) - activation;
+      const expNegX = x < -20 ? 0 : Math.exp(-x);
+      const sigmoidX = 1 / (1 + expNegX);
+      const fx = x * sigmoidX - activation;
 
-      // Check for convergence
       if (Math.abs(fx) < Swish.EPSILON) {
         break;
       }
 
-      const sigmoid_x = 1 / (1 + Math.exp(-x));
-      const dfx = sigmoid_x + x * Math.exp(-x) / Math.pow(1 + Math.exp(-x), 2);
-
+      const dfx = sigmoidX + x * (-expNegX) / Math.pow(1 + expNegX, 2);
       x = x - fx / dfx;
 
-      // If x is not a finite number, return the best guess
-      if (!Number.isFinite(x)) {
-        return activation >= 0 ? activation : activation / 2;
+      // If x is not a finite number or does not improve, use the best guess
+      if (!Number.isFinite(x) || Math.abs(fx) < Swish.EPSILON) {
+        return x;
       }
     }
 
@@ -45,11 +65,7 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
-  getName() {
+  getName(): string {
     return Swish.NAME;
-  }
-
-  squash(x: number) {
-    return x * (1 / (1 + Math.exp(-x)));
   }
 }
