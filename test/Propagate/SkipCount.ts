@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.222.1/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.223.0/assert/mod.ts";
 import { Creature, CreatureExport } from "../../mod.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 

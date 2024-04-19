@@ -1,6 +1,6 @@
-import { blue, yellow } from "https://deno.land/std@0.222.1/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.222.1/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
+import { blue, yellow } from "https://deno.land/std@0.223.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.223.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.223.0/fs/mod.ts";
 import { Costs } from "../Costs.ts";
 import { Creature } from "../Creature.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";

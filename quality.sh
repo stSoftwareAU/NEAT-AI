@@ -4,6 +4,7 @@ set -e
 deno fmt src test bench mod.ts
 deno lint --fix src test bench mod.ts
 rm -rf .trace .test .coverage
+deno check `find src -name "*.ts"`
 deno test \
   --allow-read \
   --allow-write \
