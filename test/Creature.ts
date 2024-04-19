@@ -3,8 +3,8 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
-} from "https://deno.land/std@0.222.1/assert/mod.ts";
-import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
+} from "https://deno.land/std@0.223.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.223.0/fs/mod.ts";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { DataRecordInterface } from "../src/architecture/DataSet.ts";

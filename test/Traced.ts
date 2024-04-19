@@ -1,4 +1,4 @@
-import { ensureDirSync } from "https://deno.land/std@0.222.1/fs/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.223.0/fs/mod.ts";
 import { Creature } from "../mod.ts";
 import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 import { compactUnused } from "../src/compact/CompactUnused.ts";
