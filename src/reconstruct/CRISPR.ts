@@ -195,12 +195,10 @@ export class CRISPR {
 
     const uuidMap = new Map<string, number>();
 
-    // const UUIDs = new Map<string, number>();
     let alreadyProcessed = false;
     tmpCreature.neurons.forEach((node) => {
       assert(node.uuid !== undefined, "missing uuid");
-      // console.info( node.uuid, node.index);
-      // uuidMap.set(node.uuid, node.index);
+
       const id = getTag(node, "CRISPR");
 
       if (id === dna.id) {
@@ -235,12 +233,6 @@ export class CRISPR {
           if (firstNetworkOutputIndex == -1) {
             firstNetworkOutputIndex = indx;
           }
-          // if (dna.mode !== "insert") {
-          //   ((neuron as unknown) as { type: string }).type = "hidden";
-          //   if (neuron.uuid?.startsWith("output-")) {
-          //     neuron.uuid = crypto.randomUUID();
-          //   }
-          // }
         }
 
         if (neuron.uuid && neuron.type !== "output") {
@@ -266,16 +258,8 @@ export class CRISPR {
             uuid = crypto.randomUUID();
           }
         }
-        // const indx: number;
-        // if (dna.mode == "insert") {
+
         const indx = tmpCreature.neurons.length - tmpCreature.output;
-        // } else {
-        //   if (dnaNeuron.index === undefined) {
-        //     indx = uuidMap.size;
-        //   } else {
-        //     indx = dnaNeuron.index + adjustIndx;
-        //   }
-        // }
 
         const networkNode = new Neuron(
           uuid,
@@ -287,11 +271,9 @@ export class CRISPR {
         networkNode.index = indx;
 
         addTag(networkNode, "CRISPR", dna.id);
-        // if (dna.mode == "insert") {
+
         tmpCreature.neurons.splice(indx, 0, networkNode);
-        // } else {
-        //   tmpCreature.neurons.push(networkNode);
-        // }
+
         if (dnaNeuron.type == "output") {
           if (firstDnaOutputIndex == -1) {
             firstDnaOutputIndex = indx;
@@ -303,7 +285,7 @@ export class CRISPR {
       for (let i = 0; i < tmpCreature.output; i++) {
         uuidMap.set(`output-${i}`, uuidMap.size);
       }
-      // console.info( uuidMap);
+
       dna.synapses.forEach((c) => {
         let fromIndx: number | undefined = undefined;
         if (c.from !== undefined) {
@@ -379,11 +361,6 @@ export class CRISPR {
       }
     });
 
-    tmpCreature.DEBUG = false;
-    Deno.writeTextFileSync(
-      ".test/CRISPR.json",
-      JSON.stringify(tmpCreature.exportJSON(), null, 2),
-    );
     return tmpCreature;
   }
 
