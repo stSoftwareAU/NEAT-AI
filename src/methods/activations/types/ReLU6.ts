@@ -32,7 +32,7 @@ export class ReLU6 implements ActivationInterface, UnSquashInterface {
   }
 
   /** The output range of ReLU6 is between 0 and 6. */
-  range(): { low: number; high: number } {
+  range() {
     return { low: 0, high: 6 };
   }
 

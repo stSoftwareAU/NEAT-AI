@@ -1,7 +1,16 @@
-import { assert, fail } from "https://deno.land/std@0.223.0/assert/mod.ts";
+import {
+  assert,
+  assertAlmostEquals,
+  fail,
+} from "https://deno.land/std@0.223.0/assert/mod.ts";
 import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
+import { HYPOT } from "../src/methods/activations/aggregate/HYPOT.ts";
+import { IF } from "../src/methods/activations/aggregate/IF.ts";
+import { MAXIMUM } from "../src/methods/activations/aggregate/MAXIMUM.ts";
+import { MEAN } from "../src/methods/activations/aggregate/MEAN.ts";
+import { MINIMUM } from "../src/methods/activations/aggregate/MINIMUM.ts";
 import { BIPOLAR } from "../src/methods/activations/types/BIPOLAR.ts";
 import { BIPOLAR_SIGMOID } from "../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
 import { CLIPPED } from "../src/methods/activations/types/CLIPPED.ts";
@@ -9,22 +18,18 @@ import { Cosine } from "../src/methods/activations/types/Cosine.ts";
 import { ELU } from "../src/methods/activations/types/ELU.ts";
 import { Exponential } from "../src/methods/activations/types/Exponential.ts";
 import { GAUSSIAN } from "../src/methods/activations/types/GAUSSIAN.ts";
+import { GELU } from "../src/methods/activations/types/GELU.ts";
 import { LogSigmoid } from "../src/methods/activations/types/LogSigmoid.ts";
 import { Mish } from "../src/methods/activations/types/Mish.ts";
 import { RELU } from "../src/methods/activations/types/RELU.ts";
+import { ReLU6 } from "../src/methods/activations/types/ReLU6.ts";
 import { SELU } from "../src/methods/activations/types/SELU.ts";
 import { SINUSOID } from "../src/methods/activations/types/SINUSOID.ts";
 import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
+import { STEP } from "../src/methods/activations/types/STEP.ts";
 import { Softplus } from "../src/methods/activations/types/Softplus.ts";
 import { Swish } from "../src/methods/activations/types/Swish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
-import { ReLU6 } from "../src/methods/activations/types/ReLU6.ts";
-import { MINIMUM } from "../src/methods/activations/aggregate/MINIMUM.ts";
-import { MAXIMUM } from "../src/methods/activations/aggregate/MAXIMUM.ts";
-import { HYPOT } from "../src/methods/activations/aggregate/HYPOT.ts";
-import { MEAN } from "../src/methods/activations/aggregate/MEAN.ts";
-import { IF } from "../src/methods/activations/aggregate/IF.ts";
-import { GELU } from "../src/methods/activations/types/GELU.ts";
 
 function makeValues() {
   const values: number[] = [];
@@ -155,6 +160,19 @@ Deno.test("Mish", () => {
     const tmpValue = activation.unSquash(v);
     assert(Number.isFinite(tmpValue), `Mish ${v} not finite ${tmpValue}`);
   });
+});
+
+Deno.test("STEP unSquash", () => {
+  const step = Activations.find(STEP.NAME) as UnSquashInterface;
+
+  // For slight positive activations close to 1, expect a value above the threshold
+  assertAlmostEquals(step.unSquash(0.2), 0.2);
+  assertAlmostEquals(step.unSquash(0.2, -0.2), 0.2); // Negative hint is ignored because activation suggests a positive input
+
+  // For negative activations, if hint aligns (less than threshold), use the hint
+  assertAlmostEquals(step.unSquash(-0.1, -0.3), -0.3);
+  // For clear activations of 1, and a positive hint, use the hint
+  assertAlmostEquals(step.unSquash(1, 0.3), 0.3);
 });
 
 Deno.test("SELU", () => {

@@ -19,7 +19,7 @@ export class MAXIMUM
     return MAXIMUM.NAME;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 

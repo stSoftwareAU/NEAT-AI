@@ -541,9 +541,15 @@ export class Creature implements CreatureInternal {
           location = indx + 1;
           break;
         } else if (c.to === to) {
+          const fromNeuron = this.neurons[from];
+          const fromID = fromNeuron ? fromNeuron.ID() : `[${from}]`;
+
+          const toNeuron = this.neurons[to];
+          const toID = toNeuron ? toNeuron.ID() : `[${to}]`;
+
           throw new Error(
-            indx + ") already connected from: " + this.neurons[from].ID() +
-              " to: " + this.neurons[to].ID(),
+            indx + ") already connected from: " + fromID +
+              " to: " + toID,
           );
         } else {
           location = indx;

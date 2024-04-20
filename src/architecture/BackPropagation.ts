@@ -164,32 +164,40 @@ export function adjustedBias(
   }
 }
 
-export function limitActivationToRange(node: Neuron, activation: number) {
-  if (node.type == "input" || node.type == "constant") {
-    return activation;
-  }
+export function limitActivationToRange(
+  config: BackPropagationConfig,
+  node: Neuron,
+  activation: number,
+) {
   const squash = node.findSquash();
   const unSquasher = squash;
   const range = unSquasher.range();
 
+  let limitedActivation: number;
   const propagateUpdateMethod = squash as NeuronActivationInterface;
   if (propagateUpdateMethod.propagate !== undefined) {
     const value = activation - node.bias;
 
-    const limitedActivation = Math.min(
+    limitedActivation = Math.min(
       Math.max(value, range.low),
       range.high,
     ) + node.bias;
-
-    return limitedActivation;
   } else {
-    const limitedActivation = Math.min(
+    limitedActivation = Math.min(
       Math.max(activation, range.low),
       range.high,
     );
-
-    return limitedActivation;
   }
+
+  if (range.normalize) {
+    limitedActivation = range.normalize(limitedActivation);
+  }
+
+  if (Math.abs(activation - limitedActivation) < config.plankConstant) {
+    return activation;
+  }
+
+  return limitedActivation;
 }
 
 export function toValue(neuron: Neuron, activation: number, hint?: number) {
@@ -197,6 +205,7 @@ export function toValue(neuron: Neuron, activation: number, hint?: number) {
     return activation;
   }
   const squash = neuron.findSquash();
+
   const unSquash = (squash as UnSquashInterface).unSquash;
   if (unSquash !== undefined) {
     const value = unSquash.call(squash, activation, hint);

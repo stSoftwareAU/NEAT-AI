@@ -10,7 +10,7 @@ export class IDENTITY implements ActivationInterface, UnSquashInterface {
     return activation;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 

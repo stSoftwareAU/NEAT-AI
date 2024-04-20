@@ -14,8 +14,14 @@ export class BIPOLAR implements ActivationInterface, UnSquashInterface {
     return BIPOLAR.NAME;
   }
 
-  range(): { low: number; high: number } {
-    return { low: -1, high: 1 };
+  range() {
+    return {
+      low: -1,
+      high: 1,
+      normalize: (targetActivation: number): number => {
+        return this.squash(targetActivation);
+      },
+    };
   }
 
   unSquash(activation: number, hint?: number): number {
@@ -27,14 +33,4 @@ export class BIPOLAR implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     return x > 0 ? 1 : -1;
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   // The derivative is technically undefined at zero
-  //   return {
-  //     activation: fx,
-  //     derivative: 0,
-  //   };
-  // }
 }

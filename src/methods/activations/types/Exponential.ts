@@ -34,14 +34,7 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
     return Math.log(activation);
   }
 
-  // squashAndDerive(x: number) {
-  //   return {
-  //     activation: this.squash(x),
-  //     derivative: this.squash(x),
-  //   };
-  // }
-
-  range(): { low: number; high: number } {
+  range() {
     return { low: 0, high: Number.POSITIVE_INFINITY };
   }
 }

@@ -59,15 +59,7 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
     return result;
   }
 
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-  //   return {
-  //     activation: fx,
-  //     derivative: Math.exp(-x) / (1 + Math.exp(-x)),
-  //   };
-  // }
-
-  range(): { low: number; high: number } {
+  range() {
     return { low: Number.NEGATIVE_INFINITY, high: 0 };
   }
 }

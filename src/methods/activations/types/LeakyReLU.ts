@@ -6,7 +6,7 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
     return activation > 0 ? activation : activation / LeakyReLU.ALPHA;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
   public static NAME = "LeakyReLU";
@@ -20,11 +20,4 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     return x > 0 ? x : LeakyReLU.ALPHA * x;
   }
-
-  // squashAndDerive(x: number) {
-  //   return {
-  //     activation: this.squash(x),
-  //     derivative: x > 0 ? 1 : LeakyReLU.ALPHA,
-  //   };
-  // }
 }

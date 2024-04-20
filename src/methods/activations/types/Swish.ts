@@ -61,7 +61,7 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     return x;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 

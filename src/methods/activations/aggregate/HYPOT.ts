@@ -11,7 +11,7 @@ export class HYPOT implements NeuronActivationInterface {
     return node.adjustedActivation(config);
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: 0, high: Number.POSITIVE_INFINITY };
   }
 
