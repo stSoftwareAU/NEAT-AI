@@ -6,6 +6,7 @@ import {
 } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";
+import { Upgrade } from "../../mod.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;
@@ -13,8 +14,8 @@ export interface CrisprInterface extends TagsInterface {
 
   neurons?: {
     uuid?: string;
-    index: number;
-    type: "output";
+    index?: number;
+    type: "output" | "hidden";
     squash: string;
     bias: number;
   }[];
@@ -38,8 +39,31 @@ export class CRISPR {
     creature: Creature,
   ) {
     this.creature = Creature.fromJSON(
-      creature.internalJSON(),
+      creature.exportJSON(),
     );
+  }
+
+  static editAliases(
+    dna: CrisprInterface,
+    aliases: Record<string, string>,
+  ): CrisprInterface {
+    const crispr: CrisprInterface = JSON.parse(
+      JSON.stringify(dna),
+    );
+
+    if (crispr.synapses) {
+      for (const key in aliases) {
+        const value = aliases[key];
+        crispr.synapses.forEach((synapse) => {
+          if (synapse.fromUUID == key) {
+            synapse.fromUUID = value;
+            // console.info("From", key, "to", value);
+          }
+        });
+      }
+    }
+
+    return crispr;
   }
 
   private append(dna: CrisprInterface) {
@@ -48,28 +72,11 @@ export class CRISPR {
     );
 
     const UUIDs = new Map<string, number>();
-    let alreadyProcessed = false;
     tmpCreature.neurons.forEach((node) => {
       assert(node.uuid !== undefined, "missing uuid");
 
       UUIDs.set(node.uuid, node.index);
-      const id = getTag(node, "CRISPR");
-
-      if (id === dna.id) {
-        alreadyProcessed = true;
-      }
     });
-
-    if (!alreadyProcessed) {
-      tmpCreature.synapses.forEach((synapse) => {
-        const id = getTag(synapse, "CRISPR");
-
-        if (id === dna.id) {
-          alreadyProcessed = true;
-        }
-      });
-    }
-    if (alreadyProcessed) return tmpCreature;
 
     if (dna.neurons) {
       let firstDnaOutputIndex: number = -1;
@@ -112,7 +119,12 @@ export class CRISPR {
             uuid = crypto.randomUUID();
           }
         }
-        const indx = dnaNeuron.index + adjustIndx;
+        let indx;
+        if (dnaNeuron.index !== undefined) {
+          indx = dnaNeuron.index + adjustIndx;
+        } else {
+          indx = tmpCreature.neurons.length;
+        }
 
         const networkNode = new Neuron(
           uuid,
@@ -195,69 +207,47 @@ export class CRISPR {
 
     const uuidMap = new Map<string, number>();
 
-    let alreadyProcessed = false;
-    tmpCreature.neurons.forEach((node) => {
-      assert(node.uuid !== undefined, "missing uuid");
-
-      const id = getTag(node, "CRISPR");
-
-      if (id === dna.id) {
-        alreadyProcessed = true;
-      }
-    });
-
-    if (!alreadyProcessed) {
-      tmpCreature.synapses.forEach((synapse) => {
-        const id = getTag(synapse, "CRISPR");
-
-        if (id === dna.id) {
-          alreadyProcessed = true;
-        }
-      });
-    }
-    if (alreadyProcessed) return tmpCreature;
-
     if (dna.neurons) {
-      let firstDnaOutputIndex: number = -1;
       dna.neurons.forEach((neuron) => {
         if (neuron.type == "output") {
-          if (firstDnaOutputIndex == -1 && neuron.index !== undefined) {
-            firstDnaOutputIndex = neuron.index;
-          }
+          throw new Error("Cannot insert output neurons");
         }
       });
 
-      let firstNetworkOutputIndex: number = -1;
-      tmpCreature.neurons.forEach((neuron, indx) => {
-        if (neuron.type == "output") {
-          if (firstNetworkOutputIndex == -1) {
-            firstNetworkOutputIndex = indx;
-          }
+      dna.synapses.forEach((c) => {
+        if (c.fromRelative) {
+          throw new Error("Cannot insert relative synapses");
+        }
+        if (c.toRelative) {
+          throw new Error("Cannot insert relative synapses");
         }
 
+        if (c.from !== undefined) {
+          throw new Error("Cannot insert static from index synapses");
+        }
+        if (c.to !== undefined) {
+          throw new Error("Cannot insert static to index synapses");
+        }
+
+        if (c.fromUUID === undefined) {
+          throw new Error("Missing fromUUID");
+        }
+        if (c.toUUID === undefined) {
+          throw new Error("Missing toUUID");
+        }
+      });
+
+      tmpCreature.neurons.forEach((neuron, indx) => {
         if (neuron.uuid && neuron.type !== "output") {
           uuidMap.set(neuron.uuid, indx);
         }
       });
 
-      const adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
-        dna.neurons.length;
-
-      let outputIndx: number = 0;
       dna.neurons.forEach((dnaNeuron) => {
-        let uuid: string;
-        if (dnaNeuron.type == "output") {
-          uuid = `output-${outputIndx}`;
-          outputIndx++;
-        } else {
-          uuid = dnaNeuron.uuid
-            ? uuidMap.has(dnaNeuron.uuid) ? crypto.randomUUID() : dnaNeuron.uuid
-            : crypto.randomUUID();
-          uuidMap.set(uuid, uuidMap.size);
-          if (uuid.startsWith("output-")) {
-            uuid = crypto.randomUUID();
-          }
-        }
+        const uuid = dnaNeuron.uuid
+          ? uuidMap.has(dnaNeuron.uuid) ? crypto.randomUUID() : dnaNeuron.uuid
+          : crypto.randomUUID();
+        uuidMap.set(uuid, uuidMap.size);
 
         const indx = tmpCreature.neurons.length - tmpCreature.output;
 
@@ -274,13 +264,7 @@ export class CRISPR {
 
         tmpCreature.neurons.splice(indx, 0, networkNode);
 
-        if (dnaNeuron.type == "output") {
-          if (firstDnaOutputIndex == -1) {
-            firstDnaOutputIndex = indx;
-          }
-        } else {
-          uuidMap.set(uuid, indx);
-        }
+        uuidMap.set(uuid, indx);
       });
       for (let i = 0; i < tmpCreature.output; i++) {
         uuidMap.set(`output-${i}`, uuidMap.size);
@@ -288,15 +272,9 @@ export class CRISPR {
 
       dna.synapses.forEach((c) => {
         let fromIndx: number | undefined = undefined;
-        if (c.from !== undefined) {
-          fromIndx = c.from;
-        } else if (c.fromRelative) {
-          fromIndx = c.fromRelative + adjustIndx;
-        } else if (c.fromUUID) {
-          const tmpIndx = uuidMap.get(c.fromUUID);
-          if (tmpIndx !== undefined) {
-            fromIndx = tmpIndx;
-          }
+        const tmpIndx = uuidMap.get(c.fromUUID ?? "unknown");
+        if (tmpIndx !== undefined) {
+          fromIndx = tmpIndx;
         }
 
         assert(
@@ -305,15 +283,9 @@ export class CRISPR {
         );
 
         let toIndx: number | undefined = undefined;
-        if (c.to !== undefined) {
-          toIndx = c.to;
-        } else if (c.toRelative) {
-          toIndx = c.toRelative + adjustIndx;
-        } else if (c.toUUID) {
-          const tmpIndx = uuidMap.get(c.toUUID);
-          if (tmpIndx !== undefined) {
-            toIndx = tmpIndx;
-          }
+        const tmpToIndx = uuidMap.get(c.toUUID ?? "unknown");
+        if (tmpToIndx !== undefined) {
+          toIndx = tmpToIndx;
         }
 
         assert(
@@ -365,23 +337,35 @@ export class CRISPR {
   }
 
   apply(dna: CrisprInterface): Creature {
-    /* Legacy */
-    if ((dna as unknown as { nodes: { squash: string }[] }).nodes) {
-      (dna as unknown as { neurons: { squash: string }[] }).neurons =
-        (dna as unknown as { nodes: { squash: string }[] }).nodes;
+    let alreadyProcessed = false;
+
+    this.creature.neurons.forEach((node) => {
+      assert(node.uuid !== undefined, "missing uuid");
+
+      const id = getTag(node, "CRISPR");
+
+      if (id === dna.id) {
+        alreadyProcessed = true;
+      }
+    });
+
+    if (!alreadyProcessed) {
+      this.creature.synapses.forEach((synapse) => {
+        const id = getTag(synapse, "CRISPR");
+
+        if (id === dna.id) {
+          alreadyProcessed = true;
+        }
+      });
     }
 
-    if ((dna as unknown as { connections: { weight: number }[] }).connections) {
-      (dna as unknown as { synapses: { weight: number }[] }).synapses =
-        (dna as unknown as { connections: { weight: number }[] }).connections;
-    }
+    if (alreadyProcessed) return this.creature;
 
-    /* End Version 1 */
-
-    if (dna.mode === "insert") {
-      return this.insert(dna);
+    const dnaClean = Upgrade.CRISPR(dna);
+    if (dnaClean.mode === "insert") {
+      return this.insert(dnaClean);
     } else {
-      return this.append(dna);
+      return this.append(dnaClean);
     }
   }
 }
