@@ -38,6 +38,7 @@ pipeline {
                           deno lint src
 
                           deno fmt --check src test
+                          deno check `find src -name "*.ts"`
                         '''.stripIndent()
                     }
                 }
