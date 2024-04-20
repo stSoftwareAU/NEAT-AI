@@ -14,7 +14,7 @@ export class CLIPPED implements ActivationInterface, UnSquashInterface {
     return CLIPPED.NAME;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: -1, high: 1 };
   }
 
@@ -28,14 +28,4 @@ export class CLIPPED implements ActivationInterface, UnSquashInterface {
 
     return v;
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   // The derivative is 1 for x in [-1, 1] and 0 otherwise.
-  //   return {
-  //     activation: fx,
-  //     derivative: x > -1 && x < 1 ? 1 : 0,
-  //   };
-  // }
 }

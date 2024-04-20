@@ -31,7 +31,7 @@ export class TANH implements ActivationInterface, UnSquashInterface {
   }
 
   // Range of the activation function. TANH outputs values between -1 and 1.
-  range(): { low: number; high: number } {
+  range() {
     return { low: -1, high: 1 };
   }
 
@@ -45,14 +45,4 @@ export class TANH implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     return Math.tanh(x);
   }
-
-  // // Function to calculate the activation and its derivative
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: 1 - Math.pow(fx, 2),
-  //   };
-  // }
 }

@@ -14,7 +14,7 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     return BIPOLAR_SIGMOID.NAME;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: -1, high: 1 };
   }
 
@@ -37,13 +37,4 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     return 2 / (1 + Math.exp(-x)) - 1;
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: 0.5 * (1 + fx) * (1 - fx),
-  //   };
-  // }
 }

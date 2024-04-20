@@ -30,7 +30,7 @@ export class RELU implements ActivationInterface, UnSquashInterface {
   }
 
   // Range of the activation function. ReLU outputs values between 0 and positive infinity.
-  range(): { low: number; high: number } {
+  range() {
     return { low: 0, high: Number.POSITIVE_INFINITY };
   }
 

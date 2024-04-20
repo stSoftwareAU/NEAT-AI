@@ -22,10 +22,6 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
       throw new Error("Activation must be a finite number");
     }
 
-    if (activation === 0) {
-      return 0; // Return 0 if activation is 0
-    }
-
     if (Math.abs(activation) < 1e-15) { // 1e-15 is a reasonable threshold to prevent overflow
       return activation > 0 ? Number.MAX_VALUE : Number.MIN_VALUE; // Return a large positive or negative number as the best guess if activation is a very small positive or negative number
     }
@@ -33,16 +29,7 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
     return 1 / activation;
   }
 
-  range(): { low: number; high: number } {
-    return { low: 0, high: Infinity };
+  range() {
+    return { low: -Infinity, high: Infinity };
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: x !== 0 ? -1 / (x * x) : 0,
-  //   };
-  // }
 }

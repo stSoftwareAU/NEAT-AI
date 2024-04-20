@@ -15,7 +15,7 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   }
 
   // Range of the activation function is [0, 1]
-  range(): { low: number; high: number } {
+  range() {
     return { low: 0, high: 1 };
   }
 
@@ -47,13 +47,4 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     return Math.exp(-Math.pow(x, 2));
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: -2 * x * fx,
-  //   };
-  // }
 }

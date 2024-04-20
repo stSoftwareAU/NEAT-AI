@@ -1,8 +1,3 @@
-import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
-import { Neuron } from "../../../architecture/Neuron.ts";
-import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
-import { IDENTITY } from "../types/IDENTITY.ts";
-import { Mutation } from "../../mutation.ts";
 import {
   accumulateWeight,
   adjustedBias,
@@ -13,6 +8,11 @@ import {
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
+import { Neuron } from "../../../architecture/Neuron.ts";
+import { Mutation } from "../../mutation.ts";
+import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
+import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
@@ -21,7 +21,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     return IF.NAME;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 

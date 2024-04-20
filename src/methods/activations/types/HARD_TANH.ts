@@ -17,26 +17,19 @@ export class HARD_TANH implements ActivationInterface, UnSquashInterface {
   }
 
   // Range of the activation function is [-1, 1]
-  range(): { low: number; high: number } {
+  range() {
     return { low: -1, high: 1 };
   }
 
   // Implementing the unSquash function
-  unSquash(activation: number): number {
-    // Since the function is already bounded within [-1, 1], the unsquash is identity within the range
+  unSquash(activation: number, hint?: number): number {
+    if (hint !== undefined) return hint;
+
+    // Since the function is already bounded within [-1, 1], the unSquash is identity within the range
     return Math.max(-1, Math.min(1, activation));
   }
 
   squash(x: number) {
     return Math.max(-1, Math.min(1, x));
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: x > -1 && x < 1 ? 1 : 0,
-  //   };
-  // }
 }

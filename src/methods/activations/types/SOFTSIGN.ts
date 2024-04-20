@@ -27,7 +27,7 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
   }
 
   /* Range of the activation function. Softsign outputs values between -1 and +1.*/
-  range(): { low: number; high: number } {
+  range() {
     return { low: -1, high: 1 };
   }
 
@@ -42,15 +42,4 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
     const d = 1 + Math.abs(x);
     return x / d;
   }
-
-  // Function to calculate the activation and its derivative
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-  //   const d = 1 + Math.abs(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: 1 / Math.pow(d, 2),
-  //   };
-  // }
 }

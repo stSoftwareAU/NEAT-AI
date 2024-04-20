@@ -21,7 +21,7 @@ export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
     return activation;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: 0, high: Number.POSITIVE_INFINITY };
   }
 
@@ -32,13 +32,4 @@ export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     return Math.abs(x);
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: x < 0 ? -1 : 1,
-  //   };
-  // }
 }

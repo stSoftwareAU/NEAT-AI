@@ -17,7 +17,7 @@ export class MEAN implements NeuronActivationInterface {
     return MEAN.NAME;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 

@@ -35,7 +35,7 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     return x;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
@@ -51,14 +51,4 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
 
     return (d - 1) / 2 + x;
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-  //   const d = Math.sqrt(Math.pow(x, 2) + 1);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: x / (2 * d) + 1,
-  //   };
-  // }
 }

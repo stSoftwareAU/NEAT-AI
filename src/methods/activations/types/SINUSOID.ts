@@ -26,7 +26,7 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
   }
 
   // Range of the activation function. Sinusoid outputs values between -1 and 1.
-  range(): { low: number; high: number } {
+  range() {
     return { low: -1, high: 1 };
   }
 
@@ -40,13 +40,4 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     return Math.sin(x);
   }
-
-  // Function to calculate the activation and its derivative
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-  //   return {
-  //     activation: fx,
-  //     derivative: Math.cos(x),
-  //   };
-  // }
 }

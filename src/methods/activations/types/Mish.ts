@@ -73,7 +73,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     return Number.isFinite(guess) ? guess : 0; // Return 0 if guess is not a finite number
   }
 
-  range(): { low: number; high: number } {
+  range() {
     // Mish ranges from negative infinity to positive infinity
     return { low: -Infinity, high: Infinity };
   }

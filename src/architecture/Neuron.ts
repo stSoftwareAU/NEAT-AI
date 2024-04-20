@@ -346,18 +346,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ) {
     const activation = this.adjustedActivation(config);
 
-    const rangeLimitedActivation = limitActivationToRange(
+    const targetActivation = limitActivationToRange(
+      config,
       this,
       requestedActivation,
     );
 
-    let targetActivation = activation +
-      (rangeLimitedActivation - activation);
-
     const ns = this.creature.state.node(this.index);
-    if (Math.abs(activation - targetActivation) < config.plankConstant) {
-      targetActivation = activation;
-    }
 
     const squashMethod = this.findSquash();
 

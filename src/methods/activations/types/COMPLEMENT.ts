@@ -21,16 +21,7 @@ export class COMPLEMENT implements ActivationInterface, UnSquashInterface {
     return 1 - activation;
   }
 
-  range(): { low: number; high: number } {
+  range() {
     return { low: -Infinity, high: Infinity };
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: -1,
-  //   };
-  // }
 }

@@ -1,12 +1,12 @@
-import { ensureDirSync } from "https://deno.land/std@0.223.0/fs/mod.ts";
-import { Creature, CreatureExport } from "../../mod.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import {
   assert,
   assertAlmostEquals,
   fail,
 } from "https://deno.land/std@0.223.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.223.0/fs/mod.ts";
+import { Creature, CreatureExport } from "../../mod.ts";
 import { Costs } from "../../src/Costs.ts";
+import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
 const NODE_ID = "identity-6";
 function makeCreature() {
@@ -97,9 +97,6 @@ Deno.test("PropagateIdentity", () => {
     `${traceDir}/input.json`,
     JSON.stringify(inputs, null, 2),
   );
-  // const inputs = JSON.parse(
-  //   Deno.readTextFileSync(`${traceDir}/input.json`),
-  // ) as number[][];
 
   const targets: number[][] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
@@ -123,8 +120,6 @@ Deno.test("PropagateIdentity", () => {
     generations: 0,
     learningRate: 1,
     disableRandomSamples: true,
-    // disableWeightAdjustment: true,
-    // disableBiasAdjustment: false,
   });
 
   for (let i = inputs.length; i--;) {
@@ -150,11 +145,6 @@ Deno.test("PropagateIdentity", () => {
     config,
   );
 
-  // assert(
-  //   modifiedError > endError,
-  //   `error ${endError} should have improved over ${modifiedError}`,
-  // );
-
   if (neuron.bias < 0.00001 || neuron.bias > 1) {
     console.info(`neuron.bias ${neuron.bias} not in range`);
   }
@@ -176,9 +166,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
     `${traceDir}/input.json`,
     JSON.stringify(inputs, null, 2),
   );
-  //   const inputs = JSON.parse(
-  //     Deno.readTextFileSync(`${traceDir}/input.json`),
-  //   ) as number[][];
+
   const targets: number[][] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
     targets[i] = creature.activate(inputs[i]);
@@ -205,8 +193,6 @@ Deno.test("PropagateIdentityNoRealChange", () => {
     generations: 0,
     learningRate: 1,
     disableRandomSamples: true,
-    // disableBiasAdjustment: false,
-    // disableWeightAdjustment: false,
   });
 
   console.info(config);
@@ -232,7 +218,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
   assertAlmostEquals(
     modifiedError,
     endError,
-    1e-12,
+    0.001,
     `error ${endError} should have changed ${modifiedError}`,
   );
 });

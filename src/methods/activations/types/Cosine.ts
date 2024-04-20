@@ -38,14 +38,7 @@ export class Cosine implements ActivationInterface, UnSquashInterface {
     return hint >= 0 ? Math.abs(acos) : -Math.abs(acos);
   }
 
-  // squashAndDerive(x: number) {
-  //   return {
-  //     activation: this.squash(x),
-  //     derivative: -Math.sin(x),
-  //   };
-  // }
-
-  range(): { low: number; high: number } {
+  range() {
     return { low: -1, high: 1 };
   }
 }

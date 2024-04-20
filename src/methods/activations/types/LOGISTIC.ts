@@ -2,7 +2,7 @@ import { ActivationInterface } from "../ActivationInterface.ts";
 import { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LOGISTIC implements ActivationInterface, UnSquashInterface {
-  range(): { low: number; high: number } {
+  range() {
     return { low: 0, high: 1 };
   }
 
@@ -26,13 +26,4 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
     const fx = 1 / (1 + Math.exp(-x));
     return fx;
   }
-
-  // squashAndDerive(x: number) {
-  //   const fx = this.squash(x);
-
-  //   return {
-  //     activation: fx,
-  //     derivative: fx * (1 - fx),
-  //   };
-  // }
 }

@@ -305,3 +305,50 @@ Deno.test("CRISPR-multi-outputs2", () => {
   Deno.writeTextFileSync("test/data/CRISPR/.actual-sane2.json", actualTXT);
   assertEquals(actualTXT, expectedTXT, "should have converted");
 });
+
+Deno.test("CRISPR-uuid", () => {
+  const json: CreatureInternal = {
+    neurons: [
+      { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        index: 4,
+        bias: 0.1,
+      },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        index: 5,
+        bias: 0.2,
+      },
+      {
+        type: "output",
+        squash: "LOGISTIC",
+        index: 6,
+        bias: 0.3,
+      },
+    ],
+    synapses: [
+      { from: 1, to: 3, weight: 0.1 },
+      { from: 2, to: 4, weight: 0.2 },
+      { from: 3, to: 5, weight: 0.3 },
+      { from: 2, to: 6, weight: 0.4 },
+    ],
+    input: 3,
+    output: 3,
+  };
+  const creature = Creature.fromJSON(json);
+  Deno.writeTextFileSync(
+    "test/data/CRISPR/.network-proximity-to-delisting.json",
+    JSON.stringify(creature.internalJSON(), null, 2),
+  );
+  creature.validate();
+  const crispr = new CRISPR(creature);
+  const dnaTXT = Deno.readTextFileSync(
+    "test/data/CRISPR/DNA-proximity-to-delisting.json",
+  );
+
+  const networkSANE = Creature.fromJSON(crispr.apply(JSON.parse(dnaTXT)));
+  networkSANE.validate();
+});
