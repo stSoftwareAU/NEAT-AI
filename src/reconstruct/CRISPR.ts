@@ -18,6 +18,7 @@ export interface CrisprInterface extends TagsInterface {
     type: "output" | "hidden";
     squash: string;
     bias: number;
+    comment?: string;
   }[];
 
   synapses: {
@@ -29,6 +30,7 @@ export interface CrisprInterface extends TagsInterface {
     toUUID?: string;
     weight: number;
     type?: "positive" | "negative" | "condition";
+    comment?: string;
   }[];
 }
 
@@ -126,17 +128,20 @@ export class CRISPR {
           indx = tmpCreature.neurons.length;
         }
 
-        const networkNode = new Neuron(
+        const neuron = new Neuron(
           uuid,
           dnaNeuron.type,
           dnaNeuron.bias,
           tmpCreature,
           dnaNeuron.squash,
         );
-        networkNode.index = indx;
+        neuron.index = indx;
 
-        addTag(networkNode, "CRISPR", dna.id);
-        tmpCreature.neurons.push(networkNode);
+        addTag(neuron, "CRISPR", dna.id);
+        if (dnaNeuron.comment) {
+          addTag(neuron, "comment", dnaNeuron.comment);
+        }
+        tmpCreature.neurons.push(neuron);
         if (dnaNeuron.type == "output") {
           if (firstDnaOutputIndex == -1) {
             firstDnaOutputIndex = indx;
@@ -190,6 +195,9 @@ export class CRISPR {
             c.type,
           );
           addTag(synapse, "CRISPR", dna.id);
+          if (c.comment) {
+            addTag(synapse, "comment", c.comment);
+          }
         }
       }
     });
@@ -251,18 +259,20 @@ export class CRISPR {
 
         const indx = tmpCreature.neurons.length - tmpCreature.output;
 
-        const networkNode = new Neuron(
+        const neuron = new Neuron(
           uuid,
           dnaNeuron.type,
           dnaNeuron.bias,
           tmpCreature,
           dnaNeuron.squash,
         );
-        networkNode.index = indx;
+        neuron.index = indx;
 
-        addTag(networkNode, "CRISPR", dna.id);
-
-        tmpCreature.neurons.splice(indx, 0, networkNode);
+        addTag(neuron, "CRISPR", dna.id);
+        if (dnaNeuron.comment) {
+          addTag(neuron, "comment", dnaNeuron.comment);
+        }
+        tmpCreature.neurons.splice(indx, 0, neuron);
 
         uuidMap.set(uuid, indx);
       });
@@ -293,7 +303,11 @@ export class CRISPR {
           "Invalid connection (to): " + JSON.stringify(c),
         );
 
-        tmpCreature.connect(fromIndx, toIndx, c.weight, c.type);
+        const synapse = tmpCreature.connect(fromIndx, toIndx, c.weight, c.type);
+        addTag(synapse, "CRISPR", dna.id);
+        if (c.comment) {
+          addTag(synapse, "comment", c.comment);
+        }
       });
     }
 
