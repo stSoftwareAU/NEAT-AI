@@ -351,4 +351,8 @@ Deno.test("CRISPR-uuid", () => {
 
   const networkSANE = Creature.fromJSON(crispr.apply(JSON.parse(dnaTXT)));
   networkSANE.validate();
+  const synapseWithComment = networkSANE.synapses.find((s) =>
+    "Negative weight to trigger on ≤ 0" == getTag(s, "comment")
+  );
+  assert(synapseWithComment, "Should have comment");
 });
