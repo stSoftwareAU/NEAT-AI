@@ -37,7 +37,7 @@ Deno.test("tune", async () => {
       },
       {
         type: "output",
-        uuid: "74d01774-086b-4ddb-bb18-367abb63a75a",
+        uuid: "output-0",
         bias: -0.49135010426905,
         squash: "BIPOLAR_SIGMOID",
       },
@@ -68,7 +68,7 @@ Deno.test("tune", async () => {
       {
         weight: -0.00000012,
         fromUUID: "previous-0001",
-        toUUID: "74d01774-086b-4ddb-bb18-367abb63a75a",
+        toUUID: "output-0",
       },
       {
         weight: 0.9867556172986067,
@@ -78,7 +78,7 @@ Deno.test("tune", async () => {
       {
         weight: 0.96764643541,
         fromUUID: "0a858bc2-3bdc-417c-85b0-e9c513828d29",
-        toUUID: "74d01774-086b-4ddb-bb18-367abb63a75a",
+        toUUID: "output-0",
       },
     ],
     input: 2,
@@ -116,7 +116,7 @@ Deno.test("tune", async () => {
       },
       {
         type: "output",
-        uuid: "74d01774-086b-4ddb-bb18-367abb63a75a",
+        uuid: "output-0",
         bias: -0.49135010426905,
         squash: "BIPOLAR_SIGMOID",
       },
@@ -151,12 +151,12 @@ Deno.test("tune", async () => {
       {
         weight: -0.00000067,
         fromUUID: "fittest-0001",
-        toUUID: "74d01774-086b-4ddb-bb18-367abb63a75a",
+        toUUID: "output-0",
       },
       {
         weight: 0.96864643541,
         fromUUID: "0a858bc2-3bdc-417c-85b0-e9c513828d29",
-        toUUID: "74d01774-086b-4ddb-bb18-367abb63a75a",
+        toUUID: "output-0",
       },
     ],
     input: 2,
@@ -176,7 +176,7 @@ Deno.test("tune", async () => {
         assertAlmostEquals(node.bias, 0.1, 0.0000001, n.uuid);
       }
 
-      if (node.uuid == "74d01774-086b-4ddb-bb18-367abb63a75a") {
+      if (node.uuid == "output-0") {
         assertAlmostEquals(
           node.bias,
           -0.49135010426905,
