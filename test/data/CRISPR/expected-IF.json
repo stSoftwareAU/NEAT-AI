@@ -254,7 +254,7 @@
     },
     {
       "type": "output",
-      "uuid": "974a57cb-a1e1-477b-bbda-d72dacfb162e",
+      "uuid": "output-0",
       "bias": 0,
       "squash": "IF",
       "tags": [
@@ -814,7 +814,7 @@
     {
       "weight": 1,
       "fromUUID": "input-297",
-      "toUUID": "974a57cb-a1e1-477b-bbda-d72dacfb162e",
+      "toUUID": "output-0",
       "type": "negative"
     },
     {
@@ -1245,13 +1245,13 @@
     {
       "weight": 1,
       "fromUUID": "39596706-90a4-4ffc-9e89-da24d42e0e71",
-      "toUUID": "974a57cb-a1e1-477b-bbda-d72dacfb162e",
+      "toUUID": "output-0",
       "type": "positive"
     },
     {
       "weight": 1,
       "fromUUID": "378400db-50d3-4765-a6de-bfd54dc617d6",
-      "toUUID": "974a57cb-a1e1-477b-bbda-d72dacfb162e",
+      "toUUID": "output-0",
       "type": "condition"
     }
   ],

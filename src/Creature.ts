@@ -1689,10 +1689,10 @@ export class Creature implements CreatureInternal {
 
       if (jn.type === "input") continue;
       if (jn.type == "output") {
-        if (!jn.uuid || jn.uuid.startsWith("output-") == false) {
-          uuidMap.set(jn.uuid ? jn.uuid : "", pos);
-          jn.uuid = `output-${outputIndx}`;
-        }
+        // if (!jn.uuid || jn.uuid.startsWith("output-") == false) {
+        jn.uuid = `output-${outputIndx}`;
+        // uuidMap.set(jn.uuid, pos);
+        // }
         outputIndx++;
       }
       const n = Neuron.fromJSON(jn, this);
@@ -1714,23 +1714,29 @@ export class Creature implements CreatureInternal {
     const synapses = json.synapses;
     for (let i = 0; i < cLen; i++) {
       const synapse = synapses[i];
-
-      const from = (synapse as SynapseExport).fromUUID
-        ? uuidMap.get((synapse as SynapseExport).fromUUID)
+      const se = synapse as SynapseExport;
+      let from = se.fromUUID
+        ? uuidMap.get(se.fromUUID)
         : (synapse as SynapseInternal).from;
 
       if (from === undefined) {
-        throw new Error(
-          (synapse as SynapseExport).fromUUID + ") FROM is undefined",
-        );
+        const si = synapse as SynapseInternal;
+        if (si.from === undefined) {
+          throw new Error(
+            se.fromUUID + ") FROM is undefined",
+          );
+        } else {
+          console.warn("FROM UUID is undefined using index", si.from);
+          from = si.from;
+        }
       }
-      const to = (synapse as SynapseExport).toUUID
-        ? uuidMap.get((synapse as SynapseExport).toUUID)
+      const to = se.toUUID
+        ? uuidMap.get(se.toUUID)
         : (synapse as SynapseInternal).to;
 
       if (to === undefined) {
         throw new Error(
-          (synapse as SynapseExport).toUUID + ") TO is undefined",
+          se.toUUID + ") TO is undefined",
         );
       }
 

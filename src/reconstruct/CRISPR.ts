@@ -6,7 +6,7 @@ import {
 } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";
-import { Upgrade } from "../../mod.ts";
+import { CreatureUtil, Upgrade } from "../../mod.ts";
 
 export interface CrisprInterface extends TagsInterface {
   id: string;
@@ -245,9 +245,12 @@ export class CRISPR {
         }
       });
 
+      const neurons: Neuron[] = [];
       tmpCreature.neurons.forEach((neuron, indx) => {
-        if (neuron.uuid && neuron.type !== "output") {
+        assert(neuron.uuid !== undefined, "missing uuid");
+        if (neuron.type !== "output") {
           uuidMap.set(neuron.uuid, indx);
+          neurons.push(neuron);
         }
       });
 
@@ -255,9 +258,7 @@ export class CRISPR {
         const uuid = dnaNeuron.uuid
           ? uuidMap.has(dnaNeuron.uuid) ? crypto.randomUUID() : dnaNeuron.uuid
           : crypto.randomUUID();
-        uuidMap.set(uuid, uuidMap.size);
-
-        const indx = tmpCreature.neurons.length - tmpCreature.output;
+        const indx = uuidMap.size;
 
         const neuron = new Neuron(
           uuid,
@@ -272,14 +273,24 @@ export class CRISPR {
         if (dnaNeuron.comment) {
           addTag(neuron, "comment", dnaNeuron.comment);
         }
-        tmpCreature.neurons.splice(indx, 0, neuron);
+        neurons.push(neuron);
 
         uuidMap.set(uuid, indx);
       });
-      for (let i = 0; i < tmpCreature.output; i++) {
-        uuidMap.set(`output-${i}`, uuidMap.size);
+      for (
+        let indx = tmpCreature.neurons.length - tmpCreature.output;
+        indx < tmpCreature.neurons.length;
+        indx++
+      ) {
+        const neuron = tmpCreature.neurons[indx];
+        const updatedIndx = uuidMap.size;
+        neuron.index = updatedIndx;
+        neurons.push(neuron);
+        uuidMap.set(neuron.uuid, updatedIndx);
       }
 
+      tmpCreature.neurons = neurons;
+      tmpCreature.clearCache();
       dna.synapses.forEach((c) => {
         let fromIndx: number | undefined = undefined;
         const tmpIndx = uuidMap.get(c.fromUUID ?? "unknown");
@@ -350,9 +361,10 @@ export class CRISPR {
     return tmpCreature;
   }
 
-  apply(dna: CrisprInterface): Creature {
+  async cleaveDNA(dna: CrisprInterface): Promise<Creature | undefined> {
     let alreadyProcessed = false;
 
+    const uuid = await CreatureUtil.makeUUID(this.creature);
     this.creature.neurons.forEach((node) => {
       assert(node.uuid !== undefined, "missing uuid");
 
@@ -376,10 +388,20 @@ export class CRISPR {
     if (alreadyProcessed) return this.creature;
 
     const dnaClean = Upgrade.CRISPR(dna);
+    let modifiedCreature: Creature;
     if (dnaClean.mode === "insert") {
-      return this.insert(dnaClean);
+      modifiedCreature = this.insert(dnaClean);
     } else {
-      return this.append(dnaClean);
+      modifiedCreature = this.append(dnaClean);
+    }
+
+    delete modifiedCreature.uuid;
+    modifiedCreature.validate();
+    const modifiedUUID = await CreatureUtil.makeUUID(modifiedCreature);
+    if (uuid !== modifiedUUID) {
+      return modifiedCreature;
+    } else {
+      return undefined;
     }
   }
 }

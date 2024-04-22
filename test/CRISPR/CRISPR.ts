@@ -11,14 +11,14 @@ import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("CRISPR", () => {
+Deno.test("CRISPR", async () => {
   const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
   const network = Creature.fromJSON(JSON.parse(networkTXT));
   network.validate();
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-IF.json");
 
-  const networkIF = crispr.apply(JSON.parse(dnaTXT));
+  const networkIF = await crispr.cleaveDNA(JSON.parse(dnaTXT));
   (networkIF as Creature).validate();
   const expectedJSON = JSON.parse(
     Deno.readTextFileSync("test/data/CRISPR/expected-IF.json"),
@@ -43,17 +43,18 @@ Deno.test("CRISPR", () => {
   assertEquals(actualTXT, expectedTXT, "should have converted");
 });
 
-Deno.test("CRISPR_twice", () => {
+Deno.test("CRISPR_twice", async () => {
   const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
   const network = Creature.fromJSON(JSON.parse(networkTXT));
   network.validate();
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-IF.json");
 
-  const networkIF1 = crispr.apply(JSON.parse(dnaTXT));
+  const networkIF1 = await crispr.cleaveDNA(JSON.parse(dnaTXT));
+  assert(networkIF1);
   (networkIF1 as Creature).validate();
   const crispr2 = new CRISPR(networkIF1);
-  const networkIF2 = crispr2.apply(JSON.parse(dnaTXT));
+  const networkIF2 = await crispr2.cleaveDNA(JSON.parse(dnaTXT));
   (networkIF2 as Creature).validate();
   const expectedJSON = JSON.parse(
     Deno.readTextFileSync("test/data/CRISPR/expected-IF.json"),
@@ -69,7 +70,7 @@ Deno.test("CRISPR_twice", () => {
   assertEquals(actualTXT, expectedTXT, "should have converted");
 });
 
-Deno.test("CRISPR-Volume", () => {
+Deno.test("CRISPR-Volume", async () => {
   const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
   const network = Creature.fromJSON(JSON.parse(networkTXT));
   Deno.writeTextFileSync(
@@ -80,7 +81,7 @@ Deno.test("CRISPR-Volume", () => {
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-VOLUME.json");
 
-  const networkIF = crispr.apply(JSON.parse(dnaTXT));
+  const networkIF = await crispr.cleaveDNA(JSON.parse(dnaTXT));
 
   const expectedJSON = JSON.parse(
     Deno.readTextFileSync("test/data/CRISPR/expected-VOLUME.json"),
@@ -104,14 +105,14 @@ Deno.test("CRISPR-Volume", () => {
   assertEquals(actualTXT, expectedTXT, "should have converted");
 });
 
-Deno.test("REMOVE", () => {
+Deno.test("REMOVE", async () => {
   const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
   const network = Creature.fromJSON(JSON.parse(networkTXT));
   network.validate();
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-IF.json");
 
-  const networkIF = crispr.apply(JSON.parse(dnaTXT)) as Creature;
+  const networkIF = await crispr.cleaveDNA(JSON.parse(dnaTXT)) as Creature;
   (networkIF as Creature).validate();
 
   for (let pos = networkIF.neurons.length; pos--;) {
@@ -130,12 +131,12 @@ Deno.test("REMOVE", () => {
   networkIF.fix();
   const crispr2 = new CRISPR(networkIF);
 
-  const networkIF2 = crispr2.apply(JSON.parse(dnaTXT)) as Creature;
+  const networkIF2 = await crispr2.cleaveDNA(JSON.parse(dnaTXT)) as Creature;
 
   (networkIF2 as Creature).validate();
 });
 
-Deno.test("CRISPR-multi-outputs1", () => {
+Deno.test("CRISPR-multi-outputs1", async () => {
   const json: CreatureInternal = {
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
@@ -189,7 +190,9 @@ Deno.test("CRISPR-multi-outputs1", () => {
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-SANE.json");
 
-  const networkSANE = Creature.fromJSON(crispr.apply(JSON.parse(dnaTXT)));
+  const tmpCreature = await crispr.cleaveDNA(JSON.parse(dnaTXT));
+  assert(tmpCreature);
+  const networkSANE = Creature.fromJSON(tmpCreature);
   networkSANE.validate();
   const expectedJSON = JSON.parse(
     Deno.readTextFileSync("test/data/CRISPR/expected-sane.json"),
@@ -228,7 +231,7 @@ function clean(
   });
 }
 
-Deno.test("CRISPR-multi-outputs2", () => {
+Deno.test("CRISPR-multi-outputs2", async () => {
   const json: CreatureInternal = {
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
@@ -282,7 +285,9 @@ Deno.test("CRISPR-multi-outputs2", () => {
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-SANE.json");
 
-  const networkSANE = Creature.fromJSON(crispr.apply(JSON.parse(dnaTXT)));
+  const tmpCreature = await crispr.cleaveDNA(JSON.parse(dnaTXT));
+  assert(tmpCreature);
+  const networkSANE = Creature.fromJSON(tmpCreature);
   networkSANE.validate();
   const expectedJSON = JSON.parse(
     Deno.readTextFileSync("test/data/CRISPR/expected-sane2.json"),
@@ -306,7 +311,7 @@ Deno.test("CRISPR-multi-outputs2", () => {
   assertEquals(actualTXT, expectedTXT, "should have converted");
 });
 
-Deno.test("CRISPR-uuid", () => {
+Deno.test("CRISPR-uuid", async () => {
   const json: CreatureInternal = {
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
@@ -345,11 +350,12 @@ Deno.test("CRISPR-uuid", () => {
   );
   creature.validate();
   const crispr = new CRISPR(creature);
-  const dnaTXT = Deno.readTextFileSync(
+  const dna = JSON.parse(Deno.readTextFileSync(
     "test/data/CRISPR/DNA-proximity-to-delisting.json",
-  );
-
-  const networkSANE = Creature.fromJSON(crispr.apply(JSON.parse(dnaTXT)));
+  ));
+  const tmpCreature = await crispr.cleaveDNA(dna);
+  assert(tmpCreature);
+  const networkSANE = Creature.fromJSON(tmpCreature);
   networkSANE.validate();
   const synapseWithComment = networkSANE.synapses.find((s) =>
     "Negative weight to trigger on ≤ 0" == getTag(s, "comment")
