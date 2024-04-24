@@ -83,7 +83,7 @@ function logVerbose(creatures: Creature[]) {
         const error = getTag(creature, "error");
         const diff = Number.parseFloat(sourceError ?? "99999") -
           Number.parseFloat(error ?? "99999");
-        const dnaID = getTag(sourceCreature, "CRISPR-DNA");
+        const dnaID = getTag(creature, "CRISPR-DNA");
 
         console.info(
           `CRISPR ${blue(dnaID ?? "unknown")} Score: ${
