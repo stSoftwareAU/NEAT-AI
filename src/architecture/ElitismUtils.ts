@@ -31,26 +31,60 @@ export function makeElitists(
   });
 
   if (verbose) {
-    for (let indx = 0; indx < creatures.length; indx++) {
-      const creature = creatures[indx];
-      const trainID = getTag(creature, "trainID");
-      if (trainID) {
-        const notified = getTag(creature, "notified");
-        if (notified === "Yes") {
-          continue;
-        }
-        addTag(creature, "notified", "Yes");
-        const score = creature.score;
+    logVerbose(creatures);
+  }
 
-        const approach = getTag(creature, "approach");
-        const untrainedError = getTag(creature, "untrained-error");
+  const elitists = creatures.slice(0, elitism);
+
+  return elitists;
+}
+
+function logVerbose(creatures: Creature[]) {
+  for (let indx = 0; indx < creatures.length; indx++) {
+    const creature = creatures[indx];
+    const notified = getTag(creature, "notified");
+    if (notified === "Yes") {
+      continue;
+    }
+    const trainID = getTag(creature, "trainID");
+    if (trainID) {
+      addTag(creature, "notified", "Yes");
+      const score = creature.score;
+
+      const approach = getTag(creature, "approach");
+      const untrainedError = getTag(creature, "untrained-error");
+      const error = getTag(creature, "error");
+      const diff = Number.parseFloat(untrainedError ?? "99999") -
+        Number.parseFloat(error ?? "99999");
+      console.info(
+        `${approach} ${blue(trainID)} Score: ${
+          yellow(score ? score.toString() : "undefined")
+        }, Error: ${yellow(untrainedError ?? "unknown")} -> ${
+          yellow(error ?? "unknown")
+        }` + (diff > 0
+          ? ` ${"improved " + bold(green(diff.toString()))}`
+          : diff < 0
+          ? ` ${"regression " + red(diff.toString())}`
+          : white(" neutral")),
+      );
+    }
+    const sourceUUID = getTag(creature, "CRISPR-SOURCE");
+    if (sourceUUID) {
+      addTag(creature, "notified", "Yes");
+      const sourceCreature = creatures.find((c) => c.uuid === sourceUUID);
+
+      if (sourceCreature) {
+        const score = creature.score;
+        const sourceError = getTag(sourceCreature, "error");
         const error = getTag(creature, "error");
-        const diff = Number.parseFloat(untrainedError ?? "99999") -
+        const diff = Number.parseFloat(sourceError ?? "99999") -
           Number.parseFloat(error ?? "99999");
+        const dnaID = getTag(sourceCreature, "CRISPR-DNA");
+
         console.info(
-          `${approach} ${blue(trainID)} Score: ${
+          `CRISPR ${blue(dnaID ?? "unknown")} Score: ${
             yellow(score ? score.toString() : "undefined")
-          }, Error: ${yellow(untrainedError ?? "unknown")} -> ${
+          }, Error: ${yellow(sourceError ?? "unknown")} -> ${
             yellow(error ?? "unknown")
           }` + (diff > 0
             ? ` ${"improved " + bold(green(diff.toString()))}`
@@ -59,40 +93,6 @@ export function makeElitists(
             : white(" neutral")),
         );
       }
-      const sourceUUID = getTag(creature, "CRISPR-SOURCE");
-      if (sourceUUID) {
-        const notified = getTag(creature, "notified");
-        if (notified === "Yes") {
-          continue;
-        }
-        addTag(creature, "notified", "Yes");
-        const sourceCreature = creatures.find((c) => c.uuid === sourceUUID);
-
-        if (sourceCreature) {
-          const score = creature.score;
-          const sourceError = getTag(sourceCreature, "error");
-          const error = getTag(creature, "error");
-          const diff = Number.parseFloat(sourceError ?? "99999") -
-            Number.parseFloat(error ?? "99999");
-          const dnaID = getTag(sourceCreature, "CRISPR-DNA");
-
-          console.info(
-            `CRISPR ${blue(dnaID ?? "unknown")} Score: ${
-              yellow(score ? score.toString() : "undefined")
-            }, Error: ${yellow(sourceError ?? "unknown")} -> ${
-              yellow(error ?? "unknown")
-            }` + (diff > 0
-              ? ` ${"improved " + bold(green(diff.toString()))}`
-              : diff < 0
-              ? ` ${"regression " + red(diff.toString())}`
-              : white(" neutral")),
-          );
-        }
-      }
     }
   }
-
-  const elitists = creatures.slice(0, elitism);
-
-  return elitists;
 }
