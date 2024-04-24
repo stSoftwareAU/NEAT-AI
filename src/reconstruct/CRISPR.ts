@@ -399,6 +399,8 @@ export class CRISPR {
     modifiedCreature.validate();
     const modifiedUUID = await CreatureUtil.makeUUID(modifiedCreature);
     if (uuid !== modifiedUUID) {
+      addTag(modifiedCreature, "CRISPR-SOURCE", uuid);
+      addTag(modifiedCreature, "CRISPR-DNA", dna.id); // DNA that was used to modify
       return modifiedCreature;
     } else {
       return undefined;

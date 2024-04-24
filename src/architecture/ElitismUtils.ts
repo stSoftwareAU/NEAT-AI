@@ -59,6 +59,36 @@ export function makeElitists(
             : white(" neutral")),
         );
       }
+      const sourceUUID = getTag(creature, "CRISPR-SOURCE");
+      if (sourceUUID) {
+        const notified = getTag(creature, "notified");
+        if (notified === "Yes") {
+          continue;
+        }
+        addTag(creature, "notified", "Yes");
+        const sourceCreature = creatures.find((c) => c.uuid === sourceUUID);
+
+        if (sourceCreature) {
+          const score = creature.score;
+          const sourceError = getTag(sourceCreature, "error");
+          const error = getTag(creature, "error");
+          const diff = Number.parseFloat(sourceError ?? "99999") -
+            Number.parseFloat(error ?? "99999");
+          const dnaID = getTag(sourceCreature, "CRISPR-DNA");
+
+          console.info(
+            `CRISPR ${blue(dnaID ?? "unknown")} Score: ${
+              yellow(score ? score.toString() : "undefined")
+            }, Error: ${yellow(sourceError ?? "unknown")} -> ${
+              yellow(error ?? "unknown")
+            }` + (diff > 0
+              ? ` ${"improved " + bold(green(diff.toString()))}`
+              : diff < 0
+              ? ` ${"regression " + red(diff.toString())}`
+              : white(" neutral")),
+          );
+        }
+      }
     }
   }
 

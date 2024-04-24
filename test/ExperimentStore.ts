@@ -3,6 +3,7 @@ import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../src/Creature.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/architecture/Neat.ts";
+import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -62,5 +63,6 @@ Deno.test("previous", async () => {
 async function previousExperiment(creature: Creature, neat: Neat) {
   const key = await CreatureUtil.makeUUID(creature);
 
-  return neat.previousExperiment(key);
+  const deDuplicator = new DeDuplicator(neat);
+  return deDuplicator.previousExperiment(key);
 }

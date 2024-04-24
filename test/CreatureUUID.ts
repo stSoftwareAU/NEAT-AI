@@ -7,6 +7,7 @@ import { Creature } from "../src/Creature.ts";
 import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/architecture/Neat.ts";
+import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -247,13 +248,14 @@ Deno.test("generateUUID", async () => {
   const n1 = Creature.fromJSON(creature);
 
   const neat = new Neat(1, 1, {}, []);
-  await neat.deDuplicate([n1]);
+  const deDuplicator = new DeDuplicator(neat);
+  await deDuplicator.perform([n1]);
 
   const uuid1 = n1.uuid;
   assert(n1.uuid, "deDuplicate should create UUIDs: " + n1.uuid);
 
   n1.modBias();
-  await neat.deDuplicate([n1]);
+  await deDuplicator.perform([n1]);
 
   assertNotEquals(
     uuid1,
