@@ -32,33 +32,38 @@ export class DeDuplicator {
           creatures.splice(i, 1);
           i--;
         } else {
-          const child = this.neat.offspring();
+          for (let attempts = 0; true; attempts++) {
+            const child = this.neat.offspring();
 
-          if (child) {
-            const key2 = await CreatureUtil.makeUUID(child);
-            let duplicate2 = unique.has(key);
-            if (!duplicate2 && i > this.config.elitism) {
-              duplicate2 = this.previousExperiment(key2);
+            if (child) {
+              const key2 = await CreatureUtil.makeUUID(child);
+              let duplicate2 = unique.has(key);
+              if (!duplicate2 && i > this.config.elitism) {
+                duplicate2 = this.previousExperiment(key2);
+              }
+              if (!duplicate2) {
+                unique.add(key2);
+                creatures[i] = child;
+                break;
+              }
             }
-            if (!duplicate2) {
-              unique.add(key2);
-              creatures[i] = child;
+            this.neat.mutate([creature]);
+            const key3 = await CreatureUtil.makeUUID(creature);
+            let duplicate3 = unique.has(key3);
+            if (!duplicate3 && i > this.config.elitism) {
+              duplicate3 = this.previousExperiment(key3);
             }
-          }
-          this.neat.mutate([creature]);
-          const key3 = await CreatureUtil.makeUUID(creature);
-          let duplicate3 = unique.has(key3);
-          if (!duplicate3 && i > this.config.elitism) {
-            duplicate3 = this.previousExperiment(key3);
-          }
-          if (!duplicate3) {
-            unique.add(key3);
-          } else {
-            console.error(
-              `Can't deDuplicate creature at ${i} of ${creatures.length}`,
-            );
-            creatures.splice(i, 1);
-            i--;
+            if (!duplicate3) {
+              unique.add(key3);
+              break;
+            } else if (attempts > 12) {
+              console.error(
+                `Can't deDuplicate creature at ${i} of ${creatures.length}`,
+              );
+              creatures.splice(i, 1);
+              i--;
+              break;
+            }
           }
         }
       }
