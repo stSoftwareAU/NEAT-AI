@@ -14,8 +14,20 @@ export function makeElitists(
   size = 1,
   verbose = false,
 ) {
+  sortCreaturesByScore(creatures);
+
+  if (verbose) {
+    logVerbose(creatures);
+  }
+
   const elitism = Math.min(Math.max(1, size), creatures.length);
 
+  const elitists = creatures.slice(0, elitism);
+
+  return elitists;
+}
+
+function sortCreaturesByScore(creatures: Creature[]) {
   creatures.sort((a, b) => {
     if (Number.isFinite(a.score)) {
       if (Number.isFinite(b.score)) {
@@ -29,14 +41,6 @@ export function makeElitists(
       return 0;
     }
   });
-
-  if (verbose) {
-    logVerbose(creatures);
-  }
-
-  const elitists = creatures.slice(0, elitism);
-
-  return elitists;
 }
 
 function logVerbose(creatures: Creature[]) {
