@@ -5,7 +5,6 @@ import { Neat, NeatConfig } from "./Neat.ts";
 export class DeDuplicator {
   private config: NeatConfig;
   private neat: Neat;
-  //   private static readonly MAX_ATTEMPTS = 100; // Constant for max attempts to resolve conflicts
 
   constructor(neat: Neat) {
     this.config = neat.config;
@@ -15,25 +14,54 @@ export class DeDuplicator {
   public async perform(creatures: Creature[]) {
     this.logPopulationSize(creatures);
 
-    const uniqueCreatures: Creature[] = [];
     const unique = new Set<string>();
     for (let i = 0; i < creatures.length; i++) {
       const creature = creatures[i];
       const key = await CreatureUtil.makeUUID(creature);
 
-      if (uniqueCreatures.length > this.config.elitism) {
-        if (!unique.has(key) && !this.previousExperiment(key)) {
-          unique.add(key);
-          uniqueCreatures.push(creature);
-        }
-      } else if (!unique.has(key)) {
-        unique.add(key);
-        uniqueCreatures.push(creature);
+      let duplicate = unique.has(key);
+      if (!duplicate && i > this.config.elitism) {
+        duplicate = this.previousExperiment(key);
       }
-    }
-    creatures.length = 0;
-    for (const creature of uniqueCreatures) {
-      creatures.push(creature);
+
+      if (duplicate) {
+        if (creatures.length > this.config.populationSize) {
+          console.info(
+            `Culling duplicate creature at ${i} of ${creatures.length}`,
+          );
+          creatures.splice(i, 1);
+          i--;
+        } else {
+          const child = this.neat.offspring();
+
+          if (child) {
+            const key2 = await CreatureUtil.makeUUID(child);
+            let duplicate2 = unique.has(key);
+            if (!duplicate2 && i > this.config.elitism) {
+              duplicate2 = this.previousExperiment(key2);
+            }
+            if (!duplicate2) {
+              unique.add(key2);
+              creatures[i] = child;
+            }
+          }
+          this.neat.mutate([creature]);
+          const key3 = await CreatureUtil.makeUUID(creature);
+          let duplicate3 = unique.has(key3);
+          if (!duplicate3 && i > this.config.elitism) {
+            duplicate3 = this.previousExperiment(key3);
+          }
+          if (!duplicate3) {
+            unique.add(key3);
+          } else {
+            console.error(
+              `Can't deDuplicate creature at ${i} of ${creatures.length}`,
+            );
+            creatures.splice(i, 1);
+            i--;
+          }
+        }
+      }
     }
   }
 
@@ -66,47 +94,4 @@ export class DeDuplicator {
       return false;
     }
   }
-
-  //   private isDuplicate(
-  //     unique: Map<string, Creature>,
-  //     key: string,
-  //   ): boolean {
-  //     if (unique.has(key)) return true;
-
-  //     if (unique.size < this.config.elitism) return false;
-
-  //     return this.previousExperiment(key);
-  //   }
-
-  //   private async handleDuplicate(
-  //     unique: Map<string, Creature>,
-  //   ) {
-  //     if (unique.size >= this.config.populationSize) {
-  //       console.info(
-  //         `Culling duplicate creature at ${unique.size}`,
-  //       );
-  //     } else {
-  //       await this.resolveConflict(unique);
-  //     }
-  //   }
-
-  //   private async resolveConflict(
-  //     unique: Map<string, Creature>,
-  //   ) {
-  //     const child = this.neat.offspring();
-  //     if (!child) return;
-
-  //     const key = await CreatureUtil.makeUUID(child);
-  //     if (!(this.isDuplicate(unique, key))) {
-  //       unique.set(key, child);
-  //       return;
-  //     }
-
-  //     this.neat.mutate([child]);
-  //     const mutatedKey = await CreatureUtil.makeUUID(child);
-  //     if (!(this.isDuplicate(unique, mutatedKey))) {
-  //       unique.set(mutatedKey, child);
-  //       return;
-  //     }
-  //   }
 }
