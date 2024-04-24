@@ -23,6 +23,7 @@ import { Fitness } from "./Fitness.ts";
 import { Offspring } from "./Offspring.ts";
 import { assert } from "https://deno.land/std@0.223.0/assert/assert.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
+import { DeDuplicator } from "./DeDuplicator.ts";
 
 export class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
@@ -594,31 +595,10 @@ export class Neat {
       ...newPopulation,
     ]; // Keep pseudo sorted.
 
-    await this.deDuplicate(this.population);
+    const deDuplicator = new DeDuplicator(this);
+    await deDuplicator.perform(this.population);
 
     return fittest;
-  }
-
-  previousExperiment(key: string) {
-    if (this.config.experimentStore) {
-      const filePath = this.config.experimentStore + "/score/" +
-        key.substring(0, 3) + "/" + key.substring(3) + ".txt";
-      try {
-        Deno.statSync(filePath);
-
-        return true;
-      } catch (error) {
-        if (error instanceof Deno.errors.NotFound) {
-          // file or directory does not exist
-          return false;
-        } else {
-          // unexpected error, maybe permissions, pass it along
-          throw error;
-        }
-      }
-    } else {
-      return false;
-    }
   }
 
   async writeScores(creatures: Creature[]) {
@@ -644,7 +624,7 @@ export class Neat {
   /**
    * Mutates the given (or current) population
    */
-  mutate(creatures: Creature[]) {
+  mutate(creatures: Creature[]): void {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i];
@@ -692,7 +672,8 @@ export class Neat {
 
     this.population.unshift(creature);
 
-    await this.deDuplicate(this.population);
+    const deDuplicator = new DeDuplicator(this);
+    await deDuplicator.perform(this.population);
   }
 
   /**
@@ -750,59 +731,6 @@ export class Neat {
       }
     }
     return undefined;
-  }
-
-  async deDuplicate(creatures: Creature[]) {
-    if (creatures.length > this.config.populationSize + 1) {
-      console.info(
-        `Over populated ${creatures.length} expected ${this.config.populationSize}`,
-      );
-    }
-
-    const unique = new Set();
-    /**
-     *  Reset the scores & de-duplicate the population.
-     */
-    for (let i = 0; i < creatures.length; i++) {
-      const p = creatures[i];
-      const key = await CreatureUtil.makeUUID(p);
-
-      let duplicate = unique.has(key);
-      if (!duplicate && i > this.config.elitism) {
-        duplicate = this.previousExperiment(key);
-      }
-      if (duplicate) {
-        if (creatures.length > this.config.populationSize) {
-          console.info(
-            `Culling duplicate creature at ${i} of ${creatures.length}`,
-          );
-          creatures.splice(i, 1);
-          i--;
-        } else {
-          for (let j = 0; j < 100; j++) {
-            const child = this.offspring();
-            if (!child) continue;
-            const tmpPopulation = [child];
-            this.mutate(tmpPopulation);
-
-            const p2 = tmpPopulation[0];
-            const key2 = await CreatureUtil.makeUUID(p2);
-
-            let duplicate2 = unique.has(key2);
-            if (!duplicate2 && i > this.config.elitism) {
-              duplicate2 = this.previousExperiment(key2);
-            }
-            if (duplicate2 == false) {
-              creatures[i] = p2;
-              unique.add(key2);
-              break;
-            }
-          }
-        }
-      } else {
-        unique.add(key);
-      }
-    }
   }
 
   /**

@@ -3,6 +3,7 @@ import { Creature } from "../Creature.ts";
 import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
+import { assert } from "https://deno.land/std@0.223.0/assert/mod.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -17,11 +18,15 @@ export class Offspring {
    */
   static bread(mum: Creature, dad: Creature) {
     const mother = Creature.fromJSON(mum.exportJSON());
+    assert(!mother.uuid);
     const father = Creature.fromJSON(dad.exportJSON());
+    assert(!father.uuid);
     if (
       mother.input !== father.input || mother.output !== father.output
     ) {
-      throw new Error("Parents don't have the same input/output size!");
+      throw new Error(
+        `Parents aren't the same species (inputs ${mother.input} != ${father.input} or outputs ${mother.output} != ${father.output})`,
+      );
     }
 
     // Initialize offspring
