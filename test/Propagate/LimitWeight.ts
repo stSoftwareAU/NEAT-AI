@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "https://deno.land/std@0.223.0/assert/mod.ts";
+import { assertAlmostEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   BackPropagationConfig,
   limitWeight,

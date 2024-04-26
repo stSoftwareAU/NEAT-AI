@@ -1,6 +1,6 @@
-import { blue } from "https://deno.land/std@0.223.0/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.223.0/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.223.0/fs/mod.ts";
+import { blue } from "https://deno.land/std@0.224.0/fmt/colors.ts";
+import { format } from "https://deno.land/std@0.224.0/fmt/duration.ts";
+import { ensureDirSync } from "https://deno.land/std@0.224.0/fs/mod.ts";
 import {
   addTag,
   getTag,
@@ -21,7 +21,7 @@ import { makeElitists } from "./ElitismUtils.ts";
 import { fineTuneImprovement } from "./FineTune.ts";
 import { Fitness } from "./Fitness.ts";
 import { Offspring } from "./Offspring.ts";
-import { assert } from "https://deno.land/std@0.223.0/assert/assert.ts";
+import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { DeDuplicator } from "./DeDuplicator.ts";
 

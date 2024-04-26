@@ -1,5 +1,5 @@
-import { assert } from "https://deno.land/std@0.223.0/assert/mod.ts";
-import { ensureDirSync } from "https://deno.land/std@0.223.0/fs/mod.ts";
+import { assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { ensureDirSync } from "https://deno.land/std@0.224.0/fs/mod.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
