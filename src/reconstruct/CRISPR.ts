@@ -80,6 +80,7 @@ export class CRISPR {
       UUIDs.set(node.uuid, node.index);
     });
 
+    let adjustIndx = 0;
     if (dna.neurons) {
       let firstDnaOutputIndex: number = -1;
       dna.neurons.forEach((neuron) => {
@@ -111,7 +112,7 @@ export class CRISPR {
         }
       });
 
-      const adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
+      adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
         dna.neurons.length;
 
       let outputIndx: number = 0;
@@ -156,39 +157,40 @@ export class CRISPR {
         //   }
         // }
       });
-
-      tmpCreature.clearCache();
-      dna.synapses.forEach((s) => {
-        let from;
-        if (s.fromUUID) {
-          from = UUIDs.get(s.fromUUID);
-        }
-        if (from == undefined) {
-          if (s.from !== undefined) {
-            from = s.from;
-          } else if (s.fromRelative !== undefined) {
-            from = s.fromRelative + adjustIndx;
-          } else {
-            throw new Error("Invalid connection (from): " + JSON.stringify(s));
-          }
-        }
-        assert(
-          from !== undefined,
-          "Invalid connection (from): " + JSON.stringify(s),
-        );
-
-        const to = s.to !== undefined
-          ? s.to
-          : ((s.toRelative ? s.toRelative : 0) + adjustIndx);
-
-        assert(
-          to !== undefined,
-          "Invalid connection (to): " + JSON.stringify(s),
-        );
-
-        tmpCreature.connect(from, to, s.weight, s.type);
-      });
     }
+    tmpCreature.clearCache();
+    dna.synapses.forEach((s) => {
+      let from;
+      if (s.fromUUID) {
+        from = UUIDs.get(s.fromUUID);
+      }
+      if (from == undefined) {
+        if (s.from !== undefined) {
+          from = s.from;
+        } else if (s.fromRelative !== undefined) {
+          from = s.fromRelative + adjustIndx;
+        } else {
+          throw new Error("Invalid connection (from): " + JSON.stringify(s));
+        }
+      }
+
+      let to;
+      if (s.toUUID) {
+        to = UUIDs.get(s.toUUID);
+      }
+      if (to == undefined) {
+        if (s.to !== undefined) {
+          to = s.to;
+        } else if (s.toRelative !== undefined) {
+          to = s.toRelative + adjustIndx;
+        } else {
+          throw new Error("Invalid connection (to): " + JSON.stringify(s));
+        }
+      }
+
+      const synapse = tmpCreature.connect(from, to, s.weight, s.type);
+      addTag(synapse, "CRISPR", dna.id);
+    });
 
     // dna.synapses.forEach((c) => {
     //   let toIndx: number = -1;
