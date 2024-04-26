@@ -2,7 +2,7 @@ import {
   assert,
   assertAlmostEquals,
   fail,
-} from "https://deno.land/std@0.223.0/assert/mod.ts";
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
