@@ -49,5 +49,9 @@ function clean(creature: CreatureInternal): { uuid: string | undefined } {
   cleanCreature.neurons.forEach((neuron: { uuid: string | undefined }) => {
     delete neuron.uuid;
   });
+
+  cleanCreature.synapses.forEach((synapse: { tags: string | undefined }) => {
+    delete synapse.tags;
+  });
   return cleanCreature;
 }
