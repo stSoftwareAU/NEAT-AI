@@ -1,0 +1,31 @@
+{
+  "id": "Recommendation Range",
+  "mode": "append",
+  "nodes": [
+    {
+      "uuid": "constant-3",
+      "bias": 1,
+      "type": "constant"
+    },
+    {
+      "uuid": "8230e2b4-b2b6-4934-a217-d2d3c3557998",
+      "bias": 0,
+      "index": 9999,
+      "squash": "MAXIMUM",
+      "type": "hidden"
+    },
+    {
+      "uuid": "output-0",
+      "bias": 0,
+      "index": 10000,
+      "type": "output",
+      "squash": "MINIMUM"
+    }
+  ],
+  "connections": [
+    { "fromUUID": "constant-3", "toRelative": 9999, "weight": 1 },
+    { "fromRelative": 9997, "toRelative": 9999, "weight": -1 },
+    { "fromRelative": 9998, "toRelative": 10000, "weight": 1 },
+    { "fromRelative": 9999, "toRelative": 10000, "weight": 1 }
+  ]
+}
