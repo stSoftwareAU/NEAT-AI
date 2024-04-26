@@ -59,7 +59,6 @@ export class CRISPR {
         crispr.synapses.forEach((synapse) => {
           if (synapse.fromUUID == key) {
             synapse.fromUUID = value;
-            // console.info("From", key, "to", value);
           }
         });
       }
@@ -125,16 +124,12 @@ export class CRISPR {
           uuid = dnaNeuron.uuid
             ? UUIDs.has(dnaNeuron.uuid) ? crypto.randomUUID() : dnaNeuron.uuid
             : crypto.randomUUID();
-
-          // if (uuid.startsWith("output-")) {
-          //   uuid = crypto.randomUUID();
-          // }
         }
         let indx;
         if (dnaNeuron.index !== undefined) {
           indx = dnaNeuron.index + adjustIndx;
         } else {
-          indx = UUIDs.size - 1; //tmpCreature.neurons.length;
+          indx = UUIDs.size - 1;
         }
 
         const neuron = new Neuron(
@@ -151,11 +146,6 @@ export class CRISPR {
           addTag(neuron, "comment", dnaNeuron.comment);
         }
         tmpCreature.neurons.push(neuron);
-        // if (dnaNeuron.type == "output") {
-        //   if (firstDnaOutputIndex == -1) {
-        //     firstDnaOutputIndex = indx;
-        //   }
-        // }
       });
     }
     tmpCreature.clearCache();
@@ -188,40 +178,15 @@ export class CRISPR {
         }
       }
 
-      const synapse = tmpCreature.connect(from, to, s.weight, s.type);
-      addTag(synapse, "CRISPR", dna.id);
+      const currentSynapse = tmpCreature.getSynapse(from, to);
+      if (!currentSynapse) {
+        const synapse = tmpCreature.connect(from, to, s.weight, s.type);
+        addTag(synapse, "CRISPR", dna.id);
+        if (s.comment) {
+          addTag(synapse, "comment", s.comment);
+        }
+      }
     });
-
-    // dna.synapses.forEach((c) => {
-    //   let toIndx: number = -1;
-    //   if (c.toUUID) {
-    //     const indx = UUIDs.get(c.toUUID);
-    //     assert(indx !== undefined, "missing toUUID " + c.toUUID);
-    //     toIndx = indx;
-    //   }
-
-    //   let fromIndx: number = -1;
-    //   if (c.fromUUID) {
-    //     const indx = UUIDs.get(c.fromUUID);
-    //     assert(indx !== undefined, "missing fromUUID " + c.fromUUID);
-    //     fromIndx = indx;
-    //   }
-
-    //   if (fromIndx !== -1 && toIndx !== -1) {
-    //     if (!tmpCreature.getSynapse(fromIndx, toIndx)) {
-    //       const synapse = tmpCreature.connect(
-    //         fromIndx,
-    //         toIndx,
-    //         c.weight,
-    //         c.type,
-    //       );
-    //       addTag(synapse, "CRISPR", dna.id);
-    //       if (c.comment) {
-    //         addTag(synapse, "comment", c.comment);
-    //       }
-    //     }
-    //   }
-    // });
 
     return tmpCreature;
   }
@@ -240,29 +205,6 @@ export class CRISPR {
       dna.neurons.forEach((neuron) => {
         if (neuron.type == "output") {
           throw new Error("Cannot insert output neurons");
-        }
-      });
-
-      dna.synapses.forEach((c) => {
-        if (c.fromRelative) {
-          throw new Error("Cannot insert relative synapses");
-        }
-        if (c.toRelative) {
-          throw new Error("Cannot insert relative synapses");
-        }
-
-        if (c.from !== undefined) {
-          throw new Error("Cannot insert static from index synapses");
-        }
-        if (c.to !== undefined) {
-          throw new Error("Cannot insert static to index synapses");
-        }
-
-        if (c.fromUUID === undefined) {
-          throw new Error("Missing fromUUID");
-        }
-        if (c.toUUID === undefined) {
-          throw new Error("Missing toUUID");
         }
       });
 
@@ -311,62 +253,61 @@ export class CRISPR {
       }
 
       tmpCreature.neurons = neurons;
-      tmpCreature.clearCache();
-      dna.synapses.forEach((c) => {
-        let fromIndx: number | undefined = undefined;
-        const tmpIndx = uuidMap.get(c.fromUUID ?? "unknown");
-        if (tmpIndx !== undefined) {
-          fromIndx = tmpIndx;
-        }
-
-        assert(
-          fromIndx !== undefined,
-          "Invalid connection (from): " + JSON.stringify(c),
-        );
-
-        let toIndx: number | undefined = undefined;
-        const tmpToIndx = uuidMap.get(c.toUUID ?? "unknown");
-        if (tmpToIndx !== undefined) {
-          toIndx = tmpToIndx;
-        }
-
-        assert(
-          toIndx !== undefined,
-          "Invalid connection (to): " + JSON.stringify(c),
-        );
-
-        const synapse = tmpCreature.connect(fromIndx, toIndx, c.weight, c.type);
-        addTag(synapse, "CRISPR", dna.id);
-        if (c.comment) {
-          addTag(synapse, "comment", c.comment);
-        }
-      });
     }
 
+    tmpCreature.clearCache();
     dna.synapses.forEach((c) => {
-      let toIndx: number = -1;
-      if (c.toUUID) {
-        const indx = uuidMap.get(c.toUUID);
-        assert(indx !== undefined, "missing toUUID " + c.toUUID);
-        toIndx = indx;
+      if (c.fromRelative) {
+        throw new Error("Cannot insert relative synapses");
+      }
+      if (c.toRelative) {
+        throw new Error("Cannot insert relative synapses");
       }
 
-      let fromIndx: number = -1;
-      if (c.fromUUID) {
-        const indx = uuidMap.get(c.fromUUID);
-        assert(indx !== undefined, "missing fromUUID " + c.fromUUID);
-        fromIndx = indx;
+      if (c.from !== undefined) {
+        throw new Error("Cannot insert static from index synapses");
+      }
+      if (c.to !== undefined) {
+        throw new Error("Cannot insert static to index synapses");
       }
 
-      if (fromIndx !== -1 && toIndx !== -1) {
-        if (!tmpCreature.getSynapse(fromIndx, toIndx)) {
-          const synapse = tmpCreature.connect(
-            fromIndx,
-            toIndx,
-            c.weight,
-            c.type,
-          );
-          addTag(synapse, "CRISPR", dna.id);
+      if (c.fromUUID === undefined) {
+        throw new Error("Missing fromUUID");
+      }
+      if (c.toUUID === undefined) {
+        throw new Error("Missing toUUID");
+      }
+    });
+
+    dna.synapses.forEach((s) => {
+      let fromIndx: number | undefined = undefined;
+      const tmpIndx = uuidMap.get(s.fromUUID ?? "unknown");
+      if (tmpIndx !== undefined) {
+        fromIndx = tmpIndx;
+      }
+
+      assert(
+        fromIndx !== undefined,
+        "Invalid connection (from): " + JSON.stringify(s),
+      );
+
+      let toIndx: number | undefined = undefined;
+      const tmpToIndx = uuidMap.get(s.toUUID ?? "unknown");
+      if (tmpToIndx !== undefined) {
+        toIndx = tmpToIndx;
+      }
+
+      assert(
+        toIndx !== undefined,
+        "Invalid connection (to): " + JSON.stringify(s),
+      );
+
+      const currentSynapse = tmpCreature.getSynapse(fromIndx, toIndx);
+      if (!currentSynapse) {
+        const synapse = tmpCreature.connect(fromIndx, toIndx, s.weight, s.type);
+        addTag(synapse, "CRISPR", dna.id);
+        if (s.comment) {
+          addTag(synapse, "comment", s.comment);
         }
       }
     });
@@ -417,11 +358,7 @@ export class CRISPR {
     }
 
     delete modifiedCreature.uuid;
-    modifiedCreature.DEBUG = false;
-    Deno.writeTextFileSync(
-      ".crispr.json",
-      JSON.stringify(modifiedCreature.exportJSON(), null, 2),
-    );
+
     modifiedCreature.validate();
     const modifiedUUID = await CreatureUtil.makeUUID(modifiedCreature);
     if (uuid !== modifiedUUID) {
