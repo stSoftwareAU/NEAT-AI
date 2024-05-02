@@ -9,13 +9,13 @@ import {
 import { Creature } from "../Creature.ts";
 import { NeatOptions } from "../config/NeatOptions.ts";
 import { TrainOptions } from "../config/TrainOptions.ts";
-import { Selection, SelectionInterface } from "../methods/Selection.ts";
-import { Mutation, MutationInterface } from "../methods/mutation.ts";
+import { Selection } from "../methods/Selection.ts";
+import { Mutation } from "../methods/mutation.ts";
 import {
   ResponseData,
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
-import { CreatureExport, CreatureInternal } from "./CreatureInterfaces.ts";
+import { CreatureInternal } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { makeElitists } from "./ElitismUtils.ts";
 import { fineTuneImprovement } from "./FineTune.ts";
@@ -24,145 +24,39 @@ import { Offspring } from "./Offspring.ts";
 import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { DeDuplicator } from "./DeDuplicator.ts";
+import { NeatConfig } from "../config/NeatConfig.ts";
 
-export class NeatConfig implements NeatOptions {
-  /** List of creatures to start with */
-  creatures: CreatureInternal[] | CreatureExport[];
-
-  creativeThinkingConnectionCount: number;
-  creatureStore?: string;
-  experimentStore?: string;
-
-  /** number of records per dataset file. default: 2000 */
-  dataSetPartitionBreak?: number;
-  disableRandomSamples?: boolean;
-  /** debug (much slower) */
-  debug: boolean;
-
-  /**
-   * Feedback loop ( previous result feeds back into next interaction
-   * https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html;jsessionid=2d7fa2c64f0bd39c86dec46870cd
-   */
-  feedbackLoop: boolean;
-
-  /** The list of observations to focus one */
-  focusList: number[];
-  /** Focus rate */
-  focusRate: number;
-
-  elitism: number;
-
-  /** Target error 0 to 1 */
-  targetError: number;
-  timeoutMinutes?: number;
-
-  costOfGrowth: number;
-
-  /** The maximum number of connections */
-  maxConns: number;
-
-  /** The maximum number of nodes */
-  maximumNumberOfNodes: number;
-
-  /** Number of changes per Gene */
-  mutationAmount: number;
-
-  /** Probability of changing a single gene */
-  mutationRate: number;
-
-  /** The target population size. */
-  populationSize: number;
-
-  costName: string;
-  traceStore?: string;
-
-  /** the number of training per generation. default: 1  */
-  trainPerGen: number;
-
-  selection: SelectionInterface;
-  mutation: MutationInterface[];
-
-  iterations: number;
-  log: number;
-  /** verbose logging default: false */
-  verbose: boolean;
-  trainingSampleRate?: number;
-
-  constructor(options: NeatOptions) {
-    this.creativeThinkingConnectionCount =
-      options.creativeThinkingConnectionCount ?? 1;
-    this.creatureStore = options.creatureStore;
-    this.experimentStore = options.experimentStore;
-    this.creatures = options.creatures ? options.creatures : [];
-    this.costName = options.costName || "MSE";
-    this.dataSetPartitionBreak = options.dataSetPartitionBreak;
-    this.disableRandomSamples = options.disableRandomSamples;
-    this.trainingSampleRate = options.trainingSampleRate;
-
-    this.debug = options.debug
-      ? true
-      : ((globalThis as unknown) as { DEBUG: boolean }).DEBUG
-      ? true
-      : false;
-
-    this.feedbackLoop = options.feedbackLoop || false;
-    this.focusList = options.focusList || [];
-    this.focusRate = options.focusRate || 0.25;
-
-    this.targetError = Math.min(
-      1,
-      Math.max(Math.abs(options.targetError ?? 0.05), 0),
-    );
-
-    this.costOfGrowth = options.costOfGrowth ?? 0.000_1;
-
-    this.iterations = options.iterations ?? 0;
-
-    this.populationSize = options.populationSize || 50;
-    this.elitism = options.elitism || 1;
-
-    this.maxConns = options.maxConns || Infinity;
-    this.maximumNumberOfNodes = options.maximumNumberOfNodes || Infinity;
-    this.mutationRate = options.mutationRate || 0.3;
-
-    this.mutationAmount = options.mutationAmount
-      ? options.mutationAmount > 1 ? options.mutationAmount : 1
-      : 1;
-    this.mutation = options.mutation || Mutation.FFW;
-    if (options.selection) {
-      this.selection = options.selection;
-    } else {
-      const r0 = Math.random();
-      if (r0 < 0.33) {
-        this.selection = Selection.FITNESS_PROPORTIONATE;
-      } else if (r0 < 0.66) {
-        this.selection = Selection.TOURNAMENT;
-      } else {
-        this.selection = Selection.POWER;
-      }
-    }
-
-    this.timeoutMinutes = options.timeoutMinutes;
-    this.traceStore = options.traceStore;
-    this.trainPerGen = options.trainPerGen ?? 1;
-
-    this.log = options.log ?? 0;
-    this.verbose = options.verbose ? true : false;
-
-    if (this.mutationAmount < 1) {
-      throw new Error(
-        "Mutation Amount must be more than zero was: " +
-          this.mutationAmount,
-      );
-    }
-
-    if (this.mutationRate <= 0.001) {
-      throw new Error(
-        "Mutation Rate must be more than 0.1% was: " + this.mutationRate,
-      );
-    }
-  }
-}
+/**
+ * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
+ * It's particularly known for its effectiveness in optimizing both the weights and structures of neural networks simultaneously.
+ *
+ * Encoding: NEAT represents each neural network as a genome, which includes a list of connection genes, each with an innovation number (a unique historical marker identifying when a gene first appeared),
+ *           an input node, an output node, a weight, an enable bit, and possibly a bias term.
+ *
+ * Initialization: Populations start with simple networks containing no hidden nodes, just direct connections from inputs to outputs.
+ *                 This allows the algorithm to begin learning the simplest structure necessary for the task.
+ *
+ * Speciation: To protect innovation, NEAT sorts genomes into species based on genetic similarity.
+ *             Each genome is assigned to a species if it is sufficiently similar to at least one exemplar genome in the species.
+ *             This similarity is typically measured using excess and disjoint genes and average weight differences.
+ *
+ * Reproduction: Within each species, genomes reproduce based on their fitness scores.
+ *               Reproduction may involve crossover (where parts of two genomes are combined into a new genome) and mutation (which can alter connection weights, add new connections, or add new nodes).
+ *
+ * Mutation: NEAT has three types of mutations:
+ *     - Weights mutation: This can involve perturbing the existing weights or assigning new random values.
+ *     - Add connection: A new connection is added between previously unconnected nodes.
+ *     - Add node: This mutation takes an existing connection and splits it into two connections via a new node.
+ *                 This new node can develop its own connections over time.
+ *
+ * Crossover: When two genomes crossover, their genes are combined to produce a new genome. If genes match in terms of their innovation numbers,
+ *            they are inherited randomly from one parent or the other. Disjoint and excess genes (those that do not match) are inherited from the fitter parent.
+ *
+ * Fitness evaluation: Each genome is decoded into a neural network, and the network is evaluated to determine its fitness in solving the given task.
+ *
+ * Selection and speciation adjustment: Over time, species with consistently poor performance may have their allowed reproduction rates decreased,
+ *                                      while successful species may gain a larger proportion of the next generation’s population.
+ */
 export class Neat {
   readonly input: number;
   readonly output: number;
@@ -680,11 +574,11 @@ export class Neat {
    * Breeds two parents into an offspring, population MUST be sorted
    */
   offspring(): Creature | undefined {
-    const p1 = this.getParent();
+    const mum = this.getParent();
 
-    if (p1 === undefined) {
+    if (mum === undefined) {
       console.warn(
-        "No parent 1 found",
+        "No mother found",
         this.config.selection.name,
         this.population.length,
       );
@@ -698,22 +592,19 @@ export class Neat {
       throw new Error(`Extinction event`);
     }
 
-    let p2 = this.getParent();
+    let dad = this.getParent();
     for (let i = 0; i < 12; i++) {
-      p2 = this.getParent();
-      if (p1 !== p2) break;
+      dad = this.getParent();
+      if (mum !== dad) break;
     }
 
-    if (p2 === undefined) {
+    if (dad === undefined) {
       console.warn(
-        "No parent 2 found",
+        "No father found",
         this.config.selection.name,
         this.population.length,
       );
 
-      for (let pos = 0; pos < this.population.length; pos++) {
-        console.info(pos, this.population[pos] ? true : false);
-      }
       for (let pos = 0; pos < this.population.length; pos++) {
         if (this.population[pos]) return this.population[pos];
       }
@@ -722,9 +613,9 @@ export class Neat {
     }
 
     for (let attempts = 0; attempts < 12; attempts++) {
-      const creature = Offspring.bread(
-        p1,
-        p2,
+      const creature = Offspring.breed(
+        mum,
+        dad,
       );
       if (creature) {
         return creature;
@@ -764,8 +655,8 @@ export class Neat {
   }
 
   /**
-   * Gets a genome based on the selection function
-   * @return {Network} genome
+   * Gets a parent based on the selection function
+   * @return {Creature} parent
    */
   getParent(): Creature {
     switch (this.config.selection) {

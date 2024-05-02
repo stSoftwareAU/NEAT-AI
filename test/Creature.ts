@@ -287,7 +287,7 @@ Deno.test("gender-tag", () => {
   addTag(dad.neurons[3], "gender", "female");
 
   // Crossover
-  const child = Offspring.bread(mum, dad);
+  const child = Offspring.breed(mum, dad);
 
   if (child) {
     const gender = getTag(child.neurons[3], "gender");
@@ -312,7 +312,7 @@ Deno.test("Feed-forward", () => {
   }
 
   // Crossover
-  const child = Offspring.bread(network1, network2);
+  const child = Offspring.breed(network1, network2);
 
   if (child) {
     // Check if the network is feed-forward correctly

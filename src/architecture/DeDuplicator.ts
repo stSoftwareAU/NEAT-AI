@@ -1,6 +1,7 @@
 import { Creature } from "../Creature.ts";
+import { NeatConfig } from "../config/NeatConfig.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { Neat, NeatConfig } from "./Neat.ts";
+import { Neat } from "./Neat.ts";
 
 export class DeDuplicator {
   private config: NeatConfig;

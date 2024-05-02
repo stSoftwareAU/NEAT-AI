@@ -16,7 +16,7 @@ export class Offspring {
   /**
    * Create an offspring from two parent networks
    */
-  static bread(mum: Creature, dad: Creature) {
+  static breed(mum: Creature, dad: Creature) {
     const mother = Creature.fromJSON(mum.exportJSON());
     assert(!mother.uuid);
     const father = Creature.fromJSON(dad.exportJSON());
