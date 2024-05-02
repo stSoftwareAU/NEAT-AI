@@ -48,7 +48,7 @@ Deno.test("TagSynapse", async () => {
   const mumUUID = await CreatureUtil.makeUUID(mum);
   const dad = makeCreature("dad");
   const dadUUID = await CreatureUtil.makeUUID(dad);
-  const baby = Offspring.bread(mum, dad);
+  const baby = Offspring.breed(mum, dad);
 
   assert(baby);
 

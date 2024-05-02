@@ -20,7 +20,7 @@ import {
 } from "./architecture/CreatureState.ts";
 import { creatureValidate } from "./architecture/CreatureValidate.ts";
 import { DataRecordInterface, makeDataDir } from "./architecture/DataSet.ts";
-import { Neat, NeatConfig } from "./architecture/Neat.ts";
+import { Neat } from "./architecture/Neat.ts";
 import { Neuron } from "./architecture/Neuron.ts";
 import {
   NeuronExport,
@@ -42,6 +42,7 @@ import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "./methods/mutation.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
+import { NeatConfig } from "./config/NeatConfig.ts";
 
 export class Creature implements CreatureInternal {
   /* ID of this creature */

@@ -118,7 +118,7 @@ Deno.test("KeepOrder", () => {
     JSON.stringify(dad.exportJSON(), null, 2),
   );
   for (let i = 0; i < 10; i++) {
-    const child = Offspring.bread(mum, dad);
+    const child = Offspring.breed(mum, dad);
     if (!child) continue;
     check(child);
   }

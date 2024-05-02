@@ -158,12 +158,12 @@ Deno.test("KeepSynapses", () => {
     JSON.stringify(dad.exportJSON(), null, 2),
   );
   for (let i = 0; i < 10; i++) {
-    const child = Offspring.bread(mum, dad);
+    const child = Offspring.breed(mum, dad);
     if (child) check(child);
   }
 
   for (let i = 0; i < 10; i++) {
-    const child = Offspring.bread(dad, mum);
+    const child = Offspring.breed(dad, mum);
     if (child) check(child);
   }
 });

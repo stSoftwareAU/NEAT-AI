@@ -141,7 +141,7 @@ Deno.test("CrossOver", () => {
   b.validate();
 
   for (let i = 0; i < 100; i++) {
-    const child = Offspring.bread(a, b);
+    const child = Offspring.breed(a, b);
     if (!child) continue;
     const n = child.neurons[child.neurons.length - 2];
     assertEquals(n.type, "output");
@@ -249,7 +249,7 @@ function check() {
     n2.addNeuron();
   }
 
-  const n3 = Offspring.bread(n1, n2);
+  const n3 = Offspring.breed(n1, n2);
 
   if (n3) {
     const outputUUID = creature.neurons[2].uuid;
@@ -408,13 +408,13 @@ Deno.test(
     n2.validate();
 
     for (let i = 0; i < 20; i++) {
-      const child = Offspring.bread(n1, n2);
+      const child = Offspring.breed(n1, n2);
       if (!child) continue;
       child.validate();
     }
 
     for (let i = 0; i < 20; i++) {
-      const child = Offspring.bread(n2, n1);
+      const child = Offspring.breed(n2, n1);
       if (!child) continue;
       child.validate();
     }
@@ -561,13 +561,13 @@ Deno.test(
     right.validate();
 
     for (let i = 0; i < 20; i++) {
-      const child = Offspring.bread(left, right);
+      const child = Offspring.breed(left, right);
       if (!child) continue;
       checkChild(child);
     }
 
     for (let i = 0; i < 20; i++) {
-      const child = Offspring.bread(right, left);
+      const child = Offspring.breed(right, left);
       if (!child) continue;
       checkChild(child);
     }
