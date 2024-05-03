@@ -37,7 +37,7 @@ Deno.test("1make", () => {
     { input: 1, output: 1, score: 2, neurons: [], synapses: [] },
   ];
 
-  const elitists = makeElitists(make(population));
+  const elitists = makeElitists(make(population)).elitists;
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
@@ -60,7 +60,7 @@ Deno.test("3make", () => {
     { input: 1, output: 1, score: 2, neurons: [], synapses: [] },
   ];
 
-  const elitists = makeElitists(make(population), 3);
+  const elitists = makeElitists(make(population), 3).elitists;
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
@@ -80,7 +80,7 @@ Deno.test("3make2", () => {
     { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
   ];
 
-  const elitists = makeElitists(make(population), 3);
+  const elitists = makeElitists(make(population), 3).elitists;
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
@@ -104,7 +104,7 @@ Deno.test("short", () => {
     addTag(c, "approach", "A" + i);
   });
 
-  const elitists = makeElitists(make(population), 3, true);
+  const elitists = makeElitists(make(population), 3, true).elitists;
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
@@ -128,7 +128,7 @@ Deno.test("backwards", () => {
     });
   }
 
-  const elitists = makeElitists(make(population), 3);
+  const elitists = makeElitists(make(population), 3).elitists;
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
@@ -153,7 +153,7 @@ Deno.test("forward", () => {
     });
   }
 
-  const elitists = makeElitists(make(population), 3);
+  const elitists = makeElitists(make(population), 3).elitists;
 
   for (let i = 0; i < elitists.length; i++) {
     const e = elitists[i];
@@ -184,7 +184,7 @@ Deno.test("performance", () => {
   let minMS = Infinity;
   for (let j = 10; j--;) {
     performance.mark("start");
-    const elitists = makeElitists(make(population), 3);
+    const elitists = makeElitists(make(population), 3).elitists;
 
     performance.mark("end");
     const ms = performance.measure("start", "end").duration;
@@ -229,7 +229,7 @@ Deno.test("order", () => {
     population.push(c);
   }
 
-  const elitists = makeElitists(make(population), 100);
+  const elitists = makeElitists(make(population), 100).elitists;
 
   const sortedPopulation = population.slice().sort(function (a, b) {
     if (b.score == a.score) return 0;
@@ -354,7 +354,7 @@ Deno.test("NaN", () => {
     synapses: [],
   });
 
-  const elitists = makeElitists(make(population), 3);
+  const elitists = makeElitists(make(population), 3).elitists;
 
   assert(
     elitists.length == 3,
