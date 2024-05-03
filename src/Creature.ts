@@ -739,7 +739,7 @@ export class Creature implements CreatureInternal {
           generation,
           "score",
           fittest.score,
-          " (avg: ",
+          " (avg:",
           yellow(
             result.averageScore.toFixed(4),
           ),
