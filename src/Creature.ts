@@ -701,10 +701,11 @@ export class Creature implements CreatureInternal {
     const iterations = options.iterations ?? Number.POSITIVE_INFINITY;
 
     while (true) {
-      const fittest: Creature = await neat.evolve(
+      const result = await neat.evolve(
         bestCreature,
       );
 
+      const fittest: Creature = result.fittest;
       const fittestScore = fittest.score ?? -Infinity;
       if (fittestScore > bestScore) {
         const errorTmp = getTag(fittest, "error");
@@ -738,7 +739,11 @@ export class Creature implements CreatureInternal {
           generation,
           "score",
           fittest.score,
-          "error",
+          " (avg: ",
+          yellow(
+            result.averageScore.toFixed(4),
+          ),
+          ") error",
           error,
           (options.log > 1 ? "avg " : "") + "time",
           yellow(

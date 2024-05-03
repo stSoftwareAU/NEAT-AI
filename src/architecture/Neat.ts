@@ -298,11 +298,13 @@ export class Neat {
   /**
    * Evaluates, selects, breeds and mutates population
    */
-  async evolve(previousFittest?: Creature) {
+  async evolve(
+    previousFittest?: Creature,
+  ): Promise<{ fittest: Creature; averageScore: number }> {
     await this.fitness.calculate(this.population);
 
     /* Elitism: we need at least 2 on the first run */
-    const elitists = makeElitists(
+    const results = makeElitists(
       this.population,
       this.config.elitism > 1
         ? this.config.elitism
@@ -311,6 +313,7 @@ export class Neat {
         : 2,
       this.config.verbose,
     );
+    const elitists = results.elitists;
     const tmpFittest = elitists[0];
 
     const fittest = Creature.fromJSON(
@@ -337,10 +340,10 @@ export class Neat {
     if (trainingTimeOutMinutes != -1) { // If not timed out already
       for (
         let i = 0;
-        i < elitists.length;
+        i < results.elitists.length;
         i++
       ) {
-        const n = elitists[i];
+        const n = results.elitists[i];
 
         if (
           this.doNotStartMoreTraining == false &&
@@ -492,7 +495,10 @@ export class Neat {
     const deDuplicator = new DeDuplicator(this);
     await deDuplicator.perform(this.population);
 
-    return fittest;
+    return {
+      fittest: fittest,
+      averageScore: results.averageScore,
+    };
   }
 
   async writeScores(creatures: Creature[]) {

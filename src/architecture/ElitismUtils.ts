@@ -9,22 +9,30 @@ import {
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 
+interface ElitistsResults {
+  elitists: Creature[];
+  averageScore: number;
+}
 export function makeElitists(
   creatures: Creature[],
   size = 1,
   verbose = false,
-) {
+): ElitistsResults {
   sortCreaturesByScore(creatures);
 
+  const result: ElitistsResults = {
+    elitists: [],
+    averageScore: NaN,
+  };
   if (verbose) {
-    logVerbose(creatures);
+    result.averageScore = logVerbose(creatures);
   }
 
   const elitism = Math.min(Math.max(1, size), creatures.length);
 
   const elitists = creatures.slice(0, elitism);
-
-  return elitists;
+  result.elitists = elitists;
+  return result;
 }
 
 function sortCreaturesByScore(creatures: Creature[]) {
@@ -43,9 +51,14 @@ function sortCreaturesByScore(creatures: Creature[]) {
   });
 }
 
-function logVerbose(creatures: Creature[]) {
+function logVerbose(creatures: Creature[]): number {
+  let totalScore = 0;
+
   for (let indx = 0; indx < creatures.length; indx++) {
     const creature = creatures[indx];
+    const score = creature.score;
+    totalScore += score ? score : 0;
+
     const notified = getTag(creature, "notified");
     if (notified === "Yes") {
       continue;
@@ -53,7 +66,6 @@ function logVerbose(creatures: Creature[]) {
     const trainID = getTag(creature, "trainID");
     if (trainID) {
       addTag(creature, "notified", "Yes");
-      const score = creature.score;
 
       const approach = getTag(creature, "approach");
       const untrainedError = getTag(creature, "untrained-error");
@@ -99,4 +111,6 @@ function logVerbose(creatures: Creature[]) {
       }
     }
   }
+
+  return totalScore / creatures.length;
 }
