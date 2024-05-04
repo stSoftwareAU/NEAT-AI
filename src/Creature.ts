@@ -20,7 +20,7 @@ import {
 } from "./architecture/CreatureState.ts";
 import { creatureValidate } from "./architecture/CreatureValidate.ts";
 import { DataRecordInterface, makeDataDir } from "./architecture/DataSet.ts";
-import { Neat } from "./architecture/Neat.ts";
+import { Neat } from "./NEAT/Neat.ts";
 import { Neuron } from "./architecture/Neuron.ts";
 import {
   NeuronExport,
@@ -734,16 +734,17 @@ export class Creature implements CreatureInternal {
         options.log &&
         (generation % options.log === 0 || completed)
       ) {
+        let avgTxt = "";
+        if (Number.isFinite(result.averageScore)) {
+          avgTxt = ` (avg: ${yellow(result.averageScore.toFixed(4))})`;
+        }
         console.log(
           "Generation",
           generation,
           "score",
           fittest.score,
-          " (avg:",
-          yellow(
-            result.averageScore.toFixed(4),
-          ),
-          ") error",
+          avgTxt,
+          "error",
           error,
           (options.log > 1 ? "avg " : "") + "time",
           yellow(

@@ -15,15 +15,15 @@ import {
   ResponseData,
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
-import { CreatureInternal } from "./CreatureInterfaces.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
-import { makeElitists } from "./ElitismUtils.ts";
-import { fineTuneImprovement } from "./FineTune.ts";
-import { Fitness } from "./Fitness.ts";
-import { Offspring } from "./Offspring.ts";
+import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { makeElitists } from "../architecture/ElitismUtils.ts";
+import { fineTuneImprovement } from "../architecture/FineTune.ts";
+import { Fitness } from "../architecture/Fitness.ts";
+import { Offspring } from "../architecture/Offspring.ts";
 import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
-import { creatureValidate } from "./CreatureValidate.ts";
-import { DeDuplicator } from "./DeDuplicator.ts";
+import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { DeDuplicator } from "../architecture/DeDuplicator.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
 
 /**
