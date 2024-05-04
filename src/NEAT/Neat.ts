@@ -285,16 +285,22 @@ export class Neat {
         const species = genus.speciesMap.get(speciesKey);
 
         if (species) {
-          if (species.creatures.length > 1) { // Ensure there's more than one to choose from
-            // const fittestUUID = fittest.uuid;
-            // const previousFittestUUID = tmpPreviousFittest
-            //   ? tmpPreviousFittest.uuid
-            //   : null;
-
-            // Filtering to exclude fittest and previous fittest, assuming creatures are already sorted
-            const eligibleCreatures = species.creatures.filter((creature) =>
+          if (species.creatures.length > 0) { // Ensure there's more than one to choose from
+            let eligibleCreatures = species.creatures.filter((creature) =>
               !tunedUUID.has(creature.uuid ?? "UNKNOWN")
             );
+
+            /** If there is no eligible creatures try find the closest species. */
+            if (eligibleCreatures.length == 0) {
+              const closestSpecies = genus.findClosestMatchingSpecies(fittest);
+              if (closestSpecies) {
+                if (closestSpecies && closestSpecies.creatures.length > 0) {
+                  eligibleCreatures = closestSpecies.creatures.filter(
+                    (creature) => !tunedUUID.has(creature.uuid ?? "UNKNOWN"),
+                  );
+                }
+              }
+            }
 
             if (eligibleCreatures.length > 0) {
               // Introduce random selection, weighted towards higher score creatures
@@ -311,16 +317,8 @@ export class Neat {
               );
 
               fineTunedPopulation.push(...extendedTunedPopulation);
-            } else {
-              console.warn(
-                "No eligible creatures found for extended fine-tuning within the same species.",
-              );
             }
-          } //else {
-          //console.warn(
-          //  `TODO Insufficient creatures within the species for fine-tuning. ${species.creatures.length}`,
-          //);
-          //}
+          }
         } else {
           throw new Error(`No species found for key ${speciesKey}`);
         }

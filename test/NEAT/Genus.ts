@@ -6,6 +6,7 @@ import {
 import { Creature, CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Genus } from "../../src/NEAT/Genus.ts";
 import { Species } from "../../src/NEAT/Species.ts";
+import { assertNotEquals } from "https://deno.land/std@0.224.0/assert/assert_not_equals.ts";
 
 const baseCreatureJSON: CreatureExport = {
   neurons: [
@@ -31,7 +32,7 @@ const baseCreatureJSON: CreatureExport = {
       uuid: "output-1",
       bias: -0.3,
       type: "output",
-      squash: "ReLU",
+      squash: "RELU",
     },
   ],
   synapses: [
@@ -128,5 +129,39 @@ Deno.test("Error Handling for Nonexistent Creature UUID", () => {
     },
     Error,
     "Could not find species for creature nonexistent-uuid",
+  );
+});
+
+Deno.test("Find Closest Matching Species", async () => {
+  const genus = new Genus();
+
+  const speciesVariations = [2, 4, 6]; // Different by 2, 4, and 6 neurons
+  const speciesCounts = [3, 1, 5]; // Population sizes for each species
+
+  for (let i = 0; i < speciesVariations.length; i++) {
+    for (let j = 0; j < speciesCounts[i]; j++) {
+      const json = createCreatureJSON();
+
+      const creature = Creature.fromJSON(json);
+      creature.mutate({ name: "ADD_NODE" });
+      await CreatureUtil.makeUUID(creature);
+      await genus.addCreature(creature);
+    }
+  }
+
+  // Create a test creature whose species should have 2 fewer neurons than base
+  const testCreatureJSON = createCreatureJSON();
+
+  const testCreature: Creature = Creature.fromJSON(testCreatureJSON);
+  testCreature.mutate({ name: "SUB_NODE" });
+  await CreatureUtil.makeUUID(testCreature);
+  await genus.addCreature(testCreature);
+
+  // Find the closest matching species, which should have 4 fewer neurons (baseNeuronCount - 4)
+  const closestSpecies = genus.findClosestMatchingSpecies(testCreature);
+
+  assertNotEquals(
+    closestSpecies?.speciesKey,
+    await Species.calculateKey(testCreature),
   );
 });
