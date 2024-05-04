@@ -117,7 +117,14 @@ export class CreatureState {
       this.activations = new Float32Array(this.network.neurons.length);
     }
 
-    this.activations.set(input);
+    try {
+      this.activations.set(input);
+    } catch (e) {
+      throw new Error(
+        `input length ${input.length} does fit with activation array ${this.activations.length}, neurons: ${this.network.neurons.length}`,
+        e,
+      );
+    }
   }
 
   clear() {
