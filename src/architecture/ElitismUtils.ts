@@ -18,8 +18,6 @@ export function makeElitists(
   size = 1,
   verbose = false,
 ): ElitistsResults {
-  sortCreaturesByScore(creatures);
-
   const result: ElitistsResults = {
     elitists: [],
     averageScore: NaN,
@@ -35,7 +33,7 @@ export function makeElitists(
   return result;
 }
 
-function sortCreaturesByScore(creatures: Creature[]) {
+export function sortCreaturesByScore(creatures: Creature[]): Creature[] {
   creatures.sort((a, b) => {
     if (Number.isFinite(a.score)) {
       if (Number.isFinite(b.score)) {
@@ -49,6 +47,8 @@ function sortCreaturesByScore(creatures: Creature[]) {
       return 0;
     }
   });
+
+  return creatures;
 }
 
 function logVerbose(creatures: Creature[]): number {

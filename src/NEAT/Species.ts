@@ -1,3 +1,4 @@
+import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
 import { Creature } from "../../src/Creature.ts";
 import { generate as generateV5 } from "https://deno.land/std@0.224.0/uuid/v5.ts";
 
@@ -6,6 +7,8 @@ export class Species {
   private static NAMESPACE_UUID = "1b671a64-40d5-491e-99b0-ac01ff1f5641";
 
   creatures: Creature[];
+  lastCreature: Creature | undefined;
+
   readonly speciesKey: string;
 
   constructor(speciesKey: string) {
@@ -14,6 +17,17 @@ export class Species {
   }
 
   addCreature(creature: Creature) {
+    assert(creature, "Creature must be defined");
+    assert(creature.uuid, "Creature must have a uuid");
+    if (this.lastCreature) {
+      if (this.lastCreature.score && creature.score) {
+        assert(
+          this.lastCreature.score >= creature.score,
+          `Creatures must be added in order of score ${this.lastCreature.score} <= ${creature.score}`,
+        );
+      }
+    }
+    this.lastCreature = creature;
     this.creatures.push(creature);
   }
 

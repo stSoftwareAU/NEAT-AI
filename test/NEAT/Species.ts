@@ -2,7 +2,7 @@ import {
   assertEquals,
   assertNotEquals,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Creature, CreatureExport } from "../../mod.ts";
+import { Creature, CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Species } from "../../src/NEAT/Species.ts";
 
 const baseCreatureJSON: CreatureExport = {
@@ -78,13 +78,13 @@ function createCreatureJSON(
   return JSON.parse(JSON.stringify({ ...baseCreatureJSON }));
 }
 
-Deno.test("Add Creature to Species", () => {
+Deno.test("Add Creature to Species", async () => {
   const species = new Species("test-key");
   const creatureJSON = createCreatureJSON();
   const creature: Creature = Creature.fromJSON(creatureJSON);
 
   creature.validate();
-
+  await CreatureUtil.makeUUID(creature);
   species.addCreature(creature);
 
   assertEquals(species.creatures.length, 1);

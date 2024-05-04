@@ -17,7 +17,10 @@ import {
 } from "../multithreading/workers/WorkerHandler.ts";
 import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { makeElitists } from "../architecture/ElitismUtils.ts";
+import {
+  makeElitists,
+  sortCreaturesByScore,
+} from "../architecture/ElitismUtils.ts";
 import { fineTuneImprovement } from "../architecture/FineTune.ts";
 import { Fitness } from "../architecture/Fitness.ts";
 import { Offspring } from "../architecture/Offspring.ts";
@@ -25,6 +28,7 @@ import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { DeDuplicator } from "../architecture/DeDuplicator.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
+import { Genus } from "./Genus.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -303,6 +307,15 @@ export class Neat {
   ): Promise<{ fittest: Creature; averageScore: number }> {
     await this.fitness.calculate(this.population);
 
+    sortCreaturesByScore(this.population);
+
+    const genus = new Genus();
+
+    // The population is already sorted in the desired order
+    for (let i = 0; i < this.population.length; i++) {
+      const creature = this.population[i];
+      await genus.addCreature(creature);
+    }
     /* Elitism: we need at least 2 on the first run */
     const results = makeElitists(
       this.population,
