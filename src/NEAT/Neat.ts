@@ -188,24 +188,27 @@ export class Neat {
     this.trainingInProgress.set(uuid, p);
   }
 
+  /** Helper to add to the population if it improves and isn't already added */
   async checkAndAdd(
     fineTunePopulation: Creature[],
     tunedUUID: Set<string>,
-    score: number,
-    network?: Creature,
+    score: number, /** Fittest score */
+    creature?: Creature,
   ) {
-    if (network) {
-      const previousScoreTxt = getTag(network, "score");
-      if (previousScoreTxt) {
-        const previousScore = parseFloat(previousScoreTxt);
-        if (previousScore < score) {
-          const uuid = await CreatureUtil.makeUUID(network);
-          if (!tunedUUID.has(uuid)) {
-            tunedUUID.add(uuid);
-            fineTunePopulation.push(network);
-          }
+    if (creature && Number.isFinite(creature.score)) {
+      if (creature.score && creature.score <= score) {
+        const uuid = await CreatureUtil.makeUUID(creature);
+        if (!tunedUUID.has(uuid)) {
+          tunedUUID.add(uuid);
+          fineTunePopulation.push(creature);
         }
+      } else {
+        console.error(
+          `Creature score ${creature.score} exceeds reference score ${score}`,
+        );
       }
+    } else {
+      console.error(`Invalid creature or score: ${creature?.score}`);
     }
   }
 
