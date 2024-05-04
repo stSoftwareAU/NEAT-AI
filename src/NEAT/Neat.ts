@@ -29,6 +29,7 @@ import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { DeDuplicator } from "../architecture/DeDuplicator.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
 import { Genus } from "./Genus.ts";
+import { Species } from "./Species.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -188,68 +189,57 @@ export class Neat {
     this.trainingInProgress.set(uuid, p);
   }
 
-  /** Helper to add to the population if it improves and isn't already added */
-  async checkAndAdd(
-    fineTunePopulation: Creature[],
-    tunedUUID: Set<string>,
-    score: number, /** Fittest score */
-    creature?: Creature,
-  ) {
-    if (creature && Number.isFinite(creature.score)) {
-      if (creature.score && creature.score <= score) {
-        const uuid = await CreatureUtil.makeUUID(creature);
-        if (!tunedUUID.has(uuid)) {
-          tunedUUID.add(uuid);
-          fineTunePopulation.push(creature);
-        }
-      } else {
-        console.error(
-          `Creature score ${creature.score} exceeds reference score ${score}`,
-        );
+  /* Assuming weightedRandomSelect selects based on score, weighting higher scores more heavily.*/
+
+  weightedRandomSelect(creatures: Creature[]) {
+    const totalWeight = creatures.reduce(
+      (sum, creature) => sum + 1 / (creatures.indexOf(creature) + 1),
+      0,
+    );
+    let random = Math.random() * totalWeight;
+
+    for (const creature of creatures) {
+      random -= 1 / (creatures.indexOf(creature) + 1);
+      if (random <= 0) {
+        return creature;
       }
-    } else {
-      console.error(`Invalid creature or score: ${creature?.score}`);
     }
+    return creatures[0]; // Fallback to the first creature if no selection occurs
   }
 
   async makeFineTunePopulation(
     fittest: Creature,
     previousFittest: Creature | undefined,
-    elitists: Creature[],
+    genus: Genus,
   ) {
-    const tmpFineTunePopulation: Creature[] = [];
-    const tunedUUID = new Set<string>();
+    assert(fittest, "Fittest creature mandatory");
+    const fittestUUID = await CreatureUtil.makeUUID(fittest);
 
-    tunedUUID.add(await CreatureUtil.makeUUID(fittest));
+    const uniqueUUID = new Set<string>([fittestUUID]);
 
-    const score = fittest.score ? fittest.score : 0;
-    await this.checkAndAdd(
-      tmpFineTunePopulation,
-      tunedUUID,
-      score,
-      previousFittest,
-    );
+    const tmpFineTunePopulation = [];
 
-    for (let i = 0; i < elitists.length; i++) {
-      const network = elitists[i];
-      await this.checkAndAdd(tmpFineTunePopulation, tunedUUID, score, network);
+    // Add previousFittest first if it's different from fittest and not null
+    if (
+      previousFittest
+    ) {
+      const previousUUID = await CreatureUtil.makeUUID(previousFittest);
+      if (!uniqueUUID.has(previousUUID)) {
+        tmpFineTunePopulation.push(previousFittest);
+        uniqueUUID.add(previousUUID);
+      }
     }
 
-    for (let i = 0; i < this.population.length; i++) {
-      const network = this.population[i];
-      await this.checkAndAdd(tmpFineTunePopulation, tunedUUID, score, network);
+    // Add remaining creatures from the population excluding fittest and previousFittest
+    for (const creature of this.population) {
+      const creatureUUID = await CreatureUtil.makeUUID(creature);
+      if (!uniqueUUID.has(creatureUUID)) {
+        tmpFineTunePopulation.push(creature);
+        uniqueUUID.add(creatureUUID);
+      }
     }
 
     const tmpPreviousFittest = tmpFineTunePopulation.shift();
-
-    /**
-     * If this is the first run then use the second best as the "previous"
-     *
-     * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
-     */
-    const rebootedFineTune = (previousFittest && tmpPreviousFittest)
-      ? previousFittest.uuid != tmpPreviousFittest.uuid
-      : false;
 
     let fineTunedPopulation: Creature[] = [];
     if (!tmpPreviousFittest) {
@@ -264,24 +254,92 @@ export class Neat {
           this.config.elitism -
           this.trainingComplete.length,
       );
+
+      const tunedUUID = new Set<string>();
+
+      tunedUUID.add(fittestUUID);
+
+      tunedUUID.add(tmpPreviousFittest.uuid ?? "UNKNOWN");
       fineTunedPopulation = await fineTuneImprovement(
         fittest,
         tmpPreviousFittest,
         fineTunePopSize - 1,
-        !rebootedFineTune && this.config.verbose,
+        this.config.verbose,
       );
 
       for (let attempts = 0; attempts < 12; attempts++) {
+        /**
+         * Now, after we do the fine tuning of the fittest versus the previous fittest,
+         * I want to find another creature from the same species of the fittest creature ( but not the fittest or previous fittest creatures)
+         * and perform the fine tuning comparing the fittest creature to another within the species.
+         *
+         * We should favor the highest score creatures in that species.
+         */
+
+        const speciesFineTunePopSize = fineTunePopSize -
+          fineTunedPopulation.length;
+
+        if (speciesFineTunePopSize < 1) break;
+
+        const speciesKey = await Species.calculateKey(fittest);
+        const species = genus.speciesMap.get(speciesKey);
+
+        if (species) {
+          if (species.creatures.length > 1) { // Ensure there's more than one to choose from
+            // const fittestUUID = fittest.uuid;
+            // const previousFittestUUID = tmpPreviousFittest
+            //   ? tmpPreviousFittest.uuid
+            //   : null;
+
+            // Filtering to exclude fittest and previous fittest, assuming creatures are already sorted
+            const eligibleCreatures = species.creatures.filter((creature) =>
+              !tunedUUID.has(creature.uuid ?? "UNKNOWN")
+            );
+
+            if (eligibleCreatures.length > 0) {
+              // Introduce random selection, weighted towards higher score creatures
+              const nextBestCreature = this.weightedRandomSelect(
+                eligibleCreatures,
+              );
+
+              tunedUUID.add(nextBestCreature.uuid ?? "UNKNOWN");
+              const extendedTunedPopulation = await fineTuneImprovement(
+                fittest,
+                nextBestCreature,
+                speciesFineTunePopSize,
+                false,
+              );
+
+              fineTunedPopulation.push(...extendedTunedPopulation);
+            } else {
+              console.warn(
+                "No eligible creatures found for extended fine-tuning within the same species.",
+              );
+            }
+          } //else {
+          //console.warn(
+          //  `TODO Insufficient creatures within the species for fine-tuning. ${species.creatures.length}`,
+          //);
+          //}
+        } else {
+          throw new Error(`No species found for key ${speciesKey}`);
+        }
+
         const extendedFineTunePopSize = fineTunePopSize -
           fineTunedPopulation.length;
-        if (extendedFineTunePopSize > 0) {
+        if (extendedFineTunePopSize > 0 && tmpFineTunePopulation.length > 0) {
           /* Choose a creature from near the top of the list. */
           const location = Math.floor(
             tmpFineTunePopulation.length * Math.random() * Math.random(),
           );
 
           const extendedPreviousFittest = tmpFineTunePopulation[location];
-
+          if (!extendedPreviousFittest) {
+            throw new Error(
+              `No creature found at location ${location} in tmpFineTunePopulation.`,
+            );
+          }
+          tunedUUID.add(extendedPreviousFittest.uuid ?? "UNKNOWN");
           const extendedTunedPopulation = await fineTuneImprovement(
             fittest,
             extendedPreviousFittest,
@@ -421,7 +479,8 @@ export class Neat {
     const fineTunedPopulation = await this.makeFineTunePopulation(
       fittest,
       previousFittest,
-      elitists,
+      // elitists,
+      genus,
     );
 
     const newPopSize = this.config.populationSize -
