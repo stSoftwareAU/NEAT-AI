@@ -11,6 +11,7 @@ export class Breed {
     this.genus = genus;
     this.config = config;
   }
+
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
@@ -44,8 +45,8 @@ export class Breed {
     return creature;
   }
 
-  getDad(mum: Creature): Creature {
-    if (mum.uuid === undefined) throw new Error(`mum.uuid is undefined`);
+  private getDad(mum: Creature): Creature {
+    if (!mum.uuid) throw new Error(`mum.uuid is undefined`);
 
     const species = this.genus.findSpeciesByCreatureUUID(mum.uuid);
 
@@ -56,7 +57,15 @@ export class Breed {
     if (possibleFathers.length === 0) {
       const closestSpecies = this.genus.findClosestMatchingSpecies(mum);
       if (closestSpecies) {
-        possibleFathers = closestSpecies.creatures;
+        possibleFathers = closestSpecies.creatures.filter((creature) =>
+          creature.uuid !== mum.uuid
+        );
+
+        if (possibleFathers.length === 0) {
+          possibleFathers = this.genus.population.filter((creature) =>
+            creature.uuid !== mum.uuid
+          );
+        }
       }
     }
 
@@ -67,7 +76,7 @@ export class Breed {
    * Gets a parent based on the selection function
    * @return {Creature} parent
    */
-  getParent(population: Creature[]): Creature {
+  private getParent(population: Creature[]): Creature {
     switch (this.config.selection) {
       case Selection.POWER: {
         const r = Math.random();
