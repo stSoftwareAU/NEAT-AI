@@ -311,7 +311,7 @@ export class Neat {
       fineTunedPopulation.length - 1 -
       newPopulation.length;
 
-    const breed = new Breed(this.population, this.config);
+    const breed = new Breed(genus, this.config);
     // Breed the next individuals
     for (
       let i = newPopSize > 0 ? newPopSize : 0;
@@ -442,7 +442,16 @@ export class Neat {
 
     this.population.unshift(creature);
 
-    const breed = new Breed(this.population, this.config);
+    const genus = new Genus();
+
+    // The population is already sorted in the desired order
+    for (let i = 0; i < this.population.length; i++) {
+      const creature = this.population[i];
+      await CreatureUtil.makeUUID(creature);
+      await genus.addCreature(creature);
+    }
+
+    const breed = new Breed(genus, this.config);
     const deDuplicator = new DeDuplicator(breed, mutator);
     await deDuplicator.perform(this.population);
   }

@@ -1,83 +1,82 @@
 import { Creature, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
+import { Genus } from "./Genus.ts";
 
 export class Breed {
-  private population: Creature[];
+  private genus: Genus;
   readonly config: NeatConfig;
 
-  constructor(population: Creature[], config: NeatConfig) {
-    this.population = population;
+  constructor(genus: Genus, config: NeatConfig) {
+    this.genus = genus;
     this.config = config;
   }
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
   breed(): Creature | undefined {
-    const mum = this.getParent();
+    const mum = this.getParent(this.genus.population);
 
     if (mum === undefined) {
       console.warn(
         "No mother found",
         this.config.selection.name,
-        this.population.length,
+        this.genus.population.length,
       );
 
-      for (let pos = 0; pos < this.population.length; pos++) {
-        console.info(pos, this.population[pos] ? true : false);
-      }
-      for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return this.population[pos];
-      }
-      throw new Error(`Extinction event`);
+      return;
     }
 
-    let dad = this.getParent();
-    for (let i = 0; i < 12; i++) {
-      dad = this.getParent();
-      if (mum !== dad) break;
-    }
-
+    const dad = this.getDad(mum);
     if (dad === undefined) {
       console.warn(
         "No father found",
-        this.config.selection.name,
-        this.population.length,
       );
 
-      for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return this.population[pos];
-      }
-
-      throw new Error(`Extinction event`);
+      return;
     }
 
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const creature = Offspring.breed(
-        mum,
-        dad,
-      );
-      if (creature) {
-        return creature;
+    const creature = Offspring.breed(
+      mum,
+      dad,
+    );
+
+    return creature;
+  }
+
+  getDad(mum: Creature): Creature {
+    if (mum.uuid === undefined) throw new Error(`mum.uuid is undefined`);
+
+    const species = this.genus.findSpeciesByCreatureUUID(mum.uuid);
+
+    let possibleFathers = species.creatures.filter((creature) =>
+      creature.uuid !== mum.uuid
+    );
+
+    if (possibleFathers.length === 0) {
+      const closestSpecies = this.genus.findClosestMatchingSpecies(mum);
+      if (closestSpecies) {
+        possibleFathers = closestSpecies.creatures;
       }
     }
-    return undefined;
+
+    return this.getParent(possibleFathers);
   }
 
   /**
    * Gets a parent based on the selection function
    * @return {Creature} parent
    */
-  getParent(): Creature {
+  getParent(population: Creature[]): Creature {
     switch (this.config.selection) {
       case Selection.POWER: {
         const r = Math.random();
         const index = Math.floor(
           Math.pow(r, Selection.POWER.power) *
-            this.population.length,
+            population.length,
         );
 
-        return this.population[index];
+        return population[index];
       }
       case Selection.FITNESS_PROPORTIONATE: {
         /**
@@ -88,21 +87,21 @@ export class Breed {
 
         let totalFitness = 0;
         let minimalFitness = 0;
-        for (let i = this.population.length; i--;) {
-          const tmpScore = this.population[i].score;
+        for (let i = population.length; i--;) {
+          const tmpScore = population[i].score;
           const score = tmpScore === undefined ? Infinity * -1 : tmpScore;
           minimalFitness = score < minimalFitness ? score : minimalFitness;
           totalFitness += score;
         }
 
         const adjustFitness = Math.abs(minimalFitness);
-        totalFitness += adjustFitness * this.population.length;
+        totalFitness += adjustFitness * population.length;
 
         const random = Math.random() * totalFitness;
         let value = 0;
 
-        for (let i = 0; i < this.population.length; i++) {
-          const genome = this.population[i];
+        for (let i = 0; i < population.length; i++) {
+          const genome = population[i];
           if (genome.score !== undefined) {
             value += genome.score + adjustFitness;
             if (random < value) {
@@ -112,10 +111,9 @@ export class Breed {
         }
 
         // if all scores equal, return random genome
-        return this
-          .population[
-            Math.floor(Math.random() * this.population.length)
-          ];
+        return population[
+          Math.floor(Math.random() * population.length)
+        ];
       }
       case Selection.TOURNAMENT: {
         if (Selection.TOURNAMENT.size > this.config.populationSize) {
@@ -127,8 +125,8 @@ export class Breed {
         // Create a tournament
         const individuals = new Array(Selection.TOURNAMENT.size);
         for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
-          const random = this.population[
-            Math.floor(Math.random() * this.population.length)
+          const random = population[
+            Math.floor(Math.random() * population.length)
           ];
           individuals[i] = random;
         }

@@ -10,6 +10,7 @@ import { Neat } from "../src/NEAT/Neat.ts";
 import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
 import { Mutator } from "../src/NEAT/Mutator.ts";
 import { Breed } from "../src/NEAT/Breed.ts";
+import { Genus } from "../src/NEAT/Genus.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -251,7 +252,14 @@ Deno.test("generateUUID", async () => {
 
   const neat = new Neat(1, 1, {}, []);
   const mutator = new Mutator(neat.config);
-  const breed = new Breed(neat.population, neat.config);
+  const genus = new Genus();
+
+  // The population is already sorted in the desired order
+  for (let i = 0; i < neat.population.length; i++) {
+    const creature = neat.population[i];
+    await genus.addCreature(creature);
+  }
+  const breed = new Breed(genus, neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
   await deDuplicator.perform([n1]);
 
