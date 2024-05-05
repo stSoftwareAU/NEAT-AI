@@ -116,7 +116,7 @@ Deno.test("Error Handling for Undefined Creature in addCreature", async () => {
       await genus.addCreature(creature);
     },
     Error,
-    "creature undefined is undefined",
+    "No creature UUID",
   );
 });
 

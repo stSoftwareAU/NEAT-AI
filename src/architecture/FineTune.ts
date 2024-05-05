@@ -107,11 +107,23 @@ function tuneRandomize(
 
   const all = Creature.fromJSON(fittestJSON);
   addTag(all, "approach", "fine");
+  let adjustedDesc = "";
+  if (changeWeightCount > 0) {
+    adjustedDesc += changeWeightCount + " weight" +
+      (changeWeightCount > 1 ? "s" : "");
+  }
+  if (changeBiasCount > 0) {
+    if (adjustedDesc.length > 0) {
+      adjustedDesc += ", ";
+    }
+    adjustedDesc += changeBiasCount + " bias" +
+      (changeBiasCount > 1 ? "es" : "");
+  }
+
   addTag(
     all,
     "adjusted",
-    changeWeightCount + " weight" + (changeWeightCount > 1 ? "s" : "") +
-      ", " + changeBiasCount + " bias" + (changeBiasCount > 1 ? "es" : ""),
+    adjustedDesc,
   );
 
   addTag(all, "old-score", oldScore);

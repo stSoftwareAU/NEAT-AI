@@ -6,16 +6,18 @@ export class Genus {
   readonly speciesMap: Map<string, Species>;
   readonly creatureToSpeciesMap: Map<string, string>;
 
+  readonly population: Creature[] = [];
+
   constructor() {
     this.speciesMap = new Map();
     this.creatureToSpeciesMap = new Map();
   }
 
   async addCreature(creature: Creature): Promise<Species> {
-    if (creature === undefined || creature.uuid === undefined) {
-      throw new Error(`creature ${creature.uuid} is undefined`);
-    }
+    assert(creature, "No creature provided");
+    assert(creature.uuid, "No creature UUID");
 
+    this.population.push(creature);
     const key = await Species.calculateKey(creature);
 
     let species = this.speciesMap.get(key);

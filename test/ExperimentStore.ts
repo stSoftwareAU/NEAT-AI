@@ -4,6 +4,9 @@ import { Creature } from "../src/Creature.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/NEAT/Neat.ts";
 import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
+import { Mutator } from "../src/NEAT/Mutator.ts";
+import { Breed } from "../src/NEAT/Breed.ts";
+import { Genus } from "../src/NEAT/Genus.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -63,6 +66,16 @@ Deno.test("previous", async () => {
 async function previousExperiment(creature: Creature, neat: Neat) {
   const key = await CreatureUtil.makeUUID(creature);
 
-  const deDuplicator = new DeDuplicator(neat);
+  const mutator = new Mutator(neat.config);
+  const genus = new Genus();
+
+  // The population is already sorted in the desired order
+  for (let i = 0; i < neat.population.length; i++) {
+    const creature = neat.population[i];
+    await genus.addCreature(creature);
+  }
+  const breed = new Breed(genus, neat.config);
+  const deDuplicator = new DeDuplicator(breed, mutator);
+
   return deDuplicator.previousExperiment(key);
 }

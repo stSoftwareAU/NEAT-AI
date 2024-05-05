@@ -1,34 +1,28 @@
+import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
 import { blue } from "https://deno.land/std@0.224.0/fmt/colors.ts";
 import { format } from "https://deno.land/std@0.224.0/fmt/duration.ts";
 import { ensureDirSync } from "https://deno.land/std@0.224.0/fs/mod.ts";
-import {
-  addTag,
-  getTag,
-  removeTag,
-} from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
-import { NeatOptions } from "../config/NeatOptions.ts";
-import { TrainOptions } from "../config/TrainOptions.ts";
-import { Selection } from "../methods/Selection.ts";
-import { Mutation } from "../methods/mutation.ts";
-import {
-  ResponseData,
-  WorkerHandler,
-} from "../multithreading/workers/WorkerHandler.ts";
-import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { DeDuplicator } from "../architecture/DeDuplicator.ts";
 import {
   makeElitists,
   sortCreaturesByScore,
 } from "../architecture/ElitismUtils.ts";
 import { Fitness } from "../architecture/Fitness.ts";
-import { Offspring } from "../architecture/Offspring.ts";
-import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { DeDuplicator } from "../architecture/DeDuplicator.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
-import { Genus } from "./Genus.ts";
+import { NeatOptions } from "../config/NeatOptions.ts";
+import { TrainOptions } from "../config/TrainOptions.ts";
+import {
+  ResponseData,
+  WorkerHandler,
+} from "../multithreading/workers/WorkerHandler.ts";
+import { Breed } from "./Breed.ts";
 import { FindTunePopulation } from "./FineTunePopulation.ts";
+import { Genus } from "./Genus.ts";
+import { Mutator } from "./Mutator.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -308,7 +302,6 @@ export class Neat {
     const fineTunedPopulation = await ftp.make(
       fittest,
       previousFittest,
-      // elitists,
       genus,
     );
 
@@ -318,19 +311,21 @@ export class Neat {
       fineTunedPopulation.length - 1 -
       newPopulation.length;
 
+    const breed = new Breed(genus, this.config);
     // Breed the next individuals
     for (
       let i = newPopSize > 0 ? newPopSize : 0;
       i--;
     ) {
-      const child = this.offspring();
+      const child = breed.breed();
       if (child) {
         newPopulation.push(child);
       }
     }
 
+    const mutator = new Mutator(this.config);
     // Replace the old population with the new population
-    this.mutate(newPopulation);
+    mutator.mutate(newPopulation);
 
     const trainedPopulation: Creature[] = [];
 
@@ -396,7 +391,7 @@ export class Neat {
       ...newPopulation,
     ]; // Keep pseudo sorted.
 
-    const deDuplicator = new DeDuplicator(this);
+    const deDuplicator = new DeDuplicator(breed, mutator);
     await deDuplicator.perform(this.population);
 
     return {
@@ -426,36 +421,6 @@ export class Neat {
   }
 
   /**
-   * Mutates the given (or current) population
-   */
-  mutate(creatures: Creature[]): void {
-    for (let i = creatures.length; i--;) {
-      if (Math.random() <= this.config.mutationRate) {
-        const creature = creatures[i];
-        if (this.config.debug) {
-          creatureValidate(creature);
-        }
-        for (let j = this.config.mutationAmount; j--;) {
-          const mutationMethod = this.selectMutationMethod(creature);
-
-          creature.mutate(
-            mutationMethod,
-            Math.random() < this.config.focusRate
-              ? this.config.focusList
-              : undefined,
-          );
-        }
-
-        if (this.config.debug) {
-          creatureValidate(creature);
-        }
-
-        removeTag(creature, "approach");
-      }
-    }
-  }
-
-  /**
    * Create the initial pool of genomes
    */
   async populatePopulation(creature: Creature) {
@@ -464,194 +429,30 @@ export class Neat {
     if (this.config.debug) {
       creatureValidate(creature);
     }
+    const mutator = new Mutator(this.config);
     while (this.population.length < this.config.populationSize - 1) {
       const clonedCreature = Creature.fromJSON(
         creature.internalJSON(),
         this.config.debug,
       );
       const creatures = [clonedCreature];
-      this.mutate(creatures);
+      mutator.mutate(creatures);
       this.population.push(creatures[0]);
     }
 
     this.population.unshift(creature);
 
-    const deDuplicator = new DeDuplicator(this);
+    const genus = new Genus();
+
+    // The population is already sorted in the desired order
+    for (let i = 0; i < this.population.length; i++) {
+      const creature = this.population[i];
+      await CreatureUtil.makeUUID(creature);
+      await genus.addCreature(creature);
+    }
+
+    const breed = new Breed(genus, this.config);
+    const deDuplicator = new DeDuplicator(breed, mutator);
     await deDuplicator.perform(this.population);
-  }
-
-  /**
-   * Breeds two parents into an offspring, population MUST be sorted
-   */
-  offspring(): Creature | undefined {
-    const mum = this.getParent();
-
-    if (mum === undefined) {
-      console.warn(
-        "No mother found",
-        this.config.selection.name,
-        this.population.length,
-      );
-
-      for (let pos = 0; pos < this.population.length; pos++) {
-        console.info(pos, this.population[pos] ? true : false);
-      }
-      for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return this.population[pos];
-      }
-      throw new Error(`Extinction event`);
-    }
-
-    let dad = this.getParent();
-    for (let i = 0; i < 12; i++) {
-      dad = this.getParent();
-      if (mum !== dad) break;
-    }
-
-    if (dad === undefined) {
-      console.warn(
-        "No father found",
-        this.config.selection.name,
-        this.population.length,
-      );
-
-      for (let pos = 0; pos < this.population.length; pos++) {
-        if (this.population[pos]) return this.population[pos];
-      }
-
-      throw new Error(`Extinction event`);
-    }
-
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const creature = Offspring.breed(
-        mum,
-        dad,
-      );
-      if (creature) {
-        return creature;
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * Selects a random mutation method for a genome according to the parameters
-   */
-  selectMutationMethod(creature: CreatureInternal) {
-    const mutationMethods = this.config
-      .mutation;
-
-    for (let attempts = 0; true; attempts++) {
-      const mutationMethod = mutationMethods[
-        Math.floor(Math.random() * this.config.mutation.length)
-      ];
-
-      if (
-        mutationMethod === Mutation.ADD_NODE &&
-        creature.neurons.length >= this.config.maximumNumberOfNodes
-      ) {
-        continue;
-      }
-
-      if (
-        mutationMethod === Mutation.ADD_CONN &&
-        creature.synapses.length >= this.config.maxConns
-      ) {
-        continue;
-      }
-
-      return mutationMethod;
-    }
-  }
-
-  /**
-   * Gets a parent based on the selection function
-   * @return {Creature} parent
-   */
-  getParent(): Creature {
-    switch (this.config.selection) {
-      case Selection.POWER: {
-        const r = Math.random();
-        const index = Math.floor(
-          Math.pow(r, Selection.POWER.power) *
-            this.population.length,
-        );
-
-        return this.population[index];
-      }
-      case Selection.FITNESS_PROPORTIONATE: {
-        /**
-         * As negative fitnesses are possible
-         * https://stackoverflow.com/questions/16186686/genetic-algorithm-handling-negative-fitness-values
-         * this is unnecessarily run for every individual, should be changed
-         */
-
-        let totalFitness = 0;
-        let minimalFitness = 0;
-        for (let i = this.population.length; i--;) {
-          const tmpScore = this.population[i].score;
-          const score = tmpScore === undefined ? Infinity * -1 : tmpScore;
-          minimalFitness = score < minimalFitness ? score : minimalFitness;
-          totalFitness += score;
-        }
-
-        const adjustFitness = Math.abs(minimalFitness);
-        totalFitness += adjustFitness * this.population.length;
-
-        const random = Math.random() * totalFitness;
-        let value = 0;
-
-        for (let i = 0; i < this.population.length; i++) {
-          const genome = this.population[i];
-          if (genome.score !== undefined) {
-            value += genome.score + adjustFitness;
-            if (random < value) {
-              return genome;
-            }
-          }
-        }
-
-        // if all scores equal, return random genome
-        return this
-          .population[
-            Math.floor(Math.random() * this.population.length)
-          ];
-      }
-      case Selection.TOURNAMENT: {
-        if (Selection.TOURNAMENT.size > this.config.populationSize) {
-          throw new Error(
-            "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
-          );
-        }
-
-        // Create a tournament
-        const individuals = new Array(Selection.TOURNAMENT.size);
-        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
-          const random = this.population[
-            Math.floor(Math.random() * this.population.length)
-          ];
-          individuals[i] = random;
-        }
-
-        // Sort the tournament individuals by score
-        individuals.sort(function (a, b) {
-          return b.score - a.score;
-        });
-
-        // Select an individual
-        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
-          if (
-            Math.random() < Selection.TOURNAMENT.probability ||
-            i === Selection.TOURNAMENT.size - 1
-          ) {
-            return individuals[i];
-          }
-        }
-        throw new Error(`No parent found in tournament`);
-      }
-      default: {
-        throw new Error(`Unknown selection: ${this.config.selection}`);
-      }
-    }
   }
 }

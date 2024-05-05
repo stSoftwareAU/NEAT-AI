@@ -736,7 +736,7 @@ export class Creature implements CreatureInternal {
       ) {
         let avgTxt = "";
         if (Number.isFinite(result.averageScore)) {
-          avgTxt = ` (avg: ${yellow(result.averageScore.toFixed(4))})`;
+          avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
         }
         console.log(
           "Generation",
