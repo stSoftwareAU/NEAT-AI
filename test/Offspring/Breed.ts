@@ -7,6 +7,7 @@ import { Creature } from "../../src/Creature.ts";
 import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { Neat } from "../../src/NEAT/Neat.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
+import { Breed } from "../../src/NEAT/Breed.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -42,9 +43,11 @@ Deno.test("OffSpring", async () => {
   creature.validate();
   const neat = new Neat(1, 1, {}, []);
 
+  const breed = new Breed(neat.population, neat.config);
+
   await neat.populatePopulation(creature);
   for (let i = 0; i < neat.config.populationSize; i++) {
-    const kid = neat.offspring();
+    const kid = breed.breed();
     if (!kid) continue;
     await neat.populatePopulation(kid as Creature);
   }

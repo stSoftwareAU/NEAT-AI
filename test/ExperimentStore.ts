@@ -4,6 +4,8 @@ import { Creature } from "../src/Creature.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/NEAT/Neat.ts";
 import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
+import { Mutator } from "../src/NEAT/Mutator.ts";
+import { Breed } from "../src/NEAT/Breed.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -63,6 +65,9 @@ Deno.test("previous", async () => {
 async function previousExperiment(creature: Creature, neat: Neat) {
   const key = await CreatureUtil.makeUUID(creature);
 
-  const deDuplicator = new DeDuplicator(neat);
+  const mutator = new Mutator(neat.config);
+  const breed = new Breed(neat.population, neat.config);
+  const deDuplicator = new DeDuplicator(breed, mutator);
+
   return deDuplicator.previousExperiment(key);
 }

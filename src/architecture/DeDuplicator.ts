@@ -1,15 +1,14 @@
 import { Creature } from "../Creature.ts";
-import { NeatConfig } from "../config/NeatConfig.ts";
+import { Breed } from "../NEAT/Breed.ts";
+import { Mutator } from "../NEAT/Mutator.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { Neat } from "../NEAT/Neat.ts";
 
 export class DeDuplicator {
-  private config: NeatConfig;
-  private neat: Neat;
-
-  constructor(neat: Neat) {
-    this.config = neat.config;
-    this.neat = neat;
+  private breed: Breed;
+  private mutator: Mutator;
+  constructor(breed: Breed, mutator: Mutator) {
+    this.breed = breed;
+    this.mutator = mutator;
   }
 
   public async perform(creatures: Creature[]) {
@@ -21,12 +20,12 @@ export class DeDuplicator {
       const key = await CreatureUtil.makeUUID(creature);
 
       let duplicate = unique.has(key);
-      if (!duplicate && i > this.config.elitism) {
+      if (!duplicate && i > this.breed.config.elitism) {
         duplicate = this.previousExperiment(key);
       }
 
       if (duplicate) {
-        if (creatures.length > this.config.populationSize) {
+        if (creatures.length > this.breed.config.populationSize) {
           console.info(
             `Culling duplicate creature at ${i} of ${creatures.length}`,
           );
@@ -34,12 +33,12 @@ export class DeDuplicator {
           i--;
         } else {
           for (let attempts = 0; true; attempts++) {
-            const child = this.neat.offspring();
+            const child = this.breed.breed();
 
             if (child) {
               const key2 = await CreatureUtil.makeUUID(child);
               let duplicate2 = unique.has(key);
-              if (!duplicate2 && i > this.config.elitism) {
+              if (!duplicate2 && i > this.breed.config.elitism) {
                 duplicate2 = this.previousExperiment(key2);
               }
               if (!duplicate2) {
@@ -48,10 +47,10 @@ export class DeDuplicator {
                 break;
               }
             }
-            this.neat.mutate([creature]);
+            this.mutator.mutate([creature]);
             const key3 = await CreatureUtil.makeUUID(creature);
             let duplicate3 = unique.has(key3);
-            if (!duplicate3 && i > this.config.elitism) {
+            if (!duplicate3 && i > this.breed.config.elitism) {
               duplicate3 = this.previousExperiment(key3);
             }
             if (!duplicate3) {
@@ -72,16 +71,16 @@ export class DeDuplicator {
   }
 
   private logPopulationSize(creatures: Creature[]) {
-    if (creatures.length > this.config.populationSize + 1) {
+    if (creatures.length > this.breed.config.populationSize + 1) {
       console.info(
-        `Over populated ${creatures.length}, expected ${this.config.populationSize}.`,
+        `Over populated ${creatures.length}, expected ${this.breed.config.populationSize}.`,
       );
     }
   }
 
   previousExperiment(key: string) {
-    if (this.config.experimentStore) {
-      const filePath = this.config.experimentStore + "/score/" +
+    if (this.breed.config.experimentStore) {
+      const filePath = this.breed.config.experimentStore + "/score/" +
         key.substring(0, 3) + "/" + key.substring(3) + ".txt";
       try {
         Deno.statSync(filePath);
