@@ -15,16 +15,20 @@ import {
   ResponseData,
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
-import { CreatureInternal } from "./CreatureInterfaces.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
-import { makeElitists } from "./ElitismUtils.ts";
-import { fineTuneImprovement } from "./FineTune.ts";
-import { Fitness } from "./Fitness.ts";
-import { Offspring } from "./Offspring.ts";
+import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import {
+  makeElitists,
+  sortCreaturesByScore,
+} from "../architecture/ElitismUtils.ts";
+import { Fitness } from "../architecture/Fitness.ts";
+import { Offspring } from "../architecture/Offspring.ts";
 import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
-import { creatureValidate } from "./CreatureValidate.ts";
-import { DeDuplicator } from "./DeDuplicator.ts";
+import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { DeDuplicator } from "../architecture/DeDuplicator.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
+import { Genus } from "./Genus.ts";
+import { FindTunePopulation } from "./FineTunePopulation.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -120,7 +124,7 @@ export class Neat {
 
   private trainingInProgress = new Map<string, Promise<void>>();
 
-  private trainingComplete: ResponseData[] = [];
+  trainingComplete: ResponseData[] = [];
 
   async scheduleTraining(
     creature: Creature,
@@ -184,117 +188,6 @@ export class Neat {
     this.trainingInProgress.set(uuid, p);
   }
 
-  async checkAndAdd(
-    fineTunePopulation: Creature[],
-    tunedUUID: Set<string>,
-    score: number,
-    network?: Creature,
-  ) {
-    if (network) {
-      const previousScoreTxt = getTag(network, "score");
-      if (previousScoreTxt) {
-        const previousScore = parseFloat(previousScoreTxt);
-        if (previousScore < score) {
-          const uuid = await CreatureUtil.makeUUID(network);
-          if (!tunedUUID.has(uuid)) {
-            tunedUUID.add(uuid);
-            fineTunePopulation.push(network);
-          }
-        }
-      }
-    }
-  }
-
-  async makeFineTunePopulation(
-    fittest: Creature,
-    previousFittest: Creature | undefined,
-    elitists: Creature[],
-  ) {
-    const tmpFineTunePopulation: Creature[] = [];
-    const tunedUUID = new Set<string>();
-
-    tunedUUID.add(await CreatureUtil.makeUUID(fittest));
-
-    const score = fittest.score ? fittest.score : 0;
-    await this.checkAndAdd(
-      tmpFineTunePopulation,
-      tunedUUID,
-      score,
-      previousFittest,
-    );
-
-    for (let i = 0; i < elitists.length; i++) {
-      const network = elitists[i];
-      await this.checkAndAdd(tmpFineTunePopulation, tunedUUID, score, network);
-    }
-
-    for (let i = 0; i < this.population.length; i++) {
-      const network = this.population[i];
-      await this.checkAndAdd(tmpFineTunePopulation, tunedUUID, score, network);
-    }
-
-    const tmpPreviousFittest = tmpFineTunePopulation.shift();
-
-    /**
-     * If this is the first run then use the second best as the "previous"
-     *
-     * If the previous fittest and current fittest are the same then try another out of the list of the elitists.
-     */
-    const rebootedFineTune = (previousFittest && tmpPreviousFittest)
-      ? previousFittest.uuid != tmpPreviousFittest.uuid
-      : false;
-
-    let fineTunedPopulation: Creature[] = [];
-    if (!tmpPreviousFittest) {
-      console.warn("Failed to find previous fittest creature");
-    } else {
-      /** 20% of population or those that just died, leave one for the extended */
-      const fineTunePopSize = Math.max(
-        Math.ceil(
-          this.config.populationSize / 5,
-        ),
-        this.config.populationSize - this.population.length -
-          this.config.elitism -
-          this.trainingComplete.length,
-      );
-      fineTunedPopulation = await fineTuneImprovement(
-        fittest,
-        tmpPreviousFittest,
-        fineTunePopSize - 1,
-        !rebootedFineTune && this.config.verbose,
-      );
-
-      for (let attempts = 0; attempts < 12; attempts++) {
-        const extendedFineTunePopSize = fineTunePopSize -
-          fineTunedPopulation.length;
-        if (extendedFineTunePopSize > 0) {
-          /* Choose a creature from near the top of the list. */
-          const location = Math.floor(
-            tmpFineTunePopulation.length * Math.random() * Math.random(),
-          );
-
-          const extendedPreviousFittest = tmpFineTunePopulation[location];
-
-          const extendedTunedPopulation = await fineTuneImprovement(
-            fittest,
-            extendedPreviousFittest,
-            extendedFineTunePopSize,
-            false,
-          );
-
-          fineTunedPopulation.push(...extendedTunedPopulation);
-
-          /* Remove the chosen creature from the array */
-          tmpFineTunePopulation.splice(location, 1);
-        } else {
-          break;
-        }
-      }
-    }
-
-    return fineTunedPopulation;
-  }
-
   /**
    * Evaluates, selects, breeds and mutates population
    */
@@ -303,6 +196,15 @@ export class Neat {
   ): Promise<{ fittest: Creature; averageScore: number }> {
     await this.fitness.calculate(this.population);
 
+    sortCreaturesByScore(this.population);
+
+    const genus = new Genus();
+
+    // The population is already sorted in the desired order
+    for (let i = 0; i < this.population.length; i++) {
+      const creature = this.population[i];
+      await genus.addCreature(creature);
+    }
     /* Elitism: we need at least 2 on the first run */
     const results = makeElitists(
       this.population,
@@ -402,10 +304,12 @@ export class Neat {
       console.warn("All creatures died, using zombies");
     }
 
-    const fineTunedPopulation = await this.makeFineTunePopulation(
+    const ftp = new FindTunePopulation(this);
+    const fineTunedPopulation = await ftp.make(
       fittest,
       previousFittest,
-      elitists,
+      // elitists,
+      genus,
     );
 
     const newPopSize = this.config.populationSize -

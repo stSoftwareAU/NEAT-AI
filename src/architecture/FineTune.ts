@@ -3,7 +3,37 @@ import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { NeuronExport } from "./NeuronInterfaces.ts";
+import { CreatureExport } from "../../mod.ts";
+import { SynapseExport } from "./SynapseInterfaces.ts";
+
 const MIN_STEP = 0.000_000_1;
+
+function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
+  const neuronsSet = new Set<string>();
+  to.neurons.forEach((n) => {
+    neuronsSet.add(n.uuid);
+  });
+
+  for (let indx = 0; indx < to.input; indx++) {
+    neuronsSet.add(`input-${indx}`);
+  }
+
+  const synapsesSet = new Set<string>();
+
+  to.synapses.forEach((s) => {
+    synapsesSet.add(`${s.fromUUID}->${s.toUUID}`);
+  });
+
+  from.synapses.forEach((s) => {
+    if (neuronsSet.has(s.fromUUID) && neuronsSet.has(s.toUUID)) {
+      if (!synapsesSet.has(`${s.fromUUID}->${s.toUUID}`)) {
+        const toSynapse: SynapseExport = JSON.parse(JSON.stringify(s));
+        toSynapse.weight = 0;
+        to.synapses.push(toSynapse);
+      }
+    }
+  });
+}
 
 function tuneRandomize(
   fittest: Creature,
@@ -12,6 +42,9 @@ function tuneRandomize(
 ) {
   const previousJSON = previousFittest.exportJSON();
   const fittestJSON = fittest.exportJSON();
+
+  addMissingSynapses(fittestJSON, previousJSON);
+  addMissingSynapses(previousJSON, fittestJSON);
 
   const uuidNodeMap = new Map<string, NeuronExport>();
 
@@ -64,7 +97,7 @@ function tuneRandomize(
     }
   }
 
-  if (changeBiasCount == 0 || changeWeightCount == 0) {
+  if (changeBiasCount == 0 && changeWeightCount == 0) {
     return {
       changeBiasCount: changeBiasCount,
       changeWeightCount: changeWeightCount,
