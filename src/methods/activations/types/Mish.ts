@@ -12,7 +12,7 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class Mish implements ActivationInterface, UnSquashInterface {
   public static NAME = "Mish";
-
+  private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
   getName() {
     return Mish.NAME;
   }
@@ -49,10 +49,9 @@ export class Mish implements ActivationInterface, UnSquashInterface {
         ? activation
         : (activation < -1 ? -1 : activation / 2)); // Use the hint as the initial guess if provided
 
-    const iterations = 200_000; // Number of iterations; you can adjust this
     const tolerance = 0.0001; // Tolerance for convergence; you can adjust this
 
-    for (let i = 0; i < iterations; i++) {
+    for (let i = 0; i < Mish.MAX_ITERATIONS; i++) {
       const { activation: squashGuess, derivative: errDerivative } = this
         .squashAndDerive(guess);
       const err = squashGuess - activation;

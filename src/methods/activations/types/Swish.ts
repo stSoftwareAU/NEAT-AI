@@ -11,7 +11,7 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Swish implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Swish";
-  private static readonly MAX_ITERATIONS = 10_000; // Maximum iterations for Newton-Raphson
+  private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
   private static readonly EPSILON = 1e-6; // Tolerance for Newton-Raphson
 
   /**

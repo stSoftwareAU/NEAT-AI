@@ -14,7 +14,7 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class GELU implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "GELU";
-  private static readonly MAX_ITERATIONS = 10_000; // Maximum iterations for Newton-Raphson
+  private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
 
   private static readonly TOLERANCE = 1e-6;
   /**

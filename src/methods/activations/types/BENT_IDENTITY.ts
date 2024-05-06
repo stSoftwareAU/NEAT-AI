@@ -11,13 +11,14 @@ import { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   public static NAME = "BENT_IDENTITY";
+  private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
 
   unSquash(activation: number): number {
     let x = activation; // initial guess
-    const maxIterations = 100;
+
     const epsilon = 1e-6;
 
-    for (let i = 0; i < maxIterations; i++) {
+    for (let i = 0; i < BENT_IDENTITY.MAX_ITERATIONS; i++) {
       if (Math.abs(x) >= 1e153) { // 1e153 is a reasonable threshold to prevent overflow
         return x; // Return x as the best guess if it's too large
       }
