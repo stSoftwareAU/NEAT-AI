@@ -352,6 +352,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
       requestedActivation,
     );
 
+    if (Math.abs(targetActivation - activation) < config.plankConstant) {
+      return activation;
+    }
+
     const ns = this.creature.state.node(this.index);
 
     const squashMethod = this.findSquash();
