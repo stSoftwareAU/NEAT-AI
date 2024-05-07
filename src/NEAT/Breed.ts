@@ -57,9 +57,7 @@ export class Breed {
     if (possibleFathers.length === 0) {
       const closestSpecies = this.genus.findClosestMatchingSpecies(mum);
       if (closestSpecies) {
-        possibleFathers = closestSpecies.creatures.filter((creature) =>
-          creature.uuid !== mum.uuid
-        );
+        possibleFathers = closestSpecies.creatures;
 
         if (possibleFathers.length === 0) {
           possibleFathers = this.genus.population.filter((creature) =>

@@ -49,15 +49,15 @@ export class NeuronState implements NeuronStateInterface {
     const activationDifference = Math.abs(targetActivation - activation);
     if (activationDifference < config.plankConstant) {
       difference = 0;
-    }
-
-    if (!config.disableExponentialScaling) {
-      // Squash the difference using the hyperbolic tangent function and scale it
-      difference = Math.tanh(difference / config.maximumBiasAdjustmentScale) *
-        config.maximumBiasAdjustmentScale;
-    } else if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
-      // Limit the difference to the maximum scale
-      difference = Math.sign(difference) * config.maximumBiasAdjustmentScale;
+    } else {
+      if (!config.disableExponentialScaling) {
+        // Squash the difference using the hyperbolic tangent function and scale it
+        difference = Math.tanh(difference / config.maximumBiasAdjustmentScale) *
+          config.maximumBiasAdjustmentScale;
+      } else if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
+        // Limit the difference to the maximum scale
+        difference = Math.sign(difference) * config.maximumBiasAdjustmentScale;
+      }
     }
 
     this.count++;

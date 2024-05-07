@@ -23,6 +23,7 @@ import {
 import { Synapse } from "./Synapse.ts";
 import { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
+import { noChangePropagate } from "./NoChangePropagate.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -346,14 +347,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ) {
     const activation = this.adjustedActivation(config);
 
-    let targetActivation = limitActivationToRange(
+    const targetActivation = limitActivationToRange(
       config,
       this,
       requestedActivation,
     );
 
-    if (Math.abs(targetActivation - activation) < config.plankConstant) {
-      targetActivation = activation;
+    if (
+      Math.abs(targetActivation - activation) < config.plankConstant
+    ) {
+      noChangePropagate(this, activation, config);
+      return activation;
     }
 
     const ns = this.creature.state.node(this.index);
