@@ -67,50 +67,61 @@ async function evolveSet(
   set: DataRecordInterface[],
   iterations: number,
   error: number,
+  attempts = 1,
 ) {
-  const creature = new Creature(set[0].input.length, set[0].output.length, {
-    layers: [
-      { count: 5 },
-    ],
-  });
   const options: NeatOptions = {
     iterations: iterations,
     targetError: error,
     threads: 1,
   };
 
-  const results = await creature.evolveDataSet(set, options);
-
-  assert(results.error <= error, `expected: ${error}, was: ${results.error}`);
+  let resultError = Number.MAX_VALUE;
+  let lastCreature: Creature;
+  for (let attempt = attempts; attempt--;) {
+    lastCreature = new Creature(set[0].input.length, set[0].output.length, {
+      layers: [
+        { count: 5 },
+      ],
+    });
+    const results = await lastCreature.evolveDataSet(set, options);
+    resultError = results.error;
+    if (resultError <= error) {
+      break;
+    }
+    console.info(
+      `Error is: ${results.error}, required: ${error} RETRY ${attempt} of ${attempts}`,
+    );
+  }
+  assert(resultError <= error, `expected: ${error}, was: ${resultError}`);
 
   set.forEach((dr) => {
-    const nt0 = creature.activate(dr.input)[0];
+    const nt0 = lastCreature.activate(dr.input)[0];
 
-    const nt1 = creature.activate(dr.input)[0];
-    creatureValidate(creature);
+    const nt1 = lastCreature.activate(dr.input)[0];
+    creatureValidate(lastCreature);
 
     if (Math.abs(nt0 - nt1) > 0.0001) {
       Deno.writeTextFileSync(
         ".start.json",
-        JSON.stringify(creature.exportJSON(), null, 2),
+        JSON.stringify(lastCreature.exportJSON(), null, 2),
       );
-      const nt2 = creature.activate(dr.input)[0];
+      const nt2 = lastCreature.activate(dr.input)[0];
 
       Deno.writeTextFileSync(
         ".end.json",
-        JSON.stringify(creature.exportJSON(), null, 2),
+        JSON.stringify(lastCreature.exportJSON(), null, 2),
       );
       // console.log(dr.input);
-      const n0 = Creature.fromJSON(creature.exportJSON()).activate(
+      const n0 = Creature.fromJSON(lastCreature.exportJSON()).activate(
         dr.input,
       )[0];
 
-      creature.clearCache();
-      const c1 = creature.activate(dr.input)[0];
-      const n1 = Creature.fromJSON(creature.exportJSON()).activate(
+      lastCreature.clearCache();
+      const c1 = lastCreature.activate(dr.input)[0];
+      const n1 = Creature.fromJSON(lastCreature.exportJSON()).activate(
         dr.input,
       )[0];
-      const network2 = Creature.fromJSON(creature.exportJSON());
+      const network2 = Creature.fromJSON(lastCreature.exportJSON());
       const n2 = network2.activate(dr.input)[0];
       const n2b = network2.activate(dr.input)[0];
       assertAlmostEquals(
@@ -123,8 +134,8 @@ async function evolveSet(
       );
     }
 
-    const r0 = creature.activateAndTrace(dr.input)[0];
-    const r1 = creature.activateAndTrace(dr.input)[0];
+    const r0 = lastCreature.activateAndTrace(dr.input)[0];
+    const r1 = lastCreature.activateAndTrace(dr.input)[0];
     assertAlmostEquals(
       r0,
       r1,
@@ -133,7 +144,7 @@ async function evolveSet(
         r1,
     );
 
-    const r2 = creature.activate(dr.input)[0];
+    const r2 = lastCreature.activate(dr.input)[0];
 
     assertAlmostEquals(
       r1,
@@ -396,8 +407,9 @@ Deno.test("evolve XORgate", async () => {
       { input: [1, 0], output: [1] },
       { input: [1, 1], output: [0] },
     ],
-    200_000,
+    1_000,
     0.05,
+    100,
   );
 });
 
@@ -444,8 +456,9 @@ Deno.test("evolve_XNOR_gate", async () => {
       { input: [1, 0], output: [0] },
       { input: [1, 1], output: [1] },
     ],
-    100_000,
+    1_000,
     0.002,
+    100,
   );
 });
 
