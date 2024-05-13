@@ -1,6 +1,5 @@
 import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import {
-  accumulateWeight,
   adjustedBias,
   adjustedWeight,
   BackPropagationConfig,
@@ -37,46 +36,29 @@ export function noChangePropagate(
 
         const fromNeuron = neuron.creature.neurons[c.from];
 
-        const fromActivation = fromNeuron.adjustedActivation(config);
-
-        const fromWeight = adjustedWeight(neuron.creature.state, c, config);
-        const fromValue = fromWeight * fromActivation;
-
         if (
-          fromWeight &&
           fromNeuron.type !== "input" &&
           fromNeuron.type !== "constant"
         ) {
+          const fromActivation = fromNeuron.adjustedActivation(config);
           fromNeuron.propagate(
             fromActivation,
             config,
           );
         }
 
-        if (
-          Math.abs(fromActivation) > config.plankConstant &&
-          Math.abs(fromWeight) > config.plankConstant
-        ) {
-          const cs = neuron.creature.state.connection(c.from, c.to);
-          accumulateWeight(
-            c.weight,
-            cs,
-            fromValue,
-            fromActivation,
-            config,
-          );
+        const cs = neuron.creature.state.connection(c.from, c.to);
+        if (cs.count === 0) {
+          const fromWeight = adjustedWeight(neuron.creature.state, c, config);
+
+          cs.averageWeight = fromWeight;
         }
+        cs.count++;
       }
     }
 
-    ns.accumulateBias(
-      ns.hintValue,
-      ns.hintValue,
-      config,
-      activation,
-      activation,
-      currentBias,
-    );
+    ns.totalValue += currentBias;
+    ns.count++;
   }
 
   ns.traceActivation(activation);
