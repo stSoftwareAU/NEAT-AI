@@ -85,7 +85,7 @@ pipeline {
                             --trace-leaks \
                             --v8-flags=--max-old-space-size=8192 \
                             --parallel \
-                            --config ./test/deno.json \
+                            --config ./deno.json \
                             --coverage=.coverage \
                             --doc \
                             --reporter junit > .test.xml

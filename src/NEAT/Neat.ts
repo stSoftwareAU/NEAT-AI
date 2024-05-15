@@ -1,7 +1,7 @@
-import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
-import { blue } from "https://deno.land/std@0.224.0/fmt/colors.ts";
-import { format } from "https://deno.land/std@0.224.0/fmt/duration.ts";
-import { ensureDirSync } from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { assert } from "@std/assert";
+import { blue } from "@std/fmt/colors";
+import { format } from "@std/fmt/duration";
+import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";

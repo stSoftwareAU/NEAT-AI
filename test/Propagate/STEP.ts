@@ -1,12 +1,9 @@
-import { fail } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import {
-  ensureDirSync,
-  existsSync,
-} from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { fail } from "@std/assert";
+import { ensureDirSync, existsSync } from "@std/fs";
 import { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { assertAlmostEquals } from "https://deno.land/std@0.224.0/assert/assert_almost_equals.ts";
+import { assertAlmostEquals } from "@std/assert";
 
 function makeCreature() {
   const json: CreatureExport = {

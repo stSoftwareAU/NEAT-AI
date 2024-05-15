@@ -1,11 +1,4 @@
-import {
-  blue,
-  bold,
-  green,
-  red,
-  white,
-  yellow,
-} from "https://deno.land/std@0.224.0/fmt/colors.ts";
+import { blue, bold, green, red, white, yellow } from "@std/fmt/colors";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 

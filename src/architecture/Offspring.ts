@@ -3,7 +3,7 @@ import { Creature } from "../Creature.ts";
 import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
-import { assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert } from "@std/assert";
 
 class OffspringError extends Error {
   constructor(message: string) {

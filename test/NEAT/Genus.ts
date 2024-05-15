@@ -1,12 +1,8 @@
-import {
-  assertEquals,
-  assertRejects,
-  assertThrows,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { Creature, CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Genus } from "../../src/NEAT/Genus.ts";
 import { Species } from "../../src/NEAT/Species.ts";
-import { assertNotEquals } from "https://deno.land/std@0.224.0/assert/assert_not_equals.ts";
+import { assertNotEquals } from "@std/assert";
 
 const baseCreatureJSON: CreatureExport = {
   neurons: [

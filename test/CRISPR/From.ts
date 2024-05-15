@@ -1,7 +1,4 @@
-import {
-  assert,
-  assertAlmostEquals,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CRISPR } from "../../src/reconstruct/CRISPR.ts";

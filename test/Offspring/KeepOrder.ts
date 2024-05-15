@@ -1,7 +1,7 @@
 import { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
-import { ensureDirSync } from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { ensureDirSync } from "@std/fs";
 
 function makeMum() {
   const json: CreatureExport = {

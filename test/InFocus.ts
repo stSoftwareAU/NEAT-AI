@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

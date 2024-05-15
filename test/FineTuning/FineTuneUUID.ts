@@ -1,8 +1,4 @@
-import {
-  assertAlmostEquals,
-  assertEquals,
-  fail,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertAlmostEquals, assertEquals, fail } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
 

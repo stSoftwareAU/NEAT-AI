@@ -1,6 +1,6 @@
-import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
+import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { generate as generateV5 } from "https://deno.land/std@0.224.0/uuid/v5.ts";
+import { generate as generateV5 } from "@std/uuid/v5";
 
 export class Species {
   private static TE = new TextEncoder();

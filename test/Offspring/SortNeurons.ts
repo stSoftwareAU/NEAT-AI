@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals } from "@std/assert";
 import { Creature, CreatureExport } from "../../mod.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 import { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
