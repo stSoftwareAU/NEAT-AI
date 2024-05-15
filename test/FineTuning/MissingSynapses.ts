@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
+import { assert } from "@std/assert";
 import { Creature, CreatureExport } from "../../mod.ts";
 import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
 import { addTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";

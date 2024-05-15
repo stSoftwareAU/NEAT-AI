@@ -1,4 +1,4 @@
-import { generate as generateV5 } from "https://deno.land/std@0.224.0/uuid/v5.ts";
+import { generate as generateV5 } from "@std/uuid/v5";
 import { Creature } from "../Creature.ts";
 
 export class CreatureUtil {

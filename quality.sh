@@ -4,13 +4,17 @@ export DENO_FUTURE=1
 deno fmt src test bench mod.ts
 deno lint --fix src test bench mod.ts
 rm -rf .trace .test .coverage
-deno check `find src -name "*.ts"`
+
+# Use xargs to handle file list gracefully, with a larger batch size
+find src -name "*.ts" -print0 | xargs -0 -n 50 deno check
+find test -name "*.ts" -print0 | xargs -0 -n 50 deno check
+
 deno test \
   --allow-read \
   --allow-write \
   --trace-leaks \
   --v8-flags=--max-old-space-size=8192 \
   --parallel \
-  --config ./test/deno.json \
   --coverage=.coverage \
+  --config ./deno.json \
   --doc

@@ -1,7 +1,4 @@
-import {
-  assertEquals,
-  assertNotEquals,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertNotEquals } from "@std/assert";
 import { Creature, CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Species } from "../../src/NEAT/Species.ts";
 

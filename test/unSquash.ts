@@ -1,8 +1,4 @@
-import {
-  assert,
-  assertAlmostEquals,
-  fail,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";

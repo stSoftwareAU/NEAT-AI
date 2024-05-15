@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert } from "@std/assert";
 import { Creature, CreatureUtil } from "../../mod.ts";
 import { Genus } from "./Genus.ts";
 import { fineTuneImprovement } from "../architecture/FineTune.ts";

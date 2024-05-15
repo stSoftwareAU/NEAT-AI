@@ -1,7 +1,7 @@
-import { ensureDirSync } from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { ensureDirSync } from "@std/fs";
 import { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals } from "@std/assert";
 
 function makeCreature() {
   const json: CreatureExport = {
