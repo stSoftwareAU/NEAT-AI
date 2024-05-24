@@ -82,6 +82,7 @@ pipeline {
                           deno test \
                             --allow-read \
                             --allow-write \
+                            --allow-net \
                             --trace-leaks \
                             --v8-flags=--max-old-space-size=8192 \
                             --parallel \

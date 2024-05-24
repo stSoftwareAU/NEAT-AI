@@ -12,6 +12,7 @@ find test -name "*.ts" -print0 | xargs -0 -n 50 deno check
 deno test \
   --allow-read \
   --allow-write \
+  --allow-net \
   --trace-leaks \
   --v8-flags=--max-old-space-size=8192 \
   --parallel \
