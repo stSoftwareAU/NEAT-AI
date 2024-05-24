@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import {
   addTag,
   getTag,
-  TagsInterface,
+  type TagsInterface,
 } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";

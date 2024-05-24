@@ -6,8 +6,8 @@
  * Source: "Swish: a Self-Gated Activation Function" by Prajit Ramachandran, Barret Zoph, and Quoc V. Le
  * Link: https://arxiv.org/abs/1710.05941
  */
-import { ActivationInterface } from "../ActivationInterface.ts";
-import { UnSquashInterface } from "../UnSquashInterface.ts";
+import type { ActivationInterface } from "../ActivationInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Swish implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Swish";

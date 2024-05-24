@@ -1,6 +1,6 @@
 import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
-import { Creature, CreatureExport } from "../../mod.ts";
+import { Creature, type CreatureExport } from "../../mod.ts";
 import { Costs } from "../../src/Costs.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 

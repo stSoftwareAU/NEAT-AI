@@ -1,4 +1,4 @@
-import { CostInterface } from "../Costs.ts";
+import type { CostInterface } from "../Costs.ts";
 
 /** Hinge loss, for classifiers */
 export class HINGE implements CostInterface {

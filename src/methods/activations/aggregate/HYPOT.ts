@@ -1,6 +1,6 @@
-import { BackPropagationConfig } from "../../../architecture/BackPropagation.ts";
-import { Neuron } from "../../../architecture/Neuron.ts";
-import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import type { BackPropagationConfig } from "../../../architecture/BackPropagation.ts";
+import type { Neuron } from "../../../architecture/Neuron.ts";
+import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 
 export class HYPOT implements NeuronActivationInterface {
   propagate(

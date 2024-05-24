@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
-import { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
-import { TrainOptions } from "../src/config/TrainOptions.ts";
+import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
+import type { TrainOptions } from "../src/config/TrainOptions.ts";
 import { ensureDirSync } from "@std/fs";
 import { train } from "../src/architecture/Training.ts";
 

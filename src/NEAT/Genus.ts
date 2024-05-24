@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../mod.ts";
+import type { Creature } from "../../mod.ts";
 import { Species } from "./Species.ts";
 
 export class Genus {

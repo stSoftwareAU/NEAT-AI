@@ -1,4 +1,4 @@
-import { CostInterface } from "../Costs.ts";
+import type { CostInterface } from "../Costs.ts";
 const MAX_VALUE = 1000;
 /** Twelve steps Error */
 export class TwelveSteps implements CostInterface {

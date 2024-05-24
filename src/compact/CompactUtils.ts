@@ -1,6 +1,6 @@
-import { Creature } from "../Creature.ts";
+import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
-import { Synapse } from "../architecture/Synapse.ts";
+import type { Synapse } from "../architecture/Synapse.ts";
 
 export function createConstantOne(creature: Creature, count: number) {
   let uuid;

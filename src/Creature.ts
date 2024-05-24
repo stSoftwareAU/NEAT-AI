@@ -5,38 +5,41 @@ import { emptyDirSync } from "@std/fs";
 import {
   addTag,
   getTag,
-  TagInterface,
+  type TagInterface,
 } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { CreatureUtil } from "../mod.ts";
-import { BackPropagationConfig } from "./architecture/BackPropagation.ts";
-import {
+import type { BackPropagationConfig } from "./architecture/BackPropagation.ts";
+import type {
   CreatureExport,
   CreatureInternal,
   CreatureTrace,
 } from "./architecture/CreatureInterfaces.ts";
 import {
   CreatureState,
-  NeuronStateInterface,
+  type NeuronStateInterface,
 } from "./architecture/CreatureState.ts";
 import { creatureValidate } from "./architecture/CreatureValidate.ts";
-import { DataRecordInterface, makeDataDir } from "./architecture/DataSet.ts";
+import {
+  type DataRecordInterface,
+  makeDataDir,
+} from "./architecture/DataSet.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import { Neuron } from "./architecture/Neuron.ts";
-import {
+import type {
   NeuronExport,
   NeuronInternal,
   NeuronTrace,
 } from "./architecture/NeuronInterfaces.ts";
 import { Synapse } from "./architecture/Synapse.ts";
-import {
+import type {
   SynapseExport,
   SynapseInternal,
   SynapseTrace,
 } from "./architecture/SynapseInterfaces.ts";
 import { cacheDataFile, dataFiles } from "./architecture/Training.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
-import { NeatOptions } from "./config/NeatOptions.ts";
-import { CostInterface } from "./Costs.ts";
+import type { NeatOptions } from "./config/NeatOptions.ts";
+import type { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";

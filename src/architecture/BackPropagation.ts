@@ -1,10 +1,10 @@
-import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import { SynapseState } from "../propagate/SynapseState.ts";
-import { CreatureState } from "./CreatureState.ts";
-import { Neuron } from "./Neuron.ts";
-import { Synapse } from "./Synapse.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
+import type { SynapseState } from "../propagate/SynapseState.ts";
+import type { CreatureState } from "./CreatureState.ts";
+import type { Neuron } from "./Neuron.ts";
+import type { Synapse } from "./Synapse.ts";
 
 export interface BackPropagationOptions {
   disableRandomSamples?: boolean;

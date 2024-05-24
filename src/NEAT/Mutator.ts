@@ -1,8 +1,8 @@
 import { removeTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { Creature, Mutation } from "../../mod.ts";
-import { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
-import { NeatConfig } from "../config/NeatConfig.ts";
+import { type Creature, Mutation } from "../../mod.ts";
+import type { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
+import type { NeatConfig } from "../config/NeatConfig.ts";
 
 export class Mutator {
   private config: NeatConfig;

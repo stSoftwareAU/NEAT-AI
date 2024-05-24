@@ -1,4 +1,4 @@
-import { RequestData } from "../WorkerHandler.ts";
+import type { RequestData } from "../WorkerHandler.ts";
 import { WorkerProcessor } from "../WorkerProcessor.ts";
 
 const processor = new WorkerProcessor();

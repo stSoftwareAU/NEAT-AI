@@ -1,4 +1,4 @@
-import { Creature } from "../Creature.ts";
+import type { Creature } from "../Creature.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 
 /**

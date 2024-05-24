@@ -1,6 +1,6 @@
 import { addTags } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
-import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { assert } from "@std/assert";

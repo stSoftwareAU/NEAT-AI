@@ -1,27 +1,27 @@
 import {
   addTags,
   removeTag,
-  TagsInterface,
+  type TagsInterface,
 } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { Creature } from "../Creature.ts";
-import { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import type { Creature } from "../Creature.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
-import { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
-import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
-import { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
+import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
+import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
+import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import { Mutation } from "../methods/mutation.ts";
 import {
   accumulateWeight,
   adjustedBias,
   adjustedWeight,
-  BackPropagationConfig,
+  type BackPropagationConfig,
   limitActivation,
   limitActivationToRange,
   toValue,
 } from "./BackPropagation.ts";
 import { Synapse } from "./Synapse.ts";
-import { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
+import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 

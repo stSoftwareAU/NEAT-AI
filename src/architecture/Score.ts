@@ -1,4 +1,4 @@
-import { CreatureInternal } from "./CreatureInterfaces.ts";
+import type { CreatureInternal } from "./CreatureInterfaces.ts";
 
 export function calculate(
   creature: CreatureInternal,

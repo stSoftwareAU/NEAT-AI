@@ -2,16 +2,16 @@ import {
   accumulateWeight,
   adjustedBias,
   adjustedWeight,
-  BackPropagationConfig,
+  type BackPropagationConfig,
   limitActivation,
   limitValue,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
-import { Neuron } from "../../../architecture/Neuron.ts";
+import type { Neuron } from "../../../architecture/Neuron.ts";
 import { Mutation } from "../../mutation.ts";
-import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
-import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
+import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class IF implements NeuronActivationInterface, ApplyLearningsInterface {

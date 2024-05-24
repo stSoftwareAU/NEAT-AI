@@ -1,9 +1,9 @@
 import { assert } from "@std/assert";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
 import { Creature } from "../src/Creature.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
-import { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
-import { NeatOptions } from "../src/config/NeatOptions.ts";
+import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
+import type { NeatOptions } from "../src/config/NeatOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

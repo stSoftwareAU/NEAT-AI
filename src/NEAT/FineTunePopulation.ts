@@ -1,9 +1,9 @@
 import { assert } from "@std/assert";
-import { Creature, CreatureUtil } from "../../mod.ts";
-import { Genus } from "./Genus.ts";
+import { type Creature, CreatureUtil } from "../../mod.ts";
+import type { Genus } from "./Genus.ts";
 import { fineTuneImprovement } from "../architecture/FineTune.ts";
 import { Species } from "./Species.ts";
-import { Neat } from "./Neat.ts";
+import type { Neat } from "./Neat.ts";
 
 export class FindTunePopulation {
   private neat: Neat;

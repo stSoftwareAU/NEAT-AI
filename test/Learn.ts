@@ -1,5 +1,5 @@
-import { NeatOptions } from "../src/config/NeatOptions.ts";
-import { DataRecordInterface } from "../src/architecture/DataSet.ts";
+import type { NeatOptions } from "../src/config/NeatOptions.ts";
+import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Creature } from "../src/Creature.ts";
 import { train } from "../src/architecture/Training.ts";
 

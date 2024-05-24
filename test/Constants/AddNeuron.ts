@@ -1,5 +1,5 @@
 import { ensureDirSync } from "@std/fs";
-import { CreatureExport } from "../../mod.ts";
+import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { assertEquals } from "@std/assert";
 

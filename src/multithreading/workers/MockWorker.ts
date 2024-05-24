@@ -1,4 +1,8 @@
-import { RequestData, ResponseData, WorkerInterface } from "./WorkerHandler.ts";
+import type {
+  RequestData,
+  ResponseData,
+  WorkerInterface,
+} from "./WorkerHandler.ts";
 
 import { WorkerProcessor } from "./WorkerProcessor.ts";
 

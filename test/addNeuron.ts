@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../src/Creature.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

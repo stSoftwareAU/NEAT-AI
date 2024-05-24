@@ -1,4 +1,4 @@
-import { CostInterface } from "../Costs.ts";
+import type { CostInterface } from "../Costs.ts";
 
 /** Mean Absolute Percentage Error */
 export class MAPE implements CostInterface {

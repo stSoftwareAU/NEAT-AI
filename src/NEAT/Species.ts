@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import type { Creature } from "../../src/Creature.ts";
 import { generate as generateV5 } from "@std/uuid/v5";
 
 export class Species {

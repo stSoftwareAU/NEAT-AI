@@ -2,13 +2,13 @@ import {
   accumulateWeight,
   adjustedBias,
   adjustedWeight,
-  BackPropagationConfig,
+  type BackPropagationConfig,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
-import { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
-import { Neuron } from "../../../architecture/Neuron.ts";
-import { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
-import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import type { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
+import type { Neuron } from "../../../architecture/Neuron.ts";
+import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
+import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class MINIMUM

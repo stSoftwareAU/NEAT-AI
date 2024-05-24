@@ -2,9 +2,9 @@ import { blue, bold, cyan } from "@std/fmt/colors";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { NeuronExport } from "./NeuronInterfaces.ts";
-import { CreatureExport } from "../../mod.ts";
-import { SynapseExport } from "./SynapseInterfaces.ts";
+import type { NeuronExport } from "./NeuronInterfaces.ts";
+import type { CreatureExport } from "../../mod.ts";
+import type { SynapseExport } from "./SynapseInterfaces.ts";
 
 const MIN_STEP = 0.000_000_1;
 

@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/NEAT/Neat.ts";
 import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
