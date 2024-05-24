@@ -9,8 +9,8 @@
  * Link: https://arxiv.org/abs/1606.08415
  */
 
-import { ActivationInterface } from "../ActivationInterface.ts";
-import { UnSquashInterface } from "../UnSquashInterface.ts";
+import type { ActivationInterface } from "../ActivationInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class GELU implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "GELU";

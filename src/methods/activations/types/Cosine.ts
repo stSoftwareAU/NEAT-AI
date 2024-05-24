@@ -4,8 +4,8 @@
  * Range: [-1, 1]
  * Source: Custom (Cosine is a standard mathematical function)
  */
-import { ActivationInterface } from "../ActivationInterface.ts";
-import { UnSquashInterface } from "../UnSquashInterface.ts";
+import type { ActivationInterface } from "../ActivationInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Cosine implements ActivationInterface, UnSquashInterface {
   public static NAME = "Cosine";

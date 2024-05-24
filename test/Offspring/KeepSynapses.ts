@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
-import { CreatureExport } from "../../mod.ts";
+import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 

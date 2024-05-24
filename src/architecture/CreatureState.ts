@@ -1,6 +1,6 @@
-import { Creature } from "../Creature.ts";
+import type { Creature } from "../Creature.ts";
 import { SynapseState } from "../propagate/SynapseState.ts";
-import { BackPropagationConfig } from "./BackPropagation.ts";
+import type { BackPropagationConfig } from "./BackPropagation.ts";
 
 export interface NeuronStateInterface {
   count: number;

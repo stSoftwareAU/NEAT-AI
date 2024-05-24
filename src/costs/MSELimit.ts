@@ -1,4 +1,4 @@
-import { CostInterface } from "../Costs.ts";
+import type { CostInterface } from "../Costs.ts";
 
 /** Mean Squared Error */
 export class MSELimit implements CostInterface {

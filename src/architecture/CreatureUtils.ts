@@ -1,5 +1,5 @@
 import { generate as generateV5 } from "@std/uuid/v5";
-import { Creature } from "../Creature.ts";
+import type { Creature } from "../Creature.ts";
 
 export class CreatureUtil {
   private static TE = new TextEncoder();

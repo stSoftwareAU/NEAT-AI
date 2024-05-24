@@ -1,10 +1,10 @@
-import { NeatOptions } from "../../mod.ts";
-import {
+import type { NeatOptions } from "../../mod.ts";
+import type {
   CreatureExport,
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
-import { Selection, SelectionInterface } from "../methods/Selection.ts";
-import { Mutation, MutationInterface } from "../methods/mutation.ts";
+import { Selection, type SelectionInterface } from "../methods/Selection.ts";
+import { Mutation, type MutationInterface } from "../methods/mutation.ts";
 
 export class NeatConfig implements NeatOptions {
   /** List of creatures to start with */

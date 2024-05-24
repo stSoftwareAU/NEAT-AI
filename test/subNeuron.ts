@@ -1,5 +1,5 @@
 import { Creature } from "../src/Creature.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

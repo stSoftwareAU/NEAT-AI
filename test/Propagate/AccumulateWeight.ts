@@ -1,7 +1,7 @@
 import { assertAlmostEquals } from "@std/assert";
 import { accumulateWeight } from "../../src/architecture/BackPropagation.ts";
 import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { Creature, CreatureExport } from "../../mod.ts";
+import { Creature, type CreatureExport } from "../../mod.ts";
 import { adjustedWeight } from "../../src/architecture/BackPropagation.ts";
 import { SynapseState } from "../../src/propagate/SynapseState.ts";
 

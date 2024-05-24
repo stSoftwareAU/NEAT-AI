@@ -1,7 +1,7 @@
-import { Creature, Selection } from "../../mod.ts";
+import { type Creature, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
-import { NeatConfig } from "../config/NeatConfig.ts";
-import { Genus } from "./Genus.ts";
+import type { NeatConfig } from "../config/NeatConfig.ts";
+import type { Genus } from "./Genus.ts";
 
 export class Breed {
   private genus: Genus;

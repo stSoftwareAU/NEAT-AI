@@ -1,13 +1,13 @@
 /*******************************************************************************
                                       CONFIG
 *******************************************************************************/
-import {
+import type {
   CreatureExport,
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
-import { MutationInterface } from "../methods/mutation.ts";
-import { SelectionInterface } from "../methods/Selection.ts";
-import { TrainOptions } from "./TrainOptions.ts";
+import type { MutationInterface } from "../methods/mutation.ts";
+import type { SelectionInterface } from "../methods/Selection.ts";
+import type { TrainOptions } from "./TrainOptions.ts";
 
 export interface NeatOptions extends TrainOptions {
   costName?: string;

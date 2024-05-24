@@ -2,13 +2,13 @@ import {
   accumulateWeight,
   adjustedBias,
   adjustedWeight,
-  BackPropagationConfig,
+  type BackPropagationConfig,
   limitActivation,
   limitValue,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
-import { Neuron } from "../../../architecture/Neuron.ts";
-import { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import type { Neuron } from "../../../architecture/Neuron.ts";
+import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 
 export class MEAN implements NeuronActivationInterface {
   public static NAME = "MEAN";

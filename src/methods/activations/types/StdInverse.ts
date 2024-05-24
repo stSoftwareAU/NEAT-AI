@@ -1,5 +1,5 @@
-import { ActivationInterface } from "../ActivationInterface.ts";
-import { UnSquashInterface } from "../UnSquashInterface.ts";
+import type { ActivationInterface } from "../ActivationInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * The StdInverse activation function computes the reciprocal of the input.

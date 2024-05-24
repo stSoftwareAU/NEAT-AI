@@ -1,6 +1,6 @@
 import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { Creature } from "../Creature.ts";
-import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
+import type { Creature } from "../Creature.ts";
+import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { calculate as calculateScore } from "./Score.ts";
 
 type PromiseFunction = (v: unknown) => void;

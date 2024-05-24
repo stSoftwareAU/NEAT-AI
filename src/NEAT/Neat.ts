@@ -13,9 +13,9 @@ import {
 } from "../architecture/ElitismUtils.ts";
 import { Fitness } from "../architecture/Fitness.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
-import { NeatOptions } from "../config/NeatOptions.ts";
-import { TrainOptions } from "../config/TrainOptions.ts";
-import {
+import type { NeatOptions } from "../config/NeatOptions.ts";
+import type { TrainOptions } from "../config/TrainOptions.ts";
+import type {
   ResponseData,
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";

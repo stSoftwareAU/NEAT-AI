@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import {
   makeElitists,
   sortCreaturesByScore,

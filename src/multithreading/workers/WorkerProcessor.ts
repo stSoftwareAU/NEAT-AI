@@ -1,6 +1,6 @@
-import { RequestData, ResponseData } from "./WorkerHandler.ts";
+import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 
-import { CostInterface, Costs } from "../../Costs.ts";
+import { type CostInterface, Costs } from "../../Costs.ts";
 import { Creature } from "../../Creature.ts";
 import { trainDir } from "../../architecture/Training.ts";
 import { assert } from "@std/assert";

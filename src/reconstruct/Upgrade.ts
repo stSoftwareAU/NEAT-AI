@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
-import { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { CrisprInterface } from "./CRISPR.ts";
+import type { CrisprInterface } from "./CRISPR.ts";
 
 export class Upgrade {
   static correct(

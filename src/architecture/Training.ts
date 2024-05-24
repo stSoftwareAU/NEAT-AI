@@ -3,10 +3,10 @@ import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { Costs } from "../Costs.ts";
 import { Creature } from "../Creature.ts";
-import { TrainOptions } from "../config/TrainOptions.ts";
+import type { TrainOptions } from "../config/TrainOptions.ts";
 import { BackPropagationConfig } from "./BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { DataRecordInterface, makeDataDir } from "./DataSet.ts";
+import { type DataRecordInterface, makeDataDir } from "./DataSet.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 
 export const cacheDataFile = {

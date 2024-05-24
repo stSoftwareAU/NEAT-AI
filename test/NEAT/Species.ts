@@ -1,5 +1,5 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature, CreatureExport, CreatureUtil } from "../../mod.ts";
+import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Species } from "../../src/NEAT/Species.ts";
 
 const baseCreatureJSON: CreatureExport = {

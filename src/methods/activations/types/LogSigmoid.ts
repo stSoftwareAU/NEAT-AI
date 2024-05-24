@@ -4,8 +4,8 @@
  * Range: (-Infinity, 0]
  * Source: https://en.wikipedia.org/wiki/Logistic_function
  */
-import { ActivationInterface } from "../ActivationInterface.ts";
-import { UnSquashInterface } from "../UnSquashInterface.ts";
+import type { ActivationInterface } from "../ActivationInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LogSigmoid implements ActivationInterface, UnSquashInterface {
   public static NAME = "LogSigmoid";

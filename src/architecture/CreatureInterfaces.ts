@@ -1,10 +1,10 @@
-import { TagsInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import {
+import type { TagsInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import type {
   SynapseExport,
   SynapseInternal,
   SynapseTrace,
 } from "./SynapseInterfaces.ts";
-import {
+import type {
   NeuronExport,
   NeuronInternal,
   NeuronTrace,

@@ -1,4 +1,4 @@
-import { CostInterface } from "../Costs.ts";
+import type { CostInterface } from "../Costs.ts";
 
 /** Cross entropy error */
 export class CrossEntropy implements CostInterface {

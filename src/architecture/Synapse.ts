@@ -1,5 +1,5 @@
-import { TagInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import type { TagInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 export class Synapse implements SynapseInternal {
   public from: number;

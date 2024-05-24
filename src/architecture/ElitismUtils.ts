@@ -1,6 +1,6 @@
 import { blue, bold, green, red, white, yellow } from "@std/fmt/colors";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
-import { Creature } from "../Creature.ts";
+import type { Creature } from "../Creature.ts";
 
 interface ElitistsResults {
   elitists: Creature[];

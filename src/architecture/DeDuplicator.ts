@@ -1,6 +1,6 @@
-import { Creature } from "../Creature.ts";
-import { Breed } from "../NEAT/Breed.ts";
-import { Mutator } from "../NEAT/Mutator.ts";
+import type { Creature } from "../Creature.ts";
+import type { Breed } from "../NEAT/Breed.ts";
+import type { Mutator } from "../NEAT/Mutator.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
 export class DeDuplicator {

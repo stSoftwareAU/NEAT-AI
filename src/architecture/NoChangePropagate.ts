@@ -1,10 +1,10 @@
-import { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import {
   adjustedBias,
   adjustedWeight,
-  BackPropagationConfig,
+  type BackPropagationConfig,
 } from "./BackPropagation.ts";
-import { Neuron } from "./Neuron.ts";
+import type { Neuron } from "./Neuron.ts";
 
 export function noChangePropagate(
   neuron: Neuron,

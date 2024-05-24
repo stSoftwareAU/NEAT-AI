@@ -4,8 +4,8 @@
  * Range: (0, +Infinity)
  * Source: Custom (Exponential is a standard mathematical function)
  */
-import { ActivationInterface } from "../ActivationInterface.ts";
-import { UnSquashInterface } from "../UnSquashInterface.ts";
+import type { ActivationInterface } from "../ActivationInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Exponential implements ActivationInterface, UnSquashInterface {
   public static NAME = "Exponential";

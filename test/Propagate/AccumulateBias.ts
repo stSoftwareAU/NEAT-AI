@@ -1,5 +1,5 @@
 import { assertAlmostEquals } from "@std/assert";
-import { Creature, CreatureExport } from "../../mod.ts";
+import { Creature, type CreatureExport } from "../../mod.ts";
 import {
   adjustedBias,
   BackPropagationConfig,

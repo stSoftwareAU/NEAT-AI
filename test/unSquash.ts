@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals, fail } from "@std/assert";
-import { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
+import type { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
-import { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
+import type { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
 import { HYPOT } from "../src/methods/activations/aggregate/HYPOT.ts";
 import { IF } from "../src/methods/activations/aggregate/IF.ts";
 import { MAXIMUM } from "../src/methods/activations/aggregate/MAXIMUM.ts";

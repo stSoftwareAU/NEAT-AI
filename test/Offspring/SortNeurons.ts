@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
-import { Creature, CreatureExport } from "../../mod.ts";
+import { Creature, type CreatureExport } from "../../mod.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
-import { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
+import type { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
 
 function makeMum() {
   const json: CreatureExport = {

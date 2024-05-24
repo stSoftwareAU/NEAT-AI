@@ -4,7 +4,7 @@ import {
   adjustedWeight,
   BackPropagationConfig,
 } from "../../src/architecture/BackPropagation.ts";
-import { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

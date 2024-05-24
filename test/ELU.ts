@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { ELU } from "../src/methods/activations/types/ELU.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

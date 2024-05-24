@@ -1,7 +1,7 @@
-import { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import { SynapseInternal } from "../src/architecture/SynapseInterfaces.ts";
+import type { SynapseInternal } from "../src/architecture/SynapseInterfaces.ts";
 
 Deno.test("useUUIDinsteadOfPosition", () => {
   const creature: CreatureInternal = {

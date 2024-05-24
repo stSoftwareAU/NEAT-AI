@@ -7,11 +7,11 @@ import {
 import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
 import { Creature } from "../src/Creature.ts";
-import { DataRecordInterface } from "../src/architecture/DataSet.ts";
+import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import { train } from "../src/architecture/Training.ts";
-import { NeatOptions } from "../src/config/NeatOptions.ts";
-import { TrainOptions } from "../src/config/TrainOptions.ts";
+import type { NeatOptions } from "../src/config/NeatOptions.ts";
+import type { TrainOptions } from "../src/config/TrainOptions.ts";
 import { Mutation } from "../src/methods/mutation.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 
