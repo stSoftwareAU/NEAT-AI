@@ -4,6 +4,9 @@ import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil, Upgrade } from "../../mod.ts";
 
+/**
+ * Interface representing the structure of the CRISPR modification data.
+ */
 export interface CrisprInterface extends TagsInterface {
   id: string;
   mode: "insert" | "append";
@@ -30,30 +33,40 @@ export interface CrisprInterface extends TagsInterface {
   }[];
 }
 
+/**
+ * CRISPR Class
+ *
+ * This class provides methods for targeted genetic modifications to the AI entities,
+ * inspired by the CRISPR gene-editing technology.
+ */
 export class CRISPR {
-  private creature;
+  private creature: Creature;
 
-  constructor(
-    creature: Creature,
-  ) {
-    this.creature = Creature.fromJSON(
-      creature.exportJSON(),
-    );
+  /**
+   * Constructor for the CRISPR class.
+   * @param creature - The creature instance to apply modifications on.
+   */
+  constructor(creature: Creature) {
+    this.creature = Creature.fromJSON(creature.exportJSON());
   }
 
+  /**
+   * Static method to edit aliases in the CRISPR DNA.
+   * @param dna - The CRISPR DNA to edit.
+   * @param aliases - A record of aliases to replace in the DNA.
+   * @returns The edited CRISPR DNA.
+   */
   static editAliases(
     dna: CrisprInterface,
     aliases: Record<string, string>,
   ): CrisprInterface {
-    const crispr: CrisprInterface = JSON.parse(
-      JSON.stringify(dna),
-    );
+    const crispr: CrisprInterface = JSON.parse(JSON.stringify(dna));
 
     if (crispr.synapses) {
       for (const key in aliases) {
         const value = aliases[key];
         crispr.synapses.forEach((synapse) => {
-          if (synapse.fromUUID == key) {
+          if (synapse.fromUUID === key) {
             synapse.fromUUID = value;
           }
         });
@@ -63,40 +76,42 @@ export class CRISPR {
     return crispr;
   }
 
-  private append(dna: CrisprInterface) {
-    const tmpCreature = Creature.fromJSON(
-      this.creature.exportJSON(),
-    );
-
+  /**
+   * Append new neurons and synapses to the creature based on the provided DNA.
+   * @param dna - The CRISPR DNA specifying the neurons and synapses to append.
+   * @returns The modified creature.
+   */
+  private append(dna: CrisprInterface): Creature {
+    const tmpCreature = Creature.fromJSON(this.creature.exportJSON());
     const UUIDs = new Map<string, number>();
+
     tmpCreature.neurons.forEach((node) => {
       assert(node.uuid !== undefined, "missing uuid");
-
       UUIDs.set(node.uuid, node.index);
     });
 
     let adjustIndx = 0;
     if (dna.neurons) {
-      let firstDnaOutputIndex: number = -1;
+      let firstDnaOutputIndex = -1;
       dna.neurons.forEach((neuron) => {
-        if (neuron.type == "output") {
-          if (firstDnaOutputIndex == -1 && neuron.index !== undefined) {
+        if (neuron.type === "output") {
+          if (firstDnaOutputIndex === -1 && neuron.index !== undefined) {
             firstDnaOutputIndex = neuron.index;
           }
         }
       });
 
-      let firstNetworkOutputIndex: number = -1;
+      let firstNetworkOutputIndex = -1;
       tmpCreature.neurons.forEach((neuron, indx) => {
-        if (neuron.type == "output") {
-          if (firstNetworkOutputIndex == -1) {
+        if (neuron.type === "output") {
+          if (firstNetworkOutputIndex === -1) {
             firstNetworkOutputIndex = indx;
           }
-          ((neuron as unknown) as { type: string }).type = "hidden";
+          (neuron as unknown as { type: string }).type = "hidden";
           if (neuron.uuid?.startsWith("output-")) {
             const uuid = crypto.randomUUID();
             dna.synapses.forEach((synapse) => {
-              if (synapse.fromUUID == neuron.uuid) {
+              if (synapse.fromUUID === neuron.uuid) {
                 synapse.fromUUID = uuid;
               }
             });
@@ -110,10 +125,10 @@ export class CRISPR {
       adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
         dna.neurons.length;
 
-      let outputIndx: number = 0;
+      let outputIndx = 0;
       dna.neurons.forEach((dnaNeuron) => {
         let uuid: string;
-        if (dnaNeuron.type == "output") {
+        if (dnaNeuron.type === "output") {
           uuid = `output-${outputIndx}`;
           outputIndx++;
         } else {
@@ -121,12 +136,9 @@ export class CRISPR {
             ? UUIDs.has(dnaNeuron.uuid) ? crypto.randomUUID() : dnaNeuron.uuid
             : crypto.randomUUID();
         }
-        let indx;
-        if (dnaNeuron.index !== undefined) {
-          indx = dnaNeuron.index + adjustIndx;
-        } else {
-          indx = UUIDs.size - 1;
-        }
+        const indx = dnaNeuron.index !== undefined
+          ? dnaNeuron.index + adjustIndx
+          : UUIDs.size - 1;
 
         const neuron = new Neuron(
           uuid,
@@ -146,32 +158,26 @@ export class CRISPR {
     }
     tmpCreature.clearCache();
     dna.synapses.forEach((s) => {
-      let from;
-      if (s.fromUUID) {
-        from = UUIDs.get(s.fromUUID);
-      }
-      if (from == undefined) {
-        if (s.from !== undefined) {
-          from = s.from;
-        } else if (s.fromRelative !== undefined) {
-          from = s.fromRelative + adjustIndx;
-        } else {
-          throw new Error("Invalid connection (from): " + JSON.stringify(s));
-        }
-      }
+      const from = s.fromUUID
+        ? UUIDs.get(s.fromUUID)
+        : s.from !== undefined
+        ? s.from
+        : s.fromRelative !== undefined
+        ? s.fromRelative + adjustIndx
+        : undefined;
+      const to = s.toUUID
+        ? UUIDs.get(s.toUUID)
+        : s.to !== undefined
+        ? s.to
+        : s.toRelative !== undefined
+        ? s.toRelative + adjustIndx
+        : undefined;
 
-      let to;
-      if (s.toUUID) {
-        to = UUIDs.get(s.toUUID);
+      if (from === undefined) {
+        throw new Error("Invalid connection (from): " + JSON.stringify(s));
       }
-      if (to == undefined) {
-        if (s.to !== undefined) {
-          to = s.to;
-        } else if (s.toRelative !== undefined) {
-          to = s.toRelative + adjustIndx;
-        } else {
-          throw new Error("Invalid connection (to): " + JSON.stringify(s));
-        }
+      if (to === undefined) {
+        throw new Error("Invalid connection (to): " + JSON.stringify(s));
       }
 
       const currentSynapse = tmpCreature.getSynapse(from, to);
@@ -187,19 +193,21 @@ export class CRISPR {
     return tmpCreature;
   }
 
-  private insert(dna: CrisprInterface) {
+  /**
+   * Insert new neurons and synapses into the creature based on the provided DNA.
+   * @param dna - The CRISPR DNA specifying the neurons and synapses to insert.
+   * @returns The modified creature.
+   */
+  private insert(dna: CrisprInterface): Creature {
     const exportJSON = this.creature.exportJSON();
-    const tmpCreature = Creature.fromJSON(
-      exportJSON,
-    );
-
+    const tmpCreature = Creature.fromJSON(exportJSON);
     tmpCreature.synapses = [];
 
     const uuidMap = new Map<string, number>();
 
     if (dna.neurons) {
       dna.neurons.forEach((neuron) => {
-        if (neuron.type == "output") {
+        if (neuron.type === "output") {
           throw new Error("Cannot insert output neurons");
         }
       });
@@ -253,46 +261,25 @@ export class CRISPR {
 
     tmpCreature.clearCache();
     dna.synapses.forEach((c) => {
-      if (c.fromRelative) {
+      if (c.fromRelative || c.toRelative) {
         throw new Error("Cannot insert relative synapses");
       }
-      if (c.toRelative) {
-        throw new Error("Cannot insert relative synapses");
+      if (c.from !== undefined || c.to !== undefined) {
+        throw new Error("Cannot insert static index synapses");
       }
-
-      if (c.from !== undefined) {
-        throw new Error("Cannot insert static from index synapses");
-      }
-      if (c.to !== undefined) {
-        throw new Error("Cannot insert static to index synapses");
-      }
-
-      if (c.fromUUID === undefined) {
-        throw new Error("Missing fromUUID");
-      }
-      if (c.toUUID === undefined) {
-        throw new Error("Missing toUUID");
+      if (c.fromUUID === undefined || c.toUUID === undefined) {
+        throw new Error("Missing UUID for synapse");
       }
     });
 
     dna.synapses.forEach((s) => {
-      let fromIndx: number | undefined = undefined;
-      const tmpIndx = uuidMap.get(s.fromUUID ?? "unknown");
-      if (tmpIndx !== undefined) {
-        fromIndx = tmpIndx;
-      }
+      const fromIndx = uuidMap.get(s.fromUUID ?? "unknown");
+      const toIndx = uuidMap.get(s.toUUID ?? "unknown");
 
       assert(
         fromIndx !== undefined,
         "Invalid connection (from): " + JSON.stringify(s),
       );
-
-      let toIndx: number | undefined = undefined;
-      const tmpToIndx = uuidMap.get(s.toUUID ?? "unknown");
-      if (tmpToIndx !== undefined) {
-        toIndx = tmpToIndx;
-      }
-
       assert(
         toIndx !== undefined,
         "Invalid connection (to): " + JSON.stringify(s),
@@ -311,6 +298,7 @@ export class CRISPR {
     exportJSON.synapses.forEach((synapse) => {
       const fromIndx = uuidMap.get(synapse.fromUUID);
       const toIndx = uuidMap.get(synapse.toUUID);
+
       if (fromIndx !== undefined && toIndx !== undefined) {
         tmpCreature.connect(fromIndx, toIndx, synapse.weight, synapse.type);
       }
@@ -319,6 +307,11 @@ export class CRISPR {
     return tmpCreature;
   }
 
+  /**
+   * Apply the CRISPR modifications to the creature based on the specified DNA.
+   * @param dna - The CRISPR DNA specifying the modifications.
+   * @returns The modified creature or undefined if no modifications were applied.
+   */
   async cleaveDNA(dna: CrisprInterface): Promise<Creature | undefined> {
     let alreadyProcessed = false;
 

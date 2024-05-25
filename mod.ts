@@ -21,9 +21,6 @@ export { Creature } from "./src/Creature.ts";
  *
  * These types define the structure of data used for exporting and tracing Creature instances.
  *
- * @typedef {Object} CreatureExport - Represents the export structure for a Creature instance.
- * @typedef {Object} CreatureTrace - Represents the trace structure for a Creature's activity and state changes.
- *
  * @see {@link module:src/architecture/CreatureInterfaces}
  */
 export type {
@@ -44,8 +41,6 @@ export { CreatureUtil } from "./src/architecture/CreatureUtils.ts";
  * NEAT Options
  *
  * This type defines the configuration options available for setting up the NEAT algorithm.
- *
- * @typedef {Object} NeatOptions - Configuration options for the NEAT algorithm.
  *
  * @see {@link module:src/config/NeatOptions}
  */
