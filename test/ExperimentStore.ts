@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag } from "@stsoftware/tags";
 import { Creature } from "../src/Creature.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/NEAT/Neat.ts";

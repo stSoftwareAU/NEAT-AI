@@ -1,5 +1,5 @@
 import { blue, bold, cyan } from "@std/fmt/colors";
-import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport } from "./NeuronInterfaces.ts";

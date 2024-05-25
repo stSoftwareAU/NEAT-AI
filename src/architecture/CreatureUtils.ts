@@ -15,7 +15,7 @@ export class CreatureUtil {
     }
   }
 
-  static async makeUUID(creature: Creature) {
+  static async makeUUID(creature: Creature): Promise<string> {
     if (creature.uuid) {
       return creature.uuid;
     }

@@ -1,9 +1,5 @@
 import { assert } from "@std/assert";
-import {
-  addTag,
-  getTag,
-  type TagsInterface,
-} from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag, type TagsInterface } from "@stsoftware/tags";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil, Upgrade } from "../../mod.ts";

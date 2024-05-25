@@ -1,4 +1,4 @@
-import { addTags } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTags } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";

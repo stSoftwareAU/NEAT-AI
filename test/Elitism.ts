@@ -5,7 +5,7 @@ import {
   makeElitists,
   sortCreaturesByScore,
 } from "../src/architecture/ElitismUtils.ts";
-import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag } from "@stsoftware/tags";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -1,4 +1,4 @@
-import { removeTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { removeTag } from "@stsoftware/tags";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { type Creature, Mutation } from "../../mod.ts";
 import type { CreatureInternal } from "../architecture/CreatureInterfaces.ts";

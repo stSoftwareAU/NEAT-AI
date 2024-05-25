@@ -72,7 +72,7 @@ export class CreatureState {
   private network;
   public activations: Float32Array = new Float32Array(0);
   public propagated = false;
-  readonly cacheAdjustedActivation;
+  readonly cacheAdjustedActivation: Map<number, number>;
 
   constructor(network: Creature) {
     this.network = network;

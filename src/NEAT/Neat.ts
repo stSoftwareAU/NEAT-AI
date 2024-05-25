@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import { blue } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
-import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";

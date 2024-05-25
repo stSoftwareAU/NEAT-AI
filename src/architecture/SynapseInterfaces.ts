@@ -1,4 +1,4 @@
-import type { TagInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import type { TagInterface } from "@stsoftware/tags";
 import type { SynapseState } from "../propagate/SynapseState.ts";
 
 interface SynapseCommon {

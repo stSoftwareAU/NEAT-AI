@@ -1,8 +1,4 @@
-import {
-  addTags,
-  removeTag,
-  type TagsInterface,
-} from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
@@ -27,7 +23,7 @@ import { noChangePropagate } from "./NoChangePropagate.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
-  readonly type;
+  readonly type: "input" | "output" | "hidden" | "constant";
   uuid: string;
   bias: number;
   squash?: string;
@@ -92,11 +88,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
     this.index = -1;
   }
 
-  ID() {
+  ID(): string {
     return this.uuid.substring(Math.max(0, this.uuid.length - 8));
   }
 
-  setSquash(name: string) {
+  setSquash(
+    name: string,
+  ): NeuronActivationInterface | ActivationInterface | UnSquashInterface {
     if (this.type == "constant") {
       throw new Error("Can't set the squash of a constant");
     }
@@ -105,7 +103,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
     return this.findSquash();
   }
 
-  findSquash() {
+  findSquash():
+    | NeuronActivationInterface
+    | ActivationInterface
+    | UnSquashInterface {
     if (!this.squashMethodCache) {
       this.squashMethodCache = Activations.find(
         this.squash ? this.squash : `UNDEFINED-${this.type}-${this.index}`,
@@ -260,7 +261,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Apply the learnings from the previous training.
    * @returns true if changed
    */
-  applyLearnings() {
+  applyLearnings(): boolean {
     if (this.type == "hidden" || this.type == "output") {
       const squashMethod = this.findSquash();
 
@@ -344,7 +345,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   propagate(
     requestedActivation: number,
     config: BackPropagationConfig,
-  ) {
+  ): number {
     const activation = this.adjustedActivation(config);
 
     const targetActivation = limitActivationToRange(
@@ -482,7 +483,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Adjusts the activation based on the current state
    */
-  adjustedActivation(config: BackPropagationConfig) {
+  adjustedActivation(config: BackPropagationConfig): number {
     const cache = this.creature.state.cacheAdjustedActivation;
     const cachedValue = cache.get(this.index);
 
@@ -495,7 +496,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     return value;
   }
 
-  rawAdjustedActivation(config: BackPropagationConfig) {
+  rawAdjustedActivation(config: BackPropagationConfig): number {
     if (this.type == "input") {
       return this.creature.state.activations[this.index];
     } else if (this.type == "constant") {
@@ -616,7 +617,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Checks if this node is projecting to the given node
    */
-  isProjectingTo(node: Neuron) {
+  isProjectingTo(node: Neuron): boolean {
     const c = this.creature.getSynapse(this.index, node.index);
     return c != null;
   }
@@ -681,7 +682,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   static fromJSON(
     json: NeuronExport | NeuronInternal,
     network: Creature,
-  ) {
+  ): Neuron {
     if (typeof network !== "object") {
       throw new Error("network must be a Creature was: " + (typeof network));
     }

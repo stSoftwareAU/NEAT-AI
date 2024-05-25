@@ -2,11 +2,7 @@ import { assert } from "@std/assert";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
-import {
-  addTag,
-  getTag,
-  type TagInterface,
-} from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag, type TagInterface } from "@stsoftware/tags";
 import { CreatureUtil } from "../mod.ts";
 import type { BackPropagationConfig } from "./architecture/BackPropagation.ts";
 import type {
@@ -58,7 +54,7 @@ export class Creature implements CreatureInternal {
   score?: number;
   synapses: Synapse[];
 
-  readonly state = new CreatureState(this);
+  readonly state: CreatureState = new CreatureState(this);
   private cacheTo = new Map<number, Synapse[]>();
   private cacheFrom = new Map<number, Synapse[]>();
   private cacheSelf = new Map<number, Synapse[]>();
@@ -232,7 +228,7 @@ export class Creature implements CreatureInternal {
   /**
    * Activates the creature
    */
-  activateAndTrace(input: number[], feedbackLoop = false) {
+  activateAndTrace(input: number[], feedbackLoop = false): number[] {
     const output: number[] = new Array(this.output);
 
     this.state.makeActivation(input, feedbackLoop);
@@ -256,7 +252,7 @@ export class Creature implements CreatureInternal {
   /**
    * Activates the creature without calculating traces and such
    */
-  activate(input: number[], feedbackLoop = false) {
+  activate(input: number[], feedbackLoop = false): number[] {
     const output: number[] = new Array(this.output);
 
     this.state.makeActivation(input, feedbackLoop);
@@ -597,7 +593,7 @@ export class Creature implements CreatureInternal {
     assert(found, "Can't disconnect");
   }
 
-  applyLearnings(config: BackPropagationConfig) {
+  applyLearnings(config: BackPropagationConfig): boolean {
     this.propagateUpdate(config);
 
     let changed = false;
@@ -661,7 +657,7 @@ export class Creature implements CreatureInternal {
   async evolveDir(
     dataSetDir: string,
     options: NeatOptions,
-  ) {
+  ): Promise<{ error: number; score: number; time: number }> {
     const start = Date.now();
 
     const endTimeMS = options.timeoutMinutes
@@ -794,7 +790,7 @@ export class Creature implements CreatureInternal {
   async evolveDataSet(
     dataSet: DataRecordInterface[],
     options: NeatOptions,
-  ) {
+  ): Promise<{ error: number; score: number; time: number }> {
     const dataSetDir = makeDataDir(dataSet, options.dataSetPartitionBreak);
 
     const result = await this.evolveDir(dataSetDir, options);
@@ -831,7 +827,7 @@ export class Creature implements CreatureInternal {
     dataDir: string,
     cost: CostInterface,
     feedbackLoop: boolean,
-  ) {
+  ): { error: number } {
     const files: string[] = dataFiles(dataDir).map((fn) => `${dataDir}/${fn}`);
 
     if (files.length === 1) {
@@ -880,7 +876,11 @@ export class Creature implements CreatureInternal {
     });
   }
 
-  inFocus(index: number, focusList?: number[], checked = new Set()) {
+  inFocus(
+    index: number,
+    focusList?: number[],
+    checked: Set<number> = new Set(),
+  ): boolean {
     if (!focusList || focusList.length == 0) return true;
 
     if (checked.has(index)) return false;
@@ -1110,7 +1110,7 @@ export class Creature implements CreatureInternal {
     );
   }
 
-  public makeRandomConnection(indx: number) {
+  public makeRandomConnection(indx: number): Synapse | null {
     const toType = this.neurons[indx].type;
     if (toType == "constant" || toType == "input") {
       throw new Error(`Can't connect to ${toType}`);
@@ -1559,18 +1559,18 @@ export class Creature implements CreatureInternal {
     }
   }
 
-  outputCount() {
+  outputCount(): number {
     return this.output;
   }
 
-  nodeCount() {
+  nodeCount(): number {
     return this.neurons.length;
   }
 
   /**
    * Convert the creature to a json object
    */
-  exportJSON() {
+  exportJSON(): CreatureExport {
     if (this.DEBUG) {
       creatureValidate(this);
     }
@@ -1641,7 +1641,7 @@ export class Creature implements CreatureInternal {
     return json as CreatureTrace;
   }
 
-  internalJSON() {
+  internalJSON(): CreatureInternal {
     if (this.DEBUG) {
       creatureValidate(this);
     }
@@ -1782,7 +1782,10 @@ export class Creature implements CreatureInternal {
   /**
    * Convert a json object to a creature
    */
-  static fromJSON(json: CreatureInternal | CreatureExport, validate = false) {
+  static fromJSON(
+    json: CreatureInternal | CreatureExport,
+    validate = false,
+  ): Creature {
     const creature = new Creature(json.input, json.output, {
       lazyInitialization: true,
     });
