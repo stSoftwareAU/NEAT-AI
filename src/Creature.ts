@@ -65,7 +65,6 @@ export class Creature implements CreatureInternal {
     input: number,
     output: number,
     options: {
-      /* If true, the creature will not be initialized */
       lazyInitialization?: boolean;
       layers?: { squash?: string; count: number }[];
     } = {},
