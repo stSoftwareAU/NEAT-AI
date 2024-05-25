@@ -60,9 +60,9 @@ export { Selection } from "./src/methods/Selection.ts";
  *
  * This class manages the mutation processes within the NEAT algorithm, allowing for genetic variations in the population.
  *
- * @see {@link module:src/methods/mutation}
+ * @see {@link module:src/methods/Mutation}
  */
-export { Mutation } from "./src/methods/mutation.ts";
+export { Mutation } from "./src/NEAT/Mutation.ts";
 
 /**
  * CRISPR Class
@@ -71,7 +71,7 @@ export { Mutation } from "./src/methods/mutation.ts";
  *
  * @see {@link module:src/reconstruct/CRISPR}
  */
-export { CRISPR } from "./src/reconstruct/CRISPR.ts";
+export { CRISPR, type CrisprInterface } from "./src/reconstruct/CRISPR.ts";
 
 /**
  * Upgrade Class

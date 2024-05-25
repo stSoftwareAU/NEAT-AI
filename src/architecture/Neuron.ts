@@ -6,7 +6,7 @@ import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearni
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import { Mutation } from "../methods/mutation.ts";
+import { Mutation } from "../NEAT/Mutation.ts";
 import {
   accumulateWeight,
   adjustedBias,

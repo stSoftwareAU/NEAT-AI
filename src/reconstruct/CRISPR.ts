@@ -8,27 +8,98 @@ import { CreatureUtil, Upgrade } from "../../mod.ts";
  * Interface representing the structure of the CRISPR modification data.
  */
 export interface CrisprInterface extends TagsInterface {
+  /**
+   * Unique identifier for the CRISPR modification.
+   */
   id: string;
+
+  /**
+   * Mode of modification - can be either "insert" or "append".
+   */
   mode: "insert" | "append";
 
+  /**
+   * Array of neurons to be modified or added.
+   */
   neurons?: {
+    /**
+     * Unique identifier for the neuron.
+     */
     uuid?: string;
+
+    /**
+     * Index position of the neuron in the network.
+     */
     index?: number;
+
+    /**
+     * Type of the neuron - can be either "output" or "hidden".
+     */
     type: "output" | "hidden";
+
+    /**
+     * Activation function of the neuron.
+     */
     squash: string;
+
+    /**
+     * Bias value for the neuron.
+     */
     bias: number;
+
+    /**
+     * Optional comment for the neuron.
+     */
     comment?: string;
   }[];
 
+  /**
+   * Array of synapses to be modified or added.
+   */
   synapses: {
+    /**
+     * Index of the source neuron.
+     */
     from?: number;
+
+    /**
+     * Relative index of the source neuron.
+     */
     fromRelative?: number;
+
+    /**
+     * UUID of the source neuron.
+     */
     fromUUID?: string;
+
+    /**
+     * Index of the destination neuron.
+     */
     to?: number;
+
+    /**
+     * Relative index of the destination neuron.
+     */
     toRelative?: number;
+
+    /**
+     * UUID of the destination neuron.
+     */
     toUUID?: string;
+
+    /**
+     * Weight of the synapse.
+     */
     weight: number;
+
+    /**
+     * Type of the synapse - can be "positive", "negative", or "condition".
+     */
     type?: "positive" | "negative" | "condition";
+
+    /**
+     * Optional comment for the synapse.
+     */
     comment?: string;
   }[];
 }

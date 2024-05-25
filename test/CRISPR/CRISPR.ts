@@ -3,7 +3,7 @@ import { getTag } from "@stsoftware/tags";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import type { Neuron } from "../../src/architecture/Neuron.ts";
-import { Mutation } from "../../src/methods/mutation.ts";
+import { Mutation } from "../../src/NEAT/Mutation.ts";
 import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
