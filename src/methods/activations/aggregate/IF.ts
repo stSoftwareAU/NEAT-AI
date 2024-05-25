@@ -9,7 +9,7 @@ import {
 } from "../../../architecture/BackPropagation.ts";
 import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
-import { Mutation } from "../../mutation.ts";
+import { Mutation } from "../../Mutation.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";

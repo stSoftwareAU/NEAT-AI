@@ -1,10 +1,3 @@
-/**
- * Creature Class
- *
- * The Creature class represents an AI entity within the NEAT (NeuroEvolution of Augmenting Topologies) framework.
- * It encapsulates the neural network structure and its associated behaviors, including activation, mutation,
- * propagation, and evolution processes. This class is integral to the simulation and evolution of neural networks.
- */
 import { assert } from "@std/assert";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
@@ -46,10 +39,17 @@ import type { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
-import { Mutation } from "./methods/mutation.ts";
+import { Mutation } from "./methods/Mutation.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 
+/**
+ * Creature Class
+ *
+ * The Creature class represents an AI entity within the NEAT (NeuroEvolution of Augmenting Topologies) framework.
+ * It encapsulates the neural network structure and its associated behaviors, including activation, mutation,
+ * propagation, and evolution processes. This class is integral to the simulation and evolution of neural networks.
+ */
 export class Creature implements CreatureInternal {
   /**
    * The unique identifier of this creature.

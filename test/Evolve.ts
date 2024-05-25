@@ -1,6 +1,6 @@
 import { Creature } from "../src/Creature.ts";
 import { assert } from "@std/assert";
-import { Mutation } from "../src/methods/mutation.ts";
+import { Mutation } from "../src/methods/Mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

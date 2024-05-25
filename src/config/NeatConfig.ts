@@ -4,7 +4,7 @@ import type {
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
 import { Selection, type SelectionInterface } from "../methods/Selection.ts";
-import { Mutation, type MutationInterface } from "../methods/mutation.ts";
+import { Mutation, type MutationInterface } from "../methods/Mutation.ts";
 
 export class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
