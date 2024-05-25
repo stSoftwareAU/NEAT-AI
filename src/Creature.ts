@@ -1,3 +1,10 @@
+/**
+ * Creature Class
+ *
+ * The Creature class represents an AI entity within the NEAT (NeuroEvolution of Augmenting Topologies) framework.
+ * It encapsulates the neural network structure and its associated behaviors, including activation, mutation,
+ * propagation, and evolution processes. This class is integral to the simulation and evolution of neural networks.
+ */
 import { assert } from "@std/assert";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
@@ -44,23 +51,73 @@ import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 
 export class Creature implements CreatureInternal {
-  /* ID of this creature */
+  /**
+   * The unique identifier of this creature.
+   * @type {string | undefined}
+   */
   uuid?: string;
 
+  /**
+   * The number of input neurons.
+   * @type {number}
+   */
   input: number;
+
+  /**
+   * The number of output neurons.
+   * @type {number}
+   */
   output: number;
+
+  /**
+   * The array of neurons within this creature.
+   * @type {Neuron[]}
+   */
   neurons: Neuron[];
+
+  /**
+   * Optional tags associated with the creature.
+   * @type {TagInterface[] | undefined}
+   */
   tags?: TagInterface[];
+
+  /**
+   * The score of the creature, used for evaluating fitness.
+   * @type {number | undefined}
+   */
   score?: number;
+
+  /**
+   * The array of synapses (connections) between neurons.
+   * @type {Synapse[]}
+   */
   synapses: Synapse[];
 
+  /**
+   * The state of the creature, managing the internal state and activations.
+   * @type {CreatureState}
+   */
   readonly state: CreatureState = new CreatureState(this);
+
   private cacheTo = new Map<number, Synapse[]>();
   private cacheFrom = new Map<number, Synapse[]>();
   private cacheSelf = new Map<number, Synapse[]>();
 
+  /**
+   * Debug mode flag.
+   * @type {boolean}
+   */
   DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
+  /**
+   * Constructs a new Creature instance.
+   *
+   * @param {number} input - The number of input neurons.
+   * @param {number} output - The number of output neurons.
+   * @param {Object} [options] - Configuration options for initializing the creature.
+   * @param {boolean} [options.lazyInitialization=false] - If true, the creature will not be initialized immediately.
+   * @param {Object[]} [options.layers] - Optional layers configuration.
+   */
   constructor(
     input: number,
     output: number,
@@ -77,8 +134,6 @@ export class Creature implements CreatureInternal {
     this.synapses = [];
 
     this.tags = undefined;
-
-    // Just define a variable.
     this.score = undefined;
 
     if (!options.lazyInitialization) {
@@ -90,7 +145,9 @@ export class Creature implements CreatureInternal {
     }
   }
 
-  /* Dispose of the creature and all held memory */
+  /**
+   * Dispose of the creature and all held memory.
+   */
   public dispose() {
     this.clearState();
     this.clearCache();
@@ -98,6 +155,12 @@ export class Creature implements CreatureInternal {
     this.neurons.length = 0;
   }
 
+  /**
+   * Clear the cache of connections.
+   *
+   * @param {number} [from=-1] - The starting index of the cache to clear.
+   * @param {number} [to=-1] - The ending index of the cache to clear.
+   */
   public clearCache(from = -1, to = -1) {
     if (from == -1 || to == -1) {
       this.cacheTo.clear();
@@ -217,7 +280,7 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Clear the context of the creature
+   * Clear the context of the creature.
    */
   clearState() {
     this.score = undefined;
@@ -225,7 +288,11 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Activates the creature
+   * Activates the creature and traces the activity.
+   *
+   * @param {number[]} input - The input values for the creature.
+   * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
+   * @returns {number[]} The output values after activation.
    */
   activateAndTrace(input: number[], feedbackLoop = false): number[] {
     const output: number[] = new Array(this.output);
@@ -249,7 +316,11 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Activates the creature without calculating traces and such
+   * Activates the creature without calculating traces.
+   *
+   * @param {number[]} input - The input values for the creature.
+   * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
+   * @returns {number[]} The output values after activation.
    */
   activate(input: number[], feedbackLoop = false): number[] {
     const output: number[] = new Array(this.output);
@@ -272,7 +343,9 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Compact the creature.
+   * Compact the creature by removing redundant neurons and connections.
+   *
+   * @returns {Creature | undefined} A new compacted creature or undefined if no compaction occurred.
    */
   compact(): Creature | undefined {
     const holdDebug = this.DEBUG;
@@ -388,10 +461,19 @@ export class Creature implements CreatureInternal {
     }
   }
 
+  /**
+   * Validate the creature structure.
+   */
   validate() {
     creatureValidate(this);
   }
 
+  /**
+   * Get a self-connection for the neuron at the given index.
+   *
+   * @param {number} indx - The index of the neuron.
+   * @returns {SynapseInternal | null} The self-connection or null if not found.
+   */
   selfConnection(indx: number): SynapseInternal | null {
     let results = this.cacheSelf.get(indx);
     if (results === undefined) {
@@ -415,14 +497,10 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Afferent Connections (Incoming): These are connections to a neuron.
-   * The term "afferent" is derived from Latin, where "ad-" means "to" and "ferre" means "carry."
-   * So, afferent connections carry signals to a neuron. In the context of biological neuroscience,
-   * these would correspond to the synapses that receive signals from the axons of other neurons
-   * onto a neuron's dendrites or cell body (soma).
+   * Get the inward connections (afferent) for the neuron at the given index.
    *
-   * @param toIndx the connections to this neuron by index
-   * @returns the list of connections to the neuron.
+   * @param {number} toIndx - The index of the target neuron.
+   * @returns {Synapse[]} The list of inward connections.
    */
   inwardConnections(toIndx: number): Synapse[] {
     let results = this.cacheTo.get(toIndx);
@@ -441,14 +519,10 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Efferent Connections (Outgoing): These are connections from a neuron to other neurons.
-   * The term "efferent" comes from "ex-" meaning "out of" and "ferre."
-   * Efferent connections carry signals away from the neuron.
-   * In biological terms, these would be the synapses where a neuron's axon terminals make connections
-   * with other neurons' dendrites or cell bodies, transmitting the signal onward.
+   * Get the outward connections (efferent) for the neuron at the given index.
    *
-   * @param fromIndx the connections from this neuron by index
-   * @returns the list of connections from the neuron.
+   * @param {number} fromIndx - The index of the source neuron.
+   * @returns {Synapse[]} The list of outward connections.
    */
   outwardConnections(fromIndx: number): Synapse[] {
     let results = this.cacheFrom.get(fromIndx);
@@ -496,6 +570,13 @@ export class Creature implements CreatureInternal {
     return result;
   }
 
+  /**
+   * Get a specific synapse between two neurons.
+   *
+   * @param {number} from - The index of the source neuron.
+   * @param {number} to - The index of the target neuron.
+   * @returns {Synapse | null} The synapse or null if not found.
+   */
   getSynapse(from: number, to: number): Synapse | null {
     const outwardConnections = this.outwardConnections(from);
 
@@ -512,7 +593,13 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Connects the from neuron to the to node
+   * Connect two neurons with a synapse.
+   *
+   * @param {number} from - The index of the source neuron.
+   * @param {number} to - The index of the target neuron.
+   * @param {number} weight - The weight of the synapse.
+   * @param {string} [type] - The type of the synapse.
+   * @returns {Synapse} The created synapse.
    */
   connect(
     from: number,
@@ -572,7 +659,10 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Disconnects the from neuron from the to node
+   * Disconnect two neurons by removing the synapse between them.
+   *
+   * @param {number} from - The index of the source neuron.
+   * @param {number} to - The index of the target neuron.
    */
   disconnect(from: number, to: number) {
     const connections = this.synapses;
@@ -592,6 +682,12 @@ export class Creature implements CreatureInternal {
     assert(found, "Can't disconnect");
   }
 
+  /**
+   * Apply learnings to the creature using back propagation.
+   *
+   * @param {BackPropagationConfig} config - The back propagation configuration.
+   * @returns {boolean} True if the creature was changed, false otherwise.
+   */
   applyLearnings(config: BackPropagationConfig): boolean {
     this.propagateUpdate(config);
 
@@ -612,7 +708,10 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Back propagate the creature
+   * Propagate the expected values through the creature's network.
+   *
+   * @param {number[]} expected - The expected output values.
+   * @param {BackPropagationConfig} config - The back propagation configuration.
    */
   propagate(expected: number[], config: BackPropagationConfig) {
     this.state.cacheAdjustedActivation.clear();
@@ -637,7 +736,9 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Back propagate the creature
+   * Update the propagated values in the creature's network.
+   *
+   * @param {BackPropagationConfig} config - The back propagation configuration.
    */
   propagateUpdate(config: BackPropagationConfig) {
     assert(!this.state.propagated, "Already propagated");
@@ -651,7 +752,11 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Evolves the creature to reach a lower error on a dataset
+   * Evolve the creature to achieve a lower error on a dataset.
+   *
+   * @param {string} dataSetDir - The directory containing the dataset.
+   * @param {NeatOptions} options - The NEAT configuration options.
+   * @returns {Promise<{ error: number; score: number; time: number }>} The evolution result.
    */
   async evolveDir(
     dataSetDir: string,
@@ -784,7 +889,11 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Evolves the creature to reach a lower error on a dataset
+   * Evolve the creature to achieve a lower error on a dataset.
+   *
+   * @param {DataRecordInterface[]} dataSet - The dataset for evolution.
+   * @param {NeatOptions} options - The NEAT configuration options.
+   * @returns {Promise<{ error: number; score: number; time: number }>} The evolution result.
    */
   async evolveDataSet(
     dataSet: DataRecordInterface[],
@@ -820,7 +929,12 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Tests a set and returns the error and elapsed time
+   * Evaluate a dataset and return the error.
+   *
+   * @param {string} dataDir - The directory containing the dataset.
+   * @param {CostInterface} cost - The cost function to evaluate the error.
+   * @param {boolean} feedbackLoop - Whether to use a feedback loop during evaluation.
+   * @returns {{ error: number }} The evaluation result.
    */
   evaluateDir(
     dataDir: string,
@@ -875,6 +989,14 @@ export class Creature implements CreatureInternal {
     });
   }
 
+  /**
+   * Check if a neuron is in focus.
+   *
+   * @param {number} index - The index of the neuron.
+   * @param {number[]} [focusList] - The list of focus indices.
+   * @param {Set<number>} [checked] - The set of checked indices.
+   * @returns {boolean} True if the neuron is in focus, false otherwise.
+   */
   inFocus(
     index: number,
     focusList?: number[],
@@ -907,6 +1029,11 @@ export class Creature implements CreatureInternal {
     return false;
   }
 
+  /**
+   * Subtract a neuron from the network.
+   *
+   * @param {number[]} [focusList] - The list of focus indices.
+   */
   public subNeuron(focusList?: number[]) {
     // Check if there are neurons left to remove
     if (this.neurons.length === this.input + this.output) {
@@ -927,6 +1054,11 @@ export class Creature implements CreatureInternal {
     }
   }
 
+  /**
+   * Add a neuron to the network.
+   *
+   * @param {number[]} [focusList] - The list of focus indices.
+   */
   public addNeuron(focusList?: number[]) {
     const neuron = new Neuron(crypto.randomUUID(), "hidden", undefined, this);
 
@@ -1065,6 +1197,12 @@ export class Creature implements CreatureInternal {
     this.clearCache();
   }
 
+  /**
+   * Add a connection between two neurons.
+   *
+   * @param {number[]} [focusList] - The list of focus indices.
+   * @param {Object} [options={ weightScale: 1 }] - The options for the connection.
+   */
   public addConnection(focusList?: number[], options = {
     weightScale: 1,
   }) {
@@ -1109,6 +1247,12 @@ export class Creature implements CreatureInternal {
     );
   }
 
+  /**
+   * Create a random connection for the neuron at the given index.
+   *
+   * @param {number} indx - The index of the target neuron.
+   * @returns {Synapse | null} The created synapse or null if no connection was made.
+   */
   public makeRandomConnection(indx: number): Synapse | null {
     const toType = this.neurons[indx].type;
     if (toType == "constant" || toType == "input") {
@@ -1143,6 +1287,11 @@ export class Creature implements CreatureInternal {
     return null;
   }
 
+  /**
+   * Subtract a connection from the network.
+   *
+   * @param {number[]} [focusList] - The list of focus indices.
+   */
   public subConnection(focusList?: number[]) {
     // List of possible connections that can be removed
     const possible = [];
@@ -1210,6 +1359,11 @@ export class Creature implements CreatureInternal {
     }
   }
 
+  /**
+   * Modify the bias of a neuron.
+   *
+   * @param {number[]} [focusList] - The list of focus indices.
+   */
   public modBias(focusList?: number[]) {
     for (let attempts = 0; attempts < 12; attempts++) {
       // Has no effect on input node, so they are excluded
@@ -1415,7 +1569,11 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Mutates the creature with the given method
+   * Mutate the creature using a specific method.
+   *
+   * @param {Object} method - The mutation method.
+   * @param {string} method.name - The name of the mutation method.
+   * @param {number[]} [focusList] - The list of focus indices.
    */
   mutate(method: { name: string }, focusList?: number[]) {
     if (typeof method.name !== "string") {
@@ -1492,7 +1650,7 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Fix the creature
+   * Fix the structure of the creature.
    */
   fix() {
     const holdDebug = this.DEBUG;
@@ -1558,16 +1716,28 @@ export class Creature implements CreatureInternal {
     }
   }
 
+  /**
+   * Get the output count of the creature.
+   *
+   * @returns {number} The number of output neurons.
+   */
   outputCount(): number {
     return this.output;
   }
 
+  /**
+   * Get the node count of the creature.
+   *
+   * @returns {number} The number of neurons.
+   */
   nodeCount(): number {
     return this.neurons.length;
   }
 
   /**
-   * Convert the creature to a json object
+   * Convert the creature to a JSON object.
+   *
+   * @returns {CreatureExport} The JSON representation of the creature.
    */
   exportJSON(): CreatureExport {
     if (this.DEBUG) {
@@ -1606,6 +1776,11 @@ export class Creature implements CreatureInternal {
     return json;
   }
 
+  /**
+   * Convert the creature to a trace JSON object.
+   *
+   * @returns {CreatureTrace} The trace JSON representation of the creature.
+   */
   traceJSON(): CreatureTrace {
     const json = this.exportJSON();
 
@@ -1640,6 +1815,11 @@ export class Creature implements CreatureInternal {
     return json as CreatureTrace;
   }
 
+  /**
+   * Convert the creature to an internal JSON object.
+   *
+   * @returns {CreatureInternal} The internal JSON representation of the creature.
+   */
   internalJSON(): CreatureInternal {
     if (this.DEBUG) {
       creatureValidate(this);
@@ -1675,6 +1855,12 @@ export class Creature implements CreatureInternal {
     return json;
   }
 
+  /**
+   * Load the creature from a JSON object.
+   *
+   * @param {CreatureInternal | CreatureExport} json - The JSON object representing the creature.
+   * @param {boolean} validate - Whether to validate the creature after loading.
+   */
   loadFrom(json: CreatureInternal | CreatureExport, validate: boolean) {
     this.uuid = (json as CreatureInternal).uuid;
     this.neurons.length = json.neurons.length;
