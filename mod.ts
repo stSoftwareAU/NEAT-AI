@@ -1,10 +1,18 @@
 /**
+ * @module
+ *
  * Helpers for working with the AI
  *
  * This module provides various utilities and classes to facilitate the development,
  * manipulation, and evolution of AI entities within the NEAT (NeuroEvolution of Augmenting Topologies) framework.
  *
- * @module
+ * @example
+ * ```ts
+ * import { Creature } from "./mod.ts";
+ *
+ * const creature = new Creature(2, 1);
+ * creature.evolveDir('.training',{});
+ * ```
  */
 
 /**
