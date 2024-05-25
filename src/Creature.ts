@@ -39,7 +39,7 @@ import type { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
-import { Mutation } from "./methods/Mutation.ts";
+import { Mutation } from "../mod.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 
