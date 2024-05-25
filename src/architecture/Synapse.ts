@@ -1,4 +1,4 @@
-import type { TagInterface } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import type { TagInterface } from "@stsoftware/tags";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 export class Synapse implements SynapseInternal {
@@ -9,7 +9,7 @@ export class Synapse implements SynapseInternal {
 
   public tags?: TagInterface[];
 
-  public static randomWeight() {
+  public static randomWeight(): number {
     return Math.random() * 0.2 - 0.1;
   }
 
@@ -28,7 +28,7 @@ export class Synapse implements SynapseInternal {
   /**
    * Converts the connection to a json object
    */
-  exportJSON(uuidMap: Map<number, string>) {
+  exportJSON(uuidMap: Map<number, string>): SynapseExport {
     const fromUUID = uuidMap.get(this.from) as string;
     const toUUID = uuidMap.get(this.to) as string;
     const json: SynapseExport = {
@@ -42,7 +42,7 @@ export class Synapse implements SynapseInternal {
     return json;
   }
 
-  internalJSON() {
+  internalJSON(): SynapseInternal {
     const json: SynapseInternal = {
       weight: this.weight,
       from: this.from,

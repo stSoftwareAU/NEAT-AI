@@ -5,7 +5,7 @@ import {
   assertNotEquals,
 } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
-import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../src/Creature.ts";
 import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";

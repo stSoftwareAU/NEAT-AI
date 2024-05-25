@@ -5,3 +5,4 @@ logback.log
 !.gitignore
 coverage/
 docs/
+!.github

@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { addTag, getTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag, getTag } from "@stsoftware/tags";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 

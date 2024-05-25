@@ -1,4 +1,4 @@
-import { addTag } from "https://deno.land/x/tags@v1.0.2/mod.ts";
+import { addTag } from "@stsoftware/tags";
 import { Creature, type CreatureTrace, CreatureUtil } from "../../mod.ts";
 import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
