@@ -4,7 +4,8 @@ import type {
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
 import { Selection, type SelectionInterface } from "../methods/Selection.ts";
-import { Mutation, type MutationInterface } from "../methods/Mutation.ts";
+import { Mutation } from "../NEAT/Mutation.ts";
+import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 
 export class NeatConfig implements NeatOptions {
   /** List of creatures to start with */
@@ -61,7 +62,7 @@ export class NeatConfig implements NeatOptions {
   trainPerGen: number;
 
   selection: SelectionInterface;
-  mutation: MutationInterface[];
+  readonly mutation: MutationInterface[];
 
   iterations: number;
   log: number;
@@ -109,7 +110,11 @@ export class NeatConfig implements NeatOptions {
     this.mutationAmount = options.mutationAmount
       ? options.mutationAmount > 1 ? options.mutationAmount : 1
       : 1;
-    this.mutation = options.mutation || Mutation.FFW;
+
+    this.mutation = options.mutation
+      ? [...options.mutation]
+      : [...Mutation.FFW];
+
     if (options.selection) {
       this.selection = options.selection;
     } else {

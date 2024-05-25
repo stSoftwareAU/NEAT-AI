@@ -12,7 +12,7 @@ import { Offspring } from "../src/architecture/Offspring.ts";
 import { train } from "../src/architecture/Training.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
-import { Mutation } from "../src/methods/Mutation.ts";
+import { Mutation } from "../src/NEAT/Mutation.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

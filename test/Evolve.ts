@@ -1,6 +1,6 @@
 import { Creature } from "../src/Creature.ts";
 import { assert } from "@std/assert";
-import { Mutation } from "../src/methods/Mutation.ts";
+import { Mutation } from "../src/NEAT/Mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -117,7 +117,7 @@ Deno.test("XNOR", async () => {
 
   const network = new Creature(2, 1);
   const results = await network.evolveDataSet(trainingSet, {
-    mutation: Mutation.FFW,
+    mutation: [...Mutation.FFW],
     elitism: 10,
     mutationRate: 0.5,
     targetError: 0.03,

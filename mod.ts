@@ -62,7 +62,7 @@ export { Selection } from "./src/methods/Selection.ts";
  *
  * @see {@link module:src/methods/Mutation}
  */
-export { Mutation } from "./src/methods/Mutation.ts";
+export { Mutation } from "./src/NEAT/Mutation.ts";
 
 /**
  * CRISPR Class

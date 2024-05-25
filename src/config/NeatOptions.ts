@@ -2,7 +2,7 @@ import type {
   CreatureExport,
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
-import type { MutationInterface } from "../methods/Mutation.ts";
+import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { SelectionInterface } from "../methods/Selection.ts";
 import type { TrainOptions } from "./TrainOptions.ts";
 
@@ -81,7 +81,7 @@ export interface NeatOptions extends TrainOptions {
   selection?: SelectionInterface;
 
   /** List of mutation methods to apply during evolution. */
-  mutation?: MutationInterface[];
+  readonly mutation?: readonly MutationInterface[];
 
   /** Number of iterations to run the training loop. */
   iterations?: number;
