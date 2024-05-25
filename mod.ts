@@ -71,7 +71,7 @@ export { Mutation } from "./src/methods/mutation.ts";
  *
  * @see {@link module:src/reconstruct/CRISPR}
  */
-export { CRISPR } from "./src/reconstruct/CRISPR.ts";
+export { CRISPR, type CrisprInterface } from "./src/reconstruct/CRISPR.ts";
 
 /**
  * Upgrade Class
