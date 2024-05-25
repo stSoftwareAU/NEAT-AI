@@ -60,7 +60,7 @@ export { Selection } from "./src/methods/Selection.ts";
  *
  * This class manages the mutation processes within the NEAT algorithm, allowing for genetic variations in the population.
  *
- * @see {@link module:src/methods/mutation}
+ * @see {@link module:src/methods/Mutation}
  */
 export { Mutation } from "./src/methods/Mutation.ts";
 
