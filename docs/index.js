@@ -116,53 +116,47 @@ document.addEventListener("DOMContentLoaded", () => {
       cy.nodes().forEach((node) => {
         const neuron = node.data("neuron");
         const type = node.data("type");
-        // if (neuron) {
-          let content;
-          if( type === "input" ){
-            content = `
-                <div>
-                    <strong>UUID:</strong> ${node.data("id")}<br>
-                </div>
-              `;
-          }
-          else {
-            content = `
-                <div>
-                    <strong>UUID:</strong> ${neuron.uuid}<br>
-                    <strong>Bias:</strong> ${neuron.bias}<br>
-                    <strong>Squash:</strong> ${neuron.squash}
-                </div>
-              `;
-          }
-          const popoverElement = document.createElement("div");
-          // popoverElement.innerHTML = content;
-          document.body.appendChild(popoverElement);
-      
-          new bootstrap.Popover(popoverElement, {
-            trigger: "manual",
-            placement: "auto",
-            content: content,
-            html: true,
-          });
 
-          node.on("mouseover", (event) => {
-            const nodePosition = event.target.renderedPosition();
-            popoverElement.style.position = "absolute";
-            popoverElement.style.left = `${nodePosition.x + 10}px`;
-            popoverElement.style.top = `${nodePosition.y + 10}px`;
-            const popoverInstance = bootstrap.Popover.getInstance(
-              popoverElement,
-            );
-            popoverInstance.show();
-          });
+        let content;
+        if (type === "input") {
+          content = `
+            <div>
+                <strong>UUID:</strong> ${node.data("id")}<br>
+            </div>
+          `;
+        } else {
+          content = `
+            <div>
+                <strong>UUID:</strong> ${neuron.uuid}<br>
+                <strong>Bias:</strong> ${neuron.bias}<br>
+                <strong>Squash:</strong> ${neuron.squash}
+            </div>
+          `;
+        }
 
-          node.on("mouseout", () => {
-            const popoverInstance = bootstrap.Popover.getInstance(
-              popoverElement,
-            );
-            popoverInstance.hide();
-          });
-        // }
+        const popoverElement = document.createElement("div");
+        popoverElement.setAttribute("data-bs-toggle", "tooltip");
+        popoverElement.setAttribute("data-bs-html", "true");
+        popoverElement.setAttribute("title", content);
+        document.body.appendChild(popoverElement);
+
+        const tooltip = new bootstrap.Tooltip(popoverElement, {
+          html: true,
+          trigger: "manual",
+          container: "body",
+        });
+
+        node.on("mouseover", (event) => {
+          const nodePosition = event.target.renderedPosition();
+          popoverElement.style.position = "absolute";
+          popoverElement.style.left = `${nodePosition.x + 10}px`;
+          popoverElement.style.top = `${nodePosition.y + 10}px`;
+          tooltip.show();
+        });
+
+        node.on("mouseout", () => {
+          tooltip.hide();
+        });
       });
     });
 
