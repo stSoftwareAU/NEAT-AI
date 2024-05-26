@@ -66,22 +66,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const incomingSynapses = modelData.synapses.filter((synapse) =>
         synapse.toUUID === neuronId
       );
-      // if (incomingSynapses.length === 0) {
-      //   // hasConstants = true;
-      //   layers[neuronId] = 2; // Constants are on layer 2
-      // } else {
       let maxLayer = Math.max(
         ...incomingSynapses.map((synapse) => calculateLayer(synapse.fromUUID)),
       );
 
       if (type && (type === "output" || type === "hidden")) {
-        // console.log("Type:", type, "Max layer: ", maxLayer);
         if (hasConstants && maxLayer) {
           maxLayer += 1;
         }
       }
       layers[neuronId] = maxLayer + 1;
-      // }
 
       return layers[neuronId];
     }
@@ -89,23 +83,11 @@ document.addEventListener("DOMContentLoaded", () => {
     modelData.neurons.forEach((neuron) => {
       if (neuron.type === "constant") hasConstants = true;
     });
-    // console.info("Has constants: ", hasConstants);
+
     // Calculate layers for all neurons
     modelData.neurons.forEach((neuron) =>
       calculateLayer(neuron.uuid, neuron.type)
     );
-
-    // // Adjust layer count if there are constants
-    // if (hasConstants) {
-    //   Object.keys(layers).forEach((neuronId) => {
-    //     if (layers[neuronId] > 1) {
-    //       layers[neuronId] += 1;
-    //     }
-    //   });
-    // }
-
-    // Calculate the maximum layer
-    // const maxLayer = Math.max(...Object.values(layers)) + 1;
 
     // Adjust the spacing between layers
     const layerSpacing = 200; // Adjust this value to reduce the gap
