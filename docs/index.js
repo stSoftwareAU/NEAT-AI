@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const modelList = document.getElementById("modelList");
-  const orientationSelect = document.getElementById("orientationSelect");
+  // const orientationSelect = document.getElementById("orientationSelect");
   const graphContainer = document.getElementById("graph-container");
   const backButton = document.getElementById("backButton");
   const modelSelection = document.getElementById("modelSelection");
