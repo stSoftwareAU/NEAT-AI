@@ -37,20 +37,82 @@ document.addEventListener("DOMContentLoaded", () => {
     visualizationContainer.classList.remove("d-none");
 
     const elements = [];
+    const layers = {};
+    const neuronPositions = {};
+    const inputNeurons = [];
 
-    // Create input nodes
+    // Initialize layers for input neurons
     for (let i = 0; i < modelData.input; i++) {
-      elements.push({
-        data: { id: `input-${i}`, label: "", type: "input" },
-        classes: "input-node",
-      });
+      inputNeurons.push(`input-${i}`);
+      layers[`input-${i}`] = 0;
     }
 
-    // Create other neurons
+    // Helper function to calculate the layer of a neuron
+    function calculateLayer(neuronId) {
+      if (layers[neuronId] !== undefined) {
+        return layers[neuronId];
+      }
+
+      const incomingSynapses = modelData.synapses.filter((synapse) =>
+        synapse.toUUID === neuronId
+      );
+      if (incomingSynapses.length === 0) {
+        layers[neuronId] = 1; // Constants and input neurons without synapses are on layer 1
+      } else {
+        const maxLayer = Math.max(
+          ...incomingSynapses.map((synapse) =>
+            calculateLayer(synapse.fromUUID)
+          ),
+        );
+        layers[neuronId] = maxLayer + 1;
+      }
+
+      return layers[neuronId];
+    }
+
+    // Calculate layers for all neurons
+    modelData.neurons.forEach((neuron) => calculateLayer(neuron.uuid));
+
+    // Calculate the maximum layer
+    const maxLayer = Math.max(...Object.values(layers)) + 1;
+
+    // Adjust the spacing between layers
+    const layerSpacing = 200; // Adjust this value to reduce the gap
+
+    // Group neurons by layer
+    const layerGroups = {};
+    inputNeurons.forEach((id) => {
+      if (!layerGroups[0]) layerGroups[0] = [];
+      layerGroups[0].push(id);
+    });
     modelData.neurons.forEach((neuron) => {
-      elements.push({
-        data: { id: neuron.uuid, neuron, label: "" },
-        classes: `${neuron.type}-node`,
+      const layer = layers[neuron.uuid];
+      if (!layerGroups[layer]) layerGroups[layer] = [];
+      layerGroups[layer].push(neuron.uuid);
+    });
+
+    // Calculate the position of neurons within each layer
+    Object.keys(layerGroups).forEach((layer) => {
+      const neurons = layerGroups[layer];
+      const yOffset = (500 - neurons.length * 100) / 2 + 50; // Center neurons vertically
+      neurons.forEach((neuronId, index) => {
+        const position = {
+          x: layer * layerSpacing + 200,
+          y: index * 100 + yOffset,
+        };
+        neuronPositions[neuronId] = position;
+
+        const neuron = modelData.neurons.find((n) => n.uuid === neuronId) || {};
+        elements.push({
+          data: {
+            id: neuronId,
+            neuron,
+            label: "",
+            type: neuron.type || "input",
+          },
+          position: position,
+          classes: `${neuron.type || "input"}-node`,
+        });
       });
     });
 
@@ -91,7 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
         {
           selector: ".output-node",
           style: {
-            "background-color": "purple", // Different color for output neurons
+            "background-color": "purple",
           },
         },
         {
@@ -106,13 +168,10 @@ document.addEventListener("DOMContentLoaded", () => {
         },
       ],
       layout: {
-        name: "breadthfirst",
-        directed: true,
-        padding: 10,
-        spacingFactor: 1.5,
+        name: "preset",
         animate: true,
         fit: true,
-        roots: Array.from({ length: modelData.input }, (_, i) => `input-${i}`),
+        padding: 10,
       },
     });
 
