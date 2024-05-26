@@ -7,8 +7,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "visualizationContainer",
   );
 
-  let currentModelData = null;
-
   // Load models from index.json
   fetch("models/index.json")
     .then((response) => response.json())
@@ -30,10 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadModel(modelName) {
     fetch(`models/${modelName}.json`)
       .then((response) => response.json())
-      .then((modelData) => {
-        currentModelData = modelData;
-        visualizeModel(modelData);
-      })
+      .then((modelData) => visualizeModel(modelData))
       .catch((error) => console.error("Error loading model:", error));
   }
 
@@ -66,21 +61,11 @@ document.addEventListener("DOMContentLoaded", () => {
           id: `${synapse.fromUUID}-${synapse.toUUID}`,
           source: synapse.fromUUID,
           target: synapse.toUUID,
+          weight: synapse.weight,
         },
         classes: "synapse",
       });
     });
-
-    const layoutConfig = {
-      name: "breadthfirst",
-      directed: true,
-      padding: 10,
-      spacingFactor: 1.5,
-      animate: true,
-      fit: true,
-      roots: Array.from({ length: modelData.input }, (_, i) => `input-${i}`),
-      orientation: "TB", // Default orientation
-    };
 
     const cy = cytoscape({
       container: graphContainer,
@@ -106,18 +91,29 @@ document.addEventListener("DOMContentLoaded", () => {
         {
           selector: ".output-node",
           style: {
-            "background-color": "red",
+            "background-color": "purple", // Different color for output neurons
           },
         },
         {
           selector: ".synapse",
           style: {
-            "width": 2,
-            "line-color": "gray",
+            "width": "mapData(weight, -1, 1, 1, 4)",
+            "line-color": (ele) => ele.data("weight") < 0 ? "red" : "green",
+            "target-arrow-color": (ele) =>
+              ele.data("weight") < 0 ? "red" : "green",
+            "target-arrow-shape": "triangle",
           },
         },
       ],
-      layout: layoutConfig,
+      layout: {
+        name: "breadthfirst",
+        directed: true,
+        padding: 10,
+        spacingFactor: 1.5,
+        animate: true,
+        fit: true,
+        roots: Array.from({ length: modelData.input }, (_, i) => `input-${i}`),
+      },
     });
 
     cy.ready(() => {
