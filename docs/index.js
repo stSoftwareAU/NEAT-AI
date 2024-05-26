@@ -164,12 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Normalize weights and determine width
-    function getWidth(weight) {
-      const absWeight = Math.abs(weight);
-      return Math.min(Math.max(absWeight * 6, 1), 12); // Example range from 1 to 12
-    }
-
     const cy = cytoscape({
       container: graphContainer,
       elements: elements,
@@ -217,7 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
         {
           selector: ".synapse",
           style: {
-            "width": (ele) => getWidth(ele.data("weight")),
+            "width": "mapData(weight, -1, 1, 1, 12)",
             "line-color": (ele) => ele.data("weight") < 0 ? "red" : "green",
             "target-arrow-color": (ele) =>
               ele.data("weight") < 0 ? "red" : "green",
@@ -239,68 +233,51 @@ document.addEventListener("DOMContentLoaded", () => {
       },
     });
 
-    function highlightRelatedNodesAndEdges(nodeId) {
-      const visited = new Set();
-      const stack = [nodeId];
-      const relatedNodes = new Set();
-      const relatedEdges = new Set();
+    cy.on("tap", "node", function (event) {
+      const node = event.target;
+      const relatedNodes = getRelatedNodes(node.id());
+      console.log("Node clicked:", node.id());
+      console.log("Related Nodes:", relatedNodes);
 
-      while (stack.length > 0) {
-        const current = stack.pop();
+      if (node.hasClass("highlighted")) {
+        cy.elements().removeClass("faded");
+        cy.nodes().removeClass("highlighted");
+      } else {
+        cy.elements().addClass("faded");
+        relatedNodes.forEach((nodeId) => {
+          cy.getElementById(nodeId).removeClass("faded");
+          cy.getElementById(nodeId).addClass("highlighted");
+        });
+
+        cy.edges().forEach((edge) => {
+          if (
+            relatedNodes.includes(edge.source().id()) &&
+            relatedNodes.includes(edge.target().id())
+          ) {
+            edge.removeClass("faded");
+          }
+        });
+      }
+    });
+
+    function getRelatedNodes(nodeId) {
+      const visited = new Set();
+      const queue = [nodeId];
+
+      while (queue.length > 0) {
+        const current = queue.shift();
         if (!visited.has(current)) {
           visited.add(current);
-          relatedNodes.add(current);
-
-          cy.edges(`[source = "${current}"]`).forEach((edge) => {
-            relatedEdges.add(edge.id());
-            stack.push(edge.target().id());
+          cy.getElementById(current).connectedEdges().forEach((edge) => {
+            if (edge.source().id() === current) {
+              queue.push(edge.target().id());
+            }
           });
         }
       }
 
-      cy.nodes().forEach((node) => {
-        if (!relatedNodes.has(node.id())) {
-          node.addClass("faded");
-        } else {
-          node.removeClass("faded");
-        }
-      });
-
-      cy.edges().forEach((edge) => {
-        if (!relatedEdges.has(edge.id())) {
-          edge.addClass("faded");
-        } else {
-          edge.removeClass("faded");
-        }
-      });
+      return Array.from(visited);
     }
-
-    function resetHighlighting() {
-      cy.nodes().removeClass("faded");
-      cy.edges().removeClass("faded");
-    }
-
-    let lastClickedNode = null;
-
-    cy.on("tap", "node", function (evt) {
-      const node = evt.target;
-      console.log(`Node clicked: ${node.id()}`);
-
-      if (lastClickedNode && lastClickedNode.id() === node.id()) {
-        resetHighlighting();
-        lastClickedNode = null;
-      } else {
-        highlightRelatedNodesAndEdges(node.id());
-        lastClickedNode = node;
-      }
-    });
-
-    cy.on("tap", function (evt) {
-      if (evt.target === cy) {
-        resetHighlighting();
-        lastClickedNode = null;
-      }
-    });
 
     cy.ready(() => {
       cy.nodes().forEach((node) => {
