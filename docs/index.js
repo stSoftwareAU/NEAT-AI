@@ -48,9 +48,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Create other neurons
-    modelData.neurons.forEach((neuron, index) => {
+    modelData.neurons.forEach((neuron) => {
       elements.push({
-        data: { id: neuron.uuid, label: "", neuron },
+        data: { id: neuron.uuid, neuron, label: "" },
         classes: `${neuron.type}-node`,
       });
     });
@@ -113,32 +113,56 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     cy.ready(() => {
-      cy.elements().forEach((element) => {
-        if (element.isNode()) {
-          const neuron = element.data("neuron");
-          if (neuron) {
-            const content = `
-                          <div>
-                              <strong>UUID:</strong> ${neuron.uuid}<br>
-                              <strong>Bias:</strong> ${neuron.bias}<br>
-                              <strong>Squash:</strong> ${neuron.squash}
-                          </div>
-                      `;
-            const el = element.popperRef(); // used only for positioning
-            const popper = new bootstrap.Popover(el, {
-              content: content,
-              title: neuron.uuid,
-              trigger: "hover",
-              placement: "auto",
-            });
-            element.on("mouseover", () => {
-              popper.show();
-            });
-            element.on("mouseout", () => {
-              popper.hide();
-            });
+      cy.nodes().forEach((node) => {
+        const neuron = node.data("neuron");
+        const type = node.data("type");
+        // if (neuron) {
+          let content;
+          if( type === "input" ){
+            content = `
+                <div>
+                    <strong>UUID:</strong> ${node.data("id")}<br>
+                </div>
+              `;
           }
-        }
+          else {
+            content = `
+                <div>
+                    <strong>UUID:</strong> ${neuron.uuid}<br>
+                    <strong>Bias:</strong> ${neuron.bias}<br>
+                    <strong>Squash:</strong> ${neuron.squash}
+                </div>
+              `;
+          }
+          const popoverElement = document.createElement("div");
+          // popoverElement.innerHTML = content;
+          document.body.appendChild(popoverElement);
+      
+          new bootstrap.Popover(popoverElement, {
+            trigger: "manual",
+            placement: "auto",
+            content: content,
+            html: true,
+          });
+
+          node.on("mouseover", (event) => {
+            const nodePosition = event.target.renderedPosition();
+            popoverElement.style.position = "absolute";
+            popoverElement.style.left = `${nodePosition.x + 10}px`;
+            popoverElement.style.top = `${nodePosition.y + 10}px`;
+            const popoverInstance = bootstrap.Popover.getInstance(
+              popoverElement,
+            );
+            popoverInstance.show();
+          });
+
+          node.on("mouseout", () => {
+            const popoverInstance = bootstrap.Popover.getInstance(
+              popoverElement,
+            );
+            popoverInstance.hide();
+          });
+        // }
       });
     });
 
