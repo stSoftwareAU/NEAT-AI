@@ -27,9 +27,9 @@ $(document).ready(function () {
   function loadModel(modelName) {
     $.getJSON(`models/${modelName}.json`, function (data) {
       currentModel = data;
-      visualizeModel(currentModel, $("#orientationSelect").val());
       $("#modelSelection").addClass("d-none");
       $("#visualizationContainer").removeClass("d-none");
+      visualizeModel(currentModel, $("#orientationSelect").val());
     }).fail(function () {
       alert("Error loading model: " + modelName);
     });
@@ -40,14 +40,19 @@ $(document).ready(function () {
 
     for (let i = 0; i < model.input; i++) {
       elements.push({
-        data: { id: `input-${i}`, label: "" },
+        data: { id: `input-${i}`, label: `input-${i}` },
         classes: "input",
       });
     }
 
     model.neurons.forEach((neuron) => {
       elements.push({
-        data: { id: neuron.uuid, label: "" },
+        data: {
+          id: neuron.uuid,
+          label: "",
+          bias: neuron.bias,
+          squash: neuron.squash,
+        },
         classes: neuron.type,
       });
     });
@@ -61,6 +66,23 @@ $(document).ready(function () {
         },
       });
     });
+
+    const layout = {
+      name: "breadthfirst",
+      directed: true,
+      padding: 10,
+      roots: elements.filter((ele) => ele.classes === "input").map((ele) =>
+        ele.data.id
+      ),
+    };
+
+    if (orientation === "vertical") {
+      layout["nodeDimensionsIncludeLabels"] = true;
+      layout["spacingFactor"] = 1.5;
+      layout["transform"] = function (node, pos) {
+        return { x: pos.y, y: pos.x };
+      };
+    }
 
     const cy = cytoscape({
       container: document.getElementById("graph-container"),
@@ -93,13 +115,11 @@ $(document).ready(function () {
           },
         },
       ],
-      layout: {
-        name: orientation === "horizontal" ? "breadthfirst" : "grid",
-        directed: true,
-        padding: 10,
-        spacingFactor: 2,
-        animate: true,
-      },
+      layout: layout,
+    });
+
+    cy.ready(function () {
+      cy.fit();
     });
 
     cy.on("tap", "node", function (evt) {
