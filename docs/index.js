@@ -1,220 +1,145 @@
 document.addEventListener("DOMContentLoaded", function () {
-  const modelSelection = document.getElementById("modelSelection");
+  const modelList = document.getElementById("modelList");
+  const orientationSelect = document.getElementById("orientationSelect");
+  const backButton = document.getElementById("backButton");
   const visualizationContainer = document.getElementById(
     "visualizationContainer",
   );
-  const backButton = document.getElementById("backButton");
-  const orientationSelect = document.getElementById("orientationSelect");
-  let selectedModelPath = null;
+  const modelSelection = document.getElementById("modelSelection");
+  const graphContainer = document.getElementById("graph-container");
 
-  // Fetch and list available models
   fetch("models/index.json")
     .then((response) => response.json())
-    .then((data) => {
-      const modelList = document.getElementById("modelList");
-      data.forEach((model) => {
+    .then((models) => {
+      models.forEach((model) => {
         const li = document.createElement("li");
-        li.className = "list-group-item list-group-item-action";
+        li.className = "list-group-item";
         li.textContent = model;
-        li.addEventListener("click", () => {
-          document.querySelectorAll(".list-group-item").forEach((item) =>
-            item.classList.remove("active")
-          );
-          li.classList.add("active");
-          selectedModelPath = `models/${model}.json`;
-          visualizeModel(selectedModelPath);
-        });
+        li.onclick = () => loadModel(model);
         modelList.appendChild(li);
+      });
+    })
+    .catch((error) => console.error("Error loading models:", error));
+
+  function loadModel(modelName) {
+    fetch(`models/${modelName}.json`)
+      .then((response) => response.json())
+      .then((modelData) => {
+        visualizeModel(modelData);
+        modelSelection.classList.add("d-none");
+        visualizationContainer.classList.remove("d-none");
+      })
+      .catch((error) => console.error("Error loading model:", error));
+  }
+
+  backButton.addEventListener("click", () => {
+    modelSelection.classList.remove("d-none");
+    visualizationContainer.classList.add("d-none");
+  });
+
+  function visualizeModel(modelData) {
+    const nodes = [];
+    const edges = [];
+
+    for (let i = 0; i < modelData.input; i++) {
+      nodes.push({
+        data: {
+          id: `input-${i}`,
+          label: `input-${i}`,
+          type: "input",
+        },
+        classes: "input",
+      });
+    }
+
+    modelData.neurons.forEach((neuron) => {
+      nodes.push({
+        data: {
+          id: neuron.uuid,
+          label: "",
+          type: neuron.type,
+        },
+        classes: neuron.type,
       });
     });
 
-  backButton.addEventListener("click", () => {
-    visualizationContainer.classList.add("d-none");
-    modelSelection.classList.remove("d-none");
-  });
-
-  orientationSelect.addEventListener("change", () => {
-    if (selectedModelPath) {
-      visualizeModel(selectedModelPath);
-    }
-  });
-
-  // Function to visualize the selected model
-  function visualizeModel(modelPath) {
-    console.log(`Visualizing model: ${modelPath}`);
-    fetch(modelPath)
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Model data:", data);
-        modelSelection.classList.add("d-none");
-        visualizationContainer.classList.remove("d-none");
-
-        const elements = [];
-        const nodeLevels = {};
-
-        // Generate input nodes based on the "input" attribute
-        const inputNodes = Array.from({ length: data.input }, (_, i) => ({
-          data: { id: `input-${i}`, type: "input", label: "" },
-        }));
-
-        console.log("Input nodes:", inputNodes);
-
-        const outputNodes = data.neurons.filter((d) => d.type === "output").map(
-          (d) => ({
-            data: {
-              id: d.uuid,
-              type: "output",
-              label: "",
-              bias: d.bias,
-              squash: d.squash,
-            },
-          }),
-        );
-
-        const hiddenNodes = data.neurons.filter((d) =>
-          d.type === "hidden" || d.type === "constant"
-        ).map((d) => ({
-          data: {
-            id: d.uuid,
-            type: d.type,
-            label: "",
-            bias: d.bias,
-            squash: d.squash,
-          },
-        }));
-
-        console.log("Output nodes:", outputNodes);
-        console.log("Hidden nodes:", hiddenNodes);
-
-        const nodes = [
-          ...inputNodes,
-          ...hiddenNodes,
-          ...outputNodes,
-        ];
-
-        nodes.forEach((node) => elements.push(node));
-
-        const links = data.synapses.map((d) => ({
-          data: {
-            id: `${d.fromUUID}-${d.toUUID}`,
-            source: d.fromUUID,
-            target: d.toUUID,
-            weight: d.weight,
-          },
-        }));
-
-        links.forEach((link) => elements.push(link));
-
-        console.log("Elements:", elements);
-
-        // Calculate node levels
-        links.forEach((link) => {
-          if (!nodeLevels[link.data.target]) {
-            nodeLevels[link.data.target] = 1;
-          }
-          if (!nodeLevels[link.data.source]) {
-            nodeLevels[link.data.source] = 0;
-          }
-          if (nodeLevels[link.data.source] >= nodeLevels[link.data.target]) {
-            nodeLevels[link.data.target] = nodeLevels[link.data.source] + 1;
-          }
-        });
-
-        // Ensure input nodes with no synapses are on the first layer
-        inputNodes.forEach((node) => {
-          if (!nodeLevels[node.data.id]) {
-            nodeLevels[node.data.id] = 0;
-          }
-        });
-
-        // Ensure output nodes are on their own layer
-        const maxLevel = Math.max(...Object.values(nodeLevels));
-        outputNodes.forEach((node) => {
-          nodeLevels[node.data.id] = maxLevel + 1;
-        });
-
-        console.log("Node Levels:", nodeLevels);
-
-        const orientation = orientationSelect.value;
-        const layout = {
-          name: "preset",
-          positions: (node) => {
-            const level = nodeLevels[node.id()] || 0;
-            if (orientation === "horizontal") {
-              return { x: level * 200, y: Math.random() * 500 };
-            } else {
-              return { x: Math.random() * 500, y: level * 200 };
-            }
-          },
-          fit: true,
-          padding: 10,
-          animate: true,
-          spacingFactor: 2,
-        };
-
-        const cy = cytoscape({
-          container: document.getElementById("graph-container"),
-          elements: elements,
-          style: [
-            {
-              selector: "node",
-              style: {
-                "background-color": "data(color)",
-                "label": "data(label)",
-              },
-            },
-            {
-              selector: 'node[type="input"]',
-              style: {
-                "background-color": "blue",
-              },
-            },
-            {
-              selector: 'node[type="constant"]',
-              style: {
-                "background-color": "green",
-              },
-            },
-            {
-              selector: 'node[type="hidden"]',
-              style: {
-                "background-color": "orange",
-              },
-            },
-            {
-              selector: 'node[type="output"]',
-              style: {
-                "background-color": "red",
-              },
-            },
-            {
-              selector: "edge",
-              style: {
-                "width": "mapData(weight, -1, 1, 1, 5)",
-                "line-color": "#ccc",
-              },
-            },
-          ],
-          layout: layout,
-        });
-
-        // Add tooltips using cytoscape-popper and tippy.js
-        cy.nodes().forEach((node) => {
-          const type = node.data("type");
-          let content = `UUID: ${node.id()}`;
-          if (type === "constant" || type === "hidden" || type === "output") {
-            content += `<br>Bias: ${node.data("bias")}<br>Squash: ${
-              node.data("squash")
-            }`;
-          }
-
-          const popper = node.popperRef(); // use popperRef() instead of popper()
-          tippy(popper, {
-            content: content,
-            trigger: "mouseenter",
-            interactive: true,
-          });
-        });
+    modelData.synapses.forEach((synapse) => {
+      edges.push({
+        data: {
+          id: `${synapse.fromUUID}-${synapse.toUUID}`,
+          source: synapse.fromUUID,
+          target: synapse.toUUID,
+          weight: synapse.weight,
+        },
       });
+    });
+
+    const cy = cytoscape({
+      container: graphContainer,
+      elements: {
+        nodes: nodes,
+        edges: edges,
+      },
+      style: [
+        {
+          selector: "node.input",
+          style: {
+            "background-color": "blue",
+            "label": "data(label)",
+          },
+        },
+        {
+          selector: "node.hidden",
+          style: {
+            "background-color": "orange",
+            "label": "data(label)",
+          },
+        },
+        {
+          selector: "node.output",
+          style: {
+            "background-color": "red",
+            "label": "data(label)",
+          },
+        },
+        {
+          selector: "edge",
+          style: {
+            "width": 2,
+            "line-color": "#ccc",
+            "target-arrow-color": "#ccc",
+            "target-arrow-shape": "triangle",
+            "curve-style": "bezier",
+          },
+        },
+      ],
+      layout: {
+        name: orientationSelect.value === "horizontal"
+          ? "breadthfirst"
+          : "breadthfirst",
+        directed: true,
+        padding: 10,
+        spacingFactor: 2,
+      },
+    });
+
+    cy.nodes().forEach((node) => {
+      const neuron = modelData.neurons.find((n) => n.uuid === node.id()) ||
+        { uuid: node.id(), bias: "N/A", squash: "N/A" };
+      const tooltipContent = `
+              <div>
+                  <strong>UUID:</strong> ${neuron.uuid}<br>
+                  <strong>Bias:</strong> ${neuron.bias}<br>
+                  <strong>Squash:</strong> ${neuron.squash}
+              </div>
+          `;
+      const el = document.createElement("div");
+      el.innerHTML = tooltipContent;
+      el.setAttribute("data-bs-toggle", "tooltip");
+      el.setAttribute("data-bs-placement", "top");
+      el.setAttribute("title", tooltipContent);
+      document.body.appendChild(el);
+      new bootstrap.Tooltip(el);
+    });
   }
 });
