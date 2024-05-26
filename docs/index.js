@@ -39,12 +39,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const elements = [];
     const layers = {};
     const neuronPositions = {};
-    const inputNeurons = [];
+    const inputNeuronsWithSynapses = [];
+    const inputNeuronsWithoutSynapses = [];
 
     // Initialize layers for input neurons
     for (let i = 0; i < modelData.input; i++) {
-      inputNeurons.push(`input-${i}`);
-      layers[`input-${i}`] = 0;
+      const id = `input-${i}`;
+      const hasSynapses = modelData.synapses.some((synapse) =>
+        synapse.fromUUID === id
+      );
+      if (hasSynapses) {
+        inputNeuronsWithSynapses.push(id);
+      } else {
+        inputNeuronsWithoutSynapses.push(id);
+      }
+      layers[id] = hasSynapses ? 1 : 0;
     }
 
     // Helper function to calculate the layer of a neuron
@@ -57,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
         synapse.toUUID === neuronId
       );
       if (incomingSynapses.length === 0) {
-        layers[neuronId] = 1; // Constants and input neurons without synapses are on layer 1
+        layers[neuronId] = 2; // Constants and input neurons without synapses are on layer 2
       } else {
         const maxLayer = Math.max(
           ...incomingSynapses.map((synapse) =>
@@ -81,9 +90,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Group neurons by layer
     const layerGroups = {};
-    inputNeurons.forEach((id) => {
+    inputNeuronsWithoutSynapses.forEach((id) => {
       if (!layerGroups[0]) layerGroups[0] = [];
       layerGroups[0].push(id);
+    });
+    inputNeuronsWithSynapses.forEach((id) => {
+      if (!layerGroups[1]) layerGroups[1] = [];
+      layerGroups[1].push(id);
     });
     modelData.neurons.forEach((neuron) => {
       const layer = layers[neuron.uuid];
@@ -94,7 +107,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Calculate the position of neurons within each layer
     Object.keys(layerGroups).forEach((layer) => {
       const neurons = layerGroups[layer];
-      const yOffset = (500 - neurons.length * 100) / 2 + 50; // Center neurons vertically
+      const yOffset = (graphContainer.clientHeight - neurons.length * 100) / 2 +
+        50; // Center neurons vertically
       neurons.forEach((neuronId, index) => {
         const position = {
           x: layer * layerSpacing + 200,
@@ -103,6 +117,12 @@ document.addEventListener("DOMContentLoaded", () => {
         neuronPositions[neuronId] = position;
 
         const neuron = modelData.neurons.find((n) => n.uuid === neuronId) || {};
+        const classes = (layer == 0 && !modelData.synapses.some((synapse) =>
+            synapse.fromUUID === neuronId
+          ))
+          ? "input-no-synapse-node"
+          : `${neuron.type || "input"}-node`;
+
         elements.push({
           data: {
             id: neuronId,
@@ -111,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
             type: neuron.type || "input",
           },
           position: position,
-          classes: `${neuron.type || "input"}-node`,
+          classes: classes,
         });
       });
     });
@@ -133,6 +153,17 @@ document.addEventListener("DOMContentLoaded", () => {
       container: graphContainer,
       elements: elements,
       style: [
+        {
+          selector: ".input-no-synapse-node",
+          style: {
+            "background-color": "grey",
+            "label": "data(label)",
+            "text-valign": "center",
+            "color": "white",
+            "text-outline-width": 2,
+            "text-outline-color": "grey",
+          },
+        },
         {
           selector: ".input-node",
           style: {
@@ -181,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const type = node.data("type");
 
         let content;
-        if (type === "input") {
+        if (type === "input" || type === "input-no-synapse") {
           content = `
             <div>
                 <strong>UUID:</strong> ${node.data("id")}<br>
