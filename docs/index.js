@@ -1,102 +1,85 @@
-document.addEventListener("DOMContentLoaded", function () {
-  const modelList = document.getElementById("modelList");
-  const orientationSelect = document.getElementById("orientationSelect");
-  const backButton = document.getElementById("backButton");
-  const visualizationContainer = document.getElementById(
-    "visualizationContainer",
-  );
-  const modelSelection = document.getElementById("modelSelection");
-  const graphContainer = document.getElementById("graph-container");
-
-  fetch("models/index.json")
-    .then((response) => response.json())
-    .then((models) => {
-      models.forEach((model) => {
-        const li = document.createElement("li");
-        li.className = "list-group-item";
-        li.textContent = model;
-        li.onclick = () => loadModel(model);
-        modelList.appendChild(li);
-      });
-    })
-    .catch((error) => console.error("Error loading models:", error));
-
-  function loadModel(modelName) {
-    fetch(`models/${modelName}.json`)
-      .then((response) => response.json())
-      .then((modelData) => {
-        visualizeModel(modelData);
-        modelSelection.classList.add("d-none");
-        visualizationContainer.classList.remove("d-none");
-      })
-      .catch((error) => console.error("Error loading model:", error));
-  }
-
-  backButton.addEventListener("click", () => {
-    modelSelection.classList.remove("d-none");
-    visualizationContainer.classList.add("d-none");
+$(document).ready(function () {
+  const models = [];
+  $.getJSON("models/index.json", function (data) {
+    data.forEach((model) => models.push(model));
+    models.forEach((model) => {
+      $("#modelList").append(`<li class="list-group-item">${model}</li>`);
+    });
   });
 
-  function visualizeModel(modelData) {
-    const nodes = [];
-    const edges = [];
+  $("#modelList").on("click", ".list-group-item", function () {
+    const modelName = $(this).text();
+    loadModel(modelName);
+  });
 
-    // Create input nodes
-    for (let i = 0; i < modelData.input; i++) {
-      nodes.push({
-        data: {
-          id: `input-${i}`,
-          type: "input",
-        },
+  $("#orientationSelect").change(function () {
+    const orientation = $(this).val();
+    visualizeModel(currentModel, orientation);
+  });
+
+  $("#backButton").click(function () {
+    $("#visualizationContainer").addClass("d-none");
+    $("#modelSelection").removeClass("d-none");
+  });
+
+  let currentModel;
+
+  function loadModel(modelName) {
+    $.getJSON(`models/${modelName}.json`, function (data) {
+      currentModel = data;
+      visualizeModel(currentModel, $("#orientationSelect").val());
+      $("#modelSelection").addClass("d-none");
+      $("#visualizationContainer").removeClass("d-none");
+    }).fail(function () {
+      alert("Error loading model: " + modelName);
+    });
+  }
+
+  function visualizeModel(model, orientation) {
+    const elements = [];
+
+    for (let i = 0; i < model.input; i++) {
+      elements.push({
+        data: { id: `input-${i}`, label: "" },
         classes: "input",
       });
     }
 
-    // Create hidden and output nodes
-    modelData.neurons.forEach((neuron) => {
-      nodes.push({
-        data: {
-          id: neuron.uuid,
-          type: neuron.type,
-        },
+    model.neurons.forEach((neuron) => {
+      elements.push({
+        data: { id: neuron.uuid, label: "" },
         classes: neuron.type,
       });
     });
 
-    // Create synapses (edges)
-    modelData.synapses.forEach((synapse) => {
-      edges.push({
+    model.synapses.forEach((synapse) => {
+      elements.push({
         data: {
           id: `${synapse.fromUUID}-${synapse.toUUID}`,
           source: synapse.fromUUID,
           target: synapse.toUUID,
-          weight: synapse.weight,
         },
       });
     });
 
-    // Initialize Cytoscape
     const cy = cytoscape({
-      container: graphContainer,
-      elements: {
-        nodes: nodes,
-        edges: edges,
-      },
+      container: document.getElementById("graph-container"),
+      elements: elements,
       style: [
         {
-          selector: "node.input",
+          selector: ".input",
           style: {
             "background-color": "blue",
           },
         },
         {
-          selector: "node.hidden",
+          selector: ".hidden",
           style: {
             "background-color": "orange",
           },
         },
         {
-          selector: "node.output",
+          selector: ".output",
           style: {
             "background-color": "red",
           },
@@ -104,44 +87,39 @@ document.addEventListener("DOMContentLoaded", function () {
         {
           selector: "edge",
           style: {
-            "width": 2,
-            "line-color": "#ccc",
-            "target-arrow-color": "#ccc",
+            "line-color": "gray",
+            "target-arrow-color": "gray",
             "target-arrow-shape": "triangle",
-            "curve-style": "bezier",
           },
         },
       ],
       layout: {
-        name: orientationSelect.value === "horizontal"
-          ? "breadthfirst"
-          : "breadthfirst",
+        name: orientation === "horizontal" ? "breadthfirst" : "grid",
         directed: true,
         padding: 10,
         spacingFactor: 2,
+        animate: true,
       },
     });
 
-    // Initialize Bootstrap tooltips
-    cy.nodes().forEach((node) => {
-      if (node.data("type") !== "input") {
-        const neuron = modelData.neurons.find((n) => n.uuid === node.id()) ||
-          { uuid: node.id(), bias: "N/A", squash: "N/A" };
-        const tooltipContent = `
-                <div>
-                    <strong>UUID:</strong> ${neuron.uuid}<br>
-                    <strong>Bias:</strong> ${neuron.bias}<br>
-                    <strong>Squash:</strong> ${neuron.squash}
-                </div>
-            `;
-        const el = document.createElement("div");
-        el.innerHTML = tooltipContent;
-        el.setAttribute("data-bs-toggle", "tooltip");
-        el.setAttribute("data-bs-placement", "top");
-        el.setAttribute("title", tooltipContent);
-        document.body.appendChild(el);
-        new bootstrap.Tooltip(el);
-      }
+    cy.on("tap", "node", function (evt) {
+      const node = evt.target;
+      const content = `
+              <div>
+                  <p>UUID: ${node.data("id")}</p>
+                  <p>Bias: ${node.data("bias") || "N/A"}</p>
+                  <p>Squash: ${node.data("squash") || "N/A"}</p>
+              </div>
+          `;
+
+      const popover = new bootstrap.Popover(node.popperRef(), {
+        container: "body",
+        content: content,
+        html: true,
+        trigger: "focus",
+      });
+
+      popover.show();
     });
   }
 });
