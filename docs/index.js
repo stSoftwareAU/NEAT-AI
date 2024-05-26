@@ -1,12 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
   const modelList = document.getElementById("modelList");
-  // const orientationSelect = document.getElementById("orientationSelect");
   const graphContainer = document.getElementById("graph-container");
   const backButton = document.getElementById("backButton");
   const modelSelection = document.getElementById("modelSelection");
   const visualizationContainer = document.getElementById(
     "visualizationContainer",
   );
+
+  let currentModelData = null;
 
   // Load models from index.json
   fetch("models/index.json")
@@ -29,7 +30,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadModel(modelName) {
     fetch(`models/${modelName}.json`)
       .then((response) => response.json())
-      .then((modelData) => visualizeModel(modelData))
+      .then((modelData) => {
+        currentModelData = modelData;
+        visualizeModel(modelData);
+      })
       .catch((error) => console.error("Error loading model:", error));
   }
 
@@ -67,6 +71,17 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
+    const layoutConfig = {
+      name: "breadthfirst",
+      directed: true,
+      padding: 10,
+      spacingFactor: 1.5,
+      animate: true,
+      fit: true,
+      roots: Array.from({ length: modelData.input }, (_, i) => `input-${i}`),
+      orientation: "TB", // Default orientation
+    };
+
     const cy = cytoscape({
       container: graphContainer,
       elements: elements,
@@ -102,14 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
           },
         },
       ],
-      layout: {
-        name: "breadthfirst",
-        directed: true,
-        padding: 10,
-        spacingFactor: 1.5,
-        animate: true,
-        fit: true,
-      },
+      layout: layoutConfig,
     });
 
     cy.ready(() => {
