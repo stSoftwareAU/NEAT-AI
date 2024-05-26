@@ -35,22 +35,40 @@ document.addEventListener("DOMContentLoaded", function () {
         modelSelection.classList.add("d-none");
         visualizationContainer.classList.remove("d-none");
 
-        const svg = d3.select("svg");
+        const svg = d3.select("#graph");
         svg.selectAll("*").remove();
+
         const width = svg.node().getBoundingClientRect().width;
         const height = svg.node().getBoundingClientRect().height;
 
-        const simulation = d3.forceSimulation()
-          .force("link", d3.forceLink().id((d) => d.uuid))
-          .force("charge", d3.forceManyBody())
-          .force("center", d3.forceCenter(width / 2, height / 2));
+        const g = svg.append("g");
+
+        // Add zoom and pan
+        const zoom = d3.zoom()
+          .scaleExtent([0.1, 10])
+          .on("zoom", (event) => {
+            g.attr("transform", event.transform);
+          });
+
+        svg.call(zoom);
+
+        // Generate input nodes based on the "input" attribute
+        const inputNodes = Array.from({ length: data.input }, (_, i) => ({
+          type: "input",
+          uuid: `input-${i}`,
+        }));
+
+        const outputNodes = data.neurons.filter((d) =>
+          d.uuid.startsWith("output-")
+        );
+        const hiddenNodes = data.neurons.filter((d) =>
+          !d.uuid.startsWith("input-") && !d.uuid.startsWith("output-")
+        );
 
         const nodes = [
-          ...data.neurons,
-          ...Array(data.input).fill().map((_, i) => ({
-            type: "input",
-            uuid: `input-${i}`,
-          })),
+          ...inputNodes,
+          ...hiddenNodes,
+          ...outputNodes,
         ];
 
         const links = data.synapses.map((d) => ({
@@ -59,14 +77,14 @@ document.addEventListener("DOMContentLoaded", function () {
           weight: d.weight,
         }));
 
-        const link = svg.append("g")
+        const link = g.append("g")
           .attr("class", "links")
           .selectAll("line")
           .data(links)
           .enter().append("line")
           .attr("class", "link");
 
-        const node = svg.append("g")
+        const node = g.append("g")
           .attr("class", "nodes")
           .selectAll("g")
           .data(nodes)
@@ -81,14 +99,21 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("y", 3)
           .text((d) => d.uuid);
 
-        simulation
-          .nodes(nodes)
-          .on("tick", ticked);
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id((d) => d.uuid).strength(0.1))
+          .force("charge", d3.forceManyBody().strength(-30))
+          .force("center", d3.forceCenter(width / 2, height / 2))
+          .force(
+            "x",
+            d3.forceX((d) => {
+              if (d.type === "input") return 100;
+              if (d.uuid.startsWith("output-")) return width - 100;
+              return width / 2;
+            }).strength(1),
+          )
+          .force("y", d3.forceY(height / 2).strength(0.1));
 
-        simulation.force("link")
-          .links(links);
-
-        function ticked() {
+        simulation.on("tick", () => {
           link
             .attr("x1", (d) => d.source.x)
             .attr("y1", (d) => d.source.y)
@@ -97,7 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
           node
             .attr("transform", (d) => `translate(${d.x},${d.y})`);
-        }
+        });
       });
   }
 });
