@@ -218,6 +218,12 @@ document.addEventListener("DOMContentLoaded", () => {
             "target-arrow-shape": "triangle",
           },
         },
+        {
+          selector: ".faded",
+          style: {
+            "opacity": 0.1,
+          },
+        },
       ],
       layout: {
         name: "preset",
@@ -225,6 +231,71 @@ document.addEventListener("DOMContentLoaded", () => {
         fit: true,
         padding: 10,
       },
+    });
+
+    function highlightRelatedNodesAndEdges(nodeId) {
+      const visited = new Set();
+      const stack = [nodeId];
+      const relatedNodes = new Set();
+      const relatedEdges = new Set();
+
+      while (stack.length > 0) {
+        const current = stack.pop();
+        if (!visited.has(current)) {
+          visited.add(current);
+          relatedNodes.add(current);
+
+          cy.edges(`[source = "${current}"]`).forEach((edge) => {
+            relatedEdges.add(edge.id());
+            stack.push(edge.target().id());
+          });
+        }
+      }
+
+      cy.nodes().forEach((node) => {
+        if (!relatedNodes.has(node.id())) {
+          node.addClass("faded");
+        } else {
+          node.removeClass("faded");
+        }
+      });
+
+      cy.edges().forEach((edge) => {
+        if (!relatedEdges.has(edge.id())) {
+          edge.addClass("faded");
+        } else {
+          edge.removeClass("faded");
+        }
+      });
+
+      return relatedNodes; // Ensure this function returns something
+    }
+
+    function resetHighlighting() {
+      cy.nodes().removeClass("faded");
+      cy.edges().removeClass("faded");
+    }
+
+    let lastClickedNode = null;
+
+    cy.on("tap", "node", function (evt) {
+      const node = evt.target;
+      console.log(`Node clicked: ${node.id()}`);
+
+      if (lastClickedNode && lastClickedNode.id() === node.id()) {
+        resetHighlighting();
+        lastClickedNode = null;
+      } else {
+        highlightRelatedNodesAndEdges(node.id());
+        lastClickedNode = node;
+      }
+    });
+
+    cy.on("tap", function (evt) {
+      if (evt.target === cy) {
+        resetHighlighting();
+        lastClickedNode = null;
+      }
     });
 
     cy.ready(() => {
