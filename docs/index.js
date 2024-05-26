@@ -128,8 +128,9 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         // Ensure output nodes are on their own layer
+        const maxLevel = Math.max(...Object.values(nodeLevels));
         outputNodes.forEach((node) => {
-          nodeLevels[node.data.id] = Math.max(...Object.values(nodeLevels)) + 1;
+          nodeLevels[node.data.id] = maxLevel + 1;
         });
 
         console.log("Node Levels:", nodeLevels);
@@ -189,7 +190,7 @@ document.addEventListener("DOMContentLoaded", function () {
             {
               selector: "edge",
               style: {
-                "width": "mapData(weight, 0, 1, 1, 5)",
+                "width": "mapData(weight, -1, 1, 1, 5)",
                 "line-color": "#ccc",
               },
             },
@@ -197,8 +198,8 @@ document.addEventListener("DOMContentLoaded", function () {
           layout: layout,
         });
 
-        cy.on("mouseover", "node", function (event) {
-          const node = event.target;
+        // Add tooltips using cytoscape-popper and tippy.js
+        cy.nodes().forEach((node) => {
           const type = node.data("type");
           let content = `UUID: ${node.id()}`;
           if (type === "constant" || type === "hidden" || type === "output") {
@@ -206,31 +207,13 @@ document.addEventListener("DOMContentLoaded", function () {
               node.data("squash")
             }`;
           }
-          node.qtip({
-            content: content,
-            show: {
-              event: event.type,
-              ready: true,
-            },
-            hide: {
-              event: "mouseout unfocus",
-            },
-            style: {
-              classes: "qtip-bootstrap",
-              tip: {
-                width: 16,
-                height: 8,
-              },
-            },
-            position: {
-              my: "top center",
-              at: "bottom center",
-            },
-          }, event);
-        });
 
-        cy.on("mouseout", "node", function (event) {
-          event.target.qtip("api").destroy(true);
+          const popper = node.popperRef(); // use popperRef() instead of popper()
+          tippy(popper, {
+            content: content,
+            trigger: "mouseenter",
+            interactive: true,
+          });
         });
       });
   }

@@ -9,3 +9,14 @@
     stroke: #666;
     stroke-width: 1.5px;
 }
+
+.popper-div {
+    background: white;
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 3px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    display: block;
+  }
+  
