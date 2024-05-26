@@ -14,7 +14,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const li = document.createElement("li");
         li.className = "list-group-item list-group-item-action";
         li.textContent = model;
-        li.addEventListener("click", () => visualizeModel(`models/${model}`));
+        li.addEventListener(
+          "click",
+          () => visualizeModel(`models/${model}.json`),
+        );
         modelList.appendChild(li);
       });
     });
