@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", function () {
     "visualizationContainer",
   );
   const backButton = document.getElementById("backButton");
+  const orientationSelect = document.getElementById("orientationSelect");
+  let selectedModelPath = null;
 
   // Fetch and list available models
   fetch("models/index.json")
@@ -14,10 +16,14 @@ document.addEventListener("DOMContentLoaded", function () {
         const li = document.createElement("li");
         li.className = "list-group-item list-group-item-action";
         li.textContent = model;
-        li.addEventListener(
-          "click",
-          () => visualizeModel(`models/${model}.json`),
-        );
+        li.addEventListener("click", () => {
+          document.querySelectorAll(".list-group-item").forEach((item) =>
+            item.classList.remove("active")
+          );
+          li.classList.add("active");
+          selectedModelPath = `models/${model}.json`;
+          visualizeModel(selectedModelPath);
+        });
         modelList.appendChild(li);
       });
     });
@@ -25,6 +31,12 @@ document.addEventListener("DOMContentLoaded", function () {
   backButton.addEventListener("click", () => {
     visualizationContainer.classList.add("d-none");
     modelSelection.classList.remove("d-none");
+  });
+
+  orientationSelect.addEventListener("change", () => {
+    if (selectedModelPath) {
+      visualizeModel(selectedModelPath);
+    }
   });
 
   // Function to visualize the selected model
@@ -38,10 +50,11 @@ document.addEventListener("DOMContentLoaded", function () {
         visualizationContainer.classList.remove("d-none");
 
         const elements = [];
+        const nodeLevels = {};
 
         // Generate input nodes based on the "input" attribute
         const inputNodes = Array.from({ length: data.input }, (_, i) => ({
-          data: { id: `input-${i}`, type: "input", label: `input-${i}` },
+          data: { id: `input-${i}`, type: "input", label: "" },
         }));
 
         console.log("Input nodes:", inputNodes);
@@ -94,6 +107,50 @@ document.addEventListener("DOMContentLoaded", function () {
 
         console.log("Elements:", elements);
 
+        // Calculate node levels
+        links.forEach((link) => {
+          if (!nodeLevels[link.data.target]) {
+            nodeLevels[link.data.target] = 1;
+          }
+          if (!nodeLevels[link.data.source]) {
+            nodeLevels[link.data.source] = 0;
+          }
+          if (nodeLevels[link.data.source] >= nodeLevels[link.data.target]) {
+            nodeLevels[link.data.target] = nodeLevels[link.data.source] + 1;
+          }
+        });
+
+        // Ensure input nodes with no synapses are on the first layer
+        inputNodes.forEach((node) => {
+          if (!nodeLevels[node.data.id]) {
+            nodeLevels[node.data.id] = 0;
+          }
+        });
+
+        // Ensure output nodes are on their own layer
+        outputNodes.forEach((node) => {
+          nodeLevels[node.data.id] = Math.max(...Object.values(nodeLevels)) + 1;
+        });
+
+        console.log("Node Levels:", nodeLevels);
+
+        const orientation = orientationSelect.value;
+        const layout = {
+          name: "preset",
+          positions: (node) => {
+            const level = nodeLevels[node.id()] || 0;
+            if (orientation === "horizontal") {
+              return { x: level * 200, y: Math.random() * 500 };
+            } else {
+              return { x: Math.random() * 500, y: level * 200 };
+            }
+          },
+          fit: true,
+          padding: 10,
+          animate: true,
+          spacingFactor: 2,
+        };
+
         const cy = cytoscape({
           container: document.getElementById("graph-container"),
           elements: elements,
@@ -137,14 +194,7 @@ document.addEventListener("DOMContentLoaded", function () {
               },
             },
           ],
-          layout: {
-            name: "breadthfirst",
-            directed: true,
-            padding: 10,
-            spacingFactor: 2,
-            nodeDimensionsIncludeLabels: true,
-            roots: inputNodes.map((n) => n.data.id),
-          },
+          layout: layout,
         });
 
         cy.on("mouseover", "node", function (event) {
