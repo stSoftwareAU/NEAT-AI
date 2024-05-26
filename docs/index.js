@@ -41,28 +41,29 @@ document.addEventListener("DOMContentLoaded", function () {
     const nodes = [];
     const edges = [];
 
+    // Create input nodes
     for (let i = 0; i < modelData.input; i++) {
       nodes.push({
         data: {
           id: `input-${i}`,
-          label: `input-${i}`,
           type: "input",
         },
         classes: "input",
       });
     }
 
+    // Create hidden and output nodes
     modelData.neurons.forEach((neuron) => {
       nodes.push({
         data: {
           id: neuron.uuid,
-          label: "",
           type: neuron.type,
         },
         classes: neuron.type,
       });
     });
 
+    // Create synapses (edges)
     modelData.synapses.forEach((synapse) => {
       edges.push({
         data: {
@@ -74,6 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
+    // Initialize Cytoscape
     const cy = cytoscape({
       container: graphContainer,
       elements: {
@@ -85,21 +87,18 @@ document.addEventListener("DOMContentLoaded", function () {
           selector: "node.input",
           style: {
             "background-color": "blue",
-            "label": "data(label)",
           },
         },
         {
           selector: "node.hidden",
           style: {
             "background-color": "orange",
-            "label": "data(label)",
           },
         },
         {
           selector: "node.output",
           style: {
             "background-color": "red",
-            "label": "data(label)",
           },
         },
         {
@@ -123,23 +122,26 @@ document.addEventListener("DOMContentLoaded", function () {
       },
     });
 
+    // Initialize Bootstrap tooltips
     cy.nodes().forEach((node) => {
-      const neuron = modelData.neurons.find((n) => n.uuid === node.id()) ||
-        { uuid: node.id(), bias: "N/A", squash: "N/A" };
-      const tooltipContent = `
-              <div>
-                  <strong>UUID:</strong> ${neuron.uuid}<br>
-                  <strong>Bias:</strong> ${neuron.bias}<br>
-                  <strong>Squash:</strong> ${neuron.squash}
-              </div>
-          `;
-      const el = document.createElement("div");
-      el.innerHTML = tooltipContent;
-      el.setAttribute("data-bs-toggle", "tooltip");
-      el.setAttribute("data-bs-placement", "top");
-      el.setAttribute("title", tooltipContent);
-      document.body.appendChild(el);
-      new bootstrap.Tooltip(el);
+      if (node.data("type") !== "input") {
+        const neuron = modelData.neurons.find((n) => n.uuid === node.id()) ||
+          { uuid: node.id(), bias: "N/A", squash: "N/A" };
+        const tooltipContent = `
+                <div>
+                    <strong>UUID:</strong> ${neuron.uuid}<br>
+                    <strong>Bias:</strong> ${neuron.bias}<br>
+                    <strong>Squash:</strong> ${neuron.squash}
+                </div>
+            `;
+        const el = document.createElement("div");
+        el.innerHTML = tooltipContent;
+        el.setAttribute("data-bs-toggle", "tooltip");
+        el.setAttribute("data-bs-placement", "top");
+        el.setAttribute("title", tooltipContent);
+        document.body.appendChild(el);
+        new bootstrap.Tooltip(el);
+      }
     });
   }
 });
