@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", function () {
             data: {
               id: d.uuid,
               type: "output",
-              label: d.uuid,
+              label: "",
               bias: d.bias,
               squash: d.squash,
             },
@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", function () {
           data: {
             id: d.uuid,
             type: d.type,
-            label: d.uuid,
+            label: "",
             bias: d.bias,
             squash: d.squash,
           },
@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", function () {
         cy.on("mouseover", "node", function (event) {
           const node = event.target;
           const type = node.data("type");
-          let content = `UUID: ${node.data("label")}`;
+          let content = `UUID: ${node.id()}`;
           if (type === "constant" || type === "hidden" || type === "output") {
             content += `<br>Bias: ${node.data("bias")}<br>Squash: ${
               node.data("squash")
@@ -180,7 +180,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         cy.on("mouseout", "node", function (event) {
-          event.target.qtip("destroy", true);
+          event.target.qtip("api").destroy(true);
         });
       });
   }
