@@ -164,6 +164,12 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
+    // Normalize weights and determine width
+    function getWidth(weight) {
+      const absWeight = Math.abs(weight);
+      return Math.min(Math.max(absWeight * 6, 1), 12); // Example range from 1 to 12
+    }
+
     const cy = cytoscape({
       container: graphContainer,
       elements: elements,
@@ -211,7 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
         {
           selector: ".synapse",
           style: {
-            "width": "mapData(weight, -1, 1, 1, 4)",
+            "width": (ele) => getWidth(ele.data("weight")),
             "line-color": (ele) => ele.data("weight") < 0 ? "red" : "green",
             "target-arrow-color": (ele) =>
               ele.data("weight") < 0 ? "red" : "green",
@@ -267,8 +273,6 @@ document.addEventListener("DOMContentLoaded", () => {
           edge.removeClass("faded");
         }
       });
-
-      return relatedNodes; // Ensure this function returns something
     }
 
     function resetHighlighting() {
