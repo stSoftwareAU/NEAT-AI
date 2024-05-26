@@ -29,41 +29,49 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Function to visualize the selected model
   function visualizeModel(modelPath) {
+    console.log(`Visualizing model: ${modelPath}`);
     fetch(modelPath)
       .then((response) => response.json())
       .then((data) => {
+        console.log("Model data:", data);
         modelSelection.classList.add("d-none");
         visualizationContainer.classList.remove("d-none");
 
-        const svg = d3.select("#graph");
-        svg.selectAll("*").remove();
-
-        const width = svg.node().getBoundingClientRect().width;
-        const height = svg.node().getBoundingClientRect().height;
-
-        const g = svg.append("g");
-
-        // Add zoom and pan
-        const zoom = d3.zoom()
-          .scaleExtent([0.1, 10])
-          .on("zoom", (event) => {
-            g.attr("transform", event.transform);
-          });
-
-        svg.call(zoom);
+        const elements = [];
 
         // Generate input nodes based on the "input" attribute
         const inputNodes = Array.from({ length: data.input }, (_, i) => ({
-          type: "input",
-          uuid: `input-${i}`,
+          data: { id: `input-${i}`, type: "input", label: `input-${i}` },
         }));
 
-        const outputNodes = data.neurons.filter((d) =>
-          d.uuid.startsWith("output-")
+        console.log("Input nodes:", inputNodes);
+
+        const outputNodes = data.neurons.filter((d) => d.type === "output").map(
+          (d) => ({
+            data: {
+              id: d.uuid,
+              type: "output",
+              label: d.uuid,
+              bias: d.bias,
+              squash: d.squash,
+            },
+          }),
         );
+
         const hiddenNodes = data.neurons.filter((d) =>
-          !d.uuid.startsWith("input-") && !d.uuid.startsWith("output-")
-        );
+          d.type === "hidden" || d.type === "constant"
+        ).map((d) => ({
+          data: {
+            id: d.uuid,
+            type: d.type,
+            label: d.uuid,
+            bias: d.bias,
+            squash: d.squash,
+          },
+        }));
+
+        console.log("Output nodes:", outputNodes);
+        console.log("Hidden nodes:", hiddenNodes);
 
         const nodes = [
           ...inputNodes,
@@ -71,57 +79,108 @@ document.addEventListener("DOMContentLoaded", function () {
           ...outputNodes,
         ];
 
+        nodes.forEach((node) => elements.push(node));
+
         const links = data.synapses.map((d) => ({
-          source: d.fromUUID,
-          target: d.toUUID,
-          weight: d.weight,
+          data: {
+            id: `${d.fromUUID}-${d.toUUID}`,
+            source: d.fromUUID,
+            target: d.toUUID,
+            weight: d.weight,
+          },
         }));
 
-        const link = g.append("g")
-          .attr("class", "links")
-          .selectAll("line")
-          .data(links)
-          .enter().append("line")
-          .attr("class", "link");
+        links.forEach((link) => elements.push(link));
 
-        const node = g.append("g")
-          .attr("class", "nodes")
-          .selectAll("g")
-          .data(nodes)
-          .enter().append("g")
-          .attr("class", "node");
+        console.log("Elements:", elements);
 
-        node.append("circle")
-          .attr("r", 5);
+        const cy = cytoscape({
+          container: document.getElementById("graph-container"),
+          elements: elements,
+          style: [
+            {
+              selector: "node",
+              style: {
+                "background-color": "data(color)",
+                "label": "data(label)",
+              },
+            },
+            {
+              selector: 'node[type="input"]',
+              style: {
+                "background-color": "blue",
+              },
+            },
+            {
+              selector: 'node[type="constant"]',
+              style: {
+                "background-color": "green",
+              },
+            },
+            {
+              selector: 'node[type="hidden"]',
+              style: {
+                "background-color": "orange",
+              },
+            },
+            {
+              selector: 'node[type="output"]',
+              style: {
+                "background-color": "red",
+              },
+            },
+            {
+              selector: "edge",
+              style: {
+                "width": "mapData(weight, 0, 1, 1, 5)",
+                "line-color": "#ccc",
+              },
+            },
+          ],
+          layout: {
+            name: "breadthfirst",
+            directed: true,
+            padding: 10,
+            spacingFactor: 2,
+            nodeDimensionsIncludeLabels: true,
+            roots: inputNodes.map((n) => n.data.id),
+          },
+        });
 
-        node.append("text")
-          .attr("x", 6)
-          .attr("y", 3)
-          .text((d) => d.uuid);
+        cy.on("mouseover", "node", function (event) {
+          const node = event.target;
+          const type = node.data("type");
+          let content = `UUID: ${node.data("label")}`;
+          if (type === "constant" || type === "hidden" || type === "output") {
+            content += `<br>Bias: ${node.data("bias")}<br>Squash: ${
+              node.data("squash")
+            }`;
+          }
+          node.qtip({
+            content: content,
+            show: {
+              event: event.type,
+              ready: true,
+            },
+            hide: {
+              event: "mouseout unfocus",
+            },
+            style: {
+              classes: "qtip-bootstrap",
+              tip: {
+                width: 16,
+                height: 8,
+              },
+            },
+            position: {
+              my: "top center",
+              at: "bottom center",
+            },
+          }, event);
+        });
 
-        const simulation = d3.forceSimulation(nodes)
-          .force("link", d3.forceLink(links).id((d) => d.uuid).strength(0.1))
-          .force("charge", d3.forceManyBody().strength(-30))
-          .force("center", d3.forceCenter(width / 2, height / 2))
-          .force(
-            "x",
-            d3.forceX((d) => {
-              if (d.type === "input") return 100;
-              if (d.uuid.startsWith("output-")) return width - 100;
-              return width / 2;
-            }).strength(1),
-          )
-          .force("y", d3.forceY(height / 2).strength(0.1));
-
-        simulation.on("tick", () => {
-          link
-            .attr("x1", (d) => d.source.x)
-            .attr("y1", (d) => d.source.y)
-            .attr("x2", (d) => d.target.x)
-            .attr("y2", (d) => d.target.y);
-
-          node
-            .attr("transform", (d) => `translate(${d.x},${d.y})`);
+        cy.on("mouseout", "node", function (event) {
+          event.target.qtip("destroy", true);
         });
       });
   }
