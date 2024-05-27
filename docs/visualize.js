@@ -7,8 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "visualizationContainer",
   );
   let aliases = {};
+  let currentHighlightedNode = null; // Track the currently highlighted node
 
-  // Load aliases if available
   fetch("models/Aliases.json")
     .then((response) => {
       if (response.ok) {
@@ -25,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error loading Aliases.json:", error);
     });
 
-  // Load models from index.json
   fetch("models/index.json")
     .then((response) => response.json())
     .then((models) => {
@@ -61,7 +60,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputNeuronsWithoutSynapses = [];
     let hasConstants = false;
 
-    // Initialize layers for input neurons
     for (let i = 0; i < modelData.input; i++) {
       const id = `input-${i}`;
       const hasSynapses = modelData.synapses.some((synapse) =>
@@ -75,7 +73,6 @@ document.addEventListener("DOMContentLoaded", () => {
       layers[id] = hasSynapses ? 1 : 0;
     }
 
-    // Helper function to calculate the layer of a neuron
     function calculateLayer(neuronId, type) {
       if (layers[neuronId] !== undefined) {
         return layers[neuronId];
@@ -102,15 +99,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (neuron.type === "constant") hasConstants = true;
     });
 
-    // Calculate layers for all neurons
     modelData.neurons.forEach((neuron) =>
       calculateLayer(neuron.uuid, neuron.type)
     );
 
-    // Adjust the spacing between layers
-    const layerSpacing = 200; // Adjust this value to reduce the gap
+    const layerSpacing = 200;
 
-    // Group neurons by layer
     const layerGroups = {};
     inputNeuronsWithoutSynapses.forEach((id) => {
       if (!layerGroups[0]) layerGroups[0] = [];
@@ -135,11 +129,10 @@ document.addEventListener("DOMContentLoaded", () => {
       layerGroups[layer].push(neuron.uuid);
     });
 
-    // Calculate the position of neurons within each layer
     Object.keys(layerGroups).forEach((layer) => {
       const neurons = layerGroups[layer];
       const xOffset = (graphContainer.clientWidth - neurons.length * 100) / 2 +
-        50; // Center neurons horizontally
+        50;
       neurons.forEach((neuronId, index) => {
         const position = {
           x: index * 100 + xOffset,
@@ -169,7 +162,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Create synapses
     modelData.synapses.forEach((synapse) => {
       elements.push({
         data: {
@@ -252,45 +244,54 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       });
 
-      cy.nodes().on("click", (event) => {
-        const node = event.target;
-        console.log("Node clicked:", node.id());
+      function highlightConnectedNodes(node) {
+        if (currentHighlightedNode === node.id()) {
+          cy.elements().removeClass("faded");
+          currentHighlightedNode = null;
+          return;
+        }
+
+        currentHighlightedNode = node.id();
         const relatedNodes = new Set();
         const relatedEdges = new Set();
 
-        function collectRelatedElements(currentNode) {
+        function traverseForward(currentNode) {
+          currentNode.outgoers("node").forEach((outNode) => {
+            relatedNodes.add(outNode.id());
+            traverseForward(outNode);
+          });
           currentNode.outgoers("edge").forEach((edge) => {
-            if (!relatedEdges.has(edge.id())) {
-              relatedEdges.add(edge.id());
-              relatedNodes.add(edge.target().id());
-              collectRelatedElements(edge.target());
-            }
+            relatedEdges.add(edge.id());
           });
         }
 
-        if (node.hasClass("highlighted")) {
-          console.log("Unhighlighting all elements");
-          cy.elements().removeClass("faded highlighted");
-        } else {
-          console.log("Highlighting node:", node.id());
-          collectRelatedElements(node);
-
-          cy.elements().addClass("faded");
-          cy.elements().removeClass("highlighted");
-          node.removeClass("faded").addClass("highlighted");
-
-          relatedNodes.forEach((nodeId) => {
-            cy.getElementById(nodeId).removeClass("faded").addClass(
-              "highlighted",
-            );
+        function traverseBackward(currentNode) {
+          currentNode.incomers("node").forEach((inNode) => {
+            relatedNodes.add(inNode.id());
+            traverseBackward(inNode);
           });
-
-          relatedEdges.forEach((edgeId) => {
-            cy.getElementById(edgeId).removeClass("faded").addClass(
-              "highlighted",
-            );
+          currentNode.incomers("edge").forEach((edge) => {
+            relatedEdges.add(edge.id());
           });
         }
+
+        traverseBackward(node);
+        traverseForward(node);
+
+        cy.elements().addClass("faded");
+        cy.nodes(`[id = "${node.id()}"]`).removeClass("faded");
+        relatedNodes.forEach((id) =>
+          cy.nodes(`[id = "${id}"]`).removeClass("faded")
+        );
+        relatedEdges.forEach((id) =>
+          cy.edges(`[id = "${id}"]`).removeClass("faded")
+        );
+      }
+
+      cy.on("tap", "node", (event) => {
+        const node = event.target;
+        console.log(`Node clicked: ${node.id()}`);
+        highlightConnectedNodes(node);
       });
     });
 
