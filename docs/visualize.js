@@ -167,64 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const cy = cytoscape({
       container: graphContainer,
       elements: elements,
-      style: [
-        {
-          selector: ".input-no-synapse-node",
-          style: {
-            "background-color": "grey",
-            "label": "data(label)",
-            "text-valign": "center",
-            "color": "white",
-            "text-outline-width": 2,
-            "text-outline-color": "grey",
-          },
-        },
-        {
-          selector: ".input-node",
-          style: {
-            "background-color": "blue",
-            "label": "data(label)",
-            "text-valign": "center",
-            "color": "white",
-            "text-outline-width": 2,
-            "text-outline-color": "blue",
-          },
-        },
-        {
-          selector: ".hidden-node",
-          style: {
-            "background-color": "orange",
-          },
-        },
-        {
-          selector: ".output-node",
-          style: {
-            "background-color": "purple",
-          },
-        },
-        {
-          selector: ".constant-node",
-          style: {
-            "background-color": "SkyBlue",
-          },
-        },
-        {
-          selector: ".synapse",
-          style: {
-            "width": "mapData(weight, -1, 1, 1, 12)",
-            "line-color": (ele) => ele.data("weight") < 0 ? "red" : "green",
-            "target-arrow-color": (ele) =>
-              ele.data("weight") < 0 ? "red" : "green",
-            "target-arrow-shape": "triangle",
-          },
-        },
-        {
-          selector: ".faded",
-          style: {
-            "opacity": 0.1,
-          },
-        },
-      ],
+      style: window.stylesheet,
       layout: {
         name: "preset",
         animate: true,
@@ -232,52 +175,6 @@ document.addEventListener("DOMContentLoaded", () => {
         padding: 10,
       },
     });
-
-    cy.on("tap", "node", function (event) {
-      const node = event.target;
-      const relatedNodes = getRelatedNodes(node.id());
-      console.log("Node clicked:", node.id());
-      console.log("Related Nodes:", relatedNodes);
-
-      if (node.hasClass("highlighted")) {
-        cy.elements().removeClass("faded");
-        cy.nodes().removeClass("highlighted");
-      } else {
-        cy.elements().addClass("faded");
-        relatedNodes.forEach((nodeId) => {
-          cy.getElementById(nodeId).removeClass("faded");
-          cy.getElementById(nodeId).addClass("highlighted");
-        });
-
-        cy.edges().forEach((edge) => {
-          if (
-            relatedNodes.includes(edge.source().id()) &&
-            relatedNodes.includes(edge.target().id())
-          ) {
-            edge.removeClass("faded");
-          }
-        });
-      }
-    });
-
-    function getRelatedNodes(nodeId) {
-      const visited = new Set();
-      const queue = [nodeId];
-
-      while (queue.length > 0) {
-        const current = queue.shift();
-        if (!visited.has(current)) {
-          visited.add(current);
-          cy.getElementById(current).connectedEdges().forEach((edge) => {
-            if (edge.source().id() === current) {
-              queue.push(edge.target().id());
-            }
-          });
-        }
-      }
-
-      return Array.from(visited);
-    }
 
     cy.ready(() => {
       cy.nodes().forEach((node) => {

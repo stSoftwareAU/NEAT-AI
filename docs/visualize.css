@@ -5,6 +5,7 @@
     color: white;
     text-outline-width: 2;
     text-outline-color: grey;
+    shape: triangle;
   }
   
   .input-node {
@@ -14,18 +15,22 @@
     color: white;
     text-outline-width: 2;
     text-outline-color: blue;
+    shape: triangle;
   }
   
   .hidden-node {
     background-color: orange;
+    shape: ellipse;
   }
   
   .output-node {
     background-color: purple;
+    shape: rectangle;
   }
   
   .constant-node {
     background-color: SkyBlue;
+    shape: diamond;
   }
   
   .synapse {
