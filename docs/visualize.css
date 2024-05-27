@@ -1,3 +1,7 @@
-/* visualize.css */
+.faded {
+  opacity: 0.1;
+}
 
-/* Currently empty, as all styling is managed in cytoscapeStyles.js */
+.highlighted {
+  border: 2px solid yellow;
+}

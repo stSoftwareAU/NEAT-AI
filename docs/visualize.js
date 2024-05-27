@@ -148,9 +148,9 @@ document.addEventListener("DOMContentLoaded", () => {
         neuronPositions[neuronId] = position;
 
         const neuron = modelData.neurons.find((n) => n.uuid === neuronId) || {};
-        const classes = (layer == 0 && !modelData.synapses.some((synapse) =>
+        const classes = layer == 0 && !modelData.synapses.some((synapse) =>
             synapse.fromUUID === neuronId
-          ))
+          )
           ? "input-no-synapse-node"
           : neuron.type === "constant"
           ? "constant-node"
@@ -250,6 +250,47 @@ document.addEventListener("DOMContentLoaded", () => {
         node.on("mouseout", () => {
           tooltip.hide();
         });
+      });
+
+      cy.nodes().on("click", (event) => {
+        const node = event.target;
+        console.log("Node clicked:", node.id());
+        const relatedNodes = new Set();
+        const relatedEdges = new Set();
+
+        function collectRelatedElements(currentNode) {
+          currentNode.outgoers("edge").forEach((edge) => {
+            if (!relatedEdges.has(edge.id())) {
+              relatedEdges.add(edge.id());
+              relatedNodes.add(edge.target().id());
+              collectRelatedElements(edge.target());
+            }
+          });
+        }
+
+        if (node.hasClass("highlighted")) {
+          console.log("Unhighlighting all elements");
+          cy.elements().removeClass("faded highlighted");
+        } else {
+          console.log("Highlighting node:", node.id());
+          collectRelatedElements(node);
+
+          cy.elements().addClass("faded");
+          cy.elements().removeClass("highlighted");
+          node.removeClass("faded").addClass("highlighted");
+
+          relatedNodes.forEach((nodeId) => {
+            cy.getElementById(nodeId).removeClass("faded").addClass(
+              "highlighted",
+            );
+          });
+
+          relatedEdges.forEach((edgeId) => {
+            cy.getElementById(edgeId).removeClass("faded").addClass(
+              "highlighted",
+            );
+          });
+        }
       });
     });
 
