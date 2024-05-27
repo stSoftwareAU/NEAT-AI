@@ -54,40 +54,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const neuronSizes = {};
     const incomingSynapsesMap = new Map();
 
-    // Initialize the map with empty arrays
-    modelData.neurons.forEach((neuron) => {
-      incomingSynapsesMap.set(neuron.uuid, []);
-    });
-
-    // Fill the map with incoming synapses
+    // Initialize incoming synapses map
     modelData.synapses.forEach((synapse) => {
-      if (incomingSynapsesMap.has(synapse.toUUID)) {
-        incomingSynapsesMap.get(synapse.toUUID).push(synapse);
-      } else {
-        incomingSynapsesMap.set(synapse.toUUID, [synapse]);
+      if (!incomingSynapsesMap.has(synapse.toUUID)) {
+        incomingSynapsesMap.set(synapse.toUUID, []);
       }
+      incomingSynapsesMap.get(synapse.toUUID).push(synapse);
     });
-
-    // Log the incoming synapses map
-    console.log("Incoming Synapses Map:", incomingSynapsesMap);
 
     function propagateSize(neuronId, size) {
       if (neuronSizes[neuronId] === undefined) {
         neuronSizes[neuronId] = 0;
       }
       neuronSizes[neuronId] += size;
+
       const incomingSynapses = incomingSynapsesMap.get(neuronId) || [];
       const totalIncomingWeight = incomingSynapses.reduce(
         (sum, synapse) => sum + Math.abs(synapse.weight),
         0,
       );
+
       incomingSynapses.forEach((synapse) => {
         const proportion = Math.abs(synapse.weight) / totalIncomingWeight;
-        const propagatedSize = size * proportion;
-        console.log(
-          `Propagating size: ${propagatedSize} to neuron: ${synapse.fromUUID}`,
-        );
-        propagateSize(synapse.fromUUID, propagatedSize);
+        propagateSize(synapse.fromUUID, size * proportion);
       });
     }
 
@@ -96,7 +85,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const outputSize = 12 / outputNeurons.length;
     outputNeurons.forEach((neuron) => {
-      console.log(`Propagating size: ${outputSize} to neuron: ${neuron.uuid}`);
       propagateSize(neuron.uuid, outputSize);
     });
 
@@ -212,7 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? "constant-node"
           : `${neuron.type || "input"}-node ${neuron.squash}`;
 
-        const size = neuronSizes[neuronId] || 1;
+        const size = Math.max(neuronSizes[neuronId] || 1, 1); // Ensure minimum size is 1
 
         elements.push({
           data: {
