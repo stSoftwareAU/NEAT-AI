@@ -1,3 +1,13 @@
+// Helper function to normalize weights
+function normalizeWeight(weight) {
+  return Math.log1p(Math.abs(weight)); // log1p is used to handle very small values
+}
+
+// Helper function to squash normalized weights using the tanh function
+function squashWeight(normalizedWeight) {
+  return Math.tanh(normalizedWeight);
+}
+
 window.stylesheet = cytoscape.stylesheet()
   .selector(".input-no-synapse-node")
   .css({
@@ -36,7 +46,16 @@ window.stylesheet = cytoscape.stylesheet()
   })
   .selector(".synapse")
   .css({
-    "width": "mapData(weight, 0, 1, 1, 12)",
+    "width": (ele) => {
+      const weight = ele.data("weight");
+      const normalizedWeight = normalizeWeight(weight);
+      const squashedWeight = squashWeight(normalizedWeight);
+      const scaledWidth = 1 + 11 * squashedWeight; // Scale the squashed value to the range 1-12
+      //   console.info(
+      //     `Weight: ${weight}, Normalized: ${normalizedWeight}, Squashed: ${squashedWeight} => Width: ${scaledWidth}`,
+      //   );
+      return scaledWidth;
+    },
     "line-color": "mapData(weight, -1, 1, red, green)",
     "target-arrow-color": "mapData(weight, -1, 1, red, green)",
     "target-arrow-shape": "triangle",
