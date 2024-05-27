@@ -100,7 +100,7 @@ window.stylesheet = cytoscape.stylesheet()
   })
   .selector(".faded")
   .css({
-    "opacity": 0.1,
+    "opacity": 0.05,
   })
   // Add styles for each squash function here
   // Squash function styles
