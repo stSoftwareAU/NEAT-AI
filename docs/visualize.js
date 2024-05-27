@@ -6,6 +6,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const visualizationContainer = document.getElementById(
     "visualizationContainer",
   );
+  let aliases = {};
+
+  // Load aliases if available
+  fetch("models/Aliases.json")
+    .then((response) => {
+      if (response.ok) {
+        return response.json();
+      } else {
+        console.warn("Aliases.json not found. Proceeding without aliases.");
+        return {};
+      }
+    })
+    .then((data) => {
+      aliases = data;
+    })
+    .catch((error) => {
+      console.error("Error loading Aliases.json:", error);
+    });
 
   // Load models from index.json
   fetch("models/index.json")
@@ -180,12 +198,16 @@ document.addEventListener("DOMContentLoaded", () => {
       cy.nodes().forEach((node) => {
         const neuron = node.data("neuron");
         const type = node.data("type");
+        const alias = Object.keys(aliases).find((key) =>
+          aliases[key] === node.data("id")
+        );
 
         let content;
         if (type === "input" || type === "input-no-synapse") {
           content = `
             <div>
                 <strong>UUID:</strong> ${node.data("id")}<br>
+                ${alias ? `<strong>Alias:</strong> ${alias}<br>` : ""}
             </div>
           `;
         } else if (type === "constant") {
