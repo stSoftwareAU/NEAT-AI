@@ -58,16 +58,17 @@ document.addEventListener("DOMContentLoaded", () => {
         neuronSizes[neuronId] = 0;
       }
       neuronSizes[neuronId] += size;
-      const outgoingSynapses = modelData.synapses.filter(
-        (synapse) => synapse.fromUUID === neuronId,
+      // console.log(`Propagating size: ${size} to neuron: ${neuronId}`);
+      const incomingSynapses = modelData.synapses.filter(
+        (synapse) => synapse.toUUID === neuronId,
       );
-      const totalOutgoingWeight = outgoingSynapses.reduce(
+      const totalIncomingWeight = incomingSynapses.reduce(
         (sum, synapse) => sum + Math.abs(synapse.weight),
         0,
       );
-      outgoingSynapses.forEach((synapse) => {
-        const proportion = Math.abs(synapse.weight) / totalOutgoingWeight;
-        propagateSize(synapse.toUUID, size * proportion);
+      incomingSynapses.forEach((synapse) => {
+        const proportion = Math.abs(synapse.weight) / totalIncomingWeight;
+        propagateSize(synapse.fromUUID, size * proportion);
       });
     }
 
@@ -87,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
     visualizationContainer.classList.remove("d-none");
 
     const neuronSizes = calculateNeuronSizes(modelData);
-    console.log(neuronSizes);
+    // console.log("Final neuron sizes:", neuronSizes);
 
     const elements = [];
     const layers = {};
@@ -183,9 +184,10 @@ document.addEventListener("DOMContentLoaded", () => {
         neuronPositions[neuronId] = position;
 
         const neuron = modelData.neurons.find((n) => n.uuid === neuronId) || {};
-        const classes = layer == 0 && !modelData.synapses.some((synapse) =>
-            synapse.fromUUID === neuronId
-          )
+        const classes = layer == 0 &&
+            !modelData.synapses.some(
+              (synapse) => synapse.fromUUID === neuronId,
+            )
           ? "input-no-synapse-node"
           : neuron.type === "constant"
           ? "constant-node"

@@ -8,6 +8,14 @@ window.stylesheet = cytoscape.stylesheet()
     "text-outline-width": 2,
     "text-outline-color": "grey",
     "shape": "triangle",
+    "width": (ele) => {
+      const size = ele.data("width");
+      return `${size}`;
+    },
+    "height": (ele) => {
+      const size = ele.data("height");
+      return `${size}`;
+    },
   })
   .selector(".input-node")
   .css({
@@ -18,21 +26,53 @@ window.stylesheet = cytoscape.stylesheet()
     "text-outline-width": 2,
     "text-outline-color": "blue",
     "shape": "ellipse",
+    "width": (ele) => {
+      const size = ele.data("width");
+      return `${size}`;
+    },
+    "height": (ele) => {
+      const size = ele.data("height");
+      return `${size}`;
+    },
   })
   .selector(".hidden-node")
   .css({
     "background-color": "orange",
     "shape": "rectangle",
+    "width": (ele) => {
+      const size = ele.data("width");
+      return `${size}`;
+    },
+    "height": (ele) => {
+      const size = ele.data("height");
+      return `${size}`;
+    },
   })
   .selector(".output-node")
   .css({
     "background-color": "purple",
     "shape": "hexagon",
+    "width": (ele) => {
+      const size = ele.data("width");
+      return `${size}`;
+    },
+    "height": (ele) => {
+      const size = ele.data("height");
+      return `${size}`;
+    },
   })
   .selector(".constant-node")
   .css({
     "background-color": "SkyBlue",
     "shape": "round-rectangle",
+    "width": (ele) => {
+      const size = ele.data("width");
+      return `${size}`;
+    },
+    "height": (ele) => {
+      const size = ele.data("height");
+      return `${size}`;
+    },
   })
   .selector(".synapse")
   .css({
@@ -41,9 +81,6 @@ window.stylesheet = cytoscape.stylesheet()
       const normalized = Math.log(Math.abs(weight) + 1);
       const squashed = normalized / (normalized + 1);
       const width = squashed * 12 + 1;
-      //   console.log(
-      //     `Weight: ${weight}, Normalized: ${normalized}, Squashed: ${squashed} => Width: ${width}`,
-      //   );
       return width;
     },
     "line-color": (ele) => {
