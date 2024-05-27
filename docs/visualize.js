@@ -54,12 +54,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const neuronSizes = {};
     const incomingSynapsesMap = new Map();
 
-    // Initialize incoming synapses map
+    modelData.neurons.forEach((neuron) => {
+      incomingSynapsesMap.set(neuron.uuid, []);
+    });
+
     modelData.synapses.forEach((synapse) => {
-      if (!incomingSynapsesMap.has(synapse.toUUID)) {
-        incomingSynapsesMap.set(synapse.toUUID, []);
+      if (incomingSynapsesMap.has(synapse.toUUID)) {
+        incomingSynapsesMap.get(synapse.toUUID).push(synapse);
+      } else {
+        console.warn(`Neuron ${synapse.toUUID} not found in map.`);
       }
-      incomingSynapsesMap.get(synapse.toUUID).push(synapse);
     });
 
     function propagateSize(neuronId, size) {
@@ -68,11 +72,23 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       neuronSizes[neuronId] += size;
 
-      const incomingSynapses = incomingSynapsesMap.get(neuronId) || [];
+      const incomingSynapses = incomingSynapsesMap.get(neuronId);
+      if (!incomingSynapses || incomingSynapses.length === 0) {
+        // console.warn(
+        //   `Neuron ${neuronId} has no incoming synapses or total incoming weight is zero.`,
+        // );
+        return;
+      }
+
       const totalIncomingWeight = incomingSynapses.reduce(
         (sum, synapse) => sum + Math.abs(synapse.weight),
         0,
       );
+
+      if (totalIncomingWeight === 0) {
+        // console.warn(`Neuron ${neuronId} has total incoming weight of zero.`);
+        return;
+      }
 
       incomingSynapses.forEach((synapse) => {
         const proportion = Math.abs(synapse.weight) / totalIncomingWeight;
@@ -96,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     visualizationContainer.classList.remove("d-none");
 
     const neuronSizes = calculateNeuronSizes(modelData);
-    console.log("Final neuron sizes:", neuronSizes);
+    // console.log("Final neuron sizes:", neuronSizes);
 
     const elements = [];
     const layers = {};
@@ -200,7 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? "constant-node"
           : `${neuron.type || "input"}-node ${neuron.squash}`;
 
-        const size = Math.max(neuronSizes[neuronId] || 1, 1); // Ensure minimum size is 1
+        const size = Math.max(neuronSizes[neuronId] * 5, 10); // Apply scaling factor to ensure visibility
 
         elements.push({
           data: {
@@ -208,8 +224,8 @@ document.addEventListener("DOMContentLoaded", () => {
             neuron,
             label: "",
             type: neuron.type || "input",
-            width: size * 5,
-            height: size * 5,
+            width: size,
+            height: size,
           },
           position: position,
           classes: classes,
@@ -244,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     cy.on("tap", "node", function (event) {
       const node = event.target;
-      console.log("Node clicked:", node.id());
+      // console.log("Node clicked:", node.id());
       if (node.hasClass("highlighted")) {
         cy.elements().removeClass("faded").removeClass("highlighted");
       } else {
