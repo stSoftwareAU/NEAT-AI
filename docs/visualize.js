@@ -154,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? "input-no-synapse-node"
           : neuron.type === "constant"
           ? "constant-node"
-          : `${neuron.type || "input"}-node`;
+          : `${neuron.type || "input"}-node ${neuron.squash}`;
 
         elements.push({
           data: {
