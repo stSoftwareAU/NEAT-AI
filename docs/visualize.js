@@ -36,6 +36,13 @@ document.addEventListener("DOMContentLoaded", () => {
         li.addEventListener("click", () => loadModel(model));
         modelList.appendChild(li);
       });
+
+      // Check for URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const modelParam = urlParams.get("MODEL");
+      if (modelParam) {
+        loadModel(modelParam);
+      }
     });
 
   backButton.addEventListener("click", () => {
@@ -74,9 +81,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const incomingSynapses = incomingSynapsesMap.get(neuronId);
       if (!incomingSynapses || incomingSynapses.length === 0) {
-        // console.warn(
-        //   `Neuron ${neuronId} has no incoming synapses or total incoming weight is zero.`,
-        // );
         return;
       }
 
@@ -86,7 +90,6 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       if (totalIncomingWeight === 0) {
-        // console.warn(`Neuron ${neuronId} has total incoming weight of zero.`);
         return;
       }
 
@@ -112,11 +115,9 @@ document.addEventListener("DOMContentLoaded", () => {
     visualizationContainer.classList.remove("d-none");
 
     const neuronSizes = calculateNeuronSizes(modelData);
-    // console.log("Final neuron sizes:", neuronSizes);
 
     const elements = [];
     const layers = {};
-    const neuronPositions = {};
     const inputNeuronsWithSynapses = [];
     const inputNeuronsWithoutSynapses = [];
     let hasConstants = false;
@@ -132,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         inputNeuronsWithoutSynapses.push(id);
       }
-      layers[id] = hasSynapses ? 1 : 0;
+      layers[id] = hasSynapses ? 2 : 1;
     }
 
     // Helper function to calculate the layer of a neuron
@@ -167,69 +168,58 @@ document.addEventListener("DOMContentLoaded", () => {
       calculateLayer(neuron.uuid, neuron.type)
     );
 
-    // Adjust the spacing between layers
-    const layerSpacing = 200; // Adjust this value to reduce the gap
+    // Determine the layer for output neurons
+    const outputLayer = Math.max(...Object.values(layers)) + 1;
 
-    // Group neurons by layer
-    const layerGroups = {};
-    inputNeuronsWithoutSynapses.forEach((id) => {
-      if (!layerGroups[0]) layerGroups[0] = [];
-      layerGroups[0].push(id);
-    });
-    inputNeuronsWithSynapses.forEach((id) => {
-      if (!layerGroups[1]) layerGroups[1] = [];
-      layerGroups[1].push(id);
+    modelData.neurons.forEach((neuron) => {
+      if (neuron.type === "output") {
+        layers[neuron.uuid] = outputLayer;
+      }
     });
 
-    if (hasConstants) {
-      modelData.neurons.forEach((neuron) => {
-        if (neuron.type === "constant") {
-          if (!layerGroups[2]) layerGroups[2] = [];
-          layerGroups[2].push(neuron.uuid);
-        }
+    const sizeScale=10;
+    const sizeMin=20;
+    // Create elements for Cytoscape
+    for (let i = 0; i < modelData.input; i++) {
+      const id = `input-${i}`;
+      const hasSynapses = modelData.synapses.some(
+        (synapse) => synapse.fromUUID === id,
+      );
+      const classes = hasSynapses ? "input-node" : "input-no-synapse-node";
+
+      const ns=neuronSizes[id]?neuronSizes[id]:1;
+      const size = Math.max( ns * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
+
+      elements.push({
+        data: {
+          id: id,
+          label: "",
+          width: size,
+          height: size,
+          layer: layers[id],
+        },
+        classes: classes,
       });
     }
+
     modelData.neurons.forEach((neuron) => {
-      const layer = layers[neuron.uuid];
-      if (!layerGroups[layer]) layerGroups[layer] = [];
-      layerGroups[layer].push(neuron.uuid);
-    });
+      const classes = neuron.type === "constant"
+        ? "constant-node"
+        : `${neuron.type || "input"}-node ${neuron.squash}`;
 
-    // Calculate the position of neurons within each layer
-    Object.keys(layerGroups).forEach((layer) => {
-      const neurons = layerGroups[layer];
-      const xOffset = (graphContainer.clientWidth - neurons.length * 100) / 2 +
-        50; // Center neurons horizontally
-      neurons.forEach((neuronId, index) => {
-        const position = {
-          x: index * 100 + xOffset,
-          y: layer * layerSpacing + 50,
-        };
-        neuronPositions[neuronId] = position;
+      const size = Math.max(neuronSizes[neuron.uuid] * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
 
-        const neuron = modelData.neurons.find((n) => n.uuid === neuronId) || {};
-        const classes = layer == 0 && !modelData.synapses.some((synapse) =>
-            synapse.fromUUID === neuronId
-          )
-          ? "input-no-synapse-node"
-          : neuron.type === "constant"
-          ? "constant-node"
-          : `${neuron.type || "input"}-node ${neuron.squash}`;
-
-        const size = Math.max(neuronSizes[neuronId] * 5, 10); // Apply scaling factor to ensure visibility
-
-        elements.push({
-          data: {
-            id: neuronId,
-            neuron,
-            label: "",
-            type: neuron.type || "input",
-            width: size,
-            height: size,
-          },
-          position: position,
-          classes: classes,
-        });
+      elements.push({
+        data: {
+          id: neuron.uuid,
+          neuron,
+          label: "",
+          type: neuron.type || "input",
+          width: size,
+          height: size,
+          layer: layers[neuron.uuid],
+        },
+        classes: classes,
       });
     });
 
@@ -251,9 +241,14 @@ document.addEventListener("DOMContentLoaded", () => {
       elements: elements,
       style: window.stylesheet,
       layout: {
-        name: "preset",
-        animate: true,
-        fit: true,
+        name: "concentric",
+        concentric: function (node) {
+          return node.data("layer");
+        },
+        levelWidth: function (nodes) {
+          console.log(nodes.length);
+          return 1;
+        },
         padding: 10,
       },
     });
@@ -276,6 +271,10 @@ document.addEventListener("DOMContentLoaded", () => {
     cy.ready(() => {
       cy.nodes().forEach((node) => {
         const neuron = node.data("neuron");
+        if (!neuron){
+          console.info( node);
+          return;
+        }
         const type = node.data("type");
         const alias = Object.keys(aliases).find(
           (key) => aliases[key] === node.data("id"),
