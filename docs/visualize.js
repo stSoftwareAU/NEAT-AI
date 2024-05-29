@@ -160,7 +160,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     modelData.neurons.forEach((neuron) => {
-      if (neuron.type === "constant") hasConstants = true;
+      if (neuron.type === "constant") {
+        hasConstants = true;
+        layers[neuron.uuid] = 3;
+      }
     });
 
     // Calculate layers for all neurons
@@ -176,7 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
         layers[neuron.uuid] = outputLayer;
       }
     });
-
+    console.info( layers);
     const sizeScale=10;
     const sizeMin=20;
     // Create elements for Cytoscape
@@ -246,7 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return node.data("layer");
         },
         levelWidth: function (nodes) {
-          console.log(nodes.length);
+          // console.log(nodes.length);
           return 1;
         },
         padding: 10,
