@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-window no-window-prefix
 document.addEventListener("DOMContentLoaded", () => {
   const modelList = document.getElementById("modelList");
   const graphContainer = document.getElementById("graph-container");
@@ -36,6 +37,13 @@ document.addEventListener("DOMContentLoaded", () => {
         li.addEventListener("click", () => loadModel(model));
         modelList.appendChild(li);
       });
+
+      // Check for URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const modelParam = urlParams.get("MODEL");
+      if (modelParam) {
+        loadModel(modelParam);
+      }
     });
 
   backButton.addEventListener("click", () => {
@@ -74,9 +82,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const incomingSynapses = incomingSynapsesMap.get(neuronId);
       if (!incomingSynapses || incomingSynapses.length === 0) {
-        // console.warn(
-        //   `Neuron ${neuronId} has no incoming synapses or total incoming weight is zero.`,
-        // );
         return;
       }
 
@@ -86,7 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       if (totalIncomingWeight === 0) {
-        // console.warn(`Neuron ${neuronId} has total incoming weight of zero.`);
         return;
       }
 
@@ -112,11 +116,9 @@ document.addEventListener("DOMContentLoaded", () => {
     visualizationContainer.classList.remove("d-none");
 
     const neuronSizes = calculateNeuronSizes(modelData);
-    // console.log("Final neuron sizes:", neuronSizes);
 
     const elements = [];
     const layers = {};
-    const neuronPositions = {};
     const inputNeuronsWithSynapses = [];
     const inputNeuronsWithoutSynapses = [];
     let hasConstants = false;
@@ -132,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         inputNeuronsWithoutSynapses.push(id);
       }
-      layers[id] = hasSynapses ? 1 : 0;
+      layers[id] = hasSynapses ? 2 : 1;
     }
 
     // Helper function to calculate the layer of a neuron
@@ -144,12 +146,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const incomingSynapses = modelData.synapses.filter(
         (synapse) => synapse.toUUID === neuronId,
       );
+
       let maxLayer = Math.max(
         ...incomingSynapses.map((synapse) => calculateLayer(synapse.fromUUID)),
       );
 
-      if (type && (type === "output" || type === "hidden")) {
-        if (hasConstants && maxLayer) {
+      if (type === "output" || type === "hidden") {
+        if (hasConstants && maxLayer < 4) {
           maxLayer += 1;
         }
       }
@@ -159,77 +162,72 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     modelData.neurons.forEach((neuron) => {
-      if (neuron.type === "constant") hasConstants = true;
+      if (neuron.type === "constant") {
+        hasConstants = true;
+        layers[neuron.uuid] = 3;
+      }
     });
 
     // Calculate layers for all neurons
-    modelData.neurons.forEach((neuron) =>
-      calculateLayer(neuron.uuid, neuron.type)
-    );
-
-    // Adjust the spacing between layers
-    const layerSpacing = 200; // Adjust this value to reduce the gap
-
-    // Group neurons by layer
-    const layerGroups = {};
-    inputNeuronsWithoutSynapses.forEach((id) => {
-      if (!layerGroups[0]) layerGroups[0] = [];
-      layerGroups[0].push(id);
-    });
-    inputNeuronsWithSynapses.forEach((id) => {
-      if (!layerGroups[1]) layerGroups[1] = [];
-      layerGroups[1].push(id);
+    modelData.neurons.forEach((neuron) => {
+      if (neuron.type !== "output") {
+        calculateLayer(neuron.uuid, neuron.type);
+      }
     });
 
-    if (hasConstants) {
-      modelData.neurons.forEach((neuron) => {
-        if (neuron.type === "constant") {
-          if (!layerGroups[2]) layerGroups[2] = [];
-          layerGroups[2].push(neuron.uuid);
-        }
+    // Determine the layer for output neurons
+    const outputLayer = Math.max(...Object.values(layers)) + 1;
+
+    modelData.neurons.forEach((neuron) => {
+      if (neuron.type === "output") {
+        layers[neuron.uuid] = outputLayer;
+      }
+    });
+    // console.info( layers);
+    const sizeScale = 12;
+    const sizeMin = 24;
+    // Create elements for Cytoscape
+    for (let i = 0; i < modelData.input; i++) {
+      const id = `input-${i}`;
+      const hasSynapses = modelData.synapses.some(
+        (synapse) => synapse.fromUUID === id,
+      );
+      const classes = hasSynapses ? "input-node" : "input-no-synapse-node";
+
+      const ns = neuronSizes[id] ? neuronSizes[id] : 1;
+      const size = Math.max(ns * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
+
+      elements.push({
+        data: {
+          id: id,
+          label: "",
+          width: size,
+          height: size,
+          type: "input",
+          layer: layers[id],
+        },
+        classes: classes,
       });
     }
+
     modelData.neurons.forEach((neuron) => {
-      const layer = layers[neuron.uuid];
-      if (!layerGroups[layer]) layerGroups[layer] = [];
-      layerGroups[layer].push(neuron.uuid);
-    });
+      const classes = neuron.type === "constant"
+        ? "constant-node"
+        : `${neuron.type}-node ${neuron.squash}`;
 
-    // Calculate the position of neurons within each layer
-    Object.keys(layerGroups).forEach((layer) => {
-      const neurons = layerGroups[layer];
-      const xOffset = (graphContainer.clientWidth - neurons.length * 100) / 2 +
-        50; // Center neurons horizontally
-      neurons.forEach((neuronId, index) => {
-        const position = {
-          x: index * 100 + xOffset,
-          y: layer * layerSpacing + 50,
-        };
-        neuronPositions[neuronId] = position;
+      const size = Math.max(neuronSizes[neuron.uuid] * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
 
-        const neuron = modelData.neurons.find((n) => n.uuid === neuronId) || {};
-        const classes = layer == 0 && !modelData.synapses.some((synapse) =>
-            synapse.fromUUID === neuronId
-          )
-          ? "input-no-synapse-node"
-          : neuron.type === "constant"
-          ? "constant-node"
-          : `${neuron.type || "input"}-node ${neuron.squash}`;
-
-        const size = Math.max(neuronSizes[neuronId] * 5, 10); // Apply scaling factor to ensure visibility
-
-        elements.push({
-          data: {
-            id: neuronId,
-            neuron,
-            label: "",
-            type: neuron.type || "input",
-            width: size,
-            height: size,
-          },
-          position: position,
-          classes: classes,
-        });
+      elements.push({
+        data: {
+          id: neuron.uuid,
+          neuron,
+          label: "",
+          type: neuron.type,
+          width: size,
+          height: size,
+          layer: layers[neuron.uuid],
+        },
+        classes: classes,
       });
     });
 
@@ -251,16 +249,19 @@ document.addEventListener("DOMContentLoaded", () => {
       elements: elements,
       style: window.stylesheet,
       layout: {
-        name: "preset",
-        animate: true,
-        fit: true,
-        padding: 10,
+        name: "concentric",
+        concentric: function (node) {
+          return node.data("layer");
+        },
+        levelWidth: function (_nodes) {
+          return 0.01;
+        },
+        padding: 1000,
       },
     });
 
     cy.on("tap", "node", function (event) {
       const node = event.target;
-      // console.log("Node clicked:", node.id());
       if (node.hasClass("highlighted")) {
         cy.elements().removeClass("faded").removeClass("highlighted");
       } else {
@@ -276,7 +277,11 @@ document.addEventListener("DOMContentLoaded", () => {
     cy.ready(() => {
       cy.nodes().forEach((node) => {
         const neuron = node.data("neuron");
+        // if (!neuron){
+        //   return;
+        // }
         const type = node.data("type");
+
         const alias = Object.keys(aliases).find(
           (key) => aliases[key] === node.data("id"),
         );
@@ -301,7 +306,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <div>
                 <strong>UUID:</strong> ${neuron.uuid}<br>
                 <strong>Bias:</strong> ${neuron.bias}<br>
-                <strong>Squash:</strong> ${neuron.squash}
+                <strong>Squash:</strong> ${neuron.squash}<br>
+                <strong>Depth:</strong> ${layers[neuron.uuid]}<br>
             </div>
           `;
         }
