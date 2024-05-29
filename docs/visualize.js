@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-window no-window-prefix
 document.addEventListener("DOMContentLoaded", () => {
   const modelList = document.getElementById("modelList");
   const graphContainer = document.getElementById("graph-container");
@@ -145,12 +146,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const incomingSynapses = modelData.synapses.filter(
         (synapse) => synapse.toUUID === neuronId,
       );
+
       let maxLayer = Math.max(
         ...incomingSynapses.map((synapse) => calculateLayer(synapse.fromUUID)),
       );
 
-      if (type && (type === "output" || type === "hidden")) {
-        if (hasConstants && maxLayer) {
+      if (type === "output" || type === "hidden") {
+        if (hasConstants && maxLayer < 4) {
           maxLayer += 1;
         }
       }
@@ -167,9 +169,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Calculate layers for all neurons
-    modelData.neurons.forEach((neuron) =>
-      calculateLayer(neuron.uuid, neuron.type)
-    );
+    modelData.neurons.forEach((neuron) => {
+      if (neuron.type !== "output") {
+        calculateLayer(neuron.uuid, neuron.type);
+      }
+    });
 
     // Determine the layer for output neurons
     const outputLayer = Math.max(...Object.values(layers)) + 1;
@@ -179,9 +183,9 @@ document.addEventListener("DOMContentLoaded", () => {
         layers[neuron.uuid] = outputLayer;
       }
     });
-    console.info( layers);
-    const sizeScale=10;
-    const sizeMin=20;
+    // console.info( layers);
+    const sizeScale = 12;
+    const sizeMin = 24;
     // Create elements for Cytoscape
     for (let i = 0; i < modelData.input; i++) {
       const id = `input-${i}`;
@@ -190,8 +194,8 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       const classes = hasSynapses ? "input-node" : "input-no-synapse-node";
 
-      const ns=neuronSizes[id]?neuronSizes[id]:1;
-      const size = Math.max( ns * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
+      const ns = neuronSizes[id] ? neuronSizes[id] : 1;
+      const size = Math.max(ns * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
 
       elements.push({
         data: {
@@ -199,6 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
           label: "",
           width: size,
           height: size,
+          type: "input",
           layer: layers[id],
         },
         classes: classes,
@@ -208,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
     modelData.neurons.forEach((neuron) => {
       const classes = neuron.type === "constant"
         ? "constant-node"
-        : `${neuron.type || "input"}-node ${neuron.squash}`;
+        : `${neuron.type}-node ${neuron.squash}`;
 
       const size = Math.max(neuronSizes[neuron.uuid] * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
 
@@ -217,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
           id: neuron.uuid,
           neuron,
           label: "",
-          type: neuron.type || "input",
+          type: neuron.type,
           width: size,
           height: size,
           layer: layers[neuron.uuid],
@@ -248,17 +253,15 @@ document.addEventListener("DOMContentLoaded", () => {
         concentric: function (node) {
           return node.data("layer");
         },
-        levelWidth: function (nodes) {
-          // console.log(nodes.length);
-          return 1;
+        levelWidth: function (_nodes) {
+          return 0.01;
         },
-        padding: 10,
+        padding: 1000,
       },
     });
 
     cy.on("tap", "node", function (event) {
       const node = event.target;
-      // console.log("Node clicked:", node.id());
       if (node.hasClass("highlighted")) {
         cy.elements().removeClass("faded").removeClass("highlighted");
       } else {
@@ -274,11 +277,11 @@ document.addEventListener("DOMContentLoaded", () => {
     cy.ready(() => {
       cy.nodes().forEach((node) => {
         const neuron = node.data("neuron");
-        if (!neuron){
-          console.info( `Node: ${node}`);
-          return;
-        }
+        // if (!neuron){
+        //   return;
+        // }
         const type = node.data("type");
+
         const alias = Object.keys(aliases).find(
           (key) => aliases[key] === node.data("id"),
         );
@@ -303,7 +306,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <div>
                 <strong>UUID:</strong> ${neuron.uuid}<br>
                 <strong>Bias:</strong> ${neuron.bias}<br>
-                <strong>Squash:</strong> ${neuron.squash}
+                <strong>Squash:</strong> ${neuron.squash}<br>
+                <strong>Depth:</strong> ${layers[neuron.uuid]}<br>
             </div>
           `;
         }
