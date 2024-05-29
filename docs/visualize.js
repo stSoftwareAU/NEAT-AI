@@ -275,7 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cy.nodes().forEach((node) => {
         const neuron = node.data("neuron");
         if (!neuron){
-          console.info( node);
+          console.info( `Node: ${node}`);
           return;
         }
         const type = node.data("type");
