@@ -91,7 +91,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = [];
     const backgroundColors = [];
 
-    for (let i = 0; i < inputCount; i++) {
+    for (let i = 0;
+      i < inputCount;
+      i++) {
       const id = `input-${i}`;
       const alias = aliases[id] || id;
       labels.push(alias);
