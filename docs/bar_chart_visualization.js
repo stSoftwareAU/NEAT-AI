@@ -71,11 +71,12 @@ document.addEventListener("DOMContentLoaded", () => {
     outputNeurons.forEach((neuron) => {
       propagateInfluence(neuron.uuid, 1);
     });
-
+    console.info("loading Aliases.json");
     fetch("models/Aliases.json")
       .then((response) => response.json())
       .then((data) => {
         Object.assign(aliases, data);
+        console.info("Aliases.json loaded");
         renderBarChart(influences, modelData.input, aliases);
       })
       .catch((error) => {
@@ -90,13 +91,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const labels = [];
     const data = [];
     const backgroundColors = [];
-
-    for (let i = 0;
-      i < inputCount;
-      i++) {
+    console.info("renderBarChart", aliases, influences, inputCount);
+    for (let i = 0; i < inputCount; i++) {
       const id = `input-${i}`;
-      const alias = aliases[id] || id;
-      labels.push(alias);
+      const alias = Object.keys(aliases).find(
+        (key) => aliases[key] === id,
+      );
+
+      if (alias) {
+        labels.push(alias);
+      } else {
+        labels.push(id);
+      }
       const influence = influences[id] || 0;
       data.push(influence);
       backgroundColors.push(
@@ -112,13 +118,15 @@ document.addEventListener("DOMContentLoaded", () => {
       type: "bar",
       data: {
         labels: labels,
-        datasets: [{
-          label: "Influence on Output Neurons",
-          data: data,
-          backgroundColor: backgroundColors,
-          borderColor: "rgba(54, 162, 235, 1)",
-          borderWidth: 1,
-        }],
+        datasets: [
+          {
+            label: "Influence on Output Neurons",
+            data: data,
+            backgroundColor: backgroundColors,
+            borderColor: "rgba(54, 162, 235, 1)",
+            borderWidth: 1,
+          },
+        ],
       },
       options: {
         indexAxis: "y", // Horizontal bar chart
