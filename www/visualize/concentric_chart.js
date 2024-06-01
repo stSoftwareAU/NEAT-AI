@@ -158,6 +158,9 @@ document.addEventListener("DOMContentLoaded", () => {
           height: size,
           type: "input",
           layer: layers[id],
+          influence: influences[id]
+            ? (influences[id] * 100).toFixed(2) + "%"
+            : "0%",
         },
         classes: classes,
       });
@@ -179,6 +182,9 @@ document.addEventListener("DOMContentLoaded", () => {
           width: size,
           height: size,
           layer: layers[neuron.uuid],
+          influence: influences[neuron.uuid]
+            ? (influences[neuron.uuid] * 100).toFixed(2) + "%"
+            : "0%",
         },
         classes: classes,
       });
@@ -242,6 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div>
                 <strong>UUID:</strong> ${node.data("id")}<br>
                 ${alias ? `<strong>Alias:</strong> ${alias}<br>` : ""}
+                <strong>Influence:</strong> ${node.data("influence")}
             </div>
           `;
         } else if (type === "constant") {
@@ -249,6 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div>
                 <strong>UUID:</strong> ${neuron.uuid}<br>
                 <strong>Bias:</strong> ${neuron.bias}<br>
+                <strong>Influence:</strong> ${node.data("influence")}
             </div>
           `;
         } else {
@@ -258,6 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <strong>Bias:</strong> ${neuron.bias}<br>
                 <strong>Squash:</strong> ${neuron.squash}<br>
                 <strong>Depth:</strong> ${layers[neuron.uuid]}<br>
+                <strong>Influence:</strong> ${node.data("influence")}
             </div>
           `;
         }
@@ -274,17 +283,22 @@ document.addEventListener("DOMContentLoaded", () => {
           container: "body",
         });
 
-        node.on("mouseover", (event) => {
+        const showTooltip = (event) => {
           const nodePosition = event.target.renderedPosition();
           popoverElement.style.position = "absolute";
           popoverElement.style.left = `${nodePosition.x + 10}px`;
           popoverElement.style.top = `${nodePosition.y + 10}px`;
           tooltip.show();
-        });
+        };
 
-        node.on("mouseout", () => {
+        const hideTooltip = () => {
           tooltip.hide();
-        });
+        };
+
+        node.on("mouseover", showTooltip);
+        node.on("mouseout", hideTooltip);
+        node.on("tap", showTooltip);
+        node.on("tap", hideTooltip);
       });
     });
 
