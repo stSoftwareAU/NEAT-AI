@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       labels.push(label);
-      data.push(influence);
+      data.push(influence * 100); // Convert to percentage
     }
 
     const trace = {

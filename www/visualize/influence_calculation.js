@@ -49,18 +49,25 @@ export function calculateInfluence(modelData) {
     (neuron) => neuron.type === "output",
   );
 
+  const initialInfluence = 1 / outputNeurons.length; // Use range 0..1
   outputNeurons.forEach((neuron) => {
-    propagateInfluence(neuron.uuid, 1);
+    propagateInfluence(neuron.uuid, initialInfluence);
   });
 
-  const totalInfluence = Object.values(influences).reduce(
-    (sum, value) => sum + value,
+  // Influence for input neurons should add up to 1
+  const inputInfluences = Object.keys(influences).filter((key) =>
+    key.startsWith("input-")
+  );
+  const inputTotalInfluence = inputInfluences.reduce(
+    (sum, key) => sum + influences[key],
     0,
   );
 
-  // Normalize to 100%
-  for (const key in influences) {
-    influences[key] = (influences[key] / totalInfluence) * 100;
+  // Normalize input neuron influences to 1 if they don't add up correctly
+  if (inputTotalInfluence !== 1) {
+    inputInfluences.forEach((key) => {
+      influences[key] /= inputTotalInfluence;
+    });
   }
 
   return influences;
