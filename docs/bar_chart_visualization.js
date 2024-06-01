@@ -87,7 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderBarChart(influences, inputCount, aliases) {
     const labels = [];
     const data = [];
-    const colors = [];
 
     for (let i = 0; i < inputCount; i++) {
       const id = `input-${i}`;
@@ -95,43 +94,31 @@ document.addEventListener("DOMContentLoaded", () => {
         (key) => aliases[key] === id,
       );
 
-      if (alias) {
-        labels.push(alias);
-      } else {
-        labels.push(id);
-      }
+      let label = alias || id;
       const influence = influences[id] || 0;
-      data.push(influence);
 
-      // Highlight observations without synapses
       if (influence === 0) {
-        colors.push("rgba(255, 165, 0, 0.5)"); // Light orange
-      } else {
-        colors.push("rgba(54, 162, 235, 0.7)"); // Default blue
+        label += '*';  // Append asterisk to labels with no synapses
       }
-    }
 
-    console.log(labels); // Debugging line
-    console.log(data); // Debugging line
+      labels.push(label);
+      data.push(influence);
+    }
 
     const trace = {
       x: data,
       y: labels,
-      type: "bar",
-      orientation: "h",
-      marker: {
-        color: colors,
-      },
+      type: 'bar',
+      orientation: 'h',
     };
 
     const layout = {
-      title: "Input Influence on Output Neurons",
       yaxis: {
         automargin: true,
-        autorange: "reversed", // Reverse the order of the labels
+        autorange: 'reversed', // Reverse the order of the labels
       },
       xaxis: {
-        title: "Influence",
+        title: 'Influence',
       },
       height: labels.length * 20, // Adjust height based on the number of labels
     };

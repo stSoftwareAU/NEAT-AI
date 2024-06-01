@@ -11,7 +11,7 @@
     "@stsoftware/tags": "jsr:@stsoftware/tags@^1.0.3"
   },
   "test": {
-    "include": ["**/*.ts"]
+    "include": ["test/**/*.ts"]
   },
   "lock": false
 }

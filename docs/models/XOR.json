@@ -1,0 +1,107 @@
+{
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "ff96c761-8914-406e-9460-7eafe8f9bfb3",
+      "bias": -0.0680643,
+      "squash": "IF"
+    },
+    {
+      "type": "hidden",
+      "uuid": "d0566229-91d5-455e-9f13-63e68090c45e",
+      "bias": 0.012402499999999999,
+      "squash": "GAUSSIAN"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.9965883999999999,
+      "squash": "ReLU6"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.1768108,
+      "fromUUID": "input-0",
+      "toUUID": "ff96c761-8914-406e-9460-7eafe8f9bfb3",
+      "type": "positive"
+    },
+    {
+      "weight": -1.4133094,
+      "fromUUID": "input-0",
+      "toUUID": "d0566229-91d5-455e-9f13-63e68090c45e"
+    },
+    {
+      "weight": 0.007050989013786466,
+      "fromUUID": "input-1",
+      "toUUID": "ff96c761-8914-406e-9460-7eafe8f9bfb3",
+      "type": "condition"
+    },
+    {
+      "weight": -3.0609496,
+      "fromUUID": "input-1",
+      "toUUID": "d0566229-91d5-455e-9f13-63e68090c45e"
+    },
+    {
+      "weight": -0.5433266,
+      "fromUUID": "input-1",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.057478375456741476,
+      "fromUUID": "ff96c761-8914-406e-9460-7eafe8f9bfb3",
+      "toUUID": "ff96c761-8914-406e-9460-7eafe8f9bfb3",
+      "type": "negative"
+    },
+    {
+      "weight": -2.4579912,
+      "fromUUID": "ff96c761-8914-406e-9460-7eafe8f9bfb3",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -1.1765827,
+      "fromUUID": "d0566229-91d5-455e-9f13-63e68090c45e",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 2,
+  "output": 1,
+  "tags": [
+    {
+      "name": "untrained-error",
+      "value": "0.08840399319249603"
+    },
+    {
+      "name": "untrained-score",
+      "value": "-0.08948021467191426"
+    },
+    {
+      "name": "approach",
+      "value": "fine"
+    },
+    {
+      "name": "trainID",
+      "value": "5d895eff"
+    },
+    {
+      "name": "trained",
+      "value": "YES"
+    },
+    {
+      "name": "error",
+      "value": "0.04465974584722735"
+    },
+    {
+      "name": "score",
+      "value": "-0.0457351210648858"
+    },
+    {
+      "name": "adjusted",
+      "value": "4 weights, 1 bias"
+    },
+    {
+      "name": "old-score",
+      "value": "-0.056613940908180366"
+    }
+  ]
+}

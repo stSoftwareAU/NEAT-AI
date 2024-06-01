@@ -46,11 +46,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-  backButton.addEventListener("click", () => {
-    modelSelection.classList.remove("d-none");
-    visualizationContainer.classList.add("d-none");
-  });
-
+    backButton.addEventListener("click", () => {
+      window.history.back();
+    });
+    
   function loadModel(modelName) {
     fetch(`models/${modelName}.json`)
       .then((response) => response.json())
