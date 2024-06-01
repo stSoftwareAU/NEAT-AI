@@ -592,6 +592,12 @@ Deno.test("NARX Sequence", async () => {
       feedbackLoop: true,
     });
     if (attempts < 12) {
+      const evolveDir = ".evolve";
+      ensureDirSync(evolveDir);
+      Deno.writeTextFileSync(
+        ".evolve/NARX.json",
+        JSON.stringify(creature.exportJSON(), null, 2),
+      );
       if (result.error < 0.005) break;
       console.info(
         `Error is: ${result.error}, required: ${0.005} RETRY ${attempts} of 12`,
@@ -661,7 +667,13 @@ Deno.test("evolveSHIFT", async () => {
     set.push({ input: [x, y, z], output: [z, x, y] });
   }
 
-  await evolveSet(set, 500, 0.03);
+  const creature = await evolveSet(set, 500, 0.03);
+  const evolveDir = ".evolve";
+  ensureDirSync(evolveDir);
+  Deno.writeTextFileSync(
+    ".evolve/SHIFT.json",
+    JSON.stringify(creature.exportJSON(), null, 2),
+  );
 });
 
 Deno.test("from-to", () => {

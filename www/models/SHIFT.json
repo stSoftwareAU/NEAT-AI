@@ -1,0 +1,207 @@
+{
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "30c08895-18c6-4e2d-b5f5-9ba1f1f83694",
+      "bias": 20.8204332,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "285f4033-294a-4635-ba7a-4c53c70c8144",
+      "bias": 3.7661311,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "94855d47-7df5-4ca7-a873-48db69166ce3",
+      "bias": -19.686337299999998,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "1ae8e5cd-7a20-4686-8828-f133e504c0e2",
+      "bias": -1.4082698999999999,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.0153358,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "bias": 0.0602956,
+      "squash": "ELU"
+    },
+    {
+      "type": "output",
+      "uuid": "output-2",
+      "bias": -2.1953004,
+      "squash": "LOGISTIC"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": -0.17537129999999998,
+      "fromUUID": "input-0",
+      "toUUID": "30c08895-18c6-4e2d-b5f5-9ba1f1f83694"
+    },
+    {
+      "weight": 1.7563296,
+      "fromUUID": "input-0",
+      "toUUID": "285f4033-294a-4635-ba7a-4c53c70c8144"
+    },
+    {
+      "weight": -1.1059782,
+      "fromUUID": "input-0",
+      "toUUID": "94855d47-7df5-4ca7-a873-48db69166ce3"
+    },
+    {
+      "weight": -4.2148683,
+      "fromUUID": "input-0",
+      "toUUID": "1ae8e5cd-7a20-4686-8828-f133e504c0e2"
+    },
+    {
+      "weight": -0.014657499999999999,
+      "fromUUID": "input-0",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 1,
+      "fromUUID": "input-0",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": 3.1815537999999997,
+      "fromUUID": "input-1",
+      "toUUID": "30c08895-18c6-4e2d-b5f5-9ba1f1f83694"
+    },
+    {
+      "weight": -0.6279747,
+      "fromUUID": "input-1",
+      "toUUID": "285f4033-294a-4635-ba7a-4c53c70c8144"
+    },
+    {
+      "weight": -0.5506641,
+      "fromUUID": "input-1",
+      "toUUID": "94855d47-7df5-4ca7-a873-48db69166ce3"
+    },
+    {
+      "weight": -1.4411151,
+      "fromUUID": "input-1",
+      "toUUID": "1ae8e5cd-7a20-4686-8828-f133e504c0e2"
+    },
+    {
+      "weight": 4.868114299999999,
+      "fromUUID": "input-1",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 4.9575862,
+      "fromUUID": "input-2",
+      "toUUID": "30c08895-18c6-4e2d-b5f5-9ba1f1f83694"
+    },
+    {
+      "weight": 1.929694,
+      "fromUUID": "input-2",
+      "toUUID": "285f4033-294a-4635-ba7a-4c53c70c8144"
+    },
+    {
+      "weight": -0.6840769999999999,
+      "fromUUID": "input-2",
+      "toUUID": "94855d47-7df5-4ca7-a873-48db69166ce3"
+    },
+    {
+      "weight": -2.1558615999999997,
+      "fromUUID": "input-2",
+      "toUUID": "1ae8e5cd-7a20-4686-8828-f133e504c0e2"
+    },
+    {
+      "weight": -0.0753291,
+      "fromUUID": "30c08895-18c6-4e2d-b5f5-9ba1f1f83694",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.0792934,
+      "fromUUID": "30c08895-18c6-4e2d-b5f5-9ba1f1f83694",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -0.45527829999999997,
+      "fromUUID": "30c08895-18c6-4e2d-b5f5-9ba1f1f83694",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.0972122,
+      "fromUUID": "285f4033-294a-4635-ba7a-4c53c70c8144",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.0413887,
+      "fromUUID": "285f4033-294a-4635-ba7a-4c53c70c8144",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -0.06746819999999999,
+      "fromUUID": "285f4033-294a-4635-ba7a-4c53c70c8144",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 1.1666986,
+      "fromUUID": "94855d47-7df5-4ca7-a873-48db69166ce3",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 1.1232928,
+      "fromUUID": "94855d47-7df5-4ca7-a873-48db69166ce3",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -2.4165343,
+      "fromUUID": "94855d47-7df5-4ca7-a873-48db69166ce3",
+      "toUUID": "output-2"
+    },
+    {
+      "weight": 0.5482804,
+      "fromUUID": "1ae8e5cd-7a20-4686-8828-f133e504c0e2",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.0116513,
+      "fromUUID": "1ae8e5cd-7a20-4686-8828-f133e504c0e2",
+      "toUUID": "output-1"
+    },
+    {
+      "weight": -3.9346278999999997,
+      "fromUUID": "1ae8e5cd-7a20-4686-8828-f133e504c0e2",
+      "toUUID": "output-2"
+    }
+  ],
+  "input": 3,
+  "output": 3,
+  "tags": [
+    {
+      "name": "error",
+      "value": "0.028579656457251735"
+    },
+    {
+      "name": "score",
+      "value": "-0.03184688893854166"
+    },
+    {
+      "name": "approach",
+      "value": "fine"
+    },
+    {
+      "name": "adjusted",
+      "value": "23 weights, 6 biases"
+    },
+    {
+      "name": "old-score",
+      "value": "-0.04309363288697278"
+    }
+  ]
+}

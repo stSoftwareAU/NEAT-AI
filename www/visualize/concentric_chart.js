@@ -1,5 +1,9 @@
 // deno-lint-ignore-file no-window no-window-prefix
-import { calculateInfluence, loadAliases } from "./influence_calculation.js";
+import {
+  calculateInfluence,
+  formatInfluence,
+  loadAliases,
+} from "./influence_calculation.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const modelList = document.getElementById("modelList");
@@ -136,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    const sizeScale = 12;
+    const sizeScale = 500; // Adjusted size scaling factor
     const sizeMin = 24;
 
     // Create elements for Cytoscape
@@ -159,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
           type: "input",
           layer: layers[id],
           influence: influences[id]
-            ? (influences[id] * 100).toFixed(2) + "%"
+            ? formatInfluence(influences[id] * 100)
             : "0%",
         },
         classes: classes,
@@ -183,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
           height: size,
           layer: layers[neuron.uuid],
           influence: influences[neuron.uuid]
-            ? (influences[neuron.uuid] * 100).toFixed(2) + "%"
+            ? formatInfluence(influences[neuron.uuid] * 100)
             : "0%",
         },
         classes: classes,
@@ -295,10 +299,8 @@ document.addEventListener("DOMContentLoaded", () => {
           tooltip.hide();
         };
 
-        node.on("mouseover", showTooltip);
+        node.on("mouseover tap", showTooltip);
         node.on("mouseout", hideTooltip);
-        node.on("tap", showTooltip);
-        node.on("tap", hideTooltip);
       });
     });
 

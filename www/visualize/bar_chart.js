@@ -1,4 +1,8 @@
-import { calculateInfluence, loadAliases } from "./influence_calculation.js";
+import {
+  calculateInfluence,
+  formatInfluence,
+  loadAliases,
+} from "./influence_calculation.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const backButton = document.getElementById("backButton");
@@ -48,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
       y: labels,
       type: "bar",
       orientation: "h",
-      text: data.map((value) => `${value.toFixed(2)}%`),
+      text: data.map((value) => `${formatInfluence(value)}`),
       textposition: "auto",
     };
 

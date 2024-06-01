@@ -84,3 +84,14 @@ export function loadAliases(callback) {
       callback({});
     });
 }
+
+export function formatInfluence(influence) {
+  if (influence < 0.01) {
+    return influence.toExponential(2) + "%";
+  } else if (influence < 1) {
+    return influence.toFixed(3) + "%";
+  } else if (influence < 10) {
+    return influence.toFixed(2) + "%";
+  }
+  return influence.toFixed(0) + "%";
+}
