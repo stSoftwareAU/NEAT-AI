@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 export DENO_FUTURE=1
-deno fmt src test bench mod.ts docs
+deno fmt src test bench mod.ts www
 deno lint --fix src test bench mod.ts
 rm -rf .trace .test .coverage
 

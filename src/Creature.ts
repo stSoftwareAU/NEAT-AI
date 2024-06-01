@@ -107,7 +107,7 @@ export class Creature implements CreatureInternal {
    * Debug mode flag.
    * @type {boolean}
    */
-  DEBUG = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
+  DEBUG: boolean = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
 
   /**
    * Constructs a new Creature instance.

@@ -1,7 +1,7 @@
 # NEAT Neural Network for DenoJS
 
 <p align="left">
-  <img width="100" height="100" src="docs/logo.png" align="right">
+  <img width="100" height="100" src="www/logo.png" align="right">
 This project is a unique implementation of a neural network based on the NEAT (NeuroEvolution of Augmenting Topologies) algorithm, written in DenoJS using TypeScript.
 </p>
 
@@ -21,7 +21,7 @@ This project is a unique implementation of a neural network based on the NEAT (N
 
 7. **CRISPR**: Allows injection of genes into a population of creatures during evolution. This feature can introduce new traits and potentially improve the performance of the population. More about [CRISPR](https://en.wikipedia.org/wiki/CRISPR).
 
-8. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/visualize.html)**
+8. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
 
 ## Usage
 

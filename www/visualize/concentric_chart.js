@@ -1,4 +1,10 @@
 // deno-lint-ignore-file no-window no-window-prefix
+import {
+  calculateInfluence,
+  formatInfluence,
+  loadAliases,
+} from "./influence_calculation.js";
+
 document.addEventListener("DOMContentLoaded", () => {
   const modelList = document.getElementById("modelList");
   const graphContainer = document.getElementById("graph-container");
@@ -10,24 +16,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let aliases = {};
 
   // Load aliases if available
-  fetch("models/Aliases.json")
-    .then((response) => {
-      if (response.ok) {
-        return response.json();
-      } else {
-        console.warn("Aliases.json not found. Proceeding without aliases.");
-        return {};
-      }
-    })
-    .then((data) => {
-      aliases = data;
-    })
-    .catch((error) => {
-      console.error("Error loading Aliases.json:", error);
-    });
+  loadAliases((data) => {
+    aliases = data;
+  });
 
   // Load models from index.json
-  fetch("models/index.json")
+  fetch("../models/index.json")
     .then((response) => response.json())
     .then((models) => {
       models.forEach((model) => {
@@ -47,75 +41,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   backButton.addEventListener("click", () => {
-    modelSelection.classList.remove("d-none");
-    visualizationContainer.classList.add("d-none");
+    window.history.back();
   });
 
   function loadModel(modelName) {
-    fetch(`models/${modelName}.json`)
+    fetch(`../models/${modelName}.json`)
       .then((response) => response.json())
       .then((modelData) => visualizeModel(modelData))
       .catch((error) => console.error("Error loading model:", error));
-  }
-
-  function calculateNeuronSizes(modelData) {
-    const neuronSizes = {};
-    const incomingSynapsesMap = new Map();
-
-    modelData.neurons.forEach((neuron) => {
-      incomingSynapsesMap.set(neuron.uuid, []);
-    });
-
-    modelData.synapses.forEach((synapse) => {
-      if (incomingSynapsesMap.has(synapse.toUUID)) {
-        incomingSynapsesMap.get(synapse.toUUID).push(synapse);
-      } else {
-        console.warn(`Neuron ${synapse.toUUID} not found in map.`);
-      }
-    });
-
-    function propagateSize(neuronId, size) {
-      if (neuronSizes[neuronId] === undefined) {
-        neuronSizes[neuronId] = 0;
-      }
-      neuronSizes[neuronId] += size;
-
-      const incomingSynapses = incomingSynapsesMap.get(neuronId);
-      if (!incomingSynapses || incomingSynapses.length === 0) {
-        return;
-      }
-
-      const totalIncomingWeight = incomingSynapses.reduce(
-        (sum, synapse) => sum + Math.abs(synapse.weight),
-        0,
-      );
-
-      if (totalIncomingWeight === 0) {
-        return;
-      }
-
-      incomingSynapses.forEach((synapse) => {
-        const proportion = Math.abs(synapse.weight) / totalIncomingWeight;
-        propagateSize(synapse.fromUUID, size * proportion);
-      });
-    }
-
-    const outputNeurons = modelData.neurons.filter(
-      (neuron) => neuron.type === "output",
-    );
-    const outputSize = 12 / outputNeurons.length;
-    outputNeurons.forEach((neuron) => {
-      propagateSize(neuron.uuid, outputSize);
-    });
-
-    return neuronSizes;
   }
 
   function visualizeModel(modelData) {
     modelSelection.classList.add("d-none");
     visualizationContainer.classList.remove("d-none");
 
-    const neuronSizes = calculateNeuronSizes(modelData);
+    const influences = calculateInfluence(modelData);
 
     const elements = [];
     const layers = {};
@@ -137,26 +77,42 @@ document.addEventListener("DOMContentLoaded", () => {
       layers[id] = hasSynapses ? 2 : 1;
     }
 
-    // Helper function to calculate the layer of a neuron
+    // Helper function to calculate the layer of a neuron using an iterative approach
     function calculateLayer(neuronId, type) {
-      if (layers[neuronId] !== undefined) {
-        return layers[neuronId];
-      }
+      const stack = [neuronId];
+      const visited = new Set();
 
-      const incomingSynapses = modelData.synapses.filter(
-        (synapse) => synapse.toUUID === neuronId,
-      );
-
-      let maxLayer = Math.max(
-        ...incomingSynapses.map((synapse) => calculateLayer(synapse.fromUUID)),
-      );
-
-      if (type === "output" || type === "hidden") {
-        if (hasConstants && maxLayer < 4) {
-          maxLayer += 1;
+      while (stack.length > 0) {
+        const currentNeuron = stack.pop();
+        if (visited.has(currentNeuron)) {
+          continue;
         }
+        visited.add(currentNeuron);
+
+        if (layers[currentNeuron] !== undefined) {
+          continue;
+        }
+
+        const incomingSynapses = modelData.synapses.filter(
+          (synapse) => synapse.toUUID === currentNeuron,
+        );
+
+        let maxLayer = Math.max(
+          ...incomingSynapses.map((synapse) => {
+            if (!visited.has(synapse.fromUUID)) {
+              stack.push(synapse.fromUUID);
+            }
+            return layers[synapse.fromUUID] || 0;
+          }),
+        );
+
+        if (type === "output" || type === "hidden") {
+          if (hasConstants && maxLayer < 4) {
+            maxLayer += 1;
+          }
+        }
+        layers[currentNeuron] = maxLayer + 1;
       }
-      layers[neuronId] = maxLayer + 1;
 
       return layers[neuronId];
     }
@@ -183,9 +139,10 @@ document.addEventListener("DOMContentLoaded", () => {
         layers[neuron.uuid] = outputLayer;
       }
     });
-    // console.info( layers);
-    const sizeScale = 12;
+
+    const sizeScale = 500; // Adjusted size scaling factor
     const sizeMin = 24;
+
     // Create elements for Cytoscape
     for (let i = 0; i < modelData.input; i++) {
       const id = `input-${i}`;
@@ -194,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       const classes = hasSynapses ? "input-node" : "input-no-synapse-node";
 
-      const ns = neuronSizes[id] ? neuronSizes[id] : 1;
+      const ns = influences[id] ? influences[id] : 1;
       const size = Math.max(ns * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
 
       elements.push({
@@ -205,6 +162,9 @@ document.addEventListener("DOMContentLoaded", () => {
           height: size,
           type: "input",
           layer: layers[id],
+          influence: influences[id]
+            ? formatInfluence(influences[id] * 100)
+            : "0%",
         },
         classes: classes,
       });
@@ -215,7 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ? "constant-node"
         : `${neuron.type}-node ${neuron.squash}`;
 
-      const size = Math.max(neuronSizes[neuron.uuid] * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
+      const size = Math.max(influences[neuron.uuid] * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
 
       elements.push({
         data: {
@@ -226,6 +186,9 @@ document.addEventListener("DOMContentLoaded", () => {
           width: size,
           height: size,
           layer: layers[neuron.uuid],
+          influence: influences[neuron.uuid]
+            ? formatInfluence(influences[neuron.uuid] * 100)
+            : "0%",
         },
         classes: classes,
       });
@@ -277,9 +240,6 @@ document.addEventListener("DOMContentLoaded", () => {
     cy.ready(() => {
       cy.nodes().forEach((node) => {
         const neuron = node.data("neuron");
-        // if (!neuron){
-        //   return;
-        // }
         const type = node.data("type");
 
         const alias = Object.keys(aliases).find(
@@ -292,6 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div>
                 <strong>UUID:</strong> ${node.data("id")}<br>
                 ${alias ? `<strong>Alias:</strong> ${alias}<br>` : ""}
+                <strong>Influence:</strong> ${node.data("influence")}
             </div>
           `;
         } else if (type === "constant") {
@@ -299,6 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div>
                 <strong>UUID:</strong> ${neuron.uuid}<br>
                 <strong>Bias:</strong> ${neuron.bias}<br>
+                <strong>Influence:</strong> ${node.data("influence")}
             </div>
           `;
         } else {
@@ -308,6 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <strong>Bias:</strong> ${neuron.bias}<br>
                 <strong>Squash:</strong> ${neuron.squash}<br>
                 <strong>Depth:</strong> ${layers[neuron.uuid]}<br>
+                <strong>Influence:</strong> ${node.data("influence")}
             </div>
           `;
         }
@@ -324,17 +287,20 @@ document.addEventListener("DOMContentLoaded", () => {
           container: "body",
         });
 
-        node.on("mouseover", (event) => {
+        const showTooltip = (event) => {
           const nodePosition = event.target.renderedPosition();
           popoverElement.style.position = "absolute";
           popoverElement.style.left = `${nodePosition.x + 10}px`;
           popoverElement.style.top = `${nodePosition.y + 10}px`;
           tooltip.show();
-        });
+        };
 
-        node.on("mouseout", () => {
+        const hideTooltip = () => {
           tooltip.hide();
-        });
+        };
+
+        node.on("mouseover tap", showTooltip);
+        node.on("mouseout", hideTooltip);
       });
     });
 

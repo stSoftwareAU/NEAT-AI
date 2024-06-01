@@ -76,7 +76,7 @@ async function evolveSet(
   };
 
   let resultError = Number.MAX_VALUE;
-  let lastCreature: Creature;
+  let lastCreature: Creature | null = null;
   for (let attempt = attempts; attempt--;) {
     lastCreature = new Creature(set[0].input.length, set[0].output.length, {
       layers: [
@@ -93,6 +93,7 @@ async function evolveSet(
     );
   }
   assert(resultError <= error, `expected: ${error}, was: ${resultError}`);
+  assert(lastCreature instanceof Creature, "Last creature is not a creature");
 
   set.forEach((dr) => {
     const nt0 = lastCreature.activate(dr.input)[0];
@@ -154,6 +155,8 @@ async function evolveSet(
         r2,
     );
   });
+
+  return lastCreature;
 }
 
 async function trainSet(
@@ -400,7 +403,7 @@ Deno.test("evolve_AND_gate", async () => {
 });
 
 Deno.test("evolve XORgate", async () => {
-  await evolveSet(
+  const creature = await evolveSet(
     [
       { input: [0, 0], output: [0] },
       { input: [0, 1], output: [1] },
@@ -410,6 +413,12 @@ Deno.test("evolve XORgate", async () => {
     1_000,
     0.05,
     100,
+  );
+  const evolveDir = ".evolve";
+  ensureDirSync(evolveDir);
+  Deno.writeTextFileSync(
+    ".evolve/XOR.json",
+    JSON.stringify(creature.exportJSON(), null, 2),
   );
 });
 
@@ -583,6 +592,12 @@ Deno.test("NARX Sequence", async () => {
       feedbackLoop: true,
     });
     if (attempts < 12) {
+      const evolveDir = ".evolve";
+      ensureDirSync(evolveDir);
+      Deno.writeTextFileSync(
+        ".evolve/NARX.json",
+        JSON.stringify(creature.exportJSON(), null, 2),
+      );
       if (result.error < 0.005) break;
       console.info(
         `Error is: ${result.error}, required: ${0.005} RETRY ${attempts} of 12`,
@@ -652,7 +667,13 @@ Deno.test("evolveSHIFT", async () => {
     set.push({ input: [x, y, z], output: [z, x, y] });
   }
 
-  await evolveSet(set, 500, 0.03);
+  const creature = await evolveSet(set, 500, 0.03);
+  const evolveDir = ".evolve";
+  ensureDirSync(evolveDir);
+  Deno.writeTextFileSync(
+    ".evolve/SHIFT.json",
+    JSON.stringify(creature.exportJSON(), null, 2),
+  );
 });
 
 Deno.test("from-to", () => {
