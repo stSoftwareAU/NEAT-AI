@@ -48,6 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
       y: labels,
       type: "bar",
       orientation: "h",
+      text: data.map((value) => `${value.toFixed(2)}%`),
+      textposition: "auto",
     };
 
     const layout = {
@@ -56,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
         autorange: "reversed", // Reverse the order of the labels
       },
       xaxis: {
-        title: "Influence",
+        title: "Influence (%)",
       },
       height: Math.max(labels.length * 20, 250),
     };

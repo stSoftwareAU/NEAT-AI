@@ -53,6 +53,16 @@ export function calculateInfluence(modelData) {
     propagateInfluence(neuron.uuid, 1);
   });
 
+  const totalInfluence = Object.values(influences).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
+
+  // Normalize to 100%
+  for (const key in influences) {
+    influences[key] = (influences[key] / totalInfluence) * 100;
+  }
+
   return influences;
 }
 
