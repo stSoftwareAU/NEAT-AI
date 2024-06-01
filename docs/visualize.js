@@ -46,10 +46,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    backButton.addEventListener("click", () => {
-      window.history.back();
-    });
-    
+  backButton.addEventListener("click", () => {
+    window.history.back();
+  });
+
   function loadModel(modelName) {
     fetch(`models/${modelName}.json`)
       .then((response) => response.json())
