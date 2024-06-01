@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const backButton = document.getElementById("backButton");
-  const barChartCanvas = document.getElementById("barChart");
+  const barChartContainer = document.getElementById("barChartContainer");
 
   backButton.addEventListener("click", () => {
     window.history.back();
@@ -12,8 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (modelParam) {
     loadModel(modelParam);
   }
-
-  let barChart; // Variable to hold the chart instance
 
   function loadModel(modelName) {
     fetch(`models/${modelName}.json`)
@@ -71,12 +69,11 @@ document.addEventListener("DOMContentLoaded", () => {
     outputNeurons.forEach((neuron) => {
       propagateInfluence(neuron.uuid, 1);
     });
-    console.info("loading Aliases.json");
+
     fetch("models/Aliases.json")
       .then((response) => response.json())
       .then((data) => {
         Object.assign(aliases, data);
-        console.info("Aliases.json loaded");
         renderBarChart(influences, modelData.input, aliases);
       })
       .catch((error) => {
@@ -90,8 +87,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderBarChart(influences, inputCount, aliases) {
     const labels = [];
     const data = [];
-    const backgroundColors = [];
-    console.info("renderBarChart", aliases, influences, inputCount);
+    const colors = [];
+
     for (let i = 0; i < inputCount; i++) {
       const id = `input-${i}`;
       const alias = Object.keys(aliases).find(
@@ -105,40 +102,41 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const influence = influences[id] || 0;
       data.push(influence);
-      backgroundColors.push(
-        influence === 0 ? "lightyellow" : "rgba(54, 162, 235, 0.2)",
-      );
+
+      // Highlight observations without synapses
+      if (influence === 0) {
+        colors.push("rgba(255, 165, 0, 0.5)"); // Light orange
+      } else {
+        colors.push("rgba(54, 162, 235, 0.7)"); // Default blue
+      }
     }
 
-    if (barChart) {
-      barChart.destroy(); // Destroy the existing chart if it exists
-    }
+    console.log(labels); // Debugging line
+    console.log(data); // Debugging line
 
-    barChart = new Chart(barChartCanvas, {
+    const trace = {
+      x: data,
+      y: labels,
       type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: "Influence on Output Neurons",
-            data: data,
-            backgroundColor: backgroundColors,
-            borderColor: "rgba(54, 162, 235, 1)",
-            borderWidth: 1,
-          },
-        ],
+      orientation: "h",
+      marker: {
+        color: colors,
       },
-      options: {
-        indexAxis: "y", // Horizontal bar chart
-        scales: {
-          x: {
-            beginAtZero: true,
-          },
-        },
-        responsive: true,
-        maintainAspectRatio: false,
+    };
+
+    const layout = {
+      title: "Input Influence on Output Neurons",
+      yaxis: {
+        automargin: true,
+        autorange: "reversed", // Reverse the order of the labels
       },
-    });
+      xaxis: {
+        title: "Influence",
+      },
+      height: labels.length * 20, // Adjust height based on the number of labels
+    };
+
+    Plotly.newPlot(barChartContainer, [trace], layout);
   }
 
   function visualizeModel(modelData) {
