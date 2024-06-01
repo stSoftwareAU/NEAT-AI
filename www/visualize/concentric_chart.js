@@ -6,7 +6,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const graphContainer = document.getElementById("graph-container");
   const backButton = document.getElementById("backButton");
   const modelSelection = document.getElementById("modelSelection");
-  const visualizationContainer = document.getElementById("visualizationContainer");
+  const visualizationContainer = document.getElementById(
+    "visualizationContainer",
+  );
   let aliases = {};
 
   // Load aliases if available
@@ -71,26 +73,42 @@ document.addEventListener("DOMContentLoaded", () => {
       layers[id] = hasSynapses ? 2 : 1;
     }
 
-    // Helper function to calculate the layer of a neuron
+    // Helper function to calculate the layer of a neuron using an iterative approach
     function calculateLayer(neuronId, type) {
-      if (layers[neuronId] !== undefined) {
-        return layers[neuronId];
-      }
+      const stack = [neuronId];
+      const visited = new Set();
 
-      const incomingSynapses = modelData.synapses.filter(
-        (synapse) => synapse.toUUID === neuronId,
-      );
-
-      let maxLayer = Math.max(
-        ...incomingSynapses.map((synapse) => calculateLayer(synapse.fromUUID)),
-      );
-
-      if (type === "output" || type === "hidden") {
-        if (hasConstants && maxLayer < 4) {
-          maxLayer += 1;
+      while (stack.length > 0) {
+        const currentNeuron = stack.pop();
+        if (visited.has(currentNeuron)) {
+          continue;
         }
+        visited.add(currentNeuron);
+
+        if (layers[currentNeuron] !== undefined) {
+          continue;
+        }
+
+        const incomingSynapses = modelData.synapses.filter(
+          (synapse) => synapse.toUUID === currentNeuron,
+        );
+
+        let maxLayer = Math.max(
+          ...incomingSynapses.map((synapse) => {
+            if (!visited.has(synapse.fromUUID)) {
+              stack.push(synapse.fromUUID);
+            }
+            return layers[synapse.fromUUID] || 0;
+          }),
+        );
+
+        if (type === "output" || type === "hidden") {
+          if (hasConstants && maxLayer < 4) {
+            maxLayer += 1;
+          }
+        }
+        layers[currentNeuron] = maxLayer + 1;
       }
-      layers[neuronId] = maxLayer + 1;
 
       return layers[neuronId];
     }
