@@ -17,12 +17,12 @@ document.addEventListener("DOMContentLoaded", () => {
         colLinks.classList.add("col-9");
 
         const concentricLink = document.createElement("a");
-        concentricLink.href = `visualize.html?MODEL=${model}`;
+        concentricLink.href = `visualize/concentric_chart.html?MODEL=${model}`;
         concentricLink.textContent = "Concentric";
         concentricLink.classList.add("btn", "btn-primary", "me-2");
 
         const barLink = document.createElement("a");
-        barLink.href = `bar_chart_visualization.html?MODEL=${model}`;
+        barLink.href = `visualize/bar_chart.html?MODEL=${model}`;
         barLink.textContent = "Bar";
         barLink.classList.add("btn", "btn-secondary");
 

@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadModel(modelName) {
-    fetch(`models/${modelName}.json`)
+    fetch(`../models/${modelName}.json`)
       .then((response) => response.json())
       .then((modelData) => visualizeModel(modelData))
       .catch((error) => console.error("Error loading model:", error));
@@ -42,9 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
       labels.push(label);
       data.push(influence);
     }
-
-    // console.log("Labels:", labels); // Debugging line
-    // console.log("Data:", data); // Debugging line
 
     const trace = {
       x: data,

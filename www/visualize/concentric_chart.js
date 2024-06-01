@@ -1,33 +1,21 @@
 // deno-lint-ignore-file no-window no-window-prefix
+import { calculateInfluence, loadAliases } from "./influence_calculation.js";
+
 document.addEventListener("DOMContentLoaded", () => {
   const modelList = document.getElementById("modelList");
   const graphContainer = document.getElementById("graph-container");
   const backButton = document.getElementById("backButton");
   const modelSelection = document.getElementById("modelSelection");
-  const visualizationContainer = document.getElementById(
-    "visualizationContainer",
-  );
+  const visualizationContainer = document.getElementById("visualizationContainer");
   let aliases = {};
 
   // Load aliases if available
-  fetch("models/Aliases.json")
-    .then((response) => {
-      if (response.ok) {
-        return response.json();
-      } else {
-        console.warn("Aliases.json not found. Proceeding without aliases.");
-        return {};
-      }
-    })
-    .then((data) => {
-      aliases = data;
-    })
-    .catch((error) => {
-      console.error("Error loading Aliases.json:", error);
-    });
+  loadAliases((data) => {
+    aliases = data;
+  });
 
   // Load models from index.json
-  fetch("models/index.json")
+  fetch("../models/index.json")
     .then((response) => response.json())
     .then((models) => {
       models.forEach((model) => {
@@ -51,70 +39,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function loadModel(modelName) {
-    fetch(`models/${modelName}.json`)
+    fetch(`../models/${modelName}.json`)
       .then((response) => response.json())
       .then((modelData) => visualizeModel(modelData))
       .catch((error) => console.error("Error loading model:", error));
-  }
-
-  function calculateNeuronSizes(modelData) {
-    const neuronSizes = {};
-    const incomingSynapsesMap = new Map();
-
-    modelData.neurons.forEach((neuron) => {
-      incomingSynapsesMap.set(neuron.uuid, []);
-    });
-
-    modelData.synapses.forEach((synapse) => {
-      if (incomingSynapsesMap.has(synapse.toUUID)) {
-        incomingSynapsesMap.get(synapse.toUUID).push(synapse);
-      } else {
-        console.warn(`Neuron ${synapse.toUUID} not found in map.`);
-      }
-    });
-
-    function propagateSize(neuronId, size) {
-      if (neuronSizes[neuronId] === undefined) {
-        neuronSizes[neuronId] = 0;
-      }
-      neuronSizes[neuronId] += size;
-
-      const incomingSynapses = incomingSynapsesMap.get(neuronId);
-      if (!incomingSynapses || incomingSynapses.length === 0) {
-        return;
-      }
-
-      const totalIncomingWeight = incomingSynapses.reduce(
-        (sum, synapse) => sum + Math.abs(synapse.weight),
-        0,
-      );
-
-      if (totalIncomingWeight === 0) {
-        return;
-      }
-
-      incomingSynapses.forEach((synapse) => {
-        const proportion = Math.abs(synapse.weight) / totalIncomingWeight;
-        propagateSize(synapse.fromUUID, size * proportion);
-      });
-    }
-
-    const outputNeurons = modelData.neurons.filter(
-      (neuron) => neuron.type === "output",
-    );
-    const outputSize = 12 / outputNeurons.length;
-    outputNeurons.forEach((neuron) => {
-      propagateSize(neuron.uuid, outputSize);
-    });
-
-    return neuronSizes;
   }
 
   function visualizeModel(modelData) {
     modelSelection.classList.add("d-none");
     visualizationContainer.classList.remove("d-none");
 
-    const neuronSizes = calculateNeuronSizes(modelData);
+    const influences = calculateInfluence(modelData);
 
     const elements = [];
     const layers = {};
@@ -182,9 +117,10 @@ document.addEventListener("DOMContentLoaded", () => {
         layers[neuron.uuid] = outputLayer;
       }
     });
-    // console.info( layers);
+
     const sizeScale = 12;
     const sizeMin = 24;
+
     // Create elements for Cytoscape
     for (let i = 0; i < modelData.input; i++) {
       const id = `input-${i}`;
@@ -193,7 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       const classes = hasSynapses ? "input-node" : "input-no-synapse-node";
 
-      const ns = neuronSizes[id] ? neuronSizes[id] : 1;
+      const ns = influences[id] ? influences[id] : 1;
       const size = Math.max(ns * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
 
       elements.push({
@@ -214,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ? "constant-node"
         : `${neuron.type}-node ${neuron.squash}`;
 
-      const size = Math.max(neuronSizes[neuron.uuid] * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
+      const size = Math.max(influences[neuron.uuid] * sizeScale, sizeMin); // Apply scaling factor to ensure visibility
 
       elements.push({
         data: {
@@ -276,9 +212,6 @@ document.addEventListener("DOMContentLoaded", () => {
     cy.ready(() => {
       cy.nodes().forEach((node) => {
         const neuron = node.data("neuron");
-        // if (!neuron){
-        //   return;
-        // }
         const type = node.data("type");
 
         const alias = Object.keys(aliases).find(

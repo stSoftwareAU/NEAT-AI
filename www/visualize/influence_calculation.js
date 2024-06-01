@@ -53,12 +53,11 @@ export function calculateInfluence(modelData) {
     propagateInfluence(neuron.uuid, 1);
   });
 
-//   console.log("Influences:", influences); // Debugging line
   return influences;
 }
 
 export function loadAliases(callback) {
-  fetch("models/Aliases.json")
+  fetch("../models/Aliases.json")
     .then((response) => response.json())
     .then((data) => {
       callback(data);

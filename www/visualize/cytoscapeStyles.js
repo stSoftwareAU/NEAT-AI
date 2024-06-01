@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-window
 window.stylesheet = cytoscape.stylesheet()
   .selector(".input-no-synapse-node")
   .css({
