@@ -1,7 +1,7 @@
 # NEAT Neural Network for DenoJS
 
 <p align="left">
-  <img width="100" height="100" src="www/logo.png" align="right">
+  <img width="100" height="100" src="docs/logo.png" align="right">
 This project is a unique implementation of a neural network based on the NEAT (NeuroEvolution of Augmenting Topologies) algorithm, written in DenoJS using TypeScript.
 </p>
 
