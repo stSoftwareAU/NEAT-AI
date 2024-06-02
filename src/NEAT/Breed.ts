@@ -4,7 +4,7 @@ import type { NeatConfig } from "../config/NeatConfig.ts";
 import type { Genus } from "./Genus.ts";
 
 export class Breed {
-  private genus: Genus;
+  readonly genus: Genus;
   readonly config: NeatConfig;
 
   constructor(genus: Genus, config: NeatConfig) {
