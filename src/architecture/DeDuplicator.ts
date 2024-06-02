@@ -44,6 +44,7 @@ export class DeDuplicator {
               if (!duplicate2) {
                 unique.add(key2);
                 creatures[i] = child;
+                this.breed.genus.population.push(child);
                 break;
               }
             }
