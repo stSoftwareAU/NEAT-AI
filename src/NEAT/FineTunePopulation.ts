@@ -23,13 +23,24 @@ export class FindTunePopulation {
 
     const tmpFineTunePopulation = [];
 
+    let tmpPreviousFittest: Creature | undefined = undefined;
     // Add previousFittest first if it's different from fittest and not null
     if (
       previousFittest
     ) {
       const previousUUID = await CreatureUtil.makeUUID(previousFittest);
       if (!uniqueUUID.has(previousUUID)) {
-        tmpFineTunePopulation.push(previousFittest);
+        if (previousFittest.score && fittest.score) {
+          if (previousFittest.score < fittest.score) {
+            tmpPreviousFittest = previousFittest;
+            tmpFineTunePopulation.push(previousFittest);
+          }
+        } else {
+          throw new Error(
+            "Previous fittest has no score, excluded from fine tune population",
+          );
+        }
+
         uniqueUUID.add(previousUUID);
       }
     }
@@ -38,12 +49,22 @@ export class FindTunePopulation {
     for (const creature of this.neat.population) {
       const creatureUUID = await CreatureUtil.makeUUID(creature);
       if (!uniqueUUID.has(creatureUUID)) {
-        tmpFineTunePopulation.push(creature);
+        if (creature.score && fittest.score) {
+          if (creature.score < fittest.score) {
+            if (!tmpPreviousFittest) {
+              tmpPreviousFittest = creature;
+            }
+            tmpFineTunePopulation.push(creature);
+          }
+        } else {
+          throw new Error(
+            "Creature has no score, excluded from fine tune population",
+          );
+        }
+
         uniqueUUID.add(creatureUUID);
       }
     }
-
-    const tmpPreviousFittest = tmpFineTunePopulation.shift();
 
     let fineTunedPopulation: Creature[] = [];
     if (!tmpPreviousFittest) {
