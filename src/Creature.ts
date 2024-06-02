@@ -1040,7 +1040,7 @@ export class Creature implements CreatureInternal {
       return;
     }
 
-    for (let attempts = 0; attempts < 12; attempts++) {
+    for (let attempts = 0; attempts < 24; attempts++) {
       // Select a neuron which isn't an input or output neuron
       const indx = Math.floor(
         Math.random() *
@@ -1048,7 +1048,7 @@ export class Creature implements CreatureInternal {
           this.input,
       );
 
-      if (!this.inFocus(indx, focusList)) continue;
+      if (attempts < 12 && !this.inFocus(indx, focusList)) continue;
       removeHiddenNeuron(this, indx);
       break;
     }
@@ -1303,15 +1303,7 @@ export class Creature implements CreatureInternal {
         if (
           this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
         ) {
-          /** Each neuron must have at least one from/to connection */
-          if (
-            (
-              this.outwardConnections(conn.from).length > 1 ||
-              this.neurons[conn.from].type === "input"
-            ) && this.inwardConnections(conn.to).length > 1
-          ) {
-            possible.push(conn);
-          }
+          possible.push(conn);
         }
       }
     }
