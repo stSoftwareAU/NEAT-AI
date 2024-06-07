@@ -39,6 +39,7 @@ function tuneRandomize(
   fittest: Creature,
   previousFittest: Creature,
   oldScore: string,
+  randomize = true,
 ) {
   const previousJSON = previousFittest.exportJSON();
   const fittestJSON = fittest.exportJSON();
@@ -61,7 +62,13 @@ function tuneRandomize(
 
     if (previousNeuron && fittestNeuron.squash == previousNeuron.squash) {
       const diff = fittestNeuron.bias - previousNeuron.bias;
-      const step = diff * Math.random() * 3 - diff;
+      let step: number;
+      if (randomize) {
+        step = diff * Math.random() * 3 - diff;
+      } else {
+        step = diff;
+      }
+
       if (
         Math.abs(step) > MIN_STEP
       ) {
@@ -83,7 +90,13 @@ function tuneRandomize(
         fittestSynapse.toUUID == previousSynapse.toUUID
       ) {
         const diff = fittestSynapse.weight - previousSynapse.weight;
-        const step = diff * Math.random() * 3 - diff;
+        let step: number;
+        if (randomize) {
+          step = diff * Math.random() * 3 - diff;
+        } else {
+          step = diff;
+        }
+
         if (Math.abs(step) > MIN_STEP) {
           const weight = fittestSynapse.weight + step;
           const quantum = Math.round(weight / MIN_STEP);
@@ -162,48 +175,52 @@ export async function fineTuneImprovement(
   }
 
   if (showMessage) {
-    const approach = getTag(fittest, "approach");
-    if (approach == "fine") {
-      console.info(
-        "Fine tuning increased fitness by",
-        fScore - pScore,
-        "to",
-        fScore,
-        "adjusted",
-        getTag(fittest, "adjusted"),
-      );
-    } else if (approach == "trained") {
-      const trainID = getTag(fittest, "trainID");
-      console.info(
-        bold(cyan("Training")),
-        blue(`${trainID}`),
-        "increased fitness by",
-        fScore - pScore,
-        "to",
-        fScore,
-      );
-    } else if (approach == "compact") {
-      console.info(
-        "Compacting increased fitness by",
-        fScore - pScore,
-        "to",
-        fScore,
-        `nodes: ${fittest.neurons.length} was:`,
-        getTag(fittest, "old-nodes"),
-        `connections: ${fittest.synapses.length} was:`,
-        getTag(fittest, "old-connections"),
-      );
-    } else if (approach == "Learnings") {
-      console.info(
-        "Learnings increased fitness by",
-        fScore - pScore,
-        "to",
-        fScore,
-        `nodes: ${fittest.neurons.length} was:`,
-        getTag(fittest, "old-nodes"),
-        `connections: ${fittest.synapses.length} was:`,
-        getTag(fittest, "old-connections"),
-      );
+    const logged = getTag(fittest, "logged");
+    if (logged !== "true") {
+      addTag(fittest, "logged", "true");
+      const approach = getTag(fittest, "approach");
+      if (approach == "fine") {
+        console.info(
+          "Fine tuning increased fitness by",
+          fScore - pScore,
+          "to",
+          fScore,
+          "adjusted",
+          getTag(fittest, "adjusted"),
+        );
+      } else if (approach == "trained") {
+        const trainID = getTag(fittest, "trainID");
+        console.info(
+          bold(cyan("Training")),
+          blue(`${trainID}`),
+          "increased fitness by",
+          fScore - pScore,
+          "to",
+          fScore,
+        );
+      } else if (approach == "compact") {
+        console.info(
+          "Compacting increased fitness by",
+          fScore - pScore,
+          "to",
+          fScore,
+          `nodes: ${fittest.neurons.length} was:`,
+          getTag(fittest, "old-nodes"),
+          `connections: ${fittest.synapses.length} was:`,
+          getTag(fittest, "old-connections"),
+        );
+      } else if (approach == "Learnings") {
+        console.info(
+          "Learnings increased fitness by",
+          fScore - pScore,
+          "to",
+          fScore,
+          `nodes: ${fittest.neurons.length} was:`,
+          getTag(fittest, "old-nodes"),
+          `connections: ${fittest.synapses.length} was:`,
+          getTag(fittest, "old-connections"),
+        );
+      }
     }
   }
   const fittestUUID = await CreatureUtil.makeUUID(fittest);
@@ -221,7 +238,20 @@ export async function fineTuneImprovement(
     }
   }
 
-  for (let attempt = 0; attempt < popSize; attempt++) {
+  const resultSame = tuneRandomize(fittest, previousFittest, fScoreTxt, false);
+  if (resultSame.tuned) {
+    const randomUUID = await CreatureUtil.makeUUID(resultSame.tuned);
+    if (!UUIDs.has(randomUUID)) {
+      UUIDs.add(randomUUID);
+      fineTuned.push(resultSame.tuned);
+    }
+  }
+
+  for (
+    let attempt = 0;
+    attempt < popSize * 2 && fineTuned.length < popSize;
+    attempt++
+  ) {
     const resultRandomize = tuneRandomize(fittest, previousFittest, fScoreTxt);
     if (resultRandomize.tuned) {
       const randomUUID = await CreatureUtil.makeUUID(resultRandomize.tuned);
