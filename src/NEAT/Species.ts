@@ -22,14 +22,7 @@ export class Species {
       console.log(creature);
     }
     assert(creature.uuid, "Creature must have a uuid");
-    if (this.lastCreature) {
-      if (this.lastCreature.score && creature.score) {
-        assert(
-          this.lastCreature.score >= creature.score,
-          `Creatures must be added in order of score ${this.lastCreature.score} <= ${creature.score}`,
-        );
-      }
-    }
+
     this.lastCreature = creature;
     this.creatures.push(creature);
   }

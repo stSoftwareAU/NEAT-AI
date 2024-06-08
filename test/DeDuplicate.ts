@@ -56,9 +56,14 @@ Deno.test("DeDuplicate", async () => {
     ],
     score: -0.1111,
   };
+  const n0 = Creature.fromJSON(creature).exportJSON();
 
-  const n1 = Creature.fromJSON(creature);
-  const n2 = Creature.fromJSON(creature);
+  const n1 = Creature.fromJSON(n0);
+  const UUID1 = await CreatureUtil.makeUUID(n1);
+  const n2 = Creature.fromJSON(n0);
+  const UUID2 = await CreatureUtil.makeUUID(n2);
+
+  assertEquals(UUID1, UUID2);
 
   const neat = new Neat(1, 1, {}, []);
   const mutator = new Mutator(neat.config);
