@@ -34,6 +34,10 @@ export class FindTunePopulation {
           if (previousFittest.score < fittest.score) {
             tmpPreviousFittest = previousFittest;
             tmpFineTunePopulation.push(previousFittest);
+          } else if (previousFittest.score > fittest.score) {
+            throw new Error(
+              `Previous fittest has a higher score than fittest, this should not happen`,
+            );
           }
         } else {
           throw new Error(
@@ -55,10 +59,14 @@ export class FindTunePopulation {
               tmpPreviousFittest = creature;
             }
             tmpFineTunePopulation.push(creature);
+          } else if (creature.score > fittest.score) {
+            throw new Error(
+              `Previous fittest has a higher score than fittest, this should not happen`,
+            );
           }
         } else {
           throw new Error(
-            "Creature has no score, excluded from fine tune population",
+            `Creature ${creatureUUID} has no score, excluded from fine tune population`,
           );
         }
 
@@ -68,7 +76,9 @@ export class FindTunePopulation {
 
     let fineTunedPopulation: Creature[] = [];
     if (!tmpPreviousFittest) {
-      console.warn("Failed to find previous fittest creature");
+      console.warn(
+        "Failed to find previous fittest creature, all the same score as fittest. Skipping fine tuning.",
+      );
     } else {
       /** 20% of population or those that just died, leave one for the extended */
       const fineTunePopSize = Math.max(

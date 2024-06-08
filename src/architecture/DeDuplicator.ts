@@ -50,6 +50,7 @@ export class DeDuplicator {
             }
             this.mutator.mutate([creature]);
             const key3 = await CreatureUtil.makeUUID(creature);
+            await this.breed.genus.addCreature(creature);
             let duplicate3 = unique.has(key3);
             if (!duplicate3 && i > this.breed.config.elitism) {
               duplicate3 = this.previousExperiment(key3);
@@ -57,7 +58,7 @@ export class DeDuplicator {
             if (!duplicate3) {
               unique.add(key3);
               break;
-            } else if (attempts > 12) {
+            } else if (attempts > 24) {
               console.error(
                 `Can't deDuplicate creature at ${i} of ${creatures.length}`,
               );
