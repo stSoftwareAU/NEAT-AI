@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { blue } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
-import { ensureDirSync } from "@std/fs";
+import { ensureDir } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
@@ -170,7 +170,7 @@ export class Neat {
             JSON.parse(r.train.trace),
           );
           await CreatureUtil.makeUUID(traceNetwork);
-          ensureDirSync(this.config.traceStore);
+          await ensureDir(this.config.traceStore);
           Deno.writeTextFileSync(
             `${this.config.traceStore}/${traceNetwork.uuid}.json`,
             JSON.stringify(traceNetwork.traceJSON(), null, 2),
@@ -194,11 +194,29 @@ export class Neat {
 
     const genus = new Genus();
 
+    await this.writeScores(
+      this.population,
+    );
+
     // The population is already sorted in the desired order
     for (let i = 0; i < this.population.length; i++) {
       const creature = this.population[i];
-      await genus.addCreature(creature);
+      assert(creature.uuid, "UUID missing");
+      if (creature.score && Number.isFinite(creature.score)) {
+        await genus.addCreature(creature);
+      } else {
+        console.warn(
+          `Creature ${
+            blue(creature.uuid)
+          } has no score ${creature.score}, excluded from fine tune population`,
+        );
+        this.population.splice(i, 1); // Remove from population
+      }
     }
+    if (this.population.length === 0) {
+      console.warn("All creatures died, using zombies");
+    }
+
     /* Elitism: we need at least 2 on the first run */
     const results = makeElitists(
       this.population,
@@ -271,32 +289,6 @@ export class Neat {
       await CreatureUtil.makeUUID(creativeThinking);
       await genus.addCreature(creativeThinking);
       newPopulation.push(creativeThinking);
-    }
-
-    const livePopulation = [];
-
-    await this.writeScores(
-      this.population,
-    );
-
-    for (let i = 0; i < this.population.length; i++) {
-      const p = this.population[i];
-
-      if (p.score && Number.isFinite(p.score)) {
-        const oldScore = getTag(p, "old-score");
-        if (oldScore && p.score <= parseFloat(oldScore)) {
-          /** If fine tuning made no improvement then remove to prevent flooding of the population with clones. */
-          continue;
-        }
-
-        livePopulation.push(p);
-      }
-    }
-
-    if (livePopulation.length > 0) {
-      this.population = livePopulation;
-    } else {
-      console.warn("All creatures died, using zombies");
     }
 
     const ftp = new FindTunePopulation(this);
@@ -404,22 +396,21 @@ export class Neat {
   }
 
   async writeScores(creatures: Creature[]) {
-    if (this.config.experimentStore) {
-      for (let i = creatures.length; i--;) {
-        const creature = creatures[i];
+    if (!this.config.experimentStore) {
+      return;
+    }
 
-        const name = await CreatureUtil.makeUUID(creature);
-        ensureDirSync(
-          this.config.experimentStore + "/score/" +
-            name.substring(0, 3),
-        );
-        const filePath = this.config.experimentStore + "/score/" +
-          name.substring(0, 3) + "/" +
-          name.substring(3) + ".txt";
-        const sTxt = `${creature.score}`;
+    const baseStorePath = this.config.experimentStore + "/score/";
 
-        Deno.writeTextFileSync(filePath, sTxt);
-      }
+    for (const creature of creatures) {
+      const name = await CreatureUtil.makeUUID(creature);
+      const dirPath = baseStorePath + name.substring(0, 3);
+      await ensureDir(dirPath);
+
+      const filePath = `${dirPath}/${name.substring(3)}.txt`;
+      const scoreText = `${creature.score}`;
+
+      await Deno.writeTextFile(filePath, scoreText);
     }
   }
 

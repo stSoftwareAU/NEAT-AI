@@ -45,7 +45,7 @@ Deno.test("previous", async () => {
   const neat = new Neat(1, 1, { experimentStore: ".testExperiments" }, []);
 
   const p = [Creature.fromJSON(creature)];
-  neat.writeScores(p);
+  await neat.writeScores(p);
 
   const flag = await previousExperiment(creature, neat);
 
