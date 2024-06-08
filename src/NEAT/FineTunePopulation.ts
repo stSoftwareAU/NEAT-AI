@@ -180,6 +180,10 @@ export class FindTunePopulation {
       }
     }
 
+    for (const creature of fineTunedPopulation) {
+      await genus.addCreature(creature);
+    }
+
     return fineTunedPopulation;
   }
 
