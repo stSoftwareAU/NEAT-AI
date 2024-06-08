@@ -17,7 +17,11 @@ export class DeDuplicator {
     this.logPopulationSize(creatures);
 
     const uuidPromises = creatures.map((creature) =>
-      CreatureUtil.makeUUID(creature)
+      CreatureUtil.makeUUID(creature).then(async (uuid) => {
+        assert(uuid, "No creature UUID");
+        await this.breed.genus.addCreature(creature);
+        // this.breed.genus.findSpeciesByCreatureUUID(uuid);
+      })
     );
     await Promise.all(uuidPromises);
 
@@ -71,10 +75,10 @@ export class DeDuplicator {
           return;
         }
       }
-
-      this.mutator.mutate([creatures[index]]);
-      const key3 = await CreatureUtil.makeUUID(creatures[index]);
-      await this.breed.genus.addCreature(creatures[index]);
+      const tmpCreature = creatures[index];
+      this.mutator.mutate([tmpCreature]);
+      const key3 = await CreatureUtil.makeUUID(tmpCreature);
+      await this.breed.genus.addCreature(tmpCreature);
       let duplicate3 = unique.has(key3);
       if (!duplicate3 && index > this.breed.config.elitism) {
         duplicate3 = this.previousExperiment(key3);
