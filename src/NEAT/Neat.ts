@@ -268,7 +268,8 @@ export class Neat {
           },
         );
       }
-
+      await CreatureUtil.makeUUID(creativeThinking);
+      await genus.addCreature(creativeThinking);
       newPopulation.push(creativeThinking);
     }
 
@@ -319,6 +320,8 @@ export class Neat {
     ) {
       const child = breed.breed();
       if (child) {
+        await CreatureUtil.makeUUID(child);
+        await genus.addCreature(child);
         newPopulation.push(child);
       }
     }
