@@ -1,3 +1,4 @@
+import { assert } from "jsr:@std/assert@^0.225.1/assert";
 import type { Creature } from "../Creature.ts";
 import type { Breed } from "../NEAT/Breed.ts";
 import type { Mutator } from "../NEAT/Mutator.ts";
@@ -14,14 +15,23 @@ export class DeDuplicator {
   public async perform(creatures: Creature[]) {
     this.logPopulationSize(creatures);
 
+    for (let i = 0; i < creatures.length; i++) {
+      const creature = creatures[i];
+      await CreatureUtil.makeUUID(creature);
+    }
+
     const unique = new Set<string>();
     for (let i = 0; i < creatures.length; i++) {
       const creature = creatures[i];
-      const key = await CreatureUtil.makeUUID(creature);
+      const UUID = creature.uuid;
+      assert(UUID, "No creature UUID");
+      let duplicate = unique.has(UUID);
 
-      let duplicate = unique.has(key);
-      if (!duplicate && i > this.breed.config.elitism) {
-        duplicate = this.previousExperiment(key);
+      if (!duplicate) {
+        if (i > this.breed.config.elitism) {
+          duplicate = this.previousExperiment(UUID);
+        }
+        unique.add(UUID);
       }
 
       if (duplicate) {
@@ -37,7 +47,7 @@ export class DeDuplicator {
 
             if (child) {
               const key2 = await CreatureUtil.makeUUID(child);
-              let duplicate2 = unique.has(key);
+              let duplicate2 = unique.has(key2);
               if (!duplicate2 && i > this.breed.config.elitism) {
                 duplicate2 = this.previousExperiment(key2);
               }
