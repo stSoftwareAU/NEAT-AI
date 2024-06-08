@@ -64,19 +64,18 @@ Deno.test("DeDuplicate", async () => {
   const UUID2 = await CreatureUtil.makeUUID(n2);
 
   assertEquals(UUID1, UUID2);
-
+  const list = [n1, n2];
   const neat = new Neat(1, 1, {}, []);
+
+  for (let i = 0; i < neat.config.populationSize * 2; i++) {
+    const n = Creature.fromJSON(n0);
+    list.push(n);
+  }
   const mutator = new Mutator(neat.config);
   const genus = new Genus();
 
-  // The population is already sorted in the desired order
-  // for (let i = 0; i < neat.population.length; i++) {
-  //   const creature = neat.population[i];
-  //   await genus.addCreature(creature);
-  // }
   const breed = new Breed(genus, neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  const list = [n1, n2];
   await deDuplicator.perform(list);
 
   const uniques = new Set<string>();
@@ -86,5 +85,4 @@ Deno.test("DeDuplicate", async () => {
     assertEquals(uniques.has(key), false);
     uniques.add(key);
   }
-  // assertEquals(list.length, 1);
 });
