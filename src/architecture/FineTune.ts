@@ -22,25 +22,26 @@ export function quantumAdjust(
   forwardOnly: boolean,
 ): { value: number; changed: boolean } {
   const diff = currentBest - previousBest;
-  if (Math.abs(diff) >= MIN_STEP) {
-    let step: number;
+  if (Math.abs(diff) >= MIN_STEP - MIN_STEP / 10) {
+    let delta: number;
     if (forwardOnly) {
-      step = diff * Math.random() * 2;
+      delta = diff * Math.random() * 2;
     } else {
-      step = diff * Math.random() * 3 - diff;
+      delta = diff * Math.random() * 3 - diff;
     }
 
-    const adjustedValue = currentBest + step;
-    const quantum = Math.round(adjustedValue / MIN_STEP);
-
-    let quantumValue = quantum * MIN_STEP;
+    const adjustedValue = currentBest + delta;
+    const currentQuantum = Math.round(currentBest / MIN_STEP);
+    let quantum = Math.round(adjustedValue / MIN_STEP);
 
     /* Ensure the quantum value is at least one MIN_STEP different in the correct direction */
-    if (Math.abs(quantumValue - currentBest) < MIN_STEP) {
-      quantumValue = currentBest + MIN_STEP * Math.sign(diff);
+    if (currentQuantum == quantum) {
+      quantum += Math.sign(delta);
     }
 
-    return { value: quantumValue, changed: true };
+    const quantizedValue = quantum * MIN_STEP;
+
+    return { value: quantizedValue, changed: true };
   }
   return { value: currentBest, changed: false };
 }
