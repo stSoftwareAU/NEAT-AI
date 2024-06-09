@@ -36,6 +36,7 @@ export class Mutator {
         }
 
         removeTag(creature, "approach");
+        removeTag(creature, "approach-logged");
       }
     }
   }
