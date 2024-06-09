@@ -1,12 +1,49 @@
 import { blue, bold, cyan } from "@std/fmt/colors";
-import { addTag, getTag } from "@stsoftware/tags";
+import { addTag, getTag, removeTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport } from "./NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
 
-const MIN_STEP = 0.000_000_1;
+export const MIN_STEP = 0.000_000_1;
+
+/**
+ * Adjusts the best value based on the difference between the current best and previous best value.
+ *
+ * @param {number} currentBest - The current fittest value.
+ * @param {number} previousBest - The previous fittest value.
+ * @param {boolean} forwardOnly - Mode to adjust values; true for forward only, false for randomize.
+ * @returns {number} - The adjusted best value.
+ */
+export function quantumAdjust(
+  currentBest: number,
+  previousBest: number,
+  forwardOnly: boolean,
+): { value: number; changed: boolean } {
+  const diff = currentBest - previousBest;
+  if (Math.abs(diff) >= MIN_STEP) {
+    let step: number;
+    if (forwardOnly) {
+      step = diff * Math.random() * 2;
+    } else {
+      step = diff * Math.random() * 3 - diff;
+    }
+
+    const adjustedValue = currentBest + step;
+    const quantum = Math.round(adjustedValue / MIN_STEP);
+
+    let quantumValue = quantum * MIN_STEP;
+
+    /* Ensure the quantum value is at least one MIN_STEP different in the correct direction */
+    if (Math.abs(quantumValue - currentBest) < MIN_STEP) {
+      quantumValue = currentBest + MIN_STEP * Math.sign(diff);
+    }
+
+    return { value: quantumValue, changed: true };
+  }
+  return { value: currentBest, changed: false };
+}
 
 function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
   const neuronsSet = new Set<string>();
@@ -39,7 +76,7 @@ function tuneRandomize(
   fittest: Creature,
   previousFittest: Creature,
   oldScore: string,
-  randomize = true,
+  forwardOnly = false,
 ) {
   const previousJSON = previousFittest.exportJSON();
   const fittestJSON = fittest.exportJSON();
@@ -61,20 +98,13 @@ function tuneRandomize(
     const previousNeuron = uuidNodeMap.get(fittestNeuron.uuid);
 
     if (previousNeuron && fittestNeuron.squash == previousNeuron.squash) {
-      const diff = fittestNeuron.bias - previousNeuron.bias;
-      let step: number;
-      if (randomize) {
-        step = diff * Math.random() * 3 - diff;
-      } else {
-        step = diff;
-      }
-
-      if (
-        Math.abs(step) > MIN_STEP
-      ) {
-        const bias = fittestNeuron.bias + step;
-        const quantum = Math.round(bias / MIN_STEP);
-        fittestNeuron.bias = quantum * MIN_STEP;
+      const result = quantumAdjust(
+        fittestNeuron.bias,
+        previousNeuron.bias,
+        forwardOnly,
+      );
+      if (result.changed) {
+        fittestNeuron.bias = result.value;
         changeBiasCount++;
       }
     }
@@ -89,19 +119,13 @@ function tuneRandomize(
         fittestSynapse.fromUUID == previousSynapse.fromUUID &&
         fittestSynapse.toUUID == previousSynapse.toUUID
       ) {
-        const diff = fittestSynapse.weight - previousSynapse.weight;
-        let step: number;
-        if (randomize) {
-          step = diff * Math.random() * 3 - diff;
-        } else {
-          step = diff;
-        }
-
-        if (Math.abs(step) > MIN_STEP) {
-          const weight = fittestSynapse.weight + step;
-          const quantum = Math.round(weight / MIN_STEP);
-
-          fittestSynapse.weight = quantum * MIN_STEP;
+        const result = quantumAdjust(
+          fittestSynapse.weight,
+          previousSynapse.weight,
+          forwardOnly,
+        );
+        if (result.changed) {
+          fittestSynapse.weight = result.value;
           changeWeightCount++;
         }
 
@@ -120,6 +144,7 @@ function tuneRandomize(
 
   const all = Creature.fromJSON(fittestJSON);
   addTag(all, "approach", "fine");
+  removeTag(all, "approach-logged");
   let adjustedDesc = "";
   if (changeWeightCount > 0) {
     adjustedDesc += changeWeightCount + " weight" +
@@ -177,7 +202,7 @@ export async function fineTuneImprovement(
   if (showMessage) {
     const approach = getTag(fittest, "approach");
     if (approach) {
-      const logged = getTag(fittest, "logged");
+      const logged = getTag(fittest, "approach-logged");
       if (logged !== approach) {
         addTag(fittest, "logged", approach);
 
