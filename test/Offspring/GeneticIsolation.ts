@@ -3,7 +3,7 @@ import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
+import { handleGeneticIsolation } from "../../src/architecture/GeneticIsolation,.ts";
 
 async function makeMum() {
   const json: CreatureExport = {
@@ -112,7 +112,7 @@ Deno.test("GeneticIsolatedIslands", async () => {
   const mum = await makeMum();
   const dad = await makeDad();
 
-  const baby = await Offspring.handleGeneticIsolation(dad, mum, dad);
+  const baby = await handleGeneticIsolation(dad, mum, dad);
   assert(baby, "Baby should be created");
 
   const babyUUID = await CreatureUtil.makeUUID(baby);
