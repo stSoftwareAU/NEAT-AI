@@ -4,6 +4,7 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport } from "./NeuronInterfaces.ts";
 import { Offspring } from "./Offspring.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
+import { Neuron } from "./Neuron.ts";
 
 export async function handleGeneticIsolation(
   child: Creature,
@@ -25,31 +26,27 @@ export async function handleGeneticIsolation(
 
   const childExport = child.exportJSON();
 
-  const childNeuronMap = new Map<string, NeuronExport>();
+  const childNeuronMap = new Map<string, Neuron>();
   const childConnectionsMap = new Map<string, SynapseExport[]>();
-  cloneOfParent.neurons.filter((neuron) => neuron.type !== "input").forEach(
-    (neuron) => {
-      childNeuronMap.set(neuron.uuid, neuron.exportJSON());
-      const connections = cloneOfParent.inwardConnections(neuron.index);
-      childConnectionsMap.set(
-        neuron.uuid,
-        Offspring.cloneConnections(cloneOfParent, connections),
-      );
-    },
-  );
+  cloneOfParent.neurons.forEach((neuron) => {
+    childNeuronMap.set(neuron.uuid, neuron);
+    const connections = cloneOfParent.inwardConnections(neuron.index);
+    childConnectionsMap.set(
+      neuron.uuid,
+      Offspring.cloneConnections(cloneOfParent, connections),
+    );
+  });
 
-  const otherNeuronMap = new Map<string, NeuronExport>();
+  const otherNeuronMap = new Map<string, Neuron>();
   const otherConnectionsMap = new Map<string, SynapseExport[]>();
-  otherParent.neurons.filter((neuron) => neuron.type !== "input").forEach(
-    (neuron) => {
-      otherNeuronMap.set(neuron.uuid, neuron.exportJSON());
-      const connections = otherParent.inwardConnections(neuron.index);
-      otherConnectionsMap.set(
-        neuron.uuid,
-        Offspring.cloneConnections(otherParent, connections),
-      );
-    },
-  );
+  otherParent.neurons.forEach((neuron) => {
+    otherNeuronMap.set(neuron.uuid, neuron);
+    const connections = otherParent.inwardConnections(neuron.index);
+    otherConnectionsMap.set(
+      neuron.uuid,
+      Offspring.cloneConnections(otherParent, connections),
+    );
+  });
 
   /**
    * Find possible insertion points for a missing neuron.
@@ -126,6 +123,8 @@ export async function handleGeneticIsolation(
   });
 
   // Add the neuron to the child
+  const insertedNeuron = Neuron.fromJSON(insertionNeuron, child);
+  childNeuronMap.set(insertedNeuron.uuid, insertedNeuron);
   childExport.neurons.push(insertionNeuron);
 
   /**
@@ -140,7 +139,7 @@ export async function handleGeneticIsolation(
         const missingNeuron = otherNeuronMap.get(connection.fromUUID);
         if (missingNeuron) {
           childNeuronMap.set(missingNeuron.uuid, missingNeuron);
-          childExport.neurons.push(missingNeuron);
+          childExport.neurons.push(missingNeuron.exportJSON());
           addMissingNeuronsAndSynapses(missingNeuron.uuid);
         }
       }
@@ -155,35 +154,37 @@ export async function handleGeneticIsolation(
     });
   }
 
-  addMissingNeuronsAndSynapses(insertionNeuron.uuid);
+  addMissingNeuronsAndSynapses(insertedNeuron.uuid);
 
   /**
    * Ensure that neurons from both parents are present in the child
    */
   function addNeuronsFromParent(
     parent: Creature,
-    neuronMap: Map<string, NeuronExport>,
+    neuronMap: Map<string, Neuron>,
     connectionsMap: Map<string, SynapseExport[]>,
   ) {
-    parent.neurons.forEach((neuron) => {
-      if (!neuronMap.has(neuron.uuid) && neuron.type !== "input") {
-        const neuronExport = neuron.exportJSON();
-        neuronMap.set(neuron.uuid, neuronExport);
-        childExport.neurons.push(neuronExport);
-        const connections = parent.inwardConnections(neuron.index);
-        connectionsMap.set(
-          neuron.uuid,
-          Offspring.cloneConnections(parent, connections),
-        );
-      }
-    });
+    parent.neurons.filter((neuron) => neuron.type !== "input").forEach(
+      (neuron) => {
+        if (!neuronMap.has(neuron.uuid)) {
+          neuronMap.set(neuron.uuid, neuron);
+          childExport.neurons.push(neuron.exportJSON());
+          const connections = parent.inwardConnections(neuron.index);
+          connectionsMap.set(
+            neuron.uuid,
+            Offspring.cloneConnections(parent, connections),
+          );
+          addMissingNeuronsAndSynapses(neuron.uuid);
+        }
+      },
+    );
   }
 
   addNeuronsFromParent(mother, childNeuronMap, childConnectionsMap);
   addNeuronsFromParent(father, childNeuronMap, childConnectionsMap);
 
   // Ensure all neurons have outgoing and incoming connections
-  childExport.neurons.forEach((neuron) => {
+  childExport.neurons = childExport.neurons.filter((neuron) => {
     const inwardConnections = childExport.synapses.filter(
       (synapse) => synapse.toUUID === neuron.uuid,
     );
@@ -191,37 +192,8 @@ export async function handleGeneticIsolation(
       (synapse) => synapse.fromUUID === neuron.uuid,
     );
 
-    if (inwardConnections.length === 0) {
-      const potentialConnections = otherConnectionsMap.get(neuron.uuid);
-      if (potentialConnections) {
-        potentialConnections.forEach((connection) => {
-          if (
-            !childExport.synapses.some((synapse) =>
-              synapse.fromUUID === connection.fromUUID &&
-              synapse.toUUID === connection.toUUID
-            )
-          ) {
-            childExport.synapses.push(connection);
-          }
-        });
-      }
-    }
-
-    if (outwardConnections.length === 0 && neuron.type !== "output") {
-      const potentialConnections = otherConnectionsMap.get(neuron.uuid);
-      if (potentialConnections) {
-        potentialConnections.forEach((connection) => {
-          if (
-            !childExport.synapses.some((synapse) =>
-              synapse.fromUUID === connection.fromUUID &&
-              synapse.toUUID === connection.toUUID
-            )
-          ) {
-            childExport.synapses.push(connection);
-          }
-        });
-      }
-    }
+    return inwardConnections.length > 0 &&
+      (outwardConnections.length > 0 || neuron.type === "output");
   });
 
   // Remove duplicate neurons
