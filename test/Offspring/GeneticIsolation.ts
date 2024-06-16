@@ -9,14 +9,12 @@ async function makeMum() {
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "island-mum-000", squash: "IDENTITY", bias: 0.1 },
-
       {
         type: "hidden",
         uuid: "island-mum-001",
         squash: "IDENTITY",
         bias: -0.9,
       },
-
       { type: "hidden", uuid: "island-mum-002", squash: "IDENTITY", bias: 0.1 },
       {
         type: "hidden",
@@ -24,29 +22,17 @@ async function makeMum() {
         squash: "IDENTITY",
         bias: -0.8,
       },
-
       { type: "hidden", uuid: "island-mum-004", squash: "IDENTITY", bias: 0.1 },
       { type: "hidden", uuid: "island-mum-005", squash: "IDENTITY", bias: 0 },
       { type: "hidden", uuid: "island-mum-006", squash: "IDENTITY", bias: 0.1 },
-      {
-        type: "output",
-        squash: "IDENTITY",
-        uuid: "output-0",
-        bias: 1,
-      },
-      {
-        type: "output",
-        squash: "IDENTITY",
-        uuid: "output-1",
-        bias: 0,
-      },
+      { type: "output", squash: "IDENTITY", uuid: "output-0", bias: 1 },
+      { type: "output", squash: "IDENTITY", uuid: "output-1", bias: 0 },
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: "island-mum-002", weight: -0.3 },
       { fromUUID: "input-1", toUUID: "island-mum-000", weight: -0.3 },
       { fromUUID: "island-mum-000", toUUID: "island-mum-001", weight: 0.3 },
       { fromUUID: "island-mum-001", toUUID: "island-mum-002", weight: 0.3 },
-
       { fromUUID: "island-mum-002", toUUID: "island-mum-003", weight: 0.6 },
       { fromUUID: "island-mum-003", toUUID: "island-mum-004", weight: 0.31 },
       { fromUUID: "island-mum-004", toUUID: "island-mum-005", weight: 0.33 },
@@ -73,14 +59,12 @@ async function makeDad() {
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "island-dad-000", squash: "IDENTITY", bias: 0.1 },
-
       {
         type: "hidden",
         uuid: "island-dad-001",
         squash: "IDENTITY",
         bias: -0.9,
       },
-
       { type: "hidden", uuid: "island-dad-002", squash: "IDENTITY", bias: 0.1 },
       {
         type: "hidden",
@@ -88,29 +72,17 @@ async function makeDad() {
         squash: "IDENTITY",
         bias: -0.8,
       },
-
       { type: "hidden", uuid: "island-dad-004", squash: "IDENTITY", bias: 0.1 },
       { type: "hidden", uuid: "island-dad-005", squash: "IDENTITY", bias: 0 },
       { type: "hidden", uuid: "island-dad-006", squash: "IDENTITY", bias: 0.1 },
-      {
-        type: "output",
-        squash: "IDENTITY",
-        uuid: "output-0",
-        bias: 1,
-      },
-      {
-        type: "output",
-        squash: "IDENTITY",
-        uuid: "output-1",
-        bias: 0,
-      },
+      { type: "output", squash: "IDENTITY", uuid: "output-0", bias: 1 },
+      { type: "output", squash: "IDENTITY", uuid: "output-1", bias: 0 },
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: "island-dad-002", weight: -0.3 },
       { fromUUID: "input-1", toUUID: "island-dad-000", weight: -0.3 },
       { fromUUID: "island-dad-000", toUUID: "island-dad-001", weight: 0.3 },
       { fromUUID: "island-dad-001", toUUID: "island-dad-002", weight: 0.3 },
-
       { fromUUID: "island-dad-002", toUUID: "island-dad-003", weight: 0.6 },
       { fromUUID: "island-dad-003", toUUID: "island-dad-004", weight: 0.31 },
       { fromUUID: "island-dad-004", toUUID: "island-dad-005", weight: 0.33 },
@@ -138,11 +110,10 @@ ensureDirSync(testDir);
 
 Deno.test("GeneticIsolatedIslands", async () => {
   const mum = await makeMum();
-
   const dad = await makeDad();
 
-  const baby = await Offspring.handleGeneticIsolation(dad, mum, dad);
-  assert(baby);
+  const baby = await Offspring.breed(mum, dad);
+  assert(baby, "Baby should be created");
 
   const babyUUID = await CreatureUtil.makeUUID(baby);
   Deno.writeTextFileSync(
@@ -158,5 +129,30 @@ Deno.test("GeneticIsolatedIslands", async () => {
     babyUUID,
     mum.uuid,
     "Baby should not be a clone of the mother",
+  );
+
+  // Check that the baby has neurons from both parents
+  const babyNeurons = new Set(baby.neurons.map((neuron) => neuron.uuid));
+  const mumNeurons = new Set(mum.neurons.map((neuron) => neuron.uuid));
+  const dadNeurons = new Set(dad.neurons.map((neuron) => neuron.uuid));
+
+  let mumNeuronCount = 0;
+  let dadNeuronCount = 0;
+  babyNeurons.forEach((neuronUUID) => {
+    if (mumNeurons.has(neuronUUID)) {
+      mumNeuronCount++;
+    }
+    if (dadNeurons.has(neuronUUID)) {
+      dadNeuronCount++;
+    }
+  });
+
+  assert(
+    mumNeuronCount > 0,
+    "Baby should have neurons from the mother",
+  );
+  assert(
+    dadNeuronCount > 0,
+    "Baby should have neurons from the father",
   );
 });
