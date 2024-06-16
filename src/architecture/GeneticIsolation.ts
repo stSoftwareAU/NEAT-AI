@@ -93,6 +93,10 @@ export async function handleGeneticIsolation(
     throw new Error("No target neuron found for insertion");
   }
 
+  console.log(
+    `Inserting neuron ${insertionNeuron.uuid} before ${targetNeuronUUID}`,
+  );
+
   /**
    * Calculate the existing absolute weight of the synapses that are connected to the target insertion point neuron.
    */
@@ -114,6 +118,10 @@ export async function handleGeneticIsolation(
   };
   childExport.synapses.push(newSynapse);
 
+  console.log(
+    `Added new synapse from ${insertionNeuron.uuid} to ${targetNeuronUUID}`,
+  );
+
   /**
    * Scale the weights of the synapses that are connected to the target insertion point neuron to maintain the same total weight.
    */
@@ -127,6 +135,8 @@ export async function handleGeneticIsolation(
   childNeuronMap.set(insertedNeuron.uuid, insertedNeuron);
   childExport.neurons.splice(targetNeuronIndex, 0, insertionNeuron);
 
+  console.log(`Inserted neuron ${insertionNeuron.uuid} into the child`);
+
   /**
    * Recursively add missing neurons and synapses to the mutated child required by the newly inserted neuron.
    */
@@ -134,12 +144,18 @@ export async function handleGeneticIsolation(
     const connections = otherConnectionsMap.get(neuronUUID);
     if (!connections) return;
 
+    console.log(`Adding missing neurons and synapses for ${neuronUUID}`);
+
     connections.forEach((connection) => {
       if (!childNeuronMap.has(connection.fromUUID)) {
         const missingNeuron = otherNeuronMap.get(connection.fromUUID);
         if (missingNeuron) {
+          const index = childExport.neurons.findIndex((neuron) =>
+            neuron.uuid === neuronUUID
+          );
           childNeuronMap.set(missingNeuron.uuid, missingNeuron);
-          childExport.neurons.push(missingNeuron.exportJSON());
+          childExport.neurons.splice(index, 0, missingNeuron.exportJSON());
+          console.log(`Added missing neuron ${missingNeuron.uuid}`);
           addMissingNeuronsAndSynapses(missingNeuron.uuid);
         }
       }
@@ -150,6 +166,9 @@ export async function handleGeneticIsolation(
         )
       ) {
         childExport.synapses.push(connection);
+        console.log(
+          `Added missing synapse from ${connection.fromUUID} to ${connection.toUUID}`,
+        );
       }
     });
   }
@@ -167,8 +186,10 @@ export async function handleGeneticIsolation(
     parent.neurons.filter((neuron) => neuron.type !== "input").forEach(
       (neuron) => {
         if (!neuronMap.has(neuron.uuid)) {
+          const index = childExport.neurons.length; // Append new neurons at the end
           neuronMap.set(neuron.uuid, neuron);
-          childExport.neurons.push(neuron.exportJSON());
+          childExport.neurons.splice(index, 0, neuron.exportJSON());
+          console.log(`Added neuron ${neuron.uuid} from parent`);
           const connections = parent.inwardConnections(neuron.index);
           connectionsMap.set(
             neuron.uuid,
@@ -203,22 +224,50 @@ export async function handleGeneticIsolation(
 
   childExport.neurons = uniqueNeurons;
 
-  /**
-   * Ensure forward-only order of synapses.
-   */
-  const neuronUUIDToIndex = new Map(
-    childExport.neurons.map((neuron, index) => [neuron.uuid, index]),
-  );
+  // Ensure neurons are in a valid order based on synapse connections
+  function sortNeuronsByConnections(
+    neurons: NeuronExport[],
+    synapses: SynapseExport[],
+  ): NeuronExport[] {
+    const neuronIndex = new Map(
+      neurons.map((neuron, index) => [neuron.uuid, index]),
+    );
+    const sortedNeurons = [...neurons].sort((a, b) => {
+      const aConnections = synapses.filter((synapse) =>
+        synapse.fromUUID === a.uuid || synapse.toUUID === a.uuid
+      );
+      const bConnections = synapses.filter((synapse) =>
+        synapse.fromUUID === b.uuid || synapse.toUUID === b.uuid
+      );
+      const aIndex = Math.min(
+        ...aConnections.map((synapse) =>
+          neuronIndex.get(synapse.fromUUID) ?? Number.MAX_VALUE
+        ),
+        ...aConnections.map((synapse) =>
+          neuronIndex.get(synapse.toUUID) ?? Number.MAX_VALUE
+        ),
+      );
+      const bIndex = Math.min(
+        ...bConnections.map((synapse) =>
+          neuronIndex.get(synapse.fromUUID) ?? Number.MAX_VALUE
+        ),
+        ...bConnections.map((synapse) =>
+          neuronIndex.get(synapse.toUUID) ?? Number.MAX_VALUE
+        ),
+      );
+      return aIndex - bIndex;
+    });
+    return sortedNeurons;
+  }
 
-  childExport.synapses = childExport.synapses.filter(
-    (synapse) => {
-      const fromIndex = neuronUUIDToIndex.get(synapse.fromUUID);
-      const toIndex = neuronUUIDToIndex.get(synapse.toUUID);
-      return fromIndex !== undefined && toIndex !== undefined &&
-        fromIndex < toIndex;
-    },
+  childExport.neurons = sortNeuronsByConnections(
+    childExport.neurons,
+    childExport.synapses,
   );
-
+  Deno.writeTextFileSync(
+    `.test/GeneticIsolatedIslands/childExport.json`,
+    JSON.stringify(childExport, null, 2),
+  );
   /**
    * Import the mutated child JSON to create a "real" creature and recalculate the UUID.
    */
