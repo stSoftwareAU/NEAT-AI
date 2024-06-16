@@ -184,7 +184,7 @@ Deno.test("GeneticIsolatedIslands", async () => {
     );
     assert(
       fromIndex! < toIndex!,
-      `Synapse from ${synapse.fromUUID} to ${synapse.toUUID} should be forward only`,
+      `Synapse from ${synapse.fromUUID} (${fromIndex}) to ${synapse.toUUID} (${toIndex}) should be forward only`,
     );
   });
 
