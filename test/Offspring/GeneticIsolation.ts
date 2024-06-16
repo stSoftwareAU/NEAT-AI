@@ -99,10 +99,22 @@ Deno.test("GeneticIsolatedIslands", async () => {
   );
 
   // Check that the baby has neurons from both parents
-  const babyNeurons = new Set(baby.neurons.filter(neuron=>neuron.type==='hidden').map((neuron) => neuron.uuid));
+  const babyNeurons = new Set(
+    baby.neurons.filter((neuron) => neuron.type === "hidden").map((neuron) =>
+      neuron.uuid
+    ),
+  );
 
-  const mumNeurons = new Set(mother.neurons.filter(neuron=>neuron.type==='hidden').map((neuron) => neuron.uuid));
-  const dadNeurons = new Set(father.neurons.filter(neuron=>neuron.type==='hidden').map((neuron) => neuron.uuid));
+  const mumNeurons = new Set(
+    mother.neurons.filter((neuron) => neuron.type === "hidden").map((neuron) =>
+      neuron.uuid
+    ),
+  );
+  const dadNeurons = new Set(
+    father.neurons.filter((neuron) => neuron.type === "hidden").map((neuron) =>
+      neuron.uuid
+    ),
+  );
 
   let motherNeuronCount = 0;
   let fatherNeuronCount = 0;
@@ -124,7 +136,6 @@ Deno.test("GeneticIsolatedIslands", async () => {
     "Baby should have neurons from the father",
   );
 
-  
   // Validate that the baby has unique neurons (no duplicates)
   const uniqueBabyNeurons = new Set(baby.neurons.map((neuron) => neuron.uuid));
   assertEquals(
@@ -132,7 +143,7 @@ Deno.test("GeneticIsolatedIslands", async () => {
     baby.neurons.length,
     "Baby should have unique neurons with no duplicates",
   );
-  
+
   // Validate that the total weight is maintained
   exportBaby.neurons.forEach((neuron) => {
     const inwardConnections = exportBaby.synapses.filter((synapse) =>
@@ -149,5 +160,4 @@ Deno.test("GeneticIsolatedIslands", async () => {
   });
 
   baby.validate();
-
 });
