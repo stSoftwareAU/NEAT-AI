@@ -53,7 +53,6 @@ export async function handleGeneticIsolation(
 
   /**
    * Find possible insertion points for a missing neuron.
-   * Insert the missing neuron before the mutated child's target insertion point neuron.
    */
   const possibleInsertionNeurons: NeuronExport[] = [];
   for (const neuron of otherParent.neurons) {
@@ -66,6 +65,7 @@ export async function handleGeneticIsolation(
       }
     }
   }
+
   if (possibleInsertionNeurons.length === 0) {
     throw new Error("No suitable neuron found for insertion");
   }
@@ -80,10 +80,21 @@ export async function handleGeneticIsolation(
     Math.floor(Math.random() * possibleInsertionNeurons.length)
   ];
 
-  // Find the index to insert the neuron in the child
+  // Identify a synapse in the otherParent that connects the insertionNeuron to a neuron in the child
+  const targetNeuronUUID = otherParent.exportJSON().synapses.find(
+    (synapse) =>
+      synapse.fromUUID === insertionNeuron.uuid &&
+      childNeuronMap.has(synapse.toUUID),
+  )?.toUUID;
+
+  if (!targetNeuronUUID) {
+    throw new Error("No target neuron found for insertion");
+  }
+
   const targetNeuronIndex = childExport.neurons.findIndex((neuron) =>
-    neuron.uuid === insertionNeuron.uuid
+    neuron.uuid === targetNeuronUUID
   );
+
   if (targetNeuronIndex === -1) {
     throw new Error("No target neuron found for insertion");
   }
@@ -91,7 +102,6 @@ export async function handleGeneticIsolation(
   /**
    * Calculate the existing absolute weight of the synapses that are connected to the target insertion point neuron.
    */
-  const targetNeuronUUID = childExport.neurons[targetNeuronIndex].uuid;
   const targetNeuronConnections = childExport.synapses.filter(
     (synapse) => synapse.toUUID === targetNeuronUUID,
   );
@@ -119,7 +129,7 @@ export async function handleGeneticIsolation(
   });
 
   // Add the neuron to the child
-  childExport.neurons.splice(targetNeuronIndex, 0, insertionNeuron);
+  childExport.neurons.push(insertionNeuron);
 
   /**
    * Recursively add missing neurons and synapses to the mutated child required by the newly inserted neuron.
