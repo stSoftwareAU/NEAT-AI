@@ -183,34 +183,34 @@ export async function handleGeneticIsolation(
 
   /**
    * Ensure that neurons from both parents are present in the child
-   */
-  function addNeuronsFromParent(
-    parent: Creature,
-    neuronMap: Map<string, Neuron>,
-    connectionsMap: Map<string, SynapseExport[]>,
-  ) {
-    parent.neurons.filter((neuron) => neuron.type !== "input").forEach(
-      (neuron) => {
-        if (!neuronMap.has(neuron.uuid)) {
-          const index = childExport.neurons.findIndex(
-            (n) => n.type === "output",
-          );
-          neuronMap.set(neuron.uuid, neuron);
-          childExport.neurons.splice(index, 0, neuron.exportJSON());
-          console.log(`Added neuron ${neuron.uuid} from parent`);
-          const connections = parent.inwardConnections(neuron.index);
-          connectionsMap.set(
-            neuron.uuid,
-            Offspring.cloneConnections(parent, connections),
-          );
-          addMissingNeuronsAndSynapses(neuron.uuid);
-        }
-      },
-    );
-  }
+  //  */
+  // function addNeuronsFromParent(
+  //   parent: Creature,
+  //   neuronMap: Map<string, Neuron>,
+  //   connectionsMap: Map<string, SynapseExport[]>,
+  // ) {
+  //   parent.neurons.filter((neuron) => neuron.type !== "input").forEach(
+  //     (neuron) => {
+  //       if (!neuronMap.has(neuron.uuid)) {
+  //         const index = childExport.neurons.findIndex(
+  //           (n) => n.type === "output",
+  //         );
+  //         neuronMap.set(neuron.uuid, neuron);
+  //         childExport.neurons.splice(index, 0, neuron.exportJSON());
+  //         console.log(`Added neuron ${neuron.uuid} from parent`);
+  //         const connections = parent.inwardConnections(neuron.index);
+  //         connectionsMap.set(
+  //           neuron.uuid,
+  //           Offspring.cloneConnections(parent, connections),
+  //         );
+  //         addMissingNeuronsAndSynapses(neuron.uuid);
+  //       }
+  //     },
+  //   );
+  // }
 
-  addNeuronsFromParent(mother, childNeuronMap, childConnectionsMap);
-  addNeuronsFromParent(father, childNeuronMap, childConnectionsMap);
+  // addNeuronsFromParent(mother, childNeuronMap, childConnectionsMap);
+  // addNeuronsFromParent(father, childNeuronMap, childConnectionsMap);
 
   // Ensure all neurons have outgoing and incoming connections
   childExport.neurons = childExport.neurons.filter((neuron) => {
