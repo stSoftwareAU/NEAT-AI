@@ -4,6 +4,7 @@ import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { assert } from "@std/assert";
+import { CreatureUtil } from "./CreatureUtils.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -16,11 +17,13 @@ export class Offspring {
   /**
    * Create an offspring from two parent networks
    */
-  static breed(mum: Creature, dad: Creature) {
+  static async breed(mum: Creature, dad: Creature) {
     const mother = Creature.fromJSON(mum.exportJSON());
-    assert(!mother.uuid);
+    await CreatureUtil.makeUUID(mother);
+    assert(mother.uuid);
     const father = Creature.fromJSON(dad.exportJSON());
-    assert(!father.uuid);
+    await CreatureUtil.makeUUID(father);
+    assert(father.uuid);
     if (
       mother.input !== father.input || mother.output !== father.output
     ) {
@@ -39,6 +42,7 @@ export class Offspring {
     const neuronMap = new Map<string, Neuron>();
     const connectionsMap = new Map<string, SynapseExport[]>();
 
+    // Populate neuronMap and connectionsMap with neurons and synapses from both parents
     for (const node of mother.neurons) {
       if (node.type !== "input") {
         neuronMap.set(node.uuid, node);
@@ -65,6 +69,7 @@ export class Offspring {
       }
     }
 
+    // Ensure all neurons are in neuronMap
     let addedMissing;
     do {
       addedMissing = false;
@@ -74,15 +79,15 @@ export class Offspring {
           for (const connection of connections) {
             let fromNeuron = neuronMap.get(connection.fromUUID);
             if (!fromNeuron) {
-              const motherNeuron = mother.neurons.find((neuron) => {
-                return neuron.uuid == connection.fromUUID;
-              });
+              const motherNeuron = mother.neurons.find((neuron) =>
+                neuron.uuid === connection.fromUUID
+              );
               fromNeuron = motherNeuron;
               let parent = mother;
               if (!fromNeuron || Math.random() >= 0.5) {
-                const fatherNeuron = father.neurons.find((neuron) => {
-                  return neuron.uuid == connection.fromUUID;
-                });
+                const fatherNeuron = father.neurons.find((neuron) =>
+                  neuron.uuid === connection.fromUUID
+                );
                 if (fatherNeuron) {
                   fromNeuron = fatherNeuron;
                   parent = father;
@@ -93,10 +98,12 @@ export class Offspring {
               }
 
               neuronMap.set(fromNeuron.uuid, fromNeuron);
-              const connections = parent.inwardConnections(fromNeuron.index);
+              const parentConnections = parent.inwardConnections(
+                fromNeuron.index,
+              );
               connectionsMap.set(
                 fromNeuron.uuid,
-                Offspring.cloneConnections(parent, connections),
+                Offspring.cloneConnections(parent, parentConnections),
               );
               addedMissing = true;
             }
@@ -107,8 +114,10 @@ export class Offspring {
       }
     } while (addedMissing);
 
+    // Function to clone nodes and create the offspring network
     const tmpNodes: Neuron[] = [];
     const tmpUUIDs = new Set<string>();
+
     function cloneNode(neuron: Neuron) {
       if (!tmpUUIDs.has(neuron.uuid)) {
         const connections = connectionsMap.get(neuron.uuid);
@@ -128,12 +137,14 @@ export class Offspring {
       }
     }
 
+    // Add input neurons
     for (let indx = 0; indx < mother.input; indx++) {
       const input = mother.neurons[indx];
       tmpNodes.push(input);
       tmpUUIDs.add(input.uuid);
     }
 
+    // Add output neurons
     for (let indx = mother.output; indx--;) {
       const node = neuronMap.get(`output-${indx}`);
       if (node != null) {
@@ -176,6 +187,7 @@ export class Offspring {
       indxMap.set(neuron.uuid, indx);
     });
 
+    // Connect synapses, reweighing as necessary
     offspring.neurons.forEach((neuron) => {
       if (neuron.type !== "input") {
         const connections = connectionsMap.get(neuron.uuid);
@@ -189,7 +201,7 @@ export class Offspring {
           if (fromIndx !== undefined && toIndx !== undefined) {
             if (fromIndx <= toIndx) {
               const toType = offspring.neurons[toIndx].type;
-              if (toType == "hidden" || toType == "output") {
+              if (toType === "hidden" || toType === "output") {
                 if (!offspring.getSynapse(fromIndx, toIndx)) {
                   const babySynapse = offspring.connect(
                     fromIndx,
@@ -217,19 +229,25 @@ export class Offspring {
 
     offspring.clearState();
 
-    try {
-      creatureValidate(offspring);
+    const child = await Offspring.handleGeneticIsolation(
+      offspring,
+      mother,
+      father,
+    );
 
-      return offspring;
+    try {
+      creatureValidate(child);
+
+      return child;
     } catch (e) {
       switch (e.name) {
         case "NO_OUTWARD_CONNECTIONS":
           return undefined;
         case "NO_INWARD_CONNECTIONS":
         case "IF_CONDITIONS":
-          offspring.fix();
-          creatureValidate(offspring);
-          return offspring;
+          child.fix();
+          creatureValidate(child);
+          return child;
         default:
           console.info(e);
           offspring.DEBUG = false;
@@ -239,7 +257,7 @@ export class Offspring {
           );
           Deno.writeTextFileSync(
             ".offspring-child.json",
-            JSON.stringify(offspring.exportJSON(), null, 2),
+            JSON.stringify(child.exportJSON(), null, 2),
           );
           Deno.writeTextFileSync(
             ".offspring-father.json",
@@ -423,5 +441,40 @@ export class Offspring {
         return aIndx - bIndx;
       }
     });
+  }
+
+  public static async handleGeneticIsolation(
+    child: Creature,
+    mother: Creature,
+    father: Creature,
+  ) {
+    assert(mother.uuid);
+    assert(father.uuid);
+
+    const childUUID = await CreatureUtil.makeUUID(child);
+
+    // Check if the offspring is a clone
+    if (childUUID === mother.uuid || childUUID === father.uuid) return child;
+
+    const _cloneOfParent = child.uuid === mother.uuid ? father : mother;
+    // cloneOfParent.neurons.forEach((neuron) => {
+    //   if (
+    //     !neuronMap.has(neuron.uuid) && neuron.type !== "input" &&
+    //     neuron.type !== "output"
+    //   ) {
+    //     neuronMap.set(neuron.uuid, neuron);
+    //     const connections = cloneOfParent.inwardConnections(neuron.index);
+    //     connectionsMap.set(
+    //       neuron.uuid,
+    //       Offspring.cloneConnections(cloneOfParent, connections),
+    //     );
+    //   }
+    // });
+
+    delete child.uuid;
+    // Recalculate the offspring's UUID after adding missing neurons
+    await CreatureUtil.makeUUID(child);
+
+    return child;
   }
 }
