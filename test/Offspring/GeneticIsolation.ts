@@ -112,7 +112,7 @@ Deno.test("GeneticIsolatedIslands", async () => {
   const mum = await makeMum();
   const dad = await makeDad();
 
-  const baby = await Offspring.breed(mum, dad);
+  const baby = await Offspring.handleGeneticIsolation(dad, mum, dad);
   assert(baby, "Baby should be created");
 
   const babyUUID = await CreatureUtil.makeUUID(baby);
