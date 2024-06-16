@@ -5,6 +5,7 @@ import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { assert } from "@std/assert";
 import { CreatureUtil } from "./CreatureUtils.ts";
+import { NeuronExport } from "./NeuronInterfaces.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -456,25 +457,71 @@ export class Offspring {
     // Check if the offspring is a clone
     if (childUUID === mother.uuid || childUUID === father.uuid) return child;
 
-    const _cloneOfParent = child.uuid === mother.uuid ? father : mother;
-    // cloneOfParent.neurons.forEach((neuron) => {
-    //   if (
-    //     !neuronMap.has(neuron.uuid) && neuron.type !== "input" &&
-    //     neuron.type !== "output"
-    //   ) {
-    //     neuronMap.set(neuron.uuid, neuron);
-    //     const connections = cloneOfParent.inwardConnections(neuron.index);
-    //     connectionsMap.set(
-    //       neuron.uuid,
-    //       Offspring.cloneConnections(cloneOfParent, connections),
-    //     );
-    //   }
-    // });
+    const cloneOfParent = child.uuid === mother.uuid ? father : mother;
+    const otherParent = child.uuid === mother.uuid ? mother : father;
 
-    delete child.uuid;
-    // Recalculate the offspring's UUID after adding missing neurons
-    await CreatureUtil.makeUUID(child);
 
-    return child;
+    const childNeuronMap = new Map<string, NeuronExport>();
+    const childConnectionsMap = new Map<string, SynapseExport[]>();
+    cloneOfParent.neurons.forEach((neuron) => {
+
+      childNeuronMap.set(neuron.uuid, neuron.exportJSON());
+        const connections = cloneOfParent.inwardConnections(neuron.index);
+        childConnectionsMap.set(
+          neuron.uuid,
+          Offspring.cloneConnections(cloneOfParent, connections),
+        );      
+    });
+
+    const otherNeuronMap = new Map<string, NeuronExport>();
+    const otherConnectionsMap = new Map<string, SynapseExport[]>();
+    otherParent.neurons.forEach((neuron) => {
+
+      otherNeuronMap.set(neuron.uuid, neuron.exportJSON());
+        const connections = otherParent.inwardConnections(neuron.index);
+        otherConnectionsMap.set(
+          neuron.uuid,
+          Offspring.cloneConnections(otherParent, connections),
+        );      
+    });
+
+    const childExport= child.exportJSON();
+
+    /** 
+     * Find an insertion point for a missing neuron. 
+     * There will always be at least one as the output neurons always have consistent UUIDs.
+     * Insert the missing neuron before the mutated child's target insertion point neuron.
+     */
+    // Find the first neuron that is not an input neuron HERE
+
+    /**
+     *  Calculate the existing absolute weight of the synapses that are connected to the target insertion point neuron.
+     */
+    // Find the synapses that are connected to the target insertion point neuron HERE
+    
+    /**
+     * Add a new synapse to link the inserted neuron to the target insertion point neuron.
+     */
+    // Add a new synapse to link the inserted neuron to the target insertion point neuron HERE
+
+    /** 
+     * Scale the weights of the synapses that are connected to the target insertion point neuron to maintain the same total weight.
+     */
+    // Scale the weights of the synapses that are connected to the target insertion point neuron HERE
+
+    /**
+     * Recursively add missing neurons and synapses to the mutated child required by the newly inserted neuron.
+     */
+    // Recursively add missing neurons and synapses to the mutated child required by the newly inserted neuron HERE
+
+    /**
+     * Recalculate the offspring's UUID after adding missing neurons
+     */
+    const mutatedChild = Creature.fromJSON(childExport);
+
+    assert(!mutatedChild.uuid);
+    await CreatureUtil.makeUUID(mutatedChild);
+
+    return mutatedChild;
   }
 }
