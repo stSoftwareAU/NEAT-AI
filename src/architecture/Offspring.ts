@@ -5,7 +5,7 @@ import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { assert } from "@std/assert";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { handleGeneticIsolation } from "./GeneticIsolation,.ts";
+import { handleGeneticIsolation } from "./GeneticIsolation.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {

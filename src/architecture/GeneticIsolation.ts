@@ -125,6 +125,7 @@ export async function handleGeneticIsolation(
       if (!childNeuronMap.has(connection.fromUUID)) {
         const missingNeuron = otherNeuronMap.get(connection.fromUUID);
         if (missingNeuron) {
+          childNeuronMap.set(missingNeuron.uuid, missingNeuron);
           childExport.neurons.push(missingNeuron);
           addMissingNeuronsAndSynapses(missingNeuron.uuid);
         }
@@ -141,6 +142,41 @@ export async function handleGeneticIsolation(
   }
 
   addMissingNeuronsAndSynapses(insertionNeuron.uuid);
+
+  /**
+   * Ensure that neurons from both parents are present in the child
+   */
+  function addNeuronsFromParent(
+    parent: Creature,
+    neuronMap: Map<string, NeuronExport>,
+    connectionsMap: Map<string, SynapseExport[]>,
+  ) {
+    parent.neurons.filter((neuron) => neuron.type !== "input").forEach(
+      (neuron) => {
+        if (!neuronMap.has(neuron.uuid)) {
+          const neuronExport = neuron.exportJSON();
+          neuronMap.set(neuron.uuid, neuronExport);
+          childExport.neurons.push(neuronExport);
+          const connections = parent.inwardConnections(neuron.index);
+          connectionsMap.set(
+            neuron.uuid,
+            Offspring.cloneConnections(parent, connections),
+          );
+        }
+      },
+    );
+  }
+
+  addNeuronsFromParent(mother, childNeuronMap, childConnectionsMap);
+  addNeuronsFromParent(father, childNeuronMap, childConnectionsMap);
+
+  // Remove duplicate neurons
+  const uniqueNeurons = Array.from(
+    new Set(childExport.neurons.map((neuron) => JSON.stringify(neuron))),
+  )
+    .map((neuron) => JSON.parse(neuron));
+
+  childExport.neurons = uniqueNeurons;
 
   /**
    * Import the mutated child JSON to create a "real" creature and recalculate the UUID.

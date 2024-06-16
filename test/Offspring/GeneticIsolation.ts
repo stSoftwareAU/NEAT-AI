@@ -3,7 +3,7 @@ import { emptyDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { handleGeneticIsolation } from "../../src/architecture/GeneticIsolation,.ts";
+import { handleGeneticIsolation } from "../../src/architecture/GeneticIsolation.ts";
 
 const testDir = ".test/GeneticIsolatedIslands";
 emptyDirSync(testDir);
