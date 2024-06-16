@@ -144,18 +144,47 @@ Deno.test("GeneticIsolatedIslands", async () => {
     "Baby should have unique neurons with no duplicates",
   );
 
-  // Validate that the total weight is maintained
-  exportBaby.neurons.forEach((neuron) => {
-    const inwardConnections = exportBaby.synapses.filter((synapse) =>
-      synapse.toUUID === neuron.uuid
-    );
-    const totalWeight = inwardConnections.reduce(
-      (sum, synapse) => sum + Math.abs(synapse.weight),
-      0,
+  // Validate that all neurons, except input neurons, have outgoing synapses
+  const neuronsWithOutgoingSynapses = new Set(
+    exportBaby.synapses.map((synapse) => synapse.fromUUID),
+  );
+  baby.neurons.forEach((neuron) => {
+    if (neuron.type !== "output" && neuron.type !== "input") {
+      assert(
+        neuronsWithOutgoingSynapses.has(neuron.uuid),
+        `Neuron ${neuron.uuid} should have outgoing synapses`,
+      );
+    }
+  });
+
+  // Validate that output neurons are the last neurons
+  const outputNeuronsStartIndex = baby.neurons.findIndex(
+    (neuron) => neuron.type === "output",
+  );
+  if (outputNeuronsStartIndex !== -1) {
+    for (let i = outputNeuronsStartIndex; i < baby.neurons.length; i++) {
+      assertEquals(
+        baby.neurons[i].type,
+        "output",
+        "All neurons after the first output neuron should also be output neurons",
+      );
+    }
+  }
+
+  // Validate that the order of neurons is "forward only"
+  const neuronUUIDToIndex = new Map(
+    baby.neurons.map((neuron, index) => [neuron.uuid, index]),
+  );
+  exportBaby.synapses.forEach((synapse) => {
+    const fromIndex = neuronUUIDToIndex.get(synapse.fromUUID);
+    const toIndex = neuronUUIDToIndex.get(synapse.toUUID);
+    assert(
+      fromIndex !== undefined && toIndex !== undefined,
+      `Synapse from ${synapse.fromUUID} to ${synapse.toUUID} should have defined indexes`,
     );
     assert(
-      totalWeight <= 1,
-      `Total weight for neuron ${neuron.uuid} should be maintained`,
+      fromIndex! < toIndex!,
+      `Synapse from ${synapse.fromUUID} to ${synapse.toUUID} should be forward only`,
     );
   });
 
