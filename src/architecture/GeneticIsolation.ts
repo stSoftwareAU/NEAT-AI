@@ -27,29 +27,25 @@ export async function handleGeneticIsolation(
 
   const childNeuronMap = new Map<string, NeuronExport>();
   const childConnectionsMap = new Map<string, SynapseExport[]>();
-  cloneOfParent.neurons.filter((neuron) => neuron.type !== "input").forEach(
-    (neuron) => {
-      childNeuronMap.set(neuron.uuid, neuron.exportJSON());
-      const connections = cloneOfParent.inwardConnections(neuron.index);
-      childConnectionsMap.set(
-        neuron.uuid,
-        Offspring.cloneConnections(cloneOfParent, connections),
-      );
-    },
-  );
+  cloneOfParent.neurons.filter(neuron => neuron.type !=='input').forEach((neuron) => {
+    childNeuronMap.set(neuron.uuid, neuron.exportJSON());
+    const connections = cloneOfParent.inwardConnections(neuron.index);
+    childConnectionsMap.set(
+      neuron.uuid,
+      Offspring.cloneConnections(cloneOfParent, connections),
+    );
+  });
 
   const otherNeuronMap = new Map<string, NeuronExport>();
   const otherConnectionsMap = new Map<string, SynapseExport[]>();
-  otherParent.neurons.filter((neuron) => neuron.type !== "input").forEach(
-    (neuron) => {
-      otherNeuronMap.set(neuron.uuid, neuron.exportJSON());
-      const connections = otherParent.inwardConnections(neuron.index);
-      otherConnectionsMap.set(
-        neuron.uuid,
-        Offspring.cloneConnections(otherParent, connections),
-      );
-    },
-  );
+  otherParent.neurons.filter(neuron => neuron.type !=='input').forEach((neuron) => {
+    otherNeuronMap.set(neuron.uuid, neuron.exportJSON());
+    const connections = otherParent.inwardConnections(neuron.index);
+    otherConnectionsMap.set(
+      neuron.uuid,
+      Offspring.cloneConnections(otherParent, connections),
+    );
+  });
 
   /**
    * Find possible insertion points for a missing neuron.
@@ -240,6 +236,22 @@ export async function handleGeneticIsolation(
   );
 
   childExport.neurons = [...hiddenNeurons, ...outputNeurons];
+
+  /**
+   * Ensure forward-only order of synapses.
+   */
+  const neuronUUIDToIndex = new Map(
+    childExport.neurons.map((neuron, index) => [neuron.uuid, index]),
+  );
+
+  childExport.synapses = childExport.synapses.filter(
+    (synapse) => {
+      const fromIndex = neuronUUIDToIndex.get(synapse.fromUUID);
+      const toIndex = neuronUUIDToIndex.get(synapse.toUUID);
+      return fromIndex !== undefined && toIndex !== undefined &&
+        fromIndex < toIndex;
+    },
+  );
 
   /**
    * Import the mutated child JSON to create a "real" creature and recalculate the UUID.
