@@ -18,8 +18,10 @@ export async function handleGeneticIsolation(
   // Check if the offspring is a clone
   if (childUUID !== mother.uuid && childUUID !== father.uuid) return child;
 
-  const cloneOfParent = child.uuid === mother.uuid ? father : mother;
-  const otherParent = child.uuid === mother.uuid ? mother : father;
+  console.log("Creating a new child due to genetic isolation");
+
+  const cloneOfParent = child.uuid === mother.uuid ? mother : father;
+  const otherParent = child.uuid === mother.uuid ? father : mother;
 
   const childExport = child.exportJSON();
 
@@ -67,6 +69,11 @@ export async function handleGeneticIsolation(
   if (possibleInsertionNeurons.length === 0) {
     throw new Error("No suitable neuron found for insertion");
   }
+
+  console.info(
+    "Possible insertion neurons:",
+    possibleInsertionNeurons.map((neuron) => neuron.uuid),
+  );
 
   // Randomly select one of the possible insertion neurons
   const insertionNeuron = possibleInsertionNeurons[
@@ -173,8 +180,7 @@ export async function handleGeneticIsolation(
   // Remove duplicate neurons
   const uniqueNeurons = Array.from(
     new Set(childExport.neurons.map((neuron) => JSON.stringify(neuron))),
-  )
-    .map((neuron) => JSON.parse(neuron));
+  ).map((neuron) => JSON.parse(neuron));
 
   childExport.neurons = uniqueNeurons;
 
