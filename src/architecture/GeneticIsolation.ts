@@ -125,7 +125,7 @@ export async function handleGeneticIsolation(
   // Add the neuron to the child
   const insertedNeuron = Neuron.fromJSON(insertionNeuron, child);
   childNeuronMap.set(insertedNeuron.uuid, insertedNeuron);
-  childExport.neurons.push(insertionNeuron);
+  childExport.neurons.splice(targetNeuronIndex, 0, insertionNeuron);
 
   /**
    * Recursively add missing neurons and synapses to the mutated child required by the newly inserted neuron.
@@ -202,16 +202,6 @@ export async function handleGeneticIsolation(
   ).map((neuron) => JSON.parse(neuron));
 
   childExport.neurons = uniqueNeurons;
-
-  // Ensure that output neurons are last
-  const hiddenNeurons = childExport.neurons.filter(
-    (neuron) => neuron.type === "hidden",
-  );
-  const outputNeurons = childExport.neurons.filter(
-    (neuron) => neuron.type === "output",
-  );
-
-  childExport.neurons = [...hiddenNeurons, ...outputNeurons];
 
   /**
    * Ensure forward-only order of synapses.
