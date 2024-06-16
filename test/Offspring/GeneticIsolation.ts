@@ -1,4 +1,4 @@
-import { assert, assertNotEquals } from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { emptyDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
@@ -85,8 +85,6 @@ Deno.test("GeneticIsolatedIslands", async () => {
     JSON.stringify(exportBaby, null, 2),
   );
 
-  baby.validate();
-
   const babyUUID = await CreatureUtil.makeUUID(baby);
 
   assertNotEquals(
@@ -102,7 +100,7 @@ Deno.test("GeneticIsolatedIslands", async () => {
 
   // Check that the baby has neurons from both parents
   const babyNeurons = new Set(baby.neurons.filter(neuron=>neuron.type==='hidden').map((neuron) => neuron.uuid));
-  console.log(babyNeurons);
+
   const mumNeurons = new Set(mother.neurons.filter(neuron=>neuron.type==='hidden').map((neuron) => neuron.uuid));
   const dadNeurons = new Set(father.neurons.filter(neuron=>neuron.type==='hidden').map((neuron) => neuron.uuid));
 
@@ -127,6 +125,14 @@ Deno.test("GeneticIsolatedIslands", async () => {
   );
 
   
+  // Validate that the baby has unique neurons (no duplicates)
+  const uniqueBabyNeurons = new Set(baby.neurons.map((neuron) => neuron.uuid));
+  assertEquals(
+    uniqueBabyNeurons.size,
+    baby.neurons.length,
+    "Baby should have unique neurons with no duplicates",
+  );
+  
   // Validate that the total weight is maintained
   exportBaby.neurons.forEach((neuron) => {
     const inwardConnections = exportBaby.synapses.filter((synapse) =>
@@ -141,4 +147,7 @@ Deno.test("GeneticIsolatedIslands", async () => {
       `Total weight for neuron ${neuron.uuid} should be maintained`,
     );
   });
+
+  baby.validate();
+
 });
