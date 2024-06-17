@@ -294,7 +294,7 @@ export class Creature implements CreatureInternal {
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
    * @returns {number[]} The output values after activation.
    */
-  activateAndTrace(input: number[], feedbackLoop = false): number[] {
+  activateAndTrace(input: number[], feedbackLoop: boolean = false): number[] {
     const output: number[] = new Array(this.output);
 
     this.state.makeActivation(input, feedbackLoop);
@@ -322,7 +322,7 @@ export class Creature implements CreatureInternal {
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
    * @returns {number[]} The output values after activation.
    */
-  activate(input: number[], feedbackLoop = false): number[] {
+  activate(input: number[], feedbackLoop: boolean = false): number[] {
     const output: number[] = new Array(this.output);
 
     this.state.makeActivation(input, feedbackLoop);

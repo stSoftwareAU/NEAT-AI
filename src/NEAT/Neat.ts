@@ -310,7 +310,7 @@ export class Neat {
       let i = newPopSize > 0 ? newPopSize : 0;
       i--;
     ) {
-      const child = breed.breed();
+      const child = await breed.breed();
       if (child) {
         await CreatureUtil.makeUUID(child);
         await genus.addCreature(child);

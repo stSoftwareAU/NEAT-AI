@@ -60,7 +60,7 @@ export class DeDuplicator {
     unique: Set<string>,
   ) {
     for (let attempts = 0; true; attempts++) {
-      const child = this.breed.breed();
+      const child = await this.breed.breed();
 
       if (child) {
         const key2 = await CreatureUtil.makeUUID(child);
