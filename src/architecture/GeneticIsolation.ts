@@ -19,8 +19,6 @@ export async function handleGeneticIsolation(
   // Check if the offspring is a clone
   if (childUUID !== mother.uuid && childUUID !== father.uuid) return child;
 
-  console.log("Creating a new child due to genetic isolation(clone)");
-
   const cloneOfParent = child.uuid === mother.uuid ? mother : father;
   const otherParent = child.uuid === mother.uuid ? father : mother;
 
@@ -179,6 +177,8 @@ export async function handleGeneticIsolation(
   // mutatedChild.validate();
   // assert(!mutatedChild.uuid);
   // await CreatureUtil.makeUUID(mutatedChild);
+
+  console.log("Created a new child due to genetic isolation(clone)");
 
   return mutatedChild;
 }
