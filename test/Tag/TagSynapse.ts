@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertNotEquals } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
@@ -6,7 +6,7 @@ import { Offspring } from "../../src/architecture/Offspring.ts";
 function makeCreature(name: string) {
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: "hidden-3", squash: "CLIPPED", bias: 2 },
+      { type: "hidden", uuid: `${name}-3`, squash: "CLIPPED", bias: 2 },
 
       {
         type: "output",
@@ -22,12 +22,12 @@ function makeCreature(name: string) {
       },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
-      { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
+      { fromUUID: "input-0", toUUID: `${name}-3`, weight: -0.3 },
+      { fromUUID: "input-1", toUUID: `${name}-3`, weight: 0.3 },
 
-      { fromUUID: "hidden-3", toUUID: "output-0", weight: 0.6 },
+      { fromUUID: `${name}-3`, toUUID: "output-0", weight: 0.6 },
 
-      { fromUUID: "hidden-3", toUUID: "output-1", weight: 0.7 },
+      { fromUUID: `${name}-3`, toUUID: "output-1", weight: 0.7 },
       { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
     ],
     input: 3,
@@ -54,7 +54,7 @@ Deno.test("TagSynapse", async () => {
   const message = getTag(baby.synapses[0], "hello");
   assert(/^(mum|dad)$/.test(`${message}`), `Lost name ${message}`);
 
-  assertEquals(mumUUID, dadUUID);
+  assertNotEquals(mumUUID, dadUUID);
 
-  assertEquals(mumUUID, babyUUID);
+  assertNotEquals(mumUUID, babyUUID);
 });
