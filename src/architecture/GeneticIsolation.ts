@@ -27,14 +27,8 @@ export async function handleGeneticIsolation(
   const childExport = child.exportJSON();
 
   const childNeuronMap = new Map<string, Neuron>();
-  const childConnectionsMap = new Map<string, SynapseExport[]>();
   cloneOfParent.neurons.forEach((neuron) => {
     childNeuronMap.set(neuron.uuid, neuron);
-    const connections = cloneOfParent.inwardConnections(neuron.index);
-    childConnectionsMap.set(
-      neuron.uuid,
-      Offspring.cloneConnections(cloneOfParent, connections),
-    );
   });
 
   const otherNeuronMap = new Map<string, Neuron>();
@@ -56,8 +50,7 @@ export async function handleGeneticIsolation(
   for (
     const neuron of otherParent.neurons
   ) {
-    if (neuron.type === "input") continue;
-    if (childNeuronMap.has(neuron.uuid)) continue;
+    if (neuron.type === "input" || childNeuronMap.has(neuron.uuid)) continue;
     const connections = otherParent.outwardConnections(neuron.index);
     for (const connection of connections) {
       const toUUID = otherParent.neurons[connection.to].uuid;
