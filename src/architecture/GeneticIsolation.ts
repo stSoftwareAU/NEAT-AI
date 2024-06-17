@@ -53,7 +53,11 @@ export async function handleGeneticIsolation(
    */
   const possibleInsertionNeurons: NeuronExport[] = [];
   const targetInsertionPoints: Map<string, string> = new Map(); // Map to track insertion neuron -> target neuron UUID
-  for (const neuron of otherParent.neurons) {
+  for (
+    const neuron of otherParent.neurons
+  ) {
+    if (neuron.type === "input") continue;
+    if (childNeuronMap.has(neuron.uuid)) continue;
     const connections = otherParent.outwardConnections(neuron.index);
     for (const connection of connections) {
       const toUUID = otherParent.neurons[connection.to].uuid;
@@ -66,7 +70,8 @@ export async function handleGeneticIsolation(
   }
 
   if (possibleInsertionNeurons.length === 0) {
-    throw new Error("No suitable neuron found for insertion");
+    console.warn("No suitable neuron found for insertion");
+    return child;
   }
 
   console.info(
@@ -102,8 +107,6 @@ export async function handleGeneticIsolation(
   childNeuronMap.set(insertedNeuron.uuid, insertedNeuron);
   childExport.neurons.splice(targetNeuronIndex, 0, insertionNeuron);
 
-  console.log(`Inserted neuron ${insertionNeuron.uuid} into the child`);
-
   /**
    * Calculate the existing absolute weight of the synapses that are connected to the target insertion point neuron.
    */
@@ -132,7 +135,7 @@ export async function handleGeneticIsolation(
 
   childExport.synapses.push(newSynapseFromOtherParent);
   console.log(
-    `Added new synapse from ${insertionNeuron.uuid} to ${targetNeuronUUID}`,
+    `Inserting new synapse from ${newSynapseFromOtherParent.fromUUID} to ${newSynapseFromOtherParent.toUUID}`,
   );
 
   /**
@@ -181,68 +184,16 @@ export async function handleGeneticIsolation(
 
   addMissingNeuronsAndSynapses(insertedNeuron.uuid);
 
-  /**
-   * Ensure that neurons from both parents are present in the child
-  //  */
-  // function addNeuronsFromParent(
-  //   parent: Creature,
-  //   neuronMap: Map<string, Neuron>,
-  //   connectionsMap: Map<string, SynapseExport[]>,
-  // ) {
-  //   parent.neurons.filter((neuron) => neuron.type !== "input").forEach(
-  //     (neuron) => {
-  //       if (!neuronMap.has(neuron.uuid)) {
-  //         const index = childExport.neurons.findIndex(
-  //           (n) => n.type === "output",
-  //         );
-  //         neuronMap.set(neuron.uuid, neuron);
-  //         childExport.neurons.splice(index, 0, neuron.exportJSON());
-  //         console.log(`Added neuron ${neuron.uuid} from parent`);
-  //         const connections = parent.inwardConnections(neuron.index);
-  //         connectionsMap.set(
-  //           neuron.uuid,
-  //           Offspring.cloneConnections(parent, connections),
-  //         );
-  //         addMissingNeuronsAndSynapses(neuron.uuid);
-  //       }
-  //     },
-  //   );
-  // }
-
-  // addNeuronsFromParent(mother, childNeuronMap, childConnectionsMap);
-  // addNeuronsFromParent(father, childNeuronMap, childConnectionsMap);
-
-  // Ensure all neurons have outgoing and incoming connections
-  childExport.neurons = childExport.neurons.filter((neuron) => {
-    const inwardConnections = childExport.synapses.filter(
-      (synapse) => synapse.toUUID === neuron.uuid,
-    );
-    const outwardConnections = childExport.synapses.filter(
-      (synapse) => synapse.fromUUID === neuron.uuid,
-    );
-
-    return inwardConnections.length > 0 &&
-      (outwardConnections.length > 0 || neuron.type === "output");
-  });
-
-  // Remove duplicate neurons
-  const uniqueNeurons = Array.from(
-    new Set(childExport.neurons.map((neuron) => JSON.stringify(neuron))),
-  ).map((neuron) => JSON.parse(neuron));
-
-  childExport.neurons = uniqueNeurons;
-
+  console.info(
+    `Child has ${childExport.neurons.length} neurons and ${childExport.synapses.length} synapses`,
+  );
   /**
    * Import the mutated child JSON to create a "real" creature and recalculate the UUID.
    */
   const mutatedChild = Creature.fromJSON(childExport);
+  mutatedChild.validate();
   assert(!mutatedChild.uuid);
   await CreatureUtil.makeUUID(mutatedChild);
 
   return mutatedChild;
 }
-
-// Deno.writeTextFileSync(
-//   `.test/GeneticIsolatedIslands/childExport.json`,
-//   JSON.stringify(childExport, null, 2),
-// );
