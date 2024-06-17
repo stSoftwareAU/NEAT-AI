@@ -236,6 +236,8 @@ export class Offspring {
       father,
     );
 
+    /* No point returning clones */
+    if (child === undefined) return undefined;
     try {
       creatureValidate(child);
 
