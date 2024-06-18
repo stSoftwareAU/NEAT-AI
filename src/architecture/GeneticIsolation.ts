@@ -103,10 +103,15 @@ export async function handleGrafting(
     throw new Error("No target neuron found for grafting");
   }
 
+  // Find the correct position to insert the neuron to maintain order
+  const insertIndex = childExport.neurons.findIndex((neuron) =>
+    neuron.type === "output"
+  );
+
   // Add the neuron to the child
   const insertedNeuron = Neuron.fromJSON(graftingNeuron, child);
   childNeuronMap.set(insertedNeuron.uuid, insertedNeuron);
-  childExport.neurons.splice(targetNeuronIndex, 0, graftingNeuron);
+  childExport.neurons.splice(insertIndex, 0, graftingNeuron);
 
   /**
    * Calculate the existing absolute weight of the synapses that are connected to the target grafting point neuron.
