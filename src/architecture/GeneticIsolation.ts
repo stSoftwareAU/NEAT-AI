@@ -183,9 +183,9 @@ export async function handleGrafting(
   const graftedChild = Creature.fromJSON(childExport);
   graftedChild.validate();
   assert(!graftedChild.uuid);
-  await CreatureUtil.makeUUID(graftedChild);
+  // await CreatureUtil.makeUUID(graftedChild);
 
-  console.log("Created a new child due to grafting (genetic isolation)");
+  console.log("Grafting new child due to genetic isolation (clone)");
 
   return graftedChild;
 }
