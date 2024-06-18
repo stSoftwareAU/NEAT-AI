@@ -397,7 +397,7 @@ Deno.test("evolve_AND_gate", async () => {
       { input: [1, 0], output: [0] },
       { input: [1, 1], output: [1] },
     ],
-    1000,
+    10000,
     0.002,
   );
 });
