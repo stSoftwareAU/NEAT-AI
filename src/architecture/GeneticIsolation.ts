@@ -143,11 +143,21 @@ export async function handleGrafting(
   /**
    * Scale the weights of the synapses that are connected to the target grafting point neuron to maintain the same total weight.
    */
-  const weightScaleFactor = totalWeight /
-    (totalWeight + Math.abs(newSynapseFromOtherParent.weight));
+  const newTotalWeight = totalWeight +
+    Math.abs(newSynapseFromOtherParent.weight);
+  const weightScaleFactor = totalWeight / newTotalWeight;
   for (const synapse of targetNeuronConnections) {
     synapse.weight *= weightScaleFactor;
   }
+
+  // Adjust the weight of the new synapse to maintain the overall weight balance
+  const adjustedNewSynapseWeight = newSynapseFromOtherParent.weight *
+    weightScaleFactor;
+  const adjustedSynapse = {
+    ...newSynapseFromOtherParent,
+    weight: adjustedNewSynapseWeight,
+  };
+  childExport.synapses[childExport.synapses.length - 1] = adjustedSynapse;
 
   /**
    * Recursively add missing neurons and synapses to the grafted child required by the newly inserted neuron.
@@ -186,8 +196,8 @@ export async function handleGrafting(
    * Import the grafted child JSON to create a "real" creature and recalculate the UUID.
    */
   const graftedChild = Creature.fromJSON(childExport);
-  graftedChild.validate();
   assert(!graftedChild.uuid);
+  graftedChild.validate();
   // await CreatureUtil.makeUUID(graftedChild);
 
   console.log("Grafting new child due to genetic isolation (clone)");

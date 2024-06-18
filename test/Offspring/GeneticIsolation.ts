@@ -76,6 +76,15 @@ Deno.test("GeneticIsolatedIslands", async () => {
   const mother = await makeTestCreature("mother");
   const father = await makeTestCreature("father");
 
+  const targetNeuronUUID = "output-0";
+  const targetNeuronConnectionsBefore = father.exportJSON().synapses.filter(
+    (synapse) => synapse.toUUID === targetNeuronUUID,
+  );
+  const totalWeightBefore = targetNeuronConnectionsBefore.reduce(
+    (sum, synapse) => sum + Math.abs(synapse.weight),
+    0,
+  );
+
   const baby = await handleGrafting(father, mother, father);
   assert(baby, "Baby should be created");
   const exportBaby = baby.exportJSON();
@@ -187,6 +196,20 @@ Deno.test("GeneticIsolatedIslands", async () => {
       `Synapse from ${synapse.fromUUID} (${fromIndex}) to ${synapse.toUUID} (${toIndex}) should be forward only`,
     );
   });
+
+  // Validate the sum of absolute weights remains the same
+  const targetNeuronConnectionsAfter = baby.exportJSON().synapses.filter(
+    (synapse) => synapse.toUUID === targetNeuronUUID,
+  );
+  const totalWeightAfter = targetNeuronConnectionsAfter.reduce(
+    (sum, synapse) => sum + Math.abs(synapse.weight),
+    0,
+  );
+  assertEquals(
+    totalWeightAfter,
+    totalWeightBefore,
+    `Sum of absolute weights to neuron ${targetNeuronUUID} should remain the same after grafting`,
+  );
 
   baby.validate();
 });
