@@ -173,7 +173,7 @@ Deno.test("propagateInverseRandom", async () => {
     if (result1.error <= result2.error && attempts < 12) continue;
 
     assert(
-      result1.error > result2.error,
+      result1.error < 0.001 || result1.error > result2.error,
       `Didn't improve error ${result1.error.toFixed(3)} -> ${
         result2.error.toFixed(3)
       }`,

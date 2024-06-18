@@ -6,7 +6,16 @@ import { Offspring } from "./Offspring.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";
 
-export async function handleGeneticIsolation(
+/**
+ * Handle the genetic isolation by grafting a neuron from one parent onto the child
+ * if the child is a clone of one of the parents.
+ *
+ * @param child - The child creature.
+ * @param mother - The mother creature.
+ * @param father - The father creature.
+ * @returns A Promise that resolves to the grafted creature or undefined.
+ */
+export async function handleGrafting(
   child: Creature,
   mother: Creature,
   father: Creature,
@@ -26,66 +35,64 @@ export async function handleGeneticIsolation(
 
   const childNeuronMap = new Map<string, Neuron>();
   const childSynapseMap = new Map<string, SynapseExport[]>();
-  cloneOfParent.neurons.forEach((neuron) => {
+  for (const neuron of cloneOfParent.neurons) {
     childNeuronMap.set(neuron.uuid, neuron);
     const connections = cloneOfParent.inwardConnections(neuron.index);
     childSynapseMap.set(
       neuron.uuid,
       Offspring.cloneConnections(cloneOfParent, connections),
     );
-  });
+  }
 
   const otherNeuronMap = new Map<string, Neuron>();
   const otherSynapseMap = new Map<string, SynapseExport[]>();
-  otherParent.neurons.forEach((neuron) => {
+  const otherSynapseMapByFromUUID = new Map<string, SynapseExport>();
+  for (const neuron of otherParent.neurons) {
     otherNeuronMap.set(neuron.uuid, neuron);
     const connections = otherParent.inwardConnections(neuron.index);
     otherSynapseMap.set(
       neuron.uuid,
       Offspring.cloneConnections(otherParent, connections),
     );
-  });
-
-  const otherSynapses = otherParent.exportJSON().synapses;
-  const otherSynapseMapByFromUUID = new Map<string, SynapseExport>();
-  otherSynapses.forEach((synapse) => {
+  }
+  for (const synapse of otherParent.exportJSON().synapses) {
     otherSynapseMapByFromUUID.set(
       synapse.fromUUID + "->" + synapse.toUUID,
       synapse,
     );
-  });
+  }
 
   /**
-   * Find possible insertion points for a missing neuron.
+   * Find possible grafting points for a missing neuron.
    */
-  const possibleInsertionNeurons: NeuronExport[] = [];
-  const targetInsertionPoints: Map<string, string> = new Map(); // Map to track insertion neuron -> target neuron UUID
+  const possibleGraftingNeurons: NeuronExport[] = [];
+  const targetGraftingPoints: Map<string, string> = new Map(); // Map to track grafting neuron -> target neuron UUID
   for (const neuron of otherParent.neurons) {
     if (neuron.type === "input" || childNeuronMap.has(neuron.uuid)) continue;
     const connections = otherParent.outwardConnections(neuron.index);
     for (const connection of connections) {
       const toUUID = otherParent.neurons[connection.to].uuid;
       if (childNeuronMap.has(toUUID)) {
-        possibleInsertionNeurons.push(neuron.exportJSON());
-        targetInsertionPoints.set(neuron.uuid, toUUID);
+        possibleGraftingNeurons.push(neuron.exportJSON());
+        targetGraftingPoints.set(neuron.uuid, toUUID);
         break;
       }
     }
   }
 
-  if (possibleInsertionNeurons.length === 0) {
+  if (possibleGraftingNeurons.length === 0) {
     return undefined;
   }
 
-  // Randomly select one of the possible insertion neurons
-  const insertionNeuron = possibleInsertionNeurons[
-    Math.floor(Math.random() * possibleInsertionNeurons.length)
+  // Randomly select one of the possible grafting neurons
+  const graftingNeuron = possibleGraftingNeurons[
+    Math.floor(Math.random() * possibleGraftingNeurons.length)
   ];
 
-  const targetNeuronUUID = targetInsertionPoints.get(insertionNeuron.uuid);
+  const targetNeuronUUID = targetGraftingPoints.get(graftingNeuron.uuid);
 
   if (!targetNeuronUUID) {
-    throw new Error("No target neuron found for insertion");
+    throw new Error("No target neuron found for grafting");
   }
 
   const targetNeuronIndex = childExport.neurons.findIndex((neuron) =>
@@ -93,16 +100,21 @@ export async function handleGeneticIsolation(
   );
 
   if (targetNeuronIndex === -1) {
-    throw new Error("No target neuron found for insertion");
+    throw new Error("No target neuron found for grafting");
   }
 
+  // Find the correct position to insert the neuron to maintain order
+  const insertIndex = childExport.neurons.findIndex((neuron) =>
+    neuron.type === "output"
+  );
+
   // Add the neuron to the child
-  const insertedNeuron = Neuron.fromJSON(insertionNeuron, child);
+  const insertedNeuron = Neuron.fromJSON(graftingNeuron, child);
   childNeuronMap.set(insertedNeuron.uuid, insertedNeuron);
-  childExport.neurons.splice(targetNeuronIndex, 0, insertionNeuron);
+  childExport.neurons.splice(insertIndex, 0, graftingNeuron);
 
   /**
-   * Calculate the existing absolute weight of the synapses that are connected to the target insertion point neuron.
+   * Calculate the existing absolute weight of the synapses that are connected to the target grafting point neuron.
    */
   const targetNeuronConnections = childExport.synapses.filter(
     (synapse) => synapse.toUUID === targetNeuronUUID,
@@ -113,38 +125,48 @@ export async function handleGeneticIsolation(
   );
 
   /**
-   * Add a new synapse to link the inserted neuron to the target insertion point neuron.
+   * Add a new synapse to link the grafted neuron to the target grafting point neuron.
    */
-  const newSynapseKey = insertionNeuron.uuid + "->" + targetNeuronUUID;
+  const newSynapseKey = graftingNeuron.uuid + "->" + targetNeuronUUID;
   const newSynapseFromOtherParent = otherSynapseMapByFromUUID.get(
     newSynapseKey,
   );
 
   if (!newSynapseFromOtherParent) {
     throw new Error(
-      `No synapse found in the other parent from ${insertionNeuron.uuid} to ${targetNeuronUUID}`,
+      `No synapse found in the other parent from ${graftingNeuron.uuid} to ${targetNeuronUUID}`,
     );
   }
 
   childExport.synapses.push(newSynapseFromOtherParent);
 
   /**
-   * Scale the weights of the synapses that are connected to the target insertion point neuron to maintain the same total weight.
+   * Scale the weights of the synapses that are connected to the target grafting point neuron to maintain the same total weight.
    */
-  const weightScaleFactor = totalWeight /
-    (totalWeight + Math.abs(newSynapseFromOtherParent.weight));
-  targetNeuronConnections.forEach((synapse) => {
+  const newTotalWeight = totalWeight +
+    Math.abs(newSynapseFromOtherParent.weight);
+  const weightScaleFactor = totalWeight / newTotalWeight;
+  for (const synapse of targetNeuronConnections) {
     synapse.weight *= weightScaleFactor;
-  });
+  }
+
+  // Adjust the weight of the new synapse to maintain the overall weight balance
+  const adjustedNewSynapseWeight = newSynapseFromOtherParent.weight *
+    weightScaleFactor;
+  const adjustedSynapse = {
+    ...newSynapseFromOtherParent,
+    weight: adjustedNewSynapseWeight,
+  };
+  childExport.synapses[childExport.synapses.length - 1] = adjustedSynapse;
 
   /**
-   * Recursively add missing neurons and synapses to the mutated child required by the newly inserted neuron.
+   * Recursively add missing neurons and synapses to the grafted child required by the newly inserted neuron.
    */
   function addMissingNeuronsAndSynapses(neuronUUID: string) {
     const connections = otherSynapseMap.get(neuronUUID);
     if (!connections) return;
 
-    connections.forEach((connection) => {
+    for (const connection of connections) {
       if (!childNeuronMap.has(connection.fromUUID)) {
         const missingNeuron = otherNeuronMap.get(connection.fromUUID);
         if (missingNeuron) {
@@ -165,20 +187,20 @@ export async function handleGeneticIsolation(
       ) {
         childExport.synapses.push(connection);
       }
-    });
+    }
   }
 
   addMissingNeuronsAndSynapses(insertedNeuron.uuid);
 
   /**
-   * Import the mutated child JSON to create a "real" creature and recalculate the UUID.
+   * Import the grafted child JSON to create a "real" creature and recalculate the UUID.
    */
-  const mutatedChild = Creature.fromJSON(childExport);
-  // mutatedChild.validate();
-  // assert(!mutatedChild.uuid);
-  // await CreatureUtil.makeUUID(mutatedChild);
+  const graftedChild = Creature.fromJSON(childExport);
+  assert(!graftedChild.uuid);
+  graftedChild.validate();
+  // await CreatureUtil.makeUUID(graftedChild);
 
-  console.log("Created a new child due to genetic isolation(clone)");
+  console.log("Grafting new child due to genetic isolation (clone)");
 
-  return mutatedChild;
+  return graftedChild;
 }

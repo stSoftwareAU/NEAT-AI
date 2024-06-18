@@ -105,8 +105,37 @@ export function creatureValidate(
           "OTHER",
         );
       }
+    } else if (outputIndx) {
+      if (creature.DEBUG) {
+        creature.DEBUG = false;
+        Deno.writeTextFileSync(
+          ".validate.json",
+          JSON.stringify(creature.exportJSON(), null, 2),
+        );
+
+        creature.DEBUG = true;
+      }
+      throw new ValidationError(
+        `${uuid} + ") type ${node.type} after output neuron`,
+        "OTHER",
+      );
     }
 
+    if (node.type == "input" && indx > creature.input) {
+      if (creature.DEBUG) {
+        creature.DEBUG = false;
+        Deno.writeTextFileSync(
+          ".validate.json",
+          JSON.stringify(creature.exportJSON(), null, 2),
+        );
+
+        creature.DEBUG = true;
+      }
+      throw new ValidationError(
+        `${uuid} + ") input neuron after the maximum input neurons`,
+        "OTHER",
+      );
+    }
     UUIDs.add(uuid);
 
     if (node.squash === "IF" && indx > 2) {

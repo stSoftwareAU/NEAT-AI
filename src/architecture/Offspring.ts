@@ -5,7 +5,7 @@ import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { assert } from "@std/assert";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { handleGeneticIsolation } from "./GeneticIsolation.ts";
+import { handleGrafting } from "./GeneticIsolation.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -230,7 +230,7 @@ export class Offspring {
 
     offspring.clearState();
 
-    const child = await handleGeneticIsolation(
+    const child = await handleGrafting(
       offspring,
       mother,
       father,
