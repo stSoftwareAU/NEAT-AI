@@ -35,34 +35,32 @@ export async function handleGrafting(
 
   const childNeuronMap = new Map<string, Neuron>();
   const childSynapseMap = new Map<string, SynapseExport[]>();
-  cloneOfParent.neurons.forEach((neuron) => {
+  for (const neuron of cloneOfParent.neurons) {
     childNeuronMap.set(neuron.uuid, neuron);
     const connections = cloneOfParent.inwardConnections(neuron.index);
     childSynapseMap.set(
       neuron.uuid,
       Offspring.cloneConnections(cloneOfParent, connections),
     );
-  });
+  }
 
   const otherNeuronMap = new Map<string, Neuron>();
   const otherSynapseMap = new Map<string, SynapseExport[]>();
-  otherParent.neurons.forEach((neuron) => {
+  const otherSynapseMapByFromUUID = new Map<string, SynapseExport>();
+  for (const neuron of otherParent.neurons) {
     otherNeuronMap.set(neuron.uuid, neuron);
     const connections = otherParent.inwardConnections(neuron.index);
     otherSynapseMap.set(
       neuron.uuid,
       Offspring.cloneConnections(otherParent, connections),
     );
-  });
-
-  const otherSynapses = otherParent.exportJSON().synapses;
-  const otherSynapseMapByFromUUID = new Map<string, SynapseExport>();
-  otherSynapses.forEach((synapse) => {
+  }
+  for (const synapse of otherParent.exportJSON().synapses) {
     otherSynapseMapByFromUUID.set(
       synapse.fromUUID + "->" + synapse.toUUID,
       synapse,
     );
-  });
+  }
 
   /**
    * Find possible grafting points for a missing neuron.
@@ -142,9 +140,9 @@ export async function handleGrafting(
    */
   const weightScaleFactor = totalWeight /
     (totalWeight + Math.abs(newSynapseFromOtherParent.weight));
-  targetNeuronConnections.forEach((synapse) => {
+  for (const synapse of targetNeuronConnections) {
     synapse.weight *= weightScaleFactor;
-  });
+  }
 
   /**
    * Recursively add missing neurons and synapses to the grafted child required by the newly inserted neuron.
@@ -153,7 +151,7 @@ export async function handleGrafting(
     const connections = otherSynapseMap.get(neuronUUID);
     if (!connections) return;
 
-    connections.forEach((connection) => {
+    for (const connection of connections) {
       if (!childNeuronMap.has(connection.fromUUID)) {
         const missingNeuron = otherNeuronMap.get(connection.fromUUID);
         if (missingNeuron) {
@@ -174,7 +172,7 @@ export async function handleGrafting(
       ) {
         childExport.synapses.push(connection);
       }
-    });
+    }
   }
 
   addMissingNeuronsAndSynapses(insertedNeuron.uuid);
