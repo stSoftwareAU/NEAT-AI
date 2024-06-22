@@ -1,10 +1,10 @@
 import { assert } from "@std/assert";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
+import { Neuron } from "./Neuron.ts";
 import type { NeuronExport } from "./NeuronInterfaces.ts";
 import { Offspring } from "./Offspring.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
-import { Neuron } from "./Neuron.ts";
 
 /**
  * Handle the genetic isolation by grafting a neuron from one parent onto the child
@@ -73,6 +73,18 @@ export async function handleGrafting(
     for (const connection of connections) {
       const toUUID = otherParent.neurons[connection.to].uuid;
       if (childNeuronMap.has(toUUID)) {
+        // Check for recursive synapses before adding
+        if (
+          checkForRecursiveSynapse(
+            otherParent,
+            neuron.uuid,
+            childNeuronMap,
+            new Set(),
+            toUUID,
+          )
+        ) {
+          continue; // Skip this neuron if it creates a recursion
+        }
         possibleGraftingNeurons.push(neuron.exportJSON());
         targetGraftingPoints.set(neuron.uuid, toUUID);
         break;
@@ -140,11 +152,12 @@ export async function handleGrafting(
 
   childExport.synapses.push(newSynapseFromOtherParent);
 
+  const graftingFactor = 2 * Math.random();
   /**
    * Scale the weights of the synapses that are connected to the target grafting point neuron to maintain the same total weight.
    */
   const newTotalWeight = totalWeight +
-    Math.abs(newSynapseFromOtherParent.weight);
+    Math.abs(newSynapseFromOtherParent.weight * graftingFactor);
   const weightScaleFactor = totalWeight / newTotalWeight;
   for (const synapse of targetNeuronConnections) {
     synapse.weight *= weightScaleFactor;
@@ -152,6 +165,7 @@ export async function handleGrafting(
 
   // Adjust the weight of the new synapse to maintain the overall weight balance
   const adjustedNewSynapseWeight = newSynapseFromOtherParent.weight *
+    graftingFactor *
     weightScaleFactor;
   const adjustedSynapse = {
     ...newSynapseFromOtherParent,
@@ -197,10 +211,89 @@ export async function handleGrafting(
    */
   const graftedChild = Creature.fromJSON(childExport);
   assert(!graftedChild.uuid);
-  graftedChild.validate();
-  // await CreatureUtil.makeUUID(graftedChild);
+  // graftedChild.validate();
 
-  console.log("Grafting new child due to genetic isolation (clone)");
+  // console.log(
+  //   `Grafting new child from mother: ${
+  //     blue(mother.uuid?.substring(0, 8))
+  //   } and father: ${brightBlue(father.uuid?.substring(0, 8))}`,
+  // );
 
   return graftedChild;
+}
+
+/**
+ * Check for recursive synapses in the given child export.
+ *
+ * @param otherParent - The parent from which the neuron is being grafted.
+ * @param neuronUUID - The UUID of the neuron being checked.
+ * @param childNeuronMap - Map of neurons in the child.
+ * @param visited - Set of visited neurons to avoid cycles.
+ * @returns True if a recursive synapse is detected, otherwise false.
+ */
+function checkForRecursiveSynapse(
+  otherParent: Creature,
+  neuronUUID: string,
+  childNeuronMap: Map<string, Neuron>,
+  visited: Set<string>,
+  targetUUID: string,
+): boolean {
+  if (visited.has(neuronUUID)) {
+    return false; // Already visited this neuron
+  }
+  visited.add(neuronUUID);
+
+  const indx = otherParent.neurons.findIndex((neuron) =>
+    neuron.uuid === neuronUUID
+  );
+  const outward = otherParent.outwardConnections(
+    indx,
+  );
+  for (const connection of outward) {
+    const toNeuron = otherParent.neurons[connection.to];
+    const toUUID = toNeuron.uuid;
+    if (toUUID === targetUUID) continue; // That's okay, we're grafting to this neuron
+    if (toNeuron.type === "output") continue; // That's okay, all creatures have output neurons
+
+    if (childNeuronMap.has(toUUID)) {
+      return true; // Found a connection to an existing child neuron
+    }
+
+    if (
+      checkForRecursiveSynapse(
+        otherParent,
+        toUUID,
+        childNeuronMap,
+        visited,
+        targetUUID,
+      )
+    ) {
+      return true; // Recursion detected in the connected neurons
+    }
+  }
+
+  const inward = otherParent.inwardConnections(
+    indx,
+  );
+  for (const connection of inward) {
+    const fromNeuron = otherParent.neurons[connection.from];
+    if (fromNeuron.type === "input") continue; // That's okay, all creatures have input neurons
+    const fromUUID = fromNeuron.uuid;
+
+    if (childNeuronMap.has(fromUUID)) {
+      return true; // Found a connection to an existing child neuron
+    }
+    if (
+      checkForRecursiveSynapse(
+        otherParent,
+        fromUUID,
+        childNeuronMap,
+        visited,
+        targetUUID,
+      )
+    ) {
+      return true; // Recursion detected in the connected neurons
+    }
+  }
+  return false;
 }

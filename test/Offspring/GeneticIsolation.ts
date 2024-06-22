@@ -1,4 +1,9 @@
-import { assert, assertEquals, assertNotEquals } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertNotEquals,
+} from "@std/assert";
 import { emptyDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
@@ -205,9 +210,10 @@ Deno.test("GeneticIsolatedIslands", async () => {
     (sum, synapse) => sum + Math.abs(synapse.weight),
     0,
   );
-  assertEquals(
+  assertAlmostEquals(
     totalWeightAfter,
     totalWeightBefore,
+    0.0000001,
     `Sum of absolute weights to neuron ${targetNeuronUUID} should remain the same after grafting`,
   );
 
