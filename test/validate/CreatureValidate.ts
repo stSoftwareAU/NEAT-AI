@@ -1,6 +1,7 @@
 import { assert, fail } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { Synapse } from "../../src/architecture/Synapse.ts";
 
 Deno.test("Neuron length", () => {
   const creature = new Creature(10, 2);
@@ -155,5 +156,36 @@ Deno.test("expected index", () => {
     fail("Expected error");
   } catch (e) {
     assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
+  }
+});
+
+Deno.test("expected index", () => {
+  const creature = new Creature(10, 2);
+  creature.DEBUG = true;
+  creatureValidate(creature);
+  creature.neurons[0].index = 10;
+  try {
+    creatureValidate(creature, { connections: 9 });
+    fail("Expected error");
+  } catch (e) {
+    assert(e.name === "OTHER", `Unexpected name: ${e.name}`);
+  }
+});
+
+Deno.test("Recursive", () => {
+  const creature = new Creature(10, 2, { layers: [{ count: 5 }] });
+  creature.DEBUG = true;
+  creature.synapses.push(new Synapse(12, 11, 0.5));
+  creature.synapses.sort((a, b) => {
+    if (a.from == b.from) {
+      return a.to - b.to;
+    } else return a.from - b.from;
+  });
+  try {
+    creatureValidate(creature);
+    console.info(creature.exportJSON());
+    fail("Expected error");
+  } catch (e) {
+    assert(e.name === "RECURSIVE_SYNAPSE", `Unexpected name: ${e.name}`);
   }
 });

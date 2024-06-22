@@ -228,12 +228,36 @@ export class Neat {
       this.config.verbose,
     );
     const elitists = results.elitists;
-    const tmpFittest = elitists[0];
+    let tmpFittest = elitists[0];
+
+    assert(tmpFittest.uuid, "Fittest creature has no UUID");
+    assert(tmpFittest.score, "No fittest creature score found");
+    if (previousFittest) {
+      assert(previousFittest.score, "No previous fittest creature score found");
+      assert(previousFittest.uuid, "Previous fittest creature has no UUID");
+      if (tmpFittest.score < previousFittest.score) {
+        tmpFittest = previousFittest;
+      } else if (previousFittest.score == tmpFittest.score) {
+        if (previousFittest.uuid !== tmpFittest.uuid) {
+          console.info(
+            `Fittest creature ${
+              tmpFittest.uuid.substring(0, 8)
+            } has the same score as previous fittest ${
+              previousFittest.uuid.substring(0, 8)
+            } reuse previous fittest.`,
+          );
+        }
+        tmpFittest = previousFittest;
+      }
+    }
+    assert(tmpFittest, "No fittest creature found");
 
     const fittest = Creature.fromJSON(
       tmpFittest.exportJSON(),
       this.config.debug,
     ); // Make a copy so it's not mutated.
+    fittest.uuid = tmpFittest.uuid;
+
     fittest.score = tmpFittest.score;
     if (fittest.score != undefined) {
       addTag(fittest, "score", fittest.score.toString());

@@ -344,6 +344,13 @@ export function creatureValidate(
       throw new Error(indx + ") synapses not sorted");
     }
 
+    if (c.from > c.to) {
+      throw new ValidationError(
+        `${indx}) Recursive synapse ${c.from} -> ${c.to}`,
+        "RECURSIVE_SYNAPSE",
+      );
+    }
+
     lastFrom = c.from;
     lastTo = c.to;
   });

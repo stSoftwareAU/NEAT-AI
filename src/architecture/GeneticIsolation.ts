@@ -1,10 +1,11 @@
 import { assert } from "@std/assert";
+import { blue, brightBlue } from "@std/fmt/colors";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
+import { Neuron } from "./Neuron.ts";
 import type { NeuronExport } from "./NeuronInterfaces.ts";
 import { Offspring } from "./Offspring.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
-import { Neuron } from "./Neuron.ts";
 
 /**
  * Handle the genetic isolation by grafting a neuron from one parent onto the child
@@ -140,11 +141,12 @@ export async function handleGrafting(
 
   childExport.synapses.push(newSynapseFromOtherParent);
 
+  const graftingFactor = 2 * Math.random();
   /**
    * Scale the weights of the synapses that are connected to the target grafting point neuron to maintain the same total weight.
    */
   const newTotalWeight = totalWeight +
-    Math.abs(newSynapseFromOtherParent.weight);
+    Math.abs(newSynapseFromOtherParent.weight * graftingFactor);
   const weightScaleFactor = totalWeight / newTotalWeight;
   for (const synapse of targetNeuronConnections) {
     synapse.weight *= weightScaleFactor;
@@ -152,6 +154,7 @@ export async function handleGrafting(
 
   // Adjust the weight of the new synapse to maintain the overall weight balance
   const adjustedNewSynapseWeight = newSynapseFromOtherParent.weight *
+    graftingFactor *
     weightScaleFactor;
   const adjustedSynapse = {
     ...newSynapseFromOtherParent,
@@ -198,9 +201,12 @@ export async function handleGrafting(
   const graftedChild = Creature.fromJSON(childExport);
   assert(!graftedChild.uuid);
   graftedChild.validate();
-  // await CreatureUtil.makeUUID(graftedChild);
 
-  console.log("Grafting new child due to genetic isolation (clone)");
+  console.log(
+    `Grafting new child from mother: ${
+      blue(mother.uuid?.substring(0, 8))
+    } and father: ${brightBlue(father.uuid?.substring(0, 8))}`,
+  );
 
   return graftedChild;
 }

@@ -820,6 +820,7 @@ export class Creature implements CreatureInternal {
 
         bestScore = fittestScore;
         bestCreature = Creature.fromJSON(fittest.exportJSON());
+        bestCreature.uuid = fittest.uuid;
         bestCreature.score = bestScore;
       } else if (fittestScore < bestScore) {
         throw new Error(
