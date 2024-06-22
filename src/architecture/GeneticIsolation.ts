@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import { blue, brightBlue } from "@std/fmt/colors";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { Neuron } from "./Neuron.ts";
@@ -212,13 +211,13 @@ export async function handleGrafting(
    */
   const graftedChild = Creature.fromJSON(childExport);
   assert(!graftedChild.uuid);
-  graftedChild.validate();
+  // graftedChild.validate();
 
-  console.log(
-    `Grafting new child from mother: ${
-      blue(mother.uuid?.substring(0, 8))
-    } and father: ${brightBlue(father.uuid?.substring(0, 8))}`,
-  );
+  // console.log(
+  //   `Grafting new child from mother: ${
+  //     blue(mother.uuid?.substring(0, 8))
+  //   } and father: ${brightBlue(father.uuid?.substring(0, 8))}`,
+  // );
 
   return graftedChild;
 }
@@ -244,21 +243,54 @@ function checkForRecursiveSynapse(
   }
   visited.add(neuronUUID);
 
-  const connections = otherParent.inwardConnections(
-    otherParent.neurons.findIndex((neuron) => neuron.uuid === neuronUUID),
+  const indx = otherParent.neurons.findIndex((neuron) =>
+    neuron.uuid === neuronUUID
   );
-  for (const connection of connections) {
-    const toUUID = otherParent.neurons[connection.to].uuid;
+  const outward = otherParent.outwardConnections(
+    indx,
+  );
+  for (const connection of outward) {
+    const toNeuron = otherParent.neurons[connection.to];
+    const toUUID = toNeuron.uuid;
     if (toUUID === targetUUID) continue; // That's okay, we're grafting to this neuron
+    if (toNeuron.type === "output") continue; // That's okay, all creatures have output neurons
 
     if (childNeuronMap.has(toUUID)) {
-      console.info("Found for recursion", neuronUUID, toUUID);
+      console.warn(
+        `Recursive synapse detected from ${neuronUUID} to ${toUUID}`,
+      );
+      return true; // Found a connection to an existing child neuron
+    }
+
+    if (
+      checkForRecursiveSynapse(
+        otherParent,
+        toUUID,
+        childNeuronMap,
+        visited,
+        targetUUID,
+      )
+    ) {
+      return true; // Recursion detected in the connected neurons
+    }
+  }
+
+  const inward = otherParent.inwardConnections(
+    indx,
+  );
+  for (const connection of inward) {
+    const fromNeuron = otherParent.neurons[connection.from];
+
+    const fromUUID = fromNeuron.uuid;
+
+    if (fromNeuron.type !== "input" && childNeuronMap.has(fromUUID)) {
+      console.warn(`Recursive synapse detected child has ${fromUUID}`);
       return true; // Found a connection to an existing child neuron
     }
     if (
       checkForRecursiveSynapse(
         otherParent,
-        toUUID,
+        fromUUID,
         childNeuronMap,
         visited,
         targetUUID,

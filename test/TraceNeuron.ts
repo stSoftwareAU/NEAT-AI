@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { ensureDirSync } from "@std/fs";
+import { emptyDirSync } from "@std/fs";
 import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import type { NeuronTrace } from "../src/architecture/NeuronInterfaces.ts";
@@ -46,9 +46,9 @@ Deno.test("traceNode", async () => {
   }
 
   const traceDir = ".trace";
-  ensureDirSync(traceDir);
+  emptyDirSync(traceDir);
   const creaturesDir = ".creatures";
-  ensureDirSync(creaturesDir);
+  emptyDirSync(creaturesDir);
 
   const options: NeatOptions = {
     iterations: 10,

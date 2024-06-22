@@ -244,6 +244,8 @@ export class Offspring {
       return child;
     } catch (e) {
       switch (e.name) {
+        case "RECURSIVE_SYNAPSE":
+          return undefined;
         case "NO_OUTWARD_CONNECTIONS":
           return undefined;
         case "NO_INWARD_CONNECTIONS":
