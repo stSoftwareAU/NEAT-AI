@@ -74,6 +74,18 @@ export async function handleGrafting(
     for (const connection of connections) {
       const toUUID = otherParent.neurons[connection.to].uuid;
       if (childNeuronMap.has(toUUID)) {
+        // Check for recursive synapses before adding
+        if (
+          checkForRecursiveSynapse(
+            otherParent,
+            neuron.uuid,
+            childNeuronMap,
+            new Set(),
+            toUUID,
+          )
+        ) {
+          continue; // Skip this neuron if it creates a recursion
+        }
         possibleGraftingNeurons.push(neuron.exportJSON());
         targetGraftingPoints.set(neuron.uuid, toUUID);
         break;
@@ -209,4 +221,51 @@ export async function handleGrafting(
   );
 
   return graftedChild;
+}
+
+/**
+ * Check for recursive synapses in the given child export.
+ *
+ * @param otherParent - The parent from which the neuron is being grafted.
+ * @param neuronUUID - The UUID of the neuron being checked.
+ * @param childNeuronMap - Map of neurons in the child.
+ * @param visited - Set of visited neurons to avoid cycles.
+ * @returns True if a recursive synapse is detected, otherwise false.
+ */
+function checkForRecursiveSynapse(
+  otherParent: Creature,
+  neuronUUID: string,
+  childNeuronMap: Map<string, Neuron>,
+  visited: Set<string>,
+  targetUUID: string,
+): boolean {
+  if (visited.has(neuronUUID)) {
+    return true; // Recursion detected
+  }
+  visited.add(neuronUUID);
+
+  const connections = otherParent.outwardConnections(
+    otherParent.neurons.findIndex((neuron) => neuron.uuid === neuronUUID),
+  );
+  for (const connection of connections) {
+    const toUUID = otherParent.neurons[connection.to].uuid;
+    if (toUUID === targetUUID) continue; // That's okay, we're grafting to this neuron
+
+    if (childNeuronMap.has(toUUID)) {
+      console.info("Found for recursion", neuronUUID, toUUID);
+      return true; // Found a connection to an existing child neuron
+    }
+    if (
+      checkForRecursiveSynapse(
+        otherParent,
+        toUUID,
+        childNeuronMap,
+        visited,
+        targetUUID,
+      )
+    ) {
+      return true; // Recursion detected in the connected neurons
+    }
+  }
+  return false;
 }

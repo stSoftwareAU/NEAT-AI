@@ -345,8 +345,17 @@ export function creatureValidate(
     }
 
     if (c.from > c.to) {
+      if (creature.DEBUG) {
+        creature.DEBUG = false;
+        Deno.writeTextFileSync(
+          ".validate.json",
+          JSON.stringify(creature.exportJSON(), null, 2),
+        );
+
+        creature.DEBUG = true;
+      }
       throw new ValidationError(
-        `${indx}) Recursive synapse ${c.from} -> ${c.to}`,
+        `${indx}) Recursive synapse ${c.from} (${creature.neurons[c.from].ID()}) -> ${c.to} (${creature.neurons[c.to].ID()})`,
         "RECURSIVE_SYNAPSE",
       );
     }
