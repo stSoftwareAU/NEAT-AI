@@ -355,7 +355,9 @@ export function creatureValidate(
         creature.DEBUG = true;
       }
       throw new ValidationError(
-        `${indx}) Recursive synapse ${c.from} (${creature.neurons[c.from].ID()}) -> ${c.to} (${creature.neurons[c.to].ID()})`,
+        `${indx}) Recursive synapse ${c.from} (${
+          creature.neurons[c.from].ID()
+        }) -> ${c.to} (${creature.neurons[c.to].ID()})`,
         "RECURSIVE_SYNAPSE",
       );
     }
