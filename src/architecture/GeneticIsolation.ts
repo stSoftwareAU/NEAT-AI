@@ -256,9 +256,6 @@ function checkForRecursiveSynapse(
     if (toNeuron.type === "output") continue; // That's okay, all creatures have output neurons
 
     if (childNeuronMap.has(toUUID)) {
-      console.warn(
-        `Recursive synapse detected from ${neuronUUID} to ${toUUID}`,
-      );
       return true; // Found a connection to an existing child neuron
     }
 
@@ -284,7 +281,6 @@ function checkForRecursiveSynapse(
     const fromUUID = fromNeuron.uuid;
 
     if (fromNeuron.type !== "input" && childNeuronMap.has(fromUUID)) {
-      console.warn(`Recursive synapse detected child has ${fromUUID}`);
       return true; // Found a connection to an existing child neuron
     }
     if (
