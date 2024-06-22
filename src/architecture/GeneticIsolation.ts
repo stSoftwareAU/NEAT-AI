@@ -240,11 +240,11 @@ function checkForRecursiveSynapse(
   targetUUID: string,
 ): boolean {
   if (visited.has(neuronUUID)) {
-    return true; // Recursion detected
+    return false; // Already visited this neuron
   }
   visited.add(neuronUUID);
 
-  const connections = otherParent.outwardConnections(
+  const connections = otherParent.inwardConnections(
     otherParent.neurons.findIndex((neuron) => neuron.uuid === neuronUUID),
   );
   for (const connection of connections) {
