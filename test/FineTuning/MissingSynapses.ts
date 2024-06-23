@@ -95,7 +95,6 @@ Deno.test("FineTune-missing synapses", async () => {
     fittest,
     previous,
     3,
-    true,
   );
 
   assert(

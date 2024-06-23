@@ -40,7 +40,7 @@ Deno.test("tune", async () => {
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
-  addTag(fittest, "approach", "Learnings");
+  addTag(fittest, "approach", "trained");
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
 
@@ -48,7 +48,6 @@ Deno.test("tune", async () => {
     fittest,
     previousFittest,
     10,
-    true,
   );
 
   assert(
@@ -62,7 +61,6 @@ Deno.test("tune", async () => {
     fittest,
     previousFittest,
     3,
-    true,
   );
 
   assert(
@@ -74,7 +72,6 @@ Deno.test("tune", async () => {
     fittest,
     previousFittest,
     4,
-    true,
   );
 
   assert(
@@ -124,7 +121,6 @@ Deno.test("many", async () => {
     fittest,
     previousFittest,
     7,
-    true,
   );
 
   assert(
