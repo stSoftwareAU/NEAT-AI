@@ -111,17 +111,28 @@ export async function handleGrafting(
     throw new Error("No target neuron found for grafting");
   }
 
-  const targetNeuronIndex = childExport.neurons.findIndex((neuron) =>
+  let targetNeuronIndex = childExport.neurons.findIndex((neuron) =>
     neuron.uuid === targetNeuronUUID
   );
 
   if (targetNeuronIndex === -1) {
     throw new Error("No target neuron found for grafting");
   }
+  while (true) {
+    if (targetNeuronIndex === 0) {
+      break;
+    }
+    const targetNeuron = childExport.neurons[targetNeuronIndex - 1];
+    if (targetNeuron.type !== "output") {
+      break;
+    }
+    targetNeuronIndex--;
+  }
 
   // Add the neuron to the child at the target index to maintain order
   const insertedNeuron = Neuron.fromJSON(graftingNeuron, child);
   childNeuronMap.set(insertedNeuron.uuid, insertedNeuron);
+
   childExport.neurons.splice(targetNeuronIndex, 0, graftingNeuron);
 
   /**
@@ -228,32 +239,6 @@ export async function handleGrafting(
    * Import the grafted child JSON to create a "real" creature and recalculate the UUID.
    */
   const graftedChild = Creature.fromJSON(childExport);
-  assert(!graftedChild.uuid);
-  try {
-    graftedChild.validate();
-  } catch (e) {
-    graftedChild.DEBUG = false;
-    Deno.writeTextFileSync(
-      `.graftedChild.json`,
-      JSON.stringify(graftedChild.exportJSON(), null, 2),
-    );
-    cloneOfParent.DEBUG = false;
-    Deno.writeTextFileSync(
-      `.cloneOfParent.json`,
-      JSON.stringify(cloneOfParent.exportJSON(), null, 2),
-    );
-    otherParent.DEBUG = false;
-    Deno.writeTextFileSync(
-      `.otherParent.json`,
-      JSON.stringify(otherParent.exportJSON(), null, 2),
-    );
-    throw e;
-  }
-  // console.log(
-  //   `Grafting new child from mother: ${
-  //     mother.uuid?.substring(0, 8)
-  //   } and father: ${father.uuid?.substring(0, 8)}`,
-  // );
 
   return graftedChild;
 }
