@@ -4,6 +4,7 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport } from "./NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
+import { assert } from "@std/assert";
 
 export const MIN_STEP = 0.000_000_1;
 
@@ -181,22 +182,19 @@ export async function fineTuneImprovement(
   if (previousFittest == null) {
     return [];
   }
-
   const fScoreTxt = getTag(fittest, "score");
-  if (!fScoreTxt) {
-    return [];
-  }
+  assert(fScoreTxt, "Fittest creature must have a score");
   const fScore = Number.parseFloat(fScoreTxt);
 
   const pScoreTxt = getTag(previousFittest, "score");
-  if (!pScoreTxt) {
-    return [];
-  }
+  assert(pScoreTxt, "Previous creature must have a score");
+
   const pScore = Number.parseFloat(pScoreTxt);
 
-  if (fScore <= pScore) {
-    return [];
-  }
+  assert(
+    fScore > pScore,
+    "Fittest creature must have a higher score than previous",
+  );
 
   const fittestUUID = await CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
