@@ -1,6 +1,7 @@
 import { blue, bold, green, red, white, yellow } from "@std/fmt/colors";
 import { addTag, getTag } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
+import type { Approach } from "../NEAT/LogApproach.ts";
 
 interface ElitistsResults {
   elitists: Creature[];
@@ -60,7 +61,7 @@ function logVerbose(creatures: Creature[]): number {
     if (trainID) {
       addTag(creature, "notified", "Yes");
 
-      const approach = getTag(creature, "approach");
+      const approach = getTag(creature, "approach") as Approach;
       const untrainedError = getTag(creature, "untrained-error");
       const error = getTag(creature, "error");
       const diff = Number.parseFloat(untrainedError ?? "99999") -

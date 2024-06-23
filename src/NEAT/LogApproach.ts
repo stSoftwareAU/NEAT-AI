@@ -3,6 +3,9 @@ import type { Creature } from "../../mod.ts";
 import { blue, bold, cyan } from "@std/fmt/colors";
 import { assert } from "@std/assert";
 
+// Define a union type for the possible approaches
+export type Approach = "fine" | "trained" | "compact" | "graft";
+
 export function logApproach(fittest: Creature, previous: Creature) {
   const fScoreTxt = getTag(fittest, "score");
   assert(fScoreTxt, "Fittest creature must have a score");
@@ -18,14 +21,14 @@ export function logApproach(fittest: Creature, previous: Creature) {
     "Fittest creature must have a higher score than previous",
   );
 
-  const approach = getTag(fittest, "approach");
+  const approach = getTag(fittest, "approach") as Approach;
   if (approach) {
     const logged = getTag(fittest, "approach-logged");
     if (logged !== approach) {
       addTag(fittest, "approach-logged", approach);
 
       switch (approach) {
-        case "fine":
+        case "fine": {
           console.info(
             "Fine tuning increased fitness by",
             fScore - pScore,
@@ -35,6 +38,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
             getTag(fittest, "adjusted"),
           );
           break;
+        }
         case "trained": {
           const trainID = getTag(fittest, "trainID");
           console.info(
@@ -47,7 +51,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
           );
           break;
         }
-        case "compact":
+        case "compact": {
           console.info(
             "Compacting increased fitness by",
             fScore - pScore,
@@ -59,7 +63,8 @@ export function logApproach(fittest: Creature, previous: Creature) {
             getTag(fittest, "old-connections"),
           );
           break;
-        case "graft":
+        }
+        case "graft": {
           console.info(
             "Learnings increased fitness by",
             fScore - pScore,
@@ -71,8 +76,10 @@ export function logApproach(fittest: Creature, previous: Creature) {
             getTag(fittest, "old-connections"),
           );
           break;
-        default:
-          throw new Error(`Unknown approach ${approach}`);
+        }
+        default: {
+          throw new Error(`Unknown approach '${approach}'`);
+        }
       }
     }
   }

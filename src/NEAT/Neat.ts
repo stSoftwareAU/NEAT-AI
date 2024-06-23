@@ -23,6 +23,7 @@ import { Breed } from "./Breed.ts";
 import { FindTunePopulation } from "./FineTunePopulation.ts";
 import { Genus } from "./Genus.ts";
 import { Mutator } from "./Mutator.ts";
+import type { Approach } from "./LogApproach.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -366,7 +367,7 @@ export class Neat {
             );
           }
 
-          addTag(json, "approach", "trained");
+          addTag(json, "approach", "trained" as Approach);
           addTag(json, "trainID", r.train.ID);
           addTag(json, "trained", "YES");
 
@@ -383,7 +384,7 @@ export class Neat {
               );
             }
 
-            addTag(compactJSON, "approach", "compact");
+            addTag(compactJSON, "approach", "compact" as Approach);
             addTag(compactJSON, "trainID", r.train.ID);
             addTag(compactJSON, "trained", "YES");
 

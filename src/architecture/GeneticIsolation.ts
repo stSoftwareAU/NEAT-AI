@@ -6,6 +6,7 @@ import type { NeuronExport } from "./NeuronInterfaces.ts";
 import { Offspring } from "./Offspring.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
 import { addTag } from "@stsoftware/tags";
+import type { Approach } from "../NEAT/LogApproach.ts";
 
 /**
  * Handle the genetic isolation by grafting a neuron from one parent onto the child
@@ -234,7 +235,7 @@ export async function handleGrafting(
    * Import the grafted child JSON to create a "real" creature and recalculate the UUID.
    */
   const graftedChild = Creature.fromJSON(childExport);
-  addTag(graftedChild, "approach", "graft");
+  addTag(graftedChild, "approach", "graft" as Approach);
   return graftedChild;
 }
 
