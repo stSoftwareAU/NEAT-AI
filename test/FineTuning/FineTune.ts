@@ -40,7 +40,7 @@ Deno.test("tune", async () => {
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
-  addTag(fittest, "approach", "Learnings");
+  addTag(fittest, "approach", "trained");
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
 

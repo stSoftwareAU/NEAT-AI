@@ -59,18 +59,6 @@ export function logApproach(fittest: Creature, previous: Creature) {
             getTag(fittest, "old-connections"),
           );
           break;
-        case "Learnings":
-          console.info(
-            "Learnings increased fitness by",
-            fScore - pScore,
-            "to",
-            fScore,
-            `nodes: ${fittest.neurons.length} was:`,
-            getTag(fittest, "old-nodes"),
-            `connections: ${fittest.synapses.length} was:`,
-            getTag(fittest, "old-connections"),
-          );
-          break;
         case "graft":
           console.info(
             "Learnings increased fitness by",
