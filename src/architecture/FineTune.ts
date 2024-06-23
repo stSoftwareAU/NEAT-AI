@@ -191,6 +191,7 @@ export async function fineTuneImprovement(
 
   const pScore = Number.parseFloat(pScoreTxt);
 
+  if (fScore == pScore) return [];
   assert(
     fScore > pScore,
     "Fittest creature must have a higher score than previous",
