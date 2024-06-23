@@ -71,7 +71,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
             getTag(fittest, "old-connections"),
           );
           break;
-        case "Grafting":
+        case "graft":
           console.info(
             "Learnings increased fitness by",
             fScore - pScore,

@@ -234,7 +234,7 @@ export async function handleGrafting(
    * Import the grafted child JSON to create a "real" creature and recalculate the UUID.
    */
   const graftedChild = Creature.fromJSON(childExport);
-  addTag(graftedChild, "approach", "Grafting");
+  addTag(graftedChild, "approach", "graft");
   return graftedChild;
 }
 
