@@ -239,7 +239,6 @@ export class Neat {
         throw new Error(
           `Previous fittest ${previousFittest.score} has a higher score than fittest ${tmpFittest.score} , this should not happen`,
         );
-        // tmpFittest = previousFittest;
       } else if (previousFittest.score == tmpFittest.score) {
         if (previousFittest.uuid !== tmpFittest.uuid) {
           console.info(
@@ -262,9 +261,10 @@ export class Neat {
     fittest.uuid = tmpFittest.uuid;
 
     fittest.score = tmpFittest.score;
-    if (fittest.score != undefined) {
-      addTag(fittest, "score", fittest.score.toString());
-    }
+    assert(fittest.score, "No fittest score found");
+
+    addTag(fittest, "score", fittest.score.toString());
+
     const error = getTag(fittest, "error");
     addTag(fittest, "error", error ? error : "-1");
 

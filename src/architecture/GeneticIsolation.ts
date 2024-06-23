@@ -47,9 +47,11 @@ export async function handleGrafting(
   const otherNeuronMap = new Map<string, Neuron>();
   const otherSynapseMap = new Map<string, SynapseExport[]>();
   const otherSynapseMapByFromUUID = new Map<string, SynapseExport>();
+  const otherNeuronIndexMap = new Map<string, number>();
 
   for (const neuron of otherParent.neurons) {
     otherNeuronMap.set(neuron.uuid, neuron);
+    otherNeuronIndexMap.set(neuron.uuid, neuron.index);
     const connections = otherParent.inwardConnections(neuron.index);
     otherSynapseMap.set(
       neuron.uuid,
@@ -85,6 +87,7 @@ export async function handleGrafting(
             childNeuronMap,
             toUUID,
             memoizedRecursiveChecks,
+            otherNeuronIndexMap,
           )
         ) {
           continue; // Skip this neuron if it creates a recursion
@@ -118,21 +121,18 @@ export async function handleGrafting(
   if (targetNeuronIndex === -1) {
     throw new Error("No target neuron found for grafting");
   }
-  while (true) {
-    if (targetNeuronIndex === 0) {
-      break;
-    }
-    const targetNeuron = childExport.neurons[targetNeuronIndex - 1];
-    if (targetNeuron.type !== "output") {
-      break;
-    }
+
+  // Ensure we insert before the first output neuron
+  while (
+    targetNeuronIndex > 0 &&
+    childExport.neurons[targetNeuronIndex - 1].type === "output"
+  ) {
     targetNeuronIndex--;
   }
 
   // Add the neuron to the child at the target index to maintain order
   const insertedNeuron = Neuron.fromJSON(graftingNeuron, child);
   childNeuronMap.set(insertedNeuron.uuid, insertedNeuron);
-
   childExport.neurons.splice(targetNeuronIndex, 0, graftingNeuron);
 
   /**
@@ -199,13 +199,7 @@ export async function handleGrafting(
     }
 
     orderedNeuronsToAdd.sort((a, b) => {
-      const indexA = otherParent.neurons.findIndex((neuron) =>
-        neuron.uuid === a
-      );
-      const indexB = otherParent.neurons.findIndex((neuron) =>
-        neuron.uuid === b
-      );
-      return indexA - indexB;
+      return otherNeuronIndexMap.get(a)! - otherNeuronIndexMap.get(b)!;
     });
 
     for (const fromUUID of orderedNeuronsToAdd) {
@@ -251,6 +245,7 @@ export async function handleGrafting(
  * @param childNeuronMap - Map of neurons in the child.
  * @param targetUUID - The UUID of the target neuron for grafting.
  * @param memoizedRecursiveChecks - Map to memoize recursive checks.
+ * @param otherNeuronIndexMap - Map of neuron UUIDs to their indices in the other parent.
  * @returns True if a recursive synapse is detected, otherwise false.
  */
 function checkForRecursiveSynapse(
@@ -259,6 +254,7 @@ function checkForRecursiveSynapse(
   childNeuronMap: Map<string, Neuron>,
   targetUUID: string,
   memoizedRecursiveChecks: Map<string, boolean>,
+  otherNeuronIndexMap: Map<string, number>,
 ): boolean {
   const stack = [neuronUUID];
   const visited = new Set<string>();
@@ -278,9 +274,7 @@ function checkForRecursiveSynapse(
     }
     visited.add(currentNeuronUUID);
 
-    const indx = otherParent.neurons.findIndex((neuron) =>
-      neuron.uuid === currentNeuronUUID
-    );
+    const indx = otherNeuronIndexMap.get(currentNeuronUUID);
     if (indx === undefined) continue; // Neuron not found
 
     const outward = otherParent.outwardConnections(indx);
