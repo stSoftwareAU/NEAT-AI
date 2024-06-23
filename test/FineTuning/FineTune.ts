@@ -48,7 +48,6 @@ Deno.test("tune", async () => {
     fittest,
     previousFittest,
     10,
-    true,
   );
 
   assert(
@@ -62,7 +61,6 @@ Deno.test("tune", async () => {
     fittest,
     previousFittest,
     3,
-    true,
   );
 
   assert(
@@ -74,7 +72,6 @@ Deno.test("tune", async () => {
     fittest,
     previousFittest,
     4,
-    true,
   );
 
   assert(
@@ -124,7 +121,6 @@ Deno.test("many", async () => {
     fittest,
     previousFittest,
     7,
-    true,
   );
 
   assert(

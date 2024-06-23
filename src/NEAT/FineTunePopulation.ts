@@ -4,6 +4,7 @@ import type { Genus } from "./Genus.ts";
 import { fineTuneImprovement } from "../architecture/FineTune.ts";
 import { Species } from "./Species.ts";
 import type { Neat } from "./Neat.ts";
+import { logApproach } from "./LogApproach.ts";
 
 export class FindTunePopulation {
   private neat: Neat;
@@ -93,14 +94,16 @@ export class FindTunePopulation {
       const tunedUUID = new Set<string>();
 
       tunedUUID.add(fittestUUID);
-
-      tunedUUID.add(tmpPreviousFittest.uuid ?? "UNKNOWN");
-      fineTunedPopulation = await fineTuneImprovement(
-        fittest,
-        tmpPreviousFittest,
-        fineTunePopSize - 1,
-        this.neat.config.verbose,
-      );
+      assert(tmpPreviousFittest.uuid, "tmpPreviousFittest UUID is undefined");
+      tunedUUID.add(tmpPreviousFittest.uuid);
+      if (fittestUUID !== tmpPreviousFittest.uuid) {
+        fineTunedPopulation = await fineTuneImprovement(
+          fittest,
+          tmpPreviousFittest,
+          fineTunePopSize - 1,
+        );
+        logApproach(fittest, tmpPreviousFittest);
+      }
 
       for (let attempts = 0; attempts < 12; attempts++) {
         /**
@@ -121,9 +124,10 @@ export class FindTunePopulation {
 
         if (species) {
           if (species.creatures.length > 0) { // Ensure there's more than one to choose from
-            let eligibleCreatures = species.creatures.filter((creature) =>
-              !tunedUUID.has(creature.uuid ?? "UNKNOWN")
-            );
+            let eligibleCreatures = species.creatures.filter((creature) => {
+              assert(creature.uuid, "Creature UUID is undefined");
+              return !tunedUUID.has(creature.uuid);
+            });
 
             /** If there is no eligible creatures try find the closest species. */
             if (eligibleCreatures.length == 0) {
@@ -131,7 +135,10 @@ export class FindTunePopulation {
               if (closestSpecies) {
                 if (closestSpecies && closestSpecies.creatures.length > 0) {
                   eligibleCreatures = closestSpecies.creatures.filter(
-                    (creature) => !tunedUUID.has(creature.uuid ?? "UNKNOWN"),
+                    (creature) => {
+                      assert(creature.uuid, "Creature UUID is undefined");
+                      return !tunedUUID.has(creature.uuid);
+                    },
                   );
                 }
               }
@@ -143,12 +150,12 @@ export class FindTunePopulation {
                 eligibleCreatures,
               );
 
-              tunedUUID.add(nextBestCreature.uuid ?? "UNKNOWN");
+              assert(nextBestCreature.uuid, "Creature UUID is undefined");
+              tunedUUID.add(nextBestCreature.uuid);
               const extendedTunedPopulation = await fineTuneImprovement(
                 fittest,
                 nextBestCreature,
                 speciesFineTunePopSize,
-                false,
               );
 
               fineTunedPopulation.push(...extendedTunedPopulation);
@@ -172,12 +179,12 @@ export class FindTunePopulation {
               `No creature found at location ${location} in tmpFineTunePopulation.`,
             );
           }
-          tunedUUID.add(extendedPreviousFittest.uuid ?? "UNKNOWN");
+          assert(extendedPreviousFittest.uuid, "Creature UUID is undefined");
+          tunedUUID.add(extendedPreviousFittest.uuid);
           const extendedTunedPopulation = await fineTuneImprovement(
             fittest,
             extendedPreviousFittest,
             extendedFineTunePopSize,
-            false,
           );
 
           fineTunedPopulation.push(...extendedTunedPopulation);

@@ -1,4 +1,3 @@
-import { blue, bold, cyan } from "@std/fmt/colors";
 import { addTag, getTag, removeTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
@@ -178,7 +177,6 @@ export async function fineTuneImprovement(
   fittest: Creature,
   previousFittest: Creature | null,
   popSize = 10,
-  showMessage = true,
 ) {
   if (previousFittest == null) {
     return [];
@@ -200,58 +198,6 @@ export async function fineTuneImprovement(
     return [];
   }
 
-  if (showMessage) {
-    const approach = getTag(fittest, "approach");
-    if (approach) {
-      const logged = getTag(fittest, "approach-logged");
-      if (logged !== approach) {
-        addTag(fittest, "logged", approach);
-
-        if (approach == "fine") {
-          console.info(
-            "Fine tuning increased fitness by",
-            fScore - pScore,
-            "to",
-            fScore,
-            "adjusted",
-            getTag(fittest, "adjusted"),
-          );
-        } else if (approach == "trained") {
-          const trainID = getTag(fittest, "trainID");
-          console.info(
-            bold(cyan("Training")),
-            blue(`${trainID}`),
-            "increased fitness by",
-            fScore - pScore,
-            "to",
-            fScore,
-          );
-        } else if (approach == "compact") {
-          console.info(
-            "Compacting increased fitness by",
-            fScore - pScore,
-            "to",
-            fScore,
-            `nodes: ${fittest.neurons.length} was:`,
-            getTag(fittest, "old-nodes"),
-            `connections: ${fittest.synapses.length} was:`,
-            getTag(fittest, "old-connections"),
-          );
-        } else if (approach == "Learnings") {
-          console.info(
-            "Learnings increased fitness by",
-            fScore - pScore,
-            "to",
-            fScore,
-            `nodes: ${fittest.neurons.length} was:`,
-            getTag(fittest, "old-nodes"),
-            `connections: ${fittest.synapses.length} was:`,
-            getTag(fittest, "old-connections"),
-          );
-        }
-      }
-    }
-  }
   const fittestUUID = await CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
   UUIDs.add(fittestUUID);
