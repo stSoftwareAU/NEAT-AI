@@ -236,6 +236,13 @@ export async function handleGrafting(
    */
   const graftedChild = Creature.fromJSON(childExport);
   addTag(graftedChild, "approach", "graft" as Approach);
+  addTag(graftedChild, "old-nodes", cloneOfParent.neurons.length.toString());
+  addTag(
+    graftedChild,
+    "old-connections",
+    cloneOfParent.synapses.length.toString(),
+  );
+
   return graftedChild;
 }
 
