@@ -236,7 +236,10 @@ export class Neat {
       assert(previousFittest.score, "No previous fittest creature score found");
       assert(previousFittest.uuid, "Previous fittest creature has no UUID");
       if (tmpFittest.score < previousFittest.score) {
-        tmpFittest = previousFittest;
+        throw new Error(
+          `Previous fittest ${previousFittest.score} has a higher score than fittest ${tmpFittest.score} , this should not happen`,
+        );
+        // tmpFittest = previousFittest;
       } else if (previousFittest.score == tmpFittest.score) {
         if (previousFittest.uuid !== tmpFittest.uuid) {
           console.info(
