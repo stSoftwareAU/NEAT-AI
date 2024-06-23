@@ -47,7 +47,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
           );
           break;
         }
-        case "compact":
+        case "compacted":
           console.info(
             "Compacting increased fitness by",
             fScore - pScore,

@@ -383,7 +383,7 @@ export class Neat {
               );
             }
 
-            addTag(compactJSON, "approach", "compacted");
+            addTag(compactJSON, "approach", "compact");
             addTag(compactJSON, "trainID", r.train.ID);
             addTag(compactJSON, "trained", "YES");
 
