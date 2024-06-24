@@ -67,7 +67,7 @@ export class FindTunePopulation {
           }
         } else {
           throw new Error(
-            `Creature ${creatureUUID} has no score, excluded from fine tune population`,
+            `Creature ${creatureUUID} has invalid score`,
           );
         }
 
