@@ -244,12 +244,14 @@ export class CRISPR {
         ? s.toRelative + adjustIndx
         : undefined;
 
-      if (from === undefined) {
-        throw new Error("Invalid connection (from): " + JSON.stringify(s));
-      }
-      if (to === undefined) {
-        throw new Error("Invalid connection (to): " + JSON.stringify(s));
-      }
+      assert(
+        from !== undefined && Number.isFinite(from) && from >= 0,
+        `Invalid connection (from): ${from}`,
+      );
+      assert(
+        to !== undefined && Number.isFinite(to) && to >= 0,
+        `Invalid connection (to): ${to}`,
+      );
 
       const currentSynapse = tmpCreature.getSynapse(from, to);
       if (!currentSynapse) {
@@ -278,14 +280,12 @@ export class CRISPR {
 
     if (dna.neurons) {
       dna.neurons.forEach((neuron) => {
-        if (neuron.type === "output") {
-          throw new Error("Cannot insert output neurons");
-        }
+        assert(neuron.type !== "output", "Cannot insert output neurons");
       });
 
       const neurons: Neuron[] = [];
       tmpCreature.neurons.forEach((neuron, indx) => {
-        assert(neuron.uuid !== undefined, "missing uuid");
+        assert(neuron.uuid, "Missing uuid");
         if (neuron.type !== "output") {
           uuidMap.set(neuron.uuid, indx);
           neurons.push(neuron);
@@ -332,15 +332,21 @@ export class CRISPR {
 
     tmpCreature.clearCache();
     dna.synapses.forEach((c) => {
-      if (c.fromRelative || c.toRelative) {
-        throw new Error("Cannot insert relative synapses");
-      }
-      if (c.from !== undefined || c.to !== undefined) {
-        throw new Error("Cannot insert static index synapses");
-      }
-      if (c.fromUUID === undefined || c.toUUID === undefined) {
-        throw new Error("Missing UUID for synapse");
-      }
+      assert(
+        c.fromRelative === undefined && c.toRelative === undefined,
+        "Cannot insert relative synapses",
+      );
+
+      assert(
+        c.from === undefined,
+        "Cannot insert static index (from) synapses",
+      );
+      assert(c.to === undefined, "Cannot insert static index (to) synapses");
+
+      assert(
+        c.fromUUID !== undefined && c.toUUID !== undefined,
+        "Missing UUID for synapse",
+      );
     });
 
     dna.synapses.forEach((s) => {

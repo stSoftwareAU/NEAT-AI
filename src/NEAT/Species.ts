@@ -18,9 +18,6 @@ export class Species {
 
   addCreature(creature: Creature) {
     assert(creature, "Creature must be defined");
-    if (creature.uuid === undefined) {
-      console.log(creature);
-    }
     assert(creature.uuid, "Creature must have a uuid");
 
     this.lastCreature = creature;
