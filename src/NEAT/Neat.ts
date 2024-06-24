@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import { blue } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { ensureDir } from "@std/fs";
-import { addTag, getTag } from "@stsoftware/tags";
+import { addTag, getTag, removeTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
@@ -369,6 +369,7 @@ export class Neat {
           }
 
           addTag(json, "approach", "trained" as Approach);
+          removeTag(json, "approach-logged");
           addTag(json, "trainID", r.train.ID);
           addTag(json, "trained", "YES");
 
@@ -386,6 +387,7 @@ export class Neat {
             }
 
             addTag(compactJSON, "approach", "compact" as Approach);
+            removeTag(compactJSON, "approach-logged");
             addTag(compactJSON, "trainID", r.train.ID);
             addTag(compactJSON, "trained", "YES");
 

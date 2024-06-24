@@ -182,7 +182,7 @@ Deno.test("Recursive", () => {
     } else return a.from - b.from;
   });
   try {
-    creatureValidate(creature);
+    creatureValidate(creature, { feedbackLoop: false });
     console.info(creature.exportJSON());
     fail("Expected error");
   } catch (e) {
