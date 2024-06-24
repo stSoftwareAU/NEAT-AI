@@ -36,33 +36,38 @@ export class CreatureUtil {
     if (!creature.synapses || !creature.neurons) {
       throw new Error("Not a creature: " + (typeof creature));
     }
+    const holdDebug = creature.DEBUG;
+    try {
+      creature.DEBUG = false;
+      const json = creature.exportJSON();
 
-    const json = creature.exportJSON();
+      // Sort neurons and synapses for consistent UUID generation
+      json.neurons.sort((a, b) => a.uuid.localeCompare(b.uuid));
+      json.synapses.sort((a, b) => {
+        if (a.fromUUID === b.fromUUID) {
+          return a.toUUID.localeCompare(b.toUUID);
+        } else {
+          return a.fromUUID.localeCompare(b.fromUUID);
+        }
+      });
 
-    // Sort neurons and synapses for consistent UUID generation
-    json.neurons.sort((a, b) => a.uuid.localeCompare(b.uuid));
-    json.synapses.sort((a, b) => {
-      if (a.fromUUID === b.fromUUID) {
-        return a.toUUID.localeCompare(b.toUUID);
-      } else {
-        return a.fromUUID.localeCompare(b.fromUUID);
-      }
-    });
+      // Remove tags for UUID generation consistency
+      json.neurons.forEach((n) => delete n.tags);
+      json.synapses.forEach((s) => delete s.tags);
 
-    // Remove tags for UUID generation consistency
-    json.neurons.forEach((n) => delete n.tags);
-    json.synapses.forEach((s) => delete s.tags);
+      const tmp = {
+        neurons: json.neurons,
+        synapses: json.synapses,
+      };
 
-    const tmp = {
-      neurons: json.neurons,
-      synapses: json.synapses,
-    };
+      const txt = JSON.stringify(tmp);
+      const utf8 = CreatureUtil.TE.encode(txt);
+      const uuid: string = await generateV5(CreatureUtil.NAMESPACE, utf8);
 
-    const txt = JSON.stringify(tmp);
-    const utf8 = CreatureUtil.TE.encode(txt);
-    const uuid: string = await generateV5(CreatureUtil.NAMESPACE, utf8);
-
-    creature.uuid = uuid;
-    return uuid;
+      creature.uuid = uuid;
+      return uuid;
+    } finally {
+      creature.DEBUG = holdDebug;
+    }
   }
 }
