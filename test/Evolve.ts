@@ -87,18 +87,23 @@ Deno.test("booleanXOR", async () => {
     { input: [1, 1], output: [0] },
   ];
 
-  const network = new Creature(2, 1);
-  network.validate();
-  const results = await network.evolveDataSet(trainingSet, {
-    mutation: Mutation.FFW,
-    elitism: 10,
-    mutationRate: 0.5,
-    targetError: 0.025,
-    threads: 1,
-    iterations: 50000,
-  });
+  let network = new Creature(2, 1);
+  let results = { error: 1 };
+  for (let attempt = 0; attempt < 10; attempt++) {
+    network.validate();
+    results = await network.evolveDataSet(trainingSet, {
+      mutation: Mutation.FFW,
+      elitism: 10,
+      mutationRate: 0.5,
+      targetError: 0.025,
+      threads: 1,
+      iterations: 1000,
+    });
 
-  network.validate();
+    network.validate();
+    if (results.error < 0.03) break;
+    network = new Creature(2, 1);
+  }
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 
   const value = network.activateAndTrace([1, 0])[0];

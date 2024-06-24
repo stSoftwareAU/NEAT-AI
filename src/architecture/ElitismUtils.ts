@@ -1,6 +1,8 @@
 import { blue, bold, green, red, white, yellow } from "@std/fmt/colors";
 import { addTag, getTag } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
+import type { Approach } from "../NEAT/LogApproach.ts";
+import { assert } from "@std/assert";
 
 interface ElitistsResults {
   elitists: Creature[];
@@ -50,8 +52,10 @@ function logVerbose(creatures: Creature[]): number {
   for (let indx = 0; indx < creatures.length; indx++) {
     const creature = creatures[indx];
     const score = creature.score;
-    totalScore += score ? score : 0;
+    assert(score !== undefined, "Creature must have a score");
+    totalScore += score;
 
+    const error = getTag(creature, "error") ?? "99999";
     const notified = getTag(creature, "notified");
     if (notified === "Yes") {
       continue;
@@ -60,17 +64,15 @@ function logVerbose(creatures: Creature[]): number {
     if (trainID) {
       addTag(creature, "notified", "Yes");
 
-      const approach = getTag(creature, "approach");
-      const untrainedError = getTag(creature, "untrained-error");
-      const error = getTag(creature, "error");
-      const diff = Number.parseFloat(untrainedError ?? "99999") -
-        Number.parseFloat(error ?? "99999");
+      const approach = getTag(creature, "approach") as Approach;
+      const untrainedError = getTag(creature, "untrained-error") ?? "99999";
+
+      const diff = Number.parseFloat(untrainedError) -
+        Number.parseFloat(error);
       console.info(
         `${approach} ${blue(trainID)} Score: ${
-          yellow(score ? score.toString() : "undefined")
-        }, Error: ${yellow(untrainedError ?? "unknown")} -> ${
-          yellow(error ?? "unknown")
-        }` + (diff > 0
+          yellow(score.toString())
+        }, Error: ${yellow(untrainedError)} -> ${yellow(error)}` + (diff > 0
           ? ` ${"improved " + bold(green(diff.toString()))}`
           : diff < 0
           ? ` ${"regression " + red(diff.toString())}`
@@ -83,19 +85,15 @@ function logVerbose(creatures: Creature[]): number {
       const sourceCreature = creatures.find((c) => c.uuid === sourceUUID);
 
       if (sourceCreature) {
-        const score = creature.score;
-        const sourceError = getTag(sourceCreature, "error");
-        const error = getTag(creature, "error");
-        const diff = Number.parseFloat(sourceError ?? "99999") -
-          Number.parseFloat(error ?? "99999");
+        const sourceError = getTag(sourceCreature, "error") ?? "99999";
+        const diff = Number.parseFloat(sourceError) -
+          Number.parseFloat(error);
         const dnaID = getTag(creature, "CRISPR-DNA");
 
         console.info(
           `CRISPR ${blue(dnaID ?? "unknown")} Score: ${
-            yellow(score ? score.toString() : "undefined")
-          }, Error: ${yellow(sourceError ?? "unknown")} -> ${
-            yellow(error ?? "unknown")
-          }` + (diff > 0
+            yellow(score.toString())
+          }, Error: ${yellow(sourceError)} -> ${yellow(error)}` + (diff > 0
             ? ` ${"improved " + bold(green(diff.toString()))}`
             : diff < 0
             ? ` ${"regression " + red(diff.toString())}`

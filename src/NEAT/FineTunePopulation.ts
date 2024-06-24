@@ -67,7 +67,7 @@ export class FindTunePopulation {
           }
         } else {
           throw new Error(
-            `Creature ${creatureUUID} has no score, excluded from fine tune population`,
+            `Creature ${creatureUUID} has invalid score`,
           );
         }
 
@@ -124,10 +124,9 @@ export class FindTunePopulation {
 
         if (species) {
           if (species.creatures.length > 0) { // Ensure there's more than one to choose from
-            let eligibleCreatures = species.creatures.filter((creature) => {
-              assert(creature.uuid, "Creature UUID is undefined");
-              return !tunedUUID.has(creature.uuid);
-            });
+            let eligibleCreatures = species.creatures.filter((creature) =>
+              !tunedUUID.has((creature as { uuid: string }).uuid)
+            );
 
             /** If there is no eligible creatures try find the closest species. */
             if (eligibleCreatures.length == 0) {
@@ -135,10 +134,8 @@ export class FindTunePopulation {
               if (closestSpecies) {
                 if (closestSpecies && closestSpecies.creatures.length > 0) {
                   eligibleCreatures = closestSpecies.creatures.filter(
-                    (creature) => {
-                      assert(creature.uuid, "Creature UUID is undefined");
-                      return !tunedUUID.has(creature.uuid);
-                    },
+                    (creature) =>
+                      !tunedUUID.has((creature as { uuid: string }).uuid),
                   );
                 }
               }

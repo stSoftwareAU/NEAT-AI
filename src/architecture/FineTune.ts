@@ -5,6 +5,7 @@ import type { NeuronExport } from "./NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
 import { assert } from "@std/assert";
+import type { Approach } from "../NEAT/LogApproach.ts";
 
 export const MIN_STEP = 0.000_000_1;
 
@@ -144,7 +145,7 @@ function tuneRandomize(
   }
 
   const all = Creature.fromJSON(fittestJSON);
-  addTag(all, "approach", "fine");
+  addTag(all, "approach", "fine" as Approach);
   removeTag(all, "approach-logged");
   let adjustedDesc = "";
   if (changeWeightCount > 0) {

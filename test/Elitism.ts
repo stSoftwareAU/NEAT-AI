@@ -6,6 +6,7 @@ import {
   sortCreaturesByScore,
 } from "../src/architecture/ElitismUtils.ts";
 import { addTag } from "@stsoftware/tags";
+import type { Approach } from "../src/NEAT/LogApproach.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -109,7 +110,7 @@ Deno.test("short", () => {
 
   population.forEach((c, i) => {
     addTag(c, "trainID", "ID" + i);
-    addTag(c, "approach", "A" + i);
+    addTag(c, "approach", "fine" as Approach);
   });
 
   const sortedPopulation = sortCreaturesByScore(make(population));

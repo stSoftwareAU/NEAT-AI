@@ -42,6 +42,7 @@ import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
 import { Mutation } from "../mod.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
+import type { Approach } from "./NEAT/LogApproach.ts";
 
 /**
  * Creature Class
@@ -447,7 +448,7 @@ export class Creature implements CreatureInternal {
 
     const json2 = compactCreature.exportJSON();
     if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
-      addTag(compactCreature, "approach", "compact");
+      addTag(compactCreature, "approach", "compact" as Approach);
       addTag(compactCreature, "old-nodes", this.neurons.length.toString());
       addTag(
         compactCreature,

@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
+import type { Approach } from "../../src/NEAT/LogApproach.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -40,7 +41,7 @@ Deno.test("tune", async () => {
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
-  addTag(fittest, "approach", "trained");
+  addTag(fittest, "approach", "trained" as Approach);
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
 
@@ -55,7 +56,7 @@ Deno.test("tune", async () => {
     "We should have made ten changes, was: " + fineTuned.length,
   );
   addTag(fittest, "approach", "trained");
-  const approach = getTag(fittest, "approach");
+  const approach = getTag(fittest, "approach") as Approach;
   assert(approach == "trained", "Approach was: " + approach);
   const fineTuned2 = await fineTuneImprovement(
     fittest,
@@ -67,7 +68,7 @@ Deno.test("tune", async () => {
     fineTuned2.length == 3,
     "We should have detected THREE changes was: " + fineTuned2.length,
   );
-  addTag(fittest, "approach", "compact");
+  addTag(fittest, "approach", "compact" as Approach);
   const fineTuned3 = await fineTuneImprovement(
     fittest,
     previousFittest,
@@ -113,7 +114,7 @@ Deno.test("many", async () => {
     previousFittest.exportJSON(),
   );
   addTag(fittest, "score", "-0.4");
-  addTag(fittest, "approach", "fine");
+  addTag(fittest, "approach", "fine" as Approach);
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
 
