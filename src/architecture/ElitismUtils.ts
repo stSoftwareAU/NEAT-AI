@@ -55,6 +55,7 @@ function logVerbose(creatures: Creature[]): number {
     assert(score !== undefined, "Creature must have a score");
     totalScore += score;
 
+    const error = getTag(creature, "error") ?? "99999";
     const notified = getTag(creature, "notified");
     if (notified === "Yes") {
       continue;
@@ -65,7 +66,7 @@ function logVerbose(creatures: Creature[]): number {
 
       const approach = getTag(creature, "approach") as Approach;
       const untrainedError = getTag(creature, "untrained-error") ?? "99999";
-      const error = getTag(creature, "error") ?? "99999";
+
       const diff = Number.parseFloat(untrainedError) -
         Number.parseFloat(error);
       console.info(
@@ -84,10 +85,7 @@ function logVerbose(creatures: Creature[]): number {
       const sourceCreature = creatures.find((c) => c.uuid === sourceUUID);
 
       if (sourceCreature) {
-        const score = creature.score;
-        assert(score !== undefined, "Creature must have a score");
         const sourceError = getTag(sourceCreature, "error") ?? "99999";
-        const error = getTag(creature, "error") ?? "99999";
         const diff = Number.parseFloat(sourceError) -
           Number.parseFloat(error);
         const dnaID = getTag(creature, "CRISPR-DNA");
