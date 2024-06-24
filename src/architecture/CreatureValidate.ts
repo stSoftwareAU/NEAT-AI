@@ -7,7 +7,7 @@ import { ValidationError } from "../errors/ValidationError.ts";
  */
 export function creatureValidate(
   creature: Creature,
-  options?: { neurons?: number; connections?: number },
+  options?: { neurons?: number; connections?: number; feedbackLoop?: boolean },
 ) {
   if (options && options.neurons) {
     if (creature.neurons.length !== options.neurons) {
@@ -345,21 +345,27 @@ export function creatureValidate(
     }
 
     if (c.from > c.to) {
-      if (creature.DEBUG) {
-        creature.DEBUG = false;
-        Deno.writeTextFileSync(
-          ".validate.json",
-          JSON.stringify(creature.exportJSON(), null, 2),
-        );
+      /** When feed back is enabled we allow recursive synapes */
+      if (
+        options && options.feedbackLoop !== undefined &&
+        options.feedbackLoop == false
+      ) {
+        if (creature.DEBUG) {
+          creature.DEBUG = false;
+          Deno.writeTextFileSync(
+            ".validate.json",
+            JSON.stringify(creature.exportJSON(), null, 2),
+          );
 
-        creature.DEBUG = true;
+          creature.DEBUG = true;
+        }
+        throw new ValidationError(
+          `${indx}) Recursive synapse ${c.from} (${
+            creature.neurons[c.from].ID()
+          }) -> ${c.to} (${creature.neurons[c.to].ID()})`,
+          "RECURSIVE_SYNAPSE",
+        );
       }
-      throw new ValidationError(
-        `${indx}) Recursive synapse ${c.from} (${
-          creature.neurons[c.from].ID()
-        }) -> ${c.to} (${creature.neurons[c.to].ID()})`,
-        "RECURSIVE_SYNAPSE",
-      );
     }
 
     lastFrom = c.from;

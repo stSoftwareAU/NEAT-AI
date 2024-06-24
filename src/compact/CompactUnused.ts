@@ -1,4 +1,4 @@
-import { addTag } from "@stsoftware/tags";
+import { addTag, removeTag } from "@stsoftware/tags";
 import { Creature, type CreatureTrace, CreatureUtil } from "../../mod.ts";
 import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
@@ -48,6 +48,7 @@ export async function compactUnused(
   const compactedUUID = await CreatureUtil.makeUUID(compacted);
   if (cleanUUID !== compactedUUID) {
     addTag(compacted, "approach", "compact" as Approach);
+    removeTag(compacted, "approach-logged");
     addTag(compacted, "old-nodes", clean.neurons.length.toString());
     addTag(
       compacted,

@@ -5,7 +5,7 @@ import { Neuron } from "./Neuron.ts";
 import type { NeuronExport } from "./NeuronInterfaces.ts";
 import { Offspring } from "./Offspring.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
-import { addTag } from "@stsoftware/tags";
+import { addTag, removeTag } from "@stsoftware/tags";
 import type { Approach } from "../NEAT/LogApproach.ts";
 
 /**
@@ -236,6 +236,7 @@ export async function handleGrafting(
    */
   const graftedChild = Creature.fromJSON(childExport);
   addTag(graftedChild, "approach", "graft" as Approach);
+  removeTag(graftedChild, "approach-logged");
   addTag(graftedChild, "old-nodes", cloneOfParent.neurons.length.toString());
   addTag(
     graftedChild,

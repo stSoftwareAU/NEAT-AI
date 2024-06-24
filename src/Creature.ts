@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
-import { addTag, getTag, type TagInterface } from "@stsoftware/tags";
+import { addTag, getTag, removeTag, type TagInterface } from "@stsoftware/tags";
 import { CreatureUtil } from "../mod.ts";
 import type { BackPropagationConfig } from "./architecture/BackPropagation.ts";
 import type {
@@ -449,6 +449,7 @@ export class Creature implements CreatureInternal {
     const json2 = compactCreature.exportJSON();
     if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
       addTag(compactCreature, "approach", "compact" as Approach);
+      removeTag(compactCreature, "approach-logged");
       addTag(compactCreature, "old-nodes", this.neurons.length.toString());
       addTag(
         compactCreature,
