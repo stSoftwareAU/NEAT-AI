@@ -44,6 +44,10 @@ import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
 
+interface ConnectionOptions {
+  weightScale: number;
+}
+
 /**
  * Creature Class
  *
@@ -162,7 +166,7 @@ export class Creature implements CreatureInternal {
    * @param {number} [from=-1] - The starting index of the cache to clear.
    * @param {number} [to=-1] - The ending index of the cache to clear.
    */
-  public clearCache(from = -1, to = -1) {
+  public clearCache(from: number = -1, to: number = -1) {
     if (from == -1 || to == -1) {
       this.cacheTo.clear();
       this.cacheFrom.clear();
@@ -1204,27 +1208,33 @@ export class Creature implements CreatureInternal {
   /**
    * Add a connection between two neurons.
    *
-   * @param {number[]} [focusList] - The list of focus indices.
-   * @param {Object} [options={ weightScale: 1 }] - The options for the connection.
+   * @param focusList - The list of focus indices. If provided, only neurons at these indices will be considered for connection.
+   * @param options - The options for the connection.
+   * @param options.weightScale - A scaling factor for the weight of the connection.
    */
-  public addConnection(focusList?: number[], options = {
+  public addConnection(focusList?: number[], options: ConnectionOptions = {
     weightScale: 1,
-  }) {
+  }): void {
     // Create an array of all uncreated (feedforward) connections
-    const available = [];
+    const available: [Neuron, Neuron][] = [];
 
-    for (let i = 0; i < this.neurons.length; i++) {
-      const neuronFrom = this.neurons[i];
+    for (let fromIndx = 0; fromIndx < this.neurons.length; fromIndx++) {
+      const neuronFrom = this.neurons[fromIndx];
 
-      if (neuronFrom.index != i) {
-        throw i + ") invalid neuron index: " + neuronFrom.index;
+      if (neuronFrom.index !== fromIndx) {
+        throw new Error(
+          `${fromIndx}) Invalid neuron index: ${neuronFrom.index}`,
+        );
       }
 
-      if (!this.inFocus(i, focusList)) continue;
-
-      for (let j = Math.max(i + 1, this.input); j < this.neurons.length; j++) {
-        if (!this.inFocus(j, focusList)) continue;
-        const neuronTo = this.neurons[j];
+      const fromInFocus = this.inFocus(fromIndx, focusList);
+      for (
+        let toIndx = Math.max(fromIndx + 1, this.input);
+        toIndx < this.neurons.length;
+        toIndx++
+      ) {
+        if (!fromInFocus && !this.inFocus(toIndx, focusList)) continue;
+        const neuronTo = this.neurons[toIndx];
 
         if (neuronTo.type === "constant") continue;
 
@@ -1239,16 +1249,12 @@ export class Creature implements CreatureInternal {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    const fromIndx = pair[0].index;
-    const toIndx = pair[1].index;
-    const w = Synapse.randomWeight() * options.weightScale
-      ? options.weightScale
-      : 1;
-    this.connect(
-      fromIndx,
-      toIndx,
-      w,
-    );
+    const fromIndex = pair[0].index;
+    const toIndex = pair[1].index;
+    const weightScale = options.weightScale || 1;
+    const weight = Synapse.randomWeight() * weightScale;
+
+    this.connect(fromIndex, toIndex, weight);
   }
 
   /**
