@@ -350,8 +350,10 @@ export class CRISPR {
     });
 
     dna.synapses.forEach((s) => {
-      const fromIndx = uuidMap.get(s.fromUUID ?? "unknown");
-      const toIndx = uuidMap.get(s.toUUID ?? "unknown");
+      assert(s.fromUUID !== undefined, "Missing fromUUID");
+      const fromIndx = uuidMap.get(s.fromUUID);
+      assert(s.toUUID !== undefined, "Missing toUUID");
+      const toIndx = uuidMap.get(s.toUUID);
 
       assert(
         fromIndx !== undefined,
@@ -389,7 +391,7 @@ export class CRISPR {
    * @param dna - The CRISPR DNA specifying the modifications.
    * @returns The modified creature or undefined if no modifications were applied.
    */
-  async cleaveDNA(dna: CrisprInterface): Promise<Creature | undefined> {
+  async cleaveDNA(dna: CrisprInterface): Promise<Creature> {
     let alreadyProcessed = false;
 
     const uuid = await CreatureUtil.makeUUID(this.creature);
@@ -431,8 +433,8 @@ export class CRISPR {
       addTag(modifiedCreature, "CRISPR-SOURCE", uuid);
       addTag(modifiedCreature, "CRISPR-DNA", dna.id); // DNA that was used to modify
       return modifiedCreature;
-    } else {
-      return undefined;
     }
+
+    return modifiedCreature;
   }
 }
