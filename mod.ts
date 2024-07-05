@@ -89,3 +89,9 @@ export { CRISPR, type CrisprInterface } from "./src/reconstruct/CRISPR.ts";
  * @see {@link module:src/reconstruct/Upgrade}
  */
 export { Upgrade } from "./src/reconstruct/Upgrade.ts";
+
+/**
+ * Connects missing neurons in the creature's brain.
+ * @see {@link module:src/reconstruct/ConnectMissing}
+ */
+export { randomConnectMissing } from "./src/reconstruct/ConnectMissing.ts";

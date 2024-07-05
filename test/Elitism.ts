@@ -1,12 +1,14 @@
-import { assert } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import {
+  logVerbose,
   makeElitists,
   sortCreaturesByScore,
 } from "../src/architecture/ElitismUtils.ts";
 import { addTag } from "@stsoftware/tags";
 import type { Approach } from "../src/NEAT/LogApproach.ts";
+import { CreatureUtil } from "../mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -392,4 +394,26 @@ Deno.test("NaN", () => {
     elitists[2].score == -1,
     "Then negative 1 " + elitists[2].score,
   );
+});
+
+Deno.test("logVerbose", async () => {
+  const population: CreatureInternal[] = [
+    { input: 1, output: 1, score: -2, neurons: [], synapses: [] },
+    { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
+  ];
+
+  population.forEach((c, i) => {
+    addTag(c, "trainID", "ID" + i);
+    addTag(c, "approach", "fine" as Approach);
+  });
+
+  const creatures = make(population);
+  const uuid = await CreatureUtil.makeUUID(creatures[0]);
+  addTag(creatures[1], "CRISPR-SOURCE", uuid);
+  const average = logVerbose(creatures);
+
+  assertAlmostEquals(average, -1.5, 0.1, `Wrong average ${average}`);
+  const average2 = logVerbose(creatures);
+
+  assertAlmostEquals(average2, -1.5, 0.1, `Wrong average ${average}`);
 });
