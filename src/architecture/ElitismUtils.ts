@@ -46,7 +46,7 @@ export function sortCreaturesByScore(creatures: Creature[]): Creature[] {
   return creatures;
 }
 
-function logVerbose(creatures: Creature[]): number {
+export function logVerbose(creatures: Creature[]): number {
   let totalScore = 0;
 
   for (let indx = 0; indx < creatures.length; indx++) {
