@@ -1248,11 +1248,7 @@ export class Creature implements CreatureInternal {
     for (let fromIndx = 0; fromIndx < this.neurons.length; fromIndx++) {
       const neuronFrom = this.neurons[fromIndx];
 
-      if (neuronFrom.index !== fromIndx) {
-        throw new Error(
-          `${fromIndx}) Invalid neuron index: ${neuronFrom.index}`,
-        );
-      }
+      assert (neuronFrom.index === fromIndx);
 
       const fromInFocus = this.inFocus(fromIndx, focusList);
       for (
