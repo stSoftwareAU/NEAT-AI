@@ -260,6 +260,10 @@
         {
           "name": "CRISPR",
           "value": "Recommendation Range"
+        },
+        {
+          "name": "comment",
+          "value": "Use MAXIMUM"
         }
       ]
     },

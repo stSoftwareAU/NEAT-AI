@@ -107,6 +107,7 @@ export class Creature implements CreatureInternal {
   private cacheTo = new Map<number, Synapse[]>();
   private cacheFrom = new Map<number, Synapse[]>();
   private cacheSelf = new Map<number, Synapse[]>();
+  private cacheFocus: Map<number, boolean> = new Map();
 
   /**
    * Debug mode flag.
@@ -176,6 +177,7 @@ export class Creature implements CreatureInternal {
       this.cacheFrom.delete(from);
       this.cacheSelf.delete(from);
     }
+    this.cacheFocus.clear();
   }
 
   private initialize(options: {
@@ -1005,14 +1007,32 @@ export class Creature implements CreatureInternal {
    * @param {Set<number>} [checked] - The set of checked indices.
    * @returns {boolean} True if the neuron is in focus, false otherwise.
    */
-  inFocus(
+  /**
+   * Check if a neuron is in focus.
+   *
+   * @param {number} index - The index of the neuron.
+   * @param {number[]} [focusList] - The list of focus indices.
+   * @param {Set<number>} [checked] - The set of checked indices.
+   * @returns {boolean} True if the neuron is in focus, false otherwise.
+   */
+  public inFocus(
     index: number,
     focusList?: number[],
     checked: Set<number> = new Set(),
   ): boolean {
-    if (!focusList || focusList.length == 0) return true;
+    if (!focusList || focusList.length == 0) {
+      return true;
+    }
 
-    if (checked.has(index)) return false;
+    // Check the cache first if there is a focus list
+    if (this.cacheFocus.has(index)) {
+      return this.cacheFocus.get(index) as boolean;
+    }
+
+    if (checked.has(index)) {
+      this.cacheFocus.set(index, false);
+      return false;
+    }
 
     checked.add(index);
 
@@ -1020,6 +1040,7 @@ export class Creature implements CreatureInternal {
       const focusIndex = focusList[pos];
 
       if (index == focusIndex) {
+        this.cacheFocus.set(index, true);
         return true;
       }
 
@@ -1027,13 +1048,19 @@ export class Creature implements CreatureInternal {
 
       for (let i = toList.length; i--;) {
         const checkIndx: number = toList[i].from;
-        if (checkIndx === index) return true;
+        if (checkIndx === index) {
+          this.cacheFocus.set(index, true);
+          return true;
+        }
 
         if (this.inFocus(checkIndx, focusList, checked)) {
+          this.cacheFocus.set(index, true);
           return true;
         }
       }
     }
+
+    this.cacheFocus.set(index, false);
     return false;
   }
 
@@ -1221,11 +1248,7 @@ export class Creature implements CreatureInternal {
     for (let fromIndx = 0; fromIndx < this.neurons.length; fromIndx++) {
       const neuronFrom = this.neurons[fromIndx];
 
-      if (neuronFrom.index !== fromIndx) {
-        throw new Error(
-          `${fromIndx}) Invalid neuron index: ${neuronFrom.index}`,
-        );
-      }
+      assert (neuronFrom.index === fromIndx);
 
       const fromInFocus = this.inFocus(fromIndx, focusList);
       for (
