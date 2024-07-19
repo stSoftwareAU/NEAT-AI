@@ -69,7 +69,7 @@ export class Fitness {
     }
 
     if (promises.length) {
-      await Promise.any(promises);
+      await Promise.all(promises);
     }
 
     if (data.queue.length == 0) {
