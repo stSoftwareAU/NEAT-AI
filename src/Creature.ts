@@ -453,7 +453,7 @@ export class Creature implements CreatureInternal {
     }
 
     const json2 = compactCreature.exportJSON();
-    if (JSON.stringify(json, null, 2) != JSON.stringify(json2, null, 2)) {
+    if (JSON.stringify(json) != JSON.stringify(json2)) {
       addTag(compactCreature, "approach", "compact" as Approach);
       removeTag(compactCreature, "approach-logged");
       addTag(compactCreature, "old-nodes", this.neurons.length.toString());
@@ -806,7 +806,7 @@ export class Creature implements CreatureInternal {
     let bestScore = -Infinity;
     let bestCreature: Creature | undefined;
 
-    let iterationStartMS = new Date().getTime();
+    let iterationStartMS = Date.now();
     let generation = 0;
     const targetError = options.targetError ?? 0;
     const iterations = options.iterations ?? Number.POSITIVE_INFINITY;
@@ -1680,7 +1680,7 @@ export class Creature implements CreatureInternal {
   fix() {
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
-    const startTxt = JSON.stringify(this.internalJSON(), null, 2);
+    const startTxt = JSON.stringify(this.internalJSON());
     this.DEBUG = holdDebug;
     const maxTo = this.neurons.length - 1;
     const minTo = this.input;
@@ -1735,7 +1735,7 @@ export class Creature implements CreatureInternal {
       node.fix();
     });
 
-    const endTxt = JSON.stringify(this.internalJSON(), null, 2);
+    const endTxt = JSON.stringify(this.internalJSON());
     if (startTxt != endTxt) {
       delete this.uuid;
     }

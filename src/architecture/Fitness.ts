@@ -2,6 +2,7 @@ import { addTag } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { calculate as calculateScore } from "./Score.ts";
+import { assert } from "@std/assert";
 
 type PromiseFunction = (v: unknown) => void;
 
@@ -40,6 +41,7 @@ export class Fitness {
     }
 
     const error = responseData.evaluate.error;
+    delete responseData.evaluate;
     addTag(creature, "error", Math.abs(error).toString());
 
     creature.score = calculateScore(creature, error, this.growth);
@@ -55,18 +57,18 @@ export class Fitness {
     const promises = [];
     for (let i = this.workers.length; i--;) {
       const w = this.workers[i];
+
       if (!w.isBusy()) {
-        while (data.queue.length > 0) {
-          const creature = data.queue.shift();
-          if (creature && !creature.score) {
-            promises.push(this._callWorker(w, creature));
-            break;
-          }
-        }
+        const creature = data.queue.shift();
+        if (!creature) break;
+
+        assert(creature, "No creature");
+        assert(creature.score === undefined, "Creature already has a score");
+        promises.push(this._callWorker(w, creature));
       }
     }
 
-    await Promise.all(promises);
+    await Promise.any(promises);
 
     if (data.queue.length == 0) {
       if (this.calledWorkers == 0) {
@@ -78,7 +80,7 @@ export class Fitness {
   calculate(population: Creature[]) {
     return new Promise((resolve, reject) => {
       calculationData = {
-        queue: population.slice(),
+        queue: population.filter((c) => c.score === undefined),
         resolve: resolve,
         reject: reject,
         that: this,

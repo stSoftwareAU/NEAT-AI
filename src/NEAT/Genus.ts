@@ -17,6 +17,13 @@ export class Genus {
     assert(creature, "No creature provided");
     assert(creature.uuid, "No creature UUID");
 
+    const existingSpeciesKey = this.creatureToSpeciesMap.get(creature.uuid);
+    if (existingSpeciesKey) {
+      const existingSpecies = this.speciesMap.get(existingSpeciesKey);
+      assert(existingSpecies, "Existing species not found");
+      return existingSpecies;
+    }
+
     this.population.push(creature);
     const key = await Species.calculateKey(creature);
 
