@@ -64,7 +64,9 @@ export class DeDuplicator {
 
     if (toRemove.length > 0) {
       const end = performance.now();
-      console.log(`DeDuplicator took ${end - start} ms`);
+      console.log(
+        `DeDuplication of ${toRemove.length} creatures took ${end - start} ms`,
+      );
     }
   }
 
