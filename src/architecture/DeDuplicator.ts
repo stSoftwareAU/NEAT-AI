@@ -1,4 +1,4 @@
-import { assert } from "jsr:@std/assert@^0.225.1/assert";
+import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import type { Breed } from "../NEAT/Breed.ts";
 import type { Mutator } from "../NEAT/Mutator.ts";
@@ -14,18 +14,21 @@ export class DeDuplicator {
   }
 
   public async perform(creatures: Creature[]) {
+    const start = performance.now();
+
     this.logPopulationSize(creatures);
 
     const uuidPromises = creatures.map((creature) =>
       CreatureUtil.makeUUID(creature).then(async (uuid) => {
         assert(uuid, "No creature UUID");
         await this.breed.genus.addCreature(creature);
-        // this.breed.genus.findSpeciesByCreatureUUID(uuid);
       })
     );
     await Promise.all(uuidPromises);
+    uuidPromises.length = 0;
 
     const unique = new Set<string>();
+    const toRemove: number[] = [];
 
     for (let i = 0; i < creatures.length; i++) {
       const creature = creatures[i];
@@ -41,16 +44,27 @@ export class DeDuplicator {
       }
 
       if (duplicate) {
-        if (creatures.length > this.breed.config.populationSize) {
+        if (
+          creatures.length - toRemove.length > this.breed.config.populationSize
+        ) {
           console.info(
-            `Culling duplicate creature at ${i} of ${creatures.length}`,
+            `Culling duplicate creature at ${i}`,
           );
-          creatures.splice(i, 1);
-          i--;
+          toRemove.push(i);
         } else {
           await this.replaceDuplicateCreature(creatures, i, unique);
         }
       }
+    }
+
+    // Second pass to remove duplicates
+    for (let i = toRemove.length - 1; i >= 0; i--) {
+      creatures.splice(toRemove[i], 1);
+    }
+
+    if (toRemove.length > 0) {
+      const end = performance.now();
+      console.log(`DeDuplicator took ${end - start} ms`);
     }
   }
 
