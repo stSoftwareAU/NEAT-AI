@@ -3,8 +3,6 @@ export interface DataRecordInterface {
   output: number[];
 }
 
-const encoder = new TextEncoder();
-
 export function makeDataDir(
   dataSet: DataRecordInterface[],
   partitionBreak = 2000,
@@ -19,13 +17,11 @@ export function makeDataDir(
 
   let completed = false;
   for (let loop = 0; completed == false; loop++) {
-    const fn = dataSetDir + "/" + loop + ".json";
+    const fn = dataSetDir + "/" + loop + ".bin";
     const file = Deno.openSync(fn, {
       write: true,
       create: true,
     });
-
-    file.writeSync(encoder.encode("[\n"));
 
     let counter = 0;
     for (; counter < partitionBreak; counter++) {
@@ -34,15 +30,15 @@ export function makeDataDir(
         completed = true;
         break;
       }
-      if (counter != 0) {
-        file.writeSync(encoder.encode(",\n"));
-      }
 
       const record = dataSet[pos];
-
-      file.writeSync(encoder.encode(JSON.stringify(record)));
+      const array = new Float32Array(
+        record.input.length + record.output.length,
+      );
+      array.set(record.input);
+      array.set(record.output, record.input.length);
+      file.writeSync(new Uint8Array(array.buffer));
     }
-    file.writeSync(encoder.encode("\n]"));
     file.close();
 
     if (counter == 0) {
