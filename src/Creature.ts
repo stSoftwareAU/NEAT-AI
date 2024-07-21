@@ -32,7 +32,7 @@ import type {
   SynapseInternal,
   SynapseTrace,
 } from "./architecture/SynapseInterfaces.ts";
-import { cacheDataFile, dataFiles } from "./architecture/Training.ts";
+import { dataFiles } from "./architecture/Training.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
 import type { CostInterface } from "./Costs.ts";
@@ -951,36 +951,66 @@ export class Creature implements CreatureInternal {
     cost: CostInterface,
     feedbackLoop: boolean,
   ): { error: number } {
-    const files: string[] = dataFiles(dataDir).map((fn) => `${dataDir}/${fn}`);
+    const dataResult = dataFiles(dataDir);
+    if (dataResult.binary.length) {
+      let error = 0;
+      let count = 0;
 
-    if (files.length === 1) {
-      const fn = files[0];
-      const json = cacheDataFile.fn === fn
-        ? cacheDataFile.json
-        : JSON.parse(Deno.readTextFileSync(fn));
+      const valuesCount = this.input + this.output;
+      const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
+      const array = new Float32Array(valuesCount);
+      const uint8Array = new Uint8Array(array.buffer);
+      for (let i = dataResult.binary.length; i--;) {
+        const filePath = dataResult.binary[i];
 
-      cacheDataFile.fn = fn;
-      cacheDataFile.json = json;
-
-      const result = this.evaluateData(json, cost, feedbackLoop);
-      return { error: result.error / result.count };
-    } else {
-      cacheDataFile.fn = "";
-      cacheDataFile.json = {};
-      let totalCount = 0;
-      let totalError = 0;
-      for (let i = files.length; i--;) {
-        const json = JSON.parse(Deno.readTextFileSync(files[i]));
-
+        const file = Deno.openSync(filePath, { read: true });
         try {
-          const result = this.evaluateData(json, cost, feedbackLoop);
-          totalCount += result.count;
-          totalError += result.error;
-        } catch (e) {
-          throw new Error(`Error in file: ${files[i]}`, e);
+          while (true) {
+            const bytesRead = file.readSync(uint8Array);
+            if (bytesRead === null || bytesRead === 0) {
+              break;
+            }
+            if (bytesRead !== BYTES_PER_RECORD) {
+              throw new Error(
+                `Invalid number of bytes read ${bytesRead} expected ${BYTES_PER_RECORD}`,
+              );
+            }
+            const observations: number[] = Array.from(
+              array.subarray(0, this.input),
+            );
+            const output = this.activate(observations, feedbackLoop);
+            const expected: number[] = Array.from(array.subarray(this.input));
+            error += cost.calculate(expected, output);
+            count++;
+          }
+        } finally {
+          file.close();
         }
       }
-      return { error: totalError / totalCount };
+      return { error: error / count };
+    } else {
+      if (dataResult.json.length === 1) {
+        const fn = dataResult.json[0];
+        const json = JSON.parse(Deno.readTextFileSync(fn));
+
+        const result = this.evaluateData(json, cost, feedbackLoop);
+        return { error: result.error / result.count };
+      } else {
+        let totalCount = 0;
+        let totalError = 0;
+        for (let i = dataResult.json.length; i--;) {
+          const json = JSON.parse(Deno.readTextFileSync(dataResult.json[i]));
+
+          try {
+            const result = this.evaluateData(json, cost, feedbackLoop);
+            totalCount += result.count;
+            totalError += result.error;
+          } catch (e) {
+            throw new Error(`Error in file: ${dataResult.json[i]}`, e);
+          }
+        }
+        return { error: totalError / totalCount };
+      }
     }
   }
 

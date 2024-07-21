@@ -9,30 +9,43 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import { type DataRecordInterface, makeDataDir } from "./DataSet.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 
-export const cacheDataFile = {
-  fn: "",
-  json: {},
-};
+export function dataFiles(dataDir: string, options: TrainOptions = {}) {
+  const jsonFiles: string[] = [];
+  const binaryFiles: string[] = [];
 
-export function dataFiles(dataDir: string) {
-  const files: string[] = [];
-
-  if (cacheDataFile.fn.startsWith(dataDir)) {
-    files.push(
-      cacheDataFile.fn.substring(cacheDataFile.fn.lastIndexOf("/") + 1),
-    );
-  } else {
-    cacheDataFile.fn = "NOT-CACHED";
-    for (const dirEntry of Deno.readDirSync(dataDir)) {
-      if (dirEntry.isFile && dirEntry.name.endsWith(".json")) {
-        files.push(dirEntry.name);
+  for (const dirEntry of Deno.readDirSync(dataDir)) {
+    if (dirEntry.isFile) {
+      const fn = dirEntry.name;
+      if (fn.endsWith(".json")) {
+        jsonFiles.push(`${dataDir}/${fn}`);
+      } else if (fn.endsWith(".bin")) {
+        binaryFiles.push(`${dataDir}/${fn}`);
       }
     }
+  }
 
+  let files = binaryFiles;
+  if (jsonFiles.length !== 0) {
+    if (binaryFiles.length !== 0) {
+      throw new Error(
+        "Cannot mix json and binary files in the same directory",
+      );
+    }
+    files = jsonFiles;
+  }
+  if (!options.disableRandomSamples) {
+    for (let i = files.length; i--;) {
+      const j = Math.round(Math.random() * i);
+      [files[i], files[j]] = [files[j], files[i]];
+    }
+  } else {
     files.sort();
   }
 
-  return files;
+  return {
+    json: jsonFiles,
+    binary: binaryFiles,
+  };
 }
 
 /**
@@ -58,19 +71,10 @@ export async function trainDir(
   );
 
   const indxMap = new Map<string, Int32Array>();
-  const files: string[] = dataFiles(dataDir).map((fn) => dataDir + "/" + fn);
-  const cached = files.length == 1;
-  if (!cached) {
-    cacheDataFile.fn = "";
-    cacheDataFile.json = {};
-  }
+  const dataResult = dataFiles(dataDir, options);
 
-  // Randomize the list of files
-  if (!options.disableRandomSamples) {
-    for (let i = files.length; i--;) {
-      const j = Math.round(Math.random() * i);
-      [files[i], files[j]] = [files[j], files[i]];
-    }
+  if (dataResult.binary.length > 0) {
+    return await trainDirBinary(creature, dataResult.binary, options);
   }
 
   // Loops the training process
@@ -104,16 +108,9 @@ export async function trainDir(
     let errorSum = 0;
 
     let trainingStopped = false;
-    for (let j = files.length; !trainingStopped && j--;) {
-      const fn = files[j];
-      const json = cacheDataFile.fn == fn
-        ? cacheDataFile.json
-        : JSON.parse(Deno.readTextFileSync(fn));
-
-      if (cached) {
-        cacheDataFile.fn = fn;
-        cacheDataFile.json = json;
-      }
+    for (let j = dataResult.json.length; !trainingStopped && j--;) {
+      const fn = dataResult.json[j];
+      const json = JSON.parse(Deno.readTextFileSync(fn));
 
       if (json.length == 0) {
         throw new Error("Set size must be positive");
@@ -281,7 +278,261 @@ export async function trainDir(
     }
   }
 }
+async function trainDirBinary(
+  creature: Creature,
+  binaryFiles: string[],
+  options: TrainOptions,
+) {
+  // Read the options
+  const targetError =
+    options.targetError !== undefined && Number.isFinite(options.targetError)
+      ? Math.max(options.targetError, 0.000_001)
+      : 0.05;
+  const cost = Costs.find(options.cost ? options.cost : "MSE");
 
+  const iterations = Math.max(options.iterations ? options.iterations : 2, 1);
+
+  const trainingSampleRate = Math.min(
+    1,
+    Math.max(0, options.trainingSampleRate ?? Math.max(Math.random(), 0.3)),
+  );
+
+  const valuesCount = creature.input + creature.output;
+  const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
+
+  const array = new Float32Array(valuesCount);
+  const uint8Array = new Uint8Array(array.buffer);
+
+  async function readNextRecord(file: Deno.FsFile) {
+    const bytesRead = await file.read(uint8Array);
+    if (bytesRead === null || bytesRead === 0) {
+      return null;
+    }
+    if (bytesRead !== BYTES_PER_RECORD) {
+      throw new Error(
+        `Invalid number of bytes read ${bytesRead} expected ${BYTES_PER_RECORD}`,
+      );
+    }
+    const observations: number[] = Array.from(array.slice(0, creature.input));
+    const outputs: number[] = Array.from(array.slice(creature.input));
+
+    return {
+      observations: observations,
+      outputs: outputs,
+    };
+  }
+
+  const indxMap = new Map<string, Set<number>>();
+
+  // Loops the training process
+  let iteration = 0;
+
+  let timedOut = false;
+  let timeoutTS = 0;
+  if (options.trainingTimeOutMinutes ?? 0 > 0) {
+    timeoutTS = Date.now() + (options.trainingTimeOutMinutes ?? 0) * 60 * 1000;
+  }
+  const uuid = await CreatureUtil.makeUUID(creature);
+
+  const ID = uuid.substring(Math.max(0, uuid.length - 8));
+  let bestError: number | undefined = undefined;
+  let trainingFailures = 0;
+  let bestCreatureJSON = creature.exportJSON();
+  let bestTraceJSON = creature.traceJSON();
+  let lastTraceJSON = bestTraceJSON;
+  let knownSampleCount = -1;
+
+  while (true) {
+    iteration++;
+    const startTS = Date.now();
+    let lastTS = startTS;
+    const config = new BackPropagationConfig(options);
+    if (options.generations !== undefined) {
+      config.generations = options.generations + iteration;
+    }
+
+    let counter = 0;
+    let errorSum = 0;
+
+    let trainingStopped = false;
+    for (let j = binaryFiles.length; !trainingStopped && j--;) {
+      const fn = binaryFiles[j];
+
+      const file = await Deno.open(fn, { read: true });
+
+      try {
+        let recordSet = indxMap.get(fn);
+
+        if (!recordSet) {
+          const stat = await file.stat();
+          const records = stat.size / BYTES_PER_RECORD;
+
+          const len = Math.min(
+            records,
+            Math.max(1000, Math.floor(records * trainingSampleRate)),
+          );
+          const tmpIndexes = Int32Array.from(
+            { length: records },
+            (_, i) => i,
+          ); // Create an array of indices
+
+          if (!options.disableRandomSamples) {
+            CreatureUtil.shuffle(tmpIndexes);
+          }
+          const indices = tmpIndexes.slice(0, len);
+
+          recordSet = new Set(indices);
+          indxMap.set(fn, recordSet);
+        }
+
+        let readPromise = readNextRecord(file);
+
+        for (let indx = 0; true; indx++) {
+          const record = await readPromise;
+          if (record === null) break;
+          readPromise = readNextRecord(file);
+
+          if (!recordSet.has(indx)) {
+            continue;
+          }
+
+          const output = creature.activateAndTrace(record.observations);
+
+          const sampleError = cost.calculate(record.outputs, output);
+          errorSum += sampleError;
+          counter++;
+          if (Number.isFinite(errorSum) == false) {
+            console.warn(
+              `Training ${
+                blue(ID)
+              } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} record.output: ${record.outputs} output: ${output}`,
+            );
+            trainingStopped = true;
+            break;
+          } else if (bestError !== undefined && counter < knownSampleCount) {
+            const bestPossibleError = errorSum / knownSampleCount;
+            if (bestPossibleError > bestError) {
+              console.warn(
+                `Training ${blue(ID)} stopped as 'best possible' error ${
+                  yellow(bestPossibleError.toFixed(3))
+                } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
+                  yellow(counter.toFixed(0))
+                } of ${yellow(knownSampleCount.toFixed(0))}`,
+              );
+              trainingStopped = true;
+              break;
+            }
+          }
+          creature.propagate(record.outputs, config);
+
+          const now = Date.now();
+          const diff = now - lastTS;
+
+          if (diff > 60_000) {
+            lastTS = now;
+            const totalTime = now - startTS;
+            console.log(
+              `Training ${blue(ID)} samples`,
+              counter,
+              `${
+                knownSampleCount > 0
+                  ? "of " + yellow(knownSampleCount.toLocaleString()) + " "
+                  : ""
+              }${
+                trainingSampleRate < 1
+                  ? "( rate " +
+                    yellow((trainingSampleRate * 100).toFixed(1) + "% )")
+                  : ""
+              }`,
+              "error",
+              yellow((errorSum / counter).toFixed(3)),
+              "time average:",
+              yellow(
+                format(totalTime / counter, { ignoreZero: true }),
+              ),
+              "total:",
+              yellow(
+                format(totalTime, { ignoreZero: true }),
+              ),
+            );
+
+            if (timeoutTS && now > timeoutTS) {
+              timedOut = true;
+              console.log(
+                `Training ${blue(ID)} timed out after ${
+                  yellow(format(totalTime, { ignoreZero: true }))
+                }`,
+              );
+              trainingStopped = true;
+              break;
+            }
+          }
+        }
+      } finally {
+        file.close();
+      }
+    }
+
+    const error = errorSum / counter;
+
+    if (bestError !== undefined && bestError < error) {
+      trainingFailures++;
+      if (trainingStopped == false) {
+        console.warn(
+          `Training ${blue(ID)} made the error: ${
+            yellow(bestError.toFixed(3))
+          }, worse: ${yellow(error.toFixed(3))}, target: ${
+            yellow(targetError.toString())
+          }, failed: ${yellow(trainingFailures.toString())} out of ${
+            yellow(iteration.toString())
+          } iterations`,
+        );
+      }
+      if (options.traceStore) {
+        const failedDir = `${options.traceStore}/failed`;
+        ensureDirSync(failedDir);
+        await CreatureUtil.makeUUID(creature);
+        Deno.writeTextFileSync(
+          `${failedDir}/${creature.uuid}.json`,
+          JSON.stringify(creature.traceJSON(), null, 2),
+        );
+      }
+      creature.loadFrom(bestCreatureJSON, false);
+      lastTraceJSON = bestTraceJSON;
+    } else {
+      if (bestError !== undefined && bestError > error) {
+        bestTraceJSON = lastTraceJSON;
+      }
+
+      lastTraceJSON = creature.traceJSON();
+      bestCreatureJSON = creature.exportJSON();
+      bestError = error;
+      knownSampleCount = counter;
+
+      creature.applyLearnings(config);
+      creature.clearState();
+    }
+
+    if (timedOut || bestError <= targetError || iteration >= iterations) {
+      if (iterations > 1) {
+        creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
+      }
+
+      let compact = await compactUnused(lastTraceJSON, config.plankConstant);
+      if (!compact) {
+        compact = Creature.fromJSON(lastTraceJSON).compact();
+      }
+
+      return {
+        ID: ID,
+        iteration: iteration,
+        error: bestError,
+        trace: bestTraceJSON,
+        compact: compact ? compact.exportJSON() : undefined,
+      };
+    }
+  }
+}
 /**
  * Train the given set to this network
  */
