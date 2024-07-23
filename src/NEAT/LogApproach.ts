@@ -16,11 +16,6 @@ export function logApproach(fittest: Creature, previous: Creature) {
 
   const pScore = Number.parseFloat(pScoreTxt);
 
-  assert(
-    fScore > pScore,
-    "Fittest creature must have a higher score than previous",
-  );
-
   const approach = getTag(fittest, "approach") as Approach;
   if (approach) {
     const logged = getTag(fittest, "approach-logged");

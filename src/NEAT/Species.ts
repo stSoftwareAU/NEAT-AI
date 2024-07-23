@@ -17,9 +17,6 @@ export class Species {
   }
 
   addCreature(creature: Creature) {
-    assert(creature, "Creature must be defined");
-    assert(creature.uuid, "Creature must have a uuid");
-
     this.lastCreature = creature;
     this.creatures.push(creature);
   }

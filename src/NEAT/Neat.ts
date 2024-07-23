@@ -254,7 +254,6 @@ export class Neat {
         tmpFittest = previousFittest;
       }
     }
-    assert(tmpFittest, "No fittest creature found");
 
     const fittest = Creature.fromJSON(
       tmpFittest.exportJSON(),
@@ -449,8 +448,6 @@ export class Neat {
    * Create the initial pool of genomes
    */
   populatePopulation(creature: Creature) {
-    assert(creature, "Network mandatory");
-
     if (this.config.debug) {
       creatureValidate(creature);
     }

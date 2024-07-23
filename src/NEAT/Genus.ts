@@ -14,7 +14,6 @@ export class Genus {
   }
 
   addCreature(creature: Creature): Species {
-    assert(creature, "No creature provided");
     assert(creature.uuid, "No creature UUID");
 
     const existingSpeciesKey = this.creatureToSpeciesMap.get(creature.uuid);

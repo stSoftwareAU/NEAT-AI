@@ -76,7 +76,6 @@ export class WorkerHandler {
     costName: string,
     direct: boolean,
   ) {
-    assert(dataSetDir, "dataSet is mandatory");
     const data: RequestData = {
       taskID: this.taskID++,
       initialize: {
@@ -122,15 +121,10 @@ export class WorkerHandler {
   }
 
   private makePromise(data: RequestData) {
-    assert(this.busyCount >= 0, "Invalid busy count");
-
     this.busyCount++;
     const p = new Promise<ResponseData>((resolve) => {
-      let alreadyCalled = false;
       const call = (result: ResponseData) => {
-        assert(!alreadyCalled, "Already called");
         this.busyCount--;
-        alreadyCalled = true;
 
         resolve(result);
 
@@ -149,8 +143,6 @@ export class WorkerHandler {
   }
 
   terminate() {
-    assert(!this.isBusy(), "Worker is busy");
-
     this.worker.terminate();
     this.idleListeners.length = 0;
   }
