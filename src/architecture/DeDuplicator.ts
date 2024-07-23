@@ -13,19 +13,17 @@ export class DeDuplicator {
     this.mutator = mutator;
   }
 
-  public async perform(creatures: Creature[]) {
+  public perform(creatures: Creature[]) {
     const start = performance.now();
 
     this.logPopulationSize(creatures);
 
-    const uuidPromises = creatures.map((creature) =>
-      CreatureUtil.makeUUID(creature).then(async (uuid) => {
-        assert(uuid, "No creature UUID");
-        await this.breed.genus.addCreature(creature);
-      })
-    );
-    await Promise.all(uuidPromises);
-    uuidPromises.length = 0;
+    creatures.map((creature) => {
+      const uuid = CreatureUtil.makeUUID(creature);
+
+      assert(uuid, "No creature UUID");
+      this.breed.genus.addCreature(creature);
+    });
 
     const unique = new Set<string>();
     const toRemove: number[] = [];
@@ -52,7 +50,7 @@ export class DeDuplicator {
           );
           toRemove.push(i);
         } else {
-          await this.replaceDuplicateCreature(creatures, i, unique);
+          this.replaceDuplicateCreature(creatures, i, unique);
         }
       }
     }
@@ -70,16 +68,16 @@ export class DeDuplicator {
     }
   }
 
-  private async replaceDuplicateCreature(
+  private replaceDuplicateCreature(
     creatures: Creature[],
     index: number,
     unique: Set<string>,
   ) {
     for (let attempts = 0; true; attempts++) {
-      const child = await this.breed.breed();
+      const child = this.breed.breed();
 
       if (child) {
-        const key2 = await CreatureUtil.makeUUID(child);
+        const key2 = CreatureUtil.makeUUID(child);
         let duplicate2 = unique.has(key2);
         if (!duplicate2 && index > this.breed.config.elitism) {
           duplicate2 = this.previousExperiment(key2);
@@ -87,19 +85,19 @@ export class DeDuplicator {
         if (!duplicate2) {
           unique.add(key2);
           creatures[index] = child;
-          await this.breed.genus.addCreature(child);
+          this.breed.genus.addCreature(child);
           return;
         }
       }
       const tmpCreature = creatures[index];
       this.mutator.mutate([tmpCreature]);
-      const key3 = await CreatureUtil.makeUUID(tmpCreature);
+      const key3 = CreatureUtil.makeUUID(tmpCreature);
       let duplicate3 = unique.has(key3);
       if (!duplicate3 && index > this.breed.config.elitism) {
         duplicate3 = this.previousExperiment(key3);
       }
       if (!duplicate3) {
-        await this.breed.genus.addCreature(tmpCreature);
+        this.breed.genus.addCreature(tmpCreature);
         unique.add(key3);
         return;
       } else if (attempts > 24) {

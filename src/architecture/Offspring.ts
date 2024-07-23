@@ -18,12 +18,12 @@ export class Offspring {
   /**
    * Create an offspring from two parent networks
    */
-  static async breed(mum: Creature, dad: Creature) {
+  static breed(mum: Creature, dad: Creature) {
     const mother = Creature.fromJSON(mum.exportJSON());
-    await CreatureUtil.makeUUID(mother);
+    CreatureUtil.makeUUID(mother);
     assert(mother.uuid);
     const father = Creature.fromJSON(dad.exportJSON());
-    await CreatureUtil.makeUUID(father);
+    CreatureUtil.makeUUID(father);
     assert(father.uuid);
     if (
       mother.input !== father.input || mother.output !== father.output
@@ -230,7 +230,7 @@ export class Offspring {
 
     offspring.clearState();
 
-    const child = await handleGrafting(
+    const child = handleGrafting(
       offspring,
       mother,
       father,

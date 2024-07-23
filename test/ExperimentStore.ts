@@ -10,7 +10,7 @@ import { Genus } from "../src/NEAT/Genus.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("previous", async () => {
+Deno.test("previous", () => {
   const creature = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -45,26 +45,26 @@ Deno.test("previous", async () => {
   const neat = new Neat(1, 1, { experimentStore: ".testExperiments" }, []);
 
   const p = [Creature.fromJSON(creature)];
-  await neat.writeScores(p);
+  neat.writeScores(p);
 
-  const flag = await previousExperiment(creature, neat);
+  const flag = previousExperiment(creature, neat);
 
   assert(flag, "should have detected itself just written");
 
   delete creature.score;
-  const flag2 = await previousExperiment(creature, neat);
+  const flag2 = previousExperiment(creature, neat);
 
   assert(flag2, "Don't look at score");
 
   addTag(creature, "hello", "world");
 
-  const flag3 = await previousExperiment(creature, neat);
+  const flag3 = previousExperiment(creature, neat);
 
   assert(flag3, "Don't care about tags");
 });
 
-async function previousExperiment(creature: Creature, neat: Neat) {
-  const key = await CreatureUtil.makeUUID(creature);
+function previousExperiment(creature: Creature, neat: Neat) {
+  const key = CreatureUtil.makeUUID(creature);
 
   const mutator = new Mutator(neat.config);
   const genus = new Genus();
@@ -72,7 +72,7 @@ async function previousExperiment(creature: Creature, neat: Neat) {
   // The population is already sorted in the desired order
   for (let i = 0; i < neat.population.length; i++) {
     const creature = neat.population[i];
-    await genus.addCreature(creature);
+    genus.addCreature(creature);
   }
   const breed = new Breed(genus, neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);

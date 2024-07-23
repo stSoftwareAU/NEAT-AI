@@ -15,7 +15,7 @@ export class Breed {
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
-  async breed(): Promise<Creature | undefined> {
+  breed(): Creature | undefined {
     const mum = this.getParent(this.genus.population);
 
     if (mum === undefined) {
@@ -37,7 +37,7 @@ export class Breed {
       return;
     }
 
-    const creature = await Offspring.breed(
+    const creature = Offspring.breed(
       mum,
       dad,
     );

@@ -12,13 +12,13 @@ export class FindTunePopulation {
     this.neat = neat;
   }
 
-  async make(
+  make(
     fittest: Creature,
     previousFittest: Creature | undefined,
     genus: Genus,
   ) {
     assert(fittest, "Fittest creature mandatory");
-    const fittestUUID = await CreatureUtil.makeUUID(fittest);
+    const fittestUUID = CreatureUtil.makeUUID(fittest);
 
     const uniqueUUID = new Set<string>([fittestUUID]);
 
@@ -29,7 +29,7 @@ export class FindTunePopulation {
     if (
       previousFittest
     ) {
-      const previousUUID = await CreatureUtil.makeUUID(previousFittest);
+      const previousUUID = CreatureUtil.makeUUID(previousFittest);
       if (!uniqueUUID.has(previousUUID)) {
         if (previousFittest.score && fittest.score) {
           if (previousFittest.score < fittest.score) {
@@ -52,7 +52,7 @@ export class FindTunePopulation {
 
     // Add remaining creatures from the population excluding fittest and previousFittest
     for (const creature of this.neat.population) {
-      const creatureUUID = await CreatureUtil.makeUUID(creature);
+      const creatureUUID = CreatureUtil.makeUUID(creature);
       if (!uniqueUUID.has(creatureUUID)) {
         if (creature.score && fittest.score) {
           if (creature.score < fittest.score) {
@@ -97,7 +97,7 @@ export class FindTunePopulation {
       assert(tmpPreviousFittest.uuid, "tmpPreviousFittest UUID is undefined");
       tunedUUID.add(tmpPreviousFittest.uuid);
       if (fittestUUID !== tmpPreviousFittest.uuid) {
-        fineTunedPopulation = await fineTuneImprovement(
+        fineTunedPopulation = fineTuneImprovement(
           fittest,
           tmpPreviousFittest,
           fineTunePopSize - 1,
@@ -119,7 +119,7 @@ export class FindTunePopulation {
 
         if (speciesFineTunePopSize < 1) break;
 
-        const speciesKey = await Species.calculateKey(fittest);
+        const speciesKey = Species.calculateKey(fittest);
         const species = genus.speciesMap.get(speciesKey);
 
         if (species) {
@@ -149,7 +149,7 @@ export class FindTunePopulation {
 
               assert(nextBestCreature.uuid, "Creature UUID is undefined");
               tunedUUID.add(nextBestCreature.uuid);
-              const extendedTunedPopulation = await fineTuneImprovement(
+              const extendedTunedPopulation = fineTuneImprovement(
                 fittest,
                 nextBestCreature,
                 speciesFineTunePopSize,
@@ -178,7 +178,7 @@ export class FindTunePopulation {
           }
           assert(extendedPreviousFittest.uuid, "Creature UUID is undefined");
           tunedUUID.add(extendedPreviousFittest.uuid);
-          const extendedTunedPopulation = await fineTuneImprovement(
+          const extendedTunedPopulation = fineTuneImprovement(
             fittest,
             extendedPreviousFittest,
             extendedFineTunePopSize,
@@ -195,7 +195,7 @@ export class FindTunePopulation {
     }
 
     for (const creature of fineTunedPopulation) {
-      await genus.addCreature(creature);
+      genus.addCreature(creature);
     }
 
     return fineTunedPopulation;

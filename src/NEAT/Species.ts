@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../src/Creature.ts";
-import { generate as generateV5 } from "@std/uuid/v5";
+import { generate as generateV5Sync } from "../architecture/SyncV5.ts";
 
 export class Species {
   private static TE = new TextEncoder();
@@ -24,14 +24,14 @@ export class Species {
     this.creatures.push(creature);
   }
 
-  static async calculateKey(creature: Creature): Promise<string> {
+  static calculateKey(creature: Creature): string {
     const squashNames = creature.neurons.map((neuron) => neuron.squash).join(
       ":",
     );
 
     const data = Species.TE.encode(squashNames);
 
-    const uuid: string = await generateV5(Species.NAMESPACE_UUID, data);
+    const uuid: string = generateV5Sync(Species.NAMESPACE_UUID, data);
     return uuid;
   }
 }

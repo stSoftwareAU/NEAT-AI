@@ -1,4 +1,4 @@
-import { generate as generateV5 } from "@std/uuid/v5";
+import { generate as generateV5Sync } from "./SyncV5.ts";
 import type { Creature } from "../Creature.ts";
 
 /**
@@ -28,7 +28,7 @@ export class CreatureUtil {
    * @returns The generated UUID.
    * @throws Will throw an error if the creature does not have synapses or neurons.
    */
-  static async makeUUID(creature: Creature): Promise<string> {
+  static makeUUID(creature: Creature): string {
     if (creature.uuid) {
       return creature.uuid;
     }
@@ -62,7 +62,7 @@ export class CreatureUtil {
 
       const txt = JSON.stringify(tmp);
       const utf8 = CreatureUtil.TE.encode(txt);
-      const uuid: string = await generateV5(CreatureUtil.NAMESPACE, utf8);
+      const uuid: string = generateV5Sync(CreatureUtil.NAMESPACE, utf8);
 
       creature.uuid = uuid;
       return uuid;

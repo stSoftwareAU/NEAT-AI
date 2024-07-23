@@ -800,7 +800,7 @@ export class Creature implements CreatureInternal {
       workers,
     );
 
-    await neat.populatePopulation(this);
+    neat.populatePopulation(this);
 
     let error = Infinity;
     let bestScore = -Infinity;

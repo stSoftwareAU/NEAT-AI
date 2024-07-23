@@ -10,7 +10,7 @@ import { CreatureUtil } from "../mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("DeDuplicate", async () => {
+Deno.test("DeDuplicate", () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -59,9 +59,9 @@ Deno.test("DeDuplicate", async () => {
   const n0 = Creature.fromJSON(creature).exportJSON();
 
   const n1 = Creature.fromJSON(n0);
-  const UUID1 = await CreatureUtil.makeUUID(n1);
+  const UUID1 = CreatureUtil.makeUUID(n1);
   const n2 = Creature.fromJSON(n0);
-  const UUID2 = await CreatureUtil.makeUUID(n2);
+  const UUID2 = CreatureUtil.makeUUID(n2);
 
   assertEquals(UUID1, UUID2);
   const list = [n1, n2];
@@ -76,11 +76,11 @@ Deno.test("DeDuplicate", async () => {
 
   const breed = new Breed(genus, neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  await deDuplicator.perform(list);
+  deDuplicator.perform(list);
 
   const uniques = new Set<string>();
   for (let i = 0; i < list.length; i++) {
-    const key = await CreatureUtil.makeUUID(list[i]);
+    const key = CreatureUtil.makeUUID(list[i]);
     console.log(key);
     assertEquals(uniques.has(key), false);
     uniques.add(key);

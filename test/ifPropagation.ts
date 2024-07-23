@@ -8,7 +8,7 @@ import { train } from "../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("ifPropagation", async () => {
+Deno.test("ifPropagation", () => {
   const json: CreatureInternal = {
     neurons: [
       { type: "input", index: 0 },
@@ -57,7 +57,7 @@ Deno.test("ifPropagation", async () => {
   };
   const network = Creature.fromJSON(json);
 
-  const result = await train(network, ts, options);
+  const result = train(network, ts, options);
 
   const traceJson = result.trace;
   Deno.writeTextFileSync(
