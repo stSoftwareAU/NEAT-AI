@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { Neuron } from "./Neuron.ts";
@@ -22,9 +21,6 @@ export function handleGrafting(
   mother: Creature,
   father: Creature,
 ): Creature | undefined {
-  assert(mother.uuid);
-  assert(father.uuid);
-
   const childUUID = CreatureUtil.makeUUID(child);
 
   // Check if the offspring is a clone

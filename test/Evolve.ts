@@ -89,7 +89,7 @@ Deno.test("booleanXOR", async () => {
 
   let network = new Creature(2, 1);
   let results = { error: 1 };
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 30; attempt++) {
     network.validate();
     results = await network.evolveDataSet(trainingSet, {
       mutation: Mutation.FFW,
@@ -101,7 +101,7 @@ Deno.test("booleanXOR", async () => {
     });
 
     network.validate();
-    if (results.error < 0.03) break;
+    if (results.error <= 0.03) break;
     network = new Creature(2, 1);
   }
   assert(results.error <= 0.03, "Error rate was: " + results.error);

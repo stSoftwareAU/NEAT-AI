@@ -2,7 +2,6 @@ import { addTag } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { calculate as calculateScore } from "./Score.ts";
-import { assert } from "@std/assert";
 
 type PromiseFunction = (v: unknown) => void;
 
@@ -62,8 +61,6 @@ export class Fitness {
         const creature = data.queue.shift();
         if (!creature) break;
 
-        assert(creature, "No creature");
-        assert(creature.score === undefined, "Creature already has a score");
         promises.push(this._callWorker(w, creature));
       }
     }

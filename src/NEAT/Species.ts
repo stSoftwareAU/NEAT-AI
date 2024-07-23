@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import type { Creature } from "../../src/Creature.ts";
 import { generate as generateV5Sync } from "../architecture/SyncV5.ts";
 
@@ -17,9 +16,6 @@ export class Species {
   }
 
   addCreature(creature: Creature) {
-    assert(creature, "Creature must be defined");
-    assert(creature.uuid, "Creature must have a uuid");
-
     this.lastCreature = creature;
     this.creatures.push(creature);
   }

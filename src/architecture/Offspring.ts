@@ -3,7 +3,6 @@ import { Creature } from "../Creature.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
-import { assert } from "@std/assert";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { handleGrafting } from "./GeneticIsolation.ts";
 
@@ -21,10 +20,8 @@ export class Offspring {
   static breed(mum: Creature, dad: Creature) {
     const mother = Creature.fromJSON(mum.exportJSON());
     CreatureUtil.makeUUID(mother);
-    assert(mother.uuid);
     const father = Creature.fromJSON(dad.exportJSON());
     CreatureUtil.makeUUID(father);
-    assert(father.uuid);
     if (
       mother.input !== father.input || mother.output !== father.output
     ) {

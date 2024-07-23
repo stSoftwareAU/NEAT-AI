@@ -17,7 +17,6 @@ export class FindTunePopulation {
     previousFittest: Creature | undefined,
     genus: Genus,
   ) {
-    assert(fittest, "Fittest creature mandatory");
     const fittestUUID = CreatureUtil.makeUUID(fittest);
 
     const uniqueUUID = new Set<string>([fittestUUID]);
