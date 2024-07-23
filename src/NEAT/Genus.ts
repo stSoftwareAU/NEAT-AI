@@ -13,7 +13,7 @@ export class Genus {
     this.creatureToSpeciesMap = new Map();
   }
 
-  async addCreature(creature: Creature): Promise<Species> {
+  addCreature(creature: Creature): Species {
     assert(creature, "No creature provided");
     assert(creature.uuid, "No creature UUID");
 
@@ -25,7 +25,7 @@ export class Genus {
     }
 
     this.population.push(creature);
-    const key = await Species.calculateKey(creature);
+    const key = Species.calculateKey(creature);
 
     let species = this.speciesMap.get(key);
     if (!species) {

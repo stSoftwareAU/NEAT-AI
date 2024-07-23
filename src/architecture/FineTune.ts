@@ -175,7 +175,7 @@ function tuneRandomize(
   };
 }
 
-export async function fineTuneImprovement(
+export function fineTuneImprovement(
   fittest: Creature,
   previousFittest: Creature | null,
   popSize = 10,
@@ -198,14 +198,14 @@ export async function fineTuneImprovement(
     "Fittest creature must have a higher score than previous",
   );
 
-  const fittestUUID = await CreatureUtil.makeUUID(fittest);
+  const fittestUUID = CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
   UUIDs.add(fittestUUID);
 
   const fineTuned: Creature[] = [];
   const compactNetwork = fittest.compact();
   if (compactNetwork) {
-    const compactUUID = await CreatureUtil.makeUUID(compactNetwork);
+    const compactUUID = CreatureUtil.makeUUID(compactNetwork);
 
     if (!UUIDs.has(compactUUID)) {
       UUIDs.add(compactUUID);
@@ -215,7 +215,7 @@ export async function fineTuneImprovement(
 
   const resultSame = tuneRandomize(fittest, previousFittest, fScoreTxt, false);
   if (resultSame.tuned) {
-    const randomUUID = await CreatureUtil.makeUUID(resultSame.tuned);
+    const randomUUID = CreatureUtil.makeUUID(resultSame.tuned);
     if (!UUIDs.has(randomUUID)) {
       UUIDs.add(randomUUID);
       fineTuned.push(resultSame.tuned);
@@ -229,7 +229,7 @@ export async function fineTuneImprovement(
   ) {
     const resultRandomize = tuneRandomize(fittest, previousFittest, fScoreTxt);
     if (resultRandomize.tuned) {
-      const randomUUID = await CreatureUtil.makeUUID(resultRandomize.tuned);
+      const randomUUID = CreatureUtil.makeUUID(resultRandomize.tuned);
       if (!UUIDs.has(randomUUID)) {
         UUIDs.add(randomUUID);
         fineTuned.push(resultRandomize.tuned);

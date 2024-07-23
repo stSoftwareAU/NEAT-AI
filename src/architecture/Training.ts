@@ -51,234 +51,21 @@ export function dataFiles(dataDir: string, options: TrainOptions = {}) {
 /**
  * Train the given set to this network
  */
-export async function trainDir(
+export function trainDir(
   creature: Creature,
   dataDir: string,
   options: TrainOptions,
 ) {
   // Read the options
-  const targetError =
-    options.targetError !== undefined && Number.isFinite(options.targetError)
-      ? Math.max(options.targetError, 0.000_001)
-      : 0.05;
-  const cost = Costs.find(options.cost ? options.cost : "MSE");
-
-  const iterations = Math.max(options.iterations ? options.iterations : 2, 1);
-
-  const trainingSampleRate = Math.min(
-    1,
-    Math.max(0, options.trainingSampleRate ?? Math.max(Math.random(), 0.3)),
-  );
-
-  const indxMap = new Map<string, Int32Array>();
   const dataResult = dataFiles(dataDir, options);
 
   if (dataResult.binary.length > 0) {
-    return await trainDirBinary(creature, dataResult.binary, options);
-  }
-
-  // Loops the training process
-  let iteration = 0;
-
-  let timedOut = false;
-  let timeoutTS = 0;
-  if (options.trainingTimeOutMinutes ?? 0 > 0) {
-    timeoutTS = Date.now() + (options.trainingTimeOutMinutes ?? 0) * 60 * 1000;
-  }
-  const uuid = await CreatureUtil.makeUUID(creature);
-
-  const ID = uuid.substring(Math.max(0, uuid.length - 8));
-  let bestError: number | undefined = undefined;
-  let trainingFailures = 0;
-  let bestCreatureJSON = creature.exportJSON();
-  let bestTraceJSON = creature.traceJSON();
-  let lastTraceJSON = bestTraceJSON;
-  let knownSampleCount = -1;
-
-  while (true) {
-    iteration++;
-    const startTS = Date.now();
-    let lastTS = startTS;
-    const config = new BackPropagationConfig(options);
-    if (options.generations !== undefined) {
-      config.generations = options.generations + iteration;
-    }
-
-    let counter = 0;
-    let errorSum = 0;
-
-    let trainingStopped = false;
-    for (let j = dataResult.json.length; !trainingStopped && j--;) {
-      const fn = dataResult.json[j];
-      const json = JSON.parse(Deno.readTextFileSync(fn));
-
-      if (json.length == 0) {
-        throw new Error("Set size must be positive");
-      }
-      const len = Math.min(
-        json.length,
-        Math.max(1000, Math.floor(json.length * trainingSampleRate)),
-      );
-
-      let indices = indxMap.get(fn);
-
-      if (!indices) {
-        const tmpIndexes = Int32Array.from(
-          { length: json.length },
-          (_, i) => i,
-        ); // Create an array of indices
-
-        if (!options.disableRandomSamples) {
-          CreatureUtil.shuffle(tmpIndexes);
-        }
-        indices = tmpIndexes.slice(0, len);
-
-        if (len != json.length) {
-          /* No need to cache what we wont use */
-          indxMap.set(fn, indices);
-        }
-      }
-
-      // Iterate over the shuffled indices
-      for (let i = len; i--;) {
-        const indx = indices[i];
-        const data = json[indx];
-
-        const output = creature.activateAndTrace(data.input);
-
-        const sampleError = cost.calculate(data.output, output);
-        errorSum += sampleError;
-        counter++;
-        if (Number.isFinite(errorSum) == false) {
-          console.warn(
-            `Training ${
-              blue(ID)
-            } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} data.output: ${data.output} output: ${output}`,
-          );
-          trainingStopped = true;
-          break;
-        } else if (bestError !== undefined && counter < knownSampleCount) {
-          const bestPossibleError = errorSum / knownSampleCount;
-          if (bestPossibleError > bestError) {
-            console.warn(
-              `Training ${blue(ID)} stopped as 'best possible' error ${
-                yellow(bestPossibleError.toFixed(3))
-              } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
-                yellow(counter.toFixed(0))
-              } of ${yellow(knownSampleCount.toFixed(0))}`,
-            );
-            trainingStopped = true;
-            break;
-          }
-        }
-        creature.propagate(data.output, config);
-
-        const now = Date.now();
-        const diff = now - lastTS;
-
-        if (diff > 60_000) {
-          lastTS = now;
-          const totalTime = now - startTS;
-          console.log(
-            `Training ${blue(ID)} samples`,
-            counter,
-            `${
-              knownSampleCount > 0
-                ? "of " + yellow(knownSampleCount.toLocaleString()) + " "
-                : ""
-            }${
-              trainingSampleRate < 1
-                ? "( rate " +
-                  yellow((trainingSampleRate * 100).toFixed(1) + "% )")
-                : ""
-            }`,
-            "error",
-            yellow((errorSum / counter).toFixed(3)),
-            "time average:",
-            yellow(
-              format(totalTime / counter, { ignoreZero: true }),
-            ),
-            "total:",
-            yellow(
-              format(totalTime, { ignoreZero: true }),
-            ),
-          );
-
-          if (timeoutTS && now > timeoutTS) {
-            timedOut = true;
-            console.log(
-              `Training ${blue(ID)} timed out after ${
-                yellow(format(totalTime, { ignoreZero: true }))
-              }`,
-            );
-            trainingStopped = true;
-            break;
-          }
-        }
-      }
-    }
-
-    const error = errorSum / counter;
-
-    if (bestError !== undefined && bestError < error) {
-      trainingFailures++;
-      if (trainingStopped == false) {
-        console.warn(
-          `Training ${blue(ID)} made the error: ${
-            yellow(bestError.toFixed(3))
-          }, worse: ${yellow(error.toFixed(3))}, target: ${
-            yellow(targetError.toString())
-          }, failed: ${yellow(trainingFailures.toString())} out of ${
-            yellow(iteration.toString())
-          } iterations`,
-        );
-      }
-      if (options.traceStore) {
-        const failedDir = `${options.traceStore}/failed`;
-        ensureDirSync(failedDir);
-        await CreatureUtil.makeUUID(creature);
-        Deno.writeTextFileSync(
-          `${failedDir}/${creature.uuid}.json`,
-          JSON.stringify(creature.traceJSON(), null, 2),
-        );
-      }
-      creature.loadFrom(bestCreatureJSON, false);
-      lastTraceJSON = bestTraceJSON;
-    } else {
-      if (bestError !== undefined && bestError > error) {
-        bestTraceJSON = lastTraceJSON;
-      }
-
-      lastTraceJSON = creature.traceJSON();
-      bestCreatureJSON = creature.exportJSON();
-      bestError = error;
-      knownSampleCount = counter;
-
-      creature.applyLearnings(config);
-      creature.clearState();
-    }
-
-    if (timedOut || bestError <= targetError || iteration >= iterations) {
-      if (iterations > 1) {
-        creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
-      }
-
-      let compact = await compactUnused(lastTraceJSON, config.plankConstant);
-      if (!compact) {
-        compact = Creature.fromJSON(lastTraceJSON).compact();
-      }
-
-      return {
-        ID: ID,
-        iteration: iteration,
-        error: bestError,
-        trace: bestTraceJSON,
-        compact: compact ? compact.exportJSON() : undefined,
-      };
-    }
+    return trainDirBinary(creature, dataResult.binary, options);
+  } else {
+    throw new Error("No json files found in the data directory");
   }
 }
-async function trainDirBinary(
+function trainDirBinary(
   creature: Creature,
   binaryFiles: string[],
   options: TrainOptions,
@@ -303,8 +90,8 @@ async function trainDirBinary(
   const array = new Float32Array(valuesCount);
   const uint8Array = new Uint8Array(array.buffer);
 
-  async function readNextRecord(file: Deno.FsFile) {
-    const bytesRead = await file.read(uint8Array);
+  function readNextRecord(file: Deno.FsFile) {
+    const bytesRead = file.readSync(uint8Array);
     if (bytesRead === null || bytesRead === 0) {
       return null;
     }
@@ -332,7 +119,7 @@ async function trainDirBinary(
   if (options.trainingTimeOutMinutes ?? 0 > 0) {
     timeoutTS = Date.now() + (options.trainingTimeOutMinutes ?? 0) * 60 * 1000;
   }
-  const uuid = await CreatureUtil.makeUUID(creature);
+  const uuid = CreatureUtil.makeUUID(creature);
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
   let bestError: number | undefined = undefined;
@@ -358,13 +145,13 @@ async function trainDirBinary(
     for (let j = binaryFiles.length; !trainingStopped && j--;) {
       const fn = binaryFiles[j];
 
-      const file = await Deno.open(fn, { read: true });
+      const file = Deno.openSync(fn, { read: true });
 
       try {
         let recordSet = indxMap.get(fn);
 
         if (!recordSet) {
-          const stat = await file.stat();
+          const stat = file.statSync();
           const records = stat.size / BYTES_PER_RECORD;
 
           const len = Math.min(
@@ -385,12 +172,9 @@ async function trainDirBinary(
           indxMap.set(fn, recordSet);
         }
 
-        let readPromise = readNextRecord(file);
-
         for (let indx = 0; true; indx++) {
-          const record = await readPromise;
+          const record = readNextRecord(file);
           if (record === null) break;
-          readPromise = readNextRecord(file);
 
           if (!recordSet.has(indx)) {
             continue;
@@ -491,7 +275,7 @@ async function trainDirBinary(
       if (options.traceStore) {
         const failedDir = `${options.traceStore}/failed`;
         ensureDirSync(failedDir);
-        await CreatureUtil.makeUUID(creature);
+        CreatureUtil.makeUUID(creature);
         Deno.writeTextFileSync(
           `${failedDir}/${creature.uuid}.json`,
           JSON.stringify(creature.traceJSON(), null, 2),
@@ -518,7 +302,7 @@ async function trainDirBinary(
         creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
       }
 
-      let compact = await compactUnused(lastTraceJSON, config.plankConstant);
+      let compact = compactUnused(lastTraceJSON, config.plankConstant);
       if (!compact) {
         compact = Creature.fromJSON(lastTraceJSON).compact();
       }
@@ -536,7 +320,7 @@ async function trainDirBinary(
 /**
  * Train the given set to this network
  */
-export async function train(
+export function train(
   network: Creature,
   dataSet: DataRecordInterface[],
   options: TrainOptions,
@@ -552,9 +336,9 @@ export async function train(
 
   const dataSetDir = makeDataDir(dataSet);
 
-  const result = await trainDir(network, dataSetDir, options);
+  const result = trainDir(network, dataSetDir, options);
 
-  await Deno.remove(dataSetDir, { recursive: true });
+  Deno.removeSync(dataSetDir, { recursive: true });
 
   return result;
 }

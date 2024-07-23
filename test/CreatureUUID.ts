@@ -10,7 +10,7 @@ import { Genus } from "../src/NEAT/Genus.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("knownName", async () => {
+Deno.test("knownName", () => {
   const creature = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -40,7 +40,7 @@ Deno.test("knownName", async () => {
     ],
   });
 
-  const uuid = await CreatureUtil.makeUUID(creature);
+  const uuid = CreatureUtil.makeUUID(creature);
 
   console.log("UUID", uuid);
 
@@ -50,7 +50,7 @@ Deno.test("knownName", async () => {
   );
 });
 
-Deno.test("ignoreTags", async () => {
+Deno.test("ignoreTags", () => {
   const creature = Creature.fromJSON({
     uuid: crypto.randomUUID(),
     neurons: [
@@ -112,22 +112,22 @@ Deno.test("ignoreTags", async () => {
   delete clean.score;
   delete clean.tags;
 
-  const uuid0 = await CreatureUtil.makeUUID(
+  const uuid0 = CreatureUtil.makeUUID(
     Creature.fromJSON(creature),
   );
   delete creature.uuid;
-  const uuid1 = await CreatureUtil.makeUUID(
+  const uuid1 = CreatureUtil.makeUUID(
     Creature.fromJSON(creature),
   );
 
   assertNotEquals(uuid0, uuid1);
 
-  const uuid2 = await CreatureUtil.makeUUID(clean);
+  const uuid2 = CreatureUtil.makeUUID(clean);
 
   assertEquals(uuid2, uuid1, `Should match uuid2: ${uuid2}, uuid1: ${uuid1}`);
 
   const alive = Creature.fromJSON(creature);
-  const uuid3 = await CreatureUtil.makeUUID(alive);
+  const uuid3 = CreatureUtil.makeUUID(alive);
 
   assertEquals(uuid3, uuid1, "Alive creature should match was: " + uuid3);
 
@@ -197,7 +197,7 @@ Deno.test("keepUUID", () => {
   );
 });
 
-Deno.test("generateUUID", async () => {
+Deno.test("generateUUID", () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -253,17 +253,17 @@ Deno.test("generateUUID", async () => {
   // The population is already sorted in the desired order
   for (let i = 0; i < neat.population.length; i++) {
     const creature = neat.population[i];
-    await genus.addCreature(creature);
+    genus.addCreature(creature);
   }
   const breed = new Breed(genus, neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  await deDuplicator.perform([n1]);
+  deDuplicator.perform([n1]);
 
   const uuid1 = n1.uuid;
   assert(n1.uuid, "deDuplicate should create UUIDs: " + n1.uuid);
 
   n1.modBias();
-  await deDuplicator.perform([n1]);
+  deDuplicator.perform([n1]);
 
   assertNotEquals(
     uuid1,

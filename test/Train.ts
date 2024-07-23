@@ -6,7 +6,7 @@ import { train } from "../src/architecture/Training.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
-Deno.test("AND", async () => {
+Deno.test("AND", () => {
   // Train the AND gate
   const trainingSet = [
     { input: [0, 0], output: [0] },
@@ -18,7 +18,7 @@ Deno.test("AND", async () => {
   for (let attempts = 0; true; attempts++) {
     const network = new Creature(2, 1);
 
-    const results = await train(network, trainingSet, {
+    const results = train(network, trainingSet, {
       targetError: 0.1,
       iterations: 10_000,
       learningRate: 1,
@@ -32,7 +32,7 @@ Deno.test("AND", async () => {
   }
 });
 
-Deno.test("MT", async () => {
+Deno.test("MT", () => {
   // Train the AND gate
   const trainingSet = [
     { input: [0, 0], output: [0] },
@@ -48,7 +48,7 @@ Deno.test("MT", async () => {
       ],
     });
 
-    const results = await train(network, trainingSet, {
+    const results = train(network, trainingSet, {
       targetError: 0.03,
       iterations: 10000,
     });
@@ -62,7 +62,7 @@ Deno.test("MT", async () => {
   }
 });
 
-Deno.test("train-XOR", async () => {
+Deno.test("train-XOR", () => {
   // Train the XOR gate
   const trainingSet = [
     { input: [0, 0], output: [0] },
@@ -83,7 +83,7 @@ Deno.test("train-XOR", async () => {
     JSON.stringify(network.internalJSON(), null, 2),
   );
   for (let attempts = 0; true; attempts++) {
-    const results = await train(network, trainingSet, {
+    const results = train(network, trainingSet, {
       targetError: 0.03,
       iterations: 10000,
     });
@@ -105,7 +105,7 @@ Deno.test("train-XOR", async () => {
 /**
  * Train the XNOR gate
  */
-Deno.test("XNOR", async () => {
+Deno.test("XNOR", () => {
   const trainingSet = [
     { input: [0, 0], output: [1] },
     { input: [0, 1], output: [0] },
@@ -120,7 +120,7 @@ Deno.test("XNOR", async () => {
       ],
     });
 
-    const results = await train(network, trainingSet, {
+    const results = train(network, trainingSet, {
       targetError: 0.03,
       iterations: 10_000,
     });

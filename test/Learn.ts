@@ -5,7 +5,7 @@ import { train } from "../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Learn", async () => {
+Deno.test("Learn", () => {
   const nn = Creature.fromJSON(
     {
       neurons: [
@@ -72,7 +72,7 @@ Deno.test("Learn", async () => {
 
   const answersA = nn.activate([0.1, 0.2]);
   console.info(answersA);
-  await train(nn, dataSet, options);
+  train(nn, dataSet, options);
 
   const answersB = nn.activate([0.1, 0.2]);
   console.info(answersB);

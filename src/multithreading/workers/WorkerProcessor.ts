@@ -56,7 +56,7 @@ export class WorkerProcessor {
       assert(this.dataSetDir, "No data dir");
 
       creatureValidate(creature);
-      const result = await trainDir(
+      const result = trainDir(
         creature,
         this.dataSetDir,
         data.train.options,

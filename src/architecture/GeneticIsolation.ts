@@ -17,15 +17,15 @@ import type { Approach } from "../NEAT/LogApproach.ts";
  * @param father - The father creature.
  * @returns A Promise that resolves to the grafted creature or undefined.
  */
-export async function handleGrafting(
+export function handleGrafting(
   child: Creature,
   mother: Creature,
   father: Creature,
-): Promise<Creature | undefined> {
+): Creature | undefined {
   assert(mother.uuid);
   assert(father.uuid);
 
-  const childUUID = await CreatureUtil.makeUUID(child);
+  const childUUID = CreatureUtil.makeUUID(child);
 
   // Check if the offspring is a clone
   if (childUUID !== mother.uuid && childUUID !== father.uuid) return child;

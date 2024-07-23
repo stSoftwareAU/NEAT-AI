@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { blue } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
-import { ensureDir } from "@std/fs";
+import { ensureDirSync } from "@std/fs";
 import { addTag, getTag, removeTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
@@ -121,11 +121,11 @@ export class Neat {
 
   trainingComplete: ResponseData[] = [];
 
-  async scheduleTraining(
+  scheduleTraining(
     creature: Creature,
     trainingTimeOutMinutes: number,
   ) {
-    const uuid = await CreatureUtil.makeUUID(creature);
+    const uuid = CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
     let w: WorkerHandler;
 
@@ -160,7 +160,7 @@ export class Neat {
       trainingTimeOutMinutes: trainingTimeOutMinutes,
     };
 
-    const p = w.train(creature, trainOptions).then(async (r) => {
+    const p = w.train(creature, trainOptions).then((r) => {
       this.trainingComplete.push(r);
 
       this.trainingInProgress.delete(uuid);
@@ -170,8 +170,8 @@ export class Neat {
           const traceNetwork = Creature.fromJSON(
             JSON.parse(r.train.trace),
           );
-          await CreatureUtil.makeUUID(traceNetwork);
-          await ensureDir(this.config.traceStore);
+          CreatureUtil.makeUUID(traceNetwork);
+          ensureDirSync(this.config.traceStore);
           Deno.writeTextFileSync(
             `${this.config.traceStore}/${traceNetwork.uuid}.json`,
             JSON.stringify(traceNetwork.traceJSON(), null, 2),
@@ -195,7 +195,7 @@ export class Neat {
 
     const genus = new Genus();
 
-    await this.writeScores(
+    this.writeScores(
       this.population,
     );
 
@@ -204,7 +204,7 @@ export class Neat {
       const creature = this.population[indx];
       assert(creature.uuid, "UUID missing");
       if (creature.score && Number.isFinite(creature.score)) {
-        await genus.addCreature(creature);
+        genus.addCreature(creature);
       } else {
         console.warn(
           `Creature ${
@@ -315,13 +315,13 @@ export class Neat {
           },
         );
       }
-      await CreatureUtil.makeUUID(creativeThinking);
-      await genus.addCreature(creativeThinking);
+      CreatureUtil.makeUUID(creativeThinking);
+      genus.addCreature(creativeThinking);
       newPopulation.push(creativeThinking);
     }
 
     const ftp = new FindTunePopulation(this);
-    const fineTunedPopulation = await ftp.make(
+    const fineTunedPopulation = ftp.make(
       fittest,
       previousFittest,
       genus,
@@ -339,10 +339,10 @@ export class Neat {
       let i = newPopSize > 0 ? newPopSize : 0;
       i--;
     ) {
-      const child = await breed.breed();
+      const child = breed.breed();
       if (child) {
-        await CreatureUtil.makeUUID(child);
-        await genus.addCreature(child);
+        CreatureUtil.makeUUID(child);
+        genus.addCreature(child);
         newPopulation.push(child);
       }
     }
@@ -418,7 +418,7 @@ export class Neat {
     ]; // Keep pseudo sorted.
 
     const deDuplicator = new DeDuplicator(breed, mutator);
-    await deDuplicator.perform(this.population);
+    deDuplicator.perform(this.population);
 
     return {
       fittest: fittest,
@@ -426,7 +426,7 @@ export class Neat {
     };
   }
 
-  async writeScores(creatures: Creature[]) {
+  writeScores(creatures: Creature[]) {
     if (!this.config.experimentStore) {
       return;
     }
@@ -434,21 +434,21 @@ export class Neat {
     const baseStorePath = this.config.experimentStore + "/score/";
 
     for (const creature of creatures) {
-      const name = await CreatureUtil.makeUUID(creature);
+      const name = CreatureUtil.makeUUID(creature);
       const dirPath = baseStorePath + name.substring(0, 3);
-      await ensureDir(dirPath);
+      ensureDirSync(dirPath);
 
       const filePath = `${dirPath}/${name.substring(3)}.txt`;
       const scoreText = `${creature.score}`;
 
-      await Deno.writeTextFile(filePath, scoreText);
+      Deno.writeTextFileSync(filePath, scoreText);
     }
   }
 
   /**
    * Create the initial pool of genomes
    */
-  async populatePopulation(creature: Creature) {
+  populatePopulation(creature: Creature) {
     assert(creature, "Network mandatory");
 
     if (this.config.debug) {
@@ -472,12 +472,12 @@ export class Neat {
     // The population is already sorted in the desired order
     for (let i = 0; i < this.population.length; i++) {
       const creature = this.population[i];
-      await CreatureUtil.makeUUID(creature);
-      await genus.addCreature(creature);
+      CreatureUtil.makeUUID(creature);
+      genus.addCreature(creature);
     }
 
     const breed = new Breed(genus, this.config);
     const deDuplicator = new DeDuplicator(breed, mutator);
-    await deDuplicator.perform(this.population);
+    deDuplicator.perform(this.population);
   }
 }

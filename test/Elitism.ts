@@ -396,7 +396,7 @@ Deno.test("NaN", () => {
   );
 });
 
-Deno.test("logVerbose", async () => {
+Deno.test("logVerbose", () => {
   const population: CreatureInternal[] = [
     { input: 1, output: 1, score: -2, neurons: [], synapses: [] },
     { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
@@ -408,7 +408,7 @@ Deno.test("logVerbose", async () => {
   });
 
   const creatures = make(population);
-  const uuid = await CreatureUtil.makeUUID(creatures[0]);
+  const uuid = CreatureUtil.makeUUID(creatures[0]);
   addTag(creatures[1], "CRISPR-SOURCE", uuid);
   const average = logVerbose(creatures);
 
