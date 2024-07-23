@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
@@ -132,8 +131,6 @@ export class Creature implements CreatureInternal {
       layers?: { squash?: string; count: number }[];
     } = {},
   ) {
-    assert(input && output, "No input or output size given");
-
     this.input = input;
     this.output = output;
     this.neurons = [];
@@ -198,11 +195,6 @@ export class Creature implements CreatureInternal {
 
       for (let i = 0; i < options.layers.length; i++) {
         const layer = options.layers[i];
-
-        assert(
-          layer.count > 0,
-          "Layer count should be positive",
-        );
 
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
@@ -675,19 +667,15 @@ export class Creature implements CreatureInternal {
   disconnect(from: number, to: number) {
     const connections = this.synapses;
 
-    let found = false;
     for (let i = 0; i < connections.length; i++) {
       const connection = connections[i];
       if (connection.from === from && connection.to === to) {
-        found = true;
         connections.splice(i, 1);
         this.clearCache(from, to);
 
         break;
       }
     }
-
-    assert(found, "Can't disconnect");
   }
 
   /**
@@ -749,7 +737,6 @@ export class Creature implements CreatureInternal {
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
   propagateUpdate(config: BackPropagationConfig) {
-    assert(!this.state.propagated, "Already propagated");
     this.state.propagated = true;
 
     // @TODO randomize the order of the neurons
@@ -1277,8 +1264,6 @@ export class Creature implements CreatureInternal {
 
     for (let fromIndx = 0; fromIndx < this.neurons.length; fromIndx++) {
       const neuronFrom = this.neurons[fromIndx];
-
-      assert(neuronFrom.index === fromIndx);
 
       const fromInFocus = this.inFocus(fromIndx, focusList);
       for (

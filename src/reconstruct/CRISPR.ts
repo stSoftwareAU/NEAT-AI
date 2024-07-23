@@ -157,7 +157,6 @@ export class CRISPR {
     const UUIDs = new Map<string, number>();
 
     tmpCreature.neurons.forEach((node) => {
-      assert(node.uuid !== undefined, "missing uuid");
       UUIDs.set(node.uuid, node.index);
     });
 

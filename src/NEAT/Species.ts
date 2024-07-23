@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import type { Creature } from "../../src/Creature.ts";
 import { generate as generateV5Sync } from "../architecture/SyncV5.ts";
 

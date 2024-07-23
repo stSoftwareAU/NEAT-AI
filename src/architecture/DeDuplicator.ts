@@ -19,9 +19,8 @@ export class DeDuplicator {
     this.logPopulationSize(creatures);
 
     creatures.map((creature) => {
-      const uuid = CreatureUtil.makeUUID(creature);
+      CreatureUtil.makeUUID(creature);
 
-      assert(uuid, "No creature UUID");
       this.breed.genus.addCreature(creature);
     });
 
