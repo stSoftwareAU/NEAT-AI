@@ -48,6 +48,7 @@ import { AddConnection } from "./mutate/AddConnection.ts";
 import { SubConnection } from "./mutate/SubConnection.ts";
 import type { MutatorInterface } from "./mutate/MutatorInterface.ts";
 import { ModWeight } from "./mutate/ModWeight.ts";
+import { ModBias } from "./mutate/ModBias.ts";
 
 /**
  * Creature Class
@@ -1124,26 +1125,6 @@ export class Creature implements CreatureInternal {
     return null;
   }
 
-  /**
-   * Modify the bias of a neuron.
-   *
-   * @param {number[]} [focusList] - The list of focus indices.
-   */
-  public modBias(focusList?: number[]) {
-    for (let attempts = 0; attempts < 12; attempts++) {
-      // Has no effect on input node, so they are excluded
-      const index = Math.floor(
-        Math.random() * (this.neurons.length - this.input) +
-          this.input,
-      );
-      const neuron = this.neurons[index];
-      if (neuron.type === "constant") continue;
-      if (!this.inFocus(index, focusList) && attempts < 6) continue;
-      neuron.mutate(Mutation.MOD_BIAS.name);
-      break;
-    }
-  }
-
   private modActivation(focusList?: number[]) {
     for (let attempts = 0; attempts < 12; attempts++) {
       const index = Math.floor(
@@ -1363,7 +1344,7 @@ export class Creature implements CreatureInternal {
         mutator = new ModWeight(this);
         break;
       case Mutation.MOD_BIAS.name: {
-        this.modBias(focusList);
+        mutator = new ModBias(this);
         break;
       }
       case Mutation.MOD_ACTIVATION.name: {
