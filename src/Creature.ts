@@ -1343,10 +1343,9 @@ export class Creature implements CreatureInternal {
       case Mutation.MOD_WEIGHT.name:
         mutator = new ModWeight(this);
         break;
-      case Mutation.MOD_BIAS.name: {
+      case Mutation.MOD_BIAS.name:
         mutator = new ModBias(this);
         break;
-      }
       case Mutation.MOD_ACTIVATION.name: {
         this.modActivation(focusList);
         break;
