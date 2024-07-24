@@ -42,10 +42,13 @@ import { Mutation } from "../mod.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
-
-interface ConnectionOptions {
-  weightScale: number;
-}
+import { AddNeuron } from "./mutate/AddNeuron.ts";
+import { SubNeuron } from "./mutate/SubNeuron.ts";
+import { AddConnection } from "./mutate/AddConnection.ts";
+import { SubConnection } from "./mutate/SubConnection.ts";
+import type { MutatorInterface } from "./mutate/MutatorInterface.ts";
+import { ModWeight } from "./mutate/ModWeight.ts";
+import { ModBias } from "./mutate/ModBias.ts";
 
 /**
  * Creature Class
@@ -54,6 +57,7 @@ interface ConnectionOptions {
  * It encapsulates the neural network structure and its associated behaviors, including activation, mutation,
  * propagation, and evolution processes. This class is integral to the simulation and evolution of neural networks.
  */
+
 export class Creature implements CreatureInternal {
   /**
    * The unique identifier of this creature.
@@ -1082,220 +1086,6 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Subtract a neuron from the network.
-   *
-   * @param {number[]} [focusList] - The list of focus indices.
-   */
-  public subNeuron(focusList?: number[]) {
-    // Check if there are neurons left to remove
-    if (this.neurons.length === this.input + this.output) {
-      return;
-    }
-
-    for (let attempts = 0; attempts < 24; attempts++) {
-      // Select a neuron which isn't an input or output neuron
-      const indx = Math.floor(
-        Math.random() *
-            (this.neurons.length - this.output - this.input) +
-          this.input,
-      );
-
-      if (attempts < 12 && !this.inFocus(indx, focusList)) continue;
-      removeHiddenNeuron(this, indx);
-      break;
-    }
-  }
-
-  /**
-   * Add a neuron to the network.
-   *
-   * @param {number[]} [focusList] - The list of focus indices.
-   */
-  public addNeuron(focusList?: number[]) {
-    const neuron = new Neuron(crypto.randomUUID(), "hidden", undefined, this);
-
-    // Random squash function
-    neuron.mutate(Mutation.MOD_ACTIVATION.name);
-
-    let indx = Math.floor(
-      Math.random() *
-        (this.neurons.length - this.output - this.input + 1),
-    ) + this.input;
-
-    while (this.neurons[indx].type == "constant") {
-      indx++;
-    }
-    neuron.index = indx;
-    this.insertNeuron(neuron);
-
-    let tmpFocusList = focusList;
-    let fromIndex = -1;
-    let toIndex = -1;
-
-    for (let attempts = 0; attempts < 12; attempts++) {
-      if (attempts >= 9) {
-        /* Should work first time once we remove the "focus" */
-        tmpFocusList = undefined;
-      }
-      if (fromIndex === -1) {
-        const pos = Math.floor(
-          Math.random() * neuron.index,
-        );
-
-        if (neuron.index <= pos || pos < 0) {
-          throw new Error(
-            `From: ${pos} should be less than neuron index: ${neuron.index}`,
-          );
-        }
-        if (this.inFocus(pos, tmpFocusList)) {
-          fromIndex = pos;
-        }
-      } else if (toIndex === -1) {
-        const pos = Math.floor(
-          Math.random() * (this.neurons.length - neuron.index),
-        ) + neuron.index;
-
-        if (neuron.index > pos) {
-          throw new Error(
-            "To: " + pos + " should be greater than neuron index: " +
-              neuron.index,
-          );
-        }
-
-        if (this.inFocus(pos, tmpFocusList)) {
-          toIndex = pos;
-        }
-      } else {
-        break;
-      }
-    }
-
-    if (fromIndex !== -1) {
-      this.connect(
-        fromIndex,
-        neuron.index,
-        Synapse.randomWeight(),
-      );
-    } else {
-      console.warn("addNeuron: Should have a from index");
-    }
-
-    if (toIndex !== -1) {
-      const nonConstantIndx = this.neurons.findIndex((
-        n,
-      ) => (n.index >= toIndex && n.type !== "constant"));
-      this.connect(
-        neuron.index,
-        nonConstantIndx,
-        Synapse.randomWeight(),
-      );
-      neuron.fix();
-      const connection = this.getSynapse(neuron.index, nonConstantIndx);
-      if (!connection) {
-        /* If the self connection was removed */
-        const toIndex2 = Math.floor(
-          Math.random() * (this.neurons.length - neuron.index - 1),
-        ) + neuron.index + 1;
-
-        const nonConstantIndx2 = this.neurons.findIndex((
-          n,
-        ) => (n.index >= toIndex2 && n.type !== "constant"));
-
-        this.connect(
-          neuron.index,
-          nonConstantIndx2,
-          Synapse.randomWeight(),
-        );
-      }
-    } else {
-      console.warn("addNeuron: Should have a to index");
-    }
-  }
-
-  private insertNeuron(neuron: Neuron) {
-    if (Number.isInteger(neuron.index) == false || neuron.index < this.input) {
-      throw new Error(
-        "to should be a greater than the input count was: " + neuron.index,
-      );
-    }
-
-    const firstOutputIndex = this.neurons.length - this.output;
-    if (neuron.index > firstOutputIndex) {
-      throw new Error(
-        "to should be a between than input (" + this.input +
-          ") and output neurons (" + firstOutputIndex + ") was: " +
-          neuron.index,
-      );
-    }
-
-    if (neuron.type !== "hidden") {
-      throw new Error("Should be a 'hidden' type was: " + neuron.type);
-    }
-    const left = this.neurons.slice(0, neuron.index);
-    const right = this.neurons.slice(neuron.index);
-    right.forEach((n) => {
-      n.index++;
-    });
-
-    const full = [...left, neuron, ...right];
-
-    this.neurons = full;
-
-    this.synapses.forEach((c) => {
-      if (c.from >= neuron.index) c.from++;
-      if (c.to >= neuron.index) c.to++;
-    });
-
-    this.clearCache();
-  }
-
-  /**
-   * Add a connection between two neurons.
-   *
-   * @param focusList - The list of focus indices. If provided, only neurons at these indices will be considered for connection.
-   * @param options - The options for the connection.
-   * @param options.weightScale - A scaling factor for the weight of the connection.
-   */
-  public addConnection(focusList?: number[], options: ConnectionOptions = {
-    weightScale: 1,
-  }): void {
-    // Create an array of all uncreated (feedforward) connections
-    const available: [Neuron, Neuron][] = [];
-
-    for (let fromIndx = 0; fromIndx < this.neurons.length; fromIndx++) {
-      const neuronFrom = this.neurons[fromIndx];
-
-      const fromInFocus = this.inFocus(fromIndx, focusList);
-      for (
-        let toIndx = Math.max(fromIndx + 1, this.input);
-        toIndx < this.neurons.length;
-        toIndx++
-      ) {
-        if (!fromInFocus && !this.inFocus(toIndx, focusList)) continue;
-        const neuronTo = this.neurons[toIndx];
-
-        if (neuronTo.type === "constant") continue;
-
-        if (!neuronFrom.isProjectingTo(neuronTo)) {
-          available.push([neuronFrom, neuronTo]);
-        }
-      }
-    }
-
-    if (available.length === 0) {
-      return;
-    }
-
-    const pair = available[Math.floor(Math.random() * available.length)];
-    const fromIndex = pair[0].index;
-    const toIndex = pair[1].index;
-    const weightScale = options.weightScale || 1;
-    const weight = Synapse.randomWeight() * weightScale;
-
-    this.connect(fromIndex, toIndex, weight);
-  }
-
-  /**
    * Create a random connection for the neuron at the given index.
    *
    * @param {number} indx - The index of the target neuron.
@@ -1333,90 +1123,6 @@ export class Creature implements CreatureInternal {
       }
     }
     return null;
-  }
-
-  /**
-   * Subtract a connection from the network.
-   *
-   * @param {number[]} [focusList] - The list of focus indices.
-   */
-  public subConnection(focusList?: number[]) {
-    // List of possible connections that can be removed
-    const possible = [];
-
-    for (let i = 0; i < this.synapses.length; i++) {
-      const conn = this.synapses[i];
-      // Check if it is not disabling a node
-      if (conn.to > conn.from) {
-        if (
-          this.inFocus(conn.to, focusList) || this.inFocus(conn.from, focusList)
-        ) {
-          possible.push(conn);
-        }
-      }
-    }
-
-    if (possible.length === 0) {
-      return;
-    }
-
-    const randomConn = possible[Math.floor(Math.random() * possible.length)];
-    this.disconnect(randomConn.from, randomConn.to);
-  }
-
-  private modWeight(focusList?: number[]) {
-    const allConnections = this.synapses.filter(
-      (c) => {
-        return this.inFocus(c.from, focusList) ||
-          this.inFocus(c.to, focusList);
-      },
-    );
-    if (allConnections.length > 0) {
-      const pos = Math.floor(Math.random() * allConnections.length);
-      const connection = allConnections[pos];
-      if (connection) {
-        // Calculate the quantum based on the current weight
-        const weightMagnitude = Math.abs(connection.weight);
-        let quantum = 1;
-
-        if (weightMagnitude >= 1) {
-          // Find the largest power of 10 smaller than the weightMagnitude
-          quantum = Math.pow(10, Math.floor(Math.log10(weightMagnitude)));
-        }
-
-        // Generate a random modification value based on the quantum
-        const modification = (Math.random() * 2 - 1) * quantum;
-
-        connection.weight += modification;
-      } else {
-        console.warn(
-          "MOD_WEIGHT: missing connection at",
-          pos,
-          "of",
-          allConnections.length,
-        );
-      }
-    }
-  }
-
-  /**
-   * Modify the bias of a neuron.
-   *
-   * @param {number[]} [focusList] - The list of focus indices.
-   */
-  public modBias(focusList?: number[]) {
-    for (let attempts = 0; attempts < 12; attempts++) {
-      // Has no effect on input node, so they are excluded
-      const index = Math.floor(
-        Math.random() * (this.neurons.length - this.input) +
-          this.input,
-      );
-      const neuron = this.neurons[index];
-      if (neuron.type === "constant") continue;
-      if (!this.inFocus(index, focusList) && attempts < 6) continue;
-      neuron.mutate(Mutation.MOD_BIAS.name);
-      break;
-    }
   }
 
   private modActivation(focusList?: number[]) {
@@ -1615,40 +1321,31 @@ export class Creature implements CreatureInternal {
    * @param {string} method.name - The name of the mutation method.
    * @param {number[]} [focusList] - The list of focus indices.
    */
-  mutate(method: { name: string }, focusList?: number[]) {
+  mutate(method: { name: string }, focusList?: number[]): boolean {
     if (typeof method.name !== "string") {
       throw new Error("Mutate method wrong type: " + (typeof method));
     }
 
+    let mutator: MutatorInterface | undefined;
     switch (method.name) {
-      case Mutation.ADD_NODE.name: {
-        this.addNeuron(focusList);
+      case Mutation.ADD_NODE.name:
+        mutator = new AddNeuron(this);
         break;
-      }
-      case Mutation.SUB_NODE.name: {
-        this.subNeuron(focusList);
-
+      case Mutation.SUB_NODE.name:
+        mutator = new SubNeuron(this);
         break;
-      }
-      case Mutation.ADD_CONN.name: {
-        this.addConnection(focusList);
-
+      case Mutation.ADD_CONN.name:
+        mutator = new AddConnection(this);
         break;
-      }
-      case Mutation.SUB_CONN.name: {
-        this.subConnection(focusList);
+      case Mutation.SUB_CONN.name:
+        mutator = new SubConnection(this);
         break;
-      }
-      case Mutation.MOD_WEIGHT.name: {
-        this.modWeight(focusList);
-
+      case Mutation.MOD_WEIGHT.name:
+        mutator = new ModWeight(this);
         break;
-      }
-      case Mutation.MOD_BIAS.name: {
-        this.modBias(focusList);
-
+      case Mutation.MOD_BIAS.name:
+        mutator = new ModBias(this);
         break;
-      }
       case Mutation.MOD_ACTIVATION.name: {
         this.modActivation(focusList);
         break;
@@ -1682,11 +1379,18 @@ export class Creature implements CreatureInternal {
       }
     }
 
+    let changed = false;
+    if (mutator) {
+      changed = mutator.mutate(focusList);
+    }
+
     delete this.uuid;
     this.fix();
     if (this.DEBUG) {
       creatureValidate(this);
     }
+
+    return changed;
   }
 
   /**

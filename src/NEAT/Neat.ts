@@ -24,6 +24,7 @@ import { FindTunePopulation } from "./FineTunePopulation.ts";
 import { Genus } from "./Genus.ts";
 import { Mutator } from "./Mutator.ts";
 import type { Approach } from "./LogApproach.ts";
+import { AddConnection } from "../mutate/AddConnection.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -304,8 +305,9 @@ export class Neat {
       const n = elitists[0];
       const creativeThinking = Creature.fromJSON(n.exportJSON());
       const weightScale = 1 / creativeThinking.synapses.length;
+      const addConnection = new AddConnection(creativeThinking);
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
-        creativeThinking.addConnection(
+        addConnection.mutate(
           Math.random() < this.config.focusRate
             ? this.config.focusList
             : undefined,

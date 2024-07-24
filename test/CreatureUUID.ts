@@ -7,6 +7,7 @@ import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
 import { Mutator } from "../src/NEAT/Mutator.ts";
 import { Breed } from "../src/NEAT/Breed.ts";
 import { Genus } from "../src/NEAT/Genus.ts";
+import { ModBias } from "../src/mutate/ModBias.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -262,7 +263,8 @@ Deno.test("generateUUID", () => {
   const uuid1 = n1.uuid;
   assert(n1.uuid, "deDuplicate should create UUIDs: " + n1.uuid);
 
-  n1.modBias();
+  const modBias = new ModBias(n1);
+  modBias.mutate();
   deDuplicator.perform([n1]);
 
   assertNotEquals(

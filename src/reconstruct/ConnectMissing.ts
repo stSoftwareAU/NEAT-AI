@@ -1,5 +1,6 @@
 import { Creature } from "../../mod.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
+import { AddConnection } from "../mutate/AddConnection.ts";
 
 /**
  * Connects missing neurons in the creature's brain.
@@ -20,9 +21,9 @@ export function randomConnectMissing(creature: Creature): Creature {
   if (inputMissing.size === 0) return creature;
 
   const tmpCreature = Creature.fromJSON(exported);
-
+  const mutator = new AddConnection(tmpCreature);
   for (const missing of inputMissing) {
-    tmpCreature.addConnection([missing], { weightScale: 0.1 });
+    mutator.mutate([missing], { weightScale: 0.1 });
   }
 
   return tmpCreature;

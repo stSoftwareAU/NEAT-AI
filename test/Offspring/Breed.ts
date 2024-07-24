@@ -6,10 +6,12 @@ import { Neat } from "../../src/NEAT/Neat.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
+import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
+import { AddConnection } from "../../src/mutate/AddConnection.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("OffSpring", async () => {
+Deno.test("OffSpring", () => {
   const creature = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -45,20 +47,20 @@ Deno.test("OffSpring", async () => {
   // The population is already sorted in the desired order
   for (let i = 0; i < neat.population.length; i++) {
     const creature = neat.population[i];
-    await genus.addCreature(creature);
+    genus.addCreature(creature);
   }
 
   const breed = new Breed(genus, neat.config);
 
-  await neat.populatePopulation(creature);
+  neat.populatePopulation(creature);
   for (let i = 0; i < neat.config.populationSize; i++) {
-    const kid = await breed.breed();
+    const kid = breed.breed();
     if (!kid) continue;
-    await neat.populatePopulation(kid as Creature);
+    neat.populatePopulation(kid as Creature);
   }
 });
 
-Deno.test("CrossOver", async () => {
+Deno.test("CrossOver", () => {
   const a = Creature.fromJSON({
     "neurons": [
       {
@@ -149,7 +151,7 @@ Deno.test("CrossOver", async () => {
   b.validate();
 
   for (let i = 0; i < 100; i++) {
-    const child = await Offspring.breed(a, b);
+    const child = Offspring.breed(a, b);
     if (!child) continue;
     const n = child.neurons[child.neurons.length - 2];
     assertEquals(n.type, "output");
@@ -167,14 +169,14 @@ Deno.test("CrossOver", async () => {
 
 Deno.test(
   "Match on UUID",
-  async () => {
+  () => {
     for (let i = 0; i < 12; i++) {
-      await check();
+      check();
     }
   },
 );
 
-async function check() {
+function check() {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -253,11 +255,12 @@ async function check() {
     }
   });
 
+  const addNeuron = new AddNeuron(n2);
   for (let i = 0; i < 20; i++) {
-    n2.addNeuron();
+    addNeuron.mutate();
   }
 
-  const n3 = await Offspring.breed(n1, n2);
+  const n3 = Offspring.breed(n1, n2);
 
   if (n3) {
     const outputUUID = creature.neurons[2].uuid;
@@ -288,7 +291,7 @@ async function check() {
 
 Deno.test(
   "Many Outputs",
-  async () => {
+  () => {
     const creature: CreatureInternal = {
       neurons: [
         {
@@ -406,23 +409,24 @@ Deno.test(
     const n2 = Creature.fromJSON(n1.exportJSON());
 
     n2.validate();
-
+    const addNeuron = new AddNeuron(n2);
+    const addConnection = new AddConnection(n2);
     for (let i = 0; i < 20; i++) {
-      n2.addNeuron();
-      n2.addConnection();
+      addNeuron.mutate();
+      addConnection.mutate();
       // n1.addConnection();
     }
 
     n2.validate();
 
     for (let i = 0; i < 20; i++) {
-      const child = await Offspring.breed(n1, n2);
+      const child = Offspring.breed(n1, n2);
       if (!child) continue;
       child.validate();
     }
 
     for (let i = 0; i < 20; i++) {
-      const child = await Offspring.breed(n2, n1);
+      const child = Offspring.breed(n2, n1);
       if (!child) continue;
       child.validate();
     }
@@ -431,7 +435,7 @@ Deno.test(
 
 Deno.test(
   "Copy Required Nodes",
-  async () => {
+  () => {
     const left = Creature.fromJSON(
       {
         neurons: [
@@ -499,7 +503,7 @@ Deno.test(
     );
 
     left.validate();
-    await CreatureUtil.makeUUID(left);
+    CreatureUtil.makeUUID(left);
 
     const right = Creature.fromJSON(
       {
@@ -568,21 +572,21 @@ Deno.test(
     );
 
     right.validate();
-    await CreatureUtil.makeUUID(right);
+    CreatureUtil.makeUUID(right);
 
     for (let i = 0; i < 20; i++) {
-      const child = await Offspring.breed(left, right);
+      const child = Offspring.breed(left, right);
       if (!child) continue;
-      await CreatureUtil.makeUUID(child);
+      CreatureUtil.makeUUID(child);
       assert(child.uuid != left.uuid);
       assert(child.uuid != right.uuid);
       checkChild(child);
     }
 
     for (let i = 0; i < 20; i++) {
-      const child = await Offspring.breed(right, left);
+      const child = Offspring.breed(right, left);
       if (!child) continue;
-      await CreatureUtil.makeUUID(child);
+      CreatureUtil.makeUUID(child);
       assert(child.uuid != left.uuid);
       assert(child.uuid != right.uuid);
       checkChild(child);
