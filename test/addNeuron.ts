@@ -3,6 +3,7 @@ import { getTag } from "@stsoftware/tags";
 import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
+import { AddNeuron } from "../src/mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -77,8 +78,9 @@ const json: CreatureInternal = {
 Deno.test("addNodeValidate", () => {
   for (let j = 10; j--;) {
     const creature = Creature.fromJSON(json);
+    const addNeuron = new AddNeuron(creature);
     for (let i = 1000; i--;) {
-      creature.addNeuron();
+      addNeuron.mutate();
     }
 
     creatureValidate(creature);
@@ -86,17 +88,17 @@ Deno.test("addNodeValidate", () => {
 });
 
 Deno.test("addNode", () => {
-  const network = Creature.fromJSON(json);
-
+  const creature = Creature.fromJSON(json);
+  const addNeuron = new AddNeuron(creature);
   for (let i = 1000; i--;) {
-    network.addNeuron();
+    addNeuron.mutate();
   }
 
-  const nodes = network.internalJSON().neurons;
+  const nodes = creature.internalJSON().neurons;
 
   for (let pos = nodes.length; pos--;) {
     const node = nodes[pos];
-    const indx = network.input + pos;
+    const indx = creature.input + pos;
     const tag = getTag(node, "original");
 
     if (tag === "yes") {
@@ -115,7 +117,7 @@ Deno.test("addNode", () => {
       );
     }
 
-    const to = network.inwardConnections(indx);
+    const to = creature.inwardConnections(indx);
 
     if (node.type !== "input") {
       assert(to.length >= 1, indx + ") expected at least 1 got " + to.length);
@@ -127,7 +129,7 @@ Deno.test("addNode", () => {
       );
     }
 
-    const from = network.outwardConnections(indx);
+    const from = creature.outwardConnections(indx);
 
     if (node.type !== "output") {
       assert(

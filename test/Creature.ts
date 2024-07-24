@@ -292,7 +292,7 @@ Deno.test("SWAP_NODES", () => {
   checkMutation(Mutation.SWAP_NODES);
 });
 
-Deno.test("gender-tag", async () => {
+Deno.test("gender-tag", () => {
   const mum = new Creature(2, 2);
   const dad = new Creature(2, 2);
 
@@ -301,7 +301,7 @@ Deno.test("gender-tag", async () => {
   addTag(dad.neurons[3], "gender", "female");
 
   // Crossover
-  const child = await Offspring.breed(mum, dad);
+  const child = Offspring.breed(mum, dad);
 
   if (child) {
     const gender = getTag(child.neurons[3], "gender");
@@ -310,7 +310,7 @@ Deno.test("gender-tag", async () => {
   }
 });
 
-Deno.test("Feed-forward", async () => {
+Deno.test("Feed-forward", () => {
   const network1 = new Creature(2, 2);
   const network2 = new Creature(2, 2);
 
@@ -326,7 +326,7 @@ Deno.test("Feed-forward", async () => {
   }
 
   // Crossover
-  const child = await Offspring.breed(network1, network2);
+  const child = Offspring.breed(network1, network2);
 
   if (child) {
     // Check if the network is feed-forward correctly

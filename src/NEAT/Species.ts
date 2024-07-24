@@ -1,4 +1,4 @@
-import type { Creature } from "../../src/Creature.ts";
+import type { Creature } from "../Creature.ts";
 import { generate as generateV5Sync } from "../architecture/SyncV5.ts";
 
 export class Species {

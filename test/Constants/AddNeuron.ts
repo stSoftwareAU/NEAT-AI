@@ -2,6 +2,7 @@ import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { assertEquals } from "@std/assert";
+import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -66,10 +67,11 @@ Deno.test("AddNeuron", () => {
     `${traceDir}/0-start.json`,
     JSON.stringify(creature.exportJSON(), null, 2),
   );
-
   for (let i = 0; i < 100; i++) {
     const tmpCreature = Creature.fromJSON(creature.exportJSON());
-    tmpCreature.addNeuron();
+
+    const addNeuron = new AddNeuron(tmpCreature);
+    addNeuron.mutate();
     tmpCreature.validate();
     assertEquals("skip-me", tmpCreature.neurons[3].uuid);
     assertEquals("skip-me2", tmpCreature.neurons[4].uuid);

@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { AddNeuron } from "../src/mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -26,22 +27,23 @@ Deno.test("inward", () => {
     input: 3,
     output: 1,
   };
-  const network = Creature.fromJSON(json);
+  const creature = Creature.fromJSON(json);
 
-  const connects = network.inwardConnections(3);
+  const connects = creature.inwardConnections(3);
 
   assert(connects.length == 3, "expected 3 got " + connects.length);
 
-  const connects2 = network.inwardConnections(3);
+  const connects2 = creature.inwardConnections(3);
 
   assert(connects2.length == 3, "expected 3 got " + connects2.length);
 
-  network.addNeuron();
+  const addNeuron = new AddNeuron(creature);
+  addNeuron.mutate();
 
   let foundPositive = false;
   let foundNegative = false;
   let foundCondition = false;
-  network.synapses.forEach((c) => {
+  creature.synapses.forEach((c) => {
     if (c.type == "positive") {
       foundPositive = true;
     } else if (c.type == "condition") {
@@ -56,7 +58,7 @@ Deno.test("inward", () => {
   assert(foundNegative, "should have found a negative link");
 
   assert(foundCondition, "should have found a condition link");
-  const connects4 = network.inwardConnections(4);
+  const connects4 = creature.inwardConnections(4);
 
   assert(connects4.length >= 3, "expected at least 3 got " + connects4.length);
 
