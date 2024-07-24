@@ -1,4 +1,5 @@
-import type { ConnectionOptions, Creature } from "../Creature.ts";
+import type { Creature } from "../Creature.ts";
+import type { ConnectionOptions } from "../ConnectionOptions.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type { MutatorInterface } from "./MutatorInterface.ts";

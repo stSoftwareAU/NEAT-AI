@@ -1759,7 +1759,3 @@ export class Creature implements CreatureInternal {
     return creature;
   }
 }
-
-export interface ConnectionOptions {
-  weightScale: number;
-}
