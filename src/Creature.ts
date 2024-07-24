@@ -1364,7 +1364,6 @@ export class Creature implements CreatureInternal {
         break;
       case Mutation.MOD_BIAS.name: {
         this.modBias(focusList);
-
         break;
       }
       case Mutation.MOD_ACTIVATION.name: {
