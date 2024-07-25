@@ -51,6 +51,7 @@ import { ModWeight } from "./mutate/ModWeight.ts";
 import { ModBias } from "./mutate/ModBias.ts";
 import { ModActivation } from "./mutate/ModActivation.ts";
 import { AddSelfCon } from "./mutate/AddSelfCon.ts";
+import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 
 /**
  * Creature Class
@@ -1030,14 +1031,6 @@ export class Creature implements CreatureInternal {
    * @param {Set<number>} [checked] - The set of checked indices.
    * @returns {boolean} True if the neuron is in focus, false otherwise.
    */
-  /**
-   * Check if a neuron is in focus.
-   *
-   * @param {number} index - The index of the neuron.
-   * @param {number[]} [focusList] - The list of focus indices.
-   * @param {Set<number>} [checked] - The set of checked indices.
-   * @returns {boolean} True if the neuron is in focus, false otherwise.
-   */
   public inFocus(
     index: number,
     focusList?: number[],
@@ -1125,33 +1118,6 @@ export class Creature implements CreatureInternal {
       }
     }
     return null;
-  }  
-
-
-  private subSelfCon(focusList?: number[]) {
-    // Check which neurons aren't self connected yet
-    const possible = [];
-    for (let i = this.input; i < this.neurons.length; i++) {
-      if (this.inFocus(i, focusList)) {
-        const neuron = this.neurons[i];
-        const indx = neuron.index;
-        const c = this.getSynapse(indx, indx);
-        if (c !== null) {
-          possible.push(neuron);
-        }
-      }
-    }
-
-    if (possible.length === 0) {
-      return;
-    }
-
-    // Select a random node
-    const neuron = possible[Math.floor(Math.random() * possible.length)];
-
-    // Connect it to himself
-    const indx = neuron.index;
-    this.disconnect(indx, indx);
   }
 
   private addBackConn(focusList?: number[]) {
@@ -1308,13 +1274,10 @@ export class Creature implements CreatureInternal {
         break;
       case Mutation.ADD_SELF_CONN.name:
         mutator = new AddSelfCon(this);
-        
         break;
-      case Mutation.SUB_SELF_CONN.name: {
-        this.subSelfCon(focusList);
-
+      case Mutation.SUB_SELF_CONN.name:        
+        mutator = new SubSelfCon(this);
         break;
-      }
       case Mutation.ADD_BACK_CONN.name: {
         this.addBackConn(focusList);
 
