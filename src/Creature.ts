@@ -49,6 +49,7 @@ import { SubConnection } from "./mutate/SubConnection.ts";
 import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
 import { ModWeight } from "./mutate/ModWeight.ts";
 import { ModBias } from "./mutate/ModBias.ts";
+import { ModActivation } from "./mutate/ModActivation.ts";
 
 /**
  * Creature Class
@@ -1123,26 +1124,7 @@ export class Creature implements CreatureInternal {
       }
     }
     return null;
-  }
-
-  private modActivation(focusList?: number[]) {
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index = Math.floor(
-        Math.random() * (
-              this.neurons.length -
-              this.input
-            ) + this.input,
-      );
-      const neuron = this.neurons[index];
-
-      if (neuron.type == "constant") continue;
-
-      if (this.inFocus(index, focusList)) {
-        neuron.mutate(Mutation.MOD_ACTIVATION.name);
-        break;
-      }
-    }
-  }
+  }  
 
   private addSelfCon(focusList?: number[]) {
     // Check which neurons aren't self connected yet
@@ -1346,10 +1328,9 @@ export class Creature implements CreatureInternal {
       case Mutation.MOD_BIAS.name:
         mutator = new ModBias(this);
         break;
-      case Mutation.MOD_ACTIVATION.name: {
-        this.modActivation(focusList);
+      case Mutation.MOD_ACTIVATION.name:
+        mutator = new ModActivation(this);
         break;
-      }
       case Mutation.ADD_SELF_CONN.name: {
         this.addSelfCon(focusList);
 
@@ -1382,6 +1363,10 @@ export class Creature implements CreatureInternal {
     let changed = false;
     if (mutator) {
       changed = mutator.mutate(focusList);
+
+      if( !changed){
+        console.info(`${method.name} didn't mutate the creature.`);
+      }
     }
 
     delete this.uuid;

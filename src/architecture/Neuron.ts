@@ -562,7 +562,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Mutates the node with the given method
    */
-  mutate(method: string) {
+  mutate(method: string):boolean {
     if (typeof method !== "string") {
       throw new Error("Mutate method wrong type: " + (typeof method));
     }
@@ -590,7 +590,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
             break;
           }
         }
-        break;
+        return false;
       }
       case Mutation.MOD_BIAS.name: {
         // Calculate the quantum based on the current bias
@@ -612,6 +612,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         throw new Error("Unknown mutate method: " + method);
     }
     delete this.creature.uuid;
+    return true;
   }
 
   /**
