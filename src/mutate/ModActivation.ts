@@ -11,15 +11,15 @@ export class ModActivation implements RadioactiveInterface {
     for (let attempts = 0; attempts < 12; attempts++) {
       const index = Math.floor(
         Math.random() * (
-          this.neurons.length -
-          this.input
-        ) + this.input,
+          this.creature.neurons.length -
+          this.creature.input
+        ) + this.creature.input,
       );
-      const neuron = this.neurons[index];
+      const neuron = this.creature.neurons[index];
 
       if (neuron.type == "constant") continue;
 
-      if (this.inFocus(index, focusList)) {
+      if (this.creature.inFocus(index, focusList)) {
         return neuron.mutate(Mutation.MOD_ACTIVATION.name);
       }
     }
