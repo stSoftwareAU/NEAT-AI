@@ -59,37 +59,31 @@ export class Mutator {
         Math.floor(Math.random() * this.config.mutation.length)
       ];
 
-      if (
-        mutationMethod === Mutation.ADD_NODE &&
-        creature.neurons.length >= this.config.maximumNumberOfNodes
-      ) {
-        continue;
-      }
-
-      if (
-        mutationMethod === Mutation.ADD_CONN &&
-        creature.synapses.length >= this.config.maxConns
-      ) {
-        continue;
-      }
-
-      /** Must have hidden nodes to be able to sub/swap nodes */
-      if (
-        (
-          mutationMethod === Mutation.SUB_NODE ||
-          mutationMethod === Mutation.SWAP_NODES
-        ) &&
-        creature.neurons.length === creature.input + creature.output
-      ) {
-        continue;
-      }
-
-      /** Must have some neurons to connect to */
-      if (
-        mutationMethod === Mutation.ADD_CONN &&
-        creature.synapses.length >= creature.neurons.length - creature.output
-      ) {
-        continue;
+      switch (mutationMethod.name) {
+        case Mutation.ADD_NODE.name:
+          if (creature.neurons.length >= this.config.maximumNumberOfNodes) {
+            continue;
+          }
+          break;
+        case Mutation.ADD_CONN.name:
+          if (
+            creature.synapses.length >= this.config.maxConns ||
+            creature.synapses.length >=
+              creature.neurons.length - creature.output
+          ) {
+            continue;
+          }
+          break;
+        case Mutation.SUB_NODE.name:
+          if (creature.neurons.length <= creature.input + creature.output) {
+            continue;
+          }
+          break;
+        case Mutation.SWAP_NODES.name:
+          if (creature.neurons.length <= creature.input + creature.output + 1) {
+            continue;
+          }
+          break;
       }
 
       return mutationMethod;
