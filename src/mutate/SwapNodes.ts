@@ -61,8 +61,7 @@ export class SwapNodes implements RadioactiveInterface {
 
       node1.fix();
       node2.fix();
-      if (this.DEBUG) creatureValidate(this);
-
+      
       return true;
     }
 
