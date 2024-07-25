@@ -52,6 +52,7 @@ import { ModBias } from "./mutate/ModBias.ts";
 import { ModActivation } from "./mutate/ModActivation.ts";
 import { AddSelfCon } from "./mutate/AddSelfCon.ts";
 import { SubSelfCon } from "./mutate/SubSelfCon.ts";
+import { AddBackCon } from "./mutate/AddBackCon.ts";
 
 /**
  * Creature Class
@@ -1120,35 +1121,6 @@ export class Creature implements CreatureInternal {
     return null;
   }
 
-  private addBackConn(focusList?: number[]) {
-    // Create an array of all uncreated (back feed) connections
-    const available = [];
-    for (let toIndx = this.input; toIndx < this.neurons.length; toIndx++) {
-      if (this.inFocus(toIndx, focusList)) {
-        const neuronTo = this.neurons[toIndx];
-        for (let fromIndx = this.input; fromIndx < toIndx; fromIndx++) {
-          const neuronFrom = this.neurons[fromIndx];
-          if (neuronFrom.type == "output") break;
-          if (neuronTo.type == "constant") continue;
-          if (this.inFocus(neuronFrom.index, focusList)) {
-            if (!neuronFrom.isProjectingTo(neuronTo)) {
-              available.push([neuronFrom, neuronTo]);
-            }
-          }
-        }
-      }
-    }
-
-    if (available.length === 0) {
-      return;
-    }
-
-    const pair = available[Math.floor(Math.random() * available.length)];
-    const fromIndx = pair[0].index;
-    const toIndx = pair[1].index;
-    this.connect(fromIndx, toIndx, Synapse.randomWeight());
-  }
-
   private subBackConn(focusList?: number[]) {
     // Create an array of all uncreated (back fed) connections
     const available = [];
@@ -1278,11 +1250,9 @@ export class Creature implements CreatureInternal {
       case Mutation.SUB_SELF_CONN.name:        
         mutator = new SubSelfCon(this);
         break;
-      case Mutation.ADD_BACK_CONN.name: {
-        this.addBackConn(focusList);
-
+      case Mutation.ADD_BACK_CONN.name: 
+        mutator = new AddBackCon(this);
         break;
-      }
       case Mutation.SUB_BACK_CONN.name: {
         this.subBackConn(focusList);
 
