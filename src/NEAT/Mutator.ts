@@ -73,6 +73,25 @@ export class Mutator {
         continue;
       }
 
+      /** Must have hidden nodes to be able to sub/swap nodes */
+      if (
+        (
+          mutationMethod === Mutation.SUB_NODE ||
+          mutationMethod === Mutation.SWAP_NODES
+        ) &&
+        creature.neurons.length === creature.input + creature.output
+      ) {
+        continue;
+      }
+
+      /** Must have some neurons to connect to */
+      if (
+        mutationMethod === Mutation.ADD_CONN &&
+        creature.synapses.length >= creature.neurons.length - creature.output
+      ) {
+        continue;
+      }
+
       return mutationMethod;
     }
   }

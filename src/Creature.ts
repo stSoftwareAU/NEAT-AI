@@ -1182,7 +1182,11 @@ export class Creature implements CreatureInternal {
     changed = mutator.mutate(focusList);
 
     if (!changed && (!focusList || focusList.length == 0)) {
-      console.info(`${method.name} didn't mutate the creature.`);
+      console.info(
+        `${method.name} didn't mutate the creature. ${this.input} observations, ${
+          this.neurons.length - this.input - this.output
+        } neurons, ${this.output} outputs, ${this.synapses.length} synapses`,
+      );
     }
 
     delete this.uuid;

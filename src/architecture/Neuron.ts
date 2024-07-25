@@ -569,6 +569,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (this.type == "input") {
       throw new Error("Mutate on wrong node type: " + this.type);
     }
+    let changed = false;
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
         switch (this.type) {
@@ -587,10 +588,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
             this.squash = tmpSquash;
             delete this.squashMethodCache;
             removeTag(this, "CRISPR");
+            changed = true;
             break;
           }
         }
-        return false;
+        break;
       }
       case Mutation.MOD_BIAS.name: {
         // Calculate the quantum based on the current bias
@@ -606,13 +608,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const modification = (Math.random() * 2 - 1) * quantum;
 
         this.bias += modification;
+        changed = true;
         break;
       }
       default:
         throw new Error("Unknown mutate method: " + method);
     }
-    delete this.creature.uuid;
-    return true;
+    if (changed) {
+      delete this.creature.uuid;
+    }
+    return changed;
   }
 
   /**
