@@ -37,7 +37,7 @@ pipeline {
                           export DENO_FUTURE=1
                           deno lint src
 
-                          #deno fmt --check src test
+                          deno fmt --check src test
                           deno check `find src -name "*.ts"`
                           deno check `find test -name "*.ts"`
                         '''.stripIndent()
