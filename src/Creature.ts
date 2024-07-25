@@ -53,6 +53,7 @@ import { ModActivation } from "./mutate/ModActivation.ts";
 import { AddSelfCon } from "./mutate/AddSelfCon.ts";
 import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { AddBackCon } from "./mutate/AddBackCon.ts";
+import { SubBackCon } from "./mutate/SubBackCon.ts";
 
 /**
  * Creature Class
@@ -1121,36 +1122,6 @@ export class Creature implements CreatureInternal {
     return null;
   }
 
-  private subBackConn(focusList?: number[]) {
-    // Create an array of all uncreated (back fed) connections
-    const available = [];
-    for (let to = this.input; to < this.neurons.length; to++) {
-      if (this.inFocus(to, focusList)) {
-        for (let from = 0; from < to; from++) {
-          if (this.inFocus(from, focusList)) {
-            if (
-              (
-                this.outwardConnections(from).length > 1 ||
-                this.neurons[from].type === "input"
-              ) && this.inwardConnections(to).length > 1
-            ) {
-              if (this.getSynapse(from, to) != null) {
-                available.push([from, to]);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (available.length === 0) {
-      return;
-    }
-
-    const pair = available[Math.floor(Math.random() * available.length)];
-    this.disconnect(pair[0], pair[1]);
-  }
-
   private swapNodes(focusList?: number[]) {
     // Has no effect on input node, so they are excluded
     if (
@@ -1253,11 +1224,9 @@ export class Creature implements CreatureInternal {
       case Mutation.ADD_BACK_CONN.name: 
         mutator = new AddBackCon(this);
         break;
-      case Mutation.SUB_BACK_CONN.name: {
-        this.subBackConn(focusList);
-
+      case Mutation.SUB_BACK_CONN.name:
+        mutator = new SubBackCon(this);
         break;
-      }
       case Mutation.SWAP_NODES.name: {
         this.swapNodes(focusList);
         break;
