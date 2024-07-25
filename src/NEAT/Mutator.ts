@@ -20,23 +20,29 @@ export class Mutator {
         if (this.config.debug) {
           creatureValidate(creature);
         }
+        let changed = false;
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
 
-          creature.mutate(
+          const flag = creature.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
               ? this.config.focusList
               : undefined,
           );
+          if (flag) {
+            changed = true;
+          }
         }
 
         if (this.config.debug) {
           creatureValidate(creature);
         }
 
-        removeTag(creature, "approach");
-        removeTag(creature, "approach-logged");
+        if (changed) {
+          removeTag(creature, "approach");
+          removeTag(creature, "approach-logged");
+        }
       }
     }
   }

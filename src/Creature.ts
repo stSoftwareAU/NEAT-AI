@@ -1181,7 +1181,7 @@ export class Creature implements CreatureInternal {
     let changed = false;
     changed = mutator.mutate(focusList);
 
-    if (!changed) {
+    if (!changed && (!focusList || focusList.length == 0)) {
       console.info(`${method.name} didn't mutate the creature.`);
     }
 
