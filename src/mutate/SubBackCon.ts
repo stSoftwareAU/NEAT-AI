@@ -20,7 +20,7 @@ export class SubBackCon implements RadioactiveInterface {
                 this.creature.neurons[from].type === "input"
               ) && this.creature.inwardConnections(to).length > 1
             ) {
-              if (this.getSynapse(from, to) != null) {
+              if (this.creature.getSynapse(from, to) != null) {
                 available.push([from, to]);
               }
             }
