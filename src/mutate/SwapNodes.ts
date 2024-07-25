@@ -13,7 +13,7 @@ export class SwapNodes implements RadioactiveInterface {
       (this.creature.neurons.length - this.creature.input < 2) ||
       (this.creature.neurons.length - this.creature.input - this.creature.output < 2)
     ) {
-      return;
+      return false;
     }
 
     let node1 = null;
