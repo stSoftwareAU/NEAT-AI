@@ -1,5 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { Mutation } from "../../mod.ts";
 
 export class ModActivation implements RadioactiveInterface {
   private creature: Creature;
