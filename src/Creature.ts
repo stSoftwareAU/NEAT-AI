@@ -54,6 +54,7 @@ import { AddSelfCon } from "./mutate/AddSelfCon.ts";
 import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { AddBackCon } from "./mutate/AddBackCon.ts";
 import { SubBackCon } from "./mutate/SubBackCon.ts";
+import { SwapNodes } from "./mutate/SwapNodes.ts";
 
 /**
  * Creature Class
@@ -1122,64 +1123,6 @@ export class Creature implements CreatureInternal {
     return null;
   }
 
-  private swapNodes(focusList?: number[]) {
-    // Has no effect on input node, so they are excluded
-    if (
-      (this.neurons.length - this.input < 2) ||
-      (this.neurons.length - this.input - this.output < 2)
-    ) {
-      return;
-    }
-
-    let node1 = null;
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index1 = Math.floor(
-        Math.random() *
-            (this.neurons.length -
-              this.input - this.output) + this.input,
-      );
-
-      if (this.inFocus(index1, focusList)) {
-        const tmpNode = this.neurons[index1];
-        if (tmpNode.type == "hidden") {
-          node1 = tmpNode;
-          break;
-        }
-      }
-    }
-    if (node1 == null) return;
-    let node2 = null;
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index2 = Math.floor(
-        Math.random() *
-            (this.neurons.length -
-              this.input - this.output) + this.input,
-      );
-
-      if (this.inFocus(index2, focusList)) {
-        const tmpNode = this.neurons[index2];
-        if (tmpNode.type == "hidden") {
-          node2 = tmpNode;
-          break;
-        }
-      }
-    }
-
-    if (node1 && node2) {
-      const biasTemp = node1.bias;
-      const squashTemp = node1.squash;
-
-      node1.bias = node2.bias;
-      node1.squash = node2.squash;
-      node2.bias = biasTemp;
-      node2.squash = squashTemp;
-
-      node1.fix();
-      node2.fix();
-      if (this.DEBUG) creatureValidate(this);
-    }
-  }
-
   /**
    * Mutate the creature using a specific method.
    *
@@ -1227,22 +1170,19 @@ export class Creature implements CreatureInternal {
       case Mutation.SUB_BACK_CONN.name:
         mutator = new SubBackCon(this);
         break;
-      case Mutation.SWAP_NODES.name: {
-        this.swapNodes(focusList);
-        break;
-      }
+      case Mutation.SWAP_NODES.name:
+        mutator = new SwapNodes(this);
+        break;  
       default: {
         throw new Error("unknown: " + method);
       }
     }
 
     let changed = false;
-    if (mutator) {
-      changed = mutator.mutate(focusList);
+    changed = mutator.mutate(focusList);
 
-      if( !changed){
-        console.info(`${method.name} didn't mutate the creature.`);
-      }
+    if( !changed){
+      console.info(`${method.name} didn't mutate the creature.`);
     }
 
     delete this.uuid;
