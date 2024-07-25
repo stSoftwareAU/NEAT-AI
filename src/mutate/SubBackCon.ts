@@ -10,15 +10,15 @@ export class SubBackCon implements RadioactiveInterface {
   mutate(focusList?: number[] | undefined): boolean {
     // Create an array of all uncreated (back fed) connections
     const available = [];
-    for (let to = this.input; to < this.neurons.length; to++) {
-      if (this.inFocus(to, focusList)) {
+    for (let to = this.creature.input; to < this.creature.neurons.length; to++) {
+      if (this.creature.inFocus(to, focusList)) {
         for (let from = 0; from < to; from++) {
-          if (this.inFocus(from, focusList)) {
+          if (this.creature.inFocus(from, focusList)) {
             if (
               (
-                this.outwardConnections(from).length > 1 ||
-                this.neurons[from].type === "input"
-              ) && this.inwardConnections(to).length > 1
+                this.creature.outwardConnections(from).length > 1 ||
+                this.creature.neurons[from].type === "input"
+              ) && this.creature.inwardConnections(to).length > 1
             ) {
               if (this.getSynapse(from, to) != null) {
                 available.push([from, to]);
@@ -34,7 +34,7 @@ export class SubBackCon implements RadioactiveInterface {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    this.disconnect(pair[0], pair[1]);
+    this.creature.disconnect(pair[0], pair[1]);
     return true;
   }
 }
