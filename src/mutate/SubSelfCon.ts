@@ -35,4 +35,3 @@ export class SubSelfCon implements RadioactiveInterface {
     return true;
   }
 }
-

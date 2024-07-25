@@ -12,9 +12,9 @@ export class ModActivation implements RadioactiveInterface {
     for (let attempts = 0; attempts < 12; attempts++) {
       const index = Math.floor(
         Math.random() * (
-          this.creature.neurons.length -
-          this.creature.input
-        ) + this.creature.input,
+              this.creature.neurons.length -
+              this.creature.input
+            ) + this.creature.input,
       );
       const neuron = this.creature.neurons[index];
 

@@ -11,7 +11,8 @@ export class SwapNodes implements RadioactiveInterface {
     // Has no effect on input node, so they are excluded
     if (
       (this.creature.neurons.length - this.creature.input < 2) ||
-      (this.creature.neurons.length - this.creature.input - this.creature.output < 2)
+      (this.creature.neurons.length - this.creature.input -
+          this.creature.output < 2)
     ) {
       return false;
     }
@@ -61,7 +62,7 @@ export class SwapNodes implements RadioactiveInterface {
 
       node1.fix();
       node2.fix();
-      
+
       return true;
     }
 

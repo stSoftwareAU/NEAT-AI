@@ -562,7 +562,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Mutates the node with the given method
    */
-  mutate(method: string):boolean {
+  mutate(method: string): boolean {
     if (typeof method !== "string") {
       throw new Error("Mutate method wrong type: " + (typeof method));
     }

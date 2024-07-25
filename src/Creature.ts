@@ -1161,10 +1161,10 @@ export class Creature implements CreatureInternal {
       case Mutation.ADD_SELF_CONN.name:
         mutator = new AddSelfCon(this);
         break;
-      case Mutation.SUB_SELF_CONN.name:        
+      case Mutation.SUB_SELF_CONN.name:
         mutator = new SubSelfCon(this);
         break;
-      case Mutation.ADD_BACK_CONN.name: 
+      case Mutation.ADD_BACK_CONN.name:
         mutator = new AddBackCon(this);
         break;
       case Mutation.SUB_BACK_CONN.name:
@@ -1172,7 +1172,7 @@ export class Creature implements CreatureInternal {
         break;
       case Mutation.SWAP_NODES.name:
         mutator = new SwapNodes(this);
-        break;  
+        break;
       default: {
         throw new Error("unknown: " + method);
       }
@@ -1181,7 +1181,7 @@ export class Creature implements CreatureInternal {
     let changed = false;
     changed = mutator.mutate(focusList);
 
-    if( !changed){
+    if (!changed) {
       console.info(`${method.name} didn't mutate the creature.`);
     }
 

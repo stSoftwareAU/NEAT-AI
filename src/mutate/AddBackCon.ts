@@ -11,10 +11,18 @@ export class AddBackCon implements RadioactiveInterface {
   mutate(focusList?: number[] | undefined): boolean {
     // Create an array of all uncreated (back feed) connections
     const available = [];
-    for (let toIndx = this.creature.input; toIndx < this.creature.neurons.length; toIndx++) {
+    for (
+      let toIndx = this.creature.input;
+      toIndx < this.creature.neurons.length;
+      toIndx++
+    ) {
       if (this.creature.inFocus(toIndx, focusList)) {
         const neuronTo = this.creature.neurons[toIndx];
-        for (let fromIndx = this.creature.input; fromIndx < toIndx; fromIndx++) {
+        for (
+          let fromIndx = this.creature.input;
+          fromIndx < toIndx;
+          fromIndx++
+        ) {
           const neuronFrom = this.creature.neurons[fromIndx];
           if (neuronFrom.type == "output") break;
           if (neuronTo.type == "constant") continue;

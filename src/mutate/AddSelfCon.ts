@@ -11,7 +11,11 @@ export class AddSelfCon implements RadioactiveInterface {
   mutate(focusList?: number[] | undefined): boolean {
     // Check which neurons aren't self connected yet
     const possible = [];
-    for (let i = this.creature.input; i < this.creature.neurons.length - this.creature.output; i++) {
+    for (
+      let i = this.creature.input;
+      i < this.creature.neurons.length - this.creature.output;
+      i++
+    ) {
       if (this.creature.inFocus(i, focusList)) {
         const neuron = this.creature.neurons[i];
         if (neuron.type === "constant") continue;
