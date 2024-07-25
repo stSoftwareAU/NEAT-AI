@@ -1,8 +1,8 @@
 import type { Creature } from "../Creature.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
-import type { MutatorInterface } from "./MutatorInterface.ts";
+import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
-export class ModBias implements MutatorInterface {
+export class ModBias implements RadioactiveInterface {
   private creature: Creature;
   constructor(creature: Creature) {
     this.creature = creature;

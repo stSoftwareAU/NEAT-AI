@@ -46,7 +46,7 @@ import { AddNeuron } from "./mutate/AddNeuron.ts";
 import { SubNeuron } from "./mutate/SubNeuron.ts";
 import { AddConnection } from "./mutate/AddConnection.ts";
 import { SubConnection } from "./mutate/SubConnection.ts";
-import type { MutatorInterface } from "./mutate/MutatorInterface.ts";
+import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
 import { ModWeight } from "./mutate/ModWeight.ts";
 import { ModBias } from "./mutate/ModBias.ts";
 
@@ -1326,7 +1326,7 @@ export class Creature implements CreatureInternal {
       throw new Error("Mutate method wrong type: " + (typeof method));
     }
 
-    let mutator: MutatorInterface | undefined;
+    let mutator: RadioactiveInterface | undefined;
     switch (method.name) {
       case Mutation.ADD_NODE.name:
         mutator = new AddNeuron(this);
