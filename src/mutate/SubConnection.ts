@@ -1,7 +1,7 @@
 import type { Creature } from "../Creature.ts";
-import type { MutatorInterface } from "./MutatorInterface.ts";
+import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
-export class SubConnection implements MutatorInterface {
+export class SubConnection implements RadioactiveInterface {
   private creature: Creature;
   constructor(creature: Creature) {
     this.creature = creature;

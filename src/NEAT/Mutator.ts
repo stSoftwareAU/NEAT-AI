@@ -20,23 +20,29 @@ export class Mutator {
         if (this.config.debug) {
           creatureValidate(creature);
         }
+        let changed = false;
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
 
-          creature.mutate(
+          const flag = creature.mutate(
             mutationMethod,
             Math.random() < this.config.focusRate
               ? this.config.focusList
               : undefined,
           );
+          if (flag) {
+            changed = true;
+          }
         }
 
         if (this.config.debug) {
           creatureValidate(creature);
         }
 
-        removeTag(creature, "approach");
-        removeTag(creature, "approach-logged");
+        if (changed) {
+          removeTag(creature, "approach");
+          removeTag(creature, "approach-logged");
+        }
       }
     }
   }
@@ -53,18 +59,31 @@ export class Mutator {
         Math.floor(Math.random() * this.config.mutation.length)
       ];
 
-      if (
-        mutationMethod === Mutation.ADD_NODE &&
-        creature.neurons.length >= this.config.maximumNumberOfNodes
-      ) {
-        continue;
-      }
-
-      if (
-        mutationMethod === Mutation.ADD_CONN &&
-        creature.synapses.length >= this.config.maxConns
-      ) {
-        continue;
+      switch (mutationMethod.name) {
+        case Mutation.ADD_NODE.name:
+          if (creature.neurons.length >= this.config.maximumNumberOfNodes) {
+            continue;
+          }
+          break;
+        case Mutation.ADD_CONN.name:
+          if (
+            creature.synapses.length >= this.config.maxConns ||
+            creature.synapses.length >=
+              creature.neurons.length - creature.output
+          ) {
+            continue;
+          }
+          break;
+        case Mutation.SUB_NODE.name:
+          if (creature.neurons.length <= creature.input + creature.output) {
+            continue;
+          }
+          break;
+        case Mutation.SWAP_NODES.name:
+          if (creature.neurons.length <= creature.input + creature.output + 1) {
+            continue;
+          }
+          break;
       }
 
       return mutationMethod;

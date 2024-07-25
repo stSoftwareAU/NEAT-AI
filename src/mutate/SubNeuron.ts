@@ -1,8 +1,8 @@
 import type { Creature } from "../Creature.ts";
-import type { MutatorInterface } from "./MutatorInterface.ts";
+import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 
-export class SubNeuron implements MutatorInterface {
+export class SubNeuron implements RadioactiveInterface {
   private creature: Creature;
   constructor(creature: Creature) {
     this.creature = creature;

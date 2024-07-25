@@ -562,13 +562,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Mutates the node with the given method
    */
-  mutate(method: string) {
+  mutate(method: string): boolean {
     if (typeof method !== "string") {
       throw new Error("Mutate method wrong type: " + (typeof method));
     }
     if (this.type == "input") {
       throw new Error("Mutate on wrong node type: " + this.type);
     }
+    let changed = false;
     switch (method) {
       case Mutation.MOD_ACTIVATION.name: {
         switch (this.type) {
@@ -587,6 +588,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
             this.squash = tmpSquash;
             delete this.squashMethodCache;
             removeTag(this, "CRISPR");
+            changed = true;
             break;
           }
         }
@@ -606,12 +608,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const modification = (Math.random() * 2 - 1) * quantum;
 
         this.bias += modification;
+        changed = true;
         break;
       }
       default:
         throw new Error("Unknown mutate method: " + method);
     }
-    delete this.creature.uuid;
+    if (changed) {
+      delete this.creature.uuid;
+    }
+    return changed;
   }
 
   /**

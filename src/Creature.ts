@@ -46,9 +46,15 @@ import { AddNeuron } from "./mutate/AddNeuron.ts";
 import { SubNeuron } from "./mutate/SubNeuron.ts";
 import { AddConnection } from "./mutate/AddConnection.ts";
 import { SubConnection } from "./mutate/SubConnection.ts";
-import type { MutatorInterface } from "./mutate/MutatorInterface.ts";
+import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
 import { ModWeight } from "./mutate/ModWeight.ts";
 import { ModBias } from "./mutate/ModBias.ts";
+import { ModActivation } from "./mutate/ModActivation.ts";
+import { AddSelfCon } from "./mutate/AddSelfCon.ts";
+import { SubSelfCon } from "./mutate/SubSelfCon.ts";
+import { AddBackCon } from "./mutate/AddBackCon.ts";
+import { SubBackCon } from "./mutate/SubBackCon.ts";
+import { SwapNodes } from "./mutate/SwapNodes.ts";
 
 /**
  * Creature Class
@@ -1028,14 +1034,6 @@ export class Creature implements CreatureInternal {
    * @param {Set<number>} [checked] - The set of checked indices.
    * @returns {boolean} True if the neuron is in focus, false otherwise.
    */
-  /**
-   * Check if a neuron is in focus.
-   *
-   * @param {number} index - The index of the neuron.
-   * @param {number[]} [focusList] - The list of focus indices.
-   * @param {Set<number>} [checked] - The set of checked indices.
-   * @returns {boolean} True if the neuron is in focus, false otherwise.
-   */
   public inFocus(
     index: number,
     focusList?: number[],
@@ -1125,195 +1123,6 @@ export class Creature implements CreatureInternal {
     return null;
   }
 
-  private modActivation(focusList?: number[]) {
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index = Math.floor(
-        Math.random() * (
-              this.neurons.length -
-              this.input
-            ) + this.input,
-      );
-      const neuron = this.neurons[index];
-
-      if (neuron.type == "constant") continue;
-
-      if (this.inFocus(index, focusList)) {
-        neuron.mutate(Mutation.MOD_ACTIVATION.name);
-        break;
-      }
-    }
-  }
-
-  private addSelfCon(focusList?: number[]) {
-    // Check which neurons aren't self connected yet
-    const possible = [];
-    for (let i = this.input; i < this.neurons.length - this.output; i++) {
-      if (this.inFocus(i, focusList)) {
-        const neuron = this.neurons[i];
-        if (neuron.type === "constant") continue;
-
-        const c = this.selfConnection(neuron.index);
-        if (c === null) {
-          possible.push(neuron);
-        }
-      }
-    }
-
-    if (possible.length === 0) {
-      return;
-    }
-
-    // Select a random node
-    const neuron = possible[Math.floor(Math.random() * possible.length)];
-
-    // Connect it to himself
-    const indx = neuron.index;
-    this.connect(indx, indx, Synapse.randomWeight());
-  }
-
-  private subSelfCon(focusList?: number[]) {
-    // Check which neurons aren't self connected yet
-    const possible = [];
-    for (let i = this.input; i < this.neurons.length; i++) {
-      if (this.inFocus(i, focusList)) {
-        const neuron = this.neurons[i];
-        const indx = neuron.index;
-        const c = this.getSynapse(indx, indx);
-        if (c !== null) {
-          possible.push(neuron);
-        }
-      }
-    }
-
-    if (possible.length === 0) {
-      return;
-    }
-
-    // Select a random node
-    const neuron = possible[Math.floor(Math.random() * possible.length)];
-
-    // Connect it to himself
-    const indx = neuron.index;
-    this.disconnect(indx, indx);
-  }
-
-  private addBackConn(focusList?: number[]) {
-    // Create an array of all uncreated (back feed) connections
-    const available = [];
-    for (let toIndx = this.input; toIndx < this.neurons.length; toIndx++) {
-      if (this.inFocus(toIndx, focusList)) {
-        const neuronTo = this.neurons[toIndx];
-        for (let fromIndx = this.input; fromIndx < toIndx; fromIndx++) {
-          const neuronFrom = this.neurons[fromIndx];
-          if (neuronFrom.type == "output") break;
-          if (neuronTo.type == "constant") continue;
-          if (this.inFocus(neuronFrom.index, focusList)) {
-            if (!neuronFrom.isProjectingTo(neuronTo)) {
-              available.push([neuronFrom, neuronTo]);
-            }
-          }
-        }
-      }
-    }
-
-    if (available.length === 0) {
-      return;
-    }
-
-    const pair = available[Math.floor(Math.random() * available.length)];
-    const fromIndx = pair[0].index;
-    const toIndx = pair[1].index;
-    this.connect(fromIndx, toIndx, Synapse.randomWeight());
-  }
-
-  private subBackConn(focusList?: number[]) {
-    // Create an array of all uncreated (back fed) connections
-    const available = [];
-    for (let to = this.input; to < this.neurons.length; to++) {
-      if (this.inFocus(to, focusList)) {
-        for (let from = 0; from < to; from++) {
-          if (this.inFocus(from, focusList)) {
-            if (
-              (
-                this.outwardConnections(from).length > 1 ||
-                this.neurons[from].type === "input"
-              ) && this.inwardConnections(to).length > 1
-            ) {
-              if (this.getSynapse(from, to) != null) {
-                available.push([from, to]);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (available.length === 0) {
-      return;
-    }
-
-    const pair = available[Math.floor(Math.random() * available.length)];
-    this.disconnect(pair[0], pair[1]);
-  }
-
-  private swapNodes(focusList?: number[]) {
-    // Has no effect on input node, so they are excluded
-    if (
-      (this.neurons.length - this.input < 2) ||
-      (this.neurons.length - this.input - this.output < 2)
-    ) {
-      return;
-    }
-
-    let node1 = null;
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index1 = Math.floor(
-        Math.random() *
-            (this.neurons.length -
-              this.input - this.output) + this.input,
-      );
-
-      if (this.inFocus(index1, focusList)) {
-        const tmpNode = this.neurons[index1];
-        if (tmpNode.type == "hidden") {
-          node1 = tmpNode;
-          break;
-        }
-      }
-    }
-    if (node1 == null) return;
-    let node2 = null;
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index2 = Math.floor(
-        Math.random() *
-            (this.neurons.length -
-              this.input - this.output) + this.input,
-      );
-
-      if (this.inFocus(index2, focusList)) {
-        const tmpNode = this.neurons[index2];
-        if (tmpNode.type == "hidden") {
-          node2 = tmpNode;
-          break;
-        }
-      }
-    }
-
-    if (node1 && node2) {
-      const biasTemp = node1.bias;
-      const squashTemp = node1.squash;
-
-      node1.bias = node2.bias;
-      node1.squash = node2.squash;
-      node2.bias = biasTemp;
-      node2.squash = squashTemp;
-
-      node1.fix();
-      node2.fix();
-      if (this.DEBUG) creatureValidate(this);
-    }
-  }
-
   /**
    * Mutate the creature using a specific method.
    *
@@ -1326,7 +1135,7 @@ export class Creature implements CreatureInternal {
       throw new Error("Mutate method wrong type: " + (typeof method));
     }
 
-    let mutator: MutatorInterface | undefined;
+    let mutator: RadioactiveInterface | undefined;
     switch (method.name) {
       case Mutation.ADD_NODE.name:
         mutator = new AddNeuron(this);
@@ -1346,42 +1155,38 @@ export class Creature implements CreatureInternal {
       case Mutation.MOD_BIAS.name:
         mutator = new ModBias(this);
         break;
-      case Mutation.MOD_ACTIVATION.name: {
-        this.modActivation(focusList);
+      case Mutation.MOD_ACTIVATION.name:
+        mutator = new ModActivation(this);
         break;
-      }
-      case Mutation.ADD_SELF_CONN.name: {
-        this.addSelfCon(focusList);
-
+      case Mutation.ADD_SELF_CONN.name:
+        mutator = new AddSelfCon(this);
         break;
-      }
-      case Mutation.SUB_SELF_CONN.name: {
-        this.subSelfCon(focusList);
-
+      case Mutation.SUB_SELF_CONN.name:
+        mutator = new SubSelfCon(this);
         break;
-      }
-      case Mutation.ADD_BACK_CONN.name: {
-        this.addBackConn(focusList);
-
+      case Mutation.ADD_BACK_CONN.name:
+        mutator = new AddBackCon(this);
         break;
-      }
-      case Mutation.SUB_BACK_CONN.name: {
-        this.subBackConn(focusList);
-
+      case Mutation.SUB_BACK_CONN.name:
+        mutator = new SubBackCon(this);
         break;
-      }
-      case Mutation.SWAP_NODES.name: {
-        this.swapNodes(focusList);
+      case Mutation.SWAP_NODES.name:
+        mutator = new SwapNodes(this);
         break;
-      }
       default: {
         throw new Error("unknown: " + method);
       }
     }
 
     let changed = false;
-    if (mutator) {
-      changed = mutator.mutate(focusList);
+    changed = mutator.mutate(focusList);
+
+    if (!changed && (!focusList || focusList.length == 0)) {
+      console.info(
+        `${method.name} didn't mutate the creature. ${this.input} observations, ${
+          this.neurons.length - this.input - this.output
+        } neurons, ${this.output} outputs, ${this.synapses.length} synapses`,
+      );
     }
 
     delete this.uuid;

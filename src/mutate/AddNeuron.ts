@@ -2,9 +2,9 @@ import type { Creature } from "../Creature.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
-import type { MutatorInterface } from "./MutatorInterface.ts";
+import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
-export class AddNeuron implements MutatorInterface {
+export class AddNeuron implements RadioactiveInterface {
   private creature: Creature;
   constructor(creature: Creature) {
     this.creature = creature;

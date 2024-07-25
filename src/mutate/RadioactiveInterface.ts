@@ -1,3 +1,3 @@
-export interface MutatorInterface {
+export interface RadioactiveInterface {
   mutate(focusList?: number[]): boolean;
 }
