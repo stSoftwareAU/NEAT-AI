@@ -1,5 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { Synapse } from "../architecture/Synapse.ts";
 
 export class AddSelfCon implements RadioactiveInterface {
   private creature: Creature;
