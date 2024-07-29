@@ -105,7 +105,7 @@ function makeDad() {
 
 const testDir = ".test/KeepOrder";
 
-Deno.test("KeepOrder", async () => {
+Deno.test("KeepOrder", () => {
   ensureDirSync(testDir);
   const mum = makeMum();
   Deno.writeTextFileSync(
@@ -118,7 +118,7 @@ Deno.test("KeepOrder", async () => {
     JSON.stringify(dad.exportJSON(), null, 2),
   );
   for (let i = 0; i < 10; i++) {
-    const child = await Offspring.breed(mum, dad);
+    const child = Offspring.breed(mum, dad);
     if (!child) continue;
     check(child);
   }

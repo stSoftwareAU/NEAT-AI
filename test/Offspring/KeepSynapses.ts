@@ -145,7 +145,7 @@ function makeDad() {
 
 const testDir = ".test/KeepSynapses";
 
-Deno.test("KeepSynapses", async () => {
+Deno.test("KeepSynapses", () => {
   ensureDirSync(testDir);
   const mum = makeMum();
   Deno.writeTextFileSync(
@@ -158,12 +158,12 @@ Deno.test("KeepSynapses", async () => {
     JSON.stringify(dad.exportJSON(), null, 2),
   );
   for (let i = 0; i < 10; i++) {
-    const child = await Offspring.breed(mum, dad);
+    const child = Offspring.breed(mum, dad);
     if (child) check(child);
   }
 
   for (let i = 0; i < 10; i++) {
-    const child = await Offspring.breed(dad, mum);
+    const child = Offspring.breed(dad, mum);
     if (child) check(child);
   }
 });

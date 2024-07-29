@@ -13,7 +13,7 @@ import { handleGrafting } from "../../src/architecture/GeneticIsolation.ts";
 const testDir = ".test/GeneticIsolatedIslands";
 emptyDirSync(testDir);
 
-async function makeTestCreature(uuidPrefix: string): Promise<Creature> {
+function makeTestCreature(uuidPrefix: string): Creature {
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: `${uuidPrefix}-000`, bias: 0.1 },
@@ -69,7 +69,7 @@ async function makeTestCreature(uuidPrefix: string): Promise<Creature> {
   };
   const creature = Creature.fromJSON(json);
   creature.validate();
-  await CreatureUtil.makeUUID(creature);
+  CreatureUtil.makeUUID(creature);
   Deno.writeTextFileSync(
     `${testDir}/${uuidPrefix}.json`,
     JSON.stringify(creature.exportJSON(), null, 2),
@@ -77,9 +77,9 @@ async function makeTestCreature(uuidPrefix: string): Promise<Creature> {
   return creature;
 }
 
-Deno.test("GeneticIsolatedIslands", async () => {
-  const mother = await makeTestCreature("mother");
-  const father = await makeTestCreature("father");
+Deno.test("GeneticIsolatedIslands", () => {
+  const mother = makeTestCreature("mother");
+  const father = makeTestCreature("father");
 
   const targetNeuronUUID = "output-0";
   const targetNeuronConnectionsBefore = father.exportJSON().synapses.filter(
@@ -90,7 +90,7 @@ Deno.test("GeneticIsolatedIslands", async () => {
     0,
   );
 
-  const baby = await handleGrafting(father, mother, father);
+  const baby = handleGrafting(father, mother, father);
   assert(baby, "Baby should be created");
   const exportBaby = baby.exportJSON();
 
@@ -99,7 +99,7 @@ Deno.test("GeneticIsolatedIslands", async () => {
     JSON.stringify(exportBaby, null, 2),
   );
 
-  const babyUUID = await CreatureUtil.makeUUID(baby);
+  const babyUUID = CreatureUtil.makeUUID(baby);
 
   assertNotEquals(
     babyUUID,

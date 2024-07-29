@@ -4,7 +4,7 @@ import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("tune", async () => {
+Deno.test("tune", () => {
   const previousFittest: Creature = Creature.fromJSON({
     neurons: [
       {
@@ -162,7 +162,7 @@ Deno.test("tune", async () => {
 
   fittest.validate();
 
-  const fineTuned = await fineTuneImprovement(fittest, previousFittest);
+  const fineTuned = fineTuneImprovement(fittest, previousFittest);
 
   fineTuned.forEach((n) => {
     const en = n.exportJSON();

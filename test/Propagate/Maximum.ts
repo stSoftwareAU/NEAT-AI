@@ -8,7 +8,7 @@ import { train } from "../../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateMaximum", async () => {
+Deno.test("PropagateMaximum", () => {
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
     const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
@@ -65,7 +65,7 @@ Deno.test("PropagateMaximum", async () => {
     const creatureC = Creature.fromJSON(exportJSON);
     creatureC.validate();
 
-    const resultC = await train(creatureC, ts, {
+    const resultC = train(creatureC, ts, {
       iterations: 100,
       targetError: errorB - 0.001,
       // disableRandomSamples: true,

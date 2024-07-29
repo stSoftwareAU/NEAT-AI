@@ -51,7 +51,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("CompactCascade", async () => {
+Deno.test("CompactCascade", () => {
   const traceDir = ".trace/compact/cascade";
   ensureDirSync(traceDir);
   const data = makeData();
@@ -89,7 +89,7 @@ Deno.test("CompactCascade", async () => {
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
-    compacted = await compactUnused(creature.traceJSON(), config.plankConstant);
+    compacted = compactUnused(creature.traceJSON(), config.plankConstant);
     if (compacted) break;
   }
 

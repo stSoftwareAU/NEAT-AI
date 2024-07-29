@@ -78,7 +78,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("CompactKeepOrder", async () => {
+Deno.test("CompactKeepOrder", () => {
   const creature = makeCreature();
   const data = makeData();
 
@@ -118,7 +118,7 @@ Deno.test("CompactKeepOrder", async () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  const compacted = await compactUnused(
+  const compacted = compactUnused(
     creature.traceJSON(),
     config.plankConstant,
   );
@@ -171,7 +171,7 @@ Deno.test("CompactKeepOrder", async () => {
     JSON.stringify(compacted.traceJSON(), null, 2),
   );
 
-  const compacted2 = await compactUnused(
+  const compacted2 = compactUnused(
     compacted.traceJSON(),
     config.plankConstant,
   );
