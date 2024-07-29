@@ -7,7 +7,7 @@ import type { Approach } from "../../src/NEAT/LogApproach.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
-Deno.test("tune", async () => {
+Deno.test("tune", () => {
   const previousFittest: Creature = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -45,7 +45,7 @@ Deno.test("tune", async () => {
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
 
-  const fineTuned = await fineTuneImprovement(
+  const fineTuned = fineTuneImprovement(
     fittest,
     previousFittest,
     10,
@@ -58,7 +58,7 @@ Deno.test("tune", async () => {
   addTag(fittest, "approach", "trained");
   const approach = getTag(fittest, "approach") as Approach;
   assert(approach == "trained", "Approach was: " + approach);
-  const fineTuned2 = await fineTuneImprovement(
+  const fineTuned2 = fineTuneImprovement(
     fittest,
     previousFittest,
     3,
@@ -69,7 +69,7 @@ Deno.test("tune", async () => {
     "We should have detected THREE changes was: " + fineTuned2.length,
   );
   addTag(fittest, "approach", "compact" as Approach);
-  const fineTuned3 = await fineTuneImprovement(
+  const fineTuned3 = fineTuneImprovement(
     fittest,
     previousFittest,
     4,
@@ -81,7 +81,7 @@ Deno.test("tune", async () => {
   );
 });
 
-Deno.test("many", async () => {
+Deno.test("many", () => {
   const previousFittest = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -118,7 +118,7 @@ Deno.test("many", async () => {
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
 
-  const fineTuned = await fineTuneImprovement(
+  const fineTuned = fineTuneImprovement(
     fittest,
     previousFittest,
     7,

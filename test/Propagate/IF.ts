@@ -7,7 +7,7 @@ import { train } from "../../src/architecture/Training.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateWeightsIF", async () => {
+Deno.test("PropagateWeightsIF", () => {
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
     const ts: { input: number[]; output: number[] }[] = [];
@@ -61,7 +61,7 @@ Deno.test("PropagateWeightsIF", async () => {
     const creatureC = Creature.fromJSON(exportJSON);
     creatureC.validate();
 
-    const resultC = await train(creatureC, ts, {
+    const resultC = train(creatureC, ts, {
       iterations: 1000,
       targetError: errorB - 0.01,
       generations: 10,
@@ -106,7 +106,7 @@ Deno.test("PropagateWeightsIF", async () => {
   }
 });
 
-Deno.test("PropagateBiasIF", async () => {
+Deno.test("PropagateBiasIF", () => {
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
     const ts: { input: number[]; output: number[] }[] = [];
@@ -161,7 +161,7 @@ Deno.test("PropagateBiasIF", async () => {
     const creatureC = Creature.fromJSON(exportJSON);
     creatureC.validate();
 
-    const resultC = await train(creatureC, ts, {
+    const resultC = train(creatureC, ts, {
       iterations: 1000,
       targetError: errorB - 0.01,
       generations: 10,

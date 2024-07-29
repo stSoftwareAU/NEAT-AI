@@ -40,16 +40,16 @@ function makeCreature(name: string) {
   return creature;
 }
 
-Deno.test("TagSynapse", async () => {
+Deno.test("TagSynapse", () => {
   const mum = makeCreature("mum");
-  const mumUUID = await CreatureUtil.makeUUID(mum);
+  const mumUUID = CreatureUtil.makeUUID(mum);
   const dad = makeCreature("dad");
-  const dadUUID = await CreatureUtil.makeUUID(dad);
-  const baby = await Offspring.breed(mum, dad);
+  const dadUUID = CreatureUtil.makeUUID(dad);
+  const baby = Offspring.breed(mum, dad);
 
   assert(baby);
 
-  const babyUUID = await CreatureUtil.makeUUID(baby);
+  const babyUUID = CreatureUtil.makeUUID(baby);
 
   const message = getTag(baby.synapses[0], "hello");
   assert(/^(mum|dad)$/.test(`${message}`), `Lost name ${message}`);

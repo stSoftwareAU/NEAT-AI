@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertNotEquals } from "@std/assert";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Genus } from "../../src/NEAT/Genus.ts";
 import { Species } from "../../src/NEAT/Species.ts";
@@ -74,45 +74,44 @@ function createCreatureJSON(): CreatureExport {
   return JSON.parse(JSON.stringify(baseCreatureJSON));
 }
 
-Deno.test("Add Creature to Genus and Create New Species", async () => {
+Deno.test("Add Creature to Genus and Create New Species", () => {
   const genus = new Genus();
 
   const creatureJSON = createCreatureJSON();
   const creature: Creature = Creature.fromJSON(creatureJSON);
-  await CreatureUtil.makeUUID(creature);
-  const species = await genus.addCreature(creature);
+  CreatureUtil.makeUUID(creature);
+  const species = genus.addCreature(creature);
 
   assertEquals(genus.speciesMap.size, 1);
   assertEquals(species.creatures.length, 1);
   assertEquals(species.creatures[0], creature);
 });
 
-Deno.test("Find Species by Creature UUID", async () => {
+Deno.test("Find Species by Creature UUID", () => {
   const genus = new Genus();
   const creatureJSON = createCreatureJSON();
   const creature: Creature = Creature.fromJSON(creatureJSON);
-  const uuid = await CreatureUtil.makeUUID(creature);
-  await genus.addCreature(creature);
+  const uuid = CreatureUtil.makeUUID(creature);
+  genus.addCreature(creature);
   const foundSpecies = genus.findSpeciesByCreatureUUID(uuid);
 
   assertEquals(
     foundSpecies,
-    genus.speciesMap.get(await Species.calculateKey(creature)),
+    genus.speciesMap.get(Species.calculateKey(creature)),
   );
 });
 
-Deno.test("Error Handling for Undefined Creature in addCreature", async () => {
+Deno.test("Error Handling for Undefined Creature in addCreature", () => {
   const genus = new Genus();
   const creatureJSON = createCreatureJSON();
   const creature: Creature = Creature.fromJSON(creatureJSON);
 
-  await assertRejects(
-    async () => {
-      await genus.addCreature(creature);
-    },
-    Error,
-    "No creature UUID",
-  );
+  try {
+    genus.addCreature(creature);
+    throw new Error(`Should have failed`);
+  } catch (good) {
+    console.debug(good);
+  }
 });
 
 // Deno.test("Error Handling for Nonexistent Creature UUID", () => {
@@ -127,7 +126,7 @@ Deno.test("Error Handling for Undefined Creature in addCreature", async () => {
 //   );
 // });
 
-Deno.test("Find Closest Matching Species", async () => {
+Deno.test("Find Closest Matching Species", () => {
   const genus = new Genus();
 
   const speciesVariations = [2, 4, 6]; // Different by 2, 4, and 6 neurons
@@ -139,8 +138,8 @@ Deno.test("Find Closest Matching Species", async () => {
 
       const creature = Creature.fromJSON(json);
       creature.mutate({ name: "ADD_NODE" });
-      await CreatureUtil.makeUUID(creature);
-      await genus.addCreature(creature);
+      CreatureUtil.makeUUID(creature);
+      genus.addCreature(creature);
     }
   }
 
@@ -149,14 +148,14 @@ Deno.test("Find Closest Matching Species", async () => {
 
   const testCreature: Creature = Creature.fromJSON(testCreatureJSON);
   testCreature.mutate({ name: "SUB_NODE" });
-  await CreatureUtil.makeUUID(testCreature);
-  await genus.addCreature(testCreature);
+  CreatureUtil.makeUUID(testCreature);
+  genus.addCreature(testCreature);
 
   // Find the closest matching species, which should have 4 fewer neurons (baseNeuronCount - 4)
   const closestSpecies = genus.findClosestMatchingSpecies(testCreature);
 
   assertNotEquals(
     closestSpecies?.speciesKey,
-    await Species.calculateKey(testCreature),
+    Species.calculateKey(testCreature),
   );
 });

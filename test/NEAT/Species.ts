@@ -75,20 +75,20 @@ function createCreatureJSON(
   return JSON.parse(JSON.stringify({ ...baseCreatureJSON }));
 }
 
-Deno.test("Add Creature to Species", async () => {
+Deno.test("Add Creature to Species", () => {
   const species = new Species("test-key");
   const creatureJSON = createCreatureJSON();
   const creature: Creature = Creature.fromJSON(creatureJSON);
 
   creature.validate();
-  await CreatureUtil.makeUUID(creature);
+  CreatureUtil.makeUUID(creature);
   species.addCreature(creature);
 
   assertEquals(species.creatures.length, 1);
   assertEquals(species.creatures[0], creature);
 });
 
-Deno.test("Calculate Species Key Consistency", async () => {
+Deno.test("Calculate Species Key Consistency", () => {
   const creatureJSON = createCreatureJSON();
   const creature1: Creature = Creature.fromJSON(creatureJSON);
 
@@ -96,14 +96,14 @@ Deno.test("Calculate Species Key Consistency", async () => {
   modifiedJSON.synapses[0].weight = 0.1;
   const creature2: Creature = Creature.fromJSON(modifiedJSON);
 
-  const key1 = await Species.calculateKey(creature1);
-  const key2 = await Species.calculateKey(creature2);
+  const key1 = Species.calculateKey(creature1);
+  const key2 = Species.calculateKey(creature2);
 
   // Ensuring that similar creatures have the same species key
   assertEquals(key1, key2);
 });
 
-Deno.test("Species Key Uniqueness", async () => {
+Deno.test("Species Key Uniqueness", () => {
   const creature1JSON = createCreatureJSON();
   const creature1: Creature = Creature.fromJSON(creature1JSON);
 
@@ -112,8 +112,8 @@ Deno.test("Species Key Uniqueness", async () => {
   console.info(creature2JSON);
   const creature2: Creature = Creature.fromJSON(creature2JSON);
 
-  const key1 = await Species.calculateKey(creature1);
-  const key2 = await Species.calculateKey(creature2);
+  const key1 = Species.calculateKey(creature1);
+  const key2 = Species.calculateKey(creature2);
 
   // Ensuring that different creatures have different species keys
   assertNotEquals(key1, key2);

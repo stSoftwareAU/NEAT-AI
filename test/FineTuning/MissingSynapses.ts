@@ -86,12 +86,12 @@ function makePrevious(): Creature {
   return previous;
 }
 
-Deno.test("FineTune-missing synapses", async () => {
+Deno.test("FineTune-missing synapses", () => {
   const fittest = makeFittest();
 
   const previous = makePrevious();
 
-  const tunedCreatures = await fineTuneImprovement(
+  const tunedCreatures = fineTuneImprovement(
     fittest,
     previous,
     3,

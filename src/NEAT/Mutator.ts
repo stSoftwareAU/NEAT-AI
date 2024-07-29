@@ -1,7 +1,6 @@
 import { removeTag } from "@stsoftware/tags";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { type Creature, Mutation } from "../../mod.ts";
-import type { CreatureInternal } from "../architecture/CreatureInterfaces.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
 
 export class Mutator {
@@ -50,10 +49,11 @@ export class Mutator {
   /**
    * Selects a random mutation method for a genome according to the parameters
    */
-  private selectMutationMethod(creature: CreatureInternal) {
+  public selectMutationMethod(creature: Creature) {
     const mutationMethods = this.config
       .mutation;
 
+    const feedbackLoop = this.config.feedbackLoop;
     for (let attempts = 0; true; attempts++) {
       const mutationMethod = mutationMethods[
         Math.floor(Math.random() * this.config.mutation.length)
@@ -81,6 +81,14 @@ export class Mutator {
           break;
         case Mutation.SWAP_NODES.name:
           if (creature.neurons.length <= creature.input + creature.output + 1) {
+            continue;
+          }
+          break;
+        case Mutation.ADD_BACK_CONN.name:
+        case Mutation.SUB_BACK_CONN.name:
+        case Mutation.ADD_SELF_CONN.name:
+        case Mutation.SUB_SELF_CONN.name:
+          if (feedbackLoop == false) {
             continue;
           }
           break;

@@ -9,7 +9,7 @@ import type { TrainOptions } from "../../src/config/TrainOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateMinimum", async () => {
+Deno.test("PropagateMinimum", () => {
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();
 
@@ -73,7 +73,7 @@ Deno.test("PropagateMinimum", async () => {
       disableRandomSamples: true,
     };
 
-    const resultC = await train(creatureC, ts, to);
+    const resultC = train(creatureC, ts, to);
 
     Deno.writeTextFileSync(
       ".trace/C-trace.json",

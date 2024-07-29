@@ -5,13 +5,13 @@ import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("FromUUID", async () => {
+Deno.test("FromUUID", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/CRISPR/network.json")),
   );
   creature.validate();
   const crispr = new CRISPR(creature);
-  const creatureB = await crispr.cleaveDNA(
+  const creatureB = crispr.cleaveDNA(
     JSON.parse(Deno.readTextFileSync("test/data/CRISPR/DNA-from-to.json")),
   );
   assert(creatureB);

@@ -5,7 +5,7 @@ import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("CRISPR/Append", async () => {
+Deno.test("CRISPR/Append", () => {
   const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
   const network = Creature.fromJSON(JSON.parse(networkTXT));
   network.validate();
@@ -13,7 +13,7 @@ Deno.test("CRISPR/Append", async () => {
   const crispr = new CRISPR(network);
   const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-RANGE.json");
 
-  const networkIF = await crispr.cleaveDNA(JSON.parse(dnaTXT));
+  const networkIF = crispr.cleaveDNA(JSON.parse(dnaTXT));
   (networkIF as Creature).validate();
   const expectedJSON = JSON.parse(
     Deno.readTextFileSync("test/data/CRISPR/expected-range.json"),

@@ -49,7 +49,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("UnusedClipped", async () => {
+Deno.test("UnusedClipped", () => {
   const creature = makeCreature();
   const data = makeData();
 
@@ -86,7 +86,7 @@ Deno.test("UnusedClipped", async () => {
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
-    compacted = await compactUnused(creature.traceJSON(), config.plankConstant);
+    compacted = compactUnused(creature.traceJSON(), config.plankConstant);
 
     if (compacted) break;
     // console.info(`Attempt: ${attempts}`);

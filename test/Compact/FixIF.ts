@@ -72,7 +72,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("FixIF", async () => {
+Deno.test("FixIF", () => {
   const creature = makeCreature();
   const data = makeData();
 
@@ -107,7 +107,7 @@ Deno.test("FixIF", async () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  const compacted = await compactUnused(
+  const compacted = compactUnused(
     creature.traceJSON(),
     config.plankConstant,
   );
