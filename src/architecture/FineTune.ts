@@ -145,6 +145,7 @@ function tuneRandomize(
   }
 
   const all = Creature.fromJSON(fittestJSON);
+
   addTag(all, "approach", "fine" as Approach);
   removeTag(all, "approach-logged");
   let adjustedDesc = "";
