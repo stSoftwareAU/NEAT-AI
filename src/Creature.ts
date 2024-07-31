@@ -1221,7 +1221,7 @@ export class Creature implements CreatureInternal {
       } else {
         if (this.neurons[synapse.to].type == "output") {
           /** Don't remove the last one for an output neuron */
-          if (this.outwardConnections(synapse.to).length == 1) {
+          if (this.inwardConnections(synapse.to).length == 1) {
             tmpSynapses.push(synapse as Synapse);
           }
         }
