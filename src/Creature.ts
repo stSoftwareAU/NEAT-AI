@@ -1209,18 +1209,26 @@ export class Creature implements CreatureInternal {
     const maxTo = this.neurons.length - 1;
     const minTo = this.input;
 
-    const connections: Synapse[] = [];
-    this.synapses.forEach((c) => {
-      if (c.to > maxTo) {
-        console.debug("Ignoring connection to above max", maxTo, c);
-      } else if (c.to < minTo) {
-        console.debug("Ignoring connection to below min", minTo, c);
+    const tmpSynapses: Synapse[] = [];
+    this.synapses.forEach((synapse) => {
+      if (synapse.to > maxTo) {
+        console.debug("Ignoring connection to above max", maxTo, synapse);
+      } else if (synapse.to < minTo) {
+        console.debug("Ignoring connection to below min", minTo, synapse);
+      } else if (synapse.weight && Number.isFinite(synapse.weight)) {
+        /** Zero weight may as well be removed */
+        tmpSynapses.push(synapse as Synapse);
       } else {
-        connections.push(c as Synapse);
+        if (this.neurons[synapse.to].type == "output") {
+          /** Don't remove the last one for an output neuron */
+          if (this.inwardConnections(synapse.to).length == 1) {
+            tmpSynapses.push(synapse as Synapse);
+          }
+        }
       }
     });
 
-    this.synapses = connections;
+    this.synapses = tmpSynapses;
 
     /* Make sure the synapses are sorted */
     this.synapses.sort((a, b) => {
@@ -1233,10 +1241,10 @@ export class Creature implements CreatureInternal {
 
     this.clearCache();
 
-    let nodeRemoved = true;
+    let neuronRemoved = true;
 
-    while (nodeRemoved) {
-      nodeRemoved = false;
+    while (neuronRemoved) {
+      neuronRemoved = false;
       for (
         let pos = this.input;
         pos < this.neurons.length - this.output;
@@ -1249,7 +1257,7 @@ export class Creature implements CreatureInternal {
           }).length == 0
         ) {
           removeHiddenNeuron(this, pos);
-          nodeRemoved = true;
+          neuronRemoved = true;
           break;
         }
       }
@@ -1437,10 +1445,8 @@ export class Creature implements CreatureInternal {
 
       if (jn.type === "input") continue;
       if (jn.type == "output") {
-        // if (!jn.uuid || jn.uuid.startsWith("output-") == false) {
         jn.uuid = `output-${outputIndx}`;
-        // uuidMap.set(jn.uuid, pos);
-        // }
+
         outputIndx++;
       }
       const n = Neuron.fromJSON(jn, this);
