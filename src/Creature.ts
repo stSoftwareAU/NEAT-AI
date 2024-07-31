@@ -1218,6 +1218,13 @@ export class Creature implements CreatureInternal {
       } else if (synapse.weight && Number.isFinite(synapse.weight)) {
         /** Zero weight may as well be removed */
         tmpSynapses.push(synapse as Synapse);
+      } else {
+        if (this.neurons[synapse.to].type == "output") {
+          /** Don't remove the last one for an output neuron */
+          if (this.outwardConnections(synapse.to).length == 1) {
+            tmpSynapses.push(synapse as Synapse);
+          }
+        }
       }
     });
 
@@ -1252,13 +1259,6 @@ export class Creature implements CreatureInternal {
           removeHiddenNeuron(this, pos);
           neuronRemoved = true;
           break;
-        }
-        if (this.neurons[pos].type == "hidden") {
-          if (this.inwardConnections(pos).length == 0) {
-            removeHiddenNeuron(this, pos);
-            neuronRemoved = true;
-            break;
-          }
         }
       }
     }
@@ -1445,10 +1445,8 @@ export class Creature implements CreatureInternal {
 
       if (jn.type === "input") continue;
       if (jn.type == "output") {
-        // if (!jn.uuid || jn.uuid.startsWith("output-") == false) {
         jn.uuid = `output-${outputIndx}`;
-        // uuidMap.set(jn.uuid, pos);
-        // }
+
         outputIndx++;
       }
       const n = Neuron.fromJSON(jn, this);
