@@ -220,17 +220,20 @@ export class Neat {
       console.warn("All creatures died, using zombies");
     }
 
+    const numberOfElitists = this.config.elitism > 1
+      ? this.config.elitism
+      : previousFittest
+      ? this.config.elitism
+      : 2;
+
     /* Elitism: we need at least 2 on the first run */
     const results = makeElitists(
       this.population,
-      this.config.elitism > 1
-        ? this.config.elitism
-        : previousFittest
-        ? this.config.elitism
-        : 2,
+      numberOfElitists,
       this.config.verbose,
     );
     const elitists = results.elitists;
+
     let tmpFittest = elitists[0];
 
     assert(tmpFittest.uuid, "Fittest creature has no UUID");
@@ -293,7 +296,7 @@ export class Neat {
           this.trainingInProgress.size < this.config.trainPerGen &&
           Number.isFinite(n.score)
         ) {
-          await this.scheduleTraining(n, trainingTimeOutMinutes);
+          this.scheduleTraining(n, trainingTimeOutMinutes);
         }
       }
     }
