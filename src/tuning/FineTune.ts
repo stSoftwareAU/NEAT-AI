@@ -1,9 +1,9 @@
 import { addTag, getTag, removeTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
-import type { NeuronExport } from "./NeuronInterfaces.ts";
+import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
-import type { SynapseExport } from "./SynapseInterfaces.ts";
+import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { assert } from "@std/assert";
 import type { Approach } from "../NEAT/LogApproach.ts";
 

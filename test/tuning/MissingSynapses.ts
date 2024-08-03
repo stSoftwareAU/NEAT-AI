@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
+import { fineTuneImprovement } from "../../src/tuning/FineTune.ts";
 import { addTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
 
 const baseCreatureJSON: CreatureExport = {

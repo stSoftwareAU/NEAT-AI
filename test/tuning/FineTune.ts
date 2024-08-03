@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../../src/Creature.ts";
-import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
+import { fineTuneImprovement } from "../../src/tuning/FineTune.ts";
 import type { Approach } from "../../src/NEAT/LogApproach.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
