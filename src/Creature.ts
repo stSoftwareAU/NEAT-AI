@@ -107,7 +107,7 @@ export class Creature implements CreatureInternal {
    */
   synapses: Synapse[];
 
-  /** Records the orgins of this creature. */
+  /** Records the origins of this creature. */
   memetic?: MemeticInterface;
 
   /**
