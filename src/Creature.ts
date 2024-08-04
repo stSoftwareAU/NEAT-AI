@@ -2,7 +2,7 @@ import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { addTag, getTag, removeTag, type TagInterface } from "@stsoftware/tags";
-import { CreatureUtil } from "../mod.ts";
+import { CreatureUtil, Mutation } from "../mod.ts";
 import type { BackPropagationConfig } from "./architecture/BackPropagation.ts";
 import type {
   CreatureExport,
@@ -18,7 +18,6 @@ import {
   type DataRecordInterface,
   makeDataDir,
 } from "./architecture/DataSet.ts";
-import { Neat } from "./NEAT/Neat.ts";
 import { Neuron } from "./architecture/Neuron.ts";
 import type {
   NeuronExport,
@@ -33,28 +32,29 @@ import type {
 } from "./architecture/SynapseInterfaces.ts";
 import { dataFiles } from "./architecture/Training.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
+import { NeatConfig } from "./config/NeatConfig.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
 import type { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
-import { Mutation } from "../mod.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
-import { NeatConfig } from "./config/NeatConfig.ts";
-import type { Approach } from "./NEAT/LogApproach.ts";
-import { AddNeuron } from "./mutate/AddNeuron.ts";
-import { SubNeuron } from "./mutate/SubNeuron.ts";
-import { AddConnection } from "./mutate/AddConnection.ts";
-import { SubConnection } from "./mutate/SubConnection.ts";
-import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
-import { ModWeight } from "./mutate/ModWeight.ts";
-import { ModBias } from "./mutate/ModBias.ts";
-import { ModActivation } from "./mutate/ModActivation.ts";
-import { AddSelfCon } from "./mutate/AddSelfCon.ts";
-import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { AddBackCon } from "./mutate/AddBackCon.ts";
+import { AddConnection } from "./mutate/AddConnection.ts";
+import { AddNeuron } from "./mutate/AddNeuron.ts";
+import { AddSelfCon } from "./mutate/AddSelfCon.ts";
+import { ModActivation } from "./mutate/ModActivation.ts";
+import { ModBias } from "./mutate/ModBias.ts";
+import { ModWeight } from "./mutate/ModWeight.ts";
+import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
 import { SubBackCon } from "./mutate/SubBackCon.ts";
+import { SubConnection } from "./mutate/SubConnection.ts";
+import { SubNeuron } from "./mutate/SubNeuron.ts";
+import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { SwapNodes } from "./mutate/SwapNodes.ts";
+import type { Approach } from "./NEAT/LogApproach.ts";
+import { Neat } from "./NEAT/Neat.ts";
+import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
 
 /**
  * Creature Class
@@ -106,6 +106,9 @@ export class Creature implements CreatureInternal {
    * @type {Synapse[]}
    */
   synapses: Synapse[];
+
+  /** Records the orgins of this creature. */
+  memetic?: MemeticInterface;
 
   /**
    * The state of the creature, managing the internal state and activations.

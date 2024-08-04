@@ -105,7 +105,7 @@ Deno.test("train-XOR", () => {
 /**
  * Train the XNOR gate
  */
-Deno.test("XNOR", () => {
+Deno.test("XNOR - train", () => {
   const trainingSet = [
     { input: [0, 0], output: [1] },
     { input: [0, 1], output: [0] },

@@ -111,8 +111,7 @@ Deno.test("booleanXOR", async () => {
   assert(value > 0.65, "Should be more than 0.65 was: " + value);
 });
 
-Deno.test("XNOR", async () => {
-  // Train the XNOR gate
+Deno.test("XNOR - evolve", async () => {
   const trainingSet = [
     { input: [0, 0], output: [1] },
     { input: [0, 1], output: [0] },

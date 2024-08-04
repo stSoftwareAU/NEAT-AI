@@ -1,4 +1,4 @@
-import { addTag, getTag, removeTag } from "@stsoftware/tags";
+import { addTag, removeTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
@@ -77,7 +77,7 @@ function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
 function tuneRandomize(
   fittest: Creature,
   previousFittest: Creature,
-  oldScore: string,
+  // oldScore: string,
   forwardOnly = false,
 ) {
   const previousJSON = previousFittest.exportJSON();
@@ -167,7 +167,9 @@ function tuneRandomize(
     adjustedDesc,
   );
 
-  addTag(all, "old-score", oldScore);
+  if (previousFittest.score) {
+    addTag(all, "old-score", previousFittest.score?.toString());
+  }
 
   return {
     changeBiasCount: changeBiasCount,
@@ -184,16 +186,12 @@ export function fineTuneImprovement(
   if (previousFittest == null) {
     return [];
   }
-  const fScoreTxt = getTag(fittest, "score");
-  assert(fScoreTxt, "Fittest creature must have a score");
-  const fScore = Number.parseFloat(fScoreTxt);
+  assert(fittest.score);
 
-  const pScoreTxt = getTag(previousFittest, "score");
-  assert(pScoreTxt, "Previous creature must have a score");
-
-  const pScore = Number.parseFloat(pScoreTxt);
-
-  if (fScore == pScore) return [];
+  if (
+    fittest.score == previousFittest.score ||
+    !Number.isFinite(previousFittest.score)
+  ) return [];
 
   const fittestUUID = CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
@@ -210,7 +208,7 @@ export function fineTuneImprovement(
     }
   }
 
-  const resultSame = tuneRandomize(fittest, previousFittest, fScoreTxt, false);
+  const resultSame = tuneRandomize(fittest, previousFittest, false);
   if (resultSame.tuned) {
     const randomUUID = CreatureUtil.makeUUID(resultSame.tuned);
     if (!UUIDs.has(randomUUID)) {
@@ -224,7 +222,7 @@ export function fineTuneImprovement(
     attempt < popSize * 2 && fineTuned.length < popSize;
     attempt++
   ) {
-    const resultRandomize = tuneRandomize(fittest, previousFittest, fScoreTxt);
+    const resultRandomize = tuneRandomize(fittest, previousFittest);
     if (resultRandomize.tuned) {
       const randomUUID = CreatureUtil.makeUUID(resultRandomize.tuned);
       if (!UUIDs.has(randomUUID)) {
