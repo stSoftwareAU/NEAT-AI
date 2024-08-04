@@ -41,6 +41,7 @@ export class Mutator {
         if (changed) {
           removeTag(creature, "approach");
           removeTag(creature, "approach-logged");
+          delete creature.memetic;
         }
       }
     }

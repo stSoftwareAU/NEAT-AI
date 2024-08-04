@@ -1333,6 +1333,10 @@ export class Creature implements CreatureInternal {
       json.synapses[i] = exportJSON;
     }
 
+    if (this.memetic) {
+      json.memetic = JSON.parse(JSON.stringify(this.memetic));
+    }
+
     return json;
   }
 
@@ -1372,6 +1376,10 @@ export class Creature implements CreatureInternal {
     });
     json.synapses = traceConnections;
 
+    if (this.memetic) {
+      json.memetic = JSON.parse(JSON.stringify(this.memetic));
+    }
+
     return json as CreatureTrace;
   }
 
@@ -1410,6 +1418,10 @@ export class Creature implements CreatureInternal {
       const internalJSON = this.synapses[i].internalJSON();
 
       json.synapses[i] = internalJSON;
+    }
+
+    if (this.memetic) {
+      json.memetic = JSON.parse(JSON.stringify(this.memetic));
     }
 
     return json;
@@ -1515,6 +1527,7 @@ export class Creature implements CreatureInternal {
       }
     }
 
+    this.memetic = json.memetic;
     this.clearCache();
 
     if (validate) {

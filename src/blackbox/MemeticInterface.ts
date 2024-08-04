@@ -12,7 +12,7 @@ export interface MemeticWeightsInterface {
 }
 
 export interface MemeticInterface {
-  generations: number;
+  generation: number;
   weights: MemeticWeightsInterface;
   biases: MemeticBiasInterface;
   score: number;

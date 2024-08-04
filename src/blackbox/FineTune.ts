@@ -89,7 +89,7 @@ function tuneRandomize(
     memetic = previousJSON.memetic;
   } else {
     memetic = {
-      generations: 0,
+      generation: 0,
       score: previousFittest.score ?? -1,
       biases: {},
       weights: {},
@@ -172,7 +172,7 @@ function tuneRandomize(
     };
   }
 
-  memetic.generations++;
+  memetic.generation++;
 
   const tuned = Creature.fromJSON(fittestJSON);
   tuned.memetic = memetic;

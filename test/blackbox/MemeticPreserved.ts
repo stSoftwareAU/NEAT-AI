@@ -1,7 +1,8 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
-import type { CreatureExport } from "../../mod.ts";
+import { type CreatureExport, CreatureUtil } from "../../mod.ts";
+import { restoreSource } from "../../src/blackbox/RestoreSource.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -67,11 +68,30 @@ Deno.test("memetic preserved", () => {
     previous,
   );
 
-  assertEquals(1, 1);
   assert(population.length > 0);
   population.forEach((creature) => {
     assert(creature.memetic);
-    assertEquals(creature.memetic.generations, 1);
+    assertEquals(creature.memetic.generation, 1);
     assertAlmostEquals(creature.memetic.score, -0.2);
   });
+
+  const tunedCreature = population[0];
+
+  const restoredCreature = restoreSource(tunedCreature);
+
+  assert(restoredCreature);
+
+  const previousUUID = CreatureUtil.makeUUID(previous);
+
+  const restoredUUID = CreatureUtil.makeUUID(restoredCreature);
+
+  assertEquals(previousUUID, restoredUUID);
+  // console.info(JSON.stringify(restoredCreature.exportJSON(), null, 2));
+
+  const exportJSON = tunedCreature.exportJSON();
+  const importedCreature = Creature.fromJSON(exportJSON);
+
+  assert(importedCreature.memetic);
+  assertEquals(importedCreature.memetic.generation, 1);
+  assertAlmostEquals(importedCreature.memetic.score, -0.2);
 });

@@ -119,14 +119,18 @@ Deno.test("XNOR - evolve", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  const network = new Creature(2, 1);
-  const results = await network.evolveDataSet(trainingSet, {
-    mutation: [...Mutation.FFW],
-    elitism: 10,
-    mutationRate: 0.5,
-    targetError: 0.03,
-    threads: 1,
-  });
+  // for (let attempt = 0; true; attempt++) {
+    const creature = new Creature(2, 1);
+    const results = await creature.evolveDataSet(trainingSet, {
+      mutation: [...Mutation.FFW],
+      elitism: 10,
+      mutationRate: 0.5,
+      targetError: 0.03,
+      threads: 1,
+      // iterations: 100_000,
+    });
 
-  assert(results.error <= 0.03, "Error rate was: " + results.error);
+    // if (results.error > 0.03 && attempt < 6) continue;
+    assert(results.error <= 0.03, "Error rate was: " + results.error);
+  // }
 });

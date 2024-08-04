@@ -5,6 +5,7 @@ import { fineTuneImprovement } from "./FineTune.ts";
 import { Species } from "../NEAT/Species.ts";
 import type { Neat } from "../NEAT/Neat.ts";
 import { logApproach } from "../NEAT/LogApproach.ts";
+import { restoreSource } from "./RestoreSource.ts";
 
 export class FindTunePopulation {
   private neat: Neat;
@@ -46,6 +47,15 @@ export class FindTunePopulation {
         }
 
         uniqueUUID.add(previousUUID);
+      }
+    }
+
+    const restoredCreature = restoreSource(fittest);
+
+    if (restoredCreature) {
+      CreatureUtil.makeUUID(restoredCreature);
+      if (!tmpPreviousFittest) {
+        tmpPreviousFittest = restoredCreature;
       }
     }
 
@@ -102,6 +112,21 @@ export class FindTunePopulation {
           fineTunePopSize - 1,
         );
         logApproach(fittest, tmpPreviousFittest);
+      }
+
+      if (restoredCreature) {
+        const restoredUUID = restoredCreature.uuid;
+        assert(restoredUUID);
+        if (!tunedUUID.has(restoredUUID)) {
+          tunedUUID.add(restoredUUID);
+          const restoredTunedPopulation = fineTuneImprovement(
+            fittest,
+            restoredCreature,
+            2,
+          );
+
+          fineTunedPopulation.push(...restoredTunedPopulation);
+        }
       }
 
       for (let attempts = 0; attempts < 12; attempts++) {
