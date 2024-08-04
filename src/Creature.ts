@@ -2,7 +2,7 @@ import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { addTag, getTag, removeTag, type TagInterface } from "@stsoftware/tags";
-import { CreatureUtil } from "../mod.ts";
+import { CreatureUtil, Mutation } from "../mod.ts";
 import type { BackPropagationConfig } from "./architecture/BackPropagation.ts";
 import type {
   CreatureExport,
@@ -18,7 +18,6 @@ import {
   type DataRecordInterface,
   makeDataDir,
 } from "./architecture/DataSet.ts";
-import { Neat } from "./NEAT/Neat.ts";
 import { Neuron } from "./architecture/Neuron.ts";
 import type {
   NeuronExport,
@@ -33,28 +32,29 @@ import type {
 } from "./architecture/SynapseInterfaces.ts";
 import { dataFiles } from "./architecture/Training.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
+import { NeatConfig } from "./config/NeatConfig.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
 import type { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
-import { Mutation } from "../mod.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
-import { NeatConfig } from "./config/NeatConfig.ts";
-import type { Approach } from "./NEAT/LogApproach.ts";
-import { AddNeuron } from "./mutate/AddNeuron.ts";
-import { SubNeuron } from "./mutate/SubNeuron.ts";
-import { AddConnection } from "./mutate/AddConnection.ts";
-import { SubConnection } from "./mutate/SubConnection.ts";
-import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
-import { ModWeight } from "./mutate/ModWeight.ts";
-import { ModBias } from "./mutate/ModBias.ts";
-import { ModActivation } from "./mutate/ModActivation.ts";
-import { AddSelfCon } from "./mutate/AddSelfCon.ts";
-import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { AddBackCon } from "./mutate/AddBackCon.ts";
+import { AddConnection } from "./mutate/AddConnection.ts";
+import { AddNeuron } from "./mutate/AddNeuron.ts";
+import { AddSelfCon } from "./mutate/AddSelfCon.ts";
+import { ModActivation } from "./mutate/ModActivation.ts";
+import { ModBias } from "./mutate/ModBias.ts";
+import { ModWeight } from "./mutate/ModWeight.ts";
+import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
 import { SubBackCon } from "./mutate/SubBackCon.ts";
+import { SubConnection } from "./mutate/SubConnection.ts";
+import { SubNeuron } from "./mutate/SubNeuron.ts";
+import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { SwapNodes } from "./mutate/SwapNodes.ts";
+import type { Approach } from "./NEAT/LogApproach.ts";
+import { Neat } from "./NEAT/Neat.ts";
+import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
 
 /**
  * Creature Class
@@ -106,6 +106,9 @@ export class Creature implements CreatureInternal {
    * @type {Synapse[]}
    */
   synapses: Synapse[];
+
+  /** Records the origins of this creature. */
+  memetic?: MemeticInterface;
 
   /**
    * The state of the creature, managing the internal state and activations.
@@ -457,6 +460,7 @@ export class Creature implements CreatureInternal {
     const json2 = compactCreature.exportJSON();
     if (JSON.stringify(json) != JSON.stringify(json2)) {
       addTag(compactCreature, "approach", "compact" as Approach);
+      delete compactCreature.memetic;
       removeTag(compactCreature, "approach-logged");
       addTag(compactCreature, "old-nodes", this.neurons.length.toString());
       addTag(
@@ -707,6 +711,8 @@ export class Creature implements CreatureInternal {
     }
 
     if (changed) {
+      delete this.uuid;
+      delete this.memetic;
       this.fix();
     }
 
@@ -766,7 +772,9 @@ export class Creature implements CreatureInternal {
   async evolveDir(
     dataSetDir: string,
     options: NeatOptions,
-  ): Promise<{ error: number; score: number; time: number }> {
+  ): Promise<
+    { error: number; score: number; time: number; generation: number }
+  > {
     const start = Date.now();
 
     const endTimeMS = options.timeoutMinutes
@@ -891,6 +899,7 @@ export class Creature implements CreatureInternal {
     return {
       error: error,
       score: bestScore,
+      generation: generation,
       time: Date.now() - start,
     };
   }
@@ -1267,8 +1276,12 @@ export class Creature implements CreatureInternal {
       node.fix();
     });
 
+    const tmpDebug = this.DEBUG;
+    this.DEBUG = false;
     const endTxt = JSON.stringify(this.internalJSON());
+    this.DEBUG = tmpDebug;
     if (startTxt != endTxt) {
+      delete this.memetic;
       delete this.uuid;
     }
   }
@@ -1330,6 +1343,10 @@ export class Creature implements CreatureInternal {
       json.synapses[i] = exportJSON;
     }
 
+    if (this.memetic) {
+      json.memetic = JSON.parse(JSON.stringify(this.memetic));
+    }
+
     return json;
   }
 
@@ -1369,6 +1386,10 @@ export class Creature implements CreatureInternal {
     });
     json.synapses = traceConnections;
 
+    if (this.memetic) {
+      json.memetic = JSON.parse(JSON.stringify(this.memetic));
+    }
+
     return json as CreatureTrace;
   }
 
@@ -1407,6 +1428,10 @@ export class Creature implements CreatureInternal {
       const internalJSON = this.synapses[i].internalJSON();
 
       json.synapses[i] = internalJSON;
+    }
+
+    if (this.memetic) {
+      json.memetic = JSON.parse(JSON.stringify(this.memetic));
     }
 
     return json;
@@ -1512,6 +1537,7 @@ export class Creature implements CreatureInternal {
       }
     }
 
+    this.memetic = json.memetic;
     this.clearCache();
 
     if (validate) {

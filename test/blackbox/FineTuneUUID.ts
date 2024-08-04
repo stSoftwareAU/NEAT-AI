@@ -1,6 +1,6 @@
 import { assertAlmostEquals, assertEquals, fail } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
+import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -79,7 +79,6 @@ Deno.test("tune", () => {
     ],
     input: 2,
     output: 1,
-    tags: [{ name: "score", value: "0.5" }],
   });
 
   previousFittest.validate();
@@ -157,10 +156,13 @@ Deno.test("tune", () => {
     ],
     input: 2,
     output: 1,
-    tags: [{ name: "score", value: "0.51" }],
   });
 
   fittest.validate();
+
+  fittest.score = -0.4;
+
+  previousFittest.score = -0.5;
 
   const fineTuned = fineTuneImprovement(fittest, previousFittest);
 

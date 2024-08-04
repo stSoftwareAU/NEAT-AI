@@ -1,7 +1,6 @@
 import { assert } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
-import { addTag } from "https://deno.land/x/tags@v1.0.2/src/TagsInterface.ts";
+import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
 
 const baseCreatureJSON: CreatureExport = {
   neurons: [
@@ -72,7 +71,8 @@ const baseCreatureJSON: CreatureExport = {
 
 function makeFittest(): Creature {
   const fittest = Creature.fromJSON(baseCreatureJSON);
-  addTag(fittest, "score", "-0.2");
+
+  fittest.score = -0.4;
   fittest.validate();
   fittest.connect(0, 5, 0.1);
   return fittest;
@@ -80,7 +80,8 @@ function makeFittest(): Creature {
 
 function makePrevious(): Creature {
   const previous = Creature.fromJSON(baseCreatureJSON);
-  addTag(previous, "score", "-0.3");
+
+  previous.score = -0.5;
   previous.validate();
   previous.connect(1, 5, -0.1);
   return previous;

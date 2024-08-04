@@ -1,4 +1,4 @@
-import { MIN_STEP, quantumAdjust } from "../../src/architecture/FineTune.ts";
+import { MIN_STEP, quantumAdjust } from "../../src/blackbox/FineTune.ts";
 import { assert, assertEquals } from "@std/assert";
 
 Deno.test("quantumAdjust - forward only mode, example case", () => {

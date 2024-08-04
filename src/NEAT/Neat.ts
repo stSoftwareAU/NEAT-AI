@@ -20,7 +20,7 @@ import type {
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
 import { Breed } from "./Breed.ts";
-import { FindTunePopulation } from "./FineTunePopulation.ts";
+import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
 import { Genus } from "./Genus.ts";
 import { Mutator } from "./Mutator.ts";
 import type { Approach } from "./LogApproach.ts";
@@ -220,18 +220,21 @@ export class Neat {
       console.warn("All creatures died, using zombies");
     }
 
+    const numberOfElitists = this.config.elitism > 1
+      ? this.config.elitism
+      : previousFittest
+      ? this.config.elitism
+      : 2;
+
     /* Elitism: we need at least 2 on the first run */
     const results = makeElitists(
       this.population,
-      this.config.elitism > 1
-        ? this.config.elitism
-        : previousFittest
-        ? this.config.elitism
-        : 2,
+      numberOfElitists,
       this.config.verbose,
     );
     const elitists = results.elitists;
-    let tmpFittest = elitists[0];
+
+    const tmpFittest = elitists[0];
 
     assert(tmpFittest.uuid, "Fittest creature has no UUID");
     assert(tmpFittest.score, "No fittest creature score found");
@@ -242,7 +245,7 @@ export class Neat {
         throw new Error(
           `Previous fittest ${previousFittest.score} has a higher score than fittest ${tmpFittest.score} , this should not happen`,
         );
-      } else if (previousFittest.score == tmpFittest.score) {
+      } /*else if (previousFittest.score == tmpFittest.score) {
         if (previousFittest.uuid !== tmpFittest.uuid) {
           console.info(
             `Fittest creature ${
@@ -253,7 +256,7 @@ export class Neat {
           );
         }
         tmpFittest = previousFittest;
-      }
+      }*/
     }
 
     const fittest = Creature.fromJSON(
@@ -293,7 +296,7 @@ export class Neat {
           this.trainingInProgress.size < this.config.trainPerGen &&
           Number.isFinite(n.score)
         ) {
-          await this.scheduleTraining(n, trainingTimeOutMinutes);
+          this.scheduleTraining(n, trainingTimeOutMinutes);
         }
       }
     }
@@ -304,6 +307,7 @@ export class Neat {
     ) {
       const n = elitists[0];
       const creativeThinking = Creature.fromJSON(n.exportJSON());
+      delete creativeThinking.memetic;
       const weightScale = 1 / creativeThinking.synapses.length;
       const addConnection = new AddConnection(creativeThinking);
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
@@ -318,6 +322,7 @@ export class Neat {
       }
       CreatureUtil.makeUUID(creativeThinking);
       genus.addCreature(creativeThinking);
+      assert(!creativeThinking.memetic);
       newPopulation.push(creativeThinking);
     }
 
@@ -343,6 +348,7 @@ export class Neat {
       const child = breed.breed();
       if (child) {
         CreatureUtil.makeUUID(child);
+        assert(!child.memetic);
         genus.addCreature(child);
         newPopulation.push(child);
       }
@@ -370,6 +376,7 @@ export class Neat {
           }
 
           addTag(json, "approach", "trained" as Approach);
+          delete json.memetic;
           removeTag(json, "approach-logged");
           addTag(json, "trainID", r.train.ID);
           addTag(json, "trained", "YES");
@@ -388,6 +395,7 @@ export class Neat {
             }
 
             addTag(compactJSON, "approach", "compact" as Approach);
+            delete compactJSON.memetic;
             removeTag(compactJSON, "approach-logged");
             addTag(compactJSON, "trainID", r.train.ID);
             addTag(compactJSON, "trained", "YES");

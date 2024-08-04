@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../../src/Creature.ts";
-import { fineTuneImprovement } from "../../src/architecture/FineTune.ts";
+import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
 import type { Approach } from "../../src/NEAT/LogApproach.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -40,7 +40,9 @@ Deno.test("tune", () => {
   const fittest = Creature.fromJSON(
     previousFittest.exportJSON(),
   );
-  addTag(fittest, "score", "-0.4");
+  fittest.score = -0.4;
+
+  previousFittest.score = -0.5;
   addTag(fittest, "approach", "trained" as Approach);
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;
@@ -113,7 +115,10 @@ Deno.test("many", () => {
   const fittest = Creature.fromJSON(
     previousFittest.exportJSON(),
   );
-  addTag(fittest, "score", "-0.4");
+
+  fittest.score = -0.4;
+  previousFittest.score = -0.5;
+
   addTag(fittest, "approach", "fine" as Approach);
   fittest.neurons[2].bias = 0.001;
   fittest.synapses[0].weight = 0.011;

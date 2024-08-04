@@ -9,6 +9,7 @@ import type {
   NeuronInternal,
   NeuronTrace,
 } from "./NeuronInterfaces.ts";
+import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
 
 /**
  * Common properties shared by all creature interfaces.
@@ -19,6 +20,8 @@ interface CreatureCommon extends TagsInterface {
 
   /** Number of output neurons. */
   output: number;
+
+  memetic?: MemeticInterface;
 }
 
 /**

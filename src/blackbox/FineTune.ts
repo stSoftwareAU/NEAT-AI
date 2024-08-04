@@ -1,11 +1,12 @@
-import { addTag, getTag, removeTag } from "@stsoftware/tags";
+import { addTag, removeTag } from "@stsoftware/tags";
 import { Creature } from "../Creature.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
-import type { NeuronExport } from "./NeuronInterfaces.ts";
+import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
-import type { SynapseExport } from "./SynapseInterfaces.ts";
+import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { assert } from "@std/assert";
 import type { Approach } from "../NEAT/LogApproach.ts";
+import type { MemeticInterface } from "./MemeticInterface.ts";
 
 export const MIN_STEP = 0.000_000_1;
 
@@ -77,11 +78,23 @@ function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
 function tuneRandomize(
   fittest: Creature,
   previousFittest: Creature,
-  oldScore: string,
   forwardOnly = false,
 ) {
   const previousJSON = previousFittest.exportJSON();
   const fittestJSON = fittest.exportJSON();
+
+  let memetic: MemeticInterface;
+
+  if (fittestJSON.memetic) {
+    memetic = fittestJSON.memetic;
+  } else {
+    memetic = {
+      generation: 0,
+      score: previousFittest.score ?? -1,
+      biases: {},
+      weights: {},
+    };
+  }
 
   addMissingSynapses(fittestJSON, previousJSON);
   addMissingSynapses(previousJSON, fittestJSON);
@@ -108,6 +121,9 @@ function tuneRandomize(
       if (result.changed) {
         fittestNeuron.bias = result.value;
         changeBiasCount++;
+        if (!memetic.biases[fittestNeuron.uuid]) {
+          memetic.biases[fittestNeuron.uuid] = previousNeuron.bias;
+        }
       }
     }
   }
@@ -129,6 +145,18 @@ function tuneRandomize(
         if (result.changed) {
           fittestSynapse.weight = result.value;
           changeWeightCount++;
+          if (!memetic.weights[fittestSynapse.fromUUID]) {
+            memetic.weights[fittestSynapse.fromUUID] = [];
+          }
+          const existingWeight = memetic.weights[fittestSynapse.fromUUID].find(
+            (w) => w.toUUID === fittestSynapse.toUUID,
+          );
+          if (!existingWeight) {
+            memetic.weights[fittestSynapse.fromUUID].push({
+              toUUID: fittestSynapse.toUUID,
+              weight: previousSynapse.weight,
+            });
+          }
         }
 
         break;
@@ -144,10 +172,12 @@ function tuneRandomize(
     };
   }
 
-  const all = Creature.fromJSON(fittestJSON);
+  memetic.generation++;
 
-  addTag(all, "approach", "fine" as Approach);
-  removeTag(all, "approach-logged");
+  const tuned = Creature.fromJSON(fittestJSON);
+  tuned.memetic = memetic;
+  addTag(tuned, "approach", "fine" as Approach);
+  removeTag(tuned, "approach-logged");
   let adjustedDesc = "";
   if (changeWeightCount > 0) {
     adjustedDesc += changeWeightCount + " weight" +
@@ -162,17 +192,19 @@ function tuneRandomize(
   }
 
   addTag(
-    all,
+    tuned,
     "adjusted",
     adjustedDesc,
   );
 
-  addTag(all, "old-score", oldScore);
+  if (previousFittest.score) {
+    addTag(tuned, "old-score", previousFittest.score?.toString());
+  }
 
   return {
     changeBiasCount: changeBiasCount,
     changeWeightCount: changeWeightCount,
-    tuned: all,
+    tuned: tuned,
   };
 }
 
@@ -184,16 +216,12 @@ export function fineTuneImprovement(
   if (previousFittest == null) {
     return [];
   }
-  const fScoreTxt = getTag(fittest, "score");
-  assert(fScoreTxt, "Fittest creature must have a score");
-  const fScore = Number.parseFloat(fScoreTxt);
+  assert(fittest.score);
 
-  const pScoreTxt = getTag(previousFittest, "score");
-  assert(pScoreTxt, "Previous creature must have a score");
-
-  const pScore = Number.parseFloat(pScoreTxt);
-
-  if (fScore == pScore) return [];
+  if (
+    fittest.score == previousFittest.score ||
+    !Number.isFinite(previousFittest.score)
+  ) return [];
 
   const fittestUUID = CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
@@ -210,7 +238,7 @@ export function fineTuneImprovement(
     }
   }
 
-  const resultSame = tuneRandomize(fittest, previousFittest, fScoreTxt, false);
+  const resultSame = tuneRandomize(fittest, previousFittest, false);
   if (resultSame.tuned) {
     const randomUUID = CreatureUtil.makeUUID(resultSame.tuned);
     if (!UUIDs.has(randomUUID)) {
@@ -224,7 +252,7 @@ export function fineTuneImprovement(
     attempt < popSize * 2 && fineTuned.length < popSize;
     attempt++
   ) {
-    const resultRandomize = tuneRandomize(fittest, previousFittest, fScoreTxt);
+    const resultRandomize = tuneRandomize(fittest, previousFittest);
     if (resultRandomize.tuned) {
       const randomUUID = CreatureUtil.makeUUID(resultRandomize.tuned);
       if (!UUIDs.has(randomUUID)) {

@@ -111,8 +111,7 @@ Deno.test("booleanXOR", async () => {
   assert(value > 0.65, "Should be more than 0.65 was: " + value);
 });
 
-Deno.test("XNOR", async () => {
-  // Train the XNOR gate
+Deno.test("XNOR - evolve", async () => {
   const trainingSet = [
     { input: [0, 0], output: [1] },
     { input: [0, 1], output: [0] },
@@ -120,14 +119,22 @@ Deno.test("XNOR", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  const network = new Creature(2, 1);
-  const results = await network.evolveDataSet(trainingSet, {
+  // for (let attempt = 0; true; attempt++) {
+  const creature = new Creature(2, 1);
+  const results = await creature.evolveDataSet(trainingSet, {
     mutation: [...Mutation.FFW],
     elitism: 10,
     mutationRate: 0.5,
     targetError: 0.03,
     threads: 1,
+    // iterations: 1_000_000,
   });
 
+  console.info(results);
+  // if (results.error > 0.03 && attempt < 6) {
+  //   console.info(`attempt: ${attempt}`, results);
+  //   continue;
+  // }
   assert(results.error <= 0.03, "Error rate was: " + results.error);
+  // }
 });

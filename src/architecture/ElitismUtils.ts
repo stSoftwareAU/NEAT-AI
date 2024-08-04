@@ -13,6 +13,10 @@ export function makeElitists(
   size = 1,
   verbose = false,
 ): ElitistsResults {
+  if (creatures.length == 0) throw new Error(`Whole popluation is extinct`);
+  if (!Number.isFinite(size) || size < 1) {
+    throw new Error(`Must have at least one elite creature was: ${size}`);
+  }
   const result: ElitistsResults = {
     elitists: [],
     averageScore: NaN,
@@ -21,7 +25,7 @@ export function makeElitists(
     result.averageScore = logVerbose(creatures);
   }
 
-  const elitism = Math.min(Math.max(1, size), creatures.length);
+  const elitism = Math.min(size, creatures.length);
 
   const elitists = creatures.slice(0, elitism);
   result.elitists = elitists;

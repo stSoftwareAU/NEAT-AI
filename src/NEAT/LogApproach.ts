@@ -24,6 +24,8 @@ export function logApproach(fittest: Creature, previous: Creature) {
 
       switch (approach) {
         case "fine": {
+          const restored = getTag(previous, "restored");
+          const restoredMsg = restored ? `Restored: ${restored}` : "";
           console.info(
             "Fine tuning increased fitness by",
             fScore - pScore,
@@ -31,6 +33,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
             fScore,
             "adjusted",
             getTag(fittest, "adjusted"),
+            restoredMsg,
           );
           break;
         }
