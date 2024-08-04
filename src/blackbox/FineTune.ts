@@ -85,8 +85,8 @@ function tuneRandomize(
 
   let memetic: MemeticInterface;
 
-  if (previousJSON.memetic) {
-    memetic = previousJSON.memetic;
+  if (fittestJSON.memetic) {
+    memetic = fittestJSON.memetic;
   } else {
     memetic = {
       generation: 0,

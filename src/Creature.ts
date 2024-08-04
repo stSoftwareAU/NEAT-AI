@@ -711,6 +711,8 @@ export class Creature implements CreatureInternal {
     }
 
     if (changed) {
+      delete this.uuid;
+      delete this.memetic;
       this.fix();
     }
 
@@ -1274,8 +1276,12 @@ export class Creature implements CreatureInternal {
       node.fix();
     });
 
+    const tmpDebug = this.DEBUG;
+    this.DEBUG = false;
     const endTxt = JSON.stringify(this.internalJSON());
+    this.DEBUG = tmpDebug;
     if (startTxt != endTxt) {
+      delete this.memetic;
       delete this.uuid;
     }
   }

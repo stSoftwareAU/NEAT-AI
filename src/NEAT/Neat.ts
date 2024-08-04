@@ -234,7 +234,7 @@ export class Neat {
     );
     const elitists = results.elitists;
 
-    let tmpFittest = elitists[0];
+    const tmpFittest = elitists[0];
 
     assert(tmpFittest.uuid, "Fittest creature has no UUID");
     assert(tmpFittest.score, "No fittest creature score found");
@@ -245,7 +245,7 @@ export class Neat {
         throw new Error(
           `Previous fittest ${previousFittest.score} has a higher score than fittest ${tmpFittest.score} , this should not happen`,
         );
-      } else if (previousFittest.score == tmpFittest.score) {
+      } /*else if (previousFittest.score == tmpFittest.score) {
         if (previousFittest.uuid !== tmpFittest.uuid) {
           console.info(
             `Fittest creature ${
@@ -256,7 +256,7 @@ export class Neat {
           );
         }
         tmpFittest = previousFittest;
-      }
+      }*/
     }
 
     const fittest = Creature.fromJSON(
@@ -307,6 +307,7 @@ export class Neat {
     ) {
       const n = elitists[0];
       const creativeThinking = Creature.fromJSON(n.exportJSON());
+      delete creativeThinking.memetic;
       const weightScale = 1 / creativeThinking.synapses.length;
       const addConnection = new AddConnection(creativeThinking);
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
@@ -321,6 +322,7 @@ export class Neat {
       }
       CreatureUtil.makeUUID(creativeThinking);
       genus.addCreature(creativeThinking);
+      assert(!creativeThinking.memetic);
       newPopulation.push(creativeThinking);
     }
 
@@ -346,6 +348,7 @@ export class Neat {
       const child = breed.breed();
       if (child) {
         CreatureUtil.makeUUID(child);
+        assert(!child.memetic);
         genus.addCreature(child);
         newPopulation.push(child);
       }

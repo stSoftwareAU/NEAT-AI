@@ -383,5 +383,18 @@ export function creatureValidate(
     }
   }
 
+  if (creature.memetic) {
+    const memetic = creature.memetic;
+
+    for (const neuronUUID in memetic.biases) {
+      const neuron = creature.neurons.find((n) => n.uuid === neuronUUID);
+      if (!neuron) {
+        throw new Error(
+          `Neuron with UUID ${neuronUUID} not found in the creature.`,
+        );
+      }
+    }
+  }
+
   return stats;
 }

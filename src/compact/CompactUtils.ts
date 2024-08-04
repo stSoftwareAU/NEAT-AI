@@ -100,11 +100,12 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
     throw new Error("Must be a positive integer was: " + indx);
   }
 
-  const node = creature.neurons[indx];
+  delete creature.memetic;
+  const neuron = creature.neurons[indx];
 
-  if (node.type !== "hidden" && node.type !== "constant") {
+  if (neuron.type !== "hidden" && neuron.type !== "constant") {
     throw new Error(
-      `${indx}) Node must be a 'hidden' type was: ${node.type}`,
+      `${indx}) Node must be a 'hidden' type was: ${neuron.type}`,
     );
   }
   const left = creature.neurons.slice(0, indx);
