@@ -1,16 +1,19 @@
 export interface MemeticWeightInterface {
-  fromUUID: string;
   toUUID: string;
   weight: number;
 }
 
 export interface MemeticBiasInterface {
-  neuronUUID: string;
-  bias: number;
+  [neuronUUID: string]: number;
 }
+
+export interface MemeticWeightsInterface {
+  [fromUUID: string]: MemeticWeightInterface[];
+}
+
 export interface MemeticInterface {
   generations: number;
-  weights: MemeticWeightInterface[];
-  biases: MemeticBiasInterface[];
+  weights: MemeticWeightsInterface;
+  biases: MemeticBiasInterface;
   score: number;
 }

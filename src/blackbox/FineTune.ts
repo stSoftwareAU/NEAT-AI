@@ -80,21 +80,21 @@ function tuneRandomize(
   previousFittest: Creature,
   forwardOnly = false,
 ) {
+  const previousJSON = previousFittest.exportJSON();
+  const fittestJSON = fittest.exportJSON();
+
   let memetic: MemeticInterface;
 
-  if (previousFittest.memetic) {
-    memetic = previousFittest.memetic;
+  if (previousJSON.memetic) {
+    memetic = previousJSON.memetic;
   } else {
     memetic = {
       generations: 0,
       score: previousFittest.score ?? -1,
-      biases: [],
-      weights: [],
+      biases: {},
+      weights: {},
     };
   }
-  fittest.memetic = memetic;
-  const previousJSON = previousFittest.exportJSON();
-  const fittestJSON = fittest.exportJSON();
 
   addMissingSynapses(fittestJSON, previousJSON);
   addMissingSynapses(previousJSON, fittestJSON);
@@ -121,6 +121,9 @@ function tuneRandomize(
       if (result.changed) {
         fittestNeuron.bias = result.value;
         changeBiasCount++;
+        if (!memetic.biases[fittestNeuron.uuid]) {
+          memetic.biases[fittestNeuron.uuid] = previousNeuron.bias;
+        }
       }
     }
   }
@@ -142,6 +145,18 @@ function tuneRandomize(
         if (result.changed) {
           fittestSynapse.weight = result.value;
           changeWeightCount++;
+          if (!memetic.weights[fittestSynapse.fromUUID]) {
+            memetic.weights[fittestSynapse.fromUUID] = [];
+          }
+          const existingWeight = memetic.weights[fittestSynapse.fromUUID].find(
+            (w) => w.toUUID === fittestSynapse.toUUID,
+          );
+          if (!existingWeight) {
+            memetic.weights[fittestSynapse.fromUUID].push({
+              toUUID: fittestSynapse.toUUID,
+              weight: previousSynapse.weight,
+            });
+          }
         }
 
         break;
@@ -157,10 +172,12 @@ function tuneRandomize(
     };
   }
 
-  const all = Creature.fromJSON(fittestJSON);
+  memetic.generations++;
 
-  addTag(all, "approach", "fine" as Approach);
-  removeTag(all, "approach-logged");
+  const tuned = Creature.fromJSON(fittestJSON);
+  tuned.memetic = memetic;
+  addTag(tuned, "approach", "fine" as Approach);
+  removeTag(tuned, "approach-logged");
   let adjustedDesc = "";
   if (changeWeightCount > 0) {
     adjustedDesc += changeWeightCount + " weight" +
@@ -175,19 +192,19 @@ function tuneRandomize(
   }
 
   addTag(
-    all,
+    tuned,
     "adjusted",
     adjustedDesc,
   );
 
   if (previousFittest.score) {
-    addTag(all, "old-score", previousFittest.score?.toString());
+    addTag(tuned, "old-score", previousFittest.score?.toString());
   }
 
   return {
     changeBiasCount: changeBiasCount,
     changeWeightCount: changeWeightCount,
-    tuned: all,
+    tuned: tuned,
   };
 }
 

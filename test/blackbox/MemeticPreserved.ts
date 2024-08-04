@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
 import type { CreatureExport } from "../../mod.ts";
@@ -72,5 +72,6 @@ Deno.test("memetic preserved", () => {
   population.forEach((creature) => {
     assert(creature.memetic);
     assertEquals(creature.memetic.generations, 1);
+    assertAlmostEquals(creature.memetic.score, -0.2);
   });
 });
