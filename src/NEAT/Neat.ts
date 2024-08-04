@@ -373,6 +373,7 @@ export class Neat {
           }
 
           addTag(json, "approach", "trained" as Approach);
+          delete json.memetic;
           removeTag(json, "approach-logged");
           addTag(json, "trainID", r.train.ID);
           addTag(json, "trained", "YES");
@@ -391,6 +392,7 @@ export class Neat {
             }
 
             addTag(compactJSON, "approach", "compact" as Approach);
+            delete compactJSON.memetic;
             removeTag(compactJSON, "approach-logged");
             addTag(compactJSON, "trainID", r.train.ID);
             addTag(compactJSON, "trained", "YES");

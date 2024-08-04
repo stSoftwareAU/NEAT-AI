@@ -48,6 +48,7 @@ export function compactUnused(
   const compactedUUID = CreatureUtil.makeUUID(compacted);
   if (cleanUUID !== compactedUUID) {
     addTag(compacted, "approach", "compact" as Approach);
+    delete compacted.memetic;
     removeTag(compacted, "approach-logged");
     addTag(compacted, "old-nodes", clean.neurons.length.toString());
     addTag(

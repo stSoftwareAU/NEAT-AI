@@ -460,6 +460,7 @@ export class Creature implements CreatureInternal {
     const json2 = compactCreature.exportJSON();
     if (JSON.stringify(json) != JSON.stringify(json2)) {
       addTag(compactCreature, "approach", "compact" as Approach);
+      delete compactCreature.memetic;
       removeTag(compactCreature, "approach-logged");
       addTag(compactCreature, "old-nodes", this.neurons.length.toString());
       addTag(
@@ -769,7 +770,9 @@ export class Creature implements CreatureInternal {
   async evolveDir(
     dataSetDir: string,
     options: NeatOptions,
-  ): Promise<{ error: number; score: number; time: number }> {
+  ): Promise<
+    { error: number; score: number; time: number; generation: number }
+  > {
     const start = Date.now();
 
     const endTimeMS = options.timeoutMinutes
@@ -894,6 +897,7 @@ export class Creature implements CreatureInternal {
     return {
       error: error,
       score: bestScore,
+      generation: generation,
       time: Date.now() - start,
     };
   }

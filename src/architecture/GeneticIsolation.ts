@@ -232,6 +232,7 @@ export function handleGrafting(
    */
   const graftedChild = Creature.fromJSON(childExport);
   addTag(graftedChild, "approach", "graft" as Approach);
+  delete graftedChild.memetic;
   removeTag(graftedChild, "approach-logged");
   addTag(graftedChild, "old-nodes", cloneOfParent.neurons.length.toString());
   addTag(

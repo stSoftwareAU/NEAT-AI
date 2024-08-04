@@ -1,3 +1,4 @@
+import { addTag } from "@stsoftware/tags";
 import { Creature } from "../../mod.ts";
 
 export function restoreSource(creature: Creature): Creature | undefined {
@@ -33,6 +34,6 @@ export function restoreSource(creature: Creature): Creature | undefined {
       synapse.weight = weightObj.weight;
     });
   }
-
+  addTag(restoredCreature, "restored", memetic.generation.toString());
   return Creature.fromJSON(restoredCreature);
 }
