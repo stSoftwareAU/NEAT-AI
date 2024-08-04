@@ -6,6 +6,7 @@ import type { CreatureExport } from "../../mod.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { assert } from "@std/assert";
 import type { Approach } from "../NEAT/LogApproach.ts";
+import type { MemeticInterface } from "./MemeticInterface.ts";
 
 export const MIN_STEP = 0.000_000_1;
 
@@ -77,9 +78,21 @@ function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
 function tuneRandomize(
   fittest: Creature,
   previousFittest: Creature,
-  // oldScore: string,
   forwardOnly = false,
 ) {
+  let memetic: MemeticInterface;
+
+  if (previousFittest.memetic) {
+    memetic = previousFittest.memetic;
+  } else {
+    memetic = {
+      generations: 0,
+      score: previousFittest.score ?? -1,
+      biases: [],
+      weights: [],
+    };
+  }
+  fittest.memetic = memetic;
   const previousJSON = previousFittest.exportJSON();
   const fittestJSON = fittest.exportJSON();
 

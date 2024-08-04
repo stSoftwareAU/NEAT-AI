@@ -51,6 +51,8 @@ function makeFittest() {
 
 function makePrevious() {
   const creature = makeCreature();
+  creature.neurons[3].bias = 3.1;
+  creature.synapses[2].weight = 0.5;
   creature.score = -0.2;
 
   return creature;
@@ -60,16 +62,15 @@ Deno.test("memetic preserved", () => {
   const fittest = makeFittest();
   const previous = makePrevious();
 
-  const _population = fineTuneImprovement(
+  const population = fineTuneImprovement(
     fittest,
     previous,
   );
 
-  assert(true);
-  assertEquals(1,1);
-  // assert(population.length > 0);
-  // population.forEach((creature) => {
-  //   assert(creature.memetic);
-  //   assertEquals(creature.memetic.generations, 1);
-  // });
+  assertEquals(1, 1);
+  assert(population.length > 0);
+  population.forEach((creature) => {
+    assert(creature.memetic);
+    assertEquals(creature.memetic.generations, 1);
+  });
 });
