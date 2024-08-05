@@ -35,7 +35,9 @@ export function restoreSource(creature: Creature): Creature | undefined {
     });
   }
   addTag(restoredCreature, "restored", memetic.generation.toString());
-  addTag(restoredCreature, "score", memetic.score.toString());
+  if (!creature.score || memetic.score < creature.score) {
+    addTag(restoredCreature, "score", memetic.score.toString());
+  }
 
   return Creature.fromJSON(restoredCreature);
 }
