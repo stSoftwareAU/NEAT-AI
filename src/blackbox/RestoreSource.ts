@@ -1,5 +1,6 @@
 import { addTag } from "@stsoftware/tags";
 import { Creature } from "../../mod.ts";
+import type { Approach } from "../NEAT/LogApproach.ts";
 
 export function restoreSource(creature: Creature): Creature | undefined {
   if (!creature.memetic) return;
@@ -35,6 +36,9 @@ export function restoreSource(creature: Creature): Creature | undefined {
     });
   }
   addTag(restoredCreature, "restored", memetic.generation.toString());
+  addTag(restoredCreature, "approach", "fine" as Approach);
+  addTag(restoredCreature, "approach-logged", "fine" as Approach);
+
   if (!creature.score || memetic.score < creature.score) {
     addTag(restoredCreature, "score", memetic.score.toString());
   }

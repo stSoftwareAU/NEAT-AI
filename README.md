@@ -23,7 +23,9 @@ This project is a unique implementation of a neural network based on the NEAT (N
 
 8. **Grafting**: If the child is a clone of one of the parents, the algorithm will graft neurons from the other parent onto the child. This helps maintain diversity in the population and prevents clones, ensuring more robust and varied evolutionary outcomes.
 
-9. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
+9. **Memetic Evolution**: The algorithm can now record and utilize the biases and weights of the fittest creatures to fine-tune future generations. This process, inspired by the concept of memes, allows the system to "remember" and build upon successful traits, enhancing the evolutionary process. Learn more about [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm).
+
+10. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
 
 ## Usage
 
@@ -38,4 +40,3 @@ Contributions are welcome. Please submit a pull request or open an issue to disc
 This project is licensed under the terms of the Apache License 2.0. For the full license text, please see [LICENSE](./LICENSE).
 
 [![Built with the Deno Standard Library](https://raw.githubusercontent.com/denoland/deno_std/main/badge.svg)](https://deno.land/std)
-
