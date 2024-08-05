@@ -234,7 +234,7 @@ export class Neat {
     );
     const elitists = results.elitists;
 
-    const tmpFittest = elitists[0];
+    let tmpFittest = elitists[0];
 
     assert(tmpFittest.uuid, "Fittest creature has no UUID");
     assert(tmpFittest.score, "No fittest creature score found");
@@ -245,7 +245,7 @@ export class Neat {
         throw new Error(
           `Previous fittest ${previousFittest.score} has a higher score than fittest ${tmpFittest.score} , this should not happen`,
         );
-      } /*else if (previousFittest.score == tmpFittest.score) {
+      } else if (previousFittest.score == tmpFittest.score) {
         if (previousFittest.uuid !== tmpFittest.uuid) {
           console.info(
             `Fittest creature ${
@@ -256,7 +256,7 @@ export class Neat {
           );
         }
         tmpFittest = previousFittest;
-      }*/
+      }
     }
 
     const fittest = Creature.fromJSON(
