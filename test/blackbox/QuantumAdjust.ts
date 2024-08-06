@@ -7,7 +7,8 @@ Deno.test("quantumAdjust - forward only mode, example case", () => {
   const diff = currentBest - previousBest;
   const forwardOnly = true;
 
-  const result = quantumAdjust(currentBest, previousBest, forwardOnly).value;
+  const result =
+    quantumAdjust(currentBest, previousBest, forwardOnly, false).value;
 
   const maxExpected = -0.008 - MIN_STEP;
   const minExpected = -0.008 + (diff * 2);
@@ -22,10 +23,25 @@ Deno.test("quantumAdjust - forward only mode", () => {
   const diff = currentBest - previousBest;
   const forwardOnly = true;
 
-  const result = quantumAdjust(currentBest, previousBest, forwardOnly);
+  const result = quantumAdjust(currentBest, previousBest, forwardOnly, false);
 
   const minExpected = currentBest + MIN_STEP;
   const maxExpected = currentBest + (diff * 2);
+
+  assert(result.value >= minExpected, `${result} < ${minExpected}`);
+  assert(result.value <= maxExpected, `${result} > ${maxExpected}`);
+});
+
+Deno.test("quantumAdjust - backtrack", () => {
+  const currentBest = 1.0;
+  const previousBest = 0.5;
+  const diff = currentBest - previousBest;
+  const forwardOnly = true;
+
+  const result = quantumAdjust(currentBest, previousBest, forwardOnly, true);
+
+  const minExpected = currentBest + MIN_STEP;
+  const maxExpected = currentBest + diff;
 
   assert(result.value >= minExpected, `${result} < ${minExpected}`);
   assert(result.value <= maxExpected, `${result} > ${maxExpected}`);
@@ -37,7 +53,7 @@ Deno.test("quantumAdjust - randomize mode", () => {
   const diff = currentBest - previousBest;
   const forwardOnly = false;
 
-  const result = quantumAdjust(currentBest, previousBest, forwardOnly);
+  const result = quantumAdjust(currentBest, previousBest, forwardOnly, false);
 
   const minExpected = currentBest + (diff * -1);
   const maxExpected = currentBest + (diff * 2);
@@ -51,7 +67,7 @@ Deno.test("quantumAdjust - no adjustment needed", () => {
   const previousBest = 1.0;
   const forwardOnly = true;
 
-  const result = quantumAdjust(currentBest, previousBest, forwardOnly);
+  const result = quantumAdjust(currentBest, previousBest, forwardOnly, false);
 
   assertEquals(result.value, currentBest);
 });
@@ -61,7 +77,7 @@ Deno.test("quantumAdjust - less than minimum step", () => {
   const previousBest = 1.0 + MIN_STEP / 2;
   const forwardOnly = true;
 
-  const result = quantumAdjust(currentBest, previousBest, forwardOnly);
+  const result = quantumAdjust(currentBest, previousBest, forwardOnly, false);
 
   assertEquals(result.value, currentBest);
 });
@@ -72,7 +88,8 @@ Deno.test("quantumAdjust - ensure minimum step difference", () => {
   const diff = currentBest - previousBest;
   const forwardOnly = true;
 
-  const result = quantumAdjust(currentBest, previousBest, forwardOnly).value;
+  const result =
+    quantumAdjust(currentBest, previousBest, forwardOnly, false).value;
 
   const minExpected = currentBest - MIN_STEP;
   const maxExpected = currentBest - diff * 2;
