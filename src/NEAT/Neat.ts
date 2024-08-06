@@ -75,7 +75,6 @@ export class Neat {
   ) {
     this.input = input; // The input size of the networks
     this.output = output; // The output size of the networks
-    assert(workers.length, "Should have some workers");
     this.workers = workers;
     this.config = new NeatConfig(options);
 
