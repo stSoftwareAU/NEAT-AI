@@ -43,5 +43,8 @@ export function restoreSource(creature: Creature): Creature | undefined {
     addTag(restoredCreature, "score", memetic.score.toString());
   }
 
-  return Creature.fromJSON(restoredCreature);
+  const realCreature = Creature.fromJSON(restoredCreature);
+
+  realCreature.score = memetic.score;
+  return realCreature;
 }
