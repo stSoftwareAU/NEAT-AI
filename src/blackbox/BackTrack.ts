@@ -33,7 +33,7 @@ export function backtrack(population: Creature[]): Creature[] {
     );
 
     backtrackPopulation.forEach((creature) => {
-      addTag(creature, "approach", "backtracked" as Approach);
+      addTag(creature, "approach", "backtrack" as Approach);
     });
     return backtrackPopulation;
   } else {
