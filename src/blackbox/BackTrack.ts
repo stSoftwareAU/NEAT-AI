@@ -30,6 +30,7 @@ export function backtrack(population: Creature[]): Creature[] {
       fittest,
       previous,
       2,
+      true,
     );
 
     backtrackPopulation.forEach((creature) => {

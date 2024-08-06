@@ -42,22 +42,10 @@ export class Genus {
     const speciesKey = this.creatureToSpeciesMap.get(uuid);
 
     assert(speciesKey);
-    // if (!speciesKey) {
-    //   console.warn(
-    //     `Could not find species for creature ${uuid}. Returning a random species.`,
-    //   );
-    //   return this.getRandomSpecies();
-    // }
 
     const species = this.speciesMap.get(speciesKey);
 
     assert(species);
-    // if (!species) {
-    //   console.warn(
-    //     `Could not find species ${speciesKey}. Returning a random species.`,
-    //   );
-    //   return this.getRandomSpecies();
-    // }
 
     return species;
   }
@@ -91,13 +79,4 @@ export class Genus {
 
     return closestSpecies;
   }
-
-  // private getRandomSpecies(): Species {
-  //   const speciesArray = Array.from(this.speciesMap.values());
-  //   if (speciesArray.length === 0) {
-  //     throw new Error("No species available to return.");
-  //   }
-  //   const randomIndex = Math.floor(Math.random() * speciesArray.length);
-  //   return speciesArray[randomIndex];
-  // }
 }

@@ -75,8 +75,7 @@ export class Neat {
   ) {
     this.input = input; // The input size of the networks
     this.output = output; // The output size of the networks
-
-    this.workers = workers ? workers : [];
+    this.workers = workers;
     this.config = new NeatConfig(options);
 
     // The fitness function to evaluate the networks

@@ -22,14 +22,16 @@ export function quantumAdjust(
   currentBest: number,
   previousBest: number,
   forwardOnly: boolean,
+  backtrack: boolean,
 ): { value: number; changed: boolean } {
   const diff = currentBest - previousBest;
   if (Math.abs(diff) >= MIN_STEP - MIN_STEP / 10) {
+    const scale = backtrack ? 1 : 2;
     let delta: number;
     if (forwardOnly) {
-      delta = diff * Math.random() * 2;
+      delta = diff * Math.random() * scale;
     } else {
-      delta = diff * Math.random() * 3 - diff;
+      delta = diff * Math.random() * (scale + 1) - diff;
     }
 
     const adjustedValue = currentBest + delta;
@@ -79,6 +81,7 @@ function tuneRandomize(
   fittest: Creature,
   previousFittest: Creature,
   forwardOnly = false,
+  backtrack = false,
 ) {
   const previousJSON = previousFittest.exportJSON();
   const fittestJSON = fittest.exportJSON();
@@ -117,6 +120,7 @@ function tuneRandomize(
         fittestNeuron.bias,
         previousNeuron.bias,
         forwardOnly,
+        backtrack,
       );
       if (result.changed) {
         fittestNeuron.bias = result.value;
@@ -141,6 +145,7 @@ function tuneRandomize(
           fittestSynapse.weight,
           previousSynapse.weight,
           forwardOnly,
+          backtrack,
         );
         if (result.changed) {
           fittestSynapse.weight = result.value;
@@ -212,6 +217,7 @@ export function fineTuneImprovement(
   fittest: Creature,
   previousFittest: Creature | null,
   popSize = 10,
+  backtrack = false,
 ) {
   if (previousFittest == null) {
     return [];
@@ -238,7 +244,7 @@ export function fineTuneImprovement(
     }
   }
 
-  const resultSame = tuneRandomize(fittest, previousFittest, false);
+  const resultSame = tuneRandomize(fittest, previousFittest, false, backtrack);
   if (resultSame.tuned) {
     const randomUUID = CreatureUtil.makeUUID(resultSame.tuned);
     if (!UUIDs.has(randomUUID)) {
@@ -252,7 +258,12 @@ export function fineTuneImprovement(
     attempt < popSize * 2 && fineTuned.length < popSize;
     attempt++
   ) {
-    const resultRandomize = tuneRandomize(fittest, previousFittest);
+    const resultRandomize = tuneRandomize(
+      fittest,
+      previousFittest,
+      false,
+      backtrack,
+    );
     if (resultRandomize.tuned) {
       const randomUUID = CreatureUtil.makeUUID(resultRandomize.tuned);
       if (!UUIDs.has(randomUUID)) {
