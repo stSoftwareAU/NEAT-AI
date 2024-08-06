@@ -41,21 +41,23 @@ export class Genus {
   findSpeciesByCreatureUUID(uuid: string): Species {
     const speciesKey = this.creatureToSpeciesMap.get(uuid);
 
-    if (!speciesKey) {
-      console.warn(
-        `Could not find species for creature ${uuid}. Returning a random species.`,
-      );
-      return this.getRandomSpecies();
-    }
+    assert(speciesKey);
+    // if (!speciesKey) {
+    //   console.warn(
+    //     `Could not find species for creature ${uuid}. Returning a random species.`,
+    //   );
+    //   return this.getRandomSpecies();
+    // }
 
     const species = this.speciesMap.get(speciesKey);
 
-    if (!species) {
-      console.warn(
-        `Could not find species ${speciesKey}. Returning a random species.`,
-      );
-      return this.getRandomSpecies();
-    }
+    assert(species);
+    // if (!species) {
+    //   console.warn(
+    //     `Could not find species ${speciesKey}. Returning a random species.`,
+    //   );
+    //   return this.getRandomSpecies();
+    // }
 
     return species;
   }
@@ -90,12 +92,12 @@ export class Genus {
     return closestSpecies;
   }
 
-  private getRandomSpecies(): Species {
-    const speciesArray = Array.from(this.speciesMap.values());
-    if (speciesArray.length === 0) {
-      throw new Error("No species available to return.");
-    }
-    const randomIndex = Math.floor(Math.random() * speciesArray.length);
-    return speciesArray[randomIndex];
-  }
+  // private getRandomSpecies(): Species {
+  //   const speciesArray = Array.from(this.speciesMap.values());
+  //   if (speciesArray.length === 0) {
+  //     throw new Error("No species available to return.");
+  //   }
+  //   const randomIndex = Math.floor(Math.random() * speciesArray.length);
+  //   return speciesArray[randomIndex];
+  // }
 }
