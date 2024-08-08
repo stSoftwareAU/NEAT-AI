@@ -341,8 +341,9 @@ export class Neat {
     const breed = new Breed(genus, this.config);
     // Breed the next individuals
     for (
-      let i = newPopSize > 0 ? newPopSize : 0;
-      i--;
+      let i = 0;
+      i < newPopSize;
+      i++
     ) {
       const child = breed.breed();
       if (child) {
