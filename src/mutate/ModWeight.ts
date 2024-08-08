@@ -13,34 +13,27 @@ export class ModWeight implements RadioactiveInterface {
           this.creature.inFocus(c.to, focusList);
       },
     );
+    let changed = false;
     if (allConnections.length > 0) {
-      const pos = Math.floor(Math.random() * allConnections.length);
-      const connection = allConnections[pos];
-      if (connection) {
-        // Calculate the quantum based on the current weight
-        const weightMagnitude = Math.abs(connection.weight);
-        let quantum = 1;
+      const indx = Math.floor(Math.random() * allConnections.length);
+      const connection = allConnections[indx];
 
-        if (weightMagnitude >= 1) {
-          // Find the largest power of 10 smaller than the weightMagnitude
-          quantum = Math.pow(10, Math.floor(Math.log10(weightMagnitude)));
-        }
+      // Calculate the quantum based on the current weight
+      const weightMagnitude = Math.abs(connection.weight);
+      let quantum = 1;
 
-        // Generate a random modification value based on the quantum
-        const modification = (Math.random() * 2 - 1) * quantum;
-
-        connection.weight += modification;
-        return true;
-      } else {
-        console.warn(
-          "MOD_WEIGHT: missing connection at",
-          pos,
-          "of",
-          allConnections.length,
-        );
+      if (weightMagnitude >= 1) {
+        // Find the largest power of 10 smaller than the weightMagnitude
+        quantum = Math.pow(10, Math.floor(Math.log10(weightMagnitude)));
       }
+
+      // Generate a random modification value based on the quantum
+      const modification = (Math.random() * 2 - 1) * quantum;
+
+      connection.weight += modification;
+      changed = true;
     }
 
-    return false;
+    return changed;
   }
 }

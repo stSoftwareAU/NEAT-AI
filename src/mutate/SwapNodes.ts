@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
@@ -33,39 +34,46 @@ export class SwapNodes implements RadioactiveInterface {
         }
       }
     }
-    if (node1 == null) return false;
-    let node2 = null;
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index2 = Math.floor(
-        Math.random() *
-            (this.creature.neurons.length -
-              this.creature.input - this.creature.output) + this.creature.input,
-      );
+    let changed = false;
+    if (node1 !== null) {
+      let node2 = null;
+      for (let attempts = 0; attempts < 12; attempts++) {
+        const index2 = Math.floor(
+          Math.random() *
+              (this.creature.neurons.length -
+                this.creature.input - this.creature.output) +
+            this.creature.input,
+        );
 
-      if (this.creature.inFocus(index2, focusList)) {
-        const tmpNode = this.creature.neurons[index2];
-        if (tmpNode.type == "hidden") {
-          node2 = tmpNode;
-          break;
+        if (this.creature.inFocus(index2, focusList)) {
+          const tmpNode = this.creature.neurons[index2];
+          if (tmpNode.type == "hidden") {
+            node2 = tmpNode;
+            break;
+          }
         }
+      }
+
+      if (node1 && node2) {
+        changed = true;
+
+        const bias1 = node1.bias;
+        const squash1 = node1.squash;
+        assert(squash1);
+
+        const squash2 = node2.squash;
+        assert(squash2);
+        node1.bias = node2.bias;
+        node1.setSquash(squash2);
+
+        node2.bias = bias1;
+        node2.setSquash(squash1);
+
+        node1.fix();
+        node2.fix();
       }
     }
 
-    if (node1 && node2) {
-      const biasTemp = node1.bias;
-      const squashTemp = node1.squash;
-
-      node1.bias = node2.bias;
-      node1.squash = node2.squash;
-      node2.bias = biasTemp;
-      node2.squash = squashTemp;
-
-      node1.fix();
-      node2.fix();
-
-      return true;
-    }
-
-    return false;
+    return changed;
   }
 }

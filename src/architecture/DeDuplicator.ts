@@ -45,7 +45,7 @@ export class DeDuplicator {
           creatures.length - toRemove.length > this.breed.config.populationSize
         ) {
           console.info(
-            `Culling duplicate creature at ${i}`,
+            `Culling duplicate creature at ${i} of ${creatures.length}`,
           );
           toRemove.push(i);
         } else {
@@ -99,7 +99,7 @@ export class DeDuplicator {
         this.breed.genus.addCreature(tmpCreature);
         unique.add(key3);
         return;
-      } else if (attempts > 24) {
+      } else if (attempts > 48) {
         console.error(
           `Can't deDuplicate creature at ${index} of ${creatures.length}`,
         );

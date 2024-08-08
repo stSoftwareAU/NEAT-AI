@@ -667,7 +667,7 @@ Deno.test("evolveSHIFT", async () => {
     set.push({ input: [x, y, z], output: [z, x, y] });
   }
 
-  const creature = await evolveSet(set, 500, 0.03);
+  const creature = await evolveSet(set, 5000, 0.03);
   const evolveDir = ".evolve";
   ensureDirSync(evolveDir);
   Deno.writeTextFileSync(
