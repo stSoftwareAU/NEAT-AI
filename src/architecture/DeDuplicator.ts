@@ -45,7 +45,7 @@ export class DeDuplicator {
           creatures.length - toRemove.length > this.breed.config.populationSize
         ) {
           console.info(
-            `Culling duplicate creature at ${i}`,
+            `Culling duplicate creature at ${i} of ${creatures.length}`,
           );
           toRemove.push(i);
         } else {
