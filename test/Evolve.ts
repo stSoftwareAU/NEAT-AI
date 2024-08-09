@@ -50,7 +50,7 @@ Deno.test("evolve-MT", async () => {
   assert(results.error <= 0.03, "Error rate was: " + results.error);
 });
 
-Deno.test("evolve-XOR", async () => {
+Deno.test("XOR-evolve", async () => {
   // Train the XOR gate
   const trainingSet = [
     { input: [0, 0], output: [0] },

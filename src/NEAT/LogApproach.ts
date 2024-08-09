@@ -4,7 +4,13 @@ import { blue, bold, cyan } from "@std/fmt/colors";
 import { assert } from "@std/assert";
 
 // Define a union type for the possible approaches
-export type Approach = "fine" | "trained" | "compact" | "graft" | "backtrack";
+export type Approach =
+  | "fine"
+  | "trained"
+  | "compact"
+  | "graft"
+  | "backtrack"
+  | "retry";
 
 export function logApproach(fittest: Creature, previous: Creature) {
   const fScoreTxt = getTag(fittest, "score");
@@ -40,6 +46,17 @@ export function logApproach(fittest: Creature, previous: Creature) {
         case "backtrack": {
           console.info(
             "Backtracking increased fitness by",
+            fScore - pScore,
+            "to",
+            fScore,
+            "adjusted",
+            getTag(fittest, "adjusted"),
+          );
+          break;
+        }
+        case "retry": {
+          console.info(
+            "Retrying increased fitness by",
             fScore - pScore,
             "to",
             fScore,

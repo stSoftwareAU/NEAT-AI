@@ -591,19 +591,20 @@ Deno.test("NARX Sequence", async () => {
       threads: 1,
       feedbackLoop: true,
     });
-    if (attempts < 12) {
-      const evolveDir = ".evolve";
-      ensureDirSync(evolveDir);
-      Deno.writeTextFileSync(
-        ".evolve/NARX.json",
-        JSON.stringify(creature.exportJSON(), null, 2),
-      );
-      if (result.error < 0.005) break;
-      console.info(
-        `Error is: ${result.error}, required: ${0.005} RETRY ${attempts} of 12`,
-      );
-    } else {
-      assert(result.error < 0.005, JSON.stringify(result, null, 2));
+    // const evolveDir = ".evolve";
+    // ensureDirSync(evolveDir);
+    // Deno.writeTextFileSync(
+    //   ".evolve/NARX.json",
+    //   JSON.stringify(creature.exportJSON(), null, 2),
+    // );
+    if (result.error < 0.005) break;
+    console.info(
+      `Error is: ${result.error}, required: ${0.005} RETRY ${
+        attempts + 1
+      } of 12`,
+    );
+    if (attempts >= 12) {
+      assert(result.error <= 0.005, JSON.stringify(result, null, 2));
     }
   }
 });
