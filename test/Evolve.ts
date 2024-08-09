@@ -1,7 +1,6 @@
 import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";
-import { emptyDirSync } from "@std/fs";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -120,8 +119,8 @@ Deno.test("XNOR - evolve", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  const experimentStore = ".test/experiments/XNOR-evolve";
-  emptyDirSync(experimentStore);
+  // const experimentStore = ".test/experiments/XNOR-evolve";
+  // emptyDirSync(experimentStore);
   for (let attempt = 0; true; attempt++) {
     const creature = new Creature(2, 1);
     const results = await creature.evolveDataSet(trainingSet, {
@@ -130,7 +129,7 @@ Deno.test("XNOR - evolve", async () => {
       mutationRate: 0.5,
       targetError: 0.03,
       // threads: 8,
-      experimentStore: experimentStore,
+      // experimentStore: experimentStore,
       iterations: 200_000,
     });
 
