@@ -57,14 +57,17 @@ export class DeDuplicator {
     }
 
     // Second pass to remove duplicates
-    for (let i = toRemove.length - 1; i >= 0; i--) {
-      creatures.splice(toRemove[i], 1);
+    for (let removeIndx = toRemove.length; removeIndx--;) {
+      const indx = toRemove[removeIndx];
+      creatures.splice(indx, 1);
     }
 
     if (toRemove.length > 0) {
       const end = performance.now();
       console.log(
-        `DeDuplication of ${toRemove.length} creatures took ${end - start} ms`,
+        `DeDuplication of ${toRemove.length} creatures to ${creatures.length} took ${
+          end - start
+        } ms`,
       );
     }
   }
@@ -99,6 +102,7 @@ export class DeDuplicator {
       }
       if (!duplicate3) {
         this.breed.genus.addCreature(tmpCreature);
+        creatures[index] = tmpCreature;
         unique.add(key3);
         return;
       } else if (attempts > 48) {

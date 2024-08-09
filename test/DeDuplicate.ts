@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertFalse } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 import { Breed } from "../src/NEAT/Breed.ts";
 import { Genus } from "../src/NEAT/Genus.ts";
@@ -81,8 +81,8 @@ Deno.test("DeDuplicate", () => {
   const uniques = new Set<string>();
   for (let i = 0; i < list.length; i++) {
     const key = CreatureUtil.makeUUID(list[i]);
-    console.log(key);
-    assertEquals(uniques.has(key), false);
+
+    assertFalse(uniques.has(key), `Duplicate found ${key}`);
     uniques.add(key);
   }
 });
