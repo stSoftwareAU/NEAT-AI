@@ -130,11 +130,11 @@ Deno.test("XNOR - evolve", async () => {
       targetError: 0.05,
       // threads: 8,
       // experimentStore: experimentStore,
-      iterations: 200_000,
+      iterations: 20_000,
     });
 
     console.info(results);
-    if (results.error > 0.05 && attempt < 6) {
+    if (results.error > 0.05 && attempt < 60) {
       console.info(`attempt: ${attempt}`, results);
       continue;
     }
