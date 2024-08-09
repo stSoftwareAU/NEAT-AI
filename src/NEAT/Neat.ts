@@ -12,6 +12,7 @@ import {
   sortCreaturesByScore,
 } from "../architecture/ElitismUtils.ts";
 import { Fitness } from "../architecture/Fitness.ts";
+import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
@@ -19,12 +20,11 @@ import type {
   ResponseData,
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
-import { Breed } from "./Breed.ts";
-import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
-import { Genus } from "./Genus.ts";
-import { Mutator } from "./Mutator.ts";
-import type { Approach } from "./LogApproach.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
+import { Breed } from "./Breed.ts";
+import { Genus } from "./Genus.ts";
+import type { Approach } from "./LogApproach.ts";
+import { Mutator } from "./Mutator.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -319,8 +319,8 @@ export class Neat {
           },
         );
       }
-      CreatureUtil.makeUUID(creativeThinking);
-      genus.addCreature(creativeThinking);
+      // CreatureUtil.makeUUID(creativeThinking);
+      // genus.addCreature(creativeThinking);
       assert(!creativeThinking.memetic);
       newPopulation.push(creativeThinking);
     }
@@ -347,9 +347,9 @@ export class Neat {
     ) {
       const child = breed.breed();
       if (child) {
-        CreatureUtil.makeUUID(child);
+        // CreatureUtil.makeUUID(child);
         assert(!child.memetic);
-        genus.addCreature(child);
+        // genus.addCreature(child);
         newPopulation.push(child);
       }
     }

@@ -1,5 +1,5 @@
-import { Creature } from "../src/Creature.ts";
 import { assert } from "@std/assert";
+import { Creature } from "../src/Creature.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -119,19 +119,22 @@ Deno.test("XNOR - evolve", async () => {
     { input: [1, 1], output: [1] },
   ];
 
+  // const experimentStore=".test/experiments/XNOR-evolve";
+  // emptyDirSync(experimentStore);
   // for (let attempt = 0; true; attempt++) {
   const creature = new Creature(2, 1);
   const results = await creature.evolveDataSet(trainingSet, {
-    mutation: [...Mutation.FFW],
-    elitism: 10,
+    // mutation: [...Mutation.FFW],
+    elitism: 3,
     mutationRate: 0.5,
     targetError: 0.03,
-    threads: 1,
-    // iterations: 1_000_000,
+    // threads: 8,
+    // experimentStore: experimentStore,
+    iterations: 1_000_000,
   });
 
   console.info(results);
-  // if (results.error > 0.03 && attempt < 6) {
+  // if (results.error > 0.03 && attempt < 24) {
   //   console.info(`attempt: ${attempt}`, results);
   //   continue;
   // }

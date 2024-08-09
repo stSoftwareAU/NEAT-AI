@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import type { Creature } from "../Creature.ts";
+import { Creature } from "../Creature.ts";
 import type { Breed } from "../NEAT/Breed.ts";
 import type { Mutator } from "../NEAT/Mutator.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
@@ -27,14 +27,14 @@ export class DeDuplicator {
     const unique = new Set<string>();
     const toRemove: number[] = [];
 
-    for (let i = 0; i < creatures.length; i++) {
-      const creature = creatures[i];
+    for (let indx = 0; indx < creatures.length; indx++) {
+      const creature = creatures[indx];
       const UUID = creature.uuid;
       assert(UUID, "No creature UUID");
       let duplicate = unique.has(UUID);
 
       if (!duplicate) {
-        if (i > this.breed.config.elitism) {
+        if (indx > this.breed.config.elitism) {
           duplicate = this.previousExperiment(UUID);
         }
         unique.add(UUID);
@@ -45,11 +45,13 @@ export class DeDuplicator {
           creatures.length - toRemove.length > this.breed.config.populationSize
         ) {
           console.info(
-            `Culling duplicate creature at ${i} of ${creatures.length}`,
+            `Culling duplicate creature at ${indx - toRemove.length} of ${
+              creatures.length - toRemove.length
+            }`,
           );
-          toRemove.push(i);
+          toRemove.push(indx);
         } else {
-          this.replaceDuplicateCreature(creatures, i, unique);
+          this.replaceDuplicateCreature(creatures, indx, unique);
         }
       }
     }
@@ -88,7 +90,7 @@ export class DeDuplicator {
           return;
         }
       }
-      const tmpCreature = creatures[index];
+      const tmpCreature = Creature.fromJSON(creatures[index].exportJSON());
       this.mutator.mutate([tmpCreature]);
       const key3 = CreatureUtil.makeUUID(tmpCreature);
       let duplicate3 = unique.has(key3);

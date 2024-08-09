@@ -13,6 +13,29 @@ export class Genus {
     this.creatureToSpeciesMap = new Map();
   }
 
+  validate() {
+    for (let indx = this.population.length; indx--;) {
+      const creature = this.population[indx];
+
+      const uuid = creature.uuid;
+      assert(uuid);
+
+      const existingSpeciesKey = this.creatureToSpeciesMap.get(uuid);
+      assert(existingSpeciesKey, `No species for creature ${uuid}`);
+      const existingSpecies = this.speciesMap.get(existingSpeciesKey);
+      assert(existingSpecies, "Existing species not found");
+
+      let found = false;
+      for (let j = existingSpecies.creatures.length; j--;) {
+        if (existingSpecies.creatures[j].uuid == uuid) {
+          found = true;
+          break;
+        }
+      }
+
+      assert(found, "Not found in the species");
+    }
+  }
   addCreature(creature: Creature): Species {
     assert(creature.uuid, "No creature UUID");
 
@@ -24,16 +47,16 @@ export class Genus {
     }
 
     this.population.push(creature);
-    const key = Species.calculateKey(creature);
+    const speciesKey = Species.calculateKey(creature);
 
-    let species = this.speciesMap.get(key);
+    let species = this.speciesMap.get(speciesKey);
     if (!species) {
-      species = new Species(key);
-      this.speciesMap.set(key, species);
+      species = new Species(speciesKey);
+      this.speciesMap.set(speciesKey, species);
     }
     species.addCreature(creature);
 
-    this.creatureToSpeciesMap.set(creature.uuid, key);
+    this.creatureToSpeciesMap.set(creature.uuid, speciesKey);
 
     return species;
   }
