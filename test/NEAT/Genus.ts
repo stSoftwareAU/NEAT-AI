@@ -158,4 +158,6 @@ Deno.test("Find Closest Matching Species", () => {
     closestSpecies?.speciesKey,
     Species.calculateKey(testCreature),
   );
+
+  genus.validate();
 });

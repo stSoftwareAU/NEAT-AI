@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import type { Creature } from "../Creature.ts";
+import { Creature } from "../Creature.ts";
 import type { Breed } from "../NEAT/Breed.ts";
 import type { Mutator } from "../NEAT/Mutator.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
@@ -27,14 +27,14 @@ export class DeDuplicator {
     const unique = new Set<string>();
     const toRemove: number[] = [];
 
-    for (let i = 0; i < creatures.length; i++) {
-      const creature = creatures[i];
+    for (let indx = 0; indx < creatures.length; indx++) {
+      const creature = creatures[indx];
       const UUID = creature.uuid;
       assert(UUID, "No creature UUID");
       let duplicate = unique.has(UUID);
 
       if (!duplicate) {
-        if (i > this.breed.config.elitism) {
+        if (indx > this.breed.config.elitism) {
           duplicate = this.previousExperiment(UUID);
         }
         unique.add(UUID);
@@ -45,24 +45,29 @@ export class DeDuplicator {
           creatures.length - toRemove.length > this.breed.config.populationSize
         ) {
           console.info(
-            `Culling duplicate creature at ${i} of ${creatures.length}`,
+            `Culling duplicate creature at ${indx - toRemove.length} of ${
+              creatures.length - toRemove.length
+            }`,
           );
-          toRemove.push(i);
+          toRemove.push(indx);
         } else {
-          this.replaceDuplicateCreature(creatures, i, unique);
+          this.replaceDuplicateCreature(creatures, indx, unique);
         }
       }
     }
 
     // Second pass to remove duplicates
-    for (let i = toRemove.length - 1; i >= 0; i--) {
-      creatures.splice(toRemove[i], 1);
+    for (let removeIndx = toRemove.length; removeIndx--;) {
+      const indx = toRemove[removeIndx];
+      creatures.splice(indx, 1);
     }
 
     if (toRemove.length > 0) {
       const end = performance.now();
       console.log(
-        `DeDuplication of ${toRemove.length} creatures took ${end - start} ms`,
+        `DeDuplication of ${toRemove.length} creatures to ${creatures.length} took ${
+          end - start
+        } ms`,
       );
     }
   }
@@ -88,7 +93,7 @@ export class DeDuplicator {
           return;
         }
       }
-      const tmpCreature = creatures[index];
+      const tmpCreature = Creature.fromJSON(creatures[index].exportJSON());
       this.mutator.mutate([tmpCreature]);
       const key3 = CreatureUtil.makeUUID(tmpCreature);
       let duplicate3 = unique.has(key3);
@@ -97,6 +102,7 @@ export class DeDuplicator {
       }
       if (!duplicate3) {
         this.breed.genus.addCreature(tmpCreature);
+        creatures[index] = tmpCreature;
         unique.add(key3);
         return;
       } else if (attempts > 48) {

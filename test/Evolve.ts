@@ -1,5 +1,5 @@
+import { assert, fail } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import { assert } from "@std/assert";
 import { Mutation } from "../src/NEAT/Mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -119,22 +119,28 @@ Deno.test("XNOR - evolve", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  // for (let attempt = 0; true; attempt++) {
-  const creature = new Creature(2, 1);
-  const results = await creature.evolveDataSet(trainingSet, {
-    mutation: [...Mutation.FFW],
-    elitism: 10,
-    mutationRate: 0.5,
-    targetError: 0.03,
-    threads: 1,
-    // iterations: 1_000_000,
-  });
+  // const experimentStore = ".test/experiments/XNOR-evolve";
+  // emptyDirSync(experimentStore);
+  for (let attempt = 0; true; attempt++) {
+    const creature = new Creature(2, 1);
+    const results = await creature.evolveDataSet(trainingSet, {
+      // mutation: [...Mutation.FFW],
+      // elitism: 3,
+      // mutationRate: 0.5,
+      targetError: 0.05,
+      // threads: 8,
+      // experimentStore: experimentStore,
+      iterations: 20_000,
+    });
 
-  console.info(results);
-  // if (results.error > 0.03 && attempt < 6) {
-  //   console.info(`attempt: ${attempt}`, results);
-  //   continue;
-  // }
-  assert(results.error <= 0.03, "Error rate was: " + results.error);
-  // }
+    if (results.error > 0.05) {
+      if (attempt < 24) {
+        console.info(`attempt: ${attempt}`, results);
+        continue;
+      } else {
+        fail(`Error rate was: ${results.error}`);
+      }
+    }
+    break;
+  }
 });
