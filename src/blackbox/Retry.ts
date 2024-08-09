@@ -9,32 +9,29 @@ export function retry(population: Creature[]): Creature[] {
   const possibleRetryPopulation = population.filter((creature) => {
     if (creature.memetic) {
       assert(creature.score);
-      if (creature.score > creature.memetic.score) {
-        return true;
-      }
-    } else {
-      return false;
+      return creature.score > creature.memetic.score;
     }
+    return false;
   });
 
-  if (possibleRetryPopulation.length) {
-    const randomIndx = Math.floor(
-      possibleRetryPopulation.length * Math.random(),
-    );
+  if (possibleRetryPopulation.length > 0) {
+    possibleRetryPopulation.sort((a, b) => b.score! - a.score!);
 
+    // Get the index by multiplying two random numbers (favoring the top, but can be anywhere)
+    const randomIndx = Math.floor(
+      possibleRetryPopulation.length * Math.random() * Math.random(),
+    );
     const fittest = possibleRetryPopulation[randomIndx];
 
     const previous = restoreSource(fittest);
     assert(previous);
-    const retryPopulation = fineTuneImprovement(
-      fittest,
-      previous,
-      2,
-    );
+
+    const retryPopulation = fineTuneImprovement(fittest, previous, 2);
 
     retryPopulation.forEach((creature) => {
       addTag(creature, "approach", "retry" as Approach);
     });
+
     return retryPopulation;
   } else {
     return [];

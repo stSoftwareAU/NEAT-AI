@@ -9,33 +9,32 @@ export function backtrack(population: Creature[]): Creature[] {
   const possibleBacktrackPopulation = population.filter((creature) => {
     if (creature.memetic) {
       assert(creature.score);
-      if (creature.score < creature.memetic.score) {
-        return true;
-      }
-    } else {
-      return false;
+      return creature.score < creature.memetic.score;
     }
+    return false;
   });
 
-  if (possibleBacktrackPopulation.length) {
+  if (possibleBacktrackPopulation.length > 0) {
     const randomIndx = Math.floor(
       possibleBacktrackPopulation.length * Math.random(),
     );
 
-    const previous = possibleBacktrackPopulation[randomIndx];
+    const selectedCreature = possibleBacktrackPopulation[randomIndx];
 
-    const fittest = restoreSource(previous);
+    const fittest = restoreSource(selectedCreature);
     assert(fittest);
+
     const backtrackPopulation = fineTuneImprovement(
       fittest,
-      previous,
+      selectedCreature,
       2,
-      true,
+      true, // Indicating that this is a backtrack operation
     );
 
     backtrackPopulation.forEach((creature) => {
       addTag(creature, "approach", "backtrack" as Approach);
     });
+
     return backtrackPopulation;
   } else {
     return [];
