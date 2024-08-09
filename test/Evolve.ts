@@ -133,7 +133,6 @@ Deno.test("XNOR - evolve", async () => {
       iterations: 20_000,
     });
 
-    console.info(results);
     if (results.error > 0.05) {
       if (attempt < 24) {
         console.info(`attempt: ${attempt}`, results);
