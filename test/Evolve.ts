@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert, fail } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";
 
@@ -134,11 +134,14 @@ Deno.test("XNOR - evolve", async () => {
     });
 
     console.info(results);
-    if (results.error > 0.05 && attempt < 60) {
-      console.info(`attempt: ${attempt}`, results);
-      continue;
+    if (results.error > 0.05) {
+      if (attempt < 24) {
+        console.info(`attempt: ${attempt}`, results);
+        continue;
+      } else {
+        fail(`Error rate was: ${results.error}`);
+      }
     }
-    assert(results.error <= 0.05, "Error rate was: " + results.error);
     break;
   }
 });
