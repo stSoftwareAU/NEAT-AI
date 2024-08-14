@@ -8,6 +8,20 @@ export class SwapNodes implements RadioactiveInterface {
     this.creature = creature;
   }
 
+  private randomIndx(): number {
+    const hiddenCount = this.creature.neurons.length -
+      this.creature.input - this.creature.output;
+
+    const hiddenIndex = Math.floor(
+      Math.random() *
+        hiddenCount,
+    );
+
+    const index = hiddenIndex + this.creature.input;
+
+    return index;
+  }
+
   mutate(focusList?: number[] | undefined): boolean {
     // Has no effect on input node, so they are excluded
     if (
@@ -20,14 +34,10 @@ export class SwapNodes implements RadioactiveInterface {
 
     let node1 = null;
     for (let attempts = 0; attempts < 12; attempts++) {
-      const index1 = Math.floor(
-        Math.random() *
-            (this.creature.neurons.length -
-              this.creature.input - this.creature.output) + this.creature.input,
-      );
+      const indx = this.randomIndx();
 
-      if (this.creature.inFocus(index1, focusList)) {
-        const tmpNode = this.creature.neurons[index1];
+      if (this.creature.inFocus(indx, focusList)) {
+        const tmpNode = this.creature.neurons[indx];
         if (tmpNode.type == "hidden") {
           node1 = tmpNode;
           break;
@@ -38,18 +48,15 @@ export class SwapNodes implements RadioactiveInterface {
     if (node1 !== null) {
       let node2 = null;
       for (let attempts = 0; attempts < 12; attempts++) {
-        const index2 = Math.floor(
-          Math.random() *
-              (this.creature.neurons.length -
-                this.creature.input - this.creature.output) +
-            this.creature.input,
-        );
+        const indx = this.randomIndx();
 
-        if (this.creature.inFocus(index2, focusList)) {
-          const tmpNode = this.creature.neurons[index2];
+        if (this.creature.inFocus(indx, focusList)) {
+          const tmpNode = this.creature.neurons[indx];
           if (tmpNode.type == "hidden") {
-            node2 = tmpNode;
-            break;
+            if (tmpNode.index !== node1.index) {
+              node2 = tmpNode;
+              break;
+            }
           }
         }
       }
