@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
-export class SwapNodes implements RadioactiveInterface {
+export class SwapNeurons implements RadioactiveInterface {
   private creature: Creature;
   constructor(creature: Creature) {
     this.creature = creature;

@@ -1,7 +1,7 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
-import { SwapNodes } from "../../src/mutate/SwapNodes.ts";
+import { SwapNeurons } from "../../src/mutate/SwapNeurons.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -50,7 +50,7 @@ Deno.test("SwapNodes-Constant", () => {
   const creature = Creature.fromJSON(json);
   creature.validate();
   const uuid1 = CreatureUtil.makeUUID(creature);
-  const swapNodes = new SwapNodes(creature);
+  const swapNodes = new SwapNeurons(creature);
   for (let i = 100; i--;) {
     if (swapNodes.mutate()) break;
   }
@@ -101,7 +101,7 @@ Deno.test("SwapNodes-Short", () => {
   const creature = Creature.fromJSON(json);
   creature.validate();
   const uuid1 = CreatureUtil.makeUUID(creature);
-  const swapNodes = new SwapNodes(creature);
+  const swapNodes = new SwapNeurons(creature);
   for (let i = 100; i--;) {
     if (swapNodes.mutate()) break;
   }
@@ -168,7 +168,7 @@ Deno.test("SwapNodes-Valid", () => {
   const creature = Creature.fromJSON(json);
   creature.validate();
   const uuid1 = CreatureUtil.makeUUID(creature);
-  const swapNodes = new SwapNodes(creature);
+  const swapNodes = new SwapNeurons(creature);
   for (let i = 100; i--;) {
     if (swapNodes.mutate()) break;
   }
