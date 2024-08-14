@@ -51,7 +51,7 @@ import { SubBackCon } from "./mutate/SubBackCon.ts";
 import { SubConnection } from "./mutate/SubConnection.ts";
 import { SubNeuron } from "./mutate/SubNeuron.ts";
 import { SubSelfCon } from "./mutate/SubSelfCon.ts";
-import { SwapNodes } from "./mutate/SwapNodes.ts";
+import { SwapNeurons } from "./mutate/SwapNeurons.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
@@ -1180,7 +1180,7 @@ export class Creature implements CreatureInternal {
         mutator = new SubBackCon(this);
         break;
       case Mutation.SWAP_NODES.name:
-        mutator = new SwapNodes(this);
+        mutator = new SwapNeurons(this);
         break;
       default: {
         throw new Error("unknown: " + method);
