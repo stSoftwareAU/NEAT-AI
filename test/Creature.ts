@@ -579,7 +579,7 @@ Deno.test("NARX Sequence", async () => {
     { input: [0], output: [1] },
   ];
 
-  const maxAttempts=24;
+  const maxAttempts = 24;
   for (let attempts = 0; true; attempts++) {
     const creature = new Creature(1, 1, {
       layers: [
