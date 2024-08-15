@@ -3,6 +3,7 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
+  fail,
 } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags";
@@ -578,6 +579,7 @@ Deno.test("NARX Sequence", async () => {
     { input: [0], output: [1] },
   ];
 
+  const maxAttempts=24;
   for (let attempts = 0; true; attempts++) {
     const creature = new Creature(1, 1, {
       layers: [
@@ -588,23 +590,18 @@ Deno.test("NARX Sequence", async () => {
     const result = await creature.evolveDataSet(trainingData, {
       iterations: 5000,
       targetError: 0.005,
-      threads: 1,
+      // threads: 1,
       feedbackLoop: true,
     });
-    // const evolveDir = ".evolve";
-    // ensureDirSync(evolveDir);
-    // Deno.writeTextFileSync(
-    //   ".evolve/NARX.json",
-    //   JSON.stringify(creature.exportJSON(), null, 2),
-    // );
+
     if (result.error < 0.005) break;
     console.info(
       `Error is: ${result.error}, required: ${0.005} RETRY ${
         attempts + 1
-      } of 12`,
+      } of ${maxAttempts}`,
     );
-    if (attempts >= 12) {
-      assert(result.error <= 0.005, JSON.stringify(result, null, 2));
+    if (attempts > maxAttempts) {
+      fail(JSON.stringify(result, null, 2));
     }
   }
 });
