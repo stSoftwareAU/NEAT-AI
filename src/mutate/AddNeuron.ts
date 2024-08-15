@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import { Neuron } from "../architecture/Neuron.ts";
@@ -52,11 +53,9 @@ export class AddNeuron implements RadioactiveInterface {
           Math.random() * neuron.index,
         );
 
-        if (neuron.index <= pos || pos < 0) {
-          throw new Error(
-            `From: ${pos} should be less than neuron index: ${neuron.index}`,
-          );
-        }
+        assert(neuron.index > pos, "From should be less than neuron index");
+        assert(pos >= 0, "Position should be non-negative");
+
         if (creature.inFocus(pos, tmpFocusList)) {
           fromIndex = pos;
         }
@@ -65,12 +64,7 @@ export class AddNeuron implements RadioactiveInterface {
           Math.random() * (creature.neurons.length - neuron.index),
         ) + neuron.index;
 
-        if (neuron.index > pos) {
-          throw new Error(
-            "To: " + pos + " should be greater than neuron index: " +
-              neuron.index,
-          );
-        }
+        assert(neuron.index <= pos, "Index should not be less than position");
 
         if (creature.inFocus(pos, tmpFocusList)) {
           toIndex = pos;
@@ -80,72 +74,62 @@ export class AddNeuron implements RadioactiveInterface {
       }
     }
 
-    if (fromIndex !== -1) {
-      creature.connect(
-        fromIndex,
-        neuron.index,
-        Synapse.randomWeight(),
-      );
-    } else {
-      throw new Error("addNeuron: Should have a from index");
-    }
+    assert(fromIndex !== -1, "addNeuron: Should have a from index");
 
-    if (toIndex !== -1) {
-      const nonConstantIndx = creature.neurons.findIndex((
+    creature.connect(
+      fromIndex,
+      neuron.index,
+      Synapse.randomWeight(),
+    );
+
+    assert(toIndex !== -1, "addNeuron: Should have a to index");
+
+    const nonConstantIndx = creature.neurons.findIndex((
+      n,
+    ) => (n.index >= toIndex && n.type !== "constant"));
+    creature.connect(
+      neuron.index,
+      nonConstantIndx,
+      Synapse.randomWeight(),
+    );
+    neuron.fix();
+    const connection = creature.getSynapse(neuron.index, nonConstantIndx);
+    if (!connection) {
+      /* If the self connection was removed */
+      const toIndex2 = Math.floor(
+        Math.random() * (creature.neurons.length - neuron.index - 1),
+      ) + neuron.index + 1;
+
+      const nonConstantIndx2 = creature.neurons.findIndex((
         n,
-      ) => (n.index >= toIndex && n.type !== "constant"));
+      ) => (n.index >= toIndex2 && n.type !== "constant"));
+
       creature.connect(
         neuron.index,
-        nonConstantIndx,
+        nonConstantIndx2,
         Synapse.randomWeight(),
       );
-      neuron.fix();
-      const connection = creature.getSynapse(neuron.index, nonConstantIndx);
-      if (!connection) {
-        /* If the self connection was removed */
-        const toIndex2 = Math.floor(
-          Math.random() * (creature.neurons.length - neuron.index - 1),
-        ) + neuron.index + 1;
-
-        const nonConstantIndx2 = creature.neurons.findIndex((
-          n,
-        ) => (n.index >= toIndex2 && n.type !== "constant"));
-
-        creature.connect(
-          neuron.index,
-          nonConstantIndx2,
-          Synapse.randomWeight(),
-        );
-      }
-    } else {
-      throw new Error("addNeuron: Should have a to index");
     }
+
     return true;
   }
 
   private insertNeuron(neuron: Neuron) {
-    if (
-      Number.isInteger(neuron.index) == false ||
-      neuron.index < this.creature.input
-    ) {
-      throw new Error(
-        "to should be a greater than the input count was: " + neuron.index,
-      );
-    }
+    assert(Number.isInteger(neuron.index), "Should have an integer index");
+    assert(
+      neuron.index >= this.creature.input,
+      "Should not be within the observations",
+    );
 
     const firstOutputIndex = this.creature.neurons.length -
       this.creature.output;
-    if (neuron.index > firstOutputIndex) {
-      throw new Error(
-        "to should be a between than input (" + this.creature.input +
-          ") and output neurons (" + firstOutputIndex + ") was: " +
-          neuron.index,
-      );
-    }
+    assert(
+      neuron.index <= firstOutputIndex,
+      "Should not be in the output range",
+    );
 
-    if (neuron.type !== "hidden") {
-      throw new Error("Should be a 'hidden' type was: " + neuron.type);
-    }
+    assert(neuron.type === "hidden", neuron.type);
+
     const left = this.creature.neurons.slice(0, neuron.index);
     const right = this.creature.neurons.slice(neuron.index);
     right.forEach((n) => {

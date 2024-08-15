@@ -14,6 +14,7 @@ export class ModBias implements RadioactiveInterface {
    * @param {number[]} [focusList] - The list of focus indices.
    */
   mutate(focusList?: number[] | undefined): boolean {
+    let changed = false;
     for (let attempts = 0; attempts < 12; attempts++) {
       // Has no effect on input node, so they are excluded
       const index = Math.floor(
@@ -23,10 +24,10 @@ export class ModBias implements RadioactiveInterface {
       const neuron = this.creature.neurons[index];
       if (neuron.type === "constant") continue;
       if (!this.creature.inFocus(index, focusList) && attempts < 6) continue;
-      neuron.mutate(Mutation.MOD_BIAS.name);
-      return true;
+      changed = neuron.mutate(Mutation.MOD_BIAS.name);
+      break;
     }
 
-    return false;
+    return changed;
   }
 }

@@ -62,15 +62,14 @@ export class SwapNeurons implements RadioactiveInterface {
       }
 
       if (node1 && node2) {
-        changed = true;
-
         const bias1 = node1.bias;
         const squash1 = node1.squash;
         assert(squash1);
 
         const squash2 = node2.squash;
+        const bias2 = node2.bias;
         assert(squash2);
-        node1.bias = node2.bias;
+        node1.bias = bias2;
         node1.setSquash(squash2);
 
         node2.bias = bias1;
@@ -78,6 +77,8 @@ export class SwapNeurons implements RadioactiveInterface {
 
         node1.fix();
         node2.fix();
+
+        changed = squash1 !== squash2 || bias1 !== bias2;
       }
     }
 

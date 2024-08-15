@@ -9,6 +9,7 @@ export class ModActivation implements RadioactiveInterface {
   }
 
   mutate(focusList?: number[] | undefined): boolean {
+    let changed = false;
     for (let attempts = 0; attempts < 12; attempts++) {
       const index = Math.floor(
         Math.random() * (
@@ -21,10 +22,11 @@ export class ModActivation implements RadioactiveInterface {
       if (neuron.type == "constant") continue;
 
       if (this.creature.inFocus(index, focusList)) {
-        return neuron.mutate(Mutation.MOD_ACTIVATION.name);
+        changed = neuron.mutate(Mutation.MOD_ACTIVATION.name);
+        break;
       }
     }
 
-    return false;
+    return changed;
   }
 }
