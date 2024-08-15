@@ -13,10 +13,10 @@ export function makeElitists(
   size = 1,
   verbose = false,
 ): ElitistsResults {
-  if (creatures.length == 0) throw new Error(`Whole popluation is extinct`);
-  if (!Number.isFinite(size) || size < 1) {
-    throw new Error(`Must have at least one elite creature was: ${size}`);
-  }
+  if (creatures.length == 0) throw new Error(`Whole population is extinct`);
+  assert(size > 0);
+  assert(Number.isInteger(size));
+
   const result: ElitistsResults = {
     elitists: [],
     averageScore: NaN,

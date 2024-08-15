@@ -21,6 +21,7 @@ export class SubNeuron implements RadioactiveInterface {
       return false;
     }
 
+    let changed = false;
     for (let attempts = 0; attempts < 24; attempts++) {
       // Select a neuron which isn't an input or output neuron
       const indx = Math.floor(
@@ -32,9 +33,10 @@ export class SubNeuron implements RadioactiveInterface {
 
       if (attempts < 12 && !this.creature.inFocus(indx, focusList)) continue;
       removeHiddenNeuron(this.creature, indx);
-      return true;
+      changed = true;
+      break;
     }
 
-    return false;
+    return changed;
   }
 }

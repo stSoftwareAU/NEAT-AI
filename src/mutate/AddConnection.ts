@@ -54,7 +54,7 @@ export class AddConnection implements RadioactiveInterface {
     const pair = available[Math.floor(Math.random() * available.length)];
     const fromIndex = pair[0].index;
     const toIndex = pair[1].index;
-    const weightScale = options.weightScale || 1;
+    const weightScale = options.weightScale;
     const weight = Synapse.randomWeight() * weightScale;
 
     this.creature.connect(fromIndex, toIndex, weight);

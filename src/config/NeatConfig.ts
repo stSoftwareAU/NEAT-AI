@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import type { NeatOptions } from "../../mod.ts";
 import type {
   CreatureExport,
@@ -102,6 +103,8 @@ export class NeatConfig implements NeatOptions {
 
     this.populationSize = options.populationSize || 50;
     this.elitism = options.elitism || 1;
+    assert(Number.isInteger(this.elitism));
+    assert(this.elitism > 0);
 
     this.maxConns = options.maxConns || Infinity;
     this.maximumNumberOfNodes = options.maximumNumberOfNodes || Infinity;
