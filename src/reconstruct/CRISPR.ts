@@ -433,7 +433,6 @@ export class CRISPR {
     if (uuid !== modifiedUUID) {
       addTag(modifiedCreature, "CRISPR-SOURCE", uuid);
       addTag(modifiedCreature, "CRISPR-DNA", dna.id); // DNA that was used to modify
-      return modifiedCreature;
     }
 
     return modifiedCreature;
