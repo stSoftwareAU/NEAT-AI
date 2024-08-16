@@ -83,7 +83,7 @@ Deno.test("retry", () => {
     }
   });
 
-  const retryPopulation = retry(population);
+  const retryPopulation = retry(population, "FORWARD");
 
   assertEquals(retryPopulation.length, 2);
 });
