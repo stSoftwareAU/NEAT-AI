@@ -6,7 +6,7 @@ import { Species } from "../NEAT/Species.ts";
 import type { Neat } from "../NEAT/Neat.ts";
 import { logApproach } from "../NEAT/LogApproach.ts";
 import { restoreSource } from "./RestoreSource.ts";
-import { backtrack } from "./BackTrack.ts";
+
 import { retry } from "./Retry.ts";
 
 export class FindTunePopulation {
@@ -130,13 +130,8 @@ export class FindTunePopulation {
           fineTunedPopulation.push(...restoredTunedPopulation);
         }
       } else {
-        const backtrackPopulation = backtrack(genus.population);
-        if (backtrackPopulation.length) {
-          fineTunedPopulation.push(...backtrackPopulation);
-        } else {
-          const retryPopulation = retry(genus.population);
-          fineTunedPopulation.push(...retryPopulation);
-        }
+        const retryPopulation = retry(genus.population);
+        fineTunedPopulation.push(...retryPopulation);
       }
 
       for (let attempts = 0; attempts < 12; attempts++) {

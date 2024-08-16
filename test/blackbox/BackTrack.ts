@@ -2,7 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
 import type { CreatureExport } from "../../mod.ts";
-import { backtrack } from "../../src/blackbox/BackTrack.ts";
+import { retry } from "../../src/blackbox/Retry.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -83,7 +83,7 @@ Deno.test("backtrack", () => {
     }
   });
 
-  const backtrackPopulation = backtrack(population);
+  const backtrackPopulation = retry(population, "BACKWARDS");
 
   assertEquals(backtrackPopulation.length, 2);
 });
