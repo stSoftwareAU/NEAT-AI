@@ -1,9 +1,9 @@
 import { assert } from "@std/assert";
+import { addTag } from "@stsoftware/tags";
 import type { Creature } from "../../mod.ts";
+import type { Approach } from "../NEAT/LogApproach.ts";
 import { fineTuneImprovement } from "./FineTune.ts";
 import { restoreSource } from "./RestoreSource.ts";
-import { addTag } from "@stsoftware/tags";
-import type { Approach } from "../NEAT/LogApproach.ts";
 
 export type Filter = "NONE" | "FORWARD" | "BACKWARDS";
 
