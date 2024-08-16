@@ -7,7 +7,7 @@ import type { Approach } from "../NEAT/LogApproach.ts";
 
 export type Filter = "NONE" | "FORWARD" | "BACKWARDS";
 
-const PLAN_CONSTANT = 0.000_000_001;
+const PLANK_CONSTANT = 0.000_000_000_001;
 export function retry(
   population: Creature[],
   filter: Filter = "NONE",
@@ -19,7 +19,7 @@ export function retry(
       const absDifference = Math.abs(difference);
 
       // Check if the absolute difference exceeds the plank constant
-      if (absDifference <= PLAN_CONSTANT) {
+      if (absDifference <= PLANK_CONSTANT) {
         return false;
       }
 
