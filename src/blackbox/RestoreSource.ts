@@ -24,15 +24,19 @@ export function restoreSource(creature: Creature): Creature | undefined {
   for (const fromUUID in memetic.weights) {
     const weightArray = memetic.weights[fromUUID];
     weightArray.forEach((weightObj) => {
-      const synapse = restoredCreature.synapses.find((s) =>
+      let synapse = restoredCreature.synapses.find((s) =>
         s.fromUUID === fromUUID && s.toUUID === weightObj.toUUID
       );
       if (!synapse) {
-        throw new Error(
-          `Synapse from ${fromUUID} to ${weightObj.toUUID} not found in the creature.`,
-        );
+        synapse = {
+          fromUUID: fromUUID,
+          toUUID: weightObj.toUUID,
+          weight: weightObj.weight,
+        };
+        restoredCreature.synapses.push(synapse);
+      } else {
+        synapse.weight = weightObj.weight;
       }
-      synapse.weight = weightObj.weight;
     });
   }
   addTag(restoredCreature, "restored", memetic.generation.toString());
