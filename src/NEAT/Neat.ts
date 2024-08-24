@@ -21,7 +21,7 @@ import type {
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
-import { Breed } from "./Breed.ts";
+import { Breed } from "../breed/Breed.ts";
 import { Genus } from "./Genus.ts";
 import type { Approach } from "./LogApproach.ts";
 import { Mutator } from "./Mutator.ts";

@@ -1,6 +1,6 @@
 import { assertEquals, assertFalse } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import { Breed } from "../src/NEAT/Breed.ts";
+import { Breed } from "../src/breed/Breed.ts";
 import { Genus } from "../src/NEAT/Genus.ts";
 import { Mutator } from "../src/NEAT/Mutator.ts";
 import { Neat } from "../src/NEAT/Neat.ts";

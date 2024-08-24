@@ -5,7 +5,7 @@ import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/NEAT/Neat.ts";
 import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
 import { Mutator } from "../src/NEAT/Mutator.ts";
-import { Breed } from "../src/NEAT/Breed.ts";
+import { Breed } from "../src/breed/Breed.ts";
 import { Genus } from "../src/NEAT/Genus.ts";
 import { ModBias } from "../src/mutate/ModBias.ts";
 

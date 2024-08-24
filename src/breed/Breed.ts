@@ -1,7 +1,8 @@
-import { type Creature, Selection } from "../../mod.ts";
+import { Creature, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
-import type { Genus } from "./Genus.ts";
+import type { Genus } from "../NEAT/Genus.ts";
+import { createCompatibleFather } from "./Father.ts";
 
 export class Breed {
   readonly genus: Genus;
@@ -67,7 +68,11 @@ export class Breed {
       }
     }
 
-    return this.getParent(possibleFathers);
+    const father = this.getParent(possibleFathers);
+
+    return Creature.fromJSON(
+      createCompatibleFather(mum.exportJSON(), father.exportJSON()),
+    );
   }
 
   /**
