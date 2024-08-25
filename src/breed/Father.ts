@@ -6,10 +6,14 @@ function matchNeuronsBySynapses(
   motherNeuron: NeuronExport,
   fatherNeuron: NeuronExport,
   motherSynapses: SynapseExport[],
-  fatherSynapses: SynapseExport[]
+  fatherSynapses: SynapseExport[],
 ): boolean {
-  const motherSynapsesTo = motherSynapses.filter((s) => s.toUUID === motherNeuron.uuid);
-  const fatherSynapsesTo = fatherSynapses.filter((s) => s.toUUID === fatherNeuron.uuid);
+  const motherSynapsesTo = motherSynapses.filter((s) =>
+    s.toUUID === motherNeuron.uuid
+  );
+  const fatherSynapsesTo = fatherSynapses.filter((s) =>
+    s.toUUID === fatherNeuron.uuid
+  );
 
   if (motherSynapsesTo.length !== fatherSynapsesTo.length) {
     return false;
@@ -41,7 +45,7 @@ export function createCompatibleFather(
         motherNeuron,
         fatherNeuron,
         mother.synapses,
-        father.synapses
+        father.synapses,
       )
     );
 
@@ -53,8 +57,9 @@ export function createCompatibleFather(
   // Additional Step: Check for any unmapped neurons in the mother that should map to unmapped neurons in the father
   mother.neurons.forEach((motherNeuron) => {
     if (![...uuidMapping.values()].includes(motherNeuron.uuid)) {
-      const possibleFatherNeuron = father.neurons.find(fatherNeuron => 
-        !uuidMapping.has(fatherNeuron.uuid) && fatherNeuron.squash === motherNeuron.squash
+      const possibleFatherNeuron = father.neurons.find((fatherNeuron) =>
+        !uuidMapping.has(fatherNeuron.uuid) &&
+        fatherNeuron.squash === motherNeuron.squash
       );
       if (possibleFatherNeuron) {
         uuidMapping.set(possibleFatherNeuron.uuid, motherNeuron.uuid);
@@ -76,7 +81,8 @@ export function createCompatibleFather(
 
   // Step 3: Apply UUID mappings to synapses
   const newSynapses = father.synapses.map((synapse) => {
-    const updatedFromUUID = uuidMapping.get(synapse.fromUUID) || synapse.fromUUID;
+    const updatedFromUUID = uuidMapping.get(synapse.fromUUID) ||
+      synapse.fromUUID;
     const updatedToUUID = uuidMapping.get(synapse.toUUID) || synapse.toUUID;
     return {
       ...synapse,

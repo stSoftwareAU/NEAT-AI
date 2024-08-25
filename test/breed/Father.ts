@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { createCompatibleFather } from "../../src/breed/Father.ts";
 import type { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
 import type { NeuronExport } from "../../src/architecture/NeuronInterfaces.ts";
+import { Creature } from "../../mod.ts";
 
 function makeFather() {
   const creature: CreatureExport = {
@@ -152,17 +153,79 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
 
 Deno.test("Genetic Integrity - No Matching Neurons", () => {
   const father = makeFather();
-  const mother = makeMother();
+  Creature.fromJSON(father).validate();
 
-  // Modify mother so none of its neurons match father's structure
-  mother.synapses = mother.synapses.map((synapse) => ({
-    ...synapse,
-    weight: synapse.weight * -1, // Change the weight to prevent matching
-  }));
+  const nonMatchingMother = makeMother();
+  nonMatchingMother.neurons.unshift({
+    type: "hidden",
+    uuid: "hidden-0",
+    squash: "TANH",
+    bias: 1.2,
+  });
+
+  nonMatchingMother.synapses.forEach((synapse: SynapseExport) => {
+    if (synapse.fromUUID === "input-0") {
+      synapse.fromUUID = "hidden-0";
+    }
+    // if( synapse.toUUID === "mother-3" ) synapse.toUUID = "hidden-0";
+  });
+  nonMatchingMother.synapses.push({
+    fromUUID: "input-0",
+    toUUID: "hidden-0",
+    weight: -1.3,
+  });
+  console.info(nonMatchingMother);
+  Creature.fromJSON(nonMatchingMother).validate();
+
+  // Create a distinct mother with non-matching neurons and synapses
+  //   const nonMatchingMother = JSON.parse(JSON.stringify(nonMatchingMother));
+
+  //   // Modify the UUIDs of the mother's neurons to ensure no matching neurons
+  //   nonMatchingMother.neurons = nonMatchingMother.neurons.map(
+  //     (neuron: NeuronExport) => {
+  //       if (
+  //         !neuron.uuid.startsWith("input-") && !neuron.uuid.startsWith("output-")
+  //       ) {
+  //         return { ...neuron, uuid: neuron.uuid + "-different" };
+  //       }
+  //       return neuron;
+  //     },
+  //   );
+
+  //   // Update the synapses in the mother to reflect the new neuron UUIDs
+  //   nonMatchingMother.synapses = nonMatchingMother.synapses.map(
+  //     (synapse: SynapseExport) => {
+  //       let newFromUUID = synapse.fromUUID;
+  //       let newToUUID = synapse.toUUID;
+
+  //       if (
+  //         !synapse.fromUUID.startsWith("input-") &&
+  //         !synapse.fromUUID.startsWith("output-")
+  //       ) {
+  //         newFromUUID = synapse.fromUUID + "-different";
+  //       }
+
+  //       if (
+  //         !synapse.toUUID.startsWith("input-") &&
+  //         !synapse.toUUID.startsWith("output-")
+  //       ) {
+  //         newToUUID = synapse.toUUID + "-different";
+  //       }
+
+  //       return {
+  //         ...synapse,
+  //         fromUUID: newFromUUID,
+  //         toUUID: newToUUID,
+  //       };
+  //     },
+  //   );
+
+  Creature.fromJSON(nonMatchingMother).validate();
 
   // The expected output should be the same as the original father since no neurons match
   const fatherExpected = JSON.parse(JSON.stringify(father));
-  const fatherActual = createCompatibleFather(mother, father);
+  const fatherActual = createCompatibleFather(nonMatchingMother, father);
 
+  Creature.fromJSON(fatherActual).validate();
   assertEquals(fatherActual, fatherExpected);
 });

@@ -1,3 +1,4 @@
+import { assert, fail } from "@std/assert";
 import { Creature, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
@@ -20,17 +21,13 @@ export class Breed {
     const mum = this.getParent(this.genus.population);
 
     if (mum === undefined) {
-      console.warn(
-        "No mother found",
-        this.config.selection.name,
-        this.genus.population.length,
+      fail(
+        `No mother found in population of ${this.genus.population.length} creatures, selection: ${this.config.selection.name}`,
       );
-
-      return;
     }
 
     const dad = this.getDad(mum);
-    if (dad === undefined) {
+    if (!dad) {
       console.warn(
         "No father found",
       );
@@ -46,7 +43,7 @@ export class Breed {
     return creature;
   }
 
-  private getDad(mum: Creature): Creature {
+  private getDad(mum: Creature): Creature | undefined {
     if (!mum.uuid) throw new Error(`mum.uuid is undefined`);
 
     const species = this.genus.findSpeciesByCreatureUUID(mum.uuid);
@@ -68,11 +65,38 @@ export class Breed {
       }
     }
 
+    if (possibleFathers.length === 0) {
+      return undefined;
+    }
     const father = this.getParent(possibleFathers);
+    assert(father !== undefined, "Father is undefined");
 
-    return Creature.fromJSON(
-      createCompatibleFather(mum.exportJSON(), father.exportJSON()),
+    const fatherExport = createCompatibleFather(
+      mum.exportJSON(),
+      father.exportJSON(),
     );
+    try {
+      const compatibleFather = Creature.fromJSON(
+        fatherExport,
+      );
+
+      return compatibleFather;
+    } catch (e) {
+      Deno.writeTextFileSync(
+        "./.source_mother.json",
+        JSON.stringify( mum.exportJSON(), null, 2),
+      );
+      Deno.writeTextFileSync(
+        "./.source_father.json",
+        JSON.stringify( father.exportJSON(), null, 2),
+      );
+
+      Deno.writeTextFileSync(
+        "./.invalid_father.json",
+        JSON.stringify(fatherExport, null, 2),
+      );
+      throw e;
+    }
   }
 
   /**
