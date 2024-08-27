@@ -172,8 +172,6 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
   fatherExpected.synapses.forEach((synapse: SynapseExport) => {
     if (synapse.fromUUID === "father-3") synapse.fromUUID = "mother-3";
     if (synapse.toUUID === "father-3") synapse.toUUID = "mother-3";
-    // if (synapse.fromUUID === "father-new") synapse.fromUUID = "mother-new";
-    // if (synapse.toUUID === "father-new") synapse.toUUID = "mother-new";
   });
 
   const fatherActual = createCompatibleFather(mother, father);
