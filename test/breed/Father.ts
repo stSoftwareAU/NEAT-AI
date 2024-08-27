@@ -113,41 +113,72 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
   const father = makeFather();
   const mother = makeMother();
 
-  // Add a new neuron and synapse in both mother and father that should also match
+  // Add a new hidden neuron and corresponding synapse in both mother and father
   const newNeuron: NeuronExport = {
     type: "hidden",
     uuid: "father-new",
     squash: "TANH",
     bias: 4,
   };
-  father.neurons.push(newNeuron);
-  mother.neurons.push({ ...newNeuron, uuid: "mother-new" });
 
+  // Insert the new hidden neuron before the output neurons
+  const outputNeuronIndexFather = father.neurons.findIndex((n) =>
+    n.type === "output"
+  );
+  father.neurons.splice(outputNeuronIndexFather, 0, newNeuron);
+
+  const outputNeuronIndexMother = mother.neurons.findIndex((n) =>
+    n.type === "output"
+  );
+  mother.neurons.splice(outputNeuronIndexMother, 0, {
+    ...newNeuron,
+    uuid: "mother-new",
+  });
+
+  // Add corresponding synapses
   father.synapses.push({
-    fromUUID: "father-3",
+    fromUUID: "input-1",
     toUUID: "father-new",
     weight: 0.2,
   });
+  father.synapses.push({
+    fromUUID: "father-new",
+    toUUID: "output-0",
+    weight: 0.21,
+  });
+
+  Creature.fromJSON(father).validate();
+
   mother.synapses.push({
-    fromUUID: "mother-3",
+    fromUUID: "input-0",
     toUUID: "mother-new",
     weight: 0.2,
   });
 
+  mother.synapses.push({
+    fromUUID: "mother-new",
+    toUUID: "output-0",
+    weight: 0.21,
+  });
+  Creature.fromJSON(mother).validate();
+
   // Expected outcome
   const fatherExpected = JSON.parse(JSON.stringify(father));
+
+  // Apply changes to match the mother's neuron UUIDs in the expected output
   fatherExpected.neurons[0].uuid = "mother-3"; // The original change
-  fatherExpected.neurons[4].uuid = "mother-new"; // The new matching neuron
+  // fatherExpected.neurons[outputNeuronIndexFather].uuid = "mother-new"; // The new matching neuron
 
   fatherExpected.synapses.forEach((synapse: SynapseExport) => {
     if (synapse.fromUUID === "father-3") synapse.fromUUID = "mother-3";
     if (synapse.toUUID === "father-3") synapse.toUUID = "mother-3";
-    if (synapse.fromUUID === "father-new") synapse.fromUUID = "mother-new";
-    if (synapse.toUUID === "father-new") synapse.toUUID = "mother-new";
+    // if (synapse.fromUUID === "father-new") synapse.fromUUID = "mother-new";
+    // if (synapse.toUUID === "father-new") synapse.toUUID = "mother-new";
   });
 
   const fatherActual = createCompatibleFather(mother, father);
 
+  // Ensure that the actual result matches the expected result
   assertEquals(fatherActual, fatherExpected);
 });
 

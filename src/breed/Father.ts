@@ -1,35 +1,39 @@
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 
-function matchNeuronsBySynapses(
-  motherNeuron: NeuronExport,
-  fatherNeuron: NeuronExport,
-  motherSynapses: SynapseExport[],
-  fatherSynapses: SynapseExport[],
-): boolean {
-  const motherSynapsesTo = motherSynapses.filter((s) =>
-    s.toUUID === motherNeuron.uuid
-  );
-  const fatherSynapsesTo = fatherSynapses.filter((s) =>
-    s.toUUID === fatherNeuron.uuid
-  );
+function generateNeuronKeyMap(
+  creature: CreatureExport,
+): Map<string, NeuronExport> {
+  const keyMap = new Map<string, NeuronExport>();
 
-  if (motherSynapsesTo.length !== fatherSynapsesTo.length) {
-    return false;
-  }
+  // Sort synapses by fromUUID and toUUID to ensure consistent key generation
+  const sortedSynapses = [...creature.synapses].sort((a, b) => {
+    if (a.fromUUID < b.fromUUID) return -1;
+    if (a.fromUUID > b.fromUUID) return 1;
+    if (a.toUUID < b.toUUID) return -1;
+    if (a.toUUID > b.toUUID) return 1;
+    return 0;
+  });
 
-  for (let i = 0; i < motherSynapsesTo.length; i++) {
-    const motherSynapse = motherSynapsesTo[i];
-    const fatherSynapse = fatherSynapsesTo[i];
+  // For each neuron, create a composite key from its connected synapses
+  creature.neurons.forEach((neuron) => {
+    if (neuron.type === "hidden") {
+      const incomingSynapses = sortedSynapses.filter((s) =>
+        s.toUUID === neuron.uuid
+      );
+      const outgoingSynapses = sortedSynapses.filter((s) =>
+        s.fromUUID === neuron.uuid
+      );
 
-    // Compare the structure, not just the UUIDs
-    if (motherSynapse.fromUUID !== fatherSynapse.fromUUID) {
-      return false;
+      const key = `${incomingSynapses.map((s) => s.fromUUID).join("-")}|${
+        outgoingSynapses.map((s) => s.toUUID).join("-")
+      }`;
+
+      keyMap.set(key, neuron);
     }
-  }
+  });
 
-  return true;
+  return keyMap;
 }
 
 export function createCompatibleFather(
@@ -38,32 +42,16 @@ export function createCompatibleFather(
 ): CreatureExport {
   const uuidMapping = new Map<string, string>();
 
-  // Step 1: Identify matching neurons by structure and populate the UUID mapping
-  mother.neurons.forEach((motherNeuron) => {
-    const matchingFatherNeuron = father.neurons.find((fatherNeuron) =>
-      matchNeuronsBySynapses(
-        motherNeuron,
-        fatherNeuron,
-        mother.synapses,
-        father.synapses,
-      )
-    );
+  // Generate the neuron key maps for both mother and father
+  const motherKeyMap = generateNeuronKeyMap(mother);
+  const fatherKeyMap = generateNeuronKeyMap(father);
+
+  // Step 1: Identify matching neurons by composite key and populate the UUID mapping
+  motherKeyMap.forEach((motherNeuron, motherKey) => {
+    const matchingFatherNeuron = fatherKeyMap.get(motherKey);
 
     if (matchingFatherNeuron) {
       uuidMapping.set(matchingFatherNeuron.uuid, motherNeuron.uuid);
-    }
-  });
-
-  // Additional Step: Check for any unmapped neurons in the mother that should map to unmapped neurons in the father
-  mother.neurons.forEach((motherNeuron) => {
-    if (![...uuidMapping.values()].includes(motherNeuron.uuid)) {
-      const possibleFatherNeuron = father.neurons.find((fatherNeuron) =>
-        !uuidMapping.has(fatherNeuron.uuid) &&
-        fatherNeuron.squash === motherNeuron.squash
-      );
-      if (possibleFatherNeuron) {
-        uuidMapping.set(possibleFatherNeuron.uuid, motherNeuron.uuid);
-      }
     }
   });
 

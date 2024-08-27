@@ -84,11 +84,11 @@ export class Breed {
     } catch (e) {
       Deno.writeTextFileSync(
         "./.source_mother.json",
-        JSON.stringify( mum.exportJSON(), null, 2),
+        JSON.stringify(mum.exportJSON(), null, 2),
       );
       Deno.writeTextFileSync(
         "./.source_father.json",
-        JSON.stringify( father.exportJSON(), null, 2),
+        JSON.stringify(father.exportJSON(), null, 2),
       );
 
       Deno.writeTextFileSync(
