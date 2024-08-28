@@ -40,6 +40,18 @@ export function createCompatibleFather(
   mother: CreatureExport,
   father: CreatureExport,
 ): CreatureExport {
+  // Create a set of all UUIDs in the mother's neurons
+  const motherUUIDs = new Set(mother.neurons.map((neuron) => neuron.uuid));
+
+  // Optimization: If all father's neurons' UUIDs are in the mother, return the father as-is
+  const allUUIDsMatch = father.neurons.every((neuron) =>
+    motherUUIDs.has(neuron.uuid)
+  );
+
+  if (allUUIDsMatch) {
+    return father;
+  }
+
   const uuidMapping = new Map<string, string>();
 
   // Generate the neuron key maps for both mother and father
@@ -50,7 +62,8 @@ export function createCompatibleFather(
   motherKeyMap.forEach((motherNeuron, motherKey) => {
     const matchingFatherNeuron = fatherKeyMap.get(motherKey);
 
-    if (matchingFatherNeuron) {
+    // Only map UUIDs that are not already present in the mother
+    if (matchingFatherNeuron && !motherUUIDs.has(matchingFatherNeuron.uuid)) {
       uuidMapping.set(matchingFatherNeuron.uuid, motherNeuron.uuid);
     }
   });

@@ -53,6 +53,7 @@ Deno.test("OffSpring", () => {
   const breed = new Breed(genus, neat.config);
 
   neat.populatePopulation(creature);
+  genus.addCreature(creature);
   for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = breed.breed();
     if (!kid) continue;
