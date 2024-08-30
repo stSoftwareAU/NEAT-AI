@@ -40,7 +40,7 @@ export class Breed {
   }
 
   private getDad(mum: Creature): Creature | undefined {
-    if (!mum.uuid) throw new Error(`mum.uuid is undefined`);
+    assert(mum.uuid, "Mother UUID is undefined");
 
     const species = this.genus.findSpeciesByCreatureUUID(mum.uuid);
 
@@ -148,11 +148,10 @@ export class Breed {
         ];
       }
       case Selection.TOURNAMENT: {
-        if (Selection.TOURNAMENT.size > this.config.populationSize) {
-          throw new Error(
-            "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
-          );
-        }
+        assert(
+          Selection.TOURNAMENT.size <= this.config.populationSize,
+          "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
+        );
 
         // Create a tournament
         const individuals = new Array(Selection.TOURNAMENT.size);
