@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { Breed } from "../../src/NEAT/Breed.ts";
+import { Breed } from "../../src/breed/Breed.ts";
 import { Genus } from "../../src/NEAT/Genus.ts";
 import { Neat } from "../../src/NEAT/Neat.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
@@ -53,6 +53,7 @@ Deno.test("OffSpring", () => {
   const breed = new Breed(genus, neat.config);
 
   neat.populatePopulation(creature);
+  genus.addCreature(creature);
   for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = breed.breed();
     if (!kid) continue;

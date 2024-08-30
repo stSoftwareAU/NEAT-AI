@@ -1,0 +1,96 @@
+{
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "5148aa55-bb11-4b5f-93a2-0003a4f99a8c",
+      "bias": -0.022958732095841983,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "5c8f88d8-084f-4a68-a297-115ef4bc8ffc",
+      "bias": 0.006341288533692285,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "4abbf92d-fd0b-49ba-96e5-ed6b2bb29936",
+      "bias": 0.08683215142920792,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "ab65eb53-3c26-44c8-b844-5dc9da0f937e",
+      "bias": -0.09999957913367297,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": -0.0336354299518328,
+      "squash": "LOGISTIC"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.018148433531217645,
+      "fromUUID": "input-0",
+      "toUUID": "5148aa55-bb11-4b5f-93a2-0003a4f99a8c"
+    },
+    {
+      "weight": -0.013891158893691191,
+      "fromUUID": "input-0",
+      "toUUID": "5c8f88d8-084f-4a68-a297-115ef4bc8ffc"
+    },
+    {
+      "weight": 0.08293144516742931,
+      "fromUUID": "input-0",
+      "toUUID": "4abbf92d-fd0b-49ba-96e5-ed6b2bb29936"
+    },
+    {
+      "weight": -0.09910272600865477,
+      "fromUUID": "input-0",
+      "toUUID": "ab65eb53-3c26-44c8-b844-5dc9da0f937e"
+    },
+    {
+      "weight": -0.007370844696371897,
+      "fromUUID": "5148aa55-bb11-4b5f-93a2-0003a4f99a8c",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.009993174026960462,
+      "fromUUID": "5c8f88d8-084f-4a68-a297-115ef4bc8ffc",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.003182361774873103,
+      "fromUUID": "4abbf92d-fd0b-49ba-96e5-ed6b2bb29936",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.06652716654619145,
+      "fromUUID": "ab65eb53-3c26-44c8-b844-5dc9da0f937e",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 1,
+  "output": 1,
+  "tags": [
+    {
+      "name": "old-nodes",
+      "value": "6"
+    },
+    {
+      "name": "old-connections",
+      "value": "8"
+    },
+    {
+      "name": "error",
+      "value": "0.2505455978689272"
+    },
+    {
+      "name": "score",
+      "value": "-0.2517455978689272"
+    }
+  ]
+}

@@ -1,7 +1,9 @@
-import { type Creature, Selection } from "../../mod.ts";
+import { assert } from "@std/assert";
+import { Creature, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
-import type { Genus } from "./Genus.ts";
+import type { Genus } from "../NEAT/Genus.ts";
+import { createCompatibleFather } from "./Father.ts";
 
 export class Breed {
   readonly genus: Genus;
@@ -18,18 +20,10 @@ export class Breed {
   breed(): Creature | undefined {
     const mum = this.getParent(this.genus.population);
 
-    if (mum === undefined) {
-      console.warn(
-        "No mother found",
-        this.config.selection.name,
-        this.genus.population.length,
-      );
-
-      return;
-    }
+    assert(mum, "Mother is undefined");
 
     const dad = this.getDad(mum);
-    if (dad === undefined) {
+    if (!dad) {
       console.warn(
         "No father found",
       );
@@ -45,8 +39,8 @@ export class Breed {
     return creature;
   }
 
-  private getDad(mum: Creature): Creature {
-    if (!mum.uuid) throw new Error(`mum.uuid is undefined`);
+  private getDad(mum: Creature): Creature | undefined {
+    assert(mum.uuid, "Mother UUID is undefined");
 
     const species = this.genus.findSpeciesByCreatureUUID(mum.uuid);
 
@@ -67,7 +61,38 @@ export class Breed {
       }
     }
 
-    return this.getParent(possibleFathers);
+    if (possibleFathers.length === 0) {
+      return undefined;
+    }
+    const father = this.getParent(possibleFathers);
+    assert(father !== undefined, "Father is undefined");
+
+    const fatherExport = createCompatibleFather(
+      mum.exportJSON(),
+      father.exportJSON(),
+    );
+    try {
+      const compatibleFather = Creature.fromJSON(
+        fatherExport,
+      );
+
+      return compatibleFather;
+    } catch (e) {
+      Deno.writeTextFileSync(
+        "./.source_mother.json",
+        JSON.stringify(mum.exportJSON(), null, 2),
+      );
+      Deno.writeTextFileSync(
+        "./.source_father.json",
+        JSON.stringify(father.exportJSON(), null, 2),
+      );
+
+      Deno.writeTextFileSync(
+        "./.invalid_father.json",
+        JSON.stringify(fatherExport, null, 2),
+      );
+      throw e;
+    }
   }
 
   /**
@@ -123,11 +148,10 @@ export class Breed {
         ];
       }
       case Selection.TOURNAMENT: {
-        if (Selection.TOURNAMENT.size > this.config.populationSize) {
-          throw new Error(
-            "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
-          );
-        }
+        assert(
+          Selection.TOURNAMENT.size <= this.config.populationSize,
+          "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
+        );
 
         // Create a tournament
         const individuals = new Array(Selection.TOURNAMENT.size);

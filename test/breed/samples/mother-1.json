@@ -1,0 +1,85 @@
+{
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "642714ce-b8c3-4d91-b222-744e1b92d06d",
+      "bias": 0.002406245027023246,
+      "squash": "GAUSSIAN"
+    },
+    {
+      "type": "hidden",
+      "uuid": "ceb98a62-6f8c-4b6a-bc83-6b18176f6352",
+      "bias": -0.0055005901047113365,
+      "squash": "ABSOLUTE"
+    },
+    {
+      "type": "hidden",
+      "uuid": "331537fe-8a74-4a5e-8268-a725d0fdd70d",
+      "bias": -0.0032535325427099637,
+      "squash": "Softplus"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.0001213,
+      "squash": "LOGISTIC"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.09081979851659133,
+      "fromUUID": "input-0",
+      "toUUID": "331537fe-8a74-4a5e-8268-a725d0fdd70d"
+    },
+    {
+      "weight": -0.07427574545833515,
+      "fromUUID": "input-1",
+      "toUUID": "642714ce-b8c3-4d91-b222-744e1b92d06d"
+    },
+    {
+      "weight": -0.00024201794230374683,
+      "fromUUID": "input-1",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.009016034043707544,
+      "fromUUID": "642714ce-b8c3-4d91-b222-744e1b92d06d",
+      "toUUID": "ceb98a62-6f8c-4b6a-bc83-6b18176f6352"
+    },
+    {
+      "weight": 0.06731953946017512,
+      "fromUUID": "642714ce-b8c3-4d91-b222-744e1b92d06d",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.007552699155669404,
+      "fromUUID": "ceb98a62-6f8c-4b6a-bc83-6b18176f6352",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.0002027932275758443,
+      "fromUUID": "331537fe-8a74-4a5e-8268-a725d0fdd70d",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 2,
+  "output": 1,
+  "tags": [
+    {
+      "name": "old-nodes",
+      "value": "4"
+    },
+    {
+      "name": "old-connections",
+      "value": "3"
+    },
+    {
+      "name": "error",
+      "value": "0.25027945418531067"
+    },
+    {
+      "name": "score",
+      "value": "-0.25127945418531067"
+    }
+  ]
+}

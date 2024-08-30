@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { Creature } from "../Creature.ts";
-import type { Breed } from "../NEAT/Breed.ts";
+import type { Breed } from "../breed/Breed.ts";
 import type { Mutator } from "../NEAT/Mutator.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
