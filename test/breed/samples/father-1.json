@@ -1,0 +1,67 @@
+{
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "331537fe-8a74-4a5e-8268-a725d0fdd70d",
+      "bias": -0.12635020761408552,
+      "squash": "Softplus"
+    },
+    {
+      "type": "hidden",
+      "uuid": "74512bf9-bf71-4c85-bf9b-3d9a4da599f5",
+      "bias": 0.07259356335733105,
+      "squash": "LogSigmoid"
+    },
+    {
+      "type": "hidden",
+      "uuid": "642714ce-b8c3-4d91-b222-744e1b92d06d",
+      "bias": 0.002406245027023246,
+      "squash": "GAUSSIAN"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.0001215,
+      "squash": "LOGISTIC"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.09081979851659133,
+      "fromUUID": "input-0",
+      "toUUID": "331537fe-8a74-4a5e-8268-a725d0fdd70d"
+    },
+    {
+      "weight": -0.0903670429104298,
+      "fromUUID": "input-0",
+      "toUUID": "74512bf9-bf71-4c85-bf9b-3d9a4da599f5"
+    },
+    {
+      "weight": -0.07427574545833515,
+      "fromUUID": "input-1",
+      "toUUID": "642714ce-b8c3-4d91-b222-744e1b92d06d"
+    },
+    {
+      "weight": -0.0000039464318418355,
+      "fromUUID": "input-1",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.0000071725635265960145,
+      "fromUUID": "331537fe-8a74-4a5e-8268-a725d0fdd70d",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.0709214698184526,
+      "fromUUID": "74512bf9-bf71-4c85-bf9b-3d9a4da599f5",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.0006728086133313118,
+      "fromUUID": "642714ce-b8c3-4d91-b222-744e1b92d06d",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 2,
+  "output": 1
+}

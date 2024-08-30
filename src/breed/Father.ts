@@ -1,3 +1,4 @@
+import { Creature } from "../../mod.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 
@@ -40,8 +41,14 @@ export function createCompatibleFather(
   mother: CreatureExport,
   father: CreatureExport,
 ): CreatureExport {
+  const uuidMapping = new Map<string, string>();
+  const usedMotherUUIDs = new Set<string>();
+
   // Create a set of all UUIDs in the mother's neurons
   const motherUUIDs = new Set(mother.neurons.map((neuron) => neuron.uuid));
+
+  // Create a set of all UUIDs in the father's neurons
+  const fatherUUIDs = new Set(father.neurons.map((neuron) => neuron.uuid));
 
   // Optimization: If all father's neurons' UUIDs are in the mother, return the father as-is
   const allUUIDsMatch = father.neurons.every((neuron) =>
@@ -52,8 +59,6 @@ export function createCompatibleFather(
     return father;
   }
 
-  const uuidMapping = new Map<string, string>();
-
   // Generate the neuron key maps for both mother and father
   const motherKeyMap = generateNeuronKeyMap(mother);
   const fatherKeyMap = generateNeuronKeyMap(father);
@@ -62,9 +67,14 @@ export function createCompatibleFather(
   motherKeyMap.forEach((motherNeuron, motherKey) => {
     const matchingFatherNeuron = fatherKeyMap.get(motherKey);
 
-    // Only map UUIDs that are not already present in the mother
-    if (matchingFatherNeuron && !motherUUIDs.has(matchingFatherNeuron.uuid)) {
+    // Only map UUIDs that are not already present in the father and have not been used
+    if (
+      matchingFatherNeuron &&
+      !fatherUUIDs.has(motherNeuron.uuid) &&
+      !usedMotherUUIDs.has(motherNeuron.uuid)
+    ) {
       uuidMapping.set(matchingFatherNeuron.uuid, motherNeuron.uuid);
+      usedMotherUUIDs.add(motherNeuron.uuid);
     }
   });
 
@@ -98,6 +108,8 @@ export function createCompatibleFather(
     neurons: newNeurons,
     synapses: newSynapses,
   };
+
+  Creature.fromJSON(adjustedFather).validate();
 
   return adjustedFather;
 }
