@@ -15,20 +15,28 @@ function generateNeuronKeyMap(
     return 0;
   });
 
-  // For each neuron, create a composite key from its connected synapses
+  // Map synapses by their UUIDs for quick lookup
+  const synapseFromMap = new Map<string, string[]>();
+  const synapseToMap = new Map<string, string[]>();
+
+  sortedSynapses.forEach((synapse) => {
+    if (!synapseFromMap.has(synapse.fromUUID)) {
+      synapseFromMap.set(synapse.fromUUID, []);
+    }
+    synapseFromMap.get(synapse.fromUUID)!.push(synapse.toUUID);
+
+    if (!synapseToMap.has(synapse.toUUID)) {
+      synapseToMap.set(synapse.toUUID, []);
+    }
+    synapseToMap.get(synapse.toUUID)!.push(synapse.fromUUID);
+  });
+
+  // Create composite keys for neurons based on their connected synapses
   creature.neurons.forEach((neuron) => {
     if (neuron.type === "hidden") {
-      const incomingSynapses = sortedSynapses.filter((s) =>
-        s.toUUID === neuron.uuid
-      );
-      const outgoingSynapses = sortedSynapses.filter((s) =>
-        s.fromUUID === neuron.uuid
-      );
-
-      const key = `${incomingSynapses.map((s) => s.fromUUID).join("-")}|${
-        outgoingSynapses.map((s) => s.toUUID).join("-")
-      }`;
-
+      const incomingKeys = (synapseToMap.get(neuron.uuid) || []).join("-");
+      const outgoingKeys = (synapseFromMap.get(neuron.uuid) || []).join("-");
+      const key = `${incomingKeys}|${outgoingKeys}`;
       keyMap.set(key, neuron);
     }
   });
@@ -42,6 +50,7 @@ export function createCompatibleFather(
 ): CreatureExport {
   const uuidMapping = new Map<string, string>();
   const usedMotherUUIDs = new Set<string>();
+  const usedFatherUUIDs = new Set<string>();
 
   // Create a set of all UUIDs in the mother's neurons
   const motherUUIDs = new Set(mother.neurons.map((neuron) => neuron.uuid));
@@ -50,34 +59,38 @@ export function createCompatibleFather(
   const fatherUUIDs = new Set(father.neurons.map((neuron) => neuron.uuid));
 
   // Optimization: If all father's neurons' UUIDs are in the mother, return the father as-is
-  const allUUIDsMatch = father.neurons.every((neuron) =>
-    motherUUIDs.has(neuron.uuid)
-  );
-
-  if (allUUIDsMatch) {
+  if (father.neurons.every((neuron) => motherUUIDs.has(neuron.uuid))) {
     return father;
   }
 
-  // Generate the neuron key maps for both mother and father
+  // Generate neuron key maps for both mother and father, using sorted synapses
   const motherKeyMap = generateNeuronKeyMap(mother);
   const fatherKeyMap = generateNeuronKeyMap(father);
 
   // Step 1: Identify matching neurons by composite key and populate the UUID mapping
   motherKeyMap.forEach((motherNeuron, motherKey) => {
-    const matchingFatherNeuron = fatherKeyMap.get(motherKey);
+    const matchingFatherNeurons = Array.from(fatherKeyMap.entries())
+      .filter(([fatherKey]) => fatherKey === motherKey)
+      .map(([, fatherNeuron]) => fatherNeuron);
 
     // Only map UUIDs that are not already present in the father and have not been used
     if (
-      matchingFatherNeuron &&
+      matchingFatherNeurons.length > 0 &&
       !fatherUUIDs.has(motherNeuron.uuid) &&
       !usedMotherUUIDs.has(motherNeuron.uuid)
     ) {
-      uuidMapping.set(matchingFatherNeuron.uuid, motherNeuron.uuid);
+      // Randomly select one matching father neuron for the mapping
+      const selectedFatherNeuron = matchingFatherNeurons[
+        Math.floor(Math.random() * matchingFatherNeurons.length)
+      ];
+
+      uuidMapping.set(selectedFatherNeuron.uuid, motherNeuron.uuid);
       usedMotherUUIDs.add(motherNeuron.uuid);
+      usedFatherUUIDs.add(selectedFatherNeuron.uuid);
     }
   });
 
-  // Step 2: Apply UUID mappings to neurons
+  // Step 2: Apply UUID mappings to neurons, maintaining the original order
   const newNeurons = father.neurons.map((fatherNeuron) => {
     const newUUID = uuidMapping.get(fatherNeuron.uuid);
     if (newUUID) {
@@ -109,23 +122,5 @@ export function createCompatibleFather(
   };
 
   delete adjustedFather.memetic;
-
-  // try {
-  //   Creature.fromJSON(adjustedFather).validate();
-  // } catch (e) {
-  //   Deno.writeTextFileSync(
-  //     "./.source_mother.json",
-  //     JSON.stringify(mother, null, 2),
-  //   );
-  //   Deno.writeTextFileSync(
-  //     "./.source_father.json",
-  //     JSON.stringify(father, null, 2),
-  //   );
-  //   Deno.writeTextFileSync(
-  //     "./.invalid_father.json",
-  //     JSON.stringify(adjustedFather, null, 2),
-  //   );
-  //   throw e;
-  // }
   return adjustedFather;
 }
