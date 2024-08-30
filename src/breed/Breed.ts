@@ -1,4 +1,4 @@
-import { assert, fail } from "@std/assert";
+import { assert } from "@std/assert";
 import { Creature, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
@@ -20,11 +20,7 @@ export class Breed {
   breed(): Creature | undefined {
     const mum = this.getParent(this.genus.population);
 
-    if (mum === undefined) {
-      fail(
-        `No mother found in population of ${this.genus.population.length} creatures, selection: ${this.config.selection.name}`,
-      );
-    }
+    assert(mum, "Mother is undefined");
 
     const dad = this.getDad(mum);
     if (!dad) {
