@@ -1,4 +1,3 @@
-import { Creature } from "../../mod.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 
