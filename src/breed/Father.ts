@@ -109,7 +109,24 @@ export function createCompatibleFather(
     synapses: newSynapses,
   };
 
-  Creature.fromJSON(adjustedFather).validate();
+  delete adjustedFather.memetic;
 
+  try {
+    Creature.fromJSON(adjustedFather).validate();
+  } catch (e) {
+    Deno.writeTextFileSync(
+      "./.source_mother.json",
+      JSON.stringify(mother, null, 2),
+    );
+    Deno.writeTextFileSync(
+      "./.source_father.json",
+      JSON.stringify(father, null, 2),
+    );
+    Deno.writeTextFileSync(
+      "./.invalid_father.json",
+      JSON.stringify(adjustedFather, null, 2),
+    );
+    throw e;
+  }
   return adjustedFather;
 }

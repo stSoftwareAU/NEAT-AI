@@ -1,0 +1,116 @@
+{
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "5148aa55-bb11-4b5f-93a2-0003a4f99a8c",
+      "bias": -0.11126319999999999,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "d1cb0e8c-4275-482f-81e0-07c5e33258c2",
+      "bias": -0.0951009,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "5c8f88d8-084f-4a68-a297-115ef4bc8ffc",
+      "bias": -0.2273122,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "hidden",
+      "uuid": "ab65eb53-3c26-44c8-b844-5dc9da0f937e",
+      "bias": 0.0236654,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": -0.028760499999999998,
+      "squash": "LOGISTIC"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": -0.0306392,
+      "fromUUID": "input-0",
+      "toUUID": "5148aa55-bb11-4b5f-93a2-0003a4f99a8c"
+    },
+    {
+      "weight": -0.3574128,
+      "fromUUID": "input-0",
+      "toUUID": "d1cb0e8c-4275-482f-81e0-07c5e33258c2"
+    },
+    {
+      "weight": -0.054157,
+      "fromUUID": "input-0",
+      "toUUID": "5c8f88d8-084f-4a68-a297-115ef4bc8ffc"
+    },
+    {
+      "weight": -0.2579322,
+      "fromUUID": "input-0",
+      "toUUID": "ab65eb53-3c26-44c8-b844-5dc9da0f937e"
+    },
+    {
+      "weight": -0.016578199999999998,
+      "fromUUID": "5148aa55-bb11-4b5f-93a2-0003a4f99a8c",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.0834669,
+      "fromUUID": "d1cb0e8c-4275-482f-81e0-07c5e33258c2",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.020502899999999998,
+      "fromUUID": "5c8f88d8-084f-4a68-a297-115ef4bc8ffc",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": -0.0087463,
+      "fromUUID": "ab65eb53-3c26-44c8-b844-5dc9da0f937e",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 1,
+  "output": 1,
+  "tags": [
+    {
+      "name": "untrained-error",
+      "value": "0.24994089284118928"
+    },
+    {
+      "name": "untrained-score",
+      "value": "-0.2511408928411893"
+    },
+    {
+      "name": "approach",
+      "value": "fine"
+    },
+    {
+      "name": "trainID",
+      "value": "412bfb53"
+    },
+    {
+      "name": "trained",
+      "value": "YES"
+    },
+    {
+      "name": "error",
+      "value": "0.24921955094623982"
+    },
+    {
+      "name": "score",
+      "value": "-0.2504195509462398"
+    },
+    {
+      "name": "adjusted",
+      "value": "8 weights, 5 biases"
+    },
+    {
+      "name": "old-score",
+      "value": "-0.2511369356791755"
+    }
+  ]
+}
