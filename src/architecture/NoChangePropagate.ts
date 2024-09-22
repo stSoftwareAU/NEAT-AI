@@ -41,10 +41,7 @@ export function noChangePropagate(
           fromNeuron.type !== "constant"
         ) {
           const fromActivation = fromNeuron.adjustedActivation(config);
-          fromNeuron.propagate(
-            fromActivation,
-            config,
-          );
+          noChangePropagate(fromNeuron, fromActivation, config);
         }
 
         const cs = neuron.creature.state.connection(c.from, c.to);
