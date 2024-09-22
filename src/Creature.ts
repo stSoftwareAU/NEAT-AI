@@ -1007,13 +1007,9 @@ export class Creature implements CreatureInternal {
         for (let i = dataResult.json.length; i--;) {
           const json = JSON.parse(Deno.readTextFileSync(dataResult.json[i]));
 
-          try {
-            const result = this.evaluateData(json, cost, feedbackLoop);
-            totalCount += result.count;
-            totalError += result.error;
-          } catch (e) {
-            throw new Error(`Error in file: ${dataResult.json[i]}`, e);
-          }
+          const result = this.evaluateData(json, cost, feedbackLoop);
+          totalCount += result.count;
+          totalError += result.error;
         }
         return { error: totalError / totalCount };
       }

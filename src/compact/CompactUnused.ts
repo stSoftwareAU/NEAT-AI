@@ -36,7 +36,7 @@ export function compactUnused(
           try {
             creatureValidate(compacted);
           } catch (e) {
-            console.warn("compactUnused", e.message);
+            console.warn("compactUnused", e.message ? e.message : e);
             compacted.fix();
           }
           break;
