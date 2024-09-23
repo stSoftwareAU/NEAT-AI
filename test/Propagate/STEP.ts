@@ -105,7 +105,7 @@ Deno.test("PropagateSTEP", () => {
 
   assertAlmostEquals(stepNeuron.bias, 1, 0.7);
 
-  if (neuron.bias < 0.00001 || neuron.bias >= 0.55) {
+  if (neuron.bias < 0.2 || neuron.bias >= 0.55) {
     fail(`neuron.bias ${neuron.bias} not in range`);
   }
 });
