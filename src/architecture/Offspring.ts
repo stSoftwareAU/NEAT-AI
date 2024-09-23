@@ -163,7 +163,6 @@ export class Offspring {
       if (e instanceof OffspringError) {
         return undefined;
       }
-      console.warn(e.message ? e.message : e);
       throw e;
     }
 
@@ -240,7 +239,8 @@ export class Offspring {
 
       return child;
     } catch (e) {
-      switch (e.name ? e.name : "ERROR") {
+      const errorName = e.name ? e.name : "ERROR";
+      switch (errorName) {
         case "RECURSIVE_CONNECTION":
           return undefined;
         case "NO_OUTWARD_CONNECTIONS":
