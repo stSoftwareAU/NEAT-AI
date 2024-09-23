@@ -120,10 +120,10 @@ export class CreatureState {
     try {
       this.activations.set(input);
     } catch (e) {
-      throw new Error(
-        `input length ${input.length} does fit with activation array ${this.activations.length}, neurons: ${this.network.neurons.length}`,
-        e,
-      );
+      const msg =
+        `input length ${input.length} does fit with activation array ${this.activations.length}, neurons: ${this.network.neurons.length}`;
+
+      throw new Error(msg, { cause: e });
     }
   }
 

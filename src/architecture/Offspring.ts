@@ -163,7 +163,6 @@ export class Offspring {
       if (e instanceof OffspringError) {
         return undefined;
       }
-      console.warn(e.message);
       throw e;
     }
 
@@ -240,7 +239,9 @@ export class Offspring {
 
       return child;
     } catch (e) {
-      switch (e.name) {
+      const error = e as Error;
+      const errorName = error.name ? error.name : "ERROR";
+      switch (errorName) {
         case "RECURSIVE_CONNECTION":
           return undefined;
         case "NO_OUTWARD_CONNECTIONS":
@@ -251,7 +252,7 @@ export class Offspring {
           creatureValidate(child);
           return child;
         default:
-          console.info(e);
+          console.error(e);
           offspring.DEBUG = false;
           Deno.writeTextFileSync(
             ".offspring-mother.json",

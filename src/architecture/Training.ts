@@ -81,7 +81,7 @@ function trainDirBinary(
 
   const trainingSampleRate = Math.min(
     1,
-    Math.max(0, options.trainingSampleRate ?? Math.max(Math.random(), 0.3)),
+    Math.max(0, options.trainingSampleRate ?? Math.max(Math.random(), 1)),
   );
 
   const valuesCount = creature.input + creature.output;
@@ -154,10 +154,7 @@ function trainDirBinary(
           const stat = file.statSync();
           const records = stat.size / BYTES_PER_RECORD;
 
-          const len = Math.min(
-            records,
-            Math.max(1000, Math.floor(records * trainingSampleRate)),
-          );
+          const len = Math.floor(records * trainingSampleRate);
           const tmpIndexes = Int32Array.from(
             { length: records },
             (_, i) => i,
@@ -317,6 +314,7 @@ function trainDirBinary(
     }
   }
 }
+
 /**
  * Train the given set to this network
  */
