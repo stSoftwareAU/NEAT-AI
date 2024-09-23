@@ -13,7 +13,7 @@ Deno.test("Neuron length", () => {
     const error = e as Error;
     assert(
       error.name === "OTHER",
-      `Unexpected name: ${e.name}`,
+      `Unexpected name: ${error.name}`,
     );
   }
 });
@@ -58,7 +58,7 @@ Deno.test("Output", () => {
     const error = e as Error;
     assert(
       error.name === "OTHER",
-      `Unexpected name: ${e.name}`,
+      `Unexpected name: ${error.name}`,
     );
   }
 });

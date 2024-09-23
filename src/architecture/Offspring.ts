@@ -239,7 +239,8 @@ export class Offspring {
 
       return child;
     } catch (e) {
-      const errorName = e.name ? e.name : "ERROR";
+      const error = e as Error;
+      const errorName = error.name ? error.name : "ERROR";
       switch (errorName) {
         case "RECURSIVE_CONNECTION":
           return undefined;
