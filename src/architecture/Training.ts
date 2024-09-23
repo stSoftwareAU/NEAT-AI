@@ -62,7 +62,7 @@ export function trainDir(
   if (dataResult.binary.length > 0) {
     return trainDirBinary(creature, dataResult.binary, options);
   } else {
-    throw new Error("No json files found in the data directory");
+    throw new Error("No binary files found in the data directory");
   }
 }
 function trainDirBinary(
@@ -83,7 +83,18 @@ function trainDirBinary(
     1,
     Math.max(0, options.trainingSampleRate ?? Math.max(Math.random(), 1)),
   );
+  const uuid = CreatureUtil.makeUUID(creature);
 
+  const ID = uuid.substring(Math.max(0, uuid.length - 8));
+  console.info(
+    `Training ${
+      blue(ID)
+    } with ${binaryFiles.length} binary files, target error: ${
+      yellow(targetError.toString())
+    }, iterations: ${yellow(iterations.toString())}, training sample rate: ${
+      yellow(trainingSampleRate.toString())
+    }`,
+  );
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
 
@@ -119,9 +130,7 @@ function trainDirBinary(
   if (options.trainingTimeOutMinutes ?? 0 > 0) {
     timeoutTS = Date.now() + (options.trainingTimeOutMinutes ?? 0) * 60 * 1000;
   }
-  const uuid = CreatureUtil.makeUUID(creature);
 
-  const ID = uuid.substring(Math.max(0, uuid.length - 8));
   let bestError: number | undefined = undefined;
   let trainingFailures = 0;
   let bestCreatureJSON = creature.exportJSON();
