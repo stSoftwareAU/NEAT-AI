@@ -10,6 +10,7 @@ import type { Neuron } from "../../../architecture/Neuron.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
+import { assert } from "@std/assert/assert";
 
 export class MAXIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
@@ -136,6 +137,7 @@ export class MAXIMUM
       let maxValue = -Infinity;
 
       let mainConnection;
+      let mainActivation;
       for (let indx = toList.length; indx--;) {
         const c = toList[indx];
 
@@ -148,22 +150,24 @@ export class MAXIMUM
         if (fromValue > maxValue) {
           maxValue = fromValue;
           mainConnection = c;
+          mainActivation = fromActivation;
         }
       }
 
       if (mainConnection) {
+        assert(mainActivation != null);
         const fromNeuron = node.creature.neurons[mainConnection.from];
-        const fromActivation = fromNeuron.adjustedActivation(config);
+        // const fromActivation = fromNeuron.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(
           node.creature.state,
           mainConnection,
           config,
         );
-        const fromValue = fromWeight * fromActivation;
+        const fromValue = fromWeight * mainActivation;
 
-        let improvedFromActivation = fromActivation;
-        let targetFromActivation = fromActivation;
+        let improvedFromActivation = mainActivation;
+        let targetFromActivation = mainActivation;
         const targetFromValue = fromValue + error;
         if (
           fromWeight &&
