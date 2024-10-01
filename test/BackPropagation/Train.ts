@@ -17,6 +17,10 @@ Deno.test("Sample", () => {
     "test/BackPropagation/.first.json",
     JSON.stringify(creature.exportJSON(), null, 1),
   );
+  Deno.writeTextFileSync(
+    "test/BackPropagation/.first-trace.json",
+    JSON.stringify(creature.traceJSON(), null, 1),
+  );
   const startResults = train(creature, trainingSet, {
     targetError: 0.1,
     iterations: 1,
@@ -33,6 +37,11 @@ Deno.test("Sample", () => {
     "test/BackPropagation/.second-trace.json",
     JSON.stringify(startResults.trace, null, 1),
   );
+  creature.clearState();
+  Deno.writeTextFileSync(
+    "test/BackPropagation/.second-clean.json",
+    JSON.stringify(creature.traceJSON(), null, 1),
+  );
   for (let i = 0; i < 10; i++) {
     const results = train(creature, trainingSet, {
       targetError: 0.1,
@@ -40,6 +49,8 @@ Deno.test("Sample", () => {
       learningRate: 1,
       // generations: 50,
     });
+
+    console.log(i, results.error);
     creature.validate();
     Creature.fromJSON(results.trace).validate();
     if (results.compact) Creature.fromJSON(results.compact).validate();
@@ -54,6 +65,5 @@ Deno.test("Sample", () => {
       );
       fail(`Error rate was ${results.error}`);
     }
-    console.log(results.error);
   }
 });

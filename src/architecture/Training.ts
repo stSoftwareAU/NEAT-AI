@@ -123,6 +123,7 @@ function trainDirBinary(
 
   let bestError: number | undefined = undefined;
   let trainingFailures = 0;
+  creature.clearState();
   let bestCreatureJSON = creature.exportJSON();
   let bestTraceJSON = creature.traceJSON();
   let lastTraceJSON = bestTraceJSON;
@@ -318,13 +319,13 @@ function trainDirBinary(
  * Train the given set to this network
  */
 export function train(
-  network: Creature,
+  creature: Creature,
   dataSet: DataRecordInterface[],
   options: TrainOptions,
 ) {
   if (
-    dataSet[0].input.length !== network.input ||
-    dataSet[0].output.length !== network.output
+    dataSet[0].input.length !== creature.input ||
+    dataSet[0].output.length !== creature.output
   ) {
     throw new Error(
       "Dataset input/output size should be same as network input/output size!",
@@ -333,7 +334,7 @@ export function train(
 
   const dataSetDir = makeDataDir(dataSet);
   try {
-    const result = trainDir(network, dataSetDir, options);
+    const result = trainDir(creature, dataSetDir, options);
     return result;
   } finally {
     Deno.removeSync(dataSetDir, { recursive: true });

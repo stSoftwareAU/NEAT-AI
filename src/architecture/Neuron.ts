@@ -369,10 +369,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
     if (propagateUpdateMethod.propagate !== undefined) {
-      // console.info("ZZZ-start");
-      // limitedActivation = activation;
-      // console.info("ZZZ-end");
-
       const improvedActivation = propagateUpdateMethod.propagate(
         this,
         targetActivation,

@@ -6,7 +6,7 @@ export interface NeuronStateInterface {
   count: number;
   totalValue: number;
   hintValue: number;
-  totalWeightedSum: number;
+  totalBiasDifference: number;
   maximumActivation: number;
   minimumActivation: number;
 }
@@ -16,7 +16,7 @@ export class NeuronState implements NeuronStateInterface {
 
   totalValue = 0;
   hintValue = 0;
-  totalWeightedSum = 0;
+  totalBiasDifference = 0;
   /**
    * The maximum activation value for the creature state.
    */
@@ -62,7 +62,7 @@ export class NeuronState implements NeuronStateInterface {
 
     this.count++;
     this.totalValue += value + difference;
-    this.totalWeightedSum += value - currentBias;
+    this.totalBiasDifference += value - currentBias;
   }
 }
 

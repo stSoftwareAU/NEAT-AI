@@ -135,10 +135,10 @@ export function adjustedBias(
       const totalValue = ns.totalValue + (node.bias * config.generations);
       const samples = ns.count + config.generations;
 
-      const averageDifferenceBias = (totalValue - ns.totalWeightedSum) /
+      const averageDifferenceBias = (totalValue - ns.totalBiasDifference) /
         samples;
 
-      const unaccountedRatioBias = 1 - (totalValue / ns.totalWeightedSum);
+      const unaccountedRatioBias = 1 - (totalValue / ns.totalBiasDifference);
 
       if (
         config.useAverageDifferenceBias == "Yes" ||
