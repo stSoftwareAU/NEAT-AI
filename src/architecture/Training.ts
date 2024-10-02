@@ -123,7 +123,6 @@ function trainDirBinary(
 
   let bestError: number | undefined = undefined;
   let trainingFailures = 0;
-  creature.clearState();
   let bestCreatureJSON = creature.exportJSON();
   let bestTraceJSON = creature.traceJSON();
   let lastTraceJSON = bestTraceJSON;

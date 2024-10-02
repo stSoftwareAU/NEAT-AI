@@ -702,10 +702,9 @@ export class Creature implements CreatureInternal {
     this.propagateUpdate(config);
 
     let changed = false;
-    for (let i = this.neurons.length; i--;) {
-      const n = this.neurons[i];
-      if (n.type == "input") break;
+    for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       if (config.trainingMutationRate > Math.random()) {
+        const n = this.neurons[indx];
         changed ||= n.applyLearnings();
       }
     }
@@ -753,8 +752,6 @@ export class Creature implements CreatureInternal {
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
   propagateUpdate(config: BackPropagationConfig) {
-    this.state.propagated = true;
-
     // @TODO randomize the order of the neurons
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];

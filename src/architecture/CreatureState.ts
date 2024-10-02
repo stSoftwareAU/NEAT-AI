@@ -71,7 +71,6 @@ export class CreatureState {
   private connectionMap;
   private network;
   public activations: Float32Array = new Float32Array(0);
-  public propagated = false;
   readonly cacheAdjustedActivation: Map<number, number>;
 
   constructor(network: Creature) {
@@ -131,6 +130,5 @@ export class CreatureState {
     this.nodeMap.clear();
     this.connectionMap.clear();
     this.activations = new Float32Array(0);
-    this.propagated = false;
   }
 }
