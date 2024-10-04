@@ -12,7 +12,7 @@ export function noChangePropagate(
   config: BackPropagationConfig,
 ) {
   const ns = neuron.creature.state.node(neuron.index);
-
+  ns.noChange = true;
   const squashMethod = neuron.findSquash();
 
   const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
