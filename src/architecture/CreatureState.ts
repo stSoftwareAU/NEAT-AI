@@ -27,7 +27,7 @@ export class NeuronState implements NeuronStateInterface {
    */
   minimumActivation = Infinity;
   noChange?: boolean;
-  
+
   traceActivation(activation: number) {
     if (activation > this.maximumActivation) {
       this.maximumActivation = activation;

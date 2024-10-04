@@ -262,6 +262,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * @returns true if changed
    */
   applyLearnings(): boolean {
+    const neuronState = this.creature.state.node(this.index);
     if (neuronState.noChange) return false;
     if (this.type == "hidden" || this.type == "output") {
       const squashMethod = this.findSquash();
