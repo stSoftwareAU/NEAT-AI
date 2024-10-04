@@ -93,7 +93,8 @@ export class MAXIMUM
     const toList = node.creature.inwardConnections(node.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      if (node.index != c.to) throw new Error("mismatched index " + c);
+      assert(c.to == node.index, "mismatched index");
+
       const cs = node.creature.state.connection(c.from, c.to);
       if (!cs.used) {
         node.creature.disconnect(c.from, c.to);
@@ -224,10 +225,7 @@ export class MAXIMUM
     ns.accumulateBias(
       targetValue,
       targetWeightedSum,
-      config,
-      targetActivation,
-      activation,
-      adjustedBias(node, config),
+      node.bias,
     );
 
     const aBias = adjustedBias(node, config);

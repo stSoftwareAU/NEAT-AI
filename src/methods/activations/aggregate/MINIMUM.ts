@@ -222,10 +222,7 @@ export class MINIMUM
     ns.accumulateBias(
       targetValue,
       targetWeightedSum,
-      config,
-      targetActivation,
-      activation,
-      adjustedBias(neuron, config),
+      neuron.bias,
     );
 
     const aBias = adjustedBias(neuron, config);

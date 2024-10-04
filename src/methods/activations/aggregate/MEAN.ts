@@ -168,10 +168,7 @@ export class MEAN implements NeuronActivationInterface {
     ns.accumulateBias(
       targetMean,
       adjustedMean,
-      config,
-      targetActivation,
-      activation,
-      adjustedBias(node, config),
+      node.bias,
     );
 
     const aBias = adjustedBias(node, config);

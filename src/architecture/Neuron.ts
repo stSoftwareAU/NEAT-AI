@@ -262,6 +262,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * @returns true if changed
    */
   applyLearnings(): boolean {
+    const neuronState = this.creature.state.node(this.index);
+    if (neuronState.noChange) return false;
     if (this.type == "hidden" || this.type == "output") {
       const squashMethod = this.findSquash();
 
@@ -354,11 +356,21 @@ export class Neuron implements TagsInterface, NeuronInternal {
       requestedActivation,
     );
 
+    const noChangeSquashZZZ = (
+      this.squash == "IDENTITY" ||
+      this.squash == "BENT_IDENTITY" ||
+      this.squash == "MAXIMUM" ||
+      this.squash == "IF" ||
+      this.squash == "CLIPPED" ||
+      this.squash == "MAXIMUM"
+    ) == false;
+
     if (
+      noChangeSquashZZZ ||
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);
-      return activation;
+      return targetActivation;
     }
 
     const ns = this.creature.state.node(this.index);
@@ -453,10 +465,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
       ns.accumulateBias(
         targetValue,
         improvedValue,
-        config,
-        targetActivation,
-        activation,
-        currentBias,
+        this.bias,
+        // config,
+        // targetActivation,
+        // activation,
+        // currentBias,
       );
 
       const aBias = adjustedBias(this, config);

@@ -388,10 +388,11 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     ns.accumulateBias(
       targetValue,
       targetWeightedSum,
-      config,
-      targetActivation,
-      activation,
-      adjustedBias(node, config),
+      node.bias,
+      // config,
+      // targetActivation,
+      // activation,
+      // adjustedBias(node, config),
     );
 
     const aBias = adjustedBias(node, config);

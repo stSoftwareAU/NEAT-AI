@@ -1,30 +1,33 @@
 import type { Creature } from "../Creature.ts";
 import { SynapseState } from "../propagate/SynapseState.ts";
-import type { BackPropagationConfig } from "./BackPropagation.ts";
+// import type { BackPropagationConfig } from "./BackPropagation.ts";
 
 export interface NeuronStateInterface {
   count: number;
-  totalValue: number;
+  totalBias: number;
   hintValue: number;
-  totalBiasDifference: number;
+  // totalBiasDifference: number;
   maximumActivation: number;
   minimumActivation: number;
+  noChange?: boolean;
 }
 
 export class NeuronState implements NeuronStateInterface {
-  count = 0;
+  public count: number;
+  public totalBias: number;
+  public hintValue: number;
+  // public totalBiasDifference: number;
+  public maximumActivation: number;
+  public minimumActivation: number;
+  public noChange?: boolean;
 
-  totalValue = 0;
-  hintValue = 0;
-  totalBiasDifference = 0;
-  /**
-   * The maximum activation value for the creature state.
-   */
-  maximumActivation = -Infinity;
-  /**
-   * The minimum activation value for the creature state.
-   */
-  minimumActivation = Infinity;
+  constructor() {
+    this.count = 0;
+    this.totalBias = 0;
+    this.hintValue = 0;
+    this.maximumActivation = -Infinity;
+    this.minimumActivation = Infinity;
+  }
 
   traceActivation(activation: number) {
     if (activation > this.maximumActivation) {
@@ -37,32 +40,33 @@ export class NeuronState implements NeuronStateInterface {
   }
 
   accumulateBias(
-    targetValue: number,
-    value: number,
-    config: BackPropagationConfig,
-    targetActivation: number,
-    activation: number,
-    currentBias: number,
+    targetPreActivationValue: number,
+    preActivationValue: number,
+    // config: BackPropagationConfig,
+    // targetActivation: number,
+    // activation: number,
+    bias: number,
   ) {
-    let difference = targetValue - value;
+    const biasDelta = targetPreActivationValue - preActivationValue;
 
-    const activationDifference = Math.abs(targetActivation - activation);
-    if (activationDifference < config.plankConstant) {
-      difference = 0;
-    } else {
+    // const activationDifference = Math.abs(targetActivation - activation);
+    // if (activationDifference < config.plankConstant) {
+    //   biasDelta = 0;
+    // }
+    /* else {
       if (!config.disableExponentialScaling) {
         // Squash the difference using the hyperbolic tangent function and scale it
-        difference = Math.tanh(difference / config.maximumBiasAdjustmentScale) *
+        biasDelta = Math.tanh(biasDelta / config.maximumBiasAdjustmentScale) *
           config.maximumBiasAdjustmentScale;
-      } else if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
+      } else if (Math.abs(biasDelta) > config.maximumBiasAdjustmentScale) {
         // Limit the difference to the maximum scale
-        difference = Math.sign(difference) * config.maximumBiasAdjustmentScale;
+        biasDelta = Math.sign(biasDelta) * config.maximumBiasAdjustmentScale;
       }
-    }
+    }*/
 
     this.count++;
-    this.totalValue += value + difference;
-    this.totalBiasDifference += value - currentBias;
+    this.totalBias += bias + biasDelta;
+    // this.totalBiasDifference += preActivationValue - currentBias;
   }
 }
 

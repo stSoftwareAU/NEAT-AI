@@ -132,32 +132,36 @@ export function adjustedBias(
     const ns = node.creature.state.node(node.index);
 
     if (ns.count) {
-      const totalValue = ns.totalValue + (node.bias * config.generations);
+      const totalBias = ns.totalBias + (node.bias * config.generations);
       const samples = ns.count + config.generations;
 
-      const averageDifferenceBias = (totalValue - ns.totalBiasDifference) /
-        samples;
+      const adjustedBias = totalBias / samples;
 
-      const unaccountedRatioBias = 1 - (totalValue / ns.totalBiasDifference);
+      return limitBias(adjustedBias, node.bias, config);
 
-      if (
-        config.useAverageDifferenceBias == "Yes" ||
-        Number.isFinite(unaccountedRatioBias) == false
-      ) {
-        if (Number.isFinite(averageDifferenceBias)) {
-          return limitBias(averageDifferenceBias, node.bias, config);
-        }
-      } else if (
-        config.useAverageDifferenceBias == "No" ||
-        (
-          Math.abs(averageDifferenceBias - node.bias) <
-            Math.abs(unaccountedRatioBias - node.bias)
-        )
-      ) {
-        return limitBias(unaccountedRatioBias, node.bias, config);
-      } else {
-        return limitBias(averageDifferenceBias, node.bias, config);
-      }
+      // const averageDifferenceBias = (totalBias - ns.totalBiasDifference) /
+      //   samples;
+
+      // const unaccountedRatioBias = 1 - (totalBias / ns.totalBiasDifference);
+
+      // if (
+      //   config.useAverageDifferenceBias == "Yes" ||
+      //   Number.isFinite(unaccountedRatioBias) == false
+      // ) {
+      //   if (Number.isFinite(averageDifferenceBias)) {
+      //     return limitBias(averageDifferenceBias, node.bias, config);
+      //   }
+      // } else if (
+      //   config.useAverageDifferenceBias == "No" ||
+      //   (
+      //     Math.abs(averageDifferenceBias - node.bias) <
+      //       Math.abs(unaccountedRatioBias - node.bias)
+      //   )
+      // ) {
+      //   return limitBias(unaccountedRatioBias, node.bias, config);
+      // } else {
+      //   return limitBias(averageDifferenceBias, node.bias, config);
+      // }
     }
 
     return node.bias;
@@ -265,30 +269,30 @@ export function accumulateWeight(
 }
 
 export function adjustedWeight(
-  creatureState: CreatureState,
+  _creatureState: CreatureState,
   c: Synapse,
-  config: BackPropagationConfig,
+  _config: BackPropagationConfig,
 ) {
-  const cs = creatureState.connection(c.from, c.to);
+  // const cs = creatureState.connection(c.from, c.to);
 
-  if (cs.count) {
-    if (Number.isFinite(cs.averageWeight)) {
-      const synapseAverageWeightTotal = cs.averageWeight * cs.count;
+  // if (cs.count) {
+  //   if (Number.isFinite(cs.averageWeight)) {
+  //     const synapseAverageWeightTotal = cs.averageWeight * cs.count;
 
-      const totalGenerationalWeight = c.weight * config.generations;
+  //     const totalGenerationalWeight = c.weight * config.generations;
 
-      const averageWeight =
-        (synapseAverageWeightTotal + totalGenerationalWeight) /
-        (cs.count + config.generations);
+  //     const averageWeight =
+  //       (synapseAverageWeightTotal + totalGenerationalWeight) /
+  //       (cs.count + config.generations);
 
-      return limitWeight(averageWeight, c.weight, config);
-    } else {
-      throw Error(
-        `${c.from}:${c.to}) invalid averageWeight: ${cs.averageWeight} ` +
-          JSON.stringify(cs, null, 2),
-      );
-    }
-  }
+  //     return limitWeight(averageWeight, c.weight, config);
+  //   } else {
+  //     throw Error(
+  //       `${c.from}:${c.to}) invalid averageWeight: ${cs.averageWeight} ` +
+  //         JSON.stringify(cs, null, 2),
+  //     );
+  //   }
+  // }
 
   return c.weight;
 }
