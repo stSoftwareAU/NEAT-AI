@@ -13,11 +13,17 @@ export interface NeuronStateInterface {
 }
 
 export class NeuronState implements NeuronStateInterface {
+
   public count: number;
   public totalBias: number;
   public hintValue: number;
-  // public totalBiasDifference: number;
+  /**
+   * The maximum activation value for the creature state.
+   */
   public maximumActivation: number;
+  /**
+   * The minimum activation value for the creature state.
+   */
   public minimumActivation: number;
   public noChange?: boolean;
 
