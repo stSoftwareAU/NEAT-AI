@@ -230,6 +230,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   }
 
   applyLearnings(node: Neuron): boolean {
+    if (true) return false;
     const toList = node.creature.inwardConnections(node.index);
 
     let foundPositive = false;
@@ -318,7 +319,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     const activationValue = toValue(node, activation - currentBias);
     const error = targetValue - activationValue;
 
-    let targetWeightedSum = 0;
+    let improvedValue = currentBias;
 
     const listLength = toList.length;
     const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
@@ -382,22 +383,18 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       const improvedAdjustedFromValue = improvedFromActivation *
         aWeight;
 
-      targetWeightedSum += improvedAdjustedFromValue;
+      improvedValue += improvedAdjustedFromValue;
     }
 
     ns.accumulateBias(
       targetValue,
-      targetWeightedSum,
-      node.bias,
-      // config,
-      // targetActivation,
-      // activation,
-      // adjustedBias(node, config),
+      improvedValue,
+      currentBias,
     );
 
     const aBias = adjustedBias(node, config);
 
-    const adjustedActivation = targetWeightedSum + aBias;
+    const adjustedActivation = improvedValue + aBias - currentBias;
 
     return limitActivation(adjustedActivation);
   }

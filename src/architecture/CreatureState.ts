@@ -45,7 +45,7 @@ export class NeuronState implements NeuronStateInterface {
     // config: BackPropagationConfig,
     // targetActivation: number,
     // activation: number,
-    bias: number,
+    currentBias: number,
   ) {
     const biasDelta = targetPreActivationValue - preActivationValue;
 
@@ -65,7 +65,7 @@ export class NeuronState implements NeuronStateInterface {
     }*/
 
     this.count++;
-    this.totalBias += bias + biasDelta;
+    this.totalBias += currentBias + biasDelta;
     // this.totalBiasDifference += preActivationValue - currentBias;
   }
 }

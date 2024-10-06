@@ -9,6 +9,7 @@ export function compactUnused(
   traced: CreatureTrace,
   plankConstant: number,
 ) {
+  if (true) return;
   const start = Creature.fromJSON(traced);
   const clean = Creature.fromJSON(start.exportJSON());
   const compacted = Creature.fromJSON(clean.exportJSON());

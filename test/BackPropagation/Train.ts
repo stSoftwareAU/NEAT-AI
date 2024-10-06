@@ -38,21 +38,21 @@ Deno.test("Sample", () => {
 
   let lastError = error;
   for (let i = 0; i < 10; i++) {
+    Deno.writeTextFileSync(
+      `test/BackPropagation/.${i}.json`,
+      JSON.stringify(creature.exportJSON(), null, 1),
+    );
     const results = train(creature, trainingSet, {
       targetError: 0.1,
       iterations: 1,
       learningRate: 1,
       disableRandomSamples: true,
-      generations: 0,
+      generations: i,
     });
 
     console.log(i, results.error);
     creature.validate();
     Creature.fromJSON(results.trace).validate();
-    Deno.writeTextFileSync(
-      `test/BackPropagation/.${i}.json`,
-      JSON.stringify(creature.exportJSON(), null, 1),
-    );
 
     Deno.writeTextFileSync(
       `test/BackPropagation/.${i}-trace.json`,

@@ -16,10 +16,42 @@ import {
   limitActivationToRange,
   toValue,
 } from "./BackPropagation.ts";
-import { Synapse } from "./Synapse.ts";
-import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
+import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
+import { Synapse } from "./Synapse.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
+import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
+import { MEAN } from "../methods/activations/aggregate/MEAN.ts";
+import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
+import { IF } from "../methods/activations/aggregate/IF.ts";
+import { HYPOT } from "../methods/activations/aggregate/HYPOT.ts";
+import { TANH } from "../methods/activations/types/TANH.ts";
+import { Swish } from "../methods/activations/types/Swish.ts";
+import { StdInverse } from "../methods/activations/types/StdInverse.ts";
+import { STEP } from "../methods/activations/types/STEP.ts";
+import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
+import { SOFTSIGN } from "../methods/activations/types/SOFTSIGN.ts";
+import { Softplus } from "../methods/activations/types/Softplus.ts";
+import { SINUSOID } from "../methods/activations/types/SINUSOID.ts";
+import { SELU } from "../methods/activations/types/SELU.ts";
+import { ReLU6 } from "../methods/activations/types/ReLU6.ts";
+import { RELU } from "../methods/activations/types/RELU.ts";
+import { Mish } from "../methods/activations/types/Mish.ts";
+import { LogSigmoid } from "../methods/activations/types/LogSigmoid.ts";
+import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
+import { LeakyReLU } from "../methods/activations/types/LeakyReLU.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
+import { HARD_TANH } from "../methods/activations/types/HARD_TANH.ts";
+import { GELU } from "../methods/activations/types/GELU.ts";
+import { GAUSSIAN } from "../methods/activations/types/GAUSSIAN.ts";
+import { Exponential } from "../methods/activations/types/Exponential.ts";
+import { ELU } from "../methods/activations/types/ELU.ts";
+import { Cosine } from "../methods/activations/types/Cosine.ts";
+import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
+import { CLIPPED } from "../methods/activations/types/CLIPPED.ts";
+import { BIPOLAR } from "../methods/activations/types/BIPOLAR.ts";
+import { BIPOLAR_SIGMOID } from "../methods/activations/types/BIPOLAR_SIGMOID.ts";
+import { BENT_IDENTITY } from "../methods/activations/types/BENT_IDENTITY.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -356,25 +388,56 @@ export class Neuron implements TagsInterface, NeuronInternal {
       requestedActivation,
     );
 
-    const noChangeSquashZZZ = (
-      this.squash == "IDENTITY" ||
-      this.squash == "BENT_IDENTITY" ||
-      this.squash == "MAXIMUM" ||
-      this.squash == "IF" ||
-      this.squash == "CLIPPED" ||
-      this.squash == "MAXIMUM"
-    ) == false;
-
-    if (
-      noChangeSquashZZZ ||
-      Math.abs(targetActivation - activation) < config.plankConstant
-    ) {
-      noChangePropagate(this, activation, config);
-      return targetActivation;
+    let noChangeSquashZZZ = false;
+    switch (this.squash) {
+      case ABSOLUTE.NAME:
+      case BENT_IDENTITY.NAME:
+      case BIPOLAR_SIGMOID.NAME:
+      case BIPOLAR.NAME:
+      // case CLIPPED.NAME:
+      case COMPLEMENT.NAME:
+      case Cosine.NAME:
+      case ELU.NAME:
+      case Exponential.NAME:
+      case GAUSSIAN.NAME:
+      case GELU.NAME:
+      case HARD_TANH.NAME:
+      case IDENTITY.NAME:
+      case LeakyReLU.NAME:
+      case LOGISTIC.NAME:
+      case LogSigmoid.NAME:
+      case Mish.NAME:
+      case RELU.NAME:
+      case ReLU6.NAME:
+      case SELU.NAME:
+      case SINUSOID.NAME:
+      case Softplus.NAME:
+      case SOFTSIGN.NAME:
+      // case MINIMUM.NAME:
+      case MEAN.NAME:
+      case MAXIMUM.NAME:
+      case IF.NAME:
+      case HYPOT.NAME:
+      case TANH.NAME:
+      case Swish.NAME:
+      case StdInverse.NAME:
+      case STEP.NAME:
+        noChangeSquashZZZ = true;
+        break;
+    }
+    const ns = this.creature.state.node(this.index);
+    if (ns.noChange == undefined || ns.noChange == true) {
+      if (
+        ns.noChange ||
+        noChangeSquashZZZ ||
+        Math.abs(targetActivation - activation) < config.plankConstant
+      ) {
+        noChangePropagate(this, activation, config);
+        return targetActivation;
+      }
     }
 
-    const ns = this.creature.state.node(this.index);
-
+    ns.noChange = false;
     const squashMethod = this.findSquash();
 
     let limitedActivation: number;
@@ -465,16 +528,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
       ns.accumulateBias(
         targetValue,
         improvedValue,
-        this.bias,
-        // config,
-        // targetActivation,
-        // activation,
-        // currentBias,
+        currentBias,
       );
 
-      const aBias = adjustedBias(this, config);
-
       if (this.isNodeActivation(squashMethod) == false) {
+        const aBias = adjustedBias(this, config);
         const squashActivation = (squashMethod as ActivationInterface).squash(
           improvedValue + aBias - currentBias,
         );
@@ -485,8 +543,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
     }
 
-    ns.traceActivation(limitedActivation);
     if (Math.abs(limitedActivation - activation) > config.plankConstant) {
+      ns.traceActivation(limitedActivation);
       this.creature.state.cacheAdjustedActivation.delete(this.index);
     }
 

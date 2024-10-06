@@ -131,7 +131,7 @@ export function adjustedBias(
   } else {
     const ns = node.creature.state.node(node.index);
 
-    if (ns.count) {
+    if (!ns.noChange && ns.count) {
       const totalBias = ns.totalBias + (node.bias * config.generations);
       const samples = ns.count + config.generations;
 
@@ -308,6 +308,11 @@ export function limitBias(
 
   if (Math.abs(targetBias) < config.plankConstant) {
     return 0;
+  }
+
+  if (Math.abs(targetBias - currentBias) < 0.000_000_001) {
+    //288_417_500
+    return currentBias;
   }
 
   const difference = config.learningRate * (targetBias - currentBias);
