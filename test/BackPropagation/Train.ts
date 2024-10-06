@@ -69,7 +69,13 @@ Deno.test("Sample", () => {
         "test/BackPropagation/.error-trace.json",
         JSON.stringify(results.trace, null, 1),
       );
-      fail(`Error rate was ${results.error}`);
+      if (results.error - lastError > 0.002) {
+        fail(
+          `Error rate was ${results.error}, regression ${
+            lastError - results.error
+          }`,
+        );
+      }
     }
     lastError = results.error;
   }

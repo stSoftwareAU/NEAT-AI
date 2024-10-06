@@ -171,7 +171,7 @@ export function adjustedBias(
 export function limitActivationToRange(
   config: BackPropagationConfig,
   node: Neuron,
-  activation: number,
+  requestedActivation: number,
 ) {
   const squash = node.findSquash();
   const unSquasher = squash;
@@ -180,7 +180,7 @@ export function limitActivationToRange(
   let limitedActivation: number;
   const propagateUpdateMethod = squash as NeuronActivationInterface;
   if (propagateUpdateMethod.propagate !== undefined) {
-    const value = activation - node.bias;
+    const value = requestedActivation - node.bias;
 
     limitedActivation = Math.min(
       Math.max(value, range.low),
@@ -188,7 +188,7 @@ export function limitActivationToRange(
     ) + node.bias;
   } else {
     limitedActivation = Math.min(
-      Math.max(activation, range.low),
+      Math.max(requestedActivation, range.low),
       range.high,
     );
   }
@@ -197,8 +197,10 @@ export function limitActivationToRange(
     limitedActivation = range.normalize(limitedActivation);
   }
 
-  if (Math.abs(activation - limitedActivation) < config.plankConstant) {
-    return activation;
+  if (
+    Math.abs(requestedActivation - limitedActivation) < config.plankConstant
+  ) {
+    return requestedActivation;
   }
 
   return limitedActivation;

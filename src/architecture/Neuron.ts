@@ -390,38 +390,43 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     let noChangeSquashZZZ = false;
     switch (this.squash) {
-      case ABSOLUTE.NAME:
-      case BENT_IDENTITY.NAME:
-      case BIPOLAR_SIGMOID.NAME:
-      case BIPOLAR.NAME:
-      // case CLIPPED.NAME:
-      case COMPLEMENT.NAME:
-      case Cosine.NAME:
-      case ELU.NAME:
-      case Exponential.NAME:
-      case GAUSSIAN.NAME:
-      case GELU.NAME:
-      case HARD_TANH.NAME:
-      case IDENTITY.NAME:
-      case LeakyReLU.NAME:
-      case LOGISTIC.NAME:
-      case LogSigmoid.NAME:
-      case Mish.NAME:
-      case RELU.NAME:
-      case ReLU6.NAME:
-      case SELU.NAME:
+      case "xxx":
+        // case ABSOLUTE.NAME:
+        // case BENT_IDENTITY.NAME:
+        // case BIPOLAR_SIGMOID.NAME:
+        // case BIPOLAR.NAME:
+
+        // case CLIPPED.NAME:
+
+        // case COMPLEMENT.NAME:
+        // case Cosine.NAME:
+        // case ELU.NAME:
+        // case Exponential.NAME:
+        // case GAUSSIAN.NAME:
+        // case GELU.NAME:
+        // case HARD_TANH.NAME:
+        // case IDENTITY.NAME:
+        // case LeakyReLU.NAME:
+
+        // case LOGISTIC.NAME:
+        // case LogSigmoid.NAME:
+        // case Mish.NAME:
+        // case RELU.NAME:
+        // case ReLU6.NAME:
+        // case SELU.NAME:
       case SINUSOID.NAME:
-      case Softplus.NAME:
-      case SOFTSIGN.NAME:
-      // case MINIMUM.NAME:
-      case MEAN.NAME:
-      case MAXIMUM.NAME:
-      case IF.NAME:
-      case HYPOT.NAME:
-      case TANH.NAME:
-      case Swish.NAME:
-      case StdInverse.NAME:
-      case STEP.NAME:
+        // case Softplus.NAME:
+        // case SOFTSIGN.NAME:
+
+        // case MINIMUM.NAME:
+        // case MEAN.NAME:
+        // case MAXIMUM.NAME:
+        // case IF.NAME:
+        // case HYPOT.NAME:
+        // case TANH.NAME:
+        // case Swish.NAME:
+        // case StdInverse.NAME:
+        // case STEP.NAME:
         noChangeSquashZZZ = true;
         break;
     }

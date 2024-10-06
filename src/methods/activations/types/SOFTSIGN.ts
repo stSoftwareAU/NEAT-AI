@@ -13,22 +13,26 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Activation_function#Comparison_of_activation_functions
  */
 export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
+  private static LIMIT = 0.99; // Clamped limit to avoid numerical issues
+
   /* The inverse of Softsign is x = f(x) / (1 - |f(x)|)*/
   unSquash(activation: number): number {
     if (!Number.isFinite(activation)) {
       throw new Error("Activation must be a finite number");
     }
 
-    if (Math.abs(activation) >= 1) {
-      return activation;
-    }
+    // Clamp the activation to avoid exploding results near 1 and -1
+    // const clampedActivation = Math.max(Math.min(activation, SOFTSIGN.LIMIT), -SOFTSIGN.LIMIT);
 
-    return activation / (1 - Math.abs(activation));
+    // const value = clampedActivation / (1 - Math.abs(clampedActivation));
+    const value = activation / (1 - Math.abs(activation));
+    // console.info(`SOFTSIGN unSquash: ${activation}, hint: ${hint} -> ${value}`);
+    return value;
   }
 
   /* Range of the activation function. Softsign outputs values between -1 and +1.*/
   range() {
-    return { low: -1, high: 1 };
+    return { low: -SOFTSIGN.LIMIT, high: SOFTSIGN.LIMIT };
   }
 
   public static NAME = "SOFTSIGN";
@@ -38,8 +42,10 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
   }
 
   // Softsign function definition
-  squash(x: number) {
+  squash(x: number): number {
     const d = 1 + Math.abs(x);
-    return x / d;
+    const value = x / d;
+    // Clamp the output to stay within the limit
+    return Math.max(Math.min(value, SOFTSIGN.LIMIT), -SOFTSIGN.LIMIT);
   }
 }

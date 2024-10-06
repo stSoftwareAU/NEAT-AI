@@ -12,17 +12,41 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class SINUSOID implements ActivationInterface, UnSquashInterface {
   /* Function to estimate the input from the activation value.
-   * Because the sine function is periodic, unSquash will return the
-   * inverse sine (arcsin) as an estimate. This is not a perfect inversion.
+   * Since sine is periodic, unSquash returns arcsin (inverse sine).
+   * This will return values within the range [-π/2, π/2].
+   * We use the hint to adjust for the periodic nature of sin(x).
    */
-  unSquash(activation: number): number {
+  unSquash(activation: number, hint?: number): number {
     if (!Number.isFinite(activation)) {
       throw new Error("Activation must be a finite number");
     }
+
     if (activation < -1 || activation > 1) {
-      return activation;
+      throw new Error(
+        `Activation value ${activation} is outside the valid range [-1, 1]`,
+      );
     }
-    return Math.asin(activation);
+
+    // Get the base value within [-π/2, π/2]
+    const baseValue = Math.asin(activation);
+
+    if (hint !== undefined) {
+      // Adjust using the hint. The difference between baseValue and hint should be close to a multiple of π.
+      const difference = hint - baseValue;
+      const adjustment = Math.round(difference / Math.PI) * Math.PI;
+
+      // Return the adjusted value that is closer to the hint
+      const adjustedValue = baseValue + adjustment;
+
+      console.info(
+        `SINUSOID unSquash: ${activation}, hint: ${hint} -> ${adjustedValue}`,
+      );
+      return adjustedValue;
+    }
+
+    // If no hint is provided, return the base value within [-π/2, π/2]
+    console.info(`SINUSOID unSquash: ${activation}, no hint -> ${baseValue}`);
+    return baseValue;
   }
 
   // Range of the activation function. Sinusoid outputs values between -1 and 1.
@@ -37,7 +61,7 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
   }
 
   // Sinusoid function definition
-  squash(x: number) {
+  squash(x: number): number {
     return Math.sin(x);
   }
 }
