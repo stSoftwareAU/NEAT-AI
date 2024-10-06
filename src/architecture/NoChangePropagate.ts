@@ -1,8 +1,7 @@
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import {
-  adjustedBias,
   adjustedWeight,
-  type BackPropagationConfig,
+  type BackPropagationConfig
 } from "./BackPropagation.ts";
 import type { Neuron } from "./Neuron.ts";
 
