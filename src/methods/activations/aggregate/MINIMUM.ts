@@ -88,7 +88,6 @@ export class MINIMUM
   }
 
   applyLearnings(neuron: Neuron): boolean {
-    if (true) return false;
     let changed = false;
     let usedCount = 0;
     const toList = neuron.creature.inwardConnections(neuron.index);

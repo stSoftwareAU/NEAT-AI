@@ -230,7 +230,6 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   }
 
   applyLearnings(node: Neuron): boolean {
-    if (true) return false;
     const toList = node.creature.inwardConnections(node.index);
 
     let foundPositive = false;
