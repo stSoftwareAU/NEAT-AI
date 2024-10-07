@@ -125,33 +125,33 @@ export class BackPropagationConfig implements BackPropagationOptions {
 }
 
 export function adjustedBias(
-  node: Neuron,
+  neuron: Neuron,
   config: BackPropagationConfig,
 ): number {
-  if (node.type == "constant") {
-    return node.bias;
+  if (neuron.type == "constant") {
+    return neuron.bias;
   } else {
-    const ns = node.creature.state.node(node.index);
+    const ns = neuron.creature.state.node(neuron.index);
 
     if (!ns.noChange && ns.count) {
-      const totalBias = ns.totalBias + (node.bias * config.generations);
+      const totalBias = ns.totalBias + (neuron.bias * config.generations);
       const samples = ns.count + config.generations;
 
       const adjustedBias = totalBias / samples;
 
-      return limitBias(adjustedBias, node.bias, config);
+      return limitBias(adjustedBias, neuron.bias, config);
     }
 
-    return node.bias;
+    return neuron.bias;
   }
 }
 
 export function limitActivationToRange(
   config: BackPropagationConfig,
-  node: Neuron,
+  neuron: Neuron,
   requestedActivation: number,
 ) {
-  const squash = node.findSquash();
+  const squash = neuron.findSquash();
   const unSquasher = squash;
   const range = unSquasher.range();
 
@@ -167,7 +167,9 @@ export function limitActivationToRange(
   }
 
   if (
-    Math.abs(requestedActivation - limitedActivation) < config.plankConstant
+    Math.abs(requestedActivation - limitedActivation) < config.plankConstant &&
+    requestedActivation <= range.high &&
+    requestedActivation >= range.low
   ) {
     return requestedActivation;
   }
