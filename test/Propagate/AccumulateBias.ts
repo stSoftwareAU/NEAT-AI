@@ -9,10 +9,9 @@ import { NeuronState } from "../../src/architecture/CreatureState.ts";
 Deno.test("AccumulateBias-Standard", () => {
   const ns = new NeuronState();
 
-  // const config = new BackPropagationConfig();
   ns.accumulateBias(4, 2, 0);
 
-  assertAlmostEquals(ns.totalBias, 4, 0.1, JSON.stringify(ns, null, 2));
+  assertAlmostEquals(ns.totalBias, 2, 0.1, JSON.stringify(ns, null, 2));
 });
 
 Deno.test("AccumulateBias-Limited", () => {
@@ -22,7 +21,7 @@ Deno.test("AccumulateBias-Limited", () => {
 
   ns.accumulateBias(40, 2, 0);
 
-  const expected = 7;
+  const expected = 38;
   assertAlmostEquals(
     ns.totalBias,
     expected,

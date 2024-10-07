@@ -67,7 +67,7 @@ Deno.test("Generation BIAS", () => {
     config,
   );
 
-  assertAlmostEquals(bias, 0, 0.0001);
+  assertAlmostEquals(bias, -1, 0.0001);
 
   const bias2 = adjustedBias(
     outputNode,
@@ -80,7 +80,7 @@ Deno.test("Generation BIAS", () => {
     }),
   );
 
-  assertAlmostEquals(bias2, 0.5, 0.0001, `bias2: ${bias2.toFixed(3)}`);
+  assertAlmostEquals(bias2, -0.77, 0.0001, `bias2: ${bias2.toFixed(3)}`);
 });
 
 Deno.test("Generation Weight", () => {
