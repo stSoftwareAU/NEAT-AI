@@ -59,7 +59,7 @@ Deno.test("traceNode", async () => {
   };
   await network.evolveDataSet(ts, options);
 
-  let totalValueCount = 0;
+  let totalBiasCount = 0;
 
   for (const dirEntry of Deno.readDirSync(traceDir)) {
     if (dirEntry.name.endsWith(".json")) {
@@ -70,10 +70,10 @@ Deno.test("traceNode", async () => {
       json.neurons.forEach((n: NeuronTrace) => {
         if (n.trace) {
           if (
-            Number.isFinite(n.trace.totalValue) &&
-            n.trace.totalValue != 0
+            Number.isFinite(n.trace.totalBias) &&
+            n.trace.totalBias != 0
           ) {
-            totalValueCount++;
+            totalBiasCount++;
           }
         }
       });
@@ -81,7 +81,7 @@ Deno.test("traceNode", async () => {
   }
 
   assert(
-    totalValueCount > 0,
+    totalBiasCount > 0,
     "Should have totalBiasValueCount",
   );
 });

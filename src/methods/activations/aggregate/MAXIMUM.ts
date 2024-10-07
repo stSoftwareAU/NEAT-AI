@@ -87,18 +87,19 @@ export class MAXIMUM
     }
   }
 
-  applyLearnings(node: Neuron): boolean {
+  applyLearnings(neuron: Neuron): boolean {
     let changed = false;
     let usedCount = 0;
-    const toList = node.creature.inwardConnections(node.index);
+    const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      if (node.index != c.to) throw new Error("mismatched index " + c);
-      const cs = node.creature.state.connection(c.from, c.to);
+      assert(c.to == neuron.index, "mismatched index");
+
+      const cs = neuron.creature.state.connection(c.from, c.to);
       if (!cs.used) {
-        node.creature.disconnect(c.from, c.to);
+        console.info(`${this.getName()} disconnecting`, c.from, c.to, cs);
+        neuron.creature.disconnect(c.from, c.to);
         changed = true;
-        cs.used = false;
       } else {
         usedCount++;
       }
@@ -108,7 +109,7 @@ export class MAXIMUM
       if (usedCount < 1) {
         throw new Error("no learnings");
       }
-      node.setSquash(IDENTITY.NAME);
+      neuron.setSquash(IDENTITY.NAME);
 
       changed = true;
     }
@@ -117,22 +118,22 @@ export class MAXIMUM
   }
 
   propagate(
-    node: Neuron,
+    neuron: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = node.creature.inwardConnections(node.index);
+    const toList = neuron.creature.inwardConnections(neuron.index);
 
-    const activation = node.adjustedActivation(config);
+    const activation = neuron.adjustedActivation(config);
 
-    const targetValue = toValue(node, targetActivation);
+    const targetValue = toValue(neuron, targetActivation);
 
-    const activationValue = toValue(node, activation);
+    const activationValue = toValue(neuron, activation);
 
     const error = targetValue - activationValue;
     let remainingError = error;
-
-    let targetWeightedSum = 0;
+    const currentBias = adjustedBias(neuron, config);
+    let improvedValue = 0;
     if (toList.length) {
       let maxValue = -Infinity;
 
@@ -141,11 +142,11 @@ export class MAXIMUM
       for (let indx = toList.length; indx--;) {
         const c = toList[indx];
 
-        const fromNeuron = node.creature.neurons[c.from];
+        const fromNeuron = neuron.creature.neurons[c.from];
 
         const fromActivation = fromNeuron.adjustedActivation(config);
 
-        const fromWeight = adjustedWeight(node.creature.state, c, config);
+        const fromWeight = adjustedWeight(neuron.creature.state, c, config);
         const fromValue = fromWeight * fromActivation;
         if (fromValue > maxValue) {
           maxValue = fromValue;
@@ -156,11 +157,10 @@ export class MAXIMUM
 
       if (mainConnection) {
         assert(mainActivation != null);
-        const fromNeuron = node.creature.neurons[mainConnection.from];
-        // const fromActivation = fromNeuron.adjustedActivation(config);
+        const fromNeuron = neuron.creature.neurons[mainConnection.from];
 
         const fromWeight = adjustedWeight(
-          node.creature.state,
+          neuron.creature.state,
           mainConnection,
           config,
         );
@@ -194,7 +194,7 @@ export class MAXIMUM
         ) {
           const targetFromValue2 = fromValue + remainingError;
 
-          const cs = node.creature.state.connection(
+          const cs = neuron.creature.state.connection(
             mainConnection.from,
             mainConnection.to,
           );
@@ -207,7 +207,7 @@ export class MAXIMUM
           );
 
           const aWeight = adjustedWeight(
-            node.creature.state,
+            neuron.creature.state,
             mainConnection,
             config,
           );
@@ -215,24 +215,22 @@ export class MAXIMUM
           const improvedAdjustedFromValue = improvedFromActivation *
             aWeight;
 
-          targetWeightedSum += improvedAdjustedFromValue;
+          improvedValue = improvedAdjustedFromValue + currentBias;
         }
       }
     }
 
-    const ns = node.creature.state.node(node.index);
+    const ns = neuron.creature.state.node(neuron.index);
+
     ns.accumulateBias(
       targetValue,
-      targetWeightedSum,
-      config,
-      targetActivation,
-      activation,
-      adjustedBias(node, config),
+      improvedValue,
+      currentBias,
     );
 
-    const aBias = adjustedBias(node, config);
+    const aBias = adjustedBias(neuron, config);
 
-    const adjustedActivation = targetWeightedSum + aBias;
+    const adjustedActivation = improvedValue + aBias - currentBias;
 
     return adjustedActivation;
   }

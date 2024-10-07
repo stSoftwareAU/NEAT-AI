@@ -158,6 +158,7 @@ export class Neat {
       trainingSampleRate: this.config.trainingSampleRate,
       disableRandomSamples: this.config.disableRandomSamples,
       trainingTimeOutMinutes: trainingTimeOutMinutes,
+      excludeSquashList: this.config.backPropagationExcludeSquashList,
     };
 
     const p = w.train(creature, trainOptions).then((r) => {

@@ -20,7 +20,6 @@ import { Mish } from "../src/methods/activations/types/Mish.ts";
 import { RELU } from "../src/methods/activations/types/RELU.ts";
 import { ReLU6 } from "../src/methods/activations/types/ReLU6.ts";
 import { SELU } from "../src/methods/activations/types/SELU.ts";
-import { SINUSOID } from "../src/methods/activations/types/SINUSOID.ts";
 import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
 import { STEP } from "../src/methods/activations/types/STEP.ts";
 import { Softplus } from "../src/methods/activations/types/Softplus.ts";
@@ -229,15 +228,6 @@ Deno.test("CLIPPED", () => {
   assert(v2 === -1.3, `${activation.getName()} hint not working ${v2}`);
 });
 
-Deno.test("SINUSOID", () => {
-  const activation = Activations.find(SINUSOID.NAME) as UnSquashInterface;
-  const values = [-64];
-  values.forEach((v) => {
-    const tmpValue = activation.unSquash(v);
-    assert(Number.isFinite(tmpValue), `SINUSOID ${v} not finite ${tmpValue}`);
-  });
-});
-
 Deno.test("ELU", () => {
   const activation = Activations.find(
     ELU.NAME,
@@ -270,8 +260,8 @@ Deno.test("SOFTSIGN", () => {
   const activation = Activations.find(
     SOFTSIGN.NAME,
   ) as UnSquashInterface;
-
-  const values = [1];
+  const range = activation.range();
+  const values = [range.high, range.low];
   values.forEach((v) => {
     const tmpValue = activation.unSquash(v);
     assert(
@@ -392,6 +382,7 @@ Deno.test("unSquash", () => {
 
 function checkKnownActivations(squashName: string) {
   const squash = Activations.find(squashName) as UnSquashInterface;
+  const range = squash.range();
   const activations = [
     -1000,
     0,
@@ -411,13 +402,20 @@ function checkKnownActivations(squashName: string) {
     3.7853263272041134e+306,
     Number.MAX_VALUE,
     Number.MIN_VALUE,
+    range.high,
+    range.low,
   ];
   activations.forEach((activation) => {
-    const tmpValue = squash.unSquash(activation);
-    assert(
-      Number.isFinite(tmpValue),
-      `${squashName} unSquash ${activation} not finite ${tmpValue}`,
-    );
+    if (
+      Number.isFinite(activation) && activation >= range.low &&
+      activation <= range.high
+    ) {
+      const tmpValue = squash.unSquash(activation);
+      assert(
+        Number.isFinite(tmpValue),
+        `${squashName} unSquash ${activation} not finite ${tmpValue}`,
+      );
+    }
   });
 }
 

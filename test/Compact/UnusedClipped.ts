@@ -89,7 +89,7 @@ Deno.test("UnusedClipped", () => {
     compacted = compactUnused(creature.traceJSON(), config.plankConstant);
 
     if (compacted) break;
-    // console.info(`Attempt: ${attempts}`);
+
     creature.clearState();
   }
   if (!compacted) {

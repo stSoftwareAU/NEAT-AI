@@ -98,8 +98,6 @@ Deno.test("PropagateMinimum", () => {
     );
     const creatureE = Creature.fromJSON(resultC.trace);
     const config = new BackPropagationConfig({
-      // useAverageWeight: "No",
-      useAverageDifferenceBias: "Yes",
       generations: 0,
     });
 

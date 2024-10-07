@@ -61,12 +61,4 @@ Deno.test("inward", () => {
   const connects4 = creature.inwardConnections(4);
 
   assert(connects4.length >= 3, "expected at least 3 got " + connects4.length);
-
-  // const to3 = network.util.toConnections(3);
-
-  // assert(to3.length == 1, "expected 1 got " + to3.length);
-
-  // const from3 = network.util.fromConnections(3);
-
-  // assert(from3.length == 1, "expected 1 got " + from3.length);
 });

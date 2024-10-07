@@ -89,11 +89,11 @@ export class MEAN implements NeuronActivationInterface {
 
     const activation = node.adjustedActivation(config);
 
-    const targetMean = toValue(node, targetActivation);
+    const targetValue = toValue(node, targetActivation);
 
-    const activationValue = toValue(node, activation);
+    const currentValue = toValue(node, activation);
 
-    const error = targetMean - activationValue;
+    const error = targetValue - currentValue;
     const errorPerSynapse = error / toList.length;
 
     let remainingError = error;
@@ -161,22 +161,21 @@ export class MEAN implements NeuronActivationInterface {
         totalValue += improvedAdjustedFromValue;
       }
     }
+    const currentBias = adjustedBias(node, config);
 
-    const adjustedMean = toList.length ? (totalValue / toList.length) : 0;
+    const adjustedValue = (toList.length ? (totalValue / toList.length) : 0) +
+      currentBias;
 
     const ns = node.creature.state.node(node.index);
     ns.accumulateBias(
-      targetMean,
-      adjustedMean,
-      config,
-      targetActivation,
-      activation,
-      adjustedBias(node, config),
+      targetValue,
+      adjustedValue,
+      currentBias,
     );
 
     const aBias = adjustedBias(node, config);
 
-    const adjustedActivation = adjustedMean + aBias;
+    const adjustedActivation = adjustedValue + aBias - currentBias;
 
     return adjustedActivation;
   }

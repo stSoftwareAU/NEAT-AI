@@ -9,10 +9,9 @@ import { NeuronState } from "../../src/architecture/CreatureState.ts";
 Deno.test("AccumulateBias-Standard", () => {
   const ns = new NeuronState();
 
-  const config = new BackPropagationConfig();
-  ns.accumulateBias(4, 2, config, 1, 0, 0);
+  ns.accumulateBias(4, 2, 0);
 
-  assertAlmostEquals(ns.totalValue, 4, 0.1, JSON.stringify(ns, null, 2));
+  assertAlmostEquals(ns.totalBias, 2, 0.1, JSON.stringify(ns, null, 2));
 });
 
 Deno.test("AccumulateBias-Limited", () => {
@@ -20,14 +19,14 @@ Deno.test("AccumulateBias-Limited", () => {
   config.maximumBiasAdjustmentScale = 5;
   const ns = new NeuronState();
 
-  ns.accumulateBias(40, 2, config, 1, 0, 0);
+  ns.accumulateBias(40, 2, 0);
 
-  const expected = 7;
+  const expected = 38;
   assertAlmostEquals(
-    ns.totalValue,
+    ns.totalBias,
     expected,
     0.1,
-    `expected: ${expected}, totalValue: ${ns.totalValue}`,
+    `expected: ${expected}, totalBias: ${ns.totalBias}`,
   );
 });
 
@@ -209,14 +208,11 @@ Deno.test("AccumulateBias-average", () => {
     ];
     values.forEach((targetValue) => {
       const currentValue = targetValue - bias;
-      ns.accumulateBias(targetValue, currentValue, config, 1, 0, 0);
+      ns.accumulateBias(targetValue, currentValue, 0);
 
       ns.accumulateBias(
         targetValue * -1,
         targetValue * -1 - bias,
-        config,
-        1,
-        0,
         0,
       );
     });

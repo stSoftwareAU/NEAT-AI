@@ -114,18 +114,6 @@ Deno.test("Error Handling for Undefined Creature in addCreature", () => {
   }
 });
 
-// Deno.test("Error Handling for Nonexistent Creature UUID", () => {
-//   const genus = new Genus();
-
-//   assertThrows(
-//     () => {
-//       genus.findSpeciesByCreatureUUID("nonexistent-uuid");
-//     },
-//     Error,
-//     "Could not find species for creature nonexistent-uuid",
-//   );
-// });
-
 Deno.test("Find Closest Matching Species", () => {
   const genus = new Genus();
 

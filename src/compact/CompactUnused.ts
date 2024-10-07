@@ -23,7 +23,7 @@ export function compactUnused(
   for (let i = indices.length; i--;) {
     const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
-    if (neuron.trace.count > 1) {
+    if (neuron.trace.count >= 1) {
       if (
         Math.abs(
           neuron.trace.maximumActivation - neuron.trace.minimumActivation,

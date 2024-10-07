@@ -1,4 +1,5 @@
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { Activations } from "../methods/activations/Activations.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import type { SynapseState } from "../propagate/SynapseState.ts";
@@ -8,7 +9,6 @@ import type { Synapse } from "./Synapse.ts";
 
 export interface BackPropagationOptions {
   disableRandomSamples?: boolean;
-  useAverageDifferenceBias?: "Yes" | "No" | "Maybe";
 
   /**
    * The amount of previous generations if not set it'll be a random number between 1-100.
@@ -49,12 +49,13 @@ export interface BackPropagationOptions {
 
   /** Probability of changing a gene */
   trainingMutationRate?: number;
+
+  excludeSquashList?: string;
 }
 
 export class BackPropagationConfig implements BackPropagationOptions {
   disableRandomSamples: boolean;
 
-  useAverageDifferenceBias: "Yes" | "No" | "Maybe";
   generations: number;
 
   learningRate: number;
@@ -70,16 +71,10 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
   plankConstant: number;
   trainingMutationRate: number;
+  excludeSquashSet: Set<string>;
 
   constructor(options?: BackPropagationOptions) {
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
-    if (
-      options?.useAverageDifferenceBias
-    ) {
-      this.useAverageDifferenceBias = options?.useAverageDifferenceBias;
-    } else {
-      this.useAverageDifferenceBias = "Yes";
-    }
 
     this.generations = Math.max(
       options?.generations ?? Math.floor(Math.random() * 100) + 1,
@@ -119,6 +114,14 @@ export class BackPropagationConfig implements BackPropagationOptions {
     this.disableExponentialScaling = options?.disableExponentialScaling;
 
     this.plankConstant = options?.plankConstant ?? 0.000_000_1;
+
+    this.excludeSquashSet = new Set<string>();
+    if (options?.excludeSquashList) {
+      for (const squash of options.excludeSquashList.split(",")) {
+        Activations.find(squash);
+        this.excludeSquashSet.add(squash);
+      }
+    }
   }
 }
 
@@ -131,33 +134,13 @@ export function adjustedBias(
   } else {
     const ns = node.creature.state.node(node.index);
 
-    if (ns.count) {
-      const totalValue = ns.totalValue + (node.bias * config.generations);
+    if (!ns.noChange && ns.count) {
+      const totalBias = ns.totalBias + (node.bias * config.generations);
       const samples = ns.count + config.generations;
 
-      const averageDifferenceBias = (totalValue - ns.totalWeightedSum) /
-        samples;
+      const adjustedBias = totalBias / samples;
 
-      const unaccountedRatioBias = 1 - (totalValue / ns.totalWeightedSum);
-
-      if (
-        config.useAverageDifferenceBias == "Yes" ||
-        Number.isFinite(unaccountedRatioBias) == false
-      ) {
-        if (Number.isFinite(averageDifferenceBias)) {
-          return limitBias(averageDifferenceBias, node.bias, config);
-        }
-      } else if (
-        config.useAverageDifferenceBias == "No" ||
-        (
-          Math.abs(averageDifferenceBias - node.bias) <
-            Math.abs(unaccountedRatioBias - node.bias)
-        )
-      ) {
-        return limitBias(unaccountedRatioBias, node.bias, config);
-      } else {
-        return limitBias(averageDifferenceBias, node.bias, config);
-      }
+      return limitBias(adjustedBias, node.bias, config);
     }
 
     return node.bias;
@@ -167,7 +150,7 @@ export function adjustedBias(
 export function limitActivationToRange(
   config: BackPropagationConfig,
   node: Neuron,
-  activation: number,
+  requestedActivation: number,
 ) {
   const squash = node.findSquash();
   const unSquasher = squash;
@@ -176,7 +159,7 @@ export function limitActivationToRange(
   let limitedActivation: number;
   const propagateUpdateMethod = squash as NeuronActivationInterface;
   if (propagateUpdateMethod.propagate !== undefined) {
-    const value = activation - node.bias;
+    const value = requestedActivation - node.bias;
 
     limitedActivation = Math.min(
       Math.max(value, range.low),
@@ -184,7 +167,7 @@ export function limitActivationToRange(
     ) + node.bias;
   } else {
     limitedActivation = Math.min(
-      Math.max(activation, range.low),
+      Math.max(requestedActivation, range.low),
       range.high,
     );
   }
@@ -193,8 +176,10 @@ export function limitActivationToRange(
     limitedActivation = range.normalize(limitedActivation);
   }
 
-  if (Math.abs(activation - limitedActivation) < config.plankConstant) {
-    return activation;
+  if (
+    Math.abs(requestedActivation - limitedActivation) < config.plankConstant
+  ) {
+    return requestedActivation;
   }
 
   return limitedActivation;
@@ -304,6 +289,11 @@ export function limitBias(
 
   if (Math.abs(targetBias) < config.plankConstant) {
     return 0;
+  }
+
+  if (Math.abs(targetBias - currentBias) < 0.000_000_001) {
+    //288_417_500
+    return currentBias;
   }
 
   const difference = config.learningRate * (targetBias - currentBias);

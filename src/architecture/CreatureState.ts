@@ -1,32 +1,37 @@
 import type { Creature } from "../Creature.ts";
 import { SynapseState } from "../propagate/SynapseState.ts";
-import type { BackPropagationConfig } from "./BackPropagation.ts";
 
 export interface NeuronStateInterface {
   count: number;
-  totalValue: number;
+  totalBias: number;
   hintValue: number;
-  totalWeightedSum: number;
+
   maximumActivation: number;
   minimumActivation: number;
   noChange?: boolean;
 }
 
 export class NeuronState implements NeuronStateInterface {
-  count = 0;
-
-  totalValue = 0;
-  hintValue = 0;
-  totalWeightedSum = 0;
+  public count: number;
+  public totalBias: number;
+  public hintValue: number;
   /**
    * The maximum activation value for the creature state.
    */
-  maximumActivation = -Infinity;
+  public maximumActivation: number;
   /**
    * The minimum activation value for the creature state.
    */
-  minimumActivation = Infinity;
-  noChange?: boolean;
+  public minimumActivation: number;
+  public noChange?: boolean;
+
+  constructor() {
+    this.count = 0;
+    this.totalBias = 0;
+    this.hintValue = 0;
+    this.maximumActivation = -Infinity;
+    this.minimumActivation = Infinity;
+  }
 
   traceActivation(activation: number) {
     if (activation > this.maximumActivation) {
@@ -39,32 +44,14 @@ export class NeuronState implements NeuronStateInterface {
   }
 
   accumulateBias(
-    targetValue: number,
-    value: number,
-    config: BackPropagationConfig,
-    targetActivation: number,
-    activation: number,
+    targetPreActivationValue: number,
+    preActivationValue: number,
     currentBias: number,
   ) {
-    let difference = targetValue - value;
-
-    const activationDifference = Math.abs(targetActivation - activation);
-    if (activationDifference < config.plankConstant) {
-      difference = 0;
-    } else {
-      if (!config.disableExponentialScaling) {
-        // Squash the difference using the hyperbolic tangent function and scale it
-        difference = Math.tanh(difference / config.maximumBiasAdjustmentScale) *
-          config.maximumBiasAdjustmentScale;
-      } else if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
-        // Limit the difference to the maximum scale
-        difference = Math.sign(difference) * config.maximumBiasAdjustmentScale;
-      }
-    }
+    const biasDelta = targetPreActivationValue - preActivationValue;
 
     this.count++;
-    this.totalValue += value + difference;
-    this.totalWeightedSum += value - currentBias;
+    this.totalBias += currentBias + biasDelta;
   }
 }
 
@@ -73,7 +60,6 @@ export class CreatureState {
   private connectionMap;
   private network;
   public activations: Float32Array = new Float32Array(0);
-  public propagated = false;
   readonly cacheAdjustedActivation: Map<number, number>;
 
   constructor(network: Creature) {
@@ -133,6 +119,5 @@ export class CreatureState {
     this.nodeMap.clear();
     this.connectionMap.clear();
     this.activations = new Float32Array(0);
-    this.propagated = false;
   }
 }

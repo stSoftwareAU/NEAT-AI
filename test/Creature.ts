@@ -113,7 +113,7 @@ async function evolveSet(
         ".end.json",
         JSON.stringify(lastCreature.exportJSON(), null, 2),
       );
-      // console.log(dr.input);
+
       const n0 = Creature.fromJSON(lastCreature.exportJSON()).activate(
         dr.input,
       )[0];

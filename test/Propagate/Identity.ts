@@ -112,7 +112,6 @@ Deno.test("PropagateIdentity", () => {
 
   const modifiedError = calculateError(creature, inputs, targets);
   const config = new BackPropagationConfig({
-    useAverageDifferenceBias: "Yes",
     generations: 0,
     learningRate: 1,
     disableRandomSamples: true,
@@ -185,7 +184,6 @@ Deno.test("PropagateIdentityNoRealChange", () => {
 
   const modifiedError = calculateError(creature, inputs, targets);
   const config = new BackPropagationConfig({
-    useAverageDifferenceBias: "Yes",
     generations: 0,
     learningRate: 1,
     disableRandomSamples: true,

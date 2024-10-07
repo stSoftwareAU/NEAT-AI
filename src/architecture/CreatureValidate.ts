@@ -122,15 +122,8 @@ export function creatureValidate(
     }
 
     if (node.type == "input" && indx > creature.input) {
-      if (creature.DEBUG) {
-        creature.DEBUG = false;
-        Deno.writeTextFileSync(
-          ".validate.json",
-          JSON.stringify(creature.exportJSON(), null, 2),
-        );
+      debugWrite(creature);
 
-        creature.DEBUG = true;
-      }
       throw new ValidationError(
         `${uuid} + ") input neuron after the maximum input neurons`,
         "OTHER",
@@ -162,13 +155,7 @@ export function creatureValidate(
         }
       }
       if (!foundCondition || !foundPositive || !foundNegative) {
-        if (creature.DEBUG) {
-          creature.DEBUG = false;
-          console.warn(
-            JSON.stringify(creature.exportJSON(), null, 2),
-          );
-          creature.DEBUG = true;
-        }
+        debugWrite(creature);
       }
       if (!foundCondition) {
         throw new ValidationError(
@@ -215,17 +202,7 @@ export function creatureValidate(
         }
         const fromList = creature.outwardConnections(indx);
         if (fromList.length == 0) {
-          if (creature.DEBUG) {
-            creature.DEBUG = false;
-            console.warn(
-              JSON.stringify(
-                creature.internalJSON(),
-                null,
-                2,
-              ),
-            );
-            creature.DEBUG = true;
-          }
+          debugWrite(creature);
           throw new ValidationError(
             `constants neuron ${node.ID()} has no outward connections`,
             "NO_OUTWARD_CONNECTIONS",
@@ -244,17 +221,7 @@ export function creatureValidate(
         }
         const fromList = creature.outwardConnections(indx);
         if (fromList.length == 0) {
-          if (creature.DEBUG) {
-            creature.DEBUG = false;
-            console.warn(
-              JSON.stringify(
-                creature.exportJSON(),
-                null,
-                2,
-              ),
-            );
-            creature.DEBUG = true;
-          }
+          debugWrite(creature);
           throw new ValidationError(
             `hidden neuron ${node.ID()} has no outward connections`,
             "NO_OUTWARD_CONNECTIONS",
@@ -277,17 +244,7 @@ export function creatureValidate(
         stats.output++;
         const toList = creature.inwardConnections(indx);
         if (toList.length == 0) {
-          if (creature.DEBUG) {
-            creature.DEBUG = false;
-            console.warn(
-              JSON.stringify(
-                creature.exportJSON(),
-                null,
-                2,
-              ),
-            );
-            creature.DEBUG = true;
-          }
+          debugWrite(creature);
           throw new ValidationError(
             `${node.ID()}) output neuron has no inward connections`,
             "NO_INWARD_CONNECTIONS",
@@ -397,4 +354,18 @@ export function creatureValidate(
   }
 
   return stats;
+}
+
+function debugWrite(creature: Creature) {
+  if (creature.DEBUG) {
+    try {
+      creature.DEBUG = false;
+      Deno.writeTextFileSync(
+        ".validate.json",
+        JSON.stringify(creature.exportJSON(), null, 2),
+      );
+    } finally {
+      creature.DEBUG = true;
+    }
+  }
 }

@@ -10,29 +10,19 @@ import { type DataRecordInterface, makeDataDir } from "./DataSet.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 
 export function dataFiles(dataDir: string, options: TrainOptions = {}) {
-  const jsonFiles: string[] = [];
   const binaryFiles: string[] = [];
 
   for (const dirEntry of Deno.readDirSync(dataDir)) {
     if (dirEntry.isFile) {
       const fn = dirEntry.name;
-      if (fn.endsWith(".json")) {
-        jsonFiles.push(`${dataDir}/${fn}`);
-      } else if (fn.endsWith(".bin")) {
+      if (fn.endsWith(".bin")) {
         binaryFiles.push(`${dataDir}/${fn}`);
       }
     }
   }
 
-  let files = binaryFiles;
-  if (jsonFiles.length !== 0) {
-    if (binaryFiles.length !== 0) {
-      throw new Error(
-        "Cannot mix json and binary files in the same directory",
-      );
-    }
-    files = jsonFiles;
-  }
+  const files = binaryFiles;
+
   if (!options.disableRandomSamples) {
     for (let i = files.length; i--;) {
       const j = Math.round(Math.random() * i);
@@ -43,8 +33,7 @@ export function dataFiles(dataDir: string, options: TrainOptions = {}) {
   }
 
   return {
-    json: jsonFiles,
-    binary: binaryFiles,
+    files: binaryFiles,
   };
 }
 
@@ -59,12 +48,13 @@ export function trainDir(
   // Read the options
   const dataResult = dataFiles(dataDir, options);
 
-  if (dataResult.binary.length > 0) {
-    return trainDirBinary(creature, dataResult.binary, options);
+  if (dataResult.files.length > 0) {
+    return trainDirBinary(creature, dataResult.files, options);
   } else {
     throw new Error("No binary files found in the data directory");
   }
 }
+
 function trainDirBinary(
   creature: Creature,
   binaryFiles: string[],
@@ -328,13 +318,13 @@ function trainDirBinary(
  * Train the given set to this network
  */
 export function train(
-  network: Creature,
+  creature: Creature,
   dataSet: DataRecordInterface[],
   options: TrainOptions,
 ) {
   if (
-    dataSet[0].input.length !== network.input ||
-    dataSet[0].output.length !== network.output
+    dataSet[0].input.length !== creature.input ||
+    dataSet[0].output.length !== creature.output
   ) {
     throw new Error(
       "Dataset input/output size should be same as network input/output size!",
@@ -342,10 +332,10 @@ export function train(
   }
 
   const dataSetDir = makeDataDir(dataSet);
-
-  const result = trainDir(network, dataSetDir, options);
-
-  Deno.removeSync(dataSetDir, { recursive: true });
-
-  return result;
+  try {
+    const result = trainDir(creature, dataSetDir, options);
+    return result;
+  } finally {
+    Deno.removeSync(dataSetDir, { recursive: true });
+  }
 }

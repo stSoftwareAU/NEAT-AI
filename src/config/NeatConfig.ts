@@ -71,6 +71,7 @@ export class NeatConfig implements NeatOptions {
   verbose: boolean;
   trainingSampleRate?: number;
 
+  backPropagationExcludeSquashList: string;
   constructor(options: NeatOptions) {
     this.creativeThinkingConnectionCount =
       options.creativeThinkingConnectionCount ?? 1;
@@ -150,5 +151,10 @@ export class NeatConfig implements NeatOptions {
         "Mutation Rate must be more than 0.1% was: " + this.mutationRate,
       );
     }
+
+    this.backPropagationExcludeSquashList =
+      options.backPropagationExcludeSquashList
+        ? options.backPropagationExcludeSquashList
+        : "";
   }
 }

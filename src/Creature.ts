@@ -702,10 +702,9 @@ export class Creature implements CreatureInternal {
     this.propagateUpdate(config);
 
     let changed = false;
-    for (let i = this.neurons.length; i--;) {
-      const n = this.neurons[i];
-      if (n.type == "input") break;
+    for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       if (config.trainingMutationRate > Math.random()) {
+        const n = this.neurons[indx];
         changed ||= n.applyLearnings();
       }
     }
@@ -753,8 +752,6 @@ export class Creature implements CreatureInternal {
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
   propagateUpdate(config: BackPropagationConfig) {
-    this.state.propagated = true;
-
     // @TODO randomize the order of the neurons
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];
@@ -958,7 +955,7 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
   ): { error: number } {
     const dataResult = dataFiles(dataDir);
-    if (dataResult.binary.length) {
+    if (dataResult.files.length) {
       let error = 0;
       let count = 0;
 
@@ -966,8 +963,8 @@ export class Creature implements CreatureInternal {
       const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
       const array = new Float32Array(valuesCount);
       const uint8Array = new Uint8Array(array.buffer);
-      for (let i = dataResult.binary.length; i--;) {
-        const filePath = dataResult.binary[i];
+      for (let i = dataResult.files.length; i--;) {
+        const filePath = dataResult.files[i];
 
         const file = Deno.openSync(filePath, { read: true });
         try {
@@ -995,24 +992,7 @@ export class Creature implements CreatureInternal {
       }
       return { error: error / count };
     } else {
-      if (dataResult.json.length === 1) {
-        const fn = dataResult.json[0];
-        const json = JSON.parse(Deno.readTextFileSync(fn));
-
-        const result = this.evaluateData(json, cost, feedbackLoop);
-        return { error: result.error / result.count };
-      } else {
-        let totalCount = 0;
-        let totalError = 0;
-        for (let i = dataResult.json.length; i--;) {
-          const json = JSON.parse(Deno.readTextFileSync(dataResult.json[i]));
-
-          const result = this.evaluateData(json, cost, feedbackLoop);
-          totalCount += result.count;
-          totalError += result.error;
-        }
-        return { error: totalError / totalCount };
-      }
+      throw new Error("No data files found in " + dataDir);
     }
   }
 

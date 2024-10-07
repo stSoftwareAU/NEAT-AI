@@ -14,7 +14,6 @@ Deno.test("Trace", () => {
 
   stats(json);
   const config = new BackPropagationConfig({
-    useAverageDifferenceBias: "Yes",
     learningRate: 0.02,
   });
   creature.applyLearnings(config);

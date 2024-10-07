@@ -16,10 +16,10 @@ import {
   limitActivationToRange,
   toValue,
 } from "./BackPropagation.ts";
-import { Synapse } from "./Synapse.ts";
-import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
+import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
+import { Synapse } from "./Synapse.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -356,15 +356,23 @@ export class Neuron implements TagsInterface, NeuronInternal {
       requestedActivation,
     );
 
-    if (
-      Math.abs(targetActivation - activation) < config.plankConstant
-    ) {
-      noChangePropagate(this, activation, config);
-      return activation;
-    }
+    const excludeFromBackPropagation = config.excludeSquashSet.has(
+      this.squash ?? "UNDEFINED",
+    );
 
     const ns = this.creature.state.node(this.index);
+    if (ns.noChange == undefined || ns.noChange == true) {
+      if (
+        ns.noChange ||
+        excludeFromBackPropagation ||
+        Math.abs(targetActivation - activation) < config.plankConstant
+      ) {
+        noChangePropagate(this, activation, config);
+        return targetActivation;
+      }
+    }
 
+    ns.noChange = false;
     const squashMethod = this.findSquash();
 
     let limitedActivation: number;
@@ -455,15 +463,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
       ns.accumulateBias(
         targetValue,
         improvedValue,
-        config,
-        targetActivation,
-        activation,
         currentBias,
       );
 
-      const aBias = adjustedBias(this, config);
-
       if (this.isNodeActivation(squashMethod) == false) {
+        const aBias = adjustedBias(this, config);
         const squashActivation = (squashMethod as ActivationInterface).squash(
           improvedValue + aBias - currentBias,
         );
@@ -474,8 +478,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
     }
 
-    ns.traceActivation(limitedActivation);
     if (Math.abs(limitedActivation - activation) > config.plankConstant) {
+      ns.traceActivation(limitedActivation);
       this.creature.state.cacheAdjustedActivation.delete(this.index);
     }
 

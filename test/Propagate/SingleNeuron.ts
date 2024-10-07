@@ -131,7 +131,6 @@ Deno.test("TwoSame", () => {
       JSON.stringify(creature.traceJSON(), null, 2),
     );
     const config = new BackPropagationConfig({
-      useAverageDifferenceBias: "Yes",
       generations: 0,
       learningRate: 1,
       limitBiasScale: 5,
@@ -192,7 +191,6 @@ Deno.test("ManySame", () => {
   ensureDirSync(traceDir);
   for (let attempts = 0; true; attempts++) {
     const config = new BackPropagationConfig({
-      useAverageDifferenceBias: "Maybe",
       disableRandomSamples: true,
       generations: 0,
       maximumWeightAdjustmentScale: 3,

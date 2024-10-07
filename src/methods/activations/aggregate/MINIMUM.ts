@@ -39,14 +39,14 @@ export class MINIMUM
     return minValue;
   }
 
-  activateAndTrace(node: Neuron) {
-    const toList = node.creature.inwardConnections(node.index);
+  activateAndTrace(neuron: Neuron) {
+    const toList = neuron.creature.inwardConnections(neuron.index);
     let minValue = Infinity;
     let usedConnection: SynapseInternal | null = null;
-    const activations = node.creature.state.activations;
+    const activations = neuron.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = node.creature.state.connection(c.from, c.to);
+      const cs = neuron.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
       const value = activations[c.from] * c.weight;
@@ -57,7 +57,7 @@ export class MINIMUM
     }
 
     if (usedConnection != null) {
-      const cs = node.creature.state.connection(
+      const cs = neuron.creature.state.connection(
         usedConnection.from,
         usedConnection.to,
       );
@@ -87,28 +87,27 @@ export class MINIMUM
     }
   }
 
-  applyLearnings(node: Neuron): boolean {
+  applyLearnings(neuron: Neuron): boolean {
     let changed = false;
     let usedCount = 0;
-    const toList = node.creature.inwardConnections(node.index);
+    const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      if (node.index != c.to) throw new Error("mismatched index " + c);
-      const cs = node.creature.state.connection(c.from, c.to);
+      assert(c.to == neuron.index, "mismatched index");
+      const cs = neuron.creature.state.connection(c.from, c.to);
       if (!cs.used) {
-        node.creature.disconnect(c.from, c.to);
+        console.info(`${this.getName()} disconnecting`, c.from, c.to, cs);
+        neuron.creature.disconnect(c.from, c.to);
         changed = true;
-        cs.used = false;
       } else {
         usedCount++;
       }
     }
 
     if (usedCount < 2) {
-      if (usedCount < 1) {
-        throw new Error("no learnings");
-      }
-      node.setSquash(IDENTITY.NAME);
+      assert(usedCount > 0, "no learnings");
+
+      neuron.setSquash(IDENTITY.NAME);
 
       changed = true;
     }
@@ -134,8 +133,8 @@ export class MINIMUM
 
     const error = targetValue - activationValue;
     let remainingError = error;
-
-    let targetWeightedSum = 0;
+    const currentBias = adjustedBias(neuron, config);
+    let improvedValue = 0;
     if (toList.length) {
       let minValue = Infinity;
 
@@ -160,7 +159,6 @@ export class MINIMUM
       if (mainConnection) {
         assert(mainActivation != undefined);
         const fromNeuron = neuron.creature.neurons[mainConnection.from];
-        // const fromActivation = fromNeuron.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(
           neuron.creature.state,
@@ -214,23 +212,20 @@ export class MINIMUM
         const improvedAdjustedFromValue = improvedFromActivation *
           aWeight;
 
-        targetWeightedSum = improvedAdjustedFromValue;
+        improvedValue = improvedAdjustedFromValue + currentBias;
       }
     }
 
     const ns = neuron.creature.state.node(neuron.index);
     ns.accumulateBias(
       targetValue,
-      targetWeightedSum,
-      config,
-      targetActivation,
-      activation,
-      adjustedBias(neuron, config),
+      improvedValue,
+      currentBias,
     );
 
     const aBias = adjustedBias(neuron, config);
 
-    const adjustedActivation = targetWeightedSum + aBias;
+    const adjustedActivation = improvedValue + aBias - currentBias;
 
     return adjustedActivation;
   }

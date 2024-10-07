@@ -20,8 +20,7 @@ function makeCreature() {
         trace: {
           count: 1,
           hintValue: -0.5,
-          totalValue: -2.54,
-          totalWeightedSum: -2.54,
+          totalBias: -2.54,
           minimumActivation: 0,
           maximumActivation: 1,
         },
@@ -67,20 +66,19 @@ Deno.test("Generation BIAS", () => {
     config,
   );
 
-  assertAlmostEquals(bias, 0, 0.0001);
+  assertAlmostEquals(bias, -1, 0.0001);
 
   const bias2 = adjustedBias(
     outputNode,
     new BackPropagationConfig({
       generations: 1,
-      useAverageDifferenceBias: "Yes",
       maximumBiasAdjustmentScale: 2,
       maximumWeightAdjustmentScale: 2,
       learningRate: 1,
     }),
   );
 
-  assertAlmostEquals(bias2, 0.5, 0.0001, `bias2: ${bias2.toFixed(3)}`);
+  assertAlmostEquals(bias2, -0.77, 0.0001, `bias2: ${bias2.toFixed(3)}`);
 });
 
 Deno.test("Generation Weight", () => {
