@@ -17,7 +17,6 @@ export function noChangePropagate(
 
   const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
   if (propagateUpdateMethod.propagate !== undefined) {
-
     const toList = neuron.creature.inwardConnections(neuron.index);
 
     for (let i = toList.length; i--;) {
