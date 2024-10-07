@@ -70,8 +70,8 @@ export function noChangePropagate(
       }
     }
 
-    // ns.totalBias += currentBias;
-    // ns.count++;
+    ns.totalBias += neuron.bias;
+    ns.count++;
   }
 
   ns.traceActivation(activation);

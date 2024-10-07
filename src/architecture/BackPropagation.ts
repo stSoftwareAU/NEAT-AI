@@ -287,7 +287,6 @@ export function adjustedWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ) {
-  // if(true) return c.weight;
   const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
