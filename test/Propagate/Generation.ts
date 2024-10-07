@@ -73,7 +73,6 @@ Deno.test("Generation BIAS", () => {
     outputNode,
     new BackPropagationConfig({
       generations: 1,
-      useAverageDifferenceBias: "Yes",
       maximumBiasAdjustmentScale: 2,
       maximumWeightAdjustmentScale: 2,
       learningRate: 1,
