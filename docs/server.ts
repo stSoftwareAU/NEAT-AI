@@ -48,7 +48,7 @@ const handler = async (request: Request): Promise<Response> => {
     });
   } catch {
     console.error(`File not found: ${filepath}`);
-    // If the file cannot be opened, return a "404 Not Found" response
+
     return new Response(`404 Not Found: ${filepath}`, { status: 404 });
   }
 };

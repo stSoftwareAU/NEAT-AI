@@ -83,13 +83,6 @@ Deno.test("storeTrace", async () => {
           ) {
             totalCount++;
           }
-
-          // if (
-          //   Number.isFinite(c.trace.totalDeltaWeight) &&
-          //   c.trace.totalDeltaWeight != 0
-          // ) {
-          //   totalDeltaWeightCount++;
-          // }
         });
 
         if (usedCount > 1) {

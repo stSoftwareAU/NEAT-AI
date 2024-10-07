@@ -196,8 +196,8 @@ Deno.test("Genetic Integrity - No Matching Neurons", () => {
     if (synapse.fromUUID === "input-0") {
       synapse.fromUUID = "hidden-0";
     }
-    // if( synapse.toUUID === "mother-3" ) synapse.toUUID = "hidden-0";
   });
+
   nonMatchingMother.synapses.push({
     fromUUID: "input-0",
     toUUID: "hidden-0",
