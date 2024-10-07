@@ -9,7 +9,6 @@ import type { Synapse } from "./Synapse.ts";
 
 export interface BackPropagationOptions {
   disableRandomSamples?: boolean;
-  useAverageDifferenceBias?: "Yes" | "No" | "Maybe";
 
   /**
    * The amount of previous generations if not set it'll be a random number between 1-100.
@@ -57,7 +56,6 @@ export interface BackPropagationOptions {
 export class BackPropagationConfig implements BackPropagationOptions {
   disableRandomSamples: boolean;
 
-  useAverageDifferenceBias: "Yes" | "No" | "Maybe";
   generations: number;
 
   learningRate: number;
@@ -77,13 +75,6 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
   constructor(options?: BackPropagationOptions) {
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
-    if (
-      options?.useAverageDifferenceBias
-    ) {
-      this.useAverageDifferenceBias = options?.useAverageDifferenceBias;
-    } else {
-      this.useAverageDifferenceBias = "Yes";
-    }
 
     this.generations = Math.max(
       options?.generations ?? Math.floor(Math.random() * 100) + 1,
@@ -150,30 +141,6 @@ export function adjustedBias(
       const adjustedBias = totalBias / samples;
 
       return limitBias(adjustedBias, node.bias, config);
-
-      // const averageDifferenceBias = (totalBias - ns.totalBiasDifference) /
-      //   samples;
-
-      // const unaccountedRatioBias = 1 - (totalBias / ns.totalBiasDifference);
-
-      // if (
-      //   config.useAverageDifferenceBias == "Yes" ||
-      //   Number.isFinite(unaccountedRatioBias) == false
-      // ) {
-      //   if (Number.isFinite(averageDifferenceBias)) {
-      //     return limitBias(averageDifferenceBias, node.bias, config);
-      //   }
-      // } else if (
-      //   config.useAverageDifferenceBias == "No" ||
-      //   (
-      //     Math.abs(averageDifferenceBias - node.bias) <
-      //       Math.abs(unaccountedRatioBias - node.bias)
-      //   )
-      // ) {
-      //   return limitBias(unaccountedRatioBias, node.bias, config);
-      // } else {
-      //   return limitBias(averageDifferenceBias, node.bias, config);
-      // }
     }
 
     return node.bias;
