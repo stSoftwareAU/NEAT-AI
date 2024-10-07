@@ -6,7 +6,7 @@ export interface NeuronStateInterface {
   count: number;
   totalBias: number;
   hintValue: number;
-  // totalBiasDifference: number;
+
   maximumActivation: number;
   minimumActivation: number;
   noChange?: boolean;
@@ -47,31 +47,12 @@ export class NeuronState implements NeuronStateInterface {
   accumulateBias(
     targetPreActivationValue: number,
     preActivationValue: number,
-    // config: BackPropagationConfig,
-    // targetActivation: number,
-    // activation: number,
     currentBias: number,
   ) {
     const biasDelta = targetPreActivationValue - preActivationValue;
 
-    // const activationDifference = Math.abs(targetActivation - activation);
-    // if (activationDifference < config.plankConstant) {
-    //   biasDelta = 0;
-    // }
-    /* else {
-      if (!config.disableExponentialScaling) {
-        // Squash the difference using the hyperbolic tangent function and scale it
-        biasDelta = Math.tanh(biasDelta / config.maximumBiasAdjustmentScale) *
-          config.maximumBiasAdjustmentScale;
-      } else if (Math.abs(biasDelta) > config.maximumBiasAdjustmentScale) {
-        // Limit the difference to the maximum scale
-        biasDelta = Math.sign(biasDelta) * config.maximumBiasAdjustmentScale;
-      }
-    }*/
-
     this.count++;
     this.totalBias += currentBias + biasDelta;
-    // this.totalBiasDifference += preActivationValue - currentBias;
   }
 }
 
