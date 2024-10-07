@@ -13,7 +13,6 @@ export interface NeuronStateInterface {
 }
 
 export class NeuronState implements NeuronStateInterface {
-
   public count: number;
   public totalBias: number;
   public hintValue: number;

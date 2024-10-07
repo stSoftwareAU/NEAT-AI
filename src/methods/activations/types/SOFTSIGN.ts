@@ -21,6 +21,13 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
       throw new Error("Activation must be a finite number");
     }
 
+    const range = this.range();
+    if (activation < range.low || activation > range.high) {
+      throw new Error(
+        `${this.getName()}: Activation value ${activation} is outside the valid range [${range.low}, ${range.high}]`,
+      );
+    }
+
     // Clamp the activation to avoid exploding results near 1 and -1
     // const clampedActivation = Math.max(Math.min(activation, SOFTSIGN.LIMIT), -SOFTSIGN.LIMIT);
 

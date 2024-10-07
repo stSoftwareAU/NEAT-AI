@@ -21,9 +21,10 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
       throw new Error("Activation must be a finite number");
     }
 
-    if (activation < -1 || activation > 1) {
+    const range = this.range();
+    if (activation < range.low || activation > range.high) {
       throw new Error(
-        `Activation value ${activation} is outside the valid range [-1, 1]`,
+        `${this.getName()}: Activation value ${activation} is outside the valid range [${range.low}, ${range.high}]`,
       );
     }
 
@@ -38,9 +39,9 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
       // Return the adjusted value that is closer to the hint
       const adjustedValue = baseValue + adjustment;
 
-      console.info(
-        `SINUSOID unSquash: ${activation}, hint: ${hint} -> ${adjustedValue}`,
-      );
+      // console.info(
+      //   `SINUSOID unSquash: ${activation}, hint: ${hint} -> ${adjustedValue}`,
+      // );
       return adjustedValue;
     }
 

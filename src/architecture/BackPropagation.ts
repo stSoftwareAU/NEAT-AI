@@ -1,4 +1,5 @@
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { Activations } from "../methods/activations/Activations.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import type { SynapseState } from "../propagate/SynapseState.ts";
@@ -49,6 +50,8 @@ export interface BackPropagationOptions {
 
   /** Probability of changing a gene */
   trainingMutationRate?: number;
+
+  excludeSquashList?: string;
 }
 
 export class BackPropagationConfig implements BackPropagationOptions {
@@ -70,6 +73,7 @@ export class BackPropagationConfig implements BackPropagationOptions {
 
   plankConstant: number;
   trainingMutationRate: number;
+  excludeSquashSet: Set<string>;
 
   constructor(options?: BackPropagationOptions) {
     this.disableRandomSamples = options?.disableRandomSamples ?? false;
@@ -119,6 +123,14 @@ export class BackPropagationConfig implements BackPropagationOptions {
     this.disableExponentialScaling = options?.disableExponentialScaling;
 
     this.plankConstant = options?.plankConstant ?? 0.000_000_1;
+
+    this.excludeSquashSet = new Set<string>();
+    if (options?.excludeSquashList) {
+      for (const squash of options.excludeSquashList.split(",")) {
+        Activations.find(squash);
+        this.excludeSquashSet.add(squash);
+      }
+    }
   }
 }
 
@@ -275,7 +287,7 @@ export function adjustedWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ) {
-  if(true) return c.weight;
+  // if(true) return c.weight;
   const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
