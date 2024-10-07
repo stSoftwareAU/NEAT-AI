@@ -39,9 +39,6 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
       // Return the adjusted value that is closer to the hint
       const adjustedValue = baseValue + adjustment;
 
-      // console.info(
-      //   `SINUSOID unSquash: ${activation}, hint: ${hint} -> ${adjustedValue}`,
-      // );
       return adjustedValue;
     }
 
