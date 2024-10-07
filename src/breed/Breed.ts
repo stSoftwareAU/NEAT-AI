@@ -142,7 +142,7 @@ export class Breed {
           }
         }
 
-        // if all scores equal, return random genome
+        /* If all scores equal, return random genome */
         return population[
           Math.floor(Math.random() * population.length)
         ];

@@ -48,15 +48,8 @@ export function creatureValidate(
       throw new ValidationError(`${node.ID()}) no UUID`, "OTHER");
     }
     if (UUIDs.has(uuid)) {
-      if (creature.DEBUG) {
-        creature.DEBUG = false;
-        Deno.writeTextFileSync(
-          ".validate.json",
-          JSON.stringify(creature.exportJSON(), null, 2),
-        );
+      debugWrite(creature);
 
-        creature.DEBUG = true;
-      }
       throw new ValidationError(
         `${node.ID()}) duplicate UUID: ${uuid}`,
         "OTHER",
@@ -64,15 +57,7 @@ export function creatureValidate(
     }
     if (uuid.startsWith("input-")) {
       if (uuid !== "input-" + indx) {
-        if (creature.DEBUG) {
-          creature.DEBUG = false;
-          Deno.writeTextFileSync(
-            ".validate.json",
-            JSON.stringify(creature.exportJSON(), null, 2),
-          );
-
-          creature.DEBUG = true;
-        }
+        debugWrite(creature);
         throw new ValidationError(
           `${node.ID()}) invalid input UUID: ${uuid}`,
           "OTHER",
@@ -91,30 +76,14 @@ export function creatureValidate(
       const expectedUUID = `output-${outputIndx}`;
       outputIndx++;
       if (uuid !== expectedUUID) {
-        if (creature.DEBUG) {
-          creature.DEBUG = false;
-          Deno.writeTextFileSync(
-            ".validate.json",
-            JSON.stringify(creature.exportJSON(), null, 2),
-          );
-
-          creature.DEBUG = true;
-        }
+        debugWrite(creature);
         throw new ValidationError(
           `${uuid} + ") invalid output UUID: ${uuid}`,
           "OTHER",
         );
       }
     } else if (outputIndx) {
-      if (creature.DEBUG) {
-        creature.DEBUG = false;
-        Deno.writeTextFileSync(
-          ".validate.json",
-          JSON.stringify(creature.exportJSON(), null, 2),
-        );
-
-        creature.DEBUG = true;
-      }
+      debugWrite(creature);
       throw new ValidationError(
         `${uuid} + ") type ${node.type} after output neuron`,
         "OTHER",
@@ -307,15 +276,7 @@ export function creatureValidate(
         options && options.feedbackLoop !== undefined &&
         options.feedbackLoop == false
       ) {
-        if (creature.DEBUG) {
-          creature.DEBUG = false;
-          Deno.writeTextFileSync(
-            ".validate.json",
-            JSON.stringify(creature.exportJSON(), null, 2),
-          );
-
-          creature.DEBUG = true;
-        }
+        debugWrite(creature);
         throw new ValidationError(
           `${indx}) Recursive synapse ${c.from} (${
             creature.neurons[c.from].ID()

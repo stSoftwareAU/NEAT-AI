@@ -93,8 +93,8 @@ function mean(arr: number[]): number {
 
 function median(arr: number[]): number {
   const mid = Math.floor(arr.length / 2);
-  const nums = [...arr].sort((a, b) => a - b);
-  return arr.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+  const numbs = [...arr].sort((a, b) => a - b);
+  return arr.length % 2 !== 0 ? numbs[mid] : (numbs[mid - 1] + numbs[mid]) / 2;
 }
 
 function stdDev(arr: number[]): number {
@@ -119,13 +119,7 @@ function compare(creature1: CreatureExport, creature2: CreatureExport) {
           b2.toFixed(4)
         }`;
         console.info(msg);
-        // throw new Error(msg);
       }
-      // if (node.squash != node2.squash) {
-      //   throw new Error(
-      //     `${node.uuid} Squash mismatch: ${node.squash} vs ${node2.squash}`,
-      //   );
-      // }
     }
   });
 }

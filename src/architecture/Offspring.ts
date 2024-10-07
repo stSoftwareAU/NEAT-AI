@@ -5,6 +5,7 @@ import { Neuron } from "./Neuron.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { handleGrafting } from "./GeneticIsolation.ts";
+import { assert } from "@std/assert/assert";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -22,13 +23,10 @@ export class Offspring {
     CreatureUtil.makeUUID(mother);
     const father = Creature.fromJSON(dad.exportJSON());
     CreatureUtil.makeUUID(father);
-    if (
-      mother.input !== father.input || mother.output !== father.output
-    ) {
-      throw new Error(
-        `Parents aren't the same species (inputs ${mother.input} != ${father.input} or outputs ${mother.output} != ${father.output})`,
-      );
-    }
+    assert(
+      mother.input === father.input && mother.output === father.output,
+      "Parents aren't the same species",
+    );
 
     // Initialize offspring
     const offspring = new Creature(mother.input, mother.output, {
@@ -333,7 +331,7 @@ export class Offspring {
       } else if (b.type == "output") {
         return -1;
       }
-      // if (a.index == b.index) {
+
       if (a.uuid == b.uuid) {
         throw new Error(`Duplicate uuid ${a.uuid}`);
       }

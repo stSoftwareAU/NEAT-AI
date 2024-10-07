@@ -76,9 +76,6 @@ function check(squashName: string, values: number[]) {
           break;
         case GELU.NAME:
           tolerancePercent = 90;
-          // if (v < 0) {
-          //   hint = v - Number.EPSILON;
-          // }
           break;
         case "GAUSSIAN":
           if (v < 0) {

@@ -81,12 +81,8 @@ Deno.test("toValue", () => {
         if (expected < range.low) expected = range.low;
 
         const value = toValue(neuron, expected);
-        // if( Math.abs(value-expected)<0.1){
-        //     fail( `Squash: ${neuron.squash}, Value: ${value}, Activation: ${expected} should include bias: ${neuron.bias}`);
-        // }
-        const actualActivation = toActivation(neuron, value);
 
-        // assertAlmostEquals(actualActivation, expected, 0.000_001, `Squash: ${neuron.squash}, Expected: ${expected} Actual: ${actualActivation}`);
+        const actualActivation = toActivation(neuron, value);
 
         const value2 = toValue(neuron, actualActivation, value);
 
