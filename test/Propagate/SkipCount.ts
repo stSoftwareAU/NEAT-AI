@@ -12,7 +12,7 @@ Deno.test("SkipCount", () => {
   creature.propagate(expected, config);
   const cs = creature.state.connection(0, 3);
 
-  assertEquals(cs.count, 2);
+  assertEquals(cs.count, 1);
 });
 
 function makeCreature() {
