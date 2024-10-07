@@ -228,15 +228,6 @@ Deno.test("CLIPPED", () => {
   assert(v2 === -1.3, `${activation.getName()} hint not working ${v2}`);
 });
 
-// Deno.test("SINUSOID", () => {
-//   const activation = Activations.find(SINUSOID.NAME) as UnSquashInterface;
-//   const values = [-64];
-//   values.forEach((v) => {
-//     const tmpValue = activation.unSquash(v);
-//     assert(Number.isFinite(tmpValue), `SINUSOID ${v} not finite ${tmpValue}`);
-//   });
-// });
-
 Deno.test("ELU", () => {
   const activation = Activations.find(
     ELU.NAME,

@@ -206,49 +206,6 @@ Deno.test("Genetic Integrity - No Matching Neurons", () => {
   console.info(nonMatchingMother);
   Creature.fromJSON(nonMatchingMother).validate();
 
-  // Create a distinct mother with non-matching neurons and synapses
-  //   const nonMatchingMother = JSON.parse(JSON.stringify(nonMatchingMother));
-
-  //   // Modify the UUIDs of the mother's neurons to ensure no matching neurons
-  //   nonMatchingMother.neurons = nonMatchingMother.neurons.map(
-  //     (neuron: NeuronExport) => {
-  //       if (
-  //         !neuron.uuid.startsWith("input-") && !neuron.uuid.startsWith("output-")
-  //       ) {
-  //         return { ...neuron, uuid: neuron.uuid + "-different" };
-  //       }
-  //       return neuron;
-  //     },
-  //   );
-
-  //   // Update the synapses in the mother to reflect the new neuron UUIDs
-  //   nonMatchingMother.synapses = nonMatchingMother.synapses.map(
-  //     (synapse: SynapseExport) => {
-  //       let newFromUUID = synapse.fromUUID;
-  //       let newToUUID = synapse.toUUID;
-
-  //       if (
-  //         !synapse.fromUUID.startsWith("input-") &&
-  //         !synapse.fromUUID.startsWith("output-")
-  //       ) {
-  //         newFromUUID = synapse.fromUUID + "-different";
-  //       }
-
-  //       if (
-  //         !synapse.toUUID.startsWith("input-") &&
-  //         !synapse.toUUID.startsWith("output-")
-  //       ) {
-  //         newToUUID = synapse.toUUID + "-different";
-  //       }
-
-  //       return {
-  //         ...synapse,
-  //         fromUUID: newFromUUID,
-  //         toUUID: newToUUID,
-  //       };
-  //     },
-  //   );
-
   Creature.fromJSON(nonMatchingMother).validate();
 
   // The expected output should be the same as the original father since no neurons match
