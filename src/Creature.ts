@@ -55,6 +55,7 @@ import { SwapNeurons } from "./mutate/SwapNeurons.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
+import { assert } from "@std/assert/assert";
 
 /**
  * Creature Class
@@ -637,20 +638,10 @@ export class Creature implements CreatureInternal {
         location = indx + 1;
         break;
       } else if (c.from === from) {
+        assert(c.to !== to, "Already connected");
         if (c.to < to) {
           location = indx + 1;
           break;
-        } else if (c.to === to) {
-          const fromNeuron = this.neurons[from];
-          const fromID = fromNeuron ? fromNeuron.ID() : `[${from}]`;
-
-          const toNeuron = this.neurons[to];
-          const toID = toNeuron ? toNeuron.ID() : `[${to}]`;
-
-          throw new Error(
-            indx + ") already connected from: " + fromID +
-              " to: " + toID,
-          );
         } else {
           location = indx;
         }
