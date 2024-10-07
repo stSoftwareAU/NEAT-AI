@@ -1,6 +1,5 @@
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import type { SynapseState } from "../propagate/SynapseState.ts";
 import type { CreatureState } from "./CreatureState.ts";
@@ -157,20 +156,11 @@ export function limitActivationToRange(
   const range = unSquasher.range();
 
   let limitedActivation: number;
-  const propagateUpdateMethod = squash as NeuronActivationInterface;
-  if (propagateUpdateMethod.propagate !== undefined) {
-    const value = requestedActivation - node.bias;
 
-    limitedActivation = Math.min(
-      Math.max(value, range.low),
-      range.high,
-    ) + node.bias;
-  } else {
-    limitedActivation = Math.min(
-      Math.max(requestedActivation, range.low),
-      range.high,
-    );
-  }
+  limitedActivation = Math.min(
+    Math.max(requestedActivation, range.low),
+    range.high,
+  );
 
   if (range.normalize) {
     limitedActivation = range.normalize(limitedActivation);
