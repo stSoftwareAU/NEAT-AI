@@ -21,7 +21,6 @@ function makeCreature() {
           count: 1,
           hintValue: -0.5,
           totalBias: -2.54,
-          // totalBiasDifference: -2.54,
           minimumActivation: 0,
           maximumActivation: 1,
         },
