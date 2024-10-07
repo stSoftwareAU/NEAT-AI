@@ -24,7 +24,12 @@
     }
   ],
   "connections": [
-    { "fromUUID": "constant-3", "toRelative": 9999, "weight": 1 },
+    {
+      "fromUUID": "constant-3",
+      "toRelative": 9999,
+      "weight": 1,
+      "comment": "a comment"
+    },
     { "fromRelative": 9997, "toRelative": 9999, "weight": -1 },
     { "fromRelative": 9998, "toRelative": 10000, "weight": 1 },
     { "fromRelative": 9999, "toRelative": 10000, "weight": 1 }
