@@ -12,7 +12,6 @@ export function noChangePropagate(
 ) {
   const ns = neuron.creature.state.node(neuron.index);
 
-  ns.noChange = true;
   const squashMethod = neuron.findSquash();
 
   const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
@@ -36,24 +35,25 @@ export function noChangePropagate(
   } else {
     const toList = neuron.creature.inwardConnections(neuron.index);
 
-    const listLength = toList.length;
+    for (let indx = toList.length; indx--;) {
+      const c = toList[indx];
 
-    if (listLength) {
-      for (let indx = listLength; indx--;) {
-        const c = toList[indx];
+      if (c.from === c.to) continue;
 
-        if (c.from === c.to) continue;
+      const fromNeuron = neuron.creature.neurons[c.from];
 
-        const fromNeuron = neuron.creature.neurons[c.from];
-
-        if (
-          fromNeuron.type !== "input" &&
-          fromNeuron.type !== "constant"
-        ) {
+      if (
+        fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant"
+      ) {
+        const fromNS = neuron.creature.state.node(fromNeuron.index);
+        if (!fromNS.noChange) {
           const fromActivation = fromNeuron.adjustedActivation(config);
           noChangePropagate(fromNeuron, fromActivation, config);
         }
+      }
 
+      if (!ns.noChange) {
         const cs = neuron.creature.state.connection(c.from, c.to);
         if (cs.count === 0) {
           const fromWeight = adjustedWeight(neuron.creature.state, c, config);
@@ -69,4 +69,5 @@ export function noChangePropagate(
   }
 
   ns.traceActivation(activation);
+  ns.noChange = true;
 }
