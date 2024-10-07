@@ -160,7 +160,6 @@ export class MINIMUM
       if (mainConnection) {
         assert(mainActivation != undefined);
         const fromNeuron = neuron.creature.neurons[mainConnection.from];
-        // const fromActivation = fromNeuron.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(
           neuron.creature.state,

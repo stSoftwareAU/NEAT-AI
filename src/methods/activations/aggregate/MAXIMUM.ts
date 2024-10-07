@@ -159,7 +159,6 @@ export class MAXIMUM
       if (mainConnection) {
         assert(mainActivation != null);
         const fromNeuron = neuron.creature.neurons[mainConnection.from];
-        // const fromActivation = fromNeuron.adjustedActivation(config);
 
         const fromWeight = adjustedWeight(
           neuron.creature.state,

@@ -17,11 +17,7 @@ export function noChangePropagate(
 
   const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
   if (propagateUpdateMethod.propagate !== undefined) {
-    // propagateUpdateMethod.propagate(
-    //   neuron,
-    //   activation,
-    //   config,
-    // );
+
     const toList = neuron.creature.inwardConnections(neuron.index);
 
     for (let i = toList.length; i--;) {
@@ -39,7 +35,6 @@ export function noChangePropagate(
       }
     }
   } else {
-    // const currentBias = adjustedBias(neuron, config);
     const toList = neuron.creature.inwardConnections(neuron.index);
 
     const listLength = toList.length;

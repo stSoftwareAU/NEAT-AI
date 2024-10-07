@@ -28,12 +28,8 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
       );
     }
 
-    // Clamp the activation to avoid exploding results near 1 and -1
-    // const clampedActivation = Math.max(Math.min(activation, SOFTSIGN.LIMIT), -SOFTSIGN.LIMIT);
-
-    // const value = clampedActivation / (1 - Math.abs(clampedActivation));
     const value = activation / (1 - Math.abs(activation));
-    // console.info(`SOFTSIGN unSquash: ${activation}, hint: ${hint} -> ${value}`);
+
     return value;
   }
 

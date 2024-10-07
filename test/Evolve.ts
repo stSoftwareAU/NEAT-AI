@@ -119,17 +119,10 @@ Deno.test("XNOR - evolve", async () => {
     { input: [1, 1], output: [1] },
   ];
 
-  // const experimentStore = ".test/experiments/XNOR-evolve";
-  // emptyDirSync(experimentStore);
   for (let attempt = 0; true; attempt++) {
     const creature = new Creature(2, 1);
     const results = await creature.evolveDataSet(trainingSet, {
-      // mutation: [...Mutation.FFW],
-      // elitism: 3,
-      // mutationRate: 0.5,
       targetError: 0.05,
-      // threads: 8,
-      // experimentStore: experimentStore,
       iterations: 20_000,
     });
 
