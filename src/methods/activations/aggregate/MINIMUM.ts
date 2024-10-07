@@ -99,7 +99,6 @@ export class MINIMUM
         console.info(`${this.getName()} disconnecting`, c.from, c.to, cs);
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
-        // cs.used = false;
       } else {
         usedCount++;
       }
