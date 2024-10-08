@@ -12,34 +12,34 @@ export function noChangePropagate(
 ) {
   const ns = neuron.creature.state.node(neuron.index);
 
-  ns.noChange = true;
   const squashMethod = neuron.findSquash();
 
   const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
   if (propagateUpdateMethod.propagate !== undefined) {
-    const toList = neuron.creature.inwardConnections(neuron.index);
+    if (!ns.noChange) {
+      const toList = neuron.creature.inwardConnections(neuron.index);
 
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
-      const fromNS = neuron.creature.state.node(c.from);
-      if (!fromNS.noChange) {
-        const fromNeuron = neuron.creature.neurons[c.from];
-        if (
-          fromNeuron.type !== "input" &&
-          fromNeuron.type !== "constant"
-        ) {
-          const fromActivation = fromNeuron.adjustedActivation(config);
-          noChangePropagate(fromNeuron, fromActivation, config);
+      for (let i = toList.length; i--;) {
+        const c = toList[i];
+        if (c.from === c.to) continue;
+        const fromNS = neuron.creature.state.node(c.from);
+        if (!fromNS.noChange) {
+          const fromNeuron = neuron.creature.neurons[c.from];
+          if (
+            fromNeuron.type !== "input" &&
+            fromNeuron.type !== "constant"
+          ) {
+            const fromActivation = fromNeuron.adjustedActivation(config);
+            noChangePropagate(fromNeuron, fromActivation, config);
+          }
         }
       }
     }
   } else {
-    const toList = neuron.creature.inwardConnections(neuron.index);
+    if (!ns.noChange) {
+      const toList = neuron.creature.inwardConnections(neuron.index);
 
-    const listLength = toList.length;
-
-    if (listLength) {
-      for (let indx = listLength; indx--;) {
+      for (let indx = toList.length; indx--;) {
         const c = toList[indx];
 
         if (c.from === c.to) continue;
@@ -50,8 +50,11 @@ export function noChangePropagate(
           fromNeuron.type !== "input" &&
           fromNeuron.type !== "constant"
         ) {
-          const fromActivation = fromNeuron.adjustedActivation(config);
-          noChangePropagate(fromNeuron, fromActivation, config);
+          const fromNS = neuron.creature.state.node(fromNeuron.index);
+          if (!fromNS.noChange) {
+            const fromActivation = fromNeuron.adjustedActivation(config);
+            noChangePropagate(fromNeuron, fromActivation, config);
+          }
         }
 
         const cs = neuron.creature.state.connection(c.from, c.to);
@@ -69,4 +72,5 @@ export function noChangePropagate(
   }
 
   ns.traceActivation(activation);
+  ns.noChange = true;
 }
