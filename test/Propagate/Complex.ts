@@ -1,7 +1,7 @@
 import { assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -49,7 +49,7 @@ Deno.test("Complex Back Propagation", () => {
     outputs[i] = output;
   }
 
-  const config = new BackPropagationConfig();
+  const config = createBackPropagationConfig();
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i];
     creature.activateAndTrace(input);

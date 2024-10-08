@@ -6,122 +6,137 @@ import type { CreatureState } from "./CreatureState.ts";
 import type { Neuron } from "./Neuron.ts";
 import type { Synapse } from "./Synapse.ts";
 
-export interface BackPropagationOptions {
-  disableRandomSamples?: boolean;
+type BackPropagationArguments = {
+  disableRandomSamples: boolean;
 
   /**
    * The amount of previous generations if not set it'll be a random number between 1-100.
    * The higher number of generations the lower the learning rate
    */
-  generations?: number;
+  generations: number;
 
   /**
    * The learning rate. Between 0..1, Default random number.
    */
-  learningRate?: number;
+  learningRate: number;
 
   /**
    * The maximum +/- the bias will be adjusted in one training iteration. Default 10, Minimum 0.1
    */
-  maximumBiasAdjustmentScale?: number;
+  maximumBiasAdjustmentScale: number;
 
   /**
    * The maximum +/- the weight will be adjusted in one training iteration. Default 10, Minimum 0.1
    */
-  maximumWeightAdjustmentScale?: number;
+  maximumWeightAdjustmentScale: number;
 
   /**
    * The limit +/- of the bias, training will not adjust beyond this scale. Default 10_000, Minimum 1
    */
-  limitBiasScale?: number;
+  limitBiasScale: number;
 
   /**
    * The limit +/- of the weight, training will not adjust beyond this scale. Default 100_000, Minimum 1
    */
-  limitWeightScale?: number;
+  limitWeightScale: number;
 
   /** When limiting the weight/bias use exponential scaling, Default enabled */
-  disableExponentialScaling?: boolean;
+  disableExponentialScaling: boolean;
 
   /** the minimum unit of weights/biases */
-  plankConstant?: number;
+  plankConstant: number;
 
   /** Probability of changing a gene */
-  trainingMutationRate?: number;
-
-  excludeSquashList?: string;
-}
-
-export class BackPropagationConfig implements BackPropagationOptions {
-  disableRandomSamples: boolean;
-
-  generations: number;
-
-  learningRate: number;
-
-  maximumBiasAdjustmentScale: number;
-
-  maximumWeightAdjustmentScale: number;
-
-  limitBiasScale: number;
-
-  limitWeightScale: number;
-  disableExponentialScaling?: boolean;
-
-  plankConstant: number;
   trainingMutationRate: number;
-  excludeSquashSet: Set<string>;
 
-  constructor(options?: BackPropagationOptions) {
-    this.disableRandomSamples = options?.disableRandomSamples ?? false;
+  excludeSquashList: string;
+};
 
-    this.generations = Math.max(
+export type BackPropagationOptions = Partial<BackPropagationArguments>;
+
+type BackPropagationConfigArguments =
+  & Omit<BackPropagationArguments, "excludeSquashList">
+  & {
+    /**
+     * The actual set of squash genes to exclude.
+     */
+    excludeSquashSet: Set<string>;
+  };
+
+export type BackPropagationConfig = Readonly<BackPropagationConfigArguments>;
+
+export function createBackPropagationConfig(
+  options?: BackPropagationOptions | BackPropagationConfig,
+): BackPropagationConfig {
+  // Check if 'excludeSquashSet' exists to determine if options is BackPropagationConfig
+  const isConfig = (
+    opts?: BackPropagationOptions | BackPropagationConfig,
+  ): opts is BackPropagationConfig => {
+    return (opts as BackPropagationConfig)?.excludeSquashSet !== undefined;
+  };
+
+  // If options is BackPropagationConfig, use the existing excludeSquashSet, otherwise create a new Set
+  const excludeSquashSet = isConfig(options)
+    ? options.excludeSquashSet
+    : new Set<string>();
+
+  // If excludeSquashList is provided, merge it into the Set
+  const excludeSquashList = !isConfig(options)
+    ? options?.excludeSquashList
+    : undefined;
+  if (excludeSquashList) {
+    for (const squash of excludeSquashList.split(",")) {
+      Activations.find(squash); // Assuming `Activations.find` is a validation function
+      excludeSquashSet.add(squash.trim());
+    }
+  }
+
+  const config: BackPropagationConfigArguments = {
+    disableRandomSamples: options?.disableRandomSamples ?? false,
+
+    generations: Math.max(
       options?.generations ?? Math.floor(Math.random() * 100) + 1,
       0,
-    );
+    ),
 
-    this.maximumBiasAdjustmentScale = Math.max(
+    maximumBiasAdjustmentScale: Math.max(
       options?.maximumBiasAdjustmentScale ?? 10,
       0,
-    );
+    ),
 
-    this.maximumWeightAdjustmentScale = Math.max(
+    maximumWeightAdjustmentScale: Math.max(
       options?.maximumWeightAdjustmentScale ?? 10,
       0,
-    );
+    ),
 
-    this.limitBiasScale = Math.max(options?.limitBiasScale ?? 10_000, 1);
+    limitBiasScale: Math.max(options?.limitBiasScale ?? 10_000, 1),
 
-    this.limitWeightScale = Math.max(options?.limitWeightScale ?? 100_000, 1);
+    limitWeightScale: Math.max(options?.limitWeightScale ?? 100_000, 1),
 
-    this.learningRate = Math.min(
+    learningRate: Math.min(
       Math.max(
         options?.learningRate ?? Math.random(),
         0.01,
       ),
       1,
-    );
+    ),
 
-    this.trainingMutationRate = Math.min(
+    trainingMutationRate: Math.min(
       Math.max(
         options?.trainingMutationRate ?? Math.random(),
         0.01,
       ),
       1,
-    );
+    ),
 
-    this.disableExponentialScaling = options?.disableExponentialScaling;
+    disableExponentialScaling: options?.disableExponentialScaling ?? false,
 
-    this.plankConstant = options?.plankConstant ?? 0.000_000_1;
+    plankConstant: options?.plankConstant ?? 0.000_000_1,
 
-    this.excludeSquashSet = new Set<string>();
-    if (options?.excludeSquashList) {
-      for (const squash of options.excludeSquashList.split(",")) {
-        Activations.find(squash);
-        this.excludeSquashSet.add(squash);
-      }
-    }
-  }
+    excludeSquashSet, // Use the merged or existing Set
+  };
+
+  return Object.freeze(config);
 }
 
 export function adjustedBias(

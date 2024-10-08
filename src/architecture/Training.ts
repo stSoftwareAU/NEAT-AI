@@ -3,11 +3,11 @@ import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { Costs } from "../Costs.ts";
 import { Creature } from "../Creature.ts";
+import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
-import { BackPropagationConfig } from "./BackPropagation.ts";
+import { createBackPropagationConfig } from "./BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { type DataRecordInterface, makeDataDir } from "./DataSet.ts";
-import { compactUnused } from "../compact/CompactUnused.ts";
 
 export function dataFiles(dataDir: string, options: TrainOptions = {}) {
   const binaryFiles: string[] = [];
@@ -130,10 +130,12 @@ function trainDirBinary(
     iteration++;
     const startTS = Date.now();
     let lastTS = startTS;
-    const config = new BackPropagationConfig(options);
-    if (options.generations !== undefined) {
-      config.generations = options.generations + iteration;
-    }
+    const config = createBackPropagationConfig({
+      ...options,
+      generations: options.generations
+        ? options.generations + iteration
+        : undefined,
+    });
 
     let counter = 0;
     let errorSum = 0;

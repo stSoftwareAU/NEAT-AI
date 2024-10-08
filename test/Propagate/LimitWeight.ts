@@ -1,11 +1,11 @@
 import { assertAlmostEquals } from "@std/assert";
 import {
-  BackPropagationConfig,
+  createBackPropagationConfig,
   limitWeight,
 } from "../../src/architecture/BackPropagation.ts";
 
 Deno.test("maximumWeightAdjustmentScale", () => {
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     maximumWeightAdjustmentScale: 0.2,
     learningRate: 1,
   });
@@ -19,7 +19,7 @@ Deno.test("maximumWeightAdjustmentScale", () => {
 });
 
 Deno.test("maximumWeightAdjustmentScaleV2", () => {
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     maximumWeightAdjustmentScale: 0.2,
     learningRate: 1,
   });
@@ -29,7 +29,7 @@ Deno.test("maximumWeightAdjustmentScaleV2", () => {
 });
 
 Deno.test("limitWeightScale", () => {
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     limitWeightScale: 20,
     maximumWeightAdjustmentScale: 10,
     learningRate: 1,

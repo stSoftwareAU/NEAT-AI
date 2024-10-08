@@ -66,8 +66,6 @@ Deno.test("ModActivation-Constant", () => {
     modifier.mutate();
   }
 
-  // creature.validate();
-
   delete creature.uuid;
 
   const uuid2 = CreatureUtil.makeUUID(creature);

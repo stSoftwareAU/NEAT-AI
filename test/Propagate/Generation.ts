@@ -2,7 +2,7 @@ import { assertAlmostEquals } from "@std/assert";
 import {
   adjustedBias,
   adjustedWeight,
-  BackPropagationConfig,
+  createBackPropagationConfig,
 } from "../../src/architecture/BackPropagation.ts";
 import type { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -55,7 +55,7 @@ Deno.test("Generation BIAS", () => {
     throw new Error("No output node found");
   }
 
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     generations: 0,
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
@@ -70,7 +70,7 @@ Deno.test("Generation BIAS", () => {
 
   const bias2 = adjustedBias(
     outputNode,
-    new BackPropagationConfig({
+    createBackPropagationConfig({
       generations: 1,
       maximumBiasAdjustmentScale: 2,
       maximumWeightAdjustmentScale: 2,
@@ -93,9 +93,8 @@ Deno.test("Generation Weight", () => {
   const w1 = adjustedWeight(
     creature.state,
     connection,
-    new BackPropagationConfig({
+    createBackPropagationConfig({
       generations: 0,
-      // useAverageWeight: "Yes",
       maximumBiasAdjustmentScale: 5,
       maximumWeightAdjustmentScale: 5,
       learningRate: 1,
@@ -104,9 +103,8 @@ Deno.test("Generation Weight", () => {
 
   assertAlmostEquals(w1, 0.1, 0.2, `Weight: ${w1.toFixed(3)}`);
 
-  const config2 = new BackPropagationConfig({
+  const config2 = createBackPropagationConfig({
     generations: 10,
-    // useAverageWeight: "Yes",
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
     learningRate: 1,

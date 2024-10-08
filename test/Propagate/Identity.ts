@@ -2,7 +2,7 @@ import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { Costs } from "../../src/Costs.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
 const NODE_ID = "identity-6";
 function makeCreature() {
@@ -111,7 +111,7 @@ Deno.test("PropagateIdentity", () => {
   );
 
   const modifiedError = calculateError(creature, inputs, targets);
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
     disableRandomSamples: true,
@@ -183,7 +183,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
   assertAlmostEquals(startError, 0, 0.0000001);
 
   const modifiedError = calculateError(creature, inputs, targets);
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
     disableRandomSamples: true,

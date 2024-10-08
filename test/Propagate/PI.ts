@@ -1,7 +1,7 @@
 import { assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -36,7 +36,7 @@ Deno.test("PI-repeat", () => {
   const creature = makeCreature();
   const traceDir = ".test/PI-repeat";
   ensureDirSync(traceDir);
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     generations: 0,
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
@@ -69,7 +69,7 @@ Deno.test("PI-single", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   ensureDirSync(traceDir);
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     generations: 0,
     maximumBiasAdjustmentScale: 20,
     maximumWeightAdjustmentScale: 20,
@@ -123,7 +123,7 @@ Deno.test("PI Multiple", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   ensureDirSync(traceDir);
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     generations: 0,
     maximumBiasAdjustmentScale: 5,
     maximumWeightAdjustmentScale: 5,

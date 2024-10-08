@@ -1,5 +1,5 @@
 import { yellow } from "@std/fmt/colors";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
@@ -13,7 +13,7 @@ Deno.test("Trace", () => {
   const json = creature.exportJSON();
 
   stats(json);
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     learningRate: 0.02,
   });
   creature.applyLearnings(config);

@@ -2,7 +2,7 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { train } from "../../src/architecture/Training.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";
@@ -13,7 +13,7 @@ Deno.test("PropagateMinimum", () => {
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();
 
-    const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
+    const ts: { input: number[]; output: number[] }[] = [];
     for (let i = 1_000; i--;) {
       const input = makeInput();
       const output = creature.activate(input);
@@ -97,7 +97,7 @@ Deno.test("PropagateMinimum", () => {
       Creature.fromJSON(resultC.trace).exportJSON(),
     );
     const creatureE = Creature.fromJSON(resultC.trace);
-    const config = new BackPropagationConfig({
+    const config = createBackPropagationConfig({
       generations: 0,
     });
 

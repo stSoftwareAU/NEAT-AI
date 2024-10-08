@@ -2,7 +2,7 @@ import { assertAlmostEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import {
   adjustedBias,
-  BackPropagationConfig,
+  createBackPropagationConfig,
 } from "../../src/architecture/BackPropagation.ts";
 import { NeuronState } from "../../src/architecture/CreatureState.ts";
 
@@ -15,8 +15,6 @@ Deno.test("AccumulateBias-Standard", () => {
 });
 
 Deno.test("AccumulateBias-Limited", () => {
-  const config = new BackPropagationConfig();
-  config.maximumBiasAdjustmentScale = 5;
   const ns = new NeuronState();
 
   ns.accumulateBias(40, 2, 0);
@@ -76,7 +74,10 @@ function makeCreature() {
 }
 
 Deno.test("AccumulateBias-average", () => {
-  const config = new BackPropagationConfig({ generations: 0, learningRate: 1 });
+  let config = createBackPropagationConfig({
+    generations: 0,
+    learningRate: 1,
+  });
 
   const creature = makeCreature();
   const node = creature.neurons[3];
@@ -84,7 +85,10 @@ Deno.test("AccumulateBias-average", () => {
   const biases = [100, -0.1, 0, 0.2, -0.3, 4, -5, 60, -70];
   biases.forEach((bias) => {
     if (bias > 50) {
-      config.maximumBiasAdjustmentScale = 500;
+      config = createBackPropagationConfig({
+        ...config,
+        maximumBiasAdjustmentScale: 500,
+      });
     }
 
     creature.clearState();

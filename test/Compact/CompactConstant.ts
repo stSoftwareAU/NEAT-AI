@@ -2,7 +2,7 @@ import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
 
 function makeCreature() {
@@ -34,7 +34,6 @@ function makeCreature() {
         type: "condition",
       },
       { fromUUID: "hidden-3", toUUID: "hidden-3b", weight: 0.3 },
-      // { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
       {
         fromUUID: "hidden-3",
         toUUID: "hidden-4",
@@ -92,7 +91,7 @@ Deno.test("CompactConstants", () => {
     outputs[i] = creature.activate(data[i]);
   }
 
-  const config = new BackPropagationConfig();
+  const config = createBackPropagationConfig();
   for (let i = data.length; i--;) {
     const actual = creature.activateAndTrace(data[i]);
     creature.propagate(outputs[i], config);

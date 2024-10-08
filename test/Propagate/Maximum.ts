@@ -2,7 +2,7 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { train } from "../../src/architecture/Training.ts";
 
@@ -11,7 +11,7 @@ import { train } from "../../src/architecture/Training.ts";
 Deno.test("PropagateMaximum", () => {
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
-    const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
+    const ts: { input: number[]; output: number[] }[] = [];
     for (let i = 1_00; i--;) {
       const input = makeInput();
       const output = creatureA.activate(input);
@@ -68,7 +68,6 @@ Deno.test("PropagateMaximum", () => {
     const resultC = train(creatureC, ts, {
       iterations: 100,
       targetError: errorB - 0.001,
-      // disableRandomSamples: true,
     });
 
     Deno.writeTextFileSync(
@@ -92,11 +91,7 @@ Deno.test("PropagateMaximum", () => {
       Creature.fromJSON(resultC.trace).exportJSON(),
     );
     const creatureE = Creature.fromJSON(resultC.trace);
-    const config = new BackPropagationConfig({
-      // useAverageValuePerActivation: false,
-      // useAverageDifferenceBias: "Yes",
-      // generations: 50,
-    });
+    const config = createBackPropagationConfig({});
 
     creatureE.applyLearnings(config);
     const errorD = calculateError(creatureD, ts);

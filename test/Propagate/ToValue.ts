@@ -36,7 +36,6 @@ function makeCreature() {
         type: "condition",
       },
       { fromUUID: "hidden-3", toUUID: "hidden-3b", weight: 0.3 },
-      // { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
       {
         fromUUID: "hidden-3",
         toUUID: "hidden-4",

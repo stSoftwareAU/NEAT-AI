@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -10,7 +10,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 Deno.test("PropagateMaximumSimple", () => {
   const creatureA = makeCreature();
 
-  const ts: { input: number[]; output: number[] }[] = []; //JSON.parse( Deno.readTextFileSync(".trace/data.json"));
+  const ts: { input: number[]; output: number[] }[] = [];
   const inputs = makeInputs();
   for (let i = inputs.length; i--;) {
     const input = inputs[i];
@@ -56,11 +56,7 @@ Deno.test("PropagateMaximumSimple", () => {
   const errorB = calculateError(creatureB, ts);
 
   const creatureC = Creature.fromJSON(creatureB.exportJSON());
-  const config = new BackPropagationConfig({
-    // disableRandomList: true,
-    // useAverageValuePerActivation: true,
-    // useAverageValuePerActivation: false,
-    // useAverageDifferenceBias: "Yes",
+  const config = createBackPropagationConfig({
     generations: 10,
     learningRate: 0.1,
   });

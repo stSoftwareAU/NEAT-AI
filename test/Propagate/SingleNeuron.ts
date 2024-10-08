@@ -2,7 +2,7 @@ import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -69,7 +69,7 @@ Deno.test("OneAndDone", () => {
   const creature = makeCreature();
   const traceDir = ".trace/OneAndDone";
   ensureDirSync(traceDir);
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     disableRandomSamples: false,
     generations: 0,
     learningRate: 1,
@@ -130,7 +130,7 @@ Deno.test("TwoSame", () => {
       `${traceDir}/0-start.json`,
       JSON.stringify(creature.traceJSON(), null, 2),
     );
-    const config = new BackPropagationConfig({
+    const config = createBackPropagationConfig({
       generations: 0,
       learningRate: 1,
       limitBiasScale: 5,
@@ -190,7 +190,7 @@ Deno.test("ManySame", () => {
   const traceDir = ".trace";
   ensureDirSync(traceDir);
   for (let attempts = 0; true; attempts++) {
-    const config = new BackPropagationConfig({
+    const config = createBackPropagationConfig({
       disableRandomSamples: true,
       generations: 0,
       maximumWeightAdjustmentScale: 3,
@@ -259,7 +259,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
   ensureDirSync(traceDir);
 
   for (let attempts = 0; true; attempts++) {
-    const config = new BackPropagationConfig({
+    let config = createBackPropagationConfig({
       generations: 0,
       learningRate: 0.255,
     });
@@ -300,7 +300,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
     const inD = [-0.5, 0, 0.5];
     const expectedD = makeOutput(inD);
     for (let i = 0; i < 100; i++) {
-      config.generations = 3 + i;
+      config = createBackPropagationConfig({ ...config, generations: 3 + i });
 
       creature.activateAndTrace(inC);
       creature.propagate(expectedC, config);
@@ -364,7 +364,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
     ".trace/0-start.json",
     JSON.stringify(creature.traceJSON(), null, 2),
   );
-  const config = new BackPropagationConfig({});
+  const config = createBackPropagationConfig({});
   console.info(config);
   const traceDir = ".trace";
   ensureDirSync(traceDir);
