@@ -77,13 +77,11 @@ function trainDirBinary(
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
   console.info(
-    `Training ${
-      blue(ID)
-    } with ${binaryFiles.length} binary files, target error: ${
-      yellow(targetError.toString())
-    }, iterations: ${yellow(iterations.toString())}, training sample rate: ${
-      yellow(trainingSampleRate.toString())
-    }`,
+    `Training ${blue(ID)} with ${binaryFiles.length} binary file${
+      binaryFiles.length > 1 ? "s" : ""
+    }, target error: ${yellow(targetError.toString())}, iterations: ${
+      yellow(iterations.toString())
+    }, training sample rate: ${yellow(trainingSampleRate.toString())}`,
   );
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes

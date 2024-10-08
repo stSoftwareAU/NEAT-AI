@@ -21,6 +21,7 @@ export function noChangePropagate(
 
       for (let i = toList.length; i--;) {
         const c = toList[i];
+        if (c.from === c.to) continue;
         const fromNS = neuron.creature.state.node(c.from);
         if (!fromNS.noChange) {
           const fromNeuron = neuron.creature.neurons[c.from];
