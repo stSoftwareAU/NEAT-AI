@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -18,8 +19,14 @@ export class CLIPPED implements ActivationInterface, UnSquashInterface {
     return { low: -1, high: 1 };
   }
 
-  unSquash(activation: number, hint?: number): number {
-    if (Math.abs(hint ? hint : 0) > 1) return hint ? hint : 0;
+  unSquash(activation: number): number {
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
+
     return activation;
   }
 

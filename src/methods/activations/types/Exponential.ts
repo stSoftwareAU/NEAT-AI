@@ -4,6 +4,7 @@
  * Range: (0, +Infinity)
  * Source: Custom (Exponential is a standard mathematical function)
  */
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -26,6 +27,13 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
     if (!Number.isFinite(activation)) {
       throw new Error("Activation must be a finite number");
     }
+
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
 
     if (activation <= 0) {
       return activation; // Our best guess if activation is 0 or less

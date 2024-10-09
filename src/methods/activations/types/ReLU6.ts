@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -14,6 +15,13 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class ReLU6 implements ActivationInterface, UnSquashInterface {
   /** Since ReLU6 is not invertible above 6, the unSquash method uses hints similarly to ReLU. */
   unSquash(activation: number, hint?: number): number {
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
+
     if (activation > 0 && activation < 6) {
       return activation; // Activation is in the linear range of ReLU6
     }

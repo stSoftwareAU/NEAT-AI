@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -14,6 +15,13 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
 
   unSquash(activation: number): number {
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
+
     let x = activation; // initial guess
 
     const epsilon = 1e-6;

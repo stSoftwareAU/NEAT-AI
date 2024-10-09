@@ -9,7 +9,6 @@ import { MEAN } from "../src/methods/activations/aggregate/MEAN.ts";
 import { MINIMUM } from "../src/methods/activations/aggregate/MINIMUM.ts";
 import { BIPOLAR } from "../src/methods/activations/types/BIPOLAR.ts";
 import { BIPOLAR_SIGMOID } from "../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
-import { CLIPPED } from "../src/methods/activations/types/CLIPPED.ts";
 import { Cosine } from "../src/methods/activations/types/Cosine.ts";
 import { ELU } from "../src/methods/activations/types/ELU.ts";
 import { Exponential } from "../src/methods/activations/types/Exponential.ts";
@@ -212,18 +211,18 @@ Deno.test("BIPOLAR", () => {
   assert(v === 0.3, `${activation.getName()} hint not working ${v}`);
 });
 
-Deno.test("CLIPPED", () => {
-  const activation = Activations.find(
-    CLIPPED.NAME,
-  ) as UnSquashInterface;
+// Deno.test("CLIPPED", () => {
+//   const activation = Activations.find(
+//     CLIPPED.NAME,
+//   ) as UnSquashInterface;
 
-  const v = activation.unSquash(1, 1.3);
+//   const v = activation.unSquash(1, 1.3);
 
-  assert(v === 1.3, `${activation.getName()} hint not working ${v}`);
-  const v2 = activation.unSquash(-1, -1.3);
+//   assert(v === 1.3, `${activation.getName()} hint not working ${v}`);
+//   const v2 = activation.unSquash(-1, -1.3);
 
-  assert(v2 === -1.3, `${activation.getName()} hint not working ${v2}`);
-});
+//   assert(v2 === -1.3, `${activation.getName()} hint not working ${v2}`);
+// });
 
 Deno.test("ELU", () => {
   const activation = Activations.find(

@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -43,6 +44,13 @@ export class STEP implements ActivationInterface, UnSquashInterface {
    * Returns a typical expected value based on the activation and an optional hint.
    */
   unSquash(activation: number, hint?: number): number {
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
+
     // If activation is 0 or 1 and no hint is provided, return activation
     if (hint === undefined) {
       return activation;

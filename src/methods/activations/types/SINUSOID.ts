@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -17,16 +18,12 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
    * We use the hint to adjust for the periodic nature of sin(x).
    */
   unSquash(activation: number, hint?: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
-
     const range = this.range();
-    if (activation < range.low || activation > range.high) {
-      throw new Error(
-        `${this.getName()}: Activation value ${activation} is outside the valid range [${range.low}, ${range.high}]`,
-      );
-    }
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
 
     // Get the base value within [-π/2, π/2]
     const baseValue = Math.asin(activation);

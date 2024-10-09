@@ -6,6 +6,7 @@
  * Source: "Swish: a Self-Gated Activation Function" by Prajit Ramachandran, Barret Zoph, and Quoc V. Le
  * Link: https://arxiv.org/abs/1710.05941
  */
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -36,6 +37,13 @@ export class Swish implements ActivationInterface, UnSquashInterface {
    * @returns The estimated input value that would produce the given activation output.
    */
   unSquash(activation: number, hint?: number): number {
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
+
     let x = hint !== undefined
       ? hint
       : (activation >= 0 ? activation : activation / 2);

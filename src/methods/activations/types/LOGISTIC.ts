@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -7,6 +8,12 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number): number {
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
     // To prevent log(0) and division by zero
     const safeActivation = Math.min(
       Math.max(activation, Number.EPSILON),

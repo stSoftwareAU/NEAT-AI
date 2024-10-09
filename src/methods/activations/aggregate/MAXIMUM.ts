@@ -67,23 +67,24 @@ export class MAXIMUM
     return maxValue;
   }
 
-  fix(node: Neuron) {
-    const toListA = node.creature.inwardConnections(node.index);
-    for (let i = toListA.length; i--;) {
-      const c = toListA[i];
+  fix(neuron: Neuron) {
+    const fromListA = neuron.creature.inwardConnections(neuron.index);
+    for (let i = fromListA.length; i--;) {
+      const c = fromListA[i];
       if (c.from == c.to) {
-        node.creature.disconnect(c.from, c.to);
+        neuron.creature.disconnect(c.from, c.to);
       }
     }
 
-    for (let attempts = 12; attempts--;) {
-      const toList = node.creature.inwardConnections(node.index);
+    const fromListB = neuron.creature.inwardConnections(neuron.index);
 
-      if (toList.length < 2) {
-        node.creature.makeRandomConnection(node.index);
-      } else {
+    switch (fromListB.length) {
+      case 1:
+        neuron.setSquash(IDENTITY.NAME);
         break;
-      }
+      case 0:
+        neuron.creature.makeRandomConnection(neuron.index);
+        break;
     }
   }
 
@@ -97,7 +98,6 @@ export class MAXIMUM
 
       const cs = neuron.creature.state.connection(c.from, c.to);
       if (!cs.used) {
-        console.info(`${this.getName()} disconnecting`, c.from, c.to, cs);
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
       } else {

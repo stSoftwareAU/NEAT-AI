@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -19,9 +20,12 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number, hint?: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
 
     const result = -Math.log((2 / (activation + 1)) - 1);
 

@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -17,16 +18,12 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
 
   /* The inverse of Softsign is x = f(x) / (1 - |f(x)|)*/
   unSquash(activation: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
-
     const range = this.range();
-    if (activation < range.low || activation > range.high) {
-      throw new Error(
-        `${this.getName()}: Activation value ${activation} is outside the valid range [${range.low}, ${range.high}]`,
-      );
-    }
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
 
     const value = activation / (1 - Math.abs(activation));
 

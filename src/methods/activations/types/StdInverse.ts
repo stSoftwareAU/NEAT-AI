@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -18,9 +19,12 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
+    const range = this.range();
+    assert(
+      Number.isFinite(activation) &&
+        activation >= range.low &&
+        activation <= range.high,
+    );
 
     if (Math.abs(activation) < 1e-15) { // 1e-15 is a reasonable threshold to prevent overflow
       return activation > 0 ? Number.MAX_VALUE : Number.MIN_VALUE; // Return a large positive or negative number as the best guess if activation is a very small positive or negative number
