@@ -130,11 +130,12 @@ function trainDirBinary(
     iteration++;
     const startTS = Date.now();
     let lastTS = startTS;
+    const generations = options.generations !== undefined
+      ? options.generations + iteration
+      : undefined;
     const config = createBackPropagationConfig({
       ...options,
-      generations: options.generations
-        ? options.generations + iteration
-        : undefined,
+      generations: generations,
     });
 
     let counter = 0;
