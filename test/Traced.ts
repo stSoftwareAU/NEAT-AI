@@ -1,6 +1,6 @@
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../mod.ts";
-import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 import { compactUnused } from "../src/compact/CompactUnused.ts";
 
 Deno.test("Traced", () => {
@@ -14,7 +14,7 @@ Deno.test("Traced", () => {
     `${traceDir}/A.json`,
     JSON.stringify(creature.exportJSON(), null, 2),
   );
-  const config = new BackPropagationConfig();
+  const config = createBackPropagationConfig();
 
   const compact = compactUnused(json, config.plankConstant);
   if (compact) {

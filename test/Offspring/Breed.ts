@@ -415,7 +415,6 @@ Deno.test(
     for (let i = 0; i < 20; i++) {
       addNeuron.mutate();
       addConnection.mutate();
-      // n1.addConnection();
     }
 
     n2.validate();
@@ -617,5 +616,4 @@ function checkChild(child: Creature) {
 
   assert(bBranchFound);
   assert(aBranchFound || cBranchFound);
-  // assertFalse(aBranchFound && cBranchFound);
 }

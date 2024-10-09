@@ -2,7 +2,7 @@ import { fail } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -109,7 +109,7 @@ Deno.test("PropagateMean", () => {
 
   neuron.bias = 0;
 
-  const config = new BackPropagationConfig({ learningRate: 0.1 });
+  const config = createBackPropagationConfig({ learningRate: 0.1 });
   console.info(config);
   for (let i = inputs.length; i--;) {
     creature.activateAndTrace(inputs[i]);

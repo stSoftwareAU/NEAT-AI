@@ -69,9 +69,7 @@ const baseCreatureJSON: CreatureExport = {
   "output": 2,
 };
 
-function createCreatureJSON(
-  //   modifications?: Partial<CreatureExport>,
-): CreatureExport {
+function createCreatureJSON(): CreatureExport {
   return JSON.parse(JSON.stringify({ ...baseCreatureJSON }));
 }
 

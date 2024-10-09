@@ -1,9 +1,12 @@
 import { assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
 Deno.test("SkipCount", () => {
-  const config = new BackPropagationConfig({ generations: 0, learningRate: 1 });
+  const config = createBackPropagationConfig({
+    generations: 0,
+    learningRate: 1,
+  });
 
   const creature = makeCreature();
 

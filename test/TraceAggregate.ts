@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
+import { createBackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
-import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -37,7 +37,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   const aOut = network.activateAndTrace(input);
 
   const changed = network.applyLearnings(
-    new BackPropagationConfig({ trainingMutationRate: 1 }),
+    createBackPropagationConfig({ trainingMutationRate: 1 }),
   );
 
   assert(changed, "should have changed");
@@ -85,7 +85,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   const aOut = creature.activateAndTrace(input);
 
   const changed = creature.applyLearnings(
-    new BackPropagationConfig({ trainingMutationRate: 1 }),
+    createBackPropagationConfig({ trainingMutationRate: 1 }),
   );
 
   assert(changed, "should have changed");
@@ -133,7 +133,7 @@ Deno.test("TraceAggregateIF", () => {
   const aOut = creature.activateAndTrace(input);
 
   const changed = creature.applyLearnings(
-    new BackPropagationConfig({ trainingMutationRate: 1 }),
+    createBackPropagationConfig({ trainingMutationRate: 1 }),
   );
 
   assert(changed, "should have changed");

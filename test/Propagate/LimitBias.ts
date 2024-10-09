@@ -1,9 +1,11 @@
 import { assertAlmostEquals } from "@std/assert";
-import { limitBias } from "../../src/architecture/BackPropagation.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import {
+  createBackPropagationConfig,
+  limitBias,
+} from "../../src/architecture/BackPropagation.ts";
 
 Deno.test("maximumBiasAdjustmentScale", () => {
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     maximumBiasAdjustmentScale: 0.2,
     learningRate: 0.05,
   });
@@ -17,7 +19,7 @@ Deno.test("maximumBiasAdjustmentScale", () => {
 });
 
 Deno.test("maximumBiasAdjustmentScaleV2", () => {
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     limitBiasScale: 10000,
     learningRate: 0.02,
   });
@@ -27,7 +29,7 @@ Deno.test("maximumBiasAdjustmentScaleV2", () => {
 });
 
 Deno.test("limitBiasScale", () => {
-  const config = new BackPropagationConfig({
+  const config = createBackPropagationConfig({
     limitBiasScale: 20,
     maximumBiasAdjustmentScale: 10,
     learningRate: 1,

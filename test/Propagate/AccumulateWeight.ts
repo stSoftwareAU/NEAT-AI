@@ -1,23 +1,27 @@
 import { assertAlmostEquals } from "@std/assert";
-import { accumulateWeight } from "../../src/architecture/BackPropagation.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { adjustedWeight } from "../../src/architecture/BackPropagation.ts";
+import {
+  accumulateWeight,
+  adjustedWeight,
+  createBackPropagationConfig,
+} from "../../src/architecture/BackPropagation.ts";
 import { SynapseState } from "../../src/propagate/SynapseState.ts";
 
 Deno.test("AccumulateWeight-Standard", () => {
   const cs = new SynapseState();
   cs.averageWeight = 1;
   cs.count = 1;
-  const config = new BackPropagationConfig();
+  const config = createBackPropagationConfig();
   accumulateWeight(1, cs, 4, 2, config);
 
   assertAlmostEquals(cs.averageWeight, 1.5, 0.1, JSON.stringify(cs, null, 2));
 });
 
 Deno.test("AccumulateWeight-Limited", () => {
-  const config = new BackPropagationConfig();
-  config.maximumWeightAdjustmentScale = 5;
+  const config = createBackPropagationConfig({
+    maximumWeightAdjustmentScale: 5,
+  });
+
   const cs = new SynapseState();
   cs.averageWeight = 3;
   cs.count = 1;
@@ -80,7 +84,10 @@ function makeCreature() {
 }
 
 Deno.test("AccumulateWeight-average", () => {
-  const config = new BackPropagationConfig({ generations: 0, learningRate: 1 });
+  let config = createBackPropagationConfig({
+    generations: 0,
+    learningRate: 1,
+  });
 
   const creature = makeCreature();
   const node = creature.neurons[3];
@@ -91,7 +98,10 @@ Deno.test("AccumulateWeight-average", () => {
   const weights = [100, -0.1, 0, 0.2, -0.3, 4, -5, 60, -70];
   weights.forEach((weight) => {
     if (weight > 50) {
-      config.maximumWeightAdjustmentScale = 500;
+      config = createBackPropagationConfig({
+        ...config,
+        maximumWeightAdjustmentScale: 500,
+      });
     }
 
     creature.clearState();

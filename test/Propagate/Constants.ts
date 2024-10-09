@@ -1,7 +1,7 @@
 import { assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -48,7 +48,7 @@ Deno.test("Constants", () => {
       JSON.stringify(creature.exportJSON(), null, 2),
     );
 
-    const config = new BackPropagationConfig({
+    const config = createBackPropagationConfig({
       disableRandomSamples: true,
       generations: 0,
       maximumWeightAdjustmentScale: 2,
@@ -111,7 +111,7 @@ Deno.test("Constants Same", () => {
       ".trace/0-clean.json",
       JSON.stringify(creature.exportJSON(), null, 2),
     );
-    const config = new BackPropagationConfig({
+    const config = createBackPropagationConfig({
       disableRandomSamples: true,
       generations: 100,
 
@@ -173,13 +173,11 @@ Deno.test("Constants Known Few", () => {
   );
 
   const inputs = [
-    // [-1, 1, 0],
     [-0.6221729575213817, -0.7553897617773555, 0.13402074408170073],
     [0.5652223287089484, -0.08786197216796943, -0.07580976670477835],
     [-0.3625857055962145, -0.31442846346985, -0.4490761153186331],
   ];
-  const config = new BackPropagationConfig({
-    // useAverageWeight: "No",
+  const config = createBackPropagationConfig({
     generations: 0,
 
     maximumWeightAdjustmentScale: 20,
@@ -249,12 +247,15 @@ Deno.test("ConstantsMany", () => {
       JSON.stringify(observations, null, 2),
     );
     sampleInput = observations[22];
-    const config = new BackPropagationConfig({
+    let config = createBackPropagationConfig({
       disableRandomSamples: true,
     });
     expected = makeOutput(sampleInput);
     for (let generations = 0; generations < 100; generations++) {
-      config.generations = generations;
+      config = createBackPropagationConfig({
+        ...config,
+        generations: generations,
+      });
 
       for (let loops = 10; loops--;) {
         for (let indx = 0; indx < observations.length; indx++) {

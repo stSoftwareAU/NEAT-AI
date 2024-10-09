@@ -232,10 +232,6 @@ Deno.test("CRISPR-multi-outputs2", () => {
   const json: CreatureInternal = {
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
-      // { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4, uuid: "h2" },
-      // { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5, uuid: "h3" },
-      // { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 6, uuid: "h4" },
-      // { type: "hidden", squash: "MEAN", bias: -0.25, index: 7, uuid: "h5" },
       {
         type: "output",
         squash: "IDENTITY",
@@ -262,13 +258,7 @@ Deno.test("CRISPR-multi-outputs2", () => {
       { from: 1, to: 3, weight: 0.1 },
       { from: 2, to: 4, weight: 0.2 },
       { from: 3, to: 5, weight: 0.3 },
-      // { from: 3, to: 4, weight: 0.3 },
       { from: 2, to: 6, weight: 0.4 },
-      // { from: 5, to: 10, weight: 0.4 },
-      // { from: 1, to: 6, weight: 0.5 },
-      // { from: 4, to: 7, weight: 0.7 },
-      // { from: 6, to: 8, weight: 0.8 },
-      // { from: 7, to: 9, weight: 0.9 },
     ],
     input: 3,
     output: 3,

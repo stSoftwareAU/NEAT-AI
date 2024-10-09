@@ -1,9 +1,8 @@
-import { fail } from "@std/assert";
+import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { BackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
-import { assertAlmostEquals } from "@std/assert";
+import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -81,7 +80,7 @@ Deno.test("PropagateSTEP", () => {
 
   neuron.bias = 0.5;
 
-  const config = new BackPropagationConfig({ learningRate: 1 });
+  const config = createBackPropagationConfig({ learningRate: 1 });
   console.info(config);
   for (let loop = 0; loop < 100; loop++) {
     for (let i = inputs.length; i--;) {

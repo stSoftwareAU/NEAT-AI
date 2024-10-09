@@ -228,10 +228,6 @@ function testEquality(original: Creature, copied: Creature) {
     const ORout = original.activateAndTrace(input);
     const COout = copied.activateAndTrace(input);
 
-    // for (a = 0; a < original.output; a++) {
-    //   ORout[a] = ORout[a].toFixed(9);
-    //   COout[a] = COout[a].toFixed(9);
-    // }
     assertEquals(
       ORout,
       COout,
@@ -590,7 +586,6 @@ Deno.test("NARX Sequence", async () => {
     const result = await creature.evolveDataSet(trainingData, {
       iterations: 5000,
       targetError: 0.005,
-      // threads: 1,
       feedbackLoop: true,
     });
 

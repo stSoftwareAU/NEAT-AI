@@ -167,7 +167,6 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
 
   // Apply changes to match the mother's neuron UUIDs in the expected output
   fatherExpected.neurons[0].uuid = "mother-3"; // The original change
-  // fatherExpected.neurons[outputNeuronIndexFather].uuid = "mother-new"; // The new matching neuron
 
   fatherExpected.synapses.forEach((synapse: SynapseExport) => {
     if (synapse.fromUUID === "father-3") synapse.fromUUID = "mother-3";

@@ -54,7 +54,6 @@ Deno.test("Learn", () => {
 
   const options: NeatOptions = {
     iterations: 10000,
-    // error: 0.002,
     log: 50,
     elitism: 3,
   };

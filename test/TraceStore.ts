@@ -102,14 +102,4 @@ Deno.test("storeTrace", async () => {
     totalCount > 0,
     "Should have totalCount",
   );
-
-  // assert(
-  //   previousDeltaWeightCount > 0,
-  //   "Should have previousDeltaWeightCount",
-  // );
-
-  // assert(
-  //   totalDeltaWeightCount > 0,
-  //   "Should have totalDeltaWeightCount",
-  // );
 });

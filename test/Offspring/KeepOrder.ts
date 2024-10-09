@@ -63,7 +63,6 @@ function makeDad() {
       { type: "hidden", uuid: "dad-b", squash: "IDENTITY", bias: -0.8 },
       { type: "hidden", uuid: "dad-b2", squash: "IDENTITY", bias: -0.8 },
 
-      // { type: "hidden", uuid: "common-c", squash: "IDENTITY", bias: 0.1 },
       { type: "hidden", uuid: "dad-c", squash: "IDENTITY", bias: 0 },
       { type: "hidden", uuid: "common-d", squash: "IDENTITY", bias: 0.1 },
       {
