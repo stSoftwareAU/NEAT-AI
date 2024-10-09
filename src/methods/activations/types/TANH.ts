@@ -1,6 +1,8 @@
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import {
+  type UnSquashInterface,
+  validationActivation,
+} from "../UnSquashInterface.ts";
 
 /**
  * TANH (Hyperbolic Tangent) Activation Function
@@ -16,12 +18,7 @@ export class TANH implements ActivationInterface, UnSquashInterface {
   // Function to estimate the input from the activation value.
   // TANH is invertible, and its inverse is calculated using a logarithmic function.
   unSquash(activation: number): number {
-    const range = this.range();
-    assert(
-      Number.isFinite(activation) &&
-        activation >= range.low &&
-        activation <= range.high,
-    );
+    validationActivation(this, activation);
 
     if (Math.abs(activation) === 1) {
       return activation; // Return activation as the best guess if it's 1 or -1

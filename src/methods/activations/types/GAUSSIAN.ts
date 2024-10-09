@@ -1,6 +1,8 @@
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import {
+  type UnSquashInterface,
+  validationActivation,
+} from "../UnSquashInterface.ts";
 
 /**
  * Gaussian Activation Function
@@ -22,16 +24,7 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
 
   /* unSquash is non-trivial due to the symmetric nature of Gaussian function. */
   unSquash(activation: number, hint?: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
-
-    const range = this.range();
-    assert(
-      Number.isFinite(activation) &&
-        activation >= range.low &&
-        activation <= range.high,
-    );
+    validationActivation(this, activation);
 
     if (activation <= 0) {
       return activation; // Return 0 as the best guess if activation is 0

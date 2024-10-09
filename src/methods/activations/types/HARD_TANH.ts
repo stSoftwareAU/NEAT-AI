@@ -1,6 +1,8 @@
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import {
+  type UnSquashInterface,
+  validationActivation,
+} from "../UnSquashInterface.ts";
 
 /**
  * Hard Tanh Activation Function
@@ -24,12 +26,7 @@ export class HARD_TANH implements ActivationInterface, UnSquashInterface {
 
   // Implementing the unSquash function
   unSquash(activation: number): number {
-    const range = this.range();
-    assert(
-      Number.isFinite(activation) &&
-        activation >= range.low &&
-        activation <= range.high,
-    );
+    validationActivation(this, activation);
 
     // Since the function is already bounded within [-1, 1], the unSquash is identity within the range
     return Math.max(-1, Math.min(1, activation));

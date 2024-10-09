@@ -1,6 +1,8 @@
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import {
+  type UnSquashInterface,
+  validationActivation,
+} from "../UnSquashInterface.ts";
 
 /**
  * Bipolar Activation Function
@@ -26,12 +28,7 @@ export class BIPOLAR implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number, hint?: number): number {
-    const range = this.range();
-    assert(
-      Number.isFinite(activation) &&
-        activation >= range.low &&
-        activation <= range.high,
-    );
+    validationActivation(this, activation);
 
     if (Number.isFinite(hint)) return hint ? hint : 0;
 

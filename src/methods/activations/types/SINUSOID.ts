@@ -1,6 +1,8 @@
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import {
+  type UnSquashInterface,
+  validationActivation,
+} from "../UnSquashInterface.ts";
 
 /**
  * Sinusoid Activation Function
@@ -18,12 +20,7 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
    * We use the hint to adjust for the periodic nature of sin(x).
    */
   unSquash(activation: number, hint?: number): number {
-    const range = this.range();
-    assert(
-      Number.isFinite(activation) &&
-        activation >= range.low &&
-        activation <= range.high,
-    );
+    validationActivation(this, activation);
 
     // Get the base value within [-π/2, π/2]
     const baseValue = Math.asin(activation);

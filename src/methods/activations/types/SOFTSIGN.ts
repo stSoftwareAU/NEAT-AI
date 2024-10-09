@@ -1,6 +1,8 @@
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import {
+  type UnSquashInterface,
+  validationActivation,
+} from "../UnSquashInterface.ts";
 
 /**
  * Softsign Activation Function
@@ -18,12 +20,7 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
 
   /* The inverse of Softsign is x = f(x) / (1 - |f(x)|)*/
   unSquash(activation: number): number {
-    const range = this.range();
-    assert(
-      Number.isFinite(activation) &&
-        activation >= range.low &&
-        activation <= range.high,
-    );
+    validationActivation(this, activation);
 
     const value = activation / (1 - Math.abs(activation));
 

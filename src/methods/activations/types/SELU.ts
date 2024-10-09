@@ -1,6 +1,8 @@
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import {
+  type UnSquashInterface,
+  validationActivation,
+} from "../UnSquashInterface.ts";
 
 /**
  * Scaled Exponential Linear Unit (SELU) activation function.
@@ -24,12 +26,7 @@ export class SELU implements ActivationInterface, UnSquashInterface {
   private static SCALE = 1.0507009873554804934193349852946;
 
   unSquash(activation: number): number {
-    const range = this.range();
-    assert(
-      Number.isFinite(activation) &&
-        activation >= range.low &&
-        activation <= range.high,
-    );
+    validationActivation(this, activation);
 
     const scaledActivation = activation / SELU.SCALE;
 

@@ -4,9 +4,11 @@
  * Range: [-1, 1]
  * Source: Custom (Cosine is a standard mathematical function)
  */
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import {
+  type UnSquashInterface,
+  validationActivation,
+} from "../UnSquashInterface.ts";
 
 export class Cosine implements ActivationInterface, UnSquashInterface {
   public static NAME = "Cosine";
@@ -20,16 +22,7 @@ export class Cosine implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number, hint?: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
-
-    const range = this.range();
-    assert(
-      Number.isFinite(activation) &&
-        activation >= range.low &&
-        activation <= range.high,
-    );
+    validationActivation(this, activation);
 
     const acos = Math.acos(activation);
 
