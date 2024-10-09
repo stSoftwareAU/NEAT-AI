@@ -18,7 +18,7 @@ Deno.test("Sample", () => {
   try {
     Deno.removeSync(".test/BackPropagation", { recursive: true });
   } catch (e) {
-    const name = e.name;
+    const name = (e as { name: string }).name;
     if (name !== "NotFound") {
       console.error(e);
     }
