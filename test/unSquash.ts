@@ -12,14 +12,12 @@ import { BIPOLAR_SIGMOID } from "../src/methods/activations/types/BIPOLAR_SIGMOI
 import { Cosine } from "../src/methods/activations/types/Cosine.ts";
 import { ELU } from "../src/methods/activations/types/ELU.ts";
 import { GELU } from "../src/methods/activations/types/GELU.ts";
-import { LogSigmoid } from "../src/methods/activations/types/LogSigmoid.ts";
 import { Mish } from "../src/methods/activations/types/Mish.ts";
 import { RELU } from "../src/methods/activations/types/RELU.ts";
 import { ReLU6 } from "../src/methods/activations/types/ReLU6.ts";
 import { SELU } from "../src/methods/activations/types/SELU.ts";
 import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
 import { STEP } from "../src/methods/activations/types/STEP.ts";
-import { Softplus } from "../src/methods/activations/types/Softplus.ts";
 import { Swish } from "../src/methods/activations/types/Swish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
 
@@ -294,7 +292,6 @@ Deno.test("Swish", () => {
     );
   });
 });
-
 
 Deno.test("unSquash", () => {
   const values = makeValues();
