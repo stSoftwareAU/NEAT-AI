@@ -121,7 +121,7 @@ export class Neat {
 
   trainingComplete: ResponseData[] = [];
 
-  private alreadyScheduledMap = new Map<number, Set<string>>();
+  private alreadyScheduledMap = new Map<string, number>();
 
   /**
    * Schedules training for a creature
@@ -131,40 +131,24 @@ export class Neat {
   scheduleTraining(
     creature: Creature,
     trainingTimeOutMinutes: number,
-    trainingGeneration: number,
   ) {
     const uuid = CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
 
-    // Clear previous generations that are two or more generations old
-    const previousGeneration = trainingGeneration - 1;
-
-    // Get a list of all generations in the map
-    const generationsToDelete = Array.from(this.alreadyScheduledMap.keys())
-      .filter((generation) => generation < previousGeneration); // Filter out only the old generations
-
-    // Delete unneeded generations
-    for (const generation of generationsToDelete) {
-      this.alreadyScheduledMap.delete(generation);
-    }
-
-    const alreadyScheduledPrevious = this.alreadyScheduledMap.get(
-      trainingGeneration - 1,
-    );
-    if (alreadyScheduledPrevious && alreadyScheduledPrevious.has(uuid)) {
+    if (this.alreadyScheduledMap.has(uuid)) {
       return;
     }
-    let alreadyScheduledCurrent = this.alreadyScheduledMap.get(
-      trainingGeneration,
-    );
-    if (!alreadyScheduledCurrent) {
-      alreadyScheduledCurrent = new Set();
-      this.alreadyScheduledMap.set(
-        trainingGeneration,
-        alreadyScheduledCurrent,
-      );
+
+    this.alreadyScheduledMap.set(uuid, Date.now());
+    if (this.alreadyScheduledMap.size > 1000) {
+      // Clean up by removing old entries
+      const minuteAgo = Date.now() - 60_000;
+      for (const [key, value] of this.alreadyScheduledMap) {
+        if (value < minuteAgo) {
+          this.alreadyScheduledMap.delete(key);
+        }
+      }
     }
-    alreadyScheduledCurrent.add(uuid);
 
     let w: WorkerHandler;
 
@@ -223,7 +207,6 @@ export class Neat {
     this.trainingInProgress.set(uuid, p);
   }
 
-  private trainingGeneration = 0;
   /**
    * Evaluates, selects, breeds and mutates population
    */
@@ -324,7 +307,6 @@ export class Neat {
     }
 
     if (trainingTimeOutMinutes != -1) { // If not timed out already
-      this.trainingGeneration++;
       for (
         let i = 0;
         i < results.elitists.length;
@@ -340,7 +322,6 @@ export class Neat {
           this.scheduleTraining(
             n,
             trainingTimeOutMinutes,
-            this.trainingGeneration,
           );
         }
       }
@@ -365,8 +346,7 @@ export class Neat {
           },
         );
       }
-      // CreatureUtil.makeUUID(creativeThinking);
-      // genus.addCreature(creativeThinking);
+
       assert(!creativeThinking.memetic);
       newPopulation.push(creativeThinking);
     }
@@ -393,9 +373,7 @@ export class Neat {
     ) {
       const child = breed.breed();
       if (child) {
-        // CreatureUtil.makeUUID(child);
         assert(!child.memetic);
-        // genus.addCreature(child);
         newPopulation.push(child);
       }
     }
