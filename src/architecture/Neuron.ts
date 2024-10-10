@@ -230,7 +230,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
             value += fromActivation * c.weight;
           } else {
             console.log(
-              `${this.index}: fromActivation: ${fromActivation}, c.from: ${c.from}, c.to: ${c.to}, c.weight: ${c.weight}`,
+              `${this.index}: fromActivation: ${fromActivation}, c.from: ${c.from} (type: ${
+                this.creature.neurons[c.from].type
+              },squash:${
+                this.creature.neurons[c.from].squash
+              })  c.to: ${c.to}, c.weight: ${c.weight}`,
             );
           }
         }

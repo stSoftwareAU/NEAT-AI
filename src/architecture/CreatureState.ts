@@ -101,7 +101,10 @@ export class CreatureState {
   }
 
   makeActivation(input: number[], feedbackLoop: boolean) {
-    if (feedbackLoop == false || this.activations.length == 0) {
+    if (
+      feedbackLoop == false ||
+      this.activations.length !== this.network.neurons.length
+    ) {
       this.activations = new Float32Array(this.network.neurons.length);
     }
 
