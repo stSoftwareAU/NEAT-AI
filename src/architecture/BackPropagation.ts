@@ -379,13 +379,6 @@ export function limitWeight(
   return limitedWeight;
 }
 
-// export function limitActivation(activation: number) {
-//   if (activation > 1e12) return 1e12;
-//   if (activation < -1e12) return -1e12;
-
-//   return activation;
-// }
-
 export function limitValue(value: number) {
   if (value > 1e12) return 1e12;
   if (value < -1e12) return -1e12;

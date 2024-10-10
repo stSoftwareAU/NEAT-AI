@@ -29,10 +29,6 @@ export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
     return activation;
   }
 
-  // range() {
-  //   return { low: 0, high: Number.POSITIVE_INFINITY };
-  // }
-
   getName() {
     return ABSOLUTE.NAME;
   }

@@ -45,14 +45,6 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
     return Math.log(Math.exp(activation) - 1); // Standard un-squashing calculation
   }
 
-  // Softplus outputs values between 0 and +Infinity, but we set practical limits
-  // range() {
-  //   return {
-  //     low: Softplus.SMALL_THRESHOLD, // Can't be lower than a very small positive number
-  //     high: Softplus.LARGE_THRESHOLD, // Prevents excessively large numbers
-  //   };
-  // }
-
   getName() {
     return Softplus.NAME;
   }

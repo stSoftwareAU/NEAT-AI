@@ -28,8 +28,4 @@ export class COMPLEMENT implements ActivationInterface, UnSquashInterface {
 
     return 1 - activation;
   }
-
-  // range() {
-  //   return { low: -Infinity, high: Infinity };
-  // }
 }

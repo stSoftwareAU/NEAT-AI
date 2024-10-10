@@ -70,10 +70,6 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     return x;
   }
 
-  // range() {
-  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  // }
-
   getName(): string {
     return Swish.NAME;
   }

@@ -39,8 +39,4 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
 
     return Math.log(activation);
   }
-
-  // range() {
-  //   return { low: 0, high: Number.POSITIVE_INFINITY };
-  // }
 }

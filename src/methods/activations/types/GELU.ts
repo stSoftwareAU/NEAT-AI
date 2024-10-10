@@ -81,10 +81,6 @@ export class GELU implements ActivationInterface, UnSquashInterface {
       0.5 * (1 + Math.tanh(b));
   }
 
-  // range() {
-  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  // }
-
   getName(): string {
     return GELU.NAME;
   }

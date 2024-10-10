@@ -36,17 +36,6 @@ export class STEP implements ActivationInterface, UnSquashInterface {
     return x > this.threshold ? 1 : 0;
   }
 
-  /** Range of the activation function. Step outputs values between 0 and 1. */
-  // range() {
-  //   return {
-  //     low: 0,
-  //     high: 1,
-  //     normalize: (targetActivation: number): number => {
-  //       return this.squash(targetActivation);
-  //     },
-  //   };
-  // }
-
   /**
    * Function to estimate the input from the activation value.
    * Returns a typical expected value based on the activation and an optional hint.

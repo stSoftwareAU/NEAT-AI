@@ -208,19 +208,6 @@ Deno.test("BIPOLAR", () => {
   assert(v === 0.3, `${activation.getName()} hint not working ${v}`);
 });
 
-// Deno.test("CLIPPED", () => {
-//   const activation = Activations.find(
-//     CLIPPED.NAME,
-//   ) as UnSquashInterface;
-
-//   const v = activation.unSquash(1, 1.3);
-
-//   assert(v === 1.3, `${activation.getName()} hint not working ${v}`);
-//   const v2 = activation.unSquash(-1, -1.3);
-
-//   assert(v2 === -1.3, `${activation.getName()} hint not working ${v2}`);
-// });
-
 Deno.test("ELU", () => {
   const activation = Activations.find(
     ELU.NAME,

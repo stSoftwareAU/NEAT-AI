@@ -63,8 +63,4 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
 
     return result;
   }
-
-  // range() {
-  //   return { low: Number.NEGATIVE_INFINITY, high: 0 };
-  // }
 }
