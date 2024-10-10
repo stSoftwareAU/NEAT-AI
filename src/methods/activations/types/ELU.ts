@@ -26,10 +26,6 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     }
   }
 
-  // range() {
-  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  // }
-
   private static ALPHA = 1.0; // You can choose a different value if desired
 
   getName() {

@@ -226,10 +226,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
           const c = toList[i];
 
           const fromActivation = activations[c.from];
-          if (!Number.isFinite(fromActivation)) {
-            console.log("fromActivation", c.from, fromActivation);
+          if (Number.isFinite(fromActivation)) {
+            value += fromActivation * c.weight;
+          } else {
+            console.log(
+              `${this.index}: fromActivation: ${fromActivation}, c.from: ${c.from}, c.to: ${c.to}, c.weight: ${c.weight}`,
+            );
           }
-          value += fromActivation * c.weight;
         }
 
         const ns = this.creature.state.node(this.index);
@@ -283,7 +286,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
         for (let i = toList.length; i--;) {
           const c = toList[i];
 
-          value += activations[c.from] * c.weight;
+          const fromActivation = activations[c.from];
+          if (Number.isFinite(fromActivation)) {
+            value += fromActivation * c.weight;
+          } else {
+            console.log(
+              `${this.index}: fromActivation: ${fromActivation}, c.from: ${c.from}, c.to: ${c.to}, c.weight: ${c.weight}`,
+            );
+          }
         }
 
         const activationSquash = squashMethod as ActivationInterface;

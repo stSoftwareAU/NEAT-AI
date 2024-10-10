@@ -330,6 +330,8 @@ function checkKnownActivations(squashName: string) {
     -2,
     10,
     -10,
+    1.6732632423543772848170429916717,
+    1.0507009873554804934193349852946,
     23.214287510522993,
     0.6411813868085767,
     -0.6411813868085767,
@@ -376,21 +378,22 @@ function checkKnownActivations(squashName: string) {
     }
 
     const squasher = (squash as unknown) as ActivationInterface;
-    if (squasher.squash !== undefined) {
-      const squashedValue = squasher.squash(activation);
+    const tempValue = activation;
+    if (squasher.squash !== undefined && Number.isFinite(tempValue)) {
+      const tmpActivation = squasher.squash(tempValue);
       if (
-        squasher.range.low > squashedValue ||
-        squashedValue > squasher.range.high
+        squasher.range.low > tmpActivation ||
+        tmpActivation > squasher.range.high
       ) {
         console.log(
-          `squashedValue ${squashedValue} outside range ${squasher.range.low} ${squasher.range.high}`,
+          `squashedValue ${tmpActivation} outside range ${squasher.range.low} ${squasher.range.high}`,
         );
-        const limitedActivation = squasher.range.limit(squashedValue);
+        const limitedActivation = squasher.range.limit(tmpActivation);
         console.log(`limitedActivation ${limitedActivation}`);
         squasher.range.validate(limitedActivation);
       }
-      squasher.range.validate(squashedValue);
-      squash.unSquash(squashedValue);
+      squasher.range.validate(tmpActivation);
+      squash.unSquash(tmpActivation);
     }
   });
 }

@@ -27,7 +27,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     const value = x * Math.tanh(Math.log(1 + Math.exp(x)));
 
-    return this.range.limit(value);
+    return this.range.limit(value, x);
   }
 
   squashAndDerive(x: number) {
@@ -47,39 +47,55 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     };
   }
   unSquash(activation: number, hint?: number): number {
+    // Validate the activation value
     this.range.validate(activation, hint);
 
+    // Initial guess: use hint if provided, otherwise a reasonable guess based on the activation value
     let guess = hint !== undefined
       ? hint
       : (activation >= 0
         ? activation
-        : (activation < -1 ? -1 : activation / 2)); // Use the hint as the initial guess if provided
+        : (activation < -1 ? -1 : activation / 2)); // Adjust initial guess for negative values
 
-    const tolerance = 0.0001; // Tolerance for convergence; you can adjust this
+    const tolerance = 0.0001; // Tolerance for convergence
+    const maxIterations = Mish.MAX_ITERATIONS;
+    const safeLimit = Number.MAX_SAFE_INTEGER / 2; // Prevent overflow by clamping
 
-    for (let i = 0; i < Mish.MAX_ITERATIONS; i++) {
+    for (let i = 0; i < maxIterations; i++) {
       const { activation: squashGuess, derivative: errDerivative } = this
         .squashAndDerive(guess);
+
       const err = squashGuess - activation;
 
-      if (Math.abs(errDerivative) < Number.EPSILON) {
-        // Derivative is zero, break the loop
+      // Check for NaN or extreme values in the derivative to avoid invalid guesses
+      if (
+        !Number.isFinite(errDerivative) ||
+        Math.abs(errDerivative) < Number.EPSILON
+      ) {
+        console.warn(
+          `Mish: Derivative became too small or NaN at iteration ${i}`,
+        );
         break;
       }
 
-      guess -= err / (errDerivative + Number.EPSILON); // Use the constant EPSILON here
+      // Update guess with a check for NaN or Infinity
+      guess -= err / (errDerivative + Number.EPSILON); // Add a small epsilon to prevent division by zero
 
+      // Clamp guess to avoid extreme values
+      if (Math.abs(guess) > safeLimit) {
+        console.warn(
+          `Mish: Guess exceeded safe limit at iteration ${i}, clamping to safe value`,
+        );
+        guess = Math.sign(guess) * safeLimit;
+      }
+
+      // Check for convergence within tolerance
       if (Math.abs(err) < tolerance) {
-        // Converged to the root
-        break;
+        break; // Converged successfully
       }
     }
 
-    return Number.isFinite(guess) ? guess : 0; // Return 0 if guess is not a finite number
+    // Return the final guess, ensuring it's a finite number, otherwise default to 0
+    return Number.isFinite(guess) ? guess : 0;
   }
-
-  // range() {
-  //   // Mish ranges from negative infinity to positive infinity
-  //   return { low: -Infinity, high: Infinity };
-  // }
 }

@@ -20,8 +20,11 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
-    const value = x !== 0 ? 1 / x : 0;
-    return this.range.limit(value);
+    // Avoid division by very small numbers that can lead to Infinity or NaN
+    const safeX = Math.abs(x) < 1e-15 ? (x > 0 ? 1e-15 : -1e-15) : x;
+
+    const value = safeX !== 0 ? 1 / safeX : 0; // 1/x, but avoid dividing by zero
+    return this.range.limit(value, x); // Ensure the result is within the allowed range
   }
 
   unSquash(activation: number, hint?: number): number {
@@ -33,8 +36,4 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
 
     return 1 / activation;
   }
-
-  // range() {
-  //   return { low: -Infinity, high: Infinity };
-  // }
 }
