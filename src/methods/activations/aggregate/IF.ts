@@ -164,16 +164,17 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       const c = toList[i];
 
       const value = activations[c.from] * c.weight;
-
-      switch (c.type) {
-        case "condition":
-          condition += value;
-          break;
-        case "negative":
-          negative += value;
-          break;
-        default:
-          positive += value;
+      if (Number.isFinite(value)) {
+        switch (c.type) {
+          case "condition":
+            condition += value;
+            break;
+          case "negative":
+            negative += value;
+            break;
+          default:
+            positive += value;
+        }
       }
     }
 
@@ -214,16 +215,17 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       const c = toList[i];
 
       const value = activations[c.from] * c.weight;
-
-      switch (c.type) {
-        case "condition":
-          condition = limitValue(condition + value);
-          break;
-        case "negative":
-          negative = limitValue(negative + value);
-          break;
-        default:
-          positive = limitValue(positive + value);
+      if (Number.isFinite(value)) {
+        switch (c.type) {
+          case "condition":
+            condition = limitValue(condition + value);
+            break;
+          case "negative":
+            negative = limitValue(negative + value);
+            break;
+          default:
+            positive = limitValue(positive + value);
+        }
       }
     }
 
