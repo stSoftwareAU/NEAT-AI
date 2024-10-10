@@ -23,6 +23,7 @@ Deno.test("hypotenuse", async () => {
     targetError: 0.002,
     log: 50,
     elitism: 3,
+    enableRepetitiveTraining: true,
   };
 
   let errorPercent = 0;
