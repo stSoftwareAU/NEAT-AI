@@ -463,10 +463,10 @@ export class Creature implements CreatureInternal {
       addTag(compactCreature, "approach", "compact" as Approach);
       delete compactCreature.memetic;
       removeTag(compactCreature, "approach-logged");
-      addTag(compactCreature, "old-nodes", this.neurons.length.toString());
+      addTag(compactCreature, "old-neurons", this.neurons.length.toString());
       addTag(
         compactCreature,
-        "old-connections",
+        "old-synapses",
         this.synapses.length.toString(),
       );
 

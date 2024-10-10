@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
-import { Creature } from "../Creature.ts";
+import { format } from "@std/fmt/duration";
 import type { Breed } from "../breed/Breed.ts";
+import { Creature } from "../Creature.ts";
 import type { Mutator } from "../NEAT/Mutator.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
@@ -14,7 +15,7 @@ export class DeDuplicator {
   }
 
   public perform(creatures: Creature[]) {
-    const start = performance.now();
+    const start = Date.now();
 
     this.logPopulationSize(creatures);
 
@@ -63,11 +64,12 @@ export class DeDuplicator {
     }
 
     if (toRemove.length > 0) {
-      const end = performance.now();
+      const end = Date.now();
+      const difference = format(end - start, {
+        ignoreZero: true,
+      });
       console.log(
-        `DeDuplication of ${toRemove.length} creatures to ${creatures.length} took ${
-          end - start
-        } ms`,
+        `DeDuplication of ${toRemove.length} creatures to ${creatures.length} in ${difference}`,
       );
     }
   }

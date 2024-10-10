@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import {
   accumulateWeight,
   adjustedBias,
@@ -5,13 +6,12 @@ import {
   type BackPropagationConfig,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
-import type { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
+import type { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
-import { assert } from "@std/assert/assert";
-import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 
 export class MINIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
@@ -26,14 +26,10 @@ export class MINIMUM
     return MINIMUM.NAME;
   }
 
-  // range() {
-  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  // }
-
-  activate(node: Neuron): number {
-    const toList = node.creature.inwardConnections(node.index);
+  activate(neuron: Neuron): number {
+    const toList = neuron.creature.inwardConnections(neuron.index);
     let minValue = Infinity;
-    const activations = node.creature.state.activations;
+    const activations = neuron.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const value = activations[c.from] * c.weight;
@@ -42,7 +38,7 @@ export class MINIMUM
       }
     }
 
-    return minValue;
+    return minValue + neuron.bias;
   }
 
   activateAndTrace(neuron: Neuron) {
@@ -70,7 +66,7 @@ export class MINIMUM
       cs.used = true;
     }
 
-    return minValue;
+    return minValue + neuron.bias;
   }
 
   fix(neuron: Neuron) {

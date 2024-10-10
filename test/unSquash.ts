@@ -20,6 +20,7 @@ import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
 import { STEP } from "../src/methods/activations/types/STEP.ts";
 import { Swish } from "../src/methods/activations/types/Swish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
+import { HYPOTv2 } from "../src/methods/activations/aggregate/HYPOTv2.ts";
 
 function makeValues() {
   const values: number[] = [];
@@ -301,6 +302,7 @@ Deno.test("unSquash", () => {
       name == MINIMUM.NAME ||
       name == MAXIMUM.NAME ||
       name == HYPOT.NAME ||
+      name == HYPOTv2.NAME ||
       name == MEAN.NAME ||
       name == IF.NAME
     ) {

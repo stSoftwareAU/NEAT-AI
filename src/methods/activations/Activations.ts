@@ -30,6 +30,7 @@ import { Swish } from "./types/Swish.ts";
 import { TANH } from "./types/TANH.ts";
 import { ReLU6 } from "./types/ReLU6.ts";
 import { GELU } from "./types/GELU.ts";
+import { HYPOTv2 } from "./aggregate/HYPOTv2.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -62,6 +63,7 @@ export class Activations {
     [MAXIMUM.NAME]: new MAXIMUM(),
     [MEAN.NAME]: new MEAN(),
     [HYPOT.NAME]: new HYPOT(),
+    [HYPOTv2.NAME]: new HYPOTv2(),
     [IF.NAME]: new IF(),
 
     [LeakyReLU.NAME]: new LeakyReLU(),
@@ -76,7 +78,7 @@ export class Activations {
   };
 
   static readonly NAMES = Object.keys(Activations.MAP)
-    .filter((key) => key !== "INVERSE");
+    .filter((key) => ![HYPOT.NAME, "INVERSE"].includes(key));
 
   static find(name: string) {
     const activation = this.MAP[name];

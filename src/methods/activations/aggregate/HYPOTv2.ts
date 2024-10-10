@@ -3,10 +3,10 @@ import type { Neuron } from "../../../architecture/Neuron.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 
-export class HYPOT implements NeuronActivationInterface {
+export class HYPOTv2 implements NeuronActivationInterface {
   public readonly range: ActivationRange = new ActivationRange(
     this,
-    Number.MIN_SAFE_INTEGER,
+    0,
     Number.MAX_SAFE_INTEGER,
   );
 
@@ -18,10 +18,10 @@ export class HYPOT implements NeuronActivationInterface {
     return neuron.adjustedActivation(config);
   }
 
-  public static NAME = "HYPOT";
+  public static NAME = "HYPOTv2";
 
   getName() {
-    return HYPOT.NAME;
+    return HYPOTv2.NAME;
   }
 
   activate(neuron: Neuron) {
@@ -31,12 +31,11 @@ export class HYPOT implements NeuronActivationInterface {
     for (let i = toList.length; i--;) {
       const c = toList[i];
 
-      values[i] = activations[c.from] * c.weight;
+      values[i] = neuron.bias + activations[c.from] * c.weight;
     }
 
     const value = Math.hypot(...values);
-
-    return value + neuron.bias;
+    return value;
   }
 
   activateAndTrace(neuron: Neuron) {

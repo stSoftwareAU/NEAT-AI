@@ -13,6 +13,7 @@ import {
 } from "../architecture/ElitismUtils.ts";
 import { Fitness } from "../architecture/Fitness.ts";
 import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
+import { Breed } from "../breed/Breed.ts";
 import { NeatConfig } from "../config/NeatConfig.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
@@ -21,7 +22,6 @@ import type {
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
-import { Breed } from "../breed/Breed.ts";
 import { Genus } from "./Genus.ts";
 import type { Approach } from "./LogApproach.ts";
 import { Mutator } from "./Mutator.ts";
@@ -127,6 +127,11 @@ export class Neat {
   ) {
     const uuid = CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
+    if (getTag(creature, "scheduled") === "training") {
+      return;
+    }
+    addTag(creature, "scheduled", "training");
+
     let w: WorkerHandler;
 
     w = this.workers[Math.floor(this.workers.length * Math.random())];

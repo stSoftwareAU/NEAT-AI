@@ -78,15 +78,20 @@ export function logApproach(fittest: Creature, previous: Creature) {
           break;
         }
         case "compact": {
+          const oldNeuronsTxt = getTag(fittest, "old-neurons");
+          const oldNeurons = Number.parseInt(oldNeuronsTxt ?? "0") -
+            fittest.input - fittest.output;
           console.info(
             "Compacting increased fitness by",
             fScore - pScore,
             "to",
             fScore,
-            `nodes: ${fittest.neurons.length} was:`,
-            getTag(fittest, "old-nodes"),
-            `connections: ${fittest.synapses.length} was:`,
-            getTag(fittest, "old-connections"),
+            `neurons: ${
+              fittest.neurons.length - fittest.input - fittest.output
+            } was:`,
+            oldNeurons,
+            `synapses: ${fittest.synapses.length} was:`,
+            getTag(fittest, "old-synapses"),
           );
           break;
         }
@@ -97,9 +102,9 @@ export function logApproach(fittest: Creature, previous: Creature) {
             "to",
             fScore,
             `nodes: ${fittest.neurons.length} was:`,
-            getTag(fittest, "old-nodes"),
+            getTag(fittest, "old-neurons"),
             `connections: ${fittest.synapses.length} was:`,
-            getTag(fittest, "old-connections"),
+            getTag(fittest, "old-synapses"),
           );
           break;
         }
