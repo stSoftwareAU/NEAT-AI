@@ -124,6 +124,7 @@ Deno.test("XNOR - evolve", async () => {
     const results = await creature.evolveDataSet(trainingSet, {
       targetError: 0.05,
       iterations: 20_000,
+      enableRepetitiveTraining: true,
     });
 
     if (results.error > 0.05) {

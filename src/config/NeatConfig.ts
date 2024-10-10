@@ -72,7 +72,7 @@ export class NeatConfig implements NeatOptions {
   trainingSampleRate?: number;
 
   backPropagationExcludeSquashList: string;
-
+  enableRepetitiveTraining: boolean;
   constructor(options: NeatOptions) {
     this.creativeThinkingConnectionCount =
       options.creativeThinkingConnectionCount ?? 1;
@@ -157,5 +157,6 @@ export class NeatConfig implements NeatOptions {
       options.backPropagationExcludeSquashList
         ? options.backPropagationExcludeSquashList
         : "";
+    this.enableRepetitiveTraining = options.enableRepetitiveTraining || false;
   }
 }
