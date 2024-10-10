@@ -92,7 +92,5 @@ export interface NeatOptions extends TrainOptions {
   /** Enable verbose logging. Default is false. */
   verbose?: boolean;
   backPropagationExcludeSquashList?: string;
-
-  /** enable repetitive training */
   enableRepetitiveTraining?: boolean;
 }

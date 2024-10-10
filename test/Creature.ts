@@ -74,7 +74,6 @@ async function evolveSet(
     iterations: iterations,
     targetError: error,
     threads: 1,
-    enableRepetitiveTraining: true,
   };
 
   let resultError = Number.MAX_VALUE;

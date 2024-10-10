@@ -157,7 +157,6 @@ export class NeatConfig implements NeatOptions {
       options.backPropagationExcludeSquashList
         ? options.backPropagationExcludeSquashList
         : "";
-
-    this.enableRepetitiveTraining = options.enableRepetitiveTraining ?? false;
+    this.enableRepetitiveTraining = options.enableRepetitiveTraining || false;
   }
 }

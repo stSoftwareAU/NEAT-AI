@@ -30,7 +30,6 @@ Deno.test("storePopulation", async () => {
     iterations: 10,
     creatureStore: dir,
     threads: 1,
-    enableRepetitiveTraining: true,
   };
   await network.evolveDataSet(ts, options);
 

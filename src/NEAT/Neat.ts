@@ -121,18 +121,36 @@ export class Neat {
 
   trainingComplete: ResponseData[] = [];
 
+  private alreadyScheduledMap = new Map<string, number>();
+
+  /**
+   * Schedules training for a creature
+   * @param creature The creature to train
+   * @param trainingTimeOutMinutes The time out in minutes
+   */
   scheduleTraining(
     creature: Creature,
     trainingTimeOutMinutes: number,
   ) {
     const uuid = CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
-    if (getTag(creature, "scheduled") === "training") {
+
+    if (this.alreadyScheduledMap.has(uuid)) {
       if (!this.config.enableRepetitiveTraining) {
         return;
       }
     }
-    addTag(creature, "scheduled", "training");
+
+    this.alreadyScheduledMap.set(uuid, Date.now());
+    if (this.alreadyScheduledMap.size > 1000) {
+      // Clean up by removing old entries
+      const minuteAgo = Date.now() - 60_000;
+      for (const [key, value] of this.alreadyScheduledMap) {
+        if (value < minuteAgo) {
+          this.alreadyScheduledMap.delete(key);
+        }
+      }
+    }
 
     let w: WorkerHandler;
 
@@ -303,7 +321,10 @@ export class Neat {
           this.trainingInProgress.size < this.config.trainPerGen &&
           Number.isFinite(n.score)
         ) {
-          this.scheduleTraining(n, trainingTimeOutMinutes);
+          this.scheduleTraining(
+            n,
+            trainingTimeOutMinutes,
+          );
         }
       }
     }
@@ -327,8 +348,7 @@ export class Neat {
           },
         );
       }
-      // CreatureUtil.makeUUID(creativeThinking);
-      // genus.addCreature(creativeThinking);
+
       assert(!creativeThinking.memetic);
       newPopulation.push(creativeThinking);
     }
@@ -355,9 +375,7 @@ export class Neat {
     ) {
       const child = breed.breed();
       if (child) {
-        // CreatureUtil.makeUUID(child);
         assert(!child.memetic);
-        // genus.addCreature(child);
         newPopulation.push(child);
       }
     }
