@@ -16,10 +16,6 @@ export class CLIPPED implements ActivationInterface, UnSquashInterface {
     return CLIPPED.NAME;
   }
 
-  // range() {
-  //   return { low: -1, high: 1 };
-  // }
-
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 

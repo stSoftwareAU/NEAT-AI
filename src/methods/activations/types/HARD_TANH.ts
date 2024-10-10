@@ -18,11 +18,6 @@ export class HARD_TANH implements ActivationInterface, UnSquashInterface {
     return HARD_TANH.NAME;
   }
 
-  // Range of the activation function is [-1, 1]
-  // range() {
-  //   return { low: -1, high: 1 };
-  // }
-
   // Implementing the unSquash function
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);

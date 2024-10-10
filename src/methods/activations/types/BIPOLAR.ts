@@ -23,16 +23,6 @@ export class BIPOLAR implements ActivationInterface, UnSquashInterface {
     return BIPOLAR.NAME;
   }
 
-  // range() {
-  //   return {
-  //     low: -1,
-  //     high: 1,
-  //     normalize: (targetActivation: number): number => {
-  //       return this.squash(targetActivation);
-  //     },
-  //   };
-  // }
-
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 

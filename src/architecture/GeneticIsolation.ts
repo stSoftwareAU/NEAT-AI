@@ -234,10 +234,10 @@ export function handleGrafting(
   addTag(graftedChild, "approach", "graft" as Approach);
   delete graftedChild.memetic;
   removeTag(graftedChild, "approach-logged");
-  addTag(graftedChild, "old-nodes", cloneOfParent.neurons.length.toString());
+  addTag(graftedChild, "old-neurons", cloneOfParent.neurons.length.toString());
   addTag(
     graftedChild,
-    "old-connections",
+    "old-synapses",
     cloneOfParent.synapses.length.toString(),
   );
 

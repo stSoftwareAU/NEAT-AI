@@ -33,8 +33,4 @@ export class Cosine implements ActivationInterface, UnSquashInterface {
     // If a hint is provided, return the value with the same sign as the hint
     return hint >= 0 ? Math.abs(acos) : -Math.abs(acos);
   }
-
-  // range() {
-  //   return { low: -1, high: 1 };
-  // }
 }

@@ -31,11 +31,6 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
     return value;
   }
 
-  /* Range of the activation function. Softsign outputs values between -1 and +1.*/
-  // range() {
-  //   return { low: -SOFTSIGN.LIMIT, high: SOFTSIGN.LIMIT };
-  // }
-
   getName() {
     return SOFTSIGN.NAME;
   }

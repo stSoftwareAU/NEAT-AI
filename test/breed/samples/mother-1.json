@@ -66,11 +66,11 @@
   "output": 1,
   "tags": [
     {
-      "name": "old-nodes",
+      "name": "old-neurons",
       "value": "4"
     },
     {
-      "name": "old-connections",
+      "name": "old-synapses",
       "value": "3"
     },
     {

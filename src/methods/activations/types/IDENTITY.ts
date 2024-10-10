@@ -21,10 +21,6 @@ export class IDENTITY implements ActivationInterface, UnSquashInterface {
     return activation;
   }
 
-  // range() {
-  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  // }
-
   getName() {
     return IDENTITY.NAME;
   }

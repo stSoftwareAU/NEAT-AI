@@ -74,6 +74,7 @@ async function evolveSet(
     iterations: iterations,
     targetError: error,
     threads: 1,
+    enableRepetitiveTraining: true,
   };
 
   let resultError = Number.MAX_VALUE;
@@ -587,6 +588,7 @@ Deno.test("NARX Sequence", async () => {
       iterations: 5000,
       targetError: 0.005,
       feedbackLoop: true,
+      enableRepetitiveTraining: true,
     });
 
     if (result.error < 0.005) break;

@@ -6,10 +6,6 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
   public static NAME = "LOGISTIC";
   public readonly range: ActivationRange = new ActivationRange(this, 0, 1);
 
-  // range() {
-  //   return { low: 0, high: 1 };
-  // }
-
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 

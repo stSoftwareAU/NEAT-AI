@@ -38,7 +38,14 @@ export class ActivationRange {
     }
   }
 
-  limit(activation: number): number {
+  limit(activation: number, hint?: number): number {
+    if (Number.isFinite(activation) == false) {
+      throw new Error(
+        `${this.squash.getName()}: limit: activation is not finite: ${activation}${
+          hint !== undefined ? ` with hint ${hint}` : ""
+        }`,
+      );
+    }
     // Clamp the activation to the range [low, high]
     return Math.max(this.low, Math.min(this.high, activation));
   }

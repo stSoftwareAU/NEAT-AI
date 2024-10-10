@@ -14,7 +14,6 @@ import {
   adjustedBias,
   adjustedWeight,
   type BackPropagationConfig,
-  limitActivation,
   limitActivationToRange,
   toValue,
 } from "./BackPropagation.ts";
@@ -218,8 +217,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const squashMethod = this.findSquash();
 
       if (this.isNodeActivation(squashMethod)) {
-        const squashActivation = squashMethod.activateAndTrace(this);
-        activation = squashActivation + this.bias;
+        activation = squashMethod.activateAndTrace(this);
       } else {
         const toList = this.creature.inwardConnections(this.index);
         let value = this.bias;
@@ -228,36 +226,23 @@ export class Neuron implements TagsInterface, NeuronInternal {
           const c = toList[i];
 
           const fromActivation = activations[c.from];
-          if (!Number.isFinite(fromActivation)) {
-            // console.log("fromActivation", c.from, fromActivation);
+          if (Number.isFinite(fromActivation)) {
+            value += fromActivation * c.weight;
+          } else {
+            console.log(
+              `${this.index}: fromActivation: ${fromActivation}, c.from: ${c.from}, c.to: ${c.to}, c.weight: ${c.weight}`,
+            );
           }
-          value += fromActivation * c.weight;
         }
 
         const ns = this.creature.state.node(this.index);
         ns.hintValue = value;
         const activationSquash = squashMethod as ActivationInterface;
         activation = activationSquash.squash(value);
-        // validationActivation(squashMethod, activation, value);
-        if (!Number.isFinite(activation)) {
-          if (activation === Number.POSITIVE_INFINITY) {
-            activation = Number.MAX_SAFE_INTEGER;
-          } else if (activation === Number.NEGATIVE_INFINITY) {
-            activation = Number.MIN_SAFE_INTEGER;
-          } else if (isNaN(activation)) {
-            activation = 0;
-          } else {
-            throw new Error(
-              this.index + ") invalid value: + " + value +
-                ", squash: " +
-                this.squash +
-                ", activation: " + activation,
-            );
-          }
-        }
       }
-      // validationActivation(squashMethod, activation);
+      squashMethod.range.validate(activation);
     }
+
     activations[this.index] = activation;
     return activation;
   }
@@ -291,7 +276,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     } else {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        activation = squashMethod.activate(this) + this.bias;
+        activation = squashMethod.activate(this);
       } else {
         // All activation sources coming from the node itself
 
@@ -301,32 +286,21 @@ export class Neuron implements TagsInterface, NeuronInternal {
         for (let i = toList.length; i--;) {
           const c = toList[i];
 
-          value += activations[c.from] * c.weight;
+          const fromActivation = activations[c.from];
+          if (Number.isFinite(fromActivation)) {
+            value += fromActivation * c.weight;
+          } else {
+            console.log(
+              `${this.index}: fromActivation: ${fromActivation}, c.from: ${c.from}, c.to: ${c.to}, c.weight: ${c.weight}`,
+            );
+          }
         }
 
         const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
         activation = activationSquash.squash(value);
-
-        if (!Number.isFinite(activation)) {
-          if (activation === Number.POSITIVE_INFINITY) {
-            activation = Number.MAX_SAFE_INTEGER;
-          } else if (activation === Number.NEGATIVE_INFINITY) {
-            activation = Number.MIN_SAFE_INTEGER;
-          } else if (isNaN(activation)) {
-            activation = 0;
-          } else {
-            const msg = this.index + ") invalid value:" + value +
-              ", squash: " +
-              this.squash +
-              ", activation: " +
-              activation;
-            console.warn(msg);
-
-            activation = Number.MAX_SAFE_INTEGER;
-          }
-        }
       }
+      squashMethod.range.validate(activation);
     }
 
     activations[this.index] = activation;
@@ -384,12 +358,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
     if (propagateUpdateMethod.propagate !== undefined) {
-      const improvedActivation = propagateUpdateMethod.propagate(
+      limitedActivation = propagateUpdateMethod.propagate(
         this,
         targetActivation,
         config,
       );
-      limitedActivation = limitActivation(improvedActivation);
+      propagateUpdateMethod.range.validate(limitedActivation);
     } else {
       const targetValue = toValue(this, targetActivation, ns.hintValue);
 
@@ -471,16 +445,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
         currentBias,
       );
 
-      // if (this.isNodeActivation(squashMethod) == false) {
       const aBias = adjustedBias(this, config);
-      const squashActivation = (squashMethod as ActivationInterface).squash(
+      limitedActivation = (squashMethod as ActivationInterface).squash(
         improvedValue + aBias - currentBias,
       );
-      // validationActivation(squashMethod, squashActivation);
-      limitedActivation = limitActivation(squashActivation);
-      // } else {
-      //   throw new Error(`${this.ID} - ${this.type}, squash: ${this.squash}`);
-      // }
+      propagateUpdateMethod.range.validate(limitedActivation);
     }
 
     if (Math.abs(limitedActivation - activation) > config.plankConstant) {
@@ -514,20 +483,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
     } else if (this.type == "constant") {
       return this.bias;
     } else {
-      const aBias = adjustedBias(this, config);
-
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        const adjustedActivation = squashMethod.activate(this);
-
-        const limitedActivation = limitActivation(adjustedActivation) +
-          aBias;
-
-        return limitedActivation;
+        const activation = squashMethod.activate(this);
+        squashMethod.range.validate(activation);
+        return activation;
       } else {
         // All activation sources coming from the node itself
 
         const toList = this.creature.inwardConnections(this.index);
+        const aBias = adjustedBias(this, config);
         let value = aBias;
 
         for (let i = toList.length; i--;) {
@@ -549,14 +514,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const activationSquash = squashMethod as ActivationInterface;
         // Squash the values received
         const activation = activationSquash.squash(value);
+        activationSquash.range.validate(activation);
 
-        if (!Number.isFinite(activation)) {
-          throw new Error(
-            `${this.index}: Squasher ${activationSquash.getName()} value: ${value}, bias: ${adjustedBias}, activation: ${activation}`,
-          );
-        }
-
-        return limitActivation(activation);
+        return activation;
       }
     }
   }

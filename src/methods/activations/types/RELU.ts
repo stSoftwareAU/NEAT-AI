@@ -38,11 +38,6 @@ export class RELU implements ActivationInterface, UnSquashInterface {
     return hint;
   }
 
-  // Range of the activation function. ReLU outputs values between 0 and positive infinity.
-  // range() {
-  //   return { low: 0, high: Number.POSITIVE_INFINITY };
-  // }
-
   public static NAME = "RELU";
 
   getName() {

@@ -54,8 +54,13 @@ export class SwapNeurons implements RadioactiveInterface {
           const tmpNode = this.creature.neurons[indx];
           if (tmpNode.type == "hidden") {
             if (tmpNode.index !== node1.index) {
-              node2 = tmpNode;
-              break;
+              if (
+                tmpNode.squash !== node1.squash ||
+                tmpNode.bias !== node1.bias
+              ) {
+                node2 = tmpNode;
+                break;
+              }
             }
           }
         }

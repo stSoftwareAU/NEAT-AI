@@ -17,11 +17,6 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
     return GAUSSIAN.NAME;
   }
 
-  // Range of the activation function is [0, 1]
-  // range() {
-  //   return { low: 0, high: 1 };
-  // }
-
   /* unSquash is non-trivial due to the symmetric nature of Gaussian function. */
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);

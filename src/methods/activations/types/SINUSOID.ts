@@ -43,11 +43,6 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
     return baseValue;
   }
 
-  // Range of the activation function. Sinusoid outputs values between -1 and 1.
-  // range() {
-  //   return { low: -1, high: 1 };
-  // }
-
   getName() {
     return SINUSOID.NAME;
   }

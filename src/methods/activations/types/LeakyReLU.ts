@@ -17,10 +17,6 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
     return activation > 0 ? activation : activation / LeakyReLU.ALPHA;
   }
 
-  // range() {
-  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  // }
-
   private static ALPHA = 0.01; // You can choose a different value if desired
 
   getName() {

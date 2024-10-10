@@ -27,15 +27,10 @@ export class MAXIMUM
     return MAXIMUM.NAME;
   }
 
-  // range() {
-  //   return this.activationRange;
-  //   // return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  // }
-
-  activate(node: Neuron) {
-    const toList = node.creature.inwardConnections(node.index);
+  activate(neuron: Neuron) {
+    const toList = neuron.creature.inwardConnections(neuron.index);
     let maxValue = Number.NEGATIVE_INFINITY;
-    const activations = node.creature.state.activations;
+    const activations = neuron.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const value = activations[c.from] * c.weight;
@@ -44,17 +39,17 @@ export class MAXIMUM
       }
     }
 
-    return maxValue;
+    return maxValue + neuron.bias;
   }
 
-  activateAndTrace(node: Neuron) {
-    const toList = node.creature.inwardConnections(node.index);
+  activateAndTrace(neuron: Neuron) {
+    const toList = neuron.creature.inwardConnections(neuron.index);
     let maxValue = Infinity * -1;
     let usedConnection: SynapseInternal | null = null;
-    const activations = node.creature.state.activations;
+    const activations = neuron.creature.state.activations;
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = node.creature.state.connection(c.from, c.to);
+      const cs = neuron.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
       const value = activations[c.from] * c.weight;
@@ -65,14 +60,14 @@ export class MAXIMUM
     }
 
     if (usedConnection != null) {
-      const cs = node.creature.state.connection(
+      const cs = neuron.creature.state.connection(
         usedConnection.from,
         usedConnection.to,
       );
       cs.used = true;
     }
 
-    return maxValue;
+    return maxValue + neuron.bias;
   }
 
   fix(neuron: Neuron) {

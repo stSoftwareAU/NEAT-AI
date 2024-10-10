@@ -16,10 +16,6 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     return BIPOLAR_SIGMOID.NAME;
   }
 
-  // range() {
-  //   return { low: -1, high: 1 };
-  // }
-
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 

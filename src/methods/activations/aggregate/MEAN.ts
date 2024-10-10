@@ -3,7 +3,6 @@ import {
   adjustedBias,
   adjustedWeight,
   type BackPropagationConfig,
-  limitActivation,
   limitValue,
   toValue,
 } from "../../../architecture/BackPropagation.ts";
@@ -23,60 +22,54 @@ export class MEAN implements NeuronActivationInterface {
     return MEAN.NAME;
   }
 
-  // range() {
-  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  // }
-
-  activate(node: Neuron) {
+  activate(neuron: Neuron) {
     let sum = 0;
 
-    const toList = node.creature.inwardConnections(node.index);
+    const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const fromActivation = node.creature.state.activations[c.from];
+      const fromActivation = neuron.creature.state.activations[c.from];
       if (fromActivation) {
-        const activation = limitActivation(fromActivation);
-
-        sum += activation * c.weight;
+        sum += fromActivation * c.weight;
       }
     }
 
     const value = limitValue(sum / toList.length);
     if (Number.isFinite(value) == false) {
       throw new Error(
-        `Node: ${node.uuid} MEAN: ${value} is not finite sum: ${sum} toList.length: ${toList.length}`,
+        `Node: ${neuron.uuid} MEAN: ${value} is not finite sum: ${sum} toList.length: ${toList.length}`,
       );
     }
-    return value;
+    return value + neuron.bias;
   }
 
-  fix(node: Neuron) {
-    const toListA = node.creature.inwardConnections(node.index);
+  fix(neuron: Neuron) {
+    const toListA = neuron.creature.inwardConnections(neuron.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
       if (c.from == c.to) {
-        node.creature.disconnect(c.from, c.to);
+        neuron.creature.disconnect(c.from, c.to);
       }
     }
 
     for (let attempts = 12; attempts--;) {
-      const toList = node.creature.inwardConnections(node.index);
+      const toList = neuron.creature.inwardConnections(neuron.index);
 
       if (toList.length < 2) {
-        node.creature.makeRandomConnection(node.index);
+        neuron.creature.makeRandomConnection(neuron.index);
       } else {
         break;
       }
     }
   }
 
-  activateAndTrace(node: Neuron) {
-    const activation = this.activate(node);
+  activateAndTrace(neuron: Neuron) {
+    const activation = this.activate(neuron);
 
-    const toList = node.creature.inwardConnections(node.index);
+    const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = node.creature.state.connection(
+      const cs = neuron.creature.state.connection(
         c.from,
         c.to,
       );
@@ -87,17 +80,17 @@ export class MEAN implements NeuronActivationInterface {
   }
 
   propagate(
-    node: Neuron,
+    neuron: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = node.creature.inwardConnections(node.index);
+    const toList = neuron.creature.inwardConnections(neuron.index);
 
-    const activation = node.adjustedActivation(config);
+    const activation = neuron.adjustedActivation(config);
 
-    const targetValue = toValue(node, targetActivation);
+    const targetValue = toValue(neuron, targetActivation);
 
-    const currentValue = toValue(node, activation);
+    const currentValue = toValue(neuron, activation);
 
     const error = targetValue - currentValue;
     const errorPerSynapse = error / toList.length;
@@ -107,11 +100,11 @@ export class MEAN implements NeuronActivationInterface {
     for (let indx = toList.length; indx--;) {
       const c = toList[indx];
       if (c.from === c.to) continue;
-      const fromNeuron = node.creature.neurons[c.from];
+      const fromNeuron = neuron.creature.neurons[c.from];
 
       const fromActivation = fromNeuron.adjustedActivation(config);
 
-      const fromWeight = adjustedWeight(node.creature.state, c, config);
+      const fromWeight = adjustedWeight(neuron.creature.state, c, config);
 
       const fromValue = fromWeight * fromActivation;
 
@@ -143,7 +136,7 @@ export class MEAN implements NeuronActivationInterface {
           Math.abs(targetFromValue2) < 1e100 &&
           Math.abs(targetFromActivation) < 1e100
         ) {
-          const cs = node.creature.state.connection(
+          const cs = neuron.creature.state.connection(
             c.from,
             c.to,
           );
@@ -156,7 +149,7 @@ export class MEAN implements NeuronActivationInterface {
           );
         }
         const aWeight = adjustedWeight(
-          node.creature.state,
+          neuron.creature.state,
           c,
           config,
         );
@@ -167,19 +160,19 @@ export class MEAN implements NeuronActivationInterface {
         totalValue += improvedAdjustedFromValue;
       }
     }
-    const currentBias = adjustedBias(node, config);
+    const currentBias = adjustedBias(neuron, config);
 
     const adjustedValue = (toList.length ? (totalValue / toList.length) : 0) +
       currentBias;
 
-    const ns = node.creature.state.node(node.index);
+    const ns = neuron.creature.state.node(neuron.index);
     ns.accumulateBias(
       targetValue,
       adjustedValue,
       currentBias,
     );
 
-    const aBias = adjustedBias(node, config);
+    const aBias = adjustedBias(neuron, config);
 
     const adjustedActivation = adjustedValue + aBias - currentBias;
 

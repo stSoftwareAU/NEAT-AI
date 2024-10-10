@@ -51,10 +51,10 @@ export function compactUnused(
     addTag(compacted, "approach", "compact" as Approach);
     delete compacted.memetic;
     removeTag(compacted, "approach-logged");
-    addTag(compacted, "old-nodes", clean.neurons.length.toString());
+    addTag(compacted, "old-neurons", clean.neurons.length.toString());
     addTag(
       compacted,
-      "old-connections",
+      "old-synapses",
       clean.synapses.length.toString(),
     );
 

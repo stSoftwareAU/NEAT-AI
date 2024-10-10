@@ -33,11 +33,6 @@ export class TANH implements ActivationInterface, UnSquashInterface {
     return 0.5 * Math.log(value);
   }
 
-  // Range of the activation function. TANH outputs values between -1 and 1.
-  // range() {
-  //   return { low: -1, high: 1 };
-  // }
-
   getName() {
     return TANH.NAME;
   }

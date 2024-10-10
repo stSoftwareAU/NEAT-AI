@@ -20,6 +20,7 @@ import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
 import { STEP } from "../src/methods/activations/types/STEP.ts";
 import { Swish } from "../src/methods/activations/types/Swish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
+import { HYPOTv2 } from "../src/methods/activations/aggregate/HYPOTv2.ts";
 
 function makeValues() {
   const values: number[] = [];
@@ -207,19 +208,6 @@ Deno.test("BIPOLAR", () => {
   assert(v === 0.3, `${activation.getName()} hint not working ${v}`);
 });
 
-// Deno.test("CLIPPED", () => {
-//   const activation = Activations.find(
-//     CLIPPED.NAME,
-//   ) as UnSquashInterface;
-
-//   const v = activation.unSquash(1, 1.3);
-
-//   assert(v === 1.3, `${activation.getName()} hint not working ${v}`);
-//   const v2 = activation.unSquash(-1, -1.3);
-
-//   assert(v2 === -1.3, `${activation.getName()} hint not working ${v2}`);
-// });
-
 Deno.test("ELU", () => {
   const activation = Activations.find(
     ELU.NAME,
@@ -301,6 +289,7 @@ Deno.test("unSquash", () => {
       name == MINIMUM.NAME ||
       name == MAXIMUM.NAME ||
       name == HYPOT.NAME ||
+      name == HYPOTv2.NAME ||
       name == MEAN.NAME ||
       name == IF.NAME
     ) {
@@ -328,6 +317,8 @@ function checkKnownActivations(squashName: string) {
     -2,
     10,
     -10,
+    1.6732632423543772848170429916717,
+    1.0507009873554804934193349852946,
     23.214287510522993,
     0.6411813868085767,
     -0.6411813868085767,
@@ -374,21 +365,22 @@ function checkKnownActivations(squashName: string) {
     }
 
     const squasher = (squash as unknown) as ActivationInterface;
-    if (squasher.squash !== undefined) {
-      const squashedValue = squasher.squash(activation);
+    const tempValue = activation;
+    if (squasher.squash !== undefined && Number.isFinite(tempValue)) {
+      const tmpActivation = squasher.squash(tempValue);
       if (
-        squasher.range.low > squashedValue ||
-        squashedValue > squasher.range.high
+        squasher.range.low > tmpActivation ||
+        tmpActivation > squasher.range.high
       ) {
         console.log(
-          `squashedValue ${squashedValue} outside range ${squasher.range.low} ${squasher.range.high}`,
+          `squashedValue ${tmpActivation} outside range ${squasher.range.low} ${squasher.range.high}`,
         );
-        const limitedActivation = squasher.range.limit(squashedValue);
+        const limitedActivation = squasher.range.limit(tmpActivation);
         console.log(`limitedActivation ${limitedActivation}`);
         squasher.range.validate(limitedActivation);
       }
-      squasher.range.validate(squashedValue);
-      squash.unSquash(squashedValue);
+      squasher.range.validate(tmpActivation);
+      squash.unSquash(tmpActivation);
     }
   });
 }
