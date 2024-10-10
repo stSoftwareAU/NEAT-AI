@@ -1,3 +1,4 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -13,6 +14,14 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class STEP implements ActivationInterface, UnSquashInterface {
   public static NAME = "STEP";
   private threshold: number;
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    0,
+    1,
+    (targetActivation: number): number => {
+      return this.squash(targetActivation);
+    },
+  );
 
   constructor(threshold: number = 0) {
     this.threshold = threshold;
@@ -28,21 +37,23 @@ export class STEP implements ActivationInterface, UnSquashInterface {
   }
 
   /** Range of the activation function. Step outputs values between 0 and 1. */
-  range() {
-    return {
-      low: 0,
-      high: 1,
-      normalize: (targetActivation: number): number => {
-        return this.squash(targetActivation);
-      },
-    };
-  }
+  // range() {
+  //   return {
+  //     low: 0,
+  //     high: 1,
+  //     normalize: (targetActivation: number): number => {
+  //       return this.squash(targetActivation);
+  //     },
+  //   };
+  // }
 
   /**
    * Function to estimate the input from the activation value.
    * Returns a typical expected value based on the activation and an optional hint.
    */
   unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
     // If activation is 0 or 1 and no hint is provided, return activation
     if (hint === undefined) {
       return activation;

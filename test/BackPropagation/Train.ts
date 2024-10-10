@@ -3,13 +3,11 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { train } from "../../src/architecture/Training.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
-import { existsSync } from "@std/fs/exists";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
 Deno.test("Sample", () => {
-  deleteHiddenFiles("test/BackPropagation");
   const trainingSet = JSON.parse(
     Deno.readTextFileSync("test/BackPropagation/td.json"),
   );
@@ -17,9 +15,17 @@ Deno.test("Sample", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/BackPropagation/creature.json")),
   );
-
+  try {
+    Deno.removeSync(".test/BackPropagation", { recursive: true });
+  } catch (e) {
+    const name = (e as { name: string }).name;
+    if (name !== "NotFound") {
+      console.error(e);
+    }
+  }
+  Deno.mkdirSync(".test/BackPropagation", { recursive: true });
   Deno.writeTextFileSync(
-    "test/BackPropagation/.first.json",
+    ".test/BackPropagation/.first.json",
     JSON.stringify(creature.exportJSON(), null, 1),
   );
 
@@ -39,7 +45,7 @@ Deno.test("Sample", () => {
   let lastError = error;
   for (let i = 0; i < 10; i++) {
     Deno.writeTextFileSync(
-      `test/BackPropagation/.${i}.json`,
+      `.test/BackPropagation/.${i}.json`,
       JSON.stringify(creature.exportJSON(), null, 1),
     );
     const results = train(creature, trainingSet, {
@@ -56,18 +62,18 @@ Deno.test("Sample", () => {
     Creature.fromJSON(results.trace).validate();
 
     Deno.writeTextFileSync(
-      `test/BackPropagation/.${i}-trace.json`,
+      `.test/BackPropagation/.${i}-trace.json`,
       JSON.stringify(results.trace, null, 1),
     );
 
     if (results.compact) Creature.fromJSON(results.compact).validate();
     if (results.error > lastError) {
       Deno.writeTextFileSync(
-        "test/BackPropagation/.error.json",
+        ".test/BackPropagation/.error.json",
         JSON.stringify(creature.exportJSON(), null, 1),
       );
       Deno.writeTextFileSync(
-        "test/BackPropagation/.error-trace.json",
+        ".test/BackPropagation/.error-trace.json",
         JSON.stringify(results.trace, null, 1),
       );
       if (results.error - lastError > 0.002) {
@@ -81,19 +87,3 @@ Deno.test("Sample", () => {
     lastError = results.error;
   }
 });
-
-function deleteHiddenFiles(dirPath: string) {
-  // Read all entries in the directory
-  for (const entry of Deno.readDirSync(dirPath)) {
-    // Check if the entry is a hidden file (starts with a dot)
-    if (entry.isFile && entry.name.startsWith(".")) {
-      const filePath = `${dirPath}/${entry.name}`;
-      // Check if the file exists
-      if (existsSync(filePath)) {
-        // Delete the hidden file
-        Deno.removeSync(filePath);
-        console.log(`Deleted hidden file: ${filePath}`);
-      }
-    }
-  }
-}

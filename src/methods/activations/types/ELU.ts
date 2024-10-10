@@ -1,12 +1,19 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /** Exponential Linear(ELU) */
 export class ELU implements ActivationInterface, UnSquashInterface {
-  unSquash(activation: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
+  public static NAME = "ELU";
+
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
+
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     if (activation > 0) {
       return activation;
@@ -19,11 +26,9 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     }
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
-
-  public static NAME = "ELU";
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   private static ALPHA = 1.0; // You can choose a different value if desired
 
@@ -32,6 +37,8 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
-    return x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
+    const value = x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
+
+    return this.range.limit(value);
   }
 }

@@ -1,3 +1,4 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -13,20 +14,17 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Activation_function#Comparison_of_activation_functions
  */
 export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
+  public static NAME = "SOFTSIGN";
   private static LIMIT = 0.99; // Clamped limit to avoid numerical issues
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    -SOFTSIGN.LIMIT,
+    SOFTSIGN.LIMIT,
+  );
 
   /* The inverse of Softsign is x = f(x) / (1 - |f(x)|)*/
-  unSquash(activation: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
-
-    const range = this.range();
-    if (activation < range.low || activation > range.high) {
-      throw new Error(
-        `${this.getName()}: Activation value ${activation} is outside the valid range [${range.low}, ${range.high}]`,
-      );
-    }
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     const value = activation / (1 - Math.abs(activation));
 
@@ -34,11 +32,9 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
   }
 
   /* Range of the activation function. Softsign outputs values between -1 and +1.*/
-  range() {
-    return { low: -SOFTSIGN.LIMIT, high: SOFTSIGN.LIMIT };
-  }
-
-  public static NAME = "SOFTSIGN";
+  // range() {
+  //   return { low: -SOFTSIGN.LIMIT, high: SOFTSIGN.LIMIT };
+  // }
 
   getName() {
     return SOFTSIGN.NAME;

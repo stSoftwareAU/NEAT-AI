@@ -1,3 +1,4 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -9,19 +10,18 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
   public static NAME = "BIPOLAR_SIGMOID";
+  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
 
   getName() {
     return BIPOLAR_SIGMOID.NAME;
   }
 
-  range() {
-    return { low: -1, high: 1 };
-  }
+  // range() {
+  //   return { low: -1, high: 1 };
+  // }
 
   unSquash(activation: number, hint?: number): number {
-    if (!Number.isFinite(activation)) {
-      throw new Error("Activation must be a finite number");
-    }
+    this.range.validate(activation, hint);
 
     const result = -Math.log((2 / (activation + 1)) - 1);
 

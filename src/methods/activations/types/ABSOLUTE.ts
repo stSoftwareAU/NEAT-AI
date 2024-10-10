@@ -1,3 +1,4 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -12,8 +13,15 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
   public static NAME = "ABSOLUTE";
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    0,
+    Number.MAX_SAFE_INTEGER,
+  );
 
   unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
     if ((hint ? hint : 0) < 0) {
       return -activation;
     }
@@ -21,15 +29,15 @@ export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
     return activation;
   }
 
-  range() {
-    return { low: 0, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: 0, high: Number.POSITIVE_INFINITY };
+  // }
 
   getName() {
     return ABSOLUTE.NAME;
   }
 
   squash(x: number) {
-    return Math.abs(x);
+    return this.range.limit(Math.abs(x));
   }
 }

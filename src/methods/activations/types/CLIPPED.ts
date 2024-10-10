@@ -1,3 +1,4 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -9,17 +10,19 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class CLIPPED implements ActivationInterface, UnSquashInterface {
   public static NAME = "CLIPPED";
+  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
 
   getName() {
     return CLIPPED.NAME;
   }
 
-  range() {
-    return { low: -1, high: 1 };
-  }
+  // range() {
+  //   return { low: -1, high: 1 };
+  // }
 
   unSquash(activation: number, hint?: number): number {
-    if (Math.abs(hint ? hint : 0) > 1) return hint ? hint : 0;
+    this.range.validate(activation, hint);
+
     return activation;
   }
 

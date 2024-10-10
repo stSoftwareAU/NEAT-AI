@@ -5,7 +5,9 @@ import { Activations } from "../methods/activations/Activations.ts";
 import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
-import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
+import type {
+  UnSquashInterface,
+} from "../methods/activations/UnSquashInterface.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import {
   accumulateWeight,
@@ -226,7 +228,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
           const c = toList[i];
 
           const fromActivation = activations[c.from];
-
+          if (!Number.isFinite(fromActivation)) {
+            // console.log("fromActivation", c.from, fromActivation);
+          }
           value += fromActivation * c.weight;
         }
 
@@ -234,7 +238,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         ns.hintValue = value;
         const activationSquash = squashMethod as ActivationInterface;
         activation = activationSquash.squash(value);
-
+        // validationActivation(squashMethod, activation, value);
         if (!Number.isFinite(activation)) {
           if (activation === Number.POSITIVE_INFINITY) {
             activation = Number.MAX_SAFE_INTEGER;
@@ -252,6 +256,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           }
         }
       }
+      // validationActivation(squashMethod, activation);
     }
     activations[this.index] = activation;
     return activation;
@@ -466,24 +471,25 @@ export class Neuron implements TagsInterface, NeuronInternal {
         currentBias,
       );
 
-      if (this.isNodeActivation(squashMethod) == false) {
-        const aBias = adjustedBias(this, config);
-        const squashActivation = (squashMethod as ActivationInterface).squash(
-          improvedValue + aBias - currentBias,
-        );
-
-        limitedActivation = limitActivation(squashActivation);
-      } else {
-        throw new Error(`${this.ID} - ${this.type}, squash: ${this.squash}`);
-      }
+      // if (this.isNodeActivation(squashMethod) == false) {
+      const aBias = adjustedBias(this, config);
+      const squashActivation = (squashMethod as ActivationInterface).squash(
+        improvedValue + aBias - currentBias,
+      );
+      // validationActivation(squashMethod, squashActivation);
+      limitedActivation = limitActivation(squashActivation);
+      // } else {
+      //   throw new Error(`${this.ID} - ${this.type}, squash: ${this.squash}`);
+      // }
     }
 
     if (Math.abs(limitedActivation - activation) > config.plankConstant) {
       ns.traceActivation(limitedActivation);
       this.creature.state.cacheAdjustedActivation.delete(this.index);
+      return limitedActivation;
+    } else {
+      return activation;
     }
-
-    return limitedActivation;
   }
 
   /**

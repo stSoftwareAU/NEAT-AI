@@ -1,7 +1,6 @@
-/** Correct the target activation to a possible activation */
-type NormalizeFunction = (targetActivation: number) => number;
+import type { ActivationRange } from "../../propagate/ActivationRange.ts";
 
 export interface AbstractActivationInterface {
   getName(): string;
-  range(): { low: number; high: number; normalize?: NormalizeFunction };
+  readonly range: ActivationRange;
 }

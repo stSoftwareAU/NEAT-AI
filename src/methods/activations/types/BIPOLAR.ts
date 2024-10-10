@@ -1,3 +1,4 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -9,22 +10,32 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class BIPOLAR implements ActivationInterface, UnSquashInterface {
   public static NAME = "BIPOLAR";
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    -1,
+    1,
+    (targetActivation: number): number => {
+      return this.squash(targetActivation);
+    },
+  );
 
   getName() {
     return BIPOLAR.NAME;
   }
 
-  range() {
-    return {
-      low: -1,
-      high: 1,
-      normalize: (targetActivation: number): number => {
-        return this.squash(targetActivation);
-      },
-    };
-  }
+  // range() {
+  //   return {
+  //     low: -1,
+  //     high: 1,
+  //     normalize: (targetActivation: number): number => {
+  //       return this.squash(targetActivation);
+  //     },
+  //   };
+  // }
 
   unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
     if (Number.isFinite(hint)) return hint ? hint : 0;
 
     return activation;

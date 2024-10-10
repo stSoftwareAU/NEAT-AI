@@ -1,3 +1,4 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -12,8 +13,15 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   public static NAME = "BENT_IDENTITY";
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
 
-  unSquash(activation: number): number {
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
     let x = activation; // initial guess
 
     const epsilon = 1e-6;
@@ -36,9 +44,9 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     return x;
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   getName() {
     return BENT_IDENTITY.NAME;
@@ -46,10 +54,11 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
 
   squash(x: number) {
     if (Math.abs(x) >= 1e153) { // 1e153 is a reasonable threshold to prevent overflow
-      return x; // Return x as the best guess if it's too large
+      return this.range.limit(x); // Return x as the best guess if it's too large
     }
     const d = Math.sqrt(Math.pow(x, 2) + 1);
 
-    return (d - 1) / 2 + x;
+    const value = (d - 1) / 2 + x;
+    return this.range.limit(value);
   }
 }

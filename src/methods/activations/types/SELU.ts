@@ -1,3 +1,4 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -21,8 +22,15 @@ export class SELU implements ActivationInterface, UnSquashInterface {
 
   private static ALPHA = 1.6732632423543772848170429916717;
   private static SCALE = 1.0507009873554804934193349852946;
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
 
-  unSquash(activation: number): number {
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
     const scaledActivation = activation / SELU.SCALE;
 
     if (scaledActivation > 0) {
@@ -36,9 +44,9 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     }
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   getName() {
     return SELU.NAME;
@@ -47,6 +55,7 @@ export class SELU implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     const fx = x > 0 ? x : SELU.ALPHA * Math.exp(x) - SELU.ALPHA;
 
-    return fx * SELU.SCALE;
+    const value = fx * SELU.SCALE;
+    return this.range.limit(value);
   }
 }

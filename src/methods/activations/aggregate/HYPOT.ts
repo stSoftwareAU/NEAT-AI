@@ -1,8 +1,15 @@
 import type { BackPropagationConfig } from "../../../architecture/BackPropagation.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 
 export class HYPOT implements NeuronActivationInterface {
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    0,
+    Number.MAX_SAFE_INTEGER,
+  );
+
   propagate(
     node: Neuron,
     _targetActivation: number,
@@ -11,9 +18,9 @@ export class HYPOT implements NeuronActivationInterface {
     return node.adjustedActivation(config);
   }
 
-  range() {
-    return { low: 0, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: 0, high: Number.POSITIVE_INFINITY };
+  // }
 
   public static NAME = "HYPOT";
 

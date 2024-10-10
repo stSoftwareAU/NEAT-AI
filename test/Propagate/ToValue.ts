@@ -75,7 +75,7 @@ Deno.test("toValue", () => {
     if ((squash as ActivationInterface).squash) {
       for (let i = 0; i < activations.length; i++) {
         let expected = activations[i];
-        const range = squash.range();
+        const range = squash.range;
         if (expected > range.high) expected = range.high;
         if (expected < range.low) expected = range.low;
 
