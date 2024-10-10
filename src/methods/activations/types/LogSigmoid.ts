@@ -22,10 +22,11 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
 
   squash(x: number) {
     if (x <= -709) { // 709 is a reasonable threshold to prevent overflow, as Math.exp(709) is the largest finite number in JavaScript
-      return Number.MIN_VALUE; // Return a large negative number as the best guess if x is too large in magnitude
+      return Number.MIN_SAFE_INTEGER; // Return a large negative number as the best guess if x is too large in magnitude
     }
 
-    return Math.log(1 / (1 + Math.exp(-x)));
+    const value = Math.log(1 / (1 + Math.exp(-x)));
+    return this.range.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {

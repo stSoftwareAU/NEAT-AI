@@ -39,6 +39,7 @@ export class ActivationRange {
   }
 
   limit(activation: number): number {
+    // Clamp the activation to the range [low, high]
     return Math.max(this.low, Math.min(this.high, activation));
   }
 }

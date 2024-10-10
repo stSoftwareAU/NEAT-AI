@@ -30,6 +30,6 @@ export class IDENTITY implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
-    return x;
+    return this.range.limit(x);
   }
 }

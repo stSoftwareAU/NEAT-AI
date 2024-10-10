@@ -30,7 +30,8 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   squash(x: number): number {
     // Guard against overflow in exp(-x) when x is a large negative number.
     const expNegX = x < -20 ? 0 : Math.exp(-x);
-    return x / (1 + expNegX);
+    const value = x / (1 + expNegX);
+    return this.range.limit(value);
   }
 
   /**

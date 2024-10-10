@@ -28,6 +28,7 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
-    return x > 0 ? x : LeakyReLU.ALPHA * x;
+    const value = x > 0 ? x : LeakyReLU.ALPHA * x;
+    return this.range.limit(value);
   }
 }

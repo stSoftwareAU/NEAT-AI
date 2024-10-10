@@ -36,7 +36,9 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     const sqrtTwoOverPi = Math.sqrt(2 / Math.PI);
     const term = x + 0.044715 * Math.pow(x, 3);
     const tanhResult = Math.tanh(sqrtTwoOverPi * term);
-    return 0.5 * x * (1 + tanhResult);
+    const value = 0.5 * x * (1 + tanhResult);
+
+    return this.range.limit(value);
   }
 
   /**

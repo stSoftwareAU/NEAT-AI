@@ -64,6 +64,8 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
       return Softplus.LARGE_THRESHOLD; // Return a large value, not Infinity
     }
 
-    return Math.log(1 + Math.exp(x)); // Standard Softplus formula
+    const value = Math.log(1 + Math.exp(x)); // Standard Softplus formula
+
+    return this.range.limit(value);
   }
 }

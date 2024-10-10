@@ -55,6 +55,7 @@ export class SELU implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     const fx = x > 0 ? x : SELU.ALPHA * Math.exp(x) - SELU.ALPHA;
 
-    return fx * SELU.SCALE;
+    const value = fx * SELU.SCALE;
+    return this.range.limit(value);
   }
 }

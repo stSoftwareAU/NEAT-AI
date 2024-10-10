@@ -51,6 +51,7 @@ export class RELU implements ActivationInterface, UnSquashInterface {
 
   // ReLU function definition
   squash(x: number) {
-    return x > 0 ? x : 0;
+    const value = x > 0 ? x : 0;
+    return this.range.limit(value);
   }
 }

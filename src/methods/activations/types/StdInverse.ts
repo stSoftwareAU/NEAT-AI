@@ -20,7 +20,8 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
-    return x !== 0 ? 1 / x : 0;
+    const value = x !== 0 ? 1 / x : 0;
+    return this.range.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {

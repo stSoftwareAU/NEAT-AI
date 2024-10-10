@@ -376,6 +376,17 @@ function checkKnownActivations(squashName: string) {
     const squasher = (squash as unknown) as ActivationInterface;
     if (squasher.squash !== undefined) {
       const squashedValue = squasher.squash(activation);
+      if (
+        squasher.range.low > squashedValue ||
+        squashedValue > squasher.range.high
+      ) {
+        console.log(
+          `squashedValue ${squashedValue} outside range ${squasher.range.low} ${squasher.range.high}`,
+        );
+        const limitedActivation = squasher.range.limit(squashedValue);
+        console.log(`limitedActivation ${limitedActivation}`);
+        squasher.range.validate(limitedActivation);
+      }
       squasher.range.validate(squashedValue);
       squash.unSquash(squashedValue);
     }

@@ -37,6 +37,8 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
-    return x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
+    const value = x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
+
+    return this.range.limit(value);
   }
 }
