@@ -128,7 +128,7 @@ export class Neat {
     const uuid = CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
     if (getTag(creature, "scheduled") === "training") {
-      if (this.config.enableRepetitiveTraining) {
+      if (!this.config.enableRepetitiveTraining) {
         return;
       }
     }
