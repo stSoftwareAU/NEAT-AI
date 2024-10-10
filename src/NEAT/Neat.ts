@@ -135,7 +135,7 @@ export class Neat {
     const uuid = CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
 
-    if (this.config.enableRepetitiveTraining) {
+    if (!this.config.enableRepetitiveTraining) {
       if (this.alreadyScheduledMap.has(uuid)) {
         return;
       }
