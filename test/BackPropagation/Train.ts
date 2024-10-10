@@ -54,7 +54,7 @@ Deno.test("Sample", () => {
       learningRate: 1,
       disableRandomSamples: true,
       generations: i,
-      excludeSquashList: "IDENTITY",
+      excludeSquashList: "CLIPPED,IDENTITY",
     });
 
     console.log(i, results.error);
