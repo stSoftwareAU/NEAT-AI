@@ -27,27 +27,29 @@ export class MINIMUM
   }
 
   activate(neuron: Neuron): number {
-    const toList = neuron.creature.inwardConnections(neuron.index);
-    let minValue = Infinity;
+    const fromList = neuron.creature.inwardConnections(neuron.index);
+    let minValue = Number.POSITIVE_INFINITY;
     const activations = neuron.creature.state.activations;
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    for (let i = fromList.length; i--;) {
+      const c = fromList[i];
       const value = activations[c.from] * c.weight;
       if (value < minValue) {
         minValue = value;
       }
     }
 
-    return minValue + neuron.bias;
+    const value = minValue + neuron.bias;
+
+    return this.range.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
-    const toList = neuron.creature.inwardConnections(neuron.index);
-    let minValue = Infinity;
+    let minValue = Number.POSITIVE_INFINITY;
+    const fromList = neuron.creature.inwardConnections(neuron.index);
     let usedConnection: SynapseInternal | null = null;
     const activations = neuron.creature.state.activations;
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    for (let i = fromList.length; i--;) {
+      const c = fromList[i];
       const cs = neuron.creature.state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
@@ -66,7 +68,9 @@ export class MINIMUM
       cs.used = true;
     }
 
-    return minValue + neuron.bias;
+    const value = minValue + neuron.bias;
+
+    return this.range.limit(value);
   }
 
   fix(neuron: Neuron) {
