@@ -6,16 +6,19 @@
  * Source: "Swish: a Self-Gated Activation Function" by Prajit Ramachandran, Barret Zoph, and Quoc V. Le
  * Link: https://arxiv.org/abs/1710.05941
  */
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Swish implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Swish";
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
   private static readonly EPSILON = 1e-6; // Tolerance for Newton-Raphson
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
 
   /**
    * Computes the Swish activation function.
@@ -39,7 +42,7 @@ export class Swish implements ActivationInterface, UnSquashInterface {
    * @returns The estimated input value that would produce the given activation output.
    */
   unSquash(activation: number, hint?: number): number {
-    validationActivation(this, activation);
+    this.range.validate(activation, hint);
 
     let x = hint !== undefined
       ? hint
@@ -66,9 +69,9 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     return x;
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   getName(): string {
     return Swish.NAME;

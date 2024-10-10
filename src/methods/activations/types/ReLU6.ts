@@ -1,8 +1,6 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * ReLU6 Activation Function
@@ -15,9 +13,13 @@ import {
  * https://www.tensorflow.org/api_docs/python/tf/nn/relu6
  */
 export class ReLU6 implements ActivationInterface, UnSquashInterface {
+  public static NAME = "ReLU6";
+
+  public readonly range: ActivationRange = new ActivationRange(this, 0, 6);
+
   /** Since ReLU6 is not invertible above 6, the unSquash method uses hints similarly to ReLU. */
   unSquash(activation: number, hint?: number): number {
-    validationActivation(this, activation);
+    this.range.validate(activation, hint);
 
     if (activation > 0 && activation < 6) {
       return activation; // Activation is in the linear range of ReLU6
@@ -37,11 +39,9 @@ export class ReLU6 implements ActivationInterface, UnSquashInterface {
   }
 
   /** The output range of ReLU6 is between 0 and 6. */
-  range() {
-    return { low: 0, high: 6 };
-  }
-
-  public static NAME = "ReLU6";
+  // range() {
+  //   return { low: 0, high: 6 };
+  // }
 
   getName() {
     return ReLU6.NAME;

@@ -4,14 +4,13 @@
  * Range: [-1, 1]
  * Source: Custom (Cosine is a standard mathematical function)
  */
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Cosine implements ActivationInterface, UnSquashInterface {
   public static NAME = "Cosine";
+  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
 
   getName() {
     return Cosine.NAME;
@@ -22,7 +21,7 @@ export class Cosine implements ActivationInterface, UnSquashInterface {
   }
 
   unSquash(activation: number, hint?: number): number {
-    validationActivation(this, activation);
+    this.range.validate(activation, hint);
 
     const acos = Math.acos(activation);
 
@@ -35,7 +34,7 @@ export class Cosine implements ActivationInterface, UnSquashInterface {
     return hint >= 0 ? Math.abs(acos) : -Math.abs(acos);
   }
 
-  range() {
-    return { low: -1, high: 1 };
-  }
+  // range() {
+  //   return { low: -1, high: 1 };
+  // }
 }

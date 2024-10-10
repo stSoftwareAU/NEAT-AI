@@ -1,8 +1,6 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Bent Identity (BENT_IDENTITY) activation function.
@@ -15,9 +13,14 @@ import {
 export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   public static NAME = "BENT_IDENTITY";
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
 
-  unSquash(activation: number): number {
-    validationActivation(this, activation);
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     let x = activation; // initial guess
 
@@ -41,9 +44,9 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     return x;
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   getName() {
     return BENT_IDENTITY.NAME;
@@ -55,6 +58,7 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     }
     const d = Math.sqrt(Math.pow(x, 2) + 1);
 
-    return (d - 1) / 2 + x;
+    const value = (d - 1) / 2 + x;
+    return this.range.limit(value);
   }
 }

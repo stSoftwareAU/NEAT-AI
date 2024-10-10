@@ -1,8 +1,6 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Softplus Activation Function
@@ -16,12 +14,20 @@ import {
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Softplus
  */
 export class Softplus implements ActivationInterface, UnSquashInterface {
+  public static NAME = "Softplus";
+
   private static readonly LARGE_THRESHOLD = 100; // Threshold to prevent overflow in unSquash
   private static readonly SMALL_THRESHOLD = 1e-15; // Threshold to prevent underflow in unSquash
 
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Softplus.SMALL_THRESHOLD,
+    Softplus.LARGE_THRESHOLD,
+  );
+
   // Inverse of Softplus
-  unSquash(activation: number): number {
-    validationActivation(this, activation);
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     // If activation is too small or large, return it as the best guess
     if (activation <= 0) {
@@ -40,14 +46,12 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   }
 
   // Softplus outputs values between 0 and +Infinity, but we set practical limits
-  range() {
-    return {
-      low: Softplus.SMALL_THRESHOLD, // Can't be lower than a very small positive number
-      high: Softplus.LARGE_THRESHOLD, // Prevents excessively large numbers
-    };
-  }
-
-  public static NAME = "Softplus";
+  // range() {
+  //   return {
+  //     low: Softplus.SMALL_THRESHOLD, // Can't be lower than a very small positive number
+  //     high: Softplus.LARGE_THRESHOLD, // Prevents excessively large numbers
+  //   };
+  // }
 
   getName() {
     return Softplus.NAME;

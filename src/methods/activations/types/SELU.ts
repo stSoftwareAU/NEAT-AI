@@ -1,8 +1,6 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Scaled Exponential Linear Unit (SELU) activation function.
@@ -24,9 +22,14 @@ export class SELU implements ActivationInterface, UnSquashInterface {
 
   private static ALPHA = 1.6732632423543772848170429916717;
   private static SCALE = 1.0507009873554804934193349852946;
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
 
-  unSquash(activation: number): number {
-    validationActivation(this, activation);
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     const scaledActivation = activation / SELU.SCALE;
 
@@ -41,9 +44,9 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     }
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   getName() {
     return SELU.NAME;

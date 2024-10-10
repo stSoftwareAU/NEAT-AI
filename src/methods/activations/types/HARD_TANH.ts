@@ -1,8 +1,6 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Hard Tanh Activation Function
@@ -14,19 +12,20 @@ import {
  */
 export class HARD_TANH implements ActivationInterface, UnSquashInterface {
   public static NAME = "HARD_TANH";
+  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
 
   getName() {
     return HARD_TANH.NAME;
   }
 
   // Range of the activation function is [-1, 1]
-  range() {
-    return { low: -1, high: 1 };
-  }
+  // range() {
+  //   return { low: -1, high: 1 };
+  // }
 
   // Implementing the unSquash function
-  unSquash(activation: number): number {
-    validationActivation(this, activation);
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     // Since the function is already bounded within [-1, 1], the unSquash is identity within the range
     return Math.max(-1, Math.min(1, activation));

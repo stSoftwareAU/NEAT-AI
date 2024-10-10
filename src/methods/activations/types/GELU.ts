@@ -9,17 +9,22 @@
  * Link: https://arxiv.org/abs/1606.08415
  */
 
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class GELU implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "GELU";
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
 
   private static readonly TOLERANCE = 1e-6;
+
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
+
   /**
    * Computes the GELU activation function using an approximation for efficiency.
    * GELU is approximated as f(x) = 0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3))).
@@ -42,7 +47,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
    * @returns The estimated input value that would produce the given activation output.
    */
   unSquash(activation: number, hint?: number): number {
-    validationActivation(this, activation);
+    this.range.validate(activation, hint);
 
     let x = hint ?? activation; // Simplified guess initialization
 
@@ -74,9 +79,9 @@ export class GELU implements ActivationInterface, UnSquashInterface {
       0.5 * (1 + Math.tanh(b));
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   getName(): string {
     return GELU.NAME;

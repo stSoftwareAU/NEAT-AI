@@ -1,8 +1,6 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * TANH (Hyperbolic Tangent) Activation Function
@@ -15,10 +13,14 @@ import {
  * https://en.wikipedia.org/wiki/Hyperbolic_functions#Hyperbolic_tangent
  */
 export class TANH implements ActivationInterface, UnSquashInterface {
+  public static NAME = "TANH";
+
+  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
+
   // Function to estimate the input from the activation value.
   // TANH is invertible, and its inverse is calculated using a logarithmic function.
-  unSquash(activation: number): number {
-    validationActivation(this, activation);
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     if (Math.abs(activation) === 1) {
       return activation; // Return activation as the best guess if it's 1 or -1
@@ -32,11 +34,9 @@ export class TANH implements ActivationInterface, UnSquashInterface {
   }
 
   // Range of the activation function. TANH outputs values between -1 and 1.
-  range() {
-    return { low: -1, high: 1 };
-  }
-
-  public static NAME = "TANH";
+  // range() {
+  //   return { low: -1, high: 1 };
+  // }
 
   getName() {
     return TANH.NAME;

@@ -11,18 +11,24 @@ import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 import { assert } from "@std/assert/assert";
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 
 export class MINIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "MINIMUM";
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
 
   getName() {
     return MINIMUM.NAME;
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   activate(node: Neuron): number {
     const toList = node.creature.inwardConnections(node.index);

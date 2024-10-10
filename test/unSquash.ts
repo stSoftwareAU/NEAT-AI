@@ -252,7 +252,7 @@ Deno.test("SOFTSIGN", () => {
   const activation = Activations.find(
     SOFTSIGN.NAME,
   ) as UnSquashInterface;
-  const range = activation.range();
+  const range = activation.range;
   const values = [range.high, range.low];
   values.forEach((v) => {
     const tmpValue = activation.unSquash(v);
@@ -314,10 +314,11 @@ Deno.test("unSquash", () => {
 
 function checkKnownActivations(squashName: string) {
   const squash = Activations.find(squashName) as UnSquashInterface;
-  const range = squash.range();
+  const range = squash.range;
   const activations = [
     -1000,
     0,
+    -0,
     1000,
     Number.EPSILON,
     Number.EPSILON * -1,
@@ -330,10 +331,32 @@ function checkKnownActivations(squashName: string) {
     23.214287510522993,
     0.6411813868085767,
     -0.6411813868085767,
-
+    1e-15,
+    -1e-15,
+    1e-16,
+    -1e-16,
     3.7853263272041134e+306,
     Number.MAX_VALUE,
     Number.MIN_VALUE,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+    Math.PI,
+    Math.E,
+    Math.PI * -1,
+    Math.E * -1,
+    Math.SQRT2,
+    Math.SQRT2 * -1,
+    Math.SQRT1_2,
+    Math.SQRT1_2 * -1,
+    Math.LN2,
+    Math.LN2 * -1,
+    Math.LN10,
+    Math.LN10 * -1,
+    Math.LOG2E,
+    Math.LOG2E * -1,
+    Math.LOG10E,
+    Math.LOG10E * -1,
+
     range.high,
     range.low,
   ];
@@ -342,11 +365,19 @@ function checkKnownActivations(squashName: string) {
       Number.isFinite(activation) && activation >= range.low &&
       activation <= range.high
     ) {
+      squash.range.validate(activation);
       const tmpValue = squash.unSquash(activation);
       assert(
         Number.isFinite(tmpValue),
         `${squashName} unSquash ${activation} not finite ${tmpValue}`,
       );
+    }
+
+    const squasher = (squash as unknown) as ActivationInterface;
+    if (squasher.squash !== undefined) {
+      const squashedValue = squasher.squash(activation);
+      squasher.range.validate(squashedValue);
+      squash.unSquash(squashedValue);
     }
   });
 }

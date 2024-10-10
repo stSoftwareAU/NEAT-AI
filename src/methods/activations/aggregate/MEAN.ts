@@ -8,18 +8,24 @@ import {
   toValue,
 } from "../../../architecture/BackPropagation.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 
 export class MEAN implements NeuronActivationInterface {
   public static NAME = "MEAN";
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
 
   getName() {
     return MEAN.NAME;
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  // }
 
   activate(node: Neuron) {
     let sum = 0;

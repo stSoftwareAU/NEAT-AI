@@ -1,16 +1,17 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LOGISTIC implements ActivationInterface, UnSquashInterface {
-  range() {
-    return { low: 0, high: 1 };
-  }
+  public static NAME = "LOGISTIC";
+  public readonly range: ActivationRange = new ActivationRange(this, 0, 1);
 
-  unSquash(activation: number): number {
-    validationActivation(this, activation);
+  // range() {
+  //   return { low: 0, high: 1 };
+  // }
+
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     // To prevent log(0) and division by zero
     const safeActivation = Math.min(
@@ -20,8 +21,6 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
     const value = Math.log(safeActivation / (1 - safeActivation));
     return value;
   }
-
-  public static NAME = "LOGISTIC";
 
   getName() {
     return LOGISTIC.NAME;

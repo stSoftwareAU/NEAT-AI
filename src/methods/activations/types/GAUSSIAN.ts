@@ -1,8 +1,6 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Gaussian Activation Function
@@ -13,18 +11,20 @@ import {
 export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   public static NAME = "GAUSSIAN";
 
+  public readonly range: ActivationRange = new ActivationRange(this, 0, 1);
+
   getName() {
     return GAUSSIAN.NAME;
   }
 
   // Range of the activation function is [0, 1]
-  range() {
-    return { low: 0, high: 1 };
-  }
+  // range() {
+  //   return { low: 0, high: 1 };
+  // }
 
   /* unSquash is non-trivial due to the symmetric nature of Gaussian function. */
   unSquash(activation: number, hint?: number): number {
-    validationActivation(this, activation);
+    this.range.validate(activation, hint);
 
     if (activation <= 0) {
       return activation; // Return 0 as the best guess if activation is 0

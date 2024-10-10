@@ -1,8 +1,6 @@
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Mish Activation Function.
@@ -16,6 +14,12 @@ import {
 export class Mish implements ActivationInterface, UnSquashInterface {
   public static NAME = "Mish";
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
+
   getName() {
     return Mish.NAME;
   }
@@ -40,9 +44,8 @@ export class Mish implements ActivationInterface, UnSquashInterface {
       derivative: derivative,
     };
   }
-
   unSquash(activation: number, hint?: number): number {
-    validationActivation(this, activation);
+    this.range.validate(activation, hint);
 
     let guess = hint !== undefined
       ? hint
@@ -73,8 +76,8 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     return Number.isFinite(guess) ? guess : 0; // Return 0 if guess is not a finite number
   }
 
-  range() {
-    // Mish ranges from negative infinity to positive infinity
-    return { low: -Infinity, high: Infinity };
-  }
+  // range() {
+  //   // Mish ranges from negative infinity to positive infinity
+  //   return { low: -Infinity, high: Infinity };
+  // }
 }

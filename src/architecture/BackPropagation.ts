@@ -168,7 +168,7 @@ export function limitActivationToRange(
 ) {
   const squash = neuron.findSquash();
   const unSquasher = squash;
-  const range = unSquasher.range();
+  const range = unSquasher.range;
 
   let limitedActivation: number;
 

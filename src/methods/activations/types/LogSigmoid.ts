@@ -4,14 +4,17 @@
  * Range: (-Infinity, 0]
  * Source: https://en.wikipedia.org/wiki/Logistic_function
  */
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
-import {
-  type UnSquashInterface,
-  validationActivation,
-} from "../UnSquashInterface.ts";
+import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LogSigmoid implements ActivationInterface, UnSquashInterface {
   public static NAME = "LogSigmoid";
+  public readonly range: ActivationRange = new ActivationRange(
+    this,
+    Number.MIN_SAFE_INTEGER,
+    0,
+  );
 
   getName() {
     return LogSigmoid.NAME;
@@ -25,8 +28,8 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
     return Math.log(1 / (1 + Math.exp(-x)));
   }
 
-  unSquash(activation: number): number {
-    validationActivation(this, activation);
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
 
     if (Math.abs(activation) < 1e-15) { // 1e-15 is a reasonable threshold to prevent underflow
       return 0; // Return 0 as the best guess if activation is a very small positive number
@@ -60,7 +63,7 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
     return result;
   }
 
-  range() {
-    return { low: Number.NEGATIVE_INFINITY, high: 0 };
-  }
+  // range() {
+  //   return { low: Number.NEGATIVE_INFINITY, high: 0 };
+  // }
 }
