@@ -61,6 +61,11 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     const maxIterations = Mish.MAX_ITERATIONS;
     const safeLimit = Number.MAX_SAFE_INTEGER / 2; // Prevent overflow by clamping
 
+    // Limit the initial guess to a safe range
+    if (Math.abs(guess) > safeLimit) {
+      guess = Math.sign(guess) * safeLimit;
+    }
+
     for (let i = 0; i < maxIterations; i++) {
       const { activation: squashGuess, derivative: errDerivative } = this
         .squashAndDerive(guess);
@@ -72,20 +77,25 @@ export class Mish implements ActivationInterface, UnSquashInterface {
         !Number.isFinite(errDerivative) ||
         Math.abs(errDerivative) < Number.EPSILON
       ) {
-        console.warn(
-          `Mish: Derivative became too small or NaN at iteration ${i}`,
-        );
+        // console.warn(
+        //   `Mish: Derivative ${errDerivative}, hint: ${hint} became too small or NaN at iteration ${i}`,
+        // );
         break;
       }
 
+      // Ensure the derivative is not too small before dividing
+      const adjustedErrDerivative = Math.abs(errDerivative) < 1e-6
+        ? Math.sign(errDerivative) * 1e-6
+        : errDerivative;
+
       // Update guess with a check for NaN or Infinity
-      guess -= err / (errDerivative + Number.EPSILON); // Add a small epsilon to prevent division by zero
+      guess -= err / (adjustedErrDerivative + Number.EPSILON); // Use adjusted derivative to prevent division by zero
 
       // Clamp guess to avoid extreme values
       if (Math.abs(guess) > safeLimit) {
-        console.warn(
-          `Mish: Guess exceeded safe limit at iteration ${i}, clamping to safe value`,
-        );
+        // console.warn(
+        //   `Mish: Guess exceeded safe limit at iteration ${i}, clamping to safe value`,
+        // );
         guess = Math.sign(guess) * safeLimit;
       }
 
