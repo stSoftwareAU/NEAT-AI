@@ -135,37 +135,36 @@ export class Neat {
   ) {
     const uuid = CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
-    if (!this.config.enableRepetitiveTraining) {
-      // Clear previous generations that are two or more generations old
-      const previousGeneration = trainingGeneration - 1;
 
-      // Get a list of all generations in the map
-      const generationsToDelete = Array.from(this.alreadyScheduledMap.keys())
-        .filter((generation) => generation < previousGeneration); // Filter out only the old generations
+    // Clear previous generations that are two or more generations old
+    const previousGeneration = trainingGeneration - 1;
 
-      // Delete unneeded generations
-      for (const generation of generationsToDelete) {
-        this.alreadyScheduledMap.delete(generation);
-      }
+    // Get a list of all generations in the map
+    const generationsToDelete = Array.from(this.alreadyScheduledMap.keys())
+      .filter((generation) => generation < previousGeneration); // Filter out only the old generations
 
-      const alreadyScheduledPrevious = this.alreadyScheduledMap.get(
-        trainingGeneration - 1,
-      );
-      if (alreadyScheduledPrevious && alreadyScheduledPrevious.has(uuid)) {
-        return;
-      }
-      let alreadyScheduledCurrent = this.alreadyScheduledMap.get(
-        trainingGeneration,
-      );
-      if (!alreadyScheduledCurrent) {
-        alreadyScheduledCurrent = new Set();
-        this.alreadyScheduledMap.set(
-          trainingGeneration,
-          alreadyScheduledCurrent,
-        );
-      }
-      alreadyScheduledCurrent.add(uuid);
+    // Delete unneeded generations
+    for (const generation of generationsToDelete) {
+      this.alreadyScheduledMap.delete(generation);
     }
+
+    const alreadyScheduledPrevious = this.alreadyScheduledMap.get(
+      trainingGeneration - 1,
+    );
+    if (alreadyScheduledPrevious && alreadyScheduledPrevious.has(uuid)) {
+      return;
+    }
+    let alreadyScheduledCurrent = this.alreadyScheduledMap.get(
+      trainingGeneration,
+    );
+    if (!alreadyScheduledCurrent) {
+      alreadyScheduledCurrent = new Set();
+      this.alreadyScheduledMap.set(
+        trainingGeneration,
+        alreadyScheduledCurrent,
+      );
+    }
+    alreadyScheduledCurrent.add(uuid);
 
     let w: WorkerHandler;
 

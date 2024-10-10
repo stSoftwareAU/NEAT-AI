@@ -23,7 +23,6 @@ Deno.test("AND", async () => {
     log: 1,
     targetError: 0.03,
     threads: 1,
-    enableRepetitiveTraining: true,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
@@ -46,7 +45,6 @@ Deno.test("evolve-MT", async () => {
     mutationRate: 0.5,
     targetError: 0.03,
     threads: 1,
-    enableRepetitiveTraining: true,
   });
 
   assert(results.error <= 0.03, "Error rate was: " + results.error);
@@ -71,7 +69,6 @@ Deno.test("XOR-evolve", async () => {
       targetError: 0.03,
       threads: 1,
       iterations: 10_000,
-      enableRepetitiveTraining: true,
     });
 
     if (results.error <= 0.03) break;
@@ -101,7 +98,6 @@ Deno.test("booleanXOR", async () => {
       targetError: 0.025,
       threads: 1,
       iterations: 1000,
-      enableRepetitiveTraining: true,
     });
 
     network.validate();
@@ -128,7 +124,6 @@ Deno.test("XNOR - evolve", async () => {
     const results = await creature.evolveDataSet(trainingSet, {
       targetError: 0.05,
       iterations: 20_000,
-      enableRepetitiveTraining: true,
     });
 
     if (results.error > 0.05) {

@@ -60,7 +60,6 @@ Deno.test("storeTrace", async () => {
       creatureStore: creaturesDir,
       threads: 1,
       targetError: 0,
-      enableRepetitiveTraining: true,
     };
     const network = Creature.fromJSON(json);
 
