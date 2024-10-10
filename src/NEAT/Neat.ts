@@ -121,18 +121,51 @@ export class Neat {
 
   trainingComplete: ResponseData[] = [];
 
+  private alreadyScheduledMap = new Map<number, Set<string>>();
+
+  /**
+   * Schedules training for a creature
+   * @param creature The creature to train
+   * @param trainingTimeOutMinutes The time out in minutes
+   */
   scheduleTraining(
     creature: Creature,
     trainingTimeOutMinutes: number,
+    trainingGeneration: number,
   ) {
     const uuid = CreatureUtil.makeUUID(creature);
     if (this.trainingInProgress.has(uuid)) return;
-    if (getTag(creature, "scheduled") === "training") {
-      if (!this.config.enableRepetitiveTraining) {
+    if (!this.config.enableRepetitiveTraining) {
+      // Clear previous generations that are two or more generations old
+      const previousGeneration = trainingGeneration - 1;
+
+      // Get a list of all generations in the map
+      const generationsToDelete = Array.from(this.alreadyScheduledMap.keys())
+        .filter((generation) => generation < previousGeneration); // Filter out only the old generations
+
+      // Delete unneeded generations
+      for (const generation of generationsToDelete) {
+        this.alreadyScheduledMap.delete(generation);
+      }
+
+      const alreadyScheduledPrevious = this.alreadyScheduledMap.get(
+        trainingGeneration - 1,
+      );
+      if (alreadyScheduledPrevious && alreadyScheduledPrevious.has(uuid)) {
         return;
       }
+      let alreadyScheduledCurrent = this.alreadyScheduledMap.get(
+        trainingGeneration,
+      );
+      if (!alreadyScheduledCurrent) {
+        alreadyScheduledCurrent = new Set();
+        this.alreadyScheduledMap.set(
+          trainingGeneration,
+          alreadyScheduledCurrent,
+        );
+      }
+      alreadyScheduledCurrent.add(uuid);
     }
-    addTag(creature, "scheduled", "training");
 
     let w: WorkerHandler;
 
@@ -191,6 +224,7 @@ export class Neat {
     this.trainingInProgress.set(uuid, p);
   }
 
+  private trainingGeneration = 0;
   /**
    * Evaluates, selects, breeds and mutates population
    */
@@ -291,6 +325,7 @@ export class Neat {
     }
 
     if (trainingTimeOutMinutes != -1) { // If not timed out already
+      this.trainingGeneration++;
       for (
         let i = 0;
         i < results.elitists.length;
@@ -303,7 +338,11 @@ export class Neat {
           this.trainingInProgress.size < this.config.trainPerGen &&
           Number.isFinite(n.score)
         ) {
-          this.scheduleTraining(n, trainingTimeOutMinutes);
+          this.scheduleTraining(
+            n,
+            trainingTimeOutMinutes,
+            this.trainingGeneration,
+          );
         }
       }
     }
