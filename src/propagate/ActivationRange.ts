@@ -8,19 +8,16 @@ export class ActivationRange {
   readonly low: number;
   readonly high: number;
   private readonly squash: AbstractActivationInterface;
-  public readonly normalize?: NormalizeFunction;
 
   constructor(
     squash: AbstractActivationInterface,
     low: number,
     high: number,
-    normalize?: NormalizeFunction,
   ) {
     this.squash = squash;
     assert(low < high, "ActivationRange: low must be less than high");
     this.low = low;
     this.high = high;
-    this.normalize = normalize;
   }
 
   validate(activation: number, hint?: number) {

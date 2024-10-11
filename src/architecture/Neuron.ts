@@ -14,7 +14,6 @@ import {
   adjustedBias,
   adjustedWeight,
   type BackPropagationConfig,
-  limitActivationToRange,
   toValue,
 } from "./BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
@@ -226,17 +225,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           const c = toList[i];
 
           const fromActivation = activations[c.from];
-          if (Number.isFinite(fromActivation)) {
-            value += fromActivation * c.weight;
-          } else {
-            console.log(
-              `${this.index}: fromActivation: ${fromActivation}, c.from: ${c.from} (type: ${
-                this.creature.neurons[c.from].type
-              },squash:${
-                this.creature.neurons[c.from].squash
-              })  c.to: ${c.to}, c.weight: ${c.weight}`,
-            );
-          }
+          value += fromActivation * c.weight;
         }
 
         const ns = this.creature.state.node(this.index);
@@ -291,13 +280,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           const c = toList[i];
 
           const fromActivation = activations[c.from];
-          if (Number.isFinite(fromActivation)) {
-            value += fromActivation * c.weight;
-          } else {
-            console.log(
-              `${this.index}: fromActivation: ${fromActivation}, c.from: ${c.from}, c.to: ${c.to}, c.weight: ${c.weight}`,
-            );
-          }
+          value += fromActivation * c.weight;
         }
 
         const activationSquash = squashMethod as ActivationInterface;
@@ -333,11 +316,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ): number {
     const activation = this.adjustedActivation(config);
 
-    const targetActivation = limitActivationToRange(
-      config,
-      this,
-      requestedActivation,
-    );
+    const squashMethod = this.findSquash();
+    const targetActivation = squashMethod.range.limit(requestedActivation);
 
     const excludeFromBackPropagation = config.excludeSquashSet.has(
       this.squash ?? "UNDEFINED",
@@ -356,7 +336,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
 
     ns.noChange = false;
-    const squashMethod = this.findSquash();
 
     let limitedActivation: number;
 
