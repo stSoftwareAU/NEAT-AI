@@ -29,8 +29,7 @@ export class ActivationRange {
         `${this.squash.getName()}: Activation ${activation} is outside the valid range [${this.low}, ${this.high}] ${
           hint !== undefined ? `with hint ${hint}` : ""
         }`;
-      console.error(msg);
-      console.trace();
+
       throw new Error(msg);
     }
   }
