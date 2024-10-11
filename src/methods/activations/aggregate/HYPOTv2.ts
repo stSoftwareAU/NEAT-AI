@@ -43,7 +43,7 @@ export class HYPOTv2 implements NeuronActivationInterface {
     }
 
     const value = Math.hypot(...values);
-    return value;
+    return this.range.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
