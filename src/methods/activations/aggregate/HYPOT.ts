@@ -13,12 +13,25 @@ export class HYPOT implements NeuronActivationInterface {
   propagate(
     neuron: Neuron,
     _targetActivation: number,
-    _config: BackPropagationConfig,
+    config: BackPropagationConfig,
   ): number {
-    const activations = neuron.creature.state.activations;
-    const activation = activations[neuron.index];
-    this.range.validate(activation);
-    return activation;
+    const inward = neuron.creature.inwardConnections(neuron.index);
+    const values: number[] = new Array(inward.length);
+    for (let indx = inward.length; indx--;) {
+      const c = inward[indx];
+
+      const fromNeuron = neuron.creature.neurons[c.from];
+
+      const fromActivation = fromNeuron.adjustedActivation(config);
+      const improvedActivation = fromNeuron.propagate(
+        fromActivation,
+        config,
+      );
+      values[indx] = improvedActivation * c.weight;
+    }
+
+    const value = Math.hypot(...values) + neuron.bias;
+    return this.range.limit(value);
   }
 
   public static NAME = "HYPOT";
