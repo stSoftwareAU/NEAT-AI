@@ -6,7 +6,6 @@ import { Creature } from "../../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-// Compact form: name and function
 Deno.test("Sample", () => {
   const trainingSet = JSON.parse(
     Deno.readTextFileSync("test/BackPropagation/td.json"),

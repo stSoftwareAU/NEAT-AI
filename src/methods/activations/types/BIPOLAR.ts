@@ -14,9 +14,6 @@ export class BIPOLAR implements ActivationInterface, UnSquashInterface {
     this,
     -1,
     1,
-    (targetActivation: number): number => {
-      return this.squash(targetActivation);
-    },
   );
 
   getName() {

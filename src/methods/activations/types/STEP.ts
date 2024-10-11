@@ -18,9 +18,6 @@ export class STEP implements ActivationInterface, UnSquashInterface {
     this,
     0,
     1,
-    (targetActivation: number): number => {
-      return this.squash(targetActivation);
-    },
   );
 
   constructor(threshold: number = 0) {

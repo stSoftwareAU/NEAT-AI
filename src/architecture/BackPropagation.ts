@@ -161,37 +161,6 @@ export function adjustedBias(
   }
 }
 
-export function limitActivationToRange(
-  config: BackPropagationConfig,
-  neuron: Neuron,
-  requestedActivation: number,
-) {
-  const squash = neuron.findSquash();
-  const unSquasher = squash;
-  const range = unSquasher.range;
-
-  let limitedActivation: number;
-
-  limitedActivation = Math.min(
-    Math.max(requestedActivation, range.low),
-    range.high,
-  );
-
-  if (range.normalize) {
-    limitedActivation = range.normalize(limitedActivation);
-  }
-
-  if (
-    Math.abs(requestedActivation - limitedActivation) < config.plankConstant &&
-    requestedActivation <= range.high &&
-    requestedActivation >= range.low
-  ) {
-    return requestedActivation;
-  }
-
-  return limitedActivation;
-}
-
 export function toValue(neuron: Neuron, activation: number, hint?: number) {
   if (neuron.type == "input" || neuron.type == "constant") {
     return activation;
