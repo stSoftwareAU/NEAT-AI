@@ -13,9 +13,12 @@ export class HYPOT implements NeuronActivationInterface {
   propagate(
     neuron: Neuron,
     _targetActivation: number,
-    config: BackPropagationConfig,
+    _config: BackPropagationConfig,
   ): number {
-    return neuron.adjustedActivation(config);
+    const activations = neuron.creature.state.activations;
+    const activation = activations[neuron.index];
+    this.range.validate(activation);
+    return activation;
   }
 
   public static NAME = "HYPOT";

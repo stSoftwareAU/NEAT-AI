@@ -13,9 +13,12 @@ export class HYPOTv2 implements NeuronActivationInterface {
   propagate(
     neuron: Neuron,
     _targetActivation: number,
-    config: BackPropagationConfig,
+    _config: BackPropagationConfig,
   ): number {
-    return neuron.adjustedActivation(config);
+    const activations = neuron.creature.state.activations;
+    const activation = activations[neuron.index];
+    this.range.validate(activation);
+    return activation;
   }
 
   public static NAME = "HYPOTv2";
@@ -51,22 +54,18 @@ export class HYPOTv2 implements NeuronActivationInterface {
   }
 
   fix(neuron: Neuron) {
-    const toListA = neuron.creature.inwardConnections(neuron.index);
-    for (let i = toListA.length; i--;) {
-      const c = toListA[i];
+    const inwardA = neuron.creature.inwardConnections(neuron.index);
+    for (let i = inwardA.length; i--;) {
+      const c = inwardA[i];
       if (c.from == c.to) {
         neuron.creature.disconnect(c.from, c.to);
       }
     }
 
-    for (let attempts = 12; attempts--;) {
-      const toList = neuron.creature.inwardConnections(neuron.index);
+    const inwardB = neuron.creature.inwardConnections(neuron.index);
 
-      if (toList.length < 2) {
-        neuron.creature.makeRandomConnection(neuron.index);
-      } else {
-        break;
-      }
+    if (inwardB.length < 2) {
+      neuron.creature.makeRandomConnection(neuron.index);
     }
   }
 }
