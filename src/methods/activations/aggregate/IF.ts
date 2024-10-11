@@ -159,9 +159,9 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let positive = 0;
 
     const activations = neuron.creature.state.activations;
-    const toList = neuron.creature.inwardConnections(neuron.index);
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    const inward = neuron.creature.inwardConnections(neuron.index);
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
 
       const value = activations[c.from] * c.weight;
       if (Number.isFinite(value)) {
@@ -179,8 +179,8 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     }
 
     if (condition > 0) {
-      for (let i = toList.length; i--;) {
-        const c = toList[i];
+      for (let i = inward.length; i--;) {
+        const c = inward[i];
         const cs = neuron.creature.state.connection(c.from, c.to);
         switch (c.type) {
           case "condition":
@@ -191,17 +191,19 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
             cs.used = true;
         }
       }
-      return positive + neuron.bias;
     } else {
-      for (let i = toList.length; i--;) {
-        const c = toList[i];
+      for (let i = inward.length; i--;) {
+        const c = inward[i];
 
         if (c.type == "negative") {
           neuron.creature.state.connection(c.from, c.to).used = true;
         }
       }
-      return negative + neuron.bias;
     }
+
+    const activation = (condition > 0 ? positive : negative) + neuron.bias;
+    const limitedActivation = this.range.limit(activation);
+    return limitedActivation;
   }
 
   activate(neuron: Neuron): number {
@@ -210,37 +212,39 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let positive = 0;
 
     const activations = neuron.creature.state.activations;
-    const toList = neuron.creature.inwardConnections(neuron.index);
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    const inward = neuron.creature.inwardConnections(neuron.index);
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
 
       const value = activations[c.from] * c.weight;
       if (Number.isFinite(value)) {
         switch (c.type) {
           case "condition":
-            condition = limitValue(condition + value);
+            condition += value;
             break;
           case "negative":
-            negative = limitValue(negative + value);
+            negative += value;
             break;
           default:
-            positive = limitValue(positive + value);
+            positive += value;
         }
       }
     }
 
-    return (condition > 0 ? positive : negative) + neuron.bias;
+    const activation = (condition > 0 ? positive : negative) + neuron.bias;
+    const limitedActivation = this.range.limit(activation);
+    return limitedActivation;
   }
 
   applyLearnings(neuron: Neuron): boolean {
-    const toList = neuron.creature.inwardConnections(neuron.index);
+    const inward = neuron.creature.inwardConnections(neuron.index);
 
     let foundPositive = false;
 
     let foundNegative = false;
 
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
       const cs = neuron.creature.state.connection(c.from, c.to);
       switch (c.type) {
         case "condition":
@@ -261,8 +265,8 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       return false;
     }
 
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
 
       switch (c.type) {
         case "condition":
@@ -290,13 +294,13 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     targetActivation: number,
     config: BackPropagationConfig,
   ): number {
-    const toList = neuron.creature.inwardConnections(neuron.index);
+    const inward = neuron.creature.inwardConnections(neuron.index);
     let condition = 0;
     let negativeCount = 0;
     let positiveCount = 0;
     const activations = neuron.creature.state.activations;
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
 
       const value = activations[c.from] * c.weight;
 
@@ -323,7 +327,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
 
     let improvedValue = currentBias;
 
-    const listLength = toList.length;
+    const listLength = inward.length;
     const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
 
     if (!config.disableRandomSamples) {
@@ -337,7 +341,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       const indx = indices[i];
       let thisPerLinkError = errorPerLink;
 
-      const c = toList[indx];
+      const c = inward[indx];
 
       if (c.from === c.to) continue;
       if (c.type == "condition") continue;
@@ -397,7 +401,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     const aBias = adjustedBias(neuron, config);
 
     const adjustedActivation = improvedValue + aBias - currentBias;
-    this.range.validate(adjustedActivation);
-    return adjustedActivation;
+    const limitedActivation = this.range.limit(adjustedActivation);
+    return limitedActivation;
   }
 }

@@ -23,11 +23,15 @@ export class HYPOTv2 implements NeuronActivationInterface {
       const fromNeuron = neuron.creature.neurons[c.from];
 
       const fromActivation = fromNeuron.adjustedActivation(config);
-      const improvedActivation = fromNeuron.propagate(
-        fromActivation,
-        config,
-      );
-      values[indx] = neuron.bias + improvedActivation * c.weight;
+      if (fromNeuron.type == "hidden") {
+        const improvedActivation = fromNeuron.propagate(
+          fromActivation,
+          config,
+        );
+        values[indx] = neuron.bias + improvedActivation * c.weight;
+      } else {
+        values[indx] = neuron.bias + fromActivation * c.weight;
+      }
     }
 
     const value = Math.hypot(...values);

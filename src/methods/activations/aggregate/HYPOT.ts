@@ -23,11 +23,15 @@ export class HYPOT implements NeuronActivationInterface {
       const fromNeuron = neuron.creature.neurons[c.from];
 
       const fromActivation = fromNeuron.adjustedActivation(config);
-      const improvedActivation = fromNeuron.propagate(
-        fromActivation,
-        config,
-      );
-      values[indx] = improvedActivation * c.weight;
+      if (fromNeuron.type == "hidden") {
+        const improvedActivation = fromNeuron.propagate(
+          fromActivation,
+          config,
+        );
+        values[indx] = improvedActivation * c.weight;
+      } else {
+        values[indx] = fromActivation * c.weight;
+      }
     }
 
     const value = Math.hypot(...values) + neuron.bias;
@@ -50,9 +54,8 @@ export class HYPOT implements NeuronActivationInterface {
       values[i] = activations[c.from] * c.weight;
     }
 
-    const value = Math.hypot(...values);
-
-    return value + neuron.bias;
+    const value = Math.hypot(...values) + neuron.bias;
+    return this.range.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
