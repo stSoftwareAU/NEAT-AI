@@ -41,11 +41,11 @@ export class HYPOT implements NeuronActivationInterface {
   }
 
   activate(neuron: Neuron) {
-    const toList = neuron.creature.inwardConnections(neuron.index);
-    const values: number[] = new Array(toList.length);
+    const inward = neuron.creature.inwardConnections(neuron.index);
+    const values: number[] = new Array(inward.length);
     const activations = neuron.creature.state.activations;
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
 
       values[i] = activations[c.from] * c.weight;
     }
@@ -60,22 +60,18 @@ export class HYPOT implements NeuronActivationInterface {
   }
 
   fix(neuron: Neuron) {
-    const toListA = neuron.creature.inwardConnections(neuron.index);
-    for (let i = toListA.length; i--;) {
-      const c = toListA[i];
+    const inwardA = neuron.creature.inwardConnections(neuron.index);
+    for (let i = inwardA.length; i--;) {
+      const c = inwardA[i];
       if (c.from == c.to) {
         neuron.creature.disconnect(c.from, c.to);
       }
     }
 
-    for (let attempts = 12; attempts--;) {
-      const toList = neuron.creature.inwardConnections(neuron.index);
+    const inwardB = neuron.creature.inwardConnections(neuron.index);
 
-      if (toList.length < 2) {
-        neuron.creature.makeRandomConnection(neuron.index);
-      } else {
-        break;
-      }
+    if (inwardB.length < 2) {
+      neuron.creature.makeRandomConnection(neuron.index);
     }
   }
 }
