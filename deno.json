@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "0.105.7",
+  "version": "0.106.0",
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.2",
     "@std/bytes": "jsr:@std/bytes@^1.0.2",

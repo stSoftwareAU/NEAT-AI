@@ -67,20 +67,44 @@ function calculateMaxOutOfBounds(
 }
 
 export function valuePenalty(value: number): number {
+  assert(value >= 0, `Value: ${value} is negative`);
   if (value <= 1) return 0;
+
+  assert(Number.isFinite(value), `Value: ${value} is not finite`);
+  assert(value <= Number.MAX_SAFE_INTEGER, `Value: ${value} is too large`);
 
   const primaryPenalty = 1 / (1 + 1 / value); // Simplified from Math.exp(-Math.log(value))
 
   if (primaryPenalty > 0.999) {
-    const compressPenalty = 1 + valuePenalty(Math.log(value));
+    const compressPenalty = 0.999 + valuePenalty(Math.log(value)) / 1000;
+    assert(
+      compressPenalty < 1,
+      `Primary Penalty: ${compressPenalty} is greater than or equal to 1`,
+    );
     return compressPenalty;
   }
 
+  assert(
+    primaryPenalty < 1,
+    `Primary Penalty: ${primaryPenalty} is greater than or equal to 1`,
+  );
   return primaryPenalty;
 }
 
 function calculatePenalty(max: number, avg: number): number {
-  return valuePenalty(max) + valuePenalty(avg);
+  const rawPenalty = (valuePenalty(max) + valuePenalty(avg)) / 2;
+
+  assert(
+    Number.isFinite(rawPenalty),
+    `Raw Penalty: ${rawPenalty} is not finite`,
+  );
+  assert(rawPenalty >= 0, `Raw Penalty: ${rawPenalty} is negative`);
+  assert(
+    rawPenalty < 1,
+    `Raw Penalty: ${rawPenalty} is greater than or equal to 1`,
+  );
+
+  return rawPenalty / 10_000;
 }
 
 function calculateScore(
