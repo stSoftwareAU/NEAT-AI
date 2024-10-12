@@ -79,7 +79,7 @@ export function valuePenalty(value: number): number {
     const compressPenalty = 0.999 + valuePenalty(Math.log(value)) / 1000;
     assert(
       compressPenalty < 1,
-      `Primary Penalty: ${compressPenalty} is greater than or equal to 1`,
+      `Compressed Penalty: ${compressPenalty} is greater than or equal to 1`,
     );
     return compressPenalty;
   }
@@ -96,12 +96,12 @@ function calculatePenalty(max: number, avg: number): number {
 
   assert(
     Number.isFinite(penalty),
-    `Raw Penalty: ${penalty} is not finite`,
+    `Penalty: ${penalty} is not finite`,
   );
-  assert(penalty >= 0, `Raw Penalty: ${penalty} is negative`);
+  assert(penalty >= 0, `Penalty: ${penalty} is negative`);
   assert(
     penalty < 1,
-    `Raw Penalty: ${penalty} is greater than or equal to 1`,
+    `Penalty: ${penalty} is greater than or equal to 1`,
   );
 
   return penalty;
