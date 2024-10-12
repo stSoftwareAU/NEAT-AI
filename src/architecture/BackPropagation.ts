@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
@@ -233,22 +234,16 @@ export function adjustedWeight(
   const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
-    if (Number.isFinite(cs.averageWeight)) {
-      const synapseAverageWeightTotal = cs.averageWeight * cs.count;
+    assert(Number.isFinite(cs.averageWeight), "averageWeight is not finite");
+    const synapseAverageWeightTotal = cs.averageWeight * cs.count;
 
-      const totalGenerationalWeight = c.weight * config.generations;
+    const totalGenerationalWeight = c.weight * config.generations;
 
-      const averageWeight =
-        (synapseAverageWeightTotal + totalGenerationalWeight) /
-        (cs.count + config.generations);
+    const averageWeight =
+      (synapseAverageWeightTotal + totalGenerationalWeight) /
+      (cs.count + config.generations);
 
-      return limitWeight(averageWeight, c.weight, config);
-    } else {
-      throw Error(
-        `${c.from}:${c.to}) invalid averageWeight: ${cs.averageWeight} ` +
-          JSON.stringify(cs, null, 2),
-      );
-    }
+    return limitWeight(averageWeight, c.weight, config);
   }
 
   return c.weight;

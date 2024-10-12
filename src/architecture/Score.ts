@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { CreatureInternal } from "./CreatureInterfaces.ts";
 
 export function calculate(
@@ -5,11 +6,16 @@ export function calculate(
   error: number,
   growthCost: number,
 ): number {
+  assert(Number.isFinite(error), `Error: ${error} is not finite`);
   const { max, avg } = calculateMaxOutOfBounds(creature);
+  assert(Number.isFinite(max), `Max: ${max} is not finite`);
+  assert(Number.isFinite(avg), `Avg: ${avg} is not finite`);
   const penalty = calculatePenalty(max, avg);
+  assert(Number.isFinite(penalty), `Penalty: ${penalty} is not finite`);
   const score = calculateScore(error, creature, penalty, growthCost);
 
-  return Number.isFinite(score) ? score : -Infinity;
+  assert(Number.isFinite(score), `Score: ${score} is not finite`);
+  return score;
 }
 
 function calculateMaxOutOfBounds(
@@ -20,6 +26,10 @@ function calculateMaxOutOfBounds(
   let count = 0;
 
   for (const conn of creature.synapses) {
+    assert(
+      Number.isFinite(conn.weight),
+      `Weight: ${conn.weight} is not finite`,
+    );
     const w = Math.abs(conn.weight);
     max = Math.max(max, w);
     total += w;
@@ -28,14 +38,28 @@ function calculateMaxOutOfBounds(
 
   for (const node of creature.neurons) {
     if (
-      node.type !== "input" && node.bias !== undefined && node.bias !== null
+      node.type !== "input" // && node.bias !== undefined && node.bias !== null
     ) {
-      const b = Math.abs(node.bias);
+      assert(Number.isFinite(node.bias), `Bias: ${node.bias} is not finite`);
+      const b = Math.abs(node.bias!);
       max = Math.max(max, b);
       total += b;
       count++;
     }
   }
+
+  assert(count > 0, "Count is 0");
+
+  if (Math.abs(max) > Number.MAX_SAFE_INTEGER) {
+    console.log("Max is too large", max);
+  }
+  if (Math.abs(total) > Number.MAX_SAFE_INTEGER) {
+    console.log("Total is too large", total);
+  }
+  if (max > Number.MAX_SAFE_INTEGER) max = Number.MAX_SAFE_INTEGER;
+  if (total > Number.MAX_SAFE_INTEGER) total = Number.MAX_SAFE_INTEGER;
+  if (max < Number.MIN_SAFE_INTEGER) max = Number.MIN_SAFE_INTEGER;
+  if (total < Number.MIN_SAFE_INTEGER) total = Number.MIN_SAFE_INTEGER;
 
   const avg = count > 0 ? total / count : 0;
 

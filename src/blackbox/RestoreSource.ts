@@ -1,6 +1,7 @@
 import { addTag } from "@stsoftware/tags";
 import { Creature } from "../../mod.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
+import { assert } from "@std/assert/assert";
 
 export function restoreSource(creature: Creature): Creature | undefined {
   if (!creature.memetic) return;
@@ -27,6 +28,7 @@ export function restoreSource(creature: Creature): Creature | undefined {
       let synapse = restoredCreature.synapses.find((s) =>
         s.fromUUID === fromUUID && s.toUUID === weightObj.toUUID
       );
+      assert(Number.isFinite(weightObj.weight), "weight must be a number");
       if (!synapse) {
         synapse = {
           fromUUID: fromUUID,

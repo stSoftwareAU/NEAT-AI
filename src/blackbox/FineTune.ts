@@ -149,6 +149,10 @@ function tuneRandomize(
         );
         if (result.changed) {
           fittestSynapse.weight = result.value;
+          assert(
+            Number.isFinite(fittestSynapse.weight),
+            "weight must be a number",
+          );
           changeWeightCount++;
           if (!memetic.weights[fittestSynapse.fromUUID]) {
             memetic.weights[fittestSynapse.fromUUID] = [];

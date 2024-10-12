@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { Creature } from "../Creature.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
@@ -31,6 +32,7 @@ export class ModWeight implements RadioactiveInterface {
       const modification = (Math.random() * 2 - 1) * quantum;
 
       connection.weight += modification;
+      assert(Number.isFinite(connection.weight), "weight must be a number");
       changed = true;
     }
 

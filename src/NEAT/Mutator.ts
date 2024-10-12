@@ -41,6 +41,9 @@ export class Mutator {
         if (changed) {
           removeTag(creature, "approach");
           removeTag(creature, "approach-logged");
+          removeTag(creature, "trainID");
+          removeTag(creature, "trained");
+
           delete creature.memetic;
           delete creature.uuid;
         }

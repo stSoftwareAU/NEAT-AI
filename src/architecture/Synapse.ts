@@ -1,5 +1,6 @@
 import type { TagInterface } from "@stsoftware/tags";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import { assert } from "@std/assert/assert";
 
 export class Synapse implements SynapseInternal {
   public from: number;
@@ -22,6 +23,7 @@ export class Synapse implements SynapseInternal {
     this.from = from;
     this.to = to;
     this.type = type;
+    assert(Number.isFinite(weight), "weight must be a number");
     this.weight = weight;
   }
 

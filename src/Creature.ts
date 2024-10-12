@@ -410,6 +410,7 @@ export class Creature implements CreatureInternal {
               ) {
                 if (compactCreature.getSynapse(from, to) == null) {
                   let weightA = fromList[0].weight * toList[0].weight;
+                  assert(Number.isFinite(weightA), "weightA is not finite");
 
                   const tmpFromBias = compactCreature.neurons[from].bias;
                   const tmpToBias = compactCreature.neurons[pos].bias;

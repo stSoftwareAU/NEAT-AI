@@ -3,9 +3,21 @@ import { Creature } from "../src/Creature.ts";
 import { calculate, valuePenalty } from "../src/architecture/Score.ts";
 
 function setupCreature() {
-  return Creature.fromJSON(
+  const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/large.json")),
   );
+
+  creature.neurons.forEach((n) => {
+    if (Math.abs(n.bias) > 100000) {
+      n.bias = Math.random() * 200000 - 100000;
+    }
+  });
+  creature.synapses.forEach((s) => {
+    if (Math.abs(s.weight) > 100000) {
+      s.weight = Math.random() * 200000 - 100000;
+    }
+  });
+  return creature;
 }
 
 Deno.test("Score: Calculation with given parameters", () => {
