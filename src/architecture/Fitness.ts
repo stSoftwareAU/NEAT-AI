@@ -41,7 +41,7 @@ export class Fitness {
 
     const error = responseData.evaluate.error;
     delete responseData.evaluate;
-    addTag(creature, "error", Math.abs(error).toString());
+    addTag(creature, "error", error.toString());
 
     creature.score = calculateScore(creature, error, this.growth);
 
