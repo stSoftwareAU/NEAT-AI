@@ -291,7 +291,7 @@ export class Neat {
     addTag(fittest, "score", fittest.score.toString());
 
     const error = getTag(fittest, "error");
-    addTag(fittest, "error", error ? error : "-1");
+    assert(error, "No error tag found");
 
     let trainingTimeOutMinutes = 0;
     if (this.endTimeTS) {
@@ -383,59 +383,48 @@ export class Neat {
 
     for (let i = this.trainingComplete.length; i--;) {
       const r = this.trainingComplete[i];
-      if (r.train) {
-        if (Number.isFinite(r.train.error)) {
-          const json = JSON.parse(r.train.network);
-          if (this.config.verbose) {
-            console.info(
-              `Training ${blue(r.train.ID)} completed ${
-                r.duration
-                  ? "after " + format(r.duration, { ignoreZero: true })
-                  : ""
-              }`,
-            );
-          }
+      assert(r.train, "No train found");
+      assert(Number.isFinite(r.train.error), "No train error found");
 
-          addTag(json, "approach", "trained" as Approach);
-          delete json.memetic;
-          removeTag(json, "approach-logged");
-          addTag(json, "trainID", r.train.ID);
-          addTag(json, "trained", "YES");
+      const json = JSON.parse(r.train.network);
+      if (this.config.verbose) {
+        console.info(
+          `Training ${blue(r.train.ID)} completed ${
+            r.duration
+              ? "after " + format(r.duration, { ignoreZero: true })
+              : ""
+          }`,
+        );
+      }
 
-          trainedPopulation.push(Creature.fromJSON(json, this.config.debug));
+      addTag(json, "approach", "trained" as Approach);
+      delete json.memetic;
+      removeTag(json, "approach-logged");
+      addTag(json, "trainID", r.train.ID);
+      addTag(json, "trained", "YES");
 
-          const compactJSON = r.train.compact
-            ? JSON.parse(r.train.compact)
-            : undefined;
+      trainedPopulation.push(Creature.fromJSON(json, this.config.debug));
 
-          if (compactJSON) {
-            if (this.config.verbose) {
-              console.info(
-                `Training ${blue(r.train.ID)} compacted`,
-              );
-            }
+      const compactJSON = r.train.compact
+        ? JSON.parse(r.train.compact)
+        : undefined;
 
-            addTag(compactJSON, "approach", "compact" as Approach);
-            delete compactJSON.memetic;
-            removeTag(compactJSON, "approach-logged");
-            addTag(compactJSON, "trainID", r.train.ID);
-            addTag(compactJSON, "trained", "YES");
-
-            trainedPopulation.push(
-              Creature.fromJSON(compactJSON, this.config.debug),
-            );
-          }
-        } else {
-          console.warn(
-            `Training ${blue(r.train.ID)} FAILED ${
-              r.duration
-                ? "after " + format(r.duration, { ignoreZero: true })
-                : ""
-            }`,
+      if (compactJSON) {
+        if (this.config.verbose) {
+          console.info(
+            `Training ${blue(r.train.ID)} compacted`,
           );
         }
-      } else {
-        throw new Error(`No train result`);
+
+        addTag(compactJSON, "approach", "compact" as Approach);
+        delete compactJSON.memetic;
+        removeTag(compactJSON, "approach-logged");
+        addTag(compactJSON, "trainID", r.train.ID);
+        addTag(compactJSON, "trained", "YES");
+
+        trainedPopulation.push(
+          Creature.fromJSON(compactJSON, this.config.debug),
+        );
       }
     }
     this.trainingComplete.length = 0;

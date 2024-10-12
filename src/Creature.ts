@@ -814,12 +814,12 @@ export class Creature implements CreatureInternal {
       const fittestScore = fittest.score ?? -Infinity;
       if (fittestScore > bestScore) {
         const errorTmp = getTag(fittest, "error");
-        if (errorTmp) {
-          error = Number.parseFloat(errorTmp);
-        } else {
-          throw new Error("No error: " + errorTmp);
-        }
+        assert(errorTmp, "No error tag found");
 
+        error = Number.parseFloat(errorTmp);
+        assert(Number.isFinite(error), "Error is not finite");
+        assert(error >= 0, "Error is negative");
+        assert(fittestScore <= error * -1, "Score (absolute) less than error");
         bestScore = fittestScore;
         bestCreature = Creature.fromJSON(fittest.exportJSON());
         bestCreature.uuid = fittest.uuid;

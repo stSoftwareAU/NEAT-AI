@@ -30,6 +30,7 @@ function make(population: CreatureInternal[]) {
     }
     const network = Creature.fromJSON(ni);
     network.score = ni.score;
+    addTag(network, "error", Math.abs(ni.score ?? 1).toString());
     networks.push(network);
   });
   return networks;

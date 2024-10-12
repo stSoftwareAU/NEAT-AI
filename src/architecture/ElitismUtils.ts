@@ -59,7 +59,8 @@ export function logVerbose(creatures: Creature[]): number {
     assert(score !== undefined, "Creature must have a score");
     totalScore += score;
 
-    const error = getTag(creature, "error") ?? "99999";
+    const error = getTag(creature, "error");
+    assert(error, "Creature must have an error");
     const notified = getTag(creature, "notified");
     if (notified === "Yes") {
       continue;
@@ -89,7 +90,8 @@ export function logVerbose(creatures: Creature[]): number {
       const sourceCreature = creatures.find((c) => c.uuid === sourceUUID);
 
       if (sourceCreature) {
-        const sourceError = getTag(sourceCreature, "error") ?? "99999";
+        const sourceError = getTag(sourceCreature, "error");
+        assert(sourceError, "Creature must have an error");
         const diff = Number.parseFloat(sourceError) -
           Number.parseFloat(error);
         const dnaID = getTag(creature, "CRISPR-DNA");
