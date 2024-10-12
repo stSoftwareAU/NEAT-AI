@@ -24,10 +24,13 @@ export class HYPOT implements NeuronActivationInterface {
 
       const fromActivation = fromNeuron.adjustedActivation(config);
       if (fromNeuron.type == "hidden") {
-        const improvedActivation = fromNeuron.propagate(
-          fromActivation,
-          config,
-        );
+        let improvedActivation = fromActivation;
+        if (c.to != c.from) {
+          improvedActivation = fromNeuron.propagate(
+            fromActivation,
+            config,
+          );
+        }
         values[indx] = improvedActivation * c.weight;
       } else {
         values[indx] = fromActivation * c.weight;
