@@ -229,17 +229,12 @@ export class Neat {
     for (let indx = 0; indx < this.population.length; indx++) {
       const creature = this.population[indx];
       assert(creature.uuid, "UUID missing");
-      if (creature.score && Number.isFinite(creature.score)) {
-        genus.addCreature(creature);
-      } else {
-        console.warn(
-          `Creature ${
-            blue(creature.uuid)
-          } has no score ${creature.score}, excluded from fine tune population`,
-        );
-        this.population.splice(indx, 1); // Remove from population
-        indx--;
-      }
+      assert(creature.score, "Score missing");
+      assert(
+        Number.isFinite(creature.score),
+        `Score: ${creature.score} is not finite`,
+      );
+      genus.addCreature(creature);
     }
     if (this.population.length === 0) {
       console.warn("All creatures died, using zombies");
@@ -266,11 +261,11 @@ export class Neat {
     if (previousFittest) {
       assert(previousFittest.score, "No previous fittest creature score found");
       assert(previousFittest.uuid, "Previous fittest creature has no UUID");
-      if (tmpFittest.score < previousFittest.score) {
-        throw new Error(
-          `Previous fittest ${previousFittest.score} has a higher score than fittest ${tmpFittest.score} , this should not happen`,
-        );
-      } else if (previousFittest.score == tmpFittest.score) {
+      assert(
+        previousFittest.score <= tmpFittest.score,
+        "Previous fittest has a higher score than fittest",
+      );
+      if (previousFittest.score == tmpFittest.score) {
         if (previousFittest.uuid !== tmpFittest.uuid) {
           console.info(
             `Fittest creature ${

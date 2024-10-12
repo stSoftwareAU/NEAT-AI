@@ -6,6 +6,7 @@ import { Offspring } from "./Offspring.ts";
 import type { SynapseExport } from "./SynapseInterfaces.ts";
 import { addTag, removeTag } from "@stsoftware/tags";
 import type { Approach } from "../NEAT/LogApproach.ts";
+import { assert } from "@std/assert/assert";
 
 /**
  * Handle the genetic isolation by grafting a neuron from one parent onto the child
@@ -166,9 +167,16 @@ export function handleGrafting(
    */
   const newTotalWeight = totalWeight +
     Math.abs(newSynapseFromOtherParent.weight * graftingFactor);
-  const weightScaleFactor = totalWeight / newTotalWeight;
-  for (const synapse of targetNeuronConnections) {
-    synapse.weight *= weightScaleFactor;
+  let weightScaleFactor = 1;
+  if (Math.abs(newTotalWeight) > Number.EPSILON) {
+    weightScaleFactor = totalWeight / newTotalWeight;
+    for (const synapse of targetNeuronConnections) {
+      synapse.weight *= weightScaleFactor;
+      assert(
+        Number.isFinite(synapse.weight),
+        `Weight: ${synapse.weight} is not finite`,
+      );
+    }
   }
 
   // Adjust the weight of the new synapse to maintain the overall weight balance
