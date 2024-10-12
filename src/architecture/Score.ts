@@ -113,8 +113,10 @@ function calculateScore(
   penalty: number,
   growthCost: number,
 ): number {
-  const complexityCount = creature.neurons.length - creature.input -
-    creature.output + creature.synapses.length + penalty;
+  const hiddenNeuronCount = creature.neurons.length - creature.input -
+    creature.output;
+  const complexityCount = hiddenNeuronCount + creature.synapses.length +
+    penalty;
 
   return -error - complexityCount * growthCost;
 }
