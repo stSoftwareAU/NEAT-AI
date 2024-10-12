@@ -92,19 +92,19 @@ export function valuePenalty(value: number): number {
 }
 
 function calculatePenalty(max: number, avg: number): number {
-  const rawPenalty = (valuePenalty(max) + valuePenalty(avg)) / 2;
+  const penalty = (valuePenalty(max) + valuePenalty(avg)) / 2;
 
   assert(
-    Number.isFinite(rawPenalty),
-    `Raw Penalty: ${rawPenalty} is not finite`,
+    Number.isFinite(penalty),
+    `Raw Penalty: ${penalty} is not finite`,
   );
-  assert(rawPenalty >= 0, `Raw Penalty: ${rawPenalty} is negative`);
+  assert(penalty >= 0, `Raw Penalty: ${penalty} is negative`);
   assert(
-    rawPenalty < 1,
-    `Raw Penalty: ${rawPenalty} is greater than or equal to 1`,
+    penalty < 1,
+    `Raw Penalty: ${penalty} is greater than or equal to 1`,
   );
 
-  return rawPenalty / 10_000;
+  return penalty;
 }
 
 function calculateScore(
