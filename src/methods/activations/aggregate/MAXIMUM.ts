@@ -4,7 +4,7 @@ import {
   adjustedWeight,
   type BackPropagationConfig,
   toValue,
-} from "../../../architecture/BackPropagation.ts";
+} from "../../../propagate/BackPropagation.ts";
 import type { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";

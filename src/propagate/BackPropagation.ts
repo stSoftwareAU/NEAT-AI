@@ -1,11 +1,10 @@
-import { assert } from "@std/assert/assert";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import type { SynapseState } from "../propagate/SynapseState.ts";
-import type { CreatureState } from "./CreatureState.ts";
-import type { Neuron } from "./Neuron.ts";
-import type { Synapse } from "./Synapse.ts";
+import type { SynapseState } from "./SynapseState.ts";
+import type { CreatureState } from "../architecture/CreatureState.ts";
+import type { Neuron } from "../architecture/Neuron.ts";
+import type { Synapse } from "../architecture/Synapse.ts";
 
 type BackPropagationArguments = {
   disableRandomSamples: boolean;
@@ -234,7 +233,6 @@ export function adjustedWeight(
   const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
-    assert(Number.isFinite(cs.averageWeight), "averageWeight is not finite");
     const synapseAverageWeightTotal = cs.averageWeight * cs.count;
 
     const totalGenerationalWeight = c.weight * config.generations;
@@ -243,7 +241,8 @@ export function adjustedWeight(
       (synapseAverageWeightTotal + totalGenerationalWeight) /
       (cs.count + config.generations);
 
-    return limitWeight(averageWeight, c.weight, config);
+    const limitedWeight = limitWeight(averageWeight, c.weight, config);
+    return limitedWeight;
   }
 
   return c.weight;

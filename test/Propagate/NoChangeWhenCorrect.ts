@@ -1,7 +1,7 @@
 import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 
 function makeCreature() {
   const json: CreatureExport = {

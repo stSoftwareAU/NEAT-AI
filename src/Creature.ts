@@ -3,7 +3,7 @@ import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { addTag, getTag, removeTag, type TagInterface } from "@stsoftware/tags";
 import { CreatureUtil, Mutation } from "../mod.ts";
-import type { BackPropagationConfig } from "./architecture/BackPropagation.ts";
+import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
 import type {
   CreatureExport,
   CreatureInternal,

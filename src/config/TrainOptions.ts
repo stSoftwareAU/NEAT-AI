@@ -1,4 +1,4 @@
-import type { BackPropagationOptions } from "../architecture/BackPropagation.ts";
+import type { BackPropagationOptions } from "../propagate/BackPropagation.ts";
 
 export interface TrainOptions extends BackPropagationOptions {
   /** If set to n, will output the training status every n iterations (log : 1 will log every iteration) */

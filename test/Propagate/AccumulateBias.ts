@@ -3,7 +3,7 @@ import { Creature, type CreatureExport } from "../../mod.ts";
 import {
   adjustedBias,
   createBackPropagationConfig,
-} from "../../src/architecture/BackPropagation.ts";
+} from "../../src/propagate/BackPropagation.ts";
 import { NeuronState } from "../../src/architecture/CreatureState.ts";
 
 Deno.test("AccumulateBias-Standard", () => {

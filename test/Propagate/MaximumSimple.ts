@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

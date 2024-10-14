@@ -2,7 +2,7 @@ import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { Costs } from "../../src/Costs.ts";
-import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 
 const NODE_ID = "identity-6";
 function makeCreature() {

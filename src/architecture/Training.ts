@@ -5,7 +5,7 @@ import { Costs } from "../Costs.ts";
 import { Creature } from "../Creature.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
-import { createBackPropagationConfig } from "./BackPropagation.ts";
+import { createBackPropagationConfig } from "../propagate/BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { type DataRecordInterface, makeDataDir } from "./DataSet.ts";
 

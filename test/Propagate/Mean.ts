@@ -2,7 +2,7 @@ import { fail } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 
 function makeCreature() {
   const json: CreatureExport = {

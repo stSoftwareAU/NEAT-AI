@@ -1,5 +1,5 @@
 import { Creature } from "../src/Creature.ts";
-import { BackPropagationConfig } from "../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 
 /**
  * benchmark      time (avg)        iter/s             (min … max)       p75       p99      p995
@@ -17,7 +17,7 @@ creature.clearState();
 const inputs = makeInputs(creature);
 
 export function perform() {
-  const config = new BackPropagationConfig();
+  const config = createBackPropagationConfig({});
   for (let i = 0; i < 100; i++) {
     const input = inputs[i % inputs.length];
     creature.activateAndTrace(input);

@@ -3,7 +3,7 @@ import {
   adjustedBias,
   adjustedWeight,
   createBackPropagationConfig,
-} from "../../src/architecture/BackPropagation.ts";
+} from "../../src/propagate/BackPropagation.ts";
 import type { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 

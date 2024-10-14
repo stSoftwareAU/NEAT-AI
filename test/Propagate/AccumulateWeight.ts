@@ -4,7 +4,7 @@ import {
   accumulateWeight,
   adjustedWeight,
   createBackPropagationConfig,
-} from "../../src/architecture/BackPropagation.ts";
+} from "../../src/propagate/BackPropagation.ts";
 import { SynapseState } from "../../src/propagate/SynapseState.ts";
 
 Deno.test("AccumulateWeight-Standard", () => {

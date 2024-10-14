@@ -2,7 +2,7 @@ import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
 
 function makeCreature() {
