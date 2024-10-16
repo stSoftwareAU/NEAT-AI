@@ -1,7 +1,7 @@
 import { assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -15,7 +15,7 @@ import {
   adjustedWeight,
   type BackPropagationConfig,
   toValue,
-} from "./BackPropagation.ts";
+} from "../propagate/BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";

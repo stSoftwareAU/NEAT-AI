@@ -1,6 +1,6 @@
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../mod.ts";
-import { createBackPropagationConfig } from "../src/architecture/BackPropagation.ts";
+import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 import { compactUnused } from "../src/compact/CompactUnused.ts";
 
 Deno.test("Traced", () => {

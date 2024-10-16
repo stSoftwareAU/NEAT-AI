@@ -5,7 +5,7 @@ import {
   adjustedWeight,
   type BackPropagationConfig,
   toValue,
-} from "../../../architecture/BackPropagation.ts";
+} from "../../../propagate/BackPropagation.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import type { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
@@ -96,27 +96,28 @@ export class MINIMUM
 
   applyLearnings(neuron: Neuron): boolean {
     let changed = false;
-    let usedCount = 0;
-    const toList = neuron.creature.inwardConnections(neuron.index);
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    // let usedCount = 0;
+    const inward = neuron.creature.inwardConnections(neuron.index);
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
       assert(c.to == neuron.index, "mismatched index");
       const cs = neuron.creature.state.connection(c.from, c.to);
       if (!cs.used) {
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
-      } else {
-        usedCount++;
       }
+      // else {
+      //   usedCount++;
+      // }
     }
 
-    if (usedCount < 2) {
-      assert(usedCount > 0, "no learnings");
+    // if (usedCount < 2) {
+    //   assert(usedCount > 0, "no learnings");
 
-      neuron.setSquash(IDENTITY.NAME);
+    //   neuron.setSquash(IDENTITY.NAME);
 
-      changed = true;
-    }
+    //   changed = true;
+    // }
 
     return changed;
   }
@@ -132,7 +133,7 @@ export class MINIMUM
       return targetActivation;
     }
 
-    const toList = neuron.creature.inwardConnections(neuron.index);
+    const inward = neuron.creature.inwardConnections(neuron.index);
     const targetValue = toValue(neuron, targetActivation);
 
     const activationValue = toValue(neuron, activation);
@@ -141,13 +142,13 @@ export class MINIMUM
     let remainingError = error;
     const currentBias = adjustedBias(neuron, config);
     let improvedValue = 0;
-    if (toList.length) {
+    if (inward.length) {
       let minValue = Infinity;
 
       let mainConnection;
       let mainActivation;
-      for (let indx = toList.length; indx--;) {
-        const c = toList[indx];
+      for (let indx = inward.length; indx--;) {
+        const c = inward[indx];
 
         const fromNeuron = neuron.creature.neurons[c.from];
 

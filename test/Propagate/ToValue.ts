@@ -1,9 +1,6 @@
 import { assertAlmostEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import {
-  toActivation,
-  toValue,
-} from "../../src/architecture/BackPropagation.ts";
+import { toActivation, toValue } from "../../src/propagate/BackPropagation.ts";
 import type { ActivationInterface } from "../../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../../src/methods/activations/Activations.ts";
 

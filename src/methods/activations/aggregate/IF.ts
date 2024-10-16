@@ -5,7 +5,7 @@ import {
   type BackPropagationConfig,
   limitValue,
   toValue,
-} from "../../../architecture/BackPropagation.ts";
+} from "../../../propagate/BackPropagation.ts";
 import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { Mutation } from "../../../NEAT/Mutation.ts";

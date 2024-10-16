@@ -5,7 +5,7 @@ import {
   type BackPropagationConfig,
   limitValue,
   toValue,
-} from "../../../architecture/BackPropagation.ts";
+} from "../../../propagate/BackPropagation.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";

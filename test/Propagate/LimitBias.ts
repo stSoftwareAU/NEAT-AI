@@ -2,7 +2,7 @@ import { assertAlmostEquals } from "@std/assert";
 import {
   createBackPropagationConfig,
   limitBias,
-} from "../../src/architecture/BackPropagation.ts";
+} from "../../src/propagate/BackPropagation.ts";
 
 Deno.test("maximumBiasAdjustmentScale", () => {
   const config = createBackPropagationConfig({

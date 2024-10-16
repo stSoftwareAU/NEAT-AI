@@ -1,4 +1,4 @@
-import type { BackPropagationConfig } from "../../../architecture/BackPropagation.ts";
+import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
