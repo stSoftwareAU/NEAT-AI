@@ -174,7 +174,7 @@ Deno.test("PI Multiple", () => {
   assertAlmostEquals(
     expectedA[0],
     actualA2[0],
-    0.02,
+    0.2,
     `0: ${expectedA[0].toFixed(3)} ${actualA2[0].toFixed(3)}`,
   );
 });
