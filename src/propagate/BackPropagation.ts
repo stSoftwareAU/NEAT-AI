@@ -193,15 +193,33 @@ export function accumulateWeight(
   activation: number,
   config: BackPropagationConfig,
 ) {
-  if (
-    !Number.isFinite(weight) ||
-    !Number.isFinite(value) ||
-    !Number.isFinite(activation)
-  ) {
-    throw new Error(
-      `Invalid weight: ${weight}, value: ${value}, activation: ${activation}`,
-    );
+  cs.totalValue += value;
+  cs.totalActivation += activation;
+
+  const sign = activation != 0 ? Math.sign(activation) : 1;
+  let tmpActivation = activation;
+
+  if (Math.abs(activation) < config.plankConstant) {
+    tmpActivation = config.plankConstant * sign;
   }
+
+  const tmpValue = Math.abs(value) > config.plankConstant
+    ? value
+    : config.plankConstant * Math.sign(value);
+  const tmpWeight = tmpValue / tmpActivation;
+  // const weightDifference = tmpWeight - weight;
+  // if (Math.abs(weightDifference) > config.maximumWeightAdjustmentScale) {
+
+  //   const holdWeight = tmpWeight;
+  //   tmpWeight = Math.sign(weightDifference) * config.maximumWeightAdjustmentScale + weight;
+  //   console.log(`restrict weight: ${holdWeight}, Difference: ${weightDifference} adjusted: ${tmpWeight} current: ${weight}`);
+  // }
+  // console.log(`tmpWeight: ${tmpWeight} value: ${value} activation: ${activation}, adjusted activation: ${tmpActivation}, plankConstant: ${config.plankConstant}, sign: ${sign}`);
+
+  const adjustedLimitedWeight = limitWeight(tmpWeight, weight, config);
+  cs.totalAdjustedValue += adjustedLimitedWeight * tmpActivation;
+  cs.totalAdjustedActivation += tmpActivation;
+
   if (Math.abs(activation) > config.plankConstant) {
     const targetWeight = value / activation;
 
@@ -233,16 +251,38 @@ export function adjustedWeight(
   const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
-    const synapseAverageWeightTotal = cs.averageWeight * cs.count;
+    if (Math.abs(cs.totalAdjustedActivation) > config.plankConstant) {
+      const synapseAverageWeight = cs.totalAdjustedValue /
+        cs.totalAdjustedActivation;
 
-    const totalGenerationalWeight = c.weight * config.generations;
+      const synapseAverageWeightTotal = synapseAverageWeight * cs.count;
 
-    const averageWeight =
-      (synapseAverageWeightTotal + totalGenerationalWeight) /
-      (cs.count + config.generations);
+      const generations = config.generations;
+      const totalGenerationalWeight = c.weight * generations;
 
-    const limitedWeight = limitWeight(averageWeight, c.weight, config);
-    return limitedWeight;
+      const averageWeight =
+        (synapseAverageWeightTotal + totalGenerationalWeight) /
+        (cs.count + generations);
+
+      const limitedWeight = limitWeight(averageWeight, c.weight, config);
+      return limitedWeight;
+    }
+    // if( Math.abs(cs.totalActivation) > config.plankConstant){
+    //   const synapseAverageWeight = cs.totalValue/ cs.totalActivation;
+    //   const limitedWeight = limitWeight(synapseAverageWeight, c.weight, config);
+    //   return limitedWeight;
+    // }
+    // const synapseAverageWeightTotal = cs.averageWeight * cs.count;
+
+    // const generations = config.generations;
+    // const totalGenerationalWeight = c.weight * generations;
+
+    // const averageWeight =
+    //   (synapseAverageWeightTotal + totalGenerationalWeight) /
+    //   (cs.count + generations);
+
+    // const limitedWeight = limitWeight(averageWeight, c.weight, config);
+    // return limitedWeight;
   }
 
   return c.weight;

@@ -34,6 +34,10 @@ function makeCreature() {
         trace: {
           averageWeight: 0.1,
           count: 1,
+          totalActivation: 1,
+          totalValue: 0,
+          totalAdjustedValue: 0.1,
+          totalAdjustedActivation: 1,
         },
       },
     ],
@@ -90,15 +94,17 @@ Deno.test("Generation Weight", () => {
     throw new Error("No connection found");
   }
 
+  const config = createBackPropagationConfig({
+    generations: 0,
+    maximumBiasAdjustmentScale: 5,
+    maximumWeightAdjustmentScale: 5,
+    learningRate: 1,
+  });
+
   const w1 = adjustedWeight(
     creature.state,
     connection,
-    createBackPropagationConfig({
-      generations: 0,
-      maximumBiasAdjustmentScale: 5,
-      maximumWeightAdjustmentScale: 5,
-      learningRate: 1,
-    }),
+    config,
   );
 
   assertAlmostEquals(w1, 0.1, 0.2, `Weight: ${w1.toFixed(3)}`);

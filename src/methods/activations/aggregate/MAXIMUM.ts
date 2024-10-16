@@ -97,29 +97,29 @@ export class MAXIMUM
 
   applyLearnings(neuron: Neuron): boolean {
     let changed = false;
-    let usedCount = 0;
-    const toList = neuron.creature.inwardConnections(neuron.index);
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
+    // let usedCount = 0;
+    const inward = neuron.creature.inwardConnections(neuron.index);
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
       assert(c.to == neuron.index, "mismatched index");
 
       const cs = neuron.creature.state.connection(c.from, c.to);
       if (!cs.used) {
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
-      } else {
-        usedCount++;
       }
+      //  else {
+      //   usedCount++;
+      // }
     }
 
-    if (usedCount < 2) {
-      if (usedCount < 1) {
-        throw new Error("no learnings");
-      }
-      neuron.setSquash(IDENTITY.NAME);
+    // if (usedCount < 2) {
+    //   assert(usedCount >= 0, "usedCount is negative");
 
-      changed = true;
-    }
+    //   neuron.setSquash(IDENTITY.NAME);
+
+    //   changed = true;
+    // }
 
     return changed;
   }

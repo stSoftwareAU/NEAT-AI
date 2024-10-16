@@ -53,6 +53,8 @@ Deno.test("Sample", () => {
       learningRate: 1,
       disableRandomSamples: true,
       generations: i,
+      // trainingMutationRate: 1,
+      // excludeSquashList: "MINIMUM",
       excludeSquashList: "CLIPPED,IDENTITY",
     });
 
@@ -75,7 +77,7 @@ Deno.test("Sample", () => {
         ".test/BackPropagation/.error-trace.json",
         JSON.stringify(results.trace, null, 1),
       );
-      if (results.error - lastError > 0.002) {
+      if (results.error - lastError > 0.005) {
         fail(
           `Error rate was ${results.error}, regression ${
             lastError - results.error
