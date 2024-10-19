@@ -159,6 +159,20 @@ export class MAXIMUM
           maxValue = fromValue;
           mainConnection = c;
           mainActivation = fromActivation;
+        } else {
+          /** No Change Propagate */
+          if (fromNeuron.type !== "input" && fromNeuron.type !== "constant") {
+            fromNeuron.propagate(fromActivation, config);
+          }
+
+          const cs = neuron.creature.state.connection(c.from, c.to);
+          accumulateWeight(
+            c.weight,
+            cs,
+            fromValue,
+            fromActivation,
+            config,
+          );
         }
       }
 
