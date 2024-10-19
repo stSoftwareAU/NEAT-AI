@@ -8,14 +8,7 @@ import { Creature } from "../../../src/Creature.ts";
 
 Deno.test("Minimum", () => {
   const directory = ".test/BackPropagation/minimum";
-  try {
-    Deno.removeSync(directory, { recursive: true });
-  } catch (e) {
-    const name = (e as { name: string }).name;
-    if (name !== "NotFound") {
-      console.error(e);
-    }
-  }
+
   Deno.mkdirSync(directory, { recursive: true });
 
   const cleanCreature = makeCreature();

@@ -163,7 +163,9 @@ export class MINIMUM
         } else {
           /** No Change Propagate */
           if (fromNeuron.type !== "input" && fromNeuron.type !== "constant") {
-            fromNeuron.propagate(fromActivation, config);
+            if (c.from != c.to) {
+              fromNeuron.propagate(fromActivation, config);
+            }
           }
           const cs = neuron.creature.state.connection(c.from, c.to);
           accumulateWeight(
