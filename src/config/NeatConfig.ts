@@ -37,7 +37,7 @@ export class NeatConfig implements NeatOptions {
 
   /** Target error 0 to 1 */
   targetError: number;
-  timeoutMinutes?: number;
+  timeoutMinutes: number;
 
   costOfGrowth: number;
 
@@ -133,7 +133,7 @@ export class NeatConfig implements NeatOptions {
       }
     }
 
-    this.timeoutMinutes = options.timeoutMinutes;
+    this.timeoutMinutes = Math.max(options.timeoutMinutes ?? 0, 0);
     this.traceStore = options.traceStore;
     this.trainPerGen = options.trainPerGen ?? 1;
 

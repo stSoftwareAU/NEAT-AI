@@ -1,9 +1,9 @@
+import { assert } from "@std/assert/assert";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { addTag, getTag, removeTag, type TagInterface } from "@stsoftware/tags";
 import { CreatureUtil, Mutation } from "../mod.ts";
-import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
 import type {
   CreatureExport,
   CreatureInternal,
@@ -31,6 +31,7 @@ import type {
   SynapseTrace,
 } from "./architecture/SynapseInterfaces.ts";
 import { dataFiles } from "./architecture/Training.ts";
+import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import { NeatConfig } from "./config/NeatConfig.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
@@ -54,8 +55,7 @@ import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { SwapNeurons } from "./mutate/SwapNeurons.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
-import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
-import { assert } from "@std/assert/assert";
+import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
 
 /**
  * Creature Class
@@ -409,20 +409,13 @@ export class Creature implements CreatureInternal {
                 (fromSquash == IDENTITY.NAME || fromSquash == LOGISTIC.NAME)
               ) {
                 if (compactCreature.getSynapse(from, to) == null) {
-                  let weightA = fromList[0].weight * toList[0].weight;
+                  const weightA = fromList[0].weight * toList[0].weight;
                   assert(Number.isFinite(weightA), "weightA is not finite");
 
                   const tmpFromBias = compactCreature.neurons[from].bias;
                   const tmpToBias = compactCreature.neurons[pos].bias;
-                  let biasA = tmpFromBias * toList[0].weight + tmpToBias;
-
-                  if (biasA === Number.POSITIVE_INFINITY) {
-                    biasA = Number.MAX_SAFE_INTEGER;
-                  } else if (biasA === Number.NEGATIVE_INFINITY) {
-                    biasA = Number.MIN_SAFE_INTEGER;
-                  } else if (isNaN(biasA)) {
-                    biasA = 0;
-                  }
+                  const biasA = tmpFromBias * toList[0].weight + tmpToBias;
+                  assert(Number.isFinite(biasA), "biasA is not finite");
 
                   compactCreature.neurons[from].bias = biasA;
 
@@ -430,14 +423,6 @@ export class Creature implements CreatureInternal {
                   let adjustedTo = to;
                   if (adjustedTo > pos) {
                     adjustedTo--;
-                  }
-
-                  if (weightA === Number.POSITIVE_INFINITY) {
-                    weightA = Number.MAX_SAFE_INTEGER;
-                  } else if (weightA === Number.NEGATIVE_INFINITY) {
-                    weightA = Number.MIN_SAFE_INTEGER;
-                  } else if (isNaN(weightA)) {
-                    weightA = 0;
                   }
 
                   compactCreature.connect(
@@ -765,13 +750,13 @@ export class Creature implements CreatureInternal {
     { error: number; score: number; time: number; generation: number }
   > {
     const start = Date.now();
+    const config = new NeatConfig(options);
 
-    const endTimeMS = options.timeoutMinutes
-      ? start + Math.max(1, options.timeoutMinutes) * 60000
+    const endTimeMS = config.timeoutMinutes
+      ? start + Math.max(1, config.timeoutMinutes) * 60000
       : 0;
 
     const workers: WorkerHandler[] = [];
-    const config = new NeatConfig(options);
 
     const threads = Math.round(
       Math.max(
