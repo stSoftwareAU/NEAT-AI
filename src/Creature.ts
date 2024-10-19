@@ -811,7 +811,8 @@ export class Creature implements CreatureInternal {
       );
 
       const fittest: Creature = result.fittest;
-      const fittestScore = fittest.score ?? -Infinity;
+      const fittestScore = fittest.score!;
+      assert(fittestScore >= bestScore, "Score is less than best score");
       if (fittestScore > bestScore) {
         const errorTmp = getTag(fittest, "error");
         assert(errorTmp, "No error tag found");
@@ -824,11 +825,8 @@ export class Creature implements CreatureInternal {
         bestCreature = Creature.fromJSON(fittest.exportJSON());
         bestCreature.uuid = fittest.uuid;
         bestCreature.score = bestScore;
-      } else if (fittestScore < bestScore) {
-        throw new Error(
-          `Fitness decreased over generations was: ${bestScore} now: ${fittest.score}`,
-        );
       }
+
       const now = Date.now();
       const timedOut = endTimeMS ? now > endTimeMS : false;
 
@@ -913,26 +911,6 @@ export class Creature implements CreatureInternal {
     return result;
   }
 
-  private evaluateData(
-    json: { input: number[]; output: number[] }[],
-    cost: CostInterface,
-    feedbackLoop: boolean,
-  ): { error: number; count: number } {
-    let error = 0;
-    const count = json.length;
-
-    for (let i = count; i--;) {
-      const data = json[i];
-      const output = this.activate(data.input, feedbackLoop);
-      error += cost.calculate(data.output, output);
-    }
-
-    return {
-      error,
-      count,
-    };
-  }
-
   /**
    * Evaluate a dataset and return the error.
    *
@@ -947,45 +925,43 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
   ): { error: number } {
     const dataResult = dataFiles(dataDir);
-    if (dataResult.files.length) {
-      let error = 0;
-      let count = 0;
+    assert(dataResult.files.length > 0, "No data files found");
 
-      const valuesCount = this.input + this.output;
-      const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
-      const array = new Float32Array(valuesCount);
-      const uint8Array = new Uint8Array(array.buffer);
-      for (let i = dataResult.files.length; i--;) {
-        const filePath = dataResult.files[i];
+    let error = 0;
+    let count = 0;
 
-        const file = Deno.openSync(filePath, { read: true });
-        try {
-          while (true) {
-            const bytesRead = file.readSync(uint8Array);
-            if (bytesRead === null || bytesRead === 0) {
-              break;
-            }
-            if (bytesRead !== BYTES_PER_RECORD) {
-              throw new Error(
-                `Invalid number of bytes read ${bytesRead} expected ${BYTES_PER_RECORD}`,
-              );
-            }
-            const observations: number[] = Array.from(
-              array.subarray(0, this.input),
-            );
-            const output = this.activate(observations, feedbackLoop);
-            const expected: number[] = Array.from(array.subarray(this.input));
-            error += cost.calculate(expected, output);
-            count++;
+    const valuesCount = this.input + this.output;
+    const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
+    const array = new Float32Array(valuesCount);
+    const uint8Array = new Uint8Array(array.buffer);
+    for (let i = dataResult.files.length; i--;) {
+      const filePath = dataResult.files[i];
+
+      const file = Deno.openSync(filePath, { read: true });
+      try {
+        while (true) {
+          const bytesRead = file.readSync(uint8Array);
+          if (bytesRead === null || bytesRead === 0) {
+            break;
           }
-        } finally {
-          file.close();
+          assert(
+            bytesRead === BYTES_PER_RECORD,
+            "Invalid number of bytes read",
+          );
+
+          const observations: number[] = Array.from(
+            array.subarray(0, this.input),
+          );
+          const output = this.activate(observations, feedbackLoop);
+          const expected: number[] = Array.from(array.subarray(this.input));
+          error += cost.calculate(expected, output);
+          count++;
         }
+      } finally {
+        file.close();
       }
-      return { error: error / count };
-    } else {
-      throw new Error("No data files found in " + dataDir);
     }
+    return { error: error / count };
   }
 
   private writeCreatures(neat: Neat, dir: string) {
@@ -1068,9 +1044,9 @@ export class Creature implements CreatureInternal {
    */
   public makeRandomConnection(indx: number): Synapse | null {
     const toType = this.neurons[indx].type;
-    if (toType == "constant" || toType == "input") {
-      throw new Error(`Can't connect to ${toType}`);
-    }
+    assert(toType !== "input", "Can't connect to input");
+    assert(toType !== "constant", "Can't connect to constant");
+
     for (let attempts = 0; attempts < 12; attempts++) {
       const from = Math.min(
         this.neurons.length - this.output - 1,
@@ -1108,9 +1084,7 @@ export class Creature implements CreatureInternal {
    * @param {number[]} [focusList] - The list of focus indices.
    */
   mutate(method: { name: string }, focusList?: number[]): boolean {
-    if (typeof method.name !== "string") {
-      throw new Error("Mutate method wrong type: " + (typeof method));
-    }
+    assert(method.name, "Mutate name is required");
 
     let mutator: RadioactiveInterface | undefined;
     switch (method.name) {
@@ -1462,30 +1436,17 @@ export class Creature implements CreatureInternal {
     for (let i = 0; i < cLen; i++) {
       const synapse = synapses[i];
       const se = synapse as SynapseExport;
-      let from = se.fromUUID
+      const from = se.fromUUID
         ? uuidMap.get(se.fromUUID)
         : (synapse as SynapseInternal).from;
 
-      if (from === undefined) {
-        const si = synapse as SynapseInternal;
-        if (si.from === undefined) {
-          throw new Error(
-            se.fromUUID + ") FROM is undefined",
-          );
-        } else {
-          console.warn("FROM UUID is undefined using index", si.from);
-          from = si.from;
-        }
-      }
+      assert(from !== undefined, "FROM is undefined");
+
       const to = se.toUUID
         ? uuidMap.get(se.toUUID)
         : (synapse as SynapseInternal).to;
 
-      if (to === undefined) {
-        throw new Error(
-          se.toUUID + ") TO is undefined",
-        );
-      }
+      assert(to !== undefined, "TO is undefined");
 
       const connection = this.connect(
         from,

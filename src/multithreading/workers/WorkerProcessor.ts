@@ -25,7 +25,7 @@ export class WorkerProcessor {
       };
     } else if (data.evaluate) {
       assert(this.dataSetDir, "No data dir");
-      if (!this.cost) throw new Error("no cost");
+      assert(this.cost, "No cost");
 
       const network = Creature.fromJSON(JSON.parse(data.evaluate.creature));
       /* release some memory*/

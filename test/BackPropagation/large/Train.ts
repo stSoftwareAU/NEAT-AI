@@ -1,30 +1,33 @@
 import { fail } from "@std/assert";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { train } from "../../src/architecture/Training.ts";
-import { Costs } from "../../src/Costs.ts";
-import { Creature } from "../../src/Creature.ts";
+import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
+import { train } from "../../../src/architecture/Training.ts";
+import { Costs } from "../../../src/Costs.ts";
+import { Creature } from "../../../src/Creature.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Sample", () => {
+Deno.test("large", () => {
+  const directory = ".test/BackPropagation/large";
   const trainingSet = JSON.parse(
-    Deno.readTextFileSync("test/BackPropagation/td.json"),
+    Deno.readTextFileSync("test/BackPropagation/large/td.json"),
   );
 
   const creature = Creature.fromJSON(
-    JSON.parse(Deno.readTextFileSync("test/BackPropagation/creature.json")),
+    JSON.parse(
+      Deno.readTextFileSync("test/BackPropagation/large/creature.json"),
+    ),
   );
   try {
-    Deno.removeSync(".test/BackPropagation", { recursive: true });
+    Deno.removeSync(directory, { recursive: true });
   } catch (e) {
     const name = (e as { name: string }).name;
     if (name !== "NotFound") {
       console.error(e);
     }
   }
-  Deno.mkdirSync(".test/BackPropagation", { recursive: true });
+  Deno.mkdirSync(directory, { recursive: true });
   Deno.writeTextFileSync(
-    ".test/BackPropagation/.first.json",
+    `${directory}/first.json`,
     JSON.stringify(creature.exportJSON(), null, 1),
   );
 
@@ -44,7 +47,7 @@ Deno.test("Sample", () => {
   let lastError = error;
   for (let i = 0; i < 10; i++) {
     Deno.writeTextFileSync(
-      `.test/BackPropagation/.${i}.json`,
+      `${directory}/${i}.json`,
       JSON.stringify(creature.exportJSON(), null, 1),
     );
     const results = train(creature, trainingSet, {
@@ -63,18 +66,18 @@ Deno.test("Sample", () => {
     Creature.fromJSON(results.trace).validate();
 
     Deno.writeTextFileSync(
-      `.test/BackPropagation/.${i}-trace.json`,
+      `${directory}/${i}-trace.json`,
       JSON.stringify(results.trace, null, 1),
     );
 
     if (results.compact) Creature.fromJSON(results.compact).validate();
     if (results.error > lastError) {
       Deno.writeTextFileSync(
-        ".test/BackPropagation/.error.json",
+        `${directory}/error.json`,
         JSON.stringify(creature.exportJSON(), null, 1),
       );
       Deno.writeTextFileSync(
-        ".test/BackPropagation/.error-trace.json",
+        `${directory}/error-trace.json`,
         JSON.stringify(results.trace, null, 1),
       );
       if (results.error - lastError > 0.005) {
