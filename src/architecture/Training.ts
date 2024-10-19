@@ -8,6 +8,7 @@ import type { TrainOptions } from "../config/TrainOptions.ts";
 import { createBackPropagationConfig } from "../propagate/BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { type DataRecordInterface, makeDataDir } from "./DataSet.ts";
+import { assert } from "@std/assert/assert";
 
 export function dataFiles(dataDir: string, options: TrainOptions = {}) {
   const binaryFiles: string[] = [];
@@ -45,7 +46,6 @@ export function trainDir(
   dataDir: string,
   options: TrainOptions,
 ) {
-  // Read the options
   const dataResult = dataFiles(dataDir, options);
 
   if (dataResult.files.length > 0) {
@@ -60,12 +60,12 @@ function trainDirBinary(
   binaryFiles: string[],
   options: TrainOptions,
 ) {
-  // Read the options
+  const cost = Costs.find(options.cost ?? "MSE");
+
   const targetError =
     options.targetError !== undefined && Number.isFinite(options.targetError)
       ? Math.max(options.targetError, 0.000_001)
       : 0.05;
-  const cost = Costs.find(options.cost ? options.cost : "MSE");
 
   const iterations = Math.max(options.iterations ? options.iterations : 2, 1);
 
@@ -94,11 +94,8 @@ function trainDirBinary(
     if (bytesRead === null || bytesRead === 0) {
       return null;
     }
-    if (bytesRead !== BYTES_PER_RECORD) {
-      throw new Error(
-        `Invalid number of bytes read ${bytesRead} expected ${BYTES_PER_RECORD}`,
-      );
-    }
+    assert(bytesRead === BYTES_PER_RECORD);
+
     const observations: number[] = Array.from(array.slice(0, creature.input));
     const outputs: number[] = Array.from(array.slice(creature.input));
 

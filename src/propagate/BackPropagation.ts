@@ -1,10 +1,10 @@
+import type { CreatureState } from "../architecture/CreatureState.ts";
+import type { Neuron } from "../architecture/Neuron.ts";
+import type { Synapse } from "../architecture/Synapse.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import type { SynapseState } from "./SynapseState.ts";
-import type { CreatureState } from "../architecture/CreatureState.ts";
-import type { Neuron } from "../architecture/Neuron.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
 
 type BackPropagationArguments = {
   disableRandomSamples: boolean;
