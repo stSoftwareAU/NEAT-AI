@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { CreatureState } from "../architecture/CreatureState.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
 import type { BackPropagationConfig } from "./BackPropagation.ts";
@@ -10,54 +11,50 @@ export function accumulateWeight(
   activation: number,
   config: BackPropagationConfig,
 ) {
+  // Accumulate values for later averaging.
   cs.totalValue += targetValue;
   cs.totalActivation += activation;
 
-  const sign = activation != 0 ? Math.sign(activation) : 1;
+  const sign = Math.sign(activation) || 1; // Maintain sign, defaulting to 1 if activation is zero.
   let tmpActivation = activation;
 
-  if (Math.abs(activation) < config.plankConstant) {
+  // Ensure tmpActivation isn't too close to zero, to avoid division issues.
+  if (Math.abs(tmpActivation) < config.plankConstant) {
     tmpActivation = config.plankConstant * sign;
   }
 
+  // Adjust target value to ensure it's significant enough for calculations.
   const tmpValue = Math.abs(targetValue) > config.plankConstant
     ? targetValue
     : config.plankConstant * Math.sign(targetValue);
+
+  // Calculate a preliminary weight based on target value and adjusted activation.
   const tmpWeight = tmpValue / tmpActivation;
-  // const weightDifference = tmpWeight - weight;
-  // if (Math.abs(weightDifference) > config.maximumWeightAdjustmentScale) {
 
-  //   const holdWeight = tmpWeight;
-  //   tmpWeight = Math.sign(weightDifference) * config.maximumWeightAdjustmentScale + weight;
-  //   console.log(`restrict weight: ${holdWeight}, Difference: ${weightDifference} adjusted: ${tmpWeight} current: ${weight}`);
-  // }
-  // console.log(`tmpWeight: ${tmpWeight} value: ${value} activation: ${activation}, adjusted activation: ${tmpActivation}, plankConstant: ${config.plankConstant}, sign: ${sign}`);
-
+  // Adjust the weight with a limit based on configuration.
   const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
   cs.totalAdjustedValue += adjustedLimitedWeight * tmpActivation;
   cs.totalAdjustedActivation += tmpActivation;
 
+  // Fine-tune the weight adjustment based on target and current values.
   if (Math.abs(activation) > config.plankConstant) {
-    const targetWeight = targetValue / activation;
+    // Adjust the difference based on target and activation.
+    let difference = (targetValue - activation) / activation;
 
-    let difference = targetWeight - currentWeight;
-
+    // Apply exponential scaling or clamping to avoid drastic changes.
     if (!config.disableExponentialScaling) {
-      // Squash the difference using the hyperbolic tangent function and scale it
       difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
         config.maximumWeightAdjustmentScale;
     } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-      // Limit the difference to the maximum scale
       difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
     }
 
     const adjustedWeight = currentWeight + difference;
-
+    // Update the average weight.
     cs.averageWeight = ((cs.averageWeight * cs.count) + adjustedWeight) /
       (cs.count + 1);
-
-    cs.count++;
   }
+  cs.count++;
 }
 
 export function adjustedWeight(
@@ -68,42 +65,21 @@ export function adjustedWeight(
   const cs = creatureState.connection(c.from, c.to);
 
   if (cs.count) {
-    //AAAAAAAA
     if (Math.abs(cs.totalAdjustedActivation) > config.plankConstant) {
+      // Calculate the weighted average of adjustments and generations.
       const synapseAverageWeight = cs.totalAdjustedValue /
         cs.totalAdjustedActivation;
-
-      // if(true) return synapseAverageWeight;
       const synapseAverageWeightTotal = synapseAverageWeight * cs.count;
-
       const generations = config.generations;
       const totalGenerationalWeight = c.weight * generations;
 
+      // Blend the generational and adjusted weights for smoothing.
       const averageWeight =
         (synapseAverageWeightTotal + totalGenerationalWeight) /
         (cs.count + generations);
 
-      const limitedWeight = limitWeight(averageWeight, c.weight, config);
-      return limitedWeight;
+      return limitWeight(averageWeight, c.weight, config);
     }
-    //BBBBB
-    // if( Math.abs(cs.totalActivation) > config.plankConstant){
-    //   const synapseAverageWeight = cs.totalValue/ cs.totalActivation;
-    //   const limitedWeight = limitWeight(synapseAverageWeight, c.weight, config);
-    //   return limitedWeight;
-    // }
-    //CCCCC
-    // const synapseAverageWeightTotal = cs.averageWeight * cs.count;
-
-    // const generations = config.generations;
-    // const totalGenerationalWeight = c.weight * generations;
-
-    // const averageWeight =
-    //   (synapseAverageWeightTotal + totalGenerationalWeight) /
-    //   (cs.count + generations);
-
-    // const limitedWeight = limitWeight(averageWeight, c.weight, config);
-    // return limitedWeight;
   }
 
   return c.weight;
@@ -114,46 +90,28 @@ export function limitWeight(
   currentWeight: number,
   config: BackPropagationConfig,
 ) {
+  // Ensure weights are finite.
+  assert(Number.isFinite(targetWeight), "Invalid target weight");
+  assert(Number.isFinite(currentWeight), "Invalid current weight");
+
+  // Prevent exceedingly small weights.
   if (Math.abs(targetWeight) < config.plankConstant) {
     return 0;
   }
 
-  if (!Number.isFinite(currentWeight)) {
-    if (Number.isFinite(targetWeight)) {
-      throw new Error(
-        `Invalid current: ${currentWeight} returning target: ${targetWeight}`,
-      );
-    } else {
-      throw new Error(
-        `Invalid current: ${currentWeight} and target: ${targetWeight} returning zero`,
-      );
-    }
-  }
-  if (!Number.isFinite(targetWeight)) {
-    throw new Error(
-      `Invalid target: ${targetWeight} returning current ${currentWeight}`,
-    );
-  }
-
+  // Calculate and apply the difference with learning rate.
   const difference = config.learningRate * (targetWeight - currentWeight);
   let limitedWeight = currentWeight + difference;
+
+  // Clamp the adjustment based on the configured max scale.
   if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-    if (difference > 0) {
-      limitedWeight = currentWeight + config.maximumWeightAdjustmentScale;
-    } else {
-      limitedWeight = currentWeight - config.maximumWeightAdjustmentScale;
-    }
+    limitedWeight = currentWeight +
+      Math.sign(difference) * config.maximumWeightAdjustmentScale;
   }
-  if (Math.abs(limitedWeight) >= config.limitWeightScale) {
-    if (limitedWeight > 0) {
-      if (limitedWeight > currentWeight) {
-        limitedWeight = Math.max(currentWeight, config.limitWeightScale);
-      }
-    } else {
-      if (limitedWeight < currentWeight) {
-        limitedWeight = Math.min(currentWeight, config.limitWeightScale * -1);
-      }
-    }
+
+  // Enforce the global weight scale limit.
+  if (Math.abs(limitedWeight) > config.limitWeightScale) {
+    limitedWeight = Math.sign(limitedWeight) * config.limitWeightScale;
   }
 
   return limitedWeight;
