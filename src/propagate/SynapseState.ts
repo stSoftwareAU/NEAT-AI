@@ -7,5 +7,12 @@ export class SynapseState {
 
   totalAdjustedValue = 0;
   totalAdjustedActivation = 0;
+
+  absoluteTotalActivation = 0;
+  totalPositiveActivation = 0;
+  totalNegativeActivation = 0;
+  totalPositiveValue = 0;
+  totalNegativeValue = 0;
+  
   public used?: boolean;
 }
