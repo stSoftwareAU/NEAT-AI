@@ -1,7 +1,5 @@
 import {
-  accumulateWeight,
   adjustedBias,
-  adjustedWeight,
   type BackPropagationConfig,
   toValue,
 } from "../../../propagate/BackPropagation.ts";
@@ -12,6 +10,7 @@ import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts"
 import { IDENTITY } from "../types/IDENTITY.ts";
 import { assert } from "@std/assert/assert";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 
 export class MAXIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {

@@ -1,9 +1,9 @@
 import { assertAlmostEquals } from "@std/assert";
 import {
-  accumulateWeight,
   createBackPropagationConfig,
 } from "../../src/propagate/BackPropagation.ts";
 import { SynapseState } from "../../src/propagate/SynapseState.ts";
+import { accumulateWeight } from "../../src/propagate/Weight.ts";
 
 Deno.test("AccumulateWeight-Standard", () => {
   const cs = new SynapseState();

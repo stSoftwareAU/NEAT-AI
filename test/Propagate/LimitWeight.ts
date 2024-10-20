@@ -1,8 +1,8 @@
 import { assertAlmostEquals } from "@std/assert";
 import {
   createBackPropagationConfig,
-  limitWeight,
 } from "../../src/propagate/BackPropagation.ts";
+import { limitWeight } from "../../src/propagate/Weight.ts";
 
 Deno.test("maximumWeightAdjustmentScale", () => {
   const config = createBackPropagationConfig({

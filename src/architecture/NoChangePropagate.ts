@@ -1,8 +1,6 @@
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import {
-  adjustedWeight,
-  type BackPropagationConfig,
-} from "../propagate/BackPropagation.ts";
+import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
+import { adjustedWeight } from "../propagate/Weight.ts";
 import type { Neuron } from "./Neuron.ts";
 
 export function noChangePropagate(

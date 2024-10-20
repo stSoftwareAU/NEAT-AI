@@ -1,7 +1,5 @@
 import {
-  accumulateWeight,
   adjustedBias,
-  adjustedWeight,
   type BackPropagationConfig,
   limitValue,
   toValue,
@@ -13,6 +11,7 @@ import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
+import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 
 export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
