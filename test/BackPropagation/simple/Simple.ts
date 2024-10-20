@@ -62,9 +62,9 @@ Deno.test("Simple", () => {
     const results = train(modifiedCreature, td, {
       targetError: 0.01,
       iterations: 1,
-      learningRate: 1,
+      learningRate: 0.1,
       disableRandomSamples: true,
-      generations: 10,
+      // generations: 100,
       disableExponentialScaling: true,
       // trainingMutationRate: 1,
       // excludeSquashList: "MINIMUM",

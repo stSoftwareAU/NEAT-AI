@@ -13,6 +13,8 @@ export class SynapseState {
   totalNegativeActivation = 0;
   totalPositiveValue = 0;
   totalNegativeValue = 0;
-  
+  countNegativeActivations = 0;
+  countPositiveActivations = 0;
+
   public used?: boolean;
 }

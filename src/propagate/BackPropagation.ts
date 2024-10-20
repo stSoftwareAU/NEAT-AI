@@ -145,7 +145,7 @@ export function adjustedBias(
   } else {
     const ns = neuron.creature.state.node(neuron.index);
 
-    if (false && !ns.noChange && ns.count) {
+    if (!ns.noChange && ns.count) {
       const totalBias = ns.totalBias + (neuron.bias * config.generations);
       const samples = ns.count + config.generations;
 

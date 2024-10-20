@@ -19,9 +19,11 @@ export function accumulateWeight(
   if (activation > 0) {
     cs.totalPositiveActivation += activation;
     cs.totalPositiveValue += targetValue;
+    cs.countPositiveActivations++;
   } else if (activation < 0) {
     cs.totalNegativeActivation += Math.abs(activation);
     cs.totalNegativeValue += targetValue;
+    cs.countNegativeActivations++;
   }
 
   // Track absolute total activation to consider overall influence.
@@ -51,7 +53,9 @@ export function accumulateWeight(
   // Adjust weights based on the difference.
   if (Math.abs(activation) > config.plankConstant) {
     // Calculate the difference in target and activation.
-    let difference = (targetValue - activation) / activation;
+    let difference = activation !== 0
+      ? (targetValue - activation) / activation
+      : (targetValue > 0 ? config.plankConstant : -config.plankConstant);
 
     // Apply clamping directly if exponential scaling is disabled.
     if (!config.disableExponentialScaling) {
@@ -71,7 +75,6 @@ export function accumulateWeight(
   // Increment the count after processing the adjustment.
   cs.count++;
 }
-
 
 export function adjustedWeight(
   creatureState: CreatureState,
@@ -95,25 +98,22 @@ export function adjustedWeight(
         ? cs.totalNegativeValue / cs.totalNegativeActivation
         : 0; // Default to 0 if no negative activations.
 
-      // Blend these weights based on their relative influence.
-      const blendedWeight =
-        (positiveWeight * cs.totalPositiveActivation +
-          negativeWeight * cs.totalNegativeActivation) /
-        (cs.totalPositiveActivation + cs.totalNegativeActivation);
-
-      // Apply limiting to the blended weight.
-      const adjustedBlendedWeight = limitWeight(blendedWeight, c.weight, config);
+      // Blend these weights based on their relative counts.
+      const totalActivationCount =
+        (cs.countPositiveActivations + cs.countNegativeActivations) || 1;
+      const blendedWeight = (positiveWeight * cs.countPositiveActivations +
+        negativeWeight * cs.countNegativeActivations) /
+        totalActivationCount;
 
       // Incorporate the effect of previous adjustments and generational weight.
-      const synapseAverageWeightTotal =
-        adjustedBlendedWeight * cs.count;
+      const synapseAverageWeightTotal = blendedWeight * totalActivationCount;
       const generations = config.generations;
       const totalGenerationalWeight = c.weight * generations;
 
       // Blend adjusted and generational weights.
       const averageWeight =
         (synapseAverageWeightTotal + totalGenerationalWeight) /
-        (cs.count + generations);
+        (totalActivationCount + generations);
 
       return limitWeight(averageWeight, c.weight, config);
     }
@@ -122,7 +122,6 @@ export function adjustedWeight(
   // If no significant activations, return the current weight.
   return c.weight;
 }
-
 
 export function limitWeight(
   targetWeight: number,
