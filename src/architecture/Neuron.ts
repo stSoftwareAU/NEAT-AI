@@ -10,15 +10,15 @@ import type {
 } from "../methods/activations/UnSquashInterface.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import {
-  adjustedBias,
   type BackPropagationConfig,
   toValue,
 } from "../propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "../propagate/Bias.ts";
+import { accumulateWeight, adjustedWeight } from "../propagate/Weight.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
-import { accumulateWeight, adjustedWeight } from "../propagate/Weight.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -421,7 +421,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
         }
       }
 
-      ns.accumulateBias(
+      accumulateBias(
+        ns,
         targetValue,
         improvedValue,
         currentBias,

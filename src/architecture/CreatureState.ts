@@ -42,17 +42,6 @@ export class NeuronState implements NeuronStateInterface {
       this.minimumActivation = activation;
     }
   }
-
-  accumulateBias(
-    targetPreActivationValue: number,
-    preActivationValue: number,
-    currentBias: number,
-  ) {
-    const biasDelta = targetPreActivationValue - preActivationValue;
-
-    this.count++;
-    this.totalBias += currentBias + biasDelta;
-  }
 }
 
 export class CreatureState {

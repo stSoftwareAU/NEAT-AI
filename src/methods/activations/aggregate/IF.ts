@@ -1,17 +1,17 @@
-import {
-  adjustedBias,
-  type BackPropagationConfig,
-  limitValue,
-  toValue,
-} from "../../../propagate/BackPropagation.ts";
 import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { Mutation } from "../../../NEAT/Mutation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import {
+  type BackPropagationConfig,
+  limitValue,
+  toValue,
+} from "../../../propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
-import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 
 export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
@@ -391,7 +391,8 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       improvedValue += improvedAdjustedFromValue;
     }
 
-    ns.accumulateBias(
+    accumulateBias(
+      ns,
       targetValue,
       improvedValue,
       currentBias,

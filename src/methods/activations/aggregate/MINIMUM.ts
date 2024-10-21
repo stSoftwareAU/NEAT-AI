@@ -1,16 +1,16 @@
 import { assert } from "@std/assert/assert";
-import {
-  adjustedBias,
-  type BackPropagationConfig,
-  toValue,
-} from "../../../propagate/BackPropagation.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import type { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import {
+  type BackPropagationConfig,
+  toValue,
+} from "../../../propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
-import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 
 export class MINIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
@@ -251,7 +251,8 @@ export class MINIMUM
     }
 
     const ns = neuron.creature.state.node(neuron.index);
-    ns.accumulateBias(
+    accumulateBias(
+      ns,
       targetValue,
       improvedValue,
       currentBias,

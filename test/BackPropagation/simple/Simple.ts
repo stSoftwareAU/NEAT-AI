@@ -37,10 +37,10 @@ Deno.test("Simple", () => {
     JSON.stringify(exportJSON, null, 2),
   );
 
-  exportJSON.neurons.forEach((neuron, indx) => {
-    neuron.bias = neuron.bias +
-      ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  });
+  // exportJSON.neurons.forEach((neuron, indx) => {
+  //   neuron.bias = neuron.bias +
+  //     ((indx % 2 == 0 ? 1 : -1) * 0.1);
+  // });
 
   exportJSON.synapses.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
@@ -56,14 +56,15 @@ Deno.test("Simple", () => {
 
   for (let i = 0; i < 10; i++) {
     Deno.writeTextFileSync(
-      `${directory}/C-${i}-0-start.json`,
+      `${directory}/C${i}--start.json`,
       JSON.stringify(modifiedCreature.exportJSON(), null, 2),
     );
     const results = train(modifiedCreature, td, {
       targetError: 0.01,
       iterations: 1,
-      learningRate: 0.001,
-      disableRandomSamples: false,
+      learningRate: 0.01,
+      disableBiasAdjustment: false,
+      disableRandomSamples: true,
       // generations: 100,
       disableExponentialScaling: true,
       // trainingMutationRate: 1,
@@ -76,11 +77,11 @@ Deno.test("Simple", () => {
     Creature.fromJSON(results.trace).validate();
 
     Deno.writeTextFileSync(
-      `${directory}/C-${i}-1-trace.json`,
+      `${directory}/C${i}--trace.json`,
       JSON.stringify(results.trace, null, 2),
     );
     Deno.writeTextFileSync(
-      `${directory}/C-${i}-2-end.json`,
+      `${directory}/C${i}-end.json`,
       JSON.stringify(modifiedCreature.exportJSON(), null, 2),
     );
     if (results.compact) Creature.fromJSON(results.compact).validate();

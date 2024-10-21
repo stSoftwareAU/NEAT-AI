@@ -97,17 +97,14 @@ export function adjustedWeight(
         : 0; // Default to 0 if no positive activations.
 
       const negativeWeight = cs.totalNegativeActivation > 0
-        ? cs.totalNegativeAdjustedValue / cs.totalNegativeActivation
+        ? Math.sign(cs.totalNegativeAdjustedValue) *
+          Math.abs(cs.totalNegativeAdjustedValue) / cs.totalNegativeActivation
         : 0; // Default to 0 if no negative activations.
 
       // Blend these weights based on their relative counts.
       const totalActivationCount = cs.countPositiveActivations +
         cs.countNegativeActivations;
       assert(totalActivationCount > 0, "Invalid total activation count");
-
-      // const blendedWeight = (positiveWeight * cs.countPositiveActivations +
-      //   negativeWeight * cs.countNegativeActivations) /
-      //   totalActivationCount;
 
       // Incorporate the effect of previous adjustments and generational weight.
       const synapseAverageWeightTotal =

@@ -1,11 +1,11 @@
 import { assertAlmostEquals } from "@std/assert";
-import {
-  adjustedBias,
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
 import type { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
+import {
+  createBackPropagationConfig,
+} from "../../src/propagate/BackPropagation.ts";
 import { adjustedWeight } from "../../src/propagate/Weight.ts";
+import { adjustedBias } from "../../src/propagate/Bias.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
