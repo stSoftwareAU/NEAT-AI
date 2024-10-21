@@ -10,12 +10,15 @@ import type {
 } from "../methods/activations/UnSquashInterface.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import {
-  accumulateWeight,
-  adjustedBias,
-  adjustedWeight,
   type BackPropagationConfig,
   toValue,
 } from "../propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "../propagate/Bias.ts";
+import {
+  accumulateWeight,
+  adjustedWeight,
+  calculateWeight,
+} from "../propagate/Weight.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
@@ -298,7 +301,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const toList = this.creature.inwardConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const aWeight = adjustedWeight(this.creature.state, c, config);
+      const cs = this.creature.state.connection(c.from, c.to);
+      const aWeight = calculateWeight(cs, c, config);
       c.weight = aWeight;
     }
 
@@ -324,15 +328,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
     );
 
     const ns = this.creature.state.node(this.index);
-    if (ns.noChange == undefined || ns.noChange == true) {
-      if (
-        ns.noChange ||
-        excludeFromBackPropagation ||
-        Math.abs(targetActivation - activation) < config.plankConstant
-      ) {
-        noChangePropagate(this, activation, config);
-        return targetActivation;
-      }
+    if (
+      excludeFromBackPropagation ||
+      Math.abs(targetActivation - activation) < config.plankConstant
+    ) {
+      noChangePropagate(this, activation, config);
+      return targetActivation;
     }
 
     ns.noChange = false;
@@ -422,7 +423,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
         }
       }
 
-      ns.accumulateBias(
+      accumulateBias(
+        ns,
         targetValue,
         improvedValue,
         currentBias,

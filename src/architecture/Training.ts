@@ -48,11 +48,12 @@ export function trainDir(
 ) {
   const dataResult = dataFiles(dataDir, options);
 
-  if (dataResult.files.length > 0) {
-    return trainDirBinary(creature, dataResult.files, options);
-  } else {
-    throw new Error("No binary files found in the data directory");
-  }
+  assert(
+    dataResult.files.length > 0,
+    "No binary files found in the data directory",
+  );
+
+  return trainDirBinary(creature, dataResult.files, options);
 }
 
 function trainDirBinary(
@@ -71,7 +72,7 @@ function trainDirBinary(
 
   const trainingSampleRate = Math.min(
     1,
-    Math.max(0, options.trainingSampleRate ?? Math.max(Math.random(), 1)),
+    Math.max(0.0001, options.trainingSampleRate ?? 1),
   );
   const uuid = CreatureUtil.makeUUID(creature);
 

@@ -1,14 +1,13 @@
 import { assert } from "@std/assert/assert";
-import {
-  accumulateWeight,
-  adjustedBias,
-  adjustedWeight,
-  type BackPropagationConfig,
-  toValue,
-} from "../../../propagate/BackPropagation.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import type { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import {
+  type BackPropagationConfig,
+  toValue,
+} from "../../../propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
@@ -160,13 +159,28 @@ export class MINIMUM
           minValue = fromValue;
           mainConnection = c;
           mainActivation = fromActivation;
-        } else {
+        }
+      }
+
+      assert(mainConnection != undefined);
+      for (let indx = inward.length; indx--;) {
+        const c = inward[indx];
+
+        if (c !== mainConnection) {
+          const fromNeuron = neuron.creature.neurons[c.from];
+
+          const fromActivation = fromNeuron.adjustedActivation(config);
+
           /** No Change Propagate */
           if (fromNeuron.type !== "input" && fromNeuron.type !== "constant") {
             if (c.from != c.to) {
               fromNeuron.propagate(fromActivation, config);
             }
           }
+
+          const fromWeight = adjustedWeight(neuron.creature.state, c, config);
+          const fromValue = fromWeight * fromActivation;
+
           const cs = neuron.creature.state.connection(c.from, c.to);
           accumulateWeight(
             c.weight,
@@ -178,68 +192,67 @@ export class MINIMUM
         }
       }
 
-      if (mainConnection) {
-        assert(mainActivation != undefined);
-        const fromNeuron = neuron.creature.neurons[mainConnection.from];
+      assert(mainActivation != undefined);
+      const fromNeuron = neuron.creature.neurons[mainConnection.from];
 
-        const fromWeight = adjustedWeight(
-          neuron.creature.state,
-          mainConnection,
-          config,
-        );
-        const fromValue = fromWeight * mainActivation;
+      const fromWeight = adjustedWeight(
+        neuron.creature.state,
+        mainConnection,
+        config,
+      );
+      const fromValue = fromWeight * mainActivation;
 
-        let improvedFromActivation = mainActivation;
-        let targetFromActivation = mainActivation;
-        const targetFromValue = fromValue + error;
-        if (
-          fromWeight &&
-          fromNeuron.type !== "input" &&
-          fromNeuron.type !== "constant"
-        ) {
-          targetFromActivation = targetFromValue / fromWeight;
+      let improvedFromActivation = mainActivation;
+      let targetFromActivation = mainActivation;
+      const targetFromValue = fromValue + error;
+      if (
+        fromWeight &&
+        fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant"
+      ) {
+        targetFromActivation = targetFromValue / fromWeight;
 
-          if (mainConnection.from != mainConnection.to) {
-            improvedFromActivation = fromNeuron.propagate(
-              targetFromActivation,
-              config,
-            );
-          }
-
-          const improvedFromValue = improvedFromActivation * fromWeight;
-
-          remainingError = targetFromValue - improvedFromValue;
+        if (mainConnection.from != mainConnection.to) {
+          improvedFromActivation = fromNeuron.propagate(
+            targetFromActivation,
+            config,
+          );
         }
 
-        const targetFromValue2 = fromValue + remainingError;
+        const improvedFromValue = improvedFromActivation * fromWeight;
 
-        const cs = neuron.creature.state.connection(
-          mainConnection.from,
-          mainConnection.to,
-        );
-        accumulateWeight(
-          mainConnection.weight,
-          cs,
-          targetFromValue2,
-          targetFromActivation,
-          config,
-        );
-
-        const aWeight = adjustedWeight(
-          neuron.creature.state,
-          mainConnection,
-          config,
-        );
-
-        const improvedAdjustedFromValue = improvedFromActivation *
-          aWeight;
-
-        improvedValue = improvedAdjustedFromValue + currentBias;
+        remainingError = targetFromValue - improvedFromValue;
       }
+
+      const targetFromValue2 = fromValue + remainingError;
+
+      const cs = neuron.creature.state.connection(
+        mainConnection.from,
+        mainConnection.to,
+      );
+      accumulateWeight(
+        mainConnection.weight,
+        cs,
+        targetFromValue2,
+        targetFromActivation,
+        config,
+      );
+
+      const aWeight = adjustedWeight(
+        neuron.creature.state,
+        mainConnection,
+        config,
+      );
+
+      const improvedAdjustedFromValue = improvedFromActivation *
+        aWeight;
+
+      improvedValue = improvedAdjustedFromValue + currentBias;
     }
 
     const ns = neuron.creature.state.node(neuron.index);
-    ns.accumulateBias(
+    accumulateBias(
+      ns,
       targetValue,
       improvedValue,
       currentBias,
@@ -247,7 +260,7 @@ export class MINIMUM
 
     const aBias = adjustedBias(neuron, config);
 
-    const adjustedActivation = improvedValue + aBias - currentBias;
+    const adjustedActivation = improvedValue - currentBias + aBias;
 
     return adjustedActivation;
   }

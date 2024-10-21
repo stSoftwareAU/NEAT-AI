@@ -37,7 +37,7 @@ export class NeatConfig implements NeatOptions {
 
   /** Target error 0 to 1 */
   targetError: number;
-  timeoutMinutes?: number;
+  timeoutMinutes: number;
 
   costOfGrowth: number;
 
@@ -73,6 +73,8 @@ export class NeatConfig implements NeatOptions {
 
   backPropagationExcludeSquashList: string;
   enableRepetitiveTraining: boolean;
+  trainingBatchSize: number;
+
   constructor(options: NeatOptions) {
     this.creativeThinkingConnectionCount =
       options.creativeThinkingConnectionCount ?? 1;
@@ -133,7 +135,7 @@ export class NeatConfig implements NeatOptions {
       }
     }
 
-    this.timeoutMinutes = options.timeoutMinutes;
+    this.timeoutMinutes = Math.max(options.timeoutMinutes ?? 0, 0);
     this.traceStore = options.traceStore;
     this.trainPerGen = options.trainPerGen ?? 1;
 
@@ -158,5 +160,7 @@ export class NeatConfig implements NeatOptions {
         ? options.backPropagationExcludeSquashList
         : "";
     this.enableRepetitiveTraining = options.enableRepetitiveTraining || false;
+
+    this.trainingBatchSize = options.trainingBatchSize || 100;
   }
 }

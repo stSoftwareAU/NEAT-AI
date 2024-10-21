@@ -25,6 +25,7 @@ import { AddConnection } from "../mutate/AddConnection.ts";
 import { Genus } from "./Genus.ts";
 import type { Approach } from "./LogApproach.ts";
 import { Mutator } from "./Mutator.ts";
+import { fineTuneImprovement } from "../blackbox/FineTune.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -184,14 +185,39 @@ export class Neat {
       disableRandomSamples: this.config.disableRandomSamples,
       trainingTimeOutMinutes: trainingTimeOutMinutes,
       excludeSquashList: this.config.backPropagationExcludeSquashList,
+      batchSize: this.config.trainingBatchSize,
     };
 
     const p = w.train(creature, trainOptions).then((r) => {
+      assert(r.train, "No train found");
+      try {
+        const errorTx = getTag(creature, "error");
+        if (errorTx) {
+          if (r.train.error > parseFloat(errorTx)) {
+            console.warn(
+              `Training ${
+                blue(r.train.ID)
+              } caused a higher error of ${r.train.error} from ${errorTx}`,
+            );
+            const tuned = fineTuneImprovement(
+              creature,
+              Creature.fromJSON(JSON.parse(r.train.network)),
+              1,
+              true,
+            );
+            if (tuned.length > 0) {
+              r.train.tuned = JSON.stringify(tuned[0].exportJSON());
+            }
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
       this.trainingComplete.push(r);
 
       this.trainingInProgress.delete(uuid);
 
-      if (this.config.traceStore && r.train) {
+      if (this.config.traceStore) {
         if (r.train.trace) {
           const traceNetwork = Creature.fromJSON(
             JSON.parse(r.train.trace),
@@ -404,7 +430,11 @@ export class Neat {
       addTag(json, "trained", "YES");
 
       trainedPopulation.push(Creature.fromJSON(json, this.config.debug));
-
+      if (r.train.tuned) {
+        fineTunedPopulation.push(
+          Creature.fromJSON(JSON.parse(r.train.tuned), this.config.debug),
+        );
+      }
       const compactJSON = r.train.compact
         ? JSON.parse(r.train.compact)
         : undefined;

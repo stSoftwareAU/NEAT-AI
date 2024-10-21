@@ -1,8 +1,5 @@
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import {
-  adjustedWeight,
-  type BackPropagationConfig,
-} from "../propagate/BackPropagation.ts";
+import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
 import type { Neuron } from "./Neuron.ts";
 
 export function noChangePropagate(
@@ -56,14 +53,6 @@ export function noChangePropagate(
             noChangePropagate(fromNeuron, fromActivation, config);
           }
         }
-
-        const cs = neuron.creature.state.connection(c.from, c.to);
-        if (cs.count === 0) {
-          const fromWeight = adjustedWeight(neuron.creature.state, c, config);
-
-          cs.averageWeight = fromWeight;
-        }
-        cs.count++;
       }
     }
 

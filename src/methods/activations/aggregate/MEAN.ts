@@ -1,13 +1,12 @@
+import type { Neuron } from "../../../architecture/Neuron.ts";
+import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import {
-  accumulateWeight,
-  adjustedBias,
-  adjustedWeight,
   type BackPropagationConfig,
   limitValue,
   toValue,
 } from "../../../propagate/BackPropagation.ts";
-import type { Neuron } from "../../../architecture/Neuron.ts";
-import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 
 export class MEAN implements NeuronActivationInterface {
@@ -166,7 +165,8 @@ export class MEAN implements NeuronActivationInterface {
       currentBias;
 
     const ns = neuron.creature.state.node(neuron.index);
-    ns.accumulateBias(
+    accumulateBias(
+      ns,
       targetValue,
       adjustedValue,
       currentBias,

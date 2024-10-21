@@ -1,11 +1,11 @@
 import { assertAlmostEquals } from "@std/assert";
-import {
-  adjustedBias,
-  adjustedWeight,
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
 import type { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
+import {
+  createBackPropagationConfig,
+} from "../../src/propagate/BackPropagation.ts";
+import { adjustedBias } from "../../src/propagate/Bias.ts";
+import { calculateWeight } from "../../src/propagate/Weight.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -32,12 +32,14 @@ function makeCreature() {
         toUUID: "output-0",
         weight: 1,
         trace: {
-          averageWeight: 0.1,
           count: 1,
-          totalActivation: 1,
-          totalValue: 0,
-          totalAdjustedValue: 0.1,
-          totalAdjustedActivation: 1,
+
+          totalPositiveActivation: 2,
+          totalNegativeActivation: 0,
+          countNegativeActivations: 0,
+          countPositiveActivations: 1,
+          totalPositiveAdjustedValue: 0.2,
+          totalNegativeAdjustedValue: 0,
         },
       },
     ],
@@ -101,8 +103,10 @@ Deno.test("Generation Weight", () => {
     learningRate: 1,
   });
 
-  const w1 = adjustedWeight(
-    creature.state,
+  const cs = creature.state.connection(1, 3);
+
+  const w1 = calculateWeight(
+    cs,
     connection,
     config,
   );
@@ -115,8 +119,8 @@ Deno.test("Generation Weight", () => {
     maximumWeightAdjustmentScale: 2,
     learningRate: 1,
   });
-  const w2 = adjustedWeight(
-    creature.state,
+  const w2 = calculateWeight(
+    cs,
     connection,
     config2,
   );

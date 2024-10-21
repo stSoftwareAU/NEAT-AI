@@ -1,10 +1,7 @@
-import type { CreatureState } from "../architecture/CreatureState.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import type { SynapseState } from "./SynapseState.ts";
 
 type BackPropagationArguments = {
   disableRandomSamples: boolean;
@@ -50,6 +47,12 @@ type BackPropagationArguments = {
   trainingMutationRate: number;
 
   excludeSquashList: string;
+
+  /** Disable Bias adjustment */
+  disableBiasAdjustment: boolean;
+
+  /** The number of samples per batch */
+  batchSize: number;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -134,31 +137,12 @@ export function createBackPropagationConfig(
     plankConstant: options?.plankConstant ?? 0.000_000_1,
 
     excludeSquashSet, // Use the merged or existing Set
+
+    disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
+    batchSize: options?.batchSize ?? 1,
   };
 
   return Object.freeze(config);
-}
-
-export function adjustedBias(
-  neuron: Neuron,
-  config: BackPropagationConfig,
-): number {
-  if (neuron.type == "constant") {
-    return neuron.bias;
-  } else {
-    const ns = neuron.creature.state.node(neuron.index);
-
-    if (!ns.noChange && ns.count) {
-      const totalBias = ns.totalBias + (neuron.bias * config.generations);
-      const samples = ns.count + config.generations;
-
-      const adjustedBias = totalBias / samples;
-
-      return limitBias(adjustedBias, neuron.bias, config);
-    }
-
-    return neuron.bias;
-  }
 }
 
 export function toValue(neuron: Neuron, activation: number, hint?: number) {
@@ -184,202 +168,6 @@ export function toActivation(neuron: Neuron, value: number) {
   );
   squash.range.validate(squashedActivation);
   return squashedActivation;
-}
-
-export function accumulateWeight(
-  weight: number,
-  cs: SynapseState,
-  value: number,
-  activation: number,
-  config: BackPropagationConfig,
-) {
-  cs.totalValue += value;
-  cs.totalActivation += activation;
-
-  const sign = activation != 0 ? Math.sign(activation) : 1;
-  let tmpActivation = activation;
-
-  if (Math.abs(activation) < config.plankConstant) {
-    tmpActivation = config.plankConstant * sign;
-  }
-
-  const tmpValue = Math.abs(value) > config.plankConstant
-    ? value
-    : config.plankConstant * Math.sign(value);
-  const tmpWeight = tmpValue / tmpActivation;
-  // const weightDifference = tmpWeight - weight;
-  // if (Math.abs(weightDifference) > config.maximumWeightAdjustmentScale) {
-
-  //   const holdWeight = tmpWeight;
-  //   tmpWeight = Math.sign(weightDifference) * config.maximumWeightAdjustmentScale + weight;
-  //   console.log(`restrict weight: ${holdWeight}, Difference: ${weightDifference} adjusted: ${tmpWeight} current: ${weight}`);
-  // }
-  // console.log(`tmpWeight: ${tmpWeight} value: ${value} activation: ${activation}, adjusted activation: ${tmpActivation}, plankConstant: ${config.plankConstant}, sign: ${sign}`);
-
-  const adjustedLimitedWeight = limitWeight(tmpWeight, weight, config);
-  cs.totalAdjustedValue += adjustedLimitedWeight * tmpActivation;
-  cs.totalAdjustedActivation += tmpActivation;
-
-  if (Math.abs(activation) > config.plankConstant) {
-    const targetWeight = value / activation;
-
-    let difference = targetWeight - weight;
-
-    if (!config.disableExponentialScaling) {
-      // Squash the difference using the hyperbolic tangent function and scale it
-      difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
-        config.maximumWeightAdjustmentScale;
-    } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-      // Limit the difference to the maximum scale
-      difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
-    }
-
-    const adjustedWeight = weight + difference;
-
-    cs.averageWeight = ((cs.averageWeight * cs.count) + adjustedWeight) /
-      (cs.count + 1);
-
-    cs.count++;
-  }
-}
-
-export function adjustedWeight(
-  creatureState: CreatureState,
-  c: Synapse,
-  config: BackPropagationConfig,
-) {
-  const cs = creatureState.connection(c.from, c.to);
-
-  if (cs.count) {
-    if (Math.abs(cs.totalAdjustedActivation) > config.plankConstant) {
-      const synapseAverageWeight = cs.totalAdjustedValue /
-        cs.totalAdjustedActivation;
-
-      const synapseAverageWeightTotal = synapseAverageWeight * cs.count;
-
-      const generations = config.generations;
-      const totalGenerationalWeight = c.weight * generations;
-
-      const averageWeight =
-        (synapseAverageWeightTotal + totalGenerationalWeight) /
-        (cs.count + generations);
-
-      const limitedWeight = limitWeight(averageWeight, c.weight, config);
-      return limitedWeight;
-    }
-    // if( Math.abs(cs.totalActivation) > config.plankConstant){
-    //   const synapseAverageWeight = cs.totalValue/ cs.totalActivation;
-    //   const limitedWeight = limitWeight(synapseAverageWeight, c.weight, config);
-    //   return limitedWeight;
-    // }
-    // const synapseAverageWeightTotal = cs.averageWeight * cs.count;
-
-    // const generations = config.generations;
-    // const totalGenerationalWeight = c.weight * generations;
-
-    // const averageWeight =
-    //   (synapseAverageWeightTotal + totalGenerationalWeight) /
-    //   (cs.count + generations);
-
-    // const limitedWeight = limitWeight(averageWeight, c.weight, config);
-    // return limitedWeight;
-  }
-
-  return c.weight;
-}
-
-export function limitBias(
-  targetBias: number,
-  currentBias: number,
-  config: BackPropagationConfig,
-) {
-  if (!Number.isFinite(targetBias)) {
-    throw new Error(`Bias must be a finite number, got ${targetBias}`);
-  }
-
-  if (Math.abs(targetBias) < config.plankConstant) {
-    return 0;
-  }
-
-  if (Math.abs(targetBias - currentBias) < 0.000_000_001) {
-    //288_417_500
-    return currentBias;
-  }
-
-  const difference = config.learningRate * (targetBias - currentBias);
-  const learntBias = currentBias + difference;
-  let limitedBias = learntBias;
-  if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
-    if (difference > 0) {
-      limitedBias = currentBias + config.maximumBiasAdjustmentScale;
-    } else {
-      limitedBias = currentBias - config.maximumBiasAdjustmentScale;
-    }
-  }
-
-  if (Math.abs(limitedBias) >= config.limitBiasScale) {
-    if (limitedBias > 0) {
-      if (limitedBias > currentBias) {
-        limitedBias = Math.max(currentBias, config.limitBiasScale);
-      }
-    } else {
-      if (limitedBias < currentBias) {
-        limitedBias = Math.min(currentBias, config.limitBiasScale * -1);
-      }
-    }
-  }
-
-  return limitedBias;
-}
-
-export function limitWeight(
-  targetWeight: number,
-  currentWeight: number,
-  config: BackPropagationConfig,
-) {
-  if (Math.abs(targetWeight) < config.plankConstant) {
-    return 0;
-  }
-
-  if (!Number.isFinite(currentWeight)) {
-    if (Number.isFinite(targetWeight)) {
-      throw new Error(
-        `Invalid current: ${currentWeight} returning target: ${targetWeight}`,
-      );
-    } else {
-      throw new Error(
-        `Invalid current: ${currentWeight} and target: ${targetWeight} returning zero`,
-      );
-    }
-  }
-  if (!Number.isFinite(targetWeight)) {
-    throw new Error(
-      `Invalid target: ${targetWeight} returning current ${currentWeight}`,
-    );
-  }
-
-  const difference = config.learningRate * (targetWeight - currentWeight);
-  let limitedWeight = currentWeight + difference;
-  if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-    if (difference > 0) {
-      limitedWeight = currentWeight + config.maximumWeightAdjustmentScale;
-    } else {
-      limitedWeight = currentWeight - config.maximumWeightAdjustmentScale;
-    }
-  }
-  if (Math.abs(limitedWeight) >= config.limitWeightScale) {
-    if (limitedWeight > 0) {
-      if (limitedWeight > currentWeight) {
-        limitedWeight = Math.max(currentWeight, config.limitWeightScale);
-      }
-    } else {
-      if (limitedWeight < currentWeight) {
-        limitedWeight = Math.min(currentWeight, config.limitWeightScale * -1);
-      }
-    }
-  }
-
-  return limitedWeight;
 }
 
 export function limitValue(value: number) {

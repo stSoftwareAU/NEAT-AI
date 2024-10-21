@@ -1,15 +1,15 @@
 import { assertAlmostEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
+import { NeuronState } from "../../src/architecture/CreatureState.ts";
 import {
-  adjustedBias,
   createBackPropagationConfig,
 } from "../../src/propagate/BackPropagation.ts";
-import { NeuronState } from "../../src/architecture/CreatureState.ts";
+import { accumulateBias, adjustedBias } from "../../src/propagate/Bias.ts";
 
 Deno.test("AccumulateBias-Standard", () => {
   const ns = new NeuronState();
 
-  ns.accumulateBias(4, 2, 0);
+  accumulateBias(ns, 4, 2, 0);
 
   assertAlmostEquals(ns.totalBias, 2, 0.1, JSON.stringify(ns, null, 2));
 });
@@ -17,7 +17,7 @@ Deno.test("AccumulateBias-Standard", () => {
 Deno.test("AccumulateBias-Limited", () => {
   const ns = new NeuronState();
 
-  ns.accumulateBias(40, 2, 0);
+  accumulateBias(ns, 40, 2, 0);
 
   const expected = 38;
   assertAlmostEquals(
@@ -212,9 +212,10 @@ Deno.test("AccumulateBias-average", () => {
     ];
     values.forEach((targetValue) => {
       const currentValue = targetValue - bias;
-      ns.accumulateBias(targetValue, currentValue, 0);
+      accumulateBias(ns, targetValue, currentValue, 0);
 
-      ns.accumulateBias(
+      accumulateBias(
+        ns,
         targetValue * -1,
         targetValue * -1 - bias,
         0,

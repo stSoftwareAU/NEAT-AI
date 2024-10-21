@@ -93,4 +93,7 @@ export interface NeatOptions extends TrainOptions {
   verbose?: boolean;
   backPropagationExcludeSquashList?: string;
   enableRepetitiveTraining?: boolean;
+
+  /** The number of training samples per batch. */
+  trainingBatchSize?: number;
 }
