@@ -65,6 +65,7 @@ Deno.test("Minimum", () => {
       learningRate: 1,
       disableRandomSamples: true,
       generations: i,
+      batchSize: 100,
       // trainingMutationRate: 1,
       // excludeSquashList: "MINIMUM",
       // excludeSquashList: "CLIPPED,IDENTITY",

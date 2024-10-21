@@ -11,13 +11,6 @@ export function accumulateWeight(
   activation: number,
   config: BackPropagationConfig,
 ) {
-  // Accumulate total target values and activations.
-  cs.totalValue += targetValue;
-  cs.totalActivation += activation;
-
-  // Track absolute total activation to consider overall influence.
-  cs.absoluteTotalActivation += Math.abs(activation);
-
   const sign = Math.sign(activation) || 1; // Maintain sign, defaulting to 1 if activation is zero.
   let tmpActivation = activation;
 
@@ -36,20 +29,16 @@ export function accumulateWeight(
 
   // Adjust the weight with limiting.
   const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
-  cs.totalAdjustedValue += adjustedLimitedWeight * tmpActivation;
-  cs.totalAdjustedActivation += tmpActivation;
 
   // Adjust weights based on the difference.
   if (Math.abs(activation) > config.plankConstant) {
     // Track positive and negative activations separately.
     if (activation > 0) {
       cs.totalPositiveActivation += activation;
-      cs.totalPositiveValue += targetValue;
       cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
       cs.countPositiveActivations++;
     } else if (activation < 0) {
       cs.totalNegativeActivation += Math.abs(activation);
-      cs.totalNegativeValue += targetValue;
       cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
       cs.countNegativeActivations++;
     }
@@ -66,12 +55,6 @@ export function accumulateWeight(
     } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
       difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
     }
-
-    const adjustedWeight = currentWeight + difference;
-
-    // Update the average weight for smooth transition.
-    cs.averageWeight = ((cs.averageWeight * cs.count) + adjustedWeight) /
-      (cs.count + 1);
   }
 
   // Increment the count after processing the adjustment.
@@ -112,7 +95,7 @@ export function calculateWeight(
         : 0; // Default to 0 if no positive activations.
 
       const negativeWeight = cs.totalNegativeActivation > config.plankConstant
-        ? cs.totalNegativeAdjustedValue / cs.totalNegativeActivation
+        ? cs.totalNegativeAdjustedValue / (cs.totalNegativeActivation * -1)
         : 0; // Default to 0 if no negative activations.
 
       // Blend these weights based on their relative counts.

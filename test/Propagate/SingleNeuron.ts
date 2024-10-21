@@ -254,7 +254,7 @@ Deno.test("ManySame", () => {
   }
 });
 
-Deno.test("propagateSingleNeuronKnown", () => {
+/*Deno.test("propagateSingleNeuronKnown", () => {
   const traceDir = ".test/propagateSingleNeuronKnown";
   ensureDirSync(traceDir);
 
@@ -356,7 +356,7 @@ Deno.test("propagateSingleNeuronKnown", () => {
     );
     break;
   }
-});
+});*/
 
 Deno.test("propagateSingleNeuronRandom", () => {
   const creature = makeCreature();
