@@ -15,17 +15,6 @@ export function accumulateWeight(
   cs.totalValue += targetValue;
   cs.totalActivation += activation;
 
-  // Track positive and negative activations separately.
-  if (activation > 0) {
-    cs.totalPositiveActivation += activation;
-    cs.totalPositiveValue += targetValue;
-    cs.countPositiveActivations++;
-  } else if (activation < 0) {
-    cs.totalNegativeActivation += Math.abs(activation);
-    cs.totalNegativeValue += targetValue;
-    cs.countNegativeActivations++;
-  }
-
   // Track absolute total activation to consider overall influence.
   cs.absoluteTotalActivation += Math.abs(activation);
 
@@ -52,6 +41,19 @@ export function accumulateWeight(
 
   // Adjust weights based on the difference.
   if (Math.abs(activation) > config.plankConstant) {
+    // Track positive and negative activations separately.
+    if (activation > 0) {
+      cs.totalPositiveActivation += activation;
+      cs.totalPositiveValue += targetValue;
+      cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
+      cs.countPositiveActivations++;
+    } else if (activation < 0) {
+      cs.totalNegativeActivation += Math.abs(activation);
+      cs.totalNegativeValue += targetValue;
+      cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
+      cs.countNegativeActivations++;
+    }
+
     // Calculate the difference in target and activation.
     let difference = activation !== 0
       ? (targetValue - activation) / activation
@@ -91,22 +93,27 @@ export function adjustedWeight(
     ) {
       // Compute adjusted weights for positive and negative contributions.
       const positiveWeight = cs.totalPositiveActivation > 0
-        ? cs.totalPositiveValue / cs.totalPositiveActivation
+        ? cs.totalPositiveAdjustedValue / cs.totalPositiveActivation
         : 0; // Default to 0 if no positive activations.
 
       const negativeWeight = cs.totalNegativeActivation > 0
-        ? cs.totalNegativeValue / cs.totalNegativeActivation
+        ? cs.totalNegativeAdjustedValue / cs.totalNegativeActivation
         : 0; // Default to 0 if no negative activations.
 
       // Blend these weights based on their relative counts.
-      const totalActivationCount =
-        (cs.countPositiveActivations + cs.countNegativeActivations) || 1;
-      const blendedWeight = (positiveWeight * cs.countPositiveActivations +
-        negativeWeight * cs.countNegativeActivations) /
-        totalActivationCount;
+      const totalActivationCount = cs.countPositiveActivations +
+        cs.countNegativeActivations;
+      assert(totalActivationCount > 0, "Invalid total activation count");
+
+      // const blendedWeight = (positiveWeight * cs.countPositiveActivations +
+      //   negativeWeight * cs.countNegativeActivations) /
+      //   totalActivationCount;
 
       // Incorporate the effect of previous adjustments and generational weight.
-      const synapseAverageWeightTotal = blendedWeight * totalActivationCount;
+      const synapseAverageWeightTotal =
+        positiveWeight * cs.countPositiveActivations +
+        negativeWeight * cs.countNegativeActivations;
+
       const generations = config.generations;
       const totalGenerationalWeight = c.weight * generations;
 

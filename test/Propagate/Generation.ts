@@ -46,6 +46,8 @@ function makeCreature() {
           totalNegativeValue: 0,
           countNegativeActivations: 0,
           countPositiveActivations: 0,
+          totalPositiveAdjustedValue: 0,
+          totalNegativeAdjustedValue: 0,
         },
       },
     ],
