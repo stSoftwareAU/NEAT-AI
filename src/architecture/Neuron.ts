@@ -14,7 +14,11 @@ import {
   toValue,
 } from "../propagate/BackPropagation.ts";
 import { accumulateBias, adjustedBias } from "../propagate/Bias.ts";
-import { accumulateWeight, adjustedWeight } from "../propagate/Weight.ts";
+import {
+  accumulateWeight,
+  adjustedWeight,
+  calculateWeight,
+} from "../propagate/Weight.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
@@ -297,7 +301,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const toList = this.creature.inwardConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const aWeight = adjustedWeight(this.creature.state, c, config);
+      const cs = this.creature.state.connection(c.from, c.to);
+      const aWeight = calculateWeight(cs, c, config);
       c.weight = aWeight;
     }
 

@@ -19,5 +19,6 @@ export class SynapseState {
   totalPositiveAdjustedValue = 0;
   totalNegativeAdjustedValue = 0;
 
+  batchAverageWeight?: number;
   public used?: boolean;
 }

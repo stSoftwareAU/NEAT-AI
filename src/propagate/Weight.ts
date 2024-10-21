@@ -82,9 +82,24 @@ export function adjustedWeight(
   creatureState: CreatureState,
   c: Synapse,
   config: BackPropagationConfig,
-) {
+): number {
   const cs = creatureState.connection(c.from, c.to);
+  if (cs.count && cs.count % config.batchSize === 0) {
+    cs.batchAverageWeight = calculateWeight(cs, c, config);
+  }
 
+  if (cs.batchAverageWeight !== undefined) {
+    return cs.batchAverageWeight;
+  }
+
+  return c.weight;
+}
+
+export function calculateWeight(
+  cs: SynapseState,
+  c: Synapse,
+  config: BackPropagationConfig,
+) {
   if (cs.count) {
     // Ensure there is meaningful data to adjust the weights.
     if (
@@ -92,18 +107,21 @@ export function adjustedWeight(
       cs.totalNegativeActivation > config.plankConstant
     ) {
       // Compute adjusted weights for positive and negative contributions.
-      const positiveWeight = cs.totalPositiveActivation > 0
+      const positiveWeight = cs.totalPositiveActivation > config.plankConstant
         ? cs.totalPositiveAdjustedValue / cs.totalPositiveActivation
         : 0; // Default to 0 if no positive activations.
 
-      const negativeWeight = cs.totalNegativeActivation > 0
-        ? Math.sign(cs.totalNegativeAdjustedValue) *
-          Math.abs(cs.totalNegativeAdjustedValue) / cs.totalNegativeActivation
+      const negativeWeight = cs.totalNegativeActivation > config.plankConstant
+        ? cs.totalNegativeAdjustedValue / cs.totalNegativeActivation
         : 0; // Default to 0 if no negative activations.
 
       // Blend these weights based on their relative counts.
       const totalActivationCount = cs.countPositiveActivations +
         cs.countNegativeActivations;
+      assert(
+        totalActivationCount <= cs.count,
+        "Total count exceeds activation count",
+      );
       assert(totalActivationCount > 0, "Invalid total activation count");
 
       // Incorporate the effect of previous adjustments and generational weight.
@@ -111,7 +129,7 @@ export function adjustedWeight(
         positiveWeight * cs.countPositiveActivations +
         negativeWeight * cs.countNegativeActivations;
 
-      const generations = config.generations;
+      const generations = config.generations + cs.count - totalActivationCount;
       const totalGenerationalWeight = c.weight * generations;
 
       // Blend adjusted and generational weights.
@@ -139,6 +157,10 @@ export function limitWeight(
   // Prevent exceedingly small weights.
   if (Math.abs(targetWeight) < config.plankConstant) {
     return 0;
+  }
+
+  if (Math.abs(targetWeight - currentWeight) < config.plankConstant) {
+    return currentWeight;
   }
 
   // Calculate and apply the difference with learning rate.

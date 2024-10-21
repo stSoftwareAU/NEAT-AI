@@ -50,6 +50,9 @@ type BackPropagationArguments = {
 
   /** Disable Bias adjustment */
   disableBiasAdjustment: boolean;
+
+  /** The number of samples per batch */
+  batchSize: number;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -136,6 +139,7 @@ export function createBackPropagationConfig(
     excludeSquashSet, // Use the merged or existing Set
 
     disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
+    batchSize: options?.batchSize ?? 1,
   };
 
   return Object.freeze(config);
