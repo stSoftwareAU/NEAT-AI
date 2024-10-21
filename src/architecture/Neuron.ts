@@ -323,16 +323,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
     );
 
     const ns = this.creature.state.node(this.index);
-    // if (ns.noChange == undefined || ns.noChange == true) {
     if (
-      // ns.noChange ||÷
       excludeFromBackPropagation ||
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);
       return targetActivation;
     }
-    // }
 
     ns.noChange = false;
 
