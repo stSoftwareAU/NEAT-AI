@@ -37,9 +37,6 @@ type BackPropagationArguments = {
    */
   limitWeightScale: number;
 
-  /** When limiting the weight/bias use exponential scaling, Default enabled */
-  disableExponentialScaling: boolean;
-
   /** the minimum unit of weights/biases */
   plankConstant: number;
 
@@ -131,8 +128,6 @@ export function createBackPropagationConfig(
       ),
       1,
     ),
-
-    disableExponentialScaling: options?.disableExponentialScaling ?? false,
 
     plankConstant: options?.plankConstant ?? 0.000_000_1,
 

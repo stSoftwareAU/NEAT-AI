@@ -96,7 +96,7 @@ export class MAXIMUM
 
   applyLearnings(neuron: Neuron): boolean {
     let changed = false;
-    // let usedCount = 0;
+
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
       const c = inward[i];
@@ -107,18 +107,7 @@ export class MAXIMUM
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
       }
-      //  else {
-      //   usedCount++;
-      // }
     }
-
-    // if (usedCount < 2) {
-    //   assert(usedCount >= 0, "usedCount is negative");
-
-    //   neuron.setSquash(IDENTITY.NAME);
-
-    //   changed = true;
-    // }
 
     return changed;
   }

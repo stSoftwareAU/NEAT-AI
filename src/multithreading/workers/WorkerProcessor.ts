@@ -27,16 +27,16 @@ export class WorkerProcessor {
       assert(this.dataSetDir, "No data dir");
       assert(this.cost, "No cost");
 
-      const network = Creature.fromJSON(JSON.parse(data.evaluate.creature));
+      const creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
       /* release some memory*/
       data.evaluate.creature = "";
-      const result = network.evaluateDir(
+      const result = creature.evaluateDir(
         this.dataSetDir,
         this.cost,
         data.evaluate.feedbackLoop,
       );
 
-      network.dispose();
+      creature.dispose();
 
       return {
         taskID: data.taskID,
@@ -71,7 +71,7 @@ export class WorkerProcessor {
         duration: Date.now() - start,
         train: {
           ID: result.ID,
-          network: json,
+          creature: json,
           error: result.error,
           trace: JSON.stringify(result.trace),
           compact: result.compact ? JSON.stringify(result.compact) : undefined,

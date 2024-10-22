@@ -37,10 +37,10 @@ Deno.test("Simple", () => {
     JSON.stringify(exportJSON, null, 2),
   );
 
-  // exportJSON.neurons.forEach((neuron, indx) => {
-  //   neuron.bias = neuron.bias +
-  //     ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  // });
+  exportJSON.neurons.forEach((neuron, indx) => {
+    neuron.bias = neuron.bias +
+      ((indx % 2 == 0 ? 1 : -1) * 0.1);
+  });
 
   exportJSON.synapses.forEach((c, indx) => {
     c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
@@ -65,8 +65,6 @@ Deno.test("Simple", () => {
       learningRate: 1,
       disableBiasAdjustment: false,
       disableRandomSamples: true,
-      // generations: 100,
-      disableExponentialScaling: true,
       batchSize: 100,
       // trainingMutationRate: 1,
       // excludeSquashList: "MINIMUM",

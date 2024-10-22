@@ -128,7 +128,6 @@ Deno.test("PI Multiple", () => {
     maximumBiasAdjustmentScale: 5,
     maximumWeightAdjustmentScale: 5,
     learningRate: 1,
-    disableExponentialScaling: true,
   });
 
   Deno.writeTextFileSync(

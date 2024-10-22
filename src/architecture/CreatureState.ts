@@ -47,12 +47,12 @@ export class NeuronState implements NeuronStateInterface {
 export class CreatureState {
   private nodeMap;
   private connectionMap;
-  private network;
+  private creature;
   public activations: Float32Array = new Float32Array(0);
   readonly cacheAdjustedActivation: Map<number, number>;
 
-  constructor(network: Creature) {
-    this.network = network;
+  constructor(creature: Creature) {
+    this.creature = creature;
     this.nodeMap = new Map<number, NeuronState>();
     this.connectionMap = new Map<number, Map<number, SynapseState>>();
     this.cacheAdjustedActivation = new Map<number, number>();
@@ -92,16 +92,16 @@ export class CreatureState {
   makeActivation(input: number[], feedbackLoop: boolean) {
     if (
       feedbackLoop == false ||
-      this.activations.length !== this.network.neurons.length
+      this.activations.length !== this.creature.neurons.length
     ) {
-      this.activations = new Float32Array(this.network.neurons.length);
+      this.activations = new Float32Array(this.creature.neurons.length);
     }
 
     try {
       this.activations.set(input);
     } catch (e) {
       const msg =
-        `input length ${input.length} does fit with activation array ${this.activations.length}, neurons: ${this.network.neurons.length}`;
+        `input length ${input.length} does fit with activation array ${this.activations.length}, neurons: ${this.creature.neurons.length}`;
 
       throw new Error(msg, { cause: e });
     }

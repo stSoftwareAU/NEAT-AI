@@ -201,7 +201,7 @@ export class Neat {
             );
             const tuned = fineTuneImprovement(
               creature,
-              Creature.fromJSON(JSON.parse(r.train.network)),
+              Creature.fromJSON(JSON.parse(r.train.creature)),
               1,
               true,
             );
@@ -412,7 +412,7 @@ export class Neat {
       assert(r.train, "No train found");
       assert(Number.isFinite(r.train.error), "No train error found");
 
-      const json = JSON.parse(r.train.network);
+      const json = JSON.parse(r.train.creature);
       if (this.config.verbose) {
         console.info(
           `Training ${blue(r.train.ID)} completed ${

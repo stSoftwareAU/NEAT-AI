@@ -42,19 +42,6 @@ export function accumulateWeight(
       cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
       cs.countNegativeActivations++;
     }
-
-    // Calculate the difference in target and activation.
-    let difference = activation !== 0
-      ? (targetValue - activation) / activation
-      : (targetValue > 0 ? config.plankConstant : -config.plankConstant);
-
-    // Apply clamping directly if exponential scaling is disabled.
-    if (!config.disableExponentialScaling) {
-      difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
-        config.maximumWeightAdjustmentScale;
-    } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-      difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
-    }
   }
 
   // Increment the count after processing the adjustment.
