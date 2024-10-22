@@ -238,6 +238,7 @@ export class MAXIMUM
       targetValue,
       improvedValue,
       currentBias,
+      config,
     );
 
     const aBias = adjustedBias(neuron, config);

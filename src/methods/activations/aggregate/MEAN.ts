@@ -170,6 +170,7 @@ export class MEAN implements NeuronActivationInterface {
       targetValue,
       adjustedValue,
       currentBias,
+      config,
     );
 
     const aBias = adjustedBias(neuron, config);

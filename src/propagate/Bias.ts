@@ -7,11 +7,14 @@ export function accumulateBias(
   targetPreActivationValue: number,
   preActivationValue: number,
   currentBias: number,
+  config: BackPropagationConfig,
 ) {
   const biasDelta = targetPreActivationValue - preActivationValue;
 
   ns.count++;
-  ns.totalBias += currentBias + biasDelta;
+  const targetBias = currentBias + biasDelta;
+  ns.totalBias += targetBias;
+  ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
 }
 
 export function adjustedBias(
@@ -24,10 +27,36 @@ export function adjustedBias(
     if (config.disableBiasAdjustment) {
       return neuron.bias;
     }
+
+    const ns = neuron.creature.state.node(neuron.index);
+
+    if (ns.count && ns.count % config.batchSize === 0) {
+      ns.batchBias = calculateBias(neuron, config);
+    }
+
+    if (ns.batchBias !== undefined) {
+      return ns.batchBias;
+    }
+
+    return neuron.bias;
+  }
+}
+
+export function calculateBias(
+  neuron: Neuron,
+  config: BackPropagationConfig,
+): number {
+  if (neuron.type == "constant") {
+    return neuron.bias;
+  } else {
+    if (config.disableBiasAdjustment) {
+      return neuron.bias;
+    }
     const ns = neuron.creature.state.node(neuron.index);
 
     if (!ns.noChange && ns.count) {
-      const totalBias = ns.totalBias + (neuron.bias * config.generations);
+      const totalBias = ns.totalAdjustedBias +
+        (neuron.bias * config.generations);
       const samples = ns.count + config.generations;
 
       const adjustedBias = totalBias / samples;

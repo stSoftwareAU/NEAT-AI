@@ -73,6 +73,9 @@ export function calculateWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ) {
+  if (config.disableWeightAdjustment) {
+    return c.weight;
+  }
   if (cs.count) {
     // Ensure there is meaningful data to adjust the weights.
     if (

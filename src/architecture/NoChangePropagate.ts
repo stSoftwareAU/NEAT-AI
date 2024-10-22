@@ -57,6 +57,7 @@ export function noChangePropagate(
     }
 
     ns.totalBias += neuron.bias;
+    ns.totalAdjustedBias += neuron.bias;
     ns.count++;
   }
 

@@ -216,15 +216,15 @@ function calculateError(
     assert(output.length === 2, `output.length: ${output.length}`);
     assert(Number.isFinite(output[0]), `0: ${output[0]}`);
     assert(Number.isFinite(output[1]), `1: ${output[1]}`);
-    if( 998 === i) {
+    if (998 === i) {
       console.info("output", output);
     }
-    const error=mse.calculate(data.output, output);
+    const error = mse.calculate(data.output, output);
     assert(Number.isFinite(error), `${i}) error: ${error}`);
     totalError += error;
   }
 
-  const averageError= totalError / count;
+  const averageError = totalError / count;
   assert(Number.isFinite(averageError), `averageError: ${averageError}`);
   return averageError;
 }

@@ -241,6 +241,7 @@ export class MINIMUM
       targetValue,
       improvedValue,
       currentBias,
+      config,
     );
 
     const aBias = adjustedBias(neuron, config);

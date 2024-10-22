@@ -13,7 +13,11 @@ import {
   type BackPropagationConfig,
   toValue,
 } from "../propagate/BackPropagation.ts";
-import { accumulateBias, adjustedBias } from "../propagate/Bias.ts";
+import {
+  accumulateBias,
+  adjustedBias,
+  calculateBias,
+} from "../propagate/Bias.ts";
 import {
   accumulateWeight,
   adjustedWeight,
@@ -305,7 +309,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       c.weight = aWeight;
     }
 
-    const aBias = adjustedBias(this, config);
+    const aBias = calculateBias(this, config);
 
     this.bias = aBias;
   }
@@ -427,6 +431,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         targetValue,
         improvedValue,
         currentBias,
+        config,
       );
 
       const aBias = adjustedBias(this, config);

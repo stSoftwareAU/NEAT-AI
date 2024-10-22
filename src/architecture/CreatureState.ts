@@ -4,6 +4,7 @@ import { SynapseState } from "../propagate/SynapseState.ts";
 export interface NeuronStateInterface {
   count: number;
   totalBias: number;
+  totalAdjustedBias: number;
   hintValue: number;
 
   maximumActivation: number;
@@ -14,6 +15,8 @@ export interface NeuronStateInterface {
 export class NeuronState implements NeuronStateInterface {
   public count: number;
   public totalBias: number;
+  public totalAdjustedBias: number;
+  public batchBias?: number;
   public hintValue: number;
   /**
    * The maximum activation value for the creature state.
@@ -28,6 +31,7 @@ export class NeuronState implements NeuronStateInterface {
   constructor() {
     this.count = 0;
     this.totalBias = 0;
+    this.totalAdjustedBias = 0;
     this.hintValue = 0;
     this.maximumActivation = -Infinity;
     this.minimumActivation = Infinity;
