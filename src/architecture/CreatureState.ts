@@ -4,6 +4,7 @@ import { SynapseState } from "../propagate/SynapseState.ts";
 export interface NeuronStateInterface {
   count: number;
   totalBias: number;
+  totalAdjustedBias: number;
   hintValue: number;
 
   maximumActivation: number;
@@ -14,6 +15,8 @@ export interface NeuronStateInterface {
 export class NeuronState implements NeuronStateInterface {
   public count: number;
   public totalBias: number;
+  public totalAdjustedBias: number;
+  public batchBias?: number;
   public hintValue: number;
   /**
    * The maximum activation value for the creature state.
@@ -28,6 +31,7 @@ export class NeuronState implements NeuronStateInterface {
   constructor() {
     this.count = 0;
     this.totalBias = 0;
+    this.totalAdjustedBias = 0;
     this.hintValue = 0;
     this.maximumActivation = -Infinity;
     this.minimumActivation = Infinity;
@@ -47,12 +51,12 @@ export class NeuronState implements NeuronStateInterface {
 export class CreatureState {
   private nodeMap;
   private connectionMap;
-  private network;
+  private creature;
   public activations: Float32Array = new Float32Array(0);
   readonly cacheAdjustedActivation: Map<number, number>;
 
-  constructor(network: Creature) {
-    this.network = network;
+  constructor(creature: Creature) {
+    this.creature = creature;
     this.nodeMap = new Map<number, NeuronState>();
     this.connectionMap = new Map<number, Map<number, SynapseState>>();
     this.cacheAdjustedActivation = new Map<number, number>();
@@ -92,16 +96,16 @@ export class CreatureState {
   makeActivation(input: number[], feedbackLoop: boolean) {
     if (
       feedbackLoop == false ||
-      this.activations.length !== this.network.neurons.length
+      this.activations.length !== this.creature.neurons.length
     ) {
-      this.activations = new Float32Array(this.network.neurons.length);
+      this.activations = new Float32Array(this.creature.neurons.length);
     }
 
     try {
       this.activations.set(input);
     } catch (e) {
       const msg =
-        `input length ${input.length} does fit with activation array ${this.activations.length}, neurons: ${this.network.neurons.length}`;
+        `input length ${input.length} does fit with activation array ${this.activations.length}, neurons: ${this.creature.neurons.length}`;
 
       throw new Error(msg, { cause: e });
     }

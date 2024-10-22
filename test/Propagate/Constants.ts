@@ -54,7 +54,6 @@ Deno.test("Constants", () => {
       maximumWeightAdjustmentScale: 2,
       maximumBiasAdjustmentScale: 2,
       learningRate: 1,
-      disableExponentialScaling: true,
     });
     const inA = [-1, 1, 0];
     const outA1 = creature.activate(inA);

@@ -95,7 +95,7 @@ export class MINIMUM
 
   applyLearnings(neuron: Neuron): boolean {
     let changed = false;
-    // let usedCount = 0;
+
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
       const c = inward[i];
@@ -105,18 +105,7 @@ export class MINIMUM
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
       }
-      // else {
-      //   usedCount++;
-      // }
     }
-
-    // if (usedCount < 2) {
-    //   assert(usedCount > 0, "no learnings");
-
-    //   neuron.setSquash(IDENTITY.NAME);
-
-    //   changed = true;
-    // }
 
     return changed;
   }
@@ -127,10 +116,6 @@ export class MINIMUM
     config: BackPropagationConfig,
   ): number {
     const activation = neuron.adjustedActivation(config);
-
-    if (Math.abs(targetActivation - activation) < config.plankConstant) {
-      return targetActivation;
-    }
 
     const inward = neuron.creature.inwardConnections(neuron.index);
     const targetValue = toValue(neuron, targetActivation);
@@ -256,6 +241,7 @@ export class MINIMUM
       targetValue,
       improvedValue,
       currentBias,
+      config,
     );
 
     const aBias = adjustedBias(neuron, config);

@@ -396,6 +396,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
       targetValue,
       improvedValue,
       currentBias,
+      config,
     );
 
     const aBias = adjustedBias(neuron, config);

@@ -13,7 +13,11 @@ import {
   type BackPropagationConfig,
   toValue,
 } from "../propagate/BackPropagation.ts";
-import { accumulateBias, adjustedBias } from "../propagate/Bias.ts";
+import {
+  accumulateBias,
+  adjustedBias,
+  calculateBias,
+} from "../propagate/Bias.ts";
 import {
   accumulateWeight,
   adjustedWeight,
@@ -23,6 +27,7 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
+import { assert } from "@std/assert/assert";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -41,7 +46,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     uuid: string,
     type: "input" | "output" | "hidden" | "constant",
     bias: number | undefined,
-    network: Creature,
+    creature: Creature,
     squash?: string,
   ) {
     this.uuid = uuid;
@@ -80,11 +85,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
       this.bias = Infinity;
     }
 
-    if (typeof network !== "object") {
-      throw new Error("network must be a Creature was: " + (typeof network));
-    }
+    assert(typeof creature === "object", "network must be a Creature");
 
-    this.creature = network;
+    this.creature = creature;
 
     this.type = type;
 
@@ -306,7 +309,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       c.weight = aWeight;
     }
 
-    const aBias = adjustedBias(this, config);
+    const aBias = calculateBias(this, config);
 
     this.bias = aBias;
   }
@@ -428,6 +431,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         targetValue,
         improvedValue,
         currentBias,
+        config,
       );
 
       const aBias = adjustedBias(this, config);
@@ -644,17 +648,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
    */
   static fromJSON(
     json: NeuronExport | NeuronInternal,
-    network: Creature,
+    creature: Creature,
   ): Neuron {
-    if (typeof network !== "object") {
-      throw new Error("network must be a Creature was: " + (typeof network));
-    }
+    assert(typeof creature === "object", "network must be a Creature");
 
     const node = new Neuron(
       json.uuid ? json.uuid : crypto.randomUUID(),
       json.type,
       json.bias,
-      network,
+      creature,
     );
 
     switch (json.type) {

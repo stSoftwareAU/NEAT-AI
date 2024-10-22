@@ -113,8 +113,9 @@ function trainDirBinary(
 
   let timedOut = false;
   let timeoutTS = 0;
-  if (options.trainingTimeOutMinutes ?? 0 > 0) {
-    timeoutTS = Date.now() + (options.trainingTimeOutMinutes ?? 0) * 60 * 1000;
+  const trainingTimeOutMinutes = options.trainingTimeOutMinutes ?? 0;
+  if (trainingTimeOutMinutes > 0) {
+    timeoutTS = Date.now() + trainingTimeOutMinutes * 60 * 1000;
   }
 
   let bestError: number | undefined = undefined;
@@ -131,7 +132,7 @@ function trainDirBinary(
     const generations = options.generations !== undefined
       ? options.generations + iteration
       : undefined;
-    const config = createBackPropagationConfig({
+    const iterationConfig = createBackPropagationConfig({
       ...options,
       generations: generations,
     });
@@ -202,7 +203,7 @@ function trainDirBinary(
               break;
             }
           }
-          creature.propagate(record.outputs, config);
+          creature.propagate(record.outputs, iterationConfig);
 
           const now = Date.now();
           const diff = now - lastTS;
@@ -288,7 +289,7 @@ function trainDirBinary(
       bestError = error;
       knownSampleCount = counter;
 
-      creature.applyLearnings(config);
+      creature.applyLearnings(iterationConfig);
       creature.clearState();
     }
 
@@ -297,7 +298,7 @@ function trainDirBinary(
         creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
       }
 
-      let compact = compactUnused(lastTraceJSON, config.plankConstant);
+      let compact = compactUnused(lastTraceJSON, iterationConfig.plankConstant);
       if (!compact) {
         compact = Creature.fromJSON(lastTraceJSON).compact();
       }
@@ -321,14 +322,9 @@ export function train(
   dataSet: DataRecordInterface[],
   options: TrainOptions,
 ) {
-  if (
-    dataSet[0].input.length !== creature.input ||
-    dataSet[0].output.length !== creature.output
-  ) {
-    throw new Error(
-      "Dataset input/output size should be same as network input/output size!",
-    );
-  }
+  assert(dataSet.length > 0, "No data set provided");
+  assert(dataSet[0].input.length > 0, "No input data in the data set");
+  assert(dataSet[0].output.length > 0, "No output data in the data set");
 
   const dataSetDir = makeDataDir(dataSet);
   try {

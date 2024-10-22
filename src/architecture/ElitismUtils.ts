@@ -13,7 +13,8 @@ export function makeElitists(
   size = 1,
   verbose = false,
 ): ElitistsResults {
-  if (creatures.length == 0) throw new Error(`Whole population is extinct`);
+  assert(creatures.length > 0, "Population must have creatures");
+
   assert(size > 0);
   assert(Number.isInteger(size));
 

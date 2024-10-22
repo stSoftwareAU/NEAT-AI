@@ -42,19 +42,6 @@ export function accumulateWeight(
       cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
       cs.countNegativeActivations++;
     }
-
-    // Calculate the difference in target and activation.
-    let difference = activation !== 0
-      ? (targetValue - activation) / activation
-      : (targetValue > 0 ? config.plankConstant : -config.plankConstant);
-
-    // Apply clamping directly if exponential scaling is disabled.
-    if (!config.disableExponentialScaling) {
-      difference = Math.tanh(difference / config.maximumWeightAdjustmentScale) *
-        config.maximumWeightAdjustmentScale;
-    } else if (Math.abs(difference) > config.maximumWeightAdjustmentScale) {
-      difference = Math.sign(difference) * config.maximumWeightAdjustmentScale;
-    }
   }
 
   // Increment the count after processing the adjustment.
@@ -66,6 +53,9 @@ export function adjustedWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ): number {
+  if (config.disableWeightAdjustment) {
+    return c.weight;
+  }
   const cs = creatureState.connection(c.from, c.to);
   if (cs.count && cs.count % config.batchSize === 0) {
     cs.batchAverageWeight = calculateWeight(cs, c, config);
@@ -83,6 +73,9 @@ export function calculateWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ) {
+  if (config.disableWeightAdjustment) {
+    return c.weight;
+  }
   if (cs.count) {
     // Ensure there is meaningful data to adjust the weights.
     if (

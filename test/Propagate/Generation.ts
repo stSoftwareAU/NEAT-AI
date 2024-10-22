@@ -4,7 +4,7 @@ import { Creature } from "../../src/Creature.ts";
 import {
   createBackPropagationConfig,
 } from "../../src/propagate/BackPropagation.ts";
-import { adjustedBias } from "../../src/propagate/Bias.ts";
+import { calculateBias } from "../../src/propagate/Bias.ts";
 import { calculateWeight } from "../../src/propagate/Weight.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -21,6 +21,7 @@ function makeCreature() {
           count: 1,
           hintValue: -0.5,
           totalBias: -2.54,
+          totalAdjustedBias: -2.54,
           minimumActivation: 0,
           maximumActivation: 1,
         },
@@ -67,14 +68,14 @@ Deno.test("Generation BIAS", () => {
     maximumWeightAdjustmentScale: 2,
     learningRate: 1,
   });
-  const bias = adjustedBias(
+  const bias = calculateBias(
     outputNode,
     config,
   );
 
   assertAlmostEquals(bias, -1, 0.0001);
 
-  const bias2 = adjustedBias(
+  const bias2 = calculateBias(
     outputNode,
     createBackPropagationConfig({
       generations: 1,

@@ -8,16 +8,22 @@ import { accumulateBias, adjustedBias } from "../../src/propagate/Bias.ts";
 
 Deno.test("AccumulateBias-Standard", () => {
   const ns = new NeuronState();
-
-  accumulateBias(ns, 4, 2, 0);
+  const config = createBackPropagationConfig({
+    generations: 0,
+    learningRate: 1,
+  });
+  accumulateBias(ns, 4, 2, 0, config);
 
   assertAlmostEquals(ns.totalBias, 2, 0.1, JSON.stringify(ns, null, 2));
 });
 
 Deno.test("AccumulateBias-Limited", () => {
   const ns = new NeuronState();
-
-  accumulateBias(ns, 40, 2, 0);
+  const config = createBackPropagationConfig({
+    generations: 0,
+    learningRate: 1,
+  });
+  accumulateBias(ns, 40, 2, 0, config);
 
   const expected = 38;
   assertAlmostEquals(
@@ -212,13 +218,14 @@ Deno.test("AccumulateBias-average", () => {
     ];
     values.forEach((targetValue) => {
       const currentValue = targetValue - bias;
-      accumulateBias(ns, targetValue, currentValue, 0);
+      accumulateBias(ns, targetValue, currentValue, 0, config);
 
       accumulateBias(
         ns,
         targetValue * -1,
         targetValue * -1 - bias,
         0,
+        config,
       );
     });
 

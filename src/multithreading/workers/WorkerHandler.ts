@@ -37,7 +37,7 @@ export interface ResponseData {
   };
   train?: {
     ID: string;
-    network: string;
+    creature: string;
     error: number;
     trace: string;
     compact?: string;

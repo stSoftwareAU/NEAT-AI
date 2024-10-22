@@ -37,9 +37,6 @@ type BackPropagationArguments = {
    */
   limitWeightScale: number;
 
-  /** When limiting the weight/bias use exponential scaling, Default enabled */
-  disableExponentialScaling: boolean;
-
   /** the minimum unit of weights/biases */
   plankConstant: number;
 
@@ -50,6 +47,9 @@ type BackPropagationArguments = {
 
   /** Disable Bias adjustment */
   disableBiasAdjustment: boolean;
+
+  /** Disable weight adjustment */
+  disableWeightAdjustment: boolean;
 
   /** The number of samples per batch */
   batchSize: number;
@@ -132,13 +132,12 @@ export function createBackPropagationConfig(
       1,
     ),
 
-    disableExponentialScaling: options?.disableExponentialScaling ?? false,
-
     plankConstant: options?.plankConstant ?? 0.000_000_1,
 
     excludeSquashSet, // Use the merged or existing Set
 
     disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
+    disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
     batchSize: options?.batchSize ?? 1,
   };
 

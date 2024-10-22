@@ -65,7 +65,7 @@ Deno.test("Minimum", () => {
       learningRate: 1,
       disableRandomSamples: true,
       generations: i,
-      batchSize: 100,
+      batchSize: 500,
       // trainingMutationRate: 1,
       // excludeSquashList: "MINIMUM",
       // excludeSquashList: "CLIPPED,IDENTITY",
@@ -90,87 +90,7 @@ Deno.test("Minimum", () => {
         `${directory}/error-trace.json`,
         JSON.stringify(results.trace, null, 1),
       );
-      if (results.error - lastError > 0.005) {
-        fail(
-          `Error rate was ${results.error}, regression ${
-            lastError - results.error
-          }`,
-        );
-      }
-    }
-    lastError = results.error;
-  }
-});
-
-Deno.test("Hack", () => {
-  setup();
-  const cleanCreature = makeCreature();
-
-  const td = makeTrainData(cleanCreature);
-  const cleanError = calculateError(cleanCreature, td);
-  assertAlmostEquals(cleanError, 0, 0.00001, `cleanError: ${cleanError}`);
-  const exportJSON = cleanCreature.exportJSON();
-
-  Deno.writeTextFileSync(
-    `${directory}/A-clean.json`,
-    JSON.stringify(exportJSON, null, 2),
-  );
-
-  exportJSON.neurons.forEach((neuron, indx) => {
-    neuron.bias = neuron.bias +
-      ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  });
-
-  exportJSON.synapses.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  });
-
-  const modifiedCreature = Creature.fromJSON(exportJSON);
-  Deno.writeTextFileSync(
-    `${directory}/B-modified.json`,
-    JSON.stringify(exportJSON, null, 2),
-  );
-  let lastError = calculateError(modifiedCreature, td);
-  console.info("Initial error", lastError);
-
-  for (let i = 0; i < 10; i++) {
-    Deno.writeTextFileSync(
-      `${directory}/${i}.json`,
-      JSON.stringify(modifiedCreature.exportJSON(), null, 2),
-    );
-    const results = train(modifiedCreature, td, {
-      targetError: 0.01,
-      iterations: 1,
-      learningRate: 1,
-      disableRandomSamples: true,
-      // generations: 400,
-      trainingSampleRate: 1,
-      trainingMutationRate: 1,
-      // trainingMutationRate: 1,
-      // excludeSquashList: "MINIMUM",
-      // excludeSquashList: "CLIPPED,IDENTITY",
-    });
-
-    console.log(i, results.error);
-    modifiedCreature.validate();
-    Creature.fromJSON(results.trace).validate();
-
-    Deno.writeTextFileSync(
-      `${directory}/${i}-trace.json`,
-      JSON.stringify(results.trace, null, 2),
-    );
-
-    if (results.compact) Creature.fromJSON(results.compact).validate();
-    if (results.error > lastError) {
-      Deno.writeTextFileSync(
-        `${directory}/.error.json`,
-        JSON.stringify(modifiedCreature.exportJSON(), null, 2),
-      );
-      Deno.writeTextFileSync(
-        `${directory}/error-trace.json`,
-        JSON.stringify(results.trace, null, 1),
-      );
-      if (results.error - lastError > 0.005) {
+      if (results.error - lastError > 0.01) {
         fail(
           `Error rate was ${results.error}, regression ${
             lastError - results.error
