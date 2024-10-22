@@ -30,10 +30,6 @@ Deno.test("Simple", () => {
       ((indx % 2 == 0 ? 1 : -1) * 0.1);
   });
 
-  // exportJSON.synapses.forEach((c, indx) => {
-  //   c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  // });
-
   const modifiedCreature = Creature.fromJSON(exportJSON);
   Deno.writeTextFileSync(
     `${directory}/B-modified.json`,
@@ -54,9 +50,6 @@ Deno.test("Simple", () => {
       disableWeightAdjustment: true,
       disableRandomSamples: true,
       batchSize: 100,
-      // trainingMutationRate: 1,
-      // excludeSquashList: "MINIMUM",
-      // excludeSquashList: "CLIPPED,IDENTITY",
     });
 
     console.log(i, results.error);

@@ -30,10 +30,6 @@ Deno.test("Bias-Simple", () => {
       ((indx % 2 == 0 ? 1 : -1) * 0.1);
   });
 
-  // exportJSON.synapses.forEach((c, indx) => {
-  //   c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
-  // });
-
   const modifiedCreature = Creature.fromJSON(exportJSON);
   Deno.writeTextFileSync(
     `${directory}/B-modified.json`,
