@@ -20,7 +20,7 @@ import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 
 /* Functions used in the testing process */
 function checkMutation(method: { name: string }) {
-  const network = new Creature(2, 2, {
+  const creature = new Creature(2, 2, {
     layers: [
       { count: 4 },
       { count: 4 },
@@ -28,23 +28,24 @@ function checkMutation(method: { name: string }) {
     ],
   });
 
-  network.mutate(Mutation.ADD_BACK_CONN);
-  network.mutate(Mutation.ADD_SELF_CONN);
+  creature.mutate(method);
+  creature.mutate(Mutation.ADD_BACK_CONN);
+  creature.mutate(Mutation.ADD_SELF_CONN);
 
   const originalOutput = [];
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.activateAndTrace([i / 10, j / 10], true);
+      const v = creature.activateAndTrace([i / 10, j / 10], true);
       originalOutput.push(...v);
     }
   }
 
-  const json1 = JSON.stringify(network.exportJSON(), null, 2);
+  const json1 = JSON.stringify(creature.exportJSON(), null, 2);
   for (let i = 10; i--;) {
-    network.mutate(method);
+    creature.mutate(method);
   }
-  const json2 = JSON.stringify(network.exportJSON(), null, 2);
+  const json2 = JSON.stringify(creature.exportJSON(), null, 2);
 
   assertNotEquals(json1, json2);
 
@@ -52,7 +53,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = network.activateAndTrace([i / 10, j / 10], true);
+      const v = creature.activateAndTrace([i / 10, j / 10], true);
       mutatedOutput.push(...v);
     }
   }
@@ -74,6 +75,7 @@ async function evolveSet(
     iterations: iterations,
     targetError: error,
     threads: 1,
+    verbose: true,
   };
 
   let resultError = Number.MAX_VALUE;

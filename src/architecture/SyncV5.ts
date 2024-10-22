@@ -5,7 +5,6 @@ export function generate(
   namespace: string,
   data: Uint8Array,
 ): string {
-  // stdCrypto.subtle.digest("SHA-1", data).then((buffer) => {
   const namespaceBytes = uuidToBytes(namespace);
   const toHash = concat([namespaceBytes, data]);
 

@@ -77,9 +77,6 @@ export class Mish implements ActivationInterface, UnSquashInterface {
         !Number.isFinite(errDerivative) ||
         Math.abs(errDerivative) < Number.EPSILON
       ) {
-        // console.warn(
-        //   `Mish: Derivative ${errDerivative}, hint: ${hint} became too small or NaN at iteration ${i}`,
-        // );
         break;
       }
 
@@ -93,9 +90,6 @@ export class Mish implements ActivationInterface, UnSquashInterface {
 
       // Clamp guess to avoid extreme values
       if (Math.abs(guess) > safeLimit) {
-        // console.warn(
-        //   `Mish: Guess exceeded safe limit at iteration ${i}, clamping to safe value`,
-        // );
         guess = Math.sign(guess) * safeLimit;
       }
 
