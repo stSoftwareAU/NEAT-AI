@@ -190,29 +190,27 @@ export class Neat {
 
     const p = w.train(creature, trainOptions).then((r) => {
       assert(r.train, "No train found");
-      try {
-        const errorTx = getTag(creature, "error");
-        if (errorTx) {
-          if (r.train.error > parseFloat(errorTx)) {
-            console.warn(
-              `Training ${
-                blue(r.train.ID)
-              } caused a higher error of ${r.train.error} from ${errorTx}`,
-            );
-            const tuned = fineTuneImprovement(
-              creature,
-              Creature.fromJSON(JSON.parse(r.train.creature)),
-              1,
-              true,
-            );
-            if (tuned.length > 0) {
-              r.train.tuned = JSON.stringify(tuned[0].exportJSON());
-            }
-          }
+
+      const errorTx = getTag(creature, "error");
+      assert(errorTx, "No error tag found");
+
+      if (r.train.error > parseFloat(errorTx)) {
+        console.warn(
+          `Training ${
+            blue(r.train.ID)
+          } caused a higher error of ${r.train.error} from ${errorTx}`,
+        );
+        const tuned = fineTuneImprovement(
+          creature,
+          Creature.fromJSON(JSON.parse(r.train.creature)),
+          1,
+          true,
+        );
+        if (tuned.length > 0) {
+          r.train.tuned = JSON.stringify(tuned[0].exportJSON());
         }
-      } catch (e) {
-        console.error(e);
       }
+
       this.trainingComplete.push(r);
 
       this.trainingInProgress.delete(uuid);
