@@ -48,6 +48,9 @@ type BackPropagationArguments = {
   /** Disable Bias adjustment */
   disableBiasAdjustment: boolean;
 
+  /** Disable weight adjustment */
+  disableWeightAdjustment: boolean;
+
   /** The number of samples per batch */
   batchSize: number;
 };
@@ -134,6 +137,7 @@ export function createBackPropagationConfig(
     excludeSquashSet, // Use the merged or existing Set
 
     disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
+    disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
     batchSize: options?.batchSize ?? 1,
   };
 

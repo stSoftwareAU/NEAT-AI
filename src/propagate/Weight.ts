@@ -53,6 +53,9 @@ export function adjustedWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ): number {
+  if (config.disableWeightAdjustment) {
+    return c.weight;
+  }
   const cs = creatureState.connection(c.from, c.to);
   if (cs.count && cs.count % config.batchSize === 0) {
     cs.batchAverageWeight = calculateWeight(cs, c, config);
