@@ -64,7 +64,7 @@ function checkMutation(method: { name: string }) {
     "Output of original network should be different from the mutated network!",
   );
 }
-
+let first = true;
 async function evolveSet(
   set: DataRecordInterface[],
   iterations: number,
@@ -75,9 +75,9 @@ async function evolveSet(
     iterations: iterations,
     targetError: error,
     threads: 1,
-    verbose: true,
+    verbose: first,
   };
-
+  first = false;
   let resultError = Number.MAX_VALUE;
   let lastCreature: Creature | null = null;
   for (let attempt = attempts; attempt--;) {
