@@ -66,9 +66,6 @@ Deno.test("Simple", () => {
       disableBiasAdjustment: false,
       disableRandomSamples: true,
       batchSize: 100,
-      // trainingMutationRate: 1,
-      // excludeSquashList: "MINIMUM",
-      // excludeSquashList: "CLIPPED,IDENTITY",
     });
 
     console.log(i, results.error);

@@ -56,9 +56,6 @@ Deno.test("large", () => {
       learningRate: 1,
       disableRandomSamples: true,
       generations: i,
-      // trainingMutationRate: 1,
-      // excludeSquashList: "MINIMUM",
-      excludeSquashList: "CLIPPED,IDENTITY",
     });
 
     console.log(i, results.error);

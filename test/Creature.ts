@@ -275,6 +275,14 @@ Deno.test("ADD_SELF_CONN", () => {
   checkMutation(Mutation.ADD_SELF_CONN);
 });
 
+Deno.test("SUB_BACK_CONN", () => {
+  checkMutation(Mutation.SUB_BACK_CONN);
+});
+
+Deno.test("ADD_BACK_CONN", () => {
+  checkMutation(Mutation.ADD_BACK_CONN);
+});
+
 Deno.test("SUB_SELF_CONN", () => {
   checkMutation(Mutation.SUB_SELF_CONN);
 });
