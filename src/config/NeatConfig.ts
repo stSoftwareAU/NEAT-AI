@@ -71,7 +71,6 @@ export class NeatConfig implements NeatOptions {
   verbose: boolean;
   trainingSampleRate?: number;
 
-  backPropagationExcludeSquashList: string;
   enableRepetitiveTraining: boolean;
   trainingBatchSize: number;
 
@@ -155,10 +154,6 @@ export class NeatConfig implements NeatOptions {
       );
     }
 
-    this.backPropagationExcludeSquashList =
-      options.backPropagationExcludeSquashList
-        ? options.backPropagationExcludeSquashList
-        : "";
     this.enableRepetitiveTraining = options.enableRepetitiveTraining || false;
 
     this.trainingBatchSize = options.trainingBatchSize || 100;

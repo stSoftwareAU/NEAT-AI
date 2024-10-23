@@ -1,6 +1,5 @@
 import type { Neuron } from "../architecture/Neuron.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
 type BackPropagationArguments = {
@@ -43,8 +42,6 @@ type BackPropagationArguments = {
   /** Probability of changing a gene */
   trainingMutationRate: number;
 
-  excludeSquashList: string;
-
   /** Disable Bias adjustment */
   disableBiasAdjustment: boolean;
 
@@ -57,44 +54,12 @@ type BackPropagationArguments = {
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
 
-type BackPropagationConfigArguments =
-  & Omit<BackPropagationArguments, "excludeSquashList">
-  & {
-    /**
-     * The actual set of squash genes to exclude.
-     */
-    excludeSquashSet: Set<string>;
-  };
-
-export type BackPropagationConfig = Readonly<BackPropagationConfigArguments>;
+export type BackPropagationConfig = Readonly<BackPropagationArguments>;
 
 export function createBackPropagationConfig(
   options?: BackPropagationOptions | BackPropagationConfig,
 ): BackPropagationConfig {
-  // Check if 'excludeSquashSet' exists to determine if options is BackPropagationConfig
-  const isConfig = (
-    opts?: BackPropagationOptions | BackPropagationConfig,
-  ): opts is BackPropagationConfig => {
-    return (opts as BackPropagationConfig)?.excludeSquashSet !== undefined;
-  };
-
-  // If options is BackPropagationConfig, use the existing excludeSquashSet, otherwise create a new Set
-  const excludeSquashSet = isConfig(options)
-    ? options.excludeSquashSet
-    : new Set<string>();
-
-  // If excludeSquashList is provided, merge it into the Set
-  const excludeSquashList = !isConfig(options)
-    ? options?.excludeSquashList
-    : undefined;
-  if (excludeSquashList) {
-    for (const squash of excludeSquashList.split(",")) {
-      Activations.find(squash); // Assuming `Activations.find` is a validation function
-      excludeSquashSet.add(squash.trim());
-    }
-  }
-
-  const config: BackPropagationConfigArguments = {
+  const config: BackPropagationArguments = {
     disableRandomSamples: options?.disableRandomSamples ?? false,
 
     generations: Math.max(
@@ -133,8 +98,6 @@ export function createBackPropagationConfig(
     ),
 
     plankConstant: options?.plankConstant ?? 0.000_000_1,
-
-    excludeSquashSet, // Use the merged or existing Set
 
     disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
     disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
