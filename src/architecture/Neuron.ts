@@ -326,13 +326,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const squashMethod = this.findSquash();
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
-    const excludeFromBackPropagation = config.excludeSquashSet.has(
-      this.squash ?? "UNDEFINED",
-    );
-
     const ns = this.creature.state.node(this.index);
     if (
-      excludeFromBackPropagation ||
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);

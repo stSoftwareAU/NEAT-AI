@@ -184,7 +184,6 @@ export class Neat {
       trainingSampleRate: this.config.trainingSampleRate,
       disableRandomSamples: this.config.disableRandomSamples,
       trainingTimeOutMinutes: trainingTimeOutMinutes,
-      excludeSquashList: this.config.backPropagationExcludeSquashList,
       batchSize: this.config.trainingBatchSize,
     };
 
