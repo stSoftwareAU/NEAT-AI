@@ -889,6 +889,7 @@ export class Creature implements CreatureInternal {
     options: NeatOptions,
   ): Promise<{ error: number; score: number; time: number }> {
     const config = createNeatConfig(options);
+    console.info( "config", JSON.stringify(config,null,2));
     const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
 
     const result = await this.evolveDir(dataSetDir, config);
