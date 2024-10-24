@@ -746,12 +746,12 @@ export class Creature implements CreatureInternal {
    */
   async evolveDir(
     dataSetDir: string,
-    options2: NeatOptions,
+    options: NeatOptions,
   ): Promise<
     { error: number; score: number; time: number; generation: number }
   > {
     const start = Date.now();
-    const config = createNeatConfig(options2);
+    const config = createNeatConfig(options);
 
     const endTimeMS = config.timeoutMinutes
       ? start + Math.max(1, config.timeoutMinutes) * 60000
