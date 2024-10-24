@@ -46,7 +46,7 @@ export function createNeatConfig(options: NeatOptions) {
 
     costOfGrowth: options.costOfGrowth ?? 0.000_1,
 
-    iterations: options.iterations ?? 0,
+    iterations: options.iterations ?? Number.MAX_SAFE_INTEGER,
 
     populationSize: options.populationSize || 50,
     elitism: options.elitism || 1,
