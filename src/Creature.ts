@@ -33,7 +33,7 @@ import type {
 import { dataFiles } from "./architecture/Training.ts";
 import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
-import { NeatConfig } from "./config/NeatConfig.ts";
+import { createNeatConfig } from "./config/NeatConfig.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
 import type { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
@@ -751,7 +751,7 @@ export class Creature implements CreatureInternal {
     { error: number; score: number; time: number; generation: number }
   > {
     const start = Date.now();
-    const config = new NeatConfig(options);
+    const config = createNeatConfig(options);
 
     const endTimeMS = config.timeoutMinutes
       ? start + Math.max(1, config.timeoutMinutes) * 60000
@@ -888,9 +888,10 @@ export class Creature implements CreatureInternal {
     dataSet: DataRecordInterface[],
     options: NeatOptions,
   ): Promise<{ error: number; score: number; time: number }> {
-    const dataSetDir = makeDataDir(dataSet, options.dataSetPartitionBreak);
+    const config = createNeatConfig(options);
+    const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
 
-    const result = await this.evolveDir(dataSetDir, options);
+    const result = await this.evolveDir(dataSetDir, config);
 
     Deno.removeSync(dataSetDir, { recursive: true });
 
