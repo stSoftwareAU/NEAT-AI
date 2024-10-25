@@ -56,6 +56,8 @@ Deno.test("large", () => {
       learningRate: 1,
       disableRandomSamples: true,
       generations: i,
+      maximumBiasAdjustmentScale: 1,
+      maximumWeightAdjustmentScale: 1,
     });
 
     console.log(i, results.error);

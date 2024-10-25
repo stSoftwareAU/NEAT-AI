@@ -90,11 +90,8 @@ export function limitBias(
   const learntBias = currentBias + difference;
   let limitedBias = learntBias;
   if (Math.abs(difference) > config.maximumBiasAdjustmentScale) {
-    if (difference > 0) {
-      limitedBias = currentBias + config.maximumBiasAdjustmentScale;
-    } else {
-      limitedBias = currentBias - config.maximumBiasAdjustmentScale;
-    }
+    limitedBias = currentBias +
+      config.maximumBiasAdjustmentScale * Math.sign(difference);
   }
 
   if (Math.abs(limitedBias) >= config.limitBiasScale) {
