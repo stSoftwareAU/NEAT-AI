@@ -177,6 +177,6 @@ export class MEAN implements NeuronActivationInterface {
 
     const adjustedActivation = adjustedValue + aBias - currentBias;
 
-    return adjustedActivation;
+    return this.range.limit(adjustedActivation);
   }
 }

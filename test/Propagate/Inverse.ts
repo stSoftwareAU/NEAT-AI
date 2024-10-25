@@ -2,8 +2,8 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { train } from "../../src/architecture/Training.ts";
 import { COMPLEMENT } from "../../src/methods/activations/types/COMPLEMENT.ts";
+import { train } from "./TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

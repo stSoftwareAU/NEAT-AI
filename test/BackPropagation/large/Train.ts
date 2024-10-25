@@ -1,8 +1,8 @@
 import { fail } from "@std/assert";
 import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
-import { train } from "../../../src/architecture/Training.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
+import { train } from "../../Propagate/TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -56,6 +56,8 @@ Deno.test("large", () => {
       learningRate: 1,
       disableRandomSamples: true,
       generations: i,
+      maximumBiasAdjustmentScale: 1,
+      maximumWeightAdjustmentScale: 1,
     });
 
     console.log(i, results.error);

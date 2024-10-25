@@ -1,10 +1,10 @@
 import { assert } from "@std/assert";
+import { ensureDirSync } from "@std/fs";
 import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import type { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
-import { ensureDirSync } from "@std/fs";
-import { train } from "../src/architecture/Training.ts";
+import { train } from "./Propagate/TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

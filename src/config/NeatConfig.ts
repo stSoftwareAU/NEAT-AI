@@ -1,161 +1,197 @@
-import { assert } from "@std/assert";
 import type { NeatOptions } from "../../mod.ts";
-import type {
-  CreatureExport,
-  CreatureInternal,
-} from "../architecture/CreatureInterfaces.ts";
 import { Selection, type SelectionInterface } from "../methods/Selection.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
-import type { MutationInterface } from "../NEAT/MutationInterface.ts";
+import type { NeatArguments } from "./NeatOptions.ts";
 
-export class NeatConfig implements NeatOptions {
-  /** List of creatures to start with */
-  creatures: CreatureInternal[] | CreatureExport[];
+/**
+ * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
+ */
+export type NeatConfig = Readonly<NeatArguments>;
 
-  creativeThinkingConnectionCount: number;
-  creatureStore?: string;
-  experimentStore?: string;
+export function createNeatConfig(options: NeatOptions) {
+  let selection: SelectionInterface = Selection.POWER;
+  if (options.selection) {
+    selection = options.selection;
+  } else {
+    const r0 = Math.random();
+    if (r0 < 0.33) {
+      selection = Selection.FITNESS_PROPORTIONATE;
+    } else if (r0 < 0.66) {
+      selection = Selection.TOURNAMENT;
+    }
+  }
 
-  /** number of records per dataset file. default: 2000 */
-  dataSetPartitionBreak?: number;
-  disableRandomSamples?: boolean;
-  /** debug (much slower) */
-  debug: boolean;
+  const config: NeatArguments = {
+    creativeThinkingConnectionCount: options.creativeThinkingConnectionCount ??
+      1,
+    creatureStore: options.creatureStore,
+    experimentStore: options.experimentStore,
+    creatures: options.creatures ? options.creatures : [],
+    costName: options.costName || "MSE",
+    dataSetPartitionBreak: options.dataSetPartitionBreak ?? 2000,
+    disableRandomSamples: options.disableRandomSamples ?? false,
+    trainingSampleRate: options.trainingSampleRate ?? 1,
 
-  /**
-   * Feedback loop ( previous result feeds back into next interaction
-   * https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html;jsessionid=2d7fa2c64f0bd39c86dec46870cd
-   */
-  feedbackLoop: boolean;
-
-  /** The list of observations to focus one */
-  focusList: number[];
-  /** Focus rate */
-  focusRate: number;
-
-  elitism: number;
-
-  /** Target error 0 to 1 */
-  targetError: number;
-  timeoutMinutes: number;
-
-  costOfGrowth: number;
-
-  /** The maximum number of connections */
-  maxConns: number;
-
-  /** The maximum number of nodes */
-  maximumNumberOfNodes: number;
-
-  /** Number of changes per Gene */
-  mutationAmount: number;
-
-  /** Probability of changing a single gene */
-  mutationRate: number;
-
-  /** The target population size. */
-  populationSize: number;
-
-  costName: string;
-  traceStore?: string;
-
-  /** the number of training per generation. default: 1  */
-  trainPerGen: number;
-
-  selection: SelectionInterface;
-  readonly mutation: MutationInterface[];
-
-  iterations: number;
-  log: number;
-  /** verbose logging default: false */
-  verbose: boolean;
-  trainingSampleRate?: number;
-
-  enableRepetitiveTraining: boolean;
-  trainingBatchSize: number;
-
-  constructor(options: NeatOptions) {
-    this.creativeThinkingConnectionCount =
-      options.creativeThinkingConnectionCount ?? 1;
-    this.creatureStore = options.creatureStore;
-    this.experimentStore = options.experimentStore;
-    this.creatures = options.creatures ? options.creatures : [];
-    this.costName = options.costName || "MSE";
-    this.dataSetPartitionBreak = options.dataSetPartitionBreak;
-    this.disableRandomSamples = options.disableRandomSamples;
-    this.trainingSampleRate = options.trainingSampleRate;
-
-    this.debug = options.debug
+    debug: options.debug
       ? true
       : ((globalThis as unknown) as { DEBUG: boolean }).DEBUG
       ? true
-      : false;
+      : false,
 
-    this.feedbackLoop = options.feedbackLoop || false;
-    this.focusList = options.focusList || [];
-    this.focusRate = options.focusRate || 0.25;
+    feedbackLoop: options.feedbackLoop || false,
+    focusList: options.focusList || [],
+    focusRate: options.focusRate || 0.25,
 
-    this.targetError = Math.min(
-      1,
-      Math.max(Math.abs(options.targetError ?? 0.05), 0),
+    targetError: options.targetError ?? 0.05,
+
+    costOfGrowth: options.costOfGrowth ?? 0.000_1,
+
+    iterations: options.iterations ?? Number.MAX_SAFE_INTEGER,
+
+    populationSize: options.populationSize || 50,
+    elitism: options.elitism || 1,
+
+    maxConns: options.maxConns || Number.MAX_SAFE_INTEGER,
+    maximumNumberOfNodes: options.maximumNumberOfNodes ||
+      Number.MAX_SAFE_INTEGER,
+    mutationRate: options.mutationRate || 0.3,
+
+    mutationAmount: options.mutationAmount ?? 1,
+
+    mutation: options.mutation ? [...options.mutation] : [...Mutation.FFW],
+    selection: selection,
+    timeoutMinutes: options.timeoutMinutes ?? 0,
+    traceStore: options.traceStore,
+    trainPerGen: options.trainPerGen ?? 1,
+
+    log: options.log ?? 0,
+    verbose: options.verbose ? true : false,
+
+    enableRepetitiveTraining: options.enableRepetitiveTraining || false,
+
+    trainingBatchSize: options.trainingBatchSize || 100,
+    threads: options.threads || navigator.hardwareConcurrency,
+  };
+  validate(config);
+  return Object.freeze(config);
+}
+
+function validate(config: NeatArguments) {
+  if (Number.isInteger(config.threads) == false || config.threads < 1) {
+    throw new Error(
+      `Threads must be more than zero was: ${config.threads}`,
     );
+  }
 
-    this.costOfGrowth = options.costOfGrowth ?? 0.000_1;
+  if (Number.isInteger(config.log) == false || config.log < 0) {
+    throw new Error(
+      `Training per generation must be zero or more: ${config.trainPerGen}`,
+    );
+  }
+  if (Number.isInteger(config.trainPerGen) == false || config.trainPerGen < 0) {
+    throw new Error(
+      `Training per generation must be zero or more: ${config.trainPerGen}`,
+    );
+  }
+  if (
+    Number.isInteger(config.timeoutMinutes) == false ||
+    config.timeoutMinutes < 0
+  ) {
+    throw new Error(
+      `Timeout Minutes must be zero or more: ${config.timeoutMinutes}`,
+    );
+  }
+  if (Number.isInteger(config.dataSetPartitionBreak) == false) {
+    throw new Error(
+      "Data Set Partition Break must be an integer was: " +
+        config.dataSetPartitionBreak,
+    );
+  }
+  if (config.dataSetPartitionBreak < 1) {
+    throw new Error(
+      "Data Set Partition Break must be more than zero was: " +
+        config.dataSetPartitionBreak,
+    );
+  }
 
-    this.iterations = options.iterations ?? 0;
+  if (config.populationSize < 2) {
+    throw new Error(
+      "Population Size must be more than 1 was: " + config.populationSize,
+    );
+  }
 
-    this.populationSize = options.populationSize || 50;
-    this.elitism = options.elitism || 1;
-    assert(Number.isInteger(this.elitism));
-    assert(this.elitism > 0);
+  if (config.elitism < 1) {
+    throw new Error("Elitism must be more than zero was: " + config.elitism);
+  }
 
-    this.maxConns = options.maxConns || Infinity;
-    this.maximumNumberOfNodes = options.maximumNumberOfNodes || Infinity;
-    this.mutationRate = options.mutationRate || 0.3;
+  if (config.maxConns < 1 || Number.isInteger(config.maxConns) == false) {
+    throw new Error(
+      "Max Connections must be more than zero was: " + config.maxConns,
+    );
+  }
 
-    this.mutationAmount = options.mutationAmount
-      ? options.mutationAmount > 1 ? options.mutationAmount : 1
-      : 1;
+  if (
+    Number.isInteger(config.maximumNumberOfNodes) == false ||
+    config.maximumNumberOfNodes < 1
+  ) {
+    throw new Error(
+      `Maximum Number of Nodes must be more than zero was: ${config.maximumNumberOfNodes}`,
+    );
+  }
 
-    this.mutation = options.mutation
-      ? [...options.mutation]
-      : [...Mutation.FFW];
+  if (config.mutationRate <= 0.001) {
+    throw new Error(
+      `Mutation Rate must be more than zero was: ${config.mutationRate}`,
+    );
+  }
 
-    if (options.selection) {
-      this.selection = options.selection;
-    } else {
-      const r0 = Math.random();
-      if (r0 < 0.33) {
-        this.selection = Selection.FITNESS_PROPORTIONATE;
-      } else if (r0 < 0.66) {
-        this.selection = Selection.TOURNAMENT;
-      } else {
-        this.selection = Selection.POWER;
-      }
-    }
+  if (config.mutationAmount < 1) {
+    throw new Error(
+      `Mutation Amount must be more than zero was: ${config.mutationAmount}`,
+    );
+  }
 
-    this.timeoutMinutes = Math.max(options.timeoutMinutes ?? 0, 0);
-    this.traceStore = options.traceStore;
-    this.trainPerGen = options.trainPerGen ?? 1;
+  if (config.iterations < 0) {
+    throw new Error(
+      "Iterations must be more than zero was: " + config.iterations,
+    );
+  }
 
-    this.log = options.log ?? 0;
-    this.verbose = options.verbose ? true : false;
+  if (config.timeoutMinutes < 0) {
+    throw new Error(
+      "Timeout Minutes must be more than zero was: " + config.timeoutMinutes,
+    );
+  }
 
-    if (this.mutationAmount < 1) {
-      throw new Error(
-        "Mutation Amount must be more than zero was: " +
-          this.mutationAmount,
-      );
-    }
+  if (config.trainingBatchSize < 1) {
+    throw new Error(
+      "Training Batch Size must be more than zero was: " +
+        config.trainingBatchSize,
+    );
+  }
+  if (
+    Number.isFinite(config.trainingSampleRate) == false ||
+    config.trainingSampleRate < 0.0001 || config.trainingSampleRate > 1
+  ) {
+    throw new Error(
+      `Training Sample Rate must be between 0.0001 and 1 was: ${config.trainingSampleRate}`,
+    );
+  }
+  if (
+    Number.isInteger(config.mutationAmount) == false ||
+    config.mutationAmount < 1
+  ) {
+    throw new Error(
+      `Mutation Amount must be more than zero was: ${config.mutationAmount}`,
+    );
+  }
 
-    if (this.mutationRate <= 0.001) {
-      throw new Error(
-        "Mutation Rate must be more than 0.1% was: " + this.mutationRate,
-      );
-    }
-
-    this.enableRepetitiveTraining = options.enableRepetitiveTraining || false;
-
-    this.trainingBatchSize = options.trainingBatchSize || 100;
+  if (
+    Number.isFinite(config.targetError) == false || config.targetError < 0 ||
+    config.targetError > 1
+  ) {
+    throw new Error(
+      `Target error must be between 0 and 1 was: ${config.targetError}`,
+    );
   }
 }

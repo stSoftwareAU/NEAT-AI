@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
@@ -7,8 +8,6 @@ import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
 import { createBackPropagationConfig } from "../propagate/BackPropagation.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { type DataRecordInterface, makeDataDir } from "./DataSet.ts";
-import { assert } from "@std/assert/assert";
 
 export function dataFiles(dataDir: string, options: TrainOptions = {}) {
   const binaryFiles: string[] = [];
@@ -311,26 +310,5 @@ function trainDirBinary(
         compact: compact ? compact.exportJSON() : undefined,
       };
     }
-  }
-}
-
-/**
- * Train the given set to this network
- */
-export function train(
-  creature: Creature,
-  dataSet: DataRecordInterface[],
-  options: TrainOptions,
-) {
-  assert(dataSet.length > 0, "No data set provided");
-  assert(dataSet[0].input.length > 0, "No input data in the data set");
-  assert(dataSet[0].output.length > 0, "No output data in the data set");
-
-  const dataSetDir = makeDataDir(dataSet);
-  try {
-    const result = trainDir(creature, dataSetDir, options);
-    return result;
-  } finally {
-    Deno.removeSync(dataSetDir, { recursive: true });
   }
 }

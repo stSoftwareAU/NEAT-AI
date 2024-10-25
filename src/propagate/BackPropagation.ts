@@ -2,7 +2,7 @@ import type { Neuron } from "../architecture/Neuron.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
-type BackPropagationArguments = {
+export type BackPropagationArguments = {
   disableRandomSamples: boolean;
 
   /**
@@ -57,7 +57,7 @@ export type BackPropagationOptions = Partial<BackPropagationArguments>;
 export type BackPropagationConfig = Readonly<BackPropagationArguments>;
 
 export function createBackPropagationConfig(
-  options?: BackPropagationOptions | BackPropagationConfig,
+  options?: BackPropagationOptions,
 ): BackPropagationConfig {
   const config: BackPropagationArguments = {
     disableRandomSamples: options?.disableRandomSamples ?? false,

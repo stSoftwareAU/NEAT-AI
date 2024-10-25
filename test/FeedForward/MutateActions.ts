@@ -1,5 +1,5 @@
 import { Creature, type CreatureExport, Mutation } from "../../mod.ts";
-import { NeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import type { MutationInterface } from "../../src/NEAT/MutationInterface.ts";
 import { Mutator } from "../../src/NEAT/Mutator.ts";
 import { assert } from "@std/assert";
@@ -45,7 +45,7 @@ function makeCreature() {
 Deno.test("FeedForward only", () => {
   const creature = makeCreature();
 
-  const config = new NeatConfig({});
+  const config = createNeatConfig({});
   const mutator = new Mutator(config);
 
   for (let i = 0; i < 100; i++) {
@@ -65,7 +65,10 @@ Deno.test("FeedForward only", () => {
 Deno.test("memory enabled", () => {
   const creature = makeCreature();
 
-  const config = new NeatConfig({ feedbackLoop: true, mutation: Mutation.ALL });
+  const config = createNeatConfig({
+    feedbackLoop: true,
+    mutation: Mutation.ALL,
+  });
   const mutator = new Mutator(config);
 
   let found = false;
