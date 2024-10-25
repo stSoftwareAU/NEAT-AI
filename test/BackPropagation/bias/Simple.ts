@@ -1,7 +1,7 @@
 import { assertAlmostEquals } from "@std/assert/almost-equals";
 import { fail } from "@std/assert/fail";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { train } from "../../../src/architecture/Training.ts";
+import { train } from "../../Propagate/TrainTestOnlyUtil.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { assert } from "@std/assert/assert";

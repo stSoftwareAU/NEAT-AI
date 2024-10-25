@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, fail } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { Selection } from "../../mod.ts";
 
@@ -10,8 +10,12 @@ Deno.test("NeatConfig debug", () => {
 });
 
 Deno.test("NeatConfig mutationAmount", () => {
-  const config = createNeatConfig({ mutationAmount: -2 });
-  assertEquals(config.mutationAmount, 1);
+  try {
+    createNeatConfig({ mutationAmount: -2 });
+    fail("Should not reach here");
+  } // deno-lint-ignore no-empty
+  catch (_e) {
+  }
 });
 
 Deno.test("NeatConfig selection", () => {

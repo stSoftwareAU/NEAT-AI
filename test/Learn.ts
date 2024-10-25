@@ -1,7 +1,7 @@
-import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
+import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Creature } from "../src/Creature.ts";
-import { train } from "../src/architecture/Training.ts";
+import { train } from "./Propagate/TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
