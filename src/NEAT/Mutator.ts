@@ -85,7 +85,8 @@ export class Mutator {
         case Mutation.ADD_CONN.name:
           if (
             creature.synapses.length >= this.config.maxConns ||
-            creature.synapses.length >= this.calculateMaxSynapses( creature.neurons.length)
+            creature.synapses.length >=
+              this.calculateMaxSynapses(creature.neurons.length)
           ) {
             continue;
           }
