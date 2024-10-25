@@ -52,15 +52,32 @@ export class Mutator {
   }
 
   /**
-   * Calculate the theoretical maximum number of synapses between n neurons.
-   * @param n - Total number of neurons.
+   * Calculate the theoretical maximum number of synapses for a given number of neurons,
+   * considering that observation neurons do not connect to each other.
+   * @param observations - Number of observation (input) neurons.
+   * @param hidden - Number of hidden neurons.
+   * @param outputs - Number of output neurons.
    * @returns The maximum number of synapses.
    */
-  calculateMaxSynapses(n: number): number {
-    if (n < 2) {
-      return 0; // No possible connections with fewer than 2 neurons.
-    }
-    return (n * (n - 1)) / 2;
+  calculateMaxSynapses(
+    observations: number,
+    hidden: number,
+    outputs: number,
+  ): number {
+    // Observations to hidden connections
+    const obsToHidden = observations * hidden;
+
+    // Observations to outputs connections
+    const obsToOutputs = observations * outputs;
+
+    // Hidden to hidden connections (no cycles)
+    const hiddenToHidden = (hidden * (hidden - 1)) / 2;
+
+    // Hidden to outputs connections
+    const hiddenToOutputs = hidden * outputs;
+
+    // Total possible synapses
+    return obsToHidden + obsToOutputs + hiddenToHidden + hiddenToOutputs;
   }
 
   /**
@@ -86,7 +103,11 @@ export class Mutator {
           if (
             creature.synapses.length >= this.config.maxConns ||
             creature.synapses.length >=
-              this.calculateMaxSynapses(creature.neurons.length)
+              this.calculateMaxSynapses(
+                creature.input,
+                creature.neurons.length - creature.input - creature.output,
+                creature.output,
+              )
           ) {
             continue;
           }
