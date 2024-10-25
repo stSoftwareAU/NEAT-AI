@@ -106,6 +106,16 @@ export interface NeatArguments {
 
   /** The target error to reach, once the network falls below this error, the process is stopped. Default: 0.05, Range 0..1 */
   targetError: number;
+
+  /**
+   * The maximum +/- the bias will be adjusted in one training iteration. Default 10, Minimum 0.1
+   */
+  maximumBiasAdjustmentScale: number;
+
+  /**
+   * The maximum +/- the weight will be adjusted in one training iteration. Default 10, Minimum 0.1
+   */
+  maximumWeightAdjustmentScale: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

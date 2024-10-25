@@ -185,6 +185,8 @@ export class Neat {
       disableRandomSamples: this.config.disableRandomSamples,
       trainingTimeOutMinutes: trainingTimeOutMinutes,
       batchSize: this.config.trainingBatchSize,
+      maximumBiasAdjustmentScale: this.config.maximumBiasAdjustmentScale,
+      maximumWeightAdjustmentScale: this.config.maximumWeightAdjustmentScale,
     };
 
     const p = w.train(creature, trainOptions).then((r) => {

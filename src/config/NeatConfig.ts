@@ -71,6 +71,10 @@ export function createNeatConfig(options: NeatOptions) {
 
     trainingBatchSize: options.trainingBatchSize || 100,
     threads: options.threads || navigator.hardwareConcurrency,
+
+    maximumBiasAdjustmentScale: options.maximumBiasAdjustmentScale ?? 1,
+
+    maximumWeightAdjustmentScale: options.maximumWeightAdjustmentScale ?? 1,
   };
   validate(config);
   return Object.freeze(config);
@@ -192,6 +196,23 @@ function validate(config: NeatArguments) {
   ) {
     throw new Error(
       `Target error must be between 0 and 1 was: ${config.targetError}`,
+    );
+  }
+
+  if (
+    Number.isFinite(config.maximumBiasAdjustmentScale) == false ||
+    config.maximumBiasAdjustmentScale < 0
+  ) {
+    throw new Error(
+      `Maximum Bias Adjustment Scale must be more than zero was: ${config.maximumBiasAdjustmentScale}`,
+    );
+  }
+  if (
+    Number.isFinite(config.maximumWeightAdjustmentScale) == false ||
+    config.maximumWeightAdjustmentScale < 0
+  ) {
+    throw new Error(
+      `Maximum Weight Adjustment Scale must be more than zero was: ${config.maximumWeightAdjustmentScale}`,
     );
   }
 }

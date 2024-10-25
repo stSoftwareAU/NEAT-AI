@@ -68,12 +68,12 @@ export function createBackPropagationConfig(
     ),
 
     maximumBiasAdjustmentScale: Math.max(
-      options?.maximumBiasAdjustmentScale ?? 10,
+      options?.maximumBiasAdjustmentScale ?? 1,
       0,
     ),
 
     maximumWeightAdjustmentScale: Math.max(
-      options?.maximumWeightAdjustmentScale ?? 10,
+      options?.maximumWeightAdjustmentScale ?? 1,
       0,
     ),
 

@@ -52,6 +52,18 @@ export class Mutator {
   }
 
   /**
+   * Calculate the theoretical maximum number of synapses between n neurons.
+   * @param n - Total number of neurons.
+   * @returns The maximum number of synapses.
+   */
+  calculateMaxSynapses(n: number): number {
+    if (n < 2) {
+      return 0; // No possible connections with fewer than 2 neurons.
+    }
+    return (n * (n - 1)) / 2;
+  }
+
+  /**
    * Selects a random mutation method for a genome according to the parameters
    */
   public selectMutationMethod(creature: Creature) {
@@ -72,7 +84,9 @@ export class Mutator {
           break;
         case Mutation.ADD_CONN.name:
           if (
-            creature.synapses.length >= this.config.maxConns
+            creature.synapses.length >= this.config.maxConns ||
+            creature.synapses.length >=
+              this.calculateMaxSynapses(creature.neurons.length)
           ) {
             continue;
           }
