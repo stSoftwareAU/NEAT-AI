@@ -331,7 +331,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);
-      return targetActivation;
+      return activation;
     }
 
     ns.noChange = false;
