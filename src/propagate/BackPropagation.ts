@@ -57,7 +57,7 @@ export type BackPropagationOptions = Partial<BackPropagationArguments>;
 export type BackPropagationConfig = Readonly<BackPropagationArguments>;
 
 export function createBackPropagationConfig(
-  options?: BackPropagationOptions | BackPropagationConfig,
+  options?: BackPropagationOptions,
 ): BackPropagationConfig {
   const config: BackPropagationArguments = {
     disableRandomSamples: options?.disableRandomSamples ?? false,

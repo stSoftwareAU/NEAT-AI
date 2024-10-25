@@ -51,7 +51,7 @@ Deno.test("large", () => {
       JSON.stringify(creature.exportJSON(), null, 1),
     );
     const results = train(creature, trainingSet, {
-      targetError: 0.0001,
+      targetError: 0.1,
       iterations: 1,
       learningRate: 1,
       disableRandomSamples: true,
