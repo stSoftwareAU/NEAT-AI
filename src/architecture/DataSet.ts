@@ -5,7 +5,7 @@ export interface DataRecordInterface {
 
 export function makeDataDir(
   dataSet: DataRecordInterface[],
-  partitionBreak = 2000,
+  partitionBreak: number,
 ) {
   if (partitionBreak < 1) {
     throw new Error(

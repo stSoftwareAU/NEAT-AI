@@ -2,7 +2,7 @@ import type { Neuron } from "../architecture/Neuron.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
-type BackPropagationArguments = {
+export type BackPropagationArguments = {
   disableRandomSamples: boolean;
 
   /**

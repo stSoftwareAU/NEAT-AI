@@ -10,7 +10,7 @@ import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../src/Creature.ts";
 import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
-import { train } from "../src/architecture/Training.ts";
+import { train } from "./Propagate/TrainTestOnlyUtil.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";

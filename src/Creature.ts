@@ -33,7 +33,7 @@ import type {
 import { dataFiles } from "./architecture/Training.ts";
 import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
-import { NeatConfig } from "./config/NeatConfig.ts";
+import { createNeatConfig } from "./config/NeatConfig.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
 import type { CostInterface } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
@@ -751,7 +751,7 @@ export class Creature implements CreatureInternal {
     { error: number; score: number; time: number; generation: number }
   > {
     const start = Date.now();
-    const config = new NeatConfig(options);
+    const config = createNeatConfig(options);
 
     const endTimeMS = config.timeoutMinutes
       ? start + Math.max(1, config.timeoutMinutes) * 60000
@@ -759,12 +759,7 @@ export class Creature implements CreatureInternal {
 
     const workers: WorkerHandler[] = [];
 
-    const threads = Math.round(
-      Math.max(
-        options.threads ? options.threads : navigator.hardwareConcurrency,
-        1,
-      ),
-    );
+    const threads = config.threads;
 
     for (let i = threads; i--;) {
       workers.push(
@@ -776,7 +771,7 @@ export class Creature implements CreatureInternal {
     const neat = new Neat(
       this.input,
       this.output,
-      options,
+      config,
       workers,
     );
 
@@ -788,8 +783,8 @@ export class Creature implements CreatureInternal {
 
     let iterationStartMS = Date.now();
     let generation = 0;
-    const targetError = options.targetError ?? 0;
-    const iterations = options.iterations ?? Number.POSITIVE_INFINITY;
+    const targetError = config.targetError;
+    const iterations = config.iterations;
 
     while (true) {
       const result = await neat.evolve(
@@ -822,8 +817,8 @@ export class Creature implements CreatureInternal {
         generation >= iterations;
 
       if (
-        options.log &&
-        (generation % options.log === 0 || completed)
+        config.log &&
+        (generation % config.log === 0 || completed)
       ) {
         let avgTxt = "";
         if (Number.isFinite(result.averageScore)) {
@@ -837,9 +832,9 @@ export class Creature implements CreatureInternal {
           avgTxt,
           "error",
           error,
-          (options.log > 1 ? "avg " : "") + "time",
+          (config.log > 1 ? "avg " : "") + "time",
           yellow(
-            format(Math.round((now - iterationStartMS) / options.log), {
+            format(Math.round((now - iterationStartMS) / config.log), {
               ignoreZero: true,
             }),
           ),
@@ -862,11 +857,11 @@ export class Creature implements CreatureInternal {
     workers.length = 0; // Release the memory.
 
     if (bestCreature) {
-      this.loadFrom(bestCreature, options.debug ?? false);
+      this.loadFrom(bestCreature, config.debug ?? false);
     }
 
-    if (options.creatureStore) {
-      this.writeCreatures(neat, options.creatureStore);
+    if (config.creatureStore) {
+      this.writeCreatures(neat, config.creatureStore);
     }
 
     return {
@@ -888,9 +883,11 @@ export class Creature implements CreatureInternal {
     dataSet: DataRecordInterface[],
     options: NeatOptions,
   ): Promise<{ error: number; score: number; time: number }> {
-    const dataSetDir = makeDataDir(dataSet, options.dataSetPartitionBreak);
+    const config = createNeatConfig(options);
 
-    const result = await this.evolveDir(dataSetDir, options);
+    const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
+
+    const result = await this.evolveDir(dataSetDir, config);
 
     Deno.removeSync(dataSetDir, { recursive: true });
 

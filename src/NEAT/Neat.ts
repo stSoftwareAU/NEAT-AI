@@ -14,7 +14,7 @@ import {
 import { Fitness } from "../architecture/Fitness.ts";
 import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
 import { Breed } from "../breed/Breed.ts";
-import { NeatConfig } from "../config/NeatConfig.ts";
+import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
 import type {
@@ -77,7 +77,7 @@ export class Neat {
     this.input = input; // The input size of the networks
     this.output = output; // The output size of the networks
     this.workers = workers;
-    this.config = new NeatConfig(options);
+    this.config = createNeatConfig(options);
 
     // The fitness function to evaluate the networks
     this.fitness = new Fitness(
