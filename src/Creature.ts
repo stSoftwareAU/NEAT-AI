@@ -690,8 +690,11 @@ export class Creature implements CreatureInternal {
    * @param {BackPropagationConfig} config - The back propagation configuration.
    * @returns {boolean} True if the creature was changed, false otherwise.
    */
-  applyLearnings(config: BackPropagationConfig): boolean {
-    this.propagateUpdate(config);
+  applyLearnings(
+    config: BackPropagationConfig,
+    sparseConfig?: SparseConfig,
+  ): boolean {
+    this.propagateUpdate(config, sparseConfig);
 
     let changed = false;
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
@@ -750,10 +753,13 @@ export class Creature implements CreatureInternal {
    *
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
-  propagateUpdate(config: BackPropagationConfig) {
+  propagateUpdate(config: BackPropagationConfig, sparseConfig?: SparseConfig) {
     // @TODO randomize the order of the neurons
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];
+      if (sparseConfig && !sparseConfig.traceNeeded(n.uuid)) {
+        continue;
+      }
       n.propagateUpdate(config);
     }
   }

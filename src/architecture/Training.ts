@@ -296,7 +296,7 @@ function trainDirBinary(
       bestError = error;
       knownSampleCount = counter;
 
-      creature.applyLearnings(iterationConfig);
+      creature.applyLearnings(iterationConfig, sparseConfig);
       creature.clearState();
     }
 
