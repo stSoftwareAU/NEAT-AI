@@ -716,7 +716,11 @@ export class Creature implements CreatureInternal {
    * @param {number[]} expected - The expected output values.
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
-  propagate(expected: number[], config: BackPropagationConfig) {
+  propagate(
+    expected: number[],
+    config: BackPropagationConfig,
+    sparseConfig?: SparseConfig,
+  ) {
     this.state.cacheAdjustedActivation.clear();
     const indices = Int32Array.from({ length: this.output }, (_, i) => i); // Create an array of indices
 
@@ -731,10 +735,13 @@ export class Creature implements CreatureInternal {
 
       const n = this.neurons[nodeIndex];
 
-      n.propagate(
-        expected[expectedIndex],
-        config,
-      );
+      if (!sparseConfig || sparseConfig.traceNeeded(n.uuid)) {
+        n.propagate(
+          expected[expectedIndex],
+          config,
+          sparseConfig,
+        );
+      }
     }
   }
 
@@ -1302,13 +1309,15 @@ export class Creature implements CreatureInternal {
     this.neurons.forEach((n) => {
       if (n.type !== "input") {
         const indx = n.index;
-        const ns = this.state.node(indx);
 
         const traceNeuron: NeuronExport = json
           .neurons[exportIndex] as NeuronTrace;
 
         if (n.type !== "constant") {
-          (traceNeuron as NeuronTrace).trace = ns;
+          const ns = this.state.node(indx);
+          if (ns.count) {
+            (traceNeuron as NeuronTrace).trace = ns;
+          }
         }
         traceNeurons[exportIndex] = traceNeuron as NeuronTrace;
         exportIndex++;
@@ -1319,7 +1328,9 @@ export class Creature implements CreatureInternal {
     this.synapses.forEach((c, indx) => {
       const exportConnection = json.synapses[indx] as SynapseTrace;
       const cs = this.state.connection(c.from, c.to);
-      exportConnection.trace = cs;
+      if (cs.count) {
+        exportConnection.trace = cs;
+      }
 
       traceConnections[indx] = exportConnection;
     });

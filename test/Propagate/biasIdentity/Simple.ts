@@ -8,7 +8,7 @@ import { assert } from "@std/assert/assert";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const directory = ".test/propagation/biasIdentity";
+const directory = ".test/propagate/biasIdentity";
 
 Deno.test("Simple", () => {
   setup();
@@ -162,7 +162,7 @@ function makeCreature() {
 }
 
 function makeTrainData(creature: Creature) {
-  const tdFN = "test/propagation/biasIdentity/.td.json";
+  const tdFN = "test/propagate/biasIdentity/.td.json";
   try {
     const input = JSON.parse(
       Deno.readTextFileSync(tdFN),

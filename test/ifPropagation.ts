@@ -55,9 +55,9 @@ Deno.test("ifPropagation", () => {
     iterations: 1,
     targetError: 0,
   };
-  const network = Creature.fromJSON(json);
+  const creature = Creature.fromJSON(json);
 
-  const result = train(network, ts, options);
+  const result = train(creature, ts, options);
 
   const traceJson = result.trace;
   Deno.writeTextFileSync(

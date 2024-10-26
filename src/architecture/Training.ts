@@ -211,7 +211,7 @@ function trainDirBinary(
               break;
             }
           }
-          creature.propagate(record.outputs, iterationConfig);
+          creature.propagate(record.outputs, iterationConfig, sparseConfig);
 
           const now = Date.now();
           const diff = now - lastTS;
@@ -288,11 +288,10 @@ function trainDirBinary(
       creature.loadFrom(bestCreatureJSON, false);
       lastTraceJSON = bestTraceJSON;
     } else {
-      if (bestError !== undefined && bestError > error) {
+      lastTraceJSON = creature.traceJSON();
+      if (bestError === undefined || bestError > error) {
         bestTraceJSON = lastTraceJSON;
       }
-
-      lastTraceJSON = creature.traceJSON();
       bestCreatureJSON = creature.exportJSON();
       bestError = error;
       knownSampleCount = counter;

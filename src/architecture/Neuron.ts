@@ -28,6 +28,7 @@ import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
 import { assert } from "@std/assert/assert";
+import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -320,6 +321,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   propagate(
     requestedActivation: number,
     config: BackPropagationConfig,
+    _sparseConfig?: SparseConfig,
   ): number {
     const activation = this.adjustedActivation(config);
 

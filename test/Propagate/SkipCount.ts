@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test("SkipCount", () => {
   const config = createBackPropagationConfig({
@@ -11,8 +12,8 @@ Deno.test("SkipCount", () => {
   const creature = makeCreature();
 
   const expected = creature.activateAndTrace([1, 2, 3], false);
-
-  creature.propagate(expected, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  creature.propagate(expected, config, sparseConfig);
   const cs = creature.state.connection(0, 3);
 
   assertEquals(cs.count, 0);

@@ -58,6 +58,7 @@ Deno.test("large", () => {
       generations: i,
       maximumBiasAdjustmentScale: 1,
       maximumWeightAdjustmentScale: 1,
+      sparseRatio: 1,
     });
 
     console.log(i, results.error);
