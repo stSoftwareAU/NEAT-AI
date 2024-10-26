@@ -89,7 +89,9 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 
   const sparseConfig = new SparseConfig(
     creature.exportJSON(),
-    createBackPropagationConfig({}),
+    createBackPropagationConfig({
+      sparseRatio: 1,
+    }),
   );
   const aOut = creature.activateAndTrace(input, false, sparseConfig);
 
