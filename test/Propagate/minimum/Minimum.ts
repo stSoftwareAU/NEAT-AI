@@ -3,11 +3,11 @@ import { fail } from "@std/assert/fail";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { train } from "../../propagate/TrainTestOnlyUtil.ts";
+import { train } from "../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const directory = ".test/BackPropagation/minimum";
+const directory = ".test/propagation/minimum";
 
 function setup() {
   try {
@@ -133,7 +133,7 @@ function makeCreature() {
 }
 
 function makeTrainData(creature: Creature) {
-  const tdFN = "test/BackPropagation/minimum/.td.json";
+  const tdFN = "test/propagation/minimum/.td.json";
   try {
     const input = JSON.parse(
       Deno.readTextFileSync(tdFN),

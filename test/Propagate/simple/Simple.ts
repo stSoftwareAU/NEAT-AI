@@ -1,16 +1,28 @@
 import { assertAlmostEquals } from "@std/assert/almost-equals";
 import { fail } from "@std/assert/fail";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { train } from "../../propagate/TrainTestOnlyUtil.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { assert } from "@std/assert/assert";
+import { train } from "../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const directory = ".test/BackPropagation/bias";
+const directory = ".test/propagation/simple";
 
-Deno.test("Bias-Simple", () => {
+function setup() {
+  try {
+    Deno.removeSync(directory, { recursive: true });
+  } catch (e) {
+    const name = (e as { name: string }).name;
+    if (name !== "NotFound") {
+      console.error(e);
+    }
+  }
+
+  Deno.mkdirSync(directory, { recursive: true });
+}
+
+Deno.test("Simple", () => {
   setup();
   const cleanCreature = makeCreature();
 
@@ -30,6 +42,10 @@ Deno.test("Bias-Simple", () => {
       ((indx % 2 == 0 ? 1 : -1) * 0.1);
   });
 
+  exportJSON.synapses.forEach((c, indx) => {
+    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
+  });
+
   const modifiedCreature = Creature.fromJSON(exportJSON);
   Deno.writeTextFileSync(
     `${directory}/B-modified.json`,
@@ -47,7 +63,7 @@ Deno.test("Bias-Simple", () => {
       targetError: 0.01,
       iterations: 1,
       learningRate: 1,
-      disableWeightAdjustment: true,
+      disableBiasAdjustment: false,
       disableRandomSamples: true,
       batchSize: 100,
     });
@@ -82,78 +98,19 @@ function makeCreature() {
   const json: CreatureExport = {
     neurons: [
       {
-        type: "hidden",
-        squash: "Cosine",
-        uuid: "hidden-0",
-        bias: -0.1,
-      },
-      {
-        type: "hidden",
-        squash: "ABSOLUTE",
-        uuid: "hidden-1",
-        bias: 0.2,
-      },
-      {
-        type: "hidden",
-        squash: "BENT_IDENTITY",
-        uuid: "hidden-2",
-        bias: -0.2,
-      },
-      {
-        type: "hidden",
-        squash: "BIPOLAR_SIGMOID",
-        uuid: "hidden-3",
-        bias: 0.3,
-      },
-      {
-        type: "hidden",
-        squash: "ReLU6",
-        uuid: "hidden-4",
-        bias: -0.3,
-      },
-      {
         type: "output",
         squash: "IDENTITY",
         uuid: "output-0",
         bias: 0.1,
       },
-      {
-        type: "output",
-        squash: "TANH",
-        uuid: "output-1",
-        bias: 0.1,
-      },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: -0.2 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: -0.3 },
-      { fromUUID: "hidden-1", toUUID: "hidden-2", weight: 0.3 },
-      { fromUUID: "input-2", toUUID: "hidden-3", weight: -0.4 },
-      { fromUUID: "hidden-3", toUUID: "hidden-4", weight: 0.4 },
-      { fromUUID: "hidden-4", toUUID: "output-0", weight: -0.5 },
-      { fromUUID: "input-2", toUUID: "output-0", weight: 0.5 },
-      { fromUUID: "hidden-4", toUUID: "output-1", weight: -0.6 },
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.6 },
-
-      { fromUUID: "hidden-0", toUUID: "hidden-3", weight: 0.14 },
-      { fromUUID: "hidden-1", toUUID: "hidden-3", weight: -0.11 },
-      { fromUUID: "hidden-2", toUUID: "hidden-3", weight: 0.12 },
-      { fromUUID: "hidden-3", toUUID: "output-1", weight: -0.16 },
-      { fromUUID: "hidden-2", toUUID: "output-1", weight: 0.13 },
-      { fromUUID: "input-0", toUUID: "output-1", weight: -0.18 },
-      { fromUUID: "input-1", toUUID: "output-1", weight: 0.12 },
-      { fromUUID: "input-2", toUUID: "output-1", weight: -0.15 },
-      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.21 },
-      { fromUUID: "input-1", toUUID: "hidden-2", weight: 0.22 },
-      { fromUUID: "hidden-0", toUUID: "hidden-2", weight: -0.3 },
-
-      { fromUUID: "input-0", toUUID: "hidden-2", weight: -0.2 },
+      { fromUUID: "input-0", toUUID: "output-0", weight: -0.2 },
       { fromUUID: "input-1", toUUID: "output-0", weight: 0.2 },
-      { fromUUID: "hidden-2", toUUID: "output-0", weight: -0.3 },
+      { fromUUID: "input-2", toUUID: "output-0", weight: -0.3 },
     ],
     input: 3,
-    output: 2,
+    output: 1,
   };
   const creature = Creature.fromJSON(json);
   creature.validate();
@@ -162,7 +119,7 @@ function makeCreature() {
 }
 
 function makeTrainData(creature: Creature) {
-  const tdFN = "test/BackPropagation/bias/.td.json";
+  const tdFN = "test/propagation/simple/.td.json";
   try {
     const input = JSON.parse(
       Deno.readTextFileSync(tdFN),
@@ -199,36 +156,14 @@ function calculateError(
   creature: Creature,
   json: { input: number[]; output: number[] }[],
 ) {
-  let totalError = 0;
+  let error = 0;
   const count = json.length;
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    assert(data.output.length === 2, `output.length: ${data.output.length}`);
     const output = creature.activate(data.input, false);
-    assert(output.length === 2, `output.length: ${output.length}`);
-    assert(Number.isFinite(output[0]), `0: ${output[0]}`);
-    assert(Number.isFinite(output[1]), `1: ${output[1]}`);
-
-    const error = mse.calculate(data.output, output);
-    assert(Number.isFinite(error), `${i}) error: ${error}`);
-    totalError += error;
+    error += mse.calculate(data.output, output);
   }
 
-  const averageError = totalError / count;
-  assert(Number.isFinite(averageError), `averageError: ${averageError}`);
-  return averageError;
-}
-
-function setup() {
-  try {
-    Deno.removeSync(directory, { recursive: true });
-  } catch (e) {
-    const name = (e as { name: string }).name;
-    if (name !== "NotFound") {
-      console.error(e);
-    }
-  }
-
-  Deno.mkdirSync(directory, { recursive: true });
+  return error / count;
 }
