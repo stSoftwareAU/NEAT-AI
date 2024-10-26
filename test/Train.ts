@@ -1,7 +1,7 @@
 import { assert, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../src/Creature.ts";
-import { train } from "./Propagate/TrainTestOnlyUtil.ts";
+import { train } from "./propagate/TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
