@@ -50,6 +50,7 @@ Deno.test("Bias-Simple", () => {
       disableWeightAdjustment: true,
       disableRandomSamples: true,
       batchSize: 100,
+      sparseRatio:1
     });
 
     console.log(i, results.error);
