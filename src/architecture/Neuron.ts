@@ -28,6 +28,7 @@ import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
 import { assert } from "@std/assert/assert";
+import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -320,6 +321,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   propagate(
     requestedActivation: number,
     config: BackPropagationConfig,
+    sparseConfig?: SparseConfig,
   ): number {
     const activation = this.adjustedActivation(config);
 
@@ -354,9 +356,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
       const currentBias = adjustedBias(this, config);
       let improvedValue = currentBias;
-      const toList = this.creature.inwardConnections(this.index);
+      const inwardList = this.creature.inwardConnections(this.index);
 
-      const listLength = toList.length;
+      const listLength = inwardList.length;
 
       if (listLength) {
         const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
@@ -371,7 +373,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         for (let i = listLength; i--;) {
           const indx = indices[i];
 
-          const c = toList[indx];
+          const c = inwardList[indx];
 
           if (c.from === c.to) continue;
 
@@ -392,11 +394,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
             fromNeuron.type !== "constant"
           ) {
             const targetFromActivation = targetFromValue / fromWeight;
-
-            improvedFromActivation = fromNeuron.propagate(
-              targetFromActivation,
-              config,
-            );
+            if (!sparseConfig || sparseConfig.traceNeeded(fromNeuron.uuid)) {
+              improvedFromActivation = fromNeuron.propagate(
+                targetFromActivation,
+                config,
+              );
+            }
           }
 
           if (

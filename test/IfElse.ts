@@ -1,6 +1,5 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { AddConnection } from "../src/mutate/AddConnection.ts";
 import { SubConnection } from "../src/mutate/SubConnection.ts";
@@ -30,20 +29,20 @@ Deno.test("if-bias", () => {
     input: 3,
     output: 1,
   };
-  const network = Creature.fromJSON(json);
-  const tmpJSON = JSON.stringify(network.exportJSON(), null, 2);
+  const creature = Creature.fromJSON(json);
+  const tmpJSON = JSON.stringify(creature.exportJSON(), null, 2);
 
   console.log(tmpJSON);
 
   const input1 = [-1, 0.4, 1];
 
-  const r1 = network.activateAndTrace(input1)[0];
+  const r1 = creature.activateAndTrace(input1, false)[0];
 
   assertAlmostEquals(r1, -1, 0.0001, "should handle bias");
 
   const input2 = [-1, 0.6, 1];
 
-  const r2 = network.activateAndTrace(input2)[0];
+  const r2 = creature.activateAndTrace(input2, false)[0];
 
   assertAlmostEquals(r2, 1, 0.0001, "should handle bias");
 });
@@ -73,7 +72,7 @@ Deno.test("if/Else", () => {
   const tmpJSON = JSON.stringify(network1.exportJSON(), null, 2);
 
   console.log(tmpJSON);
-  const network2 = Creature.fromJSON(JSON.parse(tmpJSON));
+  const creature2 = Creature.fromJSON(JSON.parse(tmpJSON));
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;
@@ -82,7 +81,7 @@ Deno.test("if/Else", () => {
 
     const expected = flag > 0 ? b : a;
 
-    const actual = network2.activateAndTrace([a, flag, b])[0];
+    const actual = creature2.activateAndTrace([a, flag, b], false)[0];
 
     const diff = Math.abs(expected - actual);
     assert(diff < 0.00001, p + ") If/Else didn't work " + diff);

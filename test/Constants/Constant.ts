@@ -19,16 +19,16 @@ Deno.test("No squash", () => {
     input: 1,
     output: 1,
   };
-  const network = Creature.fromJSON(json);
-  network.validate();
-  network.fix();
-  network.validate();
+  const creature = Creature.fromJSON(json);
+  creature.validate();
+  creature.fix();
+  creature.validate();
 
-  const value = network.activate([Math.random()])[0];
+  const value = creature.activate([Math.random()])[0];
 
   assertAlmostEquals(value, 0.5, 0.00001);
 
-  const value2 = network.activateAndTrace([Math.random()])[0];
+  const value2 = creature.activateAndTrace([Math.random()], false)[0];
 
   assertAlmostEquals(value2, 0.5, 0.00001);
 });

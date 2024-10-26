@@ -118,7 +118,7 @@ Deno.test("PropagateIdentity", () => {
   });
 
   for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(inputs[i]);
+    creature.activateAndTrace(inputs[i], false);
     creature.propagate(targets[i], config);
   }
 
@@ -191,7 +191,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
 
   console.info(config);
   for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(inputs[i]);
+    creature.activateAndTrace(inputs[i], false);
     creature.propagate(targets[i], config);
   }
 

@@ -50,6 +50,9 @@ export type BackPropagationArguments = {
 
   /** The number of samples per batch */
   batchSize: number;
+
+  /** Determine how many neurons to select based on the sparseRatio. */
+  sparseRatio: number;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -102,6 +105,10 @@ export function createBackPropagationConfig(
     disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
     disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
     batchSize: options?.batchSize ?? 1,
+    sparseRatio: Math.min(
+      Math.max(options?.sparseRatio ?? Math.random() * Math.random(), 0.01),
+      1,
+    ),
   };
 
   return Object.freeze(config);

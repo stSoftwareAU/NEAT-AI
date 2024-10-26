@@ -1,8 +1,9 @@
 import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { Swish } from "../src/methods/activations/types/Swish.ts";
+import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -17,14 +18,18 @@ Deno.test("Swish", () => {
     input: 1,
     output: 1,
   };
-  const network = Creature.fromJSON(json);
+  const creature = Creature.fromJSON(json);
+  const sparseConfig = new SparseConfig(
+    creature.exportJSON(),
+    createBackPropagationConfig({}),
+  );
   const activation = new Swish();
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 4 - 2;
 
     const data = [a];
-    const actual = network.activateAndTrace(data)[0];
-    const actual2 = network.activateAndTrace(data)[0];
+    const actual = creature.activateAndTrace(data, false, sparseConfig)[0];
+    const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
 
     assert(
       Math.abs(actual - actual2) < 0.00000001,

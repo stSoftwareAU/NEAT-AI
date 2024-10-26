@@ -7,6 +7,7 @@ import { Creature } from "../Creature.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
 import { createBackPropagationConfig } from "../propagate/BackPropagation.ts";
+import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
 export function dataFiles(dataDir: string, options: TrainOptions = {}) {
@@ -124,6 +125,10 @@ function trainDirBinary(
   let lastTraceJSON = bestTraceJSON;
   let knownSampleCount = -1;
 
+  const config = createBackPropagationConfig(options);
+
+  const sparseConfig = new SparseConfig(bestCreatureJSON, config);
+
   while (true) {
     iteration++;
     const startTS = Date.now();
@@ -132,7 +137,7 @@ function trainDirBinary(
       ? options.generations + iteration
       : undefined;
     const iterationConfig = createBackPropagationConfig({
-      ...options,
+      ...config,
       generations: generations,
     });
 
@@ -158,7 +163,7 @@ function trainDirBinary(
             (_, i) => i,
           ); // Create an array of indices
 
-          if (!options.disableRandomSamples) {
+          if (!options.disableRandomSamples && !options.feedbackLoop) {
             CreatureUtil.shuffle(tmpIndexes);
           }
           const indices = tmpIndexes.slice(0, len);
@@ -175,7 +180,11 @@ function trainDirBinary(
             continue;
           }
 
-          const output = creature.activateAndTrace(record.observations);
+          const output = creature.activateAndTrace(
+            record.observations,
+            options.feedbackLoop ?? false,
+            sparseConfig,
+          );
 
           const sampleError = cost.calculate(record.outputs, output);
           errorSum += sampleError;
@@ -202,7 +211,7 @@ function trainDirBinary(
               break;
             }
           }
-          creature.propagate(record.outputs, iterationConfig);
+          creature.propagate(record.outputs, iterationConfig, sparseConfig);
 
           const now = Date.now();
           const diff = now - lastTS;
@@ -279,16 +288,15 @@ function trainDirBinary(
       creature.loadFrom(bestCreatureJSON, false);
       lastTraceJSON = bestTraceJSON;
     } else {
-      if (bestError !== undefined && bestError > error) {
+      lastTraceJSON = creature.traceJSON();
+      if (bestError === undefined || bestError > error) {
         bestTraceJSON = lastTraceJSON;
       }
-
-      lastTraceJSON = creature.traceJSON();
       bestCreatureJSON = creature.exportJSON();
       bestError = error;
       knownSampleCount = counter;
 
-      creature.applyLearnings(iterationConfig);
+      creature.applyLearnings(iterationConfig, sparseConfig);
       creature.clearState();
     }
 

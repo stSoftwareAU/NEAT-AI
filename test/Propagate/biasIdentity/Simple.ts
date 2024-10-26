@@ -1,16 +1,16 @@
 import { assertAlmostEquals } from "@std/assert/almost-equals";
+import { assert } from "@std/assert/assert";
 import { fail } from "@std/assert/fail";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { train } from "../../Propagate/TrainTestOnlyUtil.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { assert } from "@std/assert/assert";
+import { train } from "../../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const directory = ".test/BackPropagation/bias";
+const directory = ".test/Propagate/biasIdentity";
 
-Deno.test("Bias-Simple", () => {
+Deno.test("Simple", () => {
   setup();
   const cleanCreature = makeCreature();
 
@@ -83,31 +83,31 @@ function makeCreature() {
     neurons: [
       {
         type: "hidden",
-        squash: "Cosine",
+        squash: "IDENTITY",
         uuid: "hidden-0",
         bias: -0.1,
       },
       {
         type: "hidden",
-        squash: "ABSOLUTE",
+        squash: "IDENTITY",
         uuid: "hidden-1",
         bias: 0.2,
       },
       {
         type: "hidden",
-        squash: "BENT_IDENTITY",
+        squash: "IDENTITY",
         uuid: "hidden-2",
         bias: -0.2,
       },
       {
         type: "hidden",
-        squash: "BIPOLAR_SIGMOID",
+        squash: "IDENTITY",
         uuid: "hidden-3",
         bias: 0.3,
       },
       {
         type: "hidden",
-        squash: "ReLU6",
+        squash: "IDENTITY",
         uuid: "hidden-4",
         bias: -0.3,
       },
@@ -119,7 +119,7 @@ function makeCreature() {
       },
       {
         type: "output",
-        squash: "TANH",
+        squash: "IDENTITY",
         uuid: "output-1",
         bias: 0.1,
       },
@@ -162,7 +162,7 @@ function makeCreature() {
 }
 
 function makeTrainData(creature: Creature) {
-  const tdFN = "test/BackPropagation/bias/.td.json";
+  const tdFN = "test/Propagate/biasIdentity/.td.json";
   try {
     const input = JSON.parse(
       Deno.readTextFileSync(tdFN),
@@ -209,7 +209,9 @@ function calculateError(
     assert(output.length === 2, `output.length: ${output.length}`);
     assert(Number.isFinite(output[0]), `0: ${output[0]}`);
     assert(Number.isFinite(output[1]), `1: ${output[1]}`);
-
+    if (998 === i) {
+      console.info("output", output);
+    }
     const error = mse.calculate(data.output, output);
     assert(Number.isFinite(error), `${i}) error: ${error}`);
     totalError += error;

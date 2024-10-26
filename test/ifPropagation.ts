@@ -4,7 +4,7 @@ import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import type { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
-import { train } from "./Propagate/TrainTestOnlyUtil.ts";
+import { train } from "./TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -55,9 +55,9 @@ Deno.test("ifPropagation", () => {
     iterations: 1,
     targetError: 0,
   };
-  const network = Creature.fromJSON(json);
+  const creature = Creature.fromJSON(json);
 
-  const result = train(network, ts, options);
+  const result = train(creature, ts, options);
 
   const traceJson = result.trace;
   Deno.writeTextFileSync(

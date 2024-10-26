@@ -1,9 +1,9 @@
 import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
+import { compactUnused } from "../../src/compact/CompactUnused.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { compactUnused } from "../../src/compact/CompactUnused.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -97,7 +97,7 @@ Deno.test("CompactKeepOrder", () => {
 
   const config = createBackPropagationConfig();
   for (let i = data.length; i--;) {
-    const actual = creature.activateAndTrace(data[i]);
+    const actual = creature.activateAndTrace(data[i], false);
     creature.propagate(outputs[i], config);
     assertAlmostEquals(
       actual[0],
@@ -150,7 +150,7 @@ Deno.test("CompactKeepOrder", () => {
   }
 
   for (let i = data.length; i--;) {
-    const actual = compacted.activateAndTrace(data[i]);
+    const actual = compacted.activateAndTrace(data[i], false);
     compacted.propagate(outputs[i], config);
     assertAlmostEquals(
       actual[0],

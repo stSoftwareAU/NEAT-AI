@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Maximum", () => {
@@ -20,7 +20,7 @@ Deno.test("Maximum", () => {
     input: 3,
     output: 1,
   };
-  const network = Creature.fromJSON(json);
+  const creature = Creature.fromJSON(json);
 
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 2 - 1;
@@ -28,8 +28,8 @@ Deno.test("Maximum", () => {
     const c = Math.random() * 2 - 1;
 
     const data = [a, b, c];
-    const actual = network.activateAndTrace(data)[0];
-    const actual2 = network.activateAndTrace(data)[0];
+    const actual = creature.activateAndTrace(data, false)[0];
+    const actual2 = creature.activateAndTrace(data, false)[0];
 
     assert(
       Math.abs(actual - actual2) < 0.00000001,

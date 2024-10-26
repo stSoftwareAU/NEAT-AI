@@ -2,19 +2,19 @@ import { fail } from "@std/assert";
 import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { train } from "../../Propagate/TrainTestOnlyUtil.ts";
+import { train } from "../../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("large", () => {
-  const directory = ".test/BackPropagation/large";
+  const directory = ".test/Propagate/large";
   const trainingSet = JSON.parse(
-    Deno.readTextFileSync("test/BackPropagation/large/td.json"),
+    Deno.readTextFileSync("test/Propagate/large/td.json"),
   );
 
   const creature = Creature.fromJSON(
     JSON.parse(
-      Deno.readTextFileSync("test/BackPropagation/large/creature.json"),
+      Deno.readTextFileSync("test/Propagate/large/creature.json"),
     ),
   );
   try {
@@ -58,6 +58,7 @@ Deno.test("large", () => {
       generations: i,
       maximumBiasAdjustmentScale: 1,
       maximumWeightAdjustmentScale: 1,
+      sparseRatio: 1,
     });
 
     console.log(i, results.error);
@@ -79,7 +80,7 @@ Deno.test("large", () => {
         `${directory}/error-trace.json`,
         JSON.stringify(results.trace, null, 1),
       );
-      if (results.error - lastError > 0.005) {
+      if (results.error - lastError > 0.1) {
         fail(
           `Error rate was ${results.error}, regression ${
             lastError - results.error

@@ -29,7 +29,6 @@ export function createNeatConfig(options: NeatOptions) {
     creatures: options.creatures ? options.creatures : [],
     costName: options.costName || "MSE",
     dataSetPartitionBreak: options.dataSetPartitionBreak ?? 2000,
-    disableRandomSamples: options.disableRandomSamples ?? false,
     trainingSampleRate: options.trainingSampleRate ?? 1,
 
     debug: options.debug
@@ -39,6 +38,8 @@ export function createNeatConfig(options: NeatOptions) {
       : false,
 
     feedbackLoop: options.feedbackLoop || false,
+    disableRandomSamples: options.disableRandomSamples ??
+      options.feedbackLoop == true,
     focusList: options.focusList || [],
     focusRate: options.focusRate || 0.25,
 
@@ -81,6 +82,11 @@ export function createNeatConfig(options: NeatOptions) {
 }
 
 function validate(config: NeatArguments) {
+  if (config.feedbackLoop == true && config.disableRandomSamples == false) {
+    throw new Error(
+      "Feedback Loop, Disable Random Samples must be set together",
+    );
+  }
   if (Number.isInteger(config.threads) == false || config.threads < 1) {
     throw new Error(
       `Threads must be more than zero was: ${config.threads}`,

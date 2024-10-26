@@ -39,7 +39,6 @@ export class SINUSOID implements ActivationInterface, UnSquashInterface {
     }
 
     // If no hint is provided, return the base value within [-π/2, π/2]
-    console.info(`SINUSOID unSquash: ${activation}, no hint -> ${baseValue}`);
     return baseValue;
   }
 

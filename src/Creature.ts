@@ -56,6 +56,7 @@ import { SwapNeurons } from "./mutate/SwapNeurons.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
+import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 
 /**
  * Creature Class
@@ -304,10 +305,14 @@ export class Creature implements CreatureInternal {
    * Activates the creature and traces the activity.
    *
    * @param {number[]} input - The input values for the creature.
-   * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
+   * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @returns {number[]} The output values after activation.
    */
-  activateAndTrace(input: number[], feedbackLoop: boolean = false): number[] {
+  activateAndTrace(
+    input: number[],
+    feedbackLoop: boolean,
+    sparseConfig?: SparseConfig,
+  ): number[] {
     const output: number[] = new Array(this.output);
 
     this.state.makeActivation(input, feedbackLoop);
@@ -316,13 +321,22 @@ export class Creature implements CreatureInternal {
 
     // Activate hidden neurons
     for (let i = this.input; i < lastHiddenNode; i++) {
-      this.neurons[i].activateAndTrace();
+      const n = this.neurons[i];
+      if (sparseConfig && sparseConfig.traceNeeded(n.uuid)) {
+        n.activateAndTrace();
+      } else {
+        n.activate();
+      }
     }
 
     // Activate output neurons and store their values in the output array
     for (let outIndx = 0; outIndx < this.output; outIndx++) {
-      output[outIndx] = this.neurons[lastHiddenNode + outIndx]
-        .activateAndTrace();
+      const n = this.neurons[lastHiddenNode + outIndx];
+      if (sparseConfig && sparseConfig.traceNeeded(n.uuid)) {
+        output[outIndx] = n.activateAndTrace();
+      } else {
+        output[outIndx] = n.activate();
+      }
     }
 
     return output;
@@ -676,8 +690,11 @@ export class Creature implements CreatureInternal {
    * @param {BackPropagationConfig} config - The back propagation configuration.
    * @returns {boolean} True if the creature was changed, false otherwise.
    */
-  applyLearnings(config: BackPropagationConfig): boolean {
-    this.propagateUpdate(config);
+  applyLearnings(
+    config: BackPropagationConfig,
+    sparseConfig?: SparseConfig,
+  ): boolean {
+    this.propagateUpdate(config, sparseConfig);
 
     let changed = false;
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
@@ -702,7 +719,11 @@ export class Creature implements CreatureInternal {
    * @param {number[]} expected - The expected output values.
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
-  propagate(expected: number[], config: BackPropagationConfig) {
+  propagate(
+    expected: number[],
+    config: BackPropagationConfig,
+    sparseConfig?: SparseConfig,
+  ) {
     this.state.cacheAdjustedActivation.clear();
     const indices = Int32Array.from({ length: this.output }, (_, i) => i); // Create an array of indices
 
@@ -717,10 +738,13 @@ export class Creature implements CreatureInternal {
 
       const n = this.neurons[nodeIndex];
 
-      n.propagate(
-        expected[expectedIndex],
-        config,
-      );
+      if (!sparseConfig || sparseConfig.traceNeeded(n.uuid)) {
+        n.propagate(
+          expected[expectedIndex],
+          config,
+          sparseConfig,
+        );
+      }
     }
   }
 
@@ -729,10 +753,13 @@ export class Creature implements CreatureInternal {
    *
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
-  propagateUpdate(config: BackPropagationConfig) {
+  propagateUpdate(config: BackPropagationConfig, sparseConfig?: SparseConfig) {
     // @TODO randomize the order of the neurons
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];
+      if (sparseConfig && !sparseConfig.traceNeeded(n.uuid)) {
+        continue;
+      }
       n.propagateUpdate(config);
     }
   }
@@ -1288,13 +1315,15 @@ export class Creature implements CreatureInternal {
     this.neurons.forEach((n) => {
       if (n.type !== "input") {
         const indx = n.index;
-        const ns = this.state.node(indx);
 
         const traceNeuron: NeuronExport = json
           .neurons[exportIndex] as NeuronTrace;
 
         if (n.type !== "constant") {
-          (traceNeuron as NeuronTrace).trace = ns;
+          const ns = this.state.node(indx);
+          if (ns.count) {
+            (traceNeuron as NeuronTrace).trace = ns;
+          }
         }
         traceNeurons[exportIndex] = traceNeuron as NeuronTrace;
         exportIndex++;
@@ -1305,7 +1334,9 @@ export class Creature implements CreatureInternal {
     this.synapses.forEach((c, indx) => {
       const exportConnection = json.synapses[indx] as SynapseTrace;
       const cs = this.state.connection(c.from, c.to);
-      exportConnection.trace = cs;
+      if (cs.count) {
+        exportConnection.trace = cs;
+      }
 
       traceConnections[indx] = exportConnection;
     });
