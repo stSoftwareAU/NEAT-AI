@@ -6,7 +6,7 @@ import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";
 Deno.test("chooseNeurons", () => {
   const creature = Creature.fromJSON(
     JSON.parse(
-      Deno.readTextFileSync("test/propagate/large/creature.json"),
+      Deno.readTextFileSync("test/Propagate/large/creature.json"),
     ),
   );
 
