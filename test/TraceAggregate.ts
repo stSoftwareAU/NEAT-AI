@@ -2,6 +2,7 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -25,28 +26,32 @@ Deno.test("TraceAggregateMINIMUM", () => {
     input: 2,
     output: 2,
   };
-  const network = Creature.fromJSON(json);
-  network.validate();
+  const creature = Creature.fromJSON(json);
+  creature.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(network.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 2),
   );
   const input = [0.1, 0.2];
-  network.activate(input);
+  creature.activate(input);
 
-  const aOut = network.activateAndTrace(input);
+  const sparseConfig = new SparseConfig(
+    creature.exportJSON(),
+    createBackPropagationConfig({}),
+  );
+  const aOut = creature.activateAndTrace(input, false, sparseConfig);
 
-  const changed = network.applyLearnings(
+  const changed = creature.applyLearnings(
     createBackPropagationConfig({ trainingMutationRate: 1 }),
   );
 
   assert(changed, "should have changed");
 
-  const dOut = network.activate(input);
+  const dOut = creature.activate(input);
 
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(network.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 2),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -82,7 +87,11 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   const input = [0.1, 0.2];
   creature.activate(input);
 
-  const aOut = creature.activateAndTrace(input);
+  const sparseConfig = new SparseConfig(
+    creature.exportJSON(),
+    createBackPropagationConfig({}),
+  );
+  const aOut = creature.activateAndTrace(input, false, sparseConfig);
 
   const changed = creature.applyLearnings(
     createBackPropagationConfig({ trainingMutationRate: 1 }),
@@ -130,7 +139,13 @@ Deno.test("TraceAggregateIF", () => {
   );
   const input = [0.1, 0.2];
   creature.activate(input);
-  const aOut = creature.activateAndTrace(input);
+
+  const sparseConfig = new SparseConfig(
+    creature.exportJSON(),
+    createBackPropagationConfig({}),
+  );
+
+  const aOut = creature.activateAndTrace(input, false, sparseConfig);
 
   const changed = creature.applyLearnings(
     createBackPropagationConfig({ trainingMutationRate: 1 }),

@@ -84,7 +84,7 @@ Deno.test("OneAndDone", () => {
   const expected = makeOutput(input);
 
   for (let i = 0; i < 100; i++) {
-    creature.activateAndTrace(input);
+    creature.activateAndTrace(input, false);
 
     creature.propagate(expected, config);
   }
@@ -138,7 +138,7 @@ Deno.test("TwoSame", () => {
     });
 
     for (let i = 0; i < 2; i++) {
-      creature.activateAndTrace(inA);
+      creature.activateAndTrace(inA, false);
 
       creature.propagate(expectedA, config);
     }
@@ -207,7 +207,7 @@ Deno.test("ManySame", () => {
     const expectedA = makeOutput(inA);
 
     for (let i = 0; i < 1000; i++) {
-      creature.activateAndTrace(inA);
+      creature.activateAndTrace(inA, false);
 
       creature.propagate(expectedA, config);
     }
@@ -375,7 +375,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
     ];
-    creature.activateAndTrace(inC);
+    creature.activateAndTrace(inC, false);
     creature.propagate(makeOutput(inC), config);
   }
 

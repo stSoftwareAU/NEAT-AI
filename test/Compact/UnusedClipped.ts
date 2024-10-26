@@ -1,8 +1,8 @@
 import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -65,7 +65,7 @@ Deno.test("UnusedClipped", () => {
   for (let attempts = 0; attempts < 240; attempts++) {
     const config = createBackPropagationConfig();
     for (let i = data.length; i--;) {
-      const actual = creature.activateAndTrace(data[i]);
+      const actual = creature.activateAndTrace(data[i], false);
       creature.propagate(outputs[i], config);
       assertAlmostEquals(
         actual[0],

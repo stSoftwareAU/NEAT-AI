@@ -1,8 +1,8 @@
 import { assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
+import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -51,7 +51,7 @@ Deno.test("PI-repeat", () => {
   let outA2: number[] = [];
   const expectedA = makeOutput(inA);
   for (let i = 0; i < 2; i++) {
-    outA2 = creature.activateAndTrace(inA);
+    outA2 = creature.activateAndTrace(inA, false);
     creature.propagate(expectedA, config);
 
     Deno.writeTextFileSync(
@@ -84,7 +84,7 @@ Deno.test("PI-single", () => {
   const outA1 = creature.activate(inA);
   let outA2: number[] = [];
   const expectedA = makeOutput(inA);
-  outA2 = creature.activateAndTrace(inA);
+  outA2 = creature.activateAndTrace(inA, false);
 
   creature.propagate(expectedA, config);
 
@@ -96,7 +96,7 @@ Deno.test("PI-single", () => {
   creature.propagateUpdate(config);
   creature.clearState();
   assertAlmostEquals(outA1[0], outA2[0], 0.0001);
-  const actualA1 = creature.activateAndTrace(inA);
+  const actualA1 = creature.activateAndTrace(inA, false);
   const actualA2 = creature.activate(inA);
 
   Deno.writeTextFileSync(
@@ -141,7 +141,7 @@ Deno.test("PI Multiple", () => {
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
     ];
-    creature.activateAndTrace(inC);
+    creature.activateAndTrace(inC, false);
     creature.propagate(makeOutput(inC), config);
   }
 
@@ -154,7 +154,7 @@ Deno.test("PI Multiple", () => {
 
   const inA = [-1, 1, 0];
   const expectedA = makeOutput(inA);
-  const actualA1 = creature.activateAndTrace(inA);
+  const actualA1 = creature.activateAndTrace(inA, false);
   const actualA2 = creature.activate(inA);
   console.info(expectedA, actualA1, actualA2);
 

@@ -187,6 +187,7 @@ export class Neat {
       batchSize: this.config.trainingBatchSize,
       maximumBiasAdjustmentScale: this.config.maximumBiasAdjustmentScale,
       maximumWeightAdjustmentScale: this.config.maximumWeightAdjustmentScale,
+      feedbackLoop: this.config.feedbackLoop,
     };
 
     const p = w.train(creature, trainOptions).then((r) => {

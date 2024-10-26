@@ -8,13 +8,13 @@ import {
 import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags";
 import { Creature } from "../src/Creature.ts";
-import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
-import { Offspring } from "../src/architecture/Offspring.ts";
-import { train } from "./propagate/TrainTestOnlyUtil.ts";
-import type { NeatOptions } from "../src/config/NeatOptions.ts";
-import type { TrainOptions } from "../src/config/TrainOptions.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
+import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
+import { Offspring } from "../src/architecture/Offspring.ts";
+import type { NeatOptions } from "../src/config/NeatOptions.ts";
+import type { TrainOptions } from "../src/config/TrainOptions.ts";
+import { train } from "./propagate/TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -138,8 +138,8 @@ async function evolveSet(
       );
     }
 
-    const r0 = lastCreature.activateAndTrace(dr.input)[0];
-    const r1 = lastCreature.activateAndTrace(dr.input)[0];
+    const r0 = lastCreature.activateAndTrace(dr.input, false)[0];
+    const r1 = lastCreature.activateAndTrace(dr.input, false)[0];
     assertAlmostEquals(
       r0,
       r1,
@@ -203,7 +203,7 @@ function trainSet(
     );
 
     set.forEach((dr) => {
-      const r1 = network.activateAndTrace(dr.input)[0];
+      const r1 = network.activateAndTrace(dr.input, false)[0];
       const r2 = network.activate(dr.input)[0];
 
       assertAlmostEquals(
@@ -227,8 +227,8 @@ function testEquality(original: Creature, copied: Creature) {
       input.push(Math.random());
     }
 
-    const ORout = original.activateAndTrace(input);
-    const COout = copied.activateAndTrace(input);
+    const ORout = original.activateAndTrace(input, false);
+    const COout = copied.activateAndTrace(input, false);
 
     assertEquals(
       ORout,

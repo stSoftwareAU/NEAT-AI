@@ -10,7 +10,7 @@ Deno.test("SkipCount", () => {
 
   const creature = makeCreature();
 
-  const expected = creature.activateAndTrace([1, 2, 3]);
+  const expected = creature.activateAndTrace([1, 2, 3], false);
 
   creature.propagate(expected, config);
   const cs = creature.state.connection(0, 3);

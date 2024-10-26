@@ -84,7 +84,7 @@ Deno.test("PropagateSTEP", () => {
   console.info(config);
   for (let loop = 0; loop < 100; loop++) {
     for (let i = inputs.length; i--;) {
-      creature.activateAndTrace(inputs[i]);
+      creature.activateAndTrace(inputs[i], false);
       creature.propagate(outputs[i], config);
     }
   }

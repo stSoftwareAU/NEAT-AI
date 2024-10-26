@@ -52,7 +52,7 @@ Deno.test("Complex Back Propagation", () => {
   const config = createBackPropagationConfig();
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i];
-    creature.activateAndTrace(input);
+    creature.activateAndTrace(input, false);
     const output = outputs[i];
     creature.propagate(output, config);
   }

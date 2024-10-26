@@ -56,6 +56,7 @@ import { SwapNeurons } from "./mutate/SwapNeurons.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
+import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 
 /**
  * Creature Class
@@ -304,10 +305,14 @@ export class Creature implements CreatureInternal {
    * Activates the creature and traces the activity.
    *
    * @param {number[]} input - The input values for the creature.
-   * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
+   * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @returns {number[]} The output values after activation.
    */
-  activateAndTrace(input: number[], feedbackLoop: boolean = false): number[] {
+  activateAndTrace(
+    input: number[],
+    feedbackLoop: boolean,
+    _sparseConfig?: SparseConfig,
+  ): number[] {
     const output: number[] = new Array(this.output);
 
     this.state.makeActivation(input, feedbackLoop);

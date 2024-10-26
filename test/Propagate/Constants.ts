@@ -1,8 +1,8 @@
 import { assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
+import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -57,7 +57,7 @@ Deno.test("Constants", () => {
     });
     const inA = [-1, 1, 0];
     const outA1 = creature.activate(inA);
-    const outA2 = creature.activateAndTrace(inA);
+    const outA2 = creature.activateAndTrace(inA, false);
     const expectedA = makeOutput(inA);
 
     assertAlmostEquals(outA1[0], outA2[0], 0.0001);
@@ -70,7 +70,7 @@ Deno.test("Constants", () => {
 
     creature.propagateUpdate(config);
 
-    const actualA1 = creature.activateAndTrace(inA);
+    const actualA1 = creature.activateAndTrace(inA, false);
     const actualA2 = creature.activate(inA);
     const diff = Math.abs(expectedA[0] - actualA1[0]);
     console.info(expectedA, actualA1, actualA2, diff);
@@ -120,7 +120,7 @@ Deno.test("Constants Same", () => {
     });
     for (let i = 0; i < 1_000; i++) {
       const input = [-0.5, 0, 0.5];
-      creature.activateAndTrace(input);
+      creature.activateAndTrace(input, false);
       creature.propagate(makeOutput(input), config);
     }
 
@@ -133,7 +133,7 @@ Deno.test("Constants Same", () => {
 
     const inA = [-1, 1, 0];
     const expectedA = makeOutput(inA);
-    const actualA1 = creature.activateAndTrace(inA);
+    const actualA1 = creature.activateAndTrace(inA, false);
     const actualA2 = creature.activate(inA);
     const diff = Math.abs(expectedA[0] - actualA1[0]);
 
@@ -188,7 +188,7 @@ Deno.test("Constants Known Few", () => {
     for (let indx = 0; indx < inputs.length; indx++) {
       const input = inputs[indx];
       const output = makeOutput(input);
-      creature.activateAndTrace(input);
+      creature.activateAndTrace(input, false);
 
       creature.propagate(output, config);
     }
@@ -260,7 +260,7 @@ Deno.test("ConstantsMany", () => {
         for (let indx = 0; indx < observations.length; indx++) {
           const input = observations[indx];
 
-          creature.activateAndTrace(input);
+          creature.activateAndTrace(input, false);
           const output = makeOutput(input);
           creature.propagate(output, config);
         }

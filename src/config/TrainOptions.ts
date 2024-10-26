@@ -26,6 +26,13 @@ export interface TrainArguments extends BackPropagationArguments {
 
   /** The maximum number of minutes to train for */
   trainingTimeOutMinutes: number;
+
+  /**
+   * Enable feedback loop where the previous result feeds back into the next interaction.
+   * Useful for time-series forecasting and recurrent neural networks.
+   * More information: https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html
+   */
+  feedbackLoop: boolean;
 }
 
 export type TrainOptions = Partial<TrainArguments>;

@@ -1,6 +1,8 @@
 import { assert, fail } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";
+import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -105,8 +107,11 @@ Deno.test("booleanXOR", async () => {
     creature = new Creature(2, 1);
   }
   assert(results.error <= 0.03, "Error rate was: " + results.error);
-
-  const value = creature.activateAndTrace([1, 0])[0];
+  const sparseConfig = new SparseConfig(
+    creature.exportJSON(),
+    createBackPropagationConfig({}),
+  );
+  const value = creature.activateAndTrace([1, 0], false, sparseConfig)[0];
 
   assert(value > 0.65, "Should be more than 0.65 was: " + value);
 });

@@ -83,7 +83,7 @@ Deno.test("NoChangeWhenCorrect", () => {
 
   const config = createBackPropagationConfig();
   for (let i = data.length; i--;) {
-    const actual = creature.activateAndTrace(data[i]);
+    const actual = creature.activateAndTrace(data[i], false);
     creature.propagate(outputs[i], config);
     assertAlmostEquals(
       actual[0],

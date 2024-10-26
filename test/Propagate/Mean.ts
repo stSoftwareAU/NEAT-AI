@@ -112,7 +112,7 @@ Deno.test("PropagateMean", () => {
   const config = createBackPropagationConfig({ learningRate: 0.1 });
   console.info(config);
   for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(inputs[i]);
+    creature.activateAndTrace(inputs[i], false);
     creature.propagate(outputs[i], config);
   }
 
