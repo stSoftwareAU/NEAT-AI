@@ -4,7 +4,6 @@ import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { train } from "../../propagate/TrainTestOnlyUtil.ts";
 
-
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("large", () => {
