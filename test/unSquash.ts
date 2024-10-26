@@ -157,8 +157,6 @@ Deno.test("STEP unSquash", () => {
   assertAlmostEquals(step.unSquash(0.2), 0.2);
   assertAlmostEquals(step.unSquash(0.2, -0.2), 0.2); // Negative hint is ignored because activation suggests a positive input
 
-  // For negative activations, if hint aligns (less than threshold), use the hint
-  // assertAlmostEquals(step.unSquash(-0.1, -0.3), -0.3);
   // For clear activations of 1, and a positive hint, use the hint
   assertAlmostEquals(step.unSquash(1, 0.3), 0.3);
 });
