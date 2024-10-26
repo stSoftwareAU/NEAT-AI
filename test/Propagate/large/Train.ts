@@ -2,19 +2,19 @@ import { fail } from "@std/assert";
 import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { train } from "../../Propagate/TrainTestOnlyUtil.ts";
+import { train } from "../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("large", () => {
-  const directory = ".test/BackPropagation/large";
+  const directory = ".test/propagate/large";
   const trainingSet = JSON.parse(
-    Deno.readTextFileSync("test/BackPropagation/large/td.json"),
+    Deno.readTextFileSync("test/propagate/large/td.json"),
   );
 
   const creature = Creature.fromJSON(
     JSON.parse(
-      Deno.readTextFileSync("test/BackPropagation/large/creature.json"),
+      Deno.readTextFileSync("test/propagate/large/creature.json"),
     ),
   );
   try {
