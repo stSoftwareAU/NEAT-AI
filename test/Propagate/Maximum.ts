@@ -1,10 +1,10 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
+import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { train } from "./TrainTestOnlyUtil.ts";
+import { train } from "../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

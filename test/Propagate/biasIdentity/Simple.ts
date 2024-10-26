@@ -1,10 +1,10 @@
 import { assertAlmostEquals } from "@std/assert/almost-equals";
+import { assert } from "@std/assert/assert";
 import { fail } from "@std/assert/fail";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { train } from "../TrainTestOnlyUtil.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { assert } from "@std/assert/assert";
+import { train } from "../../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

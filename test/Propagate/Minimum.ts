@@ -5,7 +5,7 @@ import type { TrainOptions } from "../../src/config/TrainOptions.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { train } from "./TrainTestOnlyUtil.ts";
+import { train } from "../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
