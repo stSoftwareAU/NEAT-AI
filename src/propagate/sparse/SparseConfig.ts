@@ -9,4 +9,8 @@ export class SparseConfig {
     this.selectedNeurons = chooseNeurons(creature, config);
     this.paths = calculatePathsToOutput(this.selectedNeurons, creature);
   }
+
+  traceNeeded(uuid: string): boolean {
+    return this.selectedNeurons.has(uuid) || this.paths.has(uuid);
+  }
 }
