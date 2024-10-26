@@ -188,6 +188,7 @@ export class Neat {
       maximumBiasAdjustmentScale: this.config.maximumBiasAdjustmentScale,
       maximumWeightAdjustmentScale: this.config.maximumWeightAdjustmentScale,
       feedbackLoop: this.config.feedbackLoop,
+      sparseRatio: this.config.sparseRatio,
     };
 
     const p = w.train(creature, trainOptions).then((r) => {

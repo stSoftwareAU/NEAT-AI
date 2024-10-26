@@ -105,10 +105,7 @@ export function createBackPropagationConfig(
     disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
     disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
     batchSize: options?.batchSize ?? 1,
-    sparseRatio: Math.min(
-      Math.max(options?.sparseRatio ?? Math.random() * Math.random(), 0.01),
-      1,
-    ),
+    sparseRatio: options?.sparseRatio ?? 1,
   };
 
   return Object.freeze(config);
