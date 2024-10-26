@@ -4,7 +4,7 @@ import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import type { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
-import { train } from "./propagate/TrainTestOnlyUtil.ts";
+import { train } from "../test/propagate/TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
