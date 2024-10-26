@@ -14,7 +14,7 @@ import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
-import { train } from "../test/propagate/TrainTestOnlyUtil.ts";
+import { train } from "./TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

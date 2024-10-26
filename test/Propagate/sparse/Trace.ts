@@ -1,7 +1,7 @@
 import { assertFalse } from "@std/assert/false";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { train } from "../TrainTestOnlyUtil.ts";
+import { train } from "../../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
