@@ -76,12 +76,22 @@ export function createNeatConfig(options: NeatOptions) {
     maximumBiasAdjustmentScale: options.maximumBiasAdjustmentScale ?? 1,
 
     maximumWeightAdjustmentScale: options.maximumWeightAdjustmentScale ?? 1,
+    sparseRatio: options.sparseRatio ?? Math.random() * Math.random(),
   };
   validate(config);
   return Object.freeze(config);
 }
 
 function validate(config: NeatArguments) {
+  if (
+    Number.isFinite(config.sparseRatio) == false || config.sparseRatio < 0 ||
+    config.sparseRatio > 1
+  ) {
+    throw new Error(
+      `Sparse Ratio must be between 0 and 1 was: ${config.sparseRatio}`,
+    );
+  }
+
   if (config.feedbackLoop == true && config.disableRandomSamples == false) {
     throw new Error(
       "Feedback Loop, Disable Random Samples must be set together",

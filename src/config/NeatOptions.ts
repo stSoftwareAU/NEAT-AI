@@ -116,6 +116,9 @@ export interface NeatArguments {
    * The maximum +/- the weight will be adjusted in one training iteration. Default 10, Minimum 0.1
    */
   maximumWeightAdjustmentScale: number;
+
+  /** Determine how many neurons to select based on the sparseRatio. */
+  sparseRatio: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

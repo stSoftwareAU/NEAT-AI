@@ -738,7 +738,7 @@ export class Creature implements CreatureInternal {
 
       const n = this.neurons[nodeIndex];
 
-      if (!sparseConfig || sparseConfig.traceNeeded(n.uuid)) {
+      if (!sparseConfig || sparseConfig.propagateNeeded(n.uuid)) {
         n.propagate(
           expected[expectedIndex],
           config,
@@ -757,10 +757,9 @@ export class Creature implements CreatureInternal {
     // @TODO randomize the order of the neurons
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];
-      if (sparseConfig && !sparseConfig.traceNeeded(n.uuid)) {
-        continue;
+      if (!sparseConfig || sparseConfig.updateNeeded(n.uuid)) {
+        n.propagateUpdate(config);
       }
-      n.propagateUpdate(config);
     }
   }
 
