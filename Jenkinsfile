@@ -34,12 +34,11 @@ pipeline {
 
                           echo "Remove old test files"
                           find test -name ".*.json" -exec rm {} \\;
-                          export DENO_FUTURE=1
-                          deno lint src
+                          deno lint src test
 
                           deno fmt --check src test
-                          deno check `find src -name "*.ts"`
-                          deno check `find test -name "*.ts"`
+
+                          deno check --all src test
                         '''.stripIndent()
                     }
                 }
