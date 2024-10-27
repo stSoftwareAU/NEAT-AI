@@ -7,7 +7,7 @@ import { train } from "../../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-const directory = ".test/Propagate/simple";
+const directory = ".test/propagate/simple";
 
 function setup() {
   try {
@@ -119,7 +119,7 @@ function makeCreature() {
 }
 
 function makeTrainData(creature: Creature) {
-  const tdFN = "test/Propagate/simple/.td.json";
+  const tdFN = "test/propagate/simple/.td.json";
   try {
     const input = JSON.parse(
       Deno.readTextFileSync(tdFN),

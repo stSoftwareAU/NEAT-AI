@@ -80,7 +80,7 @@ function makeData() {
 
 Deno.test("PropagateIdentity", () => {
   const creature = makeCreature();
-  const traceDir = ".test/PropagateIdentity";
+  const traceDir = ".test/propagateIdentity";
 
   ensureDirSync(traceDir);
 
@@ -149,7 +149,7 @@ Deno.test("PropagateIdentity", () => {
 
 Deno.test("PropagateIdentityNoRealChange", () => {
   const creature = makeCreature();
-  const traceDir = ".test/PropagateIdentityNoRealChange";
+  const traceDir = ".test/propagateIdentityNoRealChange";
 
   ensureDirSync(traceDir);
 

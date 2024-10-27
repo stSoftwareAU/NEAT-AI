@@ -7,14 +7,14 @@ import { train } from "../../TrainTestOnlyUtil.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("large", () => {
-  const directory = ".test/Propagate/large";
+  const directory = ".test/propagate/large";
   const trainingSet = JSON.parse(
-    Deno.readTextFileSync("test/Propagate/large/td.json"),
+    Deno.readTextFileSync("test/propagate/large/td.json"),
   );
 
   const creature = Creature.fromJSON(
     JSON.parse(
-      Deno.readTextFileSync("test/Propagate/large/creature.json"),
+      Deno.readTextFileSync("test/propagate/large/creature.json"),
     ),
   );
   try {

@@ -79,7 +79,7 @@ function makeInputs() {
 
 Deno.test("PropagateMean", () => {
   const creature = makeCreature();
-  const traceDir = ".test/PropagateMean";
+  const traceDir = ".test/propagateMean";
 
   ensureDirSync(traceDir);
 
