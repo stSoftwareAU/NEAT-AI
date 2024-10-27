@@ -3,6 +3,7 @@ import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -50,9 +51,10 @@ Deno.test("PI-repeat", () => {
   const inA = [-1, 1, 0];
   let outA2: number[] = [];
   const expectedA = makeOutput(inA);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < 2; i++) {
     outA2 = creature.activateAndTrace(inA, false);
-    creature.propagate(expectedA, config);
+    creature.propagate(expectedA, config, sparseConfig);
 
     Deno.writeTextFileSync(
       `${traceDir}/traced-${i}.json`,
@@ -85,8 +87,8 @@ Deno.test("PI-single", () => {
   let outA2: number[] = [];
   const expectedA = makeOutput(inA);
   outA2 = creature.activateAndTrace(inA, false);
-
-  creature.propagate(expectedA, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  creature.propagate(expectedA, config, sparseConfig);
 
   Deno.writeTextFileSync(
     ".trace/1.json",
@@ -135,6 +137,7 @@ Deno.test("PI Multiple", () => {
     JSON.stringify(creature.exportJSON(), null, 2),
   );
 
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < 1_000; i++) {
     const inC = [
       Math.random() * 2 - 1,
@@ -142,7 +145,7 @@ Deno.test("PI Multiple", () => {
       Math.random() * 2 - 1,
     ];
     creature.activateAndTrace(inC, false);
-    creature.propagate(makeOutput(inC), config);
+    creature.propagate(makeOutput(inC), config, sparseConfig);
   }
 
   Deno.writeTextFileSync(

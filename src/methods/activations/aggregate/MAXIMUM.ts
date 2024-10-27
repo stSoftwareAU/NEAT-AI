@@ -7,6 +7,7 @@ import {
   toValue,
 } from "../../../propagate/BackPropagation.ts";
 import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
@@ -116,6 +117,7 @@ export class MAXIMUM
     neuron: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
+    sparseConfig: SparseConfig,
   ): number {
     const toList = neuron.creature.inwardConnections(neuron.index);
 
@@ -151,7 +153,9 @@ export class MAXIMUM
           /** No Change Propagate */
           if (fromNeuron.type !== "input" && fromNeuron.type !== "constant") {
             if (c.from != c.to) {
-              fromNeuron.propagate(fromActivation, config);
+              if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+                fromNeuron.propagate(fromActivation, config, sparseConfig);
+              }
             }
           }
 
@@ -188,10 +192,13 @@ export class MAXIMUM
           targetFromActivation = targetFromValue / fromWeight;
 
           if (mainConnection.from != mainConnection.to) {
-            improvedFromActivation = fromNeuron.propagate(
-              targetFromActivation,
-              config,
-            );
+            if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+              improvedFromActivation = fromNeuron.propagate(
+                targetFromActivation,
+                config,
+                sparseConfig,
+              );
+            }
           }
 
           const improvedFromValue = improvedFromActivation * fromWeight;

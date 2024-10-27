@@ -56,11 +56,20 @@ export function trainDir(
   return trainDirBinary(creature, dataResult.files, options);
 }
 
+function fp(percentage: number) {
+  if (Math.abs(1 - percentage) < Number.EPSILON) {
+    return yellow("100%");
+  }
+
+  return yellow((percentage * 100).toFixed(1) + "%");
+}
 function trainDirBinary(
   creature: Creature,
   binaryFiles: string[],
   options: TrainOptions,
 ) {
+  const backPropConfig = createBackPropagationConfig(options);
+
   const cost = Costs.find(options.cost ?? "MSE");
 
   const targetError =
@@ -82,7 +91,9 @@ function trainDirBinary(
       binaryFiles.length > 1 ? "s" : ""
     }, target error: ${yellow(targetError.toString())}, iterations: ${
       yellow(iterations.toString())
-    }, training sample rate: ${yellow(trainingSampleRate.toString())}`,
+    }, sample rate: ${fp(trainingSampleRate)}, sparse: ${
+      fp(backPropConfig.sparseRatio)
+    }`,
   );
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
@@ -125,20 +136,16 @@ function trainDirBinary(
   let lastTraceJSON = bestTraceJSON;
   let knownSampleCount = -1;
 
-  const config = createBackPropagationConfig(options);
-
-  const sparseConfig = new SparseConfig(bestCreatureJSON, config);
+  const sparseConfig = new SparseConfig(bestCreatureJSON, backPropConfig);
 
   while (true) {
     iteration++;
     const startTS = Date.now();
     let lastTS = startTS;
-    const generations = options.generations !== undefined
-      ? options.generations + iteration
-      : undefined;
+
     const iterationConfig = createBackPropagationConfig({
-      ...config,
-      generations: generations,
+      ...backPropConfig,
+      generations: backPropConfig.generations + iteration,
     });
 
     let counter = 0;

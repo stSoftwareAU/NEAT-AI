@@ -3,6 +3,7 @@ import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -82,11 +83,11 @@ Deno.test("OneAndDone", () => {
 
   const input = [-1, 0, 1];
   const expected = makeOutput(input);
-
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < 100; i++) {
     creature.activateAndTrace(input, false);
 
-    creature.propagate(expected, config);
+    creature.propagate(expected, config, sparseConfig);
   }
 
   Deno.writeTextFileSync(
@@ -137,10 +138,11 @@ Deno.test("TwoSame", () => {
       limitWeightScale: 5,
     });
 
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
     for (let i = 0; i < 2; i++) {
       creature.activateAndTrace(inA, false);
 
-      creature.propagate(expectedA, config);
+      creature.propagate(expectedA, config, sparseConfig);
     }
 
     Deno.writeTextFileSync(
@@ -205,11 +207,11 @@ Deno.test("ManySame", () => {
 
     const inA = [-1, 0, 1];
     const expectedA = makeOutput(inA);
-
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
     for (let i = 0; i < 1000; i++) {
       creature.activateAndTrace(inA, false);
 
-      creature.propagate(expectedA, config);
+      creature.propagate(expectedA, config, sparseConfig);
     }
 
     Deno.writeTextFileSync(
@@ -368,7 +370,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
   console.info(config);
   const traceDir = ".trace";
   ensureDirSync(traceDir);
-
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < 1_000; i++) {
     const inC = [
       Math.random() * 2 - 1,
@@ -376,7 +378,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
       Math.random() * 2 - 1,
     ];
     creature.activateAndTrace(inC, false);
-    creature.propagate(makeOutput(inC), config);
+    creature.propagate(makeOutput(inC), config, sparseConfig);
   }
 
   creature.propagateUpdate(config);

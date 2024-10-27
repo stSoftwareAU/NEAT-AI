@@ -2,6 +2,7 @@ import { assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -50,11 +51,12 @@ Deno.test("Complex Back Propagation", () => {
   }
 
   const config = createBackPropagationConfig();
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i];
     creature.activateAndTrace(input, false);
     const output = outputs[i];
-    creature.propagate(output, config);
+    creature.propagate(output, config, sparseConfig);
   }
 
   Deno.writeTextFileSync(

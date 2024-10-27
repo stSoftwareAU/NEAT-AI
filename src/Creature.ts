@@ -722,7 +722,7 @@ export class Creature implements CreatureInternal {
   propagate(
     expected: number[],
     config: BackPropagationConfig,
-    sparseConfig?: SparseConfig,
+    sparseConfig: SparseConfig,
   ) {
     this.state.cacheAdjustedActivation.clear();
     const indices = Int32Array.from({ length: this.output }, (_, i) => i); // Create an array of indices

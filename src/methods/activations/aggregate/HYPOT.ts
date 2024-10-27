@@ -2,6 +2,7 @@ import type { BackPropagationConfig } from "../../../propagate/BackPropagation.t
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 
 export class HYPOT implements NeuronActivationInterface {
   public readonly range: ActivationRange = new ActivationRange(
@@ -14,6 +15,7 @@ export class HYPOT implements NeuronActivationInterface {
     neuron: Neuron,
     _targetActivation: number,
     config: BackPropagationConfig,
+    sparseConfig: SparseConfig,
   ): number {
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
@@ -26,10 +28,13 @@ export class HYPOT implements NeuronActivationInterface {
       if (fromNeuron.type == "hidden") {
         let improvedActivation = fromActivation;
         if (c.to != c.from) {
-          improvedActivation = fromNeuron.propagate(
-            fromActivation,
-            config,
-          );
+          if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+            improvedActivation = fromNeuron.propagate(
+              fromActivation,
+              config,
+              sparseConfig,
+            );
+          }
         }
         values[indx] = improvedActivation * c.weight;
       } else {

@@ -3,6 +3,7 @@ import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -61,7 +62,8 @@ Deno.test("Constants", () => {
     const expectedA = makeOutput(inA);
 
     assertAlmostEquals(outA1[0], outA2[0], 0.0001);
-    creature.propagate(expectedA, config);
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    creature.propagate(expectedA, config, sparseConfig);
 
     Deno.writeTextFileSync(
       ".trace/1.json",
@@ -118,10 +120,11 @@ Deno.test("Constants Same", () => {
       maximumBiasAdjustmentScale: 20,
       learningRate: 1,
     });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
     for (let i = 0; i < 1_000; i++) {
       const input = [-0.5, 0, 0.5];
       creature.activateAndTrace(input, false);
-      creature.propagate(makeOutput(input), config);
+      creature.propagate(makeOutput(input), config, sparseConfig);
     }
 
     Deno.writeTextFileSync(
@@ -183,14 +186,14 @@ Deno.test("Constants Known Few", () => {
     maximumBiasAdjustmentScale: 20,
     learningRate: 0.05,
   });
-
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let loops = 100; loops--;) {
     for (let indx = 0; indx < inputs.length; indx++) {
       const input = inputs[indx];
       const output = makeOutput(input);
       creature.activateAndTrace(input, false);
 
-      creature.propagate(output, config);
+      creature.propagate(output, config, sparseConfig);
     }
   }
 
@@ -255,14 +258,14 @@ Deno.test("ConstantsMany", () => {
         ...config,
         generations: generations,
       });
-
+      const sparseConfig = new SparseConfig(creature.exportJSON(), config);
       for (let loops = 10; loops--;) {
         for (let indx = 0; indx < observations.length; indx++) {
           const input = observations[indx];
 
           creature.activateAndTrace(input, false);
           const output = makeOutput(input);
-          creature.propagate(output, config);
+          creature.propagate(output, config, sparseConfig);
         }
       }
       Deno.writeTextFileSync(

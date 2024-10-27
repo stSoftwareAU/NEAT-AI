@@ -4,6 +4,7 @@ import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -61,10 +62,10 @@ Deno.test("PropagateMaximumSimple", () => {
     learningRate: 0.1,
   });
   console.info(config);
-
+  const sparseConfig = new SparseConfig(creatureC.exportJSON(), config);
   ts.forEach((item) => {
     creatureC.activateAndTrace(item.input, false);
-    creatureC.propagate(item.output, config);
+    creatureC.propagate(item.output, config, sparseConfig);
   });
 
   Deno.writeTextFileSync(
