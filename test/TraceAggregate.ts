@@ -43,6 +43,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
 
   const changed = creature.applyLearnings(
     createBackPropagationConfig({ trainingMutationRate: 1 }),
+    sparseConfig,
   );
 
   assert(changed, "should have changed");
@@ -97,6 +98,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 
   const changed = creature.applyLearnings(
     createBackPropagationConfig({ trainingMutationRate: 1 }),
+    sparseConfig,
   );
 
   assert(changed, "should have changed");
@@ -151,6 +153,7 @@ Deno.test("TraceAggregateIF", () => {
 
   const changed = creature.applyLearnings(
     createBackPropagationConfig({ trainingMutationRate: 1 }),
+    sparseConfig,
   );
 
   assert(changed, "should have changed");
