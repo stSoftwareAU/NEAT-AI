@@ -311,7 +311,11 @@ function trainDirBinary(
       if (iterations > 1) {
         creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
       }
-
+      lastTraceJSON.neurons.forEach((n) => {
+        if (!sparseConfig.traceNeeded(n.uuid)) {
+          assert(n.trace === undefined, "Trace should be undefined " + n.uuid);
+        }
+      });
       let compact = compactUnused(lastTraceJSON, iterationConfig.plankConstant);
       if (!compact) {
         compact = Creature.fromJSON(lastTraceJSON).compact();
