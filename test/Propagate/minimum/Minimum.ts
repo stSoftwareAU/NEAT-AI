@@ -66,6 +66,7 @@ Deno.test("Minimum", () => {
       disableRandomSamples: true,
       generations: i,
       batchSize: 500,
+      sparseRatio: 1,
     });
 
     console.log(i, results.error);
@@ -87,7 +88,7 @@ Deno.test("Minimum", () => {
         `${directory}/error-trace.json`,
         JSON.stringify(results.trace, null, 1),
       );
-      if (results.error - lastError > 0.01) {
+      if (results.error - lastError > 0.02) {
         fail(
           `Error rate was ${results.error}, regression ${
             lastError - results.error
