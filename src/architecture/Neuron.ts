@@ -323,8 +323,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
     config: BackPropagationConfig,
     sparseConfig: SparseConfig,
   ): number {
-    assert(sparseConfig, "sparseConfig must be defined");
-    assert(sparseConfig.propagateNeeded(this.uuid), this.uuid);
+    // assert(sparseConfig, "sparseConfig must be defined");
+    // assert(sparseConfig.propagateNeeded(this.uuid), this.uuid);
 
     const activation = this.adjustedActivation(config);
     if (
