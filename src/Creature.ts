@@ -692,7 +692,7 @@ export class Creature implements CreatureInternal {
    */
   applyLearnings(
     config: BackPropagationConfig,
-    sparseConfig?: SparseConfig,
+    sparseConfig: SparseConfig,
   ): boolean {
     this.propagateUpdate(config, sparseConfig);
 
@@ -700,7 +700,9 @@ export class Creature implements CreatureInternal {
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       if (config.trainingMutationRate > Math.random()) {
         const n = this.neurons[indx];
-        changed ||= n.applyLearnings();
+        if (sparseConfig.updateNeeded(n.uuid)) {
+          changed ||= n.applyLearnings();
+        }
       }
     }
 
@@ -738,7 +740,7 @@ export class Creature implements CreatureInternal {
 
       const n = this.neurons[nodeIndex];
 
-      if (!sparseConfig || sparseConfig.propagateNeeded(n.uuid)) {
+      if (sparseConfig.propagateNeeded(n.uuid)) {
         n.propagate(
           expected[expectedIndex],
           config,
@@ -753,11 +755,11 @@ export class Creature implements CreatureInternal {
    *
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
-  propagateUpdate(config: BackPropagationConfig, sparseConfig?: SparseConfig) {
+  propagateUpdate(config: BackPropagationConfig, sparseConfig: SparseConfig) {
     // @TODO randomize the order of the neurons
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
       const n = this.neurons[indx];
-      if (!sparseConfig || sparseConfig.updateNeeded(n.uuid)) {
+      if (sparseConfig.updateNeeded(n.uuid)) {
         n.propagateUpdate(config);
       }
     }

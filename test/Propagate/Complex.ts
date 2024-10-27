@@ -64,7 +64,7 @@ Deno.test("Complex Back Propagation", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
   creature.clearState();
 
   Deno.writeTextFileSync(

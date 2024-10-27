@@ -130,7 +130,7 @@ Deno.test("PropagateIdentity", () => {
     JSON.stringify(traced, null, 2),
   );
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
   Deno.writeTextFileSync(
     `${traceDir}/3-end.json`,
     JSON.stringify(creature.exportJSON(), null, 2),
@@ -204,7 +204,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
     JSON.stringify(traced, null, 2),
   );
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
   Deno.writeTextFileSync(
     `${traceDir}/3-end.json`,
     JSON.stringify(creature.exportJSON(), null, 2),

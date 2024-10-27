@@ -124,7 +124,7 @@ Deno.test("PropagateMean", () => {
     JSON.stringify(traced, null, 2),
   );
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
 
   Deno.writeTextFileSync(
     `${traceDir}/2-end.json`,

@@ -95,7 +95,7 @@ Deno.test("OneAndDone", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
 
   const actual = creature.activate(input);
 
@@ -150,7 +150,7 @@ Deno.test("TwoSame", () => {
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
-    creature.propagateUpdate(config);
+    creature.propagateUpdate(config, sparseConfig);
     creature.clearState();
 
     const actualA = creature.activate(inA);
@@ -219,7 +219,7 @@ Deno.test("ManySame", () => {
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
-    creature.propagateUpdate(config);
+    creature.propagateUpdate(config, sparseConfig);
     creature.clearState();
 
     const actualA = creature.activate(inA);
@@ -381,7 +381,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
     creature.propagate(makeOutput(inC), config, sparseConfig);
   }
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
 
   Deno.writeTextFileSync(
     ".trace/4-done.json",

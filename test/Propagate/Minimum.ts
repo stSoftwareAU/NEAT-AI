@@ -6,6 +6,7 @@ import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -101,7 +102,9 @@ Deno.test("PropagateMinimum", () => {
       generations: 0,
     });
 
-    creatureE.applyLearnings(config);
+    const sparseConfig = new SparseConfig(creatureE.exportJSON(), config);
+
+    creatureE.applyLearnings(config, sparseConfig);
     const errorC = calculateError(creatureC, ts);
     const errorD = calculateError(creatureD, ts);
     const errorE = calculateError(creatureE, ts);

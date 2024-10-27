@@ -400,7 +400,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           ) {
             const targetFromActivation = targetFromValue / fromWeight;
             if (
-              !sparseConfig || sparseConfig.propagateNeeded(fromNeuron.uuid)
+              sparseConfig.propagateNeeded(fromNeuron.uuid)
             ) {
               improvedFromActivation = fromNeuron.propagate(
                 targetFromActivation,

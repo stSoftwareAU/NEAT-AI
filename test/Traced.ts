@@ -2,6 +2,7 @@ import { ensureDirSync } from "@std/fs";
 import { Creature } from "../mod.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 import { compactUnused } from "../src/compact/CompactUnused.ts";
+import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test("Traced", () => {
   const traceDir = ".trace";
@@ -23,8 +24,9 @@ Deno.test("Traced", () => {
       JSON.stringify(compact.exportJSON(), null, 2),
     );
   }
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-  creature.applyLearnings(config);
+  creature.applyLearnings(config, sparseConfig);
 
   Deno.writeTextFileSync(
     `${traceDir}/B.json`,
