@@ -203,14 +203,22 @@ export class Neat {
             blue(r.train.ID)
           } caused a higher error of ${r.train.error} from ${errorTx}`,
         );
+        const trainedCreature = Creature.fromJSON(JSON.parse(r.train.creature));
         const tuned = fineTuneImprovement(
           creature,
-          Creature.fromJSON(JSON.parse(r.train.creature)),
+          trainedCreature,
           1,
           true,
         );
+        // assert(tuned.length < 1, "No tuned creature found");
         if (tuned.length > 0) {
           r.train.tuned = JSON.stringify(tuned[0].exportJSON());
+        } else {
+          console.warn(
+            `Training ${
+              blue(r.train.ID)
+            } caused a higher error of ${r.train.error} from ${errorTx} and no tuning`,
+          );
         }
       }
 
