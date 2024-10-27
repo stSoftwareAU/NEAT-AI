@@ -76,6 +76,7 @@ async function evolveSet(
     targetError: error,
     threads: 1,
     verbose: first,
+    sparseRatio: 1,
   };
   first = false;
   let resultError = Number.MAX_VALUE;
