@@ -8,6 +8,7 @@ import {
   toValue,
 } from "../../../propagate/BackPropagation.ts";
 import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
@@ -292,6 +293,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     neuron: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
+    sparseConfig: SparseConfig,
   ): number {
     const inward = neuron.creature.inwardConnections(neuron.index);
     let condition = 0;
@@ -365,11 +367,13 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
         fromNeuron.type !== "constant"
       ) {
         targetFromActivation = targetFromValue / fromWeight;
-
-        improvedFromActivation = fromNeuron.propagate(
-          targetFromActivation,
-          config,
-        );
+        if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+          improvedFromActivation = fromNeuron.propagate(
+            targetFromActivation,
+            config,
+            sparseConfig,
+          );
+        }
         improvedFromValue = improvedFromActivation * fromWeight;
 
         thisPerLinkError = targetFromValue - improvedFromValue;

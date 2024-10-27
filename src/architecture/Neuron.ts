@@ -321,10 +321,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
   propagate(
     requestedActivation: number,
     config: BackPropagationConfig,
-    sparseConfig?: SparseConfig,
+    sparseConfig: SparseConfig,
   ): number {
-    const activation = this.adjustedActivation(config);
+    // assert(sparseConfig, "sparseConfig must be defined");
+    // assert(sparseConfig.propagateNeeded(this.uuid), this.uuid);
 
+    const activation = this.adjustedActivation(config);
+    if (
+      sparseConfig && sparseConfig.propagateNeeded(this.uuid) == false
+    ) {
+      return activation;
+    }
     const squashMethod = this.findSquash();
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
@@ -346,6 +353,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         this,
         targetActivation,
         config,
+        sparseConfig,
       );
       propagateUpdateMethod.range.validate(limitedActivation);
     } else {
@@ -400,6 +408,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
               improvedFromActivation = fromNeuron.propagate(
                 targetFromActivation,
                 config,
+                sparseConfig,
               );
             }
           }

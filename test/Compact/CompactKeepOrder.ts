@@ -4,6 +4,7 @@ import type { CreatureExport } from "../../mod.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -96,9 +97,10 @@ Deno.test("CompactKeepOrder", () => {
   }
 
   const config = createBackPropagationConfig();
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = data.length; i--;) {
     const actual = creature.activateAndTrace(data[i], false);
-    creature.propagate(outputs[i], config);
+    creature.propagate(outputs[i], config, sparseConfig);
     assertAlmostEquals(
       actual[0],
       outputs[i][0],
@@ -151,7 +153,7 @@ Deno.test("CompactKeepOrder", () => {
 
   for (let i = data.length; i--;) {
     const actual = compacted.activateAndTrace(data[i], false);
-    compacted.propagate(outputs[i], config);
+    compacted.propagate(outputs[i], config, sparseConfig);
     assertAlmostEquals(
       actual[0],
       outputs[i][0],

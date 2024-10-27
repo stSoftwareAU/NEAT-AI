@@ -3,6 +3,7 @@ import { ensureDirSync } from "@std/fs";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { Costs } from "../../src/Costs.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 const NODE_ID = "identity-6";
 function makeCreature() {
@@ -117,9 +118,10 @@ Deno.test("PropagateIdentity", () => {
     disableRandomSamples: true,
   });
 
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = inputs.length; i--;) {
     creature.activateAndTrace(inputs[i], false);
-    creature.propagate(targets[i], config);
+    creature.propagate(targets[i], config, sparseConfig);
   }
 
   const traced = creature.traceJSON();
@@ -190,9 +192,10 @@ Deno.test("PropagateIdentityNoRealChange", () => {
   });
 
   console.info(config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = inputs.length; i--;) {
     creature.activateAndTrace(inputs[i], false);
-    creature.propagate(targets[i], config);
+    creature.propagate(targets[i], config, sparseConfig);
   }
 
   const traced = creature.traceJSON();

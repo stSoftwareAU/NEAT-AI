@@ -3,6 +3,7 @@ import { ensureDirSync, existsSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -111,9 +112,10 @@ Deno.test("PropagateMean", () => {
 
   const config = createBackPropagationConfig({ learningRate: 0.1 });
   console.info(config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = inputs.length; i--;) {
     creature.activateAndTrace(inputs[i], false);
-    creature.propagate(outputs[i], config);
+    creature.propagate(outputs[i], config, sparseConfig);
   }
 
   const traced = creature.traceJSON();

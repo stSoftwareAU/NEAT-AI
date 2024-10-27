@@ -11,11 +11,13 @@ export class SparseConfig {
   }
 
   traceNeeded(uuid: string): boolean {
-    return this.selectedNeurons.has(uuid) || this.paths.has(uuid);
+    return this.selectedNeurons.has(uuid);
   }
+
   propagateNeeded(uuid: string): boolean {
     return this.selectedNeurons.has(uuid) || this.paths.has(uuid);
   }
+
   updateNeeded(uuid: string): boolean {
     return this.selectedNeurons.has(uuid);
   }

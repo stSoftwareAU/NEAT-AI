@@ -11,6 +11,7 @@ import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
+import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 
 export class MINIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
@@ -114,6 +115,7 @@ export class MINIMUM
     neuron: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
+    sparseConfig: SparseConfig,
   ): number {
     const activation = neuron.adjustedActivation(config);
 
@@ -159,7 +161,7 @@ export class MINIMUM
           /** No Change Propagate */
           if (fromNeuron.type !== "input" && fromNeuron.type !== "constant") {
             if (c.from != c.to) {
-              fromNeuron.propagate(fromActivation, config);
+              fromNeuron.propagate(fromActivation, config, sparseConfig);
             }
           }
 
@@ -198,10 +200,13 @@ export class MINIMUM
         targetFromActivation = targetFromValue / fromWeight;
 
         if (mainConnection.from != mainConnection.to) {
-          improvedFromActivation = fromNeuron.propagate(
-            targetFromActivation,
-            config,
-          );
+          if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+            improvedFromActivation = fromNeuron.propagate(
+              targetFromActivation,
+              config,
+              sparseConfig,
+            );
+          }
         }
 
         const improvedFromValue = improvedFromActivation * fromWeight;
