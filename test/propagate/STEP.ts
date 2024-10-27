@@ -46,7 +46,7 @@ function makeInputs() {
 
 Deno.test("PropagateSTEP", () => {
   const creature = makeCreature();
-  const testDir = ".test/PropagateSTEP";
+  const testDir = ".test/propagateSTEP";
 
   ensureDirSync(testDir);
 
