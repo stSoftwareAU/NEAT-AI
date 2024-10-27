@@ -332,7 +332,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const squashMethod = this.findSquash();
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
-    const ns = this.creature.state.node(this.index);
     if (
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
@@ -340,7 +339,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
       return targetActivation;
     }
 
-    ns.noChange = false;
+    const ns = this.creature.state.node(this.index);
+
+    const updateNeeded = sparseConfig.updateNeeded(this.uuid);
+
+    /* this node is not changed if the update is not needed */
+    ns.noChange = updateNeeded == false;
 
     let limitedActivation: number;
 
@@ -411,6 +415,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           }
 
           if (
+            updateNeeded &&
             Math.abs(improvedFromActivation) > config.plankConstant &&
             Math.abs(fromWeight) > config.plankConstant
           ) {
@@ -432,23 +437,31 @@ export class Neuron implements TagsInterface, NeuronInternal {
         }
       }
 
-      accumulateBias(
-        ns,
-        targetValue,
-        improvedValue,
-        currentBias,
-        config,
-      );
+      if (updateNeeded) {
+        accumulateBias(
+          ns,
+          targetValue,
+          improvedValue,
+          currentBias,
+          config,
+        );
 
-      const aBias = adjustedBias(this, config);
-      limitedActivation = (squashMethod as ActivationInterface).squash(
-        improvedValue + aBias - currentBias,
-      );
-      propagateUpdateMethod.range.validate(limitedActivation);
+        const aBias = adjustedBias(this, config);
+        limitedActivation = (squashMethod as ActivationInterface).squash(
+          improvedValue + aBias - currentBias,
+        );
+        propagateUpdateMethod.range.validate(limitedActivation);
+      } else {
+        limitedActivation = (squashMethod as ActivationInterface).squash(
+          improvedValue,
+        );
+      }
     }
 
     if (Math.abs(limitedActivation - activation) > config.plankConstant) {
-      ns.traceActivation(limitedActivation);
+      if (updateNeeded) {
+        ns.traceActivation(limitedActivation);
+      }
       this.creature.state.cacheAdjustedActivation.delete(this.index);
       return limitedActivation;
     } else {
