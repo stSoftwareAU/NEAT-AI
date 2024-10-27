@@ -2,6 +2,7 @@ import { yellow } from "@std/fmt/colors";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -16,7 +17,8 @@ Deno.test("Trace", () => {
   const config = createBackPropagationConfig({
     learningRate: 0.02,
   });
-  creature.applyLearnings(config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  creature.applyLearnings(config, sparseConfig);
   creature.validate();
   const json2 = creature.exportJSON();
   stats(json2);

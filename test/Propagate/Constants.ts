@@ -70,7 +70,7 @@ Deno.test("Constants", () => {
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
-    creature.propagateUpdate(config);
+    creature.propagateUpdate(config, sparseConfig);
 
     const actualA1 = creature.activateAndTrace(inA, false);
     const actualA2 = creature.activate(inA);
@@ -132,7 +132,7 @@ Deno.test("Constants Same", () => {
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
-    creature.propagateUpdate(config);
+    creature.propagateUpdate(config, sparseConfig);
 
     const inA = [-1, 1, 0];
     const expectedA = makeOutput(inA);
@@ -202,7 +202,7 @@ Deno.test("Constants Known Few", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
 
   const input = [
     0.5652223287089484,
@@ -273,7 +273,7 @@ Deno.test("ConstantsMany", () => {
         JSON.stringify(creature.traceJSON(), null, 2),
       );
 
-      creature.propagateUpdate(config);
+      creature.propagateUpdate(config, sparseConfig);
       creature.clearState();
     }
 

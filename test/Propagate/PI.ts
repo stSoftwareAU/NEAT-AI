@@ -61,7 +61,7 @@ Deno.test("PI-repeat", () => {
       JSON.stringify(creature.traceJSON(), null, 2),
     );
 
-    creature.propagateUpdate(config);
+    creature.propagateUpdate(config, sparseConfig);
     creature.clearState();
   }
   assertAlmostEquals(Math.PI, outA2[0], 0.05);
@@ -95,7 +95,7 @@ Deno.test("PI-single", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
   creature.clearState();
   assertAlmostEquals(outA1[0], outA2[0], 0.0001);
   const actualA1 = creature.activateAndTrace(inA, false);
@@ -153,7 +153,7 @@ Deno.test("PI Multiple", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
 
-  creature.propagateUpdate(config);
+  creature.propagateUpdate(config, sparseConfig);
 
   const inA = [-1, 1, 0];
   const expectedA = makeOutput(inA);

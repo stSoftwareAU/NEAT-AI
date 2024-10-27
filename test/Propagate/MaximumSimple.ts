@@ -73,7 +73,7 @@ Deno.test("PropagateMaximumSimple", () => {
     JSON.stringify(creatureC.traceJSON(), null, 2),
   );
 
-  creatureC.propagateUpdate(config);
+  creatureC.propagateUpdate(config, sparseConfig);
 
   const creatureD = Creature.fromJSON(creatureC.exportJSON());
 
