@@ -95,7 +95,7 @@ Deno.test("CompactConstants", () => {
   const config = createBackPropagationConfig();
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = data.length; i--;) {
-    const actual = creature.activateAndTrace(data[i], false);
+    const actual = creature.activateAndTrace(data[i], false, sparseConfig);
     creature.propagate(outputs[i], config, sparseConfig);
     assertAlmostEquals(
       actual[0],
@@ -147,8 +147,8 @@ Deno.test("CompactConstants", () => {
   }
 
   for (let i = data.length; i--;) {
-    const actual = compacted.activateAndTrace(data[i], false);
     const sparseConfig = new SparseConfig(compacted.exportJSON(), config);
+    const actual = compacted.activateAndTrace(data[i], false, sparseConfig);
     compacted.propagate(outputs[i], config, sparseConfig);
     assertAlmostEquals(
       actual[0],

@@ -15,6 +15,8 @@ import { Offspring } from "../src/architecture/Offspring.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
 import { train } from "./TrainTestOnlyUtil.ts";
+import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -33,10 +35,13 @@ function checkMutation(method: { name: string }) {
   creature.mutate(Mutation.ADD_SELF_CONN);
 
   const originalOutput = [];
-
+  const sparseConfig = new SparseConfig(
+    creature.exportJSON(),
+    createBackPropagationConfig({}),
+  );
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = creature.activateAndTrace([i / 10, j / 10], true);
+      const v = creature.activateAndTrace([i / 10, j / 10], true, sparseConfig);
       originalOutput.push(...v);
     }
   }
@@ -53,7 +58,7 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = creature.activateAndTrace([i / 10, j / 10], true);
+      const v = creature.activateAndTrace([i / 10, j / 10], true, sparseConfig);
       mutatedOutput.push(...v);
     }
   }
@@ -138,9 +143,13 @@ async function evolveSet(
           ", new2: " + n2 + ", new2b: " + n2b + ", cleared cache: " + c1,
       );
     }
+    const sparseConfig = new SparseConfig(
+      lastCreature.exportJSON(),
+      createBackPropagationConfig({}),
+    );
 
-    const r0 = lastCreature.activateAndTrace(dr.input, false)[0];
-    const r1 = lastCreature.activateAndTrace(dr.input, false)[0];
+    const r0 = lastCreature.activateAndTrace(dr.input, false, sparseConfig)[0];
+    const r1 = lastCreature.activateAndTrace(dr.input, false, sparseConfig)[0];
     assertAlmostEquals(
       r0,
       r1,
@@ -172,7 +181,7 @@ function trainSet(
   ensureDirSync(traceDir);
 
   for (let attempts = 0; true; attempts++) {
-    const network = new Creature(
+    const creature = new Creature(
       set[0].input.length,
       set[0].output.length,
       {
@@ -189,7 +198,7 @@ function trainSet(
       targetError: error,
     };
 
-    const results = train(network, set, options);
+    const results = train(creature, set, options);
     Deno.writeTextFileSync(
       `.trace/${attempts}.json`,
       JSON.stringify(results.trace, null, 2),
@@ -202,10 +211,14 @@ function trainSet(
       results.error < error,
       `Error is: ${results.error}, required: ${error}`,
     );
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      createBackPropagationConfig({}),
+    );
 
     set.forEach((dr) => {
-      const r1 = network.activateAndTrace(dr.input, false)[0];
-      const r2 = network.activate(dr.input)[0];
+      const r1 = creature.activateAndTrace(dr.input, false, sparseConfig)[0];
+      const r2 = creature.activate(dr.input)[0];
 
       assertAlmostEquals(
         r1,
@@ -221,6 +234,11 @@ function trainSet(
 }
 
 function testEquality(original: Creature, copied: Creature) {
+  const sparseConfig = new SparseConfig(
+    original.exportJSON(),
+    createBackPropagationConfig({}),
+  );
+
   for (let j = 0; j < 50; j++) {
     const input = [];
     let a;
@@ -228,8 +246,8 @@ function testEquality(original: Creature, copied: Creature) {
       input.push(Math.random());
     }
 
-    const ORout = original.activateAndTrace(input, false);
-    const COout = copied.activateAndTrace(input, false);
+    const ORout = original.activateAndTrace(input, false, sparseConfig);
+    const COout = copied.activateAndTrace(input, false, sparseConfig);
 
     assertEquals(
       ORout,

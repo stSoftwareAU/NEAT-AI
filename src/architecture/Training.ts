@@ -164,7 +164,7 @@ function trainDirBinary(
           const stat = file.statSync();
           const records = stat.size / BYTES_PER_RECORD;
 
-          const len = Math.floor(records * trainingSampleRate);
+          const len = Math.ceil(records * trainingSampleRate);
           const tmpIndexes = Int32Array.from(
             { length: records },
             (_, i) => i,

@@ -114,7 +114,7 @@ Deno.test("PropagateMean", () => {
   console.info(config);
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(inputs[i], false);
+    creature.activateAndTrace(inputs[i], false, sparseConfig);
     creature.propagate(outputs[i], config, sparseConfig);
   }
 

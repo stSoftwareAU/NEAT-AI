@@ -54,7 +54,7 @@ Deno.test("Complex Back Propagation", () => {
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i];
-    creature.activateAndTrace(input, false);
+    creature.activateAndTrace(input, false, sparseConfig);
     const output = outputs[i];
     creature.propagate(output, config, sparseConfig);
   }
