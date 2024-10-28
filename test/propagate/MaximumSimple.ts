@@ -64,7 +64,7 @@ Deno.test("PropagateMaximumSimple", () => {
   console.info(config);
   const sparseConfig = new SparseConfig(creatureC.exportJSON(), config);
   ts.forEach((item) => {
-    creatureC.activateAndTrace(item.input, false);
+    creatureC.activateAndTrace(item.input, false, sparseConfig);
     creatureC.propagate(item.output, config, sparseConfig);
   });
 

@@ -225,11 +225,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (this.isNodeActivation(squashMethod)) {
         activation = squashMethod.activateAndTrace(this);
       } else {
-        const toList = this.creature.inwardConnections(this.index);
+        const inwardList = this.creature.inwardConnections(this.index);
         let value = this.bias;
 
-        for (let i = toList.length; i--;) {
-          const c = toList[i];
+        for (let i = inwardList.length; i--;) {
+          const c = inwardList[i];
 
           const fromActivation = activations[c.from];
           value += fromActivation * c.weight;
@@ -240,7 +240,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const activationSquash = squashMethod as ActivationInterface;
         activation = activationSquash.squash(value);
       }
-      squashMethod.range.validate(activation);
     }
 
     activations[this.index] = activation;
@@ -280,11 +279,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
       } else {
         // All activation sources coming from the node itself
 
-        const toList = this.creature.inwardConnections(this.index);
+        const inwardList = this.creature.inwardConnections(this.index);
         let value = this.bias;
 
-        for (let i = toList.length; i--;) {
-          const c = toList[i];
+        for (let i = inwardList.length; i--;) {
+          const c = inwardList[i];
 
           const fromActivation = activations[c.from];
           value += fromActivation * c.weight;
@@ -294,7 +293,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
         // Squash the values received
         activation = activationSquash.squash(value);
       }
-      squashMethod.range.validate(activation);
     }
 
     activations[this.index] = activation;

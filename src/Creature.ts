@@ -311,7 +311,7 @@ export class Creature implements CreatureInternal {
   activateAndTrace(
     input: number[],
     feedbackLoop: boolean,
-    sparseConfig?: SparseConfig,
+    sparseConfig: SparseConfig,
   ): number[] {
     const output: number[] = new Array(this.output);
 
@@ -322,7 +322,7 @@ export class Creature implements CreatureInternal {
     // Activate hidden neurons
     for (let i = this.input; i < lastHiddenNode; i++) {
       const n = this.neurons[i];
-      if (sparseConfig && sparseConfig.traceNeeded(n.uuid)) {
+      if (sparseConfig.traceNeeded(n.uuid)) {
         n.activateAndTrace();
       } else {
         n.activate();
@@ -332,7 +332,7 @@ export class Creature implements CreatureInternal {
     // Activate output neurons and store their values in the output array
     for (let outIndx = 0; outIndx < this.output; outIndx++) {
       const n = this.neurons[lastHiddenNode + outIndx];
-      if (sparseConfig && sparseConfig.traceNeeded(n.uuid)) {
+      if (sparseConfig.traceNeeded(n.uuid)) {
         output[outIndx] = n.activateAndTrace();
       } else {
         output[outIndx] = n.activate();

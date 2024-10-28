@@ -10,9 +10,10 @@ Deno.test("SkipCount", () => {
   });
 
   const creature = makeCreature();
-
-  const expected = creature.activateAndTrace([1, 2, 3], false);
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+
+  const expected = creature.activateAndTrace([1, 2, 3], false, sparseConfig);
+
   creature.propagate(expected, config, sparseConfig);
   const cs = creature.state.connection(0, 3);
 
