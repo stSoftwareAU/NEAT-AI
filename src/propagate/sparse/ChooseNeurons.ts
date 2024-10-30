@@ -38,7 +38,6 @@ export function chooseNeurons(
   // Select the initial neurons up to the required number.
   for (let i = 0; i < numberOfNeuronsToSelect; i++) {
     const neuronUUID = eligibleNeurons[i].uuid;
-    selectedNeurons.add(neuronUUID);
     queue.push(neuronUUID);
   }
 
@@ -48,6 +47,10 @@ export function chooseNeurons(
   // Expand the cluster around each selected neuron.
   while (queue.length > 0 && selectedNeurons.size < numberOfNeuronsToSelect) {
     const currentNeuronUUID = queue.shift()!;
+
+    if (selectedNeurons.has(currentNeuronUUID)) continue;
+
+    selectedNeurons.add(currentNeuronUUID);
 
     // Get all neurons connected by one or two steps.
     const neighbors = getConnectedNeurons(
@@ -80,16 +83,32 @@ function fisherYatesShuffle<T>(array: T[]): void {
 
 // Build a map from each neuron to the synapses connected to it.
 function buildSynapseMap(creature: CreatureExport): Map<string, Set<string>> {
+  const validNeurons = new Set<string>();
+  creature.neurons.filter((neuron) => {
+    if (neuron.type === "hidden" || neuron.type === "output") {
+      validNeurons.add(neuron.uuid);
+    }
+  });
   const synapseMap = new Map<string, Set<string>>();
   creature.synapses.forEach((synapse) => {
+    if (!validNeurons.has(synapse.fromUUID)) return;
+    if (!validNeurons.has(synapse.fromUUID)) return;
+
     if (!synapseMap.has(synapse.fromUUID)) {
       synapseMap.set(synapse.fromUUID, new Set());
     }
+
+    synapseMap.get(synapse.fromUUID)!.add(synapse.toUUID);
+  });
+
+  creature.synapses.forEach((synapse) => {
+    if (!validNeurons.has(synapse.toUUID)) return;
+    if (!validNeurons.has(synapse.fromUUID)) return;
     if (!synapseMap.has(synapse.toUUID)) {
       synapseMap.set(synapse.toUUID, new Set());
     }
-    synapseMap.get(synapse.fromUUID)!.add(synapse.toUUID);
-    synapseMap.get(synapse.toUUID)!.add(synapse.fromUUID); // Consider bidirectional for clustering
+
+    synapseMap.get(synapse.toUUID)!.add(synapse.fromUUID);
   });
   return synapseMap;
 }
