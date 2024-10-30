@@ -38,7 +38,6 @@ export function chooseNeurons(
   // Select the initial neurons up to the required number.
   for (let i = 0; i < numberOfNeuronsToSelect; i++) {
     const neuronUUID = eligibleNeurons[i].uuid;
-    // selectedNeurons.add(neuronUUID);
     queue.push(neuronUUID);
   }
 
