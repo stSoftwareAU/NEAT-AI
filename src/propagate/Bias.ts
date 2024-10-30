@@ -82,7 +82,6 @@ export function limitBias(
   }
 
   if (Math.abs(targetBias - currentBias) < 0.000_000_001) {
-    //288_417_500
     return currentBias;
   }
 

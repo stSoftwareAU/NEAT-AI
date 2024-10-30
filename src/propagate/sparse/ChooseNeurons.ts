@@ -46,7 +46,7 @@ export function chooseNeurons(
 
   // Expand the cluster around each selected neuron.
   while (queue.length > 0 && selectedNeurons.size < numberOfNeuronsToSelect) {
-    const currentNeuronUUID = queue.shift()!;
+    const currentNeuronUUID = queue.pop()!;
 
     if (selectedNeurons.has(currentNeuronUUID)) continue;
 
