@@ -1,13 +1,20 @@
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/equals";
+import { fail } from "@std/assert/fail";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";
-import { fail } from "@std/assert/fail";
 
 Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
   const creature = makeCreature();
+
+  const validNeurons = new Set<string>();
+  creature.neurons.filter((neuron) => {
+    if (neuron.type === "hidden" || neuron.type === "output") {
+      validNeurons.add(neuron.uuid);
+    }
+  });
 
   // Set sparseRatio to 0.3 (30%) to select a subset of neurons with clustering.
   const config = createBackPropagationConfig({ sparseRatio: 0.3 });
@@ -16,11 +23,8 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
   console.log("Selected neurons:", selectedNeurons);
 
   selectedNeurons.forEach((neuronUUID) => {
-    if (neuronUUID.includes("input-")) {
-      fail("Input neurons should not be selected");
-    }
-    if (neuronUUID.includes("const-")) {
-      fail("Constants neurons should not be selected");
+    if (!validNeurons.has(neuronUUID)) {
+      fail(`${neuronUUID} not a valid neuron`);
     }
   });
 
