@@ -36,7 +36,7 @@ pipeline {
                           find test -name ".*.json" -exec rm {} \\;
                           deno lint src test
 
-                          #deno fmt --check src test
+                          deno fmt --check src test
 
                           deno check --all src test
                         '''.stripIndent()
