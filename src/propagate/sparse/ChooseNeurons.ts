@@ -62,7 +62,7 @@ export function chooseNeurons(
         !selectedNeurons.has(neighbor) &&
         selectedNeurons.size < numberOfNeuronsToSelect
       ) {
-        if( !selectedNeurons.has( neighbor)) {
+        if (!selectedNeurons.has(neighbor)) {
           selectedNeurons.add(neighbor);
           queue.push(neighbor);
         }
