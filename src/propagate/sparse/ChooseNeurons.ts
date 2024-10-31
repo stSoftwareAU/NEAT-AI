@@ -48,8 +48,6 @@ export function chooseNeurons(
   while (queue.length > 0 && selectedNeurons.size < numberOfNeuronsToSelect) {
     const currentNeuronUUID = queue.pop()!;
 
-    if (selectedNeurons.has(currentNeuronUUID)) continue;
-
     selectedNeurons.add(currentNeuronUUID);
 
     // Get all neurons connected by one or two steps.
@@ -64,8 +62,10 @@ export function chooseNeurons(
         !selectedNeurons.has(neighbor) &&
         selectedNeurons.size < numberOfNeuronsToSelect
       ) {
-        selectedNeurons.add(neighbor);
-        queue.push(neighbor);
+        if( !selectedNeurons.has( neighbor)) {
+          selectedNeurons.add(neighbor);
+          queue.push(neighbor);
+        }
       }
     }
   }
