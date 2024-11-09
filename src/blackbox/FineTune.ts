@@ -231,7 +231,9 @@ export function fineTuneImprovement(
   if (
     fittest.score == previousFittest.score ||
     !Number.isFinite(previousFittest.score)
-  ) return [];
+  ) {
+    return [];
+  }
 
   const fittestUUID = CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
