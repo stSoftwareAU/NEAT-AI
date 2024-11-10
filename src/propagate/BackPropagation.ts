@@ -86,7 +86,7 @@ export function createBackPropagationConfig(
 
     learningRate: Math.min(
       Math.max(
-        options?.learningRate ?? Math.random(),
+        options?.learningRate ?? Math.random() * Math.random(),
         0.01,
       ),
       1,

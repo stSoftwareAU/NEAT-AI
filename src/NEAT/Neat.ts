@@ -12,6 +12,8 @@ import {
   sortCreaturesByScore,
 } from "../architecture/ElitismUtils.ts";
 import { Fitness } from "../architecture/Fitness.ts";
+import { calculate as calculateScore } from "../architecture/Score.ts";
+import { fineTuneImprovement } from "../blackbox/FineTune.ts";
 import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
 import { Breed } from "../breed/Breed.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
@@ -25,7 +27,6 @@ import { AddConnection } from "../mutate/AddConnection.ts";
 import { Genus } from "./Genus.ts";
 import type { Approach } from "./LogApproach.ts";
 import { Mutator } from "./Mutator.ts";
-import { fineTuneImprovement } from "../blackbox/FineTune.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -204,13 +205,18 @@ export class Neat {
           } caused a higher error of ${r.train.error} from ${errorTx}`,
         );
         const trainedCreature = Creature.fromJSON(JSON.parse(r.train.creature));
+        trainedCreature.score = calculateScore(
+          trainedCreature,
+          r.train.error,
+          this.config.costOfGrowth,
+        );
         const tuned = fineTuneImprovement(
           creature,
           trainedCreature,
           1,
           true,
         );
-        // assert(tuned.length < 1, "No tuned creature found");
+
         if (tuned.length > 0) {
           r.train.tuned = JSON.stringify(tuned[0].exportJSON());
         } else {
