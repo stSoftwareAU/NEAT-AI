@@ -100,7 +100,10 @@ export class MINIMUM
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
       const c = inward[i];
+
       assert(c.to == neuron.index, "mismatched index");
+      if (c.from == c.to) continue;
+
       const cs = neuron.creature.state.connection(c.from, c.to);
       if (!cs.used) {
         neuron.creature.disconnect(c.from, c.to);

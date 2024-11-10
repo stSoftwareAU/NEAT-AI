@@ -22,7 +22,13 @@ function setup() {
   Deno.mkdirSync(directory, { recursive: true });
 }
 
-Deno.test("Minimum", () => {
+Deno.test("propagate/minimum", () => {
+  // for (let i = 0; i < 1000; i++) {
+  check();
+  // }
+});
+
+function check() {
   setup();
   const cleanCreature = makeCreature();
 
@@ -62,7 +68,7 @@ Deno.test("Minimum", () => {
     const results = train(modifiedCreature, td, {
       targetError: 0.01,
       iterations: 1,
-      learningRate: 1,
+      learningRate: 0.1,
       disableRandomSamples: true,
       generations: i,
       batchSize: 500,
@@ -98,7 +104,7 @@ Deno.test("Minimum", () => {
     }
     lastError = results.error;
   }
-});
+}
 
 function makeCreature() {
   const json: CreatureExport = {
