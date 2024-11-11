@@ -29,9 +29,13 @@ export class ArcTan implements ActivationInterface, UnSquashInterface {
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    // If the activation is at the boundaries, return a large finite value
-    if (Math.abs(activation) === Math.PI / 2) {
-      return activation > 0 ? ArcTan.MAX_VALUE : -ArcTan.MAX_VALUE;
+    // Handle boundary cases by approximating large values
+    const epsilon = 1e-5; // Small value to avoid exact boundary issues
+
+    if (activation >= Math.PI / 2 - epsilon) {
+      return Number.MAX_SAFE_INTEGER;
+    } else if (activation <= -Math.PI / 2 + epsilon) {
+      return -Number.MAX_SAFE_INTEGER;
     }
 
     // Use tangent as the inverse function
