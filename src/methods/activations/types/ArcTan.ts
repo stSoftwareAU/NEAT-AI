@@ -15,6 +15,9 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class ArcTan implements ActivationInterface, UnSquashInterface {
   public static NAME = "ArcTan";
 
+  // Set a maximum finite value to return instead of Infinity
+  private static readonly MAX_VALUE = 1e10;
+
   public readonly range: ActivationRange = new ActivationRange(
     this,
     -Math.PI / 2,
@@ -26,15 +29,20 @@ export class ArcTan implements ActivationInterface, UnSquashInterface {
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    // If the activation is at the boundaries, return the best guess
+    // If the activation is at the boundaries, return a large finite value
     if (Math.abs(activation) === Math.PI / 2) {
-      return activation > 0
-        ? Number.POSITIVE_INFINITY
-        : Number.NEGATIVE_INFINITY;
+      return activation > 0 ? ArcTan.MAX_VALUE : -ArcTan.MAX_VALUE;
     }
 
     // Use tangent as the inverse function
-    return Math.tan(activation);
+    const value = Math.tan(activation);
+    if (Number.isFinite(value)) {
+      return value;
+    }
+
+    throw new Error(
+      `ArcTan unSquash ${activation} failed, ${value} is not finite`,
+    );
   }
 
   getName() {
