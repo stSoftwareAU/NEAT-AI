@@ -15,10 +15,13 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class Cube implements ActivationInterface, UnSquashInterface {
   public static NAME = "Cube";
 
+  // Safe maximum input value to prevent overflow when cubing
+  private static readonly MAX_INPUT = Math.cbrt(Number.MAX_SAFE_INTEGER);
+
   public readonly range: ActivationRange = new ActivationRange(
     this,
-    -Infinity,
-    Infinity,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
   );
 
   // Function to estimate the input from the activation value (inverse of the cube function).
@@ -35,6 +38,8 @@ export class Cube implements ActivationInterface, UnSquashInterface {
 
   // Cube function definition
   squash(x: number) {
-    return x ** 3;
+    // Clip the input to the safe maximum range to avoid overflow
+    const clippedX = Math.max(-Cube.MAX_INPUT, Math.min(x, Cube.MAX_INPUT));
+    return clippedX ** 3;
   }
 }
