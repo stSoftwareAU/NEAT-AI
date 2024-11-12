@@ -33,6 +33,7 @@ import { GELU } from "./types/GELU.ts";
 import { HYPOTv2 } from "./aggregate/HYPOTv2.ts";
 import { SINE } from "./types/SINE.ts";
 import { ArcTan } from "./types/ArcTan.ts";
+import { Cube } from "./types/Cube.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -46,6 +47,7 @@ export class Activations {
     [BIPOLAR.NAME]: new BIPOLAR(),
     [BIPOLAR_SIGMOID.NAME]: new BIPOLAR_SIGMOID(),
     [CLIPPED.NAME]: new CLIPPED(),
+    [Cube.NAME]: new Cube(),
     [GELU.NAME]: new GELU(),
     [LOGISTIC.NAME]: new LOGISTIC(),
     [SINE.NAME]: new SINE(),
