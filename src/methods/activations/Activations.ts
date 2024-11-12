@@ -44,6 +44,7 @@ export class Activations {
   private static MAP = {
     [ABSOLUTE.NAME]: new ABSOLUTE(),
     [ArcTan.NAME]: new ArcTan(),
+
     [BENT_IDENTITY.NAME]: new BENT_IDENTITY(),
     [BIPOLAR.NAME]: new BIPOLAR(),
     [BIPOLAR_SIGMOID.NAME]: new BIPOLAR_SIGMOID(),
