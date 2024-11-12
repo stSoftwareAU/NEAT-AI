@@ -33,6 +33,8 @@ import { GELU } from "./types/GELU.ts";
 import { HYPOTv2 } from "./aggregate/HYPOTv2.ts";
 import { SINE } from "./types/SINE.ts";
 import { ArcTan } from "./types/ArcTan.ts";
+import { Cube } from "./types/Cube.ts";
+import { ISRU } from "./types/ISRU.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -42,43 +44,53 @@ export class Activations {
   private static MAP = {
     [ABSOLUTE.NAME]: new ABSOLUTE(),
     [ArcTan.NAME]: new ArcTan(),
+
     [BENT_IDENTITY.NAME]: new BENT_IDENTITY(),
     [BIPOLAR.NAME]: new BIPOLAR(),
     [BIPOLAR_SIGMOID.NAME]: new BIPOLAR_SIGMOID(),
-    [CLIPPED.NAME]: new CLIPPED(),
-    [GELU.NAME]: new GELU(),
-    [LOGISTIC.NAME]: new LOGISTIC(),
-    [SINE.NAME]: new SINE(),
-    [TANH.NAME]: new TANH(),
-    [IDENTITY.NAME]: new IDENTITY(),
-    [COMPLEMENT.NAME]: new COMPLEMENT(),
-    ["INVERSE"]: new COMPLEMENT(),
-    [RELU.NAME]: new RELU(),
-    [ReLU6.NAME]: new ReLU6(),
-    [STEP.NAME]: new STEP(),
-    [SELU.NAME]: new SELU(),
-    [SOFTSIGN.NAME]: new SOFTSIGN(),
-    [SINUSOID.NAME]: new SINUSOID(),
-    [GAUSSIAN.NAME]: new GAUSSIAN(),
-    [HARD_TANH.NAME]: new HARD_TANH(),
 
-    [MINIMUM.NAME]: new MINIMUM(),
+    [CLIPPED.NAME]: new CLIPPED(),
+    [COMPLEMENT.NAME]: new COMPLEMENT(),
+    [Cosine.NAME]: new Cosine(),
+    [Cube.NAME]: new Cube(),
+
+    [ELU.NAME]: new ELU(),
+    [Exponential.NAME]: new Exponential(),
+
+    [GAUSSIAN.NAME]: new GAUSSIAN(),
+    [GELU.NAME]: new GELU(),
+
+    [HARD_TANH.NAME]: new HARD_TANH(),
+    [HYPOT.NAME]: new HYPOT(),
+    [HYPOTv2.NAME]: new HYPOTv2(),
+
+    [IDENTITY.NAME]: new IDENTITY(),
+    [IF.NAME]: new IF(),
+    ["INVERSE"]: new COMPLEMENT(),
+    [ISRU.NAME]: new ISRU(),
+
+    [LeakyReLU.NAME]: new LeakyReLU(),
+    [LOGISTIC.NAME]: new LOGISTIC(),
+    [LogSigmoid.NAME]: new LogSigmoid(),
 
     [MAXIMUM.NAME]: new MAXIMUM(),
     [MEAN.NAME]: new MEAN(),
-    [HYPOT.NAME]: new HYPOT(),
-    [HYPOTv2.NAME]: new HYPOTv2(),
-    [IF.NAME]: new IF(),
-
-    [LeakyReLU.NAME]: new LeakyReLU(),
-    [ELU.NAME]: new ELU(),
-    [Softplus.NAME]: new Softplus(),
-    [Swish.NAME]: new Swish(),
+    [MINIMUM.NAME]: new MINIMUM(),
     [Mish.NAME]: new Mish(),
+
+    [RELU.NAME]: new RELU(),
+    [ReLU6.NAME]: new ReLU6(),
+
+    [SELU.NAME]: new SELU(),
+    [SINE.NAME]: new SINE(),
+    [SINUSOID.NAME]: new SINUSOID(),
+    [SOFTSIGN.NAME]: new SOFTSIGN(),
+    [Softplus.NAME]: new Softplus(),
     [StdInverse.NAME]: new StdInverse(),
-    [Cosine.NAME]: new Cosine(),
-    [LogSigmoid.NAME]: new LogSigmoid(),
-    [Exponential.NAME]: new Exponential(),
+    [STEP.NAME]: new STEP(),
+    [Swish.NAME]: new Swish(),
+
+    [TANH.NAME]: new TANH(),
   };
 
   static readonly NAMES = Object.keys(Activations.MAP)
