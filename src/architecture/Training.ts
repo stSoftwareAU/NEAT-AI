@@ -149,11 +149,12 @@ function trainDirBinary(
     });
 
     let counter = 0;
+    let totalRecords = 0;
     let errorSum = 0;
 
     let trainingStopped = false;
-    for (let j = binaryFiles.length; !trainingStopped && j--;) {
-      const fn = binaryFiles[j];
+    for (let fileIndx = binaryFiles.length; !trainingStopped && fileIndx--;) {
+      const fn = binaryFiles[fileIndx];
 
       const file = Deno.openSync(fn, { read: true });
 
@@ -163,7 +164,10 @@ function trainDirBinary(
         if (!recordSet) {
           const stat = file.statSync();
           const records = stat.size / BYTES_PER_RECORD;
-
+          totalRecords += records;
+          if (fileIndx == 0) {
+            knownSampleCount = totalRecords;
+          }
           const len = Math.ceil(records * trainingSampleRate);
           const tmpIndexes = Int32Array.from(
             { length: records },
@@ -228,10 +232,12 @@ function trainDirBinary(
             const totalTime = now - startTS;
             console.log(
               `Training ${blue(ID)} samples`,
-              counter,
+              yellow(counter.toLocaleString("en-AU")),
               `${
                 knownSampleCount > 0
-                  ? "of " + yellow(knownSampleCount.toLocaleString()) + " "
+                  ? "of " + yellow(knownSampleCount.toLocaleString("en-AU")) +
+                    " " +
+                    yellow((counter / knownSampleCount * 100).toFixed(1) + "%")
                   : ""
               }${
                 trainingSampleRate < 1
@@ -301,7 +307,6 @@ function trainDirBinary(
       }
       bestCreatureJSON = creature.exportJSON();
       bestError = error;
-      knownSampleCount = counter;
 
       creature.applyLearnings(iterationConfig, sparseConfig);
       creature.clearState();
