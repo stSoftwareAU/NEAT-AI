@@ -76,9 +76,11 @@ export function logVerbose(creatures: Creature[]): number {
       const diff = Number.parseFloat(untrainedError) -
         Number.parseFloat(error);
       console.info(
-        `${approach} ${blue(trainID)} Score: ${
-          yellow(score.toString())
-        }, Error: ${yellow(untrainedError)} -> ${yellow(error)}` + (diff > 0
+        `${approach.substring(0, 1).toUpperCase() + approach.substring(1)} ${
+          blue(trainID)
+        } Score: ${yellow(score.toString())}, Error: ${
+          yellow(untrainedError)
+        } -> ${yellow(error)}` + (diff > 0
           ? ` ${"improved " + bold(green(diff.toString()))}`
           : diff < 0
           ? ` ${"regression " + red(diff.toString())}`
