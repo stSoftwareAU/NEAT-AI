@@ -232,10 +232,11 @@ function trainDirBinary(
             const totalTime = now - startTS;
             console.log(
               `Training ${blue(ID)} samples`,
-              yellow(counter.toLocaleString()),
+              yellow(counter.toLocaleString("en-AU")),
               `${
                 knownSampleCount > 0
-                  ? "of " + yellow(knownSampleCount.toLocaleString()) + " " +
+                  ? "of " + yellow(knownSampleCount.toLocaleString("en-AU")) +
+                    " " +
                     yellow((counter / knownSampleCount * 100).toFixed(1) + "%")
                   : ""
               }${
