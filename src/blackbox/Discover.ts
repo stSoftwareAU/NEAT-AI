@@ -9,10 +9,12 @@ export function discover(mum: Creature, child: Creature) {
   if (mum.neurons.length !== child.neurons.length) return;
   if (mum.synapses.length !== child.synapses.length) return;
   for (let i = 0; i < mum.neurons.length; i++) {
-    if (mum.neurons[i].uuid !== child.neurons[i].uuid) {
+    const mumNeuron = mum.neurons[i];
+    const childNeuron = child.neurons[i];
+    if (mumNeuron.uuid !== childNeuron.uuid) {
       return;
     }
-    if (mum.neurons[i].squash !== child.neurons[i].squash) {
+    if (mumNeuron.squash !== childNeuron.squash) {
       return;
     }
   }
