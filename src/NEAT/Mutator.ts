@@ -1,7 +1,8 @@
 import { removeTag } from "@stsoftware/tags";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { type Creature, Mutation } from "../../mod.ts";
+import { Creature, Mutation } from "../../mod.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
+import { discover } from "../blackbox/Discover.ts";
 
 export class Mutator {
   private config: NeatConfig;
@@ -18,6 +19,11 @@ export class Mutator {
         const creature = creatures[i];
         if (this.config.debug) {
           creatureValidate(creature);
+        }
+        let original: Creature | undefined;
+        if (creature.score !== undefined) {
+          original = Creature.fromJSON(creature.exportJSON());
+          original.score = creature.score;
         }
         let changed = false;
         for (let j = this.config.mutationAmount; j--;) {
@@ -46,6 +52,9 @@ export class Mutator {
 
           delete creature.memetic;
           delete creature.uuid;
+          if (original) {
+            discover(original, creature);
+          }
         }
       }
     }
