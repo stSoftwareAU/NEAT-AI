@@ -411,7 +411,7 @@ export class Neat {
     ) {
       const child = breed.breed();
       if (child) {
-        assert(!child.memetic);
+        // assert(!child.memetic);
         newPopulation.push(child);
       }
     }

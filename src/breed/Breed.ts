@@ -4,6 +4,7 @@ import { Offspring } from "../architecture/Offspring.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
 import type { Genus } from "../NEAT/Genus.ts";
 import { createCompatibleFather } from "./Father.ts";
+import { discover } from "../blackbox/Discover.ts";
 
 export class Breed {
   readonly genus: Genus;
@@ -31,12 +32,16 @@ export class Breed {
       return;
     }
 
-    const creature = Offspring.breed(
+    const child = Offspring.breed(
       mum,
       dad,
     );
 
-    return creature;
+    if (child) {
+      discover(mum, child);
+    }
+
+    return child;
   }
 
   private getDad(mum: Creature): Creature | undefined {

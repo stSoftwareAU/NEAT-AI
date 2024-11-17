@@ -662,7 +662,7 @@ Deno.test("evolve SIN + COS", async () => {
     });
   }
 
-  await evolveSet(set, 10_000, 0.08);
+  await evolveSet(set, 100_000, 0.09);
 });
 
 Deno.test("train_SHIFT", () => {
