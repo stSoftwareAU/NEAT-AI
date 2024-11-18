@@ -32,6 +32,7 @@ export class SubSelfCon implements RadioactiveInterface {
     const indx = neuron.index;
     this.creature.disconnect(indx, indx);
 
+    delete this.creature.memetic;
     return true;
   }
 }

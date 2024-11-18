@@ -358,6 +358,7 @@ export function creatureValidate(
           );
         }
         if (!synapsesSet.has(`${synapseUUID}->${weight.toUUID}`)) {
+          debugWrite(creature);
           throw new Error(
             `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has no matching synapses.`,
           );

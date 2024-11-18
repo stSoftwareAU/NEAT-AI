@@ -87,6 +87,9 @@ export class SwapNeurons implements RadioactiveInterface {
       }
     }
 
+    if (changed) {
+      delete this.creature.memetic;
+    }
     return changed;
   }
 }

@@ -8,13 +8,39 @@ export function discover(mum: Creature, child: Creature) {
   if (child.score !== undefined) return;
   if (mum.neurons.length !== child.neurons.length) return;
   if (mum.synapses.length !== child.synapses.length) return;
+  const uuidSquashMap = new Map<string, string>();
   for (let i = 0; i < mum.neurons.length; i++) {
     const mumNeuron = mum.neurons[i];
+    uuidSquashMap.set(
+      mumNeuron.uuid,
+      mumNeuron.squash ? mumNeuron.squash : "OTHER",
+    );
+  }
+
+  for (let i = 0; i < child.neurons.length; i++) {
     const childNeuron = child.neurons[i];
-    if (mumNeuron.uuid !== childNeuron.uuid) {
+    const mumSquash = uuidSquashMap.get(childNeuron.uuid);
+    if (!mumSquash) {
       return;
     }
-    if (mumNeuron.squash !== childNeuron.squash) {
+    const childSquash = childNeuron.squash ? childNeuron.squash : "OTHER";
+    if (mumSquash !== childSquash) {
+      return;
+    }
+  }
+  const mumSynapseSet = new Set<string>();
+  for (let i = 0; i < mum.synapses.length; i++) {
+    const mumSynapse = mum.synapses[i];
+    mumSynapseSet.add(
+      mum.neurons[mumSynapse.from].uuid + "->" +
+        mum.neurons[mumSynapse.to].uuid,
+    );
+  }
+  for (let i = 0; i < child.synapses.length; i++) {
+    const childSynapse = child.synapses[i];
+    const key = child.neurons[childSynapse.from].uuid + "->" +
+      child.neurons[childSynapse.to].uuid;
+    if (!mumSynapseSet.has(key)) {
       return;
     }
   }

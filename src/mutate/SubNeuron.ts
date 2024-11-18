@@ -37,6 +37,8 @@ export class SubNeuron implements RadioactiveInterface {
       break;
     }
 
+    delete this.creature.memetic;
+
     return changed;
   }
 }

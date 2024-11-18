@@ -43,6 +43,7 @@ export class AddBackCon implements RadioactiveInterface {
     const fromIndx = pair[0].index;
     const toIndx = pair[1].index;
     this.creature.connect(fromIndx, toIndx, Synapse.randomWeight());
+    delete this.creature.memetic;
     return true;
   }
 }

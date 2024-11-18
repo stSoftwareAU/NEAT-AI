@@ -111,6 +111,7 @@ export class AddNeuron implements RadioactiveInterface {
       );
     }
 
+    delete this.creature.memetic;
     return true;
   }
 

@@ -35,6 +35,9 @@ export class SubConnection implements RadioactiveInterface {
 
     const randomConn = possible[Math.floor(Math.random() * possible.length)];
     this.creature.disconnect(randomConn.from, randomConn.to);
+
+    delete this.creature.memetic;
+
     return true;
   }
 }
