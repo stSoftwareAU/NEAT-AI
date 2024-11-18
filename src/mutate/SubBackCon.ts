@@ -39,6 +39,9 @@ export class SubBackCon implements RadioactiveInterface {
 
     const pair = available[Math.floor(Math.random() * available.length)];
     this.creature.disconnect(pair[0], pair[1]);
+
+    delete this.creature.memetic;
+
     return true;
   }
 }

@@ -27,6 +27,9 @@ export class ModActivation implements RadioactiveInterface {
       }
     }
 
+    if (changed) {
+      delete this.creature.memetic;
+    }
     return changed;
   }
 }

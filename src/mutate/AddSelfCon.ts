@@ -38,6 +38,7 @@ export class AddSelfCon implements RadioactiveInterface {
     const indx = neuron.index;
     this.creature.connect(indx, indx, Synapse.randomWeight());
 
+    delete this.creature.memetic;
     return true;
   }
 }

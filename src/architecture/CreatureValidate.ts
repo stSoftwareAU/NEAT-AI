@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { Creature } from "../Creature.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 
@@ -271,7 +272,7 @@ export function creatureValidate(
     }
 
     if (c.from > c.to) {
-      /** When feed back is enabled we allow recursive synapes */
+      /** When feed back is enabled we allow recursive synapses */
       if (
         options && options.feedbackLoop !== undefined &&
         options.feedbackLoop == false
@@ -303,14 +304,66 @@ export function creatureValidate(
 
   if (creature.memetic) {
     const memetic = creature.memetic;
+    const uuidMap = new Map<string, number>();
+    creature.neurons.forEach((n, indx) => {
+      assert(n.uuid);
+      uuidMap.set(n.uuid, indx);
+    });
+
+    const synapsesSet = new Set<string>();
+    creature.synapses.forEach((s) => {
+      synapsesSet.add(
+        `${creature.neurons[s.from].uuid}->${creature.neurons[s.to].uuid}`,
+      );
+    });
 
     for (const neuronUUID in memetic.biases) {
-      const neuron = creature.neurons.find((n) => n.uuid === neuronUUID);
-      if (!neuron) {
+      const neuronIndex = uuidMap.get(neuronUUID);
+      if (neuronIndex === undefined) {
         throw new Error(
           `Neuron with UUID ${neuronUUID} not found in the creature.`,
         );
       }
+    }
+    for (const synapseUUID in memetic.weights) {
+      const synapseIndex = uuidMap.get(synapseUUID);
+      if (synapseIndex === undefined) {
+        throw new Error(
+          `Synapse with UUID ${synapseUUID} not found in the creature.`,
+        );
+      }
+
+      const memeticWeights = memetic.weights[synapseUUID];
+      if (!Array.isArray(memeticWeights)) {
+        throw new Error(
+          `Synapse with UUID ${synapseUUID} has invalid weights.`,
+        );
+      }
+      memeticWeights.forEach((weight, indx) => {
+        if (weight.toUUID === undefined) {
+          throw new Error(
+            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} is invalid.`,
+          );
+        }
+        if (weight.weight === undefined) {
+          throw new Error(
+            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has invalid weight at index ${indx}.`,
+          );
+        }
+        const toIndex = uuidMap.get(weight.toUUID);
+
+        if (toIndex === undefined) {
+          throw new Error(
+            `Memetic from UUID ${synapseUUID} has no valid neuron.`,
+          );
+        }
+        if (!synapsesSet.has(`${synapseUUID}->${weight.toUUID}`)) {
+          debugWrite(creature);
+          throw new Error(
+            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has no matching synapses.`,
+          );
+        }
+      });
     }
   }
 
