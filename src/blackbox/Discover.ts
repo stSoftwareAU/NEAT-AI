@@ -45,10 +45,6 @@ export function discover(mum: Creature, child: Creature) {
     }
   }
 
-  if (mum.memetic) {
-    child.memetic = mum.memetic;
-    return;
-  }
   const memetic: MemeticInterface = {
     generation: 0,
     score: mum.score!,
