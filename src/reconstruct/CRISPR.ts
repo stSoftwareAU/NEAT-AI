@@ -427,6 +427,7 @@ export class CRISPR {
     }
 
     delete modifiedCreature.uuid;
+    delete modifiedCreature.memetic;
 
     modifiedCreature.validate();
     const modifiedUUID = CreatureUtil.makeUUID(modifiedCreature);
