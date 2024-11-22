@@ -26,7 +26,7 @@ Deno.test("CLIPPED", () => {
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 4 - 2;
 
-    const data = [a];
+    const data = new Float32Array([a]);
     const actual = creature.activateAndTrace(data, false, sparseConfig)[0];
     const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
 

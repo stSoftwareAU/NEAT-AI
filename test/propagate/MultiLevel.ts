@@ -117,7 +117,7 @@ Deno.test("propagateMultiLevelRandom", () => {
     JSON.stringify(ts, null, 2),
   );
   ts.forEach((item) => {
-    const result = creatureA.activate(item.input);
+    const result = creatureA.activate(new Float32Array(item.input));
 
     assertAlmostEquals(item.output[0], result[0], 0.00001);
     assertAlmostEquals(item.output[1], result[1], 0.00001);
@@ -324,7 +324,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
   ensureDirSync(traceDir);
 
   ts.forEach((item) => {
-    const result = creatureA.activate(item.input);
+    const result = creatureA.activate(new Float32Array(item.input));
 
     assertAlmostEquals(item.output[0], result[0], 0.00001);
     assertAlmostEquals(item.output[1], result[1], 0.00001);
@@ -530,7 +530,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
   ensureDirSync(traceDir);
 
   ts.forEach((item) => {
-    const result = creatureA.activate(item.input);
+    const result = creatureA.activate(new Float32Array(item.input));
 
     assertAlmostEquals(item.output[0], result[0], 0.00001);
     assertAlmostEquals(item.output[1], result[1], 0.00001);

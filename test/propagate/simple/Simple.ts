@@ -137,7 +137,7 @@ function makeTrainData(creature: Creature) {
       pos === 0 ? 0 : pos === 1 ? -1 : 1,
       pos === 0 ? -1 : pos === 1 ? 1 : 0,
     ];
-    const output = creature.activate(input);
+    const output = creature.activate(new Float32Array(input));
 
     td.push({
       input,
@@ -161,8 +161,11 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.activate(data.input, false);
-    error += mse.calculate(data.output, output);
+    const output = creature.activate(new Float32Array(data.input), false);
+    error += mse.calculate(
+      new Float32Array(data.output),
+      new Float32Array(output),
+    );
   }
 
   return error / count;

@@ -69,10 +69,10 @@ Deno.test("Learn", () => {
     dataSet.push(dr);
   }
 
-  const answersA = nn.activate([0.1, 0.2]);
+  const answersA = nn.activate(new Float32Array([0.1, 0.2]));
   console.info(answersA);
   train(nn, dataSet, options);
 
-  const answersB = nn.activate([0.1, 0.2]);
+  const answersB = nn.activate(new Float32Array([0.1, 0.2]));
   console.info(answersB);
 });

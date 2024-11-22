@@ -32,7 +32,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
     "test/data/.a.json",
     JSON.stringify(creature.exportJSON(), null, 2),
   );
-  const input = [0.1, 0.2];
+  const input = new Float32Array([0.1, 0.2]);
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(
@@ -85,7 +85,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
     "test/data/.A.json",
     JSON.stringify(creature.exportJSON(), null, 2),
   );
-  const input = [0.1, 0.2];
+  const input = new Float32Array([0.1, 0.2]);
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(
@@ -141,7 +141,7 @@ Deno.test("TraceAggregateIF", () => {
     "test/data/.a.json",
     JSON.stringify(creature.exportJSON(), null, 2),
   );
-  const input = [0.1, 0.2];
+  const input = new Float32Array([0.1, 0.2]);
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(

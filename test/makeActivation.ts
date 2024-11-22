@@ -41,7 +41,7 @@ Deno.test("makeActivation", () => {
   creature.validate();
   const ns = new CreatureState(creature);
 
-  ns.makeActivation([-0.1, -0.2], false);
+  ns.makeActivation(new Float32Array([-0.1, -0.2]), false);
 
   assertAlmostEquals(ns.activations[0], -0.1, 0.0000001);
   assertAlmostEquals(ns.activations[1], -0.2, 0.0000001);
@@ -52,7 +52,7 @@ Deno.test("makeActivation", () => {
   ns.activations[2] = 0.1;
   ns.activations[3] = 0.2;
   ns.activations[4] = 0.3;
-  ns.makeActivation([-0.3, -0.4], true);
+  ns.makeActivation(new Float32Array([-0.3, -0.4]), true);
 
   assertAlmostEquals(ns.activations[0], -0.3, 0.0000001);
   assertAlmostEquals(ns.activations[1], -0.4, 0.0000001);
@@ -60,7 +60,7 @@ Deno.test("makeActivation", () => {
   assertAlmostEquals(ns.activations[3], 0.2, 0.0000001);
   assertAlmostEquals(ns.activations[4], 0.3, 0.0000001);
 
-  ns.makeActivation([-0.5, -0.6], false);
+  ns.makeActivation(new Float32Array([-0.5, -0.6]), false);
 
   assertAlmostEquals(ns.activations[0], -0.5, 0.0000001);
   assertAlmostEquals(ns.activations[1], -0.6, 0.0000001);

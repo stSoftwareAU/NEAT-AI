@@ -207,7 +207,7 @@ function makeTrainData(creature: Creature) {
       pos === 0 ? 0 : pos === 1 ? -1 : 1,
       pos === 0 ? -1 : pos === 1 ? 1 : 0,
     ];
-    const output = creature.activate(input);
+    const output = creature.activate(new Float32Array(input));
 
     td.push({
       input,

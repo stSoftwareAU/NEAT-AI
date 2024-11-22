@@ -58,13 +58,17 @@ Deno.test("Constants", () => {
     });
     const sparseConfig = new SparseConfig(creature.exportJSON(), config);
     const inA = [-1, 1, 0];
-    const outA1 = creature.activate(inA);
-    const outA2 = creature.activateAndTrace(inA, false, sparseConfig);
+    const outA1 = creature.activate(new Float32Array(inA));
+    const outA2 = creature.activateAndTrace(
+      new Float32Array(inA),
+      false,
+      sparseConfig,
+    );
     const expectedA = makeOutput(inA);
 
     assertAlmostEquals(outA1[0], outA2[0], 0.0001);
 
-    creature.propagate(expectedA, config, sparseConfig);
+    creature.propagate(new Float32Array(expectedA), config, sparseConfig);
 
     Deno.writeTextFileSync(
       ".trace/1.json",
@@ -73,8 +77,12 @@ Deno.test("Constants", () => {
 
     creature.propagateUpdate(config, sparseConfig);
 
-    const actualA1 = creature.activateAndTrace(inA, false, sparseConfig);
-    const actualA2 = creature.activate(inA);
+    const actualA1 = creature.activateAndTrace(
+      new Float32Array(inA),
+      false,
+      sparseConfig,
+    );
+    const actualA2 = creature.activate(new Float32Array(inA));
     const diff = Math.abs(expectedA[0] - actualA1[0]);
     console.info(expectedA, actualA1, actualA2, diff);
 
@@ -124,8 +132,12 @@ Deno.test("Constants Same", () => {
     const sparseConfig = new SparseConfig(creature.exportJSON(), config);
     for (let i = 0; i < 1_000; i++) {
       const input = [-0.5, 0, 0.5];
-      creature.activateAndTrace(input, false, sparseConfig);
-      creature.propagate(makeOutput(input), config, sparseConfig);
+      creature.activateAndTrace(new Float32Array(input), false, sparseConfig);
+      creature.propagate(
+        new Float32Array(makeOutput(input)),
+        config,
+        sparseConfig,
+      );
     }
 
     Deno.writeTextFileSync(
@@ -137,8 +149,12 @@ Deno.test("Constants Same", () => {
 
     const inA = [-1, 1, 0];
     const expectedA = makeOutput(inA);
-    const actualA1 = creature.activateAndTrace(inA, false, sparseConfig);
-    const actualA2 = creature.activate(inA);
+    const actualA1 = creature.activateAndTrace(
+      new Float32Array(inA),
+      false,
+      sparseConfig,
+    );
+    const actualA2 = creature.activate(new Float32Array(inA));
     const diff = Math.abs(expectedA[0] - actualA1[0]);
 
     Deno.writeTextFileSync(
@@ -192,9 +208,9 @@ Deno.test("Constants Known Few", () => {
     for (let indx = 0; indx < inputs.length; indx++) {
       const input = inputs[indx];
       const output = makeOutput(input);
-      creature.activateAndTrace(input, false, sparseConfig);
+      creature.activateAndTrace(new Float32Array(input), false, sparseConfig);
 
-      creature.propagate(output, config, sparseConfig);
+      creature.propagate(new Float32Array(output), config, sparseConfig);
     }
   }
 
@@ -212,7 +228,7 @@ Deno.test("Constants Known Few", () => {
   ];
   const expected = makeOutput(input);
 
-  const actual = creature.activate(input);
+  const actual = creature.activate(new Float32Array(input));
 
   Deno.writeTextFileSync(
     ".trace/3.json",
@@ -264,9 +280,13 @@ Deno.test("ConstantsMany", () => {
         for (let indx = 0; indx < observations.length; indx++) {
           const input = observations[indx];
 
-          creature.activateAndTrace(input, false, sparseConfig);
+          creature.activateAndTrace(
+            new Float32Array(input),
+            false,
+            sparseConfig,
+          );
           const output = makeOutput(input);
-          creature.propagate(output, config, sparseConfig);
+          creature.propagate(new Float32Array(output), config, sparseConfig);
         }
       }
       Deno.writeTextFileSync(
@@ -278,9 +298,9 @@ Deno.test("ConstantsMany", () => {
       creature.clearState();
     }
 
-    const tmpActual = creature.activate(sampleInput);
+    const tmpActual = creature.activate(new Float32Array(sampleInput));
 
-    actual = creature.activate(sampleInput);
+    actual = creature.activate(new Float32Array(sampleInput));
 
     Deno.writeTextFileSync(
       `${traceDir}/2-end.json`,

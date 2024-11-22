@@ -97,7 +97,7 @@ Deno.test("PropagateIdentity", () => {
 
   const targets: number[][] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
-    targets[i] = creature.activate(inputs[i]);
+    targets[i] = creature.activate(new Float32Array(inputs[i]));
   }
 
   const neuron = creature.neurons.find((n) => n.uuid === "absolute-5");
@@ -120,8 +120,8 @@ Deno.test("PropagateIdentity", () => {
 
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(inputs[i], false, sparseConfig);
-    creature.propagate(targets[i], config, sparseConfig);
+    creature.activateAndTrace(new Float32Array(inputs[i]), false, sparseConfig);
+    creature.propagate(new Float32Array(targets[i]), config, sparseConfig);
   }
 
   const traced = creature.traceJSON();
@@ -166,7 +166,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
 
   const targets: number[][] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
-    targets[i] = creature.activate(inputs[i]);
+    targets[i] = creature.activate(new Float32Array(inputs[i]));
   }
 
   creature.neurons.forEach((n, indx) => {
@@ -194,8 +194,8 @@ Deno.test("PropagateIdentityNoRealChange", () => {
   console.info(config);
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(inputs[i], false, sparseConfig);
-    creature.propagate(targets[i], config, sparseConfig);
+    creature.activateAndTrace(new Float32Array(inputs[i]), false, sparseConfig);
+    creature.propagate(new Float32Array(targets[i]), config, sparseConfig);
   }
 
   const traced = creature.traceJSON();
@@ -230,10 +230,10 @@ function calculateError(
   assert(count == targets.length);
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
-    const input = inputs[i];
-    const target = targets[i];
+    const input = new Float32Array(inputs[i]);
+    const target = new Float32Array(targets[i]);
     const output = creature.activate(input, false);
-    error += mse.calculate(target, output);
+    error += mse.calculate(target, new Float32Array(output));
   }
 
   return error / count;

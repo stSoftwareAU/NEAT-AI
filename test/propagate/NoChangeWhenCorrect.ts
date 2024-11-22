@@ -79,14 +79,18 @@ Deno.test("NoChangeWhenCorrect", () => {
 
   const outputs: number[][] = new Array(data.length);
   for (let i = data.length; i--;) {
-    outputs[i] = creature.activate(data[i]);
+    outputs[i] = creature.activate(new Float32Array(data[i]));
   }
 
   const config = createBackPropagationConfig();
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = data.length; i--;) {
-    const actual = creature.activateAndTrace(data[i], false, sparseConfig);
-    creature.propagate(outputs[i], config, sparseConfig);
+    const actual = creature.activateAndTrace(
+      new Float32Array(data[i]),
+      false,
+      sparseConfig,
+    );
+    creature.propagate(new Float32Array(outputs[i]), config, sparseConfig);
     assertAlmostEquals(
       actual[0],
       outputs[i][0],

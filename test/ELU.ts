@@ -28,8 +28,10 @@ Deno.test("ELU", () => {
     const a = Math.random() * 4 - 2;
 
     const data = [a];
-    const actual = creature.activateAndTrace(data, false, sparseConfig)[0];
-    const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
+    const actual =
+      creature.activateAndTrace(new Float32Array(data), false, sparseConfig)[0];
+    const actual2 =
+      creature.activateAndTrace(new Float32Array(data), false, sparseConfig)[0];
 
     assert(
       Math.abs(actual - actual2) < 0.00000001,

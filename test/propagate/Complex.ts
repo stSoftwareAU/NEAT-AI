@@ -45,7 +45,7 @@ Deno.test("Complex Back Propagation", () => {
   const outputs: number[][] = [];
 
   for (let i = 0; i < inputs.length; i++) {
-    const input = inputs[i];
+    const input = new Float32Array(inputs[i]);
     const output = creature.activate(input);
     outputs[i] = output;
   }
@@ -53,9 +53,9 @@ Deno.test("Complex Back Propagation", () => {
   const config = createBackPropagationConfig();
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < inputs.length; i++) {
-    const input = inputs[i];
+    const input = new Float32Array(inputs[i]);
     creature.activateAndTrace(input, false, sparseConfig);
-    const output = outputs[i];
+    const output = new Float32Array(outputs[i]);
     creature.propagate(output, config, sparseConfig);
   }
 
@@ -73,7 +73,7 @@ Deno.test("Complex Back Propagation", () => {
   );
 
   for (let i = 0; i < inputs.length; i++) {
-    const input = inputs[i];
+    const input = new Float32Array(inputs[i]);
     const actual = creature.activate(input);
     const expected = outputs[i];
     for (let y = 0; y < expected.length; y++) {

@@ -14,7 +14,7 @@ import { MSLE } from "./costs/MSLE.ts";
 import { TwelveSteps } from "./costs/TwelveSteps.ts";
 
 export interface CostInterface {
-  calculate(target: number[], output: number[]): number;
+  calculate(target: Float32Array, output: Float32Array): number;
 }
 
 export class Costs {

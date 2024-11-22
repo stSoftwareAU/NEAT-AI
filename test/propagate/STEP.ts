@@ -69,7 +69,7 @@ Deno.test("PropagateSTEP", () => {
 
   const outputs: number[][] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
-    outputs[i] = creature.activate(inputs[i]);
+    outputs[i] = creature.activate(new Float32Array(inputs[i]));
   }
 
   console.info(outputs);
@@ -86,8 +86,12 @@ Deno.test("PropagateSTEP", () => {
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let loop = 0; loop < 100; loop++) {
     for (let i = inputs.length; i--;) {
-      creature.activateAndTrace(inputs[i], false, sparseConfig);
-      creature.propagate(outputs[i], config, sparseConfig);
+      creature.activateAndTrace(
+        new Float32Array(inputs[i]),
+        false,
+        sparseConfig,
+      );
+      creature.propagate(new Float32Array(outputs[i]), config, sparseConfig);
     }
   }
 
