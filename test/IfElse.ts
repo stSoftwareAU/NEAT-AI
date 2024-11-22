@@ -40,13 +40,13 @@ Deno.test("if-bias", () => {
 
   console.log(tmpJSON);
 
-  const input1 = [-1, 0.4, 1];
+  const input1 = new Float32Array([-1, 0.4, 1]);
 
   const r1 = creature.activateAndTrace(input1, false, sparseConfig)[0];
 
   assertAlmostEquals(r1, -1, 0.0001, "should handle bias");
 
-  const input2 = [-1, 0.6, 1];
+  const input2 = new Float32Array([-1, 0.6, 1]);
 
   const r2 = creature.activateAndTrace(input2, false, sparseConfig)[0];
 
@@ -90,8 +90,11 @@ Deno.test("if/Else", () => {
 
     const expected = flag > 0 ? b : a;
 
-    const actual =
-      creature2.activateAndTrace([a, flag, b], false, sparseConfig)[0];
+    const actual = creature2.activateAndTrace(
+      new Float32Array([a, flag, b]),
+      false,
+      sparseConfig,
+    )[0];
 
     const diff = Math.abs(expected - actual);
     assert(diff < 0.00001, p + ") If/Else didn't work " + diff);

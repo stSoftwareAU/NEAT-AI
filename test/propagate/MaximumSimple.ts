@@ -15,7 +15,7 @@ Deno.test("PropagateMaximumSimple", () => {
   const inputs = makeInputs();
   for (let i = inputs.length; i--;) {
     const input = inputs[i];
-    const output = creatureA.activate(input);
+    const output = creatureA.activate(new Float32Array(input));
 
     ts.push({
       input,
@@ -64,8 +64,12 @@ Deno.test("PropagateMaximumSimple", () => {
   console.info(config);
   const sparseConfig = new SparseConfig(creatureC.exportJSON(), config);
   ts.forEach((item) => {
-    creatureC.activateAndTrace(item.input, false, sparseConfig);
-    creatureC.propagate(item.output, config, sparseConfig);
+    creatureC.activateAndTrace(
+      new Float32Array(item.input),
+      false,
+      sparseConfig,
+    );
+    creatureC.propagate(new Float32Array(item.output), config, sparseConfig);
   });
 
   Deno.writeTextFileSync(
@@ -96,8 +100,11 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.activate(data.input, false);
-    error += mse.calculate(data.output, output);
+    const output = creature.activate(new Float32Array(data.input), false);
+    error += mse.calculate(
+      new Float32Array(data.output),
+      new Float32Array(output),
+    );
   }
 
   return error / count;

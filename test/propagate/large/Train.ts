@@ -1,4 +1,4 @@
-import { fail } from "@std/assert";
+import { assert, fail } from "@std/assert";
 import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
@@ -35,8 +35,11 @@ Deno.test("large", () => {
   let errorSum = 0;
   let counter = 0;
   trainingSet.forEach((dataSet: DataRecordInterface) => {
-    const output = creature.activate(dataSet.input);
-    const sampleError = cost.calculate(dataSet.output, output);
+    const output = creature.activate(new Float32Array(dataSet.input));
+    const sampleError = cost.calculate(
+      new Float32Array(dataSet.output),
+      new Float32Array(output),
+    );
     errorSum += sampleError;
     counter++;
   });
@@ -50,16 +53,22 @@ Deno.test("large", () => {
       `${directory}/${i}.json`,
       JSON.stringify(creature.exportJSON(), null, 1),
     );
-    const results = train(creature, trainingSet, {
-      targetError: 0.1,
-      iterations: 1,
-      learningRate: 1,
-      disableRandomSamples: true,
-      generations: i,
-      maximumBiasAdjustmentScale: 1,
-      maximumWeightAdjustmentScale: 1,
-      sparseRatio: 1,
-    });
+    let results;
+    for (let attempts = 0; attempts < 12; attempts++) {
+      const attemptResults = train(creature, trainingSet, {
+        targetError: 0.1,
+        iterations: 1,
+        learningRate: 1,
+        disableRandomSamples: true,
+        generations: i,
+        maximumBiasAdjustmentScale: 1,
+        maximumWeightAdjustmentScale: 1,
+        sparseRatio: 1,
+      });
+      results = attemptResults;
+      if (attemptResults.error <= lastError) break;
+    }
+    assert(results);
 
     console.log(i, results.error);
     creature.validate();

@@ -53,8 +53,12 @@ Deno.test("PI-repeat", () => {
   const expectedA = makeOutput(inA);
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < 2; i++) {
-    outA2 = creature.activateAndTrace(inA, false, sparseConfig);
-    creature.propagate(expectedA, config, sparseConfig);
+    outA2 = creature.activateAndTrace(
+      new Float32Array(inA),
+      false,
+      sparseConfig,
+    );
+    creature.propagate(new Float32Array(expectedA), config, sparseConfig);
 
     Deno.writeTextFileSync(
       `${traceDir}/traced-${i}.json`,
@@ -83,13 +87,13 @@ Deno.test("PI-single", () => {
   );
 
   const inA = [-1, 1, 0];
-  const outA1 = creature.activate(inA);
+  const outA1 = creature.activate(new Float32Array(inA));
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   let outA2: number[] = [];
   const expectedA = makeOutput(inA);
-  outA2 = creature.activateAndTrace(inA, false, sparseConfig);
+  outA2 = creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
 
-  creature.propagate(expectedA, config, sparseConfig);
+  creature.propagate(new Float32Array(expectedA), config, sparseConfig);
 
   Deno.writeTextFileSync(
     ".trace/1.json",
@@ -99,8 +103,12 @@ Deno.test("PI-single", () => {
   creature.propagateUpdate(config, sparseConfig);
   creature.clearState();
   assertAlmostEquals(outA1[0], outA2[0], 0.0001);
-  const actualA1 = creature.activateAndTrace(inA, false, sparseConfig);
-  const actualA2 = creature.activate(inA);
+  const actualA1 = creature.activateAndTrace(
+    new Float32Array(inA),
+    false,
+    sparseConfig,
+  );
+  const actualA2 = creature.activate(new Float32Array(inA));
 
   Deno.writeTextFileSync(
     ".trace/2.json",
@@ -145,8 +153,8 @@ Deno.test("PI Multiple", () => {
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
     ];
-    creature.activateAndTrace(inC, false, sparseConfig);
-    creature.propagate(makeOutput(inC), config, sparseConfig);
+    creature.activateAndTrace(new Float32Array(inC), false, sparseConfig);
+    creature.propagate(new Float32Array(makeOutput(inC)), config, sparseConfig);
   }
 
   Deno.writeTextFileSync(
@@ -158,8 +166,12 @@ Deno.test("PI Multiple", () => {
 
   const inA = [-1, 1, 0];
   const expectedA = makeOutput(inA);
-  const actualA1 = creature.activateAndTrace(inA, false, sparseConfig);
-  const actualA2 = creature.activate(inA);
+  const actualA1 = creature.activateAndTrace(
+    new Float32Array(inA),
+    false,
+    sparseConfig,
+  );
+  const actualA2 = creature.activate(new Float32Array(inA));
   console.info(expectedA, actualA1, actualA2);
 
   Deno.writeTextFileSync(

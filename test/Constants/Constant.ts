@@ -28,12 +28,15 @@ Deno.test("No squash", () => {
     creature.exportJSON(),
     createBackPropagationConfig({}),
   );
-  const value = creature.activate([Math.random()])[0];
+  const value = creature.activate(new Float32Array([Math.random()]))[0];
 
   assertAlmostEquals(value, 0.5, 0.00001);
 
-  const value2 =
-    creature.activateAndTrace([Math.random()], false, sparseConfig)[0];
+  const value2 = creature.activateAndTrace(
+    new Float32Array([Math.random()]),
+    false,
+    sparseConfig,
+  )[0];
 
   assertAlmostEquals(value2, 0.5, 0.00001);
 });

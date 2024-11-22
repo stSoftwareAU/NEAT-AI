@@ -85,9 +85,9 @@ Deno.test("OneAndDone", () => {
   const expected = makeOutput(input);
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < 100; i++) {
-    creature.activateAndTrace(input, false, sparseConfig);
+    creature.activateAndTrace(new Float32Array(input), false, sparseConfig);
 
-    creature.propagate(expected, config, sparseConfig);
+    creature.propagate(new Float32Array(expected), config, sparseConfig);
   }
 
   Deno.writeTextFileSync(
@@ -97,7 +97,7 @@ Deno.test("OneAndDone", () => {
 
   creature.propagateUpdate(config, sparseConfig);
 
-  const actual = creature.activate(input);
+  const actual = creature.activate(new Float32Array(input));
 
   Deno.writeTextFileSync(
     `${traceDir}/2-done.json`,
@@ -140,9 +140,9 @@ Deno.test("TwoSame", () => {
 
     const sparseConfig = new SparseConfig(creature.exportJSON(), config);
     for (let i = 0; i < 2; i++) {
-      creature.activateAndTrace(inA, false, sparseConfig);
+      creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
 
-      creature.propagate(expectedA, config, sparseConfig);
+      creature.propagate(new Float32Array(expectedA), config, sparseConfig);
     }
 
     Deno.writeTextFileSync(
@@ -153,7 +153,7 @@ Deno.test("TwoSame", () => {
     creature.propagateUpdate(config, sparseConfig);
     creature.clearState();
 
-    const actualA = creature.activate(inA);
+    const actualA = creature.activate(new Float32Array(inA));
 
     Deno.writeTextFileSync(
       `${traceDir}/2-done.json`,
@@ -209,9 +209,9 @@ Deno.test("ManySame", () => {
     const expectedA = makeOutput(inA);
     const sparseConfig = new SparseConfig(creature.exportJSON(), config);
     for (let i = 0; i < 1000; i++) {
-      creature.activateAndTrace(inA, false, sparseConfig);
+      creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
 
-      creature.propagate(expectedA, config, sparseConfig);
+      creature.propagate(new Float32Array(expectedA), config, sparseConfig);
     }
 
     Deno.writeTextFileSync(
@@ -222,7 +222,7 @@ Deno.test("ManySame", () => {
     creature.propagateUpdate(config, sparseConfig);
     creature.clearState();
 
-    const actualA = creature.activate(inA);
+    const actualA = creature.activate(new Float32Array(inA));
 
     Deno.writeTextFileSync(
       ".trace/4-done.json",
@@ -377,8 +377,8 @@ Deno.test("propagateSingleNeuronRandom", () => {
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
     ];
-    creature.activateAndTrace(inC, false, sparseConfig);
-    creature.propagate(makeOutput(inC), config, sparseConfig);
+    creature.activateAndTrace(new Float32Array(inC), false, sparseConfig);
+    creature.propagate(new Float32Array(makeOutput(inC)), config, sparseConfig);
   }
 
   creature.propagateUpdate(config, sparseConfig);
@@ -395,7 +395,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
       Math.random() * 2 - 1,
     ];
     const expectedOutput = makeOutput(inD);
-    const actualOutput = creature.activate(inD);
+    const actualOutput = creature.activate(new Float32Array(inD));
 
     if (
       Math.abs(expectedOutput[0] - actualOutput[0]) > 0.7 ||

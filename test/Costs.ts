@@ -33,7 +33,10 @@ Deno.test("calculate cost", () => {
   checks.forEach((check) => {
     for (let i = names.length; i--;) {
       const name = names[i];
-      const r = Costs.find(name).calculate(check.target, check.output);
+      const r = Costs.find(name).calculate(
+        new Float32Array(check.target),
+        new Float32Array(check.output),
+      );
 
       console.info(name, check, r);
     }
@@ -46,7 +49,7 @@ Deno.test("MSELimit", () => {
   const exact = [-1, -0.5, 0, 0.5, 1];
 
   exact.forEach((v) => {
-    const c = cost.calculate([v], [v]);
+    const c = cost.calculate(new Float32Array([v]), new Float32Array([v]));
 
     assertAlmostEquals(
       c,
@@ -80,7 +83,10 @@ Deno.test("MSELimit", () => {
   ];
 
   checks.forEach((check) => {
-    const error = cost.calculate(check.target, check.output);
+    const error = cost.calculate(
+      new Float32Array(check.target),
+      new Float32Array(check.output),
+    );
 
     assertAlmostEquals(
       error,
@@ -94,8 +100,8 @@ Deno.test("MSELimit", () => {
 Deno.test("12StepsLimitA", () => {
   const cost = new TwelveSteps();
 
-  const c1 = cost.calculate([1.1], [1.2]);
-  const c2 = cost.calculate([1.1], [2]);
+  const c1 = cost.calculate(new Float32Array([1.1]), new Float32Array([1.2]));
+  const c2 = cost.calculate(new Float32Array([1.1]), new Float32Array([2]));
 
   assertAlmostEquals(
     c1,
@@ -108,8 +114,8 @@ Deno.test("12StepsLimitA", () => {
 Deno.test("12StepsLimitB", () => {
   const cost = new TwelveSteps();
 
-  const c1 = cost.calculate([1], [1.2]);
-  const c2 = cost.calculate([1], [2]);
+  const c1 = cost.calculate(new Float32Array([1]), new Float32Array([1.2]));
+  const c2 = cost.calculate(new Float32Array([1]), new Float32Array([2]));
 
   assertAlmostEquals(
     c1,
@@ -125,7 +131,7 @@ Deno.test("12Steps", () => {
   const exact = [-1, -0.5, 0, 0.5, 1];
 
   exact.forEach((v) => {
-    const c = cost.calculate([v], [v]);
+    const c = cost.calculate(new Float32Array([v]), new Float32Array([v]));
 
     assertAlmostEquals(
       c,
@@ -174,7 +180,10 @@ Deno.test("12Steps", () => {
   ];
 
   checks.forEach((check) => {
-    const error = cost.calculate(check.target, check.output);
+    const error = cost.calculate(
+      new Float32Array(check.target),
+      new Float32Array(check.output),
+    );
 
     assertAlmostEquals(
       error,

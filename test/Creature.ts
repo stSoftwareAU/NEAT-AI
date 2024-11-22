@@ -41,7 +41,11 @@ function checkMutation(method: { name: string }) {
   );
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = creature.activateAndTrace([i / 10, j / 10], true, sparseConfig);
+      const v = creature.activateAndTrace(
+        new Float32Array([i / 10, j / 10]),
+        true,
+        sparseConfig,
+      );
       originalOutput.push(...v);
     }
   }
@@ -58,7 +62,11 @@ function checkMutation(method: { name: string }) {
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const v = creature.activateAndTrace([i / 10, j / 10], true, sparseConfig);
+      const v = creature.activateAndTrace(
+        new Float32Array([i / 10, j / 10]),
+        true,
+        sparseConfig,
+      );
       mutatedOutput.push(...v);
     }
   }
@@ -105,9 +113,10 @@ async function evolveSet(
   assert(lastCreature instanceof Creature, "Last creature is not a creature");
 
   set.forEach((dr) => {
-    const nt0 = lastCreature.activate(dr.input)[0];
+    const input = new Float32Array(dr.input);
+    const nt0 = lastCreature.activate(input)[0];
 
-    const nt1 = lastCreature.activate(dr.input)[0];
+    const nt1 = lastCreature.activate(input)[0];
     creatureValidate(lastCreature);
 
     if (Math.abs(nt0 - nt1) > 0.0001) {
@@ -115,7 +124,7 @@ async function evolveSet(
         ".start.json",
         JSON.stringify(lastCreature.exportJSON(), null, 2),
       );
-      const nt2 = lastCreature.activate(dr.input)[0];
+      const nt2 = lastCreature.activate(input)[0];
 
       Deno.writeTextFileSync(
         ".end.json",
@@ -123,17 +132,17 @@ async function evolveSet(
       );
 
       const n0 = Creature.fromJSON(lastCreature.exportJSON()).activate(
-        dr.input,
+        input,
       )[0];
 
       lastCreature.clearCache();
-      const c1 = lastCreature.activate(dr.input)[0];
+      const c1 = lastCreature.activate(input)[0];
       const n1 = Creature.fromJSON(lastCreature.exportJSON()).activate(
-        dr.input,
+        input,
       )[0];
       const network2 = Creature.fromJSON(lastCreature.exportJSON());
-      const n2 = network2.activate(dr.input)[0];
-      const n2b = network2.activate(dr.input)[0];
+      const n2 = network2.activate(input)[0];
+      const n2b = network2.activate(input)[0];
       assertAlmostEquals(
         nt0,
         nt1,
@@ -148,8 +157,8 @@ async function evolveSet(
       createBackPropagationConfig({}),
     );
 
-    const r0 = lastCreature.activateAndTrace(dr.input, false, sparseConfig)[0];
-    const r1 = lastCreature.activateAndTrace(dr.input, false, sparseConfig)[0];
+    const r0 = lastCreature.activateAndTrace(input, false, sparseConfig)[0];
+    const r1 = lastCreature.activateAndTrace(input, false, sparseConfig)[0];
     assertAlmostEquals(
       r0,
       r1,
@@ -158,7 +167,7 @@ async function evolveSet(
         r1,
     );
 
-    const r2 = lastCreature.activate(dr.input)[0];
+    const r2 = lastCreature.activate(input)[0];
 
     assertAlmostEquals(
       r1,
@@ -217,8 +226,9 @@ function trainSet(
     );
 
     set.forEach((dr) => {
-      const r1 = creature.activateAndTrace(dr.input, false, sparseConfig)[0];
-      const r2 = creature.activate(dr.input)[0];
+      const input = new Float32Array(dr.input);
+      const r1 = creature.activateAndTrace(input, false, sparseConfig)[0];
+      const r2 = creature.activate(input)[0];
 
       assertAlmostEquals(
         r1,
@@ -246,8 +256,16 @@ function testEquality(original: Creature, copied: Creature) {
       input.push(Math.random());
     }
 
-    const ORout = original.activateAndTrace(input, false, sparseConfig);
-    const COout = copied.activateAndTrace(input, false, sparseConfig);
+    const ORout = original.activateAndTrace(
+      new Float32Array(input),
+      false,
+      sparseConfig,
+    );
+    const COout = copied.activateAndTrace(
+      new Float32Array(input),
+      false,
+      sparseConfig,
+    );
 
     assertEquals(
       ORout,

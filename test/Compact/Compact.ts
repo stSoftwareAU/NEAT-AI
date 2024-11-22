@@ -69,7 +69,7 @@ Deno.test("CompactSimple", () => {
   const startNodes = a.neurons.length;
   const startConnections = a.synapses.length;
 
-  const input = [0.1, 0.2];
+  const input = new Float32Array([0.1, 0.2]);
   const startOut = a.activate(input);
 
   Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
@@ -130,7 +130,7 @@ Deno.test("RandomizeCompact", () => {
     const startNodes = a.neurons.length;
     const startConnections = a.synapses.length;
 
-    const input = [0.1, 0.2];
+    const input = new Float32Array([0.1, 0.2]);
     const startOut = a.activate(input);
 
     Deno.writeTextFileSync(
@@ -211,7 +211,7 @@ Deno.test("CompactSelf", () => {
   const startNodes = a.neurons.length;
   const startConnections = a.synapses.length;
 
-  const input = [0.1, 0.2, 0.3];
+  const input = new Float32Array([0.1, 0.2, 0.3]);
   const aOut = a.activate(input);
 
   Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));

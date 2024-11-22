@@ -8,6 +8,7 @@ import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
 import { createBackPropagationConfig } from "../propagate/BackPropagation.ts";
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
 export function dataFiles(dataDir: string, options: TrainOptions = {}) {
@@ -63,11 +64,19 @@ function fp(percentage: number) {
 
   return yellow((percentage * 100).toFixed(1) + "%");
 }
+interface TrainingResult {
+  ID: string;
+  iteration: number;
+  error: number;
+  trace: CreatureTrace;
+  compact: CreatureExport | undefined;
+}
+
 function trainDirBinary(
   creature: Creature,
   binaryFiles: string[],
   options: TrainOptions,
-) {
+): TrainingResult {
   const backPropConfig = createBackPropagationConfig(options);
 
   const cost = Costs.find(options.cost ?? "MSE");
@@ -97,29 +106,20 @@ function trainDirBinary(
   );
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
+  const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB
+  const BATCH_SIZE = Math.max(
+    1,
+    Math.floor(SSD_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
+  );
+  const BYTES_PER_BATCH = BYTES_PER_RECORD * BATCH_SIZE;
 
-  const array = new Float32Array(valuesCount);
-  const uint8Array = new Uint8Array(array.buffer);
-
-  function readNextRecord(file: Deno.FsFile) {
-    const bytesRead = file.readSync(uint8Array);
-    if (bytesRead === null || bytesRead === 0) {
-      return null;
-    }
-    assert(bytesRead === BYTES_PER_RECORD);
-
-    const observations: number[] = Array.from(array.slice(0, creature.input));
-    const outputs: number[] = Array.from(array.slice(creature.input));
-
-    return {
-      observations: observations,
-      outputs: outputs,
-    };
-  }
+  // Shared buffers for batch processing
+  const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
+  const batchArray = new Float32Array(batchBuffer.buffer);
 
   const indxMap = new Map<string, Set<number>>();
 
-  // Loops the training process
+  // Training loop
   let iteration = 0;
 
   let timedOut = false;
@@ -160,17 +160,17 @@ function trainDirBinary(
 
       try {
         let recordSet = indxMap.get(fn);
+        const stat = file.statSync();
+        const fileRecords = stat.size / BYTES_PER_RECORD;
 
         if (!recordSet) {
-          const stat = file.statSync();
-          const records = stat.size / BYTES_PER_RECORD;
-          totalRecords += records;
+          totalRecords += fileRecords;
           if (fileIndx == 0) {
             knownSampleCount = totalRecords;
           }
-          const len = Math.ceil(records * trainingSampleRate);
+          const len = Math.ceil(fileRecords * trainingSampleRate);
           const tmpIndexes = Int32Array.from(
-            { length: records },
+            { length: fileRecords },
             (_, i) => i,
           ); // Create an array of indices
 
@@ -183,91 +183,118 @@ function trainDirBinary(
           indxMap.set(fn, recordSet);
         }
 
-        for (let indx = 0; true; indx++) {
-          const record = readNextRecord(file);
-          if (record === null) break;
+        let batchStart = 0;
+        while (true) {
+          const remainingRecords = fileRecords - batchStart;
+          if (remainingRecords <= 0) break;
 
-          if (!recordSet.has(indx)) {
-            continue;
-          }
-
-          const output = creature.activateAndTrace(
-            record.observations,
-            options.feedbackLoop ?? false,
-            sparseConfig,
+          const batchSize = Math.min(BATCH_SIZE, remainingRecords);
+          const bytesRead = file.readSync(
+            batchBuffer.subarray(0, batchSize * BYTES_PER_RECORD),
           );
+          if (bytesRead === null || bytesRead === 0) break;
 
-          const sampleError = cost.calculate(record.outputs, output);
-          errorSum += sampleError;
-          counter++;
-          if (Number.isFinite(errorSum) == false) {
-            console.warn(
-              `Training ${
-                blue(ID)
-              } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} record.output: ${record.outputs} output: ${output}`,
+          const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
+          for (let j = 0; j < recordsRead; j++) {
+            const recordIndex = batchStart + j;
+            if (!recordSet.has(recordIndex)) continue;
+
+            const offset = j * valuesCount;
+            const observations = batchArray.subarray(
+              offset,
+              offset + creature.input,
             );
-            trainingStopped = true;
-            break;
-          } else if (bestError !== undefined && counter < knownSampleCount) {
-            const bestPossibleError = errorSum / knownSampleCount;
-            if (bestPossibleError > bestError) {
+            const targets = batchArray.subarray(
+              offset + creature.input,
+              offset + valuesCount,
+            );
+
+            const output = creature.activateAndTrace(
+              observations,
+              options.feedbackLoop ?? false,
+              sparseConfig,
+            );
+
+            const sampleError = cost.calculate(
+              targets,
+              new Float32Array(output),
+            );
+            assert(Number.isFinite(sampleError), "Sample error is not finite");
+            errorSum += sampleError;
+            counter++;
+            if (Number.isFinite(errorSum) == false) {
               console.warn(
-                `Training ${blue(ID)} stopped as 'best possible' error ${
-                  yellow(bestPossibleError.toFixed(3))
-                } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
-                  yellow(counter.toFixed(0))
-                } of ${yellow(knownSampleCount.toFixed(0))}`,
+                `Training ${
+                  blue(ID)
+                } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} record.output: ${targets} output: ${output}`,
               );
               trainingStopped = true;
               break;
+            } else if (bestError !== undefined && counter < knownSampleCount) {
+              const bestPossibleError = errorSum / knownSampleCount;
+              if (bestPossibleError > bestError) {
+                console.warn(
+                  `Training ${blue(ID)} stopped as 'best possible' error ${
+                    yellow(bestPossibleError.toFixed(3))
+                  } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
+                    yellow(counter.toFixed(0))
+                  } of ${yellow(knownSampleCount.toFixed(0))}`,
+                );
+                trainingStopped = true;
+                break;
+              }
             }
-          }
-          creature.propagate(record.outputs, iterationConfig, sparseConfig);
+            creature.propagate(targets, iterationConfig, sparseConfig);
 
-          const now = Date.now();
-          const diff = now - lastTS;
+            const now = Date.now();
+            const diff = now - lastTS;
 
-          if (diff > 60_000) {
-            lastTS = now;
-            const totalTime = now - startTS;
-            console.log(
-              `Training ${blue(ID)} samples`,
-              yellow(counter.toLocaleString("en-AU")),
-              `${
-                knownSampleCount > 0
-                  ? "of " + yellow(knownSampleCount.toLocaleString("en-AU")) +
-                    " " +
-                    yellow((counter / knownSampleCount * 100).toFixed(1) + "%")
-                  : ""
-              }${
-                trainingSampleRate < 1
-                  ? "( rate " +
-                    yellow((trainingSampleRate * 100).toFixed(1) + "% )")
-                  : ""
-              }`,
-              "error",
-              yellow((errorSum / counter).toFixed(3)),
-              "time average:",
-              yellow(
-                format(totalTime / counter, { ignoreZero: true }),
-              ),
-              "total:",
-              yellow(
-                format(totalTime, { ignoreZero: true }),
-              ),
-            );
-
-            if (timeoutTS && now > timeoutTS) {
-              timedOut = true;
+            if (diff > 60_000) {
+              lastTS = now;
+              const totalTime = now - startTS;
               console.log(
-                `Training ${blue(ID)} timed out after ${
-                  yellow(format(totalTime, { ignoreZero: true }))
+                `Training ${blue(ID)} samples`,
+                yellow(counter.toLocaleString("en-AU")),
+                `${
+                  knownSampleCount > 0
+                    ? "of " + yellow(knownSampleCount.toLocaleString("en-AU")) +
+                      " " +
+                      yellow(
+                        (counter / knownSampleCount * 100).toFixed(1) + "%",
+                      )
+                    : ""
+                }${
+                  trainingSampleRate < 1
+                    ? "( rate " +
+                      yellow((trainingSampleRate * 100).toFixed(1) + "% )")
+                    : ""
                 }`,
+                "error",
+                yellow((errorSum / counter).toFixed(3)),
+                "time average:",
+                yellow(
+                  format(totalTime / counter, { ignoreZero: true }),
+                ),
+                "total:",
+                yellow(
+                  format(totalTime, { ignoreZero: true }),
+                ),
               );
-              trainingStopped = true;
-              break;
+
+              if (timeoutTS && now > timeoutTS) {
+                timedOut = true;
+                console.log(
+                  `Training ${blue(ID)} timed out after ${
+                    yellow(format(totalTime, { ignoreZero: true }))
+                  }`,
+                );
+                trainingStopped = true;
+                break;
+              }
             }
           }
+          if (trainingStopped) break;
+          batchStart += batchSize;
         }
       } finally {
         file.close();
@@ -275,6 +302,12 @@ function trainDirBinary(
     }
 
     const error = errorSum / counter;
+
+    if (counter == 0) {
+      throw new Error(
+        `Training ${blue(ID)} stopped as no samples were processed`,
+      );
+    }
 
     if (bestError !== undefined && bestError < error) {
       trainingFailures++;

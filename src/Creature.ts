@@ -304,12 +304,12 @@ export class Creature implements CreatureInternal {
   /**
    * Activates the creature and traces the activity.
    *
-   * @param {number[]} input - The input values for the creature.
+   * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @returns {number[]} The output values after activation.
    */
   activateAndTrace(
-    input: number[],
+    input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
   ): number[] {
@@ -349,7 +349,7 @@ export class Creature implements CreatureInternal {
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
    * @returns {number[]} The output values after activation.
    */
-  activate(input: number[], feedbackLoop: boolean = false): number[] {
+  activate(input: Float32Array, feedbackLoop: boolean = false): number[] {
     const output: number[] = new Array(this.output);
 
     this.state.makeActivation(input, feedbackLoop);
@@ -718,11 +718,11 @@ export class Creature implements CreatureInternal {
   /**
    * Propagate the expected values through the creature's network.
    *
-   * @param {number[]} expected - The expected output values.
+   * @param {Float32Array} expected - The expected output values.
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
   propagate(
-    expected: number[],
+    expected: Float32Array,
     config: BackPropagationConfig,
     sparseConfig: SparseConfig,
   ) {
@@ -943,30 +943,54 @@ export class Creature implements CreatureInternal {
 
     const valuesCount = this.input + this.output;
     const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
-    const array = new Float32Array(valuesCount);
-    const uint8Array = new Uint8Array(array.buffer);
+    const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB
+    const BATCH_SIZE = Math.max(
+      1,
+      Math.floor(SSD_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
+    );
+    const BYTES_PER_BATCH = BYTES_PER_RECORD * BATCH_SIZE;
+
+    // Shared buffers for batch processing
+    const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
+    const batchArray = new Float32Array(batchBuffer.buffer);
+
+    // Pre-allocated observation and expected arrays
+    const observations = new Float32Array(this.input);
+    const expected = new Float32Array(this.output);
+
     for (let i = dataResult.files.length; i--;) {
       const filePath = dataResult.files[i];
-
       const file = Deno.openSync(filePath, { read: true });
+
       try {
         while (true) {
-          const bytesRead = file.readSync(uint8Array);
+          // Read a batch of records
+          const bytesRead = file.readSync(batchBuffer);
           if (bytesRead === null || bytesRead === 0) {
             break;
           }
+
+          const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
           assert(
-            bytesRead === BYTES_PER_RECORD,
+            bytesRead % BYTES_PER_RECORD === 0,
             "Invalid number of bytes read",
           );
 
-          const observations: number[] = Array.from(
-            array.subarray(0, this.input),
-          );
-          const output = this.activate(observations, feedbackLoop);
-          const expected: number[] = Array.from(array.subarray(this.input));
-          error += cost.calculate(expected, output);
-          count++;
+          // Process each record in the batch
+          for (let j = 0; j < recordsRead; j++) {
+            const offset = j * valuesCount;
+
+            // Extract observations and expected values
+            observations.set(batchArray.subarray(offset, offset + this.input));
+            expected.set(
+              batchArray.subarray(offset + this.input, offset + valuesCount),
+            );
+
+            // Calculate output and error
+            const output = this.activate(observations, feedbackLoop);
+            error += cost.calculate(expected, new Float32Array(output));
+            count++;
+          }
         }
       } finally {
         file.close();

@@ -111,7 +111,8 @@ Deno.test("booleanXOR", async () => {
     creature.exportJSON(),
     createBackPropagationConfig({}),
   );
-  const value = creature.activateAndTrace([1, 0], false, sparseConfig)[0];
+  const value =
+    creature.activateAndTrace(new Float32Array([1, 0]), false, sparseConfig)[0];
 
   assert(value > 0.65, "Should be more than 0.65 was: " + value);
 });

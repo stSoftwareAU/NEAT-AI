@@ -17,7 +17,7 @@ Deno.test("PropagateMinimum", () => {
     const ts: { input: number[]; output: number[] }[] = [];
     for (let i = 1_000; i--;) {
       const input = makeInput();
-      const output = creature.activate(input);
+      const output = creature.activate(new Float32Array(input));
 
       ts.push({
         input,
@@ -33,7 +33,7 @@ Deno.test("PropagateMinimum", () => {
       JSON.stringify(ts, null, 2),
     );
     ts.forEach((item) => {
-      const result = creature.activate(item.input);
+      const result = creature.activate(new Float32Array(item.input));
 
       assertAlmostEquals(item.output[0], result[0], 0.00001);
       assertAlmostEquals(item.output[1], result[1], 0.00001);
@@ -155,8 +155,11 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.activate(data.input, false);
-    error += mse.calculate(data.output, output);
+    const output = creature.activate(new Float32Array(data.input), false);
+    error += mse.calculate(
+      new Float32Array(data.output),
+      new Float32Array(output),
+    );
   }
 
   return error / count;

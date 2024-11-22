@@ -15,7 +15,7 @@ Deno.test("PropagateMaximum", () => {
     const ts: { input: number[]; output: number[] }[] = [];
     for (let i = 1_00; i--;) {
       const input = makeInput();
-      const output = creatureA.activate(input);
+      const output = creatureA.activate(new Float32Array(input));
 
       ts.push({
         input,
@@ -31,7 +31,7 @@ Deno.test("PropagateMaximum", () => {
       JSON.stringify(ts, null, 2),
     );
     ts.forEach((item) => {
-      const result = creatureA.activate(item.input);
+      const result = creatureA.activate(new Float32Array(item.input));
 
       assertAlmostEquals(item.output[0], result[0], 0.00001);
       assertAlmostEquals(item.output[1], result[1], 0.00001);
@@ -139,8 +139,11 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.activate(data.input, false);
-    error += mse.calculate(data.output, output);
+    const output = creature.activate(new Float32Array(data.input), false);
+    error += mse.calculate(
+      new Float32Array(data.output),
+      new Float32Array(output),
+    );
   }
 
   return error / count;
