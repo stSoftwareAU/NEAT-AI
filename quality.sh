@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-export DENO_FUTURE=1
+deno outdated --update --latest
 deno fmt src test bench mod.ts docs
 deno lint --fix src test bench mod.ts
 rm -rf .trace .test .coverage

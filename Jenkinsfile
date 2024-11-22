@@ -77,7 +77,6 @@ pipeline {
                     steps {
                         sh '''\
                           #!/bin/bash
-                          export DENO_FUTURE=1
                           deno test \
                             --allow-read \
                             --allow-write \
