@@ -3,6 +3,7 @@ import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
 import type { CreatureExport } from "../../mod.ts";
 import { retry } from "../../src/blackbox/Retry.ts";
+import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -86,4 +87,10 @@ Deno.test("backtrack", () => {
   const backtrackPopulation = retry(population, "BACKWARDS");
 
   assertEquals(backtrackPopulation.length, 2);
+
+  for (const creature of backtrackPopulation) {
+    assert(creature.memetic);
+    creatureValidate(creature);
+    console.info(creature.memetic);
+  }
 });
