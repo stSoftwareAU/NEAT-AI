@@ -33,8 +33,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet || git commit -am "chore: apply deno fmt"
       
-      # Push Changes
       - name: Push Changes
-        if: success()
         run: |
+          git remote set-url origin https://${{ secrets.ACTIONS_TOKEN }}@github.com/stSoftwareAU/NEAT-AI.git
           git push origin ${{ github.ref_name }}
