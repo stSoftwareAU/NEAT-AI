@@ -21,9 +21,15 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
 
+      - name: Update Deno
+        run: deno outdated --update --latest
+
       # Run Deno fmt
       - name: Format Code
         run: deno fmt
+
+      - name: Lint Code
+        run: deno lint --fix src test bench mod.ts
 
       # Check for Changes
       - name: Check for Changes
