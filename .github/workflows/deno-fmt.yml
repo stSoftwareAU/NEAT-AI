@@ -29,12 +29,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet || git commit -am "chore: apply deno fmt"
-        continue-on-error: true  # Ensure workflow doesn't fail if there's nothing to commit
-  
-      # Push Changes with an updated action
+      
+      # Push Changes
       - name: Push Changes
         if: success()
-        uses: github-actions-x/commit@v2.9
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref_name }}
+        run: |
+          git push origin ${{ github.ref_name }}
