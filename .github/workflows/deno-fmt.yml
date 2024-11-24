@@ -37,5 +37,6 @@ jobs:
       - name: Push Changes
         if: steps.commit_changes.outcome == 'success'  # Push only if there are changes
         run: |
-          git remote set-url origin https://${{ secrets.ACTIONS_PUSH }}@github.com/stSoftwareAU/NEAT-AI.git
-          git push origin ${{ github.ref_name }}
+          git push origin
+          #git remote set-url origin https://${{ secrets.ACTIONS_PUSH }}@github.com/stSoftwareAU/NEAT-AI.git
+          #git push origin ${{ github.ref_name }}
