@@ -33,7 +33,7 @@ jobs:
 
       # Commit Changes
       - name: Commit Changes
-        if: env.changes == 'true' # Only run if there are changes
+        if: ${{ steps.changes.outputs.changes == 'true' }} # Only run if there are changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -41,7 +41,7 @@ jobs:
 
       # Push Changes
       - name: Push Changes
-        if: env.changes == 'true' # Only run if there are changes
+        if: ${{ steps.changes.outputs.changes == 'true' }} # Only run if there are changes
         run: |
           git push origin
           #git remote set-url origin https://${{ secrets.ACTIONS_PUSH }}@github.com/stSoftwareAU/NEAT-AI.git
