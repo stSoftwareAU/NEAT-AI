@@ -80,7 +80,7 @@ Deno.test("backtrack", () => {
       creature.score = previous.score + Math.random();
     } else {
       assert(previous.score);
-      creature.score = previous.score -       Math.random();
+      creature.score = previous.score - Math.random();
     }
   });
 
