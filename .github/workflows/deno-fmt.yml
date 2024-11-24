@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}  # Use the GitHub Actions token for write access
+          token: ${{ secrets.ACTIONS_TOKEN }}  # Use the GitHub Actions token for write access
 
 
       # Set up Deno 2.1 (Explicit version)
