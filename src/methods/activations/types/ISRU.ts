@@ -41,12 +41,6 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     return value;
   }
 
-  // Derivative of the ISRU function: f'(x) = 1 / (sqrt(1 + α * x^2))^3
-  // public derivative(x: number) {
-  //   const denominator = Math.sqrt(1 + ISRU.ALPHA * x ** 2);
-  //   return 1 / (denominator ** 3);
-  // }
-
   getName() {
     return ISRU.NAME;
   }

@@ -23,9 +23,7 @@ function setup() {
 }
 
 Deno.test("propagate/minimum", () => {
-  // for (let i = 0; i < 1000; i++) {
   check();
-  // }
 });
 
 function check() {
