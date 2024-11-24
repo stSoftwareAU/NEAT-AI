@@ -34,7 +34,7 @@ jobs:
       # Push Changes with an updated action
       - name: Push Changes
         if: success()
-        uses: github-actions-x/commit@v3
+        uses: github-actions-x/commit@v2.9
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref_name }}
