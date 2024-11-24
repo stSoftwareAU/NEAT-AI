@@ -1,4 +1,4 @@
-name: Format Code Automatically with Deno 2.1
+name: Format Code Automatically with Deno 2
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.ACTIONS_PUSH }} # Use the GitHub Actions token for write access
+          token: ${{ secrets.ACTIONS_PUSH }}  # Use the GitHub Actions token for write access
 
       # Set up Deno 2.1 (Explicit version)
       - name: Setup Deno
@@ -27,13 +27,13 @@ jobs:
 
       # Check for Changes
       - name: Check for Changes
-        id: changes # Set an ID for referencing the output
+        id: check_changes  # Set an ID for referencing outputs
         run: |
-          git diff --quiet || echo "changes=true" >> $GITHUB_ENV
+          echo "has_changes=$(git diff --quiet || echo true)" >> $GITHUB_ENV
 
       # Commit Changes
       - name: Commit Changes
-        if: env.changes == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true'  # Only run if there are changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -41,7 +41,7 @@ jobs:
 
       # Push Changes
       - name: Push Changes
-        if: env.changes == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true'  # Only run if there are changes
         run: |
           git push origin
           #git remote set-url origin https://${{ secrets.ACTIONS_PUSH }}@github.com/stSoftwareAU/NEAT-AI.git
