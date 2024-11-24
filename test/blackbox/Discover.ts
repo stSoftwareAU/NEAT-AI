@@ -50,7 +50,7 @@ Deno.test("Discover-no-score", () => {
   child.neurons[3].bias = 3.0;
 
   discover(mum, child);
-  assert(child.memetic      === undefined);
+  assert(child.memetic === undefined);
 });
 
 Deno.test("Discover-score", () => {
