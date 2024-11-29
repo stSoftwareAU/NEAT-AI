@@ -32,21 +32,27 @@ jobs:
         run: deno lint --fix src test bench mod.ts
 
       # Check for Changes
+
+      # Check for Changes
       - name: Check for Changes
-        id: check_changes  # Set an ID for referencing outputs
+        id: check_changes  # Define step ID to use outputs
         run: |
-          echo "has_changes=$(git diff --quiet || echo true)" >> $GITHUB_ENV
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
 
       # Commit Changes
       - name: Commit Changes
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true'  # Use step output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore: apply deno fmt"
+          git commit -am "chore: apply deno fmt and lint fixes"
 
       # Push Changes
       - name: Push Changes
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true'  # Use step output
         run: |
           git push origin
