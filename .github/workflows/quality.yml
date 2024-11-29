@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.ACTIONS_PUSH }}  # Use the GitHub Actions token for write access
+          token: ${{ secrets.ACTIONS_PUSH }} # Use the GitHub Actions token for write access
 
       # Set up Deno 2.x
       - name: Setup Deno
@@ -35,7 +35,7 @@ jobs:
 
       # Check for Changes
       - name: Check for Changes
-        id: check_changes  # Define step ID to use outputs
+        id: check_changes # Define step ID to use outputs
         run: |
           if git diff --quiet; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -45,7 +45,7 @@ jobs:
 
       # Commit Changes
       - name: Commit Changes
-        if: steps.check_changes.outputs.has_changes == 'true'  # Use step output
+        if: steps.check_changes.outputs.has_changes == 'true' # Use step output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -53,6 +53,6 @@ jobs:
 
       # Push Changes
       - name: Push Changes
-        if: steps.check_changes.outputs.has_changes == 'true'  # Use step output
+        if: steps.check_changes.outputs.has_changes == 'true' # Use step output
         run: |
           git push origin
