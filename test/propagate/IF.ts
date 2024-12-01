@@ -3,6 +3,7 @@ import { ensureDirSync } from "@std/fs";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -10,14 +11,14 @@ import { train } from "../TrainTestOnlyUtil.ts";
 Deno.test("PropagateWeightsIF", () => {
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
-    const ts: { input: number[]; output: number[] }[] = [];
+    const ts: DataRecordInterface[] = [];
     for (let i = 1_00; i--;) {
       const input = makeInput();
       const output = creatureA.activate(new Float32Array(input));
 
       ts.push({
         input,
-        output,
+        output: Array.from(output),
       });
     }
 
@@ -109,14 +110,14 @@ Deno.test("PropagateWeightsIF", () => {
 Deno.test("PropagateBiasIF", () => {
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
-    const ts: { input: number[]; output: number[] }[] = [];
+    const ts: DataRecordInterface[] = [];
     for (let i = 1_00; i--;) {
       const input = makeInput();
       const output = creatureA.activate(new Float32Array(input));
 
       ts.push({
         input,
-        output,
+        output: Array.from(output),
       });
     }
 
@@ -220,7 +221,7 @@ Deno.test("PropagateBiasIF", () => {
 
 function calculateError(
   creature: Creature,
-  json: { input: number[]; output: number[] }[],
+  json: DataRecordInterface[],
 ) {
   let error = 0;
   const count = json.length;

@@ -6,20 +6,21 @@ import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("PropagateMaximum", () => {
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
-    const ts: { input: number[]; output: number[] }[] = [];
+    const ts: DataRecordInterface[] = [];
     for (let i = 1_00; i--;) {
       const input = makeInput();
       const output = creatureA.activate(new Float32Array(input));
 
       ts.push({
         input,
-        output,
+        output: Array.from(output),
       });
     }
 
@@ -132,7 +133,7 @@ Deno.test("PropagateMaximum", () => {
 
 function calculateError(
   creature: Creature,
-  json: { input: number[]; output: number[] }[],
+  json: DataRecordInterface[],
 ) {
   let error = 0;
   const count = json.length;

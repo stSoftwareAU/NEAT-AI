@@ -91,7 +91,7 @@ Deno.test("CompactKeepOrder", () => {
     JSON.stringify(creature.exportJSON(), null, 2),
   );
 
-  const outputs: number[][] = new Array(data.length);
+  const outputs: Float32Array[] = new Array(data.length);
   for (let i = data.length; i--;) {
     outputs[i] = creature.activate(new Float32Array(data[i]));
   }

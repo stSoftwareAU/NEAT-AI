@@ -95,7 +95,7 @@ Deno.test("PropagateIdentity", () => {
     JSON.stringify(inputs, null, 2),
   );
 
-  const targets: number[][] = new Array(inputs.length);
+  const targets: Float32Array[] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
     targets[i] = creature.activate(new Float32Array(inputs[i]));
   }
@@ -164,7 +164,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
     JSON.stringify(inputs, null, 2),
   );
 
-  const targets: number[][] = new Array(inputs.length);
+  const targets: Float32Array[] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
     targets[i] = creature.activate(new Float32Array(inputs[i]));
   }
@@ -223,7 +223,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
 function calculateError(
   creature: Creature,
   inputs: number[][],
-  targets: number[][],
+  targets: Float32Array[],
 ) {
   let error = 0;
   const count = inputs.length;
@@ -231,7 +231,7 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const input = new Float32Array(inputs[i]);
-    const target = new Float32Array(targets[i]);
+    const target = targets[i];
     const output = creature.activate(input, false);
     error += mse.calculate(target, new Float32Array(output));
   }
