@@ -4,6 +4,7 @@ import type { CreatureExport } from "../../../src/architecture/CreatureInterface
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { train } from "../../TrainTestOnlyUtil.ts";
+import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -128,7 +129,7 @@ function makeTrainData(creature: Creature) {
   } // deno-lint-ignore no-empty
   catch (_e) {}
 
-  const td: { input: number[]; output: number[] }[] = [];
+  const td: DataRecordInterface[] = [];
 
   for (let i = 999; i--;) {
     const pos = i % 3;
@@ -141,7 +142,7 @@ function makeTrainData(creature: Creature) {
 
     td.push({
       input,
-      output,
+      output: Array.from(output),
     });
   }
 
@@ -154,7 +155,7 @@ function makeTrainData(creature: Creature) {
 
 function calculateError(
   creature: Creature,
-  json: { input: number[]; output: number[] }[],
+  json: DataRecordInterface[],
 ) {
   let error = 0;
   const count = json.length;

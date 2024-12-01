@@ -3,7 +3,7 @@ name: Format Code Automatically with Deno 2
 on:
   push:
     branches-ignore:
-      - develop # Exclude the develop branch
+      - Develop
   workflow_dispatch: # Allow manual trigger if needed
 
 jobs:

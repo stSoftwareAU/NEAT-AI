@@ -182,7 +182,7 @@ async function evolveSet(
 }
 
 function trainSet(
-  set: { input: number[]; output: number[] }[],
+  set: DataRecordInterface[],
   iterations: number,
   error: number,
 ) {

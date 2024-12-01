@@ -42,7 +42,7 @@ Deno.test("Complex Back Propagation", () => {
   const inputs = JSON.parse(
     Deno.readTextFileSync(`${testDir}/input.json`),
   ) as number[][];
-  const outputs: number[][] = [];
+  const outputs: Float32Array[] = [];
 
   for (let i = 0; i < inputs.length; i++) {
     const input = new Float32Array(inputs[i]);

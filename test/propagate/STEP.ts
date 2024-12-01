@@ -67,7 +67,7 @@ Deno.test("PropagateSTEP", () => {
     Deno.readTextFileSync(`${testDir}/input.json`),
   ) as number[][];
 
-  const outputs: number[][] = new Array(inputs.length);
+  const outputs: Float32Array[] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
     outputs[i] = creature.activate(new Float32Array(inputs[i]));
   }

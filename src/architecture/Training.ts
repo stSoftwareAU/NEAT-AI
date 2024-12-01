@@ -204,15 +204,16 @@ function trainDirBinary(
               offset,
               offset + creature.input,
             );
-            const targets = batchArray.subarray(
-              offset + creature.input,
-              offset + valuesCount,
-            );
 
             const output = creature.activateAndTrace(
               observations,
               options.feedbackLoop ?? false,
               sparseConfig,
+            );
+
+            const targets = batchArray.subarray(
+              offset + creature.input,
+              offset + valuesCount,
             );
 
             const sampleError = cost.calculate(
