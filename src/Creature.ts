@@ -349,8 +349,8 @@ export class Creature implements CreatureInternal {
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
    * @returns {number[]} The output values after activation.
    */
-  activate(input: Float32Array, feedbackLoop: boolean = false): number[] {
-    const output: number[] = new Array(this.output);
+  activate(input: Float32Array, feedbackLoop: boolean = false): Float32Array {
+    const output: Float32Array = new Float32Array(this.output);
 
     this.state.makeActivation(input, feedbackLoop);
 
@@ -954,12 +954,8 @@ export class Creature implements CreatureInternal {
     const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
     const batchArray = new Float32Array(batchBuffer.buffer);
 
-    // Pre-allocated observation and expected arrays
-    const observations = new Float32Array(this.input);
-    const expected = new Float32Array(this.output);
-
-    for (let i = dataResult.files.length; i--;) {
-      const filePath = dataResult.files[i];
+    for (let fileIndx = dataResult.files.length; fileIndx--;) {
+      const filePath = dataResult.files[fileIndx];
       const file = Deno.openSync(filePath, { read: true });
 
       try {
@@ -977,18 +973,22 @@ export class Creature implements CreatureInternal {
           );
 
           // Process each record in the batch
-          for (let j = 0; j < recordsRead; j++) {
-            const offset = j * valuesCount;
-
-            // Extract observations and expected values
-            observations.set(batchArray.subarray(offset, offset + this.input));
-            expected.set(
-              batchArray.subarray(offset + this.input, offset + valuesCount),
+          for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
+            const offset = recordIndex * valuesCount;
+            const inputEnd = offset + this.input;
+            const observations = batchArray.subarray(
+              offset,
+              inputEnd,
             );
 
-            // Calculate output and error
-            const output = this.activate(observations, feedbackLoop);
-            error += cost.calculate(expected, new Float32Array(output));
+            const actual = this.activate(observations, feedbackLoop);
+
+            const target = batchArray.subarray(
+              inputEnd,
+              offset + valuesCount,
+            );
+
+            error += cost.calculate(target, actual);
             count++;
           }
         }
