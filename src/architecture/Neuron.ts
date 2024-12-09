@@ -334,6 +334,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);
+      this.creature.state.cacheAdjustedActivation.set(this.index, activation);
       return targetActivation;
     }
 
@@ -400,10 +401,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
             fromNeuron.type !== "input" &&
             fromNeuron.type !== "constant"
           ) {
-            const targetFromActivation = targetFromValue / fromWeight;
             if (
               sparseConfig.propagateNeeded(fromNeuron.uuid)
             ) {
+              const targetFromActivation = targetFromValue / fromWeight;
               improvedFromActivation = fromNeuron.propagate(
                 targetFromActivation,
                 config,
