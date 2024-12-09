@@ -460,10 +460,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (updateNeeded) {
         ns.traceActivation(limitedActivation);
       }
-      this.creature.state.cacheAdjustedActivation.set(this.index,limitedActivation);
+      this.creature.state.cacheAdjustedActivation.set(
+        this.index,
+        limitedActivation,
+      );
       return limitedActivation;
     } else {
-      this.creature.state.cacheAdjustedActivation.set(this.index,activation);
+      this.creature.state.cacheAdjustedActivation.set(this.index, activation);
       return activation;
     }
   }
