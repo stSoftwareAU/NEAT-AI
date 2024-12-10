@@ -334,6 +334,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);
+      this.creature.state.cacheAdjustedActivation.set(this.index, activation);
       return targetActivation;
     }
 
@@ -354,7 +355,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         config,
         sparseConfig,
       );
-      propagateUpdateMethod.range.validate(limitedActivation);
+      // propagateUpdateMethod.range.validate(limitedActivation);
     } else {
       const targetValue = toValue(this, targetActivation, ns.hintValue);
 
@@ -400,10 +401,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
             fromNeuron.type !== "input" &&
             fromNeuron.type !== "constant"
           ) {
-            const targetFromActivation = targetFromValue / fromWeight;
             if (
               sparseConfig.propagateNeeded(fromNeuron.uuid)
             ) {
+              const targetFromActivation = targetFromValue / fromWeight;
               improvedFromActivation = fromNeuron.propagate(
                 targetFromActivation,
                 config,
@@ -448,7 +449,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         limitedActivation = (squashMethod as ActivationInterface).squash(
           improvedValue + aBias - currentBias,
         );
-        propagateUpdateMethod.range.validate(limitedActivation);
+        // propagateUpdateMethod.range.validate(limitedActivation);
       } else {
         limitedActivation = (squashMethod as ActivationInterface).squash(
           improvedValue,
@@ -460,9 +461,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (updateNeeded) {
         ns.traceActivation(limitedActivation);
       }
-      this.creature.state.cacheAdjustedActivation.delete(this.index);
+      this.creature.state.cacheAdjustedActivation.set(
+        this.index,
+        limitedActivation,
+      );
       return limitedActivation;
     } else {
+      this.creature.state.cacheAdjustedActivation.set(this.index, activation);
       return activation;
     }
   }
