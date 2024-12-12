@@ -698,7 +698,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         break;
       case "output":
       case "hidden":
-        neuron.setSquash(json.squash!);
+        if (json.squash) neuron.setSquash(json.squash);
         break;
       default:
         throw new Error("unknown type: " + (json as NeuronInternal).type);
