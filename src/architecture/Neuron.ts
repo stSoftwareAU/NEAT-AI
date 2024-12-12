@@ -125,7 +125,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Updates the cached activation function based on neuron type and squash.
    */
-  private updateCallActivation(): void {
+  private updateCallActivation():
+    | undefined
+    | NeuronActivationInterface
+    | ActivationInterface
+    | UnSquashInterface {
     if (this.type === "constant") {
       this.callActivation = () => this.bias;
     } else if (this.squash) {
@@ -149,6 +153,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           return activationSquash.squash(value);
         };
       }
+      return squashMethod;
     }
   }
 
@@ -158,7 +163,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
   setSquash(
     name: string,
-  ): NeuronActivationInterface | ActivationInterface | UnSquashInterface {
+  ): void {
     assert(
       this.type == "output" || this.type == "hidden",
       "Can't set the squash of a non-output or non-hidden node",
@@ -166,10 +171,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     delete this.squashMethodCache;
     this.squash = name;
-    this.updateCallActivation();
-    const squashFunction = this.findSquash();
-    this.squash = squashFunction.getName(); /* Handle aliases */
-    return squashFunction;
+    const squashFunction = this.updateCallActivation();
+
+    this.squash = squashFunction!.getName(); /* Handle aliases */
   }
 
   findSquash():
