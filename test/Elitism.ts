@@ -20,7 +20,7 @@ function make(population: CreatureInternal[]) {
       ni.neurons.push({
         index: 1,
         type: "output",
-        squash: "identity",
+        squash: "IDENTITY",
       });
       ni.synapses.push({
         from: 0,

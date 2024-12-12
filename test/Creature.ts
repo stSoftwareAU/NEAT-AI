@@ -29,11 +29,11 @@ function checkMutation(method: { name: string }) {
       { count: 4 },
     ],
   });
-
+  creatureValidate(creature);
   creature.mutate(method);
   creature.mutate(Mutation.ADD_BACK_CONN);
   creature.mutate(Mutation.ADD_SELF_CONN);
-
+  creatureValidate(creature);
   const originalOutput = [];
   const sparseConfig = new SparseConfig(
     creature.exportJSON(),

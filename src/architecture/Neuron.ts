@@ -155,6 +155,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         this.squash ? this.squash : `UNDEFINED-${this.type}-${this.index}`,
       );
     }
+
     return this.squashMethodCache;
   }
 
