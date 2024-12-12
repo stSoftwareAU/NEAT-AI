@@ -110,7 +110,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
 
       if (this.squashMethodCache == undefined) {
-        throw new Error(`Missing squashMethodCache for ${this.type} neuron`);
+        throw new Error(`Missing squashMethodCache for ${this.type} neuron with squash ${this.squash}`);
       }
       if (this.squashMethodCache.getName() != this.squash) {
         throw new Error(
@@ -605,7 +605,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
           if (tmpSquash != this.squash) {
             this.setSquash(tmpSquash);
-            delete this.squashMethodCache;
+            
             removeTag(this, "CRISPR");
             changed = true;
             break;
