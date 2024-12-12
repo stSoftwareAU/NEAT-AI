@@ -42,6 +42,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | UnSquashInterface;
   public index: number;
   public tags = undefined;
+  /**
+   * Cached function to optimize activation performance.
+   */
+  private callActivation!: () => number;
 
   constructor(
     uuid: string,
@@ -54,6 +58,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (!type) {
       throw new Error("type must be defined: " + (typeof type));
     }
+    this.type = type;
 
     if (type !== "input") {
       if (type !== "output" && type !== "hidden" && type !== "constant") {
@@ -80,7 +85,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           );
         }
       } else {
-        this.squash = squash;
+        if (squash) this.setSquash(squash);
       }
     } else {
       this.bias = Infinity;
@@ -90,9 +95,61 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     this.creature = creature;
 
-    this.type = type;
-
     this.index = -1;
+    this.updateCallActivation();
+  }
+
+  public validate() {
+    if (this.type == "output" || this.type == "hidden") {
+      if (!this.squash) {
+        throw new Error(`Missing squash for ${this.type} neuron`);
+      }
+
+      if (this.callActivation == undefined) {
+        throw new Error(`Missing callActivation for ${this.type} neuron`);
+      }
+
+      if (this.squashMethodCache == undefined) {
+        throw new Error(
+          `Missing squashMethodCache for ${this.type} neuron with squash ${this.squash}`,
+        );
+      }
+      if (this.squashMethodCache.getName() != this.squash) {
+        throw new Error(
+          `Mismatched squashMethodCache for ${this.type} neuron was ${this.squashMethodCache.getName()} expected ${this.squash}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Updates the cached activation function based on neuron type and squash.
+   */
+  private updateCallActivation(): void {
+    if (this.type === "constant") {
+      this.callActivation = () => this.bias;
+    } else if (this.squash) {
+      const squashMethod = this.findSquash();
+      if (this.isNodeActivation(squashMethod)) {
+        this.callActivation = () => squashMethod.activate(this);
+      } else {
+        const activationSquash = squashMethod as ActivationInterface;
+        const creature = this.creature;
+        this.callActivation = () => {
+          let value = this.bias;
+          const inwardList = creature.inwardConnections(this.index);
+          const activations = creature.state.activations;
+          for (let i = inwardList.length; i--;) {
+            const c = inwardList[i];
+
+            value += activations[c.from] * c.weight;
+          }
+
+          // Squash the values received
+          return activationSquash.squash(value);
+        };
+      }
+    }
   }
 
   ID(): string {
@@ -102,12 +159,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
   setSquash(
     name: string,
   ): NeuronActivationInterface | ActivationInterface | UnSquashInterface {
-    if (this.type == "constant") {
-      throw new Error("Can't set the squash of a constant");
-    }
+    assert(
+      this.type == "output" || this.type == "hidden",
+      "Can't set the squash of a non-output or non-hidden node",
+    );
+
     delete this.squashMethodCache;
     this.squash = name;
-    return this.findSquash();
+    this.updateCallActivation();
+    const squashFunction = this.findSquash();
+    this.squash = squashFunction.getName(); /* Handle aliases */
+    return squashFunction;
   }
 
   findSquash():
@@ -119,6 +181,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         this.squash ? this.squash : `UNDEFINED-${this.type}-${this.index}`,
       );
     }
+
     return this.squashMethodCache;
   }
 
@@ -174,7 +237,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     if (this.squash) {
       const squashFunction = this.findSquash();
-      this.squash = squashFunction.getName();
+
       if (this.isFixableActivation(squashFunction)) {
         squashFunction.fix(this);
       }
@@ -268,34 +331,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Activates the node without calculating eligibility traces and such
    */
   activate(): number {
-    const activations = this.creature.state.activations;
-    let activation: number;
-    if (this.type == "constant") {
-      activation = this.bias;
-    } else {
-      const squashMethod = this.findSquash();
-      if (this.isNodeActivation(squashMethod)) {
-        activation = squashMethod.activate(this);
-      } else {
-        // All activation sources coming from the node itself
+    const activation = this.callActivation();
 
-        const inwardList = this.creature.inwardConnections(this.index);
-        let value = this.bias;
-
-        for (let i = inwardList.length; i--;) {
-          const c = inwardList[i];
-
-          const fromActivation = activations[c.from];
-          value += fromActivation * c.weight;
-        }
-
-        const activationSquash = squashMethod as ActivationInterface;
-        // Squash the values received
-        activation = activationSquash.squash(value);
-      }
-    }
-
-    activations[this.index] = activation;
+    this.creature.state.activations[this.index] = activation;
     return activation;
   }
 
@@ -568,8 +606,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
             .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
 
           if (tmpSquash != this.squash) {
-            this.squash = tmpSquash;
-            delete this.squashMethodCache;
+            this.setSquash(tmpSquash);
+
             removeTag(this, "CRISPR");
             changed = true;
             break;
@@ -674,7 +712,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ): Neuron {
     assert(typeof creature === "object", "network must be a Creature");
 
-    const node = new Neuron(
+    const neuron = new Neuron(
       json.uuid ? json.uuid : crypto.randomUUID(),
       json.type,
       json.bias,
@@ -687,15 +725,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
         break;
       case "output":
       case "hidden":
-        node.squash = json.squash;
+        if (json.squash) neuron.setSquash(json.squash);
         break;
       default:
         throw new Error("unknown type: " + (json as NeuronInternal).type);
     }
 
     if (json.tags) {
-      addTags(node, json);
+      addTags(neuron, json);
     }
-    return node;
+    return neuron;
   }
 }

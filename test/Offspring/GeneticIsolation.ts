@@ -16,15 +16,15 @@ emptyDirSync(testDir);
 function makeTestCreature(uuidPrefix: string): Creature {
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: `${uuidPrefix}-000`, bias: 0.1 },
-      { type: "hidden", uuid: `${uuidPrefix}-001`, bias: -0.9 },
-      { type: "hidden", uuid: `${uuidPrefix}-002`, bias: 0.1 },
-      { type: "hidden", uuid: `${uuidPrefix}-003`, bias: -0.8 },
-      { type: "hidden", uuid: `${uuidPrefix}-004`, bias: 0.1 },
-      { type: "hidden", uuid: `${uuidPrefix}-005`, bias: 0 },
-      { type: "hidden", uuid: `${uuidPrefix}-006`, bias: 0.1 },
-      { type: "output", uuid: "output-0", bias: 1 },
-      { type: "output", uuid: "output-1", bias: 0 },
+      { type: "hidden", uuid: `${uuidPrefix}-000`, bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: `${uuidPrefix}-001`, bias: -0.9, squash: "TANH" },
+      { type: "hidden", uuid: `${uuidPrefix}-002`, bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: `${uuidPrefix}-003`, bias: -0.8, squash: "TANH" },
+      { type: "hidden", uuid: `${uuidPrefix}-004`, bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: `${uuidPrefix}-005`, bias: 0, squash: "TANH" },
+      { type: "hidden", uuid: `${uuidPrefix}-006`, bias: 0.1, squash: "TANH" },
+      { type: "output", uuid: "output-0", bias: 1, squash: "TANH" },
+      { type: "output", uuid: "output-1", bias: 0, squash: "TANH" },
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: `${uuidPrefix}-002`, weight: -0.3 },
