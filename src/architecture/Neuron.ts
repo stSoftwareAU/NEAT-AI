@@ -113,9 +113,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
       } else {
         const activationSquash = squashMethod as ActivationInterface;
         const creature = this.creature;
-        const inwardList = creature.inwardConnections(this.index);
         this.callActivation = () => {
           let value = this.bias;
+          const inwardList = creature.inwardConnections(this.index);
           const activations = creature.state.activations;
           for (let i = inwardList.length; i--;) {
             const c = inwardList[i];
