@@ -43,16 +43,16 @@ export function creatureValidate(
 
   let outputIndx = 0;
   const UUIDs = new Set<string>();
-  creature.neurons.forEach((node, indx) => {
-    const uuid = node.uuid;
+  creature.neurons.forEach((neuron, indx) => {
+    const uuid = neuron.uuid;
     if (!uuid) {
-      throw new ValidationError(`${node.ID()}) no UUID`, "OTHER");
+      throw new ValidationError(`${neuron.ID()}) no UUID`, "OTHER");
     }
     if (UUIDs.has(uuid)) {
       debugWrite(creature);
 
       throw new ValidationError(
-        `${node.ID()}) duplicate UUID: ${uuid}`,
+        `${neuron.ID()}) duplicate UUID: ${uuid}`,
         "OTHER",
       );
     }
@@ -60,20 +60,20 @@ export function creatureValidate(
       if (uuid !== "input-" + indx) {
         debugWrite(creature);
         throw new ValidationError(
-          `${node.ID()}) invalid input UUID: ${uuid}`,
+          `${neuron.ID()}) invalid input UUID: ${uuid}`,
           "OTHER",
         );
       }
     } else {
-      if (!Number.isFinite(node.bias)) {
+      if (!Number.isFinite(neuron.bias)) {
         throw new ValidationError(
-          `${node.ID()}) invalid bias: ${node.bias}`,
+          `${neuron.ID()}) invalid bias: ${neuron.bias}`,
           "OTHER",
         );
       }
     }
 
-    if (node.type == "output") {
+    if (neuron.type == "output") {
       const expectedUUID = `output-${outputIndx}`;
       outputIndx++;
       if (uuid !== expectedUUID) {
@@ -86,12 +86,12 @@ export function creatureValidate(
     } else if (outputIndx) {
       debugWrite(creature);
       throw new ValidationError(
-        `${uuid} + ") type ${node.type} after output neuron`,
+        `${uuid} + ") type ${neuron.type} after output neuron`,
         "OTHER",
       );
     }
 
-    if (node.type == "input" && indx > creature.input) {
+    if (neuron.type == "input" && indx > creature.input) {
       debugWrite(creature);
 
       throw new ValidationError(
@@ -101,11 +101,11 @@ export function creatureValidate(
     }
     UUIDs.add(uuid);
 
-    if (node.squash === "IF" && indx > 2) {
+    if (neuron.squash === "IF" && indx > 2) {
       const toList = creature.inwardConnections(indx);
       if (toList.length < 3) {
         throw new ValidationError(
-          `${node.ID()}) 'IF' should have at least 3 inward connections was: ${toList.length}`,
+          `${neuron.ID()}) 'IF' should have at least 3 inward connections was: ${toList.length}`,
           "IF_CONDITIONS",
         );
       }
@@ -129,30 +129,30 @@ export function creatureValidate(
       }
       if (!foundCondition) {
         throw new ValidationError(
-          `${node.ID()}) 'IF' should have a condition(s)`,
+          `${neuron.ID()}) 'IF' should have a condition(s)`,
           "IF_CONDITIONS",
         );
       }
       if (!foundPositive) {
         throw new ValidationError(
-          `${node.ID()}) 'IF' should have a positive connection(s)`,
+          `${neuron.ID()}) 'IF' should have a positive connection(s)`,
           "IF_CONDITIONS",
         );
       }
       if (!foundNegative) {
         throw new ValidationError(
-          `${node.ID()}) 'IF' should have a negative connection(s)`,
+          `${neuron.ID()}) 'IF' should have a negative connection(s)`,
           "IF_CONDITIONS",
         );
       }
     }
-    switch (node.type) {
+    switch (neuron.type) {
       case "input": {
         stats.input++;
         const toList = creature.inwardConnections(indx);
         if (toList.length > 0) {
           throw new Error(
-            `'input' neuron ${node.ID()} has inward connections: ${toList.length}`,
+            `'input' neuron ${neuron.ID()} has inward connections: ${toList.length}`,
           );
         }
         break;
@@ -162,19 +162,19 @@ export function creatureValidate(
         const toList = creature.inwardConnections(indx);
         if (toList.length > 0) {
           throw new Error(
-            `'${node.type}' neuron ${node.ID()}  has inward connections: ${toList.length}`,
+            `'${neuron.type}' neuron ${neuron.ID()}  has inward connections: ${toList.length}`,
           );
         }
-        if (node.squash) {
+        if (neuron.squash) {
           throw new Error(
-            `Node ${node.ID()} '${node.type}' has squash: ${node.squash}`,
+            `Node ${neuron.ID()} '${neuron.type}' has squash: ${neuron.squash}`,
           );
         }
         const fromList = creature.outwardConnections(indx);
         if (fromList.length == 0) {
           debugWrite(creature);
           throw new ValidationError(
-            `constants neuron ${node.ID()} has no outward connections`,
+            `constants neuron ${neuron.ID()} has no outward connections`,
             "NO_OUTWARD_CONNECTIONS",
           );
         }
@@ -185,7 +185,7 @@ export function creatureValidate(
         const toList = creature.inwardConnections(indx);
         if (toList.length == 0) {
           throw new ValidationError(
-            `hidden neuron ${node.ID()} has no inward connections`,
+            `hidden neuron ${neuron.ID()} has no inward connections`,
             "NO_INWARD_CONNECTIONS",
           );
         }
@@ -193,20 +193,22 @@ export function creatureValidate(
         if (fromList.length == 0) {
           debugWrite(creature);
           throw new ValidationError(
-            `hidden neuron ${node.ID()} has no outward connections`,
+            `hidden neuron ${neuron.ID()} has no outward connections`,
             "NO_OUTWARD_CONNECTIONS",
           );
         }
-        if (node.bias === undefined) {
+        if (neuron.bias === undefined) {
           throw new Error(
-            `hidden neuron ${node.ID()} should have a bias was: ${node.bias}`,
+            `hidden neuron ${neuron.ID()} should have a bias was: ${neuron.bias}`,
           );
         }
-        if (!Number.isFinite(node.bias)) {
+        if (!Number.isFinite(neuron.bias)) {
           throw new Error(
-            `${node.ID()}) hidden neuron should have a finite bias was: ${node.bias}`,
+            `${neuron.ID()}) hidden neuron should have a finite bias was: ${neuron.bias}`,
           );
         }
+
+        neuron.validate();
 
         break;
       }
@@ -216,25 +218,25 @@ export function creatureValidate(
         if (toList.length == 0) {
           debugWrite(creature);
           throw new ValidationError(
-            `${node.ID()}) output neuron has no inward connections`,
+            `${neuron.ID()}) output neuron has no inward connections`,
             "NO_INWARD_CONNECTIONS",
           );
         }
         break;
       }
       default:
-        throw new Error(`${node.ID()}) Invalid type: ${node.type}`);
+        throw new Error(`${neuron.ID()}) Invalid type: ${neuron.type}`);
     }
 
-    if (node.index !== indx) {
+    if (neuron.index !== indx) {
       throw new ValidationError(
-        `${node.ID()}) node.index: ${node.index} does not match expected index ${indx}`,
+        `${neuron.ID()}) node.index: ${neuron.index} does not match expected index ${indx}`,
         "OTHER",
       );
     }
 
-    if (node.creature !== creature) {
-      throw new Error(`node ${node.ID()} creature mismatch`);
+    if (neuron.creature !== creature) {
+      throw new Error(`node ${neuron.ID()} creature mismatch`);
     }
   });
 

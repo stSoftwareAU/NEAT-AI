@@ -58,6 +58,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (!type) {
       throw new Error("type must be defined: " + (typeof type));
     }
+    this.type = type;
 
     if (type !== "input") {
       if (type !== "output" && type !== "hidden" && type !== "constant") {
@@ -84,7 +85,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           );
         }
       } else {
-        this.squash = squash;
+        if (squash) this.setSquash(squash);
       }
     } else {
       this.bias = Infinity;
@@ -94,10 +95,29 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     this.creature = creature;
 
-    this.type = type;
-
     this.index = -1;
     this.updateCallActivation();
+  }
+
+  public validate() {
+    if (this.type == "output" || this.type == "hidden") {
+      if (!this.squash) {
+        throw new Error(`Missing squash for ${this.type} neuron`);
+      }
+
+      if (this.callActivation == undefined) {
+        throw new Error(`Missing callActivation for ${this.type} neuron`);
+      }
+
+      if (this.squashMethodCache == undefined) {
+        throw new Error(`Missing squashMethodCache for ${this.type} neuron`);
+      }
+      if (this.squashMethodCache.getName() != this.squash) {
+        throw new Error(
+          `Mismatched squashMethodCache for ${this.type} neuron was ${this.squashMethodCache.getName()} expected ${this.squash}`,
+        );
+      }
+    }
   }
 
   /**
@@ -137,13 +157,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
   setSquash(
     name: string,
   ): NeuronActivationInterface | ActivationInterface | UnSquashInterface {
-    if (this.type == "constant") {
-      throw new Error("Can't set the squash of a constant");
-    }
+    assert(
+      this.type == "output" || this.type == "hidden",
+      "Can't set the squash of a non-output or non-hidden node",
+    );
+
     delete this.squashMethodCache;
     this.squash = name;
     this.updateCallActivation();
-    return this.findSquash();
+    const squashFunction = this.findSquash();
+    this.squash = squashFunction.getName(); /* Handle aliases */
+    return squashFunction;
   }
 
   findSquash():
@@ -211,7 +235,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     if (this.squash) {
       const squashFunction = this.findSquash();
-      this.squash = squashFunction.getName();
+
       if (this.isFixableActivation(squashFunction)) {
         squashFunction.fix(this);
       }
@@ -580,7 +604,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
             .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
 
           if (tmpSquash != this.squash) {
-            this.squash = tmpSquash;
+            this.setSquash(tmpSquash);
             delete this.squashMethodCache;
             removeTag(this, "CRISPR");
             changed = true;
