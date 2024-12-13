@@ -49,7 +49,7 @@ Deno.test("PI-repeat", () => {
   );
 
   const inA = [-1, 1, 0];
-  let outA2: number[] = [];
+  let outA2: Float32Array = new Float32Array(0);
   const expectedA = makeOutput(inA);
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < 2; i++) {
@@ -89,7 +89,7 @@ Deno.test("PI-single", () => {
   const inA = [-1, 1, 0];
   const outA1 = creature.activate(new Float32Array(inA));
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
-  let outA2: number[] = [];
+  let outA2: Float32Array = new Float32Array(0);
   const expectedA = makeOutput(inA);
   outA2 = creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
 

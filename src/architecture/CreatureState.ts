@@ -93,7 +93,7 @@ export class CreatureState {
     }
   }
 
-  makeActivation(input: Float32Array, feedbackLoop: boolean) {
+  makeActivation(input: Float32Array, feedbackLoop: boolean): Float32Array {
     if (
       feedbackLoop == false ||
       this.activations.length !== this.creature.neurons.length
@@ -109,6 +109,7 @@ export class CreatureState {
 
       throw new Error(msg, { cause: e });
     }
+    return this.activations;
   }
 
   clear() {

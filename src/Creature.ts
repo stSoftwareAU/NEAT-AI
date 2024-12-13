@@ -306,22 +306,20 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
-   * @returns {number[]} The output values after activation.
+   * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
     input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
-  ): number[] {
-    const output: number[] = new Array(this.output);
+  ): Float32Array {
+    const activations = this.state.makeActivation(input, feedbackLoop);
 
-    this.state.makeActivation(input, feedbackLoop);
+    const neurons = this.neurons;
+    const len = neurons.length;
 
-    const lastHiddenNode = this.neurons.length - this.output;
-
-    // Activate hidden neurons
-    for (let i = this.input; i < lastHiddenNode; i++) {
-      const n = this.neurons[i];
+    for (let i = this.input; i < len; i++) {
+      const n = neurons[i];
       if (sparseConfig.traceNeeded(n.uuid)) {
         n.activateAndTrace();
       } else {
@@ -329,44 +327,29 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    // Activate output neurons and store their values in the output array
-    for (let outIndx = 0; outIndx < this.output; outIndx++) {
-      const n = this.neurons[lastHiddenNode + outIndx];
-      if (sparseConfig.traceNeeded(n.uuid)) {
-        output[outIndx] = n.activateAndTrace();
-      } else {
-        output[outIndx] = n.activate();
-      }
-    }
-
-    return output;
+    const lastHiddenNode = len - this.output;
+    return activations.subarray(lastHiddenNode);
   }
 
   /**
    * Activates the creature without calculating traces.
    *
-   * @param {number[]} input - The input values for the creature.
+   * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
-   * @returns {number[]} The output values after activation.
+   * @returns {Float32Array} The output values after activation.
    */
   activate(input: Float32Array, feedbackLoop: boolean = false): Float32Array {
-    const output: Float32Array = new Float32Array(this.output);
+    const activations = this.state.makeActivation(input, feedbackLoop);
 
-    this.state.makeActivation(input, feedbackLoop);
+    const neurons = this.neurons;
+    const len = neurons.length;
 
-    const lastHiddenNode = this.neurons.length - this.output;
-
-    // Activate hidden neurons
-    for (let i = this.input; i < lastHiddenNode; i++) {
-      this.neurons[i].activate();
+    for (let i = this.input; i < len; i++) {
+      neurons[i].activate();
     }
 
-    // Activate output neurons and store their values in the output array
-    for (let outIndx = 0; outIndx < this.output; outIndx++) {
-      output[outIndx] = this.neurons[lastHiddenNode + outIndx].activate();
-    }
-
-    return output;
+    const lastHiddenNode = len - this.output;
+    return activations.subarray(lastHiddenNode);
   }
 
   /**
@@ -1175,8 +1158,10 @@ export class Creature implements CreatureInternal {
       );
     }
 
-    delete this.uuid;
-    this.fix();
+    if (changed) {
+      delete this.uuid;
+      this.fix();
+    }
     if (this.DEBUG) {
       creatureValidate(this);
     }
