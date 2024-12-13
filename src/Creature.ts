@@ -312,15 +312,14 @@ export class Creature implements CreatureInternal {
     input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
-  ): number[] {
-    const output: number[] = new Array(this.output);
+  ): Float32Array {
+    const activations = this.state.makeActivation(input, feedbackLoop);
 
-    this.state.makeActivation(input, feedbackLoop);
-
-    const lastHiddenNode = this.neurons.length - this.output;
+    const len = this.neurons.length;
+    const lastHiddenNode = len - this.output;
 
     // Activate hidden neurons
-    for (let i = this.input; i < lastHiddenNode; i++) {
+    for (let i = this.input; i < len; i++) {
       const n = this.neurons[i];
       if (sparseConfig.traceNeeded(n.uuid)) {
         n.activateAndTrace();
@@ -329,17 +328,7 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    // Activate output neurons and store their values in the output array
-    for (let outIndx = 0; outIndx < this.output; outIndx++) {
-      const n = this.neurons[lastHiddenNode + outIndx];
-      if (sparseConfig.traceNeeded(n.uuid)) {
-        output[outIndx] = n.activateAndTrace();
-      } else {
-        output[outIndx] = n.activate();
-      }
-    }
-
-    return output;
+    return activations.subarray(lastHiddenNode);
   }
 
   /**
@@ -350,23 +339,16 @@ export class Creature implements CreatureInternal {
    * @returns {number[]} The output values after activation.
    */
   activate(input: Float32Array, feedbackLoop: boolean = false): Float32Array {
-    const output: Float32Array = new Float32Array(this.output);
+    const activations = this.state.makeActivation(input, feedbackLoop);
 
-    this.state.makeActivation(input, feedbackLoop);
+    const len = this.neurons.length;
+    const lastHiddenNode = len - this.output;
 
-    const lastHiddenNode = this.neurons.length - this.output;
-
-    // Activate hidden neurons
-    for (let i = this.input; i < lastHiddenNode; i++) {
+    for (let i = this.input; i < len; i++) {
       this.neurons[i].activate();
     }
 
-    // Activate output neurons and store their values in the output array
-    for (let outIndx = 0; outIndx < this.output; outIndx++) {
-      output[outIndx] = this.neurons[lastHiddenNode + outIndx].activate();
-    }
-
-    return output;
+    return activations.subarray(lastHiddenNode);
   }
 
   /**
