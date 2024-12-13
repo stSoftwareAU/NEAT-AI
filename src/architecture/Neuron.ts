@@ -29,6 +29,11 @@ import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
 import { assert } from "@std/assert/assert";
 import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+import {
+  constantActivation,
+  linearActivation,
+  squashActivation,
+} from "./ActivationFunctions.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -45,7 +50,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Cached function to optimize activation performance.
    */
-  private callActivation!: () => number;
+  private callActivation!: (activations: Float32Array) => number;
 
   constructor(
     uuid: string,
@@ -139,27 +144,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | ActivationInterface
     | UnSquashInterface {
     if (this.type === "constant") {
-      this.callActivation = () => this.bias;
+      this.callActivation = constantActivation(this.bias);
     } else if (this.squash) {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        this.callActivation = () => squashMethod.activate(this);
+        this.callActivation = squashActivation(this, squashMethod);
       } else {
-        const activationSquash = squashMethod as ActivationInterface;
-        const creature = this.creature;
-        this.callActivation = () => {
-          let value = this.bias;
-          const inwardList = creature.inwardConnections(this.index);
-          const activations = creature.state.activations;
-          for (let i = inwardList.length; i--;) {
-            const c = inwardList[i];
-
-            value += activations[c.from] * c.weight;
-          }
-
-          // Squash the values received
-          return activationSquash.squash(value);
-        };
+        this.callActivation = linearActivation(
+          this,
+          squashMethod as ActivationInterface,
+        );
       }
       return squashMethod;
     }
@@ -338,9 +332,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Activates the node without calculating eligibility traces and such
    */
   activate(): number {
-    const activation = this.callActivation();
+    const activations = this.creature.state.activations;
+    const activation = this.callActivation(activations);
 
-    this.creature.state.activations[this.index] = activation;
+    activations[this.index] = activation;
     return activation;
   }
 
