@@ -1175,8 +1175,10 @@ export class Creature implements CreatureInternal {
       );
     }
 
-    delete this.uuid;
-    this.fix();
+    if (changed) {
+      delete this.uuid;
+      this.fix();
+    }
     if (this.DEBUG) {
       creatureValidate(this);
     }

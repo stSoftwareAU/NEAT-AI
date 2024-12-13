@@ -8,7 +8,9 @@ import type { Neuron } from "./Neuron.ts";
 export function constantActivation(
   bias: number,
 ): (activations: Float32Array) => number {
-  return () => bias;
+  return () => {
+    return bias;
+  };
 }
 
 export function squashActivation(
@@ -25,16 +27,24 @@ export function linearActivation(
   activationSquash: ActivationInterface,
 ): (activations: Float32Array) => number {
   return (activations: Float32Array) => {
-    let value = neuron.bias;
-    const inwardList = neuron.creature.inwardConnections(neuron.index);
-
-    for (let i = inwardList.length; i--;) {
-      const c = inwardList[i];
-
-      value += activations[c.from] * c.weight;
-    }
-
-    // Squash the values received
-    return activationSquash.squash(value);
+    return inlineActivation(neuron, activationSquash, activations);
   };
+}
+
+function inlineActivation(
+  neuron: Neuron,
+  activationSquash: ActivationInterface,
+  activations: Float32Array,
+): number {
+  let value = neuron.bias;
+  const inwardList = neuron.creature.inwardConnections(neuron.index);
+
+  for (let i = inwardList.length; i--;) {
+    const c = inwardList[i];
+
+    value += activations[c.from] * c.weight;
+  }
+
+  // Squash the values received
+  return activationSquash.squash(value);
 }
