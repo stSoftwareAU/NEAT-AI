@@ -119,6 +119,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
           `Mismatched squashMethodCache for ${this.type} neuron was ${this.squashMethodCache.getName()} expected ${this.squash}`,
         );
       }
+    } else {
+      if (this.squash) {
+        throw new Error(`Unexpected squash for ${this.type} neuron`);
+      }
+
+      if (this.squashMethodCache) {
+        throw new Error(`Unexpected squashMethodCache for ${this.type} neuron`);
+      }
     }
   }
 
@@ -164,11 +172,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
   setSquash(
     name: string,
   ): void {
-    assert(
-      this.type == "output" || this.type == "hidden",
-      "Can't set the squash of a non-output or non-hidden node",
-    );
-
     delete this.squashMethodCache;
     this.squash = name;
     const squashFunction = this.updateCallActivation();
@@ -182,7 +185,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | UnSquashInterface {
     if (!this.squashMethodCache) {
       this.squashMethodCache = Activations.find(
-        this.squash ? this.squash : `UNDEFINED-${this.type}-${this.index}`,
+        this.squash!,
       );
     }
 
