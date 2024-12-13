@@ -28,7 +28,7 @@ export function adjustedBias(
       return neuron.bias;
     }
 
-    const ns = neuron.creature.state.node(neuron.index);
+    const ns = neuron.creature.makeState().node(neuron.index);
 
     if (ns.count && ns.count % config.batchSize === 0) {
       ns.batchBias = calculateBias(neuron, config);
@@ -52,7 +52,7 @@ export function calculateBias(
     if (config.disableBiasAdjustment) {
       return neuron.bias;
     }
-    const ns = neuron.creature.state.node(neuron.index);
+    const ns = neuron.creature.makeState().node(neuron.index);
 
     if (!ns.noChange && ns.count) {
       const totalBias = ns.totalAdjustedBias +

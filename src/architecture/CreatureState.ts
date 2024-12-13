@@ -95,26 +95,23 @@ export class CreatureState {
 
   makeActivation(input: Float32Array, feedbackLoop: boolean): Float32Array {
     if (
-      feedbackLoop == false ||
       this.activations.length !== this.creature.neurons.length
     ) {
       this.activations = new Float32Array(this.creature.neurons.length);
     }
 
-    try {
-      this.activations.set(input);
-    } catch (e) {
-      const msg =
-        `input length ${input.length} does fit with activation array ${this.activations.length}, neurons: ${this.creature.neurons.length}`;
+    this.activations.set(input);
 
-      throw new Error(msg, { cause: e });
+    if (feedbackLoop == false) {
+      this.activations.fill(0, this.creature.input);
     }
+
     return this.activations;
   }
 
-  clear() {
-    this.nodeMap.clear();
-    this.connectionMap.clear();
-    this.activations = new Float32Array(0);
-  }
+  // clear() {
+  //   this.nodeMap.clear();
+  //   this.connectionMap.clear();
+  //   this.activations = new Float32Array(0);
+  // }
 }

@@ -29,7 +29,8 @@ export class MINIMUM
   activate(neuron: Neuron): number {
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let minValue = Number.POSITIVE_INFINITY;
-    const activations = neuron.creature.state.activations;
+    const state = neuron.creature.makeState();
+    const activations = state.activations;
     for (let i = fromList.length; i--;) {
       const c = fromList[i];
       const value = activations[c.from] * c.weight;
@@ -44,13 +45,14 @@ export class MINIMUM
   }
 
   activateAndTrace(neuron: Neuron) {
+    const state = neuron.creature.makeState();
     let minValue = Number.POSITIVE_INFINITY;
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let usedConnection: SynapseInternal | null = null;
-    const activations = neuron.creature.state.activations;
+    const activations = state.activations;
     for (let i = fromList.length; i--;) {
       const c = fromList[i];
-      const cs = neuron.creature.state.connection(c.from, c.to);
+      const cs = state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
       const value = activations[c.from] * c.weight;
@@ -61,7 +63,7 @@ export class MINIMUM
     }
 
     if (usedConnection != null) {
-      const cs = neuron.creature.state.connection(
+      const cs = state.connection(
         usedConnection.from,
         usedConnection.to,
       );
@@ -97,6 +99,7 @@ export class MINIMUM
   applyLearnings(neuron: Neuron): boolean {
     let changed = false;
 
+    const state = neuron.creature.makeState();
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
       const c = inward[i];
@@ -104,7 +107,7 @@ export class MINIMUM
       assert(c.to == neuron.index, "mismatched index");
       if (c.from == c.to) continue;
 
-      const cs = neuron.creature.state.connection(c.from, c.to);
+      const cs = state.connection(c.from, c.to);
       if (!cs.used) {
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
@@ -126,7 +129,7 @@ export class MINIMUM
     const targetValue = toValue(neuron, targetActivation);
 
     const activationValue = toValue(neuron, activation);
-
+    const state = neuron.creature.makeState();
     const error = targetValue - activationValue;
     let remainingError = error;
     const currentBias = adjustedBias(neuron, config);
@@ -143,7 +146,7 @@ export class MINIMUM
 
         const fromActivation = fromNeuron.adjustedActivation(config);
 
-        const fromWeight = adjustedWeight(neuron.creature.state, c, config);
+        const fromWeight = adjustedWeight(state, c, config);
         const fromValue = fromWeight * fromActivation;
         if (fromValue < minValue) {
           minValue = fromValue;
@@ -168,10 +171,10 @@ export class MINIMUM
             }
           }
 
-          const fromWeight = adjustedWeight(neuron.creature.state, c, config);
+          const fromWeight = adjustedWeight(state, c, config);
           const fromValue = fromWeight * fromActivation;
 
-          const cs = neuron.creature.state.connection(c.from, c.to);
+          const cs = state.connection(c.from, c.to);
           accumulateWeight(
             c.weight,
             cs,
@@ -186,7 +189,7 @@ export class MINIMUM
       const fromNeuron = neuron.creature.neurons[mainConnection.from];
 
       const fromWeight = adjustedWeight(
-        neuron.creature.state,
+        state,
         mainConnection,
         config,
       );
@@ -219,7 +222,7 @@ export class MINIMUM
 
       const targetFromValue2 = fromValue + remainingError;
 
-      const cs = neuron.creature.state.connection(
+      const cs = state.connection(
         mainConnection.from,
         mainConnection.to,
       );
@@ -232,7 +235,7 @@ export class MINIMUM
       );
 
       const aWeight = adjustedWeight(
-        neuron.creature.state,
+        state,
         mainConnection,
         config,
       );
@@ -243,7 +246,7 @@ export class MINIMUM
       improvedValue = improvedAdjustedFromValue + currentBias;
     }
 
-    const ns = neuron.creature.state.node(neuron.index);
+    const ns = neuron.creature.makeState().node(neuron.index);
     accumulateBias(
       ns,
       targetValue,

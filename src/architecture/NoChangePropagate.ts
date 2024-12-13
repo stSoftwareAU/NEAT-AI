@@ -7,7 +7,8 @@ export function noChangePropagate(
   activation: number,
   config: BackPropagationConfig,
 ) {
-  const ns = neuron.creature.state.node(neuron.index);
+  const state = neuron.creature.makeState();
+  const ns = state.node(neuron.index);
 
   const squashMethod = neuron.findSquash();
 
@@ -19,7 +20,7 @@ export function noChangePropagate(
       for (let i = toList.length; i--;) {
         const c = toList[i];
         if (c.from === c.to) continue;
-        const fromNS = neuron.creature.state.node(c.from);
+        const fromNS = state.node(c.from);
         if (!fromNS.noChange) {
           const fromNeuron = neuron.creature.neurons[c.from];
           if (
@@ -47,7 +48,7 @@ export function noChangePropagate(
           fromNeuron.type !== "input" &&
           fromNeuron.type !== "constant"
         ) {
-          const fromNS = neuron.creature.state.node(fromNeuron.index);
+          const fromNS = state.node(fromNeuron.index);
           if (!fromNS.noChange) {
             const fromActivation = fromNeuron.adjustedActivation(config);
             noChangePropagate(fromNeuron, fromActivation, config);

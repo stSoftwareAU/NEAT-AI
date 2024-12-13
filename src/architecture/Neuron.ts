@@ -279,7 +279,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Activates the node
    */
   activateAndTrace(): number {
-    const activations = this.creature.state.activations;
+    const state = this.creature.makeState();
+    const activations = state.activations;
     let activation: number;
     if (this.type == "constant") {
       activation = this.bias;
@@ -299,7 +300,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           value += fromActivation * c.weight;
         }
 
-        const ns = this.creature.state.node(this.index);
+        const ns = state.node(this.index);
         ns.hintValue = value;
         const activationSquash = squashMethod as ActivationInterface;
         activation = activationSquash.squash(value);
@@ -315,7 +316,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * @returns true if changed
    */
   applyLearnings(): boolean {
-    const neuronState = this.creature.state.node(this.index);
+    const state = this.creature.makeState();
+    const neuronState = state.node(this.index);
     if (neuronState.noChange) return false;
     if (this.type == "hidden" || this.type == "output") {
       const squashMethod = this.findSquash();
@@ -332,7 +334,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Activates the node without calculating eligibility traces and such
    */
   activate(): number {
-    const activations = this.creature.state.activations;
+    const state = this.creature.makeState();
+    const activations = state.activations;
     const activation = this.callActivation(activations);
 
     activations[this.index] = activation;
@@ -340,10 +343,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   propagateUpdate(config: BackPropagationConfig) {
+    const state = this.creature.makeState();
     const toList = this.creature.inwardConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = this.creature.state.connection(c.from, c.to);
+      const cs = state.connection(c.from, c.to);
       const aWeight = calculateWeight(cs, c, config);
       c.weight = aWeight;
     }
@@ -370,15 +374,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const squashMethod = this.findSquash();
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
+    const state = this.creature.makeState();
     if (
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);
-      this.creature.state.cacheAdjustedActivation.set(this.index, activation);
+      state.cacheAdjustedActivation.set(this.index, activation);
       return targetActivation;
     }
 
-    const ns = this.creature.state.node(this.index);
+    const ns = state.node(this.index);
 
     const updateNeeded = sparseConfig.updateNeeded(this.uuid);
 
@@ -429,7 +434,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
           const fromActivation = fromNeuron.adjustedActivation(config);
 
-          const fromWeight = adjustedWeight(this.creature.state, c, config);
+          const fromWeight = adjustedWeight(state, c, config);
           const fromValue = fromWeight * fromActivation;
 
           let improvedFromActivation = fromActivation;
@@ -458,7 +463,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
             Math.abs(improvedFromActivation) > config.plankConstant &&
             Math.abs(fromWeight) > config.plankConstant
           ) {
-            const cs = this.creature.state.connection(c.from, c.to);
+            const cs = state.connection(c.from, c.to);
             accumulateWeight(
               c.weight,
               cs,
@@ -466,7 +471,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
               improvedFromActivation,
               config,
             );
-            const aWeight = adjustedWeight(this.creature.state, c, config);
+            const aWeight = adjustedWeight(state, c, config);
 
             const improvedFromValue = improvedFromActivation *
               aWeight;
@@ -501,13 +506,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (updateNeeded) {
         ns.traceActivation(limitedActivation);
       }
-      this.creature.state.cacheAdjustedActivation.set(
+      state.cacheAdjustedActivation.set(
         this.index,
         limitedActivation,
       );
       return limitedActivation;
     } else {
-      this.creature.state.cacheAdjustedActivation.set(this.index, activation);
+      state.cacheAdjustedActivation.set(this.index, activation);
       return activation;
     }
   }
@@ -516,7 +521,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Adjusts the activation based on the current state
    */
   adjustedActivation(config: BackPropagationConfig): number {
-    const cache = this.creature.state.cacheAdjustedActivation;
+    const state = this.creature.makeState();
+    const cache = state.cacheAdjustedActivation;
     const cachedValue = cache.get(this.index);
 
     if (cachedValue !== undefined) {
@@ -529,8 +535,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   rawAdjustedActivation(config: BackPropagationConfig): number {
+    const state = this.creature.makeState();
     if (this.type == "input") {
-      return this.creature.state.activations[this.index];
+      return state.activations[this.index];
     } else if (this.type == "constant") {
       return this.bias;
     } else {
@@ -553,7 +560,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
             .adjustedActivation(config);
 
           const fromWeight = adjustedWeight(
-            this.creature.state,
+            state,
             c,
             config,
           );

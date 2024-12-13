@@ -86,7 +86,7 @@ Deno.test("AccumulateBias-average", () => {
   });
 
   const creature = makeCreature();
-  const node = creature.neurons[3];
+  const neuron = creature.neurons[3];
 
   const biases = [100, -0.1, 0, 0.2, -0.3, 4, -5, 60, -70];
   biases.forEach((bias) => {
@@ -98,7 +98,8 @@ Deno.test("AccumulateBias-average", () => {
     }
 
     creature.clearState();
-    const ns = node.creature.state.node(node.index);
+    const state = neuron.creature.makeState();
+    const ns = state.node(neuron.index);
 
     const values = [
       0.1,
@@ -229,7 +230,7 @@ Deno.test("AccumulateBias-average", () => {
       );
     });
 
-    const aBias = adjustedBias(node, config);
+    const aBias = adjustedBias(neuron, config);
     const tolerance = Math.abs(bias) > 50 ? 2 : Math.abs(bias) > 3 ? 0.5 : 0.01;
     assertAlmostEquals(
       aBias,
