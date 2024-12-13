@@ -306,7 +306,7 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
-   * @returns {number[]} The output values after activation.
+   * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
     input: Float32Array,
@@ -315,12 +315,11 @@ export class Creature implements CreatureInternal {
   ): Float32Array {
     const activations = this.state.makeActivation(input, feedbackLoop);
 
-    const len = this.neurons.length;
-    const lastHiddenNode = len - this.output;
+    const neurons = this.neurons;
+    const len = neurons.length;
 
-    // Activate hidden neurons
     for (let i = this.input; i < len; i++) {
-      const n = this.neurons[i];
+      const n = neurons[i];
       if (sparseConfig.traceNeeded(n.uuid)) {
         n.activateAndTrace();
       } else {
@@ -328,26 +327,28 @@ export class Creature implements CreatureInternal {
       }
     }
 
+    const lastHiddenNode = len - this.output;
     return activations.subarray(lastHiddenNode);
   }
 
   /**
    * Activates the creature without calculating traces.
    *
-   * @param {number[]} input - The input values for the creature.
+   * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
-   * @returns {number[]} The output values after activation.
+   * @returns {Float32Array} The output values after activation.
    */
   activate(input: Float32Array, feedbackLoop: boolean = false): Float32Array {
     const activations = this.state.makeActivation(input, feedbackLoop);
 
-    const len = this.neurons.length;
-    const lastHiddenNode = len - this.output;
+    const neurons = this.neurons;
+    const len = neurons.length;
 
     for (let i = this.input; i < len; i++) {
-      this.neurons[i].activate();
+      neurons[i].activate();
     }
 
+    const lastHiddenNode = len - this.output;
     return activations.subarray(lastHiddenNode);
   }
 
