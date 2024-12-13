@@ -119,13 +119,25 @@ export class Neuron implements TagsInterface, NeuronInternal {
           `Mismatched squashMethodCache for ${this.type} neuron was ${this.squashMethodCache.getName()} expected ${this.squash}`,
         );
       }
+    } else {
+      if (this.squash) {
+        throw new Error(`Unexpected squash for ${this.type} neuron`);
+      }
+
+      if (this.squashMethodCache) {
+        throw new Error(`Unexpected squashMethodCache for ${this.type} neuron`);
+      }
     }
   }
 
   /**
    * Updates the cached activation function based on neuron type and squash.
    */
-  private updateCallActivation(): void {
+  private updateCallActivation():
+    | undefined
+    | NeuronActivationInterface
+    | ActivationInterface
+    | UnSquashInterface {
     if (this.type === "constant") {
       this.callActivation = () => this.bias;
     } else if (this.squash) {
@@ -149,6 +161,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           return activationSquash.squash(value);
         };
       }
+      return squashMethod;
     }
   }
 
@@ -158,18 +171,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
   setSquash(
     name: string,
-  ): NeuronActivationInterface | ActivationInterface | UnSquashInterface {
-    assert(
-      this.type == "output" || this.type == "hidden",
-      "Can't set the squash of a non-output or non-hidden node",
-    );
-
+  ): void {
     delete this.squashMethodCache;
     this.squash = name;
-    this.updateCallActivation();
-    const squashFunction = this.findSquash();
-    this.squash = squashFunction.getName(); /* Handle aliases */
-    return squashFunction;
+    const squashFunction = this.updateCallActivation();
+
+    this.squash = squashFunction!.getName(); /* Handle aliases */
   }
 
   findSquash():
@@ -178,7 +185,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | UnSquashInterface {
     if (!this.squashMethodCache) {
       this.squashMethodCache = Activations.find(
-        this.squash ? this.squash : `UNDEFINED-${this.type}-${this.index}`,
+        this.squash!,
       );
     }
 
