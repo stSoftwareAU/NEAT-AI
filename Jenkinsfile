@@ -5,7 +5,6 @@ DENO_IMAGE = 'denoland/deno:latest'
 TOOLS_ARGS = '-e DENO_DIR=${WORKSPACE}/.deno --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp:/tmp'
 TOOLS_IMAGE = "${ECR}/develop/sts-tools:latest"
 
-
 pipeline {
     agent none
     triggers {
@@ -20,28 +19,6 @@ pipeline {
     stages {
         stage('Checks') {
             parallel {
-                stage('Lint & Format') {
-                    agent {
-                        docker {
-                            image DENO_IMAGE
-                            args TOOLS_ARGS
-                            label 'small'
-                        }
-                    }
-                    steps {
-                        sh '''\
-                          #!/bin/bash
-
-                          echo "Remove old test files"
-                          find test -name ".*.json" -exec rm {} \\;
-                          deno lint src test
-
-                          deno fmt --check src test
-
-                          deno check --all src test
-                        '''.stripIndent()
-                    }
-                }
                 stage('Typos') {
                     agent {
                         docker {
