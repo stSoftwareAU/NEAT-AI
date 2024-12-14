@@ -1,12 +1,12 @@
 import type { SquasherInterface } from "./SquasherInterface.ts";
 
 export class SquashConstant implements SquasherInterface {
-  private constant: number;
-  constructor(constant: number) {
-    this.constant = constant;
+  private readonly bias: number;
+  constructor(bias: number) {
+    this.bias = bias;
   }
 
   squash(): number {
-    return this.constant;
+    return this.bias;
   }
 }

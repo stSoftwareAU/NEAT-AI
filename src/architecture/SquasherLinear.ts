@@ -3,8 +3,9 @@ import type { Neuron } from "./Neuron.ts";
 import type { SquasherInterface } from "./SquasherInterface.ts";
 
 export class SquashLinear implements SquasherInterface {
-  private neuron: Neuron;
-  private activationSquash: ActivationInterface;
+  private readonly neuron: Neuron;
+  private readonly activationSquash: ActivationInterface;
+
   constructor(neuron: Neuron, activationSquash: ActivationInterface) {
     this.neuron = neuron;
     this.activationSquash = activationSquash;
