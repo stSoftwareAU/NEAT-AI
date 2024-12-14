@@ -11,7 +11,7 @@ export class SquasherActivation implements SquasherInterface {
     this.activationSquash = activationSquash;
   }
   squashAndTrace(): number {
-    return this.squash();
+    return this.activationSquash.activateAndTrace(this.neuron);
   }
 
   squash(): number {
