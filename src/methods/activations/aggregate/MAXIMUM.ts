@@ -30,7 +30,8 @@ export class MAXIMUM
   activate(neuron: Neuron) {
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let maxValue = Number.NEGATIVE_INFINITY;
-    const activations = neuron.creature.state.activations;
+    const state = neuron.creature.state;
+    const activations = state.activations;
     for (let i = fromList.length; i--;) {
       const c = fromList[i];
       const value = activations[c.from] * c.weight;
@@ -48,10 +49,11 @@ export class MAXIMUM
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let maxValue = Number.NEGATIVE_INFINITY;
     let usedConnection: SynapseInternal | null = null;
-    const activations = neuron.creature.state.activations;
+    const state = neuron.creature.state;
+    const activations = state.activations;
     for (let i = fromList.length; i--;) {
       const c = fromList[i];
-      const cs = neuron.creature.state.connection(c.from, c.to);
+      const cs = state.connection(c.from, c.to);
       if (cs.used == undefined) cs.used = false;
 
       const value = activations[c.from] * c.weight;
@@ -62,7 +64,7 @@ export class MAXIMUM
     }
 
     if (usedConnection != null) {
-      const cs = neuron.creature.state.connection(
+      const cs = state.connection(
         usedConnection.from,
         usedConnection.to,
       );
@@ -98,12 +100,13 @@ export class MAXIMUM
   applyLearnings(neuron: Neuron): boolean {
     let changed = false;
 
+    const state = neuron.creature.state;
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
       const c = inward[i];
       assert(c.to == neuron.index, "mismatched index");
       if (c.from == c.to) continue;
-      const cs = neuron.creature.state.connection(c.from, c.to);
+      const cs = state.connection(c.from, c.to);
       if (!cs.used) {
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
@@ -130,6 +133,7 @@ export class MAXIMUM
     const error = targetValue - activationValue;
     let remainingError = error;
     const currentBias = adjustedBias(neuron, config);
+    const state = neuron.creature.state;
     let improvedValue = 0;
     if (toList.length) {
       let maxValue = -Infinity;
@@ -143,7 +147,7 @@ export class MAXIMUM
 
         const fromActivation = fromNeuron.adjustedActivation(config);
 
-        const fromWeight = adjustedWeight(neuron.creature.state, c, config);
+        const fromWeight = adjustedWeight(state, c, config);
         const fromValue = fromWeight * fromActivation;
         if (fromValue > maxValue) {
           maxValue = fromValue;
@@ -159,7 +163,7 @@ export class MAXIMUM
             }
           }
 
-          const cs = neuron.creature.state.connection(c.from, c.to);
+          const cs = state.connection(c.from, c.to);
           accumulateWeight(
             c.weight,
             cs,
@@ -175,7 +179,7 @@ export class MAXIMUM
         const fromNeuron = neuron.creature.neurons[mainConnection.from];
 
         const fromWeight = adjustedWeight(
-          neuron.creature.state,
+          state,
           mainConnection,
           config,
         );
@@ -212,7 +216,7 @@ export class MAXIMUM
         ) {
           const targetFromValue2 = fromValue + remainingError;
 
-          const cs = neuron.creature.state.connection(
+          const cs = state.connection(
             mainConnection.from,
             mainConnection.to,
           );
@@ -225,7 +229,7 @@ export class MAXIMUM
           );
 
           const aWeight = adjustedWeight(
-            neuron.creature.state,
+            state,
             mainConnection,
             config,
           );
@@ -238,7 +242,7 @@ export class MAXIMUM
       }
     }
 
-    const ns = neuron.creature.state.node(neuron.index);
+    const ns = state.node(neuron.index);
 
     accumulateBias(
       ns,

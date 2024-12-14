@@ -25,10 +25,11 @@ export class MEAN implements NeuronActivationInterface {
   activate(neuron: Neuron) {
     let sum = 0;
 
+    const state = neuron.creature.state;
     const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const fromActivation = neuron.creature.state.activations[c.from];
+      const fromActivation = state.activations[c.from];
       if (fromActivation) {
         sum += fromActivation * c.weight;
       }
@@ -66,10 +67,11 @@ export class MEAN implements NeuronActivationInterface {
   activateAndTrace(neuron: Neuron) {
     const activation = this.activate(neuron);
 
+    const state = neuron.creature.state;
     const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      const cs = neuron.creature.state.connection(
+      const cs = state.connection(
         c.from,
         c.to,
       );
@@ -92,7 +94,7 @@ export class MEAN implements NeuronActivationInterface {
     const targetValue = toValue(neuron, targetActivation);
 
     const currentValue = toValue(neuron, activation);
-
+    const state = neuron.creature.state;
     const error = targetValue - currentValue;
     const errorPerSynapse = error / toList.length;
 
@@ -105,7 +107,7 @@ export class MEAN implements NeuronActivationInterface {
 
       const fromActivation = fromNeuron.adjustedActivation(config);
 
-      const fromWeight = adjustedWeight(neuron.creature.state, c, config);
+      const fromWeight = adjustedWeight(state, c, config);
 
       const fromValue = fromWeight * fromActivation;
 
@@ -139,7 +141,7 @@ export class MEAN implements NeuronActivationInterface {
           Math.abs(targetFromValue2) < 1e100 &&
           Math.abs(targetFromActivation) < 1e100
         ) {
-          const cs = neuron.creature.state.connection(
+          const cs = state.connection(
             c.from,
             c.to,
           );
@@ -152,7 +154,7 @@ export class MEAN implements NeuronActivationInterface {
           );
         }
         const aWeight = adjustedWeight(
-          neuron.creature.state,
+          state,
           c,
           config,
         );
@@ -168,7 +170,7 @@ export class MEAN implements NeuronActivationInterface {
     const adjustedValue = (toList.length ? (totalValue / toList.length) : 0) +
       currentBias;
 
-    const ns = neuron.creature.state.node(neuron.index);
+    const ns = state.node(neuron.index);
     accumulateBias(
       ns,
       targetValue,
