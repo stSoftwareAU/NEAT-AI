@@ -29,11 +29,10 @@ import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
 import { assert } from "@std/assert/assert";
 import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
-import {
-  constantActivation,
-  linearActivation,
-  squashActivation,
-} from "./ActivationFunctions.ts";
+import type { SquasherInterface } from "./SquasherInterface.ts";
+import { SquashConstant } from "./SquasherConstant.ts";
+import { SquashActivation } from "./SquasherActivation.ts";
+import { SquashLinear } from "./SquasherLinear.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -47,10 +46,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | UnSquashInterface;
   public index: number;
   public tags = undefined;
+
   /**
    * Cached function to optimize activation performance.
    */
-  private callActivation!: (activations: Float32Array) => number;
+  private squasher?: SquasherInterface;
 
   constructor(
     uuid: string,
@@ -110,8 +110,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
         throw new Error(`Missing squash for ${this.type} neuron`);
       }
 
-      if (this.callActivation == undefined) {
-        throw new Error(`Missing callActivation for ${this.type} neuron`);
+      if (this.squasher == undefined) {
+        throw new Error(`Missing squasher for ${this.type} neuron`);
       }
 
       if (this.squashMethodCache == undefined) {
@@ -144,13 +144,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | ActivationInterface
     | UnSquashInterface {
     if (this.type === "constant") {
-      this.callActivation = constantActivation(this.bias);
+      this.squasher = new SquashConstant(this.bias);
     } else if (this.squash) {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        this.callActivation = squashActivation(this, squashMethod);
+        this.squasher = new SquashActivation(this, squashMethod);
       } else {
-        this.callActivation = linearActivation(
+        this.squasher = new SquashLinear(
           this,
           squashMethod as ActivationInterface,
         );
@@ -336,7 +336,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   activate(): number {
     const state = this.creature.state;
     const activations = state.activations;
-    const activation = this.callActivation(activations);
+    const activation = this.squasher!.squash(activations);
 
     activations[this.index] = activation;
     return activation;
