@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
@@ -18,6 +19,7 @@ import {
   adjustedBias,
   calculateBias,
 } from "../propagate/Bias.ts";
+import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import {
   accumulateWeight,
   adjustedWeight,
@@ -27,12 +29,6 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
-import { assert } from "@std/assert/assert";
-import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
-import type { SquasherInterface } from "./SquasherInterface.ts";
-import { SquasherConstant } from "./SquasherConstant.ts";
-import { SquasherActivation } from "./SquasherActivation.ts";
-import { SquasherLinear } from "./SquasherLinear.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -46,11 +42,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | UnSquashInterface;
   public index: number;
   public tags = undefined;
-
-  /**
-   * Cached function to optimize activation performance.
-   */
-  private squasher?: SquasherInterface;
 
   constructor(
     uuid: string,
@@ -110,10 +101,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
         throw new Error(`Missing squash for ${this.type} neuron`);
       }
 
-      if (this.squasher == undefined) {
-        throw new Error(`Missing squasher for ${this.type} neuron`);
-      }
-
       if (this.squashMethodCache == undefined) {
         throw new Error(
           `Missing squashMethodCache for ${this.type} neuron with squash ${this.squash}`,
@@ -144,16 +131,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | ActivationInterface
     | UnSquashInterface {
     if (this.type === "constant") {
-      this.squasher = new SquasherConstant(this.bias);
+      this.activateAndTrace = this.activateConstant;
+      this.activate = this.activateConstant;
     } else if (this.squash) {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        this.squasher = new SquasherActivation(this, squashMethod);
+        this.activateAndTrace = this.activateAndTraceNodeActivation;
+        this.activate = this.activateNodeActivation;
       } else {
-        this.squasher = new SquasherLinear(
-          this,
-          squashMethod as ActivationInterface,
-        );
+        this.activateAndTrace = this.activateAndTraceLinear;
+        this.activate = this.activateLinear;
       }
       return squashMethod;
     }
@@ -275,16 +262,86 @@ export class Neuron implements TagsInterface, NeuronInternal {
     return (activation as NeuronFixableInterface).fix != undefined;
   }
 
+  private activateConstant(): number {
+    const state = this.creature.state;
+    const activations = state.activations;
+    const activation = this.bias;
+
+    activations[this.index] = activation;
+    return activation;
+  }
+
+  private activateNodeActivation(): number {
+    const state = this.creature.state;
+    const activations = state.activations;
+    const activation = (this.squashMethodCache as NeuronActivationInterface)
+      .activate(this);
+
+    activations[this.index] = activation;
+    return activation;
+  }
+
+  private activateAndTraceNodeActivation(): number {
+    const state = this.creature.state;
+    const activations = state.activations;
+    const activation = (this.squashMethodCache as NeuronActivationInterface)
+      .activateAndTrace(this);
+
+    activations[this.index] = activation;
+    return activation;
+  }
+
+  private activateLinear(): number {
+    const state = this.creature.state;
+    const activations = state.activations;
+    let value = this.bias;
+    const inwardList = this.creature.inwardConnections(this.index);
+
+    for (let i = inwardList.length; i--;) {
+      const c = inwardList[i];
+
+      value += activations[c.from] * c.weight;
+    }
+
+    // Squash the values received
+    const activationSquash = this.squashMethodCache! as ActivationInterface;
+    const activation = activationSquash.squash(value);
+    activations[this.index] = activation;
+    return activation;
+  }
+
+  private activateAndTraceLinear(): number {
+    const state = this.creature.state;
+    const activations = state.activations;
+    let value = this.bias;
+    const inwardList = this.creature.inwardConnections(this.index);
+
+    for (let i = inwardList.length; i--;) {
+      const c = inwardList[i];
+
+      value += activations[c.from] * c.weight;
+    }
+
+    const ns = state.node(this.index);
+    ns.hintValue = value;
+    const activationSquash = this.squashMethodCache! as ActivationInterface;
+    const activation = activationSquash.squash(value);
+    activations[this.index] = activation;
+    return activation;
+  }
+
+  /**
+   * Activates the node without calculating eligibility traces and such
+   */
+  activate(): number {
+    throw new Error("Not implemented");
+  }
+
   /**
    * Activates the node
    */
   activateAndTrace(): number {
-    const state = this.creature.state;
-    const activations = state.activations;
-    const activation = this.squasher!.squashAndTrace(state, activations);
-
-    activations[this.index] = activation;
-    return activation;
+    throw new Error("Not implemented");
   }
 
   /**
@@ -304,18 +361,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
 
     return false;
-  }
-
-  /**
-   * Activates the node without calculating eligibility traces and such
-   */
-  activate(): number {
-    const state = this.creature.state;
-    const activations = state.activations;
-    const activation = this.squasher!.squash(activations);
-
-    activations[this.index] = activation;
-    return activation;
   }
 
   propagateUpdate(config: BackPropagationConfig) {
