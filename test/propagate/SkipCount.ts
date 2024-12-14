@@ -19,7 +19,7 @@ Deno.test("SkipCount", () => {
   );
 
   creature.propagate(new Float32Array(expected), config, sparseConfig);
-  const cs = creature.makeState().connection(0, 3);
+  const cs = creature.state.connection(0, 3);
 
   assertEquals(cs.count, 0);
 });

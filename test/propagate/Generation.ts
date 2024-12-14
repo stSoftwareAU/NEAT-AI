@@ -104,7 +104,7 @@ Deno.test("Generation Weight", () => {
     learningRate: 1,
   });
 
-  const state = creature.makeState();
+  const state = creature.state;
   const cs = state.connection(1, 3);
 
   const w1 = calculateWeight(

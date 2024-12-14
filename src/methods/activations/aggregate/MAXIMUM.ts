@@ -30,7 +30,7 @@ export class MAXIMUM
   activate(neuron: Neuron) {
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let maxValue = Number.NEGATIVE_INFINITY;
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const activations = state.activations;
     for (let i = fromList.length; i--;) {
       const c = fromList[i];
@@ -49,7 +49,7 @@ export class MAXIMUM
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let maxValue = Number.NEGATIVE_INFINITY;
     let usedConnection: SynapseInternal | null = null;
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const activations = state.activations;
     for (let i = fromList.length; i--;) {
       const c = fromList[i];
@@ -100,7 +100,7 @@ export class MAXIMUM
   applyLearnings(neuron: Neuron): boolean {
     let changed = false;
 
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
       const c = inward[i];
@@ -133,7 +133,7 @@ export class MAXIMUM
     const error = targetValue - activationValue;
     let remainingError = error;
     const currentBias = adjustedBias(neuron, config);
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     let improvedValue = 0;
     if (toList.length) {
       let maxValue = -Infinity;

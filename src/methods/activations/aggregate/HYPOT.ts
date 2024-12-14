@@ -55,7 +55,7 @@ export class HYPOT implements NeuronActivationInterface {
   activate(neuron: Neuron) {
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const activations = state.activations;
     for (let i = inward.length; i--;) {
       const c = inward[i];

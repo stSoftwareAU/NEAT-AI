@@ -98,20 +98,17 @@ export class CreatureState {
       this.activations.length !== this.creature.neurons.length
     ) {
       this.activations = new Float32Array(this.creature.neurons.length);
+    } else if (feedbackLoop == false) {
+      this.activations.fill(0, input.length);
     }
 
     this.activations.set(input);
 
-    if (feedbackLoop == false) {
-      this.activations.fill(0, this.creature.input);
-    }
-
     return this.activations;
   }
 
-  // clear() {
-  //   this.nodeMap.clear();
-  //   this.connectionMap.clear();
-  //   this.activations = new Float32Array(0);
-  // }
+  clear() {
+    this.nodeMap.clear();
+    this.connectionMap.clear();
+  }
 }

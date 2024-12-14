@@ -116,7 +116,7 @@ export class Creature implements CreatureInternal {
    * The state of the creature, managing the internal state and activations.
    * @type {CreatureState}
    */
-  private state?: CreatureState;
+  readonly state: CreatureState = new CreatureState(this);
 
   private cacheTo = new Map<number, Synapse[]>();
   private cacheFrom = new Map<number, Synapse[]>();
@@ -297,15 +297,8 @@ export class Creature implements CreatureInternal {
    * Clear the context of the creature.
    */
   clearState() {
-    this.score = undefined;
-    delete this.state;
-  }
-
-  makeState(): CreatureState {
-    if (!this.state) {
-      this.state = new CreatureState(this);
-    }
-    return this.state;
+    delete this.score;
+    this.state.clear();
   }
 
   /**
@@ -320,7 +313,7 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
   ): Float32Array {
-    const activations = this.makeState().makeActivation(input, feedbackLoop);
+    const activations = this.state.makeActivation(input, feedbackLoop);
 
     const neurons = this.neurons;
     const len = neurons.length;
@@ -335,7 +328,7 @@ export class Creature implements CreatureInternal {
     }
 
     const lastHiddenNode = len - this.output;
-    return activations.subarray(lastHiddenNode);
+    return new Float32Array(activations.subarray(lastHiddenNode));
   }
 
   /**
@@ -346,7 +339,7 @@ export class Creature implements CreatureInternal {
    * @returns {Float32Array} The output values after activation.
    */
   activate(input: Float32Array, feedbackLoop: boolean = false): Float32Array {
-    const activations = this.makeState().makeActivation(input, feedbackLoop);
+    const activations = this.state.makeActivation(input, feedbackLoop);
 
     const neurons = this.neurons;
     const len = neurons.length;
@@ -356,7 +349,7 @@ export class Creature implements CreatureInternal {
     }
 
     const lastHiddenNode = len - this.output;
-    return activations.subarray(lastHiddenNode);
+    return new Float32Array(activations.subarray(lastHiddenNode));
   }
 
   /**
@@ -716,7 +709,7 @@ export class Creature implements CreatureInternal {
     config: BackPropagationConfig,
     sparseConfig: SparseConfig,
   ) {
-    this.makeState().cacheAdjustedActivation.clear();
+    this.state.cacheAdjustedActivation.clear();
     const indices = Int32Array.from({ length: this.output }, (_, i) => i); // Create an array of indices
 
     if (!config.disableRandomSamples) {
@@ -1327,7 +1320,7 @@ export class Creature implements CreatureInternal {
   traceJSON(): CreatureTrace {
     const json = this.exportJSON();
 
-    const state = this.makeState();
+    const state = this.state;
     const traceNeurons = Array<NeuronTrace>(json.neurons.length);
     let exportIndex = 0;
     this.neurons.forEach((n) => {
@@ -1426,7 +1419,7 @@ export class Creature implements CreatureInternal {
 
     this.clearState();
 
-    const state = this.makeState();
+    const state = this.state;
     const uuidMap = new Map<string, number>();
     this.neurons = new Array(this.neurons.length);
     for (let i = json.input; i--;) {

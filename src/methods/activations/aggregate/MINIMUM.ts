@@ -29,7 +29,7 @@ export class MINIMUM
   activate(neuron: Neuron): number {
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let minValue = Number.POSITIVE_INFINITY;
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const activations = state.activations;
     for (let i = fromList.length; i--;) {
       const c = fromList[i];
@@ -45,7 +45,7 @@ export class MINIMUM
   }
 
   activateAndTrace(neuron: Neuron) {
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     let minValue = Number.POSITIVE_INFINITY;
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let usedConnection: SynapseInternal | null = null;
@@ -99,7 +99,7 @@ export class MINIMUM
   applyLearnings(neuron: Neuron): boolean {
     let changed = false;
 
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
       const c = inward[i];
@@ -129,7 +129,7 @@ export class MINIMUM
     const targetValue = toValue(neuron, targetActivation);
 
     const activationValue = toValue(neuron, activation);
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const error = targetValue - activationValue;
     let remainingError = error;
     const currentBias = adjustedBias(neuron, config);
@@ -246,7 +246,7 @@ export class MINIMUM
       improvedValue = improvedAdjustedFromValue + currentBias;
     }
 
-    const ns = neuron.creature.makeState().node(neuron.index);
+    const ns = neuron.creature.state.node(neuron.index);
     accumulateBias(
       ns,
       targetValue,

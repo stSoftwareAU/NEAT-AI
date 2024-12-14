@@ -25,7 +25,7 @@ export class MEAN implements NeuronActivationInterface {
   activate(neuron: Neuron) {
     let sum = 0;
 
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
@@ -67,7 +67,7 @@ export class MEAN implements NeuronActivationInterface {
   activateAndTrace(neuron: Neuron) {
     const activation = this.activate(neuron);
 
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
@@ -94,7 +94,7 @@ export class MEAN implements NeuronActivationInterface {
     const targetValue = toValue(neuron, targetActivation);
 
     const currentValue = toValue(neuron, activation);
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const error = targetValue - currentValue;
     const errorPerSynapse = error / toList.length;
 

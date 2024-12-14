@@ -98,7 +98,7 @@ Deno.test("AccumulateBias-average", () => {
     }
 
     creature.clearState();
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const ns = state.node(neuron.index);
 
     const values = [

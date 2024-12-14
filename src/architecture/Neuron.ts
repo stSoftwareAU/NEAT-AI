@@ -279,7 +279,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Activates the node
    */
   activateAndTrace(): number {
-    const state = this.creature.makeState();
+    const state = this.creature.state;
     const activations = state.activations;
     let activation: number;
     if (this.type == "constant") {
@@ -316,7 +316,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * @returns true if changed
    */
   applyLearnings(): boolean {
-    const state = this.creature.makeState();
+    const state = this.creature.state;
     const neuronState = state.node(this.index);
     if (neuronState.noChange) return false;
     if (this.type == "hidden" || this.type == "output") {
@@ -334,7 +334,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Activates the node without calculating eligibility traces and such
    */
   activate(): number {
-    const state = this.creature.makeState();
+    const state = this.creature.state;
     const activations = state.activations;
     const activation = this.callActivation(activations);
 
@@ -343,7 +343,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   propagateUpdate(config: BackPropagationConfig) {
-    const state = this.creature.makeState();
+    const state = this.creature.state;
     const toList = this.creature.inwardConnections(this.index);
     for (let i = toList.length; i--;) {
       const c = toList[i];
@@ -374,7 +374,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const squashMethod = this.findSquash();
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
-    const state = this.creature.makeState();
+    const state = this.creature.state;
     if (
       Math.abs(targetActivation - activation) < config.plankConstant
     ) {
@@ -521,7 +521,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    * Adjusts the activation based on the current state
    */
   adjustedActivation(config: BackPropagationConfig): number {
-    const state = this.creature.makeState();
+    const state = this.creature.state;
     const cache = state.cacheAdjustedActivation;
     const cachedValue = cache.get(this.index);
 
@@ -535,7 +535,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   rawAdjustedActivation(config: BackPropagationConfig): number {
-    const state = this.creature.makeState();
+    const state = this.creature.state;
     if (this.type == "input") {
       return state.activations[this.index];
     } else if (this.type == "constant") {

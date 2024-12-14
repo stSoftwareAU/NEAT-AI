@@ -7,7 +7,7 @@ export function noChangePropagate(
   activation: number,
   config: BackPropagationConfig,
 ) {
-  const state = neuron.creature.makeState();
+  const state = neuron.creature.state;
   const ns = state.node(neuron.index);
 
   const squashMethod = neuron.findSquash();

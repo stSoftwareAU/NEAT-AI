@@ -158,7 +158,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let negative = 0;
     let positive = 0;
 
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const activations = state.activations;
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
@@ -212,7 +212,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let negative = 0;
     let positive = 0;
 
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const activations = state.activations;
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
@@ -244,7 +244,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let foundPositive = false;
 
     let foundNegative = false;
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     for (let i = inward.length; i--;) {
       const c = inward[i];
       const cs = state.connection(c.from, c.to);
@@ -301,7 +301,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     let condition = 0;
     let negativeCount = 0;
     let positiveCount = 0;
-    const state = neuron.creature.makeState();
+    const state = neuron.creature.state;
     const activations = state.activations;
     for (let i = inward.length; i--;) {
       const c = inward[i];
