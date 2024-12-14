@@ -2,13 +2,16 @@ import type { NeuronActivationInterface } from "../methods/activations/NeuronAct
 import type { Neuron } from "./Neuron.ts";
 import type { SquasherInterface } from "./SquasherInterface.ts";
 
-export class SquashActivation implements SquasherInterface {
+export class SquasherActivation implements SquasherInterface {
   private readonly neuron: Neuron;
   private readonly activationSquash: NeuronActivationInterface;
 
   constructor(neuron: Neuron, activationSquash: NeuronActivationInterface) {
     this.neuron = neuron;
     this.activationSquash = activationSquash;
+  }
+  squashAndTrace(): number {
+    return this.squash();
   }
 
   squash(): number {

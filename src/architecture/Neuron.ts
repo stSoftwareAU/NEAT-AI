@@ -30,9 +30,9 @@ import { Synapse } from "./Synapse.ts";
 import { assert } from "@std/assert/assert";
 import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import type { SquasherInterface } from "./SquasherInterface.ts";
-import { SquashConstant } from "./SquasherConstant.ts";
-import { SquashActivation } from "./SquasherActivation.ts";
-import { SquashLinear } from "./SquasherLinear.ts";
+import { SquasherConstant } from "./SquasherConstant.ts";
+import { SquasherActivation } from "./SquasherActivation.ts";
+import { SquasherLinear } from "./SquasherLinear.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -144,13 +144,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | ActivationInterface
     | UnSquashInterface {
     if (this.type === "constant") {
-      this.squasher = new SquashConstant(this.bias);
+      this.squasher = new SquasherConstant(this.bias);
     } else if (this.squash) {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        this.squasher = new SquashActivation(this, squashMethod);
+        this.squasher = new SquasherActivation(this, squashMethod);
       } else {
-        this.squasher = new SquashLinear(
+        this.squasher = new SquasherLinear(
           this,
           squashMethod as ActivationInterface,
         );
@@ -281,31 +281,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   activateAndTrace(): number {
     const state = this.creature.state;
     const activations = state.activations;
-    let activation: number;
-    if (this.type == "constant") {
-      activation = this.bias;
-    } else {
-      const squashMethod = this.findSquash();
-
-      if (this.isNodeActivation(squashMethod)) {
-        activation = squashMethod.activateAndTrace(this);
-      } else {
-        const inwardList = this.creature.inwardConnections(this.index);
-        let value = this.bias;
-
-        for (let i = inwardList.length; i--;) {
-          const c = inwardList[i];
-
-          const fromActivation = activations[c.from];
-          value += fromActivation * c.weight;
-        }
-
-        const ns = state.node(this.index);
-        ns.hintValue = value;
-        const activationSquash = squashMethod as ActivationInterface;
-        activation = activationSquash.squash(value);
-      }
-    }
+    const activation = this.squasher!.squashAndTrace(state, activations);
 
     activations[this.index] = activation;
     return activation;
