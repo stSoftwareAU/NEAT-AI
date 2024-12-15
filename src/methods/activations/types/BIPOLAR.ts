@@ -11,7 +11,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class BIPOLAR implements ActivationInterface, UnSquashInterface {
   public static NAME = "BIPOLAR";
   public readonly range: ActivationRange = new ActivationRange(
-    this,
+    BIPOLAR.NAME,
     -1,
     1,
   );

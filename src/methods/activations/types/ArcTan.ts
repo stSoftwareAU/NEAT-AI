@@ -19,7 +19,7 @@ export class ArcTan implements ActivationInterface, UnSquashInterface {
   private static readonly MAX_VALUE = 1e10;
 
   public readonly range: ActivationRange = new ActivationRange(
-    this,
+    ArcTan.NAME,
     -Math.PI / 2,
     Math.PI / 2,
   );

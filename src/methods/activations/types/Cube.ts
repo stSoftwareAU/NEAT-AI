@@ -19,7 +19,7 @@ export class Cube implements ActivationInterface, UnSquashInterface {
   private static readonly MAX_INPUT = Math.cbrt(Number.MAX_SAFE_INTEGER);
 
   public readonly range: ActivationRange = new ActivationRange(
-    this,
+    Cube.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );

@@ -19,7 +19,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
 
   // The output range of ISRU is between -1/sqrt(α) and 1/sqrt(α)
   public readonly range: ActivationRange = new ActivationRange(
-    this,
+    ISRU.NAME,
     -1 / Math.sqrt(ISRU.ALPHA),
     1 / Math.sqrt(ISRU.ALPHA),
   );

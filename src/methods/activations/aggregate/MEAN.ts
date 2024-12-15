@@ -13,7 +13,7 @@ import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts"
 export class MEAN implements NeuronActivationInterface {
   public static NAME = "MEAN";
   public readonly range: ActivationRange = new ActivationRange(
-    this,
+    MEAN.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );

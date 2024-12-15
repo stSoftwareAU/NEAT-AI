@@ -19,11 +19,13 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   private static readonly LARGE_THRESHOLD = 100; // Threshold to prevent overflow in unSquash
   private static readonly SMALL_THRESHOLD = 1e-15; // Threshold to prevent underflow in unSquash
 
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    Softplus.NAME,
     Softplus.SMALL_THRESHOLD,
     Softplus.LARGE_THRESHOLD,
   );
+
+  public readonly range = Softplus.rangeStatic;
 
   // Inverse of Softplus
   unSquash(activation: number, hint?: number): number {
@@ -58,6 +60,6 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
     const value = Math.log(1 + Math.exp(x)); // Standard Softplus formula
 
-    return this.range.limit(value);
+    return Softplus.rangeStatic.limit(value);
   }
 }

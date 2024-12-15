@@ -1,5 +1,4 @@
 import { assert } from "@std/assert/assert";
-import type { AbstractActivationInterface } from "../methods/activations/AbstractActivationInterface.ts";
 
 /** Correct the target activation to a possible activation */
 type NormalizeFunction = (targetActivation: number) => number;
@@ -7,14 +6,14 @@ type NormalizeFunction = (targetActivation: number) => number;
 export class ActivationRange {
   readonly low: number;
   readonly high: number;
-  private readonly squash: AbstractActivationInterface;
+  private readonly name: string;
 
   constructor(
-    squash: AbstractActivationInterface,
+    name: string,
     low: number,
     high: number,
   ) {
-    this.squash = squash;
+    this.name = name;
     assert(low < high, "ActivationRange: low must be less than high");
     this.low = low;
     this.high = high;
@@ -26,7 +25,7 @@ export class ActivationRange {
       activation > this.high
     ) {
       const msg =
-        `${this.squash.getName()}: Activation ${activation} is outside the valid range [${this.low}, ${this.high}] ${
+        `${this.name}: Activation ${activation} is outside the valid range [${this.low}, ${this.high}] ${
           hint !== undefined ? `with hint ${hint}` : ""
         }`;
 
@@ -37,7 +36,7 @@ export class ActivationRange {
   limit(activation: number, hint?: number): number {
     if (Number.isFinite(activation) == false) {
       throw new Error(
-        `${this.squash.getName()}: limit: activation is not finite: ${activation}${
+        `${this.name}: limit: activation is not finite: ${activation}${
           hint !== undefined ? ` with hint ${hint}` : ""
         }`,
       );

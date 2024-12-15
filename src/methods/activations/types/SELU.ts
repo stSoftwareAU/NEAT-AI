@@ -23,7 +23,7 @@ export class SELU implements ActivationInterface, UnSquashInterface {
   private static ALPHA = 1.6732632423543772848170429916717;
   private static SCALE = 1.0507009873554804934193349852946;
   public readonly range: ActivationRange = new ActivationRange(
-    this,
+    SELU.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
@@ -68,6 +68,6 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     );
 
     // Use the ActivationRange to limit the output to the defined range
-    return this.range.limit(clampedFx, clampedX);
+    return clampedFx;
   }
 }

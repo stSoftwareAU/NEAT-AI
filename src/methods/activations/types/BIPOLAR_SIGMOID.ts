@@ -10,7 +10,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
   public static NAME = "BIPOLAR_SIGMOID";
-  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
+  public readonly range: ActivationRange = new ActivationRange(
+    BIPOLAR_SIGMOID.NAME,
+    -1,
+    1,
+  );
 
   getName() {
     return BIPOLAR_SIGMOID.NAME;

@@ -15,7 +15,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class TANH implements ActivationInterface, UnSquashInterface {
   public static NAME = "TANH";
 
-  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
+  public readonly range: ActivationRange = new ActivationRange(
+    TANH.NAME,
+    -1,
+    1,
+  );
 
   // Function to estimate the input from the activation value.
   // TANH is invertible, and its inverse is calculated using a logarithmic function.

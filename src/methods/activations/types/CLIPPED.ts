@@ -10,7 +10,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class CLIPPED implements ActivationInterface, UnSquashInterface {
   public static NAME = "CLIPPED";
-  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
+  public readonly range: ActivationRange = new ActivationRange(
+    CLIPPED.NAME,
+    -1,
+    1,
+  );
 
   getName() {
     return CLIPPED.NAME;

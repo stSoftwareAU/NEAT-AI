@@ -15,7 +15,7 @@ export class STEP implements ActivationInterface, UnSquashInterface {
   public static NAME = "STEP";
   private threshold: number;
   public readonly range: ActivationRange = new ActivationRange(
-    this,
+    STEP.NAME,
     0,
     1,
   );

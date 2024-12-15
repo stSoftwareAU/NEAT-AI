@@ -18,11 +18,12 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   // Typical α value is 1.0, but it can be adjusted if needed
   private static ALPHA = 1.0;
 
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    ELU.NAME,
     -ELU.ALPHA,
     Number.MAX_SAFE_INTEGER,
   );
+  public readonly range = ELU.rangeStatic;
 
   // Function to estimate the input from the activation value
   unSquash(activation: number, hint?: number): number {
@@ -47,6 +48,6 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     const value = x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
 
-    return this.range.limit(value);
+    return ELU.rangeStatic.limit(value);
   }
 }

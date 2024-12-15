@@ -16,11 +16,13 @@ import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 export class MINIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "MINIMUM";
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    MINIMUM.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+
+  public readonly range = MINIMUM.rangeStatic;
 
   getName() {
     return MINIMUM.NAME;
@@ -41,7 +43,7 @@ export class MINIMUM
 
     const value = minValue + neuron.bias;
 
-    return this.range.limit(value);
+    return MINIMUM.rangeStatic.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
@@ -72,7 +74,7 @@ export class MINIMUM
 
     const value = minValue + neuron.bias;
 
-    return this.range.limit(value);
+    return MINIMUM.rangeStatic.limit(value);
   }
 
   fix(neuron: Neuron) {

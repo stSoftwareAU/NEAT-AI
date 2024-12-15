@@ -12,11 +12,15 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
  */
 export class RELU implements ActivationInterface, UnSquashInterface {
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static NAME = "RELU";
+
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    RELU.NAME,
     0,
     Number.MAX_SAFE_INTEGER,
   );
+
+  public readonly range = RELU.rangeStatic;
 
   // Function to estimate the input from the activation value
   // As ReLU is not an invertible function, this estimation returns the same
@@ -38,8 +42,6 @@ export class RELU implements ActivationInterface, UnSquashInterface {
     return hint;
   }
 
-  public static NAME = "RELU";
-
   getName() {
     return RELU.NAME;
   }
@@ -47,6 +49,6 @@ export class RELU implements ActivationInterface, UnSquashInterface {
   // ReLU function definition
   squash(x: number) {
     const value = x > 0 ? x : 0;
-    return this.range.limit(value);
+    return RELU.rangeStatic.limit(value);
   }
 }

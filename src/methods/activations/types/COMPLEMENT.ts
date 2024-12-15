@@ -9,18 +9,20 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class COMPLEMENT implements ActivationInterface, UnSquashInterface {
   public static NAME = "COMPLEMENT";
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    COMPLEMENT.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+  public readonly range = COMPLEMENT.rangeStatic;
+
   getName() {
     return COMPLEMENT.NAME;
   }
 
   squash(x: number) {
     const value = 1 - x;
-    return this.range.limit(value);
+    return COMPLEMENT.rangeStatic.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {

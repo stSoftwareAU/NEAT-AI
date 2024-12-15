@@ -11,7 +11,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   public static NAME = "GAUSSIAN";
 
-  public readonly range: ActivationRange = new ActivationRange(this, 0, 1);
+  public readonly range: ActivationRange = new ActivationRange(
+    GAUSSIAN.NAME,
+    0,
+    1,
+  );
 
   getName() {
     return GAUSSIAN.NAME;

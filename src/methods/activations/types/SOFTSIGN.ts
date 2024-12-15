@@ -17,7 +17,7 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
   public static NAME = "SOFTSIGN";
   private static LIMIT = 0.99; // Clamped limit to avoid numerical issues
   public readonly range: ActivationRange = new ActivationRange(
-    this,
+    SOFTSIGN.NAME,
     -SOFTSIGN.LIMIT,
     SOFTSIGN.LIMIT,
   );
