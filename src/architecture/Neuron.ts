@@ -266,34 +266,37 @@ export class Neuron implements TagsInterface, NeuronInternal {
     return (activation as NeuronFixableInterface).fix != undefined;
   }
 
-  private activateConstant(): number {
+  private activateConstant(): { activation: number; value: number } {
     const state = this.creature.state;
     const activations = state.activations;
     const activation = this.bias;
 
     activations[this.index] = activation;
-    return activation;
+    return { activation, value: 0 };
   }
 
-  private activateNodeActivation(): number {
+  private activateNodeActivation(): { activation: number; value: number } {
     const state = this.creature.state;
     const activations = state.activations;
     const activation = this.activateProxy(this);
 
     activations[this.index] = activation;
-    return activation;
+    return { activation, value: 0 };
   }
 
-  private activateAndTraceNodeActivation(): number {
+  private activateAndTraceNodeActivation(): {
+    activation: number;
+    value: number;
+  } {
     const state = this.creature.state;
     const activations = state.activations;
     const activation = this.activateAndTraceProxy(this);
 
     activations[this.index] = activation;
-    return activation;
+    return { activation, value: 0 };
   }
 
-  private activateLinear(): number {
+  private activateLinear(): { activation: number; value: number } {
     const state = this.creature.state;
     const activations = state.activations;
     let value = this.bias;
@@ -305,26 +308,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
     const activation = this.squashProxy(value);
     activations[this.index] = activation;
-    return activation;
+    return { activation, value };
   }
 
-  private activateAndTraceLinear(): number {
+  private activateAndTraceLinear(): { activation: number; value: number } {
+    const { activation, value } = this.activateLinear();
     const state = this.creature.state;
-    const activations = state.activations;
-    let value = this.bias;
-    const inwardList = this.creature.inwardConnections(this.index);
-
-    for (let i = 0, len = inwardList.length; i < len; i++) {
-      const { from, weight } = inwardList[i];
-      value += activations[from] * weight;
-    }
-
     const ns = state.node(this.index);
     ns.hintValue = value;
 
-    const activation = this.squashProxy(value);
-    activations[this.index] = activation;
-    return activation;
+    return { activation, value };
   }
 
   private squashProxy(_value: number): number {
@@ -341,14 +334,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Activates the node without calculating eligibility traces and such
    */
-  activate(): number {
+  activate(): { activation: number; value: number } {
     throw new Error("Not implemented");
   }
 
   /**
    * Activates the node
    */
-  activateAndTrace(): number {
+  activateAndTrace(): { activation: number; value: number } {
     throw new Error("Not implemented");
   }
 

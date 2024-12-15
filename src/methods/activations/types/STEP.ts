@@ -13,7 +13,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class STEP implements ActivationInterface, UnSquashInterface {
   public static NAME = "STEP";
-  
+
   public readonly range: ActivationRange = new ActivationRange(
     STEP.NAME,
     0,
