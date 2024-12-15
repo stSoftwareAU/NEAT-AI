@@ -759,6 +759,7 @@ export class Creature implements CreatureInternal {
         n.propagateUpdate(config);
       }
     }
+    this.state.preparedNeurons = false;
   }
 
   /**
