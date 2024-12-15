@@ -70,6 +70,6 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     );
 
     // Use the ActivationRange to limit the output to the defined range
-    return SELU.rangeStatic.limit(clampedFx);
+    return SELU.rangeStatic.limit(clampedFx, clampedX);
   }
 }
