@@ -55,6 +55,10 @@ export class HYPOT implements NeuronActivationInterface {
   }
 
   activate(neuron: Neuron) {
+    return HYPOT.calculate(neuron);
+  }
+
+  private static calculate(neuron: Neuron) {
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
     const state = neuron.creature.state;
@@ -70,7 +74,7 @@ export class HYPOT implements NeuronActivationInterface {
   }
 
   activateAndTrace(neuron: Neuron) {
-    return this.activate(neuron);
+    return HYPOT.calculate(neuron);
   }
 
   fix(neuron: Neuron) {

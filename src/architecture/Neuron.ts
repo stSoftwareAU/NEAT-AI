@@ -131,18 +131,18 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | ActivationInterface
     | UnSquashInterface {
     if (this.type === "constant") {
-      this.activateAndTrace = this.activateConstant;
-      this.activate = this.activateConstant;
+      this.activateAndTraceNeuron = this.activateConstant;
+      this.activateNeuron = this.activateConstant;
     } else if (this.squash) {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        this.activateAndTrace = this.activateAndTraceNodeActivation;
-        this.activate = this.activateNodeActivation;
+        this.activateAndTraceNeuron = this.activateAndTraceNodeActivation;
+        this.activateNeuron = this.activateNodeActivation;
         this.activateProxy = squashMethod.activate;
         this.activateAndTraceProxy = squashMethod.activateAndTrace;
       } else {
-        this.activateAndTrace = this.activateAndTraceLinear;
-        this.activate = this.activateLinear;
+        this.activateAndTraceNeuron = this.activateAndTraceLinear;
+        this.activateNeuron = this.activateLinear;
         const squashActivation = squashMethod as ActivationInterface;
         this.squashProxy = squashActivation.squash;
       }
@@ -334,14 +334,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Activates the node without calculating eligibility traces and such
    */
-  activate(): { activation: number; value: number } {
+  activateNeuron(): { activation: number; value: number } {
     throw new Error("Not implemented");
   }
 
   /**
    * Activates the node
    */
-  activateAndTrace(): { activation: number; value: number } {
+  activateAndTraceNeuron(): { activation: number; value: number } {
     throw new Error("Not implemented");
   }
 

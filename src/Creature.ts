@@ -321,9 +321,9 @@ export class Creature implements CreatureInternal {
     for (let i = this.input; i < len; i++) {
       const n = neurons[i];
       if (sparseConfig.traceNeeded(n.uuid)) {
-        n.activateAndTrace();
+        n.activateAndTraceNeuron();
       } else {
-        n.activate();
+        n.activateNeuron();
       }
     }
 
@@ -345,7 +345,7 @@ export class Creature implements CreatureInternal {
     const len = neurons.length;
 
     for (let i = this.input; i < len; i++) {
-      neurons[i].activate();
+      neurons[i].activateNeuron();
     }
 
     const lastHiddenNode = len - this.output;

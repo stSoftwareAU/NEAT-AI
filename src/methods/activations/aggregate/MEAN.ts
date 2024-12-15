@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import {
@@ -22,7 +23,7 @@ export class MEAN implements NeuronActivationInterface {
     return MEAN.NAME;
   }
 
-  activate(neuron: Neuron) {
+  private static calculate(neuron: Neuron) {
     let sum = 0;
 
     const state = neuron.creature.state;
@@ -30,6 +31,10 @@ export class MEAN implements NeuronActivationInterface {
     for (let i = toList.length; i--;) {
       const c = toList[i];
       const fromActivation = state.activations[c.from];
+      assert(
+        Number.isFinite(fromActivation),
+        `MEAN: ${fromActivation} is not finite`,
+      );
       if (fromActivation) {
         sum += fromActivation * c.weight;
       }
@@ -42,6 +47,10 @@ export class MEAN implements NeuronActivationInterface {
       );
     }
     return value + neuron.bias;
+  }
+
+  activate(neuron: Neuron) {
+    return MEAN.calculate(neuron);
   }
 
   fix(neuron: Neuron) {
@@ -65,7 +74,7 @@ export class MEAN implements NeuronActivationInterface {
   }
 
   activateAndTrace(neuron: Neuron) {
-    const activation = this.activate(neuron);
+    const activation = MEAN.calculate(neuron);
 
     const state = neuron.creature.state;
     const toList = neuron.creature.inwardConnections(neuron.index);
