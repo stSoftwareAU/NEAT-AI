@@ -54,7 +54,7 @@ export class HYPOTv2 implements NeuronActivationInterface {
     return HYPOTv2.NAME;
   }
 
-  activate(neuron: Neuron) {
+  private static calculate(neuron: Neuron) {
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
     const state = neuron.creature.state;
@@ -68,9 +68,12 @@ export class HYPOTv2 implements NeuronActivationInterface {
     const value = Math.hypot(...values);
     return HYPOTv2.rangeStatic.limit(value);
   }
+  activate(neuron: Neuron) {
+    return HYPOTv2.calculate(neuron);
+  }
 
   activateAndTrace(neuron: Neuron) {
-    return this.activate(neuron);
+    return HYPOTv2.calculate(neuron);
   }
 
   fix(neuron: Neuron) {

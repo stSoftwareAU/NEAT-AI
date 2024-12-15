@@ -301,6 +301,16 @@ export class Creature implements CreatureInternal {
     this.state.clear();
   }
 
+  private prepareNeurons() {
+    if (this.state.preparedNeurons) {
+      return;
+    }
+    for (let i = this.input; i < this.neurons.length; i++) {
+      this.neurons[i].prepare();
+    }
+    this.state.preparedNeurons = true;
+  }
+
   /**
    * Activates the creature and traces the activity.
    *
@@ -313,6 +323,7 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
   ): Float32Array {
+    this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
     const neurons = this.neurons;
@@ -321,9 +332,9 @@ export class Creature implements CreatureInternal {
     for (let i = this.input; i < len; i++) {
       const n = neurons[i];
       if (sparseConfig.traceNeeded(n.uuid)) {
-        n.activateAndTrace();
+        n.activateAndTraceNeuron();
       } else {
-        n.activate();
+        n.activateNeuron();
       }
     }
 
@@ -339,13 +350,14 @@ export class Creature implements CreatureInternal {
    * @returns {Float32Array} The output values after activation.
    */
   activate(input: Float32Array, feedbackLoop: boolean = false): Float32Array {
+    this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
     const neurons = this.neurons;
     const len = neurons.length;
 
     for (let i = this.input; i < len; i++) {
-      neurons[i].activate();
+      neurons[i].activateNeuron();
     }
 
     const lastHiddenNode = len - this.output;
@@ -692,6 +704,7 @@ export class Creature implements CreatureInternal {
     if (changed) {
       delete this.uuid;
       delete this.memetic;
+      this.state.clear();
       this.fix();
     }
 
@@ -746,6 +759,7 @@ export class Creature implements CreatureInternal {
         n.propagateUpdate(config);
       }
     }
+    this.state.preparedNeurons = false;
   }
 
   /**
@@ -1160,6 +1174,7 @@ export class Creature implements CreatureInternal {
 
     if (changed) {
       delete this.uuid;
+      this.state.clear();
       this.fix();
     }
     if (this.DEBUG) {
