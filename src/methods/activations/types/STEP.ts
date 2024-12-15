@@ -13,16 +13,12 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class STEP implements ActivationInterface, UnSquashInterface {
   public static NAME = "STEP";
-  private threshold: number;
+  
   public readonly range: ActivationRange = new ActivationRange(
     STEP.NAME,
     0,
     1,
   );
-
-  constructor(threshold: number = 0) {
-    this.threshold = threshold;
-  }
 
   getName() {
     return STEP.NAME;
@@ -30,7 +26,7 @@ export class STEP implements ActivationInterface, UnSquashInterface {
 
   /** Step function definition */
   squash(x: number) {
-    return x > this.threshold ? 1 : 0;
+    return x > 0 ? 1 : 0;
   }
 
   /**
@@ -46,13 +42,13 @@ export class STEP implements ActivationInterface, UnSquashInterface {
     }
 
     /** Make sure the hint is the correct sign to be compatible with the activation */
-    if (activation > this.threshold) {
-      if (hint > this.threshold) {
+    if (activation > 0) {
+      if (hint > 0) {
         return hint;
       }
       return activation;
     } else {
-      if (hint <= this.threshold) {
+      if (hint <= 0) {
         return hint;
       }
       return activation;
