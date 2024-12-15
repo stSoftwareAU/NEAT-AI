@@ -1,10 +1,10 @@
 import { Creature } from "../src/Creature.ts";
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 
 /**
- * benchmark      time (avg)        iter/s             (min … max)       p75       p99      p995
- * --------------------------------------------------------------- -----------------------------
- * Activate      280.07 ms/iter           3.6  (274.06 ms … 293.4 ms) 280.81 ms 293.4 ms 293.4 ms
+ * v0.121.5
+ *  benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+ *  ----------- ----------------------------- --------------------- --------------------------
+ *  Activate            55.8 ms          17.9 ( 53.4 ms …  58.4 ms)  56.3 ms  58.4 ms  58.4 ms
  */
 const creature = Creature.fromJSON(
   JSON.parse(
@@ -17,11 +17,9 @@ creature.clearState();
 const inputs = makeInputs(creature);
 
 export function perform() {
-  const config = createBackPropagationConfig({});
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 1000; i++) {
     const input = inputs[i % inputs.length];
-    creature.activateAndTrace(input);
-    creature.propagate([i % 2], config);
+    creature.activate(input, false);
   }
 }
 
@@ -30,7 +28,7 @@ Deno.bench("Activate", () => {
 });
 
 function makeInputs(creature: Creature) {
-  const inputs: number[][] = [];
+  const inputs: Float32Array[] = [];
 
   for (let i = 100; i--;) {
     const data = [];
@@ -38,7 +36,7 @@ function makeInputs(creature: Creature) {
       const v = Math.random() * 4 - 2;
       data.push(v);
     }
-    inputs.push(data);
+    inputs.push(new Float32Array(data));
   }
 
   return inputs;
