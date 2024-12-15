@@ -54,6 +54,7 @@ export class CreatureState {
   private creature;
   public activations: Float32Array = new Float32Array(0);
   readonly cacheAdjustedActivation: Map<number, number>;
+  public preparedNeurons = false;
 
   constructor(creature: Creature) {
     this.creature = creature;
@@ -108,6 +109,7 @@ export class CreatureState {
   }
 
   clear() {
+    this.preparedNeurons = false;
     this.nodeMap.clear();
     this.connectionMap.clear();
   }

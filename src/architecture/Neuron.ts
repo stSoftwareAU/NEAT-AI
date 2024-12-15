@@ -92,7 +92,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     this.creature = creature;
 
     this.index = -1;
-    this.updateCallActivation();
   }
 
   public validate() {
@@ -125,7 +124,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Updates the cached activation function based on neuron type and squash.
    */
-  private updateCallActivation():
+  public prepare():
     | undefined
     | NeuronActivationInterface
     | ActivationInterface
@@ -159,7 +158,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ): void {
     delete this.squashMethodCache;
     this.squash = name;
-    const squashFunction = this.updateCallActivation();
+    const squashFunction = this.findSquash();
 
     this.squash = squashFunction!.getName(); /* Handle aliases */
   }
