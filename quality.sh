@@ -8,6 +8,7 @@ rm -rf .trace .test .coverage
 # Use xargs to handle file list gracefully, with a larger batch size
 find src -name "*.ts" -print0 | xargs -0 -n 50 deno check
 find test -name "*.ts" -print0 | xargs -0 -n 50 deno check
+find bench -name "*.ts" -print0 | xargs -0 -n 50 deno check
 
 deno test \
   --allow-read \

@@ -38,8 +38,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
   squash?: string;
   private squashMethodCache?:
     | NeuronActivationInterface
-    | ActivationInterface
-    | UnSquashInterface;
+    | ActivationInterface;
+
+  private cacheSquashActivation?: ActivationInterface;
+  private cacheSquashAggregate?: NeuronActivationInterface;
+
   public index: number;
   public tags = undefined;
 
@@ -138,9 +141,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (this.isNodeActivation(squashMethod)) {
         this.activateAndTrace = this.activateAndTraceNodeActivation;
         this.activate = this.activateNodeActivation;
+        this.cacheSquashAggregate = squashMethod;
+        delete this.cacheSquashActivation;
       } else {
         this.activateAndTrace = this.activateAndTraceLinear;
         this.activate = this.activateLinear;
+        this.cacheSquashActivation = squashMethod as ActivationInterface;
+        delete this.cacheSquashAggregate;
       }
       return squashMethod;
     }
@@ -274,8 +281,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   private activateNodeActivation(): number {
     const state = this.creature.state;
     const activations = state.activations;
-    const activation = (this.squashMethodCache as NeuronActivationInterface)
-      .activate(this);
+    const activation = this.cacheSquashAggregate!.activate(this);
 
     activations[this.index] = activation;
     return activation;
@@ -284,8 +290,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   private activateAndTraceNodeActivation(): number {
     const state = this.creature.state;
     const activations = state.activations;
-    const activation = (this.squashMethodCache as NeuronActivationInterface)
-      .activateAndTrace(this);
+    const activation = this.cacheSquashAggregate!.activateAndTrace(this);
 
     activations[this.index] = activation;
     return activation;
@@ -297,15 +302,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
     let value = this.bias;
     const inwardList = this.creature.inwardConnections(this.index);
 
-    for (let i = inwardList.length; i--;) {
-      const c = inwardList[i];
-
-      value += activations[c.from] * c.weight;
+    // Iterate forward for better performance and cache frequently used properties
+    for (let i = 0, len = inwardList.length; i < len; i++) {
+      const { from, weight } = inwardList[i];
+      value += activations[from] * weight;
     }
-
-    // Squash the values received
-    const activationSquash = this.squashMethodCache! as ActivationInterface;
-    const activation = activationSquash.squash(value);
+    const activation = this.cacheSquashActivation!.squash(value);
     activations[this.index] = activation;
     return activation;
   }
@@ -316,16 +318,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
     let value = this.bias;
     const inwardList = this.creature.inwardConnections(this.index);
 
-    for (let i = inwardList.length; i--;) {
-      const c = inwardList[i];
-
-      value += activations[c.from] * c.weight;
+    for (let i = 0, len = inwardList.length; i < len; i++) {
+      const { from, weight } = inwardList[i];
+      value += activations[from] * weight;
     }
 
     const ns = state.node(this.index);
     ns.hintValue = value;
-    const activationSquash = this.squashMethodCache! as ActivationInterface;
-    const activation = activationSquash.squash(value);
+
+    const activation = this.cacheSquashActivation!.squash(value);
     activations[this.index] = activation;
     return activation;
   }

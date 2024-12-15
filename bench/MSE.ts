@@ -8,5 +8,6 @@ for (let i = 0; i < 1000; i++) {
 const mse = Costs.find("MSE");
 
 Deno.bench("MSE", () => {
-  mse.calculate(samples, samples);
+  const a = new Float32Array(samples);
+  mse.calculate(a, a);
 });

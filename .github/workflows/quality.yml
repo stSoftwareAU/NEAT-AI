@@ -31,6 +31,12 @@ jobs:
       - name: Lint Code
         run: deno lint --fix src test bench mod.ts
 
+      - name: Check
+        run: |
+          find src -name "*.ts" -print0 | xargs -0 -n 50 deno check
+          find test -name "*.ts" -print0 | xargs -0 -n 50 deno check
+          find bench -name "*.ts" -print0 | xargs -0 -n 50 deno check
+
       # Check for Changes
 
       # Check for Changes
