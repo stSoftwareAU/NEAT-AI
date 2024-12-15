@@ -4,7 +4,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LOGISTIC implements ActivationInterface, UnSquashInterface {
   public static NAME = "LOGISTIC";
-  public readonly range: ActivationRange = new ActivationRange(this, 0, 1);
+  public readonly range: ActivationRange = new ActivationRange(
+    LOGISTIC.NAME,
+    0,
+    1,
+  );
 
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);

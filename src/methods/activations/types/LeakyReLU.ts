@@ -5,11 +5,13 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class LeakyReLU implements ActivationInterface, UnSquashInterface {
   public static NAME = "LeakyReLU";
 
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    LeakyReLU.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+
+  public readonly range = LeakyReLU.rangeStatic;
 
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
@@ -25,6 +27,6 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
 
   squash(x: number) {
     const value = x > 0 ? x : LeakyReLU.ALPHA * x;
-    return this.range.limit(value);
+    return LeakyReLU.rangeStatic.limit(value);
   }
 }

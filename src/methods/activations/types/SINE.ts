@@ -15,20 +15,36 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class SINE implements ActivationInterface, UnSquashInterface {
   public static NAME = "SINE";
 
-  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
+  public readonly range: ActivationRange = new ActivationRange(
+    SINE.NAME,
+    -1,
+    1,
+  );
 
-  // Function to estimate the input from the activation value.
-  // The inverse of the sine function (arcsine) is used here.
+  /* Function to estimate the input from the activation value.
+   * Since sine is periodic, unSquash returns arcsin (inverse sine).
+   * This will return values within the range [-π/2, π/2].
+   * We use the hint to adjust for the periodic nature of sin(x).
+   */
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    // If the activation is at the boundaries, return the best guess
-    if (Math.abs(activation) === 1) {
-      return activation > 0 ? Math.PI / 2 : -Math.PI / 2;
+    // Get the base value within [-π/2, π/2]
+    const baseValue = Math.asin(activation);
+
+    if (hint !== undefined) {
+      // Adjust using the hint. The difference between baseValue and hint should be close to a multiple of π.
+      const difference = hint - baseValue;
+      const adjustment = Math.round(difference / Math.PI) * Math.PI;
+
+      // Return the adjusted value that is closer to the hint
+      const adjustedValue = baseValue + adjustment;
+
+      return adjustedValue;
     }
 
-    // Use arcsine for the inverse function
-    return Math.asin(activation);
+    // If no hint is provided, return the base value within [-π/2, π/2]
+    return baseValue;
   }
 
   getName() {

@@ -5,11 +5,15 @@ import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts"
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 
 export class HYPOT implements NeuronActivationInterface {
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static NAME = "HYPOT";
+
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    HYPOT.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+
+  public readonly range = HYPOT.rangeStatic;
 
   propagate(
     neuron: Neuron,
@@ -46,8 +50,6 @@ export class HYPOT implements NeuronActivationInterface {
     return this.range.limit(value);
   }
 
-  public static NAME = "HYPOT";
-
   getName() {
     return HYPOT.NAME;
   }
@@ -64,7 +66,7 @@ export class HYPOT implements NeuronActivationInterface {
     }
 
     const value = Math.hypot(...values) + neuron.bias;
-    return this.range.limit(value);
+    return HYPOT.rangeStatic.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {

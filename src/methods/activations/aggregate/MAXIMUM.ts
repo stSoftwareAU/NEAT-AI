@@ -17,11 +17,13 @@ export class MAXIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "MAXIMUM";
 
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    MAXIMUM.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+
+  public readonly range = MAXIMUM.rangeStatic;
 
   getName() {
     return MAXIMUM.NAME;
@@ -42,7 +44,7 @@ export class MAXIMUM
 
     const value = maxValue + neuron.bias;
 
-    return this.range.limit(value);
+    return MAXIMUM.rangeStatic.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
@@ -73,7 +75,7 @@ export class MAXIMUM
 
     const value = maxValue + neuron.bias;
 
-    return this.range.limit(value);
+    return MAXIMUM.rangeStatic.limit(value);
   }
 
   fix(neuron: Neuron) {

@@ -14,11 +14,12 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class Mish implements ActivationInterface, UnSquashInterface {
   public static NAME = "Mish";
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    Mish.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+  public readonly range = Mish.rangeStatic;
 
   getName() {
     return Mish.NAME;
@@ -27,7 +28,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     const value = x * Math.tanh(Math.log(1 + Math.exp(x)));
 
-    return this.range.limit(value, x);
+    return Mish.rangeStatic.limit(value, x);
   }
 
   squashAndDerive(x: number) {

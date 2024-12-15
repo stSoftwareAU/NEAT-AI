@@ -13,11 +13,12 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   public static NAME = "BENT_IDENTITY";
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  private static rangeStatic: ActivationRange = new ActivationRange(
+    BENT_IDENTITY.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+  public readonly range: ActivationRange = BENT_IDENTITY.rangeStatic;
 
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
@@ -50,11 +51,11 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
 
   squash(x: number) {
     if (Math.abs(x) >= 1e153) { // 1e153 is a reasonable threshold to prevent overflow
-      return this.range.limit(x); // Return x as the best guess if it's too large
+      return BENT_IDENTITY.rangeStatic.limit(x); // Return x as the best guess if it's too large
     }
     const d = Math.sqrt(Math.pow(x, 2) + 1);
 
     const value = (d - 1) / 2 + x;
-    return this.range.limit(value);
+    return BENT_IDENTITY.rangeStatic.limit(value);
   }
 }

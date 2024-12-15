@@ -10,7 +10,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Cosine implements ActivationInterface, UnSquashInterface {
   public static NAME = "Cosine";
-  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
+  public readonly range: ActivationRange = new ActivationRange(
+    Cosine.NAME,
+    -1,
+    1,
+  );
 
   getName() {
     return Cosine.NAME;

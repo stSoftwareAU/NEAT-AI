@@ -12,7 +12,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class HARD_TANH implements ActivationInterface, UnSquashInterface {
   public static NAME = "HARD_TANH";
-  public readonly range: ActivationRange = new ActivationRange(this, -1, 1);
+  public readonly range: ActivationRange = new ActivationRange(
+    HARD_TANH.NAME,
+    -1,
+    1,
+  );
 
   getName() {
     return HARD_TANH.NAME;

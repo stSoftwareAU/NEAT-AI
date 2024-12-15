@@ -16,11 +16,13 @@ import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "IF";
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    IF.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+
+  public readonly range = IF.rangeStatic;
 
   getName() {
     return IF.NAME;
@@ -203,7 +205,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     }
 
     const activation = (condition > 0 ? positive : negative) + neuron.bias;
-    const limitedActivation = this.range.limit(activation);
+    const limitedActivation = IF.rangeStatic.limit(activation);
     return limitedActivation;
   }
 
@@ -234,7 +236,7 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     }
 
     const activation = (condition > 0 ? positive : negative) + neuron.bias;
-    const limitedActivation = this.range.limit(activation);
+    const limitedActivation = IF.rangeStatic.limit(activation);
     return limitedActivation;
   }
 

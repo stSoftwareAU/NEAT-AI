@@ -10,11 +10,13 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LogSigmoid implements ActivationInterface, UnSquashInterface {
   public static NAME = "LogSigmoid";
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    LogSigmoid.NAME,
     Number.MIN_SAFE_INTEGER,
     0,
   );
+
+  public readonly range = LogSigmoid.rangeStatic;
 
   getName() {
     return LogSigmoid.NAME;
@@ -26,7 +28,7 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
     }
 
     const value = Math.log(1 / (1 + Math.exp(-x)));
-    return this.range.limit(value);
+    return LogSigmoid.rangeStatic.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {

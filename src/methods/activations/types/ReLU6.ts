@@ -15,7 +15,12 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class ReLU6 implements ActivationInterface, UnSquashInterface {
   public static NAME = "ReLU6";
 
-  public readonly range: ActivationRange = new ActivationRange(this, 0, 6);
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    ReLU6.NAME,
+    0,
+    6,
+  );
+  public readonly range = ReLU6.rangeStatic;
 
   /** Since ReLU6 is not invertible above 6, the unSquash method uses hints similarly to ReLU. */
   unSquash(activation: number, hint?: number): number {

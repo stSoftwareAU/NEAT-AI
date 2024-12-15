@@ -11,11 +11,12 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class Exponential implements ActivationInterface, UnSquashInterface {
   public static NAME = "Exponential";
 
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    Exponential.NAME,
     0,
     Number.MAX_SAFE_INTEGER,
   );
+  public readonly range = Exponential.rangeStatic;
 
   getName() {
     return Exponential.NAME;
@@ -27,7 +28,7 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
     }
 
     const value = Math.exp(x);
-    return this.range.limit(value);
+    return Exponential.rangeStatic.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {

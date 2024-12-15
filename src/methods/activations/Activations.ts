@@ -1,40 +1,39 @@
 import { HYPOT } from "./aggregate/HYPOT.ts";
+import { HYPOTv2 } from "./aggregate/HYPOTv2.ts";
 import { IF } from "./aggregate/IF.ts";
 import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
 import { MEAN } from "./aggregate/MEAN.ts";
 import { MINIMUM } from "./aggregate/MINIMUM.ts";
 import { ABSOLUTE } from "./types/ABSOLUTE.ts";
+import { ArcTan } from "./types/ArcTan.ts";
 import { BENT_IDENTITY } from "./types/BENT_IDENTITY.ts";
 import { BIPOLAR } from "./types/BIPOLAR.ts";
 import { BIPOLAR_SIGMOID } from "./types/BIPOLAR_SIGMOID.ts";
 import { CLIPPED } from "./types/CLIPPED.ts";
+import { COMPLEMENT } from "./types/COMPLEMENT.ts";
 import { Cosine } from "./types/Cosine.ts";
+import { Cube } from "./types/Cube.ts";
 import { ELU } from "./types/ELU.ts";
 import { Exponential } from "./types/Exponential.ts";
 import { GAUSSIAN } from "./types/GAUSSIAN.ts";
+import { GELU } from "./types/GELU.ts";
 import { HARD_TANH } from "./types/HARD_TANH.ts";
 import { IDENTITY } from "./types/IDENTITY.ts";
-import { COMPLEMENT } from "./types/COMPLEMENT.ts";
+import { ISRU } from "./types/ISRU.ts";
 import { LOGISTIC } from "./types/LOGISTIC.ts";
 import { LeakyReLU } from "./types/LeakyReLU.ts";
 import { LogSigmoid } from "./types/LogSigmoid.ts";
 import { Mish } from "./types/Mish.ts";
 import { RELU } from "./types/RELU.ts";
+import { ReLU6 } from "./types/ReLU6.ts";
 import { SELU } from "./types/SELU.ts";
-import { SINUSOID } from "./types/SINUSOID.ts";
+import { SINE } from "./types/SINE.ts";
 import { SOFTSIGN } from "./types/SOFTSIGN.ts";
 import { STEP } from "./types/STEP.ts";
 import { Softplus } from "./types/Softplus.ts";
 import { StdInverse } from "./types/StdInverse.ts";
 import { Swish } from "./types/Swish.ts";
 import { TANH } from "./types/TANH.ts";
-import { ReLU6 } from "./types/ReLU6.ts";
-import { GELU } from "./types/GELU.ts";
-import { HYPOTv2 } from "./aggregate/HYPOTv2.ts";
-import { SINE } from "./types/SINE.ts";
-import { ArcTan } from "./types/ArcTan.ts";
-import { Cube } from "./types/Cube.ts";
-import { ISRU } from "./types/ISRU.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -83,7 +82,7 @@ export class Activations {
 
     [SELU.NAME]: new SELU(),
     [SINE.NAME]: new SINE(),
-    [SINUSOID.NAME]: new SINUSOID(),
+    ["SINUSOID"]: new SINE(),
     [SOFTSIGN.NAME]: new SOFTSIGN(),
     [Softplus.NAME]: new Softplus(),
     [StdInverse.NAME]: new StdInverse(),
@@ -94,7 +93,7 @@ export class Activations {
   };
 
   static readonly NAMES = Object.keys(Activations.MAP)
-    .filter((key) => ![HYPOT.NAME, "INVERSE"].includes(key));
+    .filter((key) => ![HYPOT.NAME, "INVERSE", "SINUSOID"].includes(key));
 
   static find(name: string) {
     const activation = this.MAP[name];

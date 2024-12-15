@@ -19,11 +19,12 @@ export class GELU implements ActivationInterface, UnSquashInterface {
 
   private static readonly TOLERANCE = 1e-6;
 
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    GELU.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+  public readonly range = GELU.rangeStatic;
 
   /**
    * Computes the GELU activation function using an approximation for efficiency.
@@ -38,7 +39,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     const tanhResult = Math.tanh(sqrtTwoOverPi * term);
     const value = 0.5 * x * (1 + tanhResult);
 
-    return this.range.limit(value);
+    return GELU.rangeStatic.limit(value);
   }
 
   /**

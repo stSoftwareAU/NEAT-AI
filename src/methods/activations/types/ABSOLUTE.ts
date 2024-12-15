@@ -13,14 +13,16 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
   public static NAME = "ABSOLUTE";
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  private static rangeStatic: ActivationRange = new ActivationRange(
+    ABSOLUTE.NAME,
     0,
     Number.MAX_SAFE_INTEGER,
   );
 
+  public readonly range: ActivationRange = ABSOLUTE.rangeStatic;
+
   unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
+    ABSOLUTE.rangeStatic.validate(activation, hint);
 
     if ((hint ? hint : 0) < 0) {
       return -activation;
@@ -34,6 +36,6 @@ export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
-    return this.range.limit(Math.abs(x));
+    return ABSOLUTE.rangeStatic.limit(Math.abs(x));
   }
 }

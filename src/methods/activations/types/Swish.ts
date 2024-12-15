@@ -14,11 +14,13 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Swish";
   private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
   private static readonly EPSILON = 1e-6; // Tolerance for Newton-Raphson
-  public readonly range: ActivationRange = new ActivationRange(
-    this,
+  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+    Swish.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+
+  public readonly range = Swish.rangeStatic;
 
   /**
    * Computes the Swish activation function.
@@ -31,7 +33,7 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     // Guard against overflow in exp(-x) when x is a large negative number.
     const expNegX = x < -20 ? 0 : Math.exp(-x);
     const value = x / (1 + expNegX);
-    return this.range.limit(value);
+    return Swish.rangeStatic.limit(value);
   }
 
   /**
