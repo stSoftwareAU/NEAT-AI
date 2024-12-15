@@ -677,6 +677,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
     if (changed) {
       delete this.creature.uuid;
+      this.creature.state.preparedNeurons=false;
     }
     return changed;
   }
