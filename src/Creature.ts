@@ -310,6 +310,7 @@ export class Creature implements CreatureInternal {
     }
     this.state.preparedNeurons = true;
   }
+
   /**
    * Activates the creature and traces the activity.
    *
