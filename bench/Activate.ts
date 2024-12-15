@@ -6,9 +6,10 @@ import { Creature } from "../src/Creature.ts";
  *  ----------- ----------------------------- --------------------- --------------------------
  *  Activate            55.8 ms          17.9 ( 53.4 ms …  58.4 ms)  56.3 ms  58.4 ms  58.4 ms
  */
+const creatureFile = Deno.args[0] || "test/data/traced.json";
 const creature = Creature.fromJSON(
   JSON.parse(
-    Deno.readTextFileSync("test/data/traced.json"),
+    Deno.readTextFileSync(creatureFile),
   ),
 );
 

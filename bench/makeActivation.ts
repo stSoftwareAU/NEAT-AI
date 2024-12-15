@@ -1,11 +1,11 @@
 import { Creature } from "../src/Creature.ts";
 import { CreatureState } from "../src/architecture/CreatureState.ts";
 
-const inputs: number[] = [];
+const tmp: number[] = [];
 for (let i = 0; i < 1000; i++) {
-  inputs[i] = Math.random();
+  tmp[i] = Math.random();
 }
-
+const inputs = new Float32Array(tmp);
 const creature = new Creature(inputs.length, 3, { layers: [{ count: 1000 }] });
 
 const ns = new CreatureState(creature);

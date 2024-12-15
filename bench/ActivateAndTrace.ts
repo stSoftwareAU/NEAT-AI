@@ -3,13 +3,15 @@ import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts
 import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 
 /**
- * benchmark      time (avg)        iter/s             (min … max)       p75       p99      p995
- * --------------------------------------------------------------- -----------------------------
- * Activate      280.07 ms/iter           3.6  (274.06 ms … 293.4 ms) 280.81 ms 293.4 ms 293.4 ms
+ * v0.121.5
+ * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+ * ----------- ----------------------------- --------------------- --------------------------
+ * Activate           544.5 ms           1.8 (437.4 ms … 722.9 ms) 591.4 ms 722.9 ms 722.9 ms
  */
+const creatureFile = Deno.args[0] || "test/data/traced.json";
 const creature = Creature.fromJSON(
   JSON.parse(
-    Deno.readTextFileSync("test/data/traced.json"),
+    Deno.readTextFileSync(creatureFile),
   ),
 );
 
