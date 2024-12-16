@@ -704,7 +704,7 @@ export class Creature implements CreatureInternal {
     if (changed) {
       delete this.uuid;
       delete this.memetic;
-      this.state.clear();
+      this.state.preparedNeurons = false;
       this.fix();
     }
 
@@ -1174,7 +1174,7 @@ export class Creature implements CreatureInternal {
 
     if (changed) {
       delete this.uuid;
-      this.state.clear();
+      this.state.preparedNeurons = false;
       this.fix();
     }
     if (this.DEBUG) {
