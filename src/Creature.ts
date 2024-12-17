@@ -525,9 +525,10 @@ export class Creature implements CreatureInternal {
    */
   private bulkLoadInwardConnections(toIndx: number): Synapse[] {
     const cacheTo = this.cacheTo;
-
+    cacheTo.clear();
     // Group synapses by their 'to' index
-    for (const synapse of this.synapses) {
+    for (let i=0,len=this.synapses.length; i<len; i++) {
+      const synapse = this.synapses[i];
       const to = synapse.to;
       let tmpResults = cacheTo.get(to);
       if (tmpResults === undefined) {
