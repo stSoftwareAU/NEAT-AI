@@ -442,7 +442,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         config,
         sparseConfig,
       );
-      // propagateUpdateMethod.range.validate(limitedActivation);
+
     } else {
       const targetValue = toValue(this, targetActivation, ns.hintValue);
 
