@@ -29,6 +29,7 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
+import { generate as generateV5Sync } from "./SyncV5.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -121,24 +122,45 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
   }
 
+  private dynamicFunctionUUID: string = "";
+
+  private cachedDynamicFunction?: () => {
+    activation: number;
+    value: number;
+  };
+
+  private static NAMESPACE = "8e4ab65a-26fb-4b8e-b780-7510d8f5dc63";
+
   /**
    * Creates a function that calculates the activation of the neuron
    * @returns A function that calculates the activation of the neuron
    */
-  private makeFunction() {
+  private makeFunction(): () => {
+    activation: number;
+    value: number;
+  } {
     let functionBody = "const activations = state.activations;\n";
-    functionBody += `let value = ${this.bias};\n`;
+    functionBody += `const value = ${this.bias}`;
 
     const inwardList = this.creature.inwardConnections(this.index);
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
       const { from, weight } = inwardListClone[i];
-      functionBody += `value += activations[${from}] * ${weight};\n`;
+      functionBody += `+\nactivations[${from}] * ${weight}`;
     }
+    functionBody += `;\n`;
 
     functionBody += `const activation = squash(value);\n`;
     functionBody += `activations[${this.index}] = activation;\n`;
     functionBody += "return { activation, value };";
+
+    const te = new TextEncoder();
+    const cacheKey = te.encode(functionBody + "//" + this.squash);
+
+    const uuid = generateV5Sync(Neuron.NAMESPACE, cacheKey);
+    if (this.dynamicFunctionUUID == uuid) {
+      return this.cachedDynamicFunction!;
+    }
 
     // Dynamically create the function
     const func = new Function(
@@ -154,7 +176,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
     };
 
     // Bind static parameters: state and squash function
-    return func.bind(null, this.creature.state, this.squashProxy);
+    const bondedFunction = func.bind(
+      null,
+      this.creature.state,
+      this.squashProxy,
+    );
+    this.dynamicFunctionUUID = uuid;
+    this.cachedDynamicFunction = bondedFunction;
+    return bondedFunction;
   }
 
   /**
