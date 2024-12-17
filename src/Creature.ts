@@ -515,15 +515,32 @@ export class Creature implements CreatureInternal {
   inwardConnections(toIndx: number): Synapse[] {
     let results = this.cacheTo.get(toIndx);
     if (results === undefined) {
-      results = [];
+      results = this.bulkLoadInwardConnections(toIndx);
+    }
+    return results;
+  }
 
-      for (let i = this.synapses.length; i--;) {
-        const c = this.synapses[i];
+  /**
+   * Precompiles all inward connections and caches them for fast lookup.
+   */
+  private bulkLoadInwardConnections(toIndx: number): Synapse[] {
+    const cacheTo = this.cacheTo;
 
-        if (c.to === toIndx) results.push(c);
+    // Group synapses by their 'to' index
+    for (const synapse of this.synapses) {
+      const to = synapse.to;
+      let tmpResults = cacheTo.get(to);
+      if (tmpResults === undefined) {
+        tmpResults = [];
+        cacheTo.set(to, tmpResults);
       }
+      tmpResults.push(synapse);
+    }
 
-      this.cacheTo.set(toIndx, results);
+    let results = cacheTo.get(toIndx);
+    if (results === undefined) {
+      results = [];
+      cacheTo.set(toIndx, results);
     }
     return results;
   }

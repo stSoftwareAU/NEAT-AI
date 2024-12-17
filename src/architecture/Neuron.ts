@@ -171,8 +171,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
     } else if (this.squash) {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
-        this.activateAndTraceNeuron = this.activateAndTraceNodeActivation;
-        this.activateNeuron = this.activateNodeActivation;
+        this.activateAndTraceNeuron = this.activateAndTraceNeuronActivation;
+        this.activateNeuron = this.activateNeuronActivation;
         this.activateProxy = squashMethod.activate.bind(squashMethod);
         this.activateAndTraceProxy = squashMethod.activateAndTrace.bind(
           squashMethod,
@@ -314,7 +314,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     return { activation, value: 0 };
   }
 
-  private activateNodeActivation(): { activation: number; value: number } {
+  private activateNeuronActivation(): { activation: number; value: number } {
     const state = this.creature.state;
     const activations = state.activations;
     const activation = this.activateProxy(this);
@@ -323,7 +323,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     return { activation, value: 0 };
   }
 
-  private activateAndTraceNodeActivation(): {
+  private activateAndTraceNeuronActivation(): {
     activation: number;
     value: number;
   } {
