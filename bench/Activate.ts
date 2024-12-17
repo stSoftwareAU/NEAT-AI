@@ -20,7 +20,7 @@ import { Creature } from "../src/Creature.ts";
  * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p999
  * ----------- ----------------------------- --------------------- --------------------------
  * Activate            41.1 ms          24.3 ( 37.3 ms …  44.3 ms)  42.3 ms  44.3 ms  44.3 ms
- * 
+ *
  * v0.124.2
  * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p999
  * ----------- ----------------------------- --------------------- --------------------------
