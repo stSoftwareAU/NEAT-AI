@@ -38,7 +38,7 @@ function calculateMaxOutOfBounds(
 
   for (const node of creature.neurons) {
     if (
-      node.type !== "input" // && node.bias !== undefined && node.bias !== null
+      node.type !== "input"
     ) {
       assert(Number.isFinite(node.bias), `Bias: ${node.bias} is not finite`);
       const b = Math.abs(node.bias!);
