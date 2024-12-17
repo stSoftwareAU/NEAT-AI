@@ -124,8 +124,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Creates a function that calculates the activation of the neuron
    * @returns A function that calculates the activation of the neuron
-   * @private
-   * @memberof Neuron
    * @returns {Function} A function that calculates the activation of the neuron
    */
   private makeFunction() {
@@ -145,7 +143,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     functionBody += "activations[this.index] = activation;\n";
     functionBody += "return { activation, value };";
 
-    // Dynamically create the function
     const func = new Function(
       functionBody,
     ) as () => {
