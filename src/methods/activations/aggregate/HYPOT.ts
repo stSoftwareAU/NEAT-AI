@@ -55,18 +55,14 @@ export class HYPOT implements NeuronActivationInterface {
   }
 
   activate(neuron: Neuron) {
-    return HYPOT.calculate(neuron);
-  }
-
-  private static calculate(neuron: Neuron) {
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
     const state = neuron.creature.state;
     const activations = state.activations;
     for (let i = inward.length; i--;) {
-      const c = inward[i];
+      const { from, weight } = inward[i];
 
-      values[i] = activations[c.from] * c.weight;
+      values[i] = activations[from] * weight;
     }
 
     const value = Math.hypot(...values) + neuron.bias;
@@ -74,7 +70,7 @@ export class HYPOT implements NeuronActivationInterface {
   }
 
   activateAndTrace(neuron: Neuron) {
-    return HYPOT.calculate(neuron);
+    return this.activate(neuron);
   }
 
   fix(neuron: Neuron) {
