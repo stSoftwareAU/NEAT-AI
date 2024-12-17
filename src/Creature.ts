@@ -305,7 +305,7 @@ export class Creature implements CreatureInternal {
     if (this.state.preparedNeurons) {
       return;
     }
-    for (let i = this.input; i < this.neurons.length; i++) {
+    for (let i = this.input, len = this.neurons.length; i < len; i++) {
       this.neurons[i].prepare();
     }
     this.state.preparedNeurons = true;

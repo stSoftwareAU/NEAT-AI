@@ -52,6 +52,7 @@ export class Mutator {
 
           delete creature.memetic;
           delete creature.uuid;
+          creature.state.preparedNeurons = false;
           if (original) {
             discover(original, creature);
           }
