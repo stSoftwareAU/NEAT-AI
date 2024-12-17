@@ -442,7 +442,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
         config,
         sparseConfig,
       );
-
     } else {
       const targetValue = toValue(this, targetActivation, ns.hintValue);
 
