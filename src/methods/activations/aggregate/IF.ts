@@ -218,11 +218,11 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
     const activations = state.activations;
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
-      const c = inward[i];
+      const { from, weight, type } = inward[i];
 
-      const value = activations[c.from] * c.weight;
+      const value = activations[from] * weight;
       if (Number.isFinite(value)) {
-        switch (c.type) {
+        switch (type) {
           case "condition":
             condition += value;
             break;

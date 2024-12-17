@@ -1,4 +1,3 @@
-import { assert } from "@std/assert/assert";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import {
@@ -23,34 +22,22 @@ export class MEAN implements NeuronActivationInterface {
     return MEAN.NAME;
   }
 
-  private static calculate(neuron: Neuron) {
+  activate(neuron: Neuron) {
     let sum = 0;
 
     const state = neuron.creature.state;
     const toList = neuron.creature.inwardConnections(neuron.index);
-    for (let i = toList.length; i--;) {
-      const c = toList[i];
-      const fromActivation = state.activations[c.from];
-      assert(
-        Number.isFinite(fromActivation),
-        `MEAN: ${fromActivation} is not finite`,
-      );
-      if (fromActivation) {
-        sum += fromActivation * c.weight;
-      }
+    const len = toList.length;
+    for (let i = 0; i < len; i++) {
+      const { from, weight } = toList[i];
+      const fromActivation = state.activations[from];
+
+      sum += fromActivation * weight;
     }
 
-    const value = limitValue(sum / toList.length);
-    if (Number.isFinite(value) == false) {
-      throw new Error(
-        `Node: ${neuron.uuid} MEAN: ${value} is not finite sum: ${sum} toList.length: ${toList.length}`,
-      );
-    }
+    const value = limitValue(sum / len);
+
     return value + neuron.bias;
-  }
-
-  activate(neuron: Neuron) {
-    return MEAN.calculate(neuron);
   }
 
   fix(neuron: Neuron) {
@@ -74,15 +61,15 @@ export class MEAN implements NeuronActivationInterface {
   }
 
   activateAndTrace(neuron: Neuron) {
-    const activation = MEAN.calculate(neuron);
+    const activation = this.activate(neuron);
 
     const state = neuron.creature.state;
     const toList = neuron.creature.inwardConnections(neuron.index);
     for (let i = toList.length; i--;) {
-      const c = toList[i];
+      const { from, to } = toList[i];
       const cs = state.connection(
-        c.from,
-        c.to,
+        from,
+        to,
       );
       cs.used = true;
     }

@@ -34,8 +34,8 @@ export class MINIMUM
     const state = neuron.creature.state;
     const activations = state.activations;
     for (let i = fromList.length; i--;) {
-      const c = fromList[i];
-      const value = activations[c.from] * c.weight;
+      const { from, weight } = fromList[i];
+      const value = activations[from] * weight;
       if (value < minValue) {
         minValue = value;
       }
