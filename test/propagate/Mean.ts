@@ -109,6 +109,7 @@ Deno.test("PropagateMean", () => {
   if (!neuron) throw new Error("neuron not found");
 
   neuron.bias = 0;
+  creature.state.preparedNeurons = false;
 
   const config = createBackPropagationConfig({ learningRate: 0.1 });
   console.info(config);

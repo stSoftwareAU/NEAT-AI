@@ -48,7 +48,7 @@ pipeline {
                         docker {
                             image DENO_IMAGE
                             args TOOLS_ARGS
-                            label 'large'
+                            label '4xlarge'
                         }
                     }
                     steps {
