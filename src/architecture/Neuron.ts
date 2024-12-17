@@ -124,33 +124,37 @@ export class Neuron implements TagsInterface, NeuronInternal {
   /**
    * Creates a function that calculates the activation of the neuron
    * @returns A function that calculates the activation of the neuron
-   * @returns {Function} A function that calculates the activation of the neuron
    */
   private makeFunction() {
-    let functionBody = "const state = this.creature.state;\n";
-    functionBody += "const activations = state.activations;\n";
+    let functionBody = "const activations = state.activations;\n";
+    functionBody += `let value = ${this.bias};\n`;
 
     const inwardList = this.creature.inwardConnections(this.index);
-
-    functionBody += `let value = this.bias;\n`;
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
       const { from, weight } = inwardListClone[i];
       functionBody += `value += activations[${from}] * ${weight};\n`;
     }
 
-    functionBody += "const activation = this.squashProxy(value);\n";
-    functionBody += "activations[this.index] = activation;\n";
+    functionBody += `const activation = squash(value);\n`;
+    functionBody += `activations[${this.index}] = activation;\n`;
     functionBody += "return { activation, value };";
 
+    // Dynamically create the function
     const func = new Function(
+      "state", // Parameter: neuron state
+      "squash", // Parameter: squash function
       functionBody,
-    ) as () => {
+    ) as (
+      state: { activations: Float32Array },
+      squash: (value: number) => number,
+    ) => {
       activation: number;
       value: number;
     };
 
-    return func.bind(this);
+    // Bind static parameters: state and squash function
+    return func.bind(null, this.creature.state, this.squashProxy);
   }
 
   /**
@@ -535,7 +539,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
         limitedActivation = (squashMethod as ActivationInterface).squash(
           improvedValue + aBias - currentBias,
         );
-        // propagateUpdateMethod.range.validate(limitedActivation);
       } else {
         limitedActivation = (squashMethod as ActivationInterface).squash(
           improvedValue,
