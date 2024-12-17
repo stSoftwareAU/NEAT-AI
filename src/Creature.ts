@@ -526,24 +526,24 @@ export class Creature implements CreatureInternal {
   private bulkLoadInwardConnections(toIndx: number): Synapse[] {
     const cacheTo = this.cacheTo;
     cacheTo.clear();
+    assert(this.neurons.length > 0, "Neurons length is zero");
+    assert(toIndx < this.neurons.length, "toIndx is out of bounds");
+    assert(toIndx >= 0, "toIndx must be positive");
+    for (let indx = 0, len = this.neurons.length; indx < len; indx++) {
+      cacheTo.set(indx, []);
+    }
     // Group synapses by their 'to' index
     for (let i = 0, len = this.synapses.length; i < len; i++) {
       const synapse = this.synapses[i];
       const to = synapse.to;
-      let tmpResults = cacheTo.get(to);
-      if (tmpResults === undefined) {
-        tmpResults = [];
-        cacheTo.set(to, tmpResults);
-      }
+      const tmpResults = cacheTo.get(to);
+      assert(tmpResults, "tmpResults is undefined");
       tmpResults.push(synapse);
     }
 
-    let results = cacheTo.get(toIndx);
-    if (results === undefined) {
-      results = [];
-      cacheTo.set(toIndx, results);
-    }
-    return results;
+    const results = cacheTo.get(toIndx);
+    assert(results, "results is undefined");
+    return results!;
   }
 
   /**
