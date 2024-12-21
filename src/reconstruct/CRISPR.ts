@@ -292,27 +292,27 @@ export class CRISPR {
       });
 
       dna.neurons.forEach((dnaNeuron) => {
-        const uuid = dnaNeuron.uuid
-          ? uuidMap.has(dnaNeuron.uuid) ? crypto.randomUUID() : dnaNeuron.uuid
-          : crypto.randomUUID();
-        const indx = uuidMap.size;
+        if (!dnaNeuron.uuid || !uuidMap.has(dnaNeuron.uuid)) {
+          const uuid = dnaNeuron.uuid ? dnaNeuron.uuid : crypto.randomUUID();
+          const indx = uuidMap.size;
 
-        const neuron = new Neuron(
-          uuid,
-          dnaNeuron.type,
-          dnaNeuron.bias,
-          tmpCreature,
-          dnaNeuron.squash,
-        );
-        neuron.index = indx;
+          const neuron = new Neuron(
+            uuid,
+            dnaNeuron.type,
+            dnaNeuron.bias,
+            tmpCreature,
+            dnaNeuron.squash,
+          );
+          neuron.index = indx;
 
-        addTag(neuron, "CRISPR", dna.id);
-        if (dnaNeuron.comment) {
-          addTag(neuron, "comment", dnaNeuron.comment);
+          addTag(neuron, "CRISPR", dna.id);
+          if (dnaNeuron.comment) {
+            addTag(neuron, "comment", dnaNeuron.comment);
+          }
+          neurons.push(neuron);
+
+          uuidMap.set(uuid, indx);
         }
-        neurons.push(neuron);
-
-        uuidMap.set(uuid, indx);
       });
       for (
         let indx = tmpCreature.neurons.length - tmpCreature.output;
@@ -429,6 +429,17 @@ export class CRISPR {
     delete modifiedCreature.uuid;
     delete modifiedCreature.memetic;
 
+    try {
+      modifiedCreature.validate();
+    } catch (e) {
+      const name = `.CRISPR-ERROR-${dna.id}.json`;
+      Deno.writeTextFileSync(
+        name,
+        JSON.stringify(modifiedCreature.exportJSON(), null, 2),
+      );
+
+      throw e;
+    }
     modifiedCreature.validate();
     const modifiedUUID = CreatureUtil.makeUUID(modifiedCreature);
     if (uuid !== modifiedUUID) {

@@ -770,8 +770,7 @@ export class Creature implements CreatureInternal {
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
   propagateUpdate(config: BackPropagationConfig, sparseConfig: SparseConfig) {
-    // @TODO randomize the order of the neurons
-    for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
+    for (let indx = this.input; indx < this.neurons.length; indx++) {
       const n = this.neurons[indx];
       if (sparseConfig.updateNeeded(n.uuid)) {
         n.propagateUpdate(config);
