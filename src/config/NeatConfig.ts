@@ -77,6 +77,10 @@ export function createNeatConfig(options: NeatOptions) {
 
     maximumWeightAdjustmentScale: options.maximumWeightAdjustmentScale ?? 1,
     sparseRatio: options.sparseRatio ?? Math.random() * Math.random(),
+    globalBreedingRate: Math.max(
+      Math.min(options.globalBreedingRate ?? Math.random(), 1),
+      0,
+    ),
   };
   validate(config);
   return Object.freeze(config);

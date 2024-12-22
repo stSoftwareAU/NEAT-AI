@@ -119,6 +119,9 @@ export interface NeatArguments {
 
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
+
+  /** The ratio of breeding over all the creatures versus within the species */
+  globalBreedingRate: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;
