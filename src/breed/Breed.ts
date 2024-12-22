@@ -47,21 +47,31 @@ export class Breed {
   private getDad(mum: Creature): Creature | undefined {
     assert(mum.uuid, "Mother UUID is undefined");
 
-    const species = this.genus.findSpeciesByCreatureUUID(mum.uuid);
+    let possibleFathers: Creature[] = [];
 
-    let possibleFathers = species.creatures.filter((creature) =>
-      creature.uuid !== mum.uuid
-    );
+    if (this.config.globalBreedingRate > Math.random()) {
+      possibleFathers = this.genus.population.filter((creature) =>
+        creature.uuid !== mum.uuid
+      );
+    }
 
     if (possibleFathers.length === 0) {
-      const closestSpecies = this.genus.findClosestMatchingSpecies(mum);
-      if (closestSpecies) {
-        possibleFathers = closestSpecies.creatures;
+      const species = this.genus.findSpeciesByCreatureUUID(mum.uuid);
 
-        if (possibleFathers.length === 0) {
-          possibleFathers = this.genus.population.filter((creature) =>
-            creature.uuid !== mum.uuid
-          );
+      possibleFathers = species.creatures.filter((creature) =>
+        creature.uuid !== mum.uuid
+      );
+
+      if (possibleFathers.length === 0) {
+        const closestSpecies = this.genus.findClosestMatchingSpecies(mum);
+        if (closestSpecies) {
+          possibleFathers = closestSpecies.creatures;
+
+          if (possibleFathers.length === 0) {
+            possibleFathers = this.genus.population.filter((creature) =>
+              creature.uuid !== mum.uuid
+            );
+          }
         }
       }
     }
