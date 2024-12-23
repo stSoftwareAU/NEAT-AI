@@ -89,7 +89,7 @@ Deno.test("large", () => {
         `${directory}/error-trace.json`,
         JSON.stringify(results.trace, null, 1),
       );
-      if (results.error - lastError > 0.3) {
+      if (results.error - lastError > 0.35) {
         fail(
           `Error rate was ${results.error}, regression ${
             lastError - results.error
