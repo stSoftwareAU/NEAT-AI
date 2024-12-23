@@ -1,6 +1,9 @@
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type {
+  CreatureExport,
+  CreatureInternal,
+} from "../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { Neat } from "../src/NEAT/Neat.ts";
 import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
@@ -272,4 +275,76 @@ Deno.test("generateUUID", () => {
     n1.uuid,
     "modifying should change the UUID: " + n1.uuid,
   );
+});
+
+Deno.test("ignoreOrderUUID", () => {
+  const a: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-3", squash: "Cosine", bias: 2 },
+      { type: "hidden", uuid: "hidden-4", squash: "CLIPPED", bias: 2 },
+
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-1",
+        bias: 0,
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
+      { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
+
+      { fromUUID: "hidden-3", toUUID: "hidden-4", weight: -0.5 },
+      { fromUUID: "hidden-4", toUUID: "output-0", weight: 0.6 },
+
+      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
+      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
+    ],
+    input: 3,
+    output: 2,
+  };
+  const b: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-4", squash: "CLIPPED", bias: 2 },
+      { type: "hidden", uuid: "hidden-3", squash: "Cosine", bias: 2 },
+
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-1",
+        bias: 0,
+      },
+    ],
+    synapses: [
+      { fromUUID: "hidden-4", toUUID: "output-0", weight: 0.6 },
+
+      { fromUUID: "hidden-3", toUUID: "hidden-4", weight: -0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
+
+      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
+      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
+      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
+    ],
+    input: 3,
+    output: 2,
+  };
+  const creatureA = Creature.fromJSON(a);
+  const uuidA = CreatureUtil.makeUUID(creatureA);
+
+  const creatureB = Creature.fromJSON(b);
+  const uuidB = CreatureUtil.makeUUID(creatureB);
+
+  assertEquals(uuidA, uuidB, "UUIDs should match: " + uuidA);
 });
