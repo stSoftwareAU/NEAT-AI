@@ -1,10 +1,11 @@
 import { assert } from "@std/assert";
+import { getTag } from "@stsoftware/tags";
 import { Creature, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
+import { discover } from "../blackbox/Discover.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
 import type { Genus } from "../NEAT/Genus.ts";
 import { createCompatibleFather } from "./Father.ts";
-import { discover } from "../blackbox/Discover.ts";
 
 export class Breed {
   readonly genus: Genus;
@@ -115,51 +116,85 @@ export class Breed {
    * @return {Creature} parent
    */
   private getParent(population: Creature[]): Creature {
+    // Assert all creatures have valid fitness scores
+    const claimedScores = new Map<string, number>();
+    let lastScore = Number.POSITIVE_INFINITY;
+    let sorted = true;
+    population.forEach((creature) => {
+      assert(creature.uuid, "Creature UUID is undefined");
+
+      if (Number.isFinite(creature.score)) {
+        if (lastScore < creature.score!) {
+          sorted = false;
+        }
+        lastScore = creature.score!;
+        claimedScores.set(creature.uuid, creature.score!);
+      } else {
+        const scoreTxt = getTag(creature, "score");
+        if (scoreTxt) {
+          const score = parseFloat(scoreTxt);
+
+          if (Number.isFinite(score)) {
+            if (lastScore < score) {
+              sorted = false;
+            }
+
+            lastScore = score;
+            claimedScores.set(creature.uuid, score);
+          } else {
+            lastScore = Number.NEGATIVE_INFINITY;
+            claimedScores.set(creature.uuid, Number.NEGATIVE_INFINITY);
+          }
+        } else {
+          lastScore = Number.NEGATIVE_INFINITY;
+          claimedScores.set(creature.uuid, Number.NEGATIVE_INFINITY);
+        }
+      }
+    });
+
+    const sortedPopulation = sorted
+      ? population
+      : population.slice().sort((a, b) => {
+        return claimedScores.get(b.uuid!)! - claimedScores.get(a.uuid!)!;
+      });
+
     switch (this.config.selection) {
       case Selection.POWER: {
         const r = Math.random();
         const index = Math.floor(
           Math.pow(r, Selection.POWER.power) *
-            population.length,
+            sortedPopulation.length,
         );
 
-        return population[index];
+        return sortedPopulation[index];
       }
       case Selection.FITNESS_PROPORTIONATE: {
-        /**
-         * As negative fitnesses are possible
-         * https://stackoverflow.com/questions/16186686/genetic-algorithm-handling-negative-fitness-values
-         * this is unnecessarily run for every individual, should be changed
-         */
-
         let totalFitness = 0;
         let minimalFitness = 0;
-        for (let i = population.length; i--;) {
-          const tmpScore = population[i].score;
-          const score = tmpScore === undefined ? Infinity * -1 : tmpScore;
+
+        for (let i = sortedPopulation.length; i--;) {
+          const score = claimedScores.get(sortedPopulation[i].uuid!)!;
           minimalFitness = score < minimalFitness ? score : minimalFitness;
           totalFitness += score;
         }
 
         const adjustFitness = Math.abs(minimalFitness);
-        totalFitness += adjustFitness * population.length;
+        totalFitness += adjustFitness * sortedPopulation.length;
 
         const random = Math.random() * totalFitness;
         let value = 0;
 
-        for (let i = 0; i < population.length; i++) {
-          const genome = population[i];
-          if (genome.score !== undefined) {
-            value += genome.score + adjustFitness;
-            if (random < value) {
-              return genome;
-            }
+        for (let i = 0; i < sortedPopulation.length; i++) {
+          const genome = sortedPopulation[i];
+          value += claimedScores.get(genome.uuid!)! + adjustFitness;
+          if (random < value) {
+            return genome;
           }
         }
 
         /* If all scores equal, return random genome */
-        return population[
-          Math.floor(Math.random() * population.length)
+        return sortedPopulation[
+          Math.floor(Math.random() * sortedPopulation.length)
         ];
       }
       case Selection.TOURNAMENT: {
@@ -171,15 +206,15 @@ export class Breed {
         // Create a tournament
         const individuals = new Array(Selection.TOURNAMENT.size);
         for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
-          const random = population[
-            Math.floor(Math.random() * population.length)
+          const random = sortedPopulation[
+            Math.floor(Math.random() * sortedPopulation.length)
           ];
           individuals[i] = random;
         }
 
         // Sort the tournament individuals by score
         individuals.sort(function (a, b) {
-          return b.score - a.score;
+          return claimedScores.get(b.uuid)! - claimedScores.get(a.uuid)!;
         });
 
         // Select an individual
