@@ -446,7 +446,7 @@ export class CRISPR {
       console.warn(`Invalid creature saved to ${name}`, e);
       return this.creature;
     }
-    
+
     const modifiedUUID = CreatureUtil.makeUUID(modifiedCreature);
     if (uuid !== modifiedUUID) {
       addTag(modifiedCreature, "CRISPR-SOURCE", uuid);
