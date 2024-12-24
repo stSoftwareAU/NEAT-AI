@@ -81,6 +81,7 @@ export function createNeatConfig(options: NeatOptions) {
       Math.min(options.globalBreedingRate ?? Math.random(), 1),
       0,
     ),
+    CRISPRs: options.CRISPRs || [],
   };
   validate(config);
   return Object.freeze(config);

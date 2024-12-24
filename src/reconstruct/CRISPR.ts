@@ -327,6 +327,10 @@ export class CRISPR {
       }
 
       tmpCreature.neurons = neurons;
+    } else {
+      tmpCreature.neurons.forEach((neuron, indx) => {
+        uuidMap.set(neuron.uuid, indx);
+      });
     }
 
     tmpCreature.clearCache();
@@ -351,13 +355,14 @@ export class CRISPR {
     dna.synapses.forEach((s) => {
       assert(s.fromUUID !== undefined, "Missing fromUUID");
       const fromIndx = uuidMap.get(s.fromUUID);
-      assert(s.toUUID !== undefined, "Missing toUUID");
-      const toIndx = uuidMap.get(s.toUUID);
-
       assert(
         fromIndx !== undefined,
         "Invalid connection (from): " + JSON.stringify(s),
       );
+
+      assert(s.toUUID !== undefined, "Missing toUUID");
+      const toIndx = uuidMap.get(s.toUUID);
+
       assert(
         toIndx !== undefined,
         "Invalid connection (to): " + JSON.stringify(s),
@@ -396,10 +401,10 @@ export class CRISPR {
     let alreadyProcessed = false;
 
     const uuid = CreatureUtil.makeUUID(this.creature);
-    this.creature.neurons.forEach((node) => {
-      assert(node.uuid !== undefined, "missing uuid");
+    this.creature.neurons.forEach((neuron) => {
+      assert(neuron.uuid !== undefined, "missing uuid");
 
-      const id = getTag(node, "CRISPR");
+      const id = getTag(neuron, "CRISPR");
 
       if (id === dna.id) {
         alreadyProcessed = true;

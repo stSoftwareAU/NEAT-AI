@@ -290,17 +290,17 @@ Deno.test("ignoreOrderUUID", () => {
         bias: 1,
       },
       {
-        type: "output",
         squash: "IDENTITY",
         uuid: "output-1",
         bias: 0,
+        type: "output",
       },
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
-      { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
+      { weight: 0.3, fromUUID: "input-1", toUUID: "hidden-3" },
 
-      { fromUUID: "hidden-3", toUUID: "hidden-4", weight: -0.5 },
+      { toUUID: "hidden-4", weight: -0.5, fromUUID: "hidden-3" },
       { fromUUID: "hidden-4", toUUID: "output-0", weight: 0.6 },
 
       { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },

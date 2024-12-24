@@ -1470,7 +1470,7 @@ export class Creature implements CreatureInternal {
 
       if (jn.type === "input") continue;
       if (jn.type == "output") {
-        jn.uuid = `output-${outputIndx}`;
+        (jn as { uuid: string }).uuid = `output-${outputIndx}`;
 
         outputIndx++;
       }

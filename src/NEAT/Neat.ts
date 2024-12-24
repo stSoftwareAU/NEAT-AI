@@ -27,6 +27,7 @@ import { AddConnection } from "../mutate/AddConnection.ts";
 import { Genus } from "./Genus.ts";
 import type { Approach } from "./LogApproach.ts";
 import { Mutator } from "./Mutator.ts";
+import { CRISPR, type CrisprInterface } from "../reconstruct/CRISPR.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -68,6 +69,7 @@ export class Neat {
 
   readonly endTimeTS: number;
   population: Creature[];
+  CRISPRs: CrisprInterface[];
 
   constructor(
     input: number,
@@ -97,6 +99,21 @@ export class Neat {
     this.endTimeTS = options.timeoutMinutes
       ? Date.now() + Math.max(1, options.timeoutMinutes) * 60_000
       : 0;
+    this.CRISPRs = Neat.deepCloneAndShuffle(this.config.CRISPRs);
+  }
+
+  static deepCloneAndShuffle<T>(arr: T[]): T[] {
+    if (arr.length === 0) return [];
+
+    // Deep clone using JSON — can fail with non-serializable fields
+    const cloned = JSON.parse(JSON.stringify(arr)) as T[];
+
+    // Shuffle (Fisher-Yates)
+    for (let i = cloned.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
+    }
+    return cloned;
   }
 
   private doNotStartMoreTraining = false;
@@ -365,6 +382,20 @@ export class Neat {
       }
     }
 
+    const dnaPopulation = [];
+
+    if (this.CRISPRs.length) {
+      const crispr = new CRISPR(fittest);
+      while (this.CRISPRs.length > 0) {
+        const dna = this.CRISPRs.pop()!;
+
+        const enhanced = crispr.cleaveDNA(dna);
+        if (enhanced.uuid != fittest.uuid) {
+          dnaPopulation.push(enhanced);
+          break;
+        }
+      }
+    }
     const newPopulation = [];
     if (
       elitists.length > 0
@@ -398,6 +429,7 @@ export class Neat {
 
     const newPopSize = this.config.populationSize -
       elitists.length -
+      dnaPopulation.length -
       this.trainingComplete.length -
       fineTunedPopulation.length - 1 -
       newPopulation.length;
@@ -479,6 +511,7 @@ export class Neat {
       ...trainedPopulation,
       ...fineTunedPopulation,
       ...newPopulation,
+      ...dnaPopulation,
     ]; // Keep pseudo sorted.
 
     const deDuplicator = new DeDuplicator(breed, mutator);
