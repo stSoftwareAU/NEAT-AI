@@ -4,6 +4,7 @@ import type {
 } from "../architecture/CreatureInterfaces.ts";
 import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { SelectionInterface } from "../methods/Selection.ts";
+import type { CrisprInterface } from "../../mod.ts";
 
 /**
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
@@ -32,6 +33,9 @@ export interface NeatArguments {
 
   /** List of creatures to start with. Can be internal or exported creatures. */
   creatures: CreatureInternal[] | CreatureExport[];
+
+  /** List of DNA segments to attempt to inject */
+  CRISPRs: CrisprInterface[];
 
   /**
    * Enable feedback loop where the previous result feeds back into the next interaction.

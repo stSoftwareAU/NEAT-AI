@@ -9,7 +9,7 @@ interface NeuronAbstract extends TagsInterface {
 
 export interface NeuronExport extends NeuronAbstract {
   readonly type: "hidden" | "output" | "constant";
-  uuid: string;
+  readonly uuid: string;
   bias: number;
   squash?: string;
 }
