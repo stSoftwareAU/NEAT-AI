@@ -91,15 +91,27 @@ Deno.test("GeneticIsolatedIslands", () => {
   );
 
   const baby = handleGrafting(father, mother, father);
+  
   assert(baby, "Baby should be created");
+  const babyUUID = CreatureUtil.makeUUID(baby);
+  const fatherUUID = CreatureUtil.makeUUID(father);
+  const motherUUID = CreatureUtil.makeUUID(mother);
+  assertNotEquals(
+    babyUUID,
+    fatherUUID,
+    "Baby should not be a clone of the father",
+  );
+  assertNotEquals(
+    babyUUID,
+    motherUUID,
+    "Baby should not be a clone of the mother",
+  );
   const exportBaby = baby.exportJSON();
 
   Deno.writeTextFileSync(
     `${testDir}/baby.json`,
     JSON.stringify(exportBaby, null, 2),
   );
-
-  const babyUUID = CreatureUtil.makeUUID(baby);
 
   assertNotEquals(
     babyUUID,
@@ -218,4 +230,100 @@ Deno.test("GeneticIsolatedIslands", () => {
   );
 
   baby.validate();
+});
+
+Deno.test("GeneticIsolatedIslands - Non-Overlapping UUIDs", () => {
+  const mother = makeTestCreature("mother-unique");
+  const father = makeTestCreature("father-unique");
+
+  // Filter out predictable UUIDs (e.g., "output-0", "output-1")
+  const excludeUUIDs = new Set(["input-0", "input-1","input-2","output-0", "output-1"]);
+  const motherNeuronUUIDs = new Set(
+    mother.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid))
+  );
+  const fatherNeuronUUIDs = new Set(
+    father.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid))
+  );
+
+  // Check that there is no overlap in the remaining UUIDs
+  const overlap = [...motherNeuronUUIDs].filter((uuid) =>
+    fatherNeuronUUIDs.has(uuid)
+  );
+  assertEquals(overlap.length, 0, "Parents should have non-overlapping neuron UUIDs");
+
+  // Create the baby
+  const baby = handleGrafting(father, mother, father);
+  assert(baby, "Baby should be created");
+
+  // Validate that baby has neurons from both parents despite non-overlapping UUIDs
+  const babyNeuronUUIDs = new Set(baby.neurons.map((n) => n.uuid));
+  const motherContribution = [...babyNeuronUUIDs].filter((uuid) =>
+    motherNeuronUUIDs.has(uuid)
+  );
+  const fatherContribution = [...babyNeuronUUIDs].filter((uuid) =>
+    fatherNeuronUUIDs.has(uuid)
+  );
+
+  assert(
+    motherContribution.length > 0,
+    "Baby should include neurons from the mother despite non-overlapping UUIDs"
+  );
+  assert(
+    fatherContribution.length > 0,
+    "Baby should include neurons from the father despite non-overlapping UUIDs"
+  );
+
+  const exportBaby = baby.exportJSON();
+
+  Deno.writeTextFileSync(
+    `${testDir}/baby-unique.json`,
+    JSON.stringify(exportBaby, null, 2),
+  );
+});
+
+Deno.test("GeneticIsolatedIslands - Fallback Merging for Non-Overlapping UUIDs", () => {
+  const mother = makeTestCreature("mother-unique");
+  const father = makeTestCreature("father-unique");
+
+  // Filter predictable UUIDs
+  const excludeUUIDs = new Set(["input-0", "input-1", "input-2", "output-0", "output-1"]);
+  const motherNeuronUUIDs = new Set(
+    mother.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid))
+  );
+  const fatherNeuronUUIDs = new Set(
+    father.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid))
+  );
+
+  // Check there is no overlap in hidden neurons
+  const overlap = [...motherNeuronUUIDs].filter((uuid) => fatherNeuronUUIDs.has(uuid));
+  assertEquals(overlap.length, 0, "Parents should have non-overlapping neuron UUIDs");
+
+  // Adjusted Grafting: Allow fallback for non-overlapping neurons
+  const baby = handleGrafting(father, mother, father);
+  assert(baby, "Baby should be created");
+
+  // Ensure baby contains contributions from both parents
+  const babyNeuronUUIDs = new Set(baby.neurons.map((n) => n.uuid));
+  const motherContribution = [...babyNeuronUUIDs].filter((uuid) =>
+    motherNeuronUUIDs.has(uuid)
+  );
+  const fatherContribution = [...babyNeuronUUIDs].filter((uuid) =>
+    fatherNeuronUUIDs.has(uuid)
+  );
+
+  assert(
+    motherContribution.length > 0,
+    "Baby should include neurons from the mother despite non-overlapping UUIDs"
+  );
+  assert(
+    fatherContribution.length > 0,
+    "Baby should include neurons from the father despite non-overlapping UUIDs"
+  );
+
+  // Write the result to verify structure
+  const exportBaby = baby.exportJSON();
+  Deno.writeTextFileSync(
+    `${testDir}/baby-fallback.json`,
+    JSON.stringify(exportBaby, null, 2),
+  );
 });
