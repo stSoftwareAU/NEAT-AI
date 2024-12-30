@@ -91,7 +91,7 @@ Deno.test("GeneticIsolatedIslands", () => {
   );
 
   const baby = handleGrafting(father, mother, father);
-  
+
   assert(baby, "Baby should be created");
   const babyUUID = CreatureUtil.makeUUID(baby);
   const fatherUUID = CreatureUtil.makeUUID(father);
@@ -237,19 +237,29 @@ Deno.test("GeneticIsolatedIslands - Non-Overlapping UUIDs", () => {
   const father = makeTestCreature("father-unique");
 
   // Filter out predictable UUIDs (e.g., "output-0", "output-1")
-  const excludeUUIDs = new Set(["input-0", "input-1","input-2","output-0", "output-1"]);
+  const excludeUUIDs = new Set([
+    "input-0",
+    "input-1",
+    "input-2",
+    "output-0",
+    "output-1",
+  ]);
   const motherNeuronUUIDs = new Set(
-    mother.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid))
+    mother.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid)),
   );
   const fatherNeuronUUIDs = new Set(
-    father.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid))
+    father.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid)),
   );
 
   // Check that there is no overlap in the remaining UUIDs
   const overlap = [...motherNeuronUUIDs].filter((uuid) =>
     fatherNeuronUUIDs.has(uuid)
   );
-  assertEquals(overlap.length, 0, "Parents should have non-overlapping neuron UUIDs");
+  assertEquals(
+    overlap.length,
+    0,
+    "Parents should have non-overlapping neuron UUIDs",
+  );
 
   // Create the baby
   const baby = handleGrafting(father, mother, father);
@@ -266,11 +276,11 @@ Deno.test("GeneticIsolatedIslands - Non-Overlapping UUIDs", () => {
 
   assert(
     motherContribution.length > 0,
-    "Baby should include neurons from the mother despite non-overlapping UUIDs"
+    "Baby should include neurons from the mother despite non-overlapping UUIDs",
   );
   assert(
     fatherContribution.length > 0,
-    "Baby should include neurons from the father despite non-overlapping UUIDs"
+    "Baby should include neurons from the father despite non-overlapping UUIDs",
   );
 
   const exportBaby = baby.exportJSON();
@@ -286,17 +296,29 @@ Deno.test("GeneticIsolatedIslands - Fallback Merging for Non-Overlapping UUIDs",
   const father = makeTestCreature("father-unique");
 
   // Filter predictable UUIDs
-  const excludeUUIDs = new Set(["input-0", "input-1", "input-2", "output-0", "output-1"]);
+  const excludeUUIDs = new Set([
+    "input-0",
+    "input-1",
+    "input-2",
+    "output-0",
+    "output-1",
+  ]);
   const motherNeuronUUIDs = new Set(
-    mother.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid))
+    mother.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid)),
   );
   const fatherNeuronUUIDs = new Set(
-    father.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid))
+    father.neurons.map((n) => n.uuid).filter((uuid) => !excludeUUIDs.has(uuid)),
   );
 
   // Check there is no overlap in hidden neurons
-  const overlap = [...motherNeuronUUIDs].filter((uuid) => fatherNeuronUUIDs.has(uuid));
-  assertEquals(overlap.length, 0, "Parents should have non-overlapping neuron UUIDs");
+  const overlap = [...motherNeuronUUIDs].filter((uuid) =>
+    fatherNeuronUUIDs.has(uuid)
+  );
+  assertEquals(
+    overlap.length,
+    0,
+    "Parents should have non-overlapping neuron UUIDs",
+  );
 
   // Adjusted Grafting: Allow fallback for non-overlapping neurons
   const baby = handleGrafting(father, mother, father);
@@ -313,11 +335,11 @@ Deno.test("GeneticIsolatedIslands - Fallback Merging for Non-Overlapping UUIDs",
 
   assert(
     motherContribution.length > 0,
-    "Baby should include neurons from the mother despite non-overlapping UUIDs"
+    "Baby should include neurons from the mother despite non-overlapping UUIDs",
   );
   assert(
     fatherContribution.length > 0,
-    "Baby should include neurons from the father despite non-overlapping UUIDs"
+    "Baby should include neurons from the father despite non-overlapping UUIDs",
   );
 
   // Write the result to verify structure
