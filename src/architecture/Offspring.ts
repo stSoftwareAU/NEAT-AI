@@ -1,7 +1,7 @@
 import { assert } from "@std/assert/assert";
 import { addTags, getTag, removeTag } from "@stsoftware/tags";
 import { editParentByIndex } from "../breed/EditParentByIndex.ts";
-import { geneticCompatibility } from "../breed/GeneticCompatiblity.ts";
+import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
