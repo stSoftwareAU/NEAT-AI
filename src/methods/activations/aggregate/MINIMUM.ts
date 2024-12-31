@@ -140,7 +140,7 @@ export class MINIMUM
 
       let mainConnection;
       let mainActivation;
-      
+
       for (let indx = inward.length; indx--;) {
         const c = inward[indx];
 
@@ -159,13 +159,15 @@ export class MINIMUM
 
       assert(mainConnection != undefined);
 
-      const {from,to,weight} = mainConnection;
+      const { from, to, weight } = mainConnection;
       const mainFromNeuron = neuron.creature.neurons[from];
 
       const fromActivation = mainFromNeuron.adjustedActivation(config);
 
       /** No Change Propagate */
-      if (mainFromNeuron.type !== "input" && mainFromNeuron.type !== "constant") {
+      if (
+        mainFromNeuron.type !== "input" && mainFromNeuron.type !== "constant"
+      ) {
         if (from != to) {
           mainFromNeuron.propagate(fromActivation, config, sparseConfig);
         }
