@@ -82,6 +82,7 @@ export function createNeatConfig(options: NeatOptions) {
       0,
     ),
     CRISPRs: options.CRISPRs || [],
+    geneticCompatibilityThreshold: options.geneticCompatibilityThreshold || 0.3,
   };
   validate(config);
   return Object.freeze(config);
@@ -234,6 +235,15 @@ function validate(config: NeatArguments) {
   ) {
     throw new Error(
       `Maximum Weight Adjustment Scale must be more than zero was: ${config.maximumWeightAdjustmentScale}`,
+    );
+  }
+  if (
+    Number.isFinite(config.geneticCompatibilityThreshold) == false ||
+    config.geneticCompatibilityThreshold < 0 ||
+    config.geneticCompatibilityThreshold > 1
+  ) {
+    throw new Error(
+      `Genetic Compatibility Threshold must be between 0 and 1 was: ${config.geneticCompatibilityThreshold}`,
     );
   }
 }

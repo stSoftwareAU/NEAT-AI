@@ -126,6 +126,9 @@ export interface NeatArguments {
 
   /** The ratio of breeding over all the creatures versus within the species */
   globalBreedingRate: number;
+
+  /** The threshold for genetic compatibility between two creatures */
+  geneticCompatibilityThreshold: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

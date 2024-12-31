@@ -36,6 +36,10 @@ export class Breed {
     const child = Offspring.breed(
       mum,
       dad,
+      {
+        geneticCompatibilityThreshold:
+          this.config.geneticCompatibilityThreshold,
+      },
     );
 
     if (child) {

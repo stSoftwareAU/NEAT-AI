@@ -8,7 +8,6 @@ export type Approach =
   | "fine"
   | "trained"
   | "compact"
-  | "graft"
   | "backtrack"
   | "retry";
 
@@ -92,19 +91,6 @@ export function logApproach(fittest: Creature, previous: Creature) {
             } was:`,
             oldNeurons,
             `synapses: ${fittest.synapses.length} was:`,
-            getTag(fittest, "old-synapses"),
-          );
-          break;
-        }
-        case "graft": {
-          console.info(
-            "Learnings increased fitness by",
-            fScore - pScore,
-            "to",
-            fScore,
-            `nodes: ${fittest.neurons.length} was:`,
-            getTag(fittest, "old-neurons"),
-            `connections: ${fittest.synapses.length} was:`,
             getTag(fittest, "old-synapses"),
           );
           break;

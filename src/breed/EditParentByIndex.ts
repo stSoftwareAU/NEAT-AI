@@ -30,6 +30,7 @@ export function editParentByIndex(
             (targetNeuron as { uuid: string }).uuid = parentNeuron.uuid;
             targetSet.add(parentNeuron.uuid);
             addTag(targetNeuron, "alias", currentUUID);
+            addTag(targetNeuron, "approach", "graft");
             targetExport.synapses.forEach((synapse) => {
               if (synapse.fromUUID === currentUUID) {
                 synapse.fromUUID = parentNeuron.uuid;
