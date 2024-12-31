@@ -1,11 +1,12 @@
-import { addTags } from "@stsoftware/tags";
-import { Creature } from "../Creature.ts";
-import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
-import { Neuron } from "./Neuron.ts";
-import { creatureValidate } from "./CreatureValidate.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
-import { handleGrafting } from "./GeneticIsolation.ts";
 import { assert } from "@std/assert/assert";
+import { addTags, getTag, removeTag } from "@stsoftware/tags";
+import { editParentByIndex } from "../breed/EditParentByIndex.ts";
+import { geneticCompatibility } from "../breed/GeneticCompatiblity.ts";
+import { Creature } from "../Creature.ts";
+import { CreatureUtil } from "./CreatureUtils.ts";
+import { creatureValidate } from "./CreatureValidate.ts";
+import { Neuron } from "./Neuron.ts";
+import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -21,12 +22,29 @@ export class Offspring {
   static breed(mum: Creature, dad: Creature) {
     const mother = Creature.fromJSON(mum.exportJSON());
     CreatureUtil.makeUUID(mother);
-    const father = Creature.fromJSON(dad.exportJSON());
+    let father = Creature.fromJSON(dad.exportJSON());
     CreatureUtil.makeUUID(father);
     assert(
       mother.input === father.input && mother.output === father.output,
       "Parents aren't the same species",
     );
+
+    const compatibility = geneticCompatibility(mother, father);
+    let fixAliases = false;
+    if (compatibility < 0.60) {
+      console.info(
+        `Incompatible parents only: ${(compatibility * 100).toFixed(1)}%`,
+      );
+      father = editParentByIndex(mother, father);
+      CreatureUtil.makeUUID(father);
+      const afterCompatibility = geneticCompatibility(mother, father);
+      console.info(
+        `After editing compatibility: ${
+          (afterCompatibility * 100).toFixed(1)
+        }%`,
+      );
+      fixAliases = true;
+    }
 
     // Initialize offspring
     const offspring = new Creature(mother.input, mother.output, {
@@ -224,18 +242,39 @@ export class Offspring {
 
     offspring.clearState();
 
-    const child = handleGrafting(
-      offspring,
-      mother,
-      father,
-    );
+    delete offspring.uuid;
+    const childUUID = CreatureUtil.makeUUID(offspring);
 
+    assert(childUUID, "Failed to make UUID for offspring");
+    assert(mother.uuid, "Failed to make UUID for mother");
+    assert(father.uuid, "Failed to make UUID for father");
     /* No point returning clones */
-    if (child === undefined) return undefined;
-    try {
-      creatureValidate(child);
+    if (childUUID === mother.uuid || childUUID === father.uuid) {
+      return undefined;
+    }
 
-      return child;
+    if (fixAliases) {
+      const fixed = offspring.exportJSON();
+      for (let i = 0; i < fixed.neurons.length; i++) {
+        const n = fixed.neurons[i];
+        const alias = getTag(n, "alias");
+        if (alias) {
+          removeTag(n, "alias");
+          const oldUUID = n.uuid;
+          (n as { uuid: string }).uuid = alias;
+          fixed.synapses.forEach((s) => {
+            if (s.fromUUID === oldUUID) s.fromUUID = alias;
+            if (s.toUUID === oldUUID) s.toUUID = alias;
+          });
+        }
+      }
+
+      offspring.loadFrom(fixed, false);
+    }
+    try {
+      creatureValidate(offspring);
+
+      return offspring;
     } catch (e) {
       const error = e as Error;
       const errorName = error.name ? error.name : "ERROR";
@@ -246,9 +285,9 @@ export class Offspring {
           return undefined;
         case "NO_INWARD_CONNECTIONS":
         case "IF_CONDITIONS":
-          child.fix();
-          creatureValidate(child);
-          return child;
+          offspring.fix();
+          creatureValidate(offspring);
+          return offspring;
         default:
           console.error(e);
           offspring.DEBUG = false;
@@ -257,8 +296,8 @@ export class Offspring {
             JSON.stringify(mother.exportJSON(), null, 2),
           );
           Deno.writeTextFileSync(
-            ".offspring-child.json",
-            JSON.stringify(child.exportJSON(), null, 2),
+            ".offspring-offspring.json",
+            JSON.stringify(offspring.exportJSON(), null, 2),
           );
           Deno.writeTextFileSync(
             ".offspring-father.json",

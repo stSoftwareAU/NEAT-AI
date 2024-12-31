@@ -57,6 +57,7 @@ import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
 import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
+import { fail } from "@std/assert/fail";
 
 /**
  * Creature Class
@@ -1504,7 +1505,13 @@ export class Creature implements CreatureInternal {
         ? uuidMap.get(se.toUUID)
         : (synapse as SynapseInternal).to;
 
-      assert(to !== undefined, "TO is undefined");
+      if (to === undefined) {
+        fail(
+          `TO is undefined uuid: ${se.toUUID} or index: ${
+            (synapse as SynapseInternal).to
+          }`,
+        );
+      }
 
       const connection = this.connect(
         from,

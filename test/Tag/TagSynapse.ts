@@ -42,8 +42,15 @@ function makeCreature(name: string) {
 
 Deno.test("TagSynapse", () => {
   const mum = makeCreature("mum");
+  for (const neuron of mum.neurons) {
+    neuron.bias *= 1.1;
+  }
+
   const mumUUID = CreatureUtil.makeUUID(mum);
   const dad = makeCreature("dad");
+  for (const synapse of dad.synapses) {
+    synapse.weight *= 1.1;
+  }
   const dadUUID = CreatureUtil.makeUUID(dad);
   const baby = Offspring.breed(mum, dad);
 
