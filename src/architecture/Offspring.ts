@@ -31,7 +31,7 @@ export class Offspring {
 
     const compatibility = geneticCompatibility(mother, father);
     let fixAliases = false;
-    if (compatibility < 0.95) {
+    if (compatibility < 0.60) {
       console.info(
         `Incompatible parents only: ${(compatibility * 100).toFixed(1)}%`,
       );
