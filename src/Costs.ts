@@ -18,7 +18,7 @@ export interface CostInterface {
 }
 
 export class Costs {
-  static find(name: string) {
+  static find(name: string): CostInterface {
     switch (name) {
       /** Cross entropy error */
       case "CROSS_ENTROPY":
