@@ -16,13 +16,12 @@ import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 export class MINIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "MINIMUM";
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+
+  public readonly range = new ActivationRange(
     MINIMUM.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
-
-  public readonly range = MINIMUM.rangeStatic;
 
   getName() {
     return MINIMUM.NAME;
@@ -43,7 +42,7 @@ export class MINIMUM
 
     const value = minValue + neuron.bias;
 
-    return MINIMUM.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
@@ -74,7 +73,7 @@ export class MINIMUM
 
     const value = minValue + neuron.bias;
 
-    return MINIMUM.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   fix(neuron: Neuron) {
@@ -141,6 +140,7 @@ export class MINIMUM
 
       let mainConnection;
       let mainActivation;
+      
       for (let indx = inward.length; indx--;) {
         const c = inward[indx];
 
@@ -158,54 +158,47 @@ export class MINIMUM
       }
 
       assert(mainConnection != undefined);
-      for (let indx = inward.length; indx--;) {
-        const c = inward[indx];
 
-        if (c !== mainConnection) {
-          const fromNeuron = neuron.creature.neurons[c.from];
+      const {from,to,weight} = mainConnection;
+      const mainFromNeuron = neuron.creature.neurons[from];
 
-          const fromActivation = fromNeuron.adjustedActivation(config);
+      const fromActivation = mainFromNeuron.adjustedActivation(config);
 
-          /** No Change Propagate */
-          if (fromNeuron.type !== "input" && fromNeuron.type !== "constant") {
-            if (c.from != c.to) {
-              fromNeuron.propagate(fromActivation, config, sparseConfig);
-            }
-          }
-
-          const fromWeight = adjustedWeight(state, c, config);
-          const fromValue = fromWeight * fromActivation;
-
-          const cs = state.connection(c.from, c.to);
-          accumulateWeight(
-            c.weight,
-            cs,
-            fromValue,
-            fromActivation,
-            config,
-          );
+      /** No Change Propagate */
+      if (mainFromNeuron.type !== "input" && mainFromNeuron.type !== "constant") {
+        if (from != to) {
+          mainFromNeuron.propagate(fromActivation, config, sparseConfig);
         }
       }
 
-      assert(mainActivation != undefined);
-      const fromNeuron = neuron.creature.neurons[mainConnection.from];
+      const mainCS = state.connection(from, to);
+      accumulateWeight(
+        weight,
+        mainCS,
+        minValue,
+        fromActivation,
+        config,
+      );
 
-      const fromWeight = adjustedWeight(
+      assert(mainActivation != undefined);
+      const fromNeuron = neuron.creature.neurons[from];
+
+      const fromWeightAdjusted = adjustedWeight(
         state,
         mainConnection,
         config,
       );
-      const fromValue = fromWeight * mainActivation;
+      const fromValue = fromWeightAdjusted * mainActivation;
 
       let improvedFromActivation = mainActivation;
       let targetFromActivation = mainActivation;
       const targetFromValue = fromValue + error;
       if (
-        fromWeight &&
+        fromWeightAdjusted &&
         fromNeuron.type !== "input" &&
         fromNeuron.type !== "constant"
       ) {
-        targetFromActivation = targetFromValue / fromWeight;
+        targetFromActivation = targetFromValue / fromWeightAdjusted;
 
         if (mainConnection.from != mainConnection.to) {
           if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
@@ -217,7 +210,7 @@ export class MINIMUM
           }
         }
 
-        const improvedFromValue = improvedFromActivation * fromWeight;
+        const improvedFromValue = improvedFromActivation * fromWeightAdjusted;
 
         remainingError = targetFromValue - improvedFromValue;
       }
