@@ -1,5 +1,5 @@
 import { assert } from "@std/assert/assert";
-import { addTags } from "@stsoftware/tags";
+import { addTags, getTag, removeTag } from "@stsoftware/tags";
 import { editParentByIndex } from "../breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "../breed/GeneticCompatiblity.ts";
 import { Creature } from "../Creature.ts";
@@ -30,6 +30,7 @@ export class Offspring {
     );
 
     const compatibility = geneticCompatibility(mother, father);
+    let fixAliases = false;
     if (compatibility < 0.95) {
       console.info(
         `Incompatible parents only: ${(compatibility * 100).toFixed(1)}%`,
@@ -41,6 +42,7 @@ export class Offspring {
           (afterCompatibility * 100).toFixed(1)
         }%`,
       );
+      fixAliases = true;
     }
 
     // Initialize offspring
@@ -239,11 +241,32 @@ export class Offspring {
 
     offspring.clearState();
 
+    delete offspring.uuid;
     const childUUID = CreatureUtil.makeUUID(offspring);
 
     /* No point returning clones */
-    if (childUUID == mother.uuid || childUUID !== father.uuid) return undefined;
+    if (childUUID === mother.uuid || childUUID === father.uuid) {
+      return undefined;
+    }
 
+    if (fixAliases) {
+      const fixed = offspring.exportJSON();
+      for (let i = 0; i < fixed.neurons.length; i++) {
+        const n = fixed.neurons[i];
+        const alias = getTag(n, "alias");
+        if (alias) {
+          removeTag(n, "alias");
+          const oldUUID = n.uuid;
+          (n as { uuid: string }).uuid = alias;
+          fixed.synapses.forEach((s) => {
+            if (s.fromUUID === oldUUID) s.fromUUID = alias;
+            if (s.toUUID === oldUUID) s.toUUID = alias;
+          });
+        }
+      }
+
+      offspring.loadFrom(fixed, false);
+    }
     try {
       creatureValidate(offspring);
 
