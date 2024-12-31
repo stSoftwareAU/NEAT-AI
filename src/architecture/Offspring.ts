@@ -245,9 +245,9 @@ export class Offspring {
     delete offspring.uuid;
     const childUUID = CreatureUtil.makeUUID(offspring);
 
-    assert( childUUID, "Failed to make UUID for offspring");
-    assert( mother.uuid, "Failed to make UUID for mother");
-    assert( father.uuid, "Failed to make UUID for father");
+    assert(childUUID, "Failed to make UUID for offspring");
+    assert(mother.uuid, "Failed to make UUID for mother");
+    assert(father.uuid, "Failed to make UUID for father");
     /* No point returning clones */
     if (childUUID === mother.uuid || childUUID === father.uuid) {
       return undefined;
