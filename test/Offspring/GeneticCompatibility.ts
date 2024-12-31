@@ -3,9 +3,9 @@ import { emptyDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { geneticCompatibility } from "../../src/breed/GeneticCompatiblity.ts";
+import { geneticCompatibility } from "../../src/breed/GeneticCompatibility.ts";
 
-const testDir = ".test/GeneticCompatiblity";
+const testDir = ".test/GeneticCompatibility";
 emptyDirSync(testDir);
 
 function three(idx: number) {

@@ -4,7 +4,7 @@ import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { editParentByIndex } from "../../src/breed/EditParentByIndex.ts";
-import { geneticCompatibility } from "../../src/breed/GeneticCompatiblity.ts";
+import { geneticCompatibility } from "../../src/breed/GeneticCompatibility.ts";
 
 const testDir = ".test/EditParentByIndex";
 emptyDirSync(testDir);

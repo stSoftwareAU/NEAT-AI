@@ -1,7 +1,7 @@
 import { assert } from "@std/assert/assert";
 import { addTags, getTag, removeTag } from "@stsoftware/tags";
 import { editParentByIndex } from "../breed/EditParentByIndex.ts";
-import { geneticCompatibility } from "../breed/GeneticCompatiblity.ts";
+import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
@@ -19,7 +19,11 @@ export class Offspring {
   /**
    * Create an offspring from two parent networks
    */
-  static breed(mum: Creature, dad: Creature) {
+  static breed(
+    mum: Creature,
+    dad: Creature,
+    options: { geneticCompatibilityThreshold?: number } = {},
+  ): Creature | undefined {
     const mother = Creature.fromJSON(mum.exportJSON());
     CreatureUtil.makeUUID(mother);
     let father = Creature.fromJSON(dad.exportJSON());
@@ -31,7 +35,10 @@ export class Offspring {
 
     const compatibility = geneticCompatibility(mother, father);
     let fixAliases = false;
-    if (compatibility < 0.60) {
+    if (
+      options.geneticCompatibilityThreshold &&
+      compatibility < options.geneticCompatibilityThreshold
+    ) {
       console.info(
         `Incompatible parents only: ${(compatibility * 100).toFixed(1)}%`,
       );
