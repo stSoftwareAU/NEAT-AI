@@ -36,6 +36,7 @@ export class Offspring {
         `Incompatible parents only: ${(compatibility * 100).toFixed(1)}%`,
       );
       father = editParentByIndex(mother, father);
+      CreatureUtil.makeUUID(father);
       const afterCompatibility = geneticCompatibility(mother, father);
       console.info(
         `After editing compatibility: ${
@@ -244,6 +245,9 @@ export class Offspring {
     delete offspring.uuid;
     const childUUID = CreatureUtil.makeUUID(offspring);
 
+    assert( childUUID, "Failed to make UUID for offspring");
+    assert( mother.uuid, "Failed to make UUID for mother");
+    assert( father.uuid, "Failed to make UUID for father");
     /* No point returning clones */
     if (childUUID === mother.uuid || childUUID === father.uuid) {
       return undefined;
