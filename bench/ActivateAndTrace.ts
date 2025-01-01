@@ -18,11 +18,11 @@ import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
  * ----------- ----------------------------- --------------------- --------------------------
  * Activate           361.4 ms           2.8 (279.2 ms … 441.0 ms) 405.5 ms 441.0 ms 441.0 ms
  *
- * M# v0.129.0 base line
+ * M3 v0.129.0 base line
  *
  * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p995
  * ----------- ----------------------------- --------------------- --------------------------
- * Activate           618.8 ms           1.6 (527.9 ms … 804.6 ms) 664.5 ms 804.6 ms 804.6 ms
+ * Activate           360.4 ms           2.8 (268.8 ms … 448.8 ms) 443.2 ms 448.8 ms 448.8 ms
  *
  * M3 v0.131.0 improve max/min prpogation
  * benchmark          time/iter (avg)        iter/s      (min … max)           p75      p99     p995
