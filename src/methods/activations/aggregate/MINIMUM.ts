@@ -135,7 +135,7 @@ export class MINIMUM
 
       let mainConnection;
       let mainActivation;
-
+      let mainFromNeuron;
       for (let indx = inward.length; indx--;) {
         const c = inward[indx];
 
@@ -149,65 +149,53 @@ export class MINIMUM
           tmpValue = fromValue;
           mainConnection = c;
           mainActivation = fromActivation;
+          mainFromNeuron = fromNeuron;
         }
       }
 
       const { from, to, weight } = mainConnection!;
-      const mainFromNeuron = neuron.creature.neurons[from];
-
-      const fromActivation = mainFromNeuron.adjustedActivation(config);
-
-      /** No Change Propagate */
-      if (
-        mainFromNeuron.type !== "input" && mainFromNeuron.type !== "constant"
-      ) {
-        if (from != to) {
-          mainFromNeuron.propagate(fromActivation, config, sparseConfig);
-        }
-      }
 
       const mainCS = state.connection(from, to);
       accumulateWeight(
         weight,
         mainCS,
         tmpValue,
-        fromActivation,
+        mainActivation!,
         config,
       );
-
-      assert(mainActivation != undefined);
-      const fromNeuron = neuron.creature.neurons[from];
 
       const fromWeightAdjusted = adjustedWeight(
         state,
         mainConnection!,
         config,
       );
-      const fromValue = fromWeightAdjusted * mainActivation;
+      const fromValue = fromWeightAdjusted * mainActivation!;
 
-      let improvedFromActivation = mainActivation;
-      let targetFromActivation = mainActivation;
+      let improvedFromActivation = mainActivation!;
+      let targetFromActivation = improvedFromActivation;
       const targetFromValue = fromValue + error;
+      const fromType = mainFromNeuron!.type;
       if (
         fromWeightAdjusted &&
-        fromNeuron.type !== "input" &&
-        fromNeuron.type !== "constant"
+        fromType !== "input" &&
+        fromType !== "constant"
       ) {
         targetFromActivation = targetFromValue / fromWeightAdjusted;
 
         if (from != to) {
-          if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
-            improvedFromActivation = fromNeuron.propagate(
+          if (sparseConfig.propagateNeeded(mainFromNeuron!.uuid)) {
+            improvedFromActivation = mainFromNeuron!.propagate(
               targetFromActivation,
               config,
               sparseConfig,
             );
+
+            const improvedFromValue = improvedFromActivation *
+              fromWeightAdjusted;
+
+            remainingError = targetFromValue - improvedFromValue;
           }
         }
-
-        const improvedFromValue = improvedFromActivation * fromWeightAdjusted;
-
-        remainingError = targetFromValue - improvedFromValue;
       }
 
       const targetFromValue2 = fromValue + remainingError;
