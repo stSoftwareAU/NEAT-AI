@@ -1,13 +1,12 @@
 import { assert } from "@std/assert/assert";
 import type { Neuron } from "../../../architecture/Neuron.ts";
-import type { SynapseInternal } from "../../../architecture/SynapseInterfaces.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
-import {
-  type BackPropagationConfig,
-  toValue,
+import type {
+  BackPropagationConfig,
 } from "../../../propagate/BackPropagation.ts";
 import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
+import type { SynapseState } from "../../../propagate/SynapseState.ts";
 import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
@@ -17,65 +16,58 @@ export class MAXIMUM
   implements NeuronActivationInterface, ApplyLearningsInterface {
   public static NAME = "MAXIMUM";
 
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+  public readonly range = new ActivationRange(
     MAXIMUM.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
 
-  public readonly range = MAXIMUM.rangeStatic;
-
   getName() {
     return MAXIMUM.NAME;
   }
 
-  activate(neuron: Neuron) {
+  activate(neuron: Neuron): number {
     const fromList = neuron.creature.inwardConnections(neuron.index);
-    let maxValue = Number.NEGATIVE_INFINITY;
+    let tmpValue = Number.NEGATIVE_INFINITY;
     const state = neuron.creature.state;
     const activations = state.activations;
-    for (let i = fromList.length; i--;) {
+    for (let i = 0, len = fromList.length; i < len; i++) {
       const { from, weight } = fromList[i];
       const value = activations[from] * weight;
-      if (value > maxValue) {
-        maxValue = value;
+      if (value > tmpValue) {
+        tmpValue = value;
       }
     }
 
-    const value = maxValue + neuron.bias;
+    const value = tmpValue + neuron.bias;
 
-    return MAXIMUM.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
-    const fromList = neuron.creature.inwardConnections(neuron.index);
-    let maxValue = Number.NEGATIVE_INFINITY;
-    let usedConnection: SynapseInternal | null = null;
     const state = neuron.creature.state;
+    let tmpValue = Number.NEGATIVE_INFINITY;
+    const fromList = neuron.creature.inwardConnections(neuron.index);
+    let usedState: SynapseState | null = null;
     const activations = state.activations;
-    for (let i = fromList.length; i--;) {
+    for (let i = 0, len = fromList.length; i < len; i++) {
       const c = fromList[i];
-      const cs = state.connection(c.from, c.to);
+      const { from, to, weight } = c;
+      const cs = state.connection(from, to);
       if (cs.used == undefined) cs.used = false;
 
-      const value = activations[c.from] * c.weight;
-      if (value > maxValue) {
-        maxValue = value;
-        usedConnection = c;
+      const value = activations[from] * weight;
+      if (value > tmpValue) {
+        tmpValue = value;
+        usedState = cs;
       }
     }
 
-    if (usedConnection != null) {
-      const cs = state.connection(
-        usedConnection.from,
-        usedConnection.to,
-      );
-      cs.used = true;
-    }
+    usedState!.used = true;
 
-    const value = maxValue + neuron.bias;
+    const value = tmpValue + neuron.bias;
 
-    return MAXIMUM.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   fix(neuron: Neuron) {
@@ -106,8 +98,10 @@ export class MAXIMUM
     const inward = neuron.creature.inwardConnections(neuron.index);
     for (let i = inward.length; i--;) {
       const c = inward[i];
+
       assert(c.to == neuron.index, "mismatched index");
       if (c.from == c.to) continue;
+
       const cs = state.connection(c.from, c.to);
       if (!cs.used) {
         neuron.creature.disconnect(c.from, c.to);
@@ -124,26 +118,26 @@ export class MAXIMUM
     config: BackPropagationConfig,
     sparseConfig: SparseConfig,
   ): number {
-    const toList = neuron.creature.inwardConnections(neuron.index);
-
     const activation = neuron.adjustedActivation(config);
 
-    const targetValue = toValue(neuron, targetActivation);
+    const error = targetActivation - activation;
 
-    const activationValue = toValue(neuron, activation);
+    if (Math.abs(error) < config.plankConstant) return targetActivation;
 
-    const error = targetValue - activationValue;
+    const inward = neuron.creature.inwardConnections(neuron.index);
+    const state = neuron.creature.state;
+
     let remainingError = error;
     const currentBias = adjustedBias(neuron, config);
-    const state = neuron.creature.state;
     let improvedValue = 0;
-    if (toList.length) {
-      let maxValue = -Infinity;
+    if (inward.length) {
+      let tmpValue = -Infinity;
 
       let mainConnection;
       let mainActivation;
-      for (let indx = toList.length; indx--;) {
-        const c = toList[indx];
+      let mainFromNeuron;
+      for (let indx = inward.length; indx--;) {
+        const c = inward[indx];
 
         const fromNeuron = neuron.creature.neurons[c.from];
 
@@ -151,104 +145,85 @@ export class MAXIMUM
 
         const fromWeight = adjustedWeight(state, c, config);
         const fromValue = fromWeight * fromActivation;
-        if (fromValue > maxValue) {
-          maxValue = fromValue;
+        if (fromValue > tmpValue) {
+          tmpValue = fromValue;
           mainConnection = c;
           mainActivation = fromActivation;
-        } else {
-          /** No Change Propagate */
-          if (fromNeuron.type !== "input" && fromNeuron.type !== "constant") {
-            if (c.from != c.to) {
-              if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
-                fromNeuron.propagate(fromActivation, config, sparseConfig);
-              }
-            }
-          }
-
-          const cs = state.connection(c.from, c.to);
-          accumulateWeight(
-            c.weight,
-            cs,
-            fromValue,
-            fromActivation,
-            config,
-          );
+          mainFromNeuron = fromNeuron;
         }
       }
 
-      if (mainConnection) {
-        assert(mainActivation != null);
-        const fromNeuron = neuron.creature.neurons[mainConnection.from];
+      const { from, to, weight } = mainConnection!;
 
-        const fromWeight = adjustedWeight(
-          state,
-          mainConnection,
-          config,
-        );
-        const fromValue = fromWeight * mainActivation;
+      const mainCS = state.connection(from, to);
+      accumulateWeight(
+        weight,
+        mainCS,
+        tmpValue,
+        mainActivation!,
+        config,
+      );
 
-        let improvedFromActivation = mainActivation;
-        let targetFromActivation = mainActivation;
-        const targetFromValue = fromValue + error;
-        if (
-          fromWeight &&
-          fromNeuron.type !== "input" &&
-          fromNeuron.type !== "constant"
-        ) {
-          targetFromActivation = targetFromValue / fromWeight;
+      const fromWeightAdjusted = adjustedWeight(
+        state,
+        mainConnection!,
+        config,
+      );
+      const fromValue = fromWeightAdjusted * mainActivation!;
 
-          if (mainConnection.from != mainConnection.to) {
-            if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
-              improvedFromActivation = fromNeuron.propagate(
-                targetFromActivation,
-                config,
-                sparseConfig,
-              );
-            }
+      let improvedFromActivation = mainActivation!;
+      let targetFromActivation = improvedFromActivation;
+      const targetFromValue = fromValue + error;
+      const fromType = mainFromNeuron!.type;
+      if (
+        fromWeightAdjusted &&
+        fromType !== "input" &&
+        fromType !== "constant"
+      ) {
+        targetFromActivation = targetFromValue / fromWeightAdjusted;
+
+        if (from != to) {
+          if (sparseConfig.propagateNeeded(mainFromNeuron!.uuid)) {
+            improvedFromActivation = mainFromNeuron!.propagate(
+              targetFromActivation,
+              config,
+              sparseConfig,
+            );
+
+            const improvedFromValue = improvedFromActivation *
+              fromWeightAdjusted;
+
+            remainingError = targetFromValue - improvedFromValue;
           }
-
-          const improvedFromValue = improvedFromActivation * fromWeight;
-
-          remainingError = targetFromValue - improvedFromValue;
-        }
-
-        if (
-          Math.abs(improvedFromActivation) > config.plankConstant &&
-          Math.abs(fromWeight) > config.plankConstant
-        ) {
-          const targetFromValue2 = fromValue + remainingError;
-
-          const cs = state.connection(
-            mainConnection.from,
-            mainConnection.to,
-          );
-          accumulateWeight(
-            mainConnection.weight,
-            cs,
-            targetFromValue2,
-            targetFromActivation,
-            config,
-          );
-
-          const aWeight = adjustedWeight(
-            state,
-            mainConnection,
-            config,
-          );
-
-          const improvedAdjustedFromValue = improvedFromActivation *
-            aWeight;
-
-          improvedValue = improvedAdjustedFromValue + currentBias;
         }
       }
+
+      const targetFromValue2 = fromValue + remainingError;
+
+      accumulateWeight(
+        weight,
+        mainCS,
+        targetFromValue2,
+        targetFromActivation,
+        config,
+      );
+
+      const aWeight = adjustedWeight(
+        state,
+        mainConnection!,
+        config,
+      );
+
+      const improvedAdjustedFromValue = improvedFromActivation *
+        aWeight;
+
+      improvedValue = improvedAdjustedFromValue + currentBias;
     }
 
-    const ns = state.node(neuron.index);
-
+    const ns = neuron.creature.state.node(neuron.index);
     accumulateBias(
       ns,
-      targetValue,
+      targetActivation,
       improvedValue,
       currentBias,
       config,
@@ -256,7 +231,7 @@ export class MAXIMUM
 
     const aBias = adjustedBias(neuron, config);
 
-    const adjustedActivation = improvedValue + aBias - currentBias;
+    const adjustedActivation = improvedValue - currentBias + aBias;
 
     return adjustedActivation;
   }

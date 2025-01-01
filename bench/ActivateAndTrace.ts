@@ -17,6 +17,17 @@ import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
  * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p999
  * ----------- ----------------------------- --------------------- --------------------------
  * Activate           361.4 ms           2.8 (279.2 ms … 441.0 ms) 405.5 ms 441.0 ms 441.0 ms
+ *
+ * M3 v0.129.0 base line
+ *
+ * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+ * ----------- ----------------------------- --------------------- --------------------------
+ * Activate           360.4 ms           2.8 (268.8 ms … 448.8 ms) 443.2 ms 448.8 ms 448.8 ms
+ *
+ * M3 v0.131.0 improve max/min prpogation
+ * benchmark          time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+ * ------------------ ----------------------------- --------------------- --------------------------
+ * ActivateAndTrace          316.2 ms           3.2 (235.5 ms … 416.5 ms) 336.8 ms 416.5 ms 416.5 ms
  */
 const creatureFile = Deno.args[0] || "test/data/traced.json";
 const creature = Creature.fromJSON(
