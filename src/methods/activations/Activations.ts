@@ -93,9 +93,7 @@ export class Activations {
   };
 
   static readonly NAMES = Object.keys(Activations.MAP)
-    .filter((key) =>
-      ![HYPOT.NAME, "INVERSE", "SINUSOID", MEAN.NAME].includes(key)
-    );
+    .filter((key) => !["INVERSE", "SINUSOID", MEAN.NAME].includes(key));
 
   static find(name: string) {
     const activation = this.MAP[name];

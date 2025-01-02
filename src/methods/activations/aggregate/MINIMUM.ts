@@ -169,21 +169,20 @@ export class MINIMUM
         mainConnection!,
         config,
       );
+      let targetFromActivation = mainActivation!;
+      let improvedFromActivation = targetFromActivation;
       const fromValue = fromWeightAdjusted * mainActivation!;
+      if (sparseConfig.propagateNeeded(mainFromNeuron!.uuid)) {
+        const targetFromValue = fromValue + error;
+        const fromType = mainFromNeuron!.type;
+        if (
+          fromWeightAdjusted &&
+          fromType !== "input" &&
+          fromType !== "constant"
+        ) {
+          targetFromActivation = targetFromValue / fromWeightAdjusted;
 
-      let improvedFromActivation = mainActivation!;
-      let targetFromActivation = improvedFromActivation;
-      const targetFromValue = fromValue + error;
-      const fromType = mainFromNeuron!.type;
-      if (
-        fromWeightAdjusted &&
-        fromType !== "input" &&
-        fromType !== "constant"
-      ) {
-        targetFromActivation = targetFromValue / fromWeightAdjusted;
-
-        if (from != to) {
-          if (sparseConfig.propagateNeeded(mainFromNeuron!.uuid)) {
+          if (from != to) {
             improvedFromActivation = mainFromNeuron!.propagate(
               targetFromActivation,
               config,
