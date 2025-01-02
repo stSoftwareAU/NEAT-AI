@@ -1,9 +1,10 @@
 import { assert } from "@std/assert/assert";
+import { fail } from "@std/assert/fail";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { addTag, getTag, removeTag, type TagInterface } from "@stsoftware/tags";
-import { CreatureUtil, Mutation } from "../mod.ts";
+import { Mutation } from "../mod.ts";
 import type {
   CreatureExport,
   CreatureInternal,
@@ -57,7 +58,6 @@ import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
 import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
-import { fail } from "@std/assert/fail";
 
 /**
  * Creature Class
@@ -742,22 +742,18 @@ export class Creature implements CreatureInternal {
     sparseConfig: SparseConfig,
   ) {
     this.state.cacheAdjustedActivation.clear();
-    const indices = Int32Array.from({ length: this.output }, (_, i) => i); // Create an array of indices
 
-    if (!config.disableRandomSamples) {
-      CreatureUtil.shuffle(indices);
-    }
+    const neurons = this.neurons;
+    const lastOutputIndx = neurons.length - this.output;
 
-    const lastOutputIndx = this.neurons.length - this.output;
-    for (let i = this.output; i--;) {
-      const expectedIndex = indices[i];
-      const nodeIndex = lastOutputIndx + expectedIndex;
+    for (let indx = this.output; indx--;) {
+      const nodeIndex = lastOutputIndx + indx;
 
-      const n = this.neurons[nodeIndex];
+      const n = neurons[nodeIndex];
 
       if (sparseConfig.propagateNeeded(n.uuid)) {
         n.propagate(
-          expected[expectedIndex],
+          expected[indx],
           config,
           sparseConfig,
         );
