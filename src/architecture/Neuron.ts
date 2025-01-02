@@ -487,16 +487,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const listLength = inwardList.length;
 
       if (listLength) {
-        // const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
-
-        // if (!config.disableRandomSamples) {
-        //   CreatureUtil.shuffle(indices);
-        // }
-
         const errorPerLink = error / listLength;
 
-        // Iterate over the shuffled indices
-        for (const indx = 0; indx < listLength; indx) {
+        for (let indx = 0; indx < listLength; indx++) {
           const c = inwardList[indx];
           const { from, to } = c;
 
