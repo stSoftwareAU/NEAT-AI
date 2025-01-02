@@ -81,10 +81,15 @@ export class HYPOT implements NeuronActivationInterface {
       }
     }
 
-    const inwardB = neuron.creature.inwardConnections(neuron.index);
+    const fromListB = neuron.creature.inwardConnections(neuron.index);
 
-    if (inwardB.length < 2) {
-      neuron.setSquash(IDENTITY.NAME);
+    switch (fromListB.length) {
+      case 1:
+        neuron.setSquash(IDENTITY.NAME);
+        break;
+      case 0:
+        neuron.creature.makeRandomConnection(neuron.index);
+        break;
     }
   }
 }
