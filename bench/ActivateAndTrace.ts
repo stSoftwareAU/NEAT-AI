@@ -28,6 +28,11 @@ import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
  * benchmark          time/iter (avg)        iter/s      (min … max)           p75      p99     p995
  * ------------------ ----------------------------- --------------------- --------------------------
  * ActivateAndTrace          316.2 ms           3.2 (235.5 ms … 416.5 ms) 336.8 ms 416.5 ms 416.5 ms
+ *
+ * M3 v0.132.0 improve neuron prpogation
+ * benchmark          time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+ * ------------------ ----------------------------- --------------------- --------------------------
+ * ActivateAndTrace          294.5 ms           3.4 (214.2 ms … 343.7 ms) 327.0 ms 343.7 ms 343.7 ms
  */
 const creatureFile = Deno.args[0] || "test/data/traced.json";
 const creature = Creature.fromJSON(
