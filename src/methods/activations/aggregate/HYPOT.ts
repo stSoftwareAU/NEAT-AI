@@ -3,17 +3,16 @@ import type { Neuron } from "../../../architecture/Neuron.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
+import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class HYPOT implements NeuronActivationInterface {
   public static NAME = "HYPOT";
 
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+  public readonly range = new ActivationRange(
     HYPOT.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
-
-  public readonly range = HYPOT.rangeStatic;
 
   propagate(
     neuron: Neuron,
@@ -66,7 +65,7 @@ export class HYPOT implements NeuronActivationInterface {
     }
 
     const value = Math.hypot(...values) + neuron.bias;
-    return HYPOT.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
@@ -85,7 +84,7 @@ export class HYPOT implements NeuronActivationInterface {
     const inwardB = neuron.creature.inwardConnections(neuron.index);
 
     if (inwardB.length < 2) {
-      neuron.creature.makeRandomConnection(neuron.index);
+      neuron.setSquash(IDENTITY.NAME);
     }
   }
 }

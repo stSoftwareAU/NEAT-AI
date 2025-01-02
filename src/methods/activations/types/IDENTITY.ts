@@ -9,13 +9,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class IDENTITY implements ActivationInterface, UnSquashInterface {
   public static NAME = "IDENTITY";
 
-  private static readonly rangeStatic: ActivationRange = new ActivationRange(
+  public readonly range = new ActivationRange(
     IDENTITY.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
-
-  public readonly range = IDENTITY.rangeStatic;
 
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
@@ -28,6 +26,6 @@ export class IDENTITY implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number) {
-    return IDENTITY.rangeStatic.limit(x);
+    return this.range.limit(x);
   }
 }

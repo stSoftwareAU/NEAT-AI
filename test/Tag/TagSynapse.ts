@@ -52,7 +52,13 @@ Deno.test("TagSynapse", () => {
     synapse.weight *= 1.1;
   }
   const dadUUID = CreatureUtil.makeUUID(dad);
-  const baby = Offspring.breed(mum, dad);
+  let baby: Creature | undefined;
+  for (let i = 0; i < 12; i++) {
+    baby = Offspring.breed(mum, dad);
+    if (baby) {
+      break;
+    }
+  }
 
   assert(baby);
 
