@@ -8,14 +8,11 @@ import { IDENTITY } from "../types/IDENTITY.ts";
 export class HYPOTv2 implements NeuronActivationInterface {
   public static NAME = "HYPOTv2";
 
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+  public readonly range = new ActivationRange(
     HYPOTv2.NAME,
     0,
     Number.MAX_SAFE_INTEGER,
   );
-
-  public readonly range = HYPOTv2.rangeStatic;
-
   propagate(
     neuron: Neuron,
     _targetActivation: number,
@@ -48,7 +45,7 @@ export class HYPOTv2 implements NeuronActivationInterface {
     }
 
     const value = Math.hypot(...values);
-    return HYPOTv2.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   getName() {
@@ -67,7 +64,7 @@ export class HYPOTv2 implements NeuronActivationInterface {
     }
 
     const value = Math.hypot(...values);
-    return HYPOTv2.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   activateAndTrace(neuron: Neuron) {
