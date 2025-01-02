@@ -25,7 +25,6 @@ import {
   adjustedWeight,
   calculateWeight,
 } from "../propagate/Weight.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
@@ -488,23 +487,22 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const listLength = inwardList.length;
 
       if (listLength) {
-        const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
+        // const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
 
-        if (!config.disableRandomSamples) {
-          CreatureUtil.shuffle(indices);
-        }
+        // if (!config.disableRandomSamples) {
+        //   CreatureUtil.shuffle(indices);
+        // }
 
         const errorPerLink = error / listLength;
 
         // Iterate over the shuffled indices
-        for (let i = listLength; i--;) {
-          const indx = indices[i];
-
+        for (const indx = 0; indx < listLength; indx) {
           const c = inwardList[indx];
+          const { from, to } = c;
 
-          if (c.from === c.to) continue;
+          if (from === to) continue;
 
-          const fromNeuron = this.creature.neurons[c.from];
+          const fromNeuron = this.creature.neurons[from];
 
           const fromActivation = fromNeuron.adjustedActivation(config);
 
@@ -515,10 +513,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
           const targetFromValue = fromValue + errorPerLink;
 
+          const type = fromNeuron.type;
           if (
             fromWeight &&
-            fromNeuron.type !== "input" &&
-            fromNeuron.type !== "constant"
+            type !== "input" &&
+            type !== "constant"
           ) {
             if (
               sparseConfig.propagateNeeded(fromNeuron.uuid)
@@ -537,7 +536,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
             Math.abs(improvedFromActivation) > config.plankConstant &&
             Math.abs(fromWeight) > config.plankConstant
           ) {
-            const cs = state.connection(c.from, c.to);
+            const cs = state.connection(from, to);
             accumulateWeight(
               c.weight,
               cs,

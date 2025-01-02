@@ -9,7 +9,11 @@ import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import { IDENTITY } from "../types/IDENTITY.ts";
 
+/**
+ * No longer used. A normal neurual network can memic the behavior of this activation.
+ */
 export class MEAN implements NeuronActivationInterface {
   public static NAME = "MEAN";
   public readonly range: ActivationRange = new ActivationRange(
@@ -41,22 +45,23 @@ export class MEAN implements NeuronActivationInterface {
   }
 
   fix(neuron: Neuron) {
-    const toListA = neuron.creature.inwardConnections(neuron.index);
-    for (let i = toListA.length; i--;) {
-      const c = toListA[i];
+    const fromListA = neuron.creature.inwardConnections(neuron.index);
+    for (let i = fromListA.length; i--;) {
+      const c = fromListA[i];
       if (c.from == c.to) {
         neuron.creature.disconnect(c.from, c.to);
       }
     }
 
-    for (let attempts = 12; attempts--;) {
-      const toList = neuron.creature.inwardConnections(neuron.index);
+    const fromListB = neuron.creature.inwardConnections(neuron.index);
 
-      if (toList.length < 2) {
-        neuron.creature.makeRandomConnection(neuron.index);
-      } else {
+    switch (fromListB.length) {
+      case 1:
+        neuron.setSquash(IDENTITY.NAME);
         break;
-      }
+      case 0:
+        neuron.creature.makeRandomConnection(neuron.index);
+        break;
     }
   }
 

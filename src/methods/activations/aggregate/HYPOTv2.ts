@@ -3,6 +3,7 @@ import type { Neuron } from "../../../architecture/Neuron.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
+import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class HYPOTv2 implements NeuronActivationInterface {
   public static NAME = "HYPOTv2";
@@ -85,7 +86,7 @@ export class HYPOTv2 implements NeuronActivationInterface {
     const inwardB = neuron.creature.inwardConnections(neuron.index);
 
     if (inwardB.length < 2) {
-      neuron.creature.makeRandomConnection(neuron.index);
+      neuron.setSquash(IDENTITY.NAME);
     }
   }
 }
