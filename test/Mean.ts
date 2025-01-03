@@ -3,8 +3,11 @@ import { Creature } from "../src/Creature.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 import type { CreatureExport } from "../mod.ts";
+import { emptyDirSync } from "@std/fs";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+const testDir = ".test/Mean";
+emptyDirSync(testDir);
 
 Deno.test("Mean", () => {
   const json: CreatureExport = {
@@ -13,13 +16,19 @@ Deno.test("Mean", () => {
     ],
     synapses: [
       { weight: 1, fromUUID: "input-0", toUUID: "output-0" },
-      { weight: 1, fromUUID: "input-1", toUUID: "output-0" },
+      { weight: -1, fromUUID: "input-1", toUUID: "output-0" },
       { weight: 1, fromUUID: "input-2", toUUID: "output-0" },
     ],
     input: 3,
     output: 1,
   };
   const creature = Creature.fromJSON(json);
+  creature.fix();
+  creature.validate();
+  Deno.writeTextFileSync(
+    `${testDir}/fixed.json`,
+    JSON.stringify(creature.exportJSON(), null, 2),
+  );
   const sparseConfig = new SparseConfig(
     creature.exportJSON(),
     createBackPropagationConfig({}),
@@ -38,7 +47,7 @@ Deno.test("Mean", () => {
     assertAlmostEquals(actual0, actual1);
     assertAlmostEquals(actual0, actual2);
 
-    const expected = (a + b + c) / 3 + -0.2;
+    const expected = (a + (b * -1) + c) / 3 + -0.2;
 
     assert(
       Math.abs(expected - actual0) < 0.00001,

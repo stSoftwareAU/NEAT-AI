@@ -9,12 +9,13 @@ import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import type { NeuronFixableInterface } from "../NeuronFixableInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 
 /**
  * No longer used. A normal neurual network can memic the behavior of this activation.
  */
-export class MEAN implements NeuronActivationInterface {
+export class MEAN implements NeuronActivationInterface, NeuronFixableInterface {
   public static NAME = "MEAN";
   public readonly range: ActivationRange = new ActivationRange(
     MEAN.NAME,
@@ -55,13 +56,13 @@ export class MEAN implements NeuronActivationInterface {
 
     const fromListB = neuron.creature.inwardConnections(neuron.index);
 
-    switch (fromListB.length) {
-      case 1:
-        neuron.setSquash(IDENTITY.NAME);
-        break;
-      case 0:
-        neuron.creature.makeRandomConnection(neuron.index);
-        break;
+    if (fromListB.length === 0) {
+      neuron.creature.makeRandomConnection(neuron.index);
+    } else {
+      fromListB.forEach((c) => {
+        c.weight /= fromListB.length;
+      });
+      neuron.setSquash(IDENTITY.NAME);
     }
   }
 
