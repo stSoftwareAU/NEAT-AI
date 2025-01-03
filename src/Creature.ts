@@ -1263,8 +1263,8 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    this.neurons.forEach((node) => {
-      node.fix();
+    this.neurons.forEach((neuron) => {
+      neuron.fix();
     });
 
     const tmpDebug = this.DEBUG;
