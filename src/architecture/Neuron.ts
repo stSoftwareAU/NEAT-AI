@@ -4,6 +4,11 @@ import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
+import {
+  findActivationFunction,
+  type FuncationCache,
+} from "../methods/activations/FunctionCache.ts";
+import type { MakeActivationFunctionInterface } from "../methods/activations/MakeActivationFunctionInterface.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
 import type {
@@ -28,7 +33,6 @@ import {
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
-import { generate as generateV5Sync } from "./SyncV5.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
@@ -121,14 +125,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
   }
 
-  private dynamicFunctionUUID: string = "";
-
-  private cachedDynamicFunction?: () => {
-    activation: number;
-    value: number;
-  };
-
-  private static NAMESPACE = "8e4ab65a-26fb-4b8e-b780-7510d8f5dc63";
+  private functionCache: FuncationCache = { key: "" };
 
   /**
    * Creates a function that calculates the activation of the neuron
@@ -153,12 +150,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
     functionBody += `activations[${this.index}] = activation;\n`;
     functionBody += "return { activation, value };";
 
-    const te = new TextEncoder();
-    const cacheKey = te.encode(functionBody + "//" + this.squash);
+    const foundFunction = findActivationFunction(
+      functionBody,
+      this.functionCache,
+      this.squash,
+    );
 
-    const uuid = generateV5Sync(Neuron.NAMESPACE, cacheKey);
-    if (this.dynamicFunctionUUID == uuid) {
-      return this.cachedDynamicFunction!;
+    if (foundFunction) {
+      return foundFunction;
     }
 
     // Dynamically create the function
@@ -180,8 +179,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
       this.creature.state,
       this.squashProxy,
     );
-    this.dynamicFunctionUUID = uuid;
-    this.cachedDynamicFunction = bondedFunction;
+
+    this.functionCache.function = bondedFunction;
     return bondedFunction;
   }
 
@@ -200,7 +199,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
         this.activateAndTraceNeuron = this.activateAndTraceNeuronActivation;
-        this.activateNeuron = this.activateNeuronActivation;
+
+        if (
+          (squashMethod as MakeActivationFunctionInterface)
+            .makeActivationFunction
+        ) {
+          this.activateNeuron =
+            (squashMethod as MakeActivationFunctionInterface)
+              .makeActivationFunction(this, this.functionCache);
+        } else {
+          this.activateNeuron = this.activateNeuronActivation;
+        }
         this.activateProxy = squashMethod.activate.bind(squashMethod);
         this.activateAndTraceProxy = squashMethod.activateAndTrace.bind(
           squashMethod,

@@ -1,9 +1,16 @@
 import type { Neuron } from "../../architecture/Neuron.ts";
+import type { FuncationCache } from "./FunctionCache.ts";
+import type { NeuronActivationInterface } from "./NeuronActivationInterface.ts";
 
-type acticationFunction = (activations: Float32Array) => number;
-export interface MakeActivationFunctionInterface {
+export type ActivationFunction = () => {
+  activation: number;
+  value: number;
+};
+
+export interface MakeActivationFunctionInterface
+  extends NeuronActivationInterface {
   makeActivationFunction(
     neuron: Neuron,
-    cache: Map<string, { function: acticationFunction; used: boolean }>,
-  ): acticationFunction;
+    cache: FuncationCache,
+  ): ActivationFunction;
 }
