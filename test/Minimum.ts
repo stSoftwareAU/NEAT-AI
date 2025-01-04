@@ -45,7 +45,7 @@ Deno.test("Minimum", () => {
     const expected = Math.min(a, b, c) - 0.2;
 
     assert(
-      Math.abs(expected - actual0) < 0.00001,
+      Math.abs(expected - actual0) < 0.00000001,
       p + ") Expected: " + expected + ", actual: " + actual0 + ", data: " +
         data,
     );
