@@ -61,7 +61,7 @@ Deno.test("XOR-evolve", async () => {
     { input: [1, 1], output: [0] },
   ];
 
-  let bestError=Number.POSITIVE_INFINITY;
+  let bestError = Number.POSITIVE_INFINITY;
   let results = { error: 0 };
   for (let attempt = 0; attempt < 100; attempt++) {
     const creature = new Creature(2, 1);
@@ -82,7 +82,10 @@ Deno.test("XOR-evolve", async () => {
     console.info("Attempt", attempt, "failed with error", results.error);
   }
 
-  assert(results.error <= 0.03, "Error rate was: " + results.error + " best:"+ bestError);
+  assert(
+    results.error <= 0.03,
+    "Error rate was: " + results.error + " best:" + bestError,
+  );
 });
 
 Deno.test("booleanXOR", async () => {
