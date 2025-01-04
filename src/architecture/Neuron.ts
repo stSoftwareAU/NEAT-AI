@@ -6,7 +6,7 @@ import { Activations } from "../methods/activations/Activations.ts";
 import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
 import {
   findActivationFunction,
-  type FuncationCache,
+  type FunctionCache,
 } from "../methods/activations/FunctionCache.ts";
 import type { MakeActivationFunctionInterface } from "../methods/activations/MakeActivationFunctionInterface.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
@@ -125,7 +125,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
   }
 
-  private functionCache: FuncationCache = { key: "" };
+  private functionCache: FunctionCache = { key: "" };
 
   /**
    * Creates a function that calculates the activation of the neuron

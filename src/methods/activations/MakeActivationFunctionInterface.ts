@@ -1,5 +1,5 @@
 import type { Neuron } from "../../architecture/Neuron.ts";
-import type { FuncationCache } from "./FunctionCache.ts";
+import type { FunctionCache } from "./FunctionCache.ts";
 import type { NeuronActivationInterface } from "./NeuronActivationInterface.ts";
 
 export type ActivationFunction = () => {
@@ -11,6 +11,6 @@ export interface MakeActivationFunctionInterface
   extends NeuronActivationInterface {
   makeActivationFunction(
     neuron: Neuron,
-    cache: FuncationCache,
+    cache: FunctionCache,
   ): ActivationFunction;
 }
