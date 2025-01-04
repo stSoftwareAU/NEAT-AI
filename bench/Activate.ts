@@ -35,7 +35,7 @@ import { Creature } from "../src/Creature.ts";
  * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p999
  * ----------- ----------------------------- --------------------- --------------------------
  * Activate            25.1 ms          39.9 ( 24.9 ms …  26.5 ms)  25.0 ms  26.5 ms  26.5 ms
- * 
+ *
  * v0.142.1 static functions for MAXIMUM and MINIMUM
  * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p999
  * ----------- ----------------------------- --------------------- --------------------------
