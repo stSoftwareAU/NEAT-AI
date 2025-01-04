@@ -1,23 +1,20 @@
-import { assert } from "@std/assert";
+import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Minimum", () => {
-  const json: CreatureInternal = {
+  const json: CreatureExport = {
     neurons: [
-      { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
-      { bias: 0, type: "input", squash: "LOGISTIC", index: 1 },
-      { bias: 0, type: "input", squash: "LOGISTIC", index: 2 },
-      { bias: 0, type: "output", squash: "MINIMUM", index: 3 },
+      { bias: -0.2, type: "output", squash: "MINIMUM", uuid: "output-0" },
     ],
     synapses: [
-      { weight: 1, from: 0, to: 3 },
-      { weight: 1, from: 1, to: 3 },
-      { weight: 1, from: 2, to: 3 },
+      { weight: 1, fromUUID: "input-0", toUUID: "output-0" },
+      { weight: -1, fromUUID: "input-1", toUUID: "output-0" },
+      { weight: 1, fromUUID: "input-2", toUUID: "output-0" },
     ],
     input: 3,
     output: 1,
@@ -29,23 +26,35 @@ Deno.test("Minimum", () => {
   );
 
   for (let p = 0; p < 1000; p++) {
-    const a = Math.random() * 2 - 1;
-    const b = Math.random() * 2 - 1;
-    const c = Math.random() * 2 - 1;
+    const a = Math.random() * 3 - 1.5;
+    const b = Math.random() * 3 - 1.5;
+    const c = Math.random() * 3 - 1.5;
 
     const data = new Float32Array([a, b, c]);
-    const actual = creature.activateAndTrace(data, false, sparseConfig)[0];
+    const actual0 = creature.activate(data, false)[0];
+
+    const actual1 = creature.activateAndTrace(data, false, sparseConfig)[0];
     const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
 
+    assertAlmostEquals(actual0, actual1);
+    assertAlmostEquals(actual0, actual2);
     assert(
-      Math.abs(actual - actual2) < 0.00000001,
+      Math.abs(actual0 - actual2) < 0.00000001,
       "repeated calls should return the same result",
     );
-    const expected = Math.min(a, b, c);
+    const expected = Math.min(a, b * -1, c) - 0.2;
 
-    assert(
-      Math.abs(expected - actual) < 0.00001,
-      p + ") Expected: " + expected + ", actual: " + actual + ", data: " + data,
-    );
+    const delta = expected - actual0;
+    if (Math.abs(delta) > 0.000_001) {
+      console.info(
+        "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
+        delta,
+        data,
+      );
+      fail(
+        p + ") Expected: " + expected + ", actual: " + actual0 + ", delta: " +
+          delta,
+      );
+    }
   }
 });

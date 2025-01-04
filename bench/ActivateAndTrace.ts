@@ -40,7 +40,7 @@ const creature = Creature.fromJSON(
     Deno.readTextFileSync(creatureFile),
   ),
 );
-
+creature.fix();
 creature.clearState();
 
 const inputs = makeInputs(creature);
