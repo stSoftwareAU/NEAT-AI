@@ -5,7 +5,6 @@ import type { UnSquashInterface } from "../src/methods/activations/UnSquashInter
 import { HYPOT } from "../src/methods/activations/aggregate/HYPOT.ts";
 import { IF } from "../src/methods/activations/aggregate/IF.ts";
 import { MAXIMUM } from "../src/methods/activations/aggregate/MAXIMUM.ts";
-import { MEAN } from "../src/methods/activations/aggregate/MEAN.ts";
 import { MINIMUM } from "../src/methods/activations/aggregate/MINIMUM.ts";
 import { BIPOLAR } from "../src/methods/activations/types/BIPOLAR.ts";
 import { BIPOLAR_SIGMOID } from "../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
@@ -288,7 +287,6 @@ Deno.test("unSquash", () => {
       name == MAXIMUM.NAME ||
       name == HYPOT.NAME ||
       name == HYPOTv2.NAME ||
-      name == MEAN.NAME ||
       name == IF.NAME
     ) {
       return;
