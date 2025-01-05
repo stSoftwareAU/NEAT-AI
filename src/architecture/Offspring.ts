@@ -39,17 +39,9 @@ export class Offspring {
       options.geneticCompatibilityThreshold &&
       compatibility < options.geneticCompatibilityThreshold
     ) {
-      console.info(
-        `Incompatible parents only: ${(compatibility * 100).toFixed(1)}%`,
-      );
       father = editParentByIndex(mother, father);
       CreatureUtil.makeUUID(father);
-      const afterCompatibility = geneticCompatibility(mother, father);
-      console.info(
-        `After editing compatibility: ${
-          (afterCompatibility * 100).toFixed(1)
-        }%`,
-      );
+
       fixAliases = true;
     }
 
