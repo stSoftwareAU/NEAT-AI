@@ -45,7 +45,7 @@ export function createNeatConfig(options: NeatOptions) {
 
     targetError: options.targetError ?? 0.05,
 
-    costOfGrowth: options.costOfGrowth ?? 0.000_1,
+    costOfGrowth: options.costOfGrowth ?? 0.000_01,
 
     iterations: options.iterations ?? Number.MAX_SAFE_INTEGER,
 
