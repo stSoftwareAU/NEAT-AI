@@ -1,8 +1,8 @@
 import { assert, assertAlmostEquals, fail } from "@std/assert";
-import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+import { Creature } from "../../../src/Creature.ts";
+import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -45,7 +45,7 @@ Deno.test("Minimum", () => {
     const expected = Math.min(a, b * -1, c) - 0.2;
 
     const delta = expected - actual0;
-    if (Math.abs(delta) > 0.000_001) {
+    if (Math.abs(delta) > 0.000_0002) {
       console.info(
         "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
         delta,
