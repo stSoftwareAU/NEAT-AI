@@ -40,6 +40,11 @@ import { Creature } from "../src/Creature.ts";
  * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p999
  * ----------- ----------------------------- --------------------- --------------------------
  * Activate            18.7 ms          53.6 ( 18.5 ms …  19.9 ms)  18.7 ms  19.9 ms  19.9 ms
+ *
+ * v0.144.0 static from IF, HYPOT and HYPOTv2
+ * benchmark   time/iter (avg)        iter/s      (min … max)           p75      p99     p999
+ * ----------- ----------------------------- --------------------- --------------------------
+ * Activate            15.0 ms          66.8 ( 14.9 ms …  15.4 ms)  15.0 ms  15.4 ms  15.4 ms
  */
 const creatureFile = Deno.args[0] || "test/data/traced.json";
 const creature = Creature.fromJSON(

@@ -1,20 +1,22 @@
 import { assert, assertAlmostEquals, fail } from "@std/assert";
-import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+import { Creature } from "../../../src/Creature.ts";
+import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Minimum", () => {
+Deno.test("IF", () => {
   const json: CreatureExport = {
     neurons: [
-      { bias: -0.2, type: "output", squash: "MINIMUM", uuid: "output-0" },
+      { bias: -0.2, type: "hidden", squash: "IF", uuid: "hidden-0" },
+      { bias: 0.123, type: "output", squash: "TANH", uuid: "output-0" },
     ],
     synapses: [
-      { weight: 1, fromUUID: "input-0", toUUID: "output-0" },
-      { weight: -1, fromUUID: "input-1", toUUID: "output-0" },
-      { weight: 1, fromUUID: "input-2", toUUID: "output-0" },
+      { weight: 1, fromUUID: "input-0", toUUID: "hidden-0", type: "condition" },
+      { weight: -1, fromUUID: "input-1", toUUID: "hidden-0", type: "positive" },
+      { weight: 1, fromUUID: "input-2", toUUID: "hidden-0", type: "negative" },
+      { weight: -3.142, fromUUID: "hidden-0", toUUID: "output-0" },
     ],
     input: 3,
     output: 1,
@@ -39,13 +41,14 @@ Deno.test("Minimum", () => {
     assertAlmostEquals(actual0, actual1);
     assertAlmostEquals(actual0, actual2);
     assert(
-      Math.abs(actual0 - actual2) < 0.00000001,
+      Math.abs(actual0 - actual2) < 0.000_000_1,
       "repeated calls should return the same result",
     );
-    const expected = Math.min(a, b * -1, c) - 0.2;
+    const hidden = (a > 0 ? b * -1 : c) - 0.2;
+    const expected = Math.tanh(hidden * -3.142 + 0.123);
 
     const delta = expected - actual0;
-    if (Math.abs(delta) > 0.000_001) {
+    if (Math.abs(delta) > 0.000_0002) {
       console.info(
         "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
         delta,

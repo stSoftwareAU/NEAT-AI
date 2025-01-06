@@ -4,8 +4,11 @@ import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
+import { findActivationFunction } from "../FunctionCache.ts";
+import type { MakeActivationFunctionInterface } from "../MakeActivationFunctionInterface.ts";
 
-export class HYPOT implements NeuronActivationInterface {
+export class HYPOT
+  implements NeuronActivationInterface, MakeActivationFunctionInterface {
   public static NAME = "HYPOT";
 
   public readonly range = new ActivationRange(
@@ -13,6 +16,54 @@ export class HYPOT implements NeuronActivationInterface {
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
+
+  makeActivationFunction(
+    neuron: Neuron,
+    cache: {
+      key: string;
+      function: () => { activation: number; value: number };
+    },
+  ): () => {
+    activation: number;
+    value: number;
+  } {
+    let functionBody = "const activations = this.activations;\n";
+    functionBody += `const values = [`;
+
+    const inwardList = neuron.creature.inwardConnections(neuron.index);
+    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
+    for (let i = 0, len = inwardListClone.length; i < len; i++) {
+      const { from, weight } = inwardListClone[i];
+      functionBody += `\nactivations[${from}] * ${weight},`;
+    }
+    functionBody += "];\n";
+
+    functionBody +=
+      `const activation = Math.hypot(...values) + ${neuron.bias};\n`;
+    functionBody += `activations[${neuron.index}] = activation;\n`;
+
+    functionBody += "return { activation, value:0 };";
+
+    const foundFunction = findActivationFunction(functionBody, cache);
+    if (foundFunction) {
+      return foundFunction;
+    }
+
+    // Dynamically create the function
+    const func = new Function(
+      functionBody,
+    ) as () => {
+      activation: number;
+      value: number;
+    };
+
+    // Bind static parameters: state and squash function
+    const bondedFunction = func.bind(
+      neuron.creature.state,
+    );
+    cache.function = bondedFunction;
+    return bondedFunction;
+  }
 
   propagate(
     neuron: Neuron,
