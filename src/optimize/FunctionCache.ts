@@ -1,6 +1,6 @@
 import type { ActivationFunction } from "./MakeActivationFunctionInterface.ts";
 
-import { generate as generateV5Sync } from "../../architecture/SyncV5.ts";
+import { generate as generateV5Sync } from "../architecture/SyncV5.ts";
 
 export type FunctionCache = {
   key: string;

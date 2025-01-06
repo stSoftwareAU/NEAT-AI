@@ -4,17 +4,17 @@ import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
-import {
-  findActivationFunction,
-  type FunctionCache,
-} from "../methods/activations/FunctionCache.ts";
-import type { MakeActivationFunctionInterface } from "../methods/activations/MakeActivationFunctionInterface.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
 import type {
   UnSquashInterface,
 } from "../methods/activations/UnSquashInterface.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
+import {
+  findActivationFunction,
+  type FunctionCache,
+} from "../optimize/FunctionCache.ts";
+import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
 import {
   type BackPropagationConfig,
   toValue,
