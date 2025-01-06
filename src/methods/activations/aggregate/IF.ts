@@ -13,8 +13,14 @@ import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
+import type { MakeActivationFunctionInterface } from "../MakeActivationFunctionInterface.ts";
+import { findActivationFunction } from "../FunctionCache.ts";
 
-export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
+export class IF
+  implements
+    NeuronActivationInterface,
+    ApplyLearningsInterface,
+    MakeActivationFunctionInterface {
   public static NAME = "IF";
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     IF.NAME,
@@ -24,6 +30,57 @@ export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
 
   public readonly range = IF.rangeStatic;
 
+  makeActivationFunction(
+    neuron: Neuron,
+    cache: {
+      key: string;
+      function: () => { activation: number; value: number };
+    },
+  ): () => {
+    activation: number;
+    value: number;
+  } {
+    let functionBody = "const activations = this.activations;\n";
+    functionBody += `let condition=negative=positive=0;\n`;
+
+    const inwardList = neuron.creature.inwardConnections(neuron.index);
+    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
+    for (let i = 0, len = inwardListClone.length; i < len; i++) {
+      const { from, weight, type } = inwardListClone[i];
+      if (type === "condition") {
+        functionBody += `\ncondition += activations[${from}] * ${weight};`;
+      } else if (type === "negative") {
+        functionBody += `\nnegative += activations[${from}] * ${weight};`;
+      } else {
+        functionBody += `\npositive += activations[${from}] * ${weight};`;
+      }
+    }
+    functionBody +=
+      `\nconst activation = (condition > 0 ? positive : negative) + ${neuron.bias};\n`;
+    functionBody += `activations[${neuron.index}] = activation;\n`;
+
+    functionBody += "return { activation, value:0 };";
+
+    const foundFunction = findActivationFunction(functionBody, cache);
+    if (foundFunction) {
+      return foundFunction;
+    }
+
+    // Dynamically create the function
+    const func = new Function(
+      functionBody,
+    ) as () => {
+      activation: number;
+      value: number;
+    };
+
+    // Bind static parameters: state and squash function
+    const bondedFunction = func.bind(
+      neuron.creature.state,
+    );
+    cache.function = bondedFunction;
+    return bondedFunction;
+  }
   getName() {
     return IF.NAME;
   }

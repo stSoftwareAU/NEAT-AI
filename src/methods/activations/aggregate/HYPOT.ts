@@ -64,6 +64,7 @@ export class HYPOT
     cache.function = bondedFunction;
     return bondedFunction;
   }
+
   propagate(
     neuron: Neuron,
     _targetActivation: number,
