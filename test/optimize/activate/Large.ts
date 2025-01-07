@@ -41,7 +41,7 @@ Deno.test("large", () => {
     `export function example(${squashList.join(",")}){\n${inlineText}\n}`,
   );
 
-  if( inlineText.includes(";;") ){
+  if (inlineText.includes(";;")) {
     fail("Double semicolons detected");
   }
   const sparseConfig = new SparseConfig(
@@ -56,7 +56,7 @@ Deno.test("large", () => {
       false,
       sparseConfig,
     );
-    
+
     assertAlmostEquals(outputA[0], outputB[0]);
   });
 });
