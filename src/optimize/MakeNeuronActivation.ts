@@ -27,17 +27,16 @@ export function inlineActivation(neuron: Neuron): string {
   if (isNeuronActivationInterface(squash)) {
     return `a[${neuron.index}] = ${neuron.squash}(neurons[${neuron.index}]);\n`;
   }
-  let functionBody = `const v${neuron.index} = ${neuron.bias}`;
+  let valueLine = `${neuron.bias}`;
 
   const inwardList = neuron.creature.inwardConnections(neuron.index);
   const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
   for (let i = 0, len = inwardListClone.length; i < len; i++) {
     const { from, weight } = inwardListClone[i];
-    functionBody += `+ a[${from}]*${weight}`;
+    valueLine += `+ a[${from}]*${weight}`;
   }
-  functionBody += `;\n`;
 
-  functionBody += `a[${neuron.index}] = ${neuron.squash}(v${neuron.index});\n`;
+  const functionBody = `a[${neuron.index}] = ${neuron.squash}(${valueLine});\n`;
 
   return functionBody;
 }
