@@ -13,7 +13,7 @@ Deno.test("IF", () => {
       { bias: Math.SQRT2, type: "output", squash: "TANH", uuid: "output-0" },
     ],
     synapses: [
-      { weight: 1, fromUUID: "input-0", toUUID: "hidden-0", type: "condition" },
+      { weight: Math.LOG10E, fromUUID: "input-0", toUUID: "hidden-0", type: "condition" },
       { weight: -1, fromUUID: "input-1", toUUID: "hidden-0", type: "positive" },
       { weight: 1, fromUUID: "input-2", toUUID: "hidden-0", type: "negative" },
       {
@@ -22,9 +22,21 @@ Deno.test("IF", () => {
         toUUID: "hidden-0",
         type: "negative",
       },
+      {
+        weight: -Math.SQRT1_2,
+        fromUUID: "input-4",
+        toUUID: "hidden-0",
+        type: "condition",
+      },
+      {
+        weight: -Math.SQRT2,
+        fromUUID: "input-5",
+        toUUID: "hidden-0",
+        type: "condition",
+      },
       { weight: Math.PI, fromUUID: "hidden-0", toUUID: "output-0" },
     ],
-    input: 4,
+    input: 6,
     output: 1,
   };
   const creature = Creature.fromJSON(json);
@@ -38,8 +50,10 @@ Deno.test("IF", () => {
     const b = Math.random() * 4 - 2;
     const c = Math.random() * 4 - 2;
     const d = Math.random() * 4 - 2;
+    const e = Math.random() * 4 - 2;
+    const f = Math.random() * 4 - 2;
 
-    const data = new Float32Array([a, b, c, d]);
+    const data = new Float32Array([a, b, c, d,e,f]);
     const actual0 = creature.activate(data, false)[0];
 
     const actual1 = creature.activateAndTrace(data, false, sparseConfig)[0];
@@ -51,7 +65,8 @@ Deno.test("IF", () => {
       Math.abs(actual0 - actual2) < 0.000_000_1,
       "repeated calls should return the same result",
     );
-    const hidden = (a > 0 ? b * -1 : (c + d * Math.E)) - Math.LN10;
+    const condition = a * Math.LOG10E + e * -Math.SQRT1_2+ f * -Math.SQRT2;
+    const hidden = (condition > 0 ? b * -1 : (c + d * Math.E)) - Math.LN10;
     const expected = Math.tanh(hidden * Math.PI + Math.SQRT2);
 
     const delta = expected - actual0;
