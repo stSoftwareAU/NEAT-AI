@@ -58,6 +58,7 @@ import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
 import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
+import { makeCreatureActivationFunction } from "./optimize/MakeCreatureActivationFunction.ts";
 
 /**
  * Creature Class
@@ -302,10 +303,14 @@ export class Creature implements CreatureInternal {
     this.state.clear();
   }
 
+  private creatureActivationFunction?: () => undefined;
   private prepareNeurons() {
     if (this.state.preparedNeurons) {
       return;
     }
+
+    this.creatureActivationFunction =
+      makeCreatureActivationFunction(this).inlineFunction;
     for (let i = this.input, len = this.neurons.length; i < len; i++) {
       this.neurons[i].prepare();
     }
@@ -354,14 +359,15 @@ export class Creature implements CreatureInternal {
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
-    const neurons = this.neurons;
-    const len = neurons.length;
+    this.creatureActivationFunction!();
+    // const neurons = this.neurons;
+    // const len = neurons.length;
 
-    for (let i = this.input; i < len; i++) {
-      neurons[i].activateNeuron();
-    }
+    // for (let i = this.input; i < len; i++) {
+    //   neurons[i].activateNeuron();
+    // }
 
-    const lastHiddenNode = len - this.output;
+    const lastHiddenNode = this.neurons.length - this.output;
     return new Float32Array(activations.subarray(lastHiddenNode));
   }
 

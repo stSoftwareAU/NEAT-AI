@@ -4,11 +4,13 @@
  * Range: [-1, 1]
  * Source: Custom (Cosine is a standard mathematical function)
  */
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
-export class Cosine implements ActivationInterface, UnSquashInterface {
+export class Cosine
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "Cosine";
   public readonly range: ActivationRange = new ActivationRange(
     Cosine.NAME,
@@ -18,6 +20,10 @@ export class Cosine implements ActivationInterface, UnSquashInterface {
 
   getName() {
     return Cosine.NAME;
+  }
+
+  inlineSquash(value: string): string {
+    return `Math.cos(${value})`;
   }
 
   squash(x: number) {

@@ -1,6 +1,9 @@
 import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { Mutation } from "../../../NEAT/Mutation.ts";
+import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
+import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
+import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,
@@ -13,22 +16,52 @@ import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
-import type { MakeActivationFunctionInterface } from "../MakeActivationFunctionInterface.ts";
-import { findActivationFunction } from "../FunctionCache.ts";
 
 export class IF
   implements
     NeuronActivationInterface,
     ApplyLearningsInterface,
-    MakeActivationFunctionInterface {
+    MakeActivationFunctionInterface,
+    InlineActivationInterface {
   public static NAME = "IF";
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+
+  public readonly range = new ActivationRange(
     IF.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
 
-  public readonly range = IF.rangeStatic;
+  inlineActivation(neuron: Neuron) {
+    let functionBody = "";
+    let firstCondition = true;
+    let negativeBody = ` a[${neuron.index}]=${neuron.bias}`;
+    let positiveBody = ` a[${neuron.index}]=${neuron.bias}`;
+    const inwardList = neuron.creature.inwardConnections(neuron.index);
+    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
+    for (let i = 0, len = inwardListClone.length; i < len; i++) {
+      const { from, weight, type } = inwardListClone[i];
+
+      const weightClause = weight === 1 ? "" : `* ${weight} `;
+      if (type === "condition") {
+        if (firstCondition) {
+          firstCondition = false;
+          functionBody += `if( a[${from}] ${weightClause}`;
+        } else {
+          functionBody += `+ a[${from}] ${weightClause}`;
+        }
+      } else if (type === "negative") {
+        negativeBody += `+a[${from}] ${weightClause}`;
+      } else {
+        positiveBody += `+a[${from}] ${weightClause}`;
+      }
+    }
+    functionBody += `>0){\n`;
+    functionBody += positiveBody;
+    functionBody += ";\n}else{\n";
+    functionBody += negativeBody;
+    functionBody += ";\n}\n";
+    return functionBody;
+  }
 
   makeActivationFunction(
     neuron: Neuron,
@@ -40,27 +73,11 @@ export class IF
     activation: number;
     value: number;
   } {
-    let functionBody = "const activations = this.activations;\n";
-    functionBody += `let condition=negative=positive=0;\n`;
+    let functionBody = "const a = this.activations;\n";
 
-    const inwardList = neuron.creature.inwardConnections(neuron.index);
-    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
-    for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight, type } = inwardListClone[i];
-      if (type === "condition") {
-        functionBody += `\ncondition += activations[${from}] * ${weight};`;
-      } else if (type === "negative") {
-        functionBody += `\nnegative += activations[${from}] * ${weight};`;
-      } else {
-        functionBody += `\npositive += activations[${from}] * ${weight};`;
-      }
-    }
-    functionBody +=
-      `\nconst activation = (condition > 0 ? positive : negative) + ${neuron.bias};\n`;
-    functionBody += `activations[${neuron.index}] = activation;\n`;
-
-    functionBody += "return { activation, value:0 };";
-
+    functionBody += this.inlineActivation(neuron);
+    functionBody += `return { activation:a[${neuron.index}], value:0 };`;
+    // console.info(functionBody);
     const foundFunction = findActivationFunction(functionBody, cache);
     if (foundFunction) {
       return foundFunction;
@@ -261,7 +278,7 @@ export class IF
     }
 
     const activation = (condition > 0 ? positive : negative) + neuron.bias;
-    const limitedActivation = IF.rangeStatic.limit(activation);
+    const limitedActivation = this.range.limit(activation);
     return limitedActivation;
   }
 
@@ -291,7 +308,7 @@ export class IF
     }
 
     const activation = (condition > 0 ? positive : negative) + neuron.bias;
-    const limitedActivation = IF.rangeStatic.limit(activation);
+    const limitedActivation = this.range.limit(activation);
     return limitedActivation;
   }
 

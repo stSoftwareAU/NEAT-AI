@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,7 +13,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Sine
  */
-export class SINE implements ActivationInterface, UnSquashInterface {
+export class SINE
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "SINE";
 
   public readonly range: ActivationRange = new ActivationRange(
@@ -49,6 +51,10 @@ export class SINE implements ActivationInterface, UnSquashInterface {
 
   getName() {
     return SINE.NAME;
+  }
+
+  inlineSquash(value: string): string {
+    return `Math.sin( ${value})`;
   }
 
   // SINE function definition

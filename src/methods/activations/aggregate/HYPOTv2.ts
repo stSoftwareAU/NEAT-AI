@@ -1,15 +1,41 @@
-import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
+import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
+import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
+import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
-import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
+import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
+import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
-import { findActivationFunction } from "../FunctionCache.ts";
-import type { MakeActivationFunctionInterface } from "../MakeActivationFunctionInterface.ts";
 
 export class HYPOTv2
-  implements NeuronActivationInterface, MakeActivationFunctionInterface {
+  implements
+    NeuronActivationInterface,
+    MakeActivationFunctionInterface,
+    InlineActivationInterface {
   public static NAME = "HYPOTv2";
+
+  inlineActivation(neuron: Neuron) {
+    let valueLine = "";
+
+    const inwardList = neuron.creature.inwardConnections(neuron.index);
+    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
+    for (let i = 0, len = inwardListClone.length; i < len; i++) {
+      const { from, weight } = inwardListClone[i];
+      if (i > 0) {
+        valueLine += ",";
+      }
+      if (weight == 1) {
+        valueLine += `\n a[${from}] + ${neuron.bias}`;
+      } else {
+        valueLine += `\n a[${from}] * ${weight} + ${neuron.bias}`;
+      }
+    }
+
+    const functionBody = `a[${neuron.index}] = Math.hypot(${valueLine});\n`;
+
+    return functionBody;
+  }
 
   public readonly range = new ActivationRange(
     HYPOTv2.NAME,
@@ -26,22 +52,10 @@ export class HYPOTv2
     activation: number;
     value: number;
   } {
-    let functionBody = "const activations = this.activations;\n";
-    functionBody += `const values = [`;
+    let functionBody = "const a = this.activations;\n";
+    functionBody += this.inlineActivation(neuron);
 
-    const inwardList = neuron.creature.inwardConnections(neuron.index);
-    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
-    for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight } = inwardListClone[i];
-      functionBody += `\nactivations[${from}] * ${weight} + ${neuron.bias},`;
-    }
-    functionBody += "];\n";
-
-    functionBody += `const activation = Math.hypot(...values);\n`;
-    functionBody += `activations[${neuron.index}] = activation;\n`;
-
-    functionBody += "return { activation, value:0 };";
-
+    functionBody += `return { activation: a[${neuron.index}], value:0 };`;
     const foundFunction = findActivationFunction(functionBody, cache);
     if (foundFunction) {
       return foundFunction;

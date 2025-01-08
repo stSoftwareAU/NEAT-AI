@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -11,7 +12,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Step_function
  */
-export class STEP implements ActivationInterface, UnSquashInterface {
+export class STEP
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "STEP";
 
   public readonly range: ActivationRange = new ActivationRange(
@@ -22,6 +24,10 @@ export class STEP implements ActivationInterface, UnSquashInterface {
 
   getName() {
     return STEP.NAME;
+  }
+
+  inlineSquash(value: string): string {
+    return value + " > 0 ? 1 : 0";
   }
 
   /** Step function definition */

@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -8,7 +9,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * The function is non-differentiable at zero.
  * Formula: f(x) = x > 0 ? 1 : -1
  */
-export class BIPOLAR implements ActivationInterface, UnSquashInterface {
+export class BIPOLAR
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "BIPOLAR";
   public readonly range: ActivationRange = new ActivationRange(
     BIPOLAR.NAME,
@@ -26,6 +28,10 @@ export class BIPOLAR implements ActivationInterface, UnSquashInterface {
     if (Number.isFinite(hint)) return hint ? hint : 0;
 
     return activation;
+  }
+
+  inlineSquash(value: string): string {
+    return `(${value}) > 0 ? 1 : -1`;
   }
 
   squash(x: number) {
