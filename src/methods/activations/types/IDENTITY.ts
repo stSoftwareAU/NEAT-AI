@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -6,7 +7,12 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * The IDENTITY activation function simply returns the input value.
  * It's mainly used in the output layer of regression problems.
  */
-export class IDENTITY implements ActivationInterface, UnSquashInterface {
+export class IDENTITY
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  inlineSquash(value: string): string {
+    return value;
+  }
+
   public static NAME = "IDENTITY";
 
   public readonly range = new ActivationRange(

@@ -44,6 +44,22 @@ Deno.test("large", () => {
   if (inlineText.includes(";;")) {
     fail("Double semicolons detected");
   }
+  const shouldNotContain = [
+    " IDENTITY",
+    "=IDENTITY",
+    " TANH",
+    "=TANH",
+    "STEP",
+    "ABSOLUTE",
+    "CLIPPED",
+    "HARD_TANH",
+  ];
+  shouldNotContain.forEach((text) => {
+    if (inlineText.includes(text)) {
+      fail(`${text} detected`);
+    }
+  });
+
   const sparseConfig = new SparseConfig(
     exportCreature,
     createBackPropagationConfig({}),

@@ -9,7 +9,6 @@ import { ArcTan } from "./types/ArcTan.ts";
 import { BENT_IDENTITY } from "./types/BENT_IDENTITY.ts";
 import { BIPOLAR } from "./types/BIPOLAR.ts";
 import { BIPOLAR_SIGMOID } from "./types/BIPOLAR_SIGMOID.ts";
-import { CLIPPED } from "./types/CLIPPED.ts";
 import { COMPLEMENT } from "./types/COMPLEMENT.ts";
 import { Cosine } from "./types/Cosine.ts";
 import { Cube } from "./types/Cube.ts";
@@ -48,7 +47,6 @@ export class Activations {
     [BIPOLAR.NAME]: new BIPOLAR(),
     [BIPOLAR_SIGMOID.NAME]: new BIPOLAR_SIGMOID(),
 
-    [CLIPPED.NAME]: new CLIPPED(),
     [COMPLEMENT.NAME]: new COMPLEMENT(),
     [Cosine.NAME]: new Cosine(),
     [Cube.NAME]: new Cube(),
@@ -60,6 +58,8 @@ export class Activations {
     [GELU.NAME]: new GELU(),
 
     [HARD_TANH.NAME]: new HARD_TANH(),
+    ["CLIPPED"]: new HARD_TANH(),
+
     [HYPOT.NAME]: new HYPOT(),
     [HYPOTv2.NAME]: new HYPOTv2(),
 
@@ -93,7 +93,9 @@ export class Activations {
   };
 
   static readonly NAMES = Object.keys(Activations.MAP)
-    .filter((key) => !["INVERSE", "SINUSOID", MEAN.NAME].includes(key));
+    .filter((key) =>
+      !["INVERSE", "SINUSOID", MEAN.NAME, "CLIPPED"].includes(key)
+    );
 
   static find(name: string) {
     const activation = this.MAP[name];

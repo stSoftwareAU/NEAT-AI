@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,8 +13,13 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Hyperbolic_functions#Hyperbolic_tangent
  */
-export class TANH implements ActivationInterface, UnSquashInterface {
+export class TANH
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "TANH";
+
+  inlineSquash(value: string): string {
+    return `Math.tanh(${value})`;
+  }
 
   public readonly range: ActivationRange = new ActivationRange(
     TANH.NAME,

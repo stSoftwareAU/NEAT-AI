@@ -2,6 +2,7 @@ import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { InlineActivationInterface } from "./InlineActivationInterface.ts";
+import type { InlineSquashInterface } from "./InlineSquashInterface.ts";
 import { inlineActivation } from "./MakeNeuronActivation.ts";
 
 export function makeCreatureActivationFunction(creature: Creature) {
@@ -13,17 +14,20 @@ export function makeCreatureActivationFunction(creature: Creature) {
     functionBody += inlineActivation(neuron);
     if (neuron.squash && !squashMap.has(neuron.squash)) {
       const sf = neuron.findSquash();
-      const inlineActivation = (sf as unknown) as InlineActivationInterface;
-      if (!inlineActivation.inlineActivation) {
-        const squashActivation = sf as ActivationInterface;
+      const inlineSquash = (sf as unknown) as InlineSquashInterface;
+      if (!inlineSquash.inlineSquash) {
+        const inlineActivation = (sf as unknown) as InlineActivationInterface;
+        if (!inlineActivation.inlineActivation) {
+          const squashActivation = sf as ActivationInterface;
 
-        if (squashActivation.squash) {
-          const bound = squashActivation.squash.bind(squashActivation);
-          squashMap.set(neuron.squash, bound as () => number);
-        } else {
-          const neuronActivation = sf as NeuronActivationInterface;
-          const bound = neuronActivation.activate.bind(squashActivation);
-          squashMap.set(neuron.squash, bound as () => number);
+          if (squashActivation.squash) {
+            const bound = squashActivation.squash.bind(squashActivation);
+            squashMap.set(neuron.squash, bound as () => number);
+          } else {
+            const neuronActivation = sf as NeuronActivationInterface;
+            const bound = neuronActivation.activate.bind(squashActivation);
+            squashMap.set(neuron.squash, bound as () => number);
+          }
         }
       }
     }

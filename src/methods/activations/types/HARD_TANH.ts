@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -10,7 +11,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Source: A Fast Learning Algorithm for Deep Belief Nets. Geoffrey Hinton et al., 2006
  * https://www.cs.toronto.edu/~fritz/absps/fastnc.pdf
  */
-export class HARD_TANH implements ActivationInterface, UnSquashInterface {
+export class HARD_TANH
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "HARD_TANH";
   public readonly range: ActivationRange = new ActivationRange(
     HARD_TANH.NAME,
@@ -20,6 +22,9 @@ export class HARD_TANH implements ActivationInterface, UnSquashInterface {
 
   getName() {
     return HARD_TANH.NAME;
+  }
+  inlineSquash(value: string): string {
+    return `Math.max(-1, Math.min(1, ${value}))`;
   }
 
   // Implementing the unSquash function
