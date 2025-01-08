@@ -31,18 +31,17 @@ export class MINIMUM
       if (i > 0) {
         functionBody += ",";
       }
-      if( weight == 1){
+      if (weight == 1) {
         functionBody += `\n a[${from}]`;
-      }
-      else{
+      } else {
         functionBody += `\n a[${from}] * ${weight}`;
       }
     }
     functionBody += "\n];\n";
-    if( neuron.bias != 0){
-      functionBody += `a[${neuron.index}] = Math.min(...v${neuron.index}) + ${neuron.bias};\n`;
-    }
-    else{
+    if (neuron.bias != 0) {
+      functionBody +=
+        `a[${neuron.index}] = Math.min(...v${neuron.index}) + ${neuron.bias};\n`;
+    } else {
       functionBody += `a[${neuron.index}] = Math.min(...v${neuron.index});\n`;
     }
     return functionBody;
