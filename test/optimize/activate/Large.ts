@@ -56,6 +56,9 @@ Deno.test("large", () => {
     "ArcTan",
     "BIPOLAR(",
     "COMPLEMENT",
+    "Cosine",
+    "ReLU6",
+    "SINE",
   ];
   shouldNotContain.forEach((text) => {
     if (inlineText.includes(text)) {

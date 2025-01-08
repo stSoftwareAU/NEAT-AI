@@ -9,10 +9,6 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class IDENTITY
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
-  inlineSquash(value: string): string {
-    return value;
-  }
-
   public static NAME = "IDENTITY";
 
   public readonly range = new ActivationRange(
@@ -29,6 +25,10 @@ export class IDENTITY
 
   getName() {
     return IDENTITY.NAME;
+  }
+
+  inlineSquash(value: string): string {
+    return value;
   }
 
   squash(x: number) {

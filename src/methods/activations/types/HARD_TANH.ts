@@ -23,6 +23,7 @@ export class HARD_TANH
   getName() {
     return HARD_TANH.NAME;
   }
+
   inlineSquash(value: string): string {
     return `Math.max(-1, Math.min(1, ${value}))`;
   }

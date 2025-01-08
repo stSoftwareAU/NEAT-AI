@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,7 +13,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://www.tensorflow.org/api_docs/python/tf/nn/relu6
  */
-export class ReLU6 implements ActivationInterface, UnSquashInterface {
+export class ReLU6
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "ReLU6";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
@@ -45,6 +47,10 @@ export class ReLU6 implements ActivationInterface, UnSquashInterface {
 
   getName() {
     return ReLU6.NAME;
+  }
+
+  inlineSquash(value: string): string {
+    return `Math.min(Math.max(0, ${value}), 6)`;
   }
 
   /** Implementation of the ReLU6 function */
