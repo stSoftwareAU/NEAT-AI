@@ -2,6 +2,7 @@ import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
 import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
 import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
+import { makeSynpasesValue } from "../../../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
@@ -21,18 +22,18 @@ export class HYPOTv2
     const inwardList = neuron.creature.inwardConnections(neuron.index);
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight } = inwardListClone[i];
       if (i > 0) {
         valueLine += ",";
       }
-      if (weight == 1) {
-        valueLine += `\n a[${from}] + ${neuron.bias}`;
-      } else {
-        valueLine += `\n a[${from}] * ${weight} + ${neuron.bias}`;
-      }
+      const value = makeSynpasesValue(
+        inwardListClone[i],
+        neuron.creature.neurons,
+      );
+      valueLine += value;
+      valueLine += ` + ${neuron.bias}`;
     }
 
-    const functionBody = `a[${neuron.index}] = Math.hypot(${valueLine});\n`;
+    const functionBody = `a[${neuron.index}]= Math.hypot(${valueLine});\n`;
 
     return functionBody;
   }

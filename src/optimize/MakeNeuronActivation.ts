@@ -1,7 +1,23 @@
 import type { Neuron } from "../architecture/Neuron.ts";
+import type { Synapse } from "../architecture/Synapse.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { InlineActivationInterface } from "./InlineActivationInterface.ts";
 import type { InlineSquashInterface } from "./InlineSquashInterface.ts";
+
+export function makeSynpasesValue(synapse: Synapse, neurons: Neuron[]): string {
+  const { from, weight } = synapse;
+  const fromNeuron = neurons[from];
+  if (fromNeuron.type === "constant") {
+    const value = fromNeuron.bias * weight;
+    return `${value}`;
+  } else if (weight === 1) {
+    return `a[${from}]`;
+  } else if (weight === -1) {
+    return `-a[${from}]`;
+  } else {
+    return `a[${from}]*${weight}`;
+  }
+}
 
 export function inlineActivation(neuron: Neuron): string {
   if (neuron.type === "constant") {
@@ -31,13 +47,15 @@ export function inlineActivation(neuron: Neuron): string {
   let valueLine = neuron.bias ? `${neuron.bias}` : "";
 
   const inwardList = neuron.creature.inwardConnections(neuron.index);
+  const neurons = neuron.creature.neurons;
   const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
   for (let i = 0, len = inwardListClone.length; i < len; i++) {
-    const { from, weight } = inwardListClone[i];
+    const value = makeSynpasesValue(inwardListClone[i], neurons);
+
     if (valueLine !== "") {
       valueLine += "+";
     }
-    valueLine += `a[${from}]*${weight}`;
+    valueLine += value;
   }
 
   function isInlineSquashInterface(
@@ -47,10 +65,10 @@ export function inlineActivation(neuron: Neuron): string {
   }
 
   if (isInlineSquashInterface(squash)) {
-    return `a[${neuron.index}] = ${squash.inlineSquash(valueLine)};\n`;
+    return `a[${neuron.index}]= ${squash.inlineSquash(valueLine)};\n`;
   }
 
-  const functionBody = `a[${neuron.index}] = ${neuron.squash}(${valueLine});\n`;
+  const functionBody = `a[${neuron.index}]= ${neuron.squash}(${valueLine});\n`;
 
   return functionBody;
 }
