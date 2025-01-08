@@ -64,16 +64,16 @@ Deno.test("large", () => {
     exportCreature,
     createBackPropagationConfig({}),
   );
-  const expected=[
+  const expected = [
     0.2914523482322693,
     0.22125014662742615,
     0.1657249480485916,
     -0.3648700416088104,
     -0.03569267690181732,
     -0.1089940071105957,
-    -0.09180060029029846
+    -0.09180060029029846,
   ];
-  for( let p = 0; p < trainingSet.length; p++) {
+  for (let p = 0; p < trainingSet.length; p++) {
     const dataSet: DataRecordInterface = trainingSet[p];
     const data = new Float32Array(dataSet.input);
     const activationA = creature.activate(data);
