@@ -40,20 +40,22 @@ export class IF
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
       const { from, weight, type } = inwardListClone[i];
+
+      const weightClause = weight === 1 ? "" : `* ${weight} `;
       if (type === "condition") {
         if (firstCondition) {
           firstCondition = false;
-          functionBody += `const c${neuron.index} = a[${from}] * ${weight}`;
+          functionBody += `if( a[${from}] ${weightClause}`;
         } else {
-          functionBody += ` + a[${from}] * ${weight}`;
+          functionBody += `+ a[${from}] ${weightClause}`;
         }
       } else if (type === "negative") {
-        negativeBody += `+a[${from}] * ${weight}`;
+        negativeBody += `+a[${from}] ${weightClause}`;
       } else {
-        positiveBody += `+a[${from}] * ${weight}`;
+        positiveBody += `+a[${from}] ${weightClause}`;
       }
     }
-    functionBody += `;\nif(c${neuron.index}>0){\n`;
+    functionBody += `>0){\n`;
     functionBody += positiveBody;
     functionBody += ";\n}else{\n";
     functionBody += negativeBody;
