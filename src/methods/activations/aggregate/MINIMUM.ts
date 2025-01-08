@@ -41,8 +41,9 @@ export class MINIMUM
     if (neuron.bias > 0) {
       functionBody +=
         `a[${neuron.index}] = Math.min(...v${neuron.index}) + ${neuron.bias};\n`;
-    } else if( neuron.bias < 0){
-      functionBody += `a[${neuron.index}] = Math.min(...v${neuron.index}) ${neuron.bias};\n`;
+    } else if (neuron.bias < 0) {
+      functionBody +=
+        `a[${neuron.index}] = Math.min(...v${neuron.index}) ${neuron.bias};\n`;
     } else {
       functionBody += `a[${neuron.index}] = Math.min(...v${neuron.index});\n`;
     }
