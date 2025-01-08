@@ -23,7 +23,7 @@ export class COMPLEMENT
   }
 
   inlineSquash(value: string): string {
-    return `1 - ${value}`;
+    return `1 - (${value})`;
   }
 
   squash(x: number) {

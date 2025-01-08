@@ -31,7 +31,7 @@ export class BIPOLAR
   }
 
   inlineSquash(value: string): string {
-    return `${value} > 0 ? 1 : -1`;
+    return `(${value}) > 0 ? 1 : -1`;
   }
 
   squash(x: number) {

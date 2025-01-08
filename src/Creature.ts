@@ -359,13 +359,13 @@ export class Creature implements CreatureInternal {
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
-    // this.creatureActivationFunction!();
-    const neurons = this.neurons;
-    const len = neurons.length;
+    this.creatureActivationFunction!();
+    // const neurons = this.neurons;
+    // const len = neurons.length;
 
-    for (let i = this.input; i < len; i++) {
-      neurons[i].activateNeuron();
-    }
+    // for (let i = this.input; i < len; i++) {
+    //   neurons[i].activateNeuron();
+    // }
 
     const lastHiddenNode = this.neurons.length - this.output;
     return new Float32Array(activations.subarray(lastHiddenNode));
