@@ -16,24 +16,23 @@ export class HYPOTv2
   public static NAME = "HYPOTv2";
 
   inlineActivation(neuron: Neuron) {
-    let functionBody = `const v${neuron.index} = [`;
+    let valueLine = "";
 
     const inwardList = neuron.creature.inwardConnections(neuron.index);
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
       const { from, weight } = inwardListClone[i];
       if (i > 0) {
-        functionBody += ",";
+        valueLine += ",";
       }
       if (weight == 1) {
-        functionBody += `\n a[${from}] + ${neuron.bias}`;
+        valueLine += `\n a[${from}] + ${neuron.bias}`;
       } else {
-        functionBody += `\n a[${from}] * ${weight} + ${neuron.bias}`;
+        valueLine += `\n a[${from}] * ${weight} + ${neuron.bias}`;
       }
     }
-    functionBody += "\n];\n";
 
-    functionBody += `a[${neuron.index}] = Math.hypot(...v${neuron.index});\n`;
+    const functionBody = `a[${neuron.index}] = Math.hypot(${valueLine});\n`;
 
     return functionBody;
   }

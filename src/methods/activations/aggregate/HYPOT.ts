@@ -18,31 +18,29 @@ export class HYPOT
   );
 
   inlineActivation(neuron: Neuron) {
-    let functionBody = `const v${neuron.index} = [`;
+    let valueLine = "";
 
     const inwardList = neuron.creature.inwardConnections(neuron.index);
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
       const { from, weight } = inwardListClone[i];
       if (i > 0) {
-        functionBody += ",";
+        valueLine += ",";
       }
       if (weight == 1) {
-        functionBody += `\n a[${from}]`;
+        valueLine += `a[${from}]`;
       } else {
-        functionBody += `\n a[${from}] * ${weight}`;
+        valueLine += `a[${from}] * ${weight}`;
       }
     }
-    functionBody += "\n];\n";
 
+    let functionBody = `a[${neuron.index}] = Math.hypot(${valueLine})`;
     if (neuron.bias > 0) {
-      functionBody +=
-        `a[${neuron.index}] = Math.hypot(...v${neuron.index}) + ${neuron.bias};\n`;
+      functionBody += ` + ${neuron.bias};\n`;
     } else if (neuron.bias < 0) {
-      functionBody +=
-        `a[${neuron.index}] = Math.hypot(...v${neuron.index}) ${neuron.bias};\n`;
+      functionBody += ` ${neuron.bias};\n`;
     } else {
-      functionBody += `a[${neuron.index}] = Math.hypot(...v${neuron.index});\n`;
+      functionBody += `;\n`;
     }
 
     return functionBody;

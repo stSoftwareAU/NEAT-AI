@@ -22,33 +22,34 @@ export class MINIMUM
     MakeActivationFunctionInterface,
     InlineActivationInterface {
   inlineActivation(neuron: Neuron) {
-    let functionBody = `const v${neuron.index} = [`;
+    let valueList = "";
 
     const inwardList = neuron.creature.inwardConnections(neuron.index);
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
       const { from, weight } = inwardListClone[i];
       if (i > 0) {
-        functionBody += ",";
+        valueList += ",";
       }
       if (weight == 1) {
-        functionBody += `\n a[${from}]`;
+        valueList += ` a[${from}]`;
       } else {
-        functionBody += `\n a[${from}] * ${weight}`;
+        valueList += ` a[${from}] * ${weight}`;
       }
     }
-    functionBody += "\n];\n";
+    let functionBody = `a[${neuron.index}] = Math.min(${valueList})`;
+
     if (neuron.bias > 0) {
-      functionBody +=
-        `a[${neuron.index}] = Math.min(...v${neuron.index}) + ${neuron.bias};\n`;
+      functionBody += `+${neuron.bias};\n`;
     } else if (neuron.bias < 0) {
-      functionBody +=
-        `a[${neuron.index}] = Math.min(...v${neuron.index}) ${neuron.bias};\n`;
+      functionBody += `${neuron.bias};\n`;
     } else {
-      functionBody += `a[${neuron.index}] = Math.min(...v${neuron.index});\n`;
+      functionBody += `;\n`;
     }
+
     return functionBody;
   }
+
   makeActivationFunction(
     neuron: Neuron,
     cache: {
