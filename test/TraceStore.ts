@@ -45,9 +45,9 @@ Deno.test("storeTrace", async () => {
     }
   }
 
-  const traceDir = ".trace";
+  const traceDir = ".trace/storeTrace";
   ensureDirSync(traceDir);
-  const creaturesDir = ".creatures";
+  const creaturesDir = ".creatures/storeTrace";
   emptyDirSync(creaturesDir);
 
   let foundUsed = false;
