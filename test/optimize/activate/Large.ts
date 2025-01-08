@@ -64,15 +64,25 @@ Deno.test("large", () => {
     exportCreature,
     createBackPropagationConfig({}),
   );
-  trainingSet.forEach((dataSet: DataRecordInterface) => {
+  const expected=[
+    0.2914523482322693,
+    0.22125014662742615,
+    0.1657249480485916,
+    -0.3648700416088104,
+    -0.03569267690181732,
+    -0.1089940071105957,
+    -0.09180060029029846
+  ];
+  for( let p = 0; p < trainingSet.length; p++) {
+    const dataSet: DataRecordInterface = trainingSet[p];
     const data = new Float32Array(dataSet.input);
-    const outputA = creature.activate(data);
-    const outputB = creature.activateAndTrace(
+    const activationA = creature.activate(data);
+    const activationB = creature.activateAndTrace(
       data,
       false,
       sparseConfig,
     );
-
-    assertAlmostEquals(outputA[0], outputB[0]);
-  });
+    assertAlmostEquals(activationA[0], expected[p]);
+    assertAlmostEquals(activationA[0], activationB[0]);
+  }
 });
