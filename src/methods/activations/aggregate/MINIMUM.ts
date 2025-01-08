@@ -13,12 +13,32 @@ import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
+import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
 
 export class MINIMUM
   implements
     NeuronActivationInterface,
     ApplyLearningsInterface,
-    MakeActivationFunctionInterface {
+    MakeActivationFunctionInterface,
+    InlineActivationInterface {
+  inlineActivation(neuron: Neuron) {
+    let functionBody = `const v${neuron.index} = [`;
+
+    const inwardList = neuron.creature.inwardConnections(neuron.index);
+    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
+    for (let i = 0, len = inwardListClone.length; i < len; i++) {
+      const { from, weight } = inwardListClone[i];
+      if (i > 0) {
+        functionBody += ",";
+      }
+      functionBody += `\n a[${from}] * ${weight}`;
+    }
+    functionBody += "\n];\n";
+
+    functionBody +=
+      `a[${neuron.index}] = Math.min(...v${neuron.index} ) + ${neuron.bias};\n`;
+    return functionBody;
+  }
   makeActivationFunction(
     neuron: Neuron,
     cache: {
@@ -29,22 +49,10 @@ export class MINIMUM
     activation: number;
     value: number;
   } {
-    let functionBody = "const activations = this.activations;\n";
-    functionBody += `const values = [`;
+    let functionBody = "const a = this.activations;\n";
+    functionBody += this.inlineActivation(neuron);
 
-    const inwardList = neuron.creature.inwardConnections(neuron.index);
-    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
-    for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight } = inwardListClone[i];
-      functionBody += `\nactivations[${from}] * ${weight},`;
-    }
-    functionBody += "];\n";
-
-    functionBody +=
-      `const activation = Math.min(...values) + ${neuron.bias};\n`;
-    functionBody += `activations[${neuron.index}] = activation;\n`;
-
-    functionBody += "return { activation, value:0 };";
+    functionBody += `return { activation: a[${neuron.index}], value:0 };`;
 
     const foundFunction = findActivationFunction(functionBody, cache);
     if (foundFunction) {
@@ -66,6 +74,7 @@ export class MINIMUM
     cache.function = bondedFunction;
     return bondedFunction;
   }
+
   public static NAME = "MINIMUM";
 
   public readonly range = new ActivationRange(

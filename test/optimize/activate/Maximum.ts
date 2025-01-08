@@ -3,10 +3,13 @@ import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
+import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("Maximum", () => {
+  const directory = ".test/optimize/activate/Maximum";
+  Deno.mkdirSync(directory, { recursive: true });
   const json: CreatureExport = {
     neurons: [
       { bias: -0.2, type: "output", squash: "MAXIMUM", uuid: "output-0" },
@@ -20,8 +23,28 @@ Deno.test("Maximum", () => {
     output: 1,
   };
   const creature = Creature.fromJSON(json);
+
+  const exportCreature = creature.exportJSON();
+  Deno.writeTextFileSync(
+    `${directory}/creature.json`,
+    JSON.stringify(exportCreature, null, 1),
+  );
+
+  const { inlineText, squashList } = makeCreatureActivationFunction(creature);
+
+  Deno.writeTextFileSync(
+    `${directory}/inline.js`,
+    `export function example(${squashList.join(",")}){\n${inlineText}\n}`,
+  );
+
+  if (inlineText.includes(";;")) {
+    fail("Double semicolons detected");
+  }
+  if (inlineText.includes("MAXIMUM")) {
+    fail("MAXIMUM detected");
+  }
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    exportCreature,
     createBackPropagationConfig({}),
   );
 
