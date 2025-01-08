@@ -33,12 +33,22 @@ export class MAXIMUM
       if (i > 0) {
         functionBody += ",";
       }
-      functionBody += `\n a[${from}] * ${weight}`;
+      if( weight == 1){
+        functionBody += `\n a[${from}]`;
+      }
+      else{
+        functionBody += `\n a[${from}] * ${weight}`;
+      }
     }
     functionBody += "\n];\n";
 
-    functionBody +=
-      `a[${neuron.index}] = Math.max(...v${neuron.index} ) + ${neuron.bias};\n`;
+    if( neuron.bias != 0){
+      functionBody += `a[${neuron.index}] = Math.max(...v${neuron.index}) + ${neuron.bias};\n`;
+    }
+    else{
+      functionBody += `a[${neuron.index}] = Math.max(...v${neuron.index});\n`;
+    }
+
     return functionBody;
   }
   makeActivationFunction(

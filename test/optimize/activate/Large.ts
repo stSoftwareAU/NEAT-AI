@@ -38,7 +38,7 @@ Deno.test("large", () => {
 
   Deno.writeTextFileSync(
     `${directory}/inline.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}\n}`,
+    `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
 
   if (inlineText.includes(";;")) {
