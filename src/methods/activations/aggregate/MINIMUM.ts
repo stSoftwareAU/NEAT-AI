@@ -14,6 +14,7 @@ import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
+import { makeSynpasesValue } from "../../../optimize/MakeNeuronActivation.ts";
 
 export class MINIMUM
   implements
@@ -27,17 +28,16 @@ export class MINIMUM
     const inwardList = neuron.creature.inwardConnections(neuron.index);
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight } = inwardListClone[i];
       if (i > 0) {
         valueList += ",";
       }
-      if (weight == 1) {
-        valueList += ` a[${from}]`;
-      } else {
-        valueList += ` a[${from}] * ${weight}`;
-      }
+      const value = makeSynpasesValue(
+        inwardListClone[i],
+        neuron.creature.neurons,
+      );
+      valueList += value;
     }
-    let functionBody = `a[${neuron.index}] = Math.min(${valueList})`;
+    let functionBody = `a[${neuron.index}]= Math.min(${valueList})`;
 
     if (neuron.bias > 0) {
       functionBody += `+${neuron.bias};\n`;

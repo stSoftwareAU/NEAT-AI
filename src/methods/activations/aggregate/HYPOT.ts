@@ -1,6 +1,7 @@
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
 import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
+import { makeSynpasesValue } from "../../../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
@@ -23,18 +24,17 @@ export class HYPOT
     const inwardList = neuron.creature.inwardConnections(neuron.index);
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight } = inwardListClone[i];
       if (i > 0) {
         valueLine += ",";
       }
-      if (weight == 1) {
-        valueLine += `a[${from}]`;
-      } else {
-        valueLine += `a[${from}] * ${weight}`;
-      }
+      const value = makeSynpasesValue(
+        inwardListClone[i],
+        neuron.creature.neurons,
+      );
+      valueLine += value;
     }
 
-    let functionBody = `a[${neuron.index}] = Math.hypot(${valueLine})`;
+    let functionBody = `a[${neuron.index}]= Math.hypot(${valueLine})`;
     if (neuron.bias > 0) {
       functionBody += ` + ${neuron.bias};\n`;
     } else if (neuron.bias < 0) {

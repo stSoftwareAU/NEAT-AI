@@ -4,6 +4,7 @@ import { Mutation } from "../../../NEAT/Mutation.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
 import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
 import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
+import { makeSynpasesValue } from "../../../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,
@@ -39,20 +40,24 @@ export class IF
     const inwardList = neuron.creature.inwardConnections(neuron.index);
     const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight, type } = inwardListClone[i];
+      const { type } = inwardListClone[i];
 
-      const weightClause = weight === 1 ? "" : `* ${weight} `;
+      const value = makeSynpasesValue(
+        inwardListClone[i],
+        neuron.creature.neurons,
+      );
+
       if (type === "condition") {
         if (firstCondition) {
           firstCondition = false;
-          functionBody += `if( a[${from}] ${weightClause}`;
+          functionBody += `if( ${value}`;
         } else {
-          functionBody += `+ a[${from}] ${weightClause}`;
+          functionBody += `+ ${value}`;
         }
       } else if (type === "negative") {
-        negativeBody += `+a[${from}] ${weightClause}`;
+        negativeBody += `+ ${value}`;
       } else {
-        positiveBody += `+a[${from}] ${weightClause}`;
+        positiveBody += `+ ${value}`;
       }
     }
     functionBody += `>0){\n`;
