@@ -41,9 +41,11 @@ export class MAXIMUM
     }
     functionBody += "\n];\n";
 
-    if (neuron.bias != 0) {
+    if (neuron.bias > 0) {
       functionBody +=
         `a[${neuron.index}] = Math.max(...v${neuron.index}) + ${neuron.bias};\n`;
+    } else if( neuron.bias < 0){
+      functionBody += `a[${neuron.index}] = Math.max(...v${neuron.index}) ${neuron.bias};\n`;
     } else {
       functionBody += `a[${neuron.index}] = Math.max(...v${neuron.index});\n`;
     }
