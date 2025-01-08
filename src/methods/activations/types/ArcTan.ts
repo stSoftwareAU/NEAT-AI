@@ -13,7 +13,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Inverse_trigonometric_functions#Arctangent
  */
-export class ArcTan implements ActivationInterface, UnSquashInterface,InlineSquashInterface {
+export class ArcTan
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "ArcTan";
   inlineSquash(value: string): string {
     return `Math.atan(${value})`;

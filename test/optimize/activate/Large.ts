@@ -55,7 +55,7 @@ Deno.test("large", () => {
     "HARD_TANH",
     "ArcTan",
     "BIPOLAR(",
-    "COMPLEMENT"
+    "COMPLEMENT",
   ];
   shouldNotContain.forEach((text) => {
     if (inlineText.includes(text)) {

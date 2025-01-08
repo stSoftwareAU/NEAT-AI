@@ -9,7 +9,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * The function is non-differentiable at zero.
  * Formula: f(x) = x > 0 ? 1 : -1
  */
-export class BIPOLAR implements ActivationInterface, UnSquashInterface,InlineSquashInterface {
+export class BIPOLAR
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "BIPOLAR";
   public readonly range: ActivationRange = new ActivationRange(
     BIPOLAR.NAME,
