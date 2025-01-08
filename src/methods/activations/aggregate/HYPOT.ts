@@ -17,6 +17,37 @@ export class HYPOT
     Number.MAX_SAFE_INTEGER,
   );
 
+  inlineActivation(neuron: Neuron) {
+    let functionBody = `const v${neuron.index} = [`;
+
+    const inwardList = neuron.creature.inwardConnections(neuron.index);
+    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
+    for (let i = 0, len = inwardListClone.length; i < len; i++) {
+      const { from, weight } = inwardListClone[i];
+      if (i > 0) {
+        functionBody += ",";
+      }
+      if (weight == 1) {
+        functionBody += `\n a[${from}]`;
+      } else {
+        functionBody += `\n a[${from}] * ${weight}`;
+      }
+    }
+    functionBody += "\n];\n";
+
+    if (neuron.bias > 0) {
+      functionBody +=
+        `a[${neuron.index}] = Math.hypot(...v${neuron.index}) + ${neuron.bias};\n`;
+    } else if (neuron.bias < 0) {
+      functionBody +=
+        `a[${neuron.index}] = Math.hypot(...v${neuron.index}) ${neuron.bias};\n`;
+    } else {
+      functionBody += `a[${neuron.index}] = Math.hypot(...v${neuron.index});\n`;
+    }
+
+    return functionBody;
+  }
+
   makeActivationFunction(
     neuron: Neuron,
     cache: {
@@ -27,22 +58,10 @@ export class HYPOT
     activation: number;
     value: number;
   } {
-    let functionBody = "const activations = this.activations;\n";
-    functionBody += `const values = [`;
+    let functionBody = "const a = this.activations;\n";
+    functionBody += this.inlineActivation(neuron);
 
-    const inwardList = neuron.creature.inwardConnections(neuron.index);
-    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
-    for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight } = inwardListClone[i];
-      functionBody += `\nactivations[${from}] * ${weight},`;
-    }
-    functionBody += "];\n";
-
-    functionBody +=
-      `const activation = Math.hypot(...values) + ${neuron.bias};\n`;
-    functionBody += `activations[${neuron.index}] = activation;\n`;
-
-    functionBody += "return { activation, value:0 };";
+    functionBody += `return { activation: a[${neuron.index}], value:0 };`;
 
     const foundFunction = findActivationFunction(functionBody, cache);
     if (foundFunction) {
