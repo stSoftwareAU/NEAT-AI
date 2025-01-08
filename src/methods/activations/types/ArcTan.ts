@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,9 +13,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Inverse_trigonometric_functions#Arctangent
  */
-export class ArcTan implements ActivationInterface, UnSquashInterface {
+export class ArcTan implements ActivationInterface, UnSquashInterface,InlineSquashInterface {
   public static NAME = "ArcTan";
-
+  inlineSquash(value: string): string {
+    return `Math.atan(${value})`;
+  }
   // Set a maximum finite value to return instead of Infinity
   private static readonly MAX_VALUE = 1e10;
 

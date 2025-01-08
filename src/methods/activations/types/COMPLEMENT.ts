@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -7,7 +8,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * It returns 1 - x for any input x. Useful for particular kinds of
  * normalization or balancing tasks.
  */
-export class COMPLEMENT implements ActivationInterface, UnSquashInterface {
+export class COMPLEMENT implements ActivationInterface, UnSquashInterface,InlineSquashInterface {
   public static NAME = "COMPLEMENT";
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     COMPLEMENT.NAME,
@@ -18,6 +19,11 @@ export class COMPLEMENT implements ActivationInterface, UnSquashInterface {
 
   getName() {
     return COMPLEMENT.NAME;
+  }
+
+
+  inlineSquash(value: string): string {
+    return `1 - ${value}`;
   }
 
   squash(x: number) {

@@ -20,6 +20,7 @@ export class ABSOLUTE
     0,
     Number.MAX_SAFE_INTEGER,
   );
+  
   inlineSquash(value: string): string {
     return `Math.abs(${value})`;
   }
