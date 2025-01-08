@@ -2,7 +2,7 @@ import { HYPOT } from "./aggregate/HYPOT.ts";
 import { HYPOTv2 } from "./aggregate/HYPOTv2.ts";
 import { IF } from "./aggregate/IF.ts";
 import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
-import { MEAN } from "./aggregate/MEAN.ts";
+import { MEAN } from "../../legacy/MEAN.ts";
 import { MINIMUM } from "./aggregate/MINIMUM.ts";
 import { ABSOLUTE } from "./types/ABSOLUTE.ts";
 import { ArcTan } from "./types/ArcTan.ts";

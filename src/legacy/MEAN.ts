@@ -1,16 +1,16 @@
-import type { Neuron } from "../../../architecture/Neuron.ts";
-import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import type { Neuron } from "../architecture/Neuron.ts";
+import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
+import { ActivationRange } from "../propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,
   limitValue,
   toValue,
-} from "../../../propagate/BackPropagation.ts";
-import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
-import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
-import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
-import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
-import type { NeuronFixableInterface } from "../NeuronFixableInterface.ts";
-import { IDENTITY } from "../types/IDENTITY.ts";
+} from "../propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "../propagate/Bias.ts";
+import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+import { accumulateWeight, adjustedWeight } from "../propagate/Weight.ts";
 
 /**
  * No longer used. A normal neurual network can memic the behavior of this activation.
