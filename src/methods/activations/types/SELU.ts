@@ -69,7 +69,6 @@ export class SELU implements ActivationInterface, UnSquashInterface {
       Number.MIN_SAFE_INTEGER,
     );
 
-    // Use the ActivationRange to limit the output to the defined range
-    return SELU.rangeStatic.limit(clampedFx, clampedX);
+    return clampedFx;
   }
 }
