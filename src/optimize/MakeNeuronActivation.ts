@@ -58,6 +58,10 @@ export function inlineActivation(neuron: Neuron): string {
     valueLine += value;
   }
 
+  if (neuron.squash === "RELU") {
+    return `const t${neuron.index}=${valueLine};\na[${neuron.index}]=t${neuron.index}>0?t${neuron.index}:0;\n`;
+  }
+
   function isInlineSquashInterface(
     obj: object,
   ): obj is InlineSquashInterface {

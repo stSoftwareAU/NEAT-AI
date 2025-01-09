@@ -12,7 +12,9 @@ export function makeCreatureActivationFunction(creature: Creature) {
   for (let indx = creature.input; indx < creature.neurons.length; indx++) {
     const neuron = creature.neurons[indx];
     functionBody += inlineActivation(neuron);
-    if (neuron.squash && !squashMap.has(neuron.squash)) {
+    if (
+      neuron.squash && !squashMap.has(neuron.squash) && neuron.squash !== "RELU"
+    ) {
       const sf = neuron.findSquash();
       const inlineSquash = (sf as unknown) as InlineSquashInterface;
       if (!inlineSquash.inlineSquash) {

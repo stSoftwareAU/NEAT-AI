@@ -17,7 +17,7 @@ export class RELU implements ActivationInterface, UnSquashInterface {
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     RELU.NAME,
     0,
-    Number.MAX_SAFE_INTEGER,
+    Number.MAX_VALUE,
   );
 
   public readonly range = RELU.rangeStatic;
@@ -49,6 +49,6 @@ export class RELU implements ActivationInterface, UnSquashInterface {
   // ReLU function definition
   squash(x: number) {
     const value = x > 0 ? x : 0;
-    return RELU.rangeStatic.limit(value);
+    return value;
   }
 }
