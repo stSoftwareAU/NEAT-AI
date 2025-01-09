@@ -17,7 +17,7 @@ export class RELU implements ActivationInterface, UnSquashInterface {
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     RELU.NAME,
     0,
-    Number.MAX_SAFE_INTEGER,
+    Number.MAX_VALUE,
   );
 
   public readonly range = RELU.rangeStatic;
