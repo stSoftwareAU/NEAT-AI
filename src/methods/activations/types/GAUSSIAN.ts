@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -8,7 +9,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Formula: f(x) = exp(-x^2)
  * Source: General mathematical function commonly used for its smoothness.
  */
-export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
+export class GAUSSIAN
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "GAUSSIAN";
 
   public readonly range: ActivationRange = new ActivationRange(
@@ -42,6 +44,10 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
 
     // If a hint is provided, return the root with the same sign as the hint
     return hint >= 0 ? Math.abs(sqrt) : -Math.abs(sqrt);
+  }
+
+  inlineSquash(value: string): string {
+    return `Math.exp(-Math.pow(${value}, 2))`;
   }
 
   squash(x: number) {

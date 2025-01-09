@@ -1,8 +1,10 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
-export class LOGISTIC implements ActivationInterface, UnSquashInterface {
+export class LOGISTIC
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "LOGISTIC";
   public readonly range: ActivationRange = new ActivationRange(
     LOGISTIC.NAME,
@@ -24,6 +26,10 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
 
   getName() {
     return LOGISTIC.NAME;
+  }
+
+  inlineSquash(value: string): string {
+    return `1 / (1 + Math.exp(-(${value})))`;
   }
 
   squash(x: number) {
