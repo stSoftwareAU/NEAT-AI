@@ -52,23 +52,34 @@ export function removeIDENTITY(
   const newSynapses: SynapseExport[] = [];
   const adjustedBiases = new Set<string>();
 
+  const synapseMap = new Map<string, Map<string, SynapseExport>>();
+  simpliedExport.synapses.forEach((synapse) => {
+    let fromMap = synapseMap.get(synapse.fromUUID);
+    if (!fromMap) {
+      fromMap = new Map<string, SynapseExport>();
+      synapseMap.set(synapse.fromUUID, fromMap);
+    }
+    fromMap.set(synapse.toUUID, synapse);
+  });
+
   simpliedExport.synapses.forEach((outterSynapse) => {
     if (outterSynapse.toUUID === identityUUID) {
       simpliedExport.synapses.forEach((innerSynapse) => {
         if (innerSynapse.fromUUID === identityUUID) {
           const adjustedWeight = outterSynapse.weight * innerSynapse.weight;
 
-          const duplicate = newSynapses.find(
-            (s) =>
-              s.fromUUID === outterSynapse.fromUUID &&
-              s.toUUID === innerSynapse.toUUID,
+          const duplicate = synapseMap.get(outterSynapse.fromUUID)?.get(
+            innerSynapse.toUUID,
           );
+
           if (!duplicate) {
             newSynapses.push({
               weight: adjustedWeight,
               fromUUID: outterSynapse.fromUUID,
               toUUID: innerSynapse.toUUID,
             });
+          } else {
+            duplicate.weight = adjustedWeight + duplicate.weight;
           }
 
           const targetNeuron = neuronMap.get(innerSynapse.toUUID);
@@ -92,12 +103,12 @@ export function removeIDENTITY(
 
   simpliedExport.synapses = simpliedExport.synapses.concat(newSynapses);
 
-  neuronMap.forEach((neuron) => {
-    neuron.bias = parseFloat(neuron.bias.toFixed(10));
-  });
-  newSynapses.forEach((synapse) => {
-    synapse.weight = parseFloat(synapse.weight.toFixed(10));
-  });
+  //   neuronMap.forEach((neuron) => {
+  //     neuron.bias = parseFloat(neuron.bias.toFixed(10));
+  //   });
+  //   newSynapses.forEach((synapse) => {
+  //     synapse.weight = parseFloat(synapse.weight.toFixed(10));
+  //   });
 
   //   console.info(
   //     "Simplified Creature Export:",
