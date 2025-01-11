@@ -122,13 +122,14 @@ Deno.test("IDENTITY-simple", () => {
         squash: IDENTITY.NAME,
         uuid: "hidden-0",
       },
-      { bias: 2, type: "output", squash: "IDENTITY", uuid: "output-0" },
+      { bias: 2, type: "output", squash: IDENTITY.NAME, uuid: "output-0" },
     ],
     synapses: [
       { weight: -1, fromUUID: "input-0", toUUID: "hidden-0" },
+      { weight: 2, fromUUID: "input-1", toUUID: "hidden-0" },
       { weight: 1, fromUUID: "hidden-0", toUUID: "output-0" },
     ],
-    input: 1,
+    input: 2,
     output: 1,
   };
   const complex = Creature.fromJSON(json);
@@ -163,8 +164,8 @@ Deno.test("IDENTITY-simple", () => {
   );
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 4 - 2;
-
-    const data = new Float32Array([a]);
+    const b = Math.random() * 4 - 2;
+    const data = new Float32Array([a,b]);
     // const expected = complex.activate(data, false)[0];
 
     const actual1 =
@@ -176,7 +177,7 @@ Deno.test("IDENTITY-simple", () => {
       actual1,
       actual2,
       0.000_01,
-      `${p}) a: ${a}, expected: ${actual1}, actual: ${actual2}`,
+      `${p}) a: ${a}, b ${b}, expected: ${actual1}, actual: ${actual2}`,
     );
 
     // const actaul = simplifiedCreature.activate(data, false)[0];
