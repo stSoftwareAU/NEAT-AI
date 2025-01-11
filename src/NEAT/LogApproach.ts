@@ -7,6 +7,7 @@ import { assert } from "@std/assert";
 export type Approach =
   | "fine"
   | "trained"
+  | "simplified"
   | "compact"
   | "backtrack"
   | "retry";
@@ -50,6 +51,15 @@ export function logApproach(fittest: Creature, previous: Creature) {
             fScore,
             "adjusted",
             getTag(fittest, "adjusted"),
+          );
+          break;
+        }
+        case "simplified": {
+          console.info(
+            "Simplifying improved by",
+            fScore - pScore,
+            "to",
+            fScore,
           );
           break;
         }

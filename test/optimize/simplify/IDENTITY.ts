@@ -42,6 +42,11 @@ Deno.test("IDENTITY", () => {
         toUUID: "hidden-0",
       },
       {
+        weight: Math.SQRT1_2,
+        fromUUID: "input-4",
+        toUUID: "output-0",
+      },
+      {
         weight: -Math.SQRT2,
         fromUUID: "input-5",
         toUUID: "hidden-0",
@@ -82,15 +87,7 @@ Deno.test("IDENTITY", () => {
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 1000; p++) {
-    const a = Math.random() * 4 - 2;
-    const b = Math.random() * 4 - 2;
-    const c = Math.random() * 4 - 2;
-    const d = Math.random() * 4 - 2;
-    const e = Math.random() * 4 - 2;
-    const f = Math.random() * 4 - 2;
-
-    const data = new Float32Array([a, b, c, d, e, f]);
-    // const expected = complex.activate(data, false)[0];
+    const data = makeData(p, complex.input);
 
     const actual1 =
       complex.activateAndTrace(data, false, sparseComplexConfig)[0];

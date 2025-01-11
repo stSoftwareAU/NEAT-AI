@@ -1,3 +1,4 @@
+import { addTag, removeTag } from "@stsoftware/tags";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
@@ -104,6 +105,10 @@ export function removeIDENTITY(
   //   );
 
   const simplifiedCreature = Creature.fromJSON(simpliedExport);
+  addTag(simplifiedCreature, "approach", "simplified");
+
+  removeTag(simplifiedCreature, "approach-logged");
+
   simplifiedCreature.validate();
   return simplifiedCreature;
 }
