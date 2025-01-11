@@ -28,6 +28,7 @@ import { Genus } from "./Genus.ts";
 import type { Approach } from "./LogApproach.ts";
 import { Mutator } from "./Mutator.ts";
 import { CRISPR, type CrisprInterface } from "../reconstruct/CRISPR.ts";
+import { simplify } from "../optimize/Simplify.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -316,7 +317,9 @@ export class Neat {
 
     assert(tmpFittest.uuid, "Fittest creature has no UUID");
     assert(tmpFittest.score, "No fittest creature score found");
+    let previousFittestUUID = "NONE";
     if (previousFittest) {
+      previousFittestUUID = previousFittest.uuid ?? "NONE";
       assert(previousFittest.score, "No previous fittest creature score found");
       assert(previousFittest.uuid, "Previous fittest creature has no UUID");
       assert(
@@ -351,6 +354,13 @@ export class Neat {
     const error = getTag(fittest, "error");
     assert(error, "No error tag found");
 
+    if (previousFittestUUID !== fittest.uuid) {
+      const simplified = simplify(fittest);
+
+      if (simplified) {
+        elitists.push(simplified);
+      }
+    }
     let trainingTimeOutMinutes = 0;
     if (this.endTimeTS) {
       const diff = this.endTimeTS - Date.now();

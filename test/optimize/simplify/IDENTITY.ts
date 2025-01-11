@@ -2,8 +2,8 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
 import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
+import { simplify } from "../../../src/optimize/Simplify.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
@@ -125,7 +125,7 @@ Deno.test("IDENTITY-simple", () => {
       { bias: 2, type: "output", squash: IDENTITY.NAME, uuid: "output-0" },
     ],
     synapses: [
-      { weight: 1, fromUUID: "input-0", toUUID: "hidden-0" },
+      { weight: 0.5, fromUUID: "input-0", toUUID: "hidden-0" },
       { weight: 2, fromUUID: "input-1", toUUID: "hidden-0" },
       { weight: 1, fromUUID: "hidden-0", toUUID: "output-0" },
     ],
@@ -163,9 +163,7 @@ Deno.test("IDENTITY-simple", () => {
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 1000; p++) {
-    const a = Math.random() * 4 - 2;
-    const b = Math.random() * 4 - 2;
-    const data = new Float32Array([a, b]);
+    const data = makeData(p, complex.input);
     // const expected = complex.activate(data, false)[0];
 
     const actual1 =
@@ -177,7 +175,9 @@ Deno.test("IDENTITY-simple", () => {
       actual1,
       actual2,
       0.000_01,
-      `${p}) a: ${a}, b ${b}, expected: ${actual1}, actual: ${actual2}`,
+      `${p}) a: ${data[0]}, b ${
+        data[1]
+      }, expected: ${actual1}, actual: ${actual2}`,
     );
 
     // const actaul = simplifiedCreature.activate(data, false)[0];
@@ -185,3 +185,29 @@ Deno.test("IDENTITY-simple", () => {
     // assertAlmostEquals(expected, actaul,0.000_01, `${p}) expected: ${expected} actual: ${actaul}`);
   }
 });
+
+function makeData(p: number, input: number): Float32Array {
+  const data = new Float32Array(input);
+  switch (p) {
+    case 0:
+      for (let i = 0; i < input; i++) {
+        data[i] = 0;
+      }
+      return data;
+    case 1:
+      for (let i = 0; i < input; i++) {
+        data[i] = 1;
+      }
+      return data;
+    case 2:
+      for (let i = 0; i < input; i++) {
+        data[i] = -1;
+      }
+      return data;
+    default:
+      for (let i = 0; i < input; i++) {
+        data[i] = Math.random() * 4 - 2;
+      }
+      return data;
+  }
+}

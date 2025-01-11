@@ -31,28 +31,29 @@ export function removeIDENTITY(
   exported: CreatureExport,
   identityUUID: string,
 ): Creature {
+  const simpliedExport: CreatureExport = JSON.parse(JSON.stringify(exported));
   const neuronMap = new Map<string, NeuronExport>();
-  exported.neurons.forEach((neuron: NeuronExport) => {
+  simpliedExport.neurons.forEach((neuron: NeuronExport) => {
     neuronMap.set(neuron.uuid, neuron);
   });
 
-  const neuronToRemove = exported.neurons.find(
+  const neuronToRemove = simpliedExport.neurons.find(
     (neuron: NeuronExport) => neuron.uuid === identityUUID,
   );
   if (!neuronToRemove) {
     throw new Error(`Neuron not found: ${identityUUID}`);
   }
 
-  exported.neurons = exported.neurons.filter(
+  simpliedExport.neurons = simpliedExport.neurons.filter(
     (neuron: NeuronExport) => neuron.uuid !== identityUUID,
   );
 
   const newSynapses: SynapseExport[] = [];
   const adjustedBiases = new Set<string>();
 
-  exported.synapses.forEach((outterSynapse) => {
+  simpliedExport.synapses.forEach((outterSynapse) => {
     if (outterSynapse.toUUID === identityUUID) {
-      exported.synapses.forEach((innerSynapse) => {
+      simpliedExport.synapses.forEach((innerSynapse) => {
         if (innerSynapse.fromUUID === identityUUID) {
           const adjustedWeight = outterSynapse.weight * innerSynapse.weight;
 
@@ -71,8 +72,11 @@ export function removeIDENTITY(
 
           const targetNeuron = neuronMap.get(innerSynapse.toUUID);
           if (targetNeuron && !adjustedBiases.has(innerSynapse.toUUID)) {
-            // Adjust the bias correctly
-            targetNeuron.bias += outterSynapse.weight * neuronToRemove.bias;
+            // Adjust bias using the weight sign
+            const biasAdjustment = neuronToRemove.bias * innerSynapse.weight;
+            const bias = targetNeuron!.bias + biasAdjustment;
+            // console.info( `from: ${outterSynapse.fromUUID}, to: ${innerSynapse.toUUID}, Bias Adjustment:`, biasAdjustment, "Bias:", targetNeuron!.bias, "New Bias:", bias);
+            targetNeuron!.bias = bias;
             adjustedBiases.add(innerSynapse.toUUID);
           }
         }
@@ -80,12 +84,12 @@ export function removeIDENTITY(
     }
   });
 
-  exported.synapses = exported.synapses.filter(
+  simpliedExport.synapses = simpliedExport.synapses.filter(
     (synapse) =>
       synapse.toUUID !== identityUUID && synapse.fromUUID !== identityUUID,
   );
 
-  exported.synapses = exported.synapses.concat(newSynapses);
+  simpliedExport.synapses = simpliedExport.synapses.concat(newSynapses);
 
   neuronMap.forEach((neuron) => {
     neuron.bias = parseFloat(neuron.bias.toFixed(10));
@@ -94,12 +98,12 @@ export function removeIDENTITY(
     synapse.weight = parseFloat(synapse.weight.toFixed(10));
   });
 
-  console.info(
-    "Simplified Creature Export:",
-    JSON.stringify(exported, null, 2),
-  );
+  //   console.info(
+  //     "Simplified Creature Export:",
+  //     JSON.stringify(simpliedExport, null, 2),
+  //   );
 
-  const simplifiedCreature = Creature.fromJSON(exported);
+  const simplifiedCreature = Creature.fromJSON(simpliedExport);
   simplifiedCreature.validate();
   return simplifiedCreature;
 }
