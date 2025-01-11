@@ -87,7 +87,6 @@ export function removeIDENTITY(
             // Adjust bias using the weight sign
             const biasAdjustment = neuronToRemove.bias * innerSynapse.weight;
             const bias = targetNeuron!.bias + biasAdjustment;
-            // console.info( `from: ${outterSynapse.fromUUID}, to: ${innerSynapse.toUUID}, Bias Adjustment:`, biasAdjustment, "Bias:", targetNeuron!.bias, "New Bias:", bias);
             targetNeuron!.bias = bias;
             adjustedBiases.add(innerSynapse.toUUID);
           }
@@ -103,18 +102,7 @@ export function removeIDENTITY(
 
   simpliedExport.synapses = simpliedExport.synapses.concat(newSynapses);
 
-  //   neuronMap.forEach((neuron) => {
-  //     neuron.bias = parseFloat(neuron.bias.toFixed(10));
-  //   });
-  //   newSynapses.forEach((synapse) => {
-  //     synapse.weight = parseFloat(synapse.weight.toFixed(10));
-  //   });
-
-  //   console.info(
-  //     "Simplified Creature Export:",
-  //     JSON.stringify(simpliedExport, null, 2),
-  //   );
-
+  delete simpliedExport.memetic;
   const simplifiedCreature = Creature.fromJSON(simpliedExport);
   addTag(simplifiedCreature, "approach", "simplified");
 
