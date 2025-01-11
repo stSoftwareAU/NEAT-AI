@@ -1,0 +1,19 @@
+{
+ "neurons": [
+  {
+   "type": "output",
+   "uuid": "output-0",
+   "bias": 3,
+   "squash": "IDENTITY"
+  }
+ ],
+ "synapses": [
+  {
+   "weight": -1,
+   "fromUUID": "input-0",
+   "toUUID": "output-0"
+  }
+ ],
+ "input": 1,
+ "output": 1
+}

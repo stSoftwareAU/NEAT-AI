@@ -1,0 +1,44 @@
+{
+ "neurons": [
+  {
+   "type": "output",
+   "uuid": "output-0",
+   "bias": -0.9603410538478592,
+   "squash": "TANH"
+  }
+ ],
+ "synapses": [
+  {
+   "weight": 1.3643763538418412,
+   "fromUUID": "input-0",
+   "toUUID": "output-0"
+  },
+  {
+   "weight": -3.141592653589793,
+   "fromUUID": "input-1",
+   "toUUID": "output-0"
+  },
+  {
+   "weight": 3.141592653589793,
+   "fromUUID": "input-2",
+   "toUUID": "output-0"
+  },
+  {
+   "weight": 8.539734222673566,
+   "fromUUID": "input-3",
+   "toUUID": "output-0"
+  },
+  {
+   "weight": -2.221441469079183,
+   "fromUUID": "input-4",
+   "toUUID": "output-0"
+  },
+  {
+   "weight": -4.442882938158366,
+   "fromUUID": "input-5",
+   "toUUID": "output-0"
+  }
+ ],
+ "input": 6,
+ "output": 1
+}
