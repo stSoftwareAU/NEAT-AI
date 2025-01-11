@@ -125,7 +125,7 @@ Deno.test("IDENTITY-simple", () => {
       { bias: 2, type: "output", squash: IDENTITY.NAME, uuid: "output-0" },
     ],
     synapses: [
-      { weight: -1, fromUUID: "input-0", toUUID: "hidden-0" },
+      { weight: 1, fromUUID: "input-0", toUUID: "hidden-0" },
       { weight: 2, fromUUID: "input-1", toUUID: "hidden-0" },
       { weight: 1, fromUUID: "hidden-0", toUUID: "output-0" },
     ],

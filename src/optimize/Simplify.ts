@@ -36,7 +36,6 @@ export function removeIDENTITY(
     neuronMap.set(neuron.uuid, neuron);
   });
 
-  // Find the neuron to remove and validate its existence
   const neuronToRemove = exported.neurons.find(
     (neuron: NeuronExport) => neuron.uuid === identityUUID,
   );
@@ -44,21 +43,19 @@ export function removeIDENTITY(
     throw new Error(`Neuron not found: ${identityUUID}`);
   }
 
-  // Remove the identity neuron from the list of neurons
   exported.neurons = exported.neurons.filter(
     (neuron: NeuronExport) => neuron.uuid !== identityUUID,
   );
 
   const newSynapses: SynapseExport[] = [];
+  const adjustedBiases = new Set<string>();
 
-  // Adjust synapses involving the removed neuron
-  exported.synapses.forEach((outterSynapse: SynapseExport) => {
+  exported.synapses.forEach((outterSynapse) => {
     if (outterSynapse.toUUID === identityUUID) {
-      exported.synapses.forEach((innerSynapse: SynapseExport) => {
+      exported.synapses.forEach((innerSynapse) => {
         if (innerSynapse.fromUUID === identityUUID) {
           const adjustedWeight = outterSynapse.weight * innerSynapse.weight;
 
-          // Avoid creating duplicate synapses
           const duplicate = newSynapses.find(
             (s) =>
               s.fromUUID === outterSynapse.fromUUID &&
@@ -72,26 +69,24 @@ export function removeIDENTITY(
             });
           }
 
-          // Adjust bias of the target neuron
           const targetNeuron = neuronMap.get(innerSynapse.toUUID);
-          if (targetNeuron) {
-            targetNeuron.bias += innerSynapse.weight * neuronToRemove.bias;
+          if (targetNeuron && !adjustedBiases.has(innerSynapse.toUUID)) {
+            // Adjust the bias correctly
+            targetNeuron.bias += outterSynapse.weight * neuronToRemove.bias;
+            adjustedBiases.add(innerSynapse.toUUID);
           }
         }
       });
     }
   });
 
-  // Remove all synapses connected to the identity neuron
   exported.synapses = exported.synapses.filter(
-    (synapse: SynapseExport) =>
+    (synapse) =>
       synapse.toUUID !== identityUUID && synapse.fromUUID !== identityUUID,
   );
 
-  // Add the adjusted synapses
   exported.synapses = exported.synapses.concat(newSynapses);
 
-  // Normalize weights and biases to minimize precision issues
   neuronMap.forEach((neuron) => {
     neuron.bias = parseFloat(neuron.bias.toFixed(10));
   });
@@ -104,7 +99,6 @@ export function removeIDENTITY(
     JSON.stringify(exported, null, 2),
   );
 
-  // Create a new creature from the simplified export and validate
   const simplifiedCreature = Creature.fromJSON(exported);
   simplifiedCreature.validate();
   return simplifiedCreature;
