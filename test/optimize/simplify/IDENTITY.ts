@@ -165,7 +165,7 @@ Deno.test("IDENTITY-simple", () => {
   for (let p = 0; p < 1000; p++) {
     const a = Math.random() * 4 - 2;
     const b = Math.random() * 4 - 2;
-    const data = new Float32Array([a,b]);
+    const data = new Float32Array([a, b]);
     // const expected = complex.activate(data, false)[0];
 
     const actual1 =
