@@ -62,20 +62,20 @@ export function removeIDENTITY(
     fromMap.set(synapse.toUUID, synapse);
   });
 
-  simpliedExport.synapses.forEach((outterSynapse) => {
-    if (outterSynapse.toUUID === identityUUID) {
+  simpliedExport.synapses.forEach((outerSynapse) => {
+    if (outerSynapse.toUUID === identityUUID) {
       simpliedExport.synapses.forEach((innerSynapse) => {
         if (innerSynapse.fromUUID === identityUUID) {
-          const adjustedWeight = outterSynapse.weight * innerSynapse.weight;
+          const adjustedWeight = outerSynapse.weight * innerSynapse.weight;
 
-          const duplicate = synapseMap.get(outterSynapse.fromUUID)?.get(
+          const duplicate = synapseMap.get(outerSynapse.fromUUID)?.get(
             innerSynapse.toUUID,
           );
 
           if (!duplicate) {
             newSynapses.push({
               weight: adjustedWeight,
-              fromUUID: outterSynapse.fromUUID,
+              fromUUID: outerSynapse.fromUUID,
               toUUID: innerSynapse.toUUID,
             });
           } else {
