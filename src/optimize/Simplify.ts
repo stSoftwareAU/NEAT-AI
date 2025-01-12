@@ -4,14 +4,65 @@ import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { Creature } from "../Creature.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
+import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
+import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
+import { HYPOT } from "../methods/activations/aggregate/HYPOT.ts";
+import { HYPOTv2 } from "../methods/activations/aggregate/HYPOTv2.ts";
+import { IF } from "../methods/activations/aggregate/IF.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
   const exported = creature.exportJSON();
+  const neuronsMap = new Map<string, NeuronExport>();
+  exported.neurons.forEach((neuron) => {
+    neuronsMap.set(neuron.uuid, neuron);
+  });
+  const synapseMap = new Map<string, Map<string, SynapseExport>>();
+  exported.synapses.forEach((synapse) => {
+    let fromMap = synapseMap.get(synapse.fromUUID);
+    if (!fromMap) {
+      fromMap = new Map<string, SynapseExport>();
+      synapseMap.set(synapse.fromUUID, fromMap);
+    }
+    fromMap.set(synapse.toUUID, synapse);
+  });
+  const dependantSquashes = new Map<string, Set<string>>();
+  exported.neurons.forEach((neuron) => {
+    let set = dependantSquashes.get(neuron.uuid);
+    if (!set) {
+      set = new Set<string>();
+      dependantSquashes.set(neuron.uuid, set);
+    }
+
+    synapseMap.get(neuron.uuid)?.forEach((synapse) => {
+      const fromNeuron = neuronsMap.get(synapse.toUUID);
+      if (fromNeuron) {
+        set.add(fromNeuron.squash ?? "NONE");
+      }
+    });
+  });
   const identityUUIDs: string[] = [];
   exported.neurons.forEach((neuron) => {
     if (neuron.squash === IDENTITY.NAME && neuron.type === "hidden") {
-      identityUUIDs.push(neuron.uuid);
+      const dependants = dependantSquashes.get(neuron.uuid);
+
+      if (dependants) {
+        const aggregateSquash = Array.from(dependants).some((squash) => {
+          switch (squash) {
+            case MAXIMUM.NAME:
+            case MINIMUM.NAME:
+            case HYPOT.NAME:
+            case HYPOTv2.NAME:
+            case IF.NAME:
+              return true;
+            default:
+              return false;
+          }
+        });
+        if (!aggregateSquash) {
+          identityUUIDs.push(neuron.uuid);
+        }
+      }
     }
   });
   if (identityUUIDs.length !== 0) {

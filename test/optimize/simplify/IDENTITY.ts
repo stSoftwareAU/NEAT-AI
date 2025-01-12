@@ -6,6 +6,7 @@ import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatu
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
+import { MAXIMUM } from "../../../src/methods/activations/aggregate/MAXIMUM.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -181,6 +182,39 @@ Deno.test("IDENTITY-simple", () => {
 
     // assertAlmostEquals(expected, actaul,0.000_01, `${p}) expected: ${expected} actual: ${actaul}`);
   }
+});
+
+Deno.test("IDENTITY Maximum", () => {
+  const directory = ".test/optimize/simplify/IDENTITY-maximum";
+  Deno.mkdirSync(directory, { recursive: true });
+
+  const json: CreatureExport = {
+    neurons: [
+      {
+        bias: -1,
+        type: "hidden",
+        squash: IDENTITY.NAME,
+        uuid: "hidden-0",
+      },
+      { bias: 2, type: "output", squash: MAXIMUM.NAME, uuid: "output-0" },
+    ],
+    synapses: [
+      { weight: 0.5, fromUUID: "input-0", toUUID: "hidden-0" },
+      { weight: 2, fromUUID: "input-1", toUUID: "hidden-0" },
+      { weight: 1, fromUUID: "hidden-0", toUUID: "output-0" },
+    ],
+    input: 2,
+    output: 1,
+  };
+  const complex = Creature.fromJSON(json);
+
+  const exportCreature = complex.exportJSON();
+  Deno.writeTextFileSync(
+    `${directory}/complex.json`,
+    JSON.stringify(exportCreature, null, 1),
+  );
+  const simplifiedCreature = simplify(complex);
+  assert(!simplifiedCreature);
 });
 
 function makeData(p: number, input: number): Float32Array {
