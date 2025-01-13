@@ -33,6 +33,7 @@ import { Softplus } from "./types/Softplus.ts";
 import { StdInverse } from "./types/StdInverse.ts";
 import { Swish } from "./types/Swish.ts";
 import { TANH } from "./types/TANH.ts";
+import { TAN } from "./types/TAN.ts";
 
 /**
  * https://en.wikipedia.org/wiki/Activation_function
@@ -89,6 +90,7 @@ export class Activations {
     [STEP.NAME]: new STEP(),
     [Swish.NAME]: new Swish(),
 
+    [TAN.NAME]: new TAN(),
     [TANH.NAME]: new TANH(),
   };
 

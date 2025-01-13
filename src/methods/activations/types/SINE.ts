@@ -1,4 +1,5 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
+import type { SimplifyBiasInterface } from "../../../optimize/SimplifyBiasInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -14,7 +15,15 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Sine
  */
 export class SINE
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  implements
+    ActivationInterface,
+    UnSquashInterface,
+    InlineSquashInterface,
+    SimplifyBiasInterface {
+  simplifyBias(bias: number): number {
+    return bias % (2 * Math.PI);
+  }
+
   public static NAME = "SINE";
 
   public readonly range: ActivationRange = new ActivationRange(
