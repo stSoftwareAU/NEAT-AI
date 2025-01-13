@@ -101,10 +101,6 @@ Deno.test("IDENTITY", () => {
       0.000_01,
       `${p}) expected: ${actual1} actual: ${actual2}`,
     );
-
-    // const actaul = simplifiedCreature.activate(data, false)[0];
-
-    // assertAlmostEquals(expected, actaul,0.000_01, `${p}) expected: ${expected} actual: ${actaul}`);
   }
 });
 
@@ -162,7 +158,6 @@ Deno.test("IDENTITY-simple", () => {
   );
   for (let p = 0; p < 1000; p++) {
     const data = makeData(p, complex.input);
-    // const expected = complex.activate(data, false)[0];
 
     const actual1 =
       complex.activateAndTrace(data, false, sparseComplexConfig)[0];
@@ -177,10 +172,6 @@ Deno.test("IDENTITY-simple", () => {
         data[1]
       }, expected: ${actual1}, actual: ${actual2}`,
     );
-
-    // const actaul = simplifiedCreature.activate(data, false)[0];
-
-    // assertAlmostEquals(expected, actaul,0.000_01, `${p}) expected: ${expected} actual: ${actaul}`);
   }
 });
 

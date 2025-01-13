@@ -5,12 +5,13 @@
  * Source: Custom (Cosine is a standard mathematical function)
  */
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
+import type { SimplifyBiasInterface } from "../../../optimize/SimplifyBiasInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Cosine
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface,SimplifyBiasInterface {
   public static NAME = "Cosine";
   public readonly range: ActivationRange = new ActivationRange(
     Cosine.NAME,
@@ -20,6 +21,11 @@ export class Cosine
 
   getName() {
     return Cosine.NAME;
+  }
+
+  simplifyBias(bias: number): number {
+    const tmp= bias % (2 * Math.PI);
+    return tmp;
   }
 
   inlineSquash(value: string): string {

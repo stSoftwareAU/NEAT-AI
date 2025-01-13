@@ -3,12 +3,14 @@ import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { Creature } from "../Creature.ts";
-import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
-import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
-import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
+import { Activations } from "../methods/activations/Activations.ts";
 import { HYPOT } from "../methods/activations/aggregate/HYPOT.ts";
 import { HYPOTv2 } from "../methods/activations/aggregate/HYPOTv2.ts";
 import { IF } from "../methods/activations/aggregate/IF.ts";
+import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
+import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
+import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
@@ -65,13 +67,27 @@ export function simplify(creature: Creature): Creature | undefined {
       }
     }
   });
+  let simplified=exported;
   if (identityUUIDs.length !== 0) {
-    return removeIDENTITY(
+    simplified= removeIDENTITY(
       exported,
       identityUUIDs[Math.floor(Math.random() * identityUUIDs.length)],
     );
   }
-  const simplifiedCreature = Creature.fromJSON(exported);
+
+  simplified.neurons.forEach((neuron) => {
+    if( neuron.squash){
+      const squash = Activations.find(neuron.squash);
+      if (squash ) {
+        const squashedSimplified = (squash as SimplifyBiasInterface);
+        if( squashedSimplified.simplifyBias){
+          neuron.bias = squashedSimplified.simplifyBias(neuron.bias);
+        }
+      }
+    }
+  });
+
+  const simplifiedCreature = Creature.fromJSON(simplified);
   const simplifiedUUID = CreatureUtil.makeUUID(simplifiedCreature);
   if (complexUUID === simplifiedUUID) {
     return undefined;
@@ -82,7 +98,7 @@ export function simplify(creature: Creature): Creature | undefined {
 export function removeIDENTITY(
   exported: CreatureExport,
   identityUUID: string,
-): Creature {
+) {
   const simpliedExport: CreatureExport = JSON.parse(JSON.stringify(exported));
   const neuronMap = new Map<string, NeuronExport>();
   simpliedExport.neurons.forEach((neuron: NeuronExport) => {
@@ -154,11 +170,9 @@ export function removeIDENTITY(
   simpliedExport.synapses = simpliedExport.synapses.concat(newSynapses);
 
   delete simpliedExport.memetic;
-  const simplifiedCreature = Creature.fromJSON(simpliedExport);
-  addTag(simplifiedCreature, "approach", "simplified");
+  addTag(simpliedExport, "approach", "simplified");
 
-  removeTag(simplifiedCreature, "approach-logged");
+  removeTag(simpliedExport, "approach-logged");
 
-  simplifiedCreature.validate();
-  return simplifiedCreature;
+  return simpliedExport;
 }
