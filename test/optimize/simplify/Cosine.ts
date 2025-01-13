@@ -118,7 +118,10 @@ Deno.test("Cosine", () => {
     `${directory}/inline-simplied.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
-  assertNotEquals( complex.uuid??"COMPLEX", simplifiedCreature.uuid??"SIMPLIED");
+  assertNotEquals(
+    complex.uuid ?? "COMPLEX",
+    simplifiedCreature.uuid ?? "SIMPLIED",
+  );
   for (let p = 0; p < 1000; p++) {
     const data = makeData(p, complex.input);
 

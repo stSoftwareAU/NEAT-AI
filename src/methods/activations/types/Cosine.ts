@@ -11,7 +11,11 @@ import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class Cosine
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface,SimplifyBiasInterface {
+  implements
+    ActivationInterface,
+    UnSquashInterface,
+    InlineSquashInterface,
+    SimplifyBiasInterface {
   public static NAME = "Cosine";
   public readonly range: ActivationRange = new ActivationRange(
     Cosine.NAME,
@@ -24,7 +28,7 @@ export class Cosine
   }
 
   simplifyBias(bias: number): number {
-    const tmp= bias % (2 * Math.PI);
+    const tmp = bias % (2 * Math.PI);
     return tmp;
   }
 

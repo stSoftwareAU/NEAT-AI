@@ -67,20 +67,20 @@ export function simplify(creature: Creature): Creature | undefined {
       }
     }
   });
-  let simplified=exported;
+  let simplified = exported;
   if (identityUUIDs.length !== 0) {
-    simplified= removeIDENTITY(
+    simplified = removeIDENTITY(
       exported,
       identityUUIDs[Math.floor(Math.random() * identityUUIDs.length)],
     );
   }
 
   simplified.neurons.forEach((neuron) => {
-    if( neuron.squash){
+    if (neuron.squash) {
       const squash = Activations.find(neuron.squash);
-      if (squash ) {
-        const squashedSimplified = (squash as SimplifyBiasInterface);
-        if( squashedSimplified.simplifyBias){
+      if (squash) {
+        const squashedSimplified = squash as SimplifyBiasInterface;
+        if (squashedSimplified.simplifyBias) {
           neuron.bias = squashedSimplified.simplifyBias(neuron.bias);
         }
       }

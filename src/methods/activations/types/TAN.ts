@@ -11,8 +11,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Trigonometric_functions#Tan
  */
 export class TAN
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface, SimplifyBiasInterface {
-  
+  implements
+    ActivationInterface,
+    UnSquashInterface,
+    InlineSquashInterface,
+    SimplifyBiasInterface {
   simplifyBias(bias: number): number {
     return bias % Math.PI; // Simplify the bias using the periodicity of tan(x)
   }
@@ -36,22 +39,22 @@ export class TAN
     if (!isFinite(activation)) {
       throw new Error("Activation must be finite.");
     }
-  
+
     // Base value using arctan (range: [-π/2, π/2])
     const baseValue = Math.atan(activation);
-  
+
     if (hint !== undefined) {
       // Adjust using the hint to find the closest equivalent within the periodic cycle
       const difference = hint - baseValue;
       const adjustment = Math.round(difference / Math.PI) * Math.PI;
-  
+
       // Return the adjusted value closer to the hint
       return baseValue + adjustment;
     }
-  
+
     // If no hint is provided, return the base value
     return baseValue;
-  }  
+  }
 
   getName() {
     return TAN.NAME;

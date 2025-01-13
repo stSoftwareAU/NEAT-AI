@@ -15,8 +15,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Sine
  */
 export class SINE
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface, SimplifyBiasInterface {
-  
+  implements
+    ActivationInterface,
+    UnSquashInterface,
+    InlineSquashInterface,
+    SimplifyBiasInterface {
   simplifyBias(bias: number): number {
     return bias % (2 * Math.PI);
   }
