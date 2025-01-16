@@ -42,12 +42,6 @@ Deno.test("ABSOLUTE", () => {
       {
         bias: 0.1,
         type: "hidden",
-        squash: ABSOLUTE.NAME,
-        uuid: "hidden-absolute",
-      },
-      {
-        bias: 0.1,
-        type: "hidden",
         squash: Exponential.NAME,
         uuid: "hidden-exponential",
       },
@@ -78,6 +72,7 @@ Deno.test("ABSOLUTE", () => {
       { weight: 0.4, fromUUID: "hidden-1", toUUID: "hidden-2" },
       { weight: 0.3, fromUUID: "hidden-relu6", toUUID: "hidden-2" },
       { weight: 0.2, fromUUID: "hidden-absolute", toUUID: "hidden-2" },
+      { weight: 0.2, fromUUID: "hidden-exponential", toUUID: "hidden-2" },
       {
         weight: Math.E,
         fromUUID: "input-3",
@@ -107,6 +102,11 @@ Deno.test("ABSOLUTE", () => {
         weight: Math.E,
         fromUUID: "input-4",
         toUUID: "hidden-absolute",
+      },
+      {
+        weight: 0.1,
+        fromUUID: "input-3",
+        toUUID: "hidden-exponential",
       },
       { weight: Math.PI, fromUUID: "hidden-2", toUUID: "output-0" },
     ],
