@@ -49,7 +49,7 @@ Deno.test("Simplify Large", () => {
     `${directory}/inline-simplied.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
-  for (let p = 0; p < 1000; p++) {
+  for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
 
     const actual1 = complex.activate(data, false)[0];

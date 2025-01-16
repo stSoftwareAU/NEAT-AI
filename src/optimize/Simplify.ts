@@ -11,6 +11,8 @@ import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
+import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
+import { RELU } from "../methods/activations/types/RELU.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
@@ -69,11 +71,13 @@ export function simplify(creature: Creature): Creature | undefined {
   });
   let simplified = exported;
   if (identityUUIDs.length !== 0) {
-    simplified = removeIDENTITY(
+    simplified = removeNeuron(
       exported,
       identityUUIDs[Math.floor(Math.random() * identityUUIDs.length)],
     );
   }
+
+  simplified = removeKnownSign(simplified);
 
   simplified.neurons.forEach((neuron) => {
     if (neuron.squash) {
@@ -95,10 +99,67 @@ export function simplify(creature: Creature): Creature | undefined {
   return simplifiedCreature;
 }
 
-export function removeIDENTITY(
+export function removeKnownSign(exported: CreatureExport) {
+  const neuronMap = new Map<string, NeuronExport>();
+  exported.neurons.forEach((neuron) => {
+    neuronMap.set(neuron.uuid, neuron);
+  });
+  const synapseMap = new Map<string, Map<string, number>>();
+  exported.synapses.forEach((synapse) => {
+    let fromMap = synapseMap.get(synapse.toUUID);
+    if (!fromMap) {
+      fromMap = new Map<string, number>();
+      synapseMap.set(synapse.toUUID, fromMap);
+    }
+    fromMap.set(synapse.fromUUID, synapse.weight);
+  });
+  for (let indx = 0; indx < exported.neurons.length; indx++) {
+    const neuron = exported.neurons[indx];
+    if (neuron.type == "hidden") {
+      if (neuron.squash == ABSOLUTE.NAME || neuron.squash == RELU.NAME) {
+        console.info(neuron.uuid, neuron.squash);
+        let allNonNegative = true;
+        const fromMap = synapseMap.get(neuron.uuid);
+
+        if (fromMap) {
+          const UUIDs = [...fromMap.keys()];
+          for (let indx = 0; indx < UUIDs.length; indx++) {
+            const uuid = UUIDs[indx];
+            const fromNeuron = neuronMap.get(uuid);
+            if (!fromNeuron) {
+              allNonNegative = false;
+              break;
+            } else {
+              const squashName = neuronMap.get(uuid)?.squash;
+              if (squashName) {
+                const weight = fromMap.get(uuid)!;
+                const squash = Activations.find(squashName);
+                if (
+                  (squash.range.low < 0 && weight >= 0) ||
+                  (squash.range.high <= 0 && weight <= 0)
+                ) {
+                  allNonNegative = false;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (allNonNegative) {
+            return removeNeuron(exported, neuron.uuid);
+          }
+        }
+      }
+    }
+  }
+
+  return exported;
+}
+
+export function removeNeuron(
   exported: CreatureExport,
   identityUUID: string,
-) {
+): CreatureExport {
   const simpliedExport: CreatureExport = JSON.parse(JSON.stringify(exported));
   const neuronMap = new Map<string, NeuronExport>();
   simpliedExport.neurons.forEach((neuron: NeuronExport) => {
