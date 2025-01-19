@@ -32,7 +32,7 @@ jobs:
       - run: |
           echo "Deno release channel is ${{ steps.deno.outputs.release-channel }}"
           deno --version
-      
+
       - name: Verify formatting
         run: deno fmt --check
 
