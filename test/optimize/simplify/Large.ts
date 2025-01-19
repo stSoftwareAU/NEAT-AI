@@ -4,6 +4,7 @@ import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatu
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
+import { makeData } from "./ABSOLUTE.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -64,29 +65,3 @@ Deno.test("Simplify Large", () => {
     );
   }
 });
-
-function makeData(p: number, input: number): Float32Array {
-  const data = new Float32Array(input);
-  switch (p) {
-    case 0:
-      for (let i = 0; i < input; i++) {
-        data[i] = 0;
-      }
-      return data;
-    case 1:
-      for (let i = 0; i < input; i++) {
-        data[i] = 1;
-      }
-      return data;
-    case 2:
-      for (let i = 0; i < input; i++) {
-        data[i] = -1;
-      }
-      return data;
-    default:
-      for (let i = 0; i < input; i++) {
-        data[i] = Math.random() * 4 - 2;
-      }
-      return data;
-  }
-}

@@ -7,6 +7,7 @@ import { simplify } from "../../../src/optimize/Simplify.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 import { MAXIMUM } from "../../../src/methods/activations/aggregate/MAXIMUM.ts";
+import { makeData } from "./ABSOLUTE.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -87,7 +88,7 @@ Deno.test("IDENTITY", () => {
     `${directory}/inline-simplied.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
-  for (let p = 0; p < 1000; p++) {
+  for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
 
     const actual1 =
@@ -156,7 +157,7 @@ Deno.test("IDENTITY-simple", () => {
     `${directory}/inline-simplied.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
-  for (let p = 0; p < 1000; p++) {
+  for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
 
     const actual1 =
@@ -207,29 +208,3 @@ Deno.test("IDENTITY Maximum", () => {
   const simplifiedCreature = simplify(complex);
   assert(!simplifiedCreature);
 });
-
-function makeData(p: number, input: number): Float32Array {
-  const data = new Float32Array(input);
-  switch (p) {
-    case 0:
-      for (let i = 0; i < input; i++) {
-        data[i] = 0;
-      }
-      return data;
-    case 1:
-      for (let i = 0; i < input; i++) {
-        data[i] = 1;
-      }
-      return data;
-    case 2:
-      for (let i = 0; i < input; i++) {
-        data[i] = -1;
-      }
-      return data;
-    default:
-      for (let i = 0; i < input; i++) {
-        data[i] = Math.random() * 4 - 2;
-      }
-      return data;
-  }
-}

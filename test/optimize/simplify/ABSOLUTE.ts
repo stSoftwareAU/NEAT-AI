@@ -150,7 +150,7 @@ Deno.test("ABSOLUTE", () => {
   }
 });
 
-function makeData(p: number, input: number): Float32Array {
+export function makeData(p: number, input: number): Float32Array {
   const data = new Float32Array(input);
   switch (p) {
     case 0:
