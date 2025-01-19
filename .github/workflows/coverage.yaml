@@ -20,7 +20,7 @@ jobs:
         uses: denoland/setup-deno@v2
 
       - name: Create coverage files
-        run: deno test -A --parallel --coverage=.coverage --config ./deno.json --doc
+        run: deno test -A --parallel --coverage=.coverage --config ./deno.json
 
       - name: Create coverage report
         run: deno coverage .coverage --lcov > .coverage.lcov # create coverage report
