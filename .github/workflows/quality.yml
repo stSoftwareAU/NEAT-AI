@@ -62,12 +62,3 @@ jobs:
         if: steps.check_changes.outputs.has_changes == 'true' # Use step output
         run: |
           git push origin
-
-      - name: Create coverage files
-        run: deno test -A --parallel --coverage=.coverage --config ./deno.json --doc
-      - name: Create coverage report
-        run: deno coverage .coverage --lcov > .coverage.lcov # create coverage report
-      - name: Collect coverage
-        uses: codecov/codecov-action@v1.0.10 # upload the report on Codecov
-        with:
-          file: .coverage.lcov

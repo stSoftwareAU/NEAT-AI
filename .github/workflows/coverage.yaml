@@ -1,0 +1,31 @@
+name: Test Coverage
+
+on:
+  push:
+    branches-ignore:
+      - Develop
+  workflow_dispatch: # Allow manual trigger if needed
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Set up Deno 2.x
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+
+      - name: Create coverage files
+        run: deno test -A --parallel --coverage=.coverage --config ./deno.json --doc
+
+      - name: Create coverage report
+        run: deno coverage .coverage --lcov > .coverage.lcov # create coverage report
+
+      - name: Collect coverage
+        uses: codecov/codecov-action@v1.0.10 # upload the report on Codecov
+        with:
+          file: .coverage.lcov
