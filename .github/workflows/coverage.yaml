@@ -20,7 +20,7 @@ jobs:
         uses: denoland/setup-deno@v2
 
       - name: Create coverage files
-        run: deno test -A --parallel --coverage=.coverage --config ./deno.json > test-results.txt
+        run: deno test -A --parallel --coverage=.coverage --config ./deno.json --reporter junit > junit.xml
         continue-on-error: true
 
       - name: Upload test results to Codecov
@@ -29,11 +29,11 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-results
-          path: test-results.txt
+      # - name: Upload Test Results
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: test-results
+      #     path: test-results.txt
 
       - name: Fail Build if Tests Fail
         if: failure() # Only run this step if the test step failed
