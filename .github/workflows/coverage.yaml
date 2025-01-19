@@ -1,0 +1,52 @@
+name: Test Coverage
+
+on:
+  push:
+    branches-ignore:
+      - Develop
+  workflow_dispatch: # Allow manual trigger if needed
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Set up Deno 2.x
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+
+      - name: Create coverage files
+        run: deno test -A --parallel --coverage=.coverage --config ./deno.json --reporter junit > junit.xml
+        continue-on-error: true
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      # - name: Upload Test Results
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: test-results
+      #     path: test-results.txt
+
+      - name: Fail Build if Tests Fail
+        if: failure() # Only run this step if the test step failed
+        run: |
+          echo "Tests failed. Failing the build."
+          exit 1
+
+      - name: Create coverage report
+        run: deno coverage .coverage --lcov > .coverage.lcov # create coverage report
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: .coverage.lcov
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: false
