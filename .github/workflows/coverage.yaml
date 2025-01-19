@@ -25,7 +25,8 @@ jobs:
       - name: Create coverage report
         run: deno coverage .coverage --lcov > .coverage.lcov # create coverage report
 
-      - name: Collect coverage
-        uses: codecov/codecov-action@v1.0.10 # upload the report on Codecov
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          file: .coverage.lcov
+          files: .coverage.lcov
+          token: ${{ secrets.CODECOV_TOKEN }}
