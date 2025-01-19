@@ -20,17 +20,27 @@ jobs:
         uses: denoland/setup-deno@v2
 
       - name: Create coverage files
-        run: deno test -A --parallel --coverage=.coverage --config ./deno.json
+        run: deno test -A --parallel --coverage=.coverage --config ./deno.json > test-results.txt
+        continue-on-error: true
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: test-results.txt
+
+      - name: Fail Build if Tests Fail
+        if: failure() # Only run this step if the test step failed
+        run: |
+            echo "Tests failed. Failing the build."
+            exit 1
 
       - name: Create coverage report
         run: deno coverage .coverage --lcov > .coverage.lcov # create coverage report
-
-      - name: Check coverage file
-        run: cat .coverage.lcov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           files: .coverage.lcov
           token: ${{ secrets.CODECOV_TOKEN }}
-          verbose: true
+          verbose: false
