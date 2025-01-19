@@ -117,7 +117,6 @@ export function removeKnownSign(exported: CreatureExport) {
     const neuron = exported.neurons[indx];
     if (neuron.type == "hidden") {
       if (neuron.squash == ABSOLUTE.NAME || neuron.squash == RELU.NAME) {
-        console.info(neuron.uuid, neuron.squash);
         let allNonNegative = true;
         const fromMap = synapseMap.get(neuron.uuid);
 
