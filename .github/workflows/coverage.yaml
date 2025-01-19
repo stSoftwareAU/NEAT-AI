@@ -32,8 +32,8 @@ jobs:
       - name: Fail Build if Tests Fail
         if: failure() # Only run this step if the test step failed
         run: |
-            echo "Tests failed. Failing the build."
-            exit 1
+          echo "Tests failed. Failing the build."
+          exit 1
 
       - name: Create coverage report
         run: deno coverage .coverage --lcov > .coverage.lcov # create coverage report
