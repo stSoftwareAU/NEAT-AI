@@ -2,9 +2,6 @@ name: Test Coverage
 
 on:
   push:
-    branches-ignore:
-      - Develop
-  workflow_dispatch: # Allow manual trigger if needed
 
 jobs:
   quality:
