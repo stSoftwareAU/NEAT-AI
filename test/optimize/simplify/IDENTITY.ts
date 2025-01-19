@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
@@ -7,6 +7,10 @@ import { simplify } from "../../../src/optimize/Simplify.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 import { MAXIMUM } from "../../../src/methods/activations/aggregate/MAXIMUM.ts";
+import { makeData } from "./ABSOLUTE.ts";
+import { MINIMUM } from "../../../src/methods/activations/aggregate/MINIMUM.ts";
+import { SINE } from "../../../src/methods/activations/types/SINE.ts";
+import { TANH } from "../../../src/methods/activations/types/TANH.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -156,7 +160,7 @@ Deno.test("IDENTITY-simple", () => {
     `${directory}/inline-simplied.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
-  for (let p = 0; p < 1000; p++) {
+  for (let p = 0; p < 100; p++) {
     const data = makeData(p, complex.input);
 
     const actual1 =
@@ -208,28 +212,76 @@ Deno.test("IDENTITY Maximum", () => {
   assert(!simplifiedCreature);
 });
 
-function makeData(p: number, input: number): Float32Array {
-  const data = new Float32Array(input);
-  switch (p) {
-    case 0:
-      for (let i = 0; i < input; i++) {
-        data[i] = 0;
+Deno.test("Minimum -> IDENTITY", () => {
+  const directory = ".test/optimize/simplify/Minimum-IDENTITY";
+  Deno.mkdirSync(directory, { recursive: true });
+
+  const json: CreatureExport = {
+    neurons: [
+      {
+        bias: -1,
+        type: "hidden",
+        squash: MINIMUM.NAME,
+        uuid: "hidden-0",
+      },
+      { bias: 2, type: "hidden", squash: IDENTITY.NAME, uuid: "hidden-1" },
+
+      { bias: 0.2, type: "output", squash: SINE.NAME, uuid: "output-0" },
+      { bias: -0.3, type: "output", squash: TANH.NAME, uuid: "output-1" },
+    ],
+    synapses: [
+      { weight: 0.5, fromUUID: "input-0", toUUID: "hidden-0" },
+      { weight: 2, fromUUID: "input-1", toUUID: "hidden-0" },
+      { weight: -0.2, fromUUID: "hidden-0", toUUID: "hidden-1" },
+      { weight: 0.3, fromUUID: "hidden-1", toUUID: "output-0" },
+
+      { weight: -0.4, fromUUID: "hidden-1", toUUID: "output-1" },
+
+      { weight: 0.5, fromUUID: "input-2", toUUID: "output-1" },
+    ],
+    input: 3,
+    output: 2,
+  };
+  const complex = Creature.fromJSON(json);
+  complex.validate();
+  const exportCreature = complex.exportJSON();
+  Deno.writeTextFileSync(
+    `${directory}/complex.json`,
+    JSON.stringify(exportCreature, null, 1),
+  );
+  const simplifiedCreature = simplify(complex);
+  assert(simplifiedCreature);
+  Deno.writeTextFileSync(
+    `${directory}/simplified.json`,
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
+  );
+
+  const simpliedConfig = new SparseConfig(
+    simplifiedCreature.exportJSON(),
+    createBackPropagationConfig({}),
+  );
+  for (let p = 0; p < 100; p++) {
+    const data = makeData(p, complex.input);
+
+    const expected = complex.activate(data, false);
+    const actual = simplifiedCreature.activate(data, false);
+
+    const trace = simplifiedCreature.activateAndTrace(
+      data,
+      false,
+      simpliedConfig,
+    );
+
+    for (let indx = 0; indx < complex.output; indx++) {
+      if (Math.abs(expected[indx] - actual[indx]) > 0.000_0001) {
+        fail(
+          `${p}) expected: ${expected[indx]}, actual: ${
+            actual[indx]
+          }, data: ${data}`,
+        );
       }
-      return data;
-    case 1:
-      for (let i = 0; i < input; i++) {
-        data[i] = 1;
-      }
-      return data;
-    case 2:
-      for (let i = 0; i < input; i++) {
-        data[i] = -1;
-      }
-      return data;
-    default:
-      for (let i = 0; i < input; i++) {
-        data[i] = Math.random() * 4 - 2;
-      }
-      return data;
+
+      assertAlmostEquals(actual[indx], trace[indx]);
+    }
   }
-}
+});

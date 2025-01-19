@@ -98,6 +98,43 @@ export function simplify(creature: Creature): Creature | undefined {
   }
   return simplifiedCreature;
 }
+// function removeRedundantStepNeurons(exported: CreatureExport): CreatureExport {
+//   const stepNeurons = exported.neurons.filter(
+//     (neuron) => neuron.squash === "STEP" && neuron.type === "hidden"
+//   );
+
+//   const candidates = stepNeurons.filter((neuron) => {
+//     const incomingSynapses = exported.synapses.filter((s) => s.toUUID === neuron.uuid);
+//     const outgoingSynapses = exported.synapses.filter((s) => s.fromUUID === neuron.uuid);
+
+//     // Skip neurons with multiple incoming connections (likely part of logical AND/OR)
+//     if (incomingSynapses.length > 1) return false;
+
+//     // Skip neurons with multiple outgoing connections
+//     if (outgoingSynapses.length !== 1) return false;
+
+//     // Ensure thresholds are not affected
+//     const thresholdSafe = incomingSynapses.every((synapse) => {
+//       const minInput = synapse.weight < 0 ? -1 : 0;
+//       const maxInput = synapse.weight > 0 ? 1 : 0;
+
+//       const lowerActivation = minInput * synapse.weight + neuron.bias;
+//       const upperActivation = maxInput * synapse.weight + neuron.bias;
+
+//       // Only remove if the neuron is entirely redundant
+//       return lowerActivation >= 0 || upperActivation >= 0;
+//     });
+
+//     return thresholdSafe;
+//   });
+
+//   if (candidates.length > 0) {
+//     const randomIndex = Math.floor(Math.random() * candidates.length);
+//     return removeNeuron(exported, candidates[randomIndex].uuid);
+//   }
+
+//   return exported;
+// }
 
 export function removeKnownSign(exported: CreatureExport) {
   const neuronMap = new Map<string, NeuronExport>();
