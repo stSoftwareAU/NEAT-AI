@@ -180,10 +180,10 @@ function simplifyConstants(exported: CreatureExport) {
   for (let indx = 0; indx < exported.neurons.length; indx++) {
     const neuron = exported.neurons[indx];
     if (neuron.type == "constant") {
-      const fromMap = synapseMap.get(neuron.uuid);
+      const toMap = synapseMap.get(neuron.uuid);
 
-      if (fromMap) {
-        const UUIDs = [...fromMap.keys()];
+      if (toMap) {
+        const UUIDs = [...toMap.keys()];
         for (let indx = 0; indx < UUIDs.length; indx++) {
           const uuid = UUIDs[indx];
 
@@ -191,10 +191,16 @@ function simplifyConstants(exported: CreatureExport) {
 
           if (targetNeuron) {
             if (!isAggregationSquash(targetNeuron.squash)) {
-              console.info(
-                `from: ${neuron.uuid} to: ${uuid} squash: ${
-                  neuronMap.get(uuid)?.squash
-                }`,
+              const biasDelta = neuron.bias * toMap.get(uuid)!;
+              targetNeuron.bias += biasDelta;
+              toMap.delete(uuid)!;
+
+              exported.synapses = exported.synapses.filter((synapse) =>
+                synapse.fromUUID !== neuron.uuid || synapse.toUUID !== uuid
+              );
+              exported.neurons = exported.neurons.filter((neuron) =>
+                neuron.type !== "constant" ||
+                synapseMap.get(neuron.uuid)?.size !== 0
               );
             }
           }
