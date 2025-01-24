@@ -14,7 +14,7 @@ import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
-import { makeSynpasesValue } from "../../../optimize/MakeNeuronActivation.ts";
+import { makeSynapsesValue } from "../../../optimize/MakeNeuronActivation.ts";
 
 export class MINIMUM
   implements
@@ -31,7 +31,7 @@ export class MINIMUM
       if (i > 0) {
         valueList += ",";
       }
-      const value = makeSynpasesValue(
+      const value = makeSynapsesValue(
         inwardListClone[i],
         neuron.creature.neurons,
       );
