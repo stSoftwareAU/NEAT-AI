@@ -4,7 +4,7 @@ import { Mutation } from "../../../NEAT/Mutation.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
 import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
 import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
-import { makeSynpasesValue } from "../../../optimize/MakeNeuronActivation.ts";
+import { makeSynapsesValue } from "../../../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,
@@ -42,7 +42,7 @@ export class IF
     for (let i = 0, len = inwardListClone.length; i < len; i++) {
       const { type } = inwardListClone[i];
 
-      const value = makeSynpasesValue(
+      const value = makeSynapsesValue(
         inwardListClone[i],
         neuron.creature.neurons,
       );

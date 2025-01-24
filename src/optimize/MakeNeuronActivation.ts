@@ -4,7 +4,7 @@ import type { NeuronActivationInterface } from "../methods/activations/NeuronAct
 import type { InlineActivationInterface } from "./InlineActivationInterface.ts";
 import type { InlineSquashInterface } from "./InlineSquashInterface.ts";
 
-export function makeSynpasesValue(synapse: Synapse, neurons: Neuron[]): string {
+export function makeSynapsesValue(synapse: Synapse, neurons: Neuron[]): string {
   const { from, weight } = synapse;
   const fromNeuron = neurons[from];
   if (fromNeuron.type === "constant") {
@@ -50,7 +50,7 @@ export function inlineActivation(neuron: Neuron): string {
   const neurons = neuron.creature.neurons;
   const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
   for (let i = 0, len = inwardListClone.length; i < len; i++) {
-    const value = makeSynpasesValue(inwardListClone[i], neurons);
+    const value = makeSynapsesValue(inwardListClone[i], neurons);
 
     if (valueLine !== "") {
       valueLine += "+";

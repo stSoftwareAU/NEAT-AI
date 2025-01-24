@@ -1,7 +1,9 @@
 import { assert } from "@std/assert/assert";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
+import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
 import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
+import { makeSynapsesValue } from "../../../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type {
   BackPropagationConfig,
@@ -13,8 +15,6 @@ import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
-import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
-import { makeSynpasesValue } from "../../../optimize/MakeNeuronActivation.ts";
 
 export class MAXIMUM
   implements
@@ -33,7 +33,7 @@ export class MAXIMUM
       if (i > 0) {
         valueList += ",";
       }
-      const value = makeSynpasesValue(
+      const value = makeSynapsesValue(
         inwardListClone[i],
         neuron.creature.neurons,
       );

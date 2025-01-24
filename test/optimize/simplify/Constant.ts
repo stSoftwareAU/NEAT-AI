@@ -1,16 +1,16 @@
 import { assert, assertAlmostEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
+import { MINIMUM } from "../../../src/methods/activations/aggregate/MINIMUM.ts";
 import { Cosine } from "../../../src/methods/activations/types/Cosine.ts";
-import { makeData } from "./ABSOLUTE.ts";
-import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
-import { RELU } from "../../../src/methods/activations/types/RELU.ts";
 import { Exponential } from "../../../src/methods/activations/types/Exponential.ts";
 import { GAUSSIAN } from "../../../src/methods/activations/types/GAUSSIAN.ts";
 import { GELU } from "../../../src/methods/activations/types/GELU.ts";
-import { TANH } from "../../../src/methods/activations/types/TANH.ts";
+import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
+import { RELU } from "../../../src/methods/activations/types/RELU.ts";
+import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
+import { simplify } from "../../../src/optimize/Simplify.ts";
+import { makeData } from "./ABSOLUTE.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -74,7 +74,7 @@ Deno.test("Constant", () => {
       {
         bias: -2 * Math.PI,
         type: "output",
-        squash: TANH.NAME,
+        squash: MINIMUM.NAME,
         uuid: "output-6",
       },
     ],

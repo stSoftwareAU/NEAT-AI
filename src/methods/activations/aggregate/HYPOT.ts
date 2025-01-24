@@ -1,7 +1,7 @@
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
 import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
-import { makeSynpasesValue } from "../../../optimize/MakeNeuronActivation.ts";
+import { makeSynapsesValue } from "../../../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
@@ -27,7 +27,7 @@ export class HYPOT
       if (i > 0) {
         valueLine += ",";
       }
-      const value = makeSynpasesValue(
+      const value = makeSynapsesValue(
         inwardListClone[i],
         neuron.creature.neurons,
       );

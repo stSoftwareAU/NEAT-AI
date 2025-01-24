@@ -52,16 +52,7 @@ export function simplify(creature: Creature): Creature | undefined {
 
       if (dependants) {
         const aggregateSquash = Array.from(dependants).some((squash) => {
-          switch (squash) {
-            case MAXIMUM.NAME:
-            case MINIMUM.NAME:
-            case HYPOT.NAME:
-            case HYPOTv2.NAME:
-            case IF.NAME:
-              return true;
-            default:
-              return false;
-          }
+          return isAggregationSquash(squash);
         });
         if (!aggregateSquash) {
           identityUUIDs.push(neuron.uuid);
@@ -79,11 +70,13 @@ export function simplify(creature: Creature): Creature | undefined {
 
   simplified = removeKnownSign(simplified);
 
+  simplified = simplifyConstants(simplified);
+
   simplified.neurons.forEach((neuron) => {
     if (neuron.squash) {
       const squash = Activations.find(neuron.squash);
       if (squash) {
-        const squashedSimplified = squash as SimplifyBiasInterface;
+        const squashedSimplified = (squash as unknown) as SimplifyBiasInterface;
         if (squashedSimplified.simplifyBias) {
           neuron.bias = squashedSimplified.simplifyBias(neuron.bias);
         }
@@ -146,6 +139,64 @@ export function removeKnownSign(exported: CreatureExport) {
 
           if (allNonNegative) {
             return removeNeuron(exported, neuron.uuid);
+          }
+        }
+      }
+    }
+  }
+
+  return exported;
+}
+
+function isAggregationSquash(
+  squash?: string,
+): boolean {
+  switch (squash) {
+    case MAXIMUM.NAME:
+    case MINIMUM.NAME:
+    case HYPOT.NAME:
+    case HYPOTv2.NAME:
+    case IF.NAME:
+      return true;
+    default:
+      return false;
+  }
+}
+
+function simplifyConstants(exported: CreatureExport) {
+  const neuronMap = new Map<string, NeuronExport>();
+  exported.neurons.forEach((neuron) => {
+    neuronMap.set(neuron.uuid, neuron);
+  });
+  const synapseMap = new Map<string, Map<string, number>>();
+  exported.synapses.forEach((synapse) => {
+    let fromMap = synapseMap.get(synapse.fromUUID);
+    if (!fromMap) {
+      fromMap = new Map<string, number>();
+      synapseMap.set(synapse.fromUUID, fromMap);
+    }
+    fromMap.set(synapse.toUUID, synapse.weight);
+  });
+  for (let indx = 0; indx < exported.neurons.length; indx++) {
+    const neuron = exported.neurons[indx];
+    if (neuron.type == "constant") {
+      const fromMap = synapseMap.get(neuron.uuid);
+
+      if (fromMap) {
+        const UUIDs = [...fromMap.keys()];
+        for (let indx = 0; indx < UUIDs.length; indx++) {
+          const uuid = UUIDs[indx];
+
+          const targetNeuron = neuronMap.get(uuid);
+
+          if (targetNeuron) {
+            if (!isAggregationSquash(targetNeuron.squash)) {
+              console.info(
+                `from: ${neuron.uuid} to: ${uuid} squash: ${
+                  neuronMap.get(uuid)?.squash
+                }`,
+              );
+            }
           }
         }
       }
