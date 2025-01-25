@@ -17,7 +17,9 @@ jobs:
         uses: denoland/setup-deno@v2
 
       - name: Create coverage files
-        run: deno test -A --parallel --coverage=.coverage --config ./deno.json --reporter junit > junit.xml
+        run: |
+            export NO_COLOR=true
+            deno test -A --parallel --coverage=.coverage --config ./deno.json --reporter junit > junit.xml
         continue-on-error: true
 
       - name: Upload test results to Codecov
