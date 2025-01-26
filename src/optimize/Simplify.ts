@@ -3,16 +3,17 @@ import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { Creature } from "../Creature.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { HYPOT } from "../methods/activations/aggregate/HYPOT.ts";
 import { HYPOTv2 } from "../methods/activations/aggregate/HYPOTv2.ts";
 import { IF } from "../methods/activations/aggregate/IF.ts";
 import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
-import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
-import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
 import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { RELU } from "../methods/activations/types/RELU.ts";
+import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
@@ -90,6 +91,7 @@ export function simplify(creature: Creature): Creature | undefined {
     return undefined;
   }
   delete simplifiedCreature.memetic;
+
   return simplifiedCreature;
 }
 
@@ -169,19 +171,29 @@ function simplifyConstants(exported: CreatureExport) {
   exported.neurons.forEach((neuron) => {
     neuronMap.set(neuron.uuid, neuron);
   });
-  const synapseMap = new Map<string, Map<string, number>>();
+  const synapseFromMap = new Map<string, Map<string, number>>();
   exported.synapses.forEach((synapse) => {
-    let fromMap = synapseMap.get(synapse.fromUUID);
+    let fromMap = synapseFromMap.get(synapse.fromUUID);
     if (!fromMap) {
       fromMap = new Map<string, number>();
-      synapseMap.set(synapse.fromUUID, fromMap);
+      synapseFromMap.set(synapse.fromUUID, fromMap);
     }
     fromMap.set(synapse.toUUID, synapse.weight);
   });
+  const synapseToMap = new Map<string, Set<string>>();
+  exported.synapses.forEach((synapse) => {
+    let toSet = synapseToMap.get(synapse.toUUID);
+    if (!toSet) {
+      toSet = new Set<string>();
+      synapseToMap.set(synapse.toUUID, toSet);
+    }
+    toSet.add(synapse.fromUUID);
+  });
+
   for (let indx = 0; indx < exported.neurons.length; indx++) {
     const neuron = exported.neurons[indx];
     if (neuron.type == "constant") {
-      const toMap = synapseMap.get(neuron.uuid);
+      const toMap = synapseFromMap.get(neuron.uuid);
 
       if (toMap) {
         const UUIDs = [...toMap.keys()];
@@ -201,8 +213,25 @@ function simplifyConstants(exported: CreatureExport) {
               );
               exported.neurons = exported.neurons.filter((neuron) =>
                 neuron.type !== "constant" ||
-                synapseMap.get(neuron.uuid)?.size !== 0
+                synapseFromMap.get(neuron.uuid)?.size !== 0
               );
+
+              const fromSet = synapseToMap.get(targetNeuron.uuid);
+              if (fromSet) {
+                fromSet.delete(neuron.uuid);
+                if (fromSet.size === 0 && targetNeuron.type === "hidden") {
+                  (targetNeuron as { type: string }).type = "constant";
+
+                  const squash = Activations.find(
+                    targetNeuron.squash!,
+                  );
+                  delete targetNeuron.squash;
+                  const activation = squash as ActivationInterface;
+
+                  const constantBias = activation.squash(targetNeuron.bias);
+                  targetNeuron.bias = constantBias;
+                }
+              }
             }
           }
         }

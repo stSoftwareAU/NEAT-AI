@@ -8,13 +8,13 @@ function setupCreature() {
   );
 
   creature.neurons.forEach((n) => {
-    if (Math.abs(n.bias) > 100000) {
-      n.bias = Math.random() * 200000 - 100000;
+    if (Math.abs(n.bias) > 100_000) {
+      n.bias = Math.sign(n.bias) * 100000;
     }
   });
   creature.synapses.forEach((s) => {
-    if (Math.abs(s.weight) > 100000) {
-      s.weight = Math.random() * 200000 - 100000;
+    if (Math.abs(s.weight) > 100_000) {
+      s.weight = Math.sign(s.weight) * 100000;
     }
   });
   return creature;

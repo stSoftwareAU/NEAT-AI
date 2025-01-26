@@ -164,7 +164,7 @@ export class WorkerHandler {
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        creature: JSON.stringify(creature.internalJSON()),
+        creature: JSON.stringify(creature.exportJSON()),
         feedbackLoop,
       },
     };

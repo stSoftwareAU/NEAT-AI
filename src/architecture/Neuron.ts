@@ -81,7 +81,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (type == "constant") {
         if (squash) {
           throw new Error(
-            "constants should not a have a squash was: " + squash,
+            "constants should not have a squash was: " + squash,
           );
         }
       } else {

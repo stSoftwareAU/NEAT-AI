@@ -215,14 +215,7 @@ export function creatureValidate(
       }
       case "output": {
         stats.output++;
-        const toList = creature.inwardConnections(indx);
-        if (toList.length == 0) {
-          debugWrite(creature);
-          throw new ValidationError(
-            `${neuron.ID()}) output neuron has no inward connections`,
-            "NO_INWARD_CONNECTIONS",
-          );
-        }
+        neuron.validate();
         break;
       }
       default:
