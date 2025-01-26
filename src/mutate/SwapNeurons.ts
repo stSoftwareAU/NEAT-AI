@@ -22,7 +22,7 @@ export class SwapNeurons implements RadioactiveInterface {
     return index;
   }
 
-  mutate(focusList?: number[] | undefined): boolean {
+  mutate(focusList?: number[]): boolean {
     // Has no effect on input node, so they are excluded
     if (
       (this.creature.neurons.length - this.creature.input < 2) ||

@@ -7,7 +7,7 @@ export class SubSelfCon implements RadioactiveInterface {
     this.creature = creature;
   }
 
-  mutate(focusList?: number[] | undefined): boolean {
+  mutate(focusList?: number[]): boolean {
     // Check which neurons aren't self connected yet
     const possible = [];
     for (let i = this.creature.input; i < this.creature.neurons.length; i++) {

@@ -161,8 +161,9 @@ export function creatureValidate(
         stats.constant++;
         const toList = creature.inwardConnections(indx);
         if (toList.length > 0) {
+          debugWrite(creature);
           throw new Error(
-            `'${neuron.type}' neuron ${neuron.ID()}  has inward connections: ${toList.length}`,
+            `'${neuron.type}' neuron ${neuron.ID()} has inward connections: ${toList.length}`,
           );
         }
         if (neuron.squash) {

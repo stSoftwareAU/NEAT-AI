@@ -8,7 +8,7 @@ export class AddBackCon implements RadioactiveInterface {
     this.creature = creature;
   }
 
-  mutate(focusList?: number[] | undefined): boolean {
+  mutate(focusList?: number[]): boolean {
     // Create an array of all uncreated (back feed) connections
     const available = [];
     for (
