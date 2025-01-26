@@ -93,6 +93,12 @@ export class WorkerHandler {
           name: "worker-" + this.workerID,
         },
       );
+      this.worker.addEventListener("error", (e) => {
+        console.error("Worker error event:", e);
+      });
+      this.worker.addEventListener("messageerror", (e) => {
+        console.error("Worker message error event:", e);
+      });
     } else {
       this.worker = new MockWorker();
     }
