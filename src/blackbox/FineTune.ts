@@ -224,28 +224,6 @@ function tuneRandomize(
     adjustedDesc,
   );
 
-  // ZZZZZ
-  try {
-    tuned.validate();
-  } catch (e) {
-    console.error("Error tuning", e);
-    tuned.DEBUG = false;
-    Deno.writeTextFileSync(
-      ".test/tuned.json",
-      JSON.stringify(tuned.exportJSON(), null, 2),
-    );
-    fittest.DEBUG = false;
-    Deno.writeTextFileSync(
-      ".test/fittest.json",
-      JSON.stringify(fittest.exportJSON(), null, 2),
-    );
-    previousFittest.DEBUG = false;
-    Deno.writeTextFileSync(
-      ".test/previous.json",
-      JSON.stringify(previousFittest.exportJSON(), null, 2),
-    );
-    throw e;
-  }
   return {
     changeBiasCount: changeBiasCount,
     changeWeightCount: changeWeightCount,

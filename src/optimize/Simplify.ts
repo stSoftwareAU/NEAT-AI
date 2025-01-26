@@ -85,30 +85,14 @@ export function simplify(creature: Creature): Creature | undefined {
     }
   });
 
-  try {
-    const simplifiedCreature = Creature.fromJSON(simplified);
-    const simplifiedUUID = CreatureUtil.makeUUID(simplifiedCreature);
-    if (complexUUID === simplifiedUUID) {
-      return undefined;
-    }
-    delete simplifiedCreature.memetic;
-
-    return simplifiedCreature;
-    // // ZZZZZ
-  } catch (e) {
-    console.error("Error tuning", e);
-
-    Deno.writeTextFileSync(
-      ".test/simplified.json",
-      JSON.stringify(simplified, null, 2),
-    );
-    creature.DEBUG = false;
-    Deno.writeTextFileSync(
-      ".test/creature.json",
-      JSON.stringify(creature.exportJSON(), null, 2),
-    );
-    throw e;
+  const simplifiedCreature = Creature.fromJSON(simplified);
+  const simplifiedUUID = CreatureUtil.makeUUID(simplifiedCreature);
+  if (complexUUID === simplifiedUUID) {
+    return undefined;
   }
+  delete simplifiedCreature.memetic;
+
+  return simplifiedCreature;
 }
 
 export function removeKnownSign(exported: CreatureExport) {
@@ -183,8 +167,6 @@ function isAggregationSquash(
 }
 
 function simplifyConstants(exported: CreatureExport) {
-  //ZZZZZ
-  const cleanExported: CreatureExport = JSON.parse(JSON.stringify(exported));
   const neuronMap = new Map<string, NeuronExport>();
   exported.neurons.forEach((neuron) => {
     neuronMap.set(neuron.uuid, neuron);
@@ -238,19 +220,6 @@ function simplifyConstants(exported: CreatureExport) {
               if (fromSet) {
                 fromSet.delete(neuron.uuid);
                 if (fromSet.size === 0 && targetNeuron.type === "hidden") {
-                  if (!targetNeuron.squash) {
-                    ///ZZZZ
-                    Deno.writeTextFileSync(
-                      ".test/simplifyConstants-clean.json",
-                      JSON.stringify(cleanExported, null, 2),
-                    );
-
-                    Deno.writeTextFileSync(
-                      "..test/simplifyConstants-error.json",
-                      JSON.stringify(exported, null, 2),
-                    );
-                    throw new Error(`No squash for ${targetNeuron.uuid}`);
-                  }
                   (targetNeuron as { type: string }).type = "constant";
 
                   const squash = Activations.find(

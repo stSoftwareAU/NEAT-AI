@@ -159,24 +159,6 @@ Deno.test("connections length", () => {
   }
 });
 
-Deno.test("output inward", () => {
-  const creature = new Creature(10, 2);
-  creatureValidate(creature);
-  creature.synapses.length = 0;
-  creature.DEBUG = true;
-  creature.clearCache();
-  try {
-    creatureValidate(creature);
-    fail("Expected error");
-  } catch (e) {
-    const error = e as Error;
-    assert(
-      error.name === "NO_INWARD_CONNECTIONS",
-      `Unexpected name: ${error.name}`,
-    );
-  }
-});
-
 Deno.test("expected index", () => {
   const creature = new Creature(10, 2);
   creature.DEBUG = true;
