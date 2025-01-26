@@ -174,12 +174,6 @@ function validate(config: NeatArguments) {
     );
   }
 
-  if (config.mutationAmount < 1) {
-    throw new Error(
-      `Mutation Amount must be more than zero was: ${config.mutationAmount}`,
-    );
-  }
-
   if (config.iterations < 0) {
     throw new Error(
       "Iterations must be more than zero was: " + config.iterations,
