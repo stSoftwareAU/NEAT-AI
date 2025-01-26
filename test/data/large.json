@@ -7024,10 +7024,6 @@
       "value": "6 weights, 6 biases"
     },
     {
-      "name": "old-score",
-      "value": "-0.6024716332827408"
-    },
-    {
       "name": "SAMPLER",
       "value": "GRQ10-Mac-mini.local"
     },

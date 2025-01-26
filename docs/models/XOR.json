@@ -98,10 +98,6 @@
     {
       "name": "adjusted",
       "value": "4 weights, 1 bias"
-    },
-    {
-      "name": "old-score",
-      "value": "-0.056613940908180366"
     }
   ]
 }

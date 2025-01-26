@@ -89,6 +89,7 @@ export function simplify(creature: Creature): Creature | undefined {
   if (complexUUID === simplifiedUUID) {
     return undefined;
   }
+  delete simplifiedCreature.memetic;
   return simplifiedCreature;
 }
 
