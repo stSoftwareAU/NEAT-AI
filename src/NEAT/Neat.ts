@@ -413,7 +413,7 @@ export class Neat {
       const n = elitists[0];
       const creativeThinking = Creature.fromJSON(n.exportJSON());
       delete creativeThinking.memetic;
-      const weightScale = 1 / creativeThinking.synapses.length;
+      const weightScale = 1 / Math.max(creativeThinking.synapses.length, 1);
       const addConnection = new AddConnection(creativeThinking);
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
         addConnection.mutate(
