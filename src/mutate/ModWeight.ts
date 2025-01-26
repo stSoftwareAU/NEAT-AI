@@ -7,7 +7,7 @@ export class ModWeight implements RadioactiveInterface {
   constructor(creature: Creature) {
     this.creature = creature;
   }
-  mutate(focusList?: number[] | undefined): boolean {
+  mutate(focusList?: number[]): boolean {
     const allConnections = this.creature.synapses.filter(
       (c) => {
         return this.creature.inFocus(c.from, focusList) ||

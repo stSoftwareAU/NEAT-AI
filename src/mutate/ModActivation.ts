@@ -8,7 +8,7 @@ export class ModActivation implements RadioactiveInterface {
     this.creature = creature;
   }
 
-  mutate(focusList?: number[] | undefined): boolean {
+  mutate(focusList?: number[]): boolean {
     let changed = false;
     for (let attempts = 0; attempts < 12; attempts++) {
       const index = Math.floor(

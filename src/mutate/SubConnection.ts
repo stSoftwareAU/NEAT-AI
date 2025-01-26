@@ -1,4 +1,6 @@
+import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { Creature } from "../Creature.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
 export class SubConnection implements RadioactiveInterface {
@@ -37,7 +39,37 @@ export class SubConnection implements RadioactiveInterface {
     this.creature.disconnect(randomConn.from, randomConn.to);
 
     delete this.creature.memetic;
+    const inwardList = this.creature.inwardConnections(randomConn.to);
 
+    if (inwardList.length === 0) {
+      const neuron = this.creature.neurons[randomConn.to];
+      if (neuron.type === "hidden") {
+        console.info(
+          `Constant neuron ${neuron.uuid} convert ${neuron.type} to constant`,
+        );
+
+        const squash = neuron.findSquash();
+        const activation = squash as ActivationInterface;
+        if (activation.squash) {
+          const constantBias = activation.squash(neuron.bias);
+          console.info(
+            `Adjust neuron ${neuron.uuid} bias ${neuron.bias} to ${constantBias}`,
+          );
+          neuron.bias = constantBias;
+        }
+        neuron.type = "constant";
+        neuron.setSquash(undefined);
+      }
+    }
+
+    const fromOutwardList = this.creature.outwardConnections(randomConn.from);
+    if (fromOutwardList.length === 0) {
+      const fromNeuron = this.creature.neurons[randomConn.from];
+      if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
+        console.info(`Remove neuron ${fromNeuron.uuid} as no longer connected`);
+        removeHiddenNeuron(this.creature, randomConn.from);
+      }
+    }
     return true;
   }
 }

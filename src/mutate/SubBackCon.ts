@@ -7,7 +7,7 @@ export class SubBackCon implements RadioactiveInterface {
     this.creature = creature;
   }
 
-  mutate(focusList?: number[] | undefined): boolean {
+  mutate(focusList?: number[]): boolean {
     // Create an array of all uncreated (back fed) connections
     const available = [];
     for (

@@ -13,7 +13,7 @@ export class ModBias implements RadioactiveInterface {
    *
    * @param {number[]} [focusList] - The list of focus indices.
    */
-  mutate(focusList?: number[] | undefined): boolean {
+  mutate(focusList?: number[]): boolean {
     let changed = false;
     for (let attempts = 0; attempts < 12; attempts++) {
       // Has no effect on input node, so they are excluded

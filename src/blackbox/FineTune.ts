@@ -51,13 +51,21 @@ export function quantumAdjust(
 }
 
 function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
-  const neuronsSet = new Set<string>();
+  const toNeuronsMap = new Map<
+    string,
+    { type: string; squash?: string } | null
+  >();
   to.neurons.forEach((n) => {
-    neuronsSet.add(n.uuid);
+    toNeuronsMap.set(n.uuid, n);
+  });
+
+  const fromNeuronsMap = new Map<string, NeuronExport>();
+  from.neurons.forEach((n) => {
+    fromNeuronsMap.set(n.uuid, n);
   });
 
   for (let indx = 0; indx < to.input; indx++) {
-    neuronsSet.add(`input-${indx}`);
+    toNeuronsMap.set(`input-${indx}`, null);
   }
 
   const synapsesSet = new Set<string>();
@@ -67,11 +75,21 @@ function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
   });
 
   from.synapses.forEach((s) => {
-    if (neuronsSet.has(s.fromUUID) && neuronsSet.has(s.toUUID)) {
+    if (toNeuronsMap.has(s.fromUUID) && toNeuronsMap.has(s.toUUID)) {
       if (!synapsesSet.has(`${s.fromUUID}->${s.toUUID}`)) {
         const toSynapse: SynapseExport = JSON.parse(JSON.stringify(s));
         toSynapse.weight = 0;
         to.synapses.push(toSynapse);
+        const neuron = toNeuronsMap.get(s.toUUID);
+        if (neuron) {
+          if (neuron.type == "constant") {
+            const fromNeuron = fromNeuronsMap.get(s.toUUID);
+            if (fromNeuron) {
+              neuron.squash = fromNeuron.squash;
+            }
+            neuron.type = "hidden";
+          }
+        }
       }
     }
   });

@@ -60,6 +60,7 @@ export class Offspring {
       if (node.type !== "input") {
         neuronMap.set(node.uuid, node);
         const connections = mother.inwardConnections(node.index);
+        Offspring.fixType(node, connections);
         connectionsMap.set(
           node.uuid,
           Offspring.cloneConnections(mother, connections),
@@ -71,6 +72,8 @@ export class Offspring {
       if (node.type !== "input") {
         if (Math.random() >= 0.5) {
           const connections = father.inwardConnections(node.index);
+
+          Offspring.fixType(node, connections);
           const tmpConnections = Offspring.cloneConnections(
             father,
             connections,
@@ -304,6 +307,18 @@ export class Offspring {
           );
 
           throw e;
+      }
+    }
+  }
+
+  private static fixType(node: Neuron, connections: SynapseInternal[]) {
+    if (node.type === "constant") {
+      if (connections.length > 0) {
+        node.type = "hidden";
+      }
+    } else if (node.type === "hidden") {
+      if (connections.length === 0) {
+        node.type = "constant";
       }
     }
   }

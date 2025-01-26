@@ -36,7 +36,7 @@ import { Synapse } from "./Synapse.ts";
 
 export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
-  readonly type: "input" | "output" | "hidden" | "constant";
+  type: "input" | "output" | "hidden" | "constant";
   uuid: string;
   bias: number;
   squash?: string;
@@ -231,13 +231,20 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   setSquash(
-    name: string,
+    name?: string,
   ): void {
     delete this.squashMethodCache;
     this.squash = name;
-    const squashFunction = this.findSquash();
+    if (name) {
+      const squashFunction = this.findSquash();
 
-    this.squash = squashFunction!.getName(); /* Handle aliases */
+      this.squash = squashFunction.getName(); /* Handle aliases */
+    } else {
+      assert(
+        this.type == "constant",
+        "Squash must be defined for non-constant nodes",
+      );
+    }
   }
 
   findSquash():

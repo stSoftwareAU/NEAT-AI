@@ -12,7 +12,7 @@ export class SubNeuron implements RadioactiveInterface {
    *
    * @param {number[]} [focusList] - The list of focus indices.
    */
-  mutate(focusList?: number[] | undefined): boolean {
+  mutate(focusList?: number[]): boolean {
     // Check if there are neurons left to remove
     if (
       this.creature.neurons.length ===
