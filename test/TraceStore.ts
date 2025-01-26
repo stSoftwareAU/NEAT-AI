@@ -7,7 +7,7 @@ import type { NeatOptions } from "../src/config/NeatOptions.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("storeTrace", async () => {
+Deno.test("TraceStore", async () => {
   const json: CreatureInternal = {
     neurons: [
       { type: "input", index: 0 },
@@ -45,9 +45,9 @@ Deno.test("storeTrace", async () => {
     }
   }
 
-  const traceDir = ".trace/storeTrace";
+  const traceDir = ".test/TraceStore/trace";
   ensureDirSync(traceDir);
-  const creaturesDir = ".creatures/storeTrace";
+  const creaturesDir = ".test/TraceStore/creatures";
   emptyDirSync(creaturesDir);
 
   let foundUsed = false;
