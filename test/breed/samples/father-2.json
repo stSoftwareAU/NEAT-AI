@@ -107,10 +107,6 @@
     {
       "name": "adjusted",
       "value": "8 weights, 5 biases"
-    },
-    {
-      "name": "old-score",
-      "value": "-0.2511369356791755"
     }
   ],
   "memetic": {

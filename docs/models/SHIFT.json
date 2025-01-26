@@ -198,10 +198,6 @@
     {
       "name": "adjusted",
       "value": "23 weights, 6 biases"
-    },
-    {
-      "name": "old-score",
-      "value": "-0.04309363288697278"
     }
   ]
 }

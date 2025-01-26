@@ -224,10 +224,6 @@ function tuneRandomize(
     adjustedDesc,
   );
 
-  if (previousFittest.score) {
-    addTag(tuned, "old-score", previousFittest.score?.toString());
-  }
-
   return {
     changeBiasCount: changeBiasCount,
     changeWeightCount: changeWeightCount,
