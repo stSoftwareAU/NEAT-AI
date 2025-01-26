@@ -70,10 +70,14 @@ Deno.test("ConfigValidate: Validate config", () => {
     },
   ];
 
-  const wrongType = {
+  const wrongTypes = [{
     dataSetPartitionBreak: "abc",
-  };
-  invalid.push((wrongType as unknown) as NeatOptions);
+  }, {
+    dataSetPartitionBreak: "xyz",
+  }];
+  wrongTypes.forEach((wrongType) => {
+    invalid.push((wrongType as unknown) as NeatOptions);
+  });
 
   invalid.forEach((config) => {
     let valid = false;
