@@ -172,7 +172,6 @@ Deno.test("PI Multiple", () => {
     sparseConfig,
   );
   const actualA2 = creature.activate(new Float32Array(inA));
-  console.info(expectedA, actualA1, actualA2);
 
   Deno.writeTextFileSync(
     ".trace/3.json",

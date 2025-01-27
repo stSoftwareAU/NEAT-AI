@@ -22,7 +22,7 @@ Deno.test("Trace", () => {
   creature.validate();
   const json2 = creature.exportJSON();
   stats(json2);
-  compare(json, json2);
+
   Deno.writeTextFileSync(
     "test/data/.learned.json",
     JSON.stringify(json2, null, 2),
@@ -103,27 +103,6 @@ function stdDev(arr: number[]): number {
   const arrMean = mean(arr);
   const sum = arr.reduce((a, b) => a + Math.pow(b - arrMean, 2), 0);
   return Math.sqrt(sum / (arr.length - 1));
-}
-
-function compare(creature1: CreatureExport, creature2: CreatureExport) {
-  creature1.neurons.forEach((neuron) => {
-    const node2 = creature2.neurons.find((neuron2) =>
-      neuron2.uuid == neuron.uuid
-    );
-    if (!node2) {
-      console.info(`Node not found: ${neuron.uuid}`);
-    } else {
-      const b1 = neuron.bias;
-      const b2 = node2.bias;
-
-      if (Math.abs(b1 - b2) > 0.0001) {
-        const msg = `${neuron.uuid} Bias mismatch: ${b1.toFixed(4)} vs ${
-          b2.toFixed(4)
-        }`;
-        console.info(msg);
-      }
-    }
-  });
 }
 
 /**

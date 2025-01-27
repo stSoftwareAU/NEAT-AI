@@ -33,7 +33,7 @@ Deno.test("limitBiasScale", () => {
     maximumBiasAdjustmentScale: 10,
     learningRate: 1,
   });
-  console.info(config);
+
   const bias = limitBias(21, 11, config);
 
   assertAlmostEquals(20, bias, 0.001, `Bias: ${bias.toFixed(1)}`);

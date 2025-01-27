@@ -66,20 +66,13 @@ Deno.test("XOR-evolve", async () => {
   for (let attempt = 0; attempt < 100; attempt++) {
     const creature = new Creature(2, 1);
     results = await creature.evolveDataSet(trainingSet, {
-      // mutation: Mutation.FFW,
-      // elitism: 10,
-      // mutationRate: 0.5,
-      // targetError: 0.03,
-      // threads: 1,
       iterations: 1_000,
     });
 
     if (results.error < bestError) {
       bestError = results.error;
-      console.info("Attempt", attempt, "best error", bestError);
     }
     if (results.error <= 0.03) break;
-    console.info("Attempt", attempt, "failed with error", results.error);
   }
 
   assert(
