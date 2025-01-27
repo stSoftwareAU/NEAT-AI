@@ -95,15 +95,17 @@ function trainDirBinary(
   const uuid = CreatureUtil.makeUUID(creature);
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
-  console.info(
-    `Training ${blue(ID)} with ${binaryFiles.length} binary file${
-      binaryFiles.length > 1 ? "s" : ""
-    }, target error: ${yellow(targetError.toString())}, iterations: ${
-      yellow(iterations.toString())
-    }, sample rate: ${fp(trainingSampleRate)}, sparse: ${
-      fp(backPropConfig.sparseRatio)
-    }`,
-  );
+  if (options.log) {
+    console.info(
+      `Training ${blue(ID)} with ${binaryFiles.length} binary file${
+        binaryFiles.length > 1 ? "s" : ""
+      }, target error: ${yellow(targetError.toString())}, iterations: ${
+        yellow(iterations.toString())
+      }, sample rate: ${fp(trainingSampleRate)}, sparse: ${
+        fp(backPropConfig.sparseRatio)
+      }`,
+    );
+  }
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
   const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB

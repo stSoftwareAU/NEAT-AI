@@ -37,7 +37,6 @@ Deno.test("Simple", () => {
     JSON.stringify(exportJSON, null, 2),
   );
   let lastError = calculateError(modifiedCreature, td);
-  console.info("Initial error", lastError);
 
   for (let i = 0; i < 10; i++) {
     Deno.writeTextFileSync(
@@ -210,9 +209,7 @@ function calculateError(
     assert(output.length === 2, `output.length: ${output.length}`);
     assert(Number.isFinite(output[0]), `0: ${output[0]}`);
     assert(Number.isFinite(output[1]), `1: ${output[1]}`);
-    if (998 === i) {
-      console.info("output", output);
-    }
+
     const error = mse.calculate(
       new Float32Array(data.output),
       new Float32Array(output),

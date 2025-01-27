@@ -659,7 +659,7 @@ export class Creature implements CreatureInternal {
         break;
       } else if (c.from === from) {
         assert(c.to !== to, "Connection already exists");
-        /* assert(c.to !== to, `Connection already exists from ${this.neurons[from].ID()} to ${this.neurons[to].ID()}`); */
+
         if (c.to < to) {
           location = indx + 1;
           break;

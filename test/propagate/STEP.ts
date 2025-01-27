@@ -72,7 +72,6 @@ Deno.test("PropagateSTEP", () => {
     outputs[i] = creature.activate(new Float32Array(inputs[i]));
   }
 
-  console.info(outputs);
   const stepNeuron = creature.neurons.find((n) => n.uuid === "step-1");
   if (!stepNeuron) throw new Error("neuron not found");
 
@@ -82,7 +81,7 @@ Deno.test("PropagateSTEP", () => {
   neuron.bias = 0.5;
 
   const config = createBackPropagationConfig({ learningRate: 1 });
-  console.info(config);
+
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let loop = 0; loop < 100; loop++) {
     for (let i = inputs.length; i--;) {

@@ -75,7 +75,7 @@ Deno.test("OneAndDone", () => {
     generations: 0,
     learningRate: 1,
   });
-  console.info(config);
+
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
     JSON.stringify(creature.exportJSON(), null, 2),
@@ -256,110 +256,6 @@ Deno.test("ManySame", () => {
   }
 });
 
-/*Deno.test("propagateSingleNeuronKnown", () => {
-  const traceDir = ".test/propagateSingleNeuronKnown";
-  ensureDirSync(traceDir);
-
-  for (let attempts = 0; true; attempts++) {
-    let config = createBackPropagationConfig({
-      generations: 0,
-      learningRate: 0.255,
-    });
-    console.info(config);
-
-    const creature = makeCreature();
-    Deno.writeTextFileSync(
-      `${traceDir}/0-start.json`,
-      JSON.stringify(creature.exportJSON(), null, 2),
-    );
-
-    const inFirst = [-0.5, 0, 0.5];
-    const actualFirst = creature.activate(inFirst);
-    const actualFirst2 = creature.activate(inFirst);
-    const expectedFirst = makeOutput(inFirst);
-    console.info("FIRST", expectedFirst, actualFirst, actualFirst2);
-
-    const inA = [0, 0, 0];
-    const outA = creature.activateAndTrace(inA);
-    console.info("SECOND", outA);
-    creature.propagate(makeOutput(inA), config);
-
-    Deno.writeTextFileSync(
-      `${traceDir}/1-trace.json`,
-      JSON.stringify(creature.traceJSON(), null, 2),
-    );
-    const inB = [1, 1, 1];
-    creature.activateAndTrace(inB);
-    const expectedB = makeOutput(inB);
-    creature.propagate(expectedB, config);
-
-    Deno.writeTextFileSync(
-      `${traceDir}/2-trace.json`,
-      JSON.stringify(creature.traceJSON(), null, 2),
-    );
-    const inC = [-0.3, -0.1, 0.1];
-    const expectedC = makeOutput(inC);
-    const inD = [-0.5, 0, 0.5];
-    const expectedD = makeOutput(inD);
-    for (let i = 0; i < 100; i++) {
-      config = createBackPropagationConfig({ ...config, generations: 3 + i });
-
-      creature.activateAndTrace(inC);
-      creature.propagate(expectedC, config);
-
-      creature.activateAndTrace(inD);
-      creature.propagate(expectedD, config);
-      if (i && i % 10 === 0) {
-        creature.propagateUpdate(config);
-        creature.clearState();
-      }
-    }
-
-    Deno.writeTextFileSync(
-      `${traceDir}/3-trace.json`,
-      JSON.stringify(creature.traceJSON(), null, 2),
-    );
-
-    creature.propagateUpdate(config);
-    creature.clearState();
-    const actualC = creature.activate(inC);
-    console.info("C propagate", expectedC, actualC);
-
-    Deno.writeTextFileSync(
-      `${traceDir}/4-done.json`,
-      JSON.stringify(creature.exportJSON(), null, 2),
-    );
-
-    const actual = creature.activate(inD);
-
-    console.info("LAST", expectedD, actual);
-
-    if (
-      Math.abs(expectedD[0] - actual[0]) > 0.5 ||
-      Math.abs(expectedD[1] - actual[1]) > 0.5
-    ) {
-      {
-        if (attempts < 120) {
-          continue;
-        }
-      }
-    }
-    assertAlmostEquals(
-      actual[0],
-      expectedD[0],
-      0.5,
-      `actual: ${actual[0].toFixed(3)}, expected: ${expectedD[0].toFixed(3)}`,
-    );
-    assertAlmostEquals(
-      actual[1],
-      expectedD[1],
-      0.5,
-      `actual: ${actual[1].toFixed(3)}, expected: ${expectedD[1].toFixed(3)}`,
-    );
-    break;
-  }
-});*/
-
 Deno.test("propagateSingleNeuronRandom", () => {
   const creature = makeCreature();
   Deno.writeTextFileSync(
@@ -367,7 +263,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
     JSON.stringify(creature.traceJSON(), null, 2),
   );
   const config = createBackPropagationConfig({});
-  console.info(config);
+
   const traceDir = ".trace";
   ensureDirSync(traceDir);
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);

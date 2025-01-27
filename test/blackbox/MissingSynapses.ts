@@ -108,7 +108,6 @@ Deno.test("FineTune-missing synapses", () => {
 });
 
 function check(creature: Creature) {
-  console.info(creature.exportJSON());
   creature.validate();
 
   const fittestSynapse = creature.getSynapse(0, 5);

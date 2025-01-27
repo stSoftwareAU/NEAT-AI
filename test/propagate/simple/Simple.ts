@@ -53,7 +53,6 @@ Deno.test("Simple", () => {
     JSON.stringify(exportJSON, null, 2),
   );
   let lastError = calculateError(modifiedCreature, td);
-  console.info("Initial error", lastError);
 
   for (let i = 0; i < 10; i++) {
     Deno.writeTextFileSync(

@@ -186,8 +186,6 @@ Deno.test(
       connectionsMap,
     );
 
-    sorted.forEach((n) => console.info(n.uuid));
-
     assertEquals(sorted[0].uuid, "input-0");
     assertEquals(sorted[1].uuid, "input-1");
     assertEquals(sorted[2].uuid, "input-2");

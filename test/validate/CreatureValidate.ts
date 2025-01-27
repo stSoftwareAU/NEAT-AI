@@ -221,7 +221,7 @@ Deno.test("Recursive", () => {
   });
   try {
     creatureValidate(creature, { feedbackLoop: false });
-    console.info(creature.exportJSON());
+
     fail("Expected error");
   } catch (e) {
     const error = e as Error;

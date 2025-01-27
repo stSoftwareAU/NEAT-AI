@@ -9,7 +9,7 @@ Deno.test("maximumWeightAdjustmentScale", () => {
     maximumWeightAdjustmentScale: 0.2,
     learningRate: 1,
   });
-  console.info(config);
+
   const weight = limitWeight(10, 0.5, config);
 
   assertAlmostEquals(0.7, weight, 0.001, `Weight: ${weight.toFixed(3)}`);
@@ -23,7 +23,7 @@ Deno.test("maximumWeightAdjustmentScaleV2", () => {
     maximumWeightAdjustmentScale: 0.2,
     learningRate: 1,
   });
-  console.info(config);
+
   const weight = limitWeight(500_000, 0.5, config);
   assertAlmostEquals(0.7, weight, 0.001, `Weight: ${weight.toFixed(3)}`);
 });
@@ -34,7 +34,7 @@ Deno.test("limitWeightScale", () => {
     maximumWeightAdjustmentScale: 10,
     learningRate: 1,
   });
-  console.info(config);
+
   const weight = limitWeight(21, 11, config);
 
   assertAlmostEquals(20, weight, 0.001, `Weight: ${weight.toFixed(1)}`);

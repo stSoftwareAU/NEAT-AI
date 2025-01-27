@@ -107,7 +107,7 @@ Deno.test("Species Key Uniqueness", () => {
 
   const creature2JSON = createCreatureJSON();
   creature2JSON.neurons[0].squash = "Cosine";
-  console.info(creature2JSON);
+
   const creature2: Creature = Creature.fromJSON(creature2JSON);
 
   const key1 = Species.calculateKey(creature1);

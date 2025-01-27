@@ -91,6 +91,5 @@ Deno.test("backtrack", () => {
   for (const creature of backtrackPopulation) {
     assert(creature.memetic);
     creatureValidate(creature);
-    console.info(creature.memetic);
   }
 });
