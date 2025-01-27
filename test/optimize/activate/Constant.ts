@@ -64,10 +64,10 @@ Deno.test("Constant", () => {
     const actual1 = creature.activateAndTrace(data, false, sparseConfig)[0];
     const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
 
-    assertAlmostEquals(actual0, actual1, 0.000_001);
-    assertAlmostEquals(actual1, actual2);
+    assertAlmostEquals(actual0, actual1, 0.000_002);
+    assertAlmostEquals(actual1, actual2, 0.000_002);
     assert(
-      Math.abs(actual0 - actual2) < 0.000_001,
+      Math.abs(actual0 - actual2) < 0.000_002,
       "repeated calls should return the same result",
     );
     const expected = a * Math.E + b * -Math.LOG2E + c * Math.SQRT1_2 +

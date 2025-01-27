@@ -51,9 +51,6 @@ Deno.test("ConfigValidate: Validate config", () => {
       iterations: -1,
     },
     {
-      timeoutMinutes: -1,
-    },
-    {
       trainingBatchSize: -1,
     },
     {
@@ -72,6 +69,15 @@ Deno.test("ConfigValidate: Validate config", () => {
       geneticCompatibilityThreshold: 2,
     },
   ];
+
+  const wrongTypes = [{
+    dataSetPartitionBreak: "abc",
+  }, {
+    dataSetPartitionBreak: "xyz",
+  }];
+  wrongTypes.forEach((wrongType) => {
+    invalid.push((wrongType as unknown) as NeatOptions);
+  });
 
   invalid.forEach((config) => {
     let valid = false;

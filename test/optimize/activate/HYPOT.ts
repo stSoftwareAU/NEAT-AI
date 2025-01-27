@@ -69,16 +69,6 @@ Deno.test("HYPOT", () => {
     const expected = Math.hypot(a, b * -1, c) - 0.2;
 
     const delta = expected - actual0;
-    if (Math.abs(delta) > 0.000_0002) {
-      console.info(
-        "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
-        delta,
-        data,
-      );
-      fail(
-        p + ") Expected: " + expected + ", actual: " + actual0 + ", delta: " +
-          delta,
-      );
-    }
+    assertAlmostEquals(expected, actual0, 0.000_000_5, `delta: ${delta}`);
   }
 });

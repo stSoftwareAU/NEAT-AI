@@ -180,12 +180,6 @@ function validate(config: NeatArguments) {
     );
   }
 
-  if (config.timeoutMinutes < 0) {
-    throw new Error(
-      "Timeout Minutes must be more than zero was: " + config.timeoutMinutes,
-    );
-  }
-
   if (config.trainingBatchSize < 1) {
     throw new Error(
       "Training Batch Size must be more than zero was: " +
