@@ -78,4 +78,3 @@ license text, please see [LICENSE](./LICENSE).
 
 [![codecov](https://codecov.io/github/stSoftwareAU/NEAT-AI/graph/badge.svg?token=DZ3R9KJGKB)](https://codecov.io/github/stSoftwareAU/NEAT-AI)
 
-Sombax spealling to chec.
