@@ -1,7 +1,6 @@
 name: "Check spelling"
-on: # rebuild any PRs and main branch changes
+on: # rebuild any PRs
   pull_request:
-  push:
 
 jobs:
   spellcheck: # run the action
