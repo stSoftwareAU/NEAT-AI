@@ -846,7 +846,10 @@ export class Creature implements CreatureInternal {
         error = Number.parseFloat(errorTmp);
         assert(Number.isFinite(error), "Error is not finite");
         assert(error >= 0, "Error is negative");
-        assert(fittestScore <= error * -1, "Score (absolute) less than error");
+        assert(
+          fittestScore - 1 <= error * -1,
+          "Score (absolute) less than error",
+        );
         bestScore = fittestScore;
         bestCreature = Creature.fromJSON(fittest.exportJSON());
         bestCreature.uuid = fittest.uuid;

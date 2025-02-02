@@ -1,0 +1,14 @@
+name: "Check spelling"
+on: # rebuild any PRs
+  pull_request:
+
+jobs:
+  spellcheck: # run the action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: streetsidesoftware/cspell-action@v6
+        with:
+          # Specify the files to check
+          files: "**/*.{md,html,js,ts,css}"
+          config: "docs/cspell.json"
