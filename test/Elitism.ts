@@ -1,14 +1,14 @@
 import { assert, assertAlmostEquals } from "@std/assert";
+import { addTag } from "@stsoftware/tags";
+import { CreatureUtil } from "../mod.ts";
 import { Creature } from "../src/Creature.ts";
+import type { Approach } from "../src/NEAT/LogApproach.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import {
   logVerbose,
   makeElitists,
   sortCreaturesByScore,
 } from "../src/architecture/ElitismUtils.ts";
-import { addTag } from "@stsoftware/tags";
-import type { Approach } from "../src/NEAT/LogApproach.ts";
-import { CreatureUtil } from "../mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
