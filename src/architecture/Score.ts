@@ -25,12 +25,12 @@ function calculateMaxOutOfBounds(
   let total = 0;
   let count = 0;
 
-  for (const conn of creature.synapses) {
+  for (const synapse of creature.synapses) {
     assert(
-      Number.isFinite(conn.weight),
-      `Weight: ${conn.weight} is not finite`,
+      Number.isFinite(synapse.weight),
+      `Weight: ${synapse.weight} is not finite`,
     );
-    const w = Math.abs(conn.weight);
+    const w = Math.abs(synapse.weight);
     max = Math.max(max, w);
     total += w;
     count++;

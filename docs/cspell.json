@@ -10,7 +10,11 @@
     "visualstudio",
     "Neuro",
     "HYPOT",
-    "CRISPR"
+    "CRISPR",
+    "stsoftware",
+    "blackbox",
+    "CONN",
+    "conn"
   ],
   "flagWords": [
     "hte"
