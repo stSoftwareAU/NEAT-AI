@@ -1,4 +1,4 @@
-name: 'Check spelling'
+name: "Check spelling"
 on: # rebuild any PRs and main branch changes
   pull_request:
   push:
@@ -11,4 +11,4 @@ jobs:
       - uses: streetsidesoftware/cspell-action@v6
         with:
           # Specify the files to check
-          files: '**/*.{md,html,js,ts,css}'
+          files: "**/*.{md,html,js,ts,css}"
