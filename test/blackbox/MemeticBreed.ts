@@ -1,9 +1,6 @@
-import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
+import { assert } from "@std/assert";
+import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
-import { type CreatureExport, CreatureUtil } from "../../mod.ts";
-import { restoreSource } from "../../src/blackbox/RestoreSource.ts";
-import { Breed } from "../../src/breed/Breed.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
