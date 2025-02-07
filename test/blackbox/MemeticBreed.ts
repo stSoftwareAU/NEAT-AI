@@ -46,15 +46,15 @@ function makeCreature() {
 function makeMum() {
   const creature = makeCreature();
   creature.score = -0.1;
-  creature.memetic={
-      generation: 1,
-      weights: {},
-      biases: {
-        "hidden-3": 3.1,
-        "hidden-4": 2.1,
-      },
-      score: -0.2
-  }
+  creature.memetic = {
+    generation: 1,
+    weights: {},
+    biases: {
+      "hidden-3": 3.1,
+      "hidden-4": 2.1,
+    },
+    score: -0.2,
+  };
   return creature;
 }
 
@@ -72,6 +72,6 @@ Deno.test("memetic preserved", () => {
   assert(mum.memetic, "Should have memetic");
   const dad = makeDad();
 
-  const child=Offspring.breed(mum, dad);
-  assert (child?.memetic, "Chikd should have kept memetic");
+  const child = Offspring.breed(mum, dad);
+  assert(child?.memetic, "Child should have kept memetic");
 });
