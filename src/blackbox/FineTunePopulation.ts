@@ -140,7 +140,7 @@ export class FindTunePopulation {
          * I want to find another creature from the same species of the fittest creature ( but not the fittest or previous fittest creatures)
          * and perform the fine tuning comparing the fittest creature to another within the species.
          *
-         * We should favor the highest score creatures in that species.
+         * We should favour the highest score creatures in that species.
          */
 
         const speciesFineTunePopSize = fineTunePopSize -
@@ -158,7 +158,7 @@ export class FindTunePopulation {
             );
 
             /** If there is no eligible creatures try find the closest species. */
-            if (eligibleCreatures.length == 0) {
+            if (eligibleCreatures.length === 0) {
               const closestSpecies = genus.findClosestMatchingSpecies(fittest);
               if (closestSpecies) {
                 if (closestSpecies && closestSpecies.creatures.length > 0) {

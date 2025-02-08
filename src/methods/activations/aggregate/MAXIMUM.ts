@@ -126,7 +126,7 @@ export class MAXIMUM
       const c = fromList[i];
       const { from, to, weight } = c;
       const cs = state.connection(from, to);
-      if (cs.used == undefined) cs.used = false;
+      if (cs.used === undefined) cs.used = false;
 
       const value = activations[from] * weight;
       if (value > tmpValue) {
@@ -146,7 +146,7 @@ export class MAXIMUM
     const fromListA = neuron.creature.inwardConnections(neuron.index);
     for (let i = fromListA.length; i--;) {
       const c = fromListA[i];
-      if (c.from == c.to) {
+      if (c.from === c.to) {
         neuron.creature.disconnect(c.from, c.to);
       }
     }
@@ -171,8 +171,8 @@ export class MAXIMUM
     for (let i = inward.length; i--;) {
       const c = inward[i];
 
-      assert(c.to == neuron.index, "mismatched index");
-      if (c.from == c.to) continue;
+      assert(c.to === neuron.index, "mismatched index");
+      if (c.from === c.to) continue;
 
       const cs = state.connection(c.from, c.to);
       if (!cs.used) {
@@ -254,7 +254,7 @@ export class MAXIMUM
         ) {
           targetFromActivation = targetFromValue / fromWeightAdjusted;
 
-          if (from != to) {
+          if (from !== to) {
             improvedFromActivation = mainFromNeuron!.propagate(
               targetFromActivation,
               config,

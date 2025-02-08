@@ -19,14 +19,14 @@ export function creatureValidate(
     }
   }
 
-  if (Number.isInteger(creature.input) == false || creature.input < 1) {
+  if (Number.isInteger(creature.input) === false || creature.input < 1) {
     throw new ValidationError(
       `Must have at least one input neurons was: ${creature.input}`,
       "OTHER",
     );
   }
 
-  if (Number.isInteger(creature.output) == false || creature.output < 1) {
+  if (Number.isInteger(creature.output) === false || creature.output < 1) {
     throw new ValidationError(
       `Must have at least one output neurons was: ${creature.output}`,
       "OTHER",
@@ -73,7 +73,7 @@ export function creatureValidate(
       }
     }
 
-    if (neuron.type == "output") {
+    if (neuron.type === "output") {
       const expectedUUID = `output-${outputIndx}`;
       outputIndx++;
       if (uuid !== expectedUUID) {
@@ -91,7 +91,7 @@ export function creatureValidate(
       );
     }
 
-    if (neuron.type == "input" && indx > creature.input) {
+    if (neuron.type === "input" && indx > creature.input) {
       debugWrite(creature);
 
       throw new ValidationError(
@@ -116,11 +116,11 @@ export function creatureValidate(
 
       for (let i = toList.length; i--;) {
         const c = toList[i];
-        if (c.type == "condition") {
+        if (c.type === "condition") {
           foundCondition = true;
-        } else if (c.type == "negative") {
+        } else if (c.type === "negative") {
           foundNegative = true;
-        } else if (c.type == "positive") {
+        } else if (c.type === "positive") {
           foundPositive = true;
         }
       }
@@ -172,7 +172,7 @@ export function creatureValidate(
           );
         }
         const fromList = creature.outwardConnections(indx);
-        if (fromList.length == 0) {
+        if (fromList.length === 0) {
           debugWrite(creature);
           throw new ValidationError(
             `constants neuron ${neuron.ID()} has no outward connections`,
@@ -184,14 +184,14 @@ export function creatureValidate(
       case "hidden": {
         stats.hidden++;
         const toList = creature.inwardConnections(indx);
-        if (toList.length == 0) {
+        if (toList.length === 0) {
           throw new ValidationError(
             `hidden neuron ${neuron.ID()} has no inward connections`,
             "NO_INWARD_CONNECTIONS",
           );
         }
         const fromList = creature.outwardConnections(indx);
-        if (fromList.length == 0) {
+        if (fromList.length === 0) {
           debugWrite(creature);
           throw new ValidationError(
             `hidden neuron ${neuron.ID()} has no outward connections`,
@@ -263,7 +263,7 @@ export function creatureValidate(
       lastTo = -1;
     }
 
-    if (c.from == lastFrom && c.to <= lastTo) {
+    if (c.from === lastFrom && c.to <= lastTo) {
       throw new Error(indx + ") synapses not sorted");
     }
 
@@ -271,7 +271,7 @@ export function creatureValidate(
       /** When feed back is enabled we allow recursive synapses */
       if (
         options && options.feedbackLoop !== undefined &&
-        options.feedbackLoop == false
+        options.feedbackLoop === false
       ) {
         debugWrite(creature);
         throw new ValidationError(

@@ -52,10 +52,10 @@ Deno.test("FeedForward only", () => {
     const method: MutationInterface = mutator.selectMutationMethod(creature);
 
     if (
-      method.name == Mutation.ADD_SELF_CONN.name ||
-      method.name == Mutation.SUB_BACK_CONN.name ||
-      method.name == Mutation.SUB_SELF_CONN.name ||
-      method.name == Mutation.ADD_BACK_CONN.name
+      method.name === Mutation.ADD_SELF_CONN.name ||
+      method.name === Mutation.SUB_BACK_CONN.name ||
+      method.name === Mutation.SUB_SELF_CONN.name ||
+      method.name === Mutation.ADD_BACK_CONN.name
     ) {
       throw new Error(`Invalid mutation: ${method.name}`);
     }
@@ -76,10 +76,10 @@ Deno.test("memory enabled", () => {
     const method: MutationInterface = mutator.selectMutationMethod(creature);
 
     if (
-      method.name == Mutation.ADD_SELF_CONN.name ||
-      method.name == Mutation.SUB_BACK_CONN.name ||
-      method.name == Mutation.SUB_SELF_CONN.name ||
-      method.name == Mutation.ADD_BACK_CONN.name
+      method.name === Mutation.ADD_SELF_CONN.name ||
+      method.name === Mutation.SUB_BACK_CONN.name ||
+      method.name === Mutation.SUB_SELF_CONN.name ||
+      method.name === Mutation.ADD_BACK_CONN.name
     ) {
       found = true;
       break;

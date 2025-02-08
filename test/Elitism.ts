@@ -16,7 +16,7 @@ function make(population: CreatureInternal[]) {
   const networks: Creature[] = [];
 
   population.forEach((ni) => {
-    if (ni.neurons.length == 0) {
+    if (ni.neurons.length === 0) {
       ni.neurons.push({
         index: 1,
         type: "output",
@@ -53,10 +53,10 @@ Deno.test("1make", () => {
   }
 
   assert(
-    elitists.length == 1,
+    elitists.length === 1,
     "Should always find one " + JSON.stringify(elitists[0]?.exportJSON()),
   );
-  assert(elitists[0].score == 3, `Wrong elitism score ${elitists[0].score}`);
+  assert(elitists[0].score === 3, `Wrong elitism score ${elitists[0].score}`);
 });
 
 Deno.test("3make", () => {
@@ -77,10 +77,10 @@ Deno.test("3make", () => {
     assert(e, i + ") " + e);
   }
 
-  assert(elitists.length == 3, `Wrong number ${elitists.length}`);
-  assert(elitists[0].score == 3, `Wrong score ${elitists[0].score}`);
-  assert(elitists[1].score == 2, `Wrong score ${elitists[1].score}`);
-  assert(elitists[2].score == 1, `Wrong score ${elitists[2].score}`);
+  assert(elitists.length === 3, `Wrong number ${elitists.length}`);
+  assert(elitists[0].score === 3, `Wrong score ${elitists[0].score}`);
+  assert(elitists[1].score === 2, `Wrong score ${elitists[1].score}`);
+  assert(elitists[2].score === 1, `Wrong score ${elitists[2].score}`);
 });
 
 Deno.test("3make2", () => {
@@ -99,10 +99,10 @@ Deno.test("3make2", () => {
     assert(e, "Undefined " + e);
   }
 
-  assert(elitists.length == 3, `Wrong number ${elitists.length}`);
-  assert(elitists[0].score == -1, `Wrong score ${elitists[0].score}`);
-  assert(elitists[1].score == -2, `Wrong score ${elitists[1].score}`);
-  assert(elitists[2].score == -3, `Wrong score ${elitists[2].score}`);
+  assert(elitists.length === 3, `Wrong number ${elitists.length}`);
+  assert(elitists[0].score === -1, `Wrong score ${elitists[0].score}`);
+  assert(elitists[1].score === -2, `Wrong score ${elitists[1].score}`);
+  assert(elitists[2].score === -3, `Wrong score ${elitists[2].score}`);
 });
 
 Deno.test("short", () => {
@@ -125,9 +125,9 @@ Deno.test("short", () => {
     assert(e, i + ") " + e);
   }
 
-  assert(elitists.length == 2, `Wrong count ${elitists.length}`);
-  assert(elitists[0].score == -1, `Wrong score ${elitists[0].score}`);
-  assert(elitists[1].score == -2, `Wrong score ${elitists[1].score}`);
+  assert(elitists.length === 2, `Wrong count ${elitists.length}`);
+  assert(elitists[0].score === -1, `Wrong score ${elitists[0].score}`);
+  assert(elitists[1].score === -2, `Wrong score ${elitists[1].score}`);
 });
 
 Deno.test("backwards", () => {
@@ -151,10 +151,10 @@ Deno.test("backwards", () => {
     assert(e, i + ") " + e);
   }
 
-  assert(elitists.length == 3, `Wrong count ${elitists.length}`);
-  assert(elitists[0].score == 999, `Wrong score ${elitists[0].score}`);
-  assert(elitists[1].score == 998, `Wrong score ${elitists[1].score}`);
-  assert(elitists[2].score == 997, `Wrong score ${elitists[2].score}`);
+  assert(elitists.length === 3, `Wrong count ${elitists.length}`);
+  assert(elitists[0].score === 999, `Wrong score ${elitists[0].score}`);
+  assert(elitists[1].score === 998, `Wrong score ${elitists[1].score}`);
+  assert(elitists[2].score === 997, `Wrong score ${elitists[2].score}`);
 });
 
 Deno.test("forward", () => {
@@ -176,13 +176,13 @@ Deno.test("forward", () => {
     assert(e, 1 + ") " + e);
   }
 
-  assert(elitists.length == 3, `Wrong count ${elitists.length}`);
+  assert(elitists.length === 3, `Wrong count ${elitists.length}`);
   assert(
-    elitists[0].score == 1000,
+    elitists[0].score === 1000,
     `Wrong score ${elitists[0].score}`,
   );
-  assert(elitists[1].score == 999, `Wrong score ${elitists[1].score}`);
-  assert(elitists[2].score == 998, `Wrong score ${elitists[2].score}`);
+  assert(elitists[1].score === 999, `Wrong score ${elitists[1].score}`);
+  assert(elitists[2].score === 998, `Wrong score ${elitists[2].score}`);
 });
 
 Deno.test("performance", () => {
@@ -213,7 +213,7 @@ Deno.test("performance", () => {
     }
 
     assert(
-      elitists.length == 3,
+      elitists.length === 3,
       `Wrong count ${elitists.length}`,
     );
   }
@@ -225,7 +225,7 @@ Deno.test("order", () => {
   const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     const v = Math.random();
-    if (i % 11 == 0) {
+    if (i % 11 === 0) {
       population.push({
         input: 1,
         output: 1,
@@ -250,9 +250,9 @@ Deno.test("order", () => {
   const elitists = makeElitists(sortedPopulationStart, 100).elitists;
 
   const sortedPopulation = population.slice().sort(function (a, b) {
-    if (b.score == a.score) return 0;
-    if (b.score == undefined) return 1;
-    if (a.score == undefined) return -1;
+    if (b.score === a.score) return 0;
+    if (b.score === undefined) return 1;
+    if (a.score === undefined) return -1;
 
     return b.score - a.score;
   });
@@ -264,11 +264,11 @@ Deno.test("order", () => {
     assert(e.score ? e.score : 1 <= last, i + ") " + e.score + " > " + last);
     last = e.score ? e.score : 0;
 
-    assert(e.score == sortedPopulation[i].score, "not sorted");
+    assert(e.score === sortedPopulation[i].score, "not sorted");
   }
 
   assert(
-    elitists.length == 100,
+    elitists.length === 100,
     `Wrong count ${elitists.length}`,
   );
 });
@@ -377,22 +377,22 @@ Deno.test("NaN", () => {
   const elitists = makeElitists(sortedPopulation, 3).elitists;
 
   assert(
-    elitists.length == 3,
+    elitists.length === 3,
     `Wrong count ${elitists.length}`,
   );
 
   assert(
-    elitists[0].score == 1,
+    elitists[0].score === 1,
     "Highest score first " + elitists[0].score,
   );
 
   assert(
-    elitists[1].score == 0,
+    elitists[1].score === 0,
     "Zero next " + elitists[1].score,
   );
 
   assert(
-    elitists[2].score == -1,
+    elitists[2].score === -1,
     "Then negative 1 " + elitists[2].score,
   );
 });

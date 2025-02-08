@@ -71,10 +71,10 @@ Deno.test("retry", () => {
   assert(population.length > 0);
 
   population.forEach((creature, indx) => {
-    if (indx % 3 == 0) {
+    if (indx % 3 === 0) {
       delete creature.memetic;
     }
-    if (indx % 2 == 0) {
+    if (indx % 2 === 0) {
       assert(previous.score);
       creature.score = previous.score + Math.random();
     } else {

@@ -54,12 +54,12 @@ Deno.test("tune", () => {
   );
 
   assert(
-    fineTuned.length == 10,
+    fineTuned.length === 10,
     "We should have made ten changes, was: " + fineTuned.length,
   );
   addTag(fittest, "approach", "trained");
   const approach = getTag(fittest, "approach") as Approach;
-  assert(approach == "trained", "Approach was: " + approach);
+  assert(approach === "trained", "Approach was: " + approach);
   const fineTuned2 = fineTuneImprovement(
     fittest,
     previousFittest,
@@ -67,7 +67,7 @@ Deno.test("tune", () => {
   );
 
   assert(
-    fineTuned2.length == 3,
+    fineTuned2.length === 3,
     "We should have detected THREE changes was: " + fineTuned2.length,
   );
   addTag(fittest, "approach", "compact" as Approach);
@@ -78,7 +78,7 @@ Deno.test("tune", () => {
   );
 
   assert(
-    fineTuned3.length == 4,
+    fineTuned3.length === 4,
     "We should have detected FOUR changes was: " + fineTuned3.length,
   );
 });
@@ -130,7 +130,7 @@ Deno.test("many", () => {
   );
 
   assert(
-    fineTuned.length == 7,
+    fineTuned.length === 7,
     "We should have made 7 changes, was: " + fineTuned.length,
   );
 });

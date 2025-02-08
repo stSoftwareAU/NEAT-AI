@@ -383,7 +383,7 @@ export class CRISPR {
       const toIndx = uuidMap.get(synapse.toUUID);
 
       if (fromIndx !== undefined && toIndx !== undefined) {
-        if (tmpCreature.getSynapse(fromIndx, toIndx) == null) {
+        if (tmpCreature.getSynapse(fromIndx, toIndx) === null) {
           tmpCreature.connect(fromIndx, toIndx, synapse.weight, synapse.type);
         }
       }

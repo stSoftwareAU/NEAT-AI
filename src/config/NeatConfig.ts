@@ -39,7 +39,7 @@ export function createNeatConfig(options: NeatOptions) {
 
     feedbackLoop: options.feedbackLoop || false,
     disableRandomSamples: options.disableRandomSamples ??
-      options.feedbackLoop == true,
+      options.feedbackLoop === true,
     focusList: options.focusList || [],
     focusRate: options.focusRate || 0.25,
 
@@ -93,7 +93,7 @@ export function createNeatConfig(options: NeatOptions) {
 
 function validate(config: NeatArguments) {
   if (
-    Number.isFinite(config.sparseRatio) == false || config.sparseRatio < 0 ||
+    Number.isFinite(config.sparseRatio) === false || config.sparseRatio < 0 ||
     config.sparseRatio > 1
   ) {
     throw new Error(
@@ -101,36 +101,38 @@ function validate(config: NeatArguments) {
     );
   }
 
-  if (config.feedbackLoop == true && config.disableRandomSamples == false) {
+  if (config.feedbackLoop === true && config.disableRandomSamples === false) {
     throw new Error(
       "Feedback Loop, Disable Random Samples must be set together",
     );
   }
-  if (Number.isInteger(config.threads) == false || config.threads < 1) {
+  if (Number.isInteger(config.threads) === false || config.threads < 1) {
     throw new Error(
       `Threads must be more than zero was: ${config.threads}`,
     );
   }
 
-  if (Number.isInteger(config.log) == false || config.log < 0) {
-    throw new Error(
-      `Training per generation must be zero or more: ${config.trainPerGen}`,
-    );
-  }
-  if (Number.isInteger(config.trainPerGen) == false || config.trainPerGen < 0) {
+  if (Number.isInteger(config.log) === false || config.log < 0) {
     throw new Error(
       `Training per generation must be zero or more: ${config.trainPerGen}`,
     );
   }
   if (
-    Number.isInteger(config.timeoutMinutes) == false ||
+    Number.isInteger(config.trainPerGen) === false || config.trainPerGen < 0
+  ) {
+    throw new Error(
+      `Training per generation must be zero or more: ${config.trainPerGen}`,
+    );
+  }
+  if (
+    Number.isInteger(config.timeoutMinutes) === false ||
     config.timeoutMinutes < 0
   ) {
     throw new Error(
       `Timeout Minutes must be zero or more: ${config.timeoutMinutes}`,
     );
   }
-  if (Number.isInteger(config.dataSetPartitionBreak) == false) {
+  if (Number.isInteger(config.dataSetPartitionBreak) === false) {
     throw new Error(
       "Data Set Partition Break must be an integer was: " +
         config.dataSetPartitionBreak,
@@ -153,14 +155,14 @@ function validate(config: NeatArguments) {
     throw new Error("Elitism must be more than zero was: " + config.elitism);
   }
 
-  if (config.maxConns < 1 || Number.isInteger(config.maxConns) == false) {
+  if (config.maxConns < 1 || Number.isInteger(config.maxConns) === false) {
     throw new Error(
       "Max Connections must be more than zero was: " + config.maxConns,
     );
   }
 
   if (
-    Number.isInteger(config.maximumNumberOfNodes) == false ||
+    Number.isInteger(config.maximumNumberOfNodes) === false ||
     config.maximumNumberOfNodes < 1
   ) {
     throw new Error(
@@ -187,7 +189,7 @@ function validate(config: NeatArguments) {
     );
   }
   if (
-    Number.isFinite(config.trainingSampleRate) == false ||
+    Number.isFinite(config.trainingSampleRate) === false ||
     config.trainingSampleRate < 0.0001 || config.trainingSampleRate > 1
   ) {
     throw new Error(
@@ -195,7 +197,7 @@ function validate(config: NeatArguments) {
     );
   }
   if (
-    Number.isInteger(config.mutationAmount) == false ||
+    Number.isInteger(config.mutationAmount) === false ||
     config.mutationAmount < 1
   ) {
     throw new Error(
@@ -204,7 +206,7 @@ function validate(config: NeatArguments) {
   }
 
   if (
-    Number.isFinite(config.targetError) == false || config.targetError < 0 ||
+    Number.isFinite(config.targetError) === false || config.targetError < 0 ||
     config.targetError > 1
   ) {
     throw new Error(
@@ -213,7 +215,7 @@ function validate(config: NeatArguments) {
   }
 
   if (
-    Number.isFinite(config.maximumBiasAdjustmentScale) == false ||
+    Number.isFinite(config.maximumBiasAdjustmentScale) === false ||
     config.maximumBiasAdjustmentScale < 0
   ) {
     throw new Error(
@@ -221,7 +223,7 @@ function validate(config: NeatArguments) {
     );
   }
   if (
-    Number.isFinite(config.maximumWeightAdjustmentScale) == false ||
+    Number.isFinite(config.maximumWeightAdjustmentScale) === false ||
     config.maximumWeightAdjustmentScale < 0
   ) {
     throw new Error(
@@ -229,7 +231,7 @@ function validate(config: NeatArguments) {
     );
   }
   if (
-    Number.isFinite(config.geneticCompatibilityThreshold) == false ||
+    Number.isFinite(config.geneticCompatibilityThreshold) === false ||
     config.geneticCompatibilityThreshold < 0 ||
     config.geneticCompatibilityThreshold > 1
   ) {

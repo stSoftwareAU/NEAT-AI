@@ -326,7 +326,7 @@ export class Neat {
         previousFittest.score <= tmpFittest.score,
         "Previous fittest has a higher score than fittest",
       );
-      if (previousFittest.score == tmpFittest.score) {
+      if (previousFittest.score === tmpFittest.score) {
         if (previousFittest.uuid !== tmpFittest.uuid) {
           console.info(
             `Fittest creature ${
@@ -371,7 +371,7 @@ export class Neat {
       }
     }
 
-    if (trainingTimeOutMinutes != -1) { // If not timed out already
+    if (trainingTimeOutMinutes !== -1) { // If not timed out already
       for (
         let i = 0;
         i < results.elitists.length;
@@ -380,7 +380,7 @@ export class Neat {
         const n = results.elitists[i];
 
         if (
-          this.doNotStartMoreTraining == false &&
+          this.doNotStartMoreTraining === false &&
           this.trainingInProgress.size < this.config.trainPerGen &&
           Number.isFinite(n.score)
         ) {
@@ -400,7 +400,7 @@ export class Neat {
         const dna = this.CRISPRs.pop()!;
 
         const enhanced = crispr.cleaveDNA(dna);
-        if (enhanced.uuid != fittest.uuid) {
+        if (enhanced.uuid !== fittest.uuid) {
           dnaPopulation.push(enhanced);
           break;
         }

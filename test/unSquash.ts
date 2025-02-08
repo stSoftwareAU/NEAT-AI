@@ -115,7 +115,7 @@ function check(squashName: string, values: number[]) {
       const activation = tmpSquash.squash(v);
 
       let tmpValue = activation;
-      if ((squash as UnSquashInterface).unSquash != undefined) {
+      if ((squash as UnSquashInterface).unSquash !== undefined) {
         tmpValue = (squash as UnSquashInterface).unSquash(activation, hint);
       }
 
@@ -283,11 +283,11 @@ Deno.test("unSquash", () => {
 
   Activations.NAMES.forEach((name) => {
     if (
-      name == MINIMUM.NAME ||
-      name == MAXIMUM.NAME ||
-      name == HYPOT.NAME ||
-      name == HYPOTv2.NAME ||
-      name == IF.NAME
+      name === MINIMUM.NAME ||
+      name === MAXIMUM.NAME ||
+      name === HYPOT.NAME ||
+      name === HYPOTv2.NAME ||
+      name === IF.NAME
     ) {
       return;
     }

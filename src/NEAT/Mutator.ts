@@ -136,7 +136,7 @@ export class Mutator {
         case Mutation.SUB_BACK_CONN.name:
         case Mutation.ADD_SELF_CONN.name:
         case Mutation.SUB_SELF_CONN.name:
-          if (feedbackLoop == false) {
+          if (feedbackLoop === false) {
             continue;
           }
           break;

@@ -24,8 +24,8 @@ export class AddBackCon implements RadioactiveInterface {
           fromIndx++
         ) {
           const neuronFrom = this.creature.neurons[fromIndx];
-          if (neuronFrom.type == "output") break;
-          if (neuronTo.type == "constant") continue;
+          if (neuronFrom.type === "output") break;
+          if (neuronTo.type === "constant") continue;
           if (this.creature.inFocus(neuronFrom.index, focusList)) {
             if (!neuronFrom.isProjectingTo(neuronTo)) {
               available.push([neuronFrom, neuronTo]);

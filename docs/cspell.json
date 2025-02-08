@@ -14,7 +14,21 @@
     "stsoftware",
     "blackbox",
     "CONN",
-    "conn"
+    "conn",
+    "GELU",
+    "Mish",
+    "RELU",
+    "SELU",
+    "SOFTSIGN",
+    "squasher",
+    "favoring",
+    "TANH",
+    "Conns",
+    "Diganta",
+    "Misra",
+    "delisting",
+    "XNOR",
+    "NARX"
   ],
   "flagWords": [
     "hte"

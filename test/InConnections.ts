@@ -31,11 +31,11 @@ Deno.test("inward", () => {
 
   const connects = creature.inwardConnections(3);
 
-  assert(connects.length == 3, "expected 3 got " + connects.length);
+  assert(connects.length === 3, "expected 3 got " + connects.length);
 
   const connects2 = creature.inwardConnections(3);
 
-  assert(connects2.length == 3, "expected 3 got " + connects2.length);
+  assert(connects2.length === 3, "expected 3 got " + connects2.length);
 
   const addNeuron = new AddNeuron(creature);
   addNeuron.mutate();
@@ -44,11 +44,11 @@ Deno.test("inward", () => {
   let foundNegative = false;
   let foundCondition = false;
   creature.synapses.forEach((c) => {
-    if (c.type == "positive") {
+    if (c.type === "positive") {
       foundPositive = true;
-    } else if (c.type == "condition") {
+    } else if (c.type === "condition") {
       foundCondition = true;
-    } else if (c.type == "negative") {
+    } else if (c.type === "negative") {
       foundNegative = true;
     }
   });

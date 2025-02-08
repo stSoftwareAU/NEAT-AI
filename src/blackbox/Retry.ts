@@ -77,7 +77,7 @@ export function retry(
       fittest,
       previous,
       2,
-      approach == "backtrack",
+      approach === "backtrack",
     );
 
     retryPopulation.forEach((creature) => {

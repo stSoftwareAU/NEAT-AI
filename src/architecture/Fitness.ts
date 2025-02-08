@@ -69,8 +69,8 @@ export class Fitness {
       await Promise.all(promises);
     }
 
-    if (data.queue.length == 0) {
-      if (this.calledWorkers == 0) {
+    if (data.queue.length === 0) {
+      if (this.calledWorkers === 0) {
         data.resolve("");
       }
     }

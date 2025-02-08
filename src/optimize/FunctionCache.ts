@@ -19,7 +19,7 @@ export function findActivationFunction(
   const cacheKey = te.encode(textKey);
 
   const uuid = generateV5Sync(NAMESPACE, cacheKey);
-  if (cache.key == uuid && cache.function) {
+  if (cache.key === uuid && cache.function) {
     return cache.function!;
   } else {
     delete cache.function;

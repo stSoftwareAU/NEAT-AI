@@ -157,7 +157,7 @@ Deno.test("CrossOver", () => {
     const n = child.neurons[child.neurons.length - 2];
     assertEquals(n.type, "output");
 
-    if (n.squash == "IF") {
+    if (n.squash === "IF") {
       Deno.writeTextFileSync(
         ".cross_over.json",
         JSON.stringify(child.exportJSON(), null, 2),
@@ -250,7 +250,7 @@ function check() {
 
   const UUIDs = new Set<string>();
   toList2.forEach((c) => {
-    if (n2.neurons[c.from].type == "output") {
+    if (n2.neurons[c.from].type === "output") {
       const uuid = n2.neurons[c.from].uuid;
       UUIDs.add(uuid ? uuid : "unknown");
     }
@@ -268,7 +268,7 @@ function check() {
 
     let outputIndex = -1;
     n3.neurons.forEach((n, idx) => {
-      if (n.uuid == outputUUID) {
+      if (n.uuid === outputUUID) {
         outputIndex = idx;
       }
     });
@@ -578,8 +578,8 @@ Deno.test(
       const child = Offspring.breed(left, right);
       if (!child) continue;
       CreatureUtil.makeUUID(child);
-      assert(child.uuid != left.uuid);
-      assert(child.uuid != right.uuid);
+      assert(child.uuid !== left.uuid);
+      assert(child.uuid !== right.uuid);
       checkChild(child);
     }
 
@@ -587,8 +587,8 @@ Deno.test(
       const child = Offspring.breed(right, left);
       if (!child) continue;
       CreatureUtil.makeUUID(child);
-      assert(child.uuid != left.uuid);
-      assert(child.uuid != right.uuid);
+      assert(child.uuid !== left.uuid);
+      assert(child.uuid !== right.uuid);
       checkChild(child);
     }
   },
@@ -603,13 +603,13 @@ function checkChild(child: Creature) {
   let bBranchFound = false;
   let cBranchFound = false;
   json.neurons.forEach((n) => {
-    if (n.uuid == "A1" || n.uuid == "A0") {
+    if (n.uuid === "A1" || n.uuid === "A0") {
       aBranchFound = true;
     }
-    if (n.uuid == "B") {
+    if (n.uuid === "B") {
       bBranchFound = true;
     }
-    if (n.uuid == "C1" || n.uuid == "C0") {
+    if (n.uuid === "C1" || n.uuid === "C0") {
       cBranchFound = true;
     }
   });

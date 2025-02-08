@@ -132,7 +132,7 @@ Deno.test("ABSOLUTE", () => {
   );
 
   Deno.writeTextFileSync(
-    `${directory}/inline-simplied.js`,
+    `${directory}/inline-simplified.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 12; p++) {

@@ -178,12 +178,12 @@ Deno.test("Constant", () => {
   );
 
   Deno.writeTextFileSync(
-    `${directory}/inline-simplied.js`,
+    `${directory}/inline-simplified.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   assertNotEquals(
     complex.uuid ?? "COMPLEX",
-    simplifiedCreature.uuid ?? "SIMPLIED",
+    simplifiedCreature.uuid ?? "SIMPLIFIED",
   );
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
@@ -283,7 +283,7 @@ Deno.test("Constant-1", () => {
   );
 
   Deno.writeTextFileSync(
-    `${directory}/inline-simplied.js`,
+    `${directory}/inline-simplified.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
 
@@ -395,7 +395,7 @@ Deno.test("Constant-2", () => {
   );
 
   Deno.writeTextFileSync(
-    `${directory}/inline-simplied.js`,
+    `${directory}/inline-simplified.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
 
@@ -481,7 +481,7 @@ Deno.test("Constant-3", () => {
   );
 
   Deno.writeTextFileSync(
-    `${directory}/inline-simplied.js`,
+    `${directory}/inline-simplified.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
 

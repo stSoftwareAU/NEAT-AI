@@ -172,13 +172,13 @@ function check(child: Creature) {
   child.validate();
 
   const a = child.neurons.find((n) => {
-    return n.uuid == "A";
+    return n.uuid === "A";
   });
   const b = child.neurons.find((n) => {
-    return n.uuid == "B";
+    return n.uuid === "B";
   });
   const c = child.neurons.find((n) => {
-    return n.uuid == "C";
+    return n.uuid === "C";
   });
 
   const a2b = child.getSynapse(a?.index ?? 0, b?.index ?? 0);

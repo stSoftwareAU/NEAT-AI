@@ -40,11 +40,11 @@ Deno.test("Simple", () => {
 
   exportJSON.neurons.forEach((neuron, indx) => {
     neuron.bias = neuron.bias +
-      ((indx % 2 == 0 ? 1 : -1) * 0.1);
+      ((indx % 2 === 0 ? 1 : -1) * 0.1);
   });
 
   exportJSON.synapses.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
+    c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.1);
   });
 
   const modifiedCreature = Creature.fromJSON(exportJSON);

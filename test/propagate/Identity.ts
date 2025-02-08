@@ -227,7 +227,7 @@ function calculateError(
 ) {
   let error = 0;
   const count = inputs.length;
-  assert(count == targets.length);
+  assert(count === targets.length);
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const input = new Float32Array(inputs[i]);

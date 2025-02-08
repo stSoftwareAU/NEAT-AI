@@ -39,7 +39,7 @@ export function quantumAdjust(
     let quantum = Math.round(adjustedValue / MIN_STEP);
 
     /* Ensure the quantum value is at least one MIN_STEP different in the correct direction */
-    if (currentQuantum == quantum) {
+    if (currentQuantum === quantum) {
       quantum += Math.sign(delta);
     }
 
@@ -82,7 +82,7 @@ function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
         to.synapses.push(toSynapse);
         const neuron = toNeuronsMap.get(s.toUUID);
         if (neuron) {
-          if (neuron.type == "constant") {
+          if (neuron.type === "constant") {
             const fromNeuron = fromNeuronsMap.get(s.toUUID);
             if (fromNeuron) {
               neuron.squash = fromNeuron.squash;
@@ -133,7 +133,7 @@ function tuneRandomize(
 
     const previousNeuron = uuidNodeMap.get(fittestNeuron.uuid);
 
-    if (previousNeuron && fittestNeuron.squash == previousNeuron.squash) {
+    if (previousNeuron && fittestNeuron.squash === previousNeuron.squash) {
       const result = quantumAdjust(
         fittestNeuron.bias,
         previousNeuron.bias,
@@ -156,8 +156,8 @@ function tuneRandomize(
       const previousSynapse = previousJSON.synapses[j];
 
       if (
-        fittestSynapse.fromUUID == previousSynapse.fromUUID &&
-        fittestSynapse.toUUID == previousSynapse.toUUID
+        fittestSynapse.fromUUID === previousSynapse.fromUUID &&
+        fittestSynapse.toUUID === previousSynapse.toUUID
       ) {
         const result = quantumAdjust(
           fittestSynapse.weight,
@@ -191,7 +191,7 @@ function tuneRandomize(
     }
   }
 
-  if (changeBiasCount == 0 && changeWeightCount == 0) {
+  if (changeBiasCount === 0 && changeWeightCount === 0) {
     return {
       changeBiasCount: changeBiasCount,
       changeWeightCount: changeWeightCount,
@@ -237,13 +237,13 @@ export function fineTuneImprovement(
   popSize = 10,
   backtrack = false,
 ) {
-  if (previousFittest == null) {
+  if (previousFittest === null) {
     return [];
   }
   assert(fittest.score);
 
   if (
-    fittest.score == previousFittest.score ||
+    fittest.score === previousFittest.score ||
     !Number.isFinite(previousFittest.score)
   ) {
     return [];

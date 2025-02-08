@@ -32,15 +32,15 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   }
 
   squashAndDerive(x: number) {
-    const e_x = Math.exp(x);
-    const e_2x = Math.exp(2 * x);
-    const x_2 = x * x;
-    const x_3 = x * x * x;
+    const eX = Math.exp(x);
+    const e2x = Math.exp(2 * x);
+    const x2 = x * x;
+    const x3 = x * x * x;
 
-    const omega = 4 * e_2x + 4 * e_x * x + e_2x * x_2 + 2 * e_x * x_2 +
-      2 * x_3 + 4 * e_x + 4 * x + 6;
-    const delta = 2 + 2 * e_x + e_2x;
-    const derivative = e_x * omega / (delta ** 2);
+    const omega = 4 * e2x + 4 * eX * x + e2x * x2 + 2 * eX * x2 +
+      2 * x3 + 4 * eX + 4 * x + 6;
+    const delta = 2 + 2 * eX + e2x;
+    const derivative = eX * omega / (delta ** 2);
 
     return {
       activation: this.squash(x),

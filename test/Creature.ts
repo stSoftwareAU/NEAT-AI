@@ -100,6 +100,7 @@ async function evolveSet(
         { count: 5 },
       ],
     });
+    // deno-lint-ignore no-await-in-loop
     const results = await lastCreature.evolveDataSet(set, options);
     resultError = results.error;
     if (resultError <= error) {
@@ -350,7 +351,7 @@ Deno.test("gender-tag", () => {
   if (child) {
     const gender = getTag(child.neurons[3], "gender");
 
-    assert(gender == "male" || gender == "female", "No gender: " + gender);
+    assert(gender === "male" || gender === "female", "No gender: " + gender);
   }
 });
 
@@ -460,6 +461,7 @@ Deno.test("evolve XORgate", async () => {
   );
   const evolveDir = ".evolve";
   ensureDirSync(evolveDir);
+  // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".evolve/XOR.json",
     JSON.stringify(creature.exportJSON(), null, 2),
@@ -630,6 +632,7 @@ Deno.test("NARX Sequence", async () => {
       ],
     });
 
+    // deno-lint-ignore no-await-in-loop
     const result = await creature.evolveDataSet(trainingData, {
       iterations: 5000,
       targetError: 0.005,
@@ -711,6 +714,7 @@ Deno.test("evolveSHIFT", async () => {
   const creature = await evolveSet(set, 5000, 0.03);
   const evolveDir = ".evolve";
   ensureDirSync(evolveDir);
+  // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".evolve/SHIFT.json",
     JSON.stringify(creature.exportJSON(), null, 2),
@@ -745,7 +749,7 @@ Deno.test("from-to", () => {
     toTotalMS += toMS;
     const currentTxt = JSON.stringify(currentJson, null, 1);
 
-    if (startTxt != currentTxt) {
+    if (startTxt !== currentTxt) {
       Deno.writeTextFileSync(
         ".start.json",
         startTxt,

@@ -61,17 +61,19 @@ Deno.test("traceNode", async () => {
 
   let totalBiasCount = 0;
 
+  // deno-lint-ignore no-sync-fn-in-async-fn
   for (const dirEntry of Deno.readDirSync(traceDir)) {
     if (dirEntry.name.endsWith(".json")) {
       const json = JSON.parse(
-        Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
+        // deno-lint-ignore no-await-in-loop
+        await Deno.readTextFile(`${traceDir}/${dirEntry.name}`),
       );
       if (!json.neurons) continue;
       json.neurons.forEach((n: NeuronTrace) => {
         if (n.trace) {
           if (
             Number.isFinite(n.trace.totalBias) &&
-            n.trace.totalBias != 0
+            n.trace.totalBias !== 0
           ) {
             totalBiasCount++;
           }

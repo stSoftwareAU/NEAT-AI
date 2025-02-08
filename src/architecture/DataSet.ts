@@ -16,7 +16,7 @@ export function makeDataDir(
   const dataSetDir = Deno.makeTempDirSync({ prefix: "dataSet-" });
 
   let completed = false;
-  for (let loop = 0; completed == false; loop++) {
+  for (let loop = 0; completed === false; loop++) {
     const fn = dataSetDir + "/" + loop + ".bin";
     const file = Deno.openSync(fn, {
       write: true,
@@ -41,7 +41,7 @@ export function makeDataDir(
     }
     file.close();
 
-    if (counter == 0) {
+    if (counter === 0) {
       Deno.removeSync(fn);
     }
   }

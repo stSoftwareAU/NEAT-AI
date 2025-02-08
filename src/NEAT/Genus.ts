@@ -27,7 +27,7 @@ export class Genus {
 
       let found = false;
       for (let j = existingSpecies.creatures.length; j--;) {
-        if (existingSpecies.creatures[j].uuid == uuid) {
+        if (existingSpecies.creatures[j].uuid === uuid) {
           found = true;
           break;
         }

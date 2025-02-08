@@ -8,7 +8,7 @@ Deno.test("hypotenuse", async () => {
   const ts = [];
   for (let i = 100; i--;) {
     for (let j = 100; j--;) {
-      if (i == 50) continue;
+      if (i === 50) continue;
       const item = {
         input: [i, j],
         output: [Math.sqrt(i * i + j * j)],
@@ -35,6 +35,7 @@ Deno.test("hypotenuse", async () => {
       ],
     });
 
+    // deno-lint-ignore no-await-in-loop
     await network.evolveDataSet(ts, options);
 
     const check = new Float32Array([50, 60]);

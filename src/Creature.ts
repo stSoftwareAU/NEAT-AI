@@ -182,7 +182,7 @@ export class Creature implements CreatureInternal {
    * @param {number} [to=-1] - The ending index of the cache to clear.
    */
   public clearCache(from: number = -1, to: number = -1) {
-    if (from == -1 || to == -1) {
+    if (from === -1 || to === -1) {
       this.cacheTo.clear();
       this.cacheFrom.clear();
       this.cacheSelf.clear();
@@ -215,7 +215,7 @@ export class Creature implements CreatureInternal {
 
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
-          if (tmpSquash == "*") {
+          if (tmpSquash === "*") {
             tmpSquash = Activations
               .NAMES[Math.floor(Activations.NAMES.length * Math.random())];
             fixNeeded = true;
@@ -385,7 +385,7 @@ export class Creature implements CreatureInternal {
     compactCreature.fix();
 
     let complete = false;
-    for (let changes = 0; complete == false; changes++) {
+    for (let changes = 0; complete === false; changes++) {
       complete = true;
       for (
         let pos = compactCreature.input;
@@ -398,7 +398,7 @@ export class Creature implements CreatureInternal {
           },
         );
 
-        if (fromList.length == 0) {
+        if (fromList.length === 0) {
           removeHiddenNeuron(compactCreature, pos);
           complete = false;
         } else {
@@ -407,24 +407,24 @@ export class Creature implements CreatureInternal {
               return c.from !== c.to;
             },
           );
-          if (toList.length == 1) {
+          if (toList.length === 1) {
             const fromList = compactCreature.outwardConnections(pos).filter(
               (c: SynapseInternal) => {
                 return c.from !== c.to;
               },
             );
-            if (fromList.length == 1) {
+            if (fromList.length === 1) {
               const to = fromList[0].to;
               const from = toList[0].from;
 
               const fromSquash = compactCreature.neurons[from].squash;
               if (
                 from > this.input &&
-                fromSquash ==
+                fromSquash ===
                   compactCreature.neurons[pos].squash &&
-                (fromSquash == IDENTITY.NAME || fromSquash == LOGISTIC.NAME)
+                (fromSquash === IDENTITY.NAME || fromSquash === LOGISTIC.NAME)
               ) {
-                if (compactCreature.getSynapse(from, to) == null) {
+                if (compactCreature.getSynapse(from, to) === null) {
                   const weightA = fromList[0].weight * toList[0].weight;
                   assert(Number.isFinite(weightA), "weightA is not finite");
 
@@ -461,7 +461,7 @@ export class Creature implements CreatureInternal {
     }
 
     const json2 = compactCreature.exportJSON();
-    if (JSON.stringify(json) != JSON.stringify(json2)) {
+    if (JSON.stringify(json) !== JSON.stringify(json2)) {
       addTag(compactCreature, "approach", "compact" as Approach);
       delete compactCreature.memetic;
       removeTag(compactCreature, "approach-logged");
@@ -498,7 +498,7 @@ export class Creature implements CreatureInternal {
       const tmpList = this.synapses;
       for (let i = tmpList.length; i--;) {
         const c = tmpList[i];
-        if (c.to === indx && c.from == indx) {
+        if (c.to === indx && c.from === indx) {
           results.push(c);
         }
       }
@@ -617,7 +617,7 @@ export class Creature implements CreatureInternal {
 
     for (let indx = outwardConnections.length; indx--;) {
       const c = outwardConnections[indx];
-      if (c.to == to) {
+      if (c.to === to) {
         return c;
       } else if (c.to < to) {
         break;
@@ -808,7 +808,7 @@ export class Creature implements CreatureInternal {
 
     for (let i = threads; i--;) {
       workers.push(
-        new WorkerHandler(dataSetDir, config.costName, threads == 1),
+        new WorkerHandler(dataSetDir, config.costName, threads === 1),
       );
     }
 
@@ -832,6 +832,7 @@ export class Creature implements CreatureInternal {
     const iterations = config.iterations;
 
     while (true) {
+      // deno-lint-ignore no-await-in-loop
       const result = await neat.evolve(
         bestCreature,
       );
@@ -1047,7 +1048,7 @@ export class Creature implements CreatureInternal {
     focusList?: number[],
     checked: Set<number> = new Set(),
   ): boolean {
-    if (!focusList || focusList.length == 0) {
+    if (!focusList || focusList.length === 0) {
       return true;
     }
 
@@ -1066,7 +1067,7 @@ export class Creature implements CreatureInternal {
     for (let pos = 0; pos < focusList.length; pos++) {
       const focusIndex = focusList[pos];
 
-      if (index == focusIndex) {
+      if (index === focusIndex) {
         this.cacheFocus.set(index, true);
         return true;
       }
@@ -1187,7 +1188,7 @@ export class Creature implements CreatureInternal {
     let changed = false;
     changed = mutator.mutate(focusList);
 
-    if (!changed && (!focusList || focusList.length == 0)) {
+    if (!changed && (!focusList || focusList.length === 0)) {
       console.info(
         `${method.name} didn't mutate the creature. ${this.input} observations, ${
           this.neurons.length - this.input - this.output
@@ -1228,9 +1229,9 @@ export class Creature implements CreatureInternal {
         /** Zero weight may as well be removed */
         tmpSynapses.push(synapse as Synapse);
       } else {
-        if (this.neurons[synapse.to].type == "output") {
+        if (this.neurons[synapse.to].type === "output") {
           /** Don't remove the last one for an output neuron */
-          if (this.inwardConnections(synapse.to).length == 1) {
+          if (this.inwardConnections(synapse.to).length === 1) {
             tmpSynapses.push(synapse as Synapse);
           }
         }
@@ -1259,11 +1260,11 @@ export class Creature implements CreatureInternal {
         pos < this.neurons.length - this.output;
         pos++
       ) {
-        if (this.neurons[pos].type == "output") continue;
+        if (this.neurons[pos].type === "output") continue;
         if (
           this.outwardConnections(pos).filter((c) => {
             return c.from !== c.to;
-          }).length == 0
+          }).length === 0
         ) {
           removeHiddenNeuron(this, pos);
           neuronRemoved = true;
@@ -1280,7 +1281,7 @@ export class Creature implements CreatureInternal {
     this.DEBUG = false;
     const endTxt = JSON.stringify(this.internalJSON());
     this.DEBUG = tmpDebug;
-    if (startTxt != endTxt) {
+    if (startTxt !== endTxt) {
       delete this.memetic;
       delete this.uuid;
     }
@@ -1328,7 +1329,7 @@ export class Creature implements CreatureInternal {
     for (let i = this.neurons.length; i--;) {
       const neuron = this.neurons[i];
       uuidMap.set(i, neuron.uuid ?? `unknown-${i}`);
-      if (neuron.type == "input") continue;
+      if (neuron.type === "input") continue;
 
       const tojson = neuron.exportJSON();
 
@@ -1422,7 +1423,7 @@ export class Creature implements CreatureInternal {
     for (let i = this.neurons.length; i--;) {
       const neuron = this.neurons[i];
 
-      if (neuron.type == "input") continue;
+      if (neuron.type === "input") continue;
 
       const tojson = neuron.internalJSON(i);
 
@@ -1475,7 +1476,7 @@ export class Creature implements CreatureInternal {
       const jn = neurons[i];
 
       if (jn.type === "input") continue;
-      if (jn.type == "output") {
+      if (jn.type === "output") {
         (jn as { uuid: string }).uuid = `output-${outputIndx}`;
 
         outputIndx++;

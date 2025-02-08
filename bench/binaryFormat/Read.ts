@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-await-in-loop
 import { binaryFilePath, numObservations, numOutputs } from "./Constants.ts";
 import { assert, assertAlmostEquals } from "@std/assert";
 
@@ -57,7 +58,7 @@ async function readAndProcessBinaryDataset(
         value,
         expected,
         0.1,
-        `Output ${i} mismatch ${value} != ${expected}`,
+        `Output ${i} mismatch ${value} !== ${expected}`,
       );
     });
   }

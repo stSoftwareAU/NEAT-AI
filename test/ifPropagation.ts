@@ -33,7 +33,7 @@ Deno.test("ifPropagation", () => {
   const ts = [];
   for (let i = 100; i--;) {
     for (let j = 100; j--;) {
-      if (i == 50) continue;
+      if (i === 50) continue;
       const condition = Math.random() * 2 - 1;
       const positive = Math.random();
       const negative = Math.random();

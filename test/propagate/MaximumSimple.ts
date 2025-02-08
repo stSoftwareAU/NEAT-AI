@@ -40,11 +40,11 @@ Deno.test("PropagateMaximumSimple", () => {
 
   exportJSON.neurons.forEach((node, indx) => {
     node.bias = node.bias +
-      ((indx % 2 == 0 ? 1 : -1) * 0.1);
+      ((indx % 2 === 0 ? 1 : -1) * 0.1);
   });
 
   exportJSON.synapses.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.1);
+    c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.1);
   });
 
   Deno.writeTextFileSync(

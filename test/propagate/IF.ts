@@ -45,7 +45,7 @@ Deno.test("PropagateWeightsIF", () => {
 
     exportJSON.synapses.forEach((c, indx) => {
       if (c.type === "positive" || c.type === "negative") {
-        c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.25);
+        c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.25);
       }
     });
 
@@ -143,9 +143,9 @@ Deno.test("PropagateBiasIF", () => {
     );
 
     exportJSON.neurons.forEach((node, indx) => {
-      if (node.type == "hidden") {
+      if (node.type === "hidden") {
         node.bias = node.bias +
-          ((indx % 2 == 0 ? 1 : -1) * 0.25);
+          ((indx % 2 === 0 ? 1 : -1) * 0.25);
       }
     });
 

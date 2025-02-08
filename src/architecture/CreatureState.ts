@@ -99,7 +99,7 @@ export class CreatureState {
       this.activations.length !== this.creature.neurons.length
     ) {
       this.activations = new Float32Array(this.creature.neurons.length);
-    } else if (feedbackLoop == false) {
+    } else if (feedbackLoop === false) {
       this.activations.fill(0, input.length);
     }
 

@@ -19,7 +19,7 @@ export class ModActivation implements RadioactiveInterface {
       );
       const neuron = this.creature.neurons[index];
 
-      if (neuron.type == "constant") continue;
+      if (neuron.type === "constant") continue;
 
       if (this.creature.inFocus(index, focusList)) {
         changed = neuron.mutate(Mutation.MOD_ACTIVATION.name);

@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-await-in-loop
 import {
   binaryFilePath,
   numObservations,

@@ -14,7 +14,7 @@ Deno.test("storePopulation", async () => {
   const ts = [];
   for (let i = 100; i--;) {
     for (let j = 100; j--;) {
-      if (i == 50) continue;
+      if (i === 50) continue;
       const item = {
         input: [i, j],
         output: [Math.sqrt(i * i + j * j)],
@@ -34,6 +34,7 @@ Deno.test("storePopulation", async () => {
   await network.evolveDataSet(ts, options);
 
   let creatureCount = 0;
+  // deno-lint-ignore no-sync-fn-in-async-fn
   for (const dirEntry of Deno.readDirSync(dir)) {
     if (dirEntry.name.endsWith(".json")) {
       creatureCount++;

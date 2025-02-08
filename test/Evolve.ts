@@ -65,6 +65,7 @@ Deno.test("XOR-evolve", async () => {
   let results = { error: 0 };
   for (let attempt = 0; attempt < 100; attempt++) {
     const creature = new Creature(2, 1);
+    // deno-lint-ignore no-await-in-loop
     results = await creature.evolveDataSet(trainingSet, {
       iterations: 1_000,
     });
@@ -94,6 +95,7 @@ Deno.test("booleanXOR", async () => {
   let results = { error: 1 };
   for (let attempt = 0; attempt < 30; attempt++) {
     creature.validate();
+    // deno-lint-ignore no-await-in-loop
     results = await creature.evolveDataSet(trainingSet, {
       mutation: Mutation.FFW,
       elitism: 10,
@@ -128,6 +130,7 @@ Deno.test("XNOR - evolve", async () => {
 
   for (let attempt = 0; true; attempt++) {
     const creature = new Creature(2, 1);
+    // deno-lint-ignore no-await-in-loop
     const results = await creature.evolveDataSet(trainingSet, {
       targetError: 0.05,
       iterations: 20_000,
