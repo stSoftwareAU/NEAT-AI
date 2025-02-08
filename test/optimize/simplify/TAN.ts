@@ -116,12 +116,12 @@ Deno.test("TAN", () => {
   );
 
   Deno.writeTextFileSync(
-    `${directory}/inline-simplied.js`,
+    `${directory}/inline-simplified.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   assertNotEquals(
     complex.uuid ?? "COMPLEX",
-    simplifiedCreature.uuid ?? "SIMPLIED",
+    simplifiedCreature.uuid ?? "SIMPLIFIED",
   );
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);

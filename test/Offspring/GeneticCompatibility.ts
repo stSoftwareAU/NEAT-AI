@@ -107,18 +107,18 @@ function makeTestCreature(uuidPrefix: string): Creature {
   return creature;
 }
 
-Deno.test("Genetic Compatibily Zero percent", () => {
+Deno.test("Genetic Compatibly Zero percent", () => {
   const parent = makeTestCreature("parent");
   const target = makeTestCreature("target");
 
-  const compatibily = geneticCompatibility(parent, target);
+  const compatibly = geneticCompatibility(parent, target);
   assert(
-    compatibily === 0,
-    `Genetic compatibility should be 0 was: ${compatibily}`,
+    compatibly === 0,
+    `Genetic compatibility should be 0 was: ${compatibly}`,
   );
 });
 
-Deno.test("Genetic Compatibily 100 percent", () => {
+Deno.test("Genetic Compatibly 100 percent", () => {
   const parent = makeTestCreature("parent");
   const exportJSON = parent.exportJSON();
 
@@ -147,11 +147,11 @@ Deno.test("Genetic Compatibily 100 percent", () => {
   const target = Creature.fromJSON(exportJSON);
   target.validate();
 
-  const compatibily = geneticCompatibility(parent, target);
+  const compatibly = geneticCompatibility(parent, target);
   assertAlmostEquals(
-    compatibily,
+    compatibly,
     1,
     0.0001,
-    `Genetic compatibility should be 1 was: ${compatibily}`,
+    `Genetic compatibility should be 1 was: ${compatibly}`,
   );
 });

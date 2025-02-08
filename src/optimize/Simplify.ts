@@ -246,20 +246,20 @@ export function removeNeuron(
   exported: CreatureExport,
   identityUUID: string,
 ): CreatureExport {
-  const simpliedExport: CreatureExport = JSON.parse(JSON.stringify(exported));
+  const simplifiedExport: CreatureExport = JSON.parse(JSON.stringify(exported));
   const neuronMap = new Map<string, NeuronExport>();
-  simpliedExport.neurons.forEach((neuron: NeuronExport) => {
+  simplifiedExport.neurons.forEach((neuron: NeuronExport) => {
     neuronMap.set(neuron.uuid, neuron);
   });
 
-  const neuronToRemove = simpliedExport.neurons.find(
+  const neuronToRemove = simplifiedExport.neurons.find(
     (neuron: NeuronExport) => neuron.uuid === identityUUID,
   );
   if (!neuronToRemove) {
     throw new Error(`Neuron not found: ${identityUUID}`);
   }
 
-  simpliedExport.neurons = simpliedExport.neurons.filter(
+  simplifiedExport.neurons = simplifiedExport.neurons.filter(
     (neuron: NeuronExport) => neuron.uuid !== identityUUID,
   );
 
@@ -267,7 +267,7 @@ export function removeNeuron(
   const adjustedBiases = new Set<string>();
 
   const synapseMap = new Map<string, Map<string, SynapseExport>>();
-  simpliedExport.synapses.forEach((synapse) => {
+  simplifiedExport.synapses.forEach((synapse) => {
     let fromMap = synapseMap.get(synapse.fromUUID);
     if (!fromMap) {
       fromMap = new Map<string, SynapseExport>();
@@ -276,9 +276,9 @@ export function removeNeuron(
     fromMap.set(synapse.toUUID, synapse);
   });
 
-  simpliedExport.synapses.forEach((outerSynapse) => {
+  simplifiedExport.synapses.forEach((outerSynapse) => {
     if (outerSynapse.toUUID === identityUUID) {
-      simpliedExport.synapses.forEach((innerSynapse) => {
+      simplifiedExport.synapses.forEach((innerSynapse) => {
         if (innerSynapse.fromUUID === identityUUID) {
           const adjustedWeight = outerSynapse.weight * innerSynapse.weight;
 
@@ -309,17 +309,17 @@ export function removeNeuron(
     }
   });
 
-  simpliedExport.synapses = simpliedExport.synapses.filter(
+  simplifiedExport.synapses = simplifiedExport.synapses.filter(
     (synapse) =>
       synapse.toUUID !== identityUUID && synapse.fromUUID !== identityUUID,
   );
 
-  simpliedExport.synapses = simpliedExport.synapses.concat(newSynapses);
+  simplifiedExport.synapses = simplifiedExport.synapses.concat(newSynapses);
 
-  delete simpliedExport.memetic;
-  addTag(simpliedExport, "approach", "simplified");
+  delete simplifiedExport.memetic;
+  addTag(simplifiedExport, "approach", "simplified");
 
-  removeTag(simpliedExport, "approach-logged");
+  removeTag(simplifiedExport, "approach-logged");
 
-  return simpliedExport;
+  return simplifiedExport;
 }

@@ -80,12 +80,12 @@ Deno.test("IDENTITY", () => {
     complex.exportJSON(),
     createBackPropagationConfig({}),
   );
-  const sparseSimpliedConfig = new SparseConfig(
+  const sparseSimplifiedConfig = new SparseConfig(
     simplifiedCreature.exportJSON(),
     createBackPropagationConfig({}),
   );
   Deno.writeTextFileSync(
-    `${directory}/inline-simplied.js`,
+    `${directory}/inline-simplified.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 12; p++) {
@@ -94,7 +94,7 @@ Deno.test("IDENTITY", () => {
     const actual1 =
       complex.activateAndTrace(data, false, sparseComplexConfig)[0];
     const actual2 =
-      simplifiedCreature.activateAndTrace(data, false, sparseSimpliedConfig)[0];
+      simplifiedCreature.activateAndTrace(data, false, sparseSimplifiedConfig)[0];
 
     assertAlmostEquals(
       actual1,
@@ -149,12 +149,12 @@ Deno.test("IDENTITY-simple", () => {
     complex.exportJSON(),
     createBackPropagationConfig({}),
   );
-  const sparseSimpliedConfig = new SparseConfig(
+  const sparseSimplifiedConfig = new SparseConfig(
     simplifiedCreature.exportJSON(),
     createBackPropagationConfig({}),
   );
   Deno.writeTextFileSync(
-    `${directory}/inline-simplied.js`,
+    `${directory}/inline-simplified.js`,
     `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 12; p++) {
@@ -163,7 +163,7 @@ Deno.test("IDENTITY-simple", () => {
     const actual1 =
       complex.activateAndTrace(data, false, sparseComplexConfig)[0];
     const actual2 =
-      simplifiedCreature.activateAndTrace(data, false, sparseSimpliedConfig)[0];
+      simplifiedCreature.activateAndTrace(data, false, sparseSimplifiedConfig)[0];
 
     assertAlmostEquals(
       actual1,

@@ -13,7 +13,7 @@ import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import { accumulateWeight, adjustedWeight } from "../propagate/Weight.ts";
 
 /**
- * @deprecated No longer used. A normal neurual network can memic the behavior of this activation.
+ * @deprecated No longer used. A normal neural network can mimic the behavior of this activation.
  */
 export class MEAN implements NeuronActivationInterface, NeuronFixableInterface {
   public static NAME = "MEAN";
