@@ -140,7 +140,7 @@ export class FindTunePopulation {
          * I want to find another creature from the same species of the fittest creature ( but not the fittest or previous fittest creatures)
          * and perform the fine tuning comparing the fittest creature to another within the species.
          *
-         * We should favor the highest score creatures in that species.
+         * We should favour the highest score creatures in that species.
          */
 
         const speciesFineTunePopSize = fineTunePopSize -
