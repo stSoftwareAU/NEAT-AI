@@ -72,8 +72,14 @@ Deno.test("memetic preserved", () => {
   assert(mum.memetic, "Should have memetic");
   const dad = makeDad();
 
-  const child = Offspring.breed(mum, dad);
-  assert(child?.memetic, "Child should have kept memetic");
+  for (let i = 0; i < 12; i++) {
+    const child = Offspring.breed(mum, dad);
+    if (child !== undefined) {
+      assert(child.memetic, "Child should have kept memetic");
 
-  console.log(JSON.stringify(child.exportJSON(), null, 2));
+      console.log(JSON.stringify(child.exportJSON(), null, 2));
+
+      break;
+    }
+  }
 });

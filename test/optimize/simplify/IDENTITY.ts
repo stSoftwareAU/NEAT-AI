@@ -93,8 +93,11 @@ Deno.test("IDENTITY", () => {
 
     const actual1 =
       complex.activateAndTrace(data, false, sparseComplexConfig)[0];
-    const actual2 =
-      simplifiedCreature.activateAndTrace(data, false, sparseSimplifiedConfig)[0];
+    const actual2 = simplifiedCreature.activateAndTrace(
+      data,
+      false,
+      sparseSimplifiedConfig,
+    )[0];
 
     assertAlmostEquals(
       actual1,
@@ -162,8 +165,11 @@ Deno.test("IDENTITY-simple", () => {
 
     const actual1 =
       complex.activateAndTrace(data, false, sparseComplexConfig)[0];
-    const actual2 =
-      simplifiedCreature.activateAndTrace(data, false, sparseSimplifiedConfig)[0];
+    const actual2 = simplifiedCreature.activateAndTrace(
+      data,
+      false,
+      sparseSimplifiedConfig,
+    )[0];
 
     assertAlmostEquals(
       actual1,

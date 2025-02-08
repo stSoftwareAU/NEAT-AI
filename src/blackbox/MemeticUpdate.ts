@@ -28,7 +28,8 @@ export function memeticUpdate(
     if (!squash) {
       return undefined;
     }
-    if (neuron.squash ?? "NONE" !== squash) {
+    const childSquash = neuron.squash ?? "NONE";
+    if (childSquash !== squash) {
       return undefined;
     }
     const parentBias = biasMap.get(neuron.uuid);
