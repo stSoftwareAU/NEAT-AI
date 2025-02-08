@@ -42,7 +42,7 @@ export class Breed {
       },
     );
 
-    if (child) {
+    if (child && !child.memetic) {
       discover(mum, child);
     }
 

@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
@@ -77,9 +77,27 @@ Deno.test("memetic preserved", () => {
     if (child !== undefined) {
       assert(child.memetic, "Child should have kept memetic");
 
-      console.log(JSON.stringify(child.exportJSON(), null, 2));
+      const childExport = child.exportJSON();
+      console.log(JSON.stringify(childExport, null, 2));
+      const synapse = childExport.synapses.find((s) =>
+        s.fromUUID === "input-2" && s.toUUID === "output-1"
+      );
 
-      break;
+      assert(synapse, "Synapse should exist");
+      if (synapse.weight === 0.456) {
+        const input2Weights = child.memetic.weights["input-2"];
+        assert(input2Weights, "Should have previous weight");
+        const output1Weight = input2Weights.find((w) =>
+          w.toUUID === "output-1"
+        );
+        assert(output1Weight !== undefined, "Should have previous weight");
+        assertAlmostEquals(
+          output1Weight.weight,
+          0.8,
+          0.000001,
+          "Should have kept previous weight",
+        );
+      }
     }
   }
 });
