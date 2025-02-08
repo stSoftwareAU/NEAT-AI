@@ -22,7 +22,7 @@ export class Mutator {
           creatureValidate(creature);
         }
         let original: Creature | undefined;
-        if (creature.score !== undefined) {
+        if (creature.score !== undefined || creature.memetic) {
           original = Creature.fromJSON(creature.exportJSON());
           original.score = creature.score;
         }
@@ -51,6 +51,7 @@ export class Mutator {
           removeTag(creature, "trainID");
           removeTag(creature, "trained");
 
+          creature.clearState();
           delete creature.memetic;
           delete creature.uuid;
           creature.state.preparedNeurons = false;
