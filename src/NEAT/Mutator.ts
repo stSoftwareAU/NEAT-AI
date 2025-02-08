@@ -3,6 +3,7 @@ import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { Creature, Mutation } from "../../mod.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
 import { discover } from "../blackbox/Discover.ts";
+import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 
 export class Mutator {
   private config: NeatConfig;
@@ -54,7 +55,12 @@ export class Mutator {
           delete creature.uuid;
           creature.state.preparedNeurons = false;
           if (original) {
-            discover(original, creature);
+            const memetic = memeticUpdate(original, creature);
+            if (memetic) {
+              creature.memetic = memetic;
+            } else {
+              discover(original, creature);
+            }
           }
         }
       }
