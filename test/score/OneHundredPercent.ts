@@ -11,6 +11,7 @@ import {
 
 Deno.test("100%", async () => {
   const directory = ".test/optimize/simplify/TAN";
+  // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.mkdirSync(directory, { recursive: true });
 
   const json: CreatureExport = {

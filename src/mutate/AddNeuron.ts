@@ -33,7 +33,7 @@ export class AddNeuron implements RadioactiveInterface {
         (creature.neurons.length - creature.output - creature.input + 1),
     ) + creature.input;
 
-    while (creature.neurons[indx].type == "constant") {
+    while (creature.neurons[indx].type === "constant") {
       indx++;
     }
     neuron.index = indx;

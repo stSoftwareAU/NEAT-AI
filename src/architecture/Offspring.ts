@@ -7,6 +7,7 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -163,7 +164,7 @@ export class Offspring {
     // Add output neurons
     for (let indx = mother.output; indx--;) {
       const node = neuronMap.get(`output-${indx}`);
-      if (node != null) {
+      if (node !== undefined) {
         cloneNode(node);
       } else {
         throw new Error(`Can't find output-${indx}`);
@@ -273,6 +274,15 @@ export class Offspring {
 
       offspring.loadFrom(fixed, false);
     }
+
+    if (mother.memetic) {
+      const memetic = memeticUpdate(mother, offspring);
+      offspring.memetic = memetic;
+    } else if (father.memetic) {
+      const memetic = memeticUpdate(father, offspring);
+      offspring.memetic = memetic;
+    }
+
     try {
       creatureValidate(offspring);
 
@@ -352,7 +362,7 @@ export class Offspring {
     const childMap = new Map<string, number>();
 
     mother.forEach((neuron, indx) => {
-      if (neuron.type == "input") childMap.set(neuron.uuid, indx);
+      if (neuron.type === "input") childMap.set(neuron.uuid, indx);
     });
 
     const mumMap = new Map<string, number>();
@@ -375,34 +385,34 @@ export class Offspring {
 
     /* Sort output to the end and input to the beginning */
     child.sort((a: Neuron, b: Neuron) => {
-      if (a.type == "output") {
-        if (b.type != "output") {
+      if (a.type === "output") {
+        if (b.type !== "output") {
           return 1;
         }
         return Number.parseInt(a.uuid.substring(7)) -
           Number.parseInt(b.uuid.substring(7));
-      } else if (b.type == "output") {
+      } else if (b.type === "output") {
         return -1;
       }
 
-      if (a.uuid == b.uuid) {
+      if (a.uuid === b.uuid) {
         throw new Error(`Duplicate uuid ${a.uuid}`);
       }
       let indxA = firstMap.get(a.uuid);
-      if (indxA == undefined) {
+      if (indxA === undefined) {
         indxA = secondMap.get(a.uuid);
-        if (indxA == undefined) throw new Error(`Can't find ${a.uuid}`);
+        if (indxA === undefined) throw new Error(`Can't find ${a.uuid}`);
         indxA += 0.1;
       }
 
       let indxB = firstMap.get(b.uuid);
-      if (indxB == undefined) {
+      if (indxB === undefined) {
         indxB = secondMap.get(b.uuid);
-        if (indxB == undefined) throw new Error(`Can't find ${b.uuid}`);
+        if (indxB === undefined) throw new Error(`Can't find ${b.uuid}`);
         indxB += 0.1;
       }
 
-      if (indxA == indxB) throw new Error(`Duplicate index ${indxA}`);
+      if (indxA === indxB) throw new Error(`Duplicate index ${indxA}`);
 
       return indxA - indxB;
     });
@@ -412,7 +422,7 @@ export class Offspring {
     for (let attempts = 0; missing && attempts < child.length; attempts++) {
       missing = false;
       child.forEach((neuron) => {
-        if (neuron.type != "input" && neuron.type != "output") {
+        if (neuron.type !== "input" && neuron.type !== "output") {
           const uuid = neuron.uuid;
 
           if (!childMap.has(uuid)) {
@@ -434,7 +444,7 @@ export class Offspring {
                 const fromUUID = connection.fromUUID;
                 if (!fromUUID.startsWith("input-")) {
                   const dependantIndx = childMap.get(fromUUID);
-                  if (dependantIndx == undefined) {
+                  if (dependantIndx === undefined) {
                     indx = -1;
                   } else if (dependantIndx >= indx) {
                     indx = dependantIndx + 1;
@@ -469,23 +479,23 @@ export class Offspring {
 
     /** Second sort should only change the order of new nodes. */
     child.sort((a: Neuron, b: Neuron) => {
-      if (a.type == "output") {
-        if (b.type != "output") {
+      if (a.type === "output") {
+        if (b.type !== "output") {
           return 1;
         }
         const aIndx = Number.parseInt(a.uuid.substring(7));
         const bIndx = Number.parseInt(b.uuid.substring(7));
 
         return aIndx - bIndx;
-      } else if (b.type == "output") {
+      } else if (b.type === "output") {
         return -1;
-      } else if (a.type == "input" && b.type == "input") {
+      } else if (a.type === "input" && b.type === "input") {
         return a.index - b.index;
       } else {
         const aIndx = childMap.get(a.uuid);
-        if (aIndx == undefined) throw new Error(`Can't find ${a.uuid}`);
+        if (aIndx === undefined) throw new Error(`Can't find ${a.uuid}`);
         const bIndx = childMap.get(b.uuid);
-        if (bIndx == undefined) throw new Error(`Can't find ${b.uuid}`);
+        if (bIndx === undefined) throw new Error(`Can't find ${b.uuid}`);
 
         /*
          * Sort by index in child array, if not input or output.

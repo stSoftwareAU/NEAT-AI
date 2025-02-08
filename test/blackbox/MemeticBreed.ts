@@ -60,8 +60,8 @@ function makeMum() {
 
 function makeDad() {
   const creature = makeCreature();
-  creature.neurons[3].bias = 3.1;
-  creature.synapses[2].weight = 0.5;
+  creature.neurons[3].bias = -0.12;
+  creature.synapses[2].weight = 0.456;
   creature.score = -0.2;
 
   return creature;
@@ -74,4 +74,6 @@ Deno.test("memetic preserved", () => {
 
   const child = Offspring.breed(mum, dad);
   assert(child?.memetic, "Child should have kept memetic");
+
+  console.log(JSON.stringify(child.exportJSON(), null, 2));
 });

@@ -78,7 +78,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         this.bias = bias;
       }
 
-      if (type == "constant") {
+      if (type === "constant") {
         if (squash) {
           throw new Error(
             "constants should not have a squash was: " + squash,
@@ -99,17 +99,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   public validate() {
-    if (this.type == "output" || this.type == "hidden") {
+    if (this.type === "output" || this.type === "hidden") {
       if (!this.squash) {
         throw new Error(`Missing squash for ${this.type} neuron`);
       }
 
-      if (this.squashMethodCache == undefined) {
+      if (this.squashMethodCache === undefined) {
         throw new Error(
           `Missing squashMethodCache for ${this.type} neuron with squash ${this.squash}`,
         );
       }
-      if (this.squashMethodCache.getName() != this.squash) {
+      if (this.squashMethodCache.getName() !== this.squash) {
         throw new Error(
           `Mismatched squashMethodCache for ${this.type} neuron was ${this.squashMethodCache.getName()} expected ${this.squash}`,
         );
@@ -241,7 +241,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       this.squash = squashFunction.getName(); /* Handle aliases */
     } else {
       assert(
-        this.type == "constant",
+        this.type === "constant",
         "Squash must be defined for non-constant nodes",
       );
     }
@@ -270,9 +270,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
       });
     }
 
-    if (this.type == "hidden") {
+    if (this.type === "hidden") {
       const fromList = this.creature.outwardConnections(this.index);
-      if (fromList.length == 0) {
+      if (fromList.length === 0) {
         const targetIndx = Math.min(
           1,
           Math.floor(
@@ -287,7 +287,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         );
       }
       const toList = this.creature.inwardConnections(this.index);
-      if (toList.length == 0) {
+      if (toList.length === 0) {
         const fromIndx = Math.floor(Math.random() * this.index);
         this.creature.connect(
           fromIndx,
@@ -295,9 +295,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
           Synapse.randomWeight(),
         );
       }
-    } else if (this.type == "output") {
+    } else if (this.type === "output") {
       const toList = this.creature.inwardConnections(this.index);
-      if (toList.length == 0) {
+      if (toList.length === 0) {
         const fromIndx = Math.floor(
           Math.random() *
             (this.creature.nodeCount() - this.creature.outputCount()),
@@ -325,7 +325,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       | ActivationInterface
       | UnSquashInterface,
   ): activation is NeuronActivationInterface {
-    return (activation as NeuronActivationInterface).activateAndTrace !=
+    return (activation as NeuronActivationInterface).activateAndTrace !==
       undefined;
   }
 
@@ -336,7 +336,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       | ActivationInterface
       | UnSquashInterface,
   ): activation is ApplyLearningsInterface {
-    return (activation as ApplyLearningsInterface).applyLearnings != undefined;
+    return (activation as ApplyLearningsInterface).applyLearnings !== undefined;
   }
 
   private isFixableActivation(
@@ -346,7 +346,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       | NeuronFixableInterface
       | UnSquashInterface,
   ): activation is NeuronFixableInterface {
-    return (activation as NeuronFixableInterface).fix != undefined;
+    return (activation as NeuronFixableInterface).fix !== undefined;
   }
 
   private activateConstant(): { activation: number; value: number } {
@@ -421,7 +421,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const state = this.creature.state;
     const neuronState = state.node(this.index);
     if (neuronState.noChange) return false;
-    if (this.type == "hidden" || this.type == "output") {
+    if (this.type === "hidden" || this.type === "output") {
       const squashMethod = this.findSquash();
 
       if (this.hasApplyLearnings(squashMethod)) {
@@ -457,7 +457,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ): number {
     const activation = this.adjustedActivation(config);
     if (
-      sparseConfig.propagateNeeded(this.uuid) == false
+      sparseConfig.propagateNeeded(this.uuid) === false
     ) {
       return activation;
     }
@@ -478,7 +478,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const updateNeeded = sparseConfig.updateNeeded(this.uuid);
 
     /* this node is not changed if the update is not needed */
-    ns.noChange = updateNeeded == false;
+    ns.noChange = updateNeeded === false;
 
     let limitedActivation: number;
 
@@ -617,9 +617,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
   rawAdjustedActivation(config: BackPropagationConfig): number {
     const state = this.creature.state;
-    if (this.type == "input") {
+    if (this.type === "input") {
       return state.activations[this.index];
-    } else if (this.type == "constant") {
+    } else if (this.type === "constant") {
       return this.bias;
     } else {
       const squashMethod = this.findSquash();
@@ -636,7 +636,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
         for (let i = toList.length; i--;) {
           const c = toList[i];
-          if (c.from == c.to) continue;
+          if (c.from === c.to) continue;
           const fromActivation = this.creature.neurons[c.from]
             .adjustedActivation(config);
 
@@ -677,7 +677,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (typeof method !== "string") {
       throw new Error("Mutate method wrong type: " + (typeof method));
     }
-    if (this.type == "input") {
+    if (this.type === "input") {
       throw new Error("Mutate on wrong node type: " + this.type);
     }
     let changed = false;
@@ -695,7 +695,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           const tmpSquash = Activations
             .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
 
-          if (tmpSquash != this.squash) {
+          if (tmpSquash !== this.squash) {
             this.setSquash(tmpSquash);
 
             removeTag(this, "CRISPR");
@@ -737,7 +737,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    */
   isProjectingTo(node: Neuron): boolean {
     const c = this.creature.getSynapse(this.index, node.index);
-    return c != null;
+    return c !== null;
   }
 
   /**

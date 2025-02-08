@@ -49,7 +49,7 @@ Deno.test("knownName", () => {
   console.log("UUID", uuid);
 
   assert(
-    uuid == "49b13413-88b9-5688-92f5-ba59bb761639",
+    uuid === "49b13413-88b9-5688-92f5-ba59bb761639",
     "Wrong UUID was: " + uuid,
   );
 });
@@ -137,7 +137,7 @@ Deno.test("ignoreTags", () => {
 
   /** Manually update if needed. */
   assert(
-    uuid2 == "b08e3db1-f508-5106-b5c6-dfec158a1334",
+    uuid2 === "b08e3db1-f508-5106-b5c6-dfec158a1334",
     "Wrong UUID was: " + uuid2,
   );
 });

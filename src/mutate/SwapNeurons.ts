@@ -38,7 +38,7 @@ export class SwapNeurons implements RadioactiveInterface {
 
       if (this.creature.inFocus(indx, focusList)) {
         const tmpNode = this.creature.neurons[indx];
-        if (tmpNode.type == "hidden") {
+        if (tmpNode.type === "hidden") {
           node1 = tmpNode;
           break;
         }
@@ -52,7 +52,7 @@ export class SwapNeurons implements RadioactiveInterface {
 
         if (this.creature.inFocus(indx, focusList)) {
           const tmpNode = this.creature.neurons[indx];
-          if (tmpNode.type == "hidden") {
+          if (tmpNode.type === "hidden") {
             if (tmpNode.index !== node1.index) {
               if (
                 tmpNode.squash !== node1.squash ||

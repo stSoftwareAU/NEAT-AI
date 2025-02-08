@@ -99,7 +99,7 @@ Deno.test("FineTune-missing synapses", () => {
   );
 
   assert(
-    tunedCreatures.length == 3,
+    tunedCreatures.length === 3,
     "We should have detected THREE changes was: " + tunedCreatures.length,
   );
   tunedCreatures.forEach((creature) => {

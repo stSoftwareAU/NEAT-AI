@@ -34,7 +34,7 @@ export class ActivationRange {
   }
 
   limit(activation: number, hint?: number): number {
-    if (Number.isFinite(activation) == false) {
+    if (Number.isFinite(activation) === false) {
       throw new Error(
         `${this.name}: limit: activation is not finite: ${activation}${
           hint !== undefined ? ` with hint ${hint}` : ""

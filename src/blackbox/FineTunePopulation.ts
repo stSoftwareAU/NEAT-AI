@@ -158,7 +158,7 @@ export class FindTunePopulation {
             );
 
             /** If there is no eligible creatures try find the closest species. */
-            if (eligibleCreatures.length == 0) {
+            if (eligibleCreatures.length === 0) {
               const closestSpecies = genus.findClosestMatchingSpecies(fittest);
               if (closestSpecies) {
                 if (closestSpecies && closestSpecies.creatures.length > 0) {

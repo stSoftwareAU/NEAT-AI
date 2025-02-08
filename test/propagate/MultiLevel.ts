@@ -132,11 +132,11 @@ Deno.test("propagateMultiLevelRandom", () => {
 
   internalJSON.neurons.forEach((node, indx) => {
     node.bias = (node.bias ? node.bias : 0) +
-      ((indx % 2 == 0 ? 1 : -1) * 0.005);
+      ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
   internalJSON.synapses.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
+    c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
   Deno.writeTextFileSync(
@@ -339,11 +339,11 @@ Deno.test("propagateMultiLevelKnownA", () => {
 
   internalJSON.neurons.forEach((node, indx) => {
     node.bias = (node.bias ? node.bias : 0) +
-      ((indx % 2 == 0 ? 1 : -1) * 0.005);
+      ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
   internalJSON.synapses.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
+    c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
   Deno.writeTextFileSync(
@@ -545,11 +545,11 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
   internalJSON.neurons.forEach((node, indx) => {
     node.bias = (node.bias ? node.bias : 0) +
-      ((indx % 2 == 0 ? 1 : -1) * 0.005);
+      ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
   internalJSON.synapses.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
+    c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
   Deno.writeTextFileSync(

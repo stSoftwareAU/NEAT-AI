@@ -26,11 +26,11 @@ Deno.test("FromUUID", () => {
   let foundFromToA = false;
   let foundFromToB = false;
   exported.synapses.forEach((synapse) => {
-    if (synapse.fromUUID == "input-299" && synapse.toUUID == "output-0") {
+    if (synapse.fromUUID === "input-299" && synapse.toUUID === "output-0") {
       foundFromToA = true;
       assertAlmostEquals(synapse.weight, 0.123);
     }
-    if (synapse.fromUUID == "input-123" && synapse.toUUID == "output-0") {
+    if (synapse.fromUUID === "input-123" && synapse.toUUID === "output-0") {
       foundFromToB = true;
       assertAlmostEquals(synapse.weight, 0.456);
     }
@@ -46,7 +46,7 @@ Deno.test("FromUUID", () => {
   let foundTag = false;
   creatureC.synapses.forEach((synapse) => {
     const tag = getTag(synapse, "CRISPR");
-    if (tag == "from-to") {
+    if (tag === "from-to") {
       foundTag = true;
     }
   });
@@ -60,7 +60,7 @@ Deno.test("FromUUID", () => {
   let foundTagD = false;
   creatureD.synapses.forEach((synapse) => {
     const tag = getTag(synapse, "CRISPR");
-    if (tag == "from-to") {
+    if (tag === "from-to") {
       foundTagD = true;
     }
   });

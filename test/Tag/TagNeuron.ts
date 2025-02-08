@@ -40,7 +40,7 @@ Deno.test("TagNode", () => {
   const json3 = network2.exportJSON();
 
   const tags = json3.neurons[0].tags;
-  assert(tags != null, "Should have tags");
+  assert(tags !== undefined, "Should have tags");
 
-  assert(tags.length == 1, "Should have one tag");
+  assert(tags.length === 1, "Should have one tag");
 });

@@ -133,11 +133,11 @@ Deno.test("propagateInverseRandom", () => {
 
   exportJSON.neurons.forEach((node, indx) => {
     node.bias = node.bias +
-      ((indx % 2 == 0 ? 1 : -1) * 0.005);
+      ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
   exportJSON.synapses.forEach((c, indx) => {
-    c.weight = c.weight + ((indx % 2 == 0 ? 1 : -1) * 0.005);
+    c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
   Deno.writeTextFileSync(

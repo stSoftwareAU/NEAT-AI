@@ -21,7 +21,7 @@ export function adjustedBias(
   neuron: Neuron,
   config: BackPropagationConfig,
 ): number {
-  if (neuron.type == "constant") {
+  if (neuron.type === "constant") {
     return neuron.bias;
   } else {
     if (config.disableBiasAdjustment) {
@@ -46,7 +46,7 @@ export function calculateBias(
   neuron: Neuron,
   config: BackPropagationConfig,
 ): number {
-  if (neuron.type == "constant") {
+  if (neuron.type === "constant") {
     return neuron.bias;
   } else {
     if (config.disableBiasAdjustment) {

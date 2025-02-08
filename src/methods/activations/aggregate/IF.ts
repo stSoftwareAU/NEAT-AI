@@ -111,7 +111,7 @@ export class IF
     const toListA = neuron.creature.inwardConnections(neuron.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
-      if (c.from == c.to) {
+      if (c.from === c.to) {
         neuron.creature.disconnect(c.from, c.to);
       }
     }
@@ -124,19 +124,19 @@ export class IF
 
     for (let i = toList.length; i--;) {
       const c = toList[i];
-      if (c.type == "condition") {
+      if (c.type === "condition") {
         if (foundCondition) {
           spareList.push(c);
         } else {
           foundCondition = true;
         }
-      } else if (c.type == "negative") {
+      } else if (c.type === "negative") {
         if (foundNegative) {
           spareList.push(c);
         } else {
           foundNegative = true;
         }
-      } else if (c.type == "positive") {
+      } else if (c.type === "positive") {
         if (foundPositive) {
           spareList.push(c);
         } else {
@@ -266,7 +266,7 @@ export class IF
         switch (type) {
           case "condition":
           case "negative":
-            if (cs.used == undefined) cs.used = false;
+            if (cs.used === undefined) cs.used = false;
             break;
           default:
             cs.used = true;
@@ -276,7 +276,7 @@ export class IF
       for (let i = inward.length; i--;) {
         const { from, to, type } = inward[i];
 
-        if (type == "negative") {
+        if (type === "negative") {
           state.connection(from, to).used = true;
         }
       }
@@ -427,9 +427,9 @@ export class IF
       const c = inward[indx];
 
       if (c.from === c.to) continue;
-      if (c.type == "condition") continue;
-      if (c.type == "positive" && condition <= 0) continue;
-      if (c.type == "negative" && condition > 0) continue;
+      if (c.type === "condition") continue;
+      if (c.type === "positive" && condition <= 0) continue;
+      if (c.type === "negative" && condition > 0) continue;
 
       const fromNeuron = neuron.creature.neurons[c.from];
       const fromActivation = fromNeuron.adjustedActivation(config);

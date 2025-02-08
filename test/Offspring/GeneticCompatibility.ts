@@ -113,7 +113,7 @@ Deno.test("Genetic Compatibily Zero percent", () => {
 
   const compatibily = geneticCompatibility(parent, target);
   assert(
-    compatibily == 0,
+    compatibily === 0,
     `Genetic compatibility should be 0 was: ${compatibily}`,
   );
 });

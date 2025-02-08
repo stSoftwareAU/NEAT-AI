@@ -10,6 +10,7 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 
 Deno.test("CRISPR inject", async () => {
   for (let attempt = 0; true; attempt++) {
+    // deno-lint-ignore no-await-in-loop
     const successful = await doAttempt();
     if (successful) {
       break;

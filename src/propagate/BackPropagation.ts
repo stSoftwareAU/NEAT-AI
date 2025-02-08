@@ -115,7 +115,7 @@ export function createBackPropagationConfig(
 }
 
 export function toValue(neuron: Neuron, activation: number, hint?: number) {
-  if (neuron.type == "input" || neuron.type == "constant") {
+  if (neuron.type === "input" || neuron.type === "constant") {
     return activation;
   }
   const squash = neuron.findSquash();

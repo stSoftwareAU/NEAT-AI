@@ -111,8 +111,8 @@ export function removeKnownSign(exported: CreatureExport) {
   });
   for (let indx = 0; indx < exported.neurons.length; indx++) {
     const neuron = exported.neurons[indx];
-    if (neuron.type == "hidden") {
-      if (neuron.squash == ABSOLUTE.NAME || neuron.squash == RELU.NAME) {
+    if (neuron.type === "hidden") {
+      if (neuron.squash === ABSOLUTE.NAME || neuron.squash === RELU.NAME) {
         let allNonNegative = true;
         const fromMap = synapseMap.get(neuron.uuid);
 
@@ -192,7 +192,7 @@ function simplifyConstants(exported: CreatureExport) {
 
   for (let indx = 0; indx < exported.neurons.length; indx++) {
     const neuron = exported.neurons[indx];
-    if (neuron.type == "constant") {
+    if (neuron.type === "constant") {
       const toMap = synapseFromMap.get(neuron.uuid);
 
       if (toMap) {

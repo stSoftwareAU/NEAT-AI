@@ -170,11 +170,11 @@ Deno.test("tune", () => {
     const en = n.exportJSON();
 
     en.neurons.forEach((node) => {
-      if (node.uuid == "41a4f3dd-f253-491e-b04f-c9651b72eaaa") {
+      if (node.uuid === "41a4f3dd-f253-491e-b04f-c9651b72eaaa") {
         assertAlmostEquals(node.bias, 0.1, 0.0000001, n.uuid);
       }
 
-      if (node.uuid == "output-0") {
+      if (node.uuid === "output-0") {
         assertAlmostEquals(
           node.bias,
           -0.49135010426905,
@@ -182,7 +182,7 @@ Deno.test("tune", () => {
           n.uuid,
         );
       }
-      if (node.uuid == "0a858bc2-3bdc-417c-85b0-e9c513828d29") {
+      if (node.uuid === "0a858bc2-3bdc-417c-85b0-e9c513828d29") {
         if (Math.abs(node.bias - 0.32) < 0.000001) {
           fail("Should have changed bias from 0.32");
         }
@@ -191,15 +191,15 @@ Deno.test("tune", () => {
 
     en.synapses.forEach((c) => {
       if (
-        c.fromUUID == "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff" &&
-        c.toUUID == "0a858bc2-3bdc-417c-85b0-e9c513828d29"
+        c.fromUUID === "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff" &&
+        c.toUUID === "0a858bc2-3bdc-417c-85b0-e9c513828d29"
       ) {
         assertAlmostEquals(c.weight, -0.012398765, 0.000001, JSON.stringify(c));
       }
 
       if (
-        c.fromUUID == "41a4f3dd-f253-491e-b04f-c9651b72eaaa" &&
-        c.toUUID == "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff"
+        c.fromUUID === "41a4f3dd-f253-491e-b04f-c9651b72eaaa" &&
+        c.toUUID === "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff"
       ) {
         assertAlmostEquals(
           c.weight,

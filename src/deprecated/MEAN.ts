@@ -49,7 +49,7 @@ export class MEAN implements NeuronActivationInterface, NeuronFixableInterface {
     const fromListA = neuron.creature.inwardConnections(neuron.index);
     for (let i = fromListA.length; i--;) {
       const c = fromListA[i];
-      if (c.from == c.to) {
+      if (c.from === c.to) {
         neuron.creature.disconnect(c.from, c.to);
       }
     }

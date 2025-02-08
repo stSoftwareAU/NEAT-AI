@@ -96,9 +96,9 @@ export class HYPOT
       const fromNeuron = neuron.creature.neurons[c.from];
 
       const fromActivation = fromNeuron.adjustedActivation(config);
-      if (fromNeuron.type == "hidden") {
+      if (fromNeuron.type === "hidden") {
         let improvedActivation = fromActivation;
-        if (c.to != c.from) {
+        if (c.to !== c.from) {
           if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
             improvedActivation = fromNeuron.propagate(
               fromActivation,
@@ -144,7 +144,7 @@ export class HYPOT
     const inwardA = neuron.creature.inwardConnections(neuron.index);
     for (let i = inwardA.length; i--;) {
       const c = inwardA[i];
-      if (c.from == c.to) {
+      if (c.from === c.to) {
         neuron.creature.disconnect(c.from, c.to);
       }
     }

@@ -1,3 +1,4 @@
+// deno-lint-ignore-file
 import { assert } from "@std/assert";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
 import { Creature } from "../src/Creature.ts";
@@ -32,7 +33,7 @@ Deno.test("TraceStore", async () => {
   const ts = [];
   for (let i = 100; i--;) {
     for (let j = 100; j--;) {
-      if (i == 50) continue;
+      if (i === 50) continue;
       const condition = Math.random() * 2 - 1;
       const positive = Math.random();
       const negative = Math.random();
@@ -63,6 +64,7 @@ Deno.test("TraceStore", async () => {
     };
     const network = Creature.fromJSON(json);
 
+    // deno-lint-ignore no-await-in-loop
     await network.evolveDataSet(ts, options);
 
     for (const dirEntry of Deno.readDirSync(traceDir)) {
@@ -71,7 +73,7 @@ Deno.test("TraceStore", async () => {
           Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
         );
         let usedCount = 0;
-        if (json.synapses == undefined) continue;
+        if (json.synapses === undefined) continue;
         json.synapses.forEach((c: SynapseTrace) => {
           if (c.trace && c.trace.used) {
             usedCount++;
@@ -79,7 +81,7 @@ Deno.test("TraceStore", async () => {
 
           if (
             Number.isFinite(c.trace?.count) &&
-            c.trace.count != 0
+            c.trace.count !== 0
           ) {
             totalCount++;
           }

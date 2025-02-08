@@ -9,15 +9,15 @@ Deno.test("keep", () => {
 
   addTag(n, "hello", "world");
 
-  assert(getTag(n, "hello") == "world", "Expecting a value.");
+  assert(getTag(n, "hello") === "world", "Expecting a value.");
   const json = n.exportJSON();
 
   const n2 = Creature.fromJSON(json);
 
-  assert(getTag(n2, "hello") == "world", "Expecting a value.");
+  assert(getTag(n2, "hello") === "world", "Expecting a value.");
 
   addTag(n, "hello", "mars");
-  assert(getTag(n, "hello") == "mars", "Expecting change");
+  assert(getTag(n, "hello") === "mars", "Expecting change");
 
-  assert(getTag(n2, "hello") == "world", "Expecting unchanged");
+  assert(getTag(n2, "hello") === "world", "Expecting unchanged");
 });

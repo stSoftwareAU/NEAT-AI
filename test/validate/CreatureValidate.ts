@@ -215,7 +215,7 @@ Deno.test("Recursive", () => {
   creature.DEBUG = true;
   creature.synapses.push(new Synapse(12, 11, 0.5));
   creature.synapses.sort((a, b) => {
-    if (a.from == b.from) {
+    if (a.from === b.from) {
       return a.to - b.to;
     } else return a.from - b.from;
   });

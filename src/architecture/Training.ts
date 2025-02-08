@@ -167,7 +167,7 @@ function trainDirBinary(
 
         if (!recordSet) {
           totalRecords += fileRecords;
-          if (fileIndx == 0) {
+          if (fileIndx === 0) {
             knownSampleCount = totalRecords;
           }
           const len = Math.ceil(fileRecords * trainingSampleRate);
@@ -225,7 +225,7 @@ function trainDirBinary(
             assert(Number.isFinite(sampleError), "Sample error is not finite");
             errorSum += sampleError;
             counter++;
-            if (Number.isFinite(errorSum) == false) {
+            if (Number.isFinite(errorSum) === false) {
               console.warn(
                 `Training ${
                   blue(ID)
@@ -306,7 +306,7 @@ function trainDirBinary(
 
     const error = errorSum / counter;
 
-    if (counter == 0) {
+    if (counter === 0) {
       throw new Error(
         `Training ${blue(ID)} stopped as no samples were processed`,
       );
@@ -314,7 +314,7 @@ function trainDirBinary(
 
     if (bestError !== undefined && bestError < error) {
       trainingFailures++;
-      if (trainingStopped == false) {
+      if (trainingStopped === false) {
         console.warn(
           `Training ${blue(ID)} made the error: ${
             yellow(bestError.toFixed(3))

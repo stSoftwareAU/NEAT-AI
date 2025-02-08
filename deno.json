@@ -15,5 +15,26 @@
   "test": {
     "include": ["test/**/*.ts"]
   },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "include": [
+        "ban-untagged-todo",
+        "camelcase",
+        "eqeqeq",
+        "no-await-in-loop",
+        "no-const-assign",
+        "no-slow-types",
+        "no-useless-rename",
+        "no-throw-literal",
+        "no-sync-fn-in-async-fn",
+        "no-sparse-arrays",
+        "no-self-compare",
+        "no-non-null-asserted-optional-chain",
+        "no-eval",
+        "default-param-last"
+      ]
+    }
+  },
   "lock": false
 }

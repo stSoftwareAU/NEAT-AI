@@ -123,7 +123,7 @@ Deno.test("addNode", () => {
       assert(to.length >= 1, indx + ") expected at least 1 got " + to.length);
     } else {
       assert(
-        to.length == 0,
+        to.length === 0,
         indx + ") 'input' should not have any 'to' connections was: " +
           to.length,
       );
@@ -138,7 +138,7 @@ Deno.test("addNode", () => {
       );
     } else {
       assert(
-        from.length == 0,
+        from.length === 0,
         indx + ") 'output' should not have any 'from' connections was: " +
           from.length,
       );

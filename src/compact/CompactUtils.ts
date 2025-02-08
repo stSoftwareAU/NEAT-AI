@@ -18,12 +18,12 @@ export function createConstantOne(creature: Creature, count: number) {
   let foundConstant;
   for (let indx = creature.input; indx < creature.neurons.length; indx++) {
     const n = creature.neurons[indx];
-    if (firstHiddenIndx == -1) {
-      if (n.type == "hidden") {
+    if (firstHiddenIndx === -1) {
+      if (n.type === "hidden") {
         firstHiddenIndx = n.index;
       }
     }
-    if (n.uuid == uuid) {
+    if (n.uuid === uuid) {
       if (n.type !== "constant") {
         throw new Error(`Must be a constant was: ${n.type}`);
       }
@@ -61,7 +61,7 @@ export function createConstantOne(creature: Creature, count: number) {
     let firstIndx = -1;
     for (let indx = creature.input; indx < creature.neurons.length; indx++) {
       const n = creature.neurons[indx];
-      if (n.uuid == uuid) {
+      if (n.uuid === uuid) {
         if (firstIndx === -1) {
           firstIndx = n.index;
         } else {
@@ -96,7 +96,7 @@ export function createConstantOne(creature: Creature, count: number) {
  *  Removes a node from the creature
  */
 export function removeHiddenNeuron(creature: Creature, indx: number) {
-  if (Number.isInteger(indx) == false || indx < 0) {
+  if (Number.isInteger(indx) === false || indx < 0) {
     throw new Error("Must be a positive integer was: " + indx);
   }
 
