@@ -1495,9 +1495,12 @@ export class Creature implements CreatureInternal {
       pos++;
     }
 
-    this.synapses.length = 0;
     const cLen = json.synapses.length;
+    this.synapses.length = cLen;
     const synapses = json.synapses;
+    let isSorted = true;
+    let lastFrom = -1;
+    let lastTo = -1;
     for (let i = 0; i < cLen; i++) {
       const synapse = synapses[i];
       const se = synapse as SynapseExport;
@@ -1519,19 +1522,34 @@ export class Creature implements CreatureInternal {
         );
       }
 
-      const connection = this.connect(
+      if (isSorted) {
+        if (from > lastFrom) {
+          lastFrom = from;
+          lastTo = -1;
+        } else if (from < lastFrom) {
+          isSorted = false;
+        } else if (to < lastTo) {
+          isSorted = false;
+        } else if (to === lastTo) {
+          fail("Duplicate synapse");
+        } else {
+          lastTo = to;
+        }
+      }
+      const tmpSynapse = new Synapse(
         from,
         to,
         synapse.weight,
         synapse.type,
       );
 
+      this.synapses[i] = tmpSynapse;
       if (synapse.tags) {
-        connection.tags = synapse.tags.slice();
+        tmpSynapse.tags = synapse.tags.slice();
       }
 
       if ((synapse as SynapseTrace).trace) {
-        const cs = state.connection(connection.from, connection.to);
+        const cs = state.connection(tmpSynapse.from, tmpSynapse.to);
         const trace = (synapse as SynapseTrace).trace;
         Object.assign(cs, trace);
       }
@@ -1539,6 +1557,15 @@ export class Creature implements CreatureInternal {
 
     this.memetic = json.memetic;
     this.clearCache();
+    if (!isSorted) {
+      this.synapses.sort((a, b) => {
+        if (a.from === b.from) {
+          return a.to - b.to;
+        } else {
+          return a.from - b.from;
+        }
+      });
+    }
 
     if (validate) {
       creatureValidate(this);
