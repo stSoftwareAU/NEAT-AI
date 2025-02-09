@@ -17,7 +17,7 @@
   },
   "lint": {
     "rules": {
-      "tags": ["recommended","jsr"],
+      "tags": ["recommended", "jsr"],
       "include": [
         "ban-untagged-todo",
         "camelcase",

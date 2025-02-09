@@ -15,7 +15,7 @@ jobs:
         with:
           token: ${{ secrets.ACTIONS_PUSH }}
           ref: ${{ github.head_ref }} # Ensures the branch is checked out
-          fetch-depth: 0  # Ensure the full branch history is available
+          fetch-depth: 0 # Ensure the full branch history is available
 
       # Set up Deno 2.x
       - name: Setup Deno
