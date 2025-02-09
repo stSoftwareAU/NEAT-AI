@@ -138,7 +138,7 @@ function getClusteredNeighbours(
     const { neuronUUID: current, depth } = queue.shift()!;
     if (depth >= 2) continue;
 
-    const neighbours = synapseMap.get(current) || new Set();
+    const neighbours = synapseMap.get(current)!;
     for (const neighbour of neighbours) {
       if (!visited.has(neighbour)) {
         visited.add(neighbour);
