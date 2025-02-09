@@ -18,9 +18,6 @@ export class Mutator {
     for (let i = creatures.length; i--;) {
       if (Math.random() <= this.config.mutationRate) {
         const creature = creatures[i];
-        if (this.config.debug) {
-          creatureValidate(creature);
-        }
         let original: Creature | undefined;
         if (creature.score !== undefined || creature.memetic) {
           original = Creature.fromJSON(creature.exportJSON());
@@ -107,9 +104,17 @@ export class Mutator {
     const feedbackLoop = this.config.feedbackLoop;
     for (let attempts = 0; true; attempts++) {
       const mutationMethod = mutationMethods[
-        Math.floor(Math.random() * this.config.mutation.length)
+        Math.floor(Math.random() * mutationMethods.length)
       ];
 
+      if (Math.random() < 0.25) {
+        if (
+          mutationMethod.name !== Mutation.MOD_BIAS.name &&
+          mutationMethod.name !== Mutation.MOD_WEIGHT.name
+        ) {
+          continue;
+        }
+      }
       switch (mutationMethod.name) {
         case Mutation.ADD_NODE.name:
           if (creature.neurons.length >= this.config.maximumNumberOfNodes) {
