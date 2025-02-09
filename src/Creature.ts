@@ -221,7 +221,7 @@ export class Creature implements CreatureInternal {
           const neuron = new Neuron(
             crypto.randomUUID(),
             "hidden",
-            undefined,
+            Math.random() * 0.2 - 0.1,
             this,
             tmpSquash,
           );
@@ -248,7 +248,7 @@ export class Creature implements CreatureInternal {
         const neuron = new Neuron(
           `output-${indx}`,
           type,
-          undefined,
+          Math.random() * 0.2 - 0.1,
           this,
           LOGISTIC.NAME,
         );
@@ -268,7 +268,7 @@ export class Creature implements CreatureInternal {
         const neuron = new Neuron(
           `output-${indx}`,
           type,
-          undefined,
+          Math.random() * 0.2 - 0.1,
           this,
           LOGISTIC.NAME,
         );
@@ -1468,7 +1468,7 @@ export class Creature implements CreatureInternal {
     while (i--) {
       const key = `input-${i}`;
       uuidMap.set(key, i);
-      const n = new Neuron(key, "input", undefined, this);
+      const n = new Neuron(key, "input", 0, this);
       n.index = i;
       this.neurons[i] = n;
     }

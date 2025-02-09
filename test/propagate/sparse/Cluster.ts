@@ -71,7 +71,7 @@ function makeCreature(): Creature {
       { type: "hidden", uuid: "hidden-1", bias: 0, squash: "RELU" },
       { type: "hidden", uuid: "hidden-2", bias: 0, squash: "RELU" },
       { type: "hidden", uuid: "hidden-3", bias: 0, squash: "RELU" },
-      { type: "constant", uuid: "const-3a", bias: 1, squash: "RELU" },
+      { type: "constant", uuid: "const-3a", bias: 1 },
       { type: "hidden", uuid: "hidden-4a", bias: 0, squash: "RELU" },
       { type: "hidden", uuid: "hidden-4b", bias: 0, squash: "RELU" },
       { type: "hidden", uuid: "hidden-4c", bias: 0, squash: "RELU" },

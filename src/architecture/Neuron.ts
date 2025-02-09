@@ -1,4 +1,3 @@
-import { assert } from "@std/assert/assert";
 import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
@@ -50,14 +49,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
   constructor(
     uuid: string,
     type: "input" | "output" | "hidden" | "constant",
-    bias: number | undefined,
+    bias: number,
     creature: Creature,
     squash?: string,
   ) {
     this.uuid = uuid;
-    if (!type) {
-      throw new Error("type must be defined: " + (typeof type));
-    }
     this.type = type;
 
     if (type !== "input") {
@@ -65,18 +61,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         throw new Error("invalid type: " + type);
       }
 
-      if (bias === undefined) {
-        this.bias = Math.random() * 0.2 - 0.1;
-      } else {
-        if (!Number.isFinite(bias)) {
-          throw new Error(
-            "bias (other than for 'input') must be a number type: " + type +
-              ", typeof: " +
-              (typeof bias) + ", value: " + bias,
-          );
-        }
-        this.bias = bias;
-      }
+      this.bias = bias;
 
       if (type === "constant") {
         if (squash) {
@@ -85,13 +70,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
           );
         }
       } else {
-        if (squash) this.setSquash(squash);
+        this.squash = squash;
       }
     } else {
       this.bias = Infinity;
     }
-
-    assert(typeof creature === "object", "network must be a Creature");
 
     this.creature = creature;
 
@@ -797,13 +780,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const neuron = new Neuron(
       json.uuid ? json.uuid : crypto.randomUUID(),
       json.type,
-      json.bias,
+      json.bias ? json.bias : 0,
       creature,
+      json.squash,
     );
-
-    if (json.type === "output" || json.type === "hidden") {
-      neuron.setSquash(json.squash);
-    }
 
     if (json.tags) {
       addTags(neuron, json);
