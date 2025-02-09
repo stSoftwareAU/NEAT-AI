@@ -36,15 +36,15 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
 
   // Verify that each selected neuron has at least one connected neuron within two steps.
   selectedNeurons.forEach((neuronUUID) => {
-    const neighbours = getClusteredneighbours(
+    const neighbours = getClusteredNeighbours(
       neuronUUID,
       creature.exportJSON(),
     );
-    const hasClusteredneighbour = Array.from(neighbours).some(
+    const hasClusteredNeighbour = Array.from(neighbours).some(
       (neighbourUUID) => selectedNeurons.has(neighbourUUID),
     );
     assert(
-      hasClusteredneighbour,
+      hasClusteredNeighbour,
       `Neuron ${neuronUUID} should have a connected neighbour`,
     );
   });
@@ -113,7 +113,7 @@ function makeCreature(): Creature {
 }
 
 // Helper function to find clustered neighbours within two steps for testing purposes.
-function getClusteredneighbours(
+function getClusteredNeighbours(
   neuronUUID: string,
   creature: CreatureExport,
 ): Set<string> {
