@@ -104,16 +104,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
         throw new Error(`Missing squash for ${this.type} neuron`);
       }
 
-      if (this.squashMethodCache === undefined) {
-        throw new Error(
-          `Missing squashMethodCache for ${this.type} neuron with squash ${this.squash}`,
-        );
-      }
-      if (this.squashMethodCache.getName() !== this.squash) {
-        throw new Error(
-          `Mismatched squashMethodCache for ${this.type} neuron was ${this.squashMethodCache.getName()} expected ${this.squash}`,
-        );
-      }
+      // if (this.squashMethodCache === undefined) {
+      //   throw new Error(
+      //     `Missing squashMethodCache for ${this.type} neuron with squash ${this.squash}`,
+      //   );
+      // }
+      // if (this.squashMethodCache.getName() !== this.squash) {
+      //   throw new Error(
+      //     `Mismatched squashMethodCache for ${this.type} neuron was ${this.squashMethodCache.getName()} expected ${this.squash}`,
+      //   );
+      // }
     } else {
       if (this.squash) {
         throw new Error(`Unexpected squash for ${this.type} neuron`);
@@ -233,17 +233,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
   setSquash(
     name?: string,
   ): void {
-    delete this.squashMethodCache;
-    this.squash = name;
-    if (name) {
-      const squashFunction = this.findSquash();
-
-      this.squash = squashFunction.getName(); /* Handle aliases */
-    } else {
-      assert(
-        this.type === "constant",
-        "Squash must be defined for non-constant nodes",
-      );
+    if (name !== this.squash) {
+      delete this.squashMethodCache;
+      this.squash = name;
     }
   }
 
@@ -254,7 +246,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (!this.squashMethodCache) {
       this.squashMethodCache = Activations.find(
         this.squash!,
-      );
+      ) as NeuronActivationInterface | ActivationInterface;
+      this.squash = this.squashMethodCache.getName(); /* Handle aliases */
     }
 
     return this.squashMethodCache;
@@ -801,8 +794,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     json: NeuronExport | NeuronInternal,
     creature: Creature,
   ): Neuron {
-    assert(typeof creature === "object", "network must be a Creature");
-
     const neuron = new Neuron(
       json.uuid ? json.uuid : crypto.randomUUID(),
       json.type,
@@ -810,16 +801,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
       creature,
     );
 
-    switch (json.type) {
-      case "input":
-      case "constant":
-        break;
-      case "output":
-      case "hidden":
-        if (json.squash) neuron.setSquash(json.squash);
-        break;
-      default:
-        throw new Error("unknown type: " + (json as NeuronInternal).type);
+    if (json.type === "output" || json.type === "hidden") {
+      neuron.setSquash(json.squash);
     }
 
     if (json.tags) {

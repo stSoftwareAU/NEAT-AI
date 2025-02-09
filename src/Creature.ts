@@ -10,10 +10,7 @@ import type {
   CreatureInternal,
   CreatureTrace,
 } from "./architecture/CreatureInterfaces.ts";
-import {
-  CreatureState,
-  type NeuronStateInterface,
-} from "./architecture/CreatureState.ts";
+import { CreatureState } from "./architecture/CreatureState.ts";
 import { creatureValidate } from "./architecture/CreatureValidate.ts";
 import {
   type DataRecordInterface,
@@ -56,9 +53,9 @@ import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { SwapNeurons } from "./mutate/SwapNeurons.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
+import { makeCreatureActivationFunction } from "./optimize/MakeCreatureActivationFunction.ts";
 import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
 import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
-import { makeCreatureActivationFunction } from "./optimize/MakeCreatureActivationFunction.ts";
 
 /**
  * Creature Class
@@ -1451,17 +1448,24 @@ export class Creature implements CreatureInternal {
    */
   loadFrom(json: CreatureInternal | CreatureExport, validate: boolean) {
     this.uuid = (json as CreatureInternal).uuid;
-    this.neurons.length = json.neurons.length;
+
+    // Preallocate arrays
+    const neuronCount = json.neurons.length;
+    const synapseCount = json.synapses.length;
+    this.neurons = new Array(neuronCount);
+    this.synapses = new Array(synapseCount);
+
     if (json.tags) {
       this.tags = [...json.tags];
     }
 
     this.clearState();
-
     const state = this.state;
     const uuidMap = new Map<string, number>();
-    this.neurons = new Array(this.neurons.length);
-    for (let i = json.input; i--;) {
+
+    // Optimize input neuron initialization
+    let i = json.input;
+    while (i--) {
       const key = `input-${i}`;
       uuidMap.set(key, i);
       const n = new Neuron(key, "input", undefined, this);
@@ -1470,35 +1474,36 @@ export class Creature implements CreatureInternal {
     }
 
     let pos = json.input;
-    let outputIndx = 0;
+    let outputIndex = 0;
     const neurons = json.neurons;
+
+    // Process remaining neurons
     for (let i = 0; i < neurons.length; i++) {
       const jn = neurons[i];
 
       if (jn.type === "input") continue;
-      if (jn.type === "output") {
-        (jn as { uuid: string }).uuid = `output-${outputIndx}`;
 
-        outputIndx++;
+      if (jn.type === "output") {
+        (jn as { uuid: string }).uuid = `output-${outputIndex++}`;
       }
+
       const n = Neuron.fromJSON(jn, this);
       n.index = pos;
+
       if ((jn as NeuronTrace).trace) {
-        const trace: NeuronStateInterface = (jn as NeuronTrace).trace;
-        const ns = state.node(n.index);
-        Object.assign(ns, trace);
+        Object.assign(state.node(n.index), (jn as NeuronTrace).trace);
       }
 
       uuidMap.set(n.uuid, pos);
-
-      this.neurons[pos] = n;
-      pos++;
+      this.neurons[pos++] = n;
     }
 
-    this.synapses.length = 0;
-    const cLen = json.synapses.length;
+    // Optimize synapse processing
     const synapses = json.synapses;
-    for (let i = 0; i < cLen; i++) {
+    let isSorted = true;
+    let lastFrom = -1;
+    let lastTo = -1;
+    for (let i = 0; i < synapseCount; i++) {
       const synapse = synapses[i];
       const se = synapse as SynapseExport;
       const from = se.fromUUID
@@ -1513,32 +1518,47 @@ export class Creature implements CreatureInternal {
 
       if (to === undefined) {
         fail(
-          `TO is undefined uuid: ${se.toUUID} or index: ${
+          `TO is undefined: uuid ${se.toUUID}, index ${
             (synapse as SynapseInternal).to
           }`,
         );
       }
 
-      const connection = this.connect(
-        from,
-        to,
-        synapse.weight,
-        synapse.type,
-      );
+      if (isSorted) {
+        if (from > lastFrom) {
+          lastFrom = from;
+          lastTo = -1;
+        } else if (from < lastFrom || to <= lastTo) {
+          isSorted = false;
+        }
+        lastTo = to;
+      }
+
+      const tmpSynapse = new Synapse(from!, to!, synapse.weight, synapse.type);
+      this.synapses[i] = tmpSynapse;
 
       if (synapse.tags) {
-        connection.tags = synapse.tags.slice();
+        tmpSynapse.tags = synapse.tags.slice();
       }
 
       if ((synapse as SynapseTrace).trace) {
-        const cs = state.connection(connection.from, connection.to);
-        const trace = (synapse as SynapseTrace).trace;
-        Object.assign(cs, trace);
+        Object.assign(
+          state.connection(tmpSynapse.from, tmpSynapse.to),
+          (synapse as SynapseTrace).trace,
+        );
       }
     }
 
     this.memetic = json.memetic;
     this.clearCache();
+
+    // Perform sorting only if needed
+    if (!isSorted) {
+      this.synapses.sort((
+        a,
+        b,
+      ) => (a.from === b.from ? a.to - b.to : a.from - b.from));
+    }
 
     if (validate) {
       creatureValidate(this);

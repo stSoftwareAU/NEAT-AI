@@ -28,7 +28,9 @@
     "Misra",
     "delisting",
     "XNOR",
-    "NARX"
+    "NARX",
+    "ISRU",
+    "Softplus"
   ],
   "flagWords": [
     "hte"
