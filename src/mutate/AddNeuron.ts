@@ -21,7 +21,7 @@ export class AddNeuron implements RadioactiveInterface {
     const neuron = new Neuron(
       crypto.randomUUID(),
       "hidden",
-      undefined,
+      Math.random() * 0.2 - 0.1,
       creature,
     );
 

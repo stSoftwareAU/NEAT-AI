@@ -51,20 +51,20 @@ export function chooseNeurons(
     selectedNeurons.add(currentNeuronUUID);
 
     // Get all neurons connected by one or two steps.
-    const neighbors = getConnectedNeurons(
+    const neighbours = getConnectedNeurons(
       currentNeuronUUID,
       connectedSynapses,
       2,
     );
 
-    for (const neighbor of neighbors) {
+    for (const neighbour of neighbours) {
       if (
-        !selectedNeurons.has(neighbor) &&
+        !selectedNeurons.has(neighbour) &&
         selectedNeurons.size < numberOfNeuronsToSelect
       ) {
-        if (!selectedNeurons.has(neighbor)) {
-          selectedNeurons.add(neighbor);
-          queue.push(neighbor);
+        if (!selectedNeurons.has(neighbour)) {
+          selectedNeurons.add(neighbour);
+          queue.push(neighbour);
         }
       }
     }
@@ -128,11 +128,11 @@ function getConnectedNeurons(
     // Stop expanding once we reach the specified depth.
     if (depth >= steps) continue;
 
-    const neighbors = synapseMap.get(current) || new Set();
-    for (const neighbor of neighbors) {
-      if (!connectedNeurons.has(neighbor)) {
-        connectedNeurons.add(neighbor);
-        queue.push({ neuronUUID: neighbor, depth: depth + 1 });
+    const neighbours = synapseMap.get(current) || new Set();
+    for (const neighbour of neighbours) {
+      if (!connectedNeurons.has(neighbour)) {
+        connectedNeurons.add(neighbour);
+        queue.push({ neuronUUID: neighbour, depth: depth + 1 });
       }
     }
   }

@@ -36,13 +36,16 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
 
   // Verify that each selected neuron has at least one connected neuron within two steps.
   selectedNeurons.forEach((neuronUUID) => {
-    const neighbors = getClusteredNeighbors(neuronUUID, creature.exportJSON());
-    const hasClusteredNeighbor = Array.from(neighbors).some(
-      (neighborUUID) => selectedNeurons.has(neighborUUID),
+    const neighbours = getClusteredNeighbours(
+      neuronUUID,
+      creature.exportJSON(),
+    );
+    const hasClusteredNeighbour = Array.from(neighbours).some(
+      (neighbourUUID) => selectedNeurons.has(neighbourUUID),
     );
     assert(
-      hasClusteredNeighbor,
-      `Neuron ${neuronUUID} should have a connected neighbor`,
+      hasClusteredNeighbour,
+      `Neuron ${neuronUUID} should have a connected neighbour`,
     );
   });
 });
@@ -71,7 +74,7 @@ function makeCreature(): Creature {
       { type: "hidden", uuid: "hidden-1", bias: 0, squash: "RELU" },
       { type: "hidden", uuid: "hidden-2", bias: 0, squash: "RELU" },
       { type: "hidden", uuid: "hidden-3", bias: 0, squash: "RELU" },
-      { type: "constant", uuid: "const-3a", bias: 1, squash: "RELU" },
+      { type: "constant", uuid: "const-3a", bias: 1 },
       { type: "hidden", uuid: "hidden-4a", bias: 0, squash: "RELU" },
       { type: "hidden", uuid: "hidden-4b", bias: 0, squash: "RELU" },
       { type: "hidden", uuid: "hidden-4c", bias: 0, squash: "RELU" },
@@ -109,8 +112,8 @@ function makeCreature(): Creature {
   return creature;
 }
 
-// Helper function to find clustered neighbors within two steps for testing purposes.
-function getClusteredNeighbors(
+// Helper function to find clustered neighbours within two steps for testing purposes.
+function getClusteredNeighbours(
   neuronUUID: string,
   creature: CreatureExport,
 ): Set<string> {
@@ -127,7 +130,7 @@ function getClusteredNeighbors(
     synapseMap.get(synapse.toUUID)!.add(synapse.fromUUID); // bidirectional for clustering
   });
 
-  // Perform BFS to find neighbors within two steps.
+  // Perform BFS to find neighbours within two steps.
   const visited = new Set<string>();
   const queue = [{ neuronUUID, depth: 0 }];
 
@@ -135,11 +138,11 @@ function getClusteredNeighbors(
     const { neuronUUID: current, depth } = queue.shift()!;
     if (depth >= 2) continue;
 
-    const neighbors = synapseMap.get(current) || new Set();
-    for (const neighbor of neighbors) {
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor);
-        queue.push({ neuronUUID: neighbor, depth: depth + 1 });
+    const neighbours = synapseMap.get(current)!;
+    for (const neighbour of neighbours) {
+      if (!visited.has(neighbour)) {
+        visited.add(neighbour);
+        queue.push({ neuronUUID: neighbour, depth: depth + 1 });
       }
     }
   }

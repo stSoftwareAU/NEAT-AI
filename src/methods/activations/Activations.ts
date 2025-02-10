@@ -1,5 +1,5 @@
 import { MEAN } from "../../deprecated/MEAN.ts";
-import { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
+import type { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
 import { HYPOT } from "./aggregate/HYPOT.ts";
 import { HYPOTv2 } from "./aggregate/HYPOTv2.ts";
 import { IF } from "./aggregate/IF.ts";

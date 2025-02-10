@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "0.153.5",
+  "version": "0.153.6",
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.8",
     "@std/bytes": "jsr:@std/bytes@^1.0.4",
@@ -17,14 +17,13 @@
   },
   "lint": {
     "rules": {
-      "tags": ["recommended"],
+      "tags": ["recommended", "jsr"],
       "include": [
         "ban-untagged-todo",
         "camelcase",
         "eqeqeq",
         "no-await-in-loop",
         "no-const-assign",
-        "no-slow-types",
         "no-useless-rename",
         "no-throw-literal",
         "no-sync-fn-in-async-fn",
