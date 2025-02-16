@@ -41,7 +41,8 @@ export interface ResponseData {
     error: number;
     trace: string;
     compact?: string;
-    tuned?: string;
+    backtracked?: string;
+    forward?: string;
   };
   echo?: {
     message: string;
