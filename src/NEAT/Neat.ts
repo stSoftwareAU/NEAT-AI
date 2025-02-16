@@ -228,15 +228,26 @@ export class Neat {
           r.train.error,
           this.config.costOfGrowth,
         );
-        const tuned = fineTuneImprovement(
+        const backtracked = fineTuneImprovement(
           creature,
           trainedCreature,
           1,
           true,
         );
+        const forward = fineTuneImprovement(
+          creature,
+          trainedCreature,
+          1,
+          false,
+        );
 
-        if (tuned.length > 0) {
-          r.train.tuned = JSON.stringify(tuned[0].exportJSON());
+        if (backtracked.length > 0 || forward.length > 0) {
+          if (backtracked.length > 0) {
+            r.train.backtracked = JSON.stringify(backtracked[0].exportJSON());
+          }
+          if (forward.length > 0) {
+            r.train.forward = JSON.stringify(forward[0].exportJSON());
+          }
         } else {
           console.warn(
             `Training ${
@@ -486,9 +497,14 @@ export class Neat {
       addTag(json, "trained", "YES");
 
       trainedPopulation.push(Creature.fromJSON(json, this.config.debug));
-      if (r.train.tuned) {
+      if (r.train.backtracked) {
         fineTunedPopulation.push(
-          Creature.fromJSON(JSON.parse(r.train.tuned), this.config.debug),
+          Creature.fromJSON(JSON.parse(r.train.backtracked), this.config.debug),
+        );
+      }
+      if (r.train.forward) {
+        fineTunedPopulation.push(
+          Creature.fromJSON(JSON.parse(r.train.forward), this.config.debug),
         );
       }
       const compactJSON = r.train.compact
