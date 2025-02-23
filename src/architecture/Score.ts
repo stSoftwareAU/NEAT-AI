@@ -50,16 +50,17 @@ function calculateMaxOutOfBounds(
 
   assert(count > 0, "Count is 0");
 
-  if (Math.abs(max) > Number.MAX_SAFE_INTEGER) {
+  if (max > Number.MAX_SAFE_INTEGER) {
     console.log("Max is too large", max);
   }
-  if (Math.abs(total) > Number.MAX_SAFE_INTEGER) {
+  if (total > Number.MAX_SAFE_INTEGER) {
     console.log("Total is too large", total);
   }
   if (max > Number.MAX_SAFE_INTEGER) max = Number.MAX_SAFE_INTEGER;
   if (total > Number.MAX_SAFE_INTEGER) total = Number.MAX_SAFE_INTEGER;
-  if (max < Number.MIN_SAFE_INTEGER) max = Number.MIN_SAFE_INTEGER;
-  if (total < Number.MIN_SAFE_INTEGER) total = Number.MIN_SAFE_INTEGER;
+
+  assert(max >= 0, `Max: ${max} is negative`);
+  assert(total >= 0, `Total: ${total} is negative`);
 
   const avg = count > 0 ? total / count : 0;
 
