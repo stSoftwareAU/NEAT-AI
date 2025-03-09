@@ -1,5 +1,5 @@
 import { assert, fail } from "@std/assert";
-import { Creature } from "../../mod.ts";
+import { Creature, type CreatureExport } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
 
@@ -58,6 +58,124 @@ Deno.test("Output", () => {
     const error = e as Error;
     assert(
       error.name === "OTHER",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+});
+
+Deno.test("IF", () => {
+  const tmp: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: "IF", bias: 2 },
+
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+      {
+        squash: "IDENTITY",
+        uuid: "output-1",
+        bias: 0,
+        type: "output",
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: -0.3 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
+    ],
+    input: 3,
+    output: 1,
+  };
+
+  const creature = Creature.fromJSON(tmp);
+
+  try {
+    creatureValidate(creature);
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "IF_CONDITIONS",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+});
+
+Deno.test("IF conditions", () => {
+  const tmp: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: "IF", bias: 2 },
+
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+    ],
+    synapses: [
+      {
+        fromUUID: "input-0",
+        toUUID: "hidden-0",
+        weight: -0.3,
+        type: "positive",
+      },
+      {
+        fromUUID: "input-1",
+        toUUID: "hidden-0",
+        weight: -0.3,
+        type: "condition",
+      },
+      {
+        fromUUID: "input-2",
+        toUUID: "hidden-0",
+        weight: -0.3,
+        type: "negative",
+      },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
+    ],
+    input: 3,
+    output: 1,
+  };
+
+  Creature.fromJSON(tmp).validate();
+
+  try {
+    tmp.synapses[0].type = "negative";
+    Creature.fromJSON(tmp).validate();
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "IF_CONDITIONS",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+
+  try {
+    tmp.synapses[0].type = "positive";
+    tmp.synapses[1].type = "positive";
+    Creature.fromJSON(tmp).validate();
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "IF_CONDITIONS",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+
+  try {
+    tmp.synapses[1].type = "condition";
+    tmp.synapses[2].type = "positive";
+    Creature.fromJSON(tmp).validate();
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "IF_CONDITIONS",
       `Unexpected name: ${error.name}`,
     );
   }
