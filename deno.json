@@ -9,7 +9,7 @@
     "@std/fmt": "jsr:@std/fmt@^1.0.3",
     "@std/fs": "jsr:@std/fs@^1.0.6",
     "@std/path": "jsr:@std/path@1.0.8",
-    "@std/uuid": "jsr:@std/uuid@1.0.4",
+    "@std/uuid": "jsr:@std/uuid@1.0.5",
     "@stsoftware/tags": "jsr:@stsoftware/tags@^1.0.5"
   },
   "test": {
