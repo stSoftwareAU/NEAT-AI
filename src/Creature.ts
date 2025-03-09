@@ -1014,6 +1014,9 @@ export class Creature implements CreatureInternal {
         file.close();
       }
     }
+    if (count === 0) {
+      return { error: 0 };
+    }
     return { error: error / count };
   }
 

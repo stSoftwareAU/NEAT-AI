@@ -6,7 +6,8 @@ export function calculate(
   error: number,
   growthCost: number,
 ): number {
-  assert(Number.isFinite(error), `Error: ${error} is not finite`);
+  assert(!Number.isNaN(error), `Error is NaN`);
+  assert(Number.isFinite(error), `Error is not finite`);
   const { max, avg } = calculateMaxOutOfBounds(creature);
   assert(Number.isFinite(max), `Max: ${max} is not finite`);
   assert(Number.isFinite(avg), `Avg: ${avg} is not finite`);
