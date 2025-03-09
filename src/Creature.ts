@@ -1014,10 +1014,9 @@ export class Creature implements CreatureInternal {
         file.close();
       }
     }
-    if (count === 0) {
-      return { error: 0 };
-    }
-    return { error: error / count };
+    const averageError = count === 0 ? 0 : error / count;
+    assert(Number.isFinite(averageError), "Average error is not finite");
+    return { error: averageError };
   }
 
   private writeCreatures(neat: Neat, dir: string) {
