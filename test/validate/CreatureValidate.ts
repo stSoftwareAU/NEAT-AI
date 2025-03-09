@@ -1,5 +1,5 @@
 import { assert, fail } from "@std/assert";
-import { Creature, CreatureExport } from "../../mod.ts";
+import { Creature, type CreatureExport } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
 
@@ -64,31 +64,30 @@ Deno.test("Output", () => {
 });
 
 Deno.test("IF", () => {
-
   const tmp: CreatureExport = {
-      neurons: [
-        { type: "hidden", uuid: "hidden-0", squash: "IF", bias: 2 },
-  
-        {
-          type: "output",
-          squash: "IDENTITY",
-          uuid: "output-0",
-          bias: 1,
-        },
-        {
-          squash: "IDENTITY",
-          uuid: "output-1",
-          bias: 0,
-          type: "output",
-        },
-      ],
-      synapses: [
-        { fromUUID: "input-0", toUUID: "hidden-0", weight: -0.3 },
-        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
-      ],
-      input: 3,
-      output: 1,
-    };
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: "IF", bias: 2 },
+
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+      {
+        squash: "IDENTITY",
+        uuid: "output-1",
+        bias: 0,
+        type: "output",
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: -0.3 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
+    ],
+    input: 3,
+    output: 1,
+  };
 
   const creature = Creature.fromJSON(tmp);
 
@@ -105,29 +104,43 @@ Deno.test("IF", () => {
 });
 
 Deno.test("IF conditions", () => {
-
   const tmp: CreatureExport = {
-      neurons: [
-        { type: "hidden", uuid: "hidden-0", squash: "IF", bias: 2 },
-  
-        {
-          type: "output",
-          squash: "IDENTITY",
-          uuid: "output-0",
-          bias: 1,
-        }
-      ],
-      synapses: [
-        { fromUUID: "input-0", toUUID: "hidden-0", weight: -0.3, type: "positive" },
-        { fromUUID: "input-1", toUUID: "hidden-0", weight: -0.3, type: "condition" },
-        { fromUUID: "input-2", toUUID: "hidden-0", weight: -0.3, type: "negative" },
-        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
-      ],
-      input: 3,
-      output: 1,
-    };
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: "IF", bias: 2 },
 
-    Creature.fromJSON(tmp).validate();
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+    ],
+    synapses: [
+      {
+        fromUUID: "input-0",
+        toUUID: "hidden-0",
+        weight: -0.3,
+        type: "positive",
+      },
+      {
+        fromUUID: "input-1",
+        toUUID: "hidden-0",
+        weight: -0.3,
+        type: "condition",
+      },
+      {
+        fromUUID: "input-2",
+        toUUID: "hidden-0",
+        weight: -0.3,
+        type: "negative",
+      },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
+    ],
+    input: 3,
+    output: 1,
+  };
+
+  Creature.fromJSON(tmp).validate();
 
   try {
     tmp.synapses[0].type = "negative";
@@ -140,7 +153,6 @@ Deno.test("IF conditions", () => {
       `Unexpected name: ${error.name}`,
     );
   }
-
 
   try {
     tmp.synapses[0].type = "positive";
