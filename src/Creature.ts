@@ -1014,14 +1014,16 @@ export class Creature implements CreatureInternal {
         file.close();
       }
     }
-    if( count === 0 ) {
+    if (count === 0) {
       return { error: 0 };
     } else {
       const averageError = error / count;
-      if( Number.isFinite(averageError) ) {
+      if (Number.isFinite(averageError)) {
         return { error: averageError };
       } else {
-        console.warn(`AverageError: ${averageError} is not finite, Error: ${error}, Count: ${count}`);
+        console.warn(
+          `AverageError: ${averageError} is not finite, Error: ${error}, Count: ${count}`,
+        );
         return { error: Number.MAX_SAFE_INTEGER };
       }
     }
