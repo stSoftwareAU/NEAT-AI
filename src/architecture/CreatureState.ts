@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { Creature } from "../Creature.ts";
 import { SynapseState } from "../propagate/SynapseState.ts";
 
@@ -102,7 +103,7 @@ export class CreatureState {
     } else if (feedbackLoop === false) {
       this.activations.fill(0, input.length);
     }
-
+    assert(input.length === this.creature.input, "Invalid input length");
     this.activations.set(input);
 
     return this.activations;
