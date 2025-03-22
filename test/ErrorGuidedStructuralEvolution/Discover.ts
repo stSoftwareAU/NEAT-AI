@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -6,6 +7,8 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -33,7 +36,7 @@ function makeCreature() {
       {
         type: "output",
         squash: Mish.NAME,
-        uuid: "output-1",
+        uuid: "output-2",
         bias: 0.345,
       },
     ],
@@ -48,6 +51,7 @@ function makeCreature() {
 
       { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
       { fromUUID: "input-10", toUUID: "output-2", weight: -0.4 },
+      { fromUUID: "hidden-4", toUUID: "output-2", weight: 0.13 },
     ],
     input: 100,
     output: 3,
@@ -58,21 +62,53 @@ function makeCreature() {
   return creature;
 }
 
-Deno.test("Discover synapses", () => {
-  const creature = makeCreature();
-  const data = makeData(creature.input);
+Deno.test("Error-Driven Synapse Discovery identifies missing synapses", () => {
+  const targetCreature = makeCreature();
+  const data = makeData(targetCreature.input);
 
+  /** Record the ideal outputs from the target creature */
   const trainingData: DataRecordInterface[] = [];
 
   for (let i = data.length; i--;) {
     const input = data[i];
-    const output = creature.activate(new Float32Array(input));
-    // console.log(output);
+    const output = targetCreature.activate(new Float32Array(input));
+
     trainingData.push({
       input,
       output: Array.from(output),
     });
   }
+
+  /**
+   * Create a "crippled" version by removing two important synapses
+   */
+  const exportedJSON = targetCreature.exportJSON();
+  exportedJSON.synapses = exportedJSON.synapses.filter((synapse) =>
+    synapse.fromUUID !== "input-33" && synapse.fromUUID !== "input-22"
+  );
+
+  const crippledCreature = Creature.fromJSON(exportedJSON);
+  CreatureUtil.makeUUID(crippledCreature);
+
+  /**
+   * Instantiate the discovery mechanism
+   */
+  const discoverStructure = new DiscoverStructure(crippledCreature);
+  discoverStructure.record(trainingData); // Should record activations & errors for analysis
+  const betterCreature = discoverStructure.discover();
+
+  betterCreature.validate();
+
+  /** Verify synapses that were removed are discovered again: */
+  const input33 = betterCreature.exportJSON().synapses.find((synapse) =>
+    synapse.fromUUID === "input-33"
+  );
+  assert(input33, "Should have added synapse from input-33");
+  const input22 = betterCreature.exportJSON().synapses.find((synapse) =>
+    synapse.fromUUID === "input-22"
+  );
+
+  assert(input22, "Should have added synapse from input-22");
 });
 
 function makeData(input: number) {
