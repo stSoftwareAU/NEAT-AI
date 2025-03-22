@@ -14,7 +14,7 @@ export class DiscoverStructure {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
     this.tempDir = `.trace/DiscoverStructure/${creature.uuid}`;
-    
+
     Deno.mkdirSync(this.tempDir, { recursive: true });
 
     this.creature.neurons.forEach((neuron) => {

@@ -596,7 +596,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const ns = state.node(this.index);
     const targetValue = toValue(this, targetActivation, ns.hintValue);
 
-    const currentValue = toValue(this, state.activations[this.index], ns.hintValue);
+    const currentValue = toValue(
+      this,
+      state.activations[this.index],
+      ns.hintValue,
+    );
     const error = targetValue - currentValue;
     let errors = errorMap.get(this.uuid);
     if (errors === undefined) {
