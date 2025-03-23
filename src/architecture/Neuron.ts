@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
@@ -29,6 +30,7 @@ import {
   adjustedWeight,
   calculateWeight,
 } from "../propagate/Weight.ts";
+import type { DiscoverRecord } from "./ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
@@ -579,7 +581,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
    */
   record(
     requestedActivation: number,
-    errorMap: Map<string, number[]>,
+    discoverMap: Map<string, DiscoverRecord>,
   ): void {
     const squashMethod = this.findSquash();
     const targetActivation = squashMethod.range.limit(requestedActivation);
@@ -602,12 +604,22 @@ export class Neuron implements TagsInterface, NeuronInternal {
       ns.hintValue,
     );
     const error = targetValue - currentValue;
-    let errors = errorMap.get(this.uuid);
-    if (errors === undefined) {
-      errors = [];
-      errorMap.set(this.uuid, errors);
+    let discoverRecord = discoverMap.get(this.uuid);
+    if (discoverRecord === undefined) {
+      discoverRecord = {
+        value: currentValue,
+        activation: currentValue,
+        errors: "",
+      };
+      assert(discoverRecord !== undefined);
+      discoverMap.set(this.uuid, discoverRecord);
     }
-    errors.push(error);
+
+    if (discoverRecord.errors) {
+      discoverRecord.errors += "|" + error;
+    } else {
+      discoverRecord.errors = error.toString();
+    }
 
     const inwardList = this.creature.inwardConnections(this.index);
 
@@ -640,7 +652,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           const targetFromActivation = targetFromValue / fromWeight;
           fromNeuron.record(
             targetFromActivation,
-            errorMap,
+            discoverMap,
           );
         }
       }

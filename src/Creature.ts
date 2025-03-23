@@ -16,6 +16,7 @@ import {
   type DataRecordInterface,
   makeDataDir,
 } from "./architecture/DataSet.ts";
+import type { DiscoverRecord } from "./architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Neuron } from "./architecture/Neuron.ts";
 import type {
   NeuronExport,
@@ -766,11 +767,11 @@ export class Creature implements CreatureInternal {
    */
   record(
     expected: Float32Array,
-  ): Map<string, number[]> {
+  ): Map<string, DiscoverRecord> {
     const neurons = this.neurons;
     const lastOutputIndx = neurons.length - this.output;
 
-    const errorMap = new Map<string, number[]>();
+    const errorMap = new Map<string, DiscoverRecord>();
     for (let indx = this.output; indx--;) {
       const nodeIndex = lastOutputIndx + indx;
 

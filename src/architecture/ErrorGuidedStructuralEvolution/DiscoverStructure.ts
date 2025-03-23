@@ -3,10 +3,12 @@ import { parse as parseCsv } from "@std/csv";
 import { Creature } from "../../Creature.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 
-interface DiscoverRecord {
+export interface DiscoverRecord {
+  value: number;
   activation: number;
   errors: string;
 }
+
 interface CandidateSynapse {
   fromNeuronUUID: string;
   toNeuronUUID: string;
@@ -33,32 +35,50 @@ export class DiscoverStructure {
     this.creature.neurons.forEach((neuron) => {
       Deno.writeTextFileSync(
         `${this.tempDir}/${neuron.uuid}.csv`,
-        "activation,errors\n",
+        "value,activation,errors\n",
       );
     });
   }
 
-  public record(trainingData: DataRecordInterface[]) {
+  public async record(trainingData: DataRecordInterface[]) {
+    const data = new Map<
+      string,
+      Array<DiscoverRecord>
+    >();
     trainingData.forEach((record) => {
       this.creature.activate(new Float32Array(record.input));
-      const errorMap = this.creature.record(new Float32Array(record.output));
+      const discoverMap = this.creature.record(new Float32Array(record.output));
 
       this.creature.neurons.forEach((neuron) => {
-        const activation = this.creature.state.activations[neuron.index];
-        const errorList = errorMap.get(neuron.uuid);
-        let errors = "";
-        if (errorList) {
-          errors = errorList.join("|");
+        let discoverRecord = discoverMap.get(neuron.uuid);
+        if (!discoverRecord) {
+          discoverRecord = {
+            value: this.creature.state.activations[neuron.index],
+            activation: this.creature.state.activations[neuron.index],
+            errors: "",
+          };
         }
-        Deno.writeTextFile(
-          `${this.tempDir}/${neuron.uuid}.csv`,
-          `${activation},${errors}\n`,
-          { append: true },
-        );
+        let array = data.get(neuron.uuid);
+        if (!array) {
+          array = [];
+          data.set(neuron.uuid, array);
+        }
+        array.push(discoverRecord);
       });
     });
 
-    //  Record activations and errors per neuron during training for later analysis
+    const promises: Promise<void>[] = [];
+    for (const [neuronUUID, records] of data.entries()) {
+      const csv = records.map((discoverRecord) => {
+        return `${discoverRecord.value},${discoverRecord.activation},${discoverRecord.errors}\n`;
+      }).join("");
+      promises.push(
+        Deno.writeTextFile(`${this.tempDir}/${neuronUUID}.csv`, csv, {
+          append: true,
+        }),
+      );
+    }
+    await Promise.all(promises);
   }
 
   private discoveries: CandidateSynapse[] = [];
@@ -93,11 +113,12 @@ export class DiscoverStructure {
       skipFirstRow: true,
     });
     return records.map((record) => {
+      const value = Number.parseFloat(record.value);
       const activation = Number.parseFloat(record.activation);
 
       assert(Number.isFinite(activation), `Invalid activation ${activation}`);
       const errors = record.errors;
-      return { activation, errors };
+      return { value, activation, errors };
     });
   }
 
