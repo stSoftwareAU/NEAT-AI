@@ -56,12 +56,13 @@ This project is a unique implementation of a neural network based on the NEAT (N
    more about
    [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm).
 
-10. **Error-Guided Structural Evolution**: Dynamically identifies and creates 
-   new synapses by analyzing neuron activations and errors. This targeted 
-   structural adaptation improves performance by explicitly reducing neuron-level 
-   errors, blending evolutionary topology adjustments with error-driven learning.
+10. **Error-Guided Structural Evolution**: Dynamically identifies and creates
+    new synapses by analyzing neuron activations and errors. This targeted
+    structural adaptation improves performance by explicitly reducing
+    neuron-level errors, blending evolutionary topology adjustments with
+    error-driven learning.
 
-10. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
+11. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
 
 ## Usage
 
