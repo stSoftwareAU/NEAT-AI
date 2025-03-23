@@ -604,11 +604,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
       ns.hintValue,
     );
     const error = targetValue - currentValue;
+
     let discoverRecord = discoverMap.get(this.uuid);
     if (discoverRecord === undefined) {
       discoverRecord = {
         value: currentValue,
-        activation: currentValue,
+        activation: state.activations[this.index],
         errors: "",
       };
       assert(discoverRecord !== undefined);

@@ -40,6 +40,10 @@ export class DiscoverStructure {
     });
   }
 
+  public async cleanUp() {
+    await Deno.remove(this.tempDir, { recursive: true });
+  }
+
   public async record(trainingData: DataRecordInterface[]) {
     const data = new Map<
       string,
@@ -154,7 +158,7 @@ export class DiscoverStructure {
     toRecords: DiscoverRecord[],
   ): Promise<CandidateSynapse> {
     const activationCount = toRecords.length;
-    let errorCount = 0;
+
     const fromRecords = await this.loadCSV(
       `${this.tempDir}/${fromNeuronUUID}.csv`,
     );
@@ -172,45 +176,54 @@ export class DiscoverStructure {
 
     for (let indx = 0; indx < activationCount; indx++) {
       const toRecord = toRecords[indx];
+      // const toValue=toRecord.value;
       const fromRecord = fromRecords[indx];
+      // const fromValue=fromRecord.value;
       sumAbsActivation += Math.abs(fromRecord.activation);
-      if (!toRecord.errors) {
-        console.log("candidateRecord.errors", toRecord.errors);
-      }
+
+      let neuronPaths = 0;
+      let neuronErrorTotal = 0;
       toRecord.errors.split("|").map((errorTxt) => {
         const error = Number(errorTxt);
-        errorCount++;
-        sumAbsError += Math.abs(error);
-        if (error > 0) {
-          if (fromRecord.activation > 0) {
-            negativeCount++;
-          } else if (fromRecord.activation < 0) {
-            positiveCount++;
-          }
-        } else if (error < 0) {
-          if (fromRecord.activation > 0) {
-            positiveCount++;
-          } else if (fromRecord.activation < 0) {
-            negativeCount++;
-          }
-        }
+        neuronErrorTotal += error;
+        neuronPaths++;
+        // errorCount++;
       });
+      assert(neuronPaths > 0, "neuronPaths must be greater than 0");
+      const error = neuronErrorTotal / neuronPaths;
+
+      // toRecord.errors.split("|").map((errorTxt) => {
+      //   const error = Number(errorTxt);
+      //   errorCount++;
+      sumAbsError += Math.abs(error);
+      if (error > 0) {
+        if (fromRecord.activation > 0) {
+          negativeCount++;
+        } else if (fromRecord.activation < 0) {
+          positiveCount++;
+        }
+      } else if (error < 0) {
+        if (fromRecord.activation > 0) {
+          positiveCount++;
+        } else if (fromRecord.activation < 0) {
+          negativeCount++;
+        }
+      }
+      // });
     }
 
     const positiveBetter = positiveCount > negativeCount;
 
     const avgAbsActivation = sumAbsActivation / activationCount;
-    const avgAbsError = sumAbsError / errorCount;
+    const avgAbsError = sumAbsError / activationCount;
 
     const initialWeightMagnitude = avgAbsError / (avgAbsActivation + 1e-8);
 
     let expectedErrorReduction = 0;
     if (positiveBetter) {
-      expectedErrorReduction = avgAbsError * positiveCount -
-        avgAbsError * negativeCount;
+      expectedErrorReduction = avgAbsError * (positiveCount - negativeCount);
     } else {
-      expectedErrorReduction = avgAbsError * negativeCount -
-        avgAbsError * positiveCount;
+      expectedErrorReduction = avgAbsError * (negativeCount - positiveCount);
     }
 
     const weightSign = positiveBetter ? 1 : -1;
@@ -218,7 +231,7 @@ export class DiscoverStructure {
     return {
       fromNeuronUUID: fromNeuronUUID,
       toNeuronUUID: toNeuronUUID,
-      weight: weightSign * initialWeightMagnitude * 0.1, // small initial weight, *** WHY NOT USE CALCULATED VALUE?
+      weight: weightSign * initialWeightMagnitude,
       expectedErrorReduction,
       improvedCount: positiveBetter ? positiveCount : negativeCount,
       totalCount: activationCount,

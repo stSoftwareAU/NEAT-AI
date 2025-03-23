@@ -1,22 +1,29 @@
 import { assert } from "@std/assert/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Creature } from "../../src/Creature.ts";
-import { Cosine } from "../../src/methods/activations/types/Cosine.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: "hidden-3", squash: Cosine.NAME, bias: Math.PI },
+      {
+        type: "hidden",
+        uuid: "hidden-3",
+        squash: IDENTITY.NAME,
+        // squash: Cosine.NAME,
+        bias: Math.PI,
+        // bias: 0.01,
+      },
       {
         type: "hidden",
         uuid: "hidden-4",
+        // squash: IDENTITY.NAME,
         squash: TANH.NAME,
         bias: Math.SQRT1_2,
       },
@@ -99,17 +106,18 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
   const betterCreature = await discoverStructure.discover("hidden-3");
 
   betterCreature.validate();
-
+  const betterCreatureJSON = betterCreature.exportJSON();
   /** Verify synapses that were removed are discovered again: */
-  const input33 = betterCreature.exportJSON().synapses.find((synapse) =>
-    synapse.fromUUID === "input-33"
-  );
-  assert(input33, "Should have added synapse from input-33");
-  const input22 = betterCreature.exportJSON().synapses.find((synapse) =>
+  const input22 = betterCreatureJSON.synapses.find((synapse) =>
     synapse.fromUUID === "input-22"
   );
 
   assert(input22, "Should have added synapse from input-22");
+
+  const input33 = betterCreatureJSON.synapses.find((synapse) =>
+    synapse.fromUUID === "input-33"
+  );
+  assert(input33, "Should have added synapse from input-33");
 });
 
 function makeData(input: number) {
