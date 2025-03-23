@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
+import { parse as parseCsv } from "@std/csv";
 import { Creature } from "../../Creature.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
-import { parse as parseCsv } from "@std/csv";
 
 interface DiscoverRecord {
   activation: number;
@@ -50,7 +50,7 @@ export class DiscoverStructure {
         if (errorList) {
           errors = errorList.join("|");
         }
-        Deno.writeTextFileSync(
+        Deno.writeTextFile(
           `${this.tempDir}/${neuron.uuid}.csv`,
           `${activation},${errors}\n`,
           { append: true },
@@ -94,9 +94,7 @@ export class DiscoverStructure {
     });
     return records.map((record) => {
       const activation = Number.parseFloat(record.activation);
-      if (!Number.isFinite(activation)) {
-        console.log("activation", activation);
-      }
+
       assert(Number.isFinite(activation), `Invalid activation ${activation}`);
       const errors = record.errors;
       return { activation, errors };
@@ -113,8 +111,8 @@ export class DiscoverStructure {
         .map((synapse) => synapse.toUUID),
     );
     const promises: Promise<CandidateSynapse>[] = [];
-    for (let indx = 0; indx < exportedJSON.neurons.length; indx++) {
-      const neuron = exportedJSON.neurons[indx];
+    for (let indx = 0; indx < this.creature.neurons.length; indx++) {
+      const neuron = this.creature.neurons[indx];
       if (neuron.uuid === neuronUUID) {
         break;
       }
@@ -130,64 +128,75 @@ export class DiscoverStructure {
   }
 
   async analyzeCandidateSynapse(
-    candidateNeuronUUID: string,
-    targetNeuronUUID: string,
-    candidateRecords: DiscoverRecord[],
+    toNeuronUUID: string,
+    fromNeuronUUID: string,
+    toRecords: DiscoverRecord[],
   ): Promise<CandidateSynapse> {
-    const activationCount = candidateRecords.length;
+    const activationCount = toRecords.length;
     let errorCount = 0;
-    const targetRecords = await this.loadCSV(
-      `${this.tempDir}/${targetNeuronUUID}.csv`,
+    const fromRecords = await this.loadCSV(
+      `${this.tempDir}/${fromNeuronUUID}.csv`,
     );
-    if (targetRecords.length !== activationCount) {
+    if (fromRecords.length !== activationCount) {
       throw new Error("Mismatched record count");
     }
+    if (fromNeuronUUID === "input-33" && toNeuronUUID === "hidden-3") {
+      console.log("fromNeuronUUID", fromNeuronUUID);
+    }
 
-    let positiveImprovement = 0;
-    let negativeImprovement = 0;
     let positiveCount = 0;
     let negativeCount = 0;
     let sumAbsActivation = 0;
     let sumAbsError = 0;
 
     for (let indx = 0; indx < activationCount; indx++) {
-      const candidateRecord = candidateRecords[indx];
-      const targetRecord = targetRecords[indx];
-      sumAbsActivation += Math.abs(targetRecord.activation);
-      if (!candidateRecord.errors) {
-        console.log("candidateRecord.errors", candidateRecord.errors);
+      const toRecord = toRecords[indx];
+      const fromRecord = fromRecords[indx];
+      sumAbsActivation += Math.abs(fromRecord.activation);
+      if (!toRecord.errors) {
+        console.log("candidateRecord.errors", toRecord.errors);
       }
-      candidateRecord.errors.split("|").map((errorTxt) => {
+      toRecord.errors.split("|").map((errorTxt) => {
         const error = Number(errorTxt);
         errorCount++;
         sumAbsError += Math.abs(error);
-
-        if (targetRecord.activation * error < 0) {
-          positiveImprovement += Math.abs(error);
-          positiveCount++;
-        } else if (targetRecord.activation * error > 0) {
-          negativeImprovement += Math.abs(error);
-          negativeCount++;
+        if (error > 0) {
+          if (fromRecord.activation > 0) {
+            negativeCount++;
+          } else if (fromRecord.activation < 0) {
+            positiveCount++;
+          }
+        } else if (error < 0) {
+          if (fromRecord.activation > 0) {
+            positiveCount++;
+          } else if (fromRecord.activation < 0) {
+            negativeCount++;
+          }
         }
       });
     }
 
-    const positiveBetter = positiveImprovement > negativeImprovement;
+    const positiveBetter = positiveCount > negativeCount;
 
     const avgAbsActivation = sumAbsActivation / activationCount;
     const avgAbsError = sumAbsError / errorCount;
 
-    const expectedErrorReduction = positiveBetter
-      ? positiveImprovement
-      : negativeImprovement;
+    const initialWeightMagnitude = avgAbsError / (avgAbsActivation + 1e-8);
+
+    let expectedErrorReduction = 0;
+    if (positiveBetter) {
+      expectedErrorReduction = avgAbsError * positiveCount -
+        avgAbsError * negativeCount;
+    } else {
+      expectedErrorReduction = avgAbsError * negativeCount -
+        avgAbsError * positiveCount;
+    }
 
     const weightSign = positiveBetter ? 1 : -1;
 
-    const initialWeightMagnitude = avgAbsError / (avgAbsActivation + 1e-8);
-
     return {
-      fromNeuronUUID: candidateNeuronUUID,
-      toNeuronUUID: targetNeuronUUID,
+      fromNeuronUUID: fromNeuronUUID,
+      toNeuronUUID: toNeuronUUID,
       weight: weightSign * initialWeightMagnitude * 0.1, // small initial weight, *** WHY NOT USE CALCULATED VALUE?
       expectedErrorReduction,
       improvedCount: positiveBetter ? positiveCount : negativeCount,
