@@ -30,7 +30,8 @@
     "XNOR",
     "NARX",
     "ISRU",
-    "Softplus"
+    "Softplus",
+    "analyzing"
   ],
   "flagWords": [
     "hte"
