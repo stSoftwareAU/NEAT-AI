@@ -62,7 +62,7 @@ function makeCreature() {
   return creature;
 }
 
-Deno.test("Error-Driven Synapse Discovery identifies missing synapses", () => {
+Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async () => {
   const targetCreature = makeCreature();
   const data = makeData(targetCreature.input);
 
@@ -95,7 +95,8 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", () => {
    */
   const discoverStructure = new DiscoverStructure(crippledCreature);
   discoverStructure.record(trainingData); // Should record activations & errors for analysis
-  const betterCreature = discoverStructure.discover();
+  await discoverStructure.discover("hidden-4");
+  const betterCreature = await discoverStructure.discover("hidden-3");
 
   betterCreature.validate();
 
