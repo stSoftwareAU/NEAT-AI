@@ -66,14 +66,15 @@ export class DiscoverStructure {
   public async discover(neuronUUID: string) {
     const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
     const candidates = await this.loadCandidateSynapses(neuronUUID, records);
-    candidates.sort((a, b) =>
-      b.expectedErrorReduction - a.expectedErrorReduction
-    );
-    const bestCandidate = candidates[0];
-    if (bestCandidate.expectedErrorReduction > 0) {
-      this.discoveries.push(bestCandidate);
+    if (candidates.length > 0) {
+      candidates.sort((a, b) =>
+        b.expectedErrorReduction - a.expectedErrorReduction
+      );
+      const bestCandidate = candidates[0];
+      if (bestCandidate.expectedErrorReduction > 0) {
+        this.discoveries.push(bestCandidate);
+      }
     }
-
     const exportedJSON = this.creature.exportJSON();
     for (const discovery of this.discoveries) {
       exportedJSON.synapses.push({
@@ -92,8 +93,12 @@ export class DiscoverStructure {
       skipFirstRow: true,
     });
     return records.map((record) => {
-      const activation = Number(record[0]);
-      const errors = record[1];
+      const activation = Number.parseFloat(record.activation);
+      if (!Number.isFinite(activation)) {
+        console.log("activation", activation);
+      }
+      assert(Number.isFinite(activation), `Invalid activation ${activation}`);
+      const errors = record.errors;
       return { activation, errors };
     });
   }
@@ -149,6 +154,9 @@ export class DiscoverStructure {
       const candidateRecord = candidateRecords[indx];
       const targetRecord = targetRecords[indx];
       sumAbsActivation += Math.abs(targetRecord.activation);
+      if (!candidateRecord.errors) {
+        console.log("candidateRecord.errors", candidateRecord.errors);
+      }
       candidateRecord.errors.split("|").map((errorTxt) => {
         const error = Number(errorTxt);
         errorCount++;
