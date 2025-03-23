@@ -608,7 +608,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     let discoverRecord = discoverMap.get(this.uuid);
     if (discoverRecord === undefined) {
       discoverRecord = {
-        value: currentValue,
         activation: state.activations[this.index],
         errors: "",
       };

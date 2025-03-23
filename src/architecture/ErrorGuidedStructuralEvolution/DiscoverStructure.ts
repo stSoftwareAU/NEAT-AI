@@ -4,7 +4,6 @@ import { Creature } from "../../Creature.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 
 export interface DiscoverRecord {
-  value: number;
   activation: number;
   errors: string;
 }
@@ -35,7 +34,7 @@ export class DiscoverStructure {
     this.creature.neurons.forEach((neuron) => {
       Deno.writeTextFileSync(
         `${this.tempDir}/${neuron.uuid}.csv`,
-        "value,activation,errors\n",
+        "activation,errors\n",
       );
     });
   }
@@ -57,7 +56,6 @@ export class DiscoverStructure {
         let discoverRecord = discoverMap.get(neuron.uuid);
         if (!discoverRecord) {
           discoverRecord = {
-            value: this.creature.state.activations[neuron.index],
             activation: this.creature.state.activations[neuron.index],
             errors: "",
           };
@@ -74,7 +72,7 @@ export class DiscoverStructure {
     const promises: Promise<void>[] = [];
     for (const [neuronUUID, records] of data.entries()) {
       const csv = records.map((discoverRecord) => {
-        return `${discoverRecord.value},${discoverRecord.activation},${discoverRecord.errors}\n`;
+        return `${discoverRecord.activation},${discoverRecord.errors}\n`;
       }).join("");
       promises.push(
         Deno.writeTextFile(`${this.tempDir}/${neuronUUID}.csv`, csv, {
