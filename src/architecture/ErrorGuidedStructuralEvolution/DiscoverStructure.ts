@@ -31,13 +31,6 @@ export class DiscoverStructure {
     this.tempDir = `.trace/DiscoverStructure/${creature.uuid}`;
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
-
-    this.creature.neurons.forEach((neuron) => {
-      Deno.writeTextFileSync(
-        `${this.tempDir}/${neuron.uuid}.csv`,
-        "activation,errors\n",
-      );
-    });
   }
 
   public async cleanUp() {
@@ -72,12 +65,15 @@ export class DiscoverStructure {
 
     const promises: Promise<void>[] = [];
     for (const [neuronUUID, records] of data.entries()) {
-      const csv = records.map((discoverRecord) => {
+      const dataCSV = records.map((discoverRecord) => {
         return `${discoverRecord.activation},${discoverRecord.errors}\n`;
       }).join("");
 
+      const headCSV = "activation,errors\n";
+
+      const csv = headCSV + dataCSV;
       const fileName = `${this.tempDir}/${neuronUUID}.csv`;
-      const writePromise = Deno.writeTextFile(fileName, csv, { append: true })
+      const writePromise = Deno.writeTextFile(fileName, csv)
         .catch((e) => console.error("Failed write to %s", fileName, e));
 
       promises.push(writePromise);
