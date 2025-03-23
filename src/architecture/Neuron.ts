@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags";
 import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
@@ -29,6 +30,7 @@ import {
   adjustedWeight,
   calculateWeight,
 } from "../propagate/Weight.ts";
+import type { DiscoverRecord } from "./ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
@@ -574,6 +576,91 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
   }
 
+  /**
+   * Record the error for the neuron.
+   */
+  record(
+    requestedActivation: number,
+    discoverMap: Map<string, DiscoverRecord>,
+  ): void {
+    const squashMethod = this.findSquash();
+    const targetActivation = squashMethod.range.limit(requestedActivation);
+
+    // const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
+    // if (propagateUpdateMethod.record !== undefined) {
+    //   limitedActivation = propagateUpdateMethod.record(
+    //     this,
+    //     targetActivation,
+    //     errorMap
+    //   );
+    // } else {
+    const state = this.creature.state;
+    const ns = state.node(this.index);
+    const targetValue = toValue(this, targetActivation, ns.hintValue);
+
+    const currentActivation = squashMethod.range.limit(
+      state.activations[this.index],
+    );
+    const currentValue = toValue(
+      this,
+      currentActivation,
+      ns.hintValue,
+    );
+    const error = targetValue - currentValue;
+
+    let discoverRecord = discoverMap.get(this.uuid);
+    if (discoverRecord === undefined) {
+      discoverRecord = {
+        activation: state.activations[this.index],
+        errors: "",
+      };
+      assert(discoverRecord !== undefined);
+      discoverMap.set(this.uuid, discoverRecord);
+    }
+
+    if (discoverRecord.errors) {
+      discoverRecord.errors += "|" + error;
+    } else {
+      discoverRecord.errors = error.toString();
+    }
+
+    const inwardList = this.creature.inwardConnections(this.index);
+
+    const listLength = inwardList.length;
+
+    if (listLength) {
+      const errorPerLink = error / listLength;
+
+      for (let indx = 0; indx < listLength; indx++) {
+        const c = inwardList[indx];
+        const { from, to } = c;
+
+        if (from === to) continue;
+
+        const fromNeuron = this.creature.neurons[from];
+
+        const fromActivation = state.activations[from];
+
+        const fromWeight = c.weight;
+        const fromValue = fromWeight * fromActivation;
+
+        const targetFromValue = fromValue + errorPerLink;
+
+        const type = fromNeuron.type;
+        if (
+          fromWeight &&
+          type !== "input" &&
+          type !== "constant"
+        ) {
+          const targetFromActivation = targetFromValue / fromWeight;
+          fromNeuron.record(
+            targetFromActivation,
+            discoverMap,
+          );
+        }
+      }
+    }
+  }
   /**
    * Adjusts the activation based on the current state
    */

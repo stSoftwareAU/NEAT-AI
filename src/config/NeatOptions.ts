@@ -129,6 +129,9 @@ export interface NeatArguments {
 
   /** The threshold for genetic compatibility between two creatures */
   geneticCompatibilityThreshold: number;
+
+  /** Discovery Sample rate */
+  discoverySampleRate: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

@@ -10,7 +10,8 @@ export type Approach =
   | "simplified"
   | "compact"
   | "backtrack"
-  | "retry";
+  | "retry"
+  | "discovery";
 
 export function logApproach(fittest: Creature, previous: Creature) {
   const fScoreTxt = getTag(fittest, "score");
@@ -79,6 +80,18 @@ export function logApproach(fittest: Creature, previous: Creature) {
           console.info(
             bold(cyan("Training")),
             blue(`${trainID}`),
+            "increased fitness by",
+            fScore - pScore,
+            "to",
+            fScore,
+          );
+          break;
+        }
+        case "discovery": {
+          const discoveryID = getTag(fittest, "discoveryID");
+          console.info(
+            bold(cyan("Discovery")),
+            blue(`${discoveryID}`),
             "increased fitness by",
             fScore - pScore,
             "to",

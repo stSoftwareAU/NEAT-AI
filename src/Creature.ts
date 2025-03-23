@@ -16,6 +16,7 @@ import {
   type DataRecordInterface,
   makeDataDir,
 } from "./architecture/DataSet.ts";
+import type { DiscoverRecord } from "./architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Neuron } from "./architecture/Neuron.ts";
 import type {
   NeuronExport,
@@ -357,12 +358,6 @@ export class Creature implements CreatureInternal {
     const activations = this.state.makeActivation(input, feedbackLoop);
 
     this.creatureActivationFunction!();
-    // const neurons = this.neurons;
-    // const len = neurons.length;
-
-    // for (let i = this.input; i < len; i++) {
-    //   neurons[i].activateNeuron();
-    // }
 
     const lastHiddenNode = this.neurons.length - this.output;
     return new Float32Array(activations.subarray(lastHiddenNode));
@@ -762,6 +757,33 @@ export class Creature implements CreatureInternal {
         );
       }
     }
+  }
+
+  /**
+   * Record the expected values for back propagation.
+   *
+   * @param {Float32Array} expected - The expected output values.
+   * @param {BackPropagationConfig} config - The back propagation configuration.
+   */
+  record(
+    expected: Float32Array,
+  ): Map<string, DiscoverRecord> {
+    const neurons = this.neurons;
+    const lastOutputIndx = neurons.length - this.output;
+
+    const errorMap = new Map<string, DiscoverRecord>();
+    for (let indx = this.output; indx--;) {
+      const nodeIndex = lastOutputIndx + indx;
+
+      const n = neurons[nodeIndex];
+
+      n.record(
+        expected[indx],
+        errorMap,
+      );
+    }
+
+    return errorMap;
   }
 
   /**

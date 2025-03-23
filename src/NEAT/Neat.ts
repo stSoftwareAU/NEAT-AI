@@ -122,6 +122,10 @@ export class Neat {
 
   finishUp() {
     this.doNotStartMoreTraining = true;
+    if (this.discoveryInProgress.size > 0) {
+      console.info("Waiting for discovery to complete");
+      return false;
+    }
     if (this.trainingInProgress.size > 0) {
       if (!this.trainingCompleteCount) this.trainingCompleteCount = 2;
       console.info("Waiting for training to complete");
@@ -138,10 +142,55 @@ export class Neat {
   }
 
   private trainingInProgress = new Map<string, Promise<void>>();
-
+  private discoveryInProgress = new Map<string, Promise<void>>();
+  discoveryComplete: ResponseData[] = [];
   trainingComplete: ResponseData[] = [];
 
   private alreadyScheduledMap = new Map<string, number>();
+
+  scheduleDiscovery(creature: Creature) {
+    if (this.config.discoverySampleRate <= 0) {
+      return;
+    }
+
+    if (this.doNotStartMoreTraining) return;
+
+    if (this.discoveryInProgress.size > 0) return;
+
+    const uuid = CreatureUtil.makeUUID(creature);
+
+    let w: WorkerHandler;
+
+    w = this.workers[Math.floor(this.workers.length * Math.random())];
+
+    if (w.isBusy()) {
+      for (let i = this.workers.length; i--;) {
+        const tmpWorker = this.workers[i];
+        if (!tmpWorker.isBusy()) {
+          w = tmpWorker;
+          break;
+        }
+      }
+    }
+
+    if (this.config.verbose) {
+      console.info(
+        `Discovery ${
+          blue(uuid.substring(Math.max(0, uuid.length - 8)))
+        } scheduled`,
+      );
+    }
+
+    const p = w.discover(creature, this.config).then((r) => {
+      assert(r.discover, "No discovery found");
+
+      this.discoveryComplete.push(r);
+
+      this.discoveryInProgress.delete(uuid);
+    });
+
+    this.discoveryInProgress.set(uuid, p);
+  }
 
   /**
    * Schedules training for a creature
@@ -371,6 +420,8 @@ export class Neat {
       if (simplified) {
         elitists.push(simplified);
       }
+
+      this.scheduleDiscovery(fittest);
     }
     let trainingTimeOutMinutes = 0;
     if (this.endTimeTS) {
@@ -452,6 +503,7 @@ export class Neat {
       elitists.length -
       dnaPopulation.length -
       this.trainingComplete.length -
+      this.discoveryComplete.length -
       fineTunedPopulation.length - 1 -
       newPopulation.length;
 
@@ -530,6 +582,23 @@ export class Neat {
       }
     }
     this.trainingComplete.length = 0;
+
+    for (let i = this.discoveryComplete.length; i--;) {
+      const r = this.discoveryComplete[i];
+      assert(r.discover, "No discovery found");
+
+      if (r.discover.enhanced) {
+        const json = JSON.parse(r.discover.enhanced);
+        addTag(json, "approach", "discovery" as Approach);
+        addTag(json, "discoveryID", r.discover.ID);
+        delete json.memetic;
+        removeTag(json, "approach-logged");
+        trainedPopulation.push(
+          Creature.fromJSON(json, this.config.debug),
+        );
+      }
+    }
+    this.discoveryComplete.length = 0;
 
     this.population = [
       ...elitists,
