@@ -3,6 +3,7 @@ import { addTag, getTag } from "@stsoftware/tags";
 import type { Creature } from "../../Creature.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
+import type { NeatOptions } from "../../../mod.ts";
 
 export interface RequestData {
   taskID: number;
@@ -22,6 +23,10 @@ export interface RequestData {
   echo?: {
     ms: number;
     message: string;
+  };
+  discover?: {
+    creature: string;
+    options: NeatOptions;
   };
 }
 
@@ -46,6 +51,10 @@ export interface ResponseData {
   };
   echo?: {
     message: string;
+  };
+  discover?: {
+    ID: string;
+    enhanced?: string;
   };
 }
 
@@ -198,6 +207,20 @@ export class WorkerHandler {
     const data: RequestData = {
       taskID: this.taskID++,
       train: {
+        creature: JSON.stringify(json),
+        options: options,
+      },
+    };
+
+    return this.makePromise(data);
+  }
+
+  discover(creature: Creature, options: NeatOptions) {
+    const json = creature.exportJSON();
+
+    const data: RequestData = {
+      taskID: this.taskID++,
+      discover: {
         creature: JSON.stringify(json),
         options: options,
       },

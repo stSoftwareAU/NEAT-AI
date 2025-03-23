@@ -598,9 +598,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const ns = state.node(this.index);
     const targetValue = toValue(this, targetActivation, ns.hintValue);
 
+    const currentActivation = squashMethod.range.limit(
+      state.activations[this.index],
+    );
     const currentValue = toValue(
       this,
-      state.activations[this.index],
+      currentActivation,
       ns.hintValue,
     );
     const error = targetValue - currentValue;

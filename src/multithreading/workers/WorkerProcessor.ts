@@ -1,10 +1,10 @@
-import type { RequestData, ResponseData } from "./WorkerHandler.ts";
-
+import { assert } from "@std/assert";
 import { type CostInterface, Costs } from "../../Costs.ts";
 import { Creature } from "../../Creature.ts";
-import { trainDir } from "../../architecture/Training.ts";
-import { assert } from "@std/assert";
 import { creatureValidate } from "../../architecture/CreatureValidate.ts";
+import { recordDirectory } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import { trainDir } from "../../architecture/Training.ts";
+import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 export class WorkerProcessor {
   private dataSetDir: string | null = null;
@@ -84,6 +84,33 @@ export class WorkerProcessor {
         duration: Date.now() - start,
         echo: {
           message: data.echo.message,
+        },
+      };
+    } else if (data.discover) {
+      const creature = Creature.fromJSON(
+        JSON.parse(data.discover.creature),
+        data.debug,
+      );
+
+      assert(this.dataSetDir, "No data dir");
+
+      creatureValidate(creature);
+      const result = await recordDirectory(
+        creature,
+        this.dataSetDir,
+        data.discover.options,
+      );
+      let enhanced = undefined;
+      if (result.enhanced) {
+        enhanced = JSON.stringify(result.enhanced);
+      }
+
+      return {
+        taskID: data.taskID,
+        duration: Date.now() - start,
+        discover: {
+          ID: result.ID,
+          enhanced: enhanced,
         },
       };
     } else {

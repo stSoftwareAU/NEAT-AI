@@ -16,6 +16,7 @@ interface CandidateSynapse {
   improvedCount: number;
   totalCount: number;
 }
+
 /**
  * Implements Error-Driven Synapse Discovery, analyzing neuron activations
  * and errors to identify beneficial new synapses that explicitly reduce neuron-level errors.
@@ -74,11 +75,12 @@ export class DiscoverStructure {
       const csv = records.map((discoverRecord) => {
         return `${discoverRecord.activation},${discoverRecord.errors}\n`;
       }).join("");
-      promises.push(
-        Deno.writeTextFile(`${this.tempDir}/${neuronUUID}.csv`, csv, {
-          append: true,
-        }),
-      );
+
+      const fileName = `${this.tempDir}/${neuronUUID}.csv`;
+      const writePromise = Deno.writeTextFile(fileName, csv, { append: true })
+        .catch((e) => console.error(`Failed write to ${fileName}`, e));
+
+      promises.push(writePromise);
     }
     await Promise.all(promises);
   }
@@ -97,17 +99,31 @@ export class DiscoverStructure {
         this.discoveries.push(bestCandidate);
       }
     }
-    const exportedJSON = this.creature.exportJSON();
-    for (const discovery of this.discoveries) {
-      exportedJSON.synapses.push({
-        fromUUID: discovery.fromNeuronUUID,
-        toUUID: discovery.toNeuronUUID,
-        weight: discovery.weight,
-      });
+    if (this.discoveries.length === 0) {
+      return undefined;
     }
-    const newCreature = Creature.fromJSON(exportedJSON);
-    newCreature.validate();
-    return newCreature;
+
+    const exportedJSON = this.creature.exportJSON();
+
+    const tmpCreature = Creature.fromJSON(exportedJSON);
+
+    for (const discovery of this.discoveries) {
+      const fromIndx = tmpCreature.neurons.findIndex((neuron) =>
+        neuron.uuid === discovery.fromNeuronUUID
+      );
+      const toIndx = tmpCreature.neurons.findIndex((neuron) =>
+        neuron.uuid === discovery.toNeuronUUID
+      );
+
+      tmpCreature.connect(
+        fromIndx,
+        toIndx,
+        discovery.weight,
+      );
+    }
+
+    tmpCreature.validate();
+    return tmpCreature;
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
@@ -118,7 +134,6 @@ export class DiscoverStructure {
       const value = Number.parseFloat(record.value);
       const activation = Number.parseFloat(record.activation);
 
-      assert(Number.isFinite(activation), `Invalid activation ${activation}`);
       const errors = record.errors;
       return { value, activation, errors };
     });
@@ -130,8 +145,8 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse[]> {
     const exportedJSON = this.creature.exportJSON();
     const currentSynapses = new Set<string>(
-      exportedJSON.synapses.filter((synapse) => synapse.fromUUID === neuronUUID)
-        .map((synapse) => synapse.toUUID),
+      exportedJSON.synapses.filter((synapse) => synapse.toUUID === neuronUUID)
+        .map((synapse) => synapse.fromUUID),
     );
     const promises: Promise<CandidateSynapse>[] = [];
     for (let indx = 0; indx < this.creature.neurons.length; indx++) {
