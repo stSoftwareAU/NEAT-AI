@@ -2,7 +2,6 @@ import { assert } from "@std/assert/assert";
 import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import type { Creature } from "../../Creature.ts";
-import { createNeatConfig, type NeatConfig } from "../../config/NeatConfig.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
@@ -48,8 +47,7 @@ export async function recordDirectory(
     "No binary files found in the data directory",
   );
 
-  const config = createNeatConfig(options);
-  return await recordFiles(creature, dataResult.files, config);
+  return await recordFiles(creature, dataResult.files, options);
 }
 
 function fp(percentage: number) {
@@ -63,16 +61,16 @@ function fp(percentage: number) {
 async function recordFiles(
   creature: Creature,
   binaryFiles: string[],
-  config: NeatConfig,
+  options: NeatOptions,
 ): Promise<DiscoverResult> {
   const sampleRate = Math.min(
     1,
-    Math.max(0.0001, config.discoverySampleRate),
+    Math.max(0.0001, options.discoverySampleRate || 1),
   );
   const uuid = CreatureUtil.makeUUID(creature);
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
-  if (config.log) {
+  if (options.log) {
     console.info(
       `Discovery ${blue(ID)} with ${binaryFiles.length} binary file${
         binaryFiles.length > 1 ? "s" : ""
@@ -81,6 +79,7 @@ async function recordFiles(
   }
 
   const discoverStructure = new DiscoverStructure(creature);
+  await discoverStructure.initialize();
   try {
     const promises: Promise<void>[] = [];
     const valuesCount = creature.input + creature.output;

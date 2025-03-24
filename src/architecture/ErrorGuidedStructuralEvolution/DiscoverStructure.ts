@@ -13,6 +13,7 @@ interface CandidateSynapse {
   toNeuronUUID: string;
   weight: number;
   expectedErrorReduction: number;
+  expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
 }
@@ -25,6 +26,9 @@ export class DiscoverStructure {
   private creature: Creature;
   private tempDir: string;
 
+  private initialized = false;
+  private recorded = false;
+
   constructor(creature: Creature) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
@@ -33,11 +37,29 @@ export class DiscoverStructure {
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
 
+  public async initialize() {
+    assert(!this.initialized, "Already initialized");
+    this.initialized = true;
+    const headCSV = "activation,errors\n";
+
+    const promises: Promise<void>[] = [];
+    this.creature.neurons.forEach((neuron) => {
+      const writePromise = Deno.writeTextFile(
+        `${this.tempDir}/${neuron.uuid}.csv`,
+        headCSV,
+      );
+      promises.push(writePromise);
+    });
+    await Promise.all(promises);
+  }
+
   public async cleanUp() {
     await Deno.remove(this.tempDir, { recursive: true });
   }
 
   public async record(trainingData: DataRecordInterface[]) {
+    assert(this.initialized, "Not initialized");
+    this.recorded = true;
     const data = new Map<
       string,
       Array<DiscoverRecord>
@@ -69,12 +91,11 @@ export class DiscoverStructure {
         return `${discoverRecord.activation},${discoverRecord.errors}\n`;
       }).join("");
 
-      const headCSV = "activation,errors\n";
-
-      const csv = headCSV + dataCSV;
       const fileName = `${this.tempDir}/${neuronUUID}.csv`;
-      const writePromise = Deno.writeTextFile(fileName, csv)
-        .catch((e) => console.error("Failed write to %s", fileName, e));
+      const writePromise = Deno.writeTextFile(fileName, dataCSV, {
+        append: true,
+      })
+        .catch((e) => console.error(`Failed write to ${fileName}`, e));
 
       promises.push(writePromise);
     }
@@ -84,6 +105,7 @@ export class DiscoverStructure {
   private discoveries: CandidateSynapse[] = [];
 
   public async discover(neuronUUID: string) {
+    assert(this.recorded, "Not recorded");
     const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
     const candidates = await this.loadCandidateSynapses(neuronUUID, records);
     if (candidates.length > 0) {
@@ -91,7 +113,15 @@ export class DiscoverStructure {
         b.expectedErrorReduction - a.expectedErrorReduction
       );
       const bestCandidate = candidates[0];
-      if (bestCandidate.expectedErrorReduction > 0) {
+      if (
+        bestCandidate.expectedErrorReduction > 0 &&
+        bestCandidate.expectedImprovementPercentage > 0.01
+      ) {
+        const msg =
+          `Discovered synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${bestCandidate.weight} expected error reduction ${bestCandidate.expectedErrorReduction} improved ${bestCandidate.improvedCount} of ${bestCandidate.totalCount} (${
+            (bestCandidate.expectedImprovementPercentage * 100).toFixed(1)
+          }%)`;
+        console.info(msg);
         this.discoveries.push(bestCandidate);
       }
     }
@@ -171,12 +201,7 @@ export class DiscoverStructure {
     const fromRecords = await this.loadCSV(
       `${this.tempDir}/${fromNeuronUUID}.csv`,
     );
-    if (fromRecords.length !== activationCount) {
-      throw new Error("Mismatched record count");
-    }
-    if (fromNeuronUUID === "input-33" && toNeuronUUID === "hidden-3") {
-      console.log("fromNeuronUUID", fromNeuronUUID);
-    }
+    assert(fromRecords.length === activationCount, "Mismatched record count");
 
     let positiveCount = 0;
     let negativeCount = 0;
@@ -185,9 +210,8 @@ export class DiscoverStructure {
 
     for (let indx = 0; indx < activationCount; indx++) {
       const toRecord = toRecords[indx];
-      // const toValue=toRecord.value;
+
       const fromRecord = fromRecords[indx];
-      // const fromValue=fromRecord.value;
       sumAbsActivation += Math.abs(fromRecord.activation);
 
       let neuronPaths = 0;
@@ -196,14 +220,10 @@ export class DiscoverStructure {
         const error = Number(errorTxt);
         neuronErrorTotal += error;
         neuronPaths++;
-        // errorCount++;
       });
       assert(neuronPaths > 0, "neuronPaths must be greater than 0");
       const error = neuronErrorTotal / neuronPaths;
 
-      // toRecord.errors.split("|").map((errorTxt) => {
-      //   const error = Number(errorTxt);
-      //   errorCount++;
       sumAbsError += Math.abs(error);
       if (error > 0) {
         if (fromRecord.activation > 0) {
@@ -218,7 +238,6 @@ export class DiscoverStructure {
           negativeCount++;
         }
       }
-      // });
     }
 
     const positiveBetter = positiveCount > negativeCount;
@@ -244,6 +263,7 @@ export class DiscoverStructure {
       expectedErrorReduction,
       improvedCount: positiveBetter ? positiveCount : negativeCount,
       totalCount: activationCount,
+      expectedImprovementPercentage: expectedErrorReduction / sumAbsError,
     };
   }
 }
