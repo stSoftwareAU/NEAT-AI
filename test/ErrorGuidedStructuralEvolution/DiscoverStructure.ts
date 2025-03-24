@@ -8,6 +8,7 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { assertAlmostEquals } from "@std/assert/almost-equals";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -114,11 +115,13 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
   );
 
   assert(input22, "Should have added synapse from input-22");
-
+  assertAlmostEquals(input22?.weight, 0.2, 0.075);
   const input33 = betterCreatureJSON.synapses.find((synapse) =>
     synapse.fromUUID === "input-33"
   );
   assert(input33, "Should have added synapse from input-33");
+  assertAlmostEquals(input33?.weight, -0.3, 0.05);
+  await discoverStructure.cleanUp();
 });
 
 function makeData(input: number) {

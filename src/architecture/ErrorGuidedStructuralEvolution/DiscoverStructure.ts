@@ -118,7 +118,9 @@ export class DiscoverStructure {
         bestCandidate.expectedImprovementPercentage > 0.01
       ) {
         const msg =
-          `Discovered synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${bestCandidate.weight} expected error reduction ${bestCandidate.expectedErrorReduction} improved ${bestCandidate.improvedCount} of ${bestCandidate.totalCount} (${
+          `Discovered synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${bestCandidate.weight} expected error reduction ${
+            bestCandidate.expectedErrorReduction / bestCandidate.totalCount
+          } improved ${bestCandidate.improvedCount} of ${bestCandidate.totalCount} (${
             (bestCandidate.expectedImprovementPercentage * 100).toFixed(1)
           }%)`;
         console.info(msg);
@@ -227,15 +229,15 @@ export class DiscoverStructure {
       sumAbsError += Math.abs(error);
       if (error > 0) {
         if (fromRecord.activation > 0) {
-          negativeCount++;
-        } else if (fromRecord.activation < 0) {
           positiveCount++;
+        } else if (fromRecord.activation < 0) {
+          negativeCount++;
         }
       } else if (error < 0) {
         if (fromRecord.activation > 0) {
-          positiveCount++;
-        } else if (fromRecord.activation < 0) {
           negativeCount++;
+        } else if (fromRecord.activation < 0) {
+          positiveCount++;
         }
       }
     }
