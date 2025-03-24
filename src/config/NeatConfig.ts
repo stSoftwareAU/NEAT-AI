@@ -87,7 +87,7 @@ export function createNeatConfig(options: NeatOptions) {
     CRISPRs: options.CRISPRs || [],
     geneticCompatibilityThreshold: options.geneticCompatibilityThreshold || 0.3,
     discoverySampleRate: options.discoverySampleRate === undefined
-      ? 0.2
+      ? 0.05
       : options.discoverySampleRate,
   };
   validate(config);
