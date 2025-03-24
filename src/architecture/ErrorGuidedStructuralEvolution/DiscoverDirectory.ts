@@ -78,6 +78,12 @@ async function recordFiles(
     );
   }
 
+  let timeoutTS = 0;
+  const discoveryTimeOutMinutes = options.discoveryTimeOutMinutes ?? 0;
+  if (discoveryTimeOutMinutes > 0) {
+    timeoutTS = Date.now() + discoveryTimeOutMinutes * 60 * 1000;
+  }
+
   const discoverStructure = new DiscoverStructure(creature);
   await discoverStructure.initialize();
   try {
@@ -103,7 +109,8 @@ async function recordFiles(
     let lastTS = startTS;
 
     let totalRecords = 0;
-    for (let fileIndx = binaryFiles.length; fileIndx--;) {
+    let recordingStopped = false;
+    for (let fileIndx = binaryFiles.length; !recordingStopped && fileIndx--;) {
       const fn = binaryFiles[fileIndx];
 
       // deno-lint-ignore no-sync-fn-in-async-fn
@@ -133,6 +140,7 @@ async function recordFiles(
         }
 
         let batchStart = 0;
+
         while (true) {
           counter++;
           const remainingRecords = fileRecords - batchStart;
@@ -145,6 +153,7 @@ async function recordFiles(
           if (bytesRead === null || bytesRead === 0) break;
 
           const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
+
           for (let j = 0; j < recordsRead; j++) {
             const recordIndex = batchStart + j;
             if (!recordSet.has(recordIndex)) continue;
@@ -198,8 +207,18 @@ async function recordFiles(
                   format(totalTime, { ignoreZero: true }),
                 ),
               );
+              if (timeoutTS && now > timeoutTS) {
+                console.log(
+                  `Discover ${blue(ID)} timed out after ${
+                    yellow(format(totalTime, { ignoreZero: true }))
+                  }`,
+                );
+                recordingStopped = true;
+                break;
+              }
             }
           }
+          if (recordingStopped) break;
           batchStart += batchSize;
         }
       } finally {

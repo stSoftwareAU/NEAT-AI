@@ -89,6 +89,8 @@ export function createNeatConfig(options: NeatOptions) {
     discoverySampleRate: options.discoverySampleRate === undefined
       ? 0.05
       : options.discoverySampleRate,
+
+    discoveryTimeOutMinutes: options.discoveryTimeOutMinutes || 0,
   };
   validate(config);
   return Object.freeze(config);
