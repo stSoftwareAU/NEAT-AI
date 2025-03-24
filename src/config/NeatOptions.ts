@@ -132,6 +132,9 @@ export interface NeatArguments {
 
   /** Discovery Sample rate */
   discoverySampleRate: number;
+
+  /** The maximum number of minutes to record for */
+  discoveryTimeOutMinutes: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

@@ -148,7 +148,7 @@ export class Neat {
 
   private alreadyScheduledMap = new Map<string, number>();
 
-  scheduleDiscovery(creature: Creature) {
+  scheduleDiscovery(creature: Creature, timeOutMinutes: number) {
     if (this.config.discoverySampleRate <= 0) {
       return;
     }
@@ -181,7 +181,9 @@ export class Neat {
       );
     }
 
-    const p = w.discover(creature, this.config).then((r) => {
+    const options = { ...this.config };
+    options.discoveryTimeOutMinutes = timeOutMinutes;
+    const p = w.discover(creature, options).then((r) => {
       assert(r.discover, "No discovery found");
 
       this.discoveryComplete.push(r);
@@ -413,6 +415,15 @@ export class Neat {
 
     const error = getTag(fittest, "error");
     assert(error, "No error tag found");
+    let trainingTimeOutMinutes = 0;
+    if (this.endTimeTS) {
+      const diff = this.endTimeTS - Date.now();
+      trainingTimeOutMinutes = Math.round(diff / 60_000);
+
+      if (trainingTimeOutMinutes < 1) {
+        trainingTimeOutMinutes = -1;
+      }
+    }
 
     if (previousFittestUUID !== fittest.uuid) {
       const simplified = simplify(fittest);
@@ -421,15 +432,8 @@ export class Neat {
         elitists.push(simplified);
       }
 
-      this.scheduleDiscovery(fittest);
-    }
-    let trainingTimeOutMinutes = 0;
-    if (this.endTimeTS) {
-      const diff = this.endTimeTS - Date.now();
-      trainingTimeOutMinutes = Math.round(diff / 60_000);
-
-      if (trainingTimeOutMinutes < 1) {
-        trainingTimeOutMinutes = -1;
+      if (trainingTimeOutMinutes !== -1) {
+        this.scheduleDiscovery(fittest, trainingTimeOutMinutes);
       }
     }
 
