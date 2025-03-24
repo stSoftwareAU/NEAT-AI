@@ -113,7 +113,10 @@ export class DiscoverStructure {
         b.expectedErrorReduction - a.expectedErrorReduction
       );
       const bestCandidate = candidates[0];
-      if (bestCandidate.expectedErrorReduction > 0 && bestCandidate.expectedImprovementPercentage > 0.01) {
+      if (
+        bestCandidate.expectedErrorReduction > 0 &&
+        bestCandidate.expectedImprovementPercentage > 0.01
+      ) {
         const msg =
           `Discovered synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${bestCandidate.weight} expected error reduction ${bestCandidate.expectedErrorReduction} improved ${bestCandidate.improvedCount} of ${bestCandidate.totalCount} (${
             (bestCandidate.expectedImprovementPercentage * 100).toFixed(1)
