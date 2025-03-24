@@ -65,7 +65,7 @@ async function recordFiles(
 ): Promise<DiscoverResult> {
   const sampleRate = Math.min(
     1,
-    Math.max(0.0001, options.discoverySampleRate || 1),
+    Math.max(0.0001, options.discoverySampleRate || 0),
   );
   const uuid = CreatureUtil.makeUUID(creature);
 
