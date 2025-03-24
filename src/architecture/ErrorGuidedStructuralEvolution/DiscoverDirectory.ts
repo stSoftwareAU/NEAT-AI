@@ -79,9 +79,10 @@ async function recordFiles(
   }
 
   let timeoutTS = 0;
+  const startTime = Date.now();
   const discoveryTimeOutMinutes = options.discoveryTimeOutMinutes ?? 0;
   if (discoveryTimeOutMinutes > 0) {
-    timeoutTS = Date.now() + discoveryTimeOutMinutes * 60 * 1000;
+    timeoutTS = startTime + discoveryTimeOutMinutes * 60 * 1000;
   }
 
   const discoverStructure = new DiscoverStructure(creature);
@@ -236,19 +237,29 @@ async function recordFiles(
       promises.push(p);
     }
     await Promise.all(promises);
+    if (options.log) {
+      const recordTime = Date.now() - startTime;
+      console.log(
+        `Discover ${blue(ID)} recorded time ${
+          yellow(format(recordTime, { ignoreZero: true }))
+        }`,
+      );
+    }
     const focusUUID = creature
       .neurons[
         creature.neurons.length - 1 -
         Math.floor(creature.output * Math.random())
       ].uuid;
-    const discoverStartTime = Date.now();
+    const analyzeStartTime = Date.now();
     const enhanced = await discoverStructure.analyze(focusUUID);
-    const discoverTime = Date.now() - discoverStartTime;
-    console.log(
-      `Discover ${blue(ID)} analyze ${
-        yellow(format(discoverTime, { ignoreZero: true }))
-      }`,
-    );
+    if (options.log) {
+      const analyzeTime = Date.now() - analyzeStartTime;
+      console.log(
+        `Discover ${blue(ID)} analyze time ${
+          yellow(format(analyzeTime, { ignoreZero: true }))
+        }`,
+      );
+    }
     return {
       ID: ID,
       enhanced: enhanced ? enhanced.exportJSON() : undefined,
