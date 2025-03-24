@@ -108,6 +108,7 @@ async function recordFiles(
     const startTS = Date.now();
     let lastTS = startTS;
 
+    const dataSet: DataRecordInterface[] = [];
     let totalRecords = 0;
     let recordingStopped = false;
     for (let fileIndx = binaryFiles.length; !recordingStopped && fileIndx--;) {
@@ -173,8 +174,12 @@ async function recordFiles(
                 ),
               ),
             };
-            const p = discoverStructure.record([data]);
-            promises.push(p);
+            dataSet.push(data);
+            if (dataSet.length >= 1024) {
+              const p = discoverStructure.record(dataSet.slice());
+              dataSet.length = 0;
+              promises.push(p);
+            }
             const now = Date.now();
             const diff = now - lastTS;
 
@@ -224,6 +229,11 @@ async function recordFiles(
       } finally {
         file.close();
       }
+    }
+    if (dataSet.length > 0) {
+      const p = discoverStructure.record(dataSet.slice());
+      dataSet.length = 0;
+      promises.push(p);
     }
     await Promise.all(promises);
     const focusUUID = creature
