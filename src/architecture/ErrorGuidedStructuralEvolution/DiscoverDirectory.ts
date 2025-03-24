@@ -175,7 +175,7 @@ async function recordFiles(
               ),
             };
             dataSet.push(data);
-            if (dataSet.length >= 1024) {
+            if (dataSet.length >= 512) {
               const p = discoverStructure.record(dataSet.slice());
               dataSet.length = 0;
               promises.push(p);
@@ -241,8 +241,14 @@ async function recordFiles(
         creature.neurons.length - 1 -
         Math.floor(creature.output * Math.random())
       ].uuid;
-    const enhanced = await discoverStructure.discover(focusUUID);
-
+    const discoverStartTime = Date.now();
+    const enhanced = await discoverStructure.analyze(focusUUID);
+    const discoverTime = Date.now() - discoverStartTime;
+    console.log(
+      `Discover ${blue(ID)} analyze ${
+        yellow(format(discoverTime, { ignoreZero: true }))
+      }`,
+    );
     return {
       ID: ID,
       enhanced: enhanced ? enhanced.exportJSON() : undefined,
