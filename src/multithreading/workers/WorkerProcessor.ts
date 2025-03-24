@@ -100,6 +100,7 @@ export class WorkerProcessor {
         this.dataSetDir,
         data.discover.options,
       );
+      creature.dispose();
       let enhanced = undefined;
       if (result.enhanced) {
         enhanced = JSON.stringify(result.enhanced);

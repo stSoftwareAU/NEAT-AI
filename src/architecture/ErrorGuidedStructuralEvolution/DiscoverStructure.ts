@@ -54,6 +54,10 @@ export class DiscoverStructure {
   }
 
   public async cleanUp() {
+    assert(this.initialized, "Not initialized");
+    this.initialized = false;
+    this.recorded = false;
+    this.creature.dispose();
     await Deno.remove(this.tempDir, { recursive: true });
   }
 
