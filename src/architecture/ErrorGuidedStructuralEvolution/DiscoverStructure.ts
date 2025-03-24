@@ -104,7 +104,7 @@ export class DiscoverStructure {
 
   private discoveries: CandidateSynapse[] = [];
 
-  public async discover(neuronUUID: string) {
+  public async analyze(neuronUUID: string) {
     assert(this.recorded, "Not recorded");
     const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
     const candidates = await this.loadCandidateSynapses(neuronUUID, records);
