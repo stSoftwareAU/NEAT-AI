@@ -135,6 +135,9 @@ export interface NeatArguments {
 
   /** The maximum number of minutes to record for */
   discoveryTimeOutMinutes: number;
+
+  /** The number of observations per promise */
+  discoveryBatchSize: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;
