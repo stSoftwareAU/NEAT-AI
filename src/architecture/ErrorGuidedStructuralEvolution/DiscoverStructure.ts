@@ -287,7 +287,7 @@ export class DiscoverStructure {
       expectedErrorReduction = avgAbsError * (negativeCount - positiveCount);
     }
 
-    const weightSign = 1;//positiveBetter ? 1 : -1;
+    const weightSign = 1; //positiveBetter ? 1 : -1;
 
     return {
       fromNeuronUUID: fromNeuronUUID,
