@@ -40,10 +40,14 @@ export class DiscoverStructure {
   public async initialize() {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
-    const headCSV = "activation,errors\n";
 
     const promises: Promise<void>[] = [];
     this.creature.neurons.forEach((neuron) => {
+      let headCSV = "activation\n";
+      if (neuron.type !== "input") {
+        headCSV = "activation,errors\n";
+      }
+
       const writePromise = Deno.writeTextFile(
         `${this.tempDir}/${neuron.uuid}.csv`,
         headCSV,
@@ -64,6 +68,24 @@ export class DiscoverStructure {
   public async record(trainingData: DataRecordInterface[]) {
     assert(this.initialized, "Not initialized");
     this.recorded = true;
+    const promises: Promise<void>[] = [];
+
+    this.creature.neurons.forEach((neuron) => {
+      if (neuron.type === "input") {
+        const dataCSV = trainingData.map((record) => {
+          return `${record.input[neuron.index]}`;
+        }).join("\n");
+
+        const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
+        const writePromise = Deno.writeTextFile(fileName, dataCSV, {
+          append: true,
+        })
+          .catch((e) => console.error(`Failed write to ${fileName}`, e));
+
+        promises.push(writePromise);
+      }
+    });
+
     const data = new Map<
       string,
       Array<DiscoverRecord>
@@ -73,23 +95,24 @@ export class DiscoverStructure {
       const discoverMap = this.creature.record(new Float32Array(record.output));
 
       this.creature.neurons.forEach((neuron) => {
-        let discoverRecord = discoverMap.get(neuron.uuid);
-        if (!discoverRecord) {
-          discoverRecord = {
-            activation: this.creature.state.activations[neuron.index],
-            errors: "",
-          };
+        if (neuron.type !== "input") {
+          let discoverRecord = discoverMap.get(neuron.uuid);
+          if (!discoverRecord) {
+            discoverRecord = {
+              activation: this.creature.state.activations[neuron.index],
+              errors: "",
+            };
+          }
+          let array = data.get(neuron.uuid);
+          if (!array) {
+            array = [];
+            data.set(neuron.uuid, array);
+          }
+          array.push(discoverRecord);
         }
-        let array = data.get(neuron.uuid);
-        if (!array) {
-          array = [];
-          data.set(neuron.uuid, array);
-        }
-        array.push(discoverRecord);
       });
     });
 
-    const promises: Promise<void>[] = [];
     for (const [neuronUUID, records] of data.entries()) {
       const dataCSV = records.map((discoverRecord) => {
         return `${discoverRecord.activation},${discoverRecord.errors}\n`;
@@ -163,11 +186,10 @@ export class DiscoverStructure {
       skipFirstRow: true,
     });
     return records.map((record) => {
-      const value = Number.parseFloat(record.value);
       const activation = Number.parseFloat(record.activation);
 
       const errors = record.errors;
-      return { value, activation, errors };
+      return { activation, errors };
     });
   }
 
@@ -208,12 +230,15 @@ export class DiscoverStructure {
       `${this.tempDir}/${fromNeuronUUID}.csv`,
     );
     assert(fromRecords.length === activationCount, "Mismatched record count");
-
+    if (fromNeuronUUID === "input-22") {
+      console.log("zzz");
+    }
     let positiveCount = 0;
     let negativeCount = 0;
     let sumAbsActivation = 0;
     let sumAbsError = 0;
-
+    let totalError = 0;
+    let totalActivation = 0;
     for (let indx = 0; indx < activationCount; indx++) {
       const toRecord = toRecords[indx];
 
@@ -226,10 +251,11 @@ export class DiscoverStructure {
         const error = Number(errorTxt);
         neuronErrorTotal += error;
         neuronPaths++;
+        totalActivation += fromRecord.activation;
       });
       assert(neuronPaths > 0, "neuronPaths must be greater than 0");
       const error = neuronErrorTotal / neuronPaths;
-
+      totalError += error;
       sumAbsError += Math.abs(error);
       if (error > 0) {
         if (fromRecord.activation > 0) {
@@ -248,10 +274,11 @@ export class DiscoverStructure {
 
     const positiveBetter = positiveCount > negativeCount;
 
-    const avgAbsActivation = sumAbsActivation / activationCount;
+    // const avgAbsActivation = sumAbsActivation / activationCount;
     const avgAbsError = sumAbsError / activationCount;
-
-    const initialWeightMagnitude = avgAbsError / (avgAbsActivation + 1e-8);
+    const avgError = totalError / activationCount;
+    const avgActivation = totalActivation / activationCount;
+    const initialWeightMagnitude = avgError / (avgActivation + 1e-8);
 
     let expectedErrorReduction = 0;
     if (positiveBetter) {
@@ -260,7 +287,7 @@ export class DiscoverStructure {
       expectedErrorReduction = avgAbsError * (negativeCount - positiveCount);
     }
 
-    const weightSign = positiveBetter ? 1 : -1;
+    const weightSign = 1;//positiveBetter ? 1 : -1;
 
     return {
       fromNeuronUUID: fromNeuronUUID,
