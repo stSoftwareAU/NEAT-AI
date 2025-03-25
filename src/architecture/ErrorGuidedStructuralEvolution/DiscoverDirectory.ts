@@ -76,7 +76,9 @@ async function recordFiles(
     console.info(
       `Discovery ${blue(ID)} with ${binaryFiles.length} binary file${
         binaryFiles.length > 1 ? "s" : ""
-      }, sample rate: ${fp(sampleRate)}`,
+      }, sample rate: ${fp(sampleRate)}, batch size: ${
+        yellow(discoveryBatchSize.toLocaleString("en-AU"))
+      }`,
     );
   }
 
