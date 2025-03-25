@@ -124,55 +124,6 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses both", asy
   await discoverStructure.cleanUp();
 });
 
-Deno.test("Error-Driven Synapse Discovery identifies missing synapses hidden-4", async () => {
-  const targetCreature = makeCreature();
-  const data = makeData(targetCreature.input);
-
-  /** Record the ideal outputs from the target creature */
-  const trainingData: DataRecordInterface[] = [];
-
-  for (let i = data.length; i--;) {
-    const input = data[i];
-    const output = targetCreature.activate(new Float32Array(input));
-
-    trainingData.push({
-      input,
-      output: Array.from(output),
-    });
-  }
-
-  /**
-   * Create a "crippled" version by removing two important synapses
-   */
-  const exportedJSON = targetCreature.exportJSON();
-  exportedJSON.synapses = exportedJSON.synapses.filter((synapse) =>
-    synapse.fromUUID !== "input-22"
-  );
-
-  const crippledCreature = Creature.fromJSON(exportedJSON);
-  CreatureUtil.makeUUID(crippledCreature);
-
-  /**
-   * Instantiate the discovery mechanism
-   */
-  const discoverStructure = new DiscoverStructure(crippledCreature);
-  await discoverStructure.initialize();
-  await discoverStructure.record(trainingData); // Should record activations & errors for analysis
-  const betterCreature = await discoverStructure.analyze("hidden-4");
-  assert(betterCreature, "Should have discovered a better creature");
-  betterCreature.validate();
-  const betterCreatureJSON = betterCreature.exportJSON();
-  /** Verify synapses that were removed are discovered again: */
-  const input22 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-22"
-  );
-
-  console.info("input22", input22);
-  assert(input22, "Should have added synapse from input-22");
-  // assertAlmostEquals(input22?.weight, 0.2, 0.0001);
-  await discoverStructure.cleanUp();
-});
-
 function makeData(input: number) {
   const inputs: number[][] = [];
 

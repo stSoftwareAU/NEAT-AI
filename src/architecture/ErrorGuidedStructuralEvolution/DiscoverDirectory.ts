@@ -63,10 +63,12 @@ async function recordFiles(
   binaryFiles: string[],
   options: NeatOptions,
 ): Promise<DiscoverResult> {
+  assert(options.discoverySampleRate);
   const sampleRate = Math.min(
     1,
-    Math.max(0.0001, options.discoverySampleRate || 0),
+    Math.max(0.0001, options.discoverySampleRate),
   );
+  const discoveryBatchSize = options.discoveryBatchSize || 512;
   const uuid = CreatureUtil.makeUUID(creature);
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
@@ -102,8 +104,6 @@ async function recordFiles(
     const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
     const batchArray = new Float32Array(batchBuffer.buffer);
 
-    const indxMap = new Map<string, Set<number>>();
-
     let knownSampleCount = -1;
     let counter = 0;
     const startTS = Date.now();
@@ -119,27 +119,23 @@ async function recordFiles(
       const file = Deno.openSync(fn, { read: true });
 
       try {
-        let recordSet = indxMap.get(fn);
         const stat = file.statSync();
         const fileRecords = stat.size / BYTES_PER_RECORD;
 
-        if (!recordSet) {
-          totalRecords += fileRecords;
-          if (fileIndx === 0) {
-            knownSampleCount = totalRecords;
-          }
-          const len = Math.ceil(fileRecords * sampleRate);
-          const tmpIndexes = Int32Array.from(
-            { length: fileRecords },
-            (_, i) => i,
-          ); // Create an array of indices
-
-          CreatureUtil.shuffle(tmpIndexes);
-          const indices = tmpIndexes.slice(0, len);
-
-          recordSet = new Set(indices);
-          indxMap.set(fn, recordSet);
+        totalRecords += fileRecords;
+        if (fileIndx === 0) {
+          knownSampleCount = totalRecords;
         }
+        const len = Math.ceil(fileRecords * sampleRate);
+        const tmpIndexes = Int32Array.from(
+          { length: fileRecords },
+          (_, i) => i,
+        ); // Create an array of indices
+
+        CreatureUtil.shuffle(tmpIndexes);
+        const indices = tmpIndexes.slice(0, len);
+
+        const recordSet = new Set(indices);
 
         let batchStart = 0;
 
@@ -176,7 +172,7 @@ async function recordFiles(
               ),
             };
             dataSet.push(data);
-            if (dataSet.length >= 512) {
+            if (dataSet.length >= discoveryBatchSize) {
               const p = discoverStructure.record(dataSet.slice());
               dataSet.length = 0;
               promises.push(p);
@@ -188,7 +184,7 @@ async function recordFiles(
               lastTS = now;
               const totalTime = now - startTS;
               console.log(
-                `Discover ${blue(ID)} samples`,
+                `Discovery ${blue(ID)} samples`,
                 yellow(counter.toLocaleString("en-AU")),
                 `${
                   knownSampleCount > 0
@@ -215,7 +211,7 @@ async function recordFiles(
               );
               if (timeoutTS && now > timeoutTS) {
                 console.log(
-                  `Discover ${blue(ID)} timed out after ${
+                  `Discovery ${blue(ID)} timed out after ${
                     yellow(format(totalTime, { ignoreZero: true }))
                   }`,
                 );
@@ -240,7 +236,7 @@ async function recordFiles(
     if (options.log) {
       const recordTime = Date.now() - startTime;
       console.log(
-        `Discover ${blue(ID)} recorded time ${
+        `Discovery ${blue(ID)} recorded time ${
           yellow(format(recordTime, { ignoreZero: true }))
         }`,
       );
@@ -255,7 +251,7 @@ async function recordFiles(
     if (options.log) {
       const analyzeTime = Date.now() - analyzeStartTime;
       console.log(
-        `Discover ${blue(ID)} analyze time ${
+        `Discovery ${blue(ID)} analyze time ${
           yellow(format(analyzeTime, { ignoreZero: true }))
         }`,
       );

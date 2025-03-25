@@ -62,6 +62,7 @@ export class DiscoverStructure {
     this.initialized = false;
     this.recorded = false;
     this.creature.dispose();
+    this.discoveries = [];
     await Deno.remove(this.tempDir, { recursive: true });
   }
 
@@ -230,9 +231,7 @@ export class DiscoverStructure {
       `${this.tempDir}/${fromNeuronUUID}.csv`,
     );
     assert(fromRecords.length === activationCount, "Mismatched record count");
-    if (fromNeuronUUID === "input-22") {
-      console.log("zzz");
-    }
+
     let positiveCount = 0;
     let negativeCount = 0;
     let sumAbsActivation = 0;
@@ -274,7 +273,6 @@ export class DiscoverStructure {
 
     const positiveBetter = positiveCount > negativeCount;
 
-    // const avgAbsActivation = sumAbsActivation / activationCount;
     const avgAbsError = sumAbsError / activationCount;
     const avgError = totalError / activationCount;
     const avgActivation = totalActivation / activationCount;
@@ -287,12 +285,10 @@ export class DiscoverStructure {
       expectedErrorReduction = avgAbsError * (negativeCount - positiveCount);
     }
 
-    const weightSign = 1; //positiveBetter ? 1 : -1;
-
     return {
       fromNeuronUUID: fromNeuronUUID,
       toNeuronUUID: toNeuronUUID,
-      weight: weightSign * initialWeightMagnitude,
+      weight: initialWeightMagnitude,
       expectedErrorReduction,
       improvedCount: positiveBetter ? positiveCount : negativeCount,
       totalCount: activationCount,
