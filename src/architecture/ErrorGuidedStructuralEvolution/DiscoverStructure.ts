@@ -73,8 +73,8 @@ export class DiscoverStructure {
     this.creature.neurons.forEach((neuron) => {
       if (neuron.type === "input") {
         const dataCSV = trainingData.map((record) => {
-          return `${record.input[neuron.index]}`;
-        }).join("\n");
+          return `${record.input[neuron.index]}\n`;
+        }).join("");
 
         const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
         const writePromise = Deno.writeTextFile(fileName, dataCSV, {
