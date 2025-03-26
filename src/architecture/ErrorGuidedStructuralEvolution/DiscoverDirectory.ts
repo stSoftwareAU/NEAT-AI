@@ -30,9 +30,10 @@ class DataRecorder {
     private options: NeatOptions,
   ) {
     this.BYTES_PER_RECORD = (creature.input + creature.output) * 4;
+    const discoveryBufferSize = options.discoveryBufferSize || 128 * 1024;
     this.BATCH_SIZE = Math.max(
       1,
-      Math.floor((128 * 1024) / this.BYTES_PER_RECORD),
+      Math.floor(discoveryBufferSize / this.BYTES_PER_RECORD),
     );
 
     this.sampleRate = Math.min(
@@ -84,12 +85,12 @@ class DataRecorder {
     return await this.recordFiles(binaryFiles);
   }
 
-  private async readBatch(
+  private readBatch(
     file: Deno.FsFile,
     batchBuffer: Uint8Array,
     batchSize: number,
   ): Promise<number | null> {
-    return await file.read(
+    return file.read(
       batchBuffer.subarray(0, batchSize * this.BYTES_PER_RECORD),
     );
   }
