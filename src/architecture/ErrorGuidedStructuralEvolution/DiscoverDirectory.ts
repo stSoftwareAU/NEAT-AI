@@ -224,7 +224,7 @@ class DataRecorder {
           }`,
         );
       }
-      await Promise.all(neuronPromisesMap.entries());
+      await Promise.all([...neuronPromisesMap.values()]);
       if (options.log) {
         const recordTime = Date.now() - startTime;
         console.log(
