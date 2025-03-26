@@ -7,6 +7,15 @@ import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
 import { DiscoverStructure } from "./DiscoverStructure.ts";
 
+export async function recordDirectory(
+  creature: Creature,
+  dataDir: string,
+  options: NeatOptions,
+) {
+  const recorder = new DataRecorder(creature, options);
+  return await recorder.recordDirectory(dataDir);
+}
+
 class DataRecorder {
   private BYTES_PER_RECORD: number;
   private BATCH_SIZE: number;
@@ -46,7 +55,7 @@ class DataRecorder {
     return files;
   }
 
-  async getBinaryFiles(dataDir: string): Promise<string[]> {
+  private async getBinaryFiles(dataDir: string): Promise<string[]> {
     const binaryFiles: string[] = [];
     for await (const dirEntry of Deno.readDir(dataDir)) {
       if (dirEntry.isFile && dirEntry.name.endsWith(".bin")) {
@@ -92,7 +101,7 @@ class DataRecorder {
       dataSet: DataRecordInterface[];
       promises: Promise<void>[];
     },
-  ): Promise<void> {
+  ) {
     const { creature } = this;
     const file = await Deno.open(filePath, { read: true });
     try {
@@ -204,13 +213,4 @@ class DataRecorder {
       enhanced: enhanced ? enhanced.exportJSON() : undefined,
     };
   }
-}
-
-export async function recordDirectory(
-  creature: Creature,
-  dataDir: string,
-  options: NeatOptions,
-) {
-  const recorder = new DataRecorder(creature, options);
-  return await recorder.recordDirectory(dataDir);
 }
