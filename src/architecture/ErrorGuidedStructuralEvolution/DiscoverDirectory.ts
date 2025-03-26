@@ -24,6 +24,7 @@ class DataRecorder {
   private discoveryBatchSize: number;
   private ID: string;
   private timeoutTS: number;
+  private disableShuffle: boolean;
 
   constructor(
     private creature: Creature,
@@ -47,6 +48,8 @@ class DataRecorder {
     this.timeoutTS = options.discoveryTimeOutMinutes
       ? Date.now() + options.discoveryTimeOutMinutes * 60 * 1000
       : 0;
+
+    this.disableShuffle = options.discoveryDisableShuffle || false;
   }
 
   private shuffleFiles(files: string[]): string[] {
@@ -63,6 +66,9 @@ class DataRecorder {
       if (dirEntry.isFile && dirEntry.name.endsWith(".bin")) {
         binaryFiles.push(`${dataDir}/${dirEntry.name}`);
       }
+    }
+    if (this.disableShuffle) {
+      return binaryFiles;
     }
     return this.shuffleFiles(binaryFiles);
   }
@@ -112,7 +118,9 @@ class DataRecorder {
       const sampleSize = Math.ceil(fileRecords * this.sampleRate);
 
       const tmpIndexes = Int32Array.from({ length: fileRecords }, (_, i) => i);
-      CreatureUtil.shuffle(tmpIndexes);
+      if (!this.disableShuffle) {
+        CreatureUtil.shuffle(tmpIndexes);
+      }
       const recordSet = new Set(tmpIndexes.slice(0, sampleSize));
 
       const batchBuffer = new Uint8Array(
