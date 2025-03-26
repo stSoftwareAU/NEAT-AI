@@ -32,16 +32,17 @@ export class DiscoverStructure {
   constructor(creature: Creature) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
-    this.tempDir = `.trace/DiscoverStructure/${creature.uuid}`;
+    this.tempDir = `.discovery/${creature.uuid}_${
+      Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
+    }`;
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
 
-  public async initialize() {
+  public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
-    const promises: Promise<void>[] = [];
     this.creature.neurons.forEach((neuron) => {
       let headCSV = "activation\n";
       if (neuron.type !== "input") {
@@ -51,10 +52,13 @@ export class DiscoverStructure {
       const writePromise = Deno.writeTextFile(
         `${this.tempDir}/${neuron.uuid}.csv`,
         headCSV,
+        {
+          append: false,
+          createNew: true,
+        },
       );
-      promises.push(writePromise);
+      neuronPromisesMap.set(neuron.uuid, writePromise);
     });
-    await Promise.all(promises);
   }
 
   public async cleanUp() {
@@ -68,7 +72,7 @@ export class DiscoverStructure {
 
   public record(
     trainingData: DataRecordInterface[],
-    writePromises: Promise<void>[],
+    neuronPromisesMap: Map<string, Promise<void>>,
   ) {
     assert(this.initialized, "Not initialized");
     this.recorded = true;
@@ -80,54 +84,50 @@ export class DiscoverStructure {
         }).join("");
 
         const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
-        const writePromise = Deno.writeTextFile(fileName, dataCSV, {
-          append: true,
-        })
-          .catch((e) => console.error(`Failed write to ${fileName}`, e));
+        const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
 
-        writePromises.push(writePromise);
+        const nextPromise = previousPromise.then(() =>
+          Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
+            .catch((e) => console.error(`Failed write to ${fileName}`, e))
+        );
+
+        neuronPromisesMap.set(neuron.uuid, nextPromise);
       }
     });
 
-    const data = new Map<
-      string,
-      Array<DiscoverRecord>
-    >();
+    const data = new Map<string, Array<DiscoverRecord>>();
     trainingData.forEach((record) => {
       this.creature.activate(new Float32Array(record.input));
       const discoverMap = this.creature.record(new Float32Array(record.output));
 
       this.creature.neurons.forEach((neuron) => {
         if (neuron.type !== "input") {
-          let discoverRecord = discoverMap.get(neuron.uuid);
-          if (!discoverRecord) {
-            discoverRecord = {
-              activation: this.creature.state.activations[neuron.index],
-              errors: "",
-            };
+          const discoverRecord = discoverMap.get(neuron.uuid) || {
+            activation: this.creature.state.activations[neuron.index],
+            errors: "",
+          };
+          if (!data.has(neuron.uuid)) {
+            data.set(neuron.uuid, []);
           }
-          let array = data.get(neuron.uuid);
-          if (!array) {
-            array = [];
-            data.set(neuron.uuid, array);
-          }
-          array.push(discoverRecord);
+          data.get(neuron.uuid)!.push(discoverRecord);
         }
       });
     });
 
     for (const [neuronUUID, records] of data.entries()) {
-      const dataCSV = records.map((discoverRecord) => {
-        return `${discoverRecord.activation},${discoverRecord.errors}\n`;
-      }).join("");
+      const dataCSV = records.map((discoverRecord) =>
+        `${discoverRecord.activation},${discoverRecord.errors}\n`
+      ).join("");
 
       const fileName = `${this.tempDir}/${neuronUUID}.csv`;
-      const writePromise = Deno.writeTextFile(fileName, dataCSV, {
-        append: true,
-      })
-        .catch((e) => console.error(`Failed write to ${fileName}`, e));
+      const previousPromise = neuronPromisesMap.get(neuronUUID)!;
 
-      writePromises.push(writePromise);
+      const nextPromise = previousPromise.then(() =>
+        Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
+          .catch((e) => console.error(`Failed write to ${fileName}`, e))
+      );
+
+      neuronPromisesMap.set(neuronUUID, nextPromise);
     }
   }
 
@@ -184,15 +184,22 @@ export class DiscoverStructure {
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
-    const records = parseCsv(await Deno.readTextFile(file), {
-      skipFirstRow: true,
-    });
-    return records.map((record) => {
-      const activation = Number.parseFloat(record.activation);
+    const data = await Deno.readTextFile(file);
+    try {
+      const records = parseCsv(data, {
+        skipFirstRow: true,
+      });
+      return records.map((record) => {
+        const activation = Number.parseFloat(record.activation);
 
-      const errors = record.errors;
-      return { activation, errors };
-    });
+        const errors = record.errors;
+        return { activation, errors };
+      });
+    } catch (e) {
+      console.error(`File: ${file}`, e);
+      console.info(data);
+      throw e;
+    }
   }
 
   private async loadCandidateSynapses(
@@ -228,10 +235,14 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse> {
     const activationCount = toRecords.length;
 
+    const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
     const fromRecords = await this.loadCSV(
-      `${this.tempDir}/${fromNeuronUUID}.csv`,
+      fileName,
     );
-    assert(fromRecords.length === activationCount, "Mismatched record count");
+    assert(
+      fromRecords.length === activationCount,
+      `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
+    );
 
     let positiveCount = 0;
     let negativeCount = 0;

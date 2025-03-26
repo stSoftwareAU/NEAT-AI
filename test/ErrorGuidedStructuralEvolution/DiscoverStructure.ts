@@ -102,10 +102,11 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses both", asy
    * Instantiate the discovery mechanism
    */
   const discoverStructure = new DiscoverStructure(crippledCreature);
-  await discoverStructure.initialize();
-  const writePromises: Promise<void>[] = [];
-  discoverStructure.record(trainingData, writePromises); // Should record activations & errors for analysis
-  await Promise.all(writePromises);
+  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+  discoverStructure.initialize(neuronPromisesMap);
+  discoverStructure.record(trainingData, neuronPromisesMap);
+  await Promise.all([...neuronPromisesMap.values()]);
+
   await discoverStructure.analyze("hidden-4");
   const betterCreature = await discoverStructure.analyze("hidden-3");
   assert(betterCreature, "Should have discovered a better creature");
