@@ -91,16 +91,6 @@ class DataRecorder {
     return await this.recordFiles(binaryFiles);
   }
 
-  private readBatch(
-    file: Deno.FsFile,
-    batchBuffer: Uint8Array,
-    batchSize: number,
-  ): Promise<number | null> {
-    return file.read(
-      batchBuffer.subarray(0, batchSize * this.BYTES_PER_RECORD),
-    );
-  }
-
   private async processFile(
     filePath: string,
     discoverStructure: DiscoverStructure,
@@ -111,6 +101,7 @@ class DataRecorder {
     },
   ) {
     const { creature } = this;
+    let readTime = 0;
     const file = await Deno.open(filePath, { read: true });
     try {
       const stat = await file.stat();
@@ -134,8 +125,12 @@ class DataRecorder {
         (!this.timeoutTS || Date.now() <= this.timeoutTS)
       ) {
         const batchSize = Math.min(this.BATCH_SIZE, fileRecords - batchStart);
-        // deno-lint-ignore no-await-in-loop
-        const bytesRead = await this.readBatch(file, batchBuffer, batchSize);
+
+        const readStartTime = Date.now();
+        const bytesRead = file.readSync(
+          batchBuffer.subarray(0, batchSize * this.BYTES_PER_RECORD),
+        );
+        readTime += Date.now() - readStartTime;
         if (!bytesRead) break;
 
         const recordsRead = Math.floor(bytesRead / this.BYTES_PER_RECORD);
@@ -169,6 +164,14 @@ class DataRecorder {
       }
     } finally {
       file.close();
+    }
+
+    if (this.options.log) {
+      console.log(
+        `Discovery ${blue(this.ID)} read time ${
+          yellow(format(readTime, { ignoreZero: true }))
+        }`,
+      );
     }
   }
 
