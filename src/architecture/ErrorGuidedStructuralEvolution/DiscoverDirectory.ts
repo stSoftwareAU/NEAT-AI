@@ -6,6 +6,7 @@ import { CreatureUtil } from "../CreatureUtils.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
 import { DiscoverStructure } from "./DiscoverStructure.ts";
+import { format } from "@std/fmt/duration";
 
 export async function recordDirectory(
   creature: Creature,
@@ -164,7 +165,7 @@ class DataRecorder {
 
   private async recordFiles(binaryFiles: string[]): Promise<DiscoverResult> {
     const { creature, options } = this;
-
+    const startTime = Date.now();
     if (options.log) {
       console.info(
         `Discovery ${
@@ -197,15 +198,38 @@ class DataRecorder {
     if (dataSet.length > 0) {
       promises.push(discoverStructure.record(dataSet));
     }
-
+    if (options.log) {
+      const scannedTime = Date.now() - startTime;
+      console.log(
+        `Discovery ${blue(this.ID)} scanning time ${
+          yellow(format(scannedTime, { ignoreZero: true }))
+        }`,
+      );
+    }
     await Promise.all(promises);
-
+    if (options.log) {
+      const recordTime = Date.now() - startTime;
+      console.log(
+        `Discovery ${blue(this.ID)} recorded time ${
+          yellow(format(recordTime, { ignoreZero: true }))
+        }`,
+      );
+    }
     const focusUUID = creature.neurons[
       creature.neurons.length - 1 - Math.floor(creature.output * Math.random())
     ].uuid;
 
-    const enhanced = await discoverStructure.analyze(focusUUID);
+    const analyzeStartTime = Date.now();
 
+    const enhanced = await discoverStructure.analyze(focusUUID);
+    if (options.log) {
+      const analyzeTime = Date.now() - analyzeStartTime;
+      console.log(
+        `Discovery ${blue(this.ID)} analyze time ${
+          yellow(format(analyzeTime, { ignoreZero: true }))
+        }`,
+      );
+    }
     await discoverStructure.cleanUp();
 
     return {
