@@ -92,7 +92,7 @@ export class DiscoverStructure {
 
         const neuronPromise = neuronPromisesMap.get(neuron.uuid);
         assert(neuronPromise, "Neuron promise not found");
-        const chainPromise=neuronPromise.then(async () => await writePromise);
+        const chainPromise = neuronPromise.then(async () => await writePromise);
         neuronPromisesMap.set(neuron.uuid, chainPromise);
       }
     });
@@ -138,7 +138,7 @@ export class DiscoverStructure {
 
       const neuronPromise = neuronPromisesMap.get(neuronUUID);
       assert(neuronPromise, "Neuron promise not found");
-      const chainPromise=neuronPromise.then(async () => await writePromise);
+      const chainPromise = neuronPromise.then(async () => await writePromise);
       neuronPromisesMap.set(neuronUUID, chainPromise);
     }
   }
