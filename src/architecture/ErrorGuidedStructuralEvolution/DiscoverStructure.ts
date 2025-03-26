@@ -37,11 +37,10 @@ export class DiscoverStructure {
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
 
-  public async initialize() {
+  public initialize(writePromises: Promise<void>[]) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
-    const promises: Promise<void>[] = [];
     this.creature.neurons.forEach((neuron) => {
       let headCSV = "activation\n";
       if (neuron.type !== "input") {
@@ -52,9 +51,8 @@ export class DiscoverStructure {
         `${this.tempDir}/${neuron.uuid}.csv`,
         headCSV,
       );
-      promises.push(writePromise);
+      writePromises.push(writePromise);
     });
-    await Promise.all(promises);
   }
 
   public async cleanUp() {
@@ -82,6 +80,7 @@ export class DiscoverStructure {
         const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
         const writePromise = Deno.writeTextFile(fileName, dataCSV, {
           append: true,
+          create: false,
         })
           .catch((e) => console.error(`Failed write to ${fileName}`, e));
 

@@ -91,7 +91,7 @@ class DataRecorder {
     return await this.recordFiles(binaryFiles);
   }
 
-  private async processFile(
+  private processFile(
     filePath: string,
     discoverStructure: DiscoverStructure,
     params: {
@@ -106,9 +106,9 @@ class DataRecorder {
 
     const { creature } = this;
     let readTime = 0;
-    const file = await Deno.open(filePath, { read: true });
+    const file = Deno.openSync(filePath, { read: true });
     try {
-      const stat = await file.stat();
+      const stat = file.statSync();
       const fileRecords = stat.size / this.BYTES_PER_RECORD;
       const sampleSize = Math.ceil(fileRecords * this.sampleRate);
 
@@ -197,20 +197,19 @@ class DataRecorder {
     }
 
     const discoverStructure = new DiscoverStructure(creature);
-    await discoverStructure.initialize();
+    const writePromises: Promise<void>[] = [];
+    discoverStructure.initialize(writePromises);
 
     const counter = { count: 0 };
-    const writePromises: Promise<void>[] = [];
+
     const dataSet: DataRecordInterface[] = [];
 
-    await Promise.all(
-      binaryFiles.map((filePath) =>
-        this.processFile(filePath, discoverStructure, {
-          counter,
-          dataSet,
-          writePromises: writePromises,
-        })
-      ),
+    binaryFiles.forEach((filePath) =>
+      this.processFile(filePath, discoverStructure, {
+        counter,
+        dataSet,
+        writePromises: writePromises,
+      })
     );
 
     if (dataSet.length > 0) {
