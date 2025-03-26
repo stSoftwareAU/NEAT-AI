@@ -32,8 +32,7 @@ export class DiscoverStructure {
   constructor(creature: Creature) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
-    this.tempDir =
-      `.discovery/${creature.uuid}/${performance.now()}`;
+    this.tempDir = `.discovery/${creature.uuid}/${performance.now()}`;
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
