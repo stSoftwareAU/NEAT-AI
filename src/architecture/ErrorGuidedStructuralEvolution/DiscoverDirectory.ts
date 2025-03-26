@@ -97,9 +97,13 @@ class DataRecorder {
     params: {
       counter: { count: number };
       dataSet: DataRecordInterface[];
-      promises: Promise<void>[];
+      writePromises: Promise<void>[];
     },
   ) {
+    if (this.options.log) {
+      console.log(`Discovery ${blue(this.ID)} processing ${filePath}`);
+    }
+
     const { creature } = this;
     let readTime = 0;
     const file = await Deno.open(filePath, { read: true });
@@ -155,9 +159,11 @@ class DataRecorder {
           params.dataSet.push(data);
 
           if (params.dataSet.length >= this.discoveryBatchSize) {
-            params.promises.push(
-              discoverStructure.record(params.dataSet.splice(0)),
+            discoverStructure.record(
+              params.dataSet.splice(0),
+              params.writePromises,
             );
+            params.dataSet.length = 0;
           }
         }
         batchStart += batchSize;
@@ -170,7 +176,7 @@ class DataRecorder {
       console.log(
         `Discovery ${blue(this.ID)} read time ${
           yellow(format(readTime, { ignoreZero: true }))
-        }`,
+        } for ${filePath} with ${params.counter.count} records`,
       );
     }
   }
@@ -194,7 +200,7 @@ class DataRecorder {
     await discoverStructure.initialize();
 
     const counter = { count: 0 };
-    const promises: Promise<void>[] = [];
+    const writePromises: Promise<void>[] = [];
     const dataSet: DataRecordInterface[] = [];
 
     await Promise.all(
@@ -202,13 +208,13 @@ class DataRecorder {
         this.processFile(filePath, discoverStructure, {
           counter,
           dataSet,
-          promises,
+          writePromises: writePromises,
         })
       ),
     );
 
     if (dataSet.length > 0) {
-      promises.push(discoverStructure.record(dataSet));
+      discoverStructure.record(dataSet, writePromises);
     }
     if (options.log) {
       const scannedTime = Date.now() - startTime;
@@ -218,7 +224,7 @@ class DataRecorder {
         }`,
       );
     }
-    await Promise.all(promises);
+    await Promise.all(writePromises);
     if (options.log) {
       const recordTime = Date.now() - startTime;
       console.log(

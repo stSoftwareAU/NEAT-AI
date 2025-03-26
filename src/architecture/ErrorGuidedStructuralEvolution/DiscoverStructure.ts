@@ -66,10 +66,12 @@ export class DiscoverStructure {
     await Deno.remove(this.tempDir, { recursive: true });
   }
 
-  public async record(trainingData: DataRecordInterface[]) {
+  public record(
+    trainingData: DataRecordInterface[],
+    writePromises: Promise<void>[],
+  ) {
     assert(this.initialized, "Not initialized");
     this.recorded = true;
-    const promises: Promise<void>[] = [];
 
     this.creature.neurons.forEach((neuron) => {
       if (neuron.type === "input") {
@@ -83,7 +85,7 @@ export class DiscoverStructure {
         })
           .catch((e) => console.error(`Failed write to ${fileName}`, e));
 
-        promises.push(writePromise);
+        writePromises.push(writePromise);
       }
     });
 
@@ -125,9 +127,8 @@ export class DiscoverStructure {
       })
         .catch((e) => console.error(`Failed write to ${fileName}`, e));
 
-      promises.push(writePromise);
+      writePromises.push(writePromise);
     }
-    await Promise.all(promises);
   }
 
   private discoveries: CandidateSynapse[] = [];
