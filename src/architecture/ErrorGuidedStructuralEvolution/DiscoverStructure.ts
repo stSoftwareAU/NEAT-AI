@@ -190,15 +190,22 @@ export class DiscoverStructure {
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
-    const records = parseCsv(await Deno.readTextFile(file), {
-      skipFirstRow: true,
-    });
-    return records.map((record) => {
-      const activation = Number.parseFloat(record.activation);
+    const data = await Deno.readTextFile(file);
+    try {
+      const records = parseCsv(data, {
+        skipFirstRow: true,
+      });
+      return records.map((record) => {
+        const activation = Number.parseFloat(record.activation);
 
-      const errors = record.errors;
-      return { activation, errors };
-    });
+        const errors = record.errors;
+        return { activation, errors };
+      });
+    } catch (e) {
+      console.error(`File: ${file}`, e);
+      console.info(data);
+      throw e;
+    }
   }
 
   private async loadCandidateSynapses(
@@ -234,10 +241,14 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse> {
     const activationCount = toRecords.length;
 
+    const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
     const fromRecords = await this.loadCSV(
-      `${this.tempDir}/${fromNeuronUUID}.csv`,
+      fileName,
     );
-    assert(fromRecords.length === activationCount, "Mismatched record count");
+    assert(
+      fromRecords.length === activationCount,
+      `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
+    );
 
     let positiveCount = 0;
     let negativeCount = 0;
