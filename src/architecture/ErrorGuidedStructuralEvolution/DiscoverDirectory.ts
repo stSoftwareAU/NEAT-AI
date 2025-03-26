@@ -200,59 +200,62 @@ class DataRecorder {
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
+    try {
+      const counter = { count: 0 };
 
-    const counter = { count: 0 };
+      const dataSet: DataRecordInterface[] = [];
 
-    const dataSet: DataRecordInterface[] = [];
-
-    binaryFiles.forEach((filePath) =>
-      this.processFile(filePath, discoverStructure, {
-        counter,
-        dataSet,
-        neuronPromisesMap: neuronPromisesMap,
-      })
-    );
-
-    if (dataSet.length > 0) {
-      discoverStructure.record(dataSet, neuronPromisesMap);
-    }
-    if (options.log) {
-      const scannedTime = Date.now() - startTime;
-      console.log(
-        `Discovery ${blue(this.ID)} scanning time ${
-          yellow(format(scannedTime, { ignoreZero: true }))
-        }`,
+      binaryFiles.forEach((filePath) =>
+        this.processFile(filePath, discoverStructure, {
+          counter,
+          dataSet,
+          neuronPromisesMap: neuronPromisesMap,
+        })
       );
-    }
-    await Promise.all(neuronPromisesMap.entries());
-    if (options.log) {
-      const recordTime = Date.now() - startTime;
-      console.log(
-        `Discovery ${blue(this.ID)} recorded time ${
-          yellow(format(recordTime, { ignoreZero: true }))
-        }`,
-      );
-    }
-    const focusUUID = creature.neurons[
-      creature.neurons.length - 1 - Math.floor(creature.output * Math.random())
-    ].uuid;
 
-    const analyzeStartTime = Date.now();
+      if (dataSet.length > 0) {
+        discoverStructure.record(dataSet, neuronPromisesMap);
+      }
+      if (options.log) {
+        const scannedTime = Date.now() - startTime;
+        console.log(
+          `Discovery ${blue(this.ID)} scanning time ${
+            yellow(format(scannedTime, { ignoreZero: true }))
+          }`,
+        );
+      }
+      await Promise.all(neuronPromisesMap.entries());
+      if (options.log) {
+        const recordTime = Date.now() - startTime;
+        console.log(
+          `Discovery ${blue(this.ID)} recorded time ${
+            yellow(format(recordTime, { ignoreZero: true }))
+          }`,
+        );
+      }
+      const focusUUID = creature.neurons[
+        creature.neurons.length - 1 -
+        Math.floor(creature.output * Math.random())
+      ].uuid;
 
-    const enhanced = await discoverStructure.analyze(focusUUID);
-    if (options.log) {
-      const analyzeTime = Date.now() - analyzeStartTime;
-      console.log(
-        `Discovery ${blue(this.ID)} analyze time ${
-          yellow(format(analyzeTime, { ignoreZero: true }))
-        }`,
-      );
+      const analyzeStartTime = Date.now();
+
+      const enhanced = await discoverStructure.analyze(focusUUID);
+      if (options.log) {
+        const analyzeTime = Date.now() - analyzeStartTime;
+        console.log(
+          `Discovery ${blue(this.ID)} analyze time ${
+            yellow(format(analyzeTime, { ignoreZero: true }))
+          }`,
+        );
+      }
+
+      return {
+        ID: this.ID,
+        enhanced: enhanced ? enhanced.exportJSON() : undefined,
+      };
+    } finally {
+      await discoverStructure.cleanUp();
     }
-    await discoverStructure.cleanUp();
-
-    return {
-      ID: this.ID,
-      enhanced: enhanced ? enhanced.exportJSON() : undefined,
-    };
   }
 }
