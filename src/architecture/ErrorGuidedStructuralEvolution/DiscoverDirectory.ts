@@ -164,7 +164,6 @@ class DataRecorder {
               params.neuronPromisesMap,
             );
             assert(params.dataSet.length === 0, "Data set not empty");
-            // params.dataSet.length = 0;
           }
         }
         batchStart += batchSize;
