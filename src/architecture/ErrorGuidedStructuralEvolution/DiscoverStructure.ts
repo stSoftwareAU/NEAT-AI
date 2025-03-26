@@ -51,6 +51,10 @@ export class DiscoverStructure {
       const writePromise = Deno.writeTextFile(
         `${this.tempDir}/${neuron.uuid}.csv`,
         headCSV,
+        {
+          append: false,
+          createNew: true,
+        },
       );
       neuronPromisesMap.set(neuron.uuid, writePromise);
     });
@@ -127,6 +131,7 @@ export class DiscoverStructure {
       const fileName = `${this.tempDir}/${neuronUUID}.csv`;
       const writePromise = Deno.writeTextFile(fileName, dataCSV, {
         append: true,
+        create: false,
       })
         .catch((e) => console.error(`Failed write to ${fileName}`, e));
 
