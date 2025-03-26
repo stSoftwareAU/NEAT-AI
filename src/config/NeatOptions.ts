@@ -138,6 +138,9 @@ export interface NeatArguments {
 
   /** The number of observations per promise */
   discoveryBatchSize: number;
+
+  /** The read buffer size, default 128k */
+  discoveryBufferSize: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;
