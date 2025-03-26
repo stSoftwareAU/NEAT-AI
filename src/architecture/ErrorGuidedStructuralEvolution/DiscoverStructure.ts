@@ -84,62 +84,50 @@ export class DiscoverStructure {
         }).join("");
 
         const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
-        const writePromise = Deno.writeTextFile(fileName, dataCSV, {
-          append: true,
-          create: false,
-        })
-          .catch((e) => console.error(`Failed write to ${fileName}`, e));
+        const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
 
-        const neuronPromise = neuronPromisesMap.get(neuron.uuid);
-        assert(neuronPromise, "Neuron promise not found");
-        const chainPromise = neuronPromise.then(async () => await writePromise);
-        neuronPromisesMap.set(neuron.uuid, chainPromise);
+        const nextPromise = previousPromise.then(() =>
+          Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
+            .catch((e) => console.error(`Failed write to ${fileName}`, e))
+        );
+
+        neuronPromisesMap.set(neuron.uuid, nextPromise);
       }
     });
 
-    const data = new Map<
-      string,
-      Array<DiscoverRecord>
-    >();
+    const data = new Map<string, Array<DiscoverRecord>>();
     trainingData.forEach((record) => {
       this.creature.activate(new Float32Array(record.input));
       const discoverMap = this.creature.record(new Float32Array(record.output));
 
       this.creature.neurons.forEach((neuron) => {
         if (neuron.type !== "input") {
-          let discoverRecord = discoverMap.get(neuron.uuid);
-          if (!discoverRecord) {
-            discoverRecord = {
-              activation: this.creature.state.activations[neuron.index],
-              errors: "",
-            };
+          const discoverRecord = discoverMap.get(neuron.uuid) || {
+            activation: this.creature.state.activations[neuron.index],
+            errors: "",
+          };
+          if (!data.has(neuron.uuid)) {
+            data.set(neuron.uuid, []);
           }
-          let array = data.get(neuron.uuid);
-          if (!array) {
-            array = [];
-            data.set(neuron.uuid, array);
-          }
-          array.push(discoverRecord);
+          data.get(neuron.uuid)!.push(discoverRecord);
         }
       });
     });
 
     for (const [neuronUUID, records] of data.entries()) {
-      const dataCSV = records.map((discoverRecord) => {
-        return `${discoverRecord.activation},${discoverRecord.errors}\n`;
-      }).join("");
+      const dataCSV = records.map((discoverRecord) =>
+        `${discoverRecord.activation},${discoverRecord.errors}\n`
+      ).join("");
 
       const fileName = `${this.tempDir}/${neuronUUID}.csv`;
-      const writePromise = Deno.writeTextFile(fileName, dataCSV, {
-        append: true,
-        create: false,
-      })
-        .catch((e) => console.error(`Failed write to ${fileName}`, e));
+      const previousPromise = neuronPromisesMap.get(neuronUUID)!;
 
-      const neuronPromise = neuronPromisesMap.get(neuronUUID);
-      assert(neuronPromise, "Neuron promise not found");
-      const chainPromise = neuronPromise.then(async () => await writePromise);
-      neuronPromisesMap.set(neuronUUID, chainPromise);
+      const nextPromise = previousPromise.then(() =>
+        Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
+          .catch((e) => console.error(`Failed write to ${fileName}`, e))
+      );
+
+      neuronPromisesMap.set(neuronUUID, nextPromise);
     }
   }
 
