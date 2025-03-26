@@ -1,12 +1,12 @@
 import { assert } from "@std/assert/assert";
 import { blue, yellow } from "@std/fmt/colors";
+import { format } from "@std/fmt/duration";
 import type { Creature } from "../../Creature.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
 import { DiscoverStructure } from "./DiscoverStructure.ts";
-import { format } from "@std/fmt/duration";
 
 export async function recordDirectory(
   creature: Creature,
