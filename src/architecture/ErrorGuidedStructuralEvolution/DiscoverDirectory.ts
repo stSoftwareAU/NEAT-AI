@@ -1,6 +1,5 @@
 import { assert } from "@std/assert/assert";
 import { blue, yellow } from "@std/fmt/colors";
-import { format } from "@std/fmt/duration";
 import type { Creature } from "../../Creature.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
@@ -8,268 +7,210 @@ import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
 import { DiscoverStructure } from "./DiscoverStructure.ts";
 
-function dataFiles(dataDir: string) {
-  const binaryFiles: string[] = [];
+class DataRecorder {
+  private BYTES_PER_RECORD: number;
+  private BATCH_SIZE: number;
+  private sampleRate: number;
+  private discoveryBatchSize: number;
+  private ID: string;
+  private timeoutTS: number;
 
-  for (const dirEntry of Deno.readDirSync(dataDir)) {
-    if (dirEntry.isFile) {
-      const fn = dirEntry.name;
-      if (fn.endsWith(".bin")) {
-        binaryFiles.push(`${dataDir}/${fn}`);
+  constructor(
+    private creature: Creature,
+    private options: NeatOptions,
+  ) {
+    this.BYTES_PER_RECORD = (creature.input + creature.output) * 4;
+    this.BATCH_SIZE = Math.max(
+      1,
+      Math.floor((128 * 1024) / this.BYTES_PER_RECORD),
+    );
+
+    this.sampleRate = Math.min(
+      1,
+      Math.max(0.0001, options.discoverySampleRate!),
+    );
+    this.discoveryBatchSize = options.discoveryBatchSize || 512;
+
+    this.ID = CreatureUtil.makeUUID(creature).slice(-8);
+
+    this.timeoutTS = options.discoveryTimeOutMinutes
+      ? Date.now() + options.discoveryTimeOutMinutes * 60 * 1000
+      : 0;
+  }
+
+  private shuffleFiles(files: string[]): string[] {
+    for (let i = files.length; i--;) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [files[i], files[j]] = [files[j], files[i]];
+    }
+    return files;
+  }
+
+  async getBinaryFiles(dataDir: string): Promise<string[]> {
+    const binaryFiles: string[] = [];
+    for await (const dirEntry of Deno.readDir(dataDir)) {
+      if (dirEntry.isFile && dirEntry.name.endsWith(".bin")) {
+        binaryFiles.push(`${dataDir}/${dirEntry.name}`);
       }
+    }
+    return this.shuffleFiles(binaryFiles);
+  }
+
+  private fp(percentage: number): string {
+    return yellow(
+      Math.abs(1 - percentage) < Number.EPSILON
+        ? "100%"
+        : (percentage * 100).toFixed(1) + "%",
+    );
+  }
+
+  async recordDirectory(dataDir: string): Promise<DiscoverResult> {
+    const binaryFiles = await this.getBinaryFiles(dataDir);
+    assert(
+      binaryFiles.length > 0,
+      "No binary files found in the data directory",
+    );
+
+    return await this.recordFiles(binaryFiles);
+  }
+
+  private async readBatch(
+    file: Deno.FsFile,
+    batchBuffer: Uint8Array,
+    batchSize: number,
+  ): Promise<number | null> {
+    return await file.read(
+      batchBuffer.subarray(0, batchSize * this.BYTES_PER_RECORD),
+    );
+  }
+
+  private async processFile(
+    filePath: string,
+    discoverStructure: DiscoverStructure,
+    params: {
+      counter: { count: number };
+      dataSet: DataRecordInterface[];
+      promises: Promise<void>[];
+    },
+  ): Promise<void> {
+    const { creature } = this;
+    const file = await Deno.open(filePath, { read: true });
+    try {
+      const stat = await file.stat();
+      const fileRecords = stat.size / this.BYTES_PER_RECORD;
+      const sampleSize = Math.ceil(fileRecords * this.sampleRate);
+
+      const tmpIndexes = Int32Array.from({ length: fileRecords }, (_, i) => i);
+      CreatureUtil.shuffle(tmpIndexes);
+      const recordSet = new Set(tmpIndexes.slice(0, sampleSize));
+
+      const batchBuffer = new Uint8Array(
+        this.BATCH_SIZE * this.BYTES_PER_RECORD,
+      );
+      const batchArray = new Float32Array(batchBuffer.buffer);
+
+      let batchStart = 0;
+      while (
+        batchStart < fileRecords && recordSet.size &&
+        (!this.timeoutTS || Date.now() <= this.timeoutTS)
+      ) {
+        const batchSize = Math.min(this.BATCH_SIZE, fileRecords - batchStart);
+        // deno-lint-ignore no-await-in-loop
+        const bytesRead = await this.readBatch(file, batchBuffer, batchSize);
+        if (!bytesRead) break;
+
+        const recordsRead = Math.floor(bytesRead / this.BYTES_PER_RECORD);
+
+        for (let j = 0; j < recordsRead && recordSet.size; j++) {
+          const recordIndex = batchStart + j;
+          if (!recordSet.delete(recordIndex)) continue;
+          params.counter.count++;
+
+          const offset = j * (creature.input + creature.output);
+          const data: DataRecordInterface = {
+            input: Array.from(
+              batchArray.subarray(offset, offset + creature.input),
+            ),
+            output: Array.from(
+              batchArray.subarray(
+                offset + creature.input,
+                offset + creature.input + creature.output,
+              ),
+            ),
+          };
+          params.dataSet.push(data);
+
+          if (params.dataSet.length >= this.discoveryBatchSize) {
+            params.promises.push(
+              discoverStructure.record(params.dataSet.splice(0)),
+            );
+          }
+        }
+        batchStart += batchSize;
+      }
+    } finally {
+      file.close();
     }
   }
 
-  const files = binaryFiles;
+  private async recordFiles(binaryFiles: string[]): Promise<DiscoverResult> {
+    const { creature, options } = this;
 
-  for (let i = files.length; i--;) {
-    const j = Math.round(Math.random() * i);
-    [files[i], files[j]] = [files[j], files[i]];
+    if (options.log) {
+      console.info(
+        `Discovery ${
+          blue(this.ID)
+        } with ${binaryFiles.length} binary files, sample rate: ${
+          this.fp(this.sampleRate)
+        }, batch size: ${
+          yellow(this.discoveryBatchSize.toLocaleString("en-AU"))
+        }`,
+      );
+    }
+
+    const discoverStructure = new DiscoverStructure(creature);
+    await discoverStructure.initialize();
+
+    const counter = { count: 0 };
+    const promises: Promise<void>[] = [];
+    const dataSet: DataRecordInterface[] = [];
+
+    await Promise.all(
+      binaryFiles.map((filePath) =>
+        this.processFile(filePath, discoverStructure, {
+          counter,
+          dataSet,
+          promises,
+        })
+      ),
+    );
+
+    if (dataSet.length > 0) {
+      promises.push(discoverStructure.record(dataSet));
+    }
+
+    await Promise.all(promises);
+
+    const focusUUID = creature.neurons[
+      creature.neurons.length - 1 - Math.floor(creature.output * Math.random())
+    ].uuid;
+
+    const enhanced = await discoverStructure.analyze(focusUUID);
+
+    await discoverStructure.cleanUp();
+
+    return {
+      ID: this.ID,
+      enhanced: enhanced ? enhanced.exportJSON() : undefined,
+    };
   }
-
-  return {
-    files: binaryFiles,
-  };
 }
 
-/**
- * Train the given set to this network
- */
 export async function recordDirectory(
   creature: Creature,
   dataDir: string,
   options: NeatOptions,
 ) {
-  const dataResult = dataFiles(dataDir);
-
-  assert(
-    dataResult.files.length > 0,
-    "No binary files found in the data directory",
-  );
-
-  return await recordFiles(creature, dataResult.files, options);
-}
-
-function fp(percentage: number) {
-  if (Math.abs(1 - percentage) < Number.EPSILON) {
-    return yellow("100%");
-  }
-
-  return yellow((percentage * 100).toFixed(1) + "%");
-}
-
-async function recordFiles(
-  creature: Creature,
-  binaryFiles: string[],
-  options: NeatOptions,
-): Promise<DiscoverResult> {
-  assert(options.discoverySampleRate);
-  const sampleRate = Math.min(
-    1,
-    Math.max(0.0001, options.discoverySampleRate),
-  );
-  const discoveryBatchSize = options.discoveryBatchSize || 512;
-  const uuid = CreatureUtil.makeUUID(creature);
-
-  const ID = uuid.substring(Math.max(0, uuid.length - 8));
-  if (options.log) {
-    console.info(
-      `Discovery ${blue(ID)} with ${binaryFiles.length} binary file${
-        binaryFiles.length > 1 ? "s" : ""
-      }, sample rate: ${fp(sampleRate)}, batch size: ${
-        yellow(discoveryBatchSize.toLocaleString("en-AU"))
-      }`,
-    );
-  }
-
-  let timeoutTS = 0;
-  const startTime = Date.now();
-  const discoveryTimeOutMinutes = options.discoveryTimeOutMinutes ?? 0;
-  if (discoveryTimeOutMinutes > 0) {
-    timeoutTS = startTime + discoveryTimeOutMinutes * 60 * 1000;
-  }
-
-  const discoverStructure = new DiscoverStructure(creature);
-  await discoverStructure.initialize();
-  try {
-    const promises: Promise<void>[] = [];
-    const valuesCount = creature.input + creature.output;
-    const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
-    const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB
-    const BATCH_SIZE = Math.max(
-      1,
-      Math.floor(SSD_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
-    );
-    const BYTES_PER_BATCH = BYTES_PER_RECORD * BATCH_SIZE;
-
-    // Shared buffers for batch processing
-    const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
-    const batchArray = new Float32Array(batchBuffer.buffer);
-
-    let knownSampleCount = -1;
-    let counter = 0;
-    const startTS = Date.now();
-    let lastTS = startTS;
-
-    const dataSet: DataRecordInterface[] = [];
-    let totalRecords = 0;
-    let recordingStopped = false;
-    for (let fileIndx = binaryFiles.length; !recordingStopped && fileIndx--;) {
-      const fn = binaryFiles[fileIndx];
-
-      // deno-lint-ignore no-sync-fn-in-async-fn
-      const file = Deno.openSync(fn, { read: true });
-
-      try {
-        const stat = file.statSync();
-        const fileRecords = stat.size / BYTES_PER_RECORD;
-
-        totalRecords += fileRecords;
-        if (fileIndx === 0) {
-          knownSampleCount = totalRecords;
-        }
-        const len = Math.ceil(fileRecords * sampleRate);
-        const tmpIndexes = Int32Array.from(
-          { length: fileRecords },
-          (_, i) => i,
-        ); // Create an array of indices
-
-        CreatureUtil.shuffle(tmpIndexes);
-        const indices = tmpIndexes.slice(0, len);
-
-        const recordSet = new Set(indices);
-
-        let batchStart = 0;
-
-        while (true) {
-          const remainingRecords = fileRecords - batchStart;
-          if (remainingRecords <= 0) break;
-
-          const batchSize = Math.min(BATCH_SIZE, remainingRecords);
-          const bytesRead = file.readSync(
-            batchBuffer.subarray(0, batchSize * BYTES_PER_RECORD),
-          );
-          if (bytesRead === null || bytesRead === 0) break;
-
-          const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
-
-          for (let j = 0; j < recordsRead && recordSet.size; j++) {
-            const recordIndex = batchStart + j;
-            if (!recordSet.delete(recordIndex)) continue;
-            counter++;
-            const offset = j * valuesCount;
-            const observations = batchArray.subarray(
-              offset,
-              offset + creature.input,
-            );
-
-            const data: DataRecordInterface = {
-              input: Array.from(observations),
-              output: Array.from(
-                batchArray.subarray(
-                  offset + creature.input,
-                  offset + valuesCount,
-                ),
-              ),
-            };
-            dataSet.push(data);
-            if (dataSet.length >= discoveryBatchSize) {
-              const p = discoverStructure.record(dataSet.slice());
-              dataSet.length = 0;
-              promises.push(p);
-            }
-            const now = Date.now();
-            const diff = now - lastTS;
-
-            if (diff > 60_000) {
-              lastTS = now;
-              const totalTime = now - startTS;
-              console.log(
-                `Discovery ${blue(ID)} samples`,
-                yellow(counter.toLocaleString("en-AU")),
-                `${
-                  knownSampleCount > 0
-                    ? "of " + yellow(knownSampleCount.toLocaleString("en-AU")) +
-                      " " +
-                      yellow(
-                        (counter / knownSampleCount * 100).toFixed(1) + "%",
-                      )
-                    : ""
-                }${
-                  sampleRate < 1
-                    ? "( rate " +
-                      yellow((sampleRate * 100).toFixed(1) + "% )")
-                    : ""
-                }`,
-                "time average:",
-                yellow(
-                  format(totalTime / counter, { ignoreZero: true }),
-                ),
-                "total:",
-                yellow(
-                  format(totalTime, { ignoreZero: true }),
-                ),
-              );
-              if (timeoutTS && now > timeoutTS) {
-                console.log(
-                  `Discovery ${blue(ID)} timed out after ${
-                    yellow(format(totalTime, { ignoreZero: true }))
-                  }`,
-                );
-                recordingStopped = true;
-                break;
-              }
-            }
-          }
-          if (recordingStopped) break;
-          batchStart += batchSize;
-        }
-      } finally {
-        file.close();
-      }
-    }
-    if (dataSet.length > 0) {
-      const p = discoverStructure.record(dataSet.slice());
-      dataSet.length = 0;
-      promises.push(p);
-    }
-    if (options.log) {
-      const scannedTime = Date.now() - startTime;
-      console.log(
-        `Discovery ${blue(ID)} scanning time ${
-          yellow(format(scannedTime, { ignoreZero: true }))
-        }`,
-      );
-    }
-    await Promise.all(promises);
-    if (options.log) {
-      const recordTime = Date.now() - startTime;
-      console.log(
-        `Discovery ${blue(ID)} recorded time ${
-          yellow(format(recordTime, { ignoreZero: true }))
-        }`,
-      );
-    }
-    const focusUUID = creature
-      .neurons[
-        creature.neurons.length - 1 -
-        Math.floor(creature.output * Math.random())
-      ].uuid;
-    const analyzeStartTime = Date.now();
-    const enhanced = await discoverStructure.analyze(focusUUID);
-    if (options.log) {
-      const analyzeTime = Date.now() - analyzeStartTime;
-      console.log(
-        `Discovery ${blue(ID)} analyze time ${
-          yellow(format(analyzeTime, { ignoreZero: true }))
-        }`,
-      );
-    }
-    return {
-      ID: ID,
-      enhanced: enhanced ? enhanced.exportJSON() : undefined,
-    };
-  } finally {
-    await discoverStructure.cleanUp();
-  }
+  const recorder = new DataRecorder(creature, options);
+  return await recorder.recordDirectory(dataDir);
 }
