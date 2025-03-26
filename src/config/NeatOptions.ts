@@ -141,6 +141,9 @@ export interface NeatArguments {
 
   /** The read buffer size, default 128k */
   discoveryBufferSize: number;
+
+  /** Disable random shuffle of records and files. */
+  discoveryDisableShuffle: boolean;
 }
 
 export type NeatOptions = Partial<NeatArguments>;
