@@ -142,7 +142,6 @@ async function recordFiles(
         let batchStart = 0;
 
         while (true) {
-          counter++;
           const remainingRecords = fileRecords - batchStart;
           if (remainingRecords <= 0) break;
 
@@ -154,10 +153,10 @@ async function recordFiles(
 
           const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
 
-          for (let j = 0; j < recordsRead; j++) {
+          for (let j = 0; j < recordsRead && recordSet.size; j++) {
             const recordIndex = batchStart + j;
-            if (!recordSet.has(recordIndex)) continue;
-
+            if (!recordSet.delete(recordIndex)) continue;
+            counter++;
             const offset = j * valuesCount;
             const observations = batchArray.subarray(
               offset,
@@ -233,6 +232,14 @@ async function recordFiles(
       const p = discoverStructure.record(dataSet.slice());
       dataSet.length = 0;
       promises.push(p);
+    }
+    if (options.log) {
+      const scannedTime = Date.now() - startTime;
+      console.log(
+        `Discovery ${blue(ID)} scanning time ${
+          yellow(format(scannedTime, { ignoreZero: true }))
+        }`,
+      );
     }
     await Promise.all(promises);
     if (options.log) {
