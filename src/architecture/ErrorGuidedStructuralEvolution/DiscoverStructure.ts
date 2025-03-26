@@ -32,12 +32,13 @@ export class DiscoverStructure {
   constructor(creature: Creature) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
-    this.tempDir = `.trace/DiscoverStructure/${creature.uuid}`;
+    this.tempDir =
+      `.trace/DiscoverStructure/${creature.uuid}/${performance.now()}`;
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
 
-  public initialize(writePromises: Promise<void>[]) {
+  public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
@@ -51,7 +52,7 @@ export class DiscoverStructure {
         `${this.tempDir}/${neuron.uuid}.csv`,
         headCSV,
       );
-      writePromises.push(writePromise);
+      neuronPromisesMap.set(neuron.uuid, writePromise);
     });
   }
 
@@ -66,7 +67,7 @@ export class DiscoverStructure {
 
   public record(
     trainingData: DataRecordInterface[],
-    writePromises: Promise<void>[],
+    neuronPromisesMap: Map<string, Promise<void>>,
   ) {
     assert(this.initialized, "Not initialized");
     this.recorded = true;
@@ -84,7 +85,10 @@ export class DiscoverStructure {
         })
           .catch((e) => console.error(`Failed write to ${fileName}`, e));
 
-        writePromises.push(writePromise);
+        const neuronPromise = neuronPromisesMap.get(neuron.uuid);
+        assert(neuronPromise, "Neuron promise not found");
+        neuronPromise.then(() => writePromise);
+        neuronPromisesMap.set(neuron.uuid, writePromise);
       }
     });
 
@@ -126,7 +130,10 @@ export class DiscoverStructure {
       })
         .catch((e) => console.error(`Failed write to ${fileName}`, e));
 
-      writePromises.push(writePromise);
+      const neuronPromise = neuronPromisesMap.get(neuronUUID);
+      assert(neuronPromise, "Neuron promise not found");
+      neuronPromise.then(() => writePromise);
+      neuronPromisesMap.set(neuronUUID, writePromise);
     }
   }
 

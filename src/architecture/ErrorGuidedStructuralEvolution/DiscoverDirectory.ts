@@ -97,7 +97,7 @@ class DataRecorder {
     params: {
       counter: { count: number };
       dataSet: DataRecordInterface[];
-      writePromises: Promise<void>[];
+      neuronPromisesMap: Map<string, Promise<void>>;
     },
   ) {
     if (this.options.log) {
@@ -161,9 +161,10 @@ class DataRecorder {
           if (params.dataSet.length >= this.discoveryBatchSize) {
             discoverStructure.record(
               params.dataSet.splice(0),
-              params.writePromises,
+              params.neuronPromisesMap,
             );
-            params.dataSet.length = 0;
+            assert(params.dataSet.length === 0, "Data set not empty");
+            // params.dataSet.length = 0;
           }
         }
         batchStart += batchSize;
@@ -197,8 +198,9 @@ class DataRecorder {
     }
 
     const discoverStructure = new DiscoverStructure(creature);
-    const writePromises: Promise<void>[] = [];
-    discoverStructure.initialize(writePromises);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+
+    discoverStructure.initialize(neuronPromisesMap);
 
     const counter = { count: 0 };
 
@@ -208,12 +210,12 @@ class DataRecorder {
       this.processFile(filePath, discoverStructure, {
         counter,
         dataSet,
-        writePromises: writePromises,
+        neuronPromisesMap: neuronPromisesMap,
       })
     );
 
     if (dataSet.length > 0) {
-      discoverStructure.record(dataSet, writePromises);
+      discoverStructure.record(dataSet, neuronPromisesMap);
     }
     if (options.log) {
       const scannedTime = Date.now() - startTime;
@@ -223,7 +225,7 @@ class DataRecorder {
         }`,
       );
     }
-    await Promise.all(writePromises);
+    await Promise.all(neuronPromisesMap.entries());
     if (options.log) {
       const recordTime = Date.now() - startTime;
       console.log(
