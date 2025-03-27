@@ -352,14 +352,15 @@ export class MAXIMUM
         }
       }
     }
-    assert(mainNeuron, "mainNeuron not found");
-    assert(mainWeight, "mainWeight not found");
-    const targetFromValue = mainValue + error;
+    if (mainNeuron) {
+      assert(mainWeight, "mainWeight not found");
+      const targetFromValue = mainValue + error;
 
-    const targetFromActivation = targetFromValue / mainWeight;
-    mainNeuron.record(
-      targetFromActivation,
-      discoverMap,
-    );
+      const targetFromActivation = targetFromValue / mainWeight;
+      mainNeuron.record(
+        targetFromActivation,
+        discoverMap,
+      );
+    }
   }
 }
