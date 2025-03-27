@@ -2,12 +2,25 @@ import { assert } from "@std/assert";
 import { parse as parseCsv } from "@std/csv";
 import { Creature } from "../../Creature.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
+/**
+ * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
+ * This class analyzes neuron activations and back-propagation errors to discover beneficial new synapses
+ * that explicitly reduce neuron-level errors.
+ *
+ * References:
+ * - Stanley, K. O., & Miikkulainen, R. (2002). Evolving Neural Networks through Augmenting Topologies (NEAT).
+ *   Evolutionary Computation, 10(2), 99–127.
+ * - Floreano, D., Dürr, P., & Mattiussi, C. (2008). Neuroevolution: from architectures to learning. Evolutionary Intelligence, 1(1), 47-62.
+ */
 
 export interface DiscoverRecord {
   activation: number;
   errors: string;
 }
 
+/**
+ * Represents a potential new synapse and the associated metrics calculated during discovery.
+ */
 interface CandidateSynapse {
   fromNeuronUUID: string;
   toNeuronUUID: string;
@@ -17,6 +30,10 @@ interface CandidateSynapse {
   improvedCount: number;
   totalCount: number;
 }
+
+/**
+ * Represents a neuron and its total accumulated error for ranking neurons during discovery.
+ */
 interface NeuronErrorInfo {
   uuid: string;
   totalError: number;
@@ -43,6 +60,9 @@ export class DiscoverStructure {
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
 
+  /**
+   * Initializes the discovery process by preparing temporary storage for neuron data.
+   */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
@@ -65,6 +85,9 @@ export class DiscoverStructure {
     });
   }
 
+  /**
+   * Cleans up temporary resources and resets the internal state after discovery.
+   */
   public async cleanUp() {
     assert(this.initialized, "Not initialized");
     this.initialized = false;
@@ -74,6 +97,9 @@ export class DiscoverStructure {
     await Deno.remove(this.tempDir, { recursive: true });
   }
 
+  /**
+   * Records neuron activations and errors across the provided training data.
+   */
   public record(
     trainingData: DataRecordInterface[],
     neuronPromisesMap: Map<string, Promise<void>>,
@@ -137,6 +163,9 @@ export class DiscoverStructure {
 
   private discoveries: CandidateSynapse[] = [];
 
+  /**
+   * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
+   */
   public async analyze(neuronUUID: string) {
     assert(this.recorded, "Not recorded");
     const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
@@ -232,6 +261,9 @@ export class DiscoverStructure {
     return candidates;
   }
 
+  /**
+   * Lists neurons sorted by their total error, useful for error-driven selection processes.
+   */
   public async listViableNeurons(): Promise<NeuronErrorInfo[]> {
     assert(this.recorded, "Must record first before listing neurons.");
 
@@ -261,6 +293,13 @@ export class DiscoverStructure {
       .sort((a, b) => b.totalError - a.totalError);
   }
 
+  /**
+   * Selects a neuron randomly, weighted by total error, favoring neurons with higher errors.
+   * Implements "roulette wheel" selection.
+   *
+   * Reference:
+   * - Goldberg, D. E. (1989). Genetic Algorithms in Search, Optimization and Machine Learning.
+   */
   public async selectNeuronWeightedByError(): Promise<string | undefined> {
     const neuronErrors = await this.listViableNeurons();
     if (neuronErrors.length === 0) return undefined;
@@ -283,6 +322,9 @@ export class DiscoverStructure {
     return neuronErrors[neuronErrors.length - 1].uuid;
   }
 
+  /**
+   * Analyzes a candidate synapse by estimating potential error reduction from its addition.
+   */
   async analyzeCandidateSynapse(
     toNeuronUUID: string,
     fromNeuronUUID: string,
