@@ -199,7 +199,16 @@ class DataRecorder {
     const discoverStructure = new DiscoverStructure(creature);
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
+    const initializeStartTime = Date.now();
     discoverStructure.initialize(neuronPromisesMap);
+    if (options.log) {
+      const initializeTime = Date.now() - initializeStartTime;
+      console.log(
+        `Discovery ${blue(this.ID)} initialize time ${
+          yellow(format(initializeTime, { ignoreZero: true }))
+        }`,
+      );
+    }
     try {
       const counter = { count: 0 };
 

@@ -1,12 +1,14 @@
 import { assert } from "@std/assert/assert";
+import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
 import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
 import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
 import { makeSynapsesValue } from "../../../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
-import type {
-  BackPropagationConfig,
+import {
+  type BackPropagationConfig,
+  toValue,
 } from "../../../propagate/BackPropagation.ts";
 import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
@@ -305,5 +307,60 @@ export class MAXIMUM
     const adjustedActivation = improvedValue - currentBias + aBias;
 
     return adjustedActivation;
+  }
+
+  record(
+    neuron: Neuron,
+    requestedActivation: number,
+    discoverMap: Map<string, DiscoverRecord>,
+  ): void {
+    const toList = neuron.creature.inwardConnections(neuron.index);
+
+    const state = neuron.creature.state;
+
+    const currentActivation = state.activations[neuron.index];
+
+    let error = 0;
+    if (Math.abs(requestedActivation - currentActivation) > 1e-8) {
+      const targetValue = toValue(neuron, requestedActivation);
+      const currentValue = toValue(neuron, currentActivation);
+
+      error = targetValue - currentValue;
+    }
+
+    let mainValue = Number.MIN_SAFE_INTEGER;
+    let mainNeuron;
+    let mainWeight;
+    for (let indx = 0; indx < toList.length; indx++) {
+      const c = toList[indx];
+      if (c.from === c.to) continue;
+
+      const fromNeuron = neuron.creature.neurons[c.from];
+
+      if (
+        c.weight &&
+        fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant"
+      ) {
+        const fromActivation = state.activations[fromNeuron.index];
+
+        const fromValue = c.weight * fromActivation;
+        if (fromValue > mainValue) {
+          mainValue = fromValue;
+          mainNeuron = fromNeuron;
+          mainWeight = c.weight;
+        }
+      }
+    }
+    if (mainNeuron) {
+      assert(mainWeight, "mainWeight not found");
+      const targetFromValue = mainValue + error;
+
+      const targetFromActivation = targetFromValue / mainWeight;
+      mainNeuron.record(
+        targetFromActivation,
+        discoverMap,
+      );
+    }
   }
 }

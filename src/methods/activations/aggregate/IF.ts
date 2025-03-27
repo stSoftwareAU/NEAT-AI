@@ -1,4 +1,5 @@
 import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
+import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { Mutation } from "../../../NEAT/Mutation.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
@@ -490,5 +491,77 @@ export class IF
     const adjustedActivation = improvedValue + aBias - currentBias;
     const limitedActivation = this.range.limit(adjustedActivation);
     return limitedActivation;
+  }
+
+  record(
+    neuron: Neuron,
+    requestedActivation: number,
+    discoverMap: Map<string, DiscoverRecord>,
+  ): void {
+    const inward = neuron.creature.inwardConnections(neuron.index);
+    let condition = 0;
+    let negativeCount = 0;
+    let positiveCount = 0;
+    const state = neuron.creature.state;
+    const activations = state.activations;
+    for (let i = inward.length; i--;) {
+      const c = inward[i];
+
+      const value = activations[c.from] * c.weight;
+
+      switch (c.type) {
+        case "condition":
+          condition = limitValue(condition + value);
+          break;
+        case "negative":
+          negativeCount++;
+          break;
+        default:
+          positiveCount++;
+      }
+    }
+
+    const currentActivation = state.activations[neuron.index];
+
+    let error = 0;
+    if (Math.abs(requestedActivation - currentActivation) > 1e-8) {
+      const targetValue = toValue(neuron, requestedActivation);
+      const currentValue = toValue(neuron, currentActivation);
+
+      error = targetValue - currentValue;
+    }
+
+    const listLength = inward.length;
+    const errorPerLink = error /
+      (condition > 0 ? positiveCount : negativeCount);
+    // Iterate over the shuffled indices
+    for (let indx = listLength; indx--;) {
+      const c = inward[indx];
+
+      if (c.from === c.to) continue;
+      if (c.type === "condition") continue;
+      if (c.type === "positive" && condition <= 0) continue;
+      if (c.type === "negative" && condition > 0) continue;
+
+      const fromNeuron = neuron.creature.neurons[c.from];
+
+      const fromWeight = c.weight;
+
+      if (
+        fromWeight &&
+        fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant"
+      ) {
+        const fromActivation = state.activations[fromNeuron.index];
+        const fromValue = fromWeight * fromActivation;
+        const targetFromValue = fromValue + errorPerLink;
+        const targetFromActivation = targetFromValue / fromWeight;
+
+        fromNeuron.record(
+          targetFromActivation,
+          discoverMap,
+        );
+      }
+    }
   }
 }
