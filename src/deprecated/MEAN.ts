@@ -1,3 +1,4 @@
+import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
@@ -186,5 +187,52 @@ export class MEAN implements NeuronActivationInterface, NeuronFixableInterface {
     const adjustedActivation = adjustedValue + aBias - currentBias;
 
     return this.range.limit(adjustedActivation);
+  }
+
+  record(
+    neuron: Neuron,
+    requestedActivation: number,
+    discoverMap: Map<string, DiscoverRecord>,
+  ): void {
+    const toList = neuron.creature.inwardConnections(neuron.index);
+
+    const state = neuron.creature.state;
+
+    const currentActivation = state.activations[neuron.index];
+
+    let error = 0;
+    if (Math.abs(requestedActivation - currentActivation) > 1e-8) {
+      const targetValue = toValue(neuron, requestedActivation);
+      const currentValue = toValue(neuron, currentActivation);
+
+      error = targetValue - currentValue;
+    }
+
+    const errorPerSynapse = error / toList.length;
+
+    for (let indx = 0; indx < toList.length; indx++) {
+      const c = toList[indx];
+      if (c.from === c.to) continue;
+
+      const fromNeuron = neuron.creature.neurons[c.from];
+
+      if (
+        c.weight &&
+        fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant"
+      ) {
+        const fromActivation = state.activations[fromNeuron.index];
+
+        const fromValue = c.weight * fromActivation;
+
+        const targetFromValue = fromValue + errorPerSynapse;
+
+        const targetFromActivation = targetFromValue / c.weight;
+        fromNeuron.record(
+          targetFromActivation,
+          discoverMap,
+        );
+      }
+    }
   }
 }

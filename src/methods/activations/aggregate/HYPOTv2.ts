@@ -1,3 +1,4 @@
+import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
 import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
@@ -155,5 +156,13 @@ export class HYPOTv2
         neuron.creature.makeRandomConnection(neuron.index);
         break;
     }
+  }
+
+  record(
+    _neuron: Neuron,
+    _requestedActivation: number,
+    _discoverMap: Map<string, DiscoverRecord>,
+  ): void {
+    // Do nothing
   }
 }
