@@ -93,7 +93,6 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryTimeOutMinutes: options.discoveryTimeOutMinutes || 0,
     discoveryBatchSize: options.discoveryBatchSize || 0,
     discoveryBufferSize: options.discoveryBufferSize || 0,
-    discoveryDisableShuffle: options.discoveryDisableShuffle || false,
   };
   validate(config);
   return Object.freeze(config);
