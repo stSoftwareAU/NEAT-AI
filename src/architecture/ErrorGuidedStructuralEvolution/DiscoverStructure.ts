@@ -76,12 +76,6 @@ export class DiscoverStructure {
       const writePromise = Deno.writeTextFile(filePath, headCSV, {
         append: false,
         createNew: true,
-      }).catch((e) => {
-        console.error(
-          `Failed to initialize CSV for neuron ${neuron.uuid} at ${filePath}`,
-          e,
-        );
-        throw e;
       });
 
       neuronPromisesMap.set(neuron.uuid, writePromise);
@@ -121,7 +115,6 @@ export class DiscoverStructure {
 
         const nextPromise = previousPromise.then(() =>
           Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
-            .catch((e) => console.error(`Failed write to ${fileName}`, e))
         );
 
         neuronPromisesMap.set(neuron.uuid, nextPromise);
@@ -157,7 +150,6 @@ export class DiscoverStructure {
 
       const nextPromise = previousPromise.then(() =>
         Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
-          .catch((e) => console.error(`Failed write to ${fileName}`, e))
       );
 
       neuronPromisesMap.set(neuronUUID, nextPromise);
@@ -390,9 +382,14 @@ export class DiscoverStructure {
     const positiveBetter = positiveCount > negativeCount;
 
     const avgAbsError = sumAbsError / activationCount;
-    const avgError = totalError / activationCount;
-    const avgActivation = totalActivation / activationCount;
-    const initialWeightMagnitude = avgError / (avgActivation + 1e-8);
+
+    const avgActivation = sumAbsActivation / activationCount;
+    let initialWeightMagnitude = avgAbsError / (avgActivation + 1e-8) *
+      (positiveBetter ? 1 : -1);
+
+    if (Math.abs(initialWeightMagnitude) > 1) {
+      initialWeightMagnitude = Math.sign(initialWeightMagnitude);
+    }
 
     let expectedErrorReduction = 0;
     if (positiveBetter) {
@@ -405,7 +402,7 @@ export class DiscoverStructure {
       fromNeuronUUID: fromNeuronUUID,
       toNeuronUUID: toNeuronUUID,
       weight: initialWeightMagnitude,
-      expectedErrorReduction,
+      expectedErrorReduction: expectedErrorReduction / activationCount,
       improvedCount: positiveBetter ? positiveCount : negativeCount,
       totalCount: activationCount,
       expectedImprovementPercentage: expectedErrorReduction / sumAbsError,
