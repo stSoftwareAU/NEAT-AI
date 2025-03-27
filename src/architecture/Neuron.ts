@@ -585,7 +585,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ): void {
     const squashMethod = this.findSquash();
     const targetActivation = squashMethod.range.limit(requestedActivation);
-
+    const state = this.creature.state;
+    const currentActivation = squashMethod.range.limit(
+      state.activations[this.index],
+    );
     // const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
     // if (propagateUpdateMethod.record !== undefined) {
     //   limitedActivation = propagateUpdateMethod.record(
@@ -594,19 +597,18 @@ export class Neuron implements TagsInterface, NeuronInternal {
     //     errorMap
     //   );
     // } else {
-    const state = this.creature.state;
-    const ns = state.node(this.index);
-    const targetValue = toValue(this, targetActivation, ns.hintValue);
+    let error = 0;
+    if (Math.abs(targetActivation - currentActivation) > 1e-8) {
+      const ns = state.node(this.index);
+      const targetValue = toValue(this, targetActivation, ns.hintValue);
 
-    const currentActivation = squashMethod.range.limit(
-      state.activations[this.index],
-    );
-    const currentValue = toValue(
-      this,
-      currentActivation,
-      ns.hintValue,
-    );
-    const error = targetValue - currentValue;
+      const currentValue = toValue(
+        this,
+        currentActivation,
+        ns.hintValue,
+      );
+      error = targetValue - currentValue;
+    }
 
     let discoverRecord = discoverMap.get(this.uuid);
     if (discoverRecord === undefined) {
@@ -639,20 +641,18 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
         const fromNeuron = this.creature.neurons[from];
 
-        const fromActivation = state.activations[from];
-
-        const fromWeight = c.weight;
-        const fromValue = fromWeight * fromActivation;
-
-        const targetFromValue = fromValue + errorPerLink;
-
         const type = fromNeuron.type;
         if (
-          fromWeight &&
+          c.weight &&
           type !== "input" &&
           type !== "constant"
         ) {
-          const targetFromActivation = targetFromValue / fromWeight;
+          const fromActivation = state.activations[from];
+
+          const fromValue = c.weight * fromActivation;
+
+          const targetFromValue = fromValue + errorPerLink;
+          const targetFromActivation = targetFromValue / c.weight;
           fromNeuron.record(
             targetFromActivation,
             discoverMap,
@@ -661,6 +661,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
     }
   }
+
   /**
    * Adjusts the activation based on the current state
    */
