@@ -382,9 +382,14 @@ export class DiscoverStructure {
     const positiveBetter = positiveCount > negativeCount;
 
     const avgAbsError = sumAbsError / activationCount;
-    const avgError = totalError / activationCount;
-    const avgActivation = totalActivation / activationCount;
-    const initialWeightMagnitude = avgError / (avgActivation + 1e-8);
+
+    const avgActivation = sumAbsActivation / activationCount;
+    let initialWeightMagnitude = avgAbsError / (avgActivation + 1e-8) *
+      (positiveBetter ? 1 : -1);
+
+    if (Math.abs(initialWeightMagnitude) > 1) {
+      initialWeightMagnitude = Math.sign(initialWeightMagnitude);
+    }
 
     let expectedErrorReduction = 0;
     if (positiveBetter) {
@@ -397,7 +402,7 @@ export class DiscoverStructure {
       fromNeuronUUID: fromNeuronUUID,
       toNeuronUUID: toNeuronUUID,
       weight: initialWeightMagnitude,
-      expectedErrorReduction,
+      expectedErrorReduction: expectedErrorReduction / activationCount,
       improvedCount: positiveBetter ? positiveCount : negativeCount,
       totalCount: activationCount,
       expectedImprovementPercentage: expectedErrorReduction / sumAbsError,
