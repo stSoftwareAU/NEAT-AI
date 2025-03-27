@@ -24,8 +24,6 @@ class DataRecorder {
   private discoveryBatchSize: number;
   private ID: string;
   private timeoutTS: number;
-  private disableShuffle: boolean;
-
   constructor(
     private creature: Creature,
     private options: NeatOptions,
@@ -48,8 +46,6 @@ class DataRecorder {
     this.timeoutTS = options.discoveryTimeOutMinutes
       ? Date.now() + options.discoveryTimeOutMinutes * 60 * 1000
       : 0;
-
-    this.disableShuffle = options.discoveryDisableShuffle || false;
   }
 
   private shuffleFiles(files: string[]): string[] {
@@ -67,9 +63,7 @@ class DataRecorder {
         binaryFiles.push(`${dataDir}/${dirEntry.name}`);
       }
     }
-    if (this.disableShuffle) {
-      return binaryFiles;
-    }
+
     return this.shuffleFiles(binaryFiles);
   }
 
@@ -113,9 +107,7 @@ class DataRecorder {
       const sampleSize = Math.ceil(fileRecords * this.sampleRate);
 
       const tmpIndexes = Int32Array.from({ length: fileRecords }, (_, i) => i);
-      if (!this.disableShuffle) {
-        CreatureUtil.shuffle(tmpIndexes);
-      }
+      CreatureUtil.shuffle(tmpIndexes);
       const recordSet = new Set(tmpIndexes.slice(0, sampleSize));
 
       const batchBuffer = new Uint8Array(
@@ -242,27 +234,30 @@ class DataRecorder {
           }`,
         );
       }
-      const focusUUID = creature.neurons[
-        creature.neurons.length - 1 -
-        Math.floor(creature.output * Math.random())
-      ].uuid;
 
-      const analyzeStartTime = Date.now();
+      const discoverResult: DiscoverResult = {
+        ID: this.ID,
+        enhanced: undefined,
+      };
+      const focusUUID = await discoverStructure.selectNeuronWeightedByError();
+      if (focusUUID) {
+        const analyzeStartTime = Date.now();
 
-      const enhanced = await discoverStructure.analyze(focusUUID);
-      if (options.log) {
-        const analyzeTime = Date.now() - analyzeStartTime;
-        console.log(
-          `Discovery ${blue(this.ID)} analyze time ${
-            yellow(format(analyzeTime, { ignoreZero: true }))
-          }`,
-        );
+        const enhanced = await discoverStructure.analyze(focusUUID);
+        if (options.log) {
+          const analyzeTime = Date.now() - analyzeStartTime;
+          console.log(
+            `Discovery ${blue(this.ID)} analyze time ${
+              yellow(format(analyzeTime, { ignoreZero: true }))
+            }`,
+          );
+        }
+        if (enhanced) {
+          discoverResult.enhanced = enhanced.exportJSON();
+        }
       }
 
-      return {
-        ID: this.ID,
-        enhanced: enhanced ? enhanced.exportJSON() : undefined,
-      };
+      return discoverResult;
     } finally {
       await discoverStructure.cleanUp();
     }

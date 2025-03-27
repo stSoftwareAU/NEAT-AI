@@ -2,12 +2,25 @@ import { assert } from "@std/assert";
 import { parse as parseCsv } from "@std/csv";
 import { Creature } from "../../Creature.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
+/**
+ * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
+ * This class analyzes neuron activations and back-propagation errors to discover beneficial new synapses
+ * that explicitly reduce neuron-level errors.
+ *
+ * References:
+ * - Stanley, K. O., & Miikkulainen, R. (2002). Evolving Neural Networks through Augmenting Topologies (NEAT).
+ *   Evolutionary Computation, 10(2), 99–127.
+ * - Floreano, D., Dürr, P., & Mattiussi, C. (2008). Neuroevolution: from architectures to learning. Evolutionary Intelligence, 1(1), 47-62.
+ */
 
 export interface DiscoverRecord {
   activation: number;
   errors: string;
 }
 
+/**
+ * Represents a potential new synapse and the associated metrics calculated during discovery.
+ */
 interface CandidateSynapse {
   fromNeuronUUID: string;
   toNeuronUUID: string;
@@ -16,6 +29,14 @@ interface CandidateSynapse {
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
+}
+
+/**
+ * Represents a neuron and its total accumulated error for ranking neurons during discovery.
+ */
+interface NeuronErrorInfo {
+  uuid: string;
+  totalError: number;
 }
 
 /**
@@ -39,28 +60,37 @@ export class DiscoverStructure {
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
 
+  /**
+   * Initializes the discovery process by preparing temporary storage for neuron data.
+   */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
     this.creature.neurons.forEach((neuron) => {
-      let headCSV = "activation\n";
-      if (neuron.type !== "input") {
-        headCSV = "activation,errors\n";
-      }
+      const headCSV = neuron.type !== "input"
+        ? "activation,errors\n"
+        : "activation\n";
+      const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
 
-      const writePromise = Deno.writeTextFile(
-        `${this.tempDir}/${neuron.uuid}.csv`,
-        headCSV,
-        {
-          append: false,
-          createNew: true,
-        },
-      );
+      const writePromise = Deno.writeTextFile(filePath, headCSV, {
+        append: false,
+        createNew: true,
+      }).catch((e) => {
+        console.error(
+          `Failed to initialize CSV for neuron ${neuron.uuid} at ${filePath}`,
+          e,
+        );
+        throw e;
+      });
+
       neuronPromisesMap.set(neuron.uuid, writePromise);
     });
   }
 
+  /**
+   * Cleans up temporary resources and resets the internal state after discovery.
+   */
   public async cleanUp() {
     assert(this.initialized, "Not initialized");
     this.initialized = false;
@@ -70,6 +100,9 @@ export class DiscoverStructure {
     await Deno.remove(this.tempDir, { recursive: true });
   }
 
+  /**
+   * Records neuron activations and errors across the provided training data.
+   */
   public record(
     trainingData: DataRecordInterface[],
     neuronPromisesMap: Map<string, Promise<void>>,
@@ -133,6 +166,9 @@ export class DiscoverStructure {
 
   private discoveries: CandidateSynapse[] = [];
 
+  /**
+   * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
+   */
   public async analyze(neuronUUID: string) {
     assert(this.recorded, "Not recorded");
     const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
@@ -184,21 +220,20 @@ export class DiscoverStructure {
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
-    const data = await Deno.readTextFile(file);
     try {
-      const records = parseCsv(data, {
-        skipFirstRow: true,
-      });
-      return records.map((record) => {
-        const activation = Number.parseFloat(record.activation);
+      const data = await Deno.readTextFile(file);
+      const records = parseCsv(data, { skipFirstRow: true });
 
-        const errors = record.errors;
-        return { activation, errors };
+      return records.map((record, idx) => {
+        const activation = Number.parseFloat(record.activation);
+        if (isNaN(activation)) {
+          throw new Error(`Invalid activation at row ${idx + 2} in ${file}`);
+        }
+        return { activation, errors: record.errors };
       });
     } catch (e) {
-      console.error(`File: ${file}`, e);
-      console.info(data);
-      throw e;
+      console.error(`Failed to load or parse CSV file: ${file}`, e);
+      throw e; // re-throw after logging for external handling
     }
   }
 
@@ -228,6 +263,75 @@ export class DiscoverStructure {
     return candidates;
   }
 
+  /**
+   * Lists neurons sorted by their total error, useful for error-driven selection processes.
+   */
+  public async listViableNeurons(): Promise<NeuronErrorInfo[]> {
+    assert(this.recorded, "Must record first before listing neurons.");
+
+    const neuronPromises = this.creature.neurons
+      .filter((neuron) => neuron.type !== "input")
+      .map(async (neuron) => {
+        try {
+          const records = await this.loadCSV(
+            `${this.tempDir}/${neuron.uuid}.csv`,
+          );
+
+          const totalError = records.reduce((sum, record) => {
+            const errors = record.errors.split("|").map(Number);
+            const recordError = errors.reduce(
+              (eSum, e) => eSum + Math.abs(e),
+              0,
+            );
+            return sum + recordError;
+          }, 0);
+
+          return { uuid: neuron.uuid, totalError };
+        } catch (e) {
+          console.error(`Error processing neuron ${neuron.uuid}`, e);
+          return { uuid: neuron.uuid, totalError: 0 }; // Handle gracefully
+        }
+      });
+
+    const neuronErrors = await Promise.all(neuronPromises);
+
+    return neuronErrors
+      .filter((neuron) => neuron.totalError > 0)
+      .sort((a, b) => b.totalError - a.totalError);
+  }
+
+  /**
+   * Selects a neuron randomly, weighted by total error, favoring neurons with higher errors.
+   * Implements "roulette wheel" selection.
+   *
+   * Reference:
+   * - Goldberg, D. E. (1989). Genetic Algorithms in Search, Optimization and Machine Learning.
+   */
+  public async selectNeuronWeightedByError(): Promise<string | undefined> {
+    const neuronErrors = await this.listViableNeurons();
+    if (neuronErrors.length === 0) return undefined;
+
+    const totalErrorSum = neuronErrors.reduce(
+      (sum, n) => sum + n.totalError,
+      0,
+    );
+    const randValue = Math.random() * totalErrorSum;
+
+    let cumulativeError = 0;
+    for (const neuron of neuronErrors) {
+      cumulativeError += neuron.totalError;
+      if (randValue <= cumulativeError) {
+        return neuron.uuid;
+      }
+    }
+
+    // Fallback, though it shouldn't typically reach here
+    return neuronErrors[neuronErrors.length - 1].uuid;
+  }
+
+  /**
+   * Analyzes a candidate synapse by estimating potential error reduction from its addition.
+   */
   async analyzeCandidateSynapse(
     toNeuronUUID: string,
     fromNeuronUUID: string,
