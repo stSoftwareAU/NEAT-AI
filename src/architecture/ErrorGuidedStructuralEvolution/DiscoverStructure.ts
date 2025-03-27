@@ -17,6 +17,10 @@ interface CandidateSynapse {
   improvedCount: number;
   totalCount: number;
 }
+interface NeuronErrorInfo {
+  uuid: string;
+  totalError: number;
+}
 
 /**
  * Implements Error-Driven Synapse Discovery, analyzing neuron activations
@@ -226,6 +230,57 @@ export class DiscoverStructure {
     }
     const candidates = await Promise.all(promises);
     return candidates;
+  }
+
+  public async listViableNeurons(): Promise<NeuronErrorInfo[]> {
+    assert(this.recorded, "Must record first before listing neurons.");
+
+    // Prepare promises first (fix lint warning about await in loops)
+    const neuronPromises = this.creature.neurons
+      .filter((neuron) => neuron.type !== "input")
+      .map(async (neuron) => {
+        const records = await this.loadCSV(
+          `${this.tempDir}/${neuron.uuid}.csv`,
+        );
+
+        const totalError = records.reduce((sum, record) => {
+          const errors = record.errors.split("|").map(Number);
+          const recordError = errors.reduce((eSum, e) => eSum + Math.abs(e), 0);
+          return sum + recordError;
+        }, 0);
+
+        return { uuid: neuron.uuid, totalError };
+      });
+
+    // Await all promises concurrently
+    const neuronErrors = await Promise.all(neuronPromises);
+
+    // Filter out neurons with zero errors and sort
+    return neuronErrors
+      .filter((neuron) => neuron.totalError > 0)
+      .sort((a, b) => b.totalError - a.totalError);
+  }
+
+  public async selectNeuronWeightedByError(): Promise<string | undefined> {
+    const neuronErrors = await this.listViableNeurons();
+    if (neuronErrors.length === 0) return undefined;
+
+    const totalErrorSum = neuronErrors.reduce(
+      (sum, n) => sum + n.totalError,
+      0,
+    );
+    const randValue = Math.random() * totalErrorSum;
+
+    let cumulativeError = 0;
+    for (const neuron of neuronErrors) {
+      cumulativeError += neuron.totalError;
+      if (randValue <= cumulativeError) {
+        return neuron.uuid;
+      }
+    }
+
+    // Fallback, though it shouldn't typically reach here
+    return neuronErrors[neuronErrors.length - 1].uuid;
   }
 
   async analyzeCandidateSynapse(

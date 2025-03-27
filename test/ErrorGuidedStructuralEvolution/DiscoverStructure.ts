@@ -124,6 +124,27 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses both", asy
   );
   assert(input33, "Should have added synapse from input-33");
   assertAlmostEquals(input33?.weight, -0.3, 0.05);
+
+  // New tests for listViableNeurons()
+  const viableNeurons = await discoverStructure.listViableNeurons();
+  assert(viableNeurons.length > 0, "There should be viable neurons listed");
+  // Check descending sort order by total error
+  for (let i = 1; i < viableNeurons.length; i++) {
+    assert(
+      viableNeurons[i - 1].totalError >= viableNeurons[i].totalError,
+      "Viable neurons should be sorted by descending totalError",
+    );
+  }
+
+  // New test for selectNeuronWeightedByError()
+  const selectedNeuronUUID = await discoverStructure
+    .selectNeuronWeightedByError();
+  assert(selectedNeuronUUID, "Should select a neuron UUID");
+  assert(
+    viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID),
+    "Selected neuron UUID must be from the viable neurons list",
+  );
+
   await discoverStructure.cleanUp();
 });
 
