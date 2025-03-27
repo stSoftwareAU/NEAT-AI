@@ -76,12 +76,6 @@ export class DiscoverStructure {
       const writePromise = Deno.writeTextFile(filePath, headCSV, {
         append: false,
         createNew: true,
-      }).catch((e) => {
-        console.error(
-          `Failed to initialize CSV for neuron ${neuron.uuid} at ${filePath}`,
-          e,
-        );
-        throw e;
       });
 
       neuronPromisesMap.set(neuron.uuid, writePromise);
@@ -121,7 +115,6 @@ export class DiscoverStructure {
 
         const nextPromise = previousPromise.then(() =>
           Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
-            .catch((e) => console.error(`Failed write to ${fileName}`, e))
         );
 
         neuronPromisesMap.set(neuron.uuid, nextPromise);
@@ -157,7 +150,6 @@ export class DiscoverStructure {
 
       const nextPromise = previousPromise.then(() =>
         Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
-          .catch((e) => console.error(`Failed write to ${fileName}`, e))
       );
 
       neuronPromisesMap.set(neuronUUID, nextPromise);
