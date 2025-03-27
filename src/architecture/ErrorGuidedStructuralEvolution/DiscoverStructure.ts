@@ -68,19 +68,22 @@ export class DiscoverStructure {
     this.initialized = true;
 
     this.creature.neurons.forEach((neuron) => {
-      let headCSV = "activation\n";
-      if (neuron.type !== "input") {
-        headCSV = "activation,errors\n";
-      }
+      const headCSV = neuron.type !== "input"
+        ? "activation,errors\n"
+        : "activation\n";
+      const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
 
-      const writePromise = Deno.writeTextFile(
-        `${this.tempDir}/${neuron.uuid}.csv`,
-        headCSV,
-        {
-          append: false,
-          createNew: true,
-        },
-      );
+      const writePromise = Deno.writeTextFile(filePath, headCSV, {
+        append: false,
+        createNew: true,
+      }).catch((e) => {
+        console.error(
+          `Failed to initialize CSV for neuron ${neuron.uuid} at ${filePath}`,
+          e,
+        );
+        throw e;
+      });
+
       neuronPromisesMap.set(neuron.uuid, writePromise);
     });
   }
@@ -217,21 +220,20 @@ export class DiscoverStructure {
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
-    const data = await Deno.readTextFile(file);
     try {
-      const records = parseCsv(data, {
-        skipFirstRow: true,
-      });
-      return records.map((record) => {
-        const activation = Number.parseFloat(record.activation);
+      const data = await Deno.readTextFile(file);
+      const records = parseCsv(data, { skipFirstRow: true });
 
-        const errors = record.errors;
-        return { activation, errors };
+      return records.map((record, idx) => {
+        const activation = Number.parseFloat(record.activation);
+        if (isNaN(activation)) {
+          throw new Error(`Invalid activation at row ${idx + 2} in ${file}`);
+        }
+        return { activation, errors: record.errors };
       });
     } catch (e) {
-      console.error(`File: ${file}`, e);
-      console.info(data);
-      throw e;
+      console.error(`Failed to load or parse CSV file: ${file}`, e);
+      throw e; // re-throw after logging for external handling
     }
   }
 
@@ -267,27 +269,32 @@ export class DiscoverStructure {
   public async listViableNeurons(): Promise<NeuronErrorInfo[]> {
     assert(this.recorded, "Must record first before listing neurons.");
 
-    // Prepare promises first (fix lint warning about await in loops)
     const neuronPromises = this.creature.neurons
       .filter((neuron) => neuron.type !== "input")
       .map(async (neuron) => {
-        const records = await this.loadCSV(
-          `${this.tempDir}/${neuron.uuid}.csv`,
-        );
+        try {
+          const records = await this.loadCSV(
+            `${this.tempDir}/${neuron.uuid}.csv`,
+          );
 
-        const totalError = records.reduce((sum, record) => {
-          const errors = record.errors.split("|").map(Number);
-          const recordError = errors.reduce((eSum, e) => eSum + Math.abs(e), 0);
-          return sum + recordError;
-        }, 0);
+          const totalError = records.reduce((sum, record) => {
+            const errors = record.errors.split("|").map(Number);
+            const recordError = errors.reduce(
+              (eSum, e) => eSum + Math.abs(e),
+              0,
+            );
+            return sum + recordError;
+          }, 0);
 
-        return { uuid: neuron.uuid, totalError };
+          return { uuid: neuron.uuid, totalError };
+        } catch (e) {
+          console.error(`Error processing neuron ${neuron.uuid}`, e);
+          return { uuid: neuron.uuid, totalError: 0 }; // Handle gracefully
+        }
       });
 
-    // Await all promises concurrently
     const neuronErrors = await Promise.all(neuronPromises);
 
-    // Filter out neurons with zero errors and sort
     return neuronErrors
       .filter((neuron) => neuron.totalError > 0)
       .sort((a, b) => b.totalError - a.totalError);
