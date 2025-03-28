@@ -85,7 +85,7 @@ class DataRecorder {
     return await this.recordFiles(binaryFiles);
   }
 
-  private processFile(
+  private async processFile(
     filePath: string,
     discoverStructure: DiscoverStructure,
     params: {
@@ -100,9 +100,9 @@ class DataRecorder {
 
     const { creature } = this;
     let readTime = 0;
-    const file = Deno.openSync(filePath, { read: true });
+    const file = await Deno.open(filePath, { read: true });
     try {
-      const stat = file.statSync();
+      const stat = await file.stat();
       const fileRecords = stat.size / this.BYTES_PER_RECORD;
       const sampleSize = Math.ceil(fileRecords * this.sampleRate);
 
@@ -156,6 +156,8 @@ class DataRecorder {
               params.neuronPromisesMap,
             );
             assert(params.dataSet.length === 0, "Data set not empty");
+            // deno-lint-ignore no-await-in-loop
+            await new Promise((resolve) => setTimeout(resolve, 0));
           }
         }
         batchStart += batchSize;
@@ -206,13 +208,14 @@ class DataRecorder {
 
       const dataSet: DataRecordInterface[] = [];
 
-      binaryFiles.forEach((filePath) =>
-        this.processFile(filePath, discoverStructure, {
+      for (const filePath of binaryFiles) {
+        // deno-lint-ignore no-await-in-loop
+        await this.processFile(filePath, discoverStructure, {
           counter,
           dataSet,
           neuronPromisesMap: neuronPromisesMap,
-        })
-      );
+        });
+      }
 
       if (dataSet.length > 0) {
         discoverStructure.record(dataSet, neuronPromisesMap);
