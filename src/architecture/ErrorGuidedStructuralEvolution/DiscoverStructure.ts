@@ -222,7 +222,7 @@ export class DiscoverStructure {
   public async analyze(): Promise<Creature | undefined> {
     assert(this.recorded, "Not recorded");
     const focusList = await this.selectNeuronsWeightedByError(6);
-    return this.analyzeSelectedNeurons(focusList);
+    return await this.analyzeSelectedNeurons(focusList);
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
