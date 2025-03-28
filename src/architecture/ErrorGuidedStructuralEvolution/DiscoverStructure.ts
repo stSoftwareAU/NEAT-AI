@@ -347,17 +347,14 @@ export class DiscoverStructure {
   }
 
   /**
-   * Analyzes a candidate synapse by estimating the potential error reduction
-   * from its addition to a neural network.
-   *
-   * It compares whether applying a positive or negative weight would more
-   * effectively reduce the average downstream neuron error and selects the
-   * direction (sign) with the higher improvement count.
+   * Analyzes a candidate synapse by estimating the potential reduction in downstream error
+   * if the synapse were added. It evaluates whether a positive or negative weight would
+   * lead to a net improvement, and calculates the initial weight accordingly.
    *
    * @param toNeuronUUID - UUID of the target neuron the synapse would connect to
    * @param fromNeuronUUID - UUID of the source neuron the synapse would originate from
-   * @param toRecords - Activation and error records for the target neuron
-   * @returns A CandidateSynapse object with direction, weight, and estimated impact
+   * @param toRecords - Activation/error records for the target neuron
+   * @returns A CandidateSynapse representing the most promising synapse addition
    */
   async analyzeCandidateSynapse(
     toNeuronUUID: string,
@@ -374,7 +371,7 @@ export class DiscoverStructure {
       `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
     );
 
-    // Track stats for positive vs negative weight scenarios
+    // Track stats for evaluating the benefit of a positive vs. negative weight
     let positiveCount = 0;
     let negativeCount = 0;
     let positiveImprovementSum = 0;
@@ -396,10 +393,10 @@ export class DiscoverStructure {
       const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
       if (Math.abs(avgError) <= Number.EPSILON) continue;
 
+      // Determine if a positive or negative weight would reduce the error
       const requiredWeightSign = -Math.sign(avgError) * Math.sign(activation);
       const improvement = Math.abs(avgError);
 
-      // Track stats for the appropriate weight direction
       if (requiredWeightSign > 0) {
         positiveCount++;
         positiveImprovementSum += improvement;
@@ -411,7 +408,7 @@ export class DiscoverStructure {
       }
     }
 
-    // Choose the weight direction that improves more records
+    // Determine the better weight direction
     const usePositive = positiveCount >= negativeCount;
     const improvedCount = usePositive ? positiveCount : negativeCount;
     const worsenCount = usePositive ? negativeCount : positiveCount;
@@ -422,6 +419,7 @@ export class DiscoverStructure {
       ? positiveActivationSum
       : negativeActivationSum;
 
+    // Net percentage improvement: positive means overall help, negative means harm
     const expectedImprovementPercentage = (improvedCount - worsenCount) /
       activationCount;
 
@@ -434,7 +432,7 @@ export class DiscoverStructure {
       // If positive weight is better, weight must oppose activation to reduce error.
       weight = usePositive ? -rawWeight : rawWeight;
 
-      // Clamp to range [-1, 1] for stability
+      // Clamp weight for stability
       weight = Math.max(-1, Math.min(1, weight));
     }
 
