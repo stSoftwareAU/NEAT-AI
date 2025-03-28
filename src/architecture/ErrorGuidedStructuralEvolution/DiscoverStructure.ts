@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { parse as parseCsv } from "@std/csv";
 import { Creature } from "../../Creature.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
+
 /**
  * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
  * This class analyzes neuron activations and back-propagation errors to discover beneficial new synapses
@@ -158,18 +159,23 @@ export class DiscoverStructure {
 
   private discoveries: CandidateSynapse[] = [];
 
-  /**
-   * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
-   */
-  public async analyze(neuronUUID: string) {
-    assert(this.recorded, "Not recorded");
-    const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
-    const candidates = await this.loadCandidateSynapses(neuronUUID, records);
-    if (candidates.length > 0) {
-      candidates.sort((a, b) =>
+  public async analyzeSelectedNeurons(
+    focusList: string[],
+  ): Promise<Creature | undefined> {
+    if (focusList.length === 0) return undefined;
+    const candidatePromises = focusList.map(async (neuronUUID) => {
+      const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
+      return this.loadCandidateSynapses(neuronUUID, records);
+    });
+
+    const candidateArrays = await Promise.all(candidatePromises);
+    const allCandidates: CandidateSynapse[] = candidateArrays.flat();
+
+    if (allCandidates.length > 0) {
+      allCandidates.sort((a, b) =>
         b.expectedErrorReduction - a.expectedErrorReduction
       );
-      const bestCandidate = candidates[0];
+      const bestCandidate = allCandidates[0];
       if (
         bestCandidate.expectedErrorReduction > 0 &&
         bestCandidate.expectedImprovementPercentage > 0.01
@@ -209,6 +215,14 @@ export class DiscoverStructure {
 
     tmpCreature.validate();
     return tmpCreature;
+  }
+  /**
+   * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
+   */
+  public async analyze(): Promise<Creature | undefined> {
+    assert(this.recorded, "Not recorded");
+    const focusList = await this.selectNeuronsWeightedByError(6);
+    return this.analyzeSelectedNeurons(focusList);
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
@@ -299,26 +313,32 @@ export class DiscoverStructure {
    * Reference:
    * - Goldberg, D. E. (1989). Genetic Algorithms in Search, Optimization and Machine Learning.
    */
-  public async selectNeuronWeightedByError(): Promise<string | undefined> {
+  public async selectNeuronsWeightedByError(count: number): Promise<string[]> {
+    assert(count > 0, "Count must be greater than 0");
     const neuronErrors = await this.listViableNeurons();
-    if (neuronErrors.length === 0) return undefined;
+    if (neuronErrors.length === 0 || count <= 0) return [];
+
+    const selectedUUIDs: Set<string> = new Set();
 
     const totalErrorSum = neuronErrors.reduce(
       (sum, n) => sum + n.totalError,
       0,
     );
-    const randValue = Math.random() * totalErrorSum;
 
-    let cumulativeError = 0;
-    for (const neuron of neuronErrors) {
-      cumulativeError += neuron.totalError;
-      if (randValue <= cumulativeError) {
-        return neuron.uuid;
+    while (selectedUUIDs.size < Math.min(count, neuronErrors.length)) {
+      const randValue = Math.random() * totalErrorSum;
+      let cumulativeError = 0;
+
+      for (const neuron of neuronErrors) {
+        cumulativeError += neuron.totalError;
+        if (randValue <= cumulativeError) {
+          selectedUUIDs.add(neuron.uuid);
+          break;
+        }
       }
     }
 
-    // Fallback, though it shouldn't typically reach here
-    return neuronErrors[neuronErrors.length - 1].uuid;
+    return Array.from(selectedUUIDs);
   }
 
   /**
