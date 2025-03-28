@@ -1,3 +1,4 @@
+import { assertAlmostEquals } from "@std/assert/almost-equals";
 import { assert } from "@std/assert/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
@@ -8,7 +9,6 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
-import { assertAlmostEquals } from "@std/assert/almost-equals";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -17,14 +17,11 @@ function makeCreature() {
         type: "hidden",
         uuid: "hidden-3",
         squash: IDENTITY.NAME,
-        // squash: Cosine.NAME,
         bias: Math.PI,
-        // bias: 0.01,
       },
       {
         type: "hidden",
         uuid: "hidden-4",
-        // squash: IDENTITY.NAME,
         squash: TANH.NAME,
         bias: Math.SQRT1_2,
       },
