@@ -169,7 +169,7 @@ export class DiscoverStructure {
 
     const candidateArrays = await Promise.all(candidatePromises);
     const allCandidates: CandidateSynapse[] = candidateArrays.flat().filter(
-      (candidate) => candidate.expectedImprovementPercentage > 0,
+      (candidate) => candidate.expectedImprovementPercentage > 0.1,
     );
 
     if (allCandidates.length > 0) {
@@ -414,13 +414,16 @@ export class DiscoverStructure {
     // Choose the weight direction that improves more records
     const usePositive = positiveCount >= negativeCount;
     const improvedCount = usePositive ? positiveCount : negativeCount;
+    const worsenCount = usePositive ? negativeCount : positiveCount;
     const improvementSum = usePositive
       ? positiveImprovementSum
       : negativeImprovementSum;
     const activationSum = usePositive
       ? positiveActivationSum
       : negativeActivationSum;
-    const expectedImprovementPercentage = improvedCount / activationCount;
+
+    const expectedImprovementPercentage = (improvedCount - worsenCount) /
+      activationCount;
 
     // Estimate weight magnitude and apply correct sign
     let weight = 0;
