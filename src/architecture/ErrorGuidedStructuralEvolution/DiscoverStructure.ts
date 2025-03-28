@@ -182,11 +182,11 @@ export class DiscoverStructure {
       console.info(
         `Discovered beneficial synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${
           bestCandidate.weight.toFixed(4)
-        }, improving ${
+        }, helping ${
           (
             bestCandidate.expectedImprovementPercentage * 100
           ).toFixed(1)
-        }% of training records (${bestCandidate.improvedCount}/${bestCandidate.totalCount})`,
+        }% more records than it harms (${bestCandidate.improvedCount}/${bestCandidate.totalCount})`,
       );
 
       this.discoveries.push(bestCandidate);
