@@ -107,8 +107,10 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses both", asy
   discoverStructure.record(trainingData, neuronPromisesMap);
   await Promise.all([...neuronPromisesMap.values()]);
 
-  await discoverStructure.analyze("hidden-4");
-  const betterCreature = await discoverStructure.analyze("hidden-3");
+  await discoverStructure.analyzeSelectedNeurons(["hidden-4"]);
+  const betterCreature = await discoverStructure.analyzeSelectedNeurons([
+    "hidden-3",
+  ]);
   assert(betterCreature, "Should have discovered a better creature");
   betterCreature.validate();
   const betterCreatureJSON = betterCreature.exportJSON();
@@ -118,7 +120,7 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses both", asy
   );
 
   assert(input22, "Should have added synapse from input-22");
-  // assertAlmostEquals(input22?.weight, 0.2, 0.075);
+  assertAlmostEquals(input22?.weight, 0.2, 0.075);
   const input33 = betterCreatureJSON.synapses.find((synapse) =>
     synapse.fromUUID === "input-33"
   );
@@ -138,10 +140,10 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses both", asy
 
   // New test for selectNeuronWeightedByError()
   const selectedNeuronUUID = await discoverStructure
-    .selectNeuronWeightedByError();
+    .selectNeuronsWeightedByError(1);
   assert(selectedNeuronUUID, "Should select a neuron UUID");
   assert(
-    viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID),
+    viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID[0]),
     "Selected neuron UUID must be from the viable neurons list",
   );
 

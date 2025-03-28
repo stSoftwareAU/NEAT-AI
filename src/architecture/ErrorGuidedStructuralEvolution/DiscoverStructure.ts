@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { parse as parseCsv } from "@std/csv";
 import { Creature } from "../../Creature.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
+
 /**
  * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
  * This class analyzes neuron activations and back-propagation errors to discover beneficial new synapses
@@ -25,7 +26,6 @@ interface CandidateSynapse {
   fromNeuronUUID: string;
   toNeuronUUID: string;
   weight: number;
-  expectedErrorReduction: number;
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
@@ -158,31 +158,38 @@ export class DiscoverStructure {
 
   private discoveries: CandidateSynapse[] = [];
 
-  /**
-   * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
-   */
-  public async analyze(neuronUUID: string) {
-    assert(this.recorded, "Not recorded");
-    const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
-    const candidates = await this.loadCandidateSynapses(neuronUUID, records);
-    if (candidates.length > 0) {
-      candidates.sort((a, b) =>
-        b.expectedErrorReduction - a.expectedErrorReduction
+  public async analyzeSelectedNeurons(
+    focusList: string[],
+  ): Promise<Creature | undefined> {
+    if (focusList.length === 0) return undefined;
+    const candidatePromises = focusList.map(async (neuronUUID) => {
+      const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
+      return this.loadCandidateSynapses(neuronUUID, records);
+    });
+
+    const candidateArrays = await Promise.all(candidatePromises);
+    const allCandidates: CandidateSynapse[] = candidateArrays.flat().filter(
+      (candidate) => candidate.expectedImprovementPercentage > 0.1,
+    );
+
+    if (allCandidates.length > 0) {
+      allCandidates.sort((a, b) =>
+        b.expectedImprovementPercentage - a.expectedImprovementPercentage
       );
-      const bestCandidate = candidates[0];
-      if (
-        bestCandidate.expectedErrorReduction > 0 &&
-        bestCandidate.expectedImprovementPercentage > 0.01
-      ) {
-        const msg =
-          `Discovered synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${bestCandidate.weight} expected error reduction ${
-            bestCandidate.expectedErrorReduction / bestCandidate.totalCount
-          } improved ${bestCandidate.improvedCount} of ${bestCandidate.totalCount} (${
-            (bestCandidate.expectedImprovementPercentage * 100).toFixed(1)
-          }%)`;
-        console.info(msg);
-        this.discoveries.push(bestCandidate);
-      }
+      const bestCandidate = allCandidates[0];
+      assert(bestCandidate.expectedImprovementPercentage > 0);
+
+      console.info(
+        `Discovered beneficial synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${
+          bestCandidate.weight.toFixed(4)
+        }, improving ${
+          (
+            bestCandidate.expectedImprovementPercentage * 100
+          ).toFixed(1)
+        }% of training records (${bestCandidate.improvedCount}/${bestCandidate.totalCount})`,
+      );
+
+      this.discoveries.push(bestCandidate);
     }
     if (this.discoveries.length === 0) {
       return undefined;
@@ -209,6 +216,15 @@ export class DiscoverStructure {
 
     tmpCreature.validate();
     return tmpCreature;
+  }
+
+  /**
+   * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
+   */
+  public async analyze(): Promise<Creature | undefined> {
+    assert(this.recorded, "Not recorded");
+    const focusList = await this.selectNeuronsWeightedByError(6);
+    return this.analyzeSelectedNeurons(focusList);
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
@@ -299,30 +315,46 @@ export class DiscoverStructure {
    * Reference:
    * - Goldberg, D. E. (1989). Genetic Algorithms in Search, Optimization and Machine Learning.
    */
-  public async selectNeuronWeightedByError(): Promise<string | undefined> {
+  public async selectNeuronsWeightedByError(count: number): Promise<string[]> {
+    assert(count > 0, "Count must be greater than 0");
     const neuronErrors = await this.listViableNeurons();
-    if (neuronErrors.length === 0) return undefined;
+    if (neuronErrors.length === 0) return [];
+
+    if (neuronErrors.length <= count) {
+      return neuronErrors.map((neuron) => neuron.uuid);
+    }
+    const selectedUUIDs: Set<string> = new Set();
 
     const totalErrorSum = neuronErrors.reduce(
       (sum, n) => sum + n.totalError,
       0,
     );
-    const randValue = Math.random() * totalErrorSum;
 
-    let cumulativeError = 0;
-    for (const neuron of neuronErrors) {
-      cumulativeError += neuron.totalError;
-      if (randValue <= cumulativeError) {
-        return neuron.uuid;
+    for (let i = 0; i < count; i++) {
+      const randValue = Math.random() * totalErrorSum;
+      let cumulativeError = 0;
+
+      for (const neuron of neuronErrors) {
+        cumulativeError += neuron.totalError;
+        if (randValue <= cumulativeError) {
+          selectedUUIDs.add(neuron.uuid);
+          break;
+        }
       }
     }
 
-    // Fallback, though it shouldn't typically reach here
-    return neuronErrors[neuronErrors.length - 1].uuid;
+    return Array.from(selectedUUIDs);
   }
 
   /**
-   * Analyzes a candidate synapse by estimating potential error reduction from its addition.
+   * Analyzes a candidate synapse by estimating the potential reduction in downstream error
+   * if the synapse were added. It evaluates whether a positive or negative weight would
+   * lead to a net improvement, and calculates the initial weight accordingly.
+   *
+   * @param toNeuronUUID - UUID of the target neuron the synapse would connect to
+   * @param fromNeuronUUID - UUID of the source neuron the synapse would originate from
+   * @param toRecords - Activation/error records for the target neuron
+   * @returns A CandidateSynapse representing the most promising synapse addition
    */
   async analyzeCandidateSynapse(
     toNeuronUUID: string,
@@ -331,81 +363,86 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse> {
     const activationCount = toRecords.length;
 
+    // Load source neuron activation records
     const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
-    const fromRecords = await this.loadCSV(
-      fileName,
-    );
+    const fromRecords = await this.loadCSV(fileName);
     assert(
       fromRecords.length === activationCount,
       `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
     );
 
+    // Track stats for evaluating the benefit of a positive vs. negative weight
     let positiveCount = 0;
     let negativeCount = 0;
-    let sumAbsActivation = 0;
-    let sumAbsError = 0;
-    let totalError = 0;
-    let totalActivation = 0;
-    for (let indx = 0; indx < activationCount; indx++) {
-      const toRecord = toRecords[indx];
+    let positiveImprovementSum = 0;
+    let negativeImprovementSum = 0;
+    let positiveActivationSum = 0;
+    let negativeActivationSum = 0;
 
-      const fromRecord = fromRecords[indx];
-      sumAbsActivation += Math.abs(fromRecord.activation);
+    // Analyze each training record
+    for (let i = 0; i < activationCount; i++) {
+      const toRecord = toRecords[i];
+      const fromRecord = fromRecords[i];
 
-      let neuronPaths = 0;
-      let neuronErrorTotal = 0;
-      toRecord.errors.split("|").map((errorTxt) => {
-        const error = Number(errorTxt);
-        neuronErrorTotal += error;
-        neuronPaths++;
-        totalActivation += fromRecord.activation;
-      });
-      assert(neuronPaths > 0, "neuronPaths must be greater than 0");
-      const error = neuronErrorTotal / neuronPaths;
-      totalError += error;
-      sumAbsError += Math.abs(error);
-      if (error > 0) {
-        if (fromRecord.activation > 0) {
-          positiveCount++;
-        } else if (fromRecord.activation < 0) {
-          negativeCount++;
-        }
-      } else if (error < 0) {
-        if (fromRecord.activation > 0) {
-          negativeCount++;
-        } else if (fromRecord.activation < 0) {
-          positiveCount++;
-        }
+      const activation = fromRecord.activation;
+      if (Math.abs(activation) <= Number.EPSILON) continue;
+
+      // Compute average downstream error
+      const errorList = toRecord.errors.split("|").map(Number);
+      assert(errorList.length > 0, "neuronPaths must be greater than 0");
+      const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
+      if (Math.abs(avgError) <= Number.EPSILON) continue;
+
+      // Determine if a positive or negative weight would reduce the error
+      const requiredWeightSign = -Math.sign(avgError) * Math.sign(activation);
+      const improvement = Math.abs(avgError);
+
+      if (requiredWeightSign > 0) {
+        positiveCount++;
+        positiveImprovementSum += improvement;
+        positiveActivationSum += Math.abs(activation);
+      } else if (requiredWeightSign < 0) {
+        negativeCount++;
+        negativeImprovementSum += improvement;
+        negativeActivationSum += Math.abs(activation);
       }
     }
 
-    const positiveBetter = positiveCount > negativeCount;
+    // Determine the better weight direction
+    const usePositive = positiveCount >= negativeCount;
+    const improvedCount = usePositive ? positiveCount : negativeCount;
+    const worsenCount = usePositive ? negativeCount : positiveCount;
+    const improvementSum = usePositive
+      ? positiveImprovementSum
+      : negativeImprovementSum;
+    const activationSum = usePositive
+      ? positiveActivationSum
+      : negativeActivationSum;
 
-    const avgAbsError = sumAbsError / activationCount;
+    // Net percentage improvement: positive means overall help, negative means harm
+    const expectedImprovementPercentage = (improvedCount - worsenCount) /
+      activationCount;
 
-    const avgActivation = sumAbsActivation / activationCount;
-    let initialWeightMagnitude = avgAbsError / (avgActivation + 1e-8) *
-      (positiveBetter ? 1 : -1);
+    // Estimate weight magnitude and apply correct sign
+    let weight = 0;
+    if (improvedCount > 0 && activationSum > Number.EPSILON) {
+      const rawWeight = improvementSum / (activationSum + 1e-8);
 
-    if (Math.abs(initialWeightMagnitude) > 1) {
-      initialWeightMagnitude = Math.sign(initialWeightMagnitude);
-    }
+      // Flip sign because activationSum is always positive.
+      // If positive weight is better, weight must oppose activation to reduce error.
+      weight = usePositive ? -rawWeight : rawWeight;
 
-    let expectedErrorReduction = 0;
-    if (positiveBetter) {
-      expectedErrorReduction = avgAbsError * (positiveCount - negativeCount);
-    } else {
-      expectedErrorReduction = avgAbsError * (negativeCount - positiveCount);
+      // Clamp weight for stability
+      weight = Math.max(-1, Math.min(1, weight));
     }
 
     return {
-      fromNeuronUUID: fromNeuronUUID,
-      toNeuronUUID: toNeuronUUID,
-      weight: initialWeightMagnitude,
-      expectedErrorReduction: expectedErrorReduction / activationCount,
-      improvedCount: positiveBetter ? positiveCount : negativeCount,
+      fromNeuronUUID,
+      toNeuronUUID,
+      weight,
+      improvedCount,
       totalCount: activationCount,
-      expectedImprovementPercentage: expectedErrorReduction / sumAbsError,
+      expectedImprovementPercentage,
     };
   }
 }

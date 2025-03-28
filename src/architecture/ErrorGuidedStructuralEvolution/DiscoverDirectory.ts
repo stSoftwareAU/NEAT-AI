@@ -239,22 +239,20 @@ class DataRecorder {
         ID: this.ID,
         enhanced: undefined,
       };
-      const focusUUID = await discoverStructure.selectNeuronWeightedByError();
-      if (focusUUID) {
-        const analyzeStartTime = Date.now();
 
-        const enhanced = await discoverStructure.analyze(focusUUID);
-        if (options.log) {
-          const analyzeTime = Date.now() - analyzeStartTime;
-          console.log(
-            `Discovery ${blue(this.ID)} analyze time ${
-              yellow(format(analyzeTime, { ignoreZero: true }))
-            }`,
-          );
-        }
-        if (enhanced) {
-          discoverResult.enhanced = enhanced.exportJSON();
-        }
+      const analyzeStartTime = Date.now();
+
+      const enhanced = await discoverStructure.analyze();
+      if (options.log) {
+        const analyzeTime = Date.now() - analyzeStartTime;
+        console.log(
+          `Discovery ${blue(this.ID)} analyze time ${
+            yellow(format(analyzeTime, { ignoreZero: true }))
+          }`,
+        );
+      }
+      if (enhanced) {
+        discoverResult.enhanced = enhanced.exportJSON();
       }
 
       return discoverResult;
