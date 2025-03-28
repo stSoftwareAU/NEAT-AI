@@ -222,9 +222,13 @@ export class DiscoverStructure {
   /**
    * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
    */
-  public async analyze(): Promise<Creature | undefined> {
+  public async analyze(
+    discoveryMaxNeurons: number,
+  ): Promise<Creature | undefined> {
     assert(this.recorded, "Not recorded");
-    const focusList = await this.selectNeuronsWeightedByError(6);
+    const focusList = await this.selectNeuronsWeightedByError(
+      discoveryMaxNeurons,
+    );
     return this.analyzeSelectedNeurons(focusList);
   }
 

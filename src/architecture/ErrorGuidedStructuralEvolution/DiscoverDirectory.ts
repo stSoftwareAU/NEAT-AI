@@ -24,6 +24,7 @@ class DataRecorder {
   private discoveryBatchSize: number;
   private ID: string;
   private timeoutTS: number;
+  private discoveryMaxNeurons: number;
   constructor(
     private creature: Creature,
     private options: NeatOptions,
@@ -46,6 +47,11 @@ class DataRecorder {
     this.timeoutTS = options.discoveryTimeOutMinutes
       ? Date.now() + options.discoveryTimeOutMinutes * 60 * 1000
       : 0;
+
+    this.discoveryMaxNeurons = Math.max(
+      1,
+      options.discoveryMaxNeurons || 6,
+    );
   }
 
   private shuffleFiles(files: string[]): string[] {
@@ -245,7 +251,9 @@ class DataRecorder {
 
       const analyzeStartTime = Date.now();
 
-      const enhanced = await discoverStructure.analyze();
+      const enhanced = await discoverStructure.analyze(
+        this.discoveryMaxNeurons,
+      );
       if (options.log) {
         const analyzeTime = Date.now() - analyzeStartTime;
         console.log(
