@@ -189,50 +189,16 @@ export class MEAN implements NeuronActivationInterface, NeuronFixableInterface {
     return this.range.limit(adjustedActivation);
   }
 
+  /**
+   * @deprecated No longer used. A normal neural network can mimic the behavior of this activation.
+   * @param _neuron
+   * @param _requestedActivation
+   * @param _discoverMap
+   */
   record(
-    neuron: Neuron,
-    requestedActivation: number,
-    discoverMap: Map<string, DiscoverRecord>,
+    _neuron: Neuron,
+    _requestedActivation: number,
+    _discoverMap: Map<string, DiscoverRecord>,
   ): void {
-    const toList = neuron.creature.inwardConnections(neuron.index);
-
-    const state = neuron.creature.state;
-
-    const currentActivation = state.activations[neuron.index];
-
-    let error = 0;
-    if (Math.abs(requestedActivation - currentActivation) > 1e-8) {
-      const targetValue = toValue(neuron, requestedActivation);
-      const currentValue = toValue(neuron, currentActivation);
-
-      error = targetValue - currentValue;
-    }
-
-    const errorPerSynapse = error / toList.length;
-
-    for (let indx = 0; indx < toList.length; indx++) {
-      const c = toList[indx];
-      if (c.from === c.to) continue;
-
-      const fromNeuron = neuron.creature.neurons[c.from];
-
-      if (
-        c.weight &&
-        fromNeuron.type !== "input" &&
-        fromNeuron.type !== "constant"
-      ) {
-        const fromActivation = state.activations[fromNeuron.index];
-
-        const fromValue = c.weight * fromActivation;
-
-        const targetFromValue = fromValue + errorPerSynapse;
-
-        const targetFromActivation = targetFromValue / c.weight;
-        fromNeuron.record(
-          targetFromActivation,
-          discoverMap,
-        );
-      }
-    }
   }
 }

@@ -35,7 +35,7 @@ export class DeDuplicator {
       let duplicate = unique.has(UUID);
 
       if (!duplicate) {
-        if (indx > this.breed.config.elitism) {
+        if (indx > this.breed.options.elitism!) {
           duplicate = this.previousExperiment(UUID);
         }
         unique.add(UUID);
@@ -43,7 +43,8 @@ export class DeDuplicator {
 
       if (duplicate) {
         if (
-          creatures.length - toRemove.length > this.breed.config.populationSize
+          creatures.length - toRemove.length >
+            this.breed.options.populationSize!
         ) {
           console.info(
             `Culling duplicate creature at ${indx - toRemove.length} of ${
@@ -79,55 +80,64 @@ export class DeDuplicator {
     index: number,
     unique: Set<string>,
   ) {
-    for (let attempts = 0; true; attempts++) {
-      const child = this.breed.breed();
-
-      if (child) {
-        const key2 = CreatureUtil.makeUUID(child);
-        let duplicate2 = unique.has(key2);
-        if (!duplicate2 && index > this.breed.config.elitism) {
-          duplicate2 = this.previousExperiment(key2);
+    const globalBreedingRate = this.breed.options.globalBreedingRate;
+    try {
+      for (let attempts = 0; true; attempts++) {
+        if (attempts === 12) {
+          this.breed.options.globalBreedingRate = 1;
         }
-        if (!duplicate2) {
-          unique.add(key2);
-          creatures[index] = child;
-          this.breed.genus.addCreature(child);
+        const child = this.breed.breed();
+
+        if (child) {
+          const key2 = CreatureUtil.makeUUID(child);
+          let duplicate2 = unique.has(key2);
+          if (!duplicate2 && index > this.breed.options.elitism!) {
+            duplicate2 = this.previousExperiment(key2);
+          }
+          if (!duplicate2) {
+            unique.add(key2);
+            creatures[index] = child;
+            this.breed.genus.addCreature(child);
+            return;
+          }
+        }
+        const tmpCreature = Creature.fromJSON(creatures[index].exportJSON());
+        this.mutator.mutate([tmpCreature]);
+        const key3 = CreatureUtil.makeUUID(tmpCreature);
+        let duplicate3 = unique.has(key3);
+        if (!duplicate3 && index > this.breed.options.elitism!) {
+          duplicate3 = this.previousExperiment(key3);
+        }
+        if (!duplicate3) {
+          this.breed.genus.addCreature(tmpCreature);
+          creatures[index] = tmpCreature;
+          unique.add(key3);
+          return;
+        } else if (attempts > 48) {
+          console.error(
+            `Can't deDuplicate creature at ${index} of ${creatures.length}`,
+          );
+          creatures.splice(index, 1);
           return;
         }
       }
-      const tmpCreature = Creature.fromJSON(creatures[index].exportJSON());
-      this.mutator.mutate([tmpCreature]);
-      const key3 = CreatureUtil.makeUUID(tmpCreature);
-      let duplicate3 = unique.has(key3);
-      if (!duplicate3 && index > this.breed.config.elitism) {
-        duplicate3 = this.previousExperiment(key3);
-      }
-      if (!duplicate3) {
-        this.breed.genus.addCreature(tmpCreature);
-        creatures[index] = tmpCreature;
-        unique.add(key3);
-        return;
-      } else if (attempts > 48) {
-        console.error(
-          `Can't deDuplicate creature at ${index} of ${creatures.length}`,
-        );
-        creatures.splice(index, 1);
-        return;
-      }
+    } finally {
+      this.breed.options.globalBreedingRate = globalBreedingRate;
     }
   }
 
   private logPopulationSize(creatures: Creature[]) {
-    if (creatures.length > this.breed.config.populationSize + 1) {
+    if (creatures.length > this.breed.options.populationSize! + 1) {
       console.info(
-        `Over populated ${creatures.length}, expected ${this.breed.config.populationSize}.`,
+        `Over populated ${creatures.length}, expected ${this.breed.options
+          .populationSize!}.`,
       );
     }
   }
 
   previousExperiment(key: string): boolean {
-    if (this.breed.config.experimentStore) {
-      const filePath = `${this.breed.config.experimentStore}/score/${
+    if (this.breed.options.experimentStore) {
+      const filePath = `${this.breed.options.experimentStore}/score/${
         key.substring(0, 3)
       }/${key.substring(3)}.txt`;
       try {

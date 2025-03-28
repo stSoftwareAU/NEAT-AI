@@ -17,6 +17,7 @@ import type { DataRecordInterface } from "../DataSet.ts";
 export interface DiscoverRecord {
   activation: number;
   errors: string;
+  value?: number;
 }
 
 /**

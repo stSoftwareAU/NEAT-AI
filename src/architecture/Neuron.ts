@@ -584,6 +584,20 @@ export class Neuron implements TagsInterface, NeuronInternal {
     discoverMap: Map<string, DiscoverRecord>,
   ): void {
     const squashMethod = this.findSquash();
+    const inwardList = this.creature.inwardConnections(this.index);
+    const listLength = inwardList.length;
+    const state = this.creature.state;
+    const currentActivation = state.activations[this.index];
+
+    let discoverRecord = discoverMap.get(this.uuid);
+    if (discoverRecord === undefined) {
+      discoverRecord = {
+        activation: currentActivation,
+        errors: "",
+      };
+      assert(discoverRecord !== undefined);
+      discoverMap.set(this.uuid, discoverRecord);
+    }
 
     const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
     if (propagateUpdateMethod.record !== undefined) {
@@ -594,31 +608,27 @@ export class Neuron implements TagsInterface, NeuronInternal {
       );
     } else {
       const targetActivation = squashMethod.range.limit(requestedActivation);
-      const state = this.creature.state;
-      const currentActivation = squashMethod.range.limit(
-        state.activations[this.index],
-      );
+
       let error = 0;
       if (Math.abs(targetActivation - currentActivation) > 1e-8) {
-        const ns = state.node(this.index);
-        const targetValue = toValue(this, targetActivation, ns.hintValue);
+        let currentValue = discoverRecord.value;
+        if (Number.isFinite(currentValue) === false) {
+          currentValue = this.bias;
+          if (this.type !== "constant") {
+            for (let indx = 0; indx < listLength; indx++) {
+              const c = inwardList[indx];
 
-        const currentValue = toValue(
-          this,
-          currentActivation,
-          ns.hintValue,
-        );
-        error = targetValue - currentValue;
-      }
+              const fromActivation = state.activations[c.from];
 
-      let discoverRecord = discoverMap.get(this.uuid);
-      if (discoverRecord === undefined) {
-        discoverRecord = {
-          activation: state.activations[this.index],
-          errors: "",
-        };
-        assert(discoverRecord !== undefined);
-        discoverMap.set(this.uuid, discoverRecord);
+              const fromValue = c.weight * fromActivation;
+              currentValue += fromValue;
+            }
+          }
+          discoverRecord.value = currentValue;
+        }
+
+        const targetValue = toValue(this, targetActivation, currentValue);
+        error = targetValue - currentValue!;
       }
 
       if (discoverRecord.errors) {
@@ -626,10 +636,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
       } else {
         discoverRecord.errors = error.toString();
       }
-
-      const inwardList = this.creature.inwardConnections(this.index);
-
-      const listLength = inwardList.length;
 
       if (listLength) {
         const errorPerLink = error / listLength;
