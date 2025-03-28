@@ -222,7 +222,7 @@ export class DiscoverStructure {
   public async analyze(): Promise<Creature | undefined> {
     assert(this.recorded, "Not recorded");
     const focusList = await this.selectNeuronsWeightedByError(6);
-    return await this.analyzeSelectedNeurons(focusList);
+    return this.analyzeSelectedNeurons(focusList);
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
@@ -316,8 +316,11 @@ export class DiscoverStructure {
   public async selectNeuronsWeightedByError(count: number): Promise<string[]> {
     assert(count > 0, "Count must be greater than 0");
     const neuronErrors = await this.listViableNeurons();
-    if (neuronErrors.length === 0 || count <= 0) return [];
+    if (neuronErrors.length === 0) return [];
 
+    if (neuronErrors.length <= count) {
+      return neuronErrors.map((neuron) => neuron.uuid);
+    }
     const selectedUUIDs: Set<string> = new Set();
 
     const totalErrorSum = neuronErrors.reduce(
@@ -325,7 +328,7 @@ export class DiscoverStructure {
       0,
     );
 
-    while (selectedUUIDs.size < Math.min(count, neuronErrors.length)) {
+    for (let i = 0; i < count; i++) {
       const randValue = Math.random() * totalErrorSum;
       let cumulativeError = 0;
 
