@@ -347,7 +347,17 @@ export class DiscoverStructure {
   }
 
   /**
-   * Analyzes a candidate synapse by estimating potential error reduction from its addition.
+   * Analyzes a candidate synapse by estimating the potential error reduction
+   * from its addition to a neural network.
+   *
+   * It compares whether applying a positive or negative weight would more
+   * effectively reduce the average downstream neuron error and selects the
+   * direction (sign) with the higher improvement count.
+   *
+   * @param toNeuronUUID - UUID of the target neuron the synapse would connect to
+   * @param fromNeuronUUID - UUID of the source neuron the synapse would originate from
+   * @param toRecords - Activation and error records for the target neuron
+   * @returns A CandidateSynapse object with direction, weight, and estimated impact
    */
   async analyzeCandidateSynapse(
     toNeuronUUID: string,
@@ -356,47 +366,40 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse> {
     const activationCount = toRecords.length;
 
+    // Load source neuron activation records
     const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
     const fromRecords = await this.loadCSV(fileName);
     assert(
       fromRecords.length === activationCount,
       `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
     );
-    // if (toNeuronUUID === "hidden-4" && fromNeuronUUID === "input-22") {
-    //   console.log("hidden-4 -> input-22");
-    // }
 
+    // Track stats for positive vs negative weight scenarios
     let positiveCount = 0;
     let negativeCount = 0;
-
     let positiveImprovementSum = 0;
     let negativeImprovementSum = 0;
-
     let positiveActivationSum = 0;
     let negativeActivationSum = 0;
 
-    for (let indx = 0; indx < activationCount; indx++) {
-      const toRecord = toRecords[indx];
-      const fromRecord = fromRecords[indx];
+    // Analyze each training record
+    for (let i = 0; i < activationCount; i++) {
+      const toRecord = toRecords[i];
+      const fromRecord = fromRecords[i];
 
       const activation = fromRecord.activation;
       if (Math.abs(activation) <= Number.EPSILON) continue;
 
-      let neuronErrorTotal = 0;
-      let neuronPaths = 0;
-
-      toRecord.errors.split("|").forEach((errorTxt) => {
-        neuronErrorTotal += Number(errorTxt);
-        neuronPaths++;
-      });
-
-      assert(neuronPaths > 0, "neuronPaths must be greater than 0");
-      const avgError = neuronErrorTotal / neuronPaths;
+      // Compute average downstream error
+      const errorList = toRecord.errors.split("|").map(Number);
+      assert(errorList.length > 0, "neuronPaths must be greater than 0");
+      const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
       if (Math.abs(avgError) <= Number.EPSILON) continue;
 
       const requiredWeightSign = -Math.sign(avgError) * Math.sign(activation);
       const improvement = Math.abs(avgError);
 
+      // Track stats for the appropriate weight direction
       if (requiredWeightSign > 0) {
         positiveCount++;
         positiveImprovementSum += improvement;
@@ -408,6 +411,7 @@ export class DiscoverStructure {
       }
     }
 
+    // Choose the weight direction that improves more records
     const usePositive = positiveCount >= negativeCount;
     const improvedCount = usePositive ? positiveCount : negativeCount;
     const improvementSum = usePositive
@@ -418,13 +422,16 @@ export class DiscoverStructure {
       : negativeActivationSum;
     const expectedImprovementPercentage = improvedCount / activationCount;
 
+    // Estimate weight magnitude and apply correct sign
     let weight = 0;
     if (improvedCount > 0 && activationSum > Number.EPSILON) {
       const rawWeight = improvementSum / (activationSum + 1e-8);
 
+      // Flip sign because activationSum is always positive.
+      // If positive weight is better, weight must oppose activation to reduce error.
       weight = usePositive ? -rawWeight : rawWeight;
 
-      // Clamp
+      // Clamp to range [-1, 1] for stability
       weight = Math.max(-1, Math.min(1, weight));
     }
 
