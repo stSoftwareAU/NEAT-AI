@@ -1,30 +1,31 @@
 import { assert } from "@std/assert";
 import { getTag } from "@stsoftware/tags";
-import { Creature, Selection } from "../../mod.ts";
+import { Creature, type NeatOptions, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import { discover } from "../blackbox/Discover.ts";
-import type { NeatConfig } from "../config/NeatConfig.ts";
+import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { Genus } from "../NEAT/Genus.ts";
 import { createCompatibleFather } from "./Father.ts";
 
 export class Breed {
   readonly genus: Genus;
-  readonly config: NeatConfig;
+  readonly options: NeatOptions;
 
   constructor(genus: Genus, config: NeatConfig) {
     this.genus = genus;
-    this.config = config;
+    this.options = { ...config };
   }
 
   /**
    * Breeds two parents into an offspring, population MUST be sorted
    */
   breed(): Creature | undefined {
-    const mum = this.getParent(this.genus.population);
+    const config = createNeatConfig(this.options);
+    const mum = this.getParent(this.genus.population, config);
 
     assert(mum, "Mother is undefined");
 
-    const dad = this.getDad(mum);
+    const dad = this.getDad(mum, config);
     if (!dad) {
       console.warn(
         "No father found",
@@ -37,8 +38,7 @@ export class Breed {
       mum,
       dad,
       {
-        geneticCompatibilityThreshold:
-          this.config.geneticCompatibilityThreshold,
+        geneticCompatibilityThreshold: config.geneticCompatibilityThreshold,
       },
     );
 
@@ -49,12 +49,12 @@ export class Breed {
     return child;
   }
 
-  private getDad(mum: Creature): Creature | undefined {
+  private getDad(mum: Creature, config: NeatConfig): Creature | undefined {
     assert(mum.uuid, "Mother UUID is undefined");
 
     let possibleFathers: Creature[] = [];
 
-    if (this.config.globalBreedingRate > Math.random()) {
+    if (config.globalBreedingRate > Math.random()) {
       possibleFathers = this.genus.population.filter((creature) =>
         creature.uuid !== mum.uuid
       );
@@ -84,7 +84,7 @@ export class Breed {
     if (possibleFathers.length === 0) {
       return undefined;
     }
-    const father = this.getParent(possibleFathers);
+    const father = this.getParent(possibleFathers, config);
     assert(father !== undefined, "Father is undefined");
 
     const fatherExport = createCompatibleFather(
@@ -119,7 +119,7 @@ export class Breed {
    * Gets a parent based on the selection function
    * @return {Creature} parent
    */
-  private getParent(population: Creature[]): Creature {
+  private getParent(population: Creature[], config: NeatConfig): Creature {
     // Assert all creatures have valid fitness scores
     const claimedScores = new Map<string, number>();
     let lastScore = Number.POSITIVE_INFINITY;
@@ -162,7 +162,7 @@ export class Breed {
         return claimedScores.get(b.uuid!)! - claimedScores.get(a.uuid!)!;
       });
 
-    switch (this.config.selection) {
+    switch (config.selection) {
       case Selection.POWER: {
         const r = Math.random();
         const index = Math.floor(
@@ -203,7 +203,7 @@ export class Breed {
       }
       case Selection.TOURNAMENT: {
         assert(
-          Selection.TOURNAMENT.size <= this.config.populationSize,
+          Selection.TOURNAMENT.size <= config.populationSize,
           "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
         );
 
@@ -233,7 +233,7 @@ export class Breed {
         throw new Error(`No parent found in tournament`);
       }
       default: {
-        throw new Error(`Unknown selection: ${this.config.selection}`);
+        throw new Error(`Unknown selection: ${config.selection}`);
       }
     }
   }
