@@ -120,7 +120,7 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses both", asy
   );
 
   assert(input22, "Should have added synapse from input-22");
-  // assertAlmostEquals(input22?.weight, 0.2, 0.075);
+  assertAlmostEquals(input22?.weight, 0.2, 0.075);
   const input33 = betterCreatureJSON.synapses.find((synapse) =>
     synapse.fromUUID === "input-33"
   );

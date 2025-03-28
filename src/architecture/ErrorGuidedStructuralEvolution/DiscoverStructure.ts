@@ -26,7 +26,6 @@ interface CandidateSynapse {
   fromNeuronUUID: string;
   toNeuronUUID: string;
   weight: number;
-  expectedErrorReduction: number;
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
@@ -169,26 +168,28 @@ export class DiscoverStructure {
     });
 
     const candidateArrays = await Promise.all(candidatePromises);
-    const allCandidates: CandidateSynapse[] = candidateArrays.flat();
+    const allCandidates: CandidateSynapse[] = candidateArrays.flat().filter(
+      (candidate) => candidate.expectedImprovementPercentage > 0,
+    );
 
     if (allCandidates.length > 0) {
       allCandidates.sort((a, b) =>
-        b.expectedErrorReduction - a.expectedErrorReduction
+        b.expectedImprovementPercentage - a.expectedImprovementPercentage
       );
       const bestCandidate = allCandidates[0];
-      if (
-        bestCandidate.expectedErrorReduction > 0 &&
-        bestCandidate.expectedImprovementPercentage > 0.01
-      ) {
-        const msg =
-          `Discovered synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${bestCandidate.weight} expected error reduction ${
-            bestCandidate.expectedErrorReduction / bestCandidate.totalCount
-          } improved ${bestCandidate.improvedCount} of ${bestCandidate.totalCount} (${
-            (bestCandidate.expectedImprovementPercentage * 100).toFixed(1)
-          }%)`;
-        console.info(msg);
-        this.discoveries.push(bestCandidate);
-      }
+      assert(bestCandidate.expectedImprovementPercentage > 0);
+
+      console.info(
+        `Discovered beneficial synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${
+          bestCandidate.weight.toFixed(4)
+        }, improving ${
+          (
+            bestCandidate.expectedImprovementPercentage * 100
+          ).toFixed(1)
+        }% of training records (${bestCandidate.improvedCount}/${bestCandidate.totalCount})`,
+      );
+
+      this.discoveries.push(bestCandidate);
     }
     if (this.discoveries.length === 0) {
       return undefined;
@@ -216,6 +217,7 @@ export class DiscoverStructure {
     tmpCreature.validate();
     return tmpCreature;
   }
+
   /**
    * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
    */
@@ -355,80 +357,84 @@ export class DiscoverStructure {
     const activationCount = toRecords.length;
 
     const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
-    const fromRecords = await this.loadCSV(
-      fileName,
-    );
+    const fromRecords = await this.loadCSV(fileName);
     assert(
       fromRecords.length === activationCount,
       `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
     );
+    // if (toNeuronUUID === "hidden-4" && fromNeuronUUID === "input-22") {
+    //   console.log("hidden-4 -> input-22");
+    // }
 
     let positiveCount = 0;
     let negativeCount = 0;
-    let sumAbsActivation = 0;
-    let sumAbsError = 0;
-    let totalError = 0;
-    let totalActivation = 0;
+
+    let positiveImprovementSum = 0;
+    let negativeImprovementSum = 0;
+
+    let positiveActivationSum = 0;
+    let negativeActivationSum = 0;
+
     for (let indx = 0; indx < activationCount; indx++) {
       const toRecord = toRecords[indx];
-
       const fromRecord = fromRecords[indx];
-      sumAbsActivation += Math.abs(fromRecord.activation);
 
-      let neuronPaths = 0;
+      const activation = fromRecord.activation;
+      if (Math.abs(activation) <= Number.EPSILON) continue;
+
       let neuronErrorTotal = 0;
-      toRecord.errors.split("|").map((errorTxt) => {
-        const error = Number(errorTxt);
-        neuronErrorTotal += error;
+      let neuronPaths = 0;
+
+      toRecord.errors.split("|").forEach((errorTxt) => {
+        neuronErrorTotal += Number(errorTxt);
         neuronPaths++;
-        totalActivation += fromRecord.activation;
       });
+
       assert(neuronPaths > 0, "neuronPaths must be greater than 0");
-      const error = neuronErrorTotal / neuronPaths;
-      totalError += error;
-      sumAbsError += Math.abs(error);
-      if (error > 0) {
-        if (fromRecord.activation > 0) {
-          positiveCount++;
-        } else if (fromRecord.activation < 0) {
-          negativeCount++;
-        }
-      } else if (error < 0) {
-        if (fromRecord.activation > 0) {
-          negativeCount++;
-        } else if (fromRecord.activation < 0) {
-          positiveCount++;
-        }
+      const avgError = neuronErrorTotal / neuronPaths;
+      if (Math.abs(avgError) <= Number.EPSILON) continue;
+
+      const requiredWeightSign = -Math.sign(avgError) * Math.sign(activation);
+      const improvement = Math.abs(avgError);
+
+      if (requiredWeightSign > 0) {
+        positiveCount++;
+        positiveImprovementSum += improvement;
+        positiveActivationSum += Math.abs(activation);
+      } else if (requiredWeightSign < 0) {
+        negativeCount++;
+        negativeImprovementSum += improvement;
+        negativeActivationSum += Math.abs(activation);
       }
     }
 
-    const positiveBetter = positiveCount > negativeCount;
+    const usePositive = positiveCount >= negativeCount;
+    const improvedCount = usePositive ? positiveCount : negativeCount;
+    const improvementSum = usePositive
+      ? positiveImprovementSum
+      : negativeImprovementSum;
+    const activationSum = usePositive
+      ? positiveActivationSum
+      : negativeActivationSum;
+    const expectedImprovementPercentage = improvedCount / activationCount;
 
-    const avgAbsError = sumAbsError / activationCount;
+    let weight = 0;
+    if (improvedCount > 0 && activationSum > Number.EPSILON) {
+      const rawWeight = improvementSum / (activationSum + 1e-8);
 
-    const avgActivation = sumAbsActivation / activationCount;
-    let initialWeightMagnitude = avgAbsError / (avgActivation + 1e-8) *
-      (positiveBetter ? 1 : -1);
+      weight = usePositive ? -rawWeight : rawWeight;
 
-    if (Math.abs(initialWeightMagnitude) > 1) {
-      initialWeightMagnitude = Math.sign(initialWeightMagnitude);
-    }
-
-    let expectedErrorReduction = 0;
-    if (positiveBetter) {
-      expectedErrorReduction = avgAbsError * (positiveCount - negativeCount);
-    } else {
-      expectedErrorReduction = avgAbsError * (negativeCount - positiveCount);
+      // Clamp
+      weight = Math.max(-1, Math.min(1, weight));
     }
 
     return {
-      fromNeuronUUID: fromNeuronUUID,
-      toNeuronUUID: toNeuronUUID,
-      weight: initialWeightMagnitude,
-      expectedErrorReduction: expectedErrorReduction / activationCount,
-      improvedCount: positiveBetter ? positiveCount : negativeCount,
+      fromNeuronUUID,
+      toNeuronUUID,
+      weight,
+      improvedCount,
       totalCount: activationCount,
-      expectedImprovementPercentage: expectedErrorReduction / sumAbsError,
+      expectedImprovementPercentage,
     };
   }
 }
