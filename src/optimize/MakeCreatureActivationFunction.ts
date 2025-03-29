@@ -37,21 +37,30 @@ export function makeCreatureActivationFunction(creature: Creature) {
 
   const squashList = Array.from(squashMap.keys());
   // Dynamically create the function
-  const func = new Function(
-    "neurons",
-    ...squashList,
-    functionBody,
-  ) as () => undefined;
+  try {
+    const func = new Function(
+      "neurons",
+      ...squashList,
+      functionBody,
+    ) as () => undefined;
 
-  const bondedFunction = func.bind(
-    creature.state,
-    creature.neurons,
-    ...squashMap.values(),
-  );
+    const bondedFunction = func.bind(
+      creature.state,
+      creature.neurons,
+      ...squashMap.values(),
+    );
 
-  return {
-    inlineFunction: bondedFunction,
-    inlineText: functionBody,
-    squashList: squashList,
-  };
+    return {
+      inlineFunction: bondedFunction,
+      inlineText: functionBody,
+      squashList: squashList,
+    };
+  } catch (e) {
+    console.error("Error creating function", e);
+    Deno.writeTextFileSync(".error-function.js", functionBody);
+    console.error("Function body", functionBody);
+    console.error("Squash list", squashList);
+    console.error("Squash map", squashMap);
+    throw e;
+  }
 }
