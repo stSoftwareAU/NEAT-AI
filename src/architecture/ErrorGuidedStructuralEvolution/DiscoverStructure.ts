@@ -570,6 +570,14 @@ export class DiscoverStructure {
 
       if (foundSynapse) return;
 
+      const foundFromNeuron = exportJSON.neurons.find((neuron) => {
+        return neuron.uuid === bestCandidate.fromNeuronUUID;
+      });
+      const foundToNeuron = exportJSON.neurons.find((neuron) => {
+        return neuron.uuid === bestCandidate.toNeuronUUID;
+      });
+      if (!foundFromNeuron || !foundToNeuron) return;
+
       exportJSON.synapses.push({
         fromUUID: bestCandidate.fromNeuronUUID,
         toUUID: bestCandidate.toNeuronUUID,
