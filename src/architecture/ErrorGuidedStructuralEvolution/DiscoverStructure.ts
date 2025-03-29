@@ -450,4 +450,127 @@ export class DiscoverStructure {
       expectedImprovementPercentage,
     };
   }
+
+  async analyzeSynapsesForRemoval(
+    discoveryMaxNeurons: number,
+  ): Promise<Creature | null> {
+    const focusList = await this.selectNeuronsWeightedByError(
+      discoveryMaxNeurons,
+    );
+    return this.analyzeSelectedNeuronsForRemoval(focusList);
+  }
+
+  async analyzeExistingSynapseImpact(
+    toNeuronUUID: string,
+    fromNeuronUUID: string,
+    toRecords: DiscoverRecord[],
+    weight: number,
+  ): Promise<CandidateSynapse> {
+    const activationCount = toRecords.length;
+    const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
+    const fromRecords = await this.loadCSV(fileName);
+    assert(
+      fromRecords.length === activationCount,
+      `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
+    );
+
+    let harmfulCount = 0;
+    let helpfulCount = 0;
+    let errorImpactSum = 0;
+
+    for (let i = 0; i < activationCount; i++) {
+      const toRecord = toRecords[i];
+      const fromRecord = fromRecords[i];
+
+      const activation = fromRecord.activation;
+      if (Math.abs(activation) <= Number.EPSILON) continue;
+
+      const errorList = toRecord.errors.split("|").map(Number);
+      const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
+      if (Math.abs(avgError) <= Number.EPSILON) continue;
+
+      const signal = activation * weight;
+      const signMatch = Math.sign(signal) === Math.sign(avgError);
+
+      if (signMatch) {
+        harmfulCount++;
+        errorImpactSum += Math.abs(avgError);
+      } else {
+        helpfulCount++;
+      }
+    }
+
+    const expectedHarmPercentage = (harmfulCount - helpfulCount) /
+      activationCount;
+
+    return {
+      fromNeuronUUID,
+      toNeuronUUID,
+      weight,
+      improvedCount: harmfulCount,
+      totalCount: activationCount,
+      expectedImprovementPercentage: expectedHarmPercentage,
+    };
+  }
+
+  /**
+   * Analyzes recorded neuron data to identify and evaluate potential synapse removals.
+   */
+  public async analyzeSelectedNeuronsForRemoval(
+    focusList: string[],
+  ): Promise<Creature | null> {
+    if (focusList.length === 0) return null;
+
+    const promises: Promise<CandidateSynapse>[] = [];
+    const exportJSON = this.creature.exportJSON();
+
+    const candidatePromises = focusList.map(async (toUUID) => {
+      const records = await this.loadCSV(`${this.tempDir}/${toUUID}.csv`);
+      exportJSON.synapses.map((synapse) => {
+        if (synapse.toUUID === toUUID) {
+          const p = this.analyzeExistingSynapseImpact(
+            toUUID,
+            synapse.fromUUID,
+            records,
+            synapse.weight,
+          );
+
+          promises.push(p);
+        }
+      });
+    });
+    await Promise.all(candidatePromises);
+
+    const candidates = await Promise.all(promises);
+    const allCandidates: CandidateSynapse[] = candidates.filter(
+      (candidate) => candidate.expectedImprovementPercentage < -0.1,
+    );
+    if (allCandidates.length > 0) {
+      allCandidates.sort((a, b) =>
+        a.expectedImprovementPercentage - b.expectedImprovementPercentage
+      );
+      const worseCandidate = allCandidates[0];
+      assert(worseCandidate.expectedImprovementPercentage < 0);
+
+      console.info(
+        `Discovered unhelpful synapse from ${worseCandidate.fromNeuronUUID} to ${worseCandidate.toNeuronUUID}, harming ${
+          (
+            -1 * worseCandidate.expectedImprovementPercentage * 100
+          ).toFixed(1)
+        }% more records than it helps (${worseCandidate.improvedCount}/${worseCandidate.totalCount})`,
+      );
+
+      exportJSON.synapses = exportJSON.synapses.filter((synapse) => {
+        return synapse.fromUUID !== worseCandidate.fromNeuronUUID &&
+          synapse.toUUID !== worseCandidate.toNeuronUUID;
+      });
+
+      const tmpCreature = Creature.fromJSON(exportJSON);
+      tmpCreature.fix();
+      tmpCreature.validate();
+      return tmpCreature;
+    }
+
+    return null;
+  }
 }

@@ -247,6 +247,7 @@ class DataRecorder {
       const discoverResult: DiscoverResult = {
         ID: this.ID,
         enhanced: undefined,
+        removedHarmful: undefined,
       };
 
       const analyzeStartTime = Date.now();
@@ -262,10 +263,26 @@ class DataRecorder {
           }`,
         );
       }
+
       if (enhanced) {
         discoverResult.enhanced = enhanced.exportJSON();
       }
 
+      const harmfulStartTime = Date.now();
+      const removedHarmful = await discoverStructure.analyzeSynapsesForRemoval(
+        this.discoveryMaxNeurons,
+      );
+      if (options.log) {
+        const harmfulTime = Date.now() - harmfulStartTime;
+        console.log(
+          `Discovery ${blue(this.ID)} analyze harmful time ${
+            yellow(format(harmfulTime, { ignoreZero: true }))
+          }`,
+        );
+      }
+      if (removedHarmful) {
+        discoverResult.removedHarmful = removedHarmful.exportJSON();
+      }
       return discoverResult;
     } finally {
       await discoverStructure.cleanUp();

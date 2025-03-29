@@ -55,6 +55,7 @@ export interface ResponseData {
   discover?: {
     ID: string;
     enhanced?: string;
+    removedHarmful?: string;
   };
 }
 
