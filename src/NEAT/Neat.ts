@@ -608,6 +608,18 @@ export class Neat {
       );
       if (removedSynapseCreature) {
         trainedPopulation.push(removedSynapseCreature);
+
+        if( addedSynapseCreature) {
+          const combinedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
+            r.discover.ID,
+            removedSynapseCreature,
+            r.discover.addHelpfulSynapses,
+          );
+
+          if( combinedSynapseCreature) {
+            trainedPopulation.push(combinedSynapseCreature);
+          }
+        }
       }
     }
     this.discoveryComplete.length = 0;

@@ -1,10 +1,10 @@
 import { assert } from "@std/assert";
 import { parse as parseCsv } from "@std/csv";
-import { Creature } from "../../Creature.ts";
-import type { DataRecordInterface } from "../DataSet.ts";
+import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags";
 import { CreatureUtil } from "../../../mod.ts";
+import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
-import { addTag, removeTag } from "@stsoftware/tags";
+import type { DataRecordInterface } from "../DataSet.ts";
 
 /**
  * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
@@ -592,11 +592,14 @@ export class DiscoverStructure {
       });
       if (!foundToNeuron) return;
 
-      exportJSON.synapses.push({
+      const addSynapse = {
         fromUUID: bestCandidate.fromNeuronUUID,
         toUUID: bestCandidate.toNeuronUUID,
         weight: bestCandidate.weight,
-      });
+      };
+
+      addTag(addSynapse as TagsInterface, "discovery", "improvement");
+      exportJSON.synapses.push(addSynapse);
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
