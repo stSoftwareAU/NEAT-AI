@@ -581,10 +581,15 @@ export class DiscoverStructure {
       const foundFromNeuron = exportJSON.neurons.find((neuron) => {
         return neuron.uuid === bestCandidate.fromNeuronUUID;
       });
+      if (!foundFromNeuron) {
+        if (!bestCandidate.fromNeuronUUID.startsWith("input-")) {
+          return;
+        }
+      }
       const foundToNeuron = exportJSON.neurons.find((neuron) => {
         return neuron.uuid === bestCandidate.toNeuronUUID;
       });
-      if (!foundFromNeuron || !foundToNeuron) return;
+      if (!foundToNeuron) return;
 
       exportJSON.synapses.push({
         fromUUID: bestCandidate.fromNeuronUUID,
