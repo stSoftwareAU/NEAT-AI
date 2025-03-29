@@ -101,21 +101,14 @@ export class WorkerProcessor {
         data.discover.options,
       );
       creature.dispose();
-      let enhanced = undefined;
-      if (result.enhanced) {
-        enhanced = JSON.stringify(result.enhanced);
-      }
-      let harmful = undefined;
-      if (result.removedHarmful) {
-        harmful = JSON.stringify(result.removedHarmful);
-      }
+
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
         discover: {
           ID: result.ID,
-          enhanced: enhanced,
-          removedHarmful: harmful,
+          addHelpfulSynapses: result.addHelpfulSynapses,
+          removeHarmfulSynapse: result.removeHarmfulSynapse,
         },
       };
     } else {

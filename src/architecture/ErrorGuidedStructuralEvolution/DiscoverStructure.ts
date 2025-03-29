@@ -2,6 +2,9 @@ import { assert } from "@std/assert";
 import { parse as parseCsv } from "@std/csv";
 import { Creature } from "../../Creature.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
+import { CreatureUtil } from "../../../mod.ts";
+import type { Approach } from "../../NEAT/LogApproach.ts";
+import { addTag, removeTag } from "@stsoftware/tags";
 
 /**
  * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
@@ -23,7 +26,7 @@ export interface DiscoverRecord {
 /**
  * Represents a potential new synapse and the associated metrics calculated during discovery.
  */
-interface CandidateSynapse {
+export interface CandidateSynapse {
   fromNeuronUUID: string;
   toNeuronUUID: string;
   weight: number;
@@ -161,7 +164,7 @@ export class DiscoverStructure {
 
   public async analyzeSelectedNeurons(
     focusList: string[],
-  ): Promise<Creature | undefined> {
+  ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return undefined;
     const candidatePromises = focusList.map(async (neuronUUID) => {
       const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
@@ -196,27 +199,7 @@ export class DiscoverStructure {
       return undefined;
     }
 
-    const exportedJSON = this.creature.exportJSON();
-
-    const tmpCreature = Creature.fromJSON(exportedJSON);
-
-    for (const discovery of this.discoveries) {
-      const fromIndx = tmpCreature.neurons.findIndex((neuron) =>
-        neuron.uuid === discovery.fromNeuronUUID
-      );
-      const toIndx = tmpCreature.neurons.findIndex((neuron) =>
-        neuron.uuid === discovery.toNeuronUUID
-      );
-
-      tmpCreature.connect(
-        fromIndx,
-        toIndx,
-        discovery.weight,
-      );
-    }
-
-    tmpCreature.validate();
-    return tmpCreature;
+    return this.discoveries;
   }
 
   /**
@@ -224,7 +207,7 @@ export class DiscoverStructure {
    */
   public async analyze(
     discoveryMaxNeurons: number,
-  ): Promise<Creature | undefined> {
+  ): Promise<CandidateSynapse[] | undefined> {
     assert(this.recorded, "Not recorded");
     const focusList = await this.selectNeuronsWeightedByError(
       discoveryMaxNeurons,
@@ -458,10 +441,9 @@ export class DiscoverStructure {
    * @param discoveryMaxNeurons - Number of neurons to consider, weighted by error magnitude.
    * @returns A modified Creature with harmful synapse(s) removed, or null if no change was needed.
    */
-
   async analyzeSynapsesForRemoval(
     discoveryMaxNeurons: number,
-  ): Promise<Creature | null> {
+  ): Promise<CandidateSynapse | undefined> {
     const focusList = await this.selectNeuronsWeightedByError(
       discoveryMaxNeurons,
     );
@@ -535,6 +517,106 @@ export class DiscoverStructure {
   }
 
   /**
+   * Removes a synapse from the creature if it is determined to be harmful.
+   * This method is used to prune synapses that consistently worsen prediction error.
+   * @param ID - Unique identifier for the discovery process.
+   * @param creature the Creature instance to modify.
+   * @param worseCandidate the candidate synapse to remove.
+   * @returns returns a modified Creature with the synapse removed, or null if no change was made.
+   */
+  public static removeSynapse(
+    ID: string,
+    creature: Creature,
+    worseCandidate?: CandidateSynapse,
+  ): Creature | null {
+    if (!worseCandidate) return null;
+    const creatureUUID = CreatureUtil.makeUUID(creature);
+    const exportJSON = creature.exportJSON();
+    exportJSON.synapses = exportJSON.synapses.filter((synapse) => {
+      return synapse.fromUUID !== worseCandidate.fromNeuronUUID &&
+        synapse.toUUID !== worseCandidate.toNeuronUUID;
+    });
+
+    const tmpCreature = Creature.fromJSON(exportJSON);
+    tmpCreature.fix();
+
+    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
+    if (tmpUUID !== creatureUUID) {
+      addTag(tmpCreature, "approach", "discovery" as Approach);
+      addTag(tmpCreature, "discoveryID", ID);
+      addTag(tmpCreature, "discovery", "worse");
+      delete tmpCreature.memetic;
+      removeTag(tmpCreature, "approach-logged");
+      tmpCreature.validate();
+
+      return tmpCreature;
+    }
+    return null;
+  }
+
+  /**
+   * Adds a new synapse to the creature if it improves performance.
+   *
+   * @param ID - Unique identifier for the discovery process.
+   * @param creature - The Creature instance to modify.
+   * @param bestCandidate - The candidate synapse to add.
+   * @returns A modified Creature with the new synapse added, or null if no change was made.
+   */
+  public static addHelpfulSynapses(
+    ID: string,
+    creature: Creature,
+    helpfulSynapses?: CandidateSynapse[],
+  ): Creature | undefined {
+    if (!helpfulSynapses || helpfulSynapses.length === 0) return;
+    const creatureUUID = CreatureUtil.makeUUID(creature);
+    const exportJSON = creature.exportJSON();
+
+    helpfulSynapses.forEach((bestCandidate) => {
+      const foundSynapse = exportJSON.synapses.find((synapse) => {
+        return synapse.fromUUID === bestCandidate.fromNeuronUUID &&
+          synapse.toUUID === bestCandidate.toNeuronUUID;
+      });
+
+      if (foundSynapse) return;
+
+      const foundFromNeuron = exportJSON.neurons.find((neuron) => {
+        return neuron.uuid === bestCandidate.fromNeuronUUID;
+      });
+      if (!foundFromNeuron) {
+        if (!bestCandidate.fromNeuronUUID.startsWith("input-")) {
+          return;
+        }
+      }
+      const foundToNeuron = exportJSON.neurons.find((neuron) => {
+        return neuron.uuid === bestCandidate.toNeuronUUID;
+      });
+      if (!foundToNeuron) return;
+
+      exportJSON.synapses.push({
+        fromUUID: bestCandidate.fromNeuronUUID,
+        toUUID: bestCandidate.toNeuronUUID,
+        weight: bestCandidate.weight,
+      });
+    });
+
+    const tmpCreature = Creature.fromJSON(exportJSON);
+    tmpCreature.fix();
+
+    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
+    if (tmpUUID !== creatureUUID) {
+      addTag(tmpCreature, "approach", "discovery" as Approach);
+      addTag(tmpCreature, "discoveryID", ID);
+      addTag(tmpCreature, "discovery", "helpful");
+      delete tmpCreature.memetic;
+      removeTag(tmpCreature, "approach-logged");
+      tmpCreature.validate();
+
+      return tmpCreature;
+    }
+    return;
+  }
+
+  /**
    * Evaluates all incoming synapses to a set of high-error neurons to identify
    * connections that consistently worsen prediction error.
    *
@@ -544,11 +626,10 @@ export class DiscoverStructure {
    * @param focusList - Array of neuron UUIDs to evaluate for synapse pruning.
    * @returns A modified Creature with the worst offending synapse removed, or null if none found.
    */
-
   public async analyzeSelectedNeuronsForRemoval(
     focusList: string[],
-  ): Promise<Creature | null> {
-    if (focusList.length === 0) return null;
+  ): Promise<CandidateSynapse | undefined> {
+    if (focusList.length === 0) return undefined;
 
     const promises: Promise<CandidateSynapse>[] = [];
     const exportJSON = this.creature.exportJSON();
@@ -589,17 +670,9 @@ export class DiscoverStructure {
         }% more records than it helps (${worseCandidate.improvedCount}/${worseCandidate.totalCount})`,
       );
 
-      exportJSON.synapses = exportJSON.synapses.filter((synapse) => {
-        return synapse.fromUUID !== worseCandidate.fromNeuronUUID &&
-          synapse.toUUID !== worseCandidate.toNeuronUUID;
-      });
-
-      const tmpCreature = Creature.fromJSON(exportJSON);
-      tmpCreature.fix();
-      tmpCreature.validate();
-      return tmpCreature;
+      return worseCandidate;
     }
 
-    return null;
+    return undefined;
   }
 }

@@ -246,13 +246,13 @@ class DataRecorder {
 
       const discoverResult: DiscoverResult = {
         ID: this.ID,
-        enhanced: undefined,
-        removedHarmful: undefined,
+        addHelpfulSynapses: undefined,
+        removeHarmfulSynapse: undefined,
       };
 
       const analyzeStartTime = Date.now();
 
-      const enhanced = await discoverStructure.analyze(
+      const addHelpfulSynapse = await discoverStructure.analyze(
         this.discoveryMaxNeurons,
       );
       if (options.log) {
@@ -264,14 +264,15 @@ class DataRecorder {
         );
       }
 
-      if (enhanced) {
-        discoverResult.enhanced = enhanced.exportJSON();
+      if (addHelpfulSynapse) {
+        discoverResult.addHelpfulSynapses = addHelpfulSynapse;
       }
 
       const harmfulStartTime = Date.now();
-      const removedHarmful = await discoverStructure.analyzeSynapsesForRemoval(
-        this.discoveryMaxNeurons,
-      );
+      const removeHarmfulSynapse = await discoverStructure
+        .analyzeSynapsesForRemoval(
+          this.discoveryMaxNeurons,
+        );
       if (options.log) {
         const harmfulTime = Date.now() - harmfulStartTime;
         console.log(
@@ -280,8 +281,8 @@ class DataRecorder {
           }`,
         );
       }
-      if (removedHarmful) {
-        discoverResult.removedHarmful = removedHarmful.exportJSON();
+      if (removeHarmfulSynapse) {
+        discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
       }
       return discoverResult;
     } finally {

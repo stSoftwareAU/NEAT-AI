@@ -121,10 +121,16 @@ Deno.test("Error-Driven Synapse Discovery identifies negative synapses and remov
   discoverStructure.record(trainingData, neuronPromisesMap);
   await Promise.all([...neuronPromisesMap.values()]);
 
-  const betterCreature = await discoverStructure
+  const removeHarmfulSynapse = await discoverStructure
     .analyzeSelectedNeuronsForRemoval([
       "hidden-3",
     ]);
+  assert(removeHarmfulSynapse, "Should have discovered a harmful synapse");
+  const betterCreature = DiscoverStructure.removeSynapse(
+    "ABC",
+    crippledCreature,
+    removeHarmfulSynapse,
+  );
   assert(betterCreature, "Should have discovered a better creature");
   betterCreature.validate();
   const betterCreatureJSON = betterCreature.exportJSON();
@@ -176,9 +182,15 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
   await Promise.all([...neuronPromisesMap.values()]);
 
   await discoverStructure.analyzeSelectedNeurons(["hidden-4"]);
-  const betterCreature = await discoverStructure.analyzeSelectedNeurons([
+  const helpfulSynapses = await discoverStructure.analyzeSelectedNeurons([
     "hidden-3",
   ]);
+
+  const betterCreature = DiscoverStructure.addHelpfulSynapses(
+    "ABC",
+    crippledCreature,
+    helpfulSynapses,
+  );
   assert(betterCreature, "Should have discovered a better creature");
   betterCreature.validate();
   const betterCreatureJSON = betterCreature.exportJSON();

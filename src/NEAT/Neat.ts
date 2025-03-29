@@ -29,6 +29,7 @@ import type { Approach } from "./LogApproach.ts";
 import { Mutator } from "./Mutator.ts";
 import { CRISPR, type CrisprInterface } from "../reconstruct/CRISPR.ts";
 import { simplify } from "../optimize/Simplify.ts";
+import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -591,25 +592,22 @@ export class Neat {
       const r = this.discoveryComplete[i];
       assert(r.discover, "No discovery found");
 
-      if (r.discover.enhanced) {
-        const json = JSON.parse(r.discover.enhanced);
-        addTag(json, "approach", "discovery" as Approach);
-        addTag(json, "discoveryID", r.discover.ID);
-        delete json.memetic;
-        removeTag(json, "approach-logged");
-        trainedPopulation.push(
-          Creature.fromJSON(json, this.config.debug),
-        );
+      const addedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
+        r.discover.ID,
+        fittest,
+        r.discover.addHelpfulSynapses,
+      );
+      if (addedSynapseCreature) {
+        trainedPopulation.push(addedSynapseCreature);
       }
-      if (r.discover.removedHarmful) {
-        const harmfulJSON = JSON.parse(r.discover.removedHarmful);
-        addTag(harmfulJSON, "approach", "discovery" as Approach);
-        addTag(harmfulJSON, "discoveryID", r.discover.ID);
-        delete harmfulJSON.memetic;
-        removeTag(harmfulJSON, "approach-logged");
-        trainedPopulation.push(
-          Creature.fromJSON(harmfulJSON, this.config.debug),
-        );
+
+      const removedSynapseCreature = DiscoverStructure.removeSynapse(
+        r.discover.ID,
+        fittest,
+        r.discover.removeHarmfulSynapse,
+      );
+      if (removedSynapseCreature) {
+        trainedPopulation.push(removedSynapseCreature);
       }
     }
     this.discoveryComplete.length = 0;
