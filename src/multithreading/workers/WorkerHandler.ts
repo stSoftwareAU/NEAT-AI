@@ -4,6 +4,7 @@ import type { Creature } from "../../Creature.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
 import type { NeatOptions } from "../../../mod.ts";
+import type { CandidateSynapse } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
 export interface RequestData {
   taskID: number;
@@ -55,7 +56,7 @@ export interface ResponseData {
   discover?: {
     ID: string;
     enhanced?: string;
-    removedHarmful?: string;
+    removeHarmfulSynapse?: CandidateSynapse;
   };
 }
 

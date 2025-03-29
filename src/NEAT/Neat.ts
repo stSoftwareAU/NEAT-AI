@@ -29,6 +29,7 @@ import type { Approach } from "./LogApproach.ts";
 import { Mutator } from "./Mutator.ts";
 import { CRISPR, type CrisprInterface } from "../reconstruct/CRISPR.ts";
 import { simplify } from "../optimize/Simplify.ts";
+import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
 /**
  * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
@@ -601,15 +602,13 @@ export class Neat {
           Creature.fromJSON(json, this.config.debug),
         );
       }
-      if (r.discover.removedHarmful) {
-        const harmfulJSON = JSON.parse(r.discover.removedHarmful);
-        addTag(harmfulJSON, "approach", "discovery" as Approach);
-        addTag(harmfulJSON, "discoveryID", r.discover.ID);
-        delete harmfulJSON.memetic;
-        removeTag(harmfulJSON, "approach-logged");
-        trainedPopulation.push(
-          Creature.fromJSON(harmfulJSON, this.config.debug),
-        );
+
+      const removedSynapseCreature = DiscoverStructure.removeSynapse(
+        fittest,
+        r.discover.removeHarmfulSynapse,
+      );
+      if (removedSynapseCreature) {
+        trainedPopulation.push(removedSynapseCreature);
       }
     }
     this.discoveryComplete.length = 0;
