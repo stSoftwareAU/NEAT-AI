@@ -451,6 +451,14 @@ export class DiscoverStructure {
     };
   }
 
+  /**
+   * Entry point for automatic synapse pruning using error-driven analysis.
+   * Selects high-error neurons and evaluates their incoming synapses for removal.
+   *
+   * @param discoveryMaxNeurons - Number of neurons to consider, weighted by error magnitude.
+   * @returns A modified Creature with harmful synapse(s) removed, or null if no change was needed.
+   */
+
   async analyzeSynapsesForRemoval(
     discoveryMaxNeurons: number,
   ): Promise<Creature | null> {
@@ -459,6 +467,19 @@ export class DiscoverStructure {
     );
     return this.analyzeSelectedNeuronsForRemoval(focusList);
   }
+
+  /**
+   * Analyzes an existing synapse to estimate whether it contributes to increased downstream error.
+   *
+   * A synapse is considered harmful if the product of its signal (activation × weight)
+   * aligns with the direction of the observed error (i.e., it reinforces the error).
+   *
+   * @param toNeuronUUID - UUID of the downstream neuron receiving the signal.
+   * @param fromNeuronUUID - UUID of the upstream neuron sending the signal.
+   * @param toRecords - Activation and error records for the target neuron.
+   * @param weight - The existing weight of the synapse to evaluate.
+   * @returns A CandidateSynapse with the measured error impact of this existing synapse.
+   */
 
   async analyzeExistingSynapseImpact(
     toNeuronUUID: string,
@@ -514,8 +535,16 @@ export class DiscoverStructure {
   }
 
   /**
-   * Analyzes recorded neuron data to identify and evaluate potential synapse removals.
+   * Evaluates all incoming synapses to a set of high-error neurons to identify
+   * connections that consistently worsen prediction error.
+   *
+   * This method considers an existing synapse harmful if its signal correlates
+   * with the error direction more often than not.
+   *
+   * @param focusList - Array of neuron UUIDs to evaluate for synapse pruning.
+   * @returns A modified Creature with the worst offending synapse removed, or null if none found.
    */
+
   public async analyzeSelectedNeuronsForRemoval(
     focusList: string[],
   ): Promise<Creature | null> {
