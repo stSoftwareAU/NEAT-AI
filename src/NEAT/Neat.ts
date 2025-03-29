@@ -601,6 +601,16 @@ export class Neat {
           Creature.fromJSON(json, this.config.debug),
         );
       }
+      if (r.discover.removedHarmful) {
+        const harmfulJSON = JSON.parse(r.discover.removedHarmful);
+        addTag(harmfulJSON, "approach", "discovery" as Approach);
+        addTag(harmfulJSON, "discoveryID", r.discover.ID);
+        delete harmfulJSON.memetic;
+        removeTag(harmfulJSON, "approach-logged");
+        trainedPopulation.push(
+          Creature.fromJSON(harmfulJSON, this.config.debug),
+        );
+      }
     }
     this.discoveryComplete.length = 0;
 

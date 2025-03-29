@@ -141,6 +141,9 @@ export interface NeatArguments {
 
   /** The read buffer size, default 128k */
   discoveryBufferSize: number;
+
+  /** The maximum number of neurons to discover */
+  discoveryMaxNeurons: number;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

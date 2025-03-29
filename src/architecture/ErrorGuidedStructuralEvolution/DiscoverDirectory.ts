@@ -24,6 +24,7 @@ class DataRecorder {
   private discoveryBatchSize: number;
   private ID: string;
   private timeoutTS: number;
+  private discoveryMaxNeurons: number;
   constructor(
     private creature: Creature,
     private options: NeatOptions,
@@ -46,6 +47,11 @@ class DataRecorder {
     this.timeoutTS = options.discoveryTimeOutMinutes
       ? Date.now() + options.discoveryTimeOutMinutes * 60 * 1000
       : 0;
+
+    this.discoveryMaxNeurons = Math.max(
+      1,
+      options.discoveryMaxNeurons || 6,
+    );
   }
 
   private shuffleFiles(files: string[]): string[] {
@@ -241,11 +247,14 @@ class DataRecorder {
       const discoverResult: DiscoverResult = {
         ID: this.ID,
         enhanced: undefined,
+        removedHarmful: undefined,
       };
 
       const analyzeStartTime = Date.now();
 
-      const enhanced = await discoverStructure.analyze();
+      const enhanced = await discoverStructure.analyze(
+        this.discoveryMaxNeurons,
+      );
       if (options.log) {
         const analyzeTime = Date.now() - analyzeStartTime;
         console.log(
@@ -254,10 +263,26 @@ class DataRecorder {
           }`,
         );
       }
+
       if (enhanced) {
         discoverResult.enhanced = enhanced.exportJSON();
       }
 
+      const harmfulStartTime = Date.now();
+      const removedHarmful = await discoverStructure.analyzeSynapsesForRemoval(
+        this.discoveryMaxNeurons,
+      );
+      if (options.log) {
+        const harmfulTime = Date.now() - harmfulStartTime;
+        console.log(
+          `Discovery ${blue(this.ID)} analyze harmful time ${
+            yellow(format(harmfulTime, { ignoreZero: true }))
+          }`,
+        );
+      }
+      if (removedHarmful) {
+        discoverResult.removedHarmful = removedHarmful.exportJSON();
+      }
       return discoverResult;
     } finally {
       await discoverStructure.cleanUp();

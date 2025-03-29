@@ -105,13 +105,17 @@ export class WorkerProcessor {
       if (result.enhanced) {
         enhanced = JSON.stringify(result.enhanced);
       }
-
+      let harmful = undefined;
+      if (result.removedHarmful) {
+        harmful = JSON.stringify(result.removedHarmful);
+      }
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
         discover: {
           ID: result.ID,
           enhanced: enhanced,
+          removedHarmful: harmful,
         },
       };
     } else {
