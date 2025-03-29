@@ -516,6 +516,14 @@ export class DiscoverStructure {
     };
   }
 
+  /**
+   * Removes a synapse from the creature if it is determined to be harmful.
+   * This method is used to prune synapses that consistently worsen prediction error.
+   * @param ID - Unique identifier for the discovery process.
+   * @param creature the Creature instance to modify.
+   * @param worseCandidate the candidate synapse to remove.
+   * @returns returns a modified Creature with the synapse removed, or null if no change was made.
+   */
   public static removeSynapse(
     ID: string,
     creature: Creature,
