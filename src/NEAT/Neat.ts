@@ -592,18 +592,17 @@ export class Neat {
       const r = this.discoveryComplete[i];
       assert(r.discover, "No discovery found");
 
-      if (r.discover.enhanced) {
-        const json = JSON.parse(r.discover.enhanced);
-        addTag(json, "approach", "discovery" as Approach);
-        addTag(json, "discoveryID", r.discover.ID);
-        delete json.memetic;
-        removeTag(json, "approach-logged");
-        trainedPopulation.push(
-          Creature.fromJSON(json, this.config.debug),
-        );
+      const addedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
+        r.discover.ID,
+        fittest,
+        r.discover.addHelpfulSynapses,
+      );
+      if (addedSynapseCreature) {
+        trainedPopulation.push(addedSynapseCreature);
       }
 
       const removedSynapseCreature = DiscoverStructure.removeSynapse(
+        r.discover.ID,
         fittest,
         r.discover.removeHarmfulSynapse,
       );

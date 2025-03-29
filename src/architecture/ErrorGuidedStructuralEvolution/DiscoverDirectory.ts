@@ -246,13 +246,13 @@ class DataRecorder {
 
       const discoverResult: DiscoverResult = {
         ID: this.ID,
-        enhanced: undefined,
+        addHelpfulSynapses: undefined,
         removeHarmfulSynapse: undefined,
       };
 
       const analyzeStartTime = Date.now();
 
-      const enhanced = await discoverStructure.analyze(
+      const addHelpfulSynapse = await discoverStructure.analyze(
         this.discoveryMaxNeurons,
       );
       if (options.log) {
@@ -264,8 +264,8 @@ class DataRecorder {
         );
       }
 
-      if (enhanced) {
-        discoverResult.enhanced = enhanced.exportJSON();
+      if (addHelpfulSynapse) {
+        discoverResult.addHelpfulSynapses = addHelpfulSynapse;
       }
 
       const harmfulStartTime = Date.now();

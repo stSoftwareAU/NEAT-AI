@@ -55,7 +55,7 @@ export interface ResponseData {
   };
   discover?: {
     ID: string;
-    enhanced?: string;
+    addHelpfulSynapses?: CandidateSynapse[];
     removeHarmfulSynapse?: CandidateSynapse;
   };
 }
