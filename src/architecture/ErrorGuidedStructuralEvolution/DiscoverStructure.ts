@@ -529,11 +529,6 @@ export class DiscoverStructure {
         synapse.toUUID !== worseCandidate.toNeuronUUID;
     });
 
-    exportJSON.synapses = exportJSON.synapses.filter((synapse) => {
-      return synapse.fromUUID !== worseCandidate.fromNeuronUUID &&
-        synapse.toUUID !== worseCandidate.toNeuronUUID;
-    });
-
     const tmpCreature = Creature.fromJSON(exportJSON);
     tmpCreature.fix();
     tmpCreature.validate();
@@ -569,8 +564,8 @@ export class DiscoverStructure {
 
     helpfulSynapses.forEach((bestCandidate) => {
       const foundSynapse = exportJSON.synapses.find((synapse) => {
-        return synapse.fromUUID !== bestCandidate.fromNeuronUUID &&
-          synapse.toUUID !== bestCandidate.toNeuronUUID;
+        return synapse.fromUUID === bestCandidate.fromNeuronUUID &&
+          synapse.toUUID === bestCandidate.toNeuronUUID;
       });
 
       if (foundSynapse) return;
