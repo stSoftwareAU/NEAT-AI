@@ -544,6 +544,7 @@ export class DiscoverStructure {
     if (tmpUUID !== creatureUUID) {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
+      addTag(tmpCreature, "discovery", "worse");
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
       tmpCreature.validate();
@@ -605,6 +606,7 @@ export class DiscoverStructure {
     if (tmpUUID !== creatureUUID) {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
+      addTag(tmpCreature, "discovery", "helpful");
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
       tmpCreature.validate();
