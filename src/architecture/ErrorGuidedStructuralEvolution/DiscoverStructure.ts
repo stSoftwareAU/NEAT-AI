@@ -531,7 +531,6 @@ export class DiscoverStructure {
 
     const tmpCreature = Creature.fromJSON(exportJSON);
     tmpCreature.fix();
-    tmpCreature.validate();
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
@@ -539,6 +538,7 @@ export class DiscoverStructure {
       addTag(tmpCreature, "discoveryID", ID);
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
+      tmpCreature.validate();
 
       return tmpCreature;
     }
@@ -587,7 +587,6 @@ export class DiscoverStructure {
 
     const tmpCreature = Creature.fromJSON(exportJSON);
     tmpCreature.fix();
-    tmpCreature.validate();
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
@@ -595,6 +594,7 @@ export class DiscoverStructure {
       addTag(tmpCreature, "discoveryID", ID);
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
+      tmpCreature.validate();
 
       return tmpCreature;
     }
