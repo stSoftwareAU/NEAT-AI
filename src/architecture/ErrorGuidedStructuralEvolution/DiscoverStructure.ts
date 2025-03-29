@@ -544,7 +544,7 @@ export class DiscoverStructure {
     if (tmpUUID !== creatureUUID) {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
-      addTag(tmpCreature, "discovery", "worse");
+      addTag(tmpCreature, "discovery", "harmful");
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
       tmpCreature.validate();
@@ -606,7 +606,7 @@ export class DiscoverStructure {
     if (tmpUUID !== creatureUUID) {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
-      addTag(tmpCreature, "discovery", "helpful");
+      addTag(tmpCreature, "discovery", "beneficial");
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
       tmpCreature.validate();
@@ -663,7 +663,7 @@ export class DiscoverStructure {
       assert(worseCandidate.expectedImprovementPercentage < 0);
 
       console.info(
-        `Discovered unhelpful synapse from ${worseCandidate.fromNeuronUUID} to ${worseCandidate.toNeuronUUID}, harming ${
+        `Discovered harmful synapse from ${worseCandidate.fromNeuronUUID} to ${worseCandidate.toNeuronUUID}, harming ${
           (
             -1 * worseCandidate.expectedImprovementPercentage * 100
           ).toFixed(1)
