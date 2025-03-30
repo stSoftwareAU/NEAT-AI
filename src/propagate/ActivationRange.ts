@@ -33,15 +33,21 @@ export class ActivationRange {
     }
   }
 
-  limit(activation: number, hint?: number): number {
-    if (Number.isFinite(activation) === false) {
-      throw new Error(
-        `${this.name}: limit: activation is not finite: ${activation}${
-          hint !== undefined ? ` with hint ${hint}` : ""
-        }`,
-      );
+  limit(activation: number): number {
+    let value = activation;
+    if (Number.isFinite(value) === false) {
+      if (value === Infinity) {
+        value = this.high;
+      } else if (value === -Infinity) {
+        value = this.low;
+      } else {
+        throw new Error(
+          `${this.name}: Activation ${activation} is not finite`,
+        );
+      }
     }
+
     // Clamp the activation to the range [low, high]
-    return Math.max(this.low, Math.min(this.high, activation));
+    return Math.max(this.low, Math.min(this.high, value));
   }
 }

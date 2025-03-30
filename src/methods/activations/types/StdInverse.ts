@@ -26,7 +26,7 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
     const safeX = Math.abs(x) < 1e-15 ? (x > 0 ? 1e-15 : -1e-15) : x;
 
     const value = safeX !== 0 ? 1 / safeX : 0; // 1/x, but avoid dividing by zero
-    return StdInverse.rangeStatic.limit(value, x); // Ensure the result is within the allowed range
+    return StdInverse.rangeStatic.limit(value); // Ensure the result is within the allowed range
   }
 
   unSquash(activation: number, hint?: number): number {
