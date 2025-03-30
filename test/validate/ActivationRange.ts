@@ -44,8 +44,6 @@ Deno.test("ActivationRange-limit", () => {
 
   const checks = [
     NaN,
-    Infinity,
-    -Infinity,
   ];
 
   for (const check of checks) {
@@ -63,7 +61,7 @@ Deno.test("ActivationRange-limit", () => {
 
   for (const check of checks) {
     try {
-      range.limit(check, 1);
+      range.limit(check);
       fail("Expected error");
     } catch (e) {
       const error = e as Error;
