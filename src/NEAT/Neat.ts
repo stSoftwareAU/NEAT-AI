@@ -609,14 +609,14 @@ export class Neat {
       if (removedSynapseCreature) {
         trainedPopulation.push(removedSynapseCreature);
 
-        if( addedSynapseCreature) {
+        if (addedSynapseCreature) {
           const combinedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
             r.discover.ID,
             removedSynapseCreature,
             r.discover.addHelpfulSynapses,
           );
 
-          if( combinedSynapseCreature) {
+          if (combinedSynapseCreature) {
             trainedPopulation.push(combinedSynapseCreature);
           }
         }

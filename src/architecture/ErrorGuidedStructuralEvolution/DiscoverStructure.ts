@@ -598,7 +598,7 @@ export class DiscoverStructure {
         weight: bestCandidate.weight,
       };
 
-      addTag(addSynapse as TagsInterface, "discovery", "improvement");
+      addTag(addSynapse as TagsInterface, "discovery", "beneficial");
       exportJSON.synapses.push(addSynapse);
     });
 
