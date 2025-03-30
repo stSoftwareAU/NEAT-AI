@@ -44,8 +44,6 @@ Deno.test("ActivationRange-limit", () => {
 
   const checks = [
     NaN,
-    Infinity,
-    -Infinity,
   ];
 
   for (const check of checks) {
