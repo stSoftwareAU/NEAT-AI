@@ -4,6 +4,7 @@ import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags";
 import { CreatureUtil } from "../../../mod.ts";
 import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
+import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 
 /**
@@ -612,7 +613,10 @@ export class DiscoverStructure {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
       addTag(tmpCreature, "discovery", "beneficial");
-      delete tmpCreature.memetic;
+      if (tmpCreature.memetic) {
+        tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
+      }
+
       removeTag(tmpCreature, "approach-logged");
       tmpCreature.validate();
 
