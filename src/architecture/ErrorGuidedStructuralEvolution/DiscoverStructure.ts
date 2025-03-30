@@ -588,6 +588,8 @@ export class DiscoverStructure {
         }
       }
       const foundToNeuron = exportJSON.neurons.find((neuron) => {
+        /** may have converted a hidden neuron to a constant */
+        if (neuron.type !== "hidden" && neuron.type !== "output") return false;
         return neuron.uuid === bestCandidate.toNeuronUUID;
       });
       if (!foundToNeuron) return;

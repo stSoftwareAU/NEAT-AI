@@ -814,6 +814,14 @@ export class Creature implements CreatureInternal {
   ): Promise<
     { error: number; score: number; time: number; generation: number }
   > {
+    let interrupted = false;
+    const signalListener = () => {
+      console.log("SIGTERM received, saving progress...");
+      interrupted = true;
+    };
+
+    Deno.addSignalListener("SIGTERM", signalListener);
+
     const start = Date.now();
     const config = createNeatConfig(options);
 
@@ -881,7 +889,7 @@ export class Creature implements CreatureInternal {
 
       generation++;
 
-      const completed = timedOut || error <= targetError ||
+      const completed = interrupted || timedOut || error <= targetError ||
         generation >= iterations;
 
       if (
@@ -912,6 +920,7 @@ export class Creature implements CreatureInternal {
       }
 
       if (completed) {
+        if (interrupted) break;
         if (neat.finishUp()) {
           break;
         }
@@ -932,6 +941,7 @@ export class Creature implements CreatureInternal {
       this.writeCreatures(neat, config.creatureStore);
     }
 
+    Deno.removeSignalListener("SIGTERM", signalListener);
     return {
       error: error,
       score: bestScore,
