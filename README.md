@@ -28,7 +28,7 @@ This project is a unique implementation of a neural network based on the NEAT (N
    quick and easy deployment of the trained model.
 
 5. **Unique Squash Functions**: The neural network supports unique squash
-   functions such as IF, MEAN, MAX, MIN, and HYPOT. These functions provide more
+   functions such as IF, MAX, MIN, and HYPOT. These functions provide more
    options for the activation function, which can lead to different network
    behaviours, offering a wider range of potential solutions. More about
    [Activation Functions](https://en.wikipedia.org/wiki/Activation_function).
@@ -44,10 +44,9 @@ This project is a unique implementation of a neural network based on the NEAT (N
    performance of the population. More about
    [CRISPR](https://en.wikipedia.org/wiki/CRISPR).
 
-8. **Grafting**: If the child is a clone of one of the parents, the algorithm
-   will graft neurons from the other parent onto the child. This helps maintain
-   diversity in the population and prevents clones, ensuring more robust and
-   varied evolutionary outcomes.
+8. **Grafting**: If parents aren't "genetically compatible", then the "grafting" algorithm
+   from one parent to another parent onto the child will be used. This allows for species 
+   from islands to interbreed.
 
 9. **Memetic Evolution**: The algorithm can now record and utilize the biases
    and weights of the fittest creatures to fine-tune future generations. This
