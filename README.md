@@ -44,9 +44,9 @@ This project is a unique implementation of a neural network based on the NEAT (N
    performance of the population. More about
    [CRISPR](https://en.wikipedia.org/wiki/CRISPR).
 
-8. **Grafting**: If parents aren't "genetically compatible", then the "grafting" algorithm
-   from one parent to another parent onto the child will be used. This allows for species 
-   from islands to interbreed.
+8. **Grafting**: If parents aren't "genetically compatible", then the "grafting"
+   algorithm from one parent to another parent onto the child will be used. This
+   allows for species from islands to interbreed.
 
 9. **Memetic Evolution**: The algorithm can now record and utilize the biases
    and weights of the fittest creatures to fine-tune future generations. This
