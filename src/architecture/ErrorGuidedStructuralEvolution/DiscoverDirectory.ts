@@ -261,7 +261,9 @@ class DataRecorder {
         console.log(
           `Discovery ${blue(this.ID)} analyze time ${
             yellow(format(analyzeTime, { ignoreZero: true }))
-          }`,
+          } found ${
+            addHelpfulSynapse ? addHelpfulSynapse.length : 0
+          } candidates`,
         );
       }
 
@@ -279,7 +281,7 @@ class DataRecorder {
         console.log(
           `Discovery ${blue(this.ID)} analyze harmful time ${
             yellow(format(harmfulTime, { ignoreZero: true }))
-          }`,
+          } found ${removeHarmfulSynapse ? 1 : 0} candidates`,
         );
       }
       if (removeHarmfulSynapse) {
@@ -296,7 +298,9 @@ class DataRecorder {
         console.log(
           `Discovery ${blue(this.ID)} analyze squashes time ${
             yellow(format(squashTime, { ignoreZero: true }))
-          }`,
+          } found ${
+            candidateSquashes ? candidateSquashes.length : 0
+          } candidates`,
         );
       }
       if (candidateSquashes) {
