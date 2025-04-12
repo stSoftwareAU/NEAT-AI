@@ -5,6 +5,9 @@ import { CreatureUtil } from "../../../mod.ts";
 import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
 import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
+import { MSE } from "../../costs/MSE.ts";
+import type { ActivationInterface } from "../../methods/activations/ActivationInterface.ts";
+import { Activations } from "../../methods/activations/Activations.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 
 /**
@@ -34,6 +37,12 @@ export interface CandidateSynapse {
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
+}
+
+export interface CandidateSquash {
+  neuronUUID: string;
+  squash: string; // @TODO replace with Activations.NAMES
+  expectedImprovementPercentage: number;
 }
 
 /**
@@ -74,7 +83,7 @@ export class DiscoverStructure {
 
     this.creature.neurons.forEach((neuron) => {
       const headCSV = neuron.type !== "input"
-        ? "activation,errors\n"
+        ? "value,activation,errors\n"
         : "activation\n";
       const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
 
@@ -147,7 +156,9 @@ export class DiscoverStructure {
 
     for (const [neuronUUID, records] of data.entries()) {
       const dataCSV = records.map((discoverRecord) =>
-        `${discoverRecord.activation},${discoverRecord.errors}\n`
+        `${
+          discoverRecord.value ?? ""
+        },${discoverRecord.activation},${discoverRecord.errors}\n`
       ).join("");
 
       const fileName = `${this.tempDir}/${neuronUUID}.csv`;
@@ -226,7 +237,12 @@ export class DiscoverStructure {
         if (isNaN(activation)) {
           throw new Error(`Invalid activation at row ${idx + 2} in ${file}`);
         }
-        return { activation, errors: record.errors };
+
+        let value = Number.parseFloat(record.value);
+        if (Number.isFinite(value) === false) {
+          value = activation;
+        }
+        return { value, activation, errors: record.errors };
       });
     } catch (e) {
       console.error(`Failed to load or parse CSV file: ${file}`, e);
@@ -452,6 +468,117 @@ export class DiscoverStructure {
   }
 
   /**
+   * Randomly selects a neuron and evaluates its activation function to identify squash function modifications.
+   *
+   * @param discoveryMaxNeurons - Number of neurons to consider, weighted by error magnitude.
+   * @returns CandidateNeurons with the most promising squash functions modifications.
+   */
+  async analyzeNeuronsSquashes(
+    discoveryMaxNeurons: number,
+  ): Promise<CandidateSquash[] | undefined> {
+    const focusList = await this.selectNeuronsWeightedByError(
+      discoveryMaxNeurons,
+    );
+    return this.analyzeSelectedNeuronsSquashes(focusList);
+  }
+
+  public async analyzeSelectedNeuronsSquashes(
+    focusList: string[],
+  ): Promise<CandidateSquash[] | undefined> {
+    if (focusList.length === 0) return undefined;
+    const candidatePromises = focusList.map(async (neuronUUID) => {
+      const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
+      return this.findCandidateSquash(neuronUUID, records);
+    });
+
+    return await Promise.all(candidatePromises).then((candidates) => {
+      return candidates.filter((candidate) => candidate !== undefined);
+    });
+  }
+
+  private findCandidateSquash(
+    neuronUUID: string,
+    records: DiscoverRecord[],
+  ): CandidateSquash | undefined {
+    const rawValues: number[] = [];
+    const currentActivations: number[] = [];
+    const idealActivations: number[] = [];
+    records.forEach((record) => {
+      const value = record.value;
+      if (value === undefined) {
+        throw new Error("Value is undefined");
+      }
+      rawValues.push(value);
+      const activation = record.activation;
+      if (activation === undefined) {
+        throw new Error("Activation is undefined");
+      }
+      currentActivations.push(activation);
+      const errors = record.errors.split("|").map(Number);
+      const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
+
+      idealActivations.push(activation + avgError);
+    });
+
+    const mse = new MSE();
+    const baselineError = mse.calculate(
+      Float32Array.from(idealActivations),
+      Float32Array.from(currentActivations),
+    );
+    const currentSquash =
+      this.creature.neurons.find((neuron) => neuron.uuid === neuronUUID)!
+        .squash;
+    assert(currentSquash, "Squash function not found");
+    let lowestError = baselineError;
+    let bestSquash = currentSquash;
+
+    const squashFunctions: ActivationInterface[] = Activations.NAMES.map(
+      (name) => {
+        if (name !== currentSquash) {
+          const activation = Activations.find(name);
+          if (activation !== undefined) {
+            if ((activation as ActivationInterface).squash !== undefined) {
+              return activation as ActivationInterface;
+            }
+          }
+        }
+      },
+    ).filter((activation) => {
+      return activation !== undefined;
+    });
+
+    for (const squashFunction of squashFunctions) {
+      const tempActivations = rawValues.map((value) => {
+        return squashFunction.squash(value);
+      });
+      const newError = mse.calculate(
+        Float32Array.from(idealActivations),
+        Float32Array.from(tempActivations),
+      );
+      if (newError < lowestError) {
+        console.info(
+          `Discovered beneficial squash function ${squashFunction.getName()} for neuron ${neuronUUID} with error ${
+            lowestError.toFixed(4)
+          } -> ${newError.toFixed(4)}`,
+        );
+        lowestError = newError;
+        bestSquash = squashFunction.getName();
+      }
+    }
+
+    if (bestSquash !== currentSquash) {
+      return {
+        neuronUUID,
+        squash: bestSquash,
+        expectedImprovementPercentage: (lowestError - baselineError) /
+          baselineError,
+      };
+    }
+
+    return undefined;
+  }
+
+  /**
    * Analyzes an existing synapse to estimate whether it contributes to increased downstream error.
    *
    * A synapse is considered harmful if the product of its signal (activation × weight)
@@ -603,6 +730,55 @@ export class DiscoverStructure {
 
       addTag(addSynapse as TagsInterface, "discovery", "beneficial");
       exportJSON.synapses.push(addSynapse);
+    });
+
+    const tmpCreature = Creature.fromJSON(exportJSON);
+    tmpCreature.fix();
+
+    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
+    if (tmpUUID !== creatureUUID) {
+      addTag(tmpCreature, "approach", "discovery" as Approach);
+      addTag(tmpCreature, "discoveryID", ID);
+      addTag(tmpCreature, "discovery", "beneficial");
+      if (tmpCreature.memetic) {
+        tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
+      }
+
+      removeTag(tmpCreature, "approach-logged");
+      tmpCreature.validate();
+
+      return tmpCreature;
+    }
+    return;
+  }
+
+  /**
+   * Adjust the squash function of a neuron to improve its performance.
+   *
+   * @param ID - Unique identifier for the discovery process.
+   * @param creature - The Creature instance to modify.
+   * @param bestCandidate - The candidate squash function to apply.
+   * @returns A modified Creature with the new modified squash, or null if no change was made.
+   */
+  public static changeSquash(
+    ID: string,
+    creature: Creature,
+    helpfulSquashes?: CandidateSquash[],
+  ): Creature | undefined {
+    if (!helpfulSquashes || helpfulSquashes.length === 0) return;
+    const creatureUUID = CreatureUtil.makeUUID(creature);
+    const exportJSON = creature.exportJSON();
+
+    helpfulSquashes.forEach((bestCandidate) => {
+      const foundNeuron = exportJSON.neurons.find((neuron) => {
+        return neuron.uuid === bestCandidate.neuronUUID;
+      });
+
+      if (!foundNeuron) return;
+
+      addTag(foundNeuron as TagsInterface, "discovered", bestCandidate.squash);
+
+      foundNeuron.squash = bestCandidate.squash;
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
