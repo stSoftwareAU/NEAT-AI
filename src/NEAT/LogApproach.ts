@@ -90,6 +90,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
         case "discovery": {
           const discoveryID = getTag(fittest, "discoveryID");
           const evaluation = getTag(fittest, "discovery");
+
           console.info(
             bold(cyan("Discovery")),
             blue(`${discoveryID}`),
