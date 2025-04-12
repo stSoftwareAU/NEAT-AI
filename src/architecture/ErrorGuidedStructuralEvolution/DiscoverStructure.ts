@@ -786,7 +786,7 @@ export class DiscoverStructure {
     if (tmpUUID !== creatureUUID) {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
-      addTag(tmpCreature, "discovery", "beneficial");
+      addTag(tmpCreature, "discovery", "squash");
       if (tmpCreature.memetic) {
         tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
       }
