@@ -775,6 +775,9 @@ export class DiscoverStructure {
       });
 
       if (!foundNeuron) return;
+      if (foundNeuron.type !== "hidden" && foundNeuron.type !== "output") {
+        return;
+      }
 
       addTag(foundNeuron as TagsInterface, "discovered", bestCandidate.squash);
 
