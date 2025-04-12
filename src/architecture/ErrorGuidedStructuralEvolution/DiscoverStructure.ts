@@ -556,11 +556,6 @@ export class DiscoverStructure {
         Float32Array.from(tempActivations),
       );
       if (newError < lowestError) {
-        console.info(
-          `Discovered beneficial squash function ${squashFunction.getName()} for neuron ${neuronUUID} with error ${
-            lowestError.toFixed(4)
-          } -> ${newError.toFixed(4)}`,
-        );
         lowestError = newError;
         bestSquash = squashFunction.getName();
       }
