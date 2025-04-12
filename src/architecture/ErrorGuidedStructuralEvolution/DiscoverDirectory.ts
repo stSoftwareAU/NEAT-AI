@@ -248,6 +248,7 @@ class DataRecorder {
         ID: this.ID,
         addHelpfulSynapses: undefined,
         removeHarmfulSynapse: undefined,
+        candidateSquashes: undefined,
       };
 
       const analyzeStartTime = Date.now();
@@ -284,6 +285,24 @@ class DataRecorder {
       if (removeHarmfulSynapse) {
         discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
       }
+
+      const squashStartTime = Date.now();
+      const candidateSquashes = await discoverStructure
+        .analyzeNeuronsSquashes(
+          this.discoveryMaxNeurons,
+        );
+      if (options.log) {
+        const squashTime = Date.now() - squashStartTime;
+        console.log(
+          `Discovery ${blue(this.ID)} analyze squashes time ${
+            yellow(format(squashTime, { ignoreZero: true }))
+          }`,
+        );
+      }
+      if (candidateSquashes) {
+        discoverResult.candidateSquashes = candidateSquashes;
+      }
+
       return discoverResult;
     } finally {
       await discoverStructure.cleanUp();

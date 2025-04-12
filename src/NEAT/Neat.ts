@@ -621,6 +621,27 @@ export class Neat {
           }
         }
       }
+
+      const changedSquashCreature = DiscoverStructure.changeSquash(
+        r.discover.ID,
+        fittest,
+        r.discover.candidateSquashes,
+      );
+      if (changedSquashCreature) {
+        trainedPopulation.push(changedSquashCreature);
+
+        if (addedSynapseCreature) {
+          const combinedSynapseCreature = DiscoverStructure.changeSquash(
+            r.discover.ID,
+            addedSynapseCreature,
+            r.discover.candidateSquashes,
+          );
+
+          if (combinedSynapseCreature) {
+            trainedPopulation.push(combinedSynapseCreature);
+          }
+        }
+      }
     }
     this.discoveryComplete.length = 0;
 

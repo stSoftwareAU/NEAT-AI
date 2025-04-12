@@ -109,6 +109,7 @@ export class WorkerProcessor {
           ID: result.ID,
           addHelpfulSynapses: result.addHelpfulSynapses,
           removeHarmfulSynapse: result.removeHarmfulSynapse,
+          candidateSquashes: result.candidateSquashes,
         },
       };
     } else {

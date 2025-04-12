@@ -609,24 +609,24 @@ export class Neuron implements TagsInterface, NeuronInternal {
     } else {
       const targetActivation = squashMethod.range.limit(requestedActivation);
 
+      let currentValue = discoverRecord.value;
+      if (Number.isFinite(currentValue) === false) {
+        currentValue = this.bias;
+        if (this.type !== "constant") {
+          for (let indx = 0; indx < listLength; indx++) {
+            const c = inwardList[indx];
+
+            const fromActivation = state.activations[c.from];
+
+            const fromValue = c.weight * fromActivation;
+            currentValue += fromValue;
+          }
+        }
+        discoverRecord.value = currentValue;
+      }
+
       let error = 0;
       if (Math.abs(targetActivation - currentActivation) > 1e-8) {
-        let currentValue = discoverRecord.value;
-        if (Number.isFinite(currentValue) === false) {
-          currentValue = this.bias;
-          if (this.type !== "constant") {
-            for (let indx = 0; indx < listLength; indx++) {
-              const c = inwardList[indx];
-
-              const fromActivation = state.activations[c.from];
-
-              const fromValue = c.weight * fromActivation;
-              currentValue += fromValue;
-            }
-          }
-          discoverRecord.value = currentValue;
-        }
-
         const targetValue = toValue(this, targetActivation, currentValue);
         error = targetValue - currentValue!;
       }

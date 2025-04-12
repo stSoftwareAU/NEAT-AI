@@ -96,7 +96,7 @@ export class Activations {
       [TANH.NAME, new TANH()],
     ]);
 
-  static readonly NAMES = [...Activations.MAP.keys()].filter(
+  public static readonly NAMES = [...Activations.MAP.keys()].filter(
     (key) => !["INVERSE", "SINUSOID", MEAN.NAME, "CLIPPED"].includes(key),
   );
 

@@ -93,7 +93,9 @@ export function logApproach(fittest: Creature, previous: Creature) {
           console.info(
             bold(cyan("Discovery")),
             blue(`${discoveryID}`),
-            evaluation === "beneficial" ? green("beneficial") : cyan("harmful"),
+            evaluation === "beneficial"
+              ? green("beneficial")
+              : cyan(evaluation ?? "unknown"),
             "increased fitness by",
             fScore - pScore,
             "to",
