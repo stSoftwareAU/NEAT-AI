@@ -300,7 +300,7 @@ class DataRecorder {
         if (squashCount > 0) {
           assert(candidateSquashes, "No candidate squashes");
           const squashSummary = candidateSquashes.map((candidate) => {
-            return `${candidate.neuronUUID} ${
+            return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash}, Improvement: ${
               (candidate.expectedImprovementPercentage * 100).toFixed(1)
             }%`;
           });
