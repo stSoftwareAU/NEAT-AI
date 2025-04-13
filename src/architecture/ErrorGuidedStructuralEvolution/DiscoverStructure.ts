@@ -41,7 +41,8 @@ export interface CandidateSynapse {
 
 export interface CandidateSquash {
   neuronUUID: string;
-  squash: string; // @TODO replace with Activations.NAMES
+  previousSquash: string;
+  squash: string;
   expectedImprovementPercentage: number;
 }
 
@@ -562,12 +563,20 @@ export class DiscoverStructure {
     }
 
     if (bestSquash !== currentSquash) {
-      return {
-        neuronUUID,
-        squash: bestSquash,
-        expectedImprovementPercentage: (lowestError - baselineError) /
-          baselineError,
-      };
+      const expectedImprovementPercentage = (baselineError - lowestError) /
+        baselineError;
+      assert(
+        expectedImprovementPercentage > 0,
+        `Expected harm percentage must be positive but got ${expectedImprovementPercentage}`,
+      );
+      if (expectedImprovementPercentage > 0.01) {
+        return {
+          neuronUUID,
+          previousSquash: currentSquash,
+          squash: bestSquash,
+          expectedImprovementPercentage: expectedImprovementPercentage,
+        };
+      }
     }
 
     return undefined;

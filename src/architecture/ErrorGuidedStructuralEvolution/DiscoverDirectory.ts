@@ -295,12 +295,23 @@ class DataRecorder {
         );
       if (options.log) {
         const squashTime = Date.now() - squashStartTime;
+        const squashCount = candidateSquashes ? candidateSquashes.length : 0;
+        let squashSummaryText = "";
+        if (squashCount > 0) {
+          assert(candidateSquashes, "No candidate squashes");
+          const squashSummary = candidateSquashes.map((candidate) => {
+            return `${candidate.neuronUUID} ${
+              (candidate.expectedImprovementPercentage * 100).toFixed(1)
+            }%`;
+          });
+          squashSummaryText = ` Summary: ${squashSummary.join(",")}`;
+        }
         console.log(
           `Discovery ${blue(this.ID)} analyze squashes time ${
             yellow(format(squashTime, { ignoreZero: true }))
-          } found ${
-            candidateSquashes ? candidateSquashes.length : 0
-          } candidates`,
+          } found ${squashCount} candidate${
+            squashCount === 1 ? "" : "s"
+          }${squashSummaryText}`,
         );
       }
       if (candidateSquashes) {
