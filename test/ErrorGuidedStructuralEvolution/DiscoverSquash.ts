@@ -10,6 +10,7 @@ import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { RELU } from "../../src/methods/activations/types/RELU.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { ReLU6 } from "../../src/methods/activations/types/ReLU6.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -148,9 +149,13 @@ Deno.test("Error-Driven Squash Discovery", async () => {
     betterCreatureJSON.neurons.find((neuron) => neuron.uuid === "hidden-3")!
       .squash;
 
-  if (adjustedSquash !== RELU.NAME && adjustedSquash !== LeakyReLU.NAME) {
+  if (
+    adjustedSquash !== RELU.NAME &&
+    adjustedSquash !== LeakyReLU.NAME &&
+    adjustedSquash !== ReLU6.NAME
+  ) {
     fail(
-      `Should have discovered RELU or LeakyReLU as the best squash was ${adjustedSquash}`,
+      `Should have discovered RELU, ReLU6 or LeakyReLU as the best squash was ${adjustedSquash}`,
     );
   }
 
