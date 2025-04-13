@@ -548,6 +548,15 @@ export class DiscoverStructure {
       return activation !== undefined;
     });
 
+    // Randomize the order of the squash functions using Fisher-Yates shuffle
+    for (let i = squashFunctions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [squashFunctions[i], squashFunctions[j]] = [
+        squashFunctions[j],
+        squashFunctions[i],
+      ];
+    }
+
     for (const squashFunction of squashFunctions) {
       const tempActivations = rawValues.map((value) => {
         return squashFunction.squash(value);
@@ -556,7 +565,7 @@ export class DiscoverStructure {
         Float32Array.from(idealActivations),
         Float32Array.from(tempActivations),
       );
-      if (newError < lowestError) {
+      if (newError < lowestError - 0.0001) {
         lowestError = newError;
         bestSquash = squashFunction.getName();
       }
