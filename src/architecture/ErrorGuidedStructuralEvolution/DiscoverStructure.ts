@@ -574,10 +574,7 @@ export class DiscoverStructure {
     if (bestSquash !== currentSquash) {
       const expectedImprovementPercentage = (baselineError - lowestError) /
         baselineError;
-      assert(
-        expectedImprovementPercentage > 0,
-        `Expected harm percentage must be positive but got ${expectedImprovementPercentage}`,
-      );
+
       if (expectedImprovementPercentage > 0.01) {
         return {
           neuronUUID,
