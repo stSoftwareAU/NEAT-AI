@@ -44,6 +44,8 @@ export interface CandidateSquash {
   previousSquash: string;
   squash: string;
   expectedImprovementPercentage: number;
+  improvedError: number;
+  currentError: number;
 }
 
 /**
@@ -581,6 +583,8 @@ export class DiscoverStructure {
           previousSquash: currentSquash,
           squash: bestSquash,
           expectedImprovementPercentage: expectedImprovementPercentage,
+          improvedError: lowestError,
+          currentError: baselineError,
         };
       }
     }

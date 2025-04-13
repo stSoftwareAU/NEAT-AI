@@ -302,7 +302,9 @@ class DataRecorder {
           const squashSummary = candidateSquashes.map((candidate) => {
             return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash} improved: ${
               (candidate.expectedImprovementPercentage * 100).toFixed(1)
-            }%`;
+            }% error: ${candidate.currentError.toFixed(4)} -> ${
+              candidate.improvedError.toFixed(4)
+            }`;
           });
           squashSummaryText = `, Summary: ${squashSummary.join(",")}`;
         }
