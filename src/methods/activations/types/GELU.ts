@@ -22,7 +22,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
 
   public readonly range = new ActivationRange(
     GELU.NAME,
-    Number.MIN_SAFE_INTEGER,
+    -0.17,
     Number.MAX_SAFE_INTEGER,
   );
 
@@ -38,7 +38,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     if (x < -GELU.MAX_X) return -0;
 
     // For very large positive values, return the input
-    if (x > GELU.MAX_X) return this.range.limit(x);
+    if (x > GELU.MAX_X) return x;
 
     // Standard GELU approximation
     const value = 0.5 * x *
