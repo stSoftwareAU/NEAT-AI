@@ -36,9 +36,10 @@
     "analyzes",
     "Miikkulainen",
     "Floreano",
-    "Mattiussi"
-  ],
-  "flagWords": [
-    "hte"
+    "Mattiussi",
+    "Hendrycks",
+    "Gimpel",
+    "COEF",
+    "sech"
   ]
 }

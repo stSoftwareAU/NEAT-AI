@@ -22,7 +22,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
 
   public readonly range = new ActivationRange(
     GELU.NAME,
-    Number.MIN_SAFE_INTEGER,
+    -0.17,
     Number.MAX_SAFE_INTEGER,
   );
 
