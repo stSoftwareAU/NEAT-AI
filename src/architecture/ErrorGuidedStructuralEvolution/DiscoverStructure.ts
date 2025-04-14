@@ -499,6 +499,28 @@ export class DiscoverStructure {
     });
   }
 
+  private calculateSquashError(
+    idealActivations: number[],
+    actualActivations: number[],
+  ) {
+    const mse = new MSE();
+    let totalError = 0;
+    for (let i = 0; i < idealActivations.length; i++) {
+      const idealActivation = idealActivations[i];
+      const actualActivation = actualActivations[i];
+      if (actualActivation === undefined) {
+        throw new Error("Activation is undefined");
+      }
+      const error = mse.calculate(
+        Float32Array.from([idealActivation]),
+        Float32Array.from([actualActivation]),
+      );
+      totalError += error;
+    }
+
+    return totalError / idealActivations.length;
+  }
+
   private findCandidateSquash(
     neuronUUID: string,
     records: DiscoverRecord[],
@@ -523,10 +545,9 @@ export class DiscoverStructure {
       idealActivations.push(activation + avgError);
     });
 
-    const mse = new MSE();
-    const baselineError = mse.calculate(
-      Float32Array.from(idealActivations),
-      Float32Array.from(currentActivations),
+    const baselineError = this.calculateSquashError(
+      idealActivations,
+      currentActivations,
     );
     const currentSquash =
       this.creature.neurons.find((neuron) => neuron.uuid === neuronUUID)!
@@ -563,10 +584,11 @@ export class DiscoverStructure {
       const tempActivations = rawValues.map((value) => {
         return squashFunction.squash(value);
       });
-      const newError = mse.calculate(
-        Float32Array.from(idealActivations),
-        Float32Array.from(tempActivations),
+      const newError = this.calculateSquashError(
+        idealActivations,
+        tempActivations,
       );
+
       if (newError < lowestError - 0.0001) {
         lowestError = newError;
         bestSquash = squashFunction.getName();
