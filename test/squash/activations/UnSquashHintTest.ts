@@ -391,14 +391,14 @@ Deno.test("ABSOLUTE unSquash with hint", () => {
 
 // ArcTan tests
 Deno.test("ArcTan unSquash with hint", () => {
-  const arctan = new ArcTan();
-  testUnSquashWithHint(arctan, [
-    { activation: arctan.squash(0), hint: 0, expected: 0 },
-    { activation: arctan.squash(1), hint: 1, expected: 1 },
-    { activation: arctan.squash(-1), hint: -1, expected: -1 },
+  const arcTan = new ArcTan();
+  testUnSquashWithHint(arcTan, [
+    { activation: arcTan.squash(0), hint: 0, expected: 0 },
+    { activation: arcTan.squash(1), hint: 1, expected: 1 },
+    { activation: arcTan.squash(-1), hint: -1, expected: -1 },
     // Test with large values
-    { activation: arctan.squash(10), hint: 10, expected: 10 },
-    { activation: arctan.squash(-10), hint: -10, expected: -10 },
+    { activation: arcTan.squash(10), hint: 10, expected: 10 },
+    { activation: arcTan.squash(-10), hint: -10, expected: -10 },
   ]);
 });
 
