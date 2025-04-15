@@ -39,8 +39,11 @@ export class SINE
    * We use the hint to adjust for the periodic nature of sin(x).
    */
   unSquash(activation: number, hint: number = 0): number {
-    assert(activation >= -1 && activation <= 1, `Activation ${activation} is out of range [-1, 1]`);
-    
+    assert(
+      activation >= -1 && activation <= 1,
+      `Activation ${activation} is out of range [-1, 1]`,
+    );
+
     // Get the principal value
     const principal = Math.asin(activation);
 
