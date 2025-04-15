@@ -34,7 +34,7 @@ export class SINE
   );
 
   /* Function to estimate the input from the activation value.
-   * Since sine is periodic, unSquash returns arcsin (inverse sine).
+   * Since sine is periodic, unSquash returns arcsine (inverse sine).
    * This will return values within the range [-π/2, π/2].
    * We use the hint to adjust for the periodic nature of sin(x).
    */
