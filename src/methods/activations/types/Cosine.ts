@@ -41,57 +41,47 @@ export class Cosine
   }
 
   unSquash(activation: number, hint: number = 0): number {
-    // Validate activation range
     if (activation < -1 || activation > 1) {
-      throw new Error(
-        `Activation ${activation} is outside valid range [-1, 1]`,
-      );
+      throw new Error(`Activation ${activation} is out of range [-1, 1]`);
     }
 
-    // Get the principal value (in range [0, π])
-    const principalValue = Math.acos(activation);
+    // Get the principal value
+    const principal = Math.acos(activation);
 
-    // Function to get all possible solutions within 2 periods of the hint
-    const getSolutions = (hint: number) => {
-      const solutions = new Set<number>();
-      const period = 2 * Math.PI;
+    // Find all possible solutions within 4 periods of the hint
+    const period = 2 * Math.PI;
+    const solutions: number[] = [];
 
-      // Get the period number closest to the hint
-      const periodNum = Math.round(hint / period);
+    // Calculate how many periods away the hint is from 0
+    const hintPeriods = Math.round(hint / period);
 
-      // Check 4 periods around the hint (-2, -1, 0, 1, 2)
-      for (let i = periodNum - 2; i <= periodNum + 2; i++) {
-        // For each period, we have two possible solutions:
-        // 1. principalValue + 2πn
-        // 2. -principalValue + 2πn
-        solutions.add(principalValue + i * period);
-        solutions.add(-principalValue + i * period);
+    // Check solutions in both positive and negative directions
+    for (let i = -4; i <= 4; i++) {
+      const basePeriod = hintPeriods + i;
+
+      // Try both principal value and its complement
+      const sol1 = principal + basePeriod * period;
+      const sol2 = -principal + basePeriod * period;
+
+      // Verify each solution produces the correct activation
+      if (Math.abs(Math.cos(sol1) - activation) < 1e-10) {
+        solutions.push(sol1);
       }
-
-      return Array.from(solutions);
-    };
-
-    // Get all possible solutions
-    const solutions = getSolutions(hint);
-
-    // Function to check if a solution produces the correct activation
-    const isValidSolution = (x: number) => {
-      return Math.abs(Math.cos(x) - activation) < 1e-10;
-    };
-
-    // Filter out invalid solutions
-    const validSolutions = solutions.filter(isValidSolution);
-
-    if (validSolutions.length === 0) {
-      // If no valid solutions found, return the principal value
-      return principalValue;
+      if (Math.abs(Math.cos(sol2) - activation) < 1e-10) {
+        solutions.push(sol2);
+      }
     }
 
-    // Sort solutions by distance from the hint
-    validSolutions.sort((a, b) => {
-      return Math.abs(a - hint) - Math.abs(b - hint);
-    });
+    // If no valid solutions found, return the closest principal solution
+    if (solutions.length === 0) {
+      const sol1 = principal + hintPeriods * period;
+      const sol2 = -principal + hintPeriods * period;
+      return Math.abs(sol1 - hint) < Math.abs(sol2 - hint) ? sol1 : sol2;
+    }
 
-    return validSolutions[0];
+    // Return the solution closest to the hint
+    return solutions.reduce((best, current) =>
+      Math.abs(current - hint) < Math.abs(best - hint) ? current : best
+    );
   }
 }
