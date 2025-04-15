@@ -1,3 +1,4 @@
+import { fail } from "@std/assert";
 import type { CostInterface } from "../Costs.ts";
 
 /** Cross entropy error */
@@ -12,7 +13,7 @@ export class CrossEntropy implements CostInterface {
 
       // Clamp o to [1e-15, 1 - 1e-15], warn if out-of-bounds
       if (o < 0 || o > 1) {
-        console.warn(`CrossEntropy: output[${i}] = ${o} is outside [0,1]`);
+        fail(`CrossEntropy: output[${i}] = ${o} is outside [0,1]`);
       }
 
       o = Math.min(Math.max(o, 1e-15), 1 - 1e-15);

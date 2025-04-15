@@ -33,6 +33,11 @@ Deno.test("calculate cost", () => {
   checks.forEach((check) => {
     for (let i = names.length; i--;) {
       const name = names[i];
+      if (
+        name === "CROSS_ENTROPY" && (check.output[0] < 0 || check.output[0] > 1)
+      ) {
+        continue;
+      }
       const r = Costs.find(name).calculate(
         new Float32Array(check.target),
         new Float32Array(check.output),
