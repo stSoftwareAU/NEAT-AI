@@ -40,17 +40,58 @@ export class Cosine
     return Math.cos(x);
   }
 
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
-    const acos = Math.acos(activation);
-
-    // If no hint is provided, return the value in the range [0, π]
-    if (hint === undefined) {
-      return acos;
+  unSquash(activation: number, hint: number = 0): number {
+    // Validate activation range
+    if (activation < -1 || activation > 1) {
+      throw new Error(
+        `Activation ${activation} is outside valid range [-1, 1]`,
+      );
     }
 
-    // If a hint is provided, return the value with the same sign as the hint
-    return hint >= 0 ? Math.abs(acos) : -Math.abs(acos);
+    // Get the principal value (in range [0, π])
+    const principalValue = Math.acos(activation);
+
+    // Function to get all possible solutions within 2 periods of the hint
+    const getSolutions = (hint: number) => {
+      const solutions = new Set<number>();
+      const period = 2 * Math.PI;
+
+      // Get the period number closest to the hint
+      const periodNum = Math.round(hint / period);
+
+      // Check 4 periods around the hint (-2, -1, 0, 1, 2)
+      for (let i = periodNum - 2; i <= periodNum + 2; i++) {
+        // For each period, we have two possible solutions:
+        // 1. principalValue + 2πn
+        // 2. -principalValue + 2πn
+        solutions.add(principalValue + i * period);
+        solutions.add(-principalValue + i * period);
+      }
+
+      return Array.from(solutions);
+    };
+
+    // Get all possible solutions
+    const solutions = getSolutions(hint);
+
+    // Function to check if a solution produces the correct activation
+    const isValidSolution = (x: number) => {
+      return Math.abs(Math.cos(x) - activation) < 1e-10;
+    };
+
+    // Filter out invalid solutions
+    const validSolutions = solutions.filter(isValidSolution);
+
+    if (validSolutions.length === 0) {
+      // If no valid solutions found, return the principal value
+      return principalValue;
+    }
+
+    // Sort solutions by distance from the hint
+    validSolutions.sort((a, b) => {
+      return Math.abs(a - hint) - Math.abs(b - hint);
+    });
+
+    return validSolutions[0];
   }
 }
