@@ -37,25 +37,49 @@ export class SINE
    * This will return values within the range [-π/2, π/2].
    * We use the hint to adjust for the periodic nature of sin(x).
    */
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
-    // Get the base value within [-π/2, π/2]
-    const baseValue = Math.asin(activation);
-
-    if (hint !== undefined) {
-      // Adjust using the hint. The difference between baseValue and hint should be close to a multiple of π.
-      const difference = hint - baseValue;
-      const adjustment = Math.round(difference / Math.PI) * Math.PI;
-
-      // Return the adjusted value that is closer to the hint
-      const adjustedValue = baseValue + adjustment;
-
-      return adjustedValue;
+  unSquash(activation: number, hint: number = 0): number {
+    if (activation < -1 || activation > 1) {
+      throw new Error(`Activation ${activation} is out of range [-1, 1]`);
     }
 
-    // If no hint is provided, return the base value within [-π/2, π/2]
-    return baseValue;
+    // Get the principal value
+    const principal = Math.asin(activation);
+
+    // Find all possible solutions within 4 periods of the hint
+    const period = 2 * Math.PI;
+    const solutions: number[] = [];
+
+    // Calculate how many periods away the hint is from 0
+    const hintPeriods = Math.round(hint / period);
+
+    // Check solutions in both positive and negative directions
+    for (let i = -4; i <= 4; i++) {
+      const basePeriod = hintPeriods + i;
+
+      // Try both principal value and its complement
+      const sol1 = principal + basePeriod * period;
+      const sol2 = Math.PI - principal + basePeriod * period;
+
+      // Verify each solution produces the correct activation
+      if (Math.abs(Math.sin(sol1) - activation) < 1e-10) {
+        solutions.push(sol1);
+      }
+      if (Math.abs(Math.sin(sol2) - activation) < 1e-10) {
+        solutions.push(sol2);
+      }
+    }
+
+    // If no valid solutions found, return the closest principal solution
+    if (solutions.length === 0) {
+      const sol1 = principal + hintPeriods * period;
+      const sol2 = Math.PI - principal + hintPeriods * period;
+      return Math.abs(sol1 - hint) < Math.abs(sol2 - hint) ? sol1 : sol2;
+    }
+
+    // Return the solution closest to the hint
+    return solutions.reduce((best, current) =>
+      Math.abs(current - hint) < Math.abs(best - hint) ? current : best
+    );
   }
 
   getName() {
