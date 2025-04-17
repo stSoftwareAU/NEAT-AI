@@ -343,58 +343,67 @@ export class DiscoverStructure {
     // Calculate number of chunks
     const numChunks = Math.ceil(fileSize / chunkSize);
 
-    // Process chunks in parallel
-    const chunkPromises = Array.from(
-      { length: numChunks },
-      async (_, index) => {
+    // Process chunks in batches to limit concurrent promises
+    const batchSize = 5; // Process 5 chunks at a time
+    for (let batchStart = 0; batchStart < numChunks; batchStart += batchSize) {
+      const batchEnd = Math.min(batchStart + batchSize, numChunks);
+      const batchPromises = [];
+
+      for (let index = batchStart; index < batchEnd; index++) {
         const offset = index * chunkSize;
         const currentChunkSize = Math.min(chunkSize, fileSize - offset);
 
-        // Open file and read chunk
-        const fileHandle = await Deno.open(file);
-        const chunk = new Uint8Array(currentChunkSize);
-        const bytesRead = await fileHandle.read(chunk);
-        await fileHandle.close();
+        // Create a promise for each chunk in the batch
+        const chunkPromise = (async () => {
+          // Open file and read chunk
+          const fileHandle = await Deno.open(file);
+          const chunk = new Uint8Array(currentChunkSize);
+          const bytesRead = await fileHandle.read(chunk);
+          await fileHandle.close();
 
-        if (bytesRead === null) {
-          return null;
-        }
+          if (bytesRead === null) {
+            return null;
+          }
 
-        return {
-          offset,
-          data: new TextDecoder().decode(chunk),
-          isLastChunk: index === numChunks - 1,
-        };
-      },
-    );
+          return {
+            offset,
+            data: new TextDecoder().decode(chunk),
+            isLastChunk: index === numChunks - 1,
+          };
+        })();
 
-    // Wait for all chunks to be read
-    const chunkResults = await Promise.all(chunkPromises);
+        batchPromises.push(chunkPromise);
+      }
 
-    // Process chunks in order
-    for (const result of chunkResults) {
-      if (!result) continue;
+      // Wait for all chunks in this batch to be read
+      // deno-lint-ignore no-await-in-loop
+      const batchResults = await Promise.all(batchPromises);
 
-      const { data, isLastChunk } = result;
+      // Process chunks in order
+      for (const result of batchResults) {
+        if (!result) continue;
 
-      // Add to buffer and process
-      buffer += data;
-      const lines = buffer.split("\n");
-      buffer = isLastChunk ? "" : (lines.pop() || "");
+        const { data, isLastChunk } = result;
 
-      for (const line of lines) {
-        if (isFirstChunk) {
-          isFirstChunk = false;
-          const headerValues = parseCsv(line, { skipFirstRow: false })[0];
-          headers.push(...headerValues);
-          continue;
-        }
+        // Add to buffer and process
+        buffer += data;
+        const lines = buffer.split("\n");
+        buffer = isLastChunk ? "" : (lines.pop() || "");
 
-        if (line.trim()) {
-          const values = parseCsv(line, { skipFirstRow: false })[0];
-          const record = this.processCSVRecord(headers, values, file);
-          if (record) {
-            records.push(record);
+        for (const line of lines) {
+          if (isFirstChunk) {
+            isFirstChunk = false;
+            const headerValues = parseCsv(line, { skipFirstRow: false })[0];
+            headers.push(...headerValues);
+            continue;
+          }
+
+          if (line.trim()) {
+            const values = parseCsv(line, { skipFirstRow: false })[0];
+            const record = this.processCSVRecord(headers, values, file);
+            if (record) {
+              records.push(record);
+            }
           }
         }
       }
