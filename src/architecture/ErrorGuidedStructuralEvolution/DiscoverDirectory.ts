@@ -64,7 +64,9 @@ class DataRecorder {
 
   private async getBinaryFiles(dataDir: string): Promise<string[]> {
     const binaryFiles: string[] = [];
-    for await (const dirEntry of Deno.readDir(dataDir)) {
+    const entries = await Array.fromAsync(Deno.readDir(dataDir));
+
+    for (const dirEntry of entries) {
       if (dirEntry.isFile && dirEntry.name.endsWith(".bin")) {
         binaryFiles.push(`${dataDir}/${dirEntry.name}`);
       }

@@ -232,21 +232,90 @@ export class DiscoverStructure {
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
     try {
-      const data = await Deno.readTextFile(file);
-      const records = parseCsv(data, { skipFirstRow: true });
+      const records: DiscoverRecord[] = [];
+      const fileReader = await Deno.open(file, { read: true });
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let isFirstLine = true;
+      let headers: string[] = [];
 
-      return records.map((record, idx) => {
-        const activation = Number.parseFloat(record.activation);
-        if (isNaN(activation)) {
-          throw new Error(`Invalid activation at row ${idx + 2} in ${file}`);
-        }
+      try {
+        // Process the buffer into lines
+        const processBuffer = () => {
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || ""; // Keep the last incomplete line in the buffer
 
-        let value = Number.parseFloat(record.value);
-        if (Number.isFinite(value) === false) {
-          value = activation;
-        }
-        return { value, activation, errors: record.errors };
-      });
+          for (const line of lines) {
+            if (isFirstLine) {
+              headers = parseCsv(line, { skipFirstRow: false })[0];
+              isFirstLine = false;
+              continue; // Skip header row
+            }
+            if (!line.trim()) continue; // Skip empty lines
+
+            const values = parseCsv(line, { skipFirstRow: false })[0];
+            const record: Record<string, string> = {};
+            headers.forEach((header, index) => {
+              record[header] = values[index];
+            });
+
+            const activation = Number.parseFloat(record.activation);
+            assert(
+              Number.isFinite(activation),
+              `Invalid activation: ${activation} in ${file}`,
+            );
+
+            let value = Number.parseFloat(record.value);
+            if (Number.isFinite(value) === false) {
+              value = activation;
+            }
+            records.push({ value, activation, errors: record.errors });
+          }
+        };
+
+        // Read the file recursively
+        const readNextChunk = async (): Promise<void> => {
+          const chunk = new Uint8Array(1024);
+          const bytesRead = await fileReader.read(chunk);
+
+          if (bytesRead === null) {
+            // End of file, process any remaining buffer
+            if (buffer.trim()) {
+              const values = parseCsv(buffer, { skipFirstRow: false })[0];
+              const record: Record<string, string> = {};
+              headers.forEach((header, index) => {
+                record[header] = values[index];
+              });
+
+              const activation = Number.parseFloat(record.activation);
+              if (isNaN(activation)) {
+                throw new Error(`Invalid activation in ${file}`);
+              }
+
+              let value = Number.parseFloat(record.value);
+              if (Number.isFinite(value) === false) {
+                value = activation;
+              }
+              records.push({ value, activation, errors: record.errors });
+            }
+            return;
+          }
+
+          // Add the chunk to the buffer and process it
+          buffer += decoder.decode(chunk.slice(0, bytesRead), { stream: true });
+          processBuffer();
+
+          // Continue reading
+          await readNextChunk();
+        };
+
+        // Start reading
+        await readNextChunk();
+
+        return records;
+      } finally {
+        fileReader.close();
+      }
     } catch (e) {
       console.error(`Failed to load or parse CSV file: ${file}`, e);
       throw e; // re-throw after logging for external handling
