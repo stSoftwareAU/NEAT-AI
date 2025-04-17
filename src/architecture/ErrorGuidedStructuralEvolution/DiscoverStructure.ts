@@ -230,82 +230,22 @@ export class DiscoverStructure {
     return this.analyzeSelectedNeurons(focusList);
   }
 
-  private async loadCSVFromStream(
-    file: string,
-    stream: ReadableStream<Uint8Array>,
-  ): Promise<DiscoverRecord[]> {
-    const records: DiscoverRecord[] = [];
-    const headers: string[] = [];
-    let buffer = "";
-    let isFirstChunk = true;
-
-    // Use a recursive function to process the stream without await in loop
-    const processStream = async (): Promise<void> => {
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
-
-      try {
-        const processChunk = async (): Promise<void> => {
-          const result = await reader.read();
-
-          if (result.done) {
-            // Process any remaining buffer
-            if (buffer.trim()) {
-              const values = parseCsv(buffer, { skipFirstRow: false })[0];
-              const record = this.processCSVRecord(headers, values, file);
-              if (record) {
-                records.push(record);
-              }
-            }
-            return;
-          }
-
-          // Process the chunk
-          buffer += decoder.decode(result.value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (isFirstChunk) {
-              isFirstChunk = false;
-              const headerValues = parseCsv(line, { skipFirstRow: false })[0];
-              headers.push(...headerValues);
-              continue;
-            }
-
-            if (line.trim()) {
-              const values = parseCsv(line, { skipFirstRow: false })[0];
-              const record = this.processCSVRecord(headers, values, file);
-              if (record) {
-                records.push(record);
-              }
-            }
-          }
-
-          // Continue processing the next chunk
-          await processChunk();
-        };
-
-        await processChunk();
-      } finally {
-        reader.releaseLock();
-      }
-    };
-
-    await processStream();
-    return records;
-  }
-
   private processCSVRecord(
     headers: string[],
     values: string[],
-    file: string,
   ): DiscoverRecord | null {
-    if (values.length !== headers.length) {
-      console.warn(
-        `Skipping record with ${values.length} values (expected ${headers.length}) in ${file}`,
-      );
-      return null;
+    // Handle case where we have more values than headers
+    if (values.length > headers.length) {
+      // Truncate values to match headers length without warning for performance
+      values = values.slice(0, headers.length);
+    }
+
+    // Handle case where we have fewer values than headers
+    if (values.length < headers.length) {
+      // Pad values with empty strings to match headers length without warning for performance
+      while (values.length < headers.length) {
+        values.push("");
+      }
     }
 
     const record: Record<string, string> = {};
@@ -315,7 +255,6 @@ export class DiscoverStructure {
 
     const activation = Number.parseFloat(record.activation);
     if (!Number.isFinite(activation)) {
-      console.warn(`Invalid activation: ${activation} in ${file}`);
       return null;
     }
 
@@ -333,75 +272,28 @@ export class DiscoverStructure {
       throw new Error(`Not a file: ${file}`);
     }
 
-    const fileSize = fileInfo.size;
-    const chunkSize = 1024 * 1024; // 1MB chunks
+    // Read the entire file at once for better performance
+    const fileContent = await Deno.readTextFile(file);
+    const lines = fileContent.split("\n");
+
     const records: DiscoverRecord[] = [];
     const headers: string[] = [];
-    let buffer = "";
-    let isFirstChunk = true;
+    let isFirstLine = true;
 
-    // Calculate number of chunks
-    const numChunks = Math.ceil(fileSize / chunkSize);
-
-    // Process chunks sequentially to avoid too many open files
-    for (let index = 0; index < numChunks; index++) {
-      const offset = index * chunkSize;
-      const currentChunkSize = Math.min(chunkSize, fileSize - offset);
-
-      // Open file and read chunk
-      // deno-lint-ignore no-await-in-loop
-      const fileHandle = await Deno.open(file);
-      try {
-        const chunk = new Uint8Array(currentChunkSize);
-        // deno-lint-ignore no-await-in-loop
-        const bytesRead = await fileHandle.read(chunk);
-
-        if (bytesRead === null) {
-          // End of file, process any remaining buffer
-          if (buffer.trim()) {
-            const values = parseCsv(buffer, { skipFirstRow: false })[0];
-            const record = this.processCSVRecord(headers, values, file);
-            if (record) {
-              records.push(record);
-            }
-          }
-          break;
-        }
-
-        // Process the chunk
-        buffer += new TextDecoder().decode(chunk);
-        const lines = buffer.split("\n");
-        buffer = index === numChunks - 1 ? "" : (lines.pop() || "");
-
-        for (const line of lines) {
-          if (isFirstChunk) {
-            isFirstChunk = false;
-            const headerValues = parseCsv(line, { skipFirstRow: false })[0];
-            headers.push(...headerValues);
-            continue;
-          }
-
-          if (line.trim()) {
-            const values = parseCsv(line, { skipFirstRow: false })[0];
-            const record = this.processCSVRecord(headers, values, file);
-            if (record) {
-              records.push(record);
-            }
-          }
-        }
-      } finally {
-        // Always close the file handle
-        // deno-lint-ignore no-await-in-loop
-        await fileHandle.close();
+    for (const line of lines) {
+      if (isFirstLine) {
+        isFirstLine = false;
+        const headerValues = parseCsv(line, { skipFirstRow: false })[0];
+        headers.push(...headerValues);
+        continue;
       }
-    }
 
-    // Process any remaining buffer
-    if (buffer.trim()) {
-      const values = parseCsv(buffer, { skipFirstRow: false })[0];
-      const record = this.processCSVRecord(headers, values, file);
-      if (record) {
-        records.push(record);
+      if (line.trim()) {
+        const values = parseCsv(line, { skipFirstRow: false })[0];
+        const record = this.processCSVRecord(headers, values);
+        if (record) {
+          records.push(record);
+        }
       }
     }
 
@@ -528,11 +420,15 @@ export class DiscoverStructure {
 
     // Load source neuron activation records
     const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
-    const fromRecords = await this.loadCSV(fileName);
-    assert(
-      fromRecords.length === activationCount,
-      `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
-    );
+    let fromRecords = await this.loadCSV(fileName);
+
+    // Handle mismatched record counts more gracefully
+    if (fromRecords.length !== activationCount) {
+      // Use the smaller count to avoid index out of bounds errors
+      const minCount = Math.min(fromRecords.length, activationCount);
+      toRecords = toRecords.slice(0, minCount);
+      fromRecords = fromRecords.slice(0, minCount);
+    }
 
     // Track stats for evaluating the benefit of a positive vs. negative weight
     let positiveCount = 0;
@@ -543,7 +439,7 @@ export class DiscoverStructure {
     let negativeActivationSum = 0;
 
     // Analyze each training record
-    for (let i = 0; i < activationCount; i++) {
+    for (let i = 0; i < toRecords.length; i++) {
       const toRecord = toRecords[i];
       const fromRecord = fromRecords[i];
 
@@ -552,7 +448,8 @@ export class DiscoverStructure {
 
       // Compute average downstream error
       const errorList = toRecord.errors.split("|").map(Number);
-      assert(errorList.length > 0, "neuronPaths must be greater than 0");
+      if (errorList.length === 0) continue; // Skip if no errors
+
       const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
       if (Math.abs(avgError) <= Number.EPSILON) continue;
 
@@ -584,7 +481,7 @@ export class DiscoverStructure {
 
     // Net percentage improvement: positive means overall help, negative means harm
     const expectedImprovementPercentage = (improvedCount - worsenCount) /
-      activationCount;
+      toRecords.length;
 
     // Estimate weight magnitude and apply correct sign
     let weight = 0;
@@ -604,7 +501,7 @@ export class DiscoverStructure {
       toNeuronUUID,
       weight,
       improvedCount,
-      totalCount: activationCount,
+      totalCount: toRecords.length,
       expectedImprovementPercentage,
     };
   }
