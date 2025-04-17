@@ -230,96 +230,186 @@ export class DiscoverStructure {
     return this.analyzeSelectedNeurons(focusList);
   }
 
-  private async loadCSV(file: string): Promise<DiscoverRecord[]> {
-    try {
-      const records: DiscoverRecord[] = [];
-      const fileReader = await Deno.open(file, { read: true });
+  private async loadCSVFromStream(
+    file: string,
+    stream: ReadableStream<Uint8Array>,
+  ): Promise<DiscoverRecord[]> {
+    const records: DiscoverRecord[] = [];
+    const headers: string[] = [];
+    let buffer = "";
+    let isFirstChunk = true;
+
+    // Use a recursive function to process the stream without await in loop
+    const processStream = async (): Promise<void> => {
+      const reader = stream.getReader();
       const decoder = new TextDecoder();
-      let buffer = "";
-      let isFirstLine = true;
-      let headers: string[] = [];
 
       try {
-        // Process the buffer into lines
-        const processBuffer = () => {
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || ""; // Keep the last incomplete line in the buffer
+        const processChunk = async (): Promise<void> => {
+          const result = await reader.read();
 
-          for (const line of lines) {
-            if (isFirstLine) {
-              headers = parseCsv(line, { skipFirstRow: false })[0];
-              isFirstLine = false;
-              continue; // Skip header row
-            }
-            if (!line.trim()) continue; // Skip empty lines
-
-            const values = parseCsv(line, { skipFirstRow: false })[0];
-            const record: Record<string, string> = {};
-            headers.forEach((header, index) => {
-              record[header] = values[index];
-            });
-
-            const activation = Number.parseFloat(record.activation);
-            assert(
-              Number.isFinite(activation),
-              `Invalid activation: ${activation} in ${file}`,
-            );
-
-            let value = Number.parseFloat(record.value);
-            if (Number.isFinite(value) === false) {
-              value = activation;
-            }
-            records.push({ value, activation, errors: record.errors });
-          }
-        };
-
-        // Read the file recursively
-        const readNextChunk = async (): Promise<void> => {
-          const chunk = new Uint8Array(1024);
-          const bytesRead = await fileReader.read(chunk);
-
-          if (bytesRead === null) {
-            // End of file, process any remaining buffer
+          if (result.done) {
+            // Process any remaining buffer
             if (buffer.trim()) {
               const values = parseCsv(buffer, { skipFirstRow: false })[0];
-              const record: Record<string, string> = {};
-              headers.forEach((header, index) => {
-                record[header] = values[index];
-              });
-
-              const activation = Number.parseFloat(record.activation);
-              if (isNaN(activation)) {
-                throw new Error(`Invalid activation in ${file}`);
+              const record = this.processCSVRecord(headers, values, file);
+              if (record) {
+                records.push(record);
               }
-
-              let value = Number.parseFloat(record.value);
-              if (Number.isFinite(value) === false) {
-                value = activation;
-              }
-              records.push({ value, activation, errors: record.errors });
             }
             return;
           }
 
-          // Add the chunk to the buffer and process it
-          buffer += decoder.decode(chunk.slice(0, bytesRead), { stream: true });
-          processBuffer();
+          // Process the chunk
+          buffer += decoder.decode(result.value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
-          // Continue reading
-          await readNextChunk();
+          for (const line of lines) {
+            if (isFirstChunk) {
+              isFirstChunk = false;
+              const headerValues = parseCsv(line, { skipFirstRow: false })[0];
+              headers.push(...headerValues);
+              continue;
+            }
+
+            if (line.trim()) {
+              const values = parseCsv(line, { skipFirstRow: false })[0];
+              const record = this.processCSVRecord(headers, values, file);
+              if (record) {
+                records.push(record);
+              }
+            }
+          }
+
+          // Continue processing the next chunk
+          await processChunk();
         };
 
-        // Start reading
-        await readNextChunk();
-
-        return records;
+        await processChunk();
       } finally {
-        fileReader.close();
+        reader.releaseLock();
       }
-    } catch (e) {
-      console.error(`Failed to load or parse CSV file: ${file}`, e);
-      throw e; // re-throw after logging for external handling
+    };
+
+    await processStream();
+    return records;
+  }
+
+  private processCSVRecord(
+    headers: string[],
+    values: string[],
+    file: string,
+  ): DiscoverRecord | null {
+    if (values.length !== headers.length) {
+      console.warn(
+        `Skipping record with ${values.length} values (expected ${headers.length}) in ${file}`,
+      );
+      return null;
     }
+
+    const record: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      record[header] = values[index];
+    });
+
+    const activation = Number.parseFloat(record.activation);
+    if (!Number.isFinite(activation)) {
+      console.warn(`Invalid activation: ${activation} in ${file}`);
+      return null;
+    }
+
+    let value = Number.parseFloat(record.value);
+    if (!Number.isFinite(value)) {
+      value = activation;
+    }
+
+    return { value, activation, errors: record.errors };
+  }
+
+  private async loadCSV(file: string): Promise<DiscoverRecord[]> {
+    const fileInfo = await Deno.stat(file);
+    if (!fileInfo.isFile) {
+      throw new Error(`Not a file: ${file}`);
+    }
+
+    const fileSize = fileInfo.size;
+    const chunkSize = 1024 * 1024; // 1MB chunks
+    const records: DiscoverRecord[] = [];
+    const headers: string[] = [];
+    let buffer = "";
+    let isFirstChunk = true;
+
+    // Calculate number of chunks
+    const numChunks = Math.ceil(fileSize / chunkSize);
+
+    // Process chunks in parallel
+    const chunkPromises = Array.from(
+      { length: numChunks },
+      async (_, index) => {
+        const offset = index * chunkSize;
+        const currentChunkSize = Math.min(chunkSize, fileSize - offset);
+
+        // Open file and read chunk
+        const fileHandle = await Deno.open(file);
+        const chunk = new Uint8Array(currentChunkSize);
+        const bytesRead = await fileHandle.read(chunk);
+        await fileHandle.close();
+
+        if (bytesRead === null) {
+          return null;
+        }
+
+        return {
+          offset,
+          data: new TextDecoder().decode(chunk),
+          isLastChunk: index === numChunks - 1,
+        };
+      },
+    );
+
+    // Wait for all chunks to be read
+    const chunkResults = await Promise.all(chunkPromises);
+
+    // Process chunks in order
+    for (const result of chunkResults) {
+      if (!result) continue;
+
+      const { data, isLastChunk } = result;
+
+      // Add to buffer and process
+      buffer += data;
+      const lines = buffer.split("\n");
+      buffer = isLastChunk ? "" : (lines.pop() || "");
+
+      for (const line of lines) {
+        if (isFirstChunk) {
+          isFirstChunk = false;
+          const headerValues = parseCsv(line, { skipFirstRow: false })[0];
+          headers.push(...headerValues);
+          continue;
+        }
+
+        if (line.trim()) {
+          const values = parseCsv(line, { skipFirstRow: false })[0];
+          const record = this.processCSVRecord(headers, values, file);
+          if (record) {
+            records.push(record);
+          }
+        }
+      }
+    }
+
+    // Process any remaining buffer
+    if (buffer.trim()) {
+      const values = parseCsv(buffer, { skipFirstRow: false })[0];
+      const record = this.processCSVRecord(headers, values, file);
+      if (record) {
+        records.push(record);
+      }
+    }
+
+    return records;
   }
 
   private async loadCandidateSynapses(
