@@ -260,9 +260,10 @@ export class DiscoverStructure {
             });
 
             const activation = Number.parseFloat(record.activation);
-            if (isNaN(activation)) {
-              throw new Error(`Invalid activation in ${file}`);
-            }
+            assert(
+              Number.isFinite(activation),
+              `Invalid activation: ${activation} in ${file}`,
+            );
 
             let value = Number.parseFloat(record.value);
             if (Number.isFinite(value) === false) {

@@ -229,3 +229,62 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
 
   await discoverStructure.cleanUp();
 });
+
+Deno.test("loadCSV handles incomplete last line", async () => {
+  // Create a temporary file with a line that spans chunk boundaries
+  const tempDir = await Deno.makeTempDir();
+  const filePath = `${tempDir}/test.csv`;
+
+  // Create a CSV with a line that's exactly at the chunk boundary
+  const headers = "value,activation,errors\n";
+  const data = "1.0,0.5,0.1\n"; // Normal line
+  const longLine = "2.0,0.8,0.2"; // Incomplete line (no newline at the end)
+
+  // Write the file
+  await Deno.writeTextFile(filePath, headers + data + longLine);
+
+  // Create a DiscoverStructure instance with a mock creature
+  const mockCreature = {
+    uuid: "test-creature",
+    neurons: [],
+    input: 0,
+    output: 0,
+    exportJSON: () => ({ neurons: [], synapses: [] }),
+    dispose: () => {},
+    validate: () => {},
+    activate: () => new Float32Array(),
+    record: () => new Map(),
+  } as unknown as Creature;
+
+  const discoverStructure = new DiscoverStructure(mockCreature);
+
+  // Define the record type
+  interface DiscoverRecord {
+    value: number;
+    activation: number;
+    errors: string;
+  }
+
+  // Call the private method using a two-step type assertion
+  const records = await ((discoverStructure as unknown) as {
+    loadCSV(file: string): Promise<DiscoverRecord[]>;
+  }).loadCSV(filePath);
+
+  // Verify the records
+  assert(records.length === 2, "Should have 2 records");
+  assert(records[0].value === 1.0, "First record should have value 1.0");
+  assert(
+    records[0].activation === 0.5,
+    "First record should have activation 0.5",
+  );
+  assert(records[0].errors === "0.1", "First record should have errors 0.1");
+  assert(records[1].value === 2.0, "Second record should have value 2.0");
+  assert(
+    records[1].activation === 0.8,
+    "Second record should have activation 0.8",
+  );
+  assert(records[1].errors === "0.2", "Second record should have errors 0.2");
+
+  // Clean up
+  await Deno.remove(tempDir, { recursive: true });
+});
