@@ -343,52 +343,35 @@ export class DiscoverStructure {
     // Calculate number of chunks
     const numChunks = Math.ceil(fileSize / chunkSize);
 
-    // Process chunks in batches to limit concurrent promises
-    const batchSize = 5; // Process 5 chunks at a time
-    for (let batchStart = 0; batchStart < numChunks; batchStart += batchSize) {
-      const batchEnd = Math.min(batchStart + batchSize, numChunks);
-      const batchPromises = [];
+    // Process chunks sequentially to avoid too many open files
+    for (let index = 0; index < numChunks; index++) {
+      const offset = index * chunkSize;
+      const currentChunkSize = Math.min(chunkSize, fileSize - offset);
 
-      for (let index = batchStart; index < batchEnd; index++) {
-        const offset = index * chunkSize;
-        const currentChunkSize = Math.min(chunkSize, fileSize - offset);
-
-        // Create a promise for each chunk in the batch
-        const chunkPromise = (async () => {
-          // Open file and read chunk
-          const fileHandle = await Deno.open(file);
-          const chunk = new Uint8Array(currentChunkSize);
-          const bytesRead = await fileHandle.read(chunk);
-          await fileHandle.close();
-
-          if (bytesRead === null) {
-            return null;
-          }
-
-          return {
-            offset,
-            data: new TextDecoder().decode(chunk),
-            isLastChunk: index === numChunks - 1,
-          };
-        })();
-
-        batchPromises.push(chunkPromise);
-      }
-
-      // Wait for all chunks in this batch to be read
+      // Open file and read chunk
       // deno-lint-ignore no-await-in-loop
-      const batchResults = await Promise.all(batchPromises);
+      const fileHandle = await Deno.open(file);
+      try {
+        const chunk = new Uint8Array(currentChunkSize);
+        // deno-lint-ignore no-await-in-loop
+        const bytesRead = await fileHandle.read(chunk);
 
-      // Process chunks in order
-      for (const result of batchResults) {
-        if (!result) continue;
+        if (bytesRead === null) {
+          // End of file, process any remaining buffer
+          if (buffer.trim()) {
+            const values = parseCsv(buffer, { skipFirstRow: false })[0];
+            const record = this.processCSVRecord(headers, values, file);
+            if (record) {
+              records.push(record);
+            }
+          }
+          break;
+        }
 
-        const { data, isLastChunk } = result;
-
-        // Add to buffer and process
-        buffer += data;
+        // Process the chunk
+        buffer += new TextDecoder().decode(chunk);
         const lines = buffer.split("\n");
-        buffer = isLastChunk ? "" : (lines.pop() || "");
+        buffer = index === numChunks - 1 ? "" : (lines.pop() || "");
 
         for (const line of lines) {
           if (isFirstChunk) {
@@ -406,6 +389,10 @@ export class DiscoverStructure {
             }
           }
         }
+      } finally {
+        // Always close the file handle
+        // deno-lint-ignore no-await-in-loop
+        await fileHandle.close();
       }
     }
 
