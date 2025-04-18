@@ -268,10 +268,7 @@ export class DiscoverStructure {
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
     const fileInfo = await Deno.stat(file);
-    if (!fileInfo.isFile) {
-      throw new Error(`Not a file: ${file}`);
-    }
-
+    assert(fileInfo.isFile, "Not a file");
     const records: DiscoverRecord[] = [];
     const headers: string[] = [];
     let isFirstLine = true;
