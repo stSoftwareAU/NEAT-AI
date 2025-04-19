@@ -280,7 +280,8 @@ export class DiscoverStructure {
       if (isFirstLine) {
         const headerValues = parseCsv(line, { skipFirstRow: false })[0];
         headers.push(...headerValues);
-        return { partialLine: newPartialLine, isFirstLine: false };
+        isFirstLine = false;
+        continue;
       }
 
       if (line.trim()) {
