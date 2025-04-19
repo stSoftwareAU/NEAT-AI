@@ -296,18 +296,49 @@ export class DiscoverStructure {
     return { partialLine: newPartialLine, isFirstLine };
   }
 
+  private async openFileWithRetry(
+    file: string,
+    maxRetries = 5,
+    initialDelay = 100,
+  ): Promise<Deno.FsFile> {
+    let retries = 0;
+    let delay = initialDelay;
+
+    while (true) {
+      try {
+        // deno-lint-ignore no-await-in-loop
+        return await Deno.open(file);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("Too many open files") && retries < maxRetries
+        ) {
+          console.warn(
+            `Too many open files, retrying in ${delay}ms (attempt ${
+              retries + 1
+            }/${maxRetries})`,
+          );
+          // deno-lint-ignore no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff
+          retries++;
+          continue;
+        }
+        throw error; // Re-throw if it's not a "Too many open files" error or we've exhausted retries
+      }
+    }
+  }
+
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
     const fileInfo = await Deno.stat(file);
-    if (!fileInfo.isFile) {
-      throw new Error(`Not a file: ${file}`);
-    }
+    assert(fileInfo.isFile, "Not a file");
 
     const records: DiscoverRecord[] = [];
     const headers: string[] = [];
     let isFirstLine = true;
 
-    // Open file for streaming
-    const fileHandle = await Deno.open(file);
+    // Open file for streaming with retry mechanism
+    const fileHandle = await this.openFileWithRetry(file);
     try {
       // Process the file in chunks to avoid memory issues
       const bufferSize = 64 * 1024; // 64KB chunks
