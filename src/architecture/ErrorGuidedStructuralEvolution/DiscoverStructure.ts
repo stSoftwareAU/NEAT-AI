@@ -266,9 +266,41 @@ export class DiscoverStructure {
     return { value, activation, errors: record.errors };
   }
 
+  private processCSVChunk(
+    chunk: string,
+    partialLine: string,
+    headers: string[],
+    isFirstLine: boolean,
+    records: DiscoverRecord[],
+  ): { partialLine: string; isFirstLine: boolean } {
+    const lines = (partialLine + chunk).split("\n");
+    const newPartialLine = lines.pop() || ""; // Keep the last partial line for next iteration
+
+    for (const line of lines) {
+      if (isFirstLine) {
+        const headerValues = parseCsv(line, { skipFirstRow: false })[0];
+        headers.push(...headerValues);
+        return { partialLine: newPartialLine, isFirstLine: false };
+      }
+
+      if (line.trim()) {
+        const values = parseCsv(line, { skipFirstRow: false })[0];
+        const record = this.processCSVRecord(headers, values);
+        if (record) {
+          records.push(record);
+        }
+      }
+    }
+
+    return { partialLine: newPartialLine, isFirstLine };
+  }
+
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
     const fileInfo = await Deno.stat(file);
-    assert(fileInfo.isFile, "Not a file");
+    if (!fileInfo.isFile) {
+      throw new Error(`Not a file: ${file}`);
+    }
+
     const records: DiscoverRecord[] = [];
     const headers: string[] = [];
     let isFirstLine = true;
@@ -282,7 +314,6 @@ export class DiscoverStructure {
       let partialLine = "";
 
       // We need to process chunks sequentially to maintain record order
-
       while (true) {
         // deno-lint-ignore no-await-in-loop
         const bytesRead = await fileHandle.read(buffer);
@@ -305,25 +336,15 @@ export class DiscoverStructure {
 
         // Convert buffer to string and process
         const chunk = new TextDecoder().decode(buffer.slice(0, bytesRead));
-        const lines = (partialLine + chunk).split("\n");
-        partialLine = lines.pop() || ""; // Keep the last partial line for next iteration
-
-        for (const line of lines) {
-          if (isFirstLine) {
-            isFirstLine = false;
-            const headerValues = parseCsv(line, { skipFirstRow: false })[0];
-            headers.push(...headerValues);
-            continue;
-          }
-
-          if (line.trim()) {
-            const values = parseCsv(line, { skipFirstRow: false })[0];
-            const record = this.processCSVRecord(headers, values);
-            if (record) {
-              records.push(record);
-            }
-          }
-        }
+        const result = this.processCSVChunk(
+          chunk,
+          partialLine,
+          headers,
+          isFirstLine,
+          records,
+        );
+        partialLine = result.partialLine;
+        isFirstLine = result.isFirstLine;
       }
     } finally {
       // Always close the file handle
