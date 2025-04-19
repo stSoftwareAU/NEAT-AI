@@ -266,18 +266,79 @@ export class DiscoverStructure {
     return { value, activation, errors: record.errors };
   }
 
+  private processCSVChunk(
+    chunk: string,
+    partialLine: string,
+    headers: string[],
+    isFirstLine: boolean,
+    records: DiscoverRecord[],
+  ): { partialLine: string; isFirstLine: boolean } {
+    const lines = (partialLine + chunk).split("\n");
+    const newPartialLine = lines.pop() || ""; // Keep the last partial line for next iteration
+
+    for (const line of lines) {
+      if (isFirstLine) {
+        const headerValues = parseCsv(line, { skipFirstRow: false })[0];
+        headers.push(...headerValues);
+        isFirstLine = false;
+        continue;
+      }
+
+      if (line.trim()) {
+        const values = parseCsv(line, { skipFirstRow: false })[0];
+        const record = this.processCSVRecord(headers, values);
+        if (record) {
+          records.push(record);
+        }
+      }
+    }
+
+    return { partialLine: newPartialLine, isFirstLine };
+  }
+
+  private async openFileWithRetry(
+    file: string,
+    maxRetries = 5,
+    initialDelay = 100,
+  ): Promise<Deno.FsFile> {
+    let retries = 0;
+    let delay = initialDelay;
+
+    while (true) {
+      try {
+        // deno-lint-ignore no-await-in-loop
+        return await Deno.open(file);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("Too many open files") && retries < maxRetries
+        ) {
+          console.warn(
+            `Too many open files, retrying in ${delay}ms (attempt ${
+              retries + 1
+            }/${maxRetries})`,
+          );
+          // deno-lint-ignore no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff
+          retries++;
+          continue;
+        }
+        throw error; // Re-throw if it's not a "Too many open files" error or we've exhausted retries
+      }
+    }
+  }
+
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
     const fileInfo = await Deno.stat(file);
-    if (!fileInfo.isFile) {
-      throw new Error(`Not a file: ${file}`);
-    }
+    assert(fileInfo.isFile, "Not a file");
 
     const records: DiscoverRecord[] = [];
     const headers: string[] = [];
     let isFirstLine = true;
 
-    // Open file for streaming
-    const fileHandle = await Deno.open(file);
+    // Open file for streaming with retry mechanism
+    const fileHandle = await this.openFileWithRetry(file);
     try {
       // Process the file in chunks to avoid memory issues
       const bufferSize = 64 * 1024; // 64KB chunks
@@ -285,7 +346,6 @@ export class DiscoverStructure {
       let partialLine = "";
 
       // We need to process chunks sequentially to maintain record order
-
       while (true) {
         // deno-lint-ignore no-await-in-loop
         const bytesRead = await fileHandle.read(buffer);
@@ -308,25 +368,15 @@ export class DiscoverStructure {
 
         // Convert buffer to string and process
         const chunk = new TextDecoder().decode(buffer.slice(0, bytesRead));
-        const lines = (partialLine + chunk).split("\n");
-        partialLine = lines.pop() || ""; // Keep the last partial line for next iteration
-
-        for (const line of lines) {
-          if (isFirstLine) {
-            isFirstLine = false;
-            const headerValues = parseCsv(line, { skipFirstRow: false })[0];
-            headers.push(...headerValues);
-            continue;
-          }
-
-          if (line.trim()) {
-            const values = parseCsv(line, { skipFirstRow: false })[0];
-            const record = this.processCSVRecord(headers, values);
-            if (record) {
-              records.push(record);
-            }
-          }
-        }
+        const result = this.processCSVChunk(
+          chunk,
+          partialLine,
+          headers,
+          isFirstLine,
+          records,
+        );
+        partialLine = result.partialLine;
+        isFirstLine = result.isFirstLine;
       }
     } finally {
       // Always close the file handle
