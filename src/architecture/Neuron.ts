@@ -494,49 +494,49 @@ export class Neuron implements TagsInterface, NeuronInternal {
           const fromActivation = fromNeuron.adjustedActivation(config);
 
           const fromWeight = adjustedWeight(state, c, config);
-          const fromValue = fromWeight * fromActivation;
+          if (Math.abs(fromWeight) > config.plankConstant) {
+            const fromValue = fromWeight * fromActivation;
 
-          let improvedFromActivation = fromActivation;
+            let improvedFromActivation = fromActivation;
 
-          const targetFromValue = fromValue + errorPerLink;
+            const targetFromValue = fromValue + errorPerLink;
 
-          const type = fromNeuron.type;
-          if (
-            fromWeight &&
-            type !== "input" &&
-            type !== "constant"
-          ) {
+            const type = fromNeuron.type;
             if (
-              sparseConfig.propagateNeeded(fromNeuron.uuid)
+              type !== "input" &&
+              type !== "constant"
             ) {
-              const targetFromActivation = targetFromValue / fromWeight;
-              improvedFromActivation = fromNeuron.propagate(
-                targetFromActivation,
-                config,
-                sparseConfig,
-              );
+              if (
+                sparseConfig.propagateNeeded(fromNeuron.uuid)
+              ) {
+                const targetFromActivation = targetFromValue / fromWeight;
+                improvedFromActivation = fromNeuron.propagate(
+                  targetFromActivation,
+                  config,
+                  sparseConfig,
+                );
+              }
             }
-          }
 
-          if (
-            updateNeeded &&
-            Math.abs(improvedFromActivation) > config.plankConstant &&
-            Math.abs(fromWeight) > config.plankConstant
-          ) {
-            const cs = state.connection(from, to);
-            accumulateWeight(
-              c.weight,
-              cs,
-              targetFromValue,
-              improvedFromActivation,
-              config,
-            );
-            const aWeight = adjustedWeight(state, c, config);
+            if (
+              updateNeeded &&
+              Math.abs(improvedFromActivation) > config.plankConstant
+            ) {
+              const cs = state.connection(from, to);
+              accumulateWeight(
+                c.weight,
+                cs,
+                targetFromValue,
+                improvedFromActivation,
+                config,
+              );
+              const aWeight = adjustedWeight(state, c, config);
 
-            const improvedFromValue = improvedFromActivation *
-              aWeight;
+              const improvedFromValue = improvedFromActivation *
+                aWeight;
 
-            improvedValue += improvedFromValue;
+              improvedValue += improvedFromValue;
+            }
           }
         }
       }
@@ -561,19 +561,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
     }
 
-    if (Math.abs(limitedActivation - activation) > config.plankConstant) {
-      if (updateNeeded) {
-        ns.traceActivation(limitedActivation);
-      }
-      state.cacheAdjustedActivation.set(
-        this.index,
-        limitedActivation,
-      );
-      return limitedActivation;
-    } else {
-      state.cacheAdjustedActivation.set(this.index, activation);
-      return activation;
+    if (updateNeeded) {
+      ns.traceActivation(limitedActivation);
     }
+    state.cacheAdjustedActivation.set(
+      this.index,
+      limitedActivation,
+    );
+    return limitedActivation;
   }
 
   /**
