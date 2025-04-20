@@ -272,7 +272,7 @@ export class DiscoverStructure {
     headers: string[],
     isFirstLine: boolean,
     records: DiscoverRecord[],
-  ): { partialLine: string; isFirstLine: boolean } {
+  ): string {
     const lines = (partialLine + chunk).split("\n");
     const newPartialLine = lines.pop() || ""; // Keep the last partial line for next iteration
 
@@ -293,13 +293,13 @@ export class DiscoverStructure {
       }
     }
 
-    return { partialLine: newPartialLine, isFirstLine };
+    return newPartialLine;
   }
 
   private async openFileWithRetry(
     file: string,
     maxRetries = 5,
-    initialDelay = 100,
+    initialDelay = 200,
   ): Promise<Deno.FsFile> {
     let retries = 0;
     let delay = initialDelay;
@@ -335,52 +335,47 @@ export class DiscoverStructure {
 
     const records: DiscoverRecord[] = [];
     const headers: string[] = [];
-    let isFirstLine = true;
+    let isFirstChunk = true;
+    const TD = new TextDecoder();
+
+    // Process the file in chunks to avoid memory issues
+    const bufferSize = 256 * 1024;
+    const buffer = new Uint8Array(bufferSize);
+    let partialLine = "";
 
     // Open file for streaming with retry mechanism
     const fileHandle = await this.openFileWithRetry(file);
-    try {
-      // Process the file in chunks to avoid memory issues
-      const bufferSize = 64 * 1024; // 64KB chunks
-      const buffer = new Uint8Array(bufferSize);
-      let partialLine = "";
+    // We need to process chunks sequentially to maintain record order
+    while (true) {
+      const bytesRead = fileHandle.readSync(buffer);
+      if (bytesRead === null) {
+        fileHandle.close();
 
-      // We need to process chunks sequentially to maintain record order
-      while (true) {
-        // deno-lint-ignore no-await-in-loop
-        const bytesRead = await fileHandle.read(buffer);
-        if (bytesRead === null) {
-          // End of file, process any remaining partial line
-          if (partialLine.trim()) {
-            const values = parseCsv(partialLine, { skipFirstRow: false })[0];
-            if (isFirstLine) {
-              headers.push(...values);
-              isFirstLine = false;
-            } else {
-              const record = this.processCSVRecord(headers, values);
-              if (record) {
-                records.push(record);
-              }
-            }
-          }
-          break;
-        }
-
-        // Convert buffer to string and process
-        const chunk = new TextDecoder().decode(buffer.slice(0, bytesRead));
-        const result = this.processCSVChunk(
-          chunk,
-          partialLine,
-          headers,
-          isFirstLine,
-          records,
-        );
-        partialLine = result.partialLine;
-        isFirstLine = result.isFirstLine;
+        break;
       }
-    } finally {
-      // Always close the file handle
-      fileHandle.close();
+
+      // Convert buffer to string and process
+      const chunk = TD.decode(buffer.slice(0, bytesRead));
+
+      partialLine = this.processCSVChunk(
+        chunk,
+        partialLine,
+        headers,
+        isFirstChunk,
+        records,
+      );
+
+      isFirstChunk = false;
+    }
+
+    if (partialLine.trim()) {
+      assert(headers.length > 0, "No headers found");
+      const values = parseCsv(partialLine, { skipFirstRow: false })[0];
+
+      const record = this.processCSVRecord(headers, values);
+      if (record) {
+        records.push(record);
+      }
     }
 
     return records;
