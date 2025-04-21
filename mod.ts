@@ -95,3 +95,12 @@ export { Upgrade } from "./src/reconstruct/Upgrade.ts";
  * @see {@link module:src/reconstruct/ConnectMissing}
  */
 export { randomConnectMissing } from "./src/reconstruct/ConnectMissing.ts";
+
+/**
+ * Neuron Class
+ */
+export { type NeuronExport } from "./src/architecture/NeuronInterfaces.ts";
+/**
+ * Synapse Class
+ */
+export { type SynapseExport } from "./src/architecture/SynapseInterfaces.ts";
