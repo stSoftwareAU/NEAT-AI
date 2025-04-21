@@ -975,7 +975,7 @@ export class Creature implements CreatureInternal {
 
   /**
    * Score the creature using a dataset.
-   * 
+   *
    * @param dataDir The directory containing the dataset.
    * @param options The NEAT configuration options.
    * @returns the score and error of the creature.
