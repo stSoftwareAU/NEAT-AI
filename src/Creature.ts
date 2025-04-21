@@ -23,6 +23,7 @@ import type {
   NeuronInternal,
   NeuronTrace,
 } from "./architecture/NeuronInterfaces.ts";
+import { calculate as calculateScore } from "./architecture/Score.ts";
 import { Synapse } from "./architecture/Synapse.ts";
 import type {
   SynapseExport,
@@ -34,7 +35,7 @@ import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import { createNeatConfig } from "./config/NeatConfig.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
-import type { CostInterface } from "./Costs.ts";
+import { type CostInterface, Costs } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
@@ -970,6 +971,26 @@ export class Creature implements CreatureInternal {
     Deno.removeSync(dataSetDir, { recursive: true });
 
     return result;
+  }
+
+  scoreDir(
+    dataDir: string,
+    options: NeatOptions,
+  ): { score: number; error: number } {
+    const config = createNeatConfig(options);
+
+    const result = this.evaluateDir(
+      dataDir,
+      Costs.find(config.costName),
+      config.feedbackLoop,
+    );
+
+    this.score = calculateScore(
+      this,
+      result.error,
+      config.costOfGrowth,
+    );
+    return { error: result.error, score: this.score };
   }
 
   /**
