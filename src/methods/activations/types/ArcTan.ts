@@ -37,8 +37,10 @@ export class ArcTan
     const epsilon = 1e-5; // Small value to avoid exact boundary issues
 
     if (activation >= Math.PI / 2 - epsilon) {
+      if (hint && hint > Math.PI / 2 - epsilon) return hint;
       return Number.MAX_SAFE_INTEGER;
     } else if (activation <= -Math.PI / 2 + epsilon) {
+      if (hint && hint < -Math.PI / 2 + epsilon) return hint;
       return -Number.MAX_SAFE_INTEGER;
     }
 
