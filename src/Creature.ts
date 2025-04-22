@@ -215,8 +215,7 @@ export class Creature implements CreatureInternal {
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
           if (tmpSquash === "*") {
-            tmpSquash = Activations
-              .NAMES[Math.floor(Activations.NAMES.length * Math.random())];
+            tmpSquash = Activations.pickRandomWeighted();
             fixNeeded = true;
           }
 

@@ -109,4 +109,57 @@ export class Activations {
     }
     return activation as AbstractActivationInterface;
   }
+
+  private static readonly WEIGHTED_POOL: string[] = (() => {
+    const weighted: [string, number][] = [
+      [RELU.NAME, 10],
+      [LeakyReLU.NAME, 9],
+      [GELU.NAME, 9],
+      [Swish.NAME, 8],
+      [TANH.NAME, 8],
+      [LOGISTIC.NAME, 7],
+      [Softplus.NAME, 7],
+      [Mish.NAME, 6],
+      [ELU.NAME, 6],
+      [SELU.NAME, 5],
+      [HARD_TANH.NAME, 5],
+      [BENT_IDENTITY.NAME, 4],
+      [SOFTSIGN.NAME, 4],
+      [ArcTan.NAME, 4],
+      [ReLU6.NAME, 4],
+      [SINE.NAME, 3],
+      [ABSOLUTE.NAME, 2],
+      [Cosine.NAME, 2],
+      [Cube.NAME, 2],
+      [Exponential.NAME, 2],
+      [GAUSSIAN.NAME, 2],
+      [ISRU.NAME, 2],
+      [LogSigmoid.NAME, 2],
+      [STEP.NAME, 2],
+      [TAN.NAME, 2],
+      [COMPLEMENT.NAME, 1],
+      [StdInverse.NAME, 1],
+      [IDENTITY.NAME, 1],
+      [IF.NAME, 1],
+      [HYPOT.NAME, 1],
+      [HYPOTv2.NAME, 1],
+      [MAXIMUM.NAME, 1],
+      [MINIMUM.NAME, 1],
+      [BIPOLAR.NAME, 1],
+      [BIPOLAR_SIGMOID.NAME, 1],
+    ];
+    const result: string[] = [];
+    for (const [name, weight] of weighted) {
+      for (let i = 0; i < weight; i++) result.push(name);
+    }
+    return result;
+  })();
+
+  public static pickRandomWeighted(exclude?: string): string {
+    const pool = exclude
+      ? Activations.WEIGHTED_POOL.filter((name) => name !== exclude)
+      : Activations.WEIGHTED_POOL;
+    const index = Math.floor(Math.random() * pool.length);
+    return pool[index];
+  }
 }

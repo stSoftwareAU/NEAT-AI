@@ -12,3 +12,18 @@ Deno.test("ActivationNames", () => {
   const inverse = Activations.find("INVERSE");
   assert(inverse !== undefined, `Could not find activation for INVERSE`);
 });
+
+Deno.test("pickRandomWeighted always returns valid squash", () => {
+  for (let i = 0; i < 100; i++) {
+    const name = Activations.pickRandomWeighted();
+    assert(Activations.NAMES.includes(name));
+  }
+});
+
+Deno.test("pickRandomWeighted never returns excluded squash", () => {
+  const excluded = "RELU";
+  for (let i = 0; i < 100; i++) {
+    const result = Activations.pickRandomWeighted(excluded);
+    assertNotEquals(result, excluded);
+  }
+});

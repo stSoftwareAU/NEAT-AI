@@ -757,19 +757,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
           default:
             throw new Error(`Can't modify activation for type ${this.type}`);
         }
-        // Can't be the same squash
-        for (let attempts = 0; attempts < 12; attempts++) {
-          const tmpSquash = Activations
-            .NAMES[Math.floor(Math.random() * Activations.NAMES.length)];
+        const tmpSquash = Activations.pickRandomWeighted(this.squash);
 
-          if (tmpSquash !== this.squash) {
-            this.setSquash(tmpSquash);
+        this.setSquash(tmpSquash);
 
-            removeTag(this, "CRISPR");
-            changed = true;
-            break;
-          }
-        }
+        removeTag(this, "CRISPR");
+        changed = true;
         break;
       }
       case Mutation.MOD_BIAS.name: {
