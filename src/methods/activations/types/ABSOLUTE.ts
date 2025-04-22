@@ -30,7 +30,7 @@ export class ABSOLUTE
   unSquash(activation: number, hint?: number): number {
     ABSOLUTE.rangeStatic.validate(activation, hint);
 
-    if ((hint ? hint : 0) < 0) {
+    if (typeof hint === "number" && Number.isFinite(hint) && hint < 0) {
       return -activation;
     }
 
