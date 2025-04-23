@@ -37,8 +37,9 @@ export class HARD_TANH
     this.range.validate(activation, hint);
 
     if (
-      Math.abs(activation) === 1 && typeof hint === "number" &&
-      Number.isFinite(hint)
+      typeof hint === "number" &&
+      Number.isFinite(hint) &&
+      this.squash(hint) === activation
     ) {
       return hint;
     }

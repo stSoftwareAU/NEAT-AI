@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -5,48 +6,50 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * Inverse Square Root Unit (ISRU) Activation Function
  *
- * The ISRU function is defined as: f(x) = x / sqrt(1 + α * x^2).
- * It helps control the magnitude of activations and is useful for preventing exploding gradients.
+ * f(x) = x / sqrt(1 + α * x²)
+ * f⁻¹(y) = y / sqrt(1 - α * y²)
  *
- * The derivative is: f'(x) = 1 / (sqrt(1 + α * x^2))^3.
+ * Helps control the magnitude of activations and is useful for preventing exploding gradients.
  *
  * Reference:
  * https://en.wikipedia.org/wiki/Activation_function#Inverse_Square_Root_Unit_(ISRU)
  */
-export class ISRU implements ActivationInterface, UnSquashInterface {
-  public static NAME = "ISRU";
-  private static ALPHA = 1.0; // Default value for α; can be adjusted as needed
+export class ISRU
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public static readonly NAME = "ISRU";
+  private static readonly ALPHA = 1.0;
 
-  // The output range of ISRU is between -1/sqrt(α) and 1/sqrt(α)
-  public readonly range: ActivationRange = new ActivationRange(
+  private static readonly MAX_ACTIVATION = 1 / Math.sqrt(ISRU.ALPHA);
+
+  public readonly range = new ActivationRange(
     ISRU.NAME,
-    -1 / Math.sqrt(ISRU.ALPHA),
-    1 / Math.sqrt(ISRU.ALPHA),
+    -ISRU.MAX_ACTIVATION,
+    ISRU.MAX_ACTIVATION,
   );
 
-  // Function to estimate the input from the activation value (inverse of ISRU)
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
-    // Ensure that the input is within the valid range
-    const maxActivation = 1 / Math.sqrt(ISRU.ALPHA);
-    if (Math.abs(activation) >= maxActivation) {
-      return activation > 0
-        ? Number.MAX_SAFE_INTEGER
-        : -Number.MAX_SAFE_INTEGER;
-    }
-
-    // Calculate the inverse of ISRU
-    const value = activation / Math.sqrt(1 - ISRU.ALPHA * activation ** 2);
-    return value;
-  }
-
-  getName() {
+  getName(): string {
     return ISRU.NAME;
   }
 
-  // ISRU function definition
-  squash(x: number) {
-    return x / Math.sqrt(1 + ISRU.ALPHA * x ** 2);
+  inlineSquash(value: string): string {
+    return `(${value}) / Math.sqrt(1 + ${ISRU.ALPHA} * Math.pow(${value}, 2))`;
+  }
+
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
+    const result = x / Math.sqrt(1 + ISRU.ALPHA * Math.pow(x, 2));
+    return this.range.limit(result);
+  }
+
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
+    const safeActivation = Math.min(
+      Math.max(activation, -ISRU.MAX_ACTIVATION + 1e-10),
+      ISRU.MAX_ACTIVATION - 1e-10,
+    );
+
+    return safeActivation /
+      Math.sqrt(1 - ISRU.ALPHA * Math.pow(safeActivation, 2));
   }
 }
