@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,8 +11,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Exponential_function
  */
-export class Exponential
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class Exponential implements ActivationInterface, UnSquashInterface {
   public static NAME = "Exponential";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
@@ -26,10 +24,6 @@ export class Exponential
 
   getName(): string {
     return Exponential.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.exp(${value})`;
   }
 
   squash(x: number): number {

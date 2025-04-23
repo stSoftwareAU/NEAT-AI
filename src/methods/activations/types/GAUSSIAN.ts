@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,8 +11,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Gaussian_function
  */
-export class GAUSSIAN
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   public static NAME = "GAUSSIAN";
 
   public readonly range: ActivationRange = new ActivationRange(
@@ -24,10 +22,6 @@ export class GAUSSIAN
 
   getName(): string {
     return GAUSSIAN.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.exp(-Math.pow(${value}, 2))`;
   }
 
   squash(x: number): number {

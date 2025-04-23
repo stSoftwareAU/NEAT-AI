@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -14,8 +13,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#ELU
  */
-export class ELU
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class ELU implements ActivationInterface, UnSquashInterface {
   public static NAME = "ELU";
 
   // Common α value
@@ -31,10 +29,6 @@ export class ELU
 
   getName(): string {
     return ELU.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `(${value}) > 0 ? ${value} : ${ELU.ALPHA} * (Math.exp(${value}) - 1)`;
   }
 
   squash(x: number): number {

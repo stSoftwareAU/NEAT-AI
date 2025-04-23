@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -13,8 +12,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Sigmoid_function
  */
-export class LOGISTIC
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class LOGISTIC implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "LOGISTIC";
 
   public readonly range: ActivationRange = new ActivationRange(
@@ -25,10 +23,6 @@ export class LOGISTIC
 
   getName(): string {
     return LOGISTIC.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `1 / (1 + Math.exp(-(${value})))`;
   }
 
   squash(x: number): number {
