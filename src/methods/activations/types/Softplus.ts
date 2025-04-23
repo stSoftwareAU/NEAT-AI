@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,8 +11,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Softplus
  */
-export class Softplus
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class Softplus implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Softplus";
 
   private static readonly LARGE_THRESHOLD = 100;
@@ -29,10 +27,6 @@ export class Softplus
 
   getName(): string {
     return Softplus.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.log(1 + Math.exp(${value}))`;
   }
 
   squash(x: number): number {
