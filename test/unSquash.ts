@@ -376,6 +376,9 @@ function checkKnownActivations(squashName: string) {
 
     range.high,
     range.low,
+    NaN,
+    Infinity,
+    -Infinity,
   ];
   activations.forEach((activation) => {
     if (

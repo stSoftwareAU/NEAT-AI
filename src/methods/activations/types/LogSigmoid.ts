@@ -41,13 +41,15 @@ export class LogSigmoid
   }
 
   unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
+    if (activation < -700) {
+      return typeof hint === "number" && Number.isFinite(hint) ? hint : -10;
+    }
 
     const expY = Math.exp(activation);
     const denom = 1 - expY;
 
     if (denom <= 0 || !Number.isFinite(expY)) {
-      return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
+      return typeof hint === "number" && Number.isFinite(hint) ? hint : -10;
     }
 
     return Math.log(expY / denom);
