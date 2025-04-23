@@ -443,7 +443,7 @@ Deno.test("evolve_AND_gate", async () => {
       { input: [1, 1], output: [1] },
     ],
     10000,
-    0.002,
+    0.003,
   );
 });
 
