@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -14,8 +13,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Activation_function#Inverse_Square_Root_Unit_(ISRU)
  */
-export class ISRU
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class ISRU implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "ISRU";
   private static readonly ALPHA = 1.0;
 
@@ -29,10 +27,6 @@ export class ISRU
 
   getName(): string {
     return ISRU.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `(${value}) / Math.sqrt(1 + ${ISRU.ALPHA} * Math.pow(${value}, 2))`;
   }
 
   squash(x: number): number {

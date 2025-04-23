@@ -39,7 +39,7 @@ export class Softplus
     if (!Number.isFinite(x)) return Softplus.SMALL_THRESHOLD;
 
     if (x >= 709) {
-      return Softplus.rangeStatic.limit(Softplus.LARGE_THRESHOLD);
+      return Softplus.LARGE_THRESHOLD;
     }
 
     const value = Math.log(1 + Math.exp(x));

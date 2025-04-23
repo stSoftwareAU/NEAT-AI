@@ -30,12 +30,18 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number): number {
-    if (!Number.isFinite(x)) return 0;
-    if (x < -GELU.MAX_X) return 0;
+    // For very large negative values, return a very small negative number
+    if (x < -GELU.MAX_X) return -0;
+
+    // For very large positive values, return the input
     if (x > GELU.MAX_X) return this.range.limit(x);
 
+    // Standard GELU approximation
     const value = 0.5 * x *
-      (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (x + GELU.CUBIC_COEF * x ** 3)));
+      (1 +
+        Math.tanh(
+          Math.sqrt(2 / Math.PI) * (x + GELU.CUBIC_COEF * Math.pow(x, 3)),
+        ));
 
     return this.range.limit(value);
   }
