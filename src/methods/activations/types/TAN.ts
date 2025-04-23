@@ -7,8 +7,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * TAN Activation Function
  *
+ * f(x) = tan(x)
+ * f⁻¹(y) = atan(y) + πk, where k ∈ ℤ
+ *
  * Reference:
- * https://en.wikipedia.org/wiki/Trigonometric_functions#Tan
+ * https://en.wikipedia.org/wiki/Trigonometric_functions#Tangent
  */
 export class TAN
   implements
@@ -16,55 +19,44 @@ export class TAN
     UnSquashInterface,
     InlineSquashInterface,
     SimplifyBiasInterface {
-  simplifyBias(bias: number): number {
-    return bias % Math.PI; // Simplify the bias using the periodicity of tan(x)
-  }
-
-  public static NAME = "TAN";
+  public static readonly NAME = "TAN";
 
   public readonly range: ActivationRange = new ActivationRange(
     TAN.NAME,
-    -Infinity,
-    Infinity, // Tan(x) is unbounded
+    -Number.MAX_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
   );
 
-  /**
-   * UnSquash Function
-   * Estimates the input from the activation value.
-   * - Uses arctan for the base value.
-   * - Adjusts for periodicity using the provided hint (if available).
-   */
-  unSquash(activation: number, hint?: number): number {
-    // Validate activation value (no upper/lower bounds for tan)
-    if (!isFinite(activation)) {
-      throw new Error("Activation must be finite.");
-    }
-
-    // Base value using arctan (range: [-π/2, π/2])
-    const baseValue = Math.atan(activation);
-
-    if (hint !== undefined) {
-      // Adjust using the hint to find the closest equivalent within the periodic cycle
-      const difference = hint - baseValue;
-      const adjustment = Math.round(difference / Math.PI) * Math.PI;
-
-      // Return the adjusted value closer to the hint
-      return baseValue + adjustment;
-    }
-
-    // If no hint is provided, return the base value
-    return baseValue;
-  }
-
-  getName() {
+  getName(): string {
     return TAN.NAME;
   }
 
+  simplifyBias(bias: number): number {
+    return bias % Math.PI;
+  }
+
   inlineSquash(value: string): string {
-    return `Math.tan(${value})`; // Inline JavaScript code for tan(x)
+    return `Math.tan(${value})`;
   }
 
   squash(x: number): number {
-    return Math.tan(x); // Squash function definition
+    const result = Math.tan(x);
+    return Number.isFinite(result) ? result : 0;
+  }
+
+  unSquash(activation: number, hint?: number): number {
+    if (!Number.isFinite(activation)) {
+      throw new Error("Activation must be finite.");
+    }
+
+    const baseValue = Math.atan(activation);
+
+    if (hint !== undefined && Number.isFinite(hint)) {
+      const difference = hint - baseValue;
+      const adjustment = Math.round(difference / Math.PI) * Math.PI;
+      return baseValue + adjustment;
+    }
+
+    return baseValue;
   }
 }
