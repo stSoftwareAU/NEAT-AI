@@ -6,20 +6,15 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * TANH (Hyperbolic Tangent) Activation Function
  *
- * The TANH function maps any input to values between -1 and 1.
- * It is an S-shaped curve similar to the sigmoid but outputs values across a greater range.
- * The derivative is calculated as 1 - tanh^2(x).
+ * f(x) = tanh(x)
+ * f⁻¹(y) = 0.5 * log((1 + y) / (1 - y))
  *
  * Reference:
  * https://en.wikipedia.org/wiki/Hyperbolic_functions#Hyperbolic_tangent
  */
 export class TANH
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
-  public static NAME = "TANH";
-
-  inlineSquash(value: string): string {
-    return `Math.tanh(${value})`;
-  }
+  public static readonly NAME = "TANH";
 
   public readonly range: ActivationRange = new ActivationRange(
     TANH.NAME,
@@ -27,28 +22,35 @@ export class TANH
     1,
   );
 
-  // Function to estimate the input from the activation value.
-  // TANH is invertible, and its inverse is calculated using a logarithmic function.
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
-    if (Math.abs(activation) === 1) {
-      return activation; // Return activation as the best guess if it's 1 or -1
-    }
-
-    const value = (1 + activation) / (1 - activation);
-    if (value <= 0) {
-      return activation; // Return activation as the best guess if the argument to Math.log is not positive
-    }
-    return 0.5 * Math.log(value);
-  }
-
-  getName() {
+  getName(): string {
     return TANH.NAME;
   }
 
-  // TANH function definition
-  squash(x: number) {
+  inlineSquash(value: string): string {
+    return `Math.tanh(${value})`;
+  }
+
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
     return Math.tanh(x);
+  }
+
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
+    if (Math.abs(activation) >= 0.9999999) {
+      // Prevent domain errors near ±1
+      return typeof hint === "number" && Number.isFinite(hint)
+        ? hint
+        : Math.sign(activation) * 10;
+    }
+
+    const value = (1 + activation) / (1 - activation);
+
+    if (value <= 1e-10 || !Number.isFinite(value)) {
+      return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
+    }
+
+    return 0.5 * Math.log(value);
   }
 }
