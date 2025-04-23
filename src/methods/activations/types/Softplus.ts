@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -5,21 +6,20 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * Softplus Activation Function
  *
- * The Softplus function is defined as f(x) = ln(1 + exp(x)).
- * It smooths out the ReLU function, and its derivative is the logistic function.
- *
- * The derivative is f'(x) = 1 / (1 + exp(-x)).
+ * f(x) = log(1 + exp(x))
+ * f⁻¹(y) = log(exp(y) - 1)
  *
  * Reference:
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Softplus
  */
-export class Softplus implements ActivationInterface, UnSquashInterface {
-  public static NAME = "Softplus";
+export class Softplus
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public static readonly NAME = "Softplus";
 
-  private static readonly LARGE_THRESHOLD = 100; // Threshold to prevent overflow in unSquash
-  private static readonly SMALL_THRESHOLD = 1e-15; // Threshold to prevent underflow in unSquash
+  private static readonly LARGE_THRESHOLD = 100;
+  private static readonly SMALL_THRESHOLD = 1e-15;
 
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+  public static readonly rangeStatic = new ActivationRange(
     Softplus.NAME,
     Softplus.SMALL_THRESHOLD,
     Softplus.LARGE_THRESHOLD,
@@ -27,39 +27,39 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
   public readonly range = Softplus.rangeStatic;
 
-  // Inverse of Softplus
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
-    // If activation is too small or large, return it as the best guess
-    if (activation <= 0) {
-      return activation; // Negative values are outside the valid Softplus range, just return them
-    }
-
-    if (activation > Softplus.LARGE_THRESHOLD) {
-      return activation; // For very large values, it's best to return the activation
-    }
-
-    if (activation < Softplus.SMALL_THRESHOLD) {
-      return activation; // Return small activations as-is to prevent underflow issues
-    }
-
-    return Math.log(Math.exp(activation) - 1); // Standard un-squashing calculation
-  }
-
-  getName() {
+  getName(): string {
     return Softplus.NAME;
   }
 
-  // Softplus function definition
-  squash(x: number) {
-    // Prevent overflow when x is too large
-    if (x >= 709) { // 709 is the limit where exp(709) gives the largest finite result in JS
-      return Softplus.LARGE_THRESHOLD; // Return a large value, not Infinity
+  inlineSquash(value: string): string {
+    return `Math.log(1 + Math.exp(${value}))`;
+  }
+
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return Softplus.SMALL_THRESHOLD;
+
+    if (x >= 709) {
+      return Softplus.rangeStatic.limit(Softplus.LARGE_THRESHOLD);
     }
 
-    const value = Math.log(1 + Math.exp(x)); // Standard Softplus formula
-
+    const value = Math.log(1 + Math.exp(x));
     return Softplus.rangeStatic.limit(value);
+  }
+
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
+    if (activation < Softplus.SMALL_THRESHOLD) {
+      return 0; // Treat as flat zone
+    }
+
+    const expA = Math.exp(activation);
+    const diff = expA - 1;
+
+    if (diff <= 0 || !Number.isFinite(diff)) {
+      return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
+    }
+
+    return Math.log(diff);
   }
 }
