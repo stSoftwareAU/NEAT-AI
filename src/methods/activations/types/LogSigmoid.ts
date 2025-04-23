@@ -1,15 +1,21 @@
-/**
- * LogSigmoid activation function
- * Squash function: f(x) = log(1 / (1 + exp(-x)))
- * Range: (-Infinity, 0]
- * Source: https://en.wikipedia.org/wiki/Logistic_function
- */
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
-export class LogSigmoid implements ActivationInterface, UnSquashInterface {
-  public static NAME = "LogSigmoid";
+/**
+ * LogSigmoid Activation Function
+ *
+ * f(x) = log(1 / (1 + exp(-x))) = -log(1 + exp(-x))
+ * f⁻¹(y) = log(exp(y) / (1 - exp(y))) = y - log(1 - exp(y))
+ *
+ * Reference:
+ * https://en.wikipedia.org/wiki/Logistic_function
+ */
+export class LogSigmoid
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public static readonly NAME = "LogSigmoid";
+
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     LogSigmoid.NAME,
     Number.MIN_SAFE_INTEGER,
@@ -18,51 +24,32 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
 
   public readonly range = LogSigmoid.rangeStatic;
 
-  getName() {
+  getName(): string {
     return LogSigmoid.NAME;
   }
 
-  squash(x: number) {
-    if (x <= -709) { // 709 is a reasonable threshold to prevent overflow, as Math.exp(709) is the largest finite number in JavaScript
-      return Number.MIN_SAFE_INTEGER; // Return a large negative number as the best guess if x is too large in magnitude
-    }
+  inlineSquash(value: string): string {
+    return `-Math.log(1 + Math.exp(-(${value})))`;
+  }
 
-    const value = Math.log(1 / (1 + Math.exp(-x)));
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return -Infinity;
+    // Clamp before it explodes
+    if (x < -709) return LogSigmoid.rangeStatic.limit(-x); // ~-Infinity
+    const value = -Math.log(1 + Math.exp(-x));
     return LogSigmoid.rangeStatic.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    if (Math.abs(activation) < 1e-15) { // 1e-15 is a reasonable threshold to prevent underflow
-      return 0; // Return 0 as the best guess if activation is a very small positive number
+    const expY = Math.exp(activation);
+    const denom = 1 - expY;
+
+    if (denom <= 0 || !Number.isFinite(expY)) {
+      return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
     }
 
-    if (activation === 0) {
-      return 0; // Return 0 as the best guess if activation is 0
-    }
-
-    if (Math.abs(activation) >= 10) { // 10 is a reasonable threshold to prevent overflow
-      return activation; // Return activation as the best guess if it's a large positive number
-    }
-
-    if (activation === 1) {
-      return Number.MAX_VALUE; // Return a large positive number as the best guess if activation is 1
-    }
-
-    if (activation >= 1) {
-      return activation; // Return activation as the best guess if it's a large positive number
-    }
-
-    const denominator = 1 - Math.exp(activation);
-    if (denominator === 0) {
-      return activation; // Return activation as the best guess if the denominator is 0
-    }
-
-    const result = Math.log(Math.exp(activation) / denominator);
-
-    if (!Number.isFinite(result)) return activation;
-
-    return result;
+    return Math.log(expY / denom);
   }
 }
