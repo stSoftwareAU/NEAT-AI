@@ -43,6 +43,7 @@
     "MAPE",
     "MSLE",
     "Nonlinearity",
-    "sech"
+    "sech",
+    "denom"
   ]
 }
