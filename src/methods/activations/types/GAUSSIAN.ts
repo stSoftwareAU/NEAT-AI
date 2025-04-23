@@ -39,10 +39,11 @@ export class GAUSSIAN
   }
 
   unSquash(activation: number, hint?: number): number {
-    // Already validated by this.range.validate(activation, hint)
+    this.range.validate(activation, hint);
 
-    const sqrt = Math.sqrt(-Math.log(activation));
-    // sqrt always ≥ 0, log is safe since activation ∈ (0, 1]
+    // Clamp to avoid log(0)
+    const safeActivation = Math.max(activation, 1e-10);
+    const sqrt = Math.sqrt(-Math.log(safeActivation));
 
     return (hint ?? 0) < 0 ? -sqrt : sqrt;
   }

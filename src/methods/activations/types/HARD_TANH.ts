@@ -28,15 +28,21 @@ export class HARD_TANH
     return `Math.max(-1, Math.min(1, ${value}))`;
   }
 
-  // Implementing the unSquash function
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
+    return Math.max(-1, Math.min(1, x));
+  }
+
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    // Since the function is already bounded within [-1, 1], the unSquash is identity within the range
-    return Math.max(-1, Math.min(1, activation));
-  }
+    if (
+      Math.abs(activation) === 1 && typeof hint === "number" &&
+      Number.isFinite(hint)
+    ) {
+      return hint;
+    }
 
-  squash(x: number) {
-    return Math.max(-1, Math.min(1, x));
+    return activation;
   }
 }
