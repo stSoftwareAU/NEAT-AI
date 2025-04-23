@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,8 +11,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Logistic_function
  */
-export class LogSigmoid
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class LogSigmoid implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "LogSigmoid";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
@@ -26,10 +24,6 @@ export class LogSigmoid
 
   getName(): string {
     return LogSigmoid.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `-Math.log(1 + Math.exp(-(${value})))`;
   }
 
   squash(x: number): number {
