@@ -1,19 +1,20 @@
-/**
- * The Swish activation function, sometimes also known as SiLU (Sigmoid Linear Unit).
- * Swish is defined as: f(x) = x * sigmoid(x), where sigmoid(x) = 1 / (1 + exp(-x)).
- * It has been found to work well in deep networks, outperforming ReLU in some scenarios.
- *
- * Source: "Swish: a Self-Gated Activation Function" by Prajit Ramachandran, Barret Zoph, and Quoc V. Le
- * Link: https://arxiv.org/abs/1710.05941
- */
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
+/**
+ * Swish (SiLU) Activation Function
+ *
+ * f(x) = x * sigmoid(x) = x / (1 + exp(-x))
+ *
+ * Reference:
+ * https://arxiv.org/abs/1710.05941
+ */
 export class Swish implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Swish";
-  private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
-  private static readonly EPSILON = 1e-6; // Tolerance for Newton-Raphson
+  private static readonly MAX_ITERATIONS = 100;
+  private static readonly EPSILON = 1e-6;
+
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     Swish.NAME,
     Number.MIN_SAFE_INTEGER,
@@ -22,15 +23,12 @@ export class Swish implements ActivationInterface, UnSquashInterface {
 
   public readonly range = Swish.rangeStatic;
 
-  /**
-   * Computes the Swish activation function.
-   * Swish is defined as f(x) = x * sigmoid(x), where sigmoid(x) = 1 / (1 + exp(-x)).
-   * This implementation guards against overflow in the exp(-x) calculation.
-   * @param x The input value to the activation function.
-   * @returns The output of the Swish activation function.
-   */
+  getName(): string {
+    return Swish.NAME;
+  }
+
   squash(x: number): number {
-    // Guard against overflow in exp(-x) when x is a large negative number.
+    if (!Number.isFinite(x)) return 0;
     const expNegX = x < -20 ? 0 : Math.exp(-x);
     const value = x / (1 + expNegX);
     return Swish.rangeStatic.limit(value);
@@ -53,26 +51,27 @@ export class Swish implements ActivationInterface, UnSquashInterface {
 
     for (let i = 0; i < Swish.MAX_ITERATIONS; i++) {
       const expNegX = x < -20 ? 0 : Math.exp(-x);
-      const sigmoidX = 1 / (1 + expNegX);
+      const denom = 1 + expNegX;
+      const sigmoidX = 1 / denom;
       const fx = x * sigmoidX - activation;
 
       if (Math.abs(fx) < Swish.EPSILON) {
         break;
       }
 
-      const dfx = sigmoidX + x * (-expNegX) / Math.pow(1 + expNegX, 2);
-      x = x - fx / dfx;
+      const dSigmoid = expNegX / (denom * denom);
+      const dfx = sigmoidX + x * -dSigmoid;
 
-      // If x is not a finite number or does not improve, use the best guess
-      if (!Number.isFinite(x) || Math.abs(fx) < Swish.EPSILON) {
-        return x;
+      const nextX = x -
+        fx / (Math.abs(dfx) > 1e-8 ? dfx : Math.sign(dfx) * 1e-8);
+
+      if (!Number.isFinite(nextX)) {
+        return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
       }
+
+      x = nextX;
     }
 
     return x;
-  }
-
-  getName(): string {
-    return Swish.NAME;
   }
 }

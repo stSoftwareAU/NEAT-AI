@@ -4,37 +4,52 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Bipolar Sigmoid Activation Function
- * It is commonly used in cases where bipolar output is desired.
- * The function outputs values in the range [-1, 1].
+ *
+ * Common in neural networks where bipolar outputs [-1, 1] are desired.
+ *
  * Formula: f(x) = 2 / (1 + exp(-x)) - 1
+ * Inverse: f⁻¹(y) = -ln((2 / (y + 1)) - 1)
+ *
+ * Reference:
+ * https://en.wikipedia.org/wiki/Activation_function#Bipolar_sigmoid
  */
 export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
   public static NAME = "BIPOLAR_SIGMOID";
-  public readonly range: ActivationRange = new ActivationRange(
+
+  private static readonly rangeStatic = new ActivationRange(
     BIPOLAR_SIGMOID.NAME,
     -1,
     1,
   );
 
-  getName() {
+  public readonly range: ActivationRange = BIPOLAR_SIGMOID.rangeStatic;
+
+  getName(): string {
     return BIPOLAR_SIGMOID.NAME;
   }
 
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
+  squash(x: number): number {
+    return 2 / (1 + Math.exp(-x)) - 1;
+  }
 
-    const result = -Math.log((2 / (activation + 1)) - 1);
+  unSquash(activation: number, hint?: number): number {
+    BIPOLAR_SIGMOID.rangeStatic.validate(activation, hint);
+
+    const epsilon = 1e-10;
+    // Ensure we never hit exact -1 or 1 due to rounding
+    const y = Math.min(1 - epsilon, Math.max(-1 + epsilon, activation));
+
+    const result = -Math.log((2 / (y + 1)) - 1);
 
     if (Number.isFinite(result)) {
       return result;
     }
-    if (Number.isFinite(hint)) {
-      return hint ? hint : 0;
-    }
-    return activation; // Return activation if result is not a finite number
-  }
 
-  squash(x: number) {
-    return 2 / (1 + Math.exp(-x)) - 1;
+    if (typeof hint === "number" && Number.isFinite(hint)) {
+      return hint;
+    }
+
+    // Fallback to a large but finite number close to saturation
+    return activation >= 0 ? 15 : -15;
   }
 }

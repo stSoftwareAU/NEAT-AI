@@ -170,21 +170,51 @@ Deno.test("SELU", () => {
 });
 
 Deno.test("BIPOLAR_SIGMOID", () => {
-  const activation = Activations.find(
+  const squashFunction = Activations.find(
     BIPOLAR_SIGMOID.NAME,
-  ) as UnSquashInterface;
-  const values = [1];
-  values.forEach((v) => {
-    const tmpValue = activation.unSquash(v);
+  ) as UnSquashInterface & ActivationInterface;
+  const targetActivations = [0, 0.5, 1 - 1e-10, 1, -1, -1 + 1e-10, -0.5, 1e-12];
+
+  targetActivations.forEach((targetActivation) => {
+    const rawValue = squashFunction.unSquash(targetActivation);
     assert(
-      Number.isFinite(tmpValue),
-      `BIPOLAR_SIGMOID ${v} not finite ${tmpValue}`,
+      Number.isFinite(rawValue),
+      `BIPOLAR_SIGMOID ${targetActivation} not finite ${rawValue}`,
+    );
+
+    const activation = squashFunction.squash(rawValue);
+    console.info(
+      `BIPOLAR_SIGMOID ${targetActivation} -> ${rawValue} -> ${activation}`,
+    );
+    assert(
+      Number.isFinite(activation),
+      `BIPOLAR_SIGMOID ${rawValue} resulted in not finite ${activation} activation`,
+    );
+
+    const percentage = Math.abs(
+      (activation - targetActivation) < 0.0001
+        ? 0
+        : (activation - targetActivation) / (targetActivation + Number.EPSILON),
+    ) * 100;
+    assert(
+      percentage < 1,
+      `BIPOLAR_SIGMOID ${targetActivation} -> ${activation} error of ${
+        percentage.toFixed(
+          2,
+        )
+      }% is greater than tolerance of 1%`,
+    );
+
+    // Check the unSquash function with a hint
+    const rawValue2 = squashFunction.unSquash(targetActivation, activation);
+    assertAlmostEquals(
+      rawValue2,
+      rawValue,
     );
   });
 
-  const v = activation.unSquash(1, 0.3);
-
-  assert(v === 0.3, `BIPOLAR_SIGMOID hint not working ${v}`);
+  const r = squashFunction.unSquash(1, 0);
+  assert(Number.isFinite(r), "Should fallback to hint 0 if necessary");
 });
 
 Deno.test("BIPOLAR", () => {
@@ -346,6 +376,9 @@ function checkKnownActivations(squashName: string) {
 
     range.high,
     range.low,
+    NaN,
+    Infinity,
+    -Infinity,
   ];
   activations.forEach((activation) => {
     if (

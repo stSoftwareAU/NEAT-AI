@@ -5,9 +5,11 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class LeakyReLU implements ActivationInterface, UnSquashInterface {
   public static NAME = "LeakyReLU";
 
+  private static ALPHA = 0.01;
+
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     LeakyReLU.NAME,
-    Number.MIN_SAFE_INTEGER,
+    Number.MIN_SAFE_INTEGER * LeakyReLU.ALPHA,
     Number.MAX_SAFE_INTEGER,
   );
 
@@ -18,8 +20,6 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
 
     return activation > 0 ? activation : activation / LeakyReLU.ALPHA;
   }
-
-  private static ALPHA = 0.01; // You can choose a different value if desired
 
   getName() {
     return LeakyReLU.NAME;

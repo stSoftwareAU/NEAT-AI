@@ -5,29 +5,31 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * Mish Activation Function.
  *
- * The function is defined as \( \text{Mish}(x) = x \times \tanh(\ln(1 + e^x)) \).
- * The derivative is precomputed for optimization.
+ * f(x) = x * tanh(ln(1 + exp(x)))
  *
- * Source: "Mish: A Self Regularized Non-Monotonic Neural Activation Function"
- * by Diganta Misra (https://arxiv.org/abs/1908.08681)
+ * Reference:
+ * https://arxiv.org/abs/1908.08681
  */
 export class Mish implements ActivationInterface, UnSquashInterface {
-  public static NAME = "Mish";
-  private static readonly MAX_ITERATIONS = 100; // Maximum iterations for Newton-Raphson
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+  public static readonly NAME = "Mish";
+  private static readonly MAX_ITERATIONS = 100;
+  private static readonly TOLERANCE = 1e-4;
+  private static readonly SAFE_LIMIT = Number.MAX_SAFE_INTEGER / 2;
+
+  public static readonly rangeStatic = new ActivationRange(
     Mish.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
   public readonly range = Mish.rangeStatic;
 
-  getName() {
+  getName(): string {
     return Mish.NAME;
   }
 
-  squash(x: number) {
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
     const value = x * Math.tanh(Math.log(1 + Math.exp(x)));
-
     return Mish.rangeStatic.limit(value);
   }
 
@@ -35,7 +37,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     const eX = Math.exp(x);
     const e2x = Math.exp(2 * x);
     const x2 = x * x;
-    const x3 = x * x * x;
+    const x3 = x2 * x;
 
     const omega = 4 * e2x + 4 * eX * x + e2x * x2 + 2 * eX * x2 +
       2 * x3 + 4 * eX + 4 * x + 6;
@@ -47,60 +49,29 @@ export class Mish implements ActivationInterface, UnSquashInterface {
       derivative: derivative,
     };
   }
+
   unSquash(activation: number, hint?: number): number {
-    // Validate the activation value
     this.range.validate(activation, hint);
 
-    // Initial guess: use hint if provided, otherwise a reasonable guess based on the activation value
-    let guess = hint !== undefined
-      ? hint
-      : (activation >= 0
-        ? activation
-        : (activation < -1 ? -1 : activation / 2)); // Adjust initial guess for negative values
+    let guess = hint ?? (activation >= 0 ? activation : activation / 2);
+    guess = Math.max(Math.min(guess, Mish.SAFE_LIMIT), -Mish.SAFE_LIMIT);
 
-    const tolerance = 0.0001; // Tolerance for convergence
-    const maxIterations = Mish.MAX_ITERATIONS;
-    const safeLimit = Number.MAX_SAFE_INTEGER / 2; // Prevent overflow by clamping
+    for (let i = 0; i < Mish.MAX_ITERATIONS; i++) {
+      const { activation: fx, derivative } = this.squashAndDerive(guess);
+      const error = fx - activation;
 
-    // Limit the initial guess to a safe range
-    if (Math.abs(guess) > safeLimit) {
-      guess = Math.sign(guess) * safeLimit;
+      if (Math.abs(error) < Mish.TOLERANCE) break;
+
+      const safeDerivative = Math.abs(derivative) > 1e-6
+        ? derivative
+        : Math.sign(derivative) * 1e-6;
+      guess -= error / safeDerivative;
+
+      if (!Number.isFinite(guess)) return 0;
+
+      guess = Math.max(Math.min(guess, Mish.SAFE_LIMIT), -Mish.SAFE_LIMIT);
     }
 
-    for (let i = 0; i < maxIterations; i++) {
-      const { activation: squashGuess, derivative: errDerivative } = this
-        .squashAndDerive(guess);
-
-      const err = squashGuess - activation;
-
-      // Check for NaN or extreme values in the derivative to avoid invalid guesses
-      if (
-        !Number.isFinite(errDerivative) ||
-        Math.abs(errDerivative) < Number.EPSILON
-      ) {
-        break;
-      }
-
-      // Ensure the derivative is not too small before dividing
-      const adjustedErrDerivative = Math.abs(errDerivative) < 1e-6
-        ? Math.sign(errDerivative) * 1e-6
-        : errDerivative;
-
-      // Update guess with a check for NaN or Infinity
-      guess -= err / (adjustedErrDerivative + Number.EPSILON); // Use adjusted derivative to prevent division by zero
-
-      // Clamp guess to avoid extreme values
-      if (Math.abs(guess) > safeLimit) {
-        guess = Math.sign(guess) * safeLimit;
-      }
-
-      // Check for convergence within tolerance
-      if (Math.abs(err) < tolerance) {
-        break; // Converged successfully
-      }
-    }
-
-    // Return the final guess, ensuring it's a finite number, otherwise default to 0
     return Number.isFinite(guess) ? guess : 0;
   }
 }

@@ -4,17 +4,17 @@ import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
- * Enhanced Step Activation Function
+ * STEP Activation Function
  *
- * Outputs 1 if the input exceeds a configurable threshold (default is 0) and 0 otherwise.
- * The derivative is undefined at the threshold and 0 everywhere else.
+ * f(x) = x > 0 ? 1 : 0
+ * f⁻¹(y) ≈ any x > 0 for y=1, x ≤ 0 for y=0
  *
  * Reference:
  * https://en.wikipedia.org/wiki/Step_function
  */
 export class STEP
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
-  public static NAME = "STEP";
+  public static readonly NAME = "STEP";
 
   public readonly range: ActivationRange = new ActivationRange(
     STEP.NAME,
@@ -22,42 +22,30 @@ export class STEP
     1,
   );
 
-  getName() {
+  getName(): string {
     return STEP.NAME;
   }
 
   inlineSquash(value: string): string {
-    return value + " > 0 ? 1 : 0";
+    return `(${value}) > 0 ? 1 : 0`;
   }
 
-  /** Step function definition */
-  squash(x: number) {
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
     return x > 0 ? 1 : 0;
   }
 
-  /**
-   * Function to estimate the input from the activation value.
-   * Returns a typical expected value based on the activation and an optional hint.
-   */
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    // If activation is 0 or 1 and no hint is provided, return activation
-    if (hint === undefined) {
-      return activation;
+    if (activation === 1 && typeof hint === "number" && hint > 0) {
+      return hint;
     }
 
-    /** Make sure the hint is the correct sign to be compatible with the activation */
-    if (activation > 0) {
-      if (hint > 0) {
-        return hint;
-      }
-      return activation;
-    } else {
-      if (hint <= 0) {
-        return hint;
-      }
-      return activation;
+    if (activation === 0 && typeof hint === "number" && hint <= 0) {
+      return hint;
     }
+
+    return activation;
   }
 }

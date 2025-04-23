@@ -89,7 +89,7 @@ export class SINE
   }
 
   inlineSquash(value: string): string {
-    return `Math.sin( ${value})`;
+    return `Math.sin(${value})`;
   }
 
   // SINE function definition

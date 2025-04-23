@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -5,14 +6,15 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * ReLU (Rectified Linear Unit) Activation Function
  *
- * ReLU is defined as f(x) = max(0, x). It's widely used in neural networks for
- * hidden layers. The derivative is 1 for x > 0 and 0 for x <= 0.
+ * f(x) = max(0, x)
+ * f⁻¹(y) = y (if y > 0), otherwise use hint or return 0
  *
  * Reference:
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
  */
-export class RELU implements ActivationInterface, UnSquashInterface {
-  public static NAME = "RELU";
+export class RELU
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public static readonly NAME = "RELU";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     RELU.NAME,
@@ -22,33 +24,27 @@ export class RELU implements ActivationInterface, UnSquashInterface {
 
   public readonly range = RELU.rangeStatic;
 
-  // Function to estimate the input from the activation value
-  // As ReLU is not an invertible function, this estimation returns the same
-  // value for the input and assumes that the input was non-negative.
+  getName(): string {
+    return RELU.NAME;
+  }
+
+  inlineSquash(value: string): string {
+    return `Math.max(0, (${value}))`;
+  }
+
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
+    const value = Math.max(0, x);
+    return RELU.rangeStatic.limit(value);
+  }
+
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    // If activation is greater than 0, the inverse is the same as the activation
     if (activation > 0) {
       return activation;
     }
 
-    // If activation is 0 and no hint is provided, return 0
-    if (hint === undefined) {
-      return 0;
-    }
-
-    // If activation is 0 and a hint is provided, return the hint
-    return hint;
-  }
-
-  getName() {
-    return RELU.NAME;
-  }
-
-  // ReLU function definition
-  squash(x: number) {
-    const value = x > 0 ? x : 0;
-    return value;
+    return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
   }
 }

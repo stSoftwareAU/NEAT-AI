@@ -6,55 +6,54 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * ReLU6 Activation Function
  *
- * ReLU6 is similar to the ReLU function but caps the output at 6. It is defined as
- * f(x) = min(max(0, x), 6). This capping helps in preventing the activations from
- * becoming too large.
+ * f(x) = min(max(0, x), 6)
+ * f⁻¹(y) = y for 0 < y < 6
+ *         = hint if y = 0 or 6 (ambiguous region)
  *
  * Reference:
  * https://www.tensorflow.org/api_docs/python/tf/nn/relu6
  */
 export class ReLU6
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
-  public static NAME = "ReLU6";
+  public static readonly NAME = "ReLU6";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     ReLU6.NAME,
     0,
     6,
   );
+
   public readonly range = ReLU6.rangeStatic;
 
-  /** Since ReLU6 is not invertible above 6, the unSquash method uses hints similarly to ReLU. */
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
-    if (activation > 0 && activation < 6) {
-      return activation; // Activation is in the linear range of ReLU6
-    }
-
-    // If activation is 6, the input could have been any value >= 6, so we use the hint if provided
-    if (activation === 6 && hint !== undefined) {
-      return hint > 6 ? hint : 6;
-    }
-
-    // For activation of 0, it could have been any negative input or zero
-    if (hint === undefined) {
-      return 0;
-    }
-
-    return hint;
-  }
-
-  getName() {
+  getName(): string {
     return ReLU6.NAME;
   }
 
   inlineSquash(value: string): string {
-    return `Math.min(Math.max(0, ${value}), 6)`;
+    return `Math.min(Math.max(0, (${value})), 6)`;
   }
 
-  /** Implementation of the ReLU6 function */
-  squash(x: number) {
-    return Math.min(Math.max(0, x), 6);
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
+    const value = Math.min(Math.max(0, x), 6);
+    return ReLU6.rangeStatic.limit(value);
+  }
+
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
+    if (activation > 0 && activation < 6) {
+      return activation;
+    }
+
+    if (activation === 6 && typeof hint === "number" && Number.isFinite(hint)) {
+      return hint > 6 ? hint : 6;
+    }
+
+    if (activation === 0 && typeof hint === "number" && Number.isFinite(hint)) {
+      return hint < 0 ? hint : 0;
+    }
+
+    return 0; // Default fallback when no hint is given
   }
 }

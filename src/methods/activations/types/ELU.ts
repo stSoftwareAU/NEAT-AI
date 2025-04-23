@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -5,49 +6,60 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * Exponential Linear Unit (ELU) Activation Function
  *
- * ELU is a smoother version of ReLU that allows negative values.
- * It outputs `x` when `x > 0` and `α * (exp(x) - 1)` when `x <= 0`.
- * The inverse (unSquash) uses the logarithmic function for negative values.
+ * f(x) = x if x > 0
+ *      = α * (exp(x) - 1) if x <= 0
+ *
+ * Inverse: x = log(y / α + 1) for y <= 0
  *
  * Reference:
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#ELU
  */
-export class ELU implements ActivationInterface, UnSquashInterface {
+export class ELU
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "ELU";
 
-  // Typical α value is 1.0, but it can be adjusted if needed
-  private static ALPHA = 1.0;
+  // Common α value
+  private static readonly ALPHA = 1.0;
 
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+  public static readonly rangeStatic = new ActivationRange(
     ELU.NAME,
     -ELU.ALPHA,
     Number.MAX_SAFE_INTEGER,
   );
+
   public readonly range = ELU.rangeStatic;
 
-  // Function to estimate the input from the activation value
+  getName(): string {
+    return ELU.NAME;
+  }
+
+  inlineSquash(value: string): string {
+    return `(${value}) > 0 ? ${value} : ${ELU.ALPHA} * (Math.exp(${value}) - 1)`;
+  }
+
+  squash(x: number): number {
+    const value = x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
+    return ELU.rangeStatic.limit(value);
+  }
+
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
     if (activation > 0) {
       return activation;
-    } else {
-      const value = activation / ELU.ALPHA + 1;
-      if (value <= 0) {
-        return activation; // Return activation as the best guess if the argument to Math.log is not positive
-      }
-      return Math.log(value);
     }
-  }
 
-  getName() {
-    return ELU.NAME;
-  }
+    // Ensure safe input to log()
+    const ratio = activation / ELU.ALPHA + 1;
 
-  // ELU function definition
-  squash(x: number) {
-    const value = x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
+    if (ratio <= 0) {
+      // Use hint if inverse would explode
+      if (typeof hint === "number" && Number.isFinite(hint)) {
+        return hint;
+      }
+      return -20; // conservative fallback
+    }
 
-    return ELU.rangeStatic.limit(value);
+    return Math.log(ratio);
   }
 }

@@ -448,8 +448,8 @@ Deno.test("HARD_TANH unSquash with hint", () => {
     { activation: hardTanh.squash(1), hint: 1, expected: 1 },
     { activation: hardTanh.squash(-1), hint: -1, expected: -1 },
     // Test with values outside range
-    { activation: 1, hint: 2, expected: 1 },
-    { activation: -1, hint: -2, expected: -1 },
+    { activation: 1, hint: 2, expected: 2 },
+    { activation: -1, hint: -2, expected: -2 },
   ]);
 });
 

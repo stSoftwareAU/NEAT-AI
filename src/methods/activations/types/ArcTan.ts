@@ -6,9 +6,9 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * ArcTan (Inverse Tangent) Activation Function
  *
- * The ArcTan function maps the input to values between -π/2 and π/2.
- * It is a smooth, S-shaped curve similar to TANH but with a different asymptotic behavior.
- * The derivative is calculated as 1 / (1 + x^2).
+ * f(x) = atan(x), range: (-π/2, π/2)
+ * f⁻¹(y) = tan(y)
+ * Derivative: 1 / (1 + x²)
  *
  * Reference:
  * https://en.wikipedia.org/wiki/Inverse_trigonometric_functions#Arctangent
@@ -16,49 +16,55 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class ArcTan
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "ArcTan";
-  inlineSquash(value: string): string {
-    return `Math.atan(${value})`;
-  }
-  // Set a maximum finite value to return instead of Infinity
-  private static readonly MAX_VALUE = 1e10;
 
-  public readonly range: ActivationRange = new ActivationRange(
+  private static readonly EPSILON = 1e-5;
+  private static readonly rangeStatic = new ActivationRange(
     ArcTan.NAME,
     -Math.PI / 2,
     Math.PI / 2,
   );
 
-  // Function to estimate the input from the activation value.
-  // The inverse of arctangent is the tangent function.
+  public readonly range: ActivationRange = ArcTan.rangeStatic;
+
+  inlineSquash(value: string): string {
+    return `Math.atan(${value})`;
+  }
+
+  squash(x: number): number {
+    return Math.atan(x);
+  }
+
   unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
+    ArcTan.rangeStatic.validate(activation, hint);
 
-    // Handle boundary cases by approximating large values
-    const epsilon = 1e-5; // Small value to avoid exact boundary issues
+    const upper = Math.PI / 2 - ArcTan.EPSILON;
+    const lower = -Math.PI / 2 + ArcTan.EPSILON;
 
-    if (activation >= Math.PI / 2 - epsilon) {
+    if (activation >= upper) {
+      if (typeof hint === "number" && Number.isFinite(hint) && hint > 1e6) {
+        return hint;
+      }
       return Number.MAX_SAFE_INTEGER;
-    } else if (activation <= -Math.PI / 2 + epsilon) {
+    }
+
+    if (activation <= lower) {
+      if (typeof hint === "number" && Number.isFinite(hint) && hint < -1e6) {
+        return hint;
+      }
       return -Number.MAX_SAFE_INTEGER;
     }
 
-    // Use tangent as the inverse function
     const value = Math.tan(activation);
-    if (Number.isFinite(value)) {
-      return value;
+    if (!Number.isFinite(value)) {
+      throw new Error(
+        `ArcTan unSquash(${activation}) → non-finite result: ${value}`,
+      );
     }
 
-    throw new Error(
-      `ArcTan unSquash ${activation} failed, ${value} is not finite`,
-    );
+    return value;
   }
 
-  getName() {
+  getName(): string {
     return ArcTan.NAME;
-  }
-
-  // ArcTan function definition
-  squash(x: number) {
-    return Math.atan(x);
   }
 }

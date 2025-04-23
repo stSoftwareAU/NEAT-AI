@@ -3,6 +3,10 @@
  * Squash function: f(x) = cos(x)
  * Range: [-1, 1]
  * Source: Custom (Cosine is a standard mathematical function)
+ *
+ * Reference:
+ * https://en.wikipedia.org/wiki/Trigonometric_functions#Cosine
+ * https://en.wikipedia.org/wiki/Inverse_trigonometric_functions#Arccosine
  */
 import { assert } from "@std/assert";
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
@@ -42,30 +46,29 @@ export class Cosine
   }
 
   unSquash(activation: number, hint: number = 0): number {
+    // Validate input
+    if (!Number.isFinite(hint)) {
+      hint = 0;
+    }
+
     assert(
       activation >= -1 && activation <= 1,
       `Activation ${activation} is out of range [-1, 1]`,
     );
 
-    // Get the principal value
     const principal = Math.acos(activation);
-
-    // Find all possible solutions within 4 periods of the hint
     const period = 2 * Math.PI;
-    const solutions: number[] = [];
 
-    // Calculate how many periods away the hint is from 0
+    const solutions: number[] = [];
     const hintPeriods = Math.round(hint / period);
 
-    // Check solutions in both positive and negative directions
+    // Explore ±4 periods around the hint
     for (let i = -4; i <= 4; i++) {
-      const basePeriod = hintPeriods + i;
+      const base = (hintPeriods + i) * period;
 
-      // Try both principal value and its complement
-      const sol1 = principal + basePeriod * period;
-      const sol2 = -principal + basePeriod * period;
+      const sol1 = principal + base;
+      const sol2 = -principal + base;
 
-      // Verify each solution produces the correct activation
       if (Math.abs(Math.cos(sol1) - activation) < 1e-10) {
         solutions.push(sol1);
       }
@@ -74,14 +77,14 @@ export class Cosine
       }
     }
 
-    // If no valid solutions found, return the closest principal solution
     if (solutions.length === 0) {
-      const sol1 = principal + hintPeriods * period;
-      const sol2 = -principal + hintPeriods * period;
-      return Math.abs(sol1 - hint) < Math.abs(sol2 - hint) ? sol1 : sol2;
+      const fallback1 = principal + hintPeriods * period;
+      const fallback2 = -principal + hintPeriods * period;
+      return Math.abs(fallback1 - hint) < Math.abs(fallback2 - hint)
+        ? fallback1
+        : fallback2;
     }
 
-    // Return the solution closest to the hint
     return solutions.reduce((best, current) =>
       Math.abs(current - hint) < Math.abs(best - hint) ? current : best
     );

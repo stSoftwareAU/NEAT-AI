@@ -37,38 +37,30 @@ export class SELU implements ActivationInterface, UnSquashInterface {
 
     if (scaledActivation > 0) {
       return scaledActivation;
-    } else if (scaledActivation > -SELU.ALPHA) {
-      return Math.log((scaledActivation / SELU.ALPHA) + 1);
-    } else {
-      // Handle case when scaledActivation <= -ALPHA
-      // This is an approximation and may not be accurate
-      return -1;
     }
+
+    if (scaledActivation > -SELU.ALPHA) {
+      const ratio = scaledActivation / SELU.ALPHA + 1;
+      if (ratio > 0) return Math.log(ratio);
+    }
+
+    if (typeof hint === "number" && Number.isFinite(hint)) {
+      return hint;
+    }
+
+    return -10; // fallback default
   }
 
   getName() {
     return SELU.NAME;
   }
 
-  squash(x: number) {
-    // Clamp input to prevent overflow in exponential function
-    const clampedX = Math.max(
-      Math.min(x, Number.MAX_SAFE_INTEGER),
-      Number.MIN_SAFE_INTEGER,
-    );
+  squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
 
-    // Apply SELU activation function
-    const fx = clampedX > 0
-      ? clampedX
-      : SELU.ALPHA * Math.exp(clampedX) - SELU.ALPHA;
+    const fx = x > 0 ? x : SELU.ALPHA * Math.exp(x) - SELU.ALPHA;
 
-    // Prevent overflow in the output by clamping the final value
-    const scaledFx = fx * SELU.SCALE;
-    const clampedFx = Math.max(
-      Math.min(scaledFx, Number.MAX_SAFE_INTEGER),
-      Number.MIN_SAFE_INTEGER,
-    );
-
-    return clampedFx;
+    const scaled = fx * SELU.SCALE;
+    return this.range.limit(scaled);
   }
 }
