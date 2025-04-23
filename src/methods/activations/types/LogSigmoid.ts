@@ -33,10 +33,16 @@ export class LogSigmoid
   }
 
   squash(x: number): number {
-    if (!Number.isFinite(x)) return -Infinity;
-    // Clamp before it explodes
-    if (x < -709) return LogSigmoid.rangeStatic.limit(-x); // ~-Infinity
-    const value = -Math.log(1 + Math.exp(-x));
+    if (!Number.isFinite(x)) return LogSigmoid.rangeStatic.low;
+
+    // Avoid overflow: when x << 0, exp(-x) = ∞, log(∞) = ∞
+    if (x <= -709) {
+      return LogSigmoid.rangeStatic.low; // Clamp safely
+    }
+
+    const expNegX = Math.exp(-x);
+    const value = -Math.log(1 + expNegX);
+
     return LogSigmoid.rangeStatic.limit(value);
   }
 
