@@ -31,11 +31,13 @@ export class GAUSSIAN
   }
 
   squash(x: number): number {
-    // Avoid NaN: x² is always >= 0, so -x² is <= 0 → exp is safe
-    const result = Math.exp(-x * x);
+    if (!Number.isFinite(x)) return this.range.low;
 
-    // result is always in (0, 1] so it will pass limit()
-    return this.range.limit(result);
+    // Use a safe max X beyond which exp(-x²) underflows to 0
+    const safeX = Math.min(Math.abs(x), 100); // x > ~15 means exp(-x²) ~ 0
+
+    const value = Math.exp(-Math.pow(safeX, 2));
+    return this.range.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {

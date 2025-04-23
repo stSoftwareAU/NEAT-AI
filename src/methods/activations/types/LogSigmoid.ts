@@ -35,9 +35,9 @@ export class LogSigmoid
   squash(x: number): number {
     if (!Number.isFinite(x)) return LogSigmoid.rangeStatic.low;
 
-    // Avoid overflow: when x << 0, exp(-x) = ∞, log(∞) = ∞
+    // Avoid overflow: when x << 0, exp(-x) = ∞
     if (x <= -709) {
-      return LogSigmoid.rangeStatic.low; // Clamp safely
+      return LogSigmoid.rangeStatic.low;
     }
 
     const expNegX = Math.exp(-x);

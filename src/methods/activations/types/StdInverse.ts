@@ -26,16 +26,11 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number): number {
-    // Handle NaN explicitly
-    if (!Number.isFinite(x)) return 0;
-
-    // Avoid division by very small numbers
+    // Avoid division by very small numbers that can lead to Infinity or NaN
     const safeX = Math.abs(x) < 1e-15 ? (x > 0 ? 1e-15 : -1e-15) : x;
 
-    const result = 1 / safeX;
-
-    // Ensure result is finite before limiting
-    return Number.isFinite(result) ? StdInverse.rangeStatic.limit(result) : 0;
+    const value = safeX !== 0 ? 1 / safeX : 0; // 1/x, but avoid dividing by zero
+    return StdInverse.rangeStatic.limit(value); // Ensure the result is within the allowed range
   }
 
   unSquash(activation: number, hint?: number): number {

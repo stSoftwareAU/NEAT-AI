@@ -56,9 +56,12 @@ export class SELU implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number): number {
-    if (!Number.isFinite(x)) return 0;
+    if (!Number.isFinite(x)) return this.range.low;
 
-    const fx = x > 0 ? x : SELU.ALPHA * Math.exp(x) - SELU.ALPHA;
+    // Prevent overflow: beyond ~709, Math.exp(x) → ∞
+    const safeX = Math.min(x, 709); // clamp upper bound only (no risk from large negative x)
+
+    const fx = safeX > 0 ? safeX : SELU.ALPHA * Math.exp(safeX) - SELU.ALPHA;
 
     const scaled = fx * SELU.SCALE;
     return this.range.limit(scaled);
