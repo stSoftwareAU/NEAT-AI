@@ -41,6 +41,8 @@
     "Gimpel",
     "COEF",
     "MAPE",
-    "MSLE"
+    "MSLE",
+    "Nonlinearity",
+    "sech"
   ]
 }
