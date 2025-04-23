@@ -8,6 +8,9 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Used in binary classification problems and outputs either -1 or 1.
  * The function is non-differentiable at zero.
  * Formula: f(x) = x > 0 ? 1 : -1
+ *
+ * Reference:
+ * https://en.wikipedia.org/wiki/Activation_function#Binary_step_function
  */
 export class BIPOLAR
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
@@ -25,11 +28,19 @@ export class BIPOLAR
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    if (Number.isFinite(hint)) return hint ? hint : 0;
+    if (typeof hint === "number" && Number.isFinite(hint)) {
+      return hint;
+    }
 
-    return activation;
+    // Use safe fallback: any positive number maps to 1, negative to -1
+    return activation >= 0 ? 1 : -1;
   }
 
+  /**
+   * The inlineSquash function is used for optimization purposes.
+   * It provides a string representation of the activation function
+   * that can be used in optimized code generation.
+   */
   inlineSquash(value: string): string {
     return `(${value}) > 0 ? 1 : -1`;
   }
