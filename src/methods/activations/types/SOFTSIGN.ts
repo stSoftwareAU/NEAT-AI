@@ -5,41 +5,44 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 /**
  * Softsign Activation Function
  *
- * The Softsign function is defined as f(x) = x / (1 + |x|).
- * It's a smoother version of the sign function and similar to the hyperbolic tangent (tanh) but not centered at zero.
- *
- * The derivative is f'(x) = 1 / (1 + |x|)^2.
+ * f(x) = x / (1 + |x|)
+ * f⁻¹(y) = y / (1 - |y|)
  *
  * Reference:
  * https://en.wikipedia.org/wiki/Activation_function#Comparison_of_activation_functions
  */
 export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
-  public static NAME = "SOFTSIGN";
-  private static LIMIT = 0.99; // Clamped limit to avoid numerical issues
+  public static readonly NAME = "SOFTSIGN";
+  private static readonly LIMIT = 0.99;
+
   public readonly range: ActivationRange = new ActivationRange(
     SOFTSIGN.NAME,
     -SOFTSIGN.LIMIT,
     SOFTSIGN.LIMIT,
   );
 
-  /* The inverse of Softsign is x = f(x) / (1 - |f(x)|)*/
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
-    const value = activation / (1 - Math.abs(activation));
-
-    return value;
-  }
-
-  getName() {
+  getName(): string {
     return SOFTSIGN.NAME;
   }
 
-  // Softsign function definition
   squash(x: number): number {
+    if (!Number.isFinite(x)) return 0;
+
     const d = 1 + Math.abs(x);
     const value = x / d;
-    // Clamp the output to stay within the limit
-    return Math.max(Math.min(value, SOFTSIGN.LIMIT), -SOFTSIGN.LIMIT);
+
+    return this.range.limit(value);
+  }
+
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+
+    const denom = 1 - Math.abs(activation);
+
+    if (denom <= 1e-8 || !Number.isFinite(denom)) {
+      return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
+    }
+
+    return activation / denom;
   }
 }
