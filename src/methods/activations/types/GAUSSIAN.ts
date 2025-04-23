@@ -5,9 +5,12 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Gaussian Activation Function
- * Smooth, bell-shaped function centered at zero.
- * Formula: f(x) = exp(-x^2)
- * Source: General mathematical function commonly used for its smoothness.
+ *
+ * f(x) = exp(-x²)
+ * f⁻¹(y) = ±sqrt(-ln(y))
+ *
+ * Reference:
+ * https://en.wikipedia.org/wiki/Gaussian_function
  */
 export class GAUSSIAN
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
@@ -19,38 +22,28 @@ export class GAUSSIAN
     1,
   );
 
-  getName() {
+  getName(): string {
     return GAUSSIAN.NAME;
-  }
-
-  /* unSquash is non-trivial due to the symmetric nature of Gaussian function. */
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
-    if (activation <= 0) {
-      return activation; // Return 0 as the best guess if activation is 0
-    }
-
-    if (activation > 1) {
-      return activation; // Return 1 as the best guess if activation is greater than 1
-    }
-
-    const sqrt = Math.sqrt(-Math.log(activation));
-
-    // If no hint is provided, return the positive root
-    if (hint === undefined) {
-      return sqrt;
-    }
-
-    // If a hint is provided, return the root with the same sign as the hint
-    return hint >= 0 ? Math.abs(sqrt) : -Math.abs(sqrt);
   }
 
   inlineSquash(value: string): string {
     return `Math.exp(-Math.pow(${value}, 2))`;
   }
 
-  squash(x: number) {
-    return Math.exp(-Math.pow(x, 2));
+  squash(x: number): number {
+    // Avoid NaN: x² is always >= 0, so -x² is <= 0 → exp is safe
+    const result = Math.exp(-x * x);
+
+    // result is always in (0, 1] so it will pass limit()
+    return this.range.limit(result);
+  }
+
+  unSquash(activation: number, hint?: number): number {
+    // Already validated by this.range.validate(activation, hint)
+
+    const sqrt = Math.sqrt(-Math.log(activation));
+    // sqrt always ≥ 0, log is safe since activation ∈ (0, 1]
+
+    return (hint ?? 0) < 0 ? -sqrt : sqrt;
   }
 }

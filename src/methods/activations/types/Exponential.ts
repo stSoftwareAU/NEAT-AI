@@ -1,14 +1,19 @@
-/**
- * EXPONENTIAL activation function
- * Squash function: f(x) = exp(x)
- * Range: (0, +Infinity)
- * Source: Custom (Exponential is a standard mathematical function)
- */
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
-export class Exponential implements ActivationInterface, UnSquashInterface {
+/**
+ * Exponential Activation Function
+ *
+ * f(x) = exp(x)
+ * f⁻¹(y) = log(y)  for y > 0
+ *
+ * Reference:
+ * https://en.wikipedia.org/wiki/Exponential_function
+ */
+export class Exponential
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "Exponential";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
@@ -16,15 +21,25 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
     0,
     Number.MAX_SAFE_INTEGER,
   );
+
   public readonly range = Exponential.rangeStatic;
 
-  getName() {
+  getName(): string {
     return Exponential.NAME;
   }
 
-  squash(x: number) {
-    if (x >= 709) { // 709 is a reasonable threshold to prevent overflow, as Math.exp(709) is the largest finite number in JavaScript
-      return Number.MAX_SAFE_INTEGER; // Return a large positive number as the best guess if x is too large
+  inlineSquash(value: string): string {
+    return `Math.exp(${value})`;
+  }
+
+  squash(x: number): number {
+    if (!Number.isFinite(x)) {
+      return Exponential.rangeStatic.limit(Number.MAX_SAFE_INTEGER);
+    }
+
+    // Avoid overflow
+    if (x >= 709) {
+      return Number.MAX_SAFE_INTEGER;
     }
 
     const value = Math.exp(x);
@@ -34,8 +49,11 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    if (activation <= 0) {
-      return activation; // Our best guess if activation is 0 or less
+    if (activation <= 0 || !Number.isFinite(activation)) {
+      if (typeof hint === "number" && Number.isFinite(hint)) {
+        return hint;
+      }
+      return -20; // Conservative fallback for log(0)
     }
 
     return Math.log(activation);
