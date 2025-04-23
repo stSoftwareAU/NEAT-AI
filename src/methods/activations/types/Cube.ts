@@ -1,3 +1,4 @@
+import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -12,7 +13,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Power_function
  */
-export class Cube implements ActivationInterface, UnSquashInterface {
+export class Cube
+  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "Cube";
 
   // Safe maximum input value to prevent overflow when cubing
@@ -41,5 +43,9 @@ export class Cube implements ActivationInterface, UnSquashInterface {
     // Clip the input to the safe maximum range to avoid overflow
     const clippedX = Math.max(-Cube.MAX_INPUT, Math.min(x, Cube.MAX_INPUT));
     return clippedX ** 3;
+  }
+
+  inlineSquash(value: string): string {
+    return `Math.pow(${value}, 3)`;
   }
 }

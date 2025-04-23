@@ -3,13 +3,17 @@ import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
- * The StdInverse activation function computes the reciprocal of the input.
- * It returns 1 / x for any non-zero input x. Returns zero for zero input.
- * Please note that this is not commonly used as an activation function in neural networks.
+ * StdInverse Activation Function
+ *
+ * f(x) = 1 / x
+ * f⁻¹(y) = 1 / y
+ *
+ * Avoids division by near-zero and NaN. Returns 0 for input = 0.
  */
 export class StdInverse implements ActivationInterface, UnSquashInterface {
   public static NAME = "StdInverse";
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+
+  public static readonly rangeStatic = new ActivationRange(
     StdInverse.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
@@ -17,23 +21,29 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
 
   public readonly range = StdInverse.rangeStatic;
 
-  getName() {
+  getName(): string {
     return StdInverse.NAME;
   }
 
-  squash(x: number) {
-    // Avoid division by very small numbers that can lead to Infinity or NaN
+  squash(x: number): number {
+    // Handle NaN explicitly
+    if (!Number.isFinite(x)) return 0;
+
+    // Avoid division by very small numbers
     const safeX = Math.abs(x) < 1e-15 ? (x > 0 ? 1e-15 : -1e-15) : x;
 
-    const value = safeX !== 0 ? 1 / safeX : 0; // 1/x, but avoid dividing by zero
-    return StdInverse.rangeStatic.limit(value); // Ensure the result is within the allowed range
+    const result = 1 / safeX;
+
+    // Ensure result is finite before limiting
+    return Number.isFinite(result) ? StdInverse.rangeStatic.limit(result) : 0;
   }
 
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 
-    if (Math.abs(activation) < 1e-15) { // 1e-15 is a reasonable threshold to prevent overflow
-      return activation > 0 ? Number.MAX_VALUE : Number.MIN_VALUE; // Return a large positive or negative number as the best guess if activation is a very small positive or negative number
+    if (!Number.isFinite(activation) || Math.abs(activation) < 1e-15) {
+      if (typeof hint === "number" && Number.isFinite(hint)) return hint;
+      return activation > 0 ? Number.MAX_VALUE : -Number.MAX_VALUE;
     }
 
     return 1 / activation;
