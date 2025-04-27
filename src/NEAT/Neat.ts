@@ -118,25 +118,35 @@ export class Neat {
     return cloned;
   }
 
-  private doNotStartMoreTraining = false;
-  private trainingCompleteCount = 0;
+  private doNotStartMore = false;
+  private cleanUpDelayCount = 0;
 
   finishUp() {
-    this.doNotStartMoreTraining = true;
+    this.doNotStartMore = true;
     if (this.discoveryInProgress.size > 0) {
       console.info("Waiting for discovery to complete");
       return false;
     }
+
     if (this.trainingInProgress.size > 0) {
-      if (!this.trainingCompleteCount) this.trainingCompleteCount = 2;
       console.info("Waiting for training to complete");
       return false;
     }
-    if (this.trainingCompleteCount > 0) {
+
+    if (this.discoveryInProgress.size > 0 || this.trainingInProgress.size > 0) {
+      if (!this.cleanUpDelayCount) {
+        this.cleanUpDelayCount = 2;
+        console.info(
+          `Set training/discovery clean up count to ${this.cleanUpDelayCount}`,
+        );
+      }
+    }
+
+    if (this.cleanUpDelayCount > 0) {
       console.info(
-        `Waiting for training clean up ${this.trainingCompleteCount}`,
+        `Waiting for training/discovery clean up ${this.cleanUpDelayCount}`,
       );
-      this.trainingCompleteCount--;
+      this.cleanUpDelayCount--;
       return false;
     }
     return true;
@@ -154,7 +164,7 @@ export class Neat {
       return;
     }
 
-    if (this.doNotStartMoreTraining) return;
+    if (this.doNotStartMore) return;
 
     if (this.discoveryInProgress.size > 0) return;
 
@@ -447,7 +457,7 @@ export class Neat {
         const n = results.elitists[i];
 
         if (
-          this.doNotStartMoreTraining === false &&
+          this.doNotStartMore === false &&
           this.trainingInProgress.size < this.config.trainPerGen &&
           Number.isFinite(n.score)
         ) {
