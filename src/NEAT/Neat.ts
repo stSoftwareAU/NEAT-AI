@@ -123,6 +123,18 @@ export class Neat {
 
   finishUp() {
     this.doNotStartMore = true;
+
+    if (!this.cleanUpDelayCount) {
+      if (
+        this.discoveryInProgress.size > 0 || this.trainingInProgress.size > 0
+      ) {
+        this.cleanUpDelayCount = 2;
+        console.info(
+          `Set training/discovery clean up count to ${this.cleanUpDelayCount}`,
+        );
+      }
+    }
+
     if (this.discoveryInProgress.size > 0) {
       console.info("Waiting for discovery to complete");
       return false;
@@ -131,15 +143,6 @@ export class Neat {
     if (this.trainingInProgress.size > 0) {
       console.info("Waiting for training to complete");
       return false;
-    }
-
-    if (this.discoveryInProgress.size > 0 || this.trainingInProgress.size > 0) {
-      if (!this.cleanUpDelayCount) {
-        this.cleanUpDelayCount = 2;
-        console.info(
-          `Set training/discovery clean up count to ${this.cleanUpDelayCount}`,
-        );
-      }
     }
 
     if (this.cleanUpDelayCount > 0) {
