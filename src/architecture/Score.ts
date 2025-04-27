@@ -8,6 +8,7 @@ export function calculate(
 ): number {
   assert(!Number.isNaN(error), `Error is NaN`);
   assert(Number.isFinite(error), `Error is not finite`);
+  assert(error >= 0, `Error: ${error} is negative`);
   const { max, avg } = calculateMaxOutOfBounds(creature);
   assert(Number.isFinite(max), `Max: ${max} is not finite`);
   assert(Number.isFinite(avg), `Avg: ${avg} is not finite`);
@@ -120,5 +121,8 @@ function calculateScore(
 
   const complexityPenalty = hiddenNeuronCount * growthCost +
     creature.synapses.length * growthCost / 10 + penalty * growthCost / 100;
-  return 1 - error - complexityPenalty;
+  const score = 1 - error - complexityPenalty;
+  assert(score <= 1, `Score: ${score} is greater than 1`);
+
+  return score;
 }
