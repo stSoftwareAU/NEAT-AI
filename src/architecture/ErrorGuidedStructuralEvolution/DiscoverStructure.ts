@@ -223,7 +223,10 @@ export class DiscoverStructure {
   public async analyze(
     discoveryMaxNeurons: number,
   ): Promise<CandidateSynapse[] | undefined> {
-    assert(this.recorded, "Not recorded");
+    if (this.recorded === false) {
+      console.warn("No recorded data to analyze.");
+      return undefined;
+    }
     const focusList = await this.selectNeuronsWeightedByError(
       discoveryMaxNeurons,
     );
@@ -411,7 +414,10 @@ export class DiscoverStructure {
    * Lists neurons sorted by their total error, useful for error-driven selection processes.
    */
   public async listViableNeurons(): Promise<NeuronErrorInfo[]> {
-    assert(this.recorded, "Must record first before listing neurons.");
+    if (!this.recorded) {
+      console.warn("No recorded data to list neurons.");
+      return [];
+    }
 
     const neuronPromises = this.creature.neurons
       .filter((neuron) => neuron.type !== "input")
