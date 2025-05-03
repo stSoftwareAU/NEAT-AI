@@ -469,10 +469,21 @@ export class Neuron implements TagsInterface, NeuronInternal {
         sparseConfig,
       );
     } else {
+      let error: number;
+      const currentValue = ns.hintValue
+        ? ns.hintValue
+        : toValue(this, activation, ns.hintValue);
+
       const targetValue = toValue(this, targetActivation, ns.hintValue);
 
-      const currentValue = toValue(this, activation, ns.hintValue);
-      const error = targetValue - currentValue;
+      if (squashMethod.derivative) {
+        // Derivative-based method (clear glasses!)
+        const rawError = targetActivation - activation;
+        error = rawError * squashMethod.derivative(ns.hintValue);
+      } else {
+        // Current (foggy glasses) fallback
+        error = targetValue - currentValue;
+      }
 
       const currentBias = adjustedBias(this, config);
       let improvedValue = currentBias;
