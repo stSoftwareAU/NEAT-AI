@@ -74,4 +74,15 @@ export class Swish implements ActivationInterface, UnSquashInterface {
 
     return x;
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+
+    const sigmoid = 1 / (1 + Math.exp(-x));
+    const swishDerivative = sigmoid + x * sigmoid * (1 - sigmoid);
+
+    return Number.isFinite(swishDerivative) ? swishDerivative : 0;
+  }
 }

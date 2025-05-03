@@ -45,4 +45,18 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
 
     return activation / denom;
   }
+
+  /**
+   * The derivative of the softsign function.
+   *
+   * @param x The input value.
+   * @returns The derivative of the softsign function at the given input.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+    const denom = 1 + Math.abs(x);
+    return 1 / (denom * denom);
+  }
 }

@@ -67,4 +67,20 @@ export class ArcTan
   getName(): string {
     return ArcTan.NAME;
   }
+
+  /**
+   * The derivative of the ArcTan function.
+   *
+   * @param x The input value.
+   * @returns The derivative of the ArcTan function at the given input.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    return 2 / (Math.PI * (1 + x * x));
+  }
 }

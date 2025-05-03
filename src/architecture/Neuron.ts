@@ -469,10 +469,39 @@ export class Neuron implements TagsInterface, NeuronInternal {
         sparseConfig,
       );
     } else {
+      let error: number;
+      const currentValue = toValue(this, activation, ns.hintValue);
+
       const targetValue = toValue(this, targetActivation, ns.hintValue);
 
-      const currentValue = toValue(this, activation, ns.hintValue);
-      const error = targetValue - currentValue;
+      if (squashMethod.derivative) {
+        // Derivative-based method (clear glasses!)
+        const rawError = targetActivation - activation;
+
+        const slope = squashMethod.derivative(targetValue);
+
+        // Hard fail on non-finite slopes
+        assert(
+          Number.isFinite(slope),
+          `Non-finite slope at neuron ${this.uuid}: ${slope}`,
+        );
+
+        let safeSlope = slope;
+
+        if (Math.abs(safeSlope) < 1e-8) {
+          // Too flat to matter — implies rawError has negligible effect
+          safeSlope = 0;
+        } else if (Math.abs(safeSlope) > 50) {
+          // Too steep — clamp to max reasonable slope
+          console.warn(`⚠️ Slope capped at neuron ${this.uuid}: ${safeSlope}`);
+          safeSlope = Math.sign(safeSlope) * 50;
+        }
+
+        error = rawError * safeSlope;
+      } else {
+        /* Current (foggy glasses) fallback */
+        error = targetValue - currentValue;
+      }
 
       const currentBias = adjustedBias(this, config);
       let improvedValue = currentBias;

@@ -56,4 +56,17 @@ export class ReLU6
 
     return 0; // Default fallback when no hint is given
   }
+
+  /**
+   * The derivative of the ReLU6 function.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    return x > 0 && x < 6 ? 1 : 0;
+  }
 }

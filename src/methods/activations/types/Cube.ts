@@ -42,4 +42,14 @@ export class Cube implements ActivationInterface, UnSquashInterface {
     const clippedX = Math.max(-Cube.MAX_INPUT, Math.min(x, Cube.MAX_INPUT));
     return clippedX ** 3;
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    return 3 * x * x;
+  }
 }

@@ -43,4 +43,19 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
 
     return (hint ?? 0) < 0 ? -sqrt : sqrt;
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    const result = -2 * x * Math.exp(-x * x);
+
+    // Clamp to prevent vanishing gradients and underflows
+    if (!Number.isFinite(result) || Math.abs(result) < 1e-300) return 0;
+
+    return result;
+  }
 }

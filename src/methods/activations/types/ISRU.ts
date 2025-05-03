@@ -46,4 +46,28 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     return safeActivation /
       Math.sqrt(1 - ISRU.ALPHA * Math.pow(safeActivation, 2));
   }
+
+  /**
+   * The derivative of the ISRU (Inverse Square Root Unit) function:
+   *
+   * f(x) = x / sqrt(1 + alpha * x²)
+   * f'(x) = (1 + alpha * x²)^(-3/2)
+   *
+   * Reference: https://arxiv.org/pdf/1710.10753.pdf
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    const x2 = x * x;
+    const denom = 1 + ISRU.ALPHA * x2;
+
+    // Prevent division by zero or numerical instability
+    if (denom < 1e-12) return 0;
+
+    return Math.pow(denom, -1.5);
+  }
 }

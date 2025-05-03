@@ -96,4 +96,14 @@ export class SINE
   squash(x: number) {
     return Math.sin(x);
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    return Math.cos(x);
+  }
 }

@@ -56,4 +56,13 @@ export class ELU implements ActivationInterface, UnSquashInterface {
 
     return Math.log(ratio);
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+
+    // ELU derivative: 1 if x ≥ 0, else (f(x) + α)
+    return x >= 0 ? 1 : this.squash(x) + ELU.ALPHA;
+  }
 }

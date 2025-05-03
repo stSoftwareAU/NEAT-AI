@@ -44,4 +44,17 @@ export class ABSOLUTE
   squash(x: number) {
     return ABSOLUTE.rangeStatic.limit(Math.abs(x));
   }
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    if (x > 0) return 1;
+    if (x < 0) return -1;
+
+    // At x=0 the derivative is undefined, we return 0 as a neutral approximation.
+    return 0;
+  }
 }

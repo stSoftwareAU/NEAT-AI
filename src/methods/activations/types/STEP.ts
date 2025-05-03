@@ -48,4 +48,26 @@ export class STEP
 
     return activation;
   }
+
+  /**
+   * Computes the derivative of the STEP activation function.
+   *
+   * The derivative is defined as:
+   * f'(x) = 0 for x ≠ 0
+   * f'(x) = undefined for x = 0
+   *
+   * @param x The input value.
+   * @returns The derivative value.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    // Use a small pseudo-gradient around the step threshold at x=0
+    const epsilon = 0.01;
+    return Math.abs(x) < epsilon ? 0.01 : 0;
+  }
 }

@@ -52,4 +52,14 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     // Fallback to a large but finite number close to saturation
     return activation >= 0 ? 15 : -15;
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+    const fx = this.squash(x);
+    return 0.5 * (1 + fx) * (1 - fx);
+  }
 }

@@ -38,6 +38,13 @@ export class RELU
     return RELU.rangeStatic.limit(value);
   }
 
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+    return x > 0 ? 1 : 0;
+  }
+
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
 

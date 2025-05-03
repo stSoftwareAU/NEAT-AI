@@ -34,4 +34,26 @@ export class IDENTITY
   squash(x: number) {
     return this.range.limit(x);
   }
+  /**
+   * The derivative of the Identity function.
+   *
+   * The Identity function is defined as:
+   *   f(x) = x
+   * Therefore, its derivative is constant:
+   *   f'(x) = 1
+   *
+   * This function is useful in neural networks when no transformation is needed,
+   * often used for input or linear output neurons.
+   *
+   * @param x - The input value.
+   * @returns 1 always.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+    return 1;
+  }
 }
