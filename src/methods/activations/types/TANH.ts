@@ -53,4 +53,31 @@ export class TANH
 
     return 0.5 * Math.log(value);
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+
+    // Compute the output of the tanh function at input x.
+    // Tanh squashes input into the range (-1, 1).
+    const y = Math.tanh(x);
+
+    // The derivative of tanh is:
+    //    f'(x) = 1 - tanh(x)^2
+    //
+    // Why? Because tanh is smooth and differentiable, and this rule arises from calculus.
+    //
+    // Intuition:
+    // - When x is near 0, tanh(x) ≈ x, and f'(x) ≈ 1 → gradient flows freely.
+    // - When x is very large or very negative, tanh(x) saturates near ±1,
+    //   so f'(x) ≈ 0 → very little gradient flows (helps prevent overshooting).
+    //
+    // This matches biological "dampening" — strong signals saturate and change less.
+
+    const d = 1 - y * y;
+
+    // Ensure the result is finite and safe to use in back propagation.
+    return Number.isFinite(d) ? d : 0;
+  }
 }
