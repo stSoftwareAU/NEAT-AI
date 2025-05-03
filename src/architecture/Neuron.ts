@@ -470,9 +470,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       );
     } else {
       let error: number;
-      const currentValue = ns.hintValue
-        ? ns.hintValue
-        : toValue(this, activation, ns.hintValue);
+      const currentValue = toValue(this, activation, ns.hintValue);
 
       const targetValue = toValue(this, targetActivation, ns.hintValue);
 
