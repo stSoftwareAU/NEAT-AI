@@ -81,20 +81,24 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    const x2 = x * x;
-    const x3 = x2 * x;
-    const term = x + GELU.CUBIC_COEF * x3;
-    const sqrt2OverPi = Math.sqrt(2 / Math.PI);
-    const b = sqrt2OverPi * term;
+    if (!Number.isFinite(x)) return 0;
 
-    const expB = Math.exp(b);
-    const expNegB = 1 / expB;
-    const tanhB = (expB - expNegB) / (expB + expNegB);
-    const sech2 = 1 - tanhB * tanhB;
+    const kAlpha = Math.sqrt(2 / Math.PI);
+    const xCubed = x * x * x;
 
-    return 0.5 * (
-      (1 + tanhB) +
-      x * sech2 * sqrt2OverPi * (1 + 3 * GELU.CUBIC_COEF * x2)
-    );
+    // Prevent extreme inputs causing overflow in tanh
+    const inner = kAlpha * (x + 0.044715 * xCubed);
+    const clampedInner = Math.max(Math.min(inner, 10), -10); // clamp between -10 and 10
+
+    const tanhInner = Math.tanh(clampedInner);
+    const sech2Inner = 1 - tanhInner * tanhInner;
+
+    const term1 = 0.5 * (1 + tanhInner);
+    const term2 = 0.5 * x * sech2Inner * kAlpha * (1 + 3 * 0.044715 * x * x);
+
+    const result = term1 + term2;
+
+    // final safeguard to ensure a finite value
+    return Number.isFinite(result) ? result : 0;
   }
 }

@@ -477,7 +477,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (squashMethod.derivative) {
         // Derivative-based method (clear glasses!)
         const rawError = targetActivation - activation;
-        error = rawError * squashMethod.derivative(ns.hintValue);
+        error = rawError * squashMethod.derivative(targetValue);
+
+        assert(
+          Number.isFinite(error),
+          // `Invalid error: ${error} for ${this.uuid} type ${this.type} with squash ${this.squash}`,
+        );
       } else {
         // Current (foggy glasses) fallback
         error = targetValue - currentValue;
