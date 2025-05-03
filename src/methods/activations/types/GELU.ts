@@ -81,24 +81,17 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    if (!Number.isFinite(x)) return 0;
+    const inner = Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3));
+    const tanhInner = Math.tanh(inner);
 
-    const kAlpha = Math.sqrt(2 / Math.PI);
-    const xCubed = x * x * x;
+    const cdf = 0.5 * (1 + tanhInner);
+    const pdf = (0.5 * x * (1 - tanhInner * tanhInner)) *
+      Math.sqrt(2 / Math.PI) *
+      (1 + 3 * 0.044715 * x * x);
 
-    // Prevent extreme inputs causing overflow in tanh
-    const inner = kAlpha * (x + 0.044715 * xCubed);
-    const clampedInner = Math.max(Math.min(inner, 10), -10); // clamp between -10 and 10
+    const result = cdf + pdf;
 
-    const tanhInner = Math.tanh(clampedInner);
-    const sech2Inner = 1 - tanhInner * tanhInner;
-
-    const term1 = 0.5 * (1 + tanhInner);
-    const term2 = 0.5 * x * sech2Inner * kAlpha * (1 + 3 * 0.044715 * x * x);
-
-    const result = term1 + term2;
-
-    // final safeguard to ensure a finite value
+    // Minimal safeguard (no clamping) to ensure finite numeric output
     return Number.isFinite(result) ? result : 0;
   }
 }
