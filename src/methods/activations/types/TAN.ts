@@ -88,10 +88,10 @@ export class TAN
     }
 
     const tanX = Math.tan(x);
-    const deriv = 1 + tanX * tanX;
+    const d = 1 + tanX * tanX;
 
     // Cap derivative to avoid exploding gradients (arbitrarily chosen bounds)
-    if (!Number.isFinite(deriv) || deriv > 1000) return 1000;
-    return deriv;
+    if (!Number.isFinite(d) || d > 1000) return 1000;
+    return d;
   }
 }
