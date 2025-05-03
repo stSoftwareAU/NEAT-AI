@@ -66,4 +66,13 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     const scaled = fx * SELU.SCALE;
     return this.range.limit(scaled);
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+
+    // SELU derivative: scale if x ≥ 0; else scale * alpha * exp(x)
+    return x >= 0 ? SELU.SCALE : SELU.SCALE * SELU.ALPHA * Math.exp(x);
+  }
 }

@@ -477,14 +477,23 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (squashMethod.derivative) {
         // Derivative-based method (clear glasses!)
         const rawError = targetActivation - activation;
-        error = rawError * squashMethod.derivative(targetValue);
 
-        assert(
-          Number.isFinite(error),
-          // `Invalid error: ${error} for ${this.uuid} type ${this.type} with squash ${this.squash}`,
-        );
+        const slope = squashMethod.derivative(targetValue);
+
+        assert(Number.isFinite(slope), "Slope is not finite");
+
+        // Detect instability (e.g. very steep or sudden changes)
+        if (Math.abs(slope) > 50) {
+          console.warn(
+            `⚠️ Unstable slope at ${this.uuid} (slope=${slope}, squash=${this.squash})`,
+          );
+
+          error = targetValue - currentValue;
+        } else {
+          error = rawError * slope;
+        }
       } else {
-        // Current (foggy glasses) fallback
+        /* Current (foggy glasses) fallback */
         error = targetValue - currentValue;
       }
 
