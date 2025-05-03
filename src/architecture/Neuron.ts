@@ -493,7 +493,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           safeSlope = 0;
         } else if (Math.abs(safeSlope) > 50) {
           // Too steep — clamp to max reasonable slope
-          console.warn(`⚠️ Slope capped at neuron ${this.uuid}: ${safeSlope}`);
+          // console.warn(`⚠️ Slope capped at neuron ${this.uuid}: ${safeSlope}`);
           safeSlope = Math.sign(safeSlope) * 50;
         }
 
