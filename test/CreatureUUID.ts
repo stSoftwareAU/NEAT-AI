@@ -254,11 +254,6 @@ Deno.test("generateUUID", () => {
   const mutator = new Mutator(neat.config);
   const genus = new Genus();
 
-  // The population is already sorted in the desired order
-  for (let i = 0; i < neat.population.length; i++) {
-    const creature = neat.population[i];
-    genus.addCreature(creature);
-  }
   const breed = new Breed(genus, neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
   deDuplicator.perform([n1]);

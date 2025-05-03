@@ -1,4 +1,4 @@
-import { fail } from "@std/assert";
+import { assertFalse } from "@std/assert";
 import type { NeatOptions } from "../mod.ts";
 import { createNeatConfig } from "../src/config/NeatConfig.ts";
 
@@ -87,8 +87,7 @@ Deno.test("ConfigValidate: Validate config", () => {
     } catch (_e) {
       // Expected
     }
-    if (valid) {
-      fail(`Config ${JSON.stringify(config)} should be invalid`);
-    }
+
+    assertFalse(valid, `Config ${JSON.stringify(config)} should be invalid`);
   });
 });
