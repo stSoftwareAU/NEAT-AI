@@ -1,6 +1,16 @@
 import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
 import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
 
+Deno.test( "LogSigmoid: check NaN", () => {
+  const fn = new LogSigmoid();
+  for( let i = -1000; i < 1000; i++ ) {
+    const slope=fn.derivative( i );
+    if( !Number.isFinite( slope ) ) {
+    console.info( `LogSigmoid derivative is ${slope} at ${i}` );
+    }
+  }
+});
+
 Deno.test("LogSigmoid: squash, unsquash, and derivative cross-check", () => {
   const fn = new LogSigmoid();
 
@@ -16,6 +26,9 @@ Deno.test("LogSigmoid: squash, unsquash, and derivative cross-check", () => {
     2,
     10,
     100,
+    -739,
+    -740.5203319816084,
+    740.5203319816084,
     Number.MIN_SAFE_INTEGER + 1,
     Number.MAX_SAFE_INTEGER - 1,
   ];
