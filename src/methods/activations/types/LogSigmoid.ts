@@ -54,6 +54,7 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
 
     return Math.log(expY / denom);
   }
+
   /**
    * Computes the derivative of the LogSigmoid activation function.
    *
