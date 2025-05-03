@@ -52,4 +52,19 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
 
     return Math.log(activation);
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    const raw = Math.exp(x);
+
+    // Avoid wasting effort on sub-tiny updates
+    if (raw < 1e-12) return 0;
+
+    return Math.min(raw, 50); // or 100 depending on what your system tolerates
+  }
 }
