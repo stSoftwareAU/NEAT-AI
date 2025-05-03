@@ -48,4 +48,20 @@ export class BIPOLAR
   squash(x: number) {
     return x > 0 ? 1 : -1;
   }
+
+  /**
+   * Returns a small slope in the correct direction for use in gradient-based methods.
+   * Not mathematically correct, but serves training stability.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    if (x > 0) return 1e-2;
+    if (x < 0) return -1e-2;
+    return 0;
+  }
 }
