@@ -41,4 +41,14 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
 
     return Math.log(safeActivation / (1 - safeActivation));
   }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+
+    const y = this.squash(x);
+    const d = y * (1 - y);
+    return Number.isFinite(d) ? d : 0;
+  }
 }
