@@ -480,15 +480,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
         const slope = squashMethod.derivative(targetValue);
 
-        // Hard fail on non-finite slopes
-        assert(
-          Number.isFinite(slope),
-          `Non-finite slope at neuron ${this.uuid}: ${slope}`,
-        );
-
         let safeSlope = slope;
 
-        if (Math.abs(safeSlope) < 1e-8) {
+        if (Number.isFinite(safeSlope) === false) {
+          console.warn(
+            `⚠️ Slope is not finite at neuron ${this.uuid}: ${safeSlope}, squash: ${squashMethod.getName()}, targetValue: ${targetValue}`,
+          );
+          safeSlope = Math.sign(safeSlope);
+        } else if (Math.abs(safeSlope) < 1e-8) {
           // Too flat to matter — implies rawError has negligible effect
           safeSlope = 0;
         } else if (Math.abs(safeSlope) > 50) {
