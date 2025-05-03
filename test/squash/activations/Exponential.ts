@@ -31,7 +31,7 @@ Deno.test("Exponential: squash and derivative finite and correct", () => {
     if (Math.abs(x) <= 3) {
       const expected = Math.exp(x);
       assertAlmostEquals(y, expected, 1e-10, `Mismatch at x=${x}: squash=${y}`);
-      assertAlmostEquals(d, expected, 1e-10, `Mismatch at x=${x}: deriv=${d}`);
+      assertAlmostEquals(d, expected, 1e-10, `Mismatch at x=${x}: derivative=${d}`);
     } else {
       // Don't assert exact value due to clamping
       assert(
