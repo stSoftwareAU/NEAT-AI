@@ -46,4 +46,17 @@ export class HARD_TANH
 
     return activation;
   }
+
+  /**
+   * Derivative of the Hard Tanh function.
+   * Returns 1 for -1 < x < 1, else 0.
+   * @param x The input value.
+   * @returns The derivative value.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+    return x > -1 && x < 1 ? 1 : 0;
+  }
 }

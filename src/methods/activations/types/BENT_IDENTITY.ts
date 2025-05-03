@@ -62,4 +62,17 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     const value = (d - 1) / 2 + x;
     return BENT_IDENTITY.rangeStatic.limit(value);
   }
+
+  /**
+   * Derivative of the Bent Identity function.
+   * Returns x / (2 * sqrt(x^2 + 1)) + 1.
+   * @param x The input value.
+   * @returns The derivative value.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+    return x / (2 * Math.sqrt(x * x + 1)) + 1;
+  }
 }
