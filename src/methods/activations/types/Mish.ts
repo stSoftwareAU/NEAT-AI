@@ -42,7 +42,8 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     const omega = 4 * e2x + 4 * eX * x + e2x * x2 + 2 * eX * x2 +
       2 * x3 + 4 * eX + 4 * x + 6;
     const delta = 2 + 2 * eX + e2x;
-    const derivative = eX * omega / (delta ** 2);
+    const raw = eX * omega / (delta ** 2);
+    const derivative = Number.isFinite(raw) ? Math.max(raw, 0) : 0;
 
     return {
       activation: this.squash(x),
@@ -73,5 +74,13 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     }
 
     return Number.isFinite(guess) ? guess : 0;
+  }
+
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+    }
+    const { derivative } = this.squashAndDerive(x);
+    return derivative;
   }
 }
