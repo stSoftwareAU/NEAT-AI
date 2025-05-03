@@ -83,7 +83,7 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
     }
     // At very negative x, exp(-x) blows up; we avoid overflow by returning 0 early.
     if (x >= 709) return 0; // exp(x) would overflow
-    if (x <= -745) return 1; // exp(x) underflows to 0
+    if (x <= -709) return 1; // exp(x) underflows to 0
 
     const expNegX = Math.exp(-x);
     const denominator = 1 + expNegX;
