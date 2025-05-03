@@ -89,4 +89,13 @@ export class Cosine
       Math.abs(current - hint) < Math.abs(best - hint) ? current : best
     );
   }
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+
+    return -Math.sin(x);
+  }
 }
