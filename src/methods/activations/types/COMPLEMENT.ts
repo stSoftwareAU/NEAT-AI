@@ -43,4 +43,27 @@ export class COMPLEMENT
     this.range.validate(activation, hint);
     return 1 - activation;
   }
+
+  /**
+   * Computes the derivative of the Complement activation function.
+   *
+   * This function simply inverts the input linearly:
+   *    f(x) = 1 - x
+   *
+   * Its derivative is constant:
+   *    f'(x) = -1
+   *
+   * This function is trivially safe for all finite inputs.
+   *
+   * @param x - The input value.
+   * @returns The derivative of the function, always -1.
+   */
+  derivative(x: number): number {
+    if (!Number.isFinite(x)) {
+      throw new Error(
+        `${this.getName()}.derivative received non-finite input: ${x}`,
+      );
+    }
+    return -1;
+  }
 }
