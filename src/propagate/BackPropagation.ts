@@ -178,7 +178,14 @@ export function calculateDerivativeError(
     );
     safeSlope = Math.sign(safeSlope);
   } else if (Math.abs(safeSlope) < 1e-8) {
-    safeSlope = 0;
+    // fallback to foggy glasses
+    let targetValue = targetActivation;
+    const unsquashMethod = squashMethod as UnSquashInterface;
+    if (unsquashMethod.unSquash !== undefined) {
+      targetValue = unsquashMethod.unSquash(targetActivation, hintValue);
+    }
+
+    return targetValue - currentValue;
   } else if (Math.abs(safeSlope) > 50) {
     safeSlope = Math.sign(safeSlope) * 50;
   }
