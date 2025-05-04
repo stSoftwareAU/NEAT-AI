@@ -105,9 +105,9 @@ function trainDirBinary(
         fp(backPropConfig.sparseRatio)
       }, propagation: ${
         backPropConfig.useDerivativePropagation
-          ? cyan("clear")
-          : magenta("foggy")
-      } glasses`,
+          ? cyan("Derivative")
+          : magenta("UnSquash")
+      }`,
     );
   }
   const valuesCount = creature.input + creature.output;
@@ -198,7 +198,8 @@ function trainDirBinary(
           const bytesRead = file.readSync(
             batchBuffer.subarray(0, batchSize * BYTES_PER_RECORD),
           );
-          if (bytesRead === null || bytesRead === 0) break;
+          if (bytesRead === null) break;
+          assert(bytesRead > 0, "Invalid number of bytes read");
 
           const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
           for (let j = 0; j < recordsRead; j++) {

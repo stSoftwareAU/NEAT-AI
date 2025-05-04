@@ -356,6 +356,7 @@ export class DiscoverStructure {
 
         break;
       }
+      assert(bytesRead > 0, "Invalid number of bytes read");
 
       // Convert buffer to string and process
       const chunk = TD.decode(buffer.slice(0, bytesRead));

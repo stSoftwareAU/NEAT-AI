@@ -135,7 +135,8 @@ class DataRecorder {
           batchBuffer.subarray(0, batchSize * this.BYTES_PER_RECORD),
         );
         readTime += Date.now() - readStartTime;
-        if (!bytesRead) break;
+        if (bytesRead === null) break;
+        assert(bytesRead > 0, "Invalid number of bytes read");
 
         const recordsRead = Math.floor(bytesRead / this.BYTES_PER_RECORD);
 

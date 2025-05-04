@@ -147,8 +147,7 @@ export class MEAN implements NeuronActivationInterface {
     }
     const currentBias = adjustedBias(neuron, config);
 
-    const adjustedValue = (toList.length ? (totalValue / toList.length) : 0) +
-      currentBias;
+    const adjustedValue = totalValue / Math.max(toList.length, 1) + currentBias;
 
     const ns = state.node(neuron.index);
     accumulateBias(
