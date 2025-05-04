@@ -1,7 +1,7 @@
 import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertFalse } from "@std/assert";
 import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 
 function makeCreature() {
@@ -76,8 +76,9 @@ Deno.test("AddNeuron", () => {
     assertEquals("skip-me", tmpCreature.neurons[3].uuid);
     assertEquals("skip-me2", tmpCreature.neurons[4].uuid);
 
-    if (tmpCreature.neurons.length <= creature.neurons.length) {
-      throw new Error("Neuron not added");
-    }
+    assertFalse(
+      tmpCreature.neurons.length <= creature.neurons.length,
+      `neurons: ${tmpCreature.neurons.length} <= ${creature.neurons.length}`,
+    );
   }
 });
