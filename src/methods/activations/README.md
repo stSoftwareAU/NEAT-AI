@@ -16,7 +16,7 @@ This document is a planning guide for tuning backpropagation.
 - 🔍 **Foggy Glasses** (_UnSquash Delta_):\
   Computes how far the raw input is from the desired activation via inversion:
   ```
-  error = unSquash(target) - unSquash(current)
+  error = unSquash(targetActivation) - unSquash(currentActivation)
   ```
   Sometimes more accurate. Name originally coined by my son to explain dad's
   blurry reasoning 😄 — but in some cases, the foggy method is clearer!
