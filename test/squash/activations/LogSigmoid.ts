@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals, assertThrows, fail } from "@std/assert";
 import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
 
 Deno.test("LogSigmoid: check NaN", () => {
@@ -6,7 +6,7 @@ Deno.test("LogSigmoid: check NaN", () => {
   for (let i = -1000; i < 1000; i++) {
     const slope = fn.derivative(i);
     if (!Number.isFinite(slope)) {
-      console.info(`LogSigmoid derivative is ${slope} at ${i}`);
+      fail(`LogSigmoid derivative is ${slope} at ${i}`);
     }
   }
 });

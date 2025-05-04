@@ -17,6 +17,7 @@ import {
 import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
 import {
   type BackPropagationConfig,
+  calculateDerivativeError,
   toValue,
 } from "../propagate/BackPropagation.ts";
 import {
@@ -470,34 +471,19 @@ export class Neuron implements TagsInterface, NeuronInternal {
       );
     } else {
       let error: number;
-      const currentValue = toValue(this, activation, ns.hintValue);
-
       const targetValue = toValue(this, targetActivation, ns.hintValue);
 
-      if (squashMethod.derivative) {
-        // Derivative-based method (clear glasses!)
-        const rawError = targetActivation - activation;
-
-        const slope = squashMethod.derivative(targetValue);
-
-        let safeSlope = slope;
-
-        if (Number.isFinite(safeSlope) === false) {
-          console.warn(
-            `⚠️ Slope is not finite at neuron ${this.uuid}: ${safeSlope}, squash: ${squashMethod.getName()}, targetValue: ${targetValue}`,
-          );
-          safeSlope = Math.sign(safeSlope);
-        } else if (Math.abs(safeSlope) < 1e-8) {
-          // Too flat to matter — implies rawError has negligible effect
-          safeSlope = 0;
-        } else if (Math.abs(safeSlope) > 50) {
-          // Too steep — clamp to max reasonable slope
-          // console.warn(`⚠️ Slope capped at neuron ${this.uuid}: ${safeSlope}`);
-          safeSlope = Math.sign(safeSlope) * 50;
-        }
-
-        error = rawError * safeSlope;
+      if (config.useDerivativePropagation && squashMethod.derivative) {
+        /* Current (clear glasses) */
+        error = calculateDerivativeError(
+          squashMethod,
+          activation,
+          targetActivation,
+          ns.hintValue,
+        );
       } else {
+        const currentValue = toValue(this, activation, ns.hintValue);
+
         /* Current (foggy glasses) fallback */
         error = targetValue - currentValue;
       }

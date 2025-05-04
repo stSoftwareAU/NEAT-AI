@@ -94,6 +94,9 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryBatchSize: options.discoveryBatchSize || 0,
     discoveryBufferSize: options.discoveryBufferSize || 0,
     discoveryMaxNeurons: options.discoveryMaxNeurons || 0,
+    useDerivativePropagation: options.useDerivativePropagation === undefined
+      ? Math.random() > 0.5
+      : options.useDerivativePropagation,
   };
   validate(config);
   return Object.freeze(config);
