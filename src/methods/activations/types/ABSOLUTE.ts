@@ -44,7 +44,7 @@ export class ABSOLUTE
   squash(x: number) {
     return ABSOLUTE.rangeStatic.limit(Math.abs(x));
   }
-  
+
   derivative(x: number): number {
     if (!Number.isFinite(x)) {
       throw new Error(
