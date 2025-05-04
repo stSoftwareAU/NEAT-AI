@@ -73,7 +73,7 @@ This document is a planning guide for tuning backpropagation.
 | TAN             | ✅         | ⚠️ Wild slopes                   | ✅ Works in range            |        2 | 🔍 Foggy (fast + accurate)      |
 | COMPLEMENT      | ❌         | ✅ Simple inverse                | ✅ Works                     |        1 | 🟰 Either (balanced)            |
 | StdInverse      | ✅         | ✅ Fine                          | ✅ Cheap                     |        1 | 🟰 Either (balanced)            |
-| IDENTITY        | ✅         | ✅ Deriv = 1                     | ✅ Exact                     |        1 | 🟰 Either (balanced)            |
+| IDENTITY        | ✅         | ✅ Derivative = 1                | ✅ Exact                     |        1 | 🟰 Either (balanced)            |
 | IF              | ❌         | ❌ Not differentiable            | ✅ Works if stable           |        1 | 🔍 Foggy (fast + accurate)      |
 | HYPOT           | ❌         | ⚠️ Conditional                   | ⚠️ Inversion unknown         |        1 | 🟰 Either                       |
 | HYPOTv2         | ❌         | ⚠️ Same                          | ⚠️ Same                      |        1 | 🟰 Either                       |
