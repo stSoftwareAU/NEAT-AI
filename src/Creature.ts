@@ -1039,9 +1039,10 @@ export class Creature implements CreatureInternal {
         while (true) {
           // Read a batch of records
           const bytesRead = file.readSync(batchBuffer);
-          if (bytesRead === null || bytesRead === 0) {
+          if (bytesRead === null) {
             break;
           }
+          assert(bytesRead > 0, "Invalid number of bytes read");
 
           const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
           assert(
