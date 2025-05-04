@@ -471,7 +471,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
       );
     } else {
       let error: number;
-      const targetValue = toValue(this, targetActivation, ns.hintValue);
+
+      let targetValue: number | undefined;
 
       if (config.useDerivativePropagation && squashMethod.derivative) {
         /* Current (clear glasses) */
@@ -484,6 +485,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       } else {
         const currentValue = toValue(this, activation, ns.hintValue);
 
+        targetValue = toValue(this, targetActivation, ns.hintValue);
         /* Current (foggy glasses) fallback */
         error = targetValue - currentValue;
       }
@@ -556,6 +558,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
 
       if (updateNeeded) {
+        if (targetValue === undefined) {
+          targetValue = toValue(this, targetActivation, ns.hintValue);
+        }
+
         accumulateBias(
           ns,
           targetValue,
