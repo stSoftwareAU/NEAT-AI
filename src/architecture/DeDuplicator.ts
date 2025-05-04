@@ -16,7 +16,7 @@ export class DeDuplicator {
 
   public perform(creatures: Creature[]) {
     const start = Date.now();
-    let previousExperimentMS=0;
+    let previousExperimentMS = 0;
     this.logPopulationSize(creatures);
 
     creatures.map((creature) => {
@@ -72,10 +72,12 @@ export class DeDuplicator {
         ignoreZero: true,
       });
       console.log(
-        `DeDuplication of ${toRemove.length} creatures to ${creatures.length} in ${difference} (previous experiment ${format(
-          previousExperimentMS,
-          { ignoreZero: true },
-        )})`,
+        `DeDuplication of ${toRemove.length} creatures to ${creatures.length} in ${difference} (previous experiment ${
+          format(
+            previousExperimentMS,
+            { ignoreZero: true },
+          )
+        })`,
       );
     }
   }
