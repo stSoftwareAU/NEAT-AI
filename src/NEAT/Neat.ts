@@ -120,6 +120,7 @@ export class Neat {
 
   private doNotStartMore = false;
   private cleanUpDelayCount = 0;
+  private additionalGenerationCount = 0;
 
   finishUp() {
     this.doNotStartMore = true;
@@ -150,6 +151,14 @@ export class Neat {
         `Waiting for training/discovery clean up ${this.cleanUpDelayCount}`,
       );
       this.cleanUpDelayCount--;
+      return false;
+    }
+    if (this.additionalGenerationCount > 0) {
+      console.info(
+        `Waiting for additional generation${
+          this.additionalGenerationCount > 1 ? "s" : ""
+        }`,
+      );
       return false;
     }
     return true;
@@ -351,8 +360,9 @@ export class Neat {
   async evolve(
     previousFittest?: Creature,
   ): Promise<{ fittest: Creature; averageScore: number }> {
-    await this.fitness.calculate(this.population);
+    this.additionalGenerationCount--;
 
+    await this.fitness.calculate(this.population);
     sortCreaturesByScore(this.population);
 
     const genus = new Genus();
@@ -658,6 +668,11 @@ export class Neat {
       }
     }
     this.discoveryComplete.length = 0;
+
+    /** make sure we do at least one more loop */
+    if (trainedPopulation.length > 0 && this.additionalGenerationCount <= 0) {
+      this.additionalGenerationCount = 1;
+    }
 
     this.population = [
       ...elitists,
