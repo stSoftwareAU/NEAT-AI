@@ -42,8 +42,6 @@ This document is a planning guide for tuning backpropagation in your NEAT-AI sys
 ## 📊 Squash Function Summary
 
 | Activation         | Invertible | Derivative-Based Error         | Foggy Glasses Error     | Original Recommendation   | Priority | Final Recommendation       |
-|--------------------|------------|--------------------------------|--------------------------|----------------------------|----------|-----------------------------|
-| Activation      | Invertible   | Derivative-Based Error           | Foggy Glasses Error          | Original Recommendation   |   Priority | Final Recommendation            |
 |:----------------|:-------------|:---------------------------------|:-----------------------------|:--------------------------|-----------:|:--------------------------------|
 | RELU            | ❌           | ⚠️ Fails (0 slope if x ≤ 0)      | ✅ Works (unSquash possible) | 🧊 Prefer Foggy fallback  |         10 | 🔍 Foggy (fast + accurate)      |
 | LeakyReLU       | ❌           | ✅ Works (non-zero slope)        | ✅ Works                     | 🟰 Either is fine         |          9 | 🟰 Either (balanced)            |
