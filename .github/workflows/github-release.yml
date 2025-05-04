@@ -13,14 +13,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       # Extract the version from deno.json
       - name: Extract version
         id: extract_version
         run: |
           VERSION=$(jq -r '.version' deno.json)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          
+
       # Create the GitHub release
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
