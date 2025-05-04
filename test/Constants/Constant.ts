@@ -76,10 +76,12 @@ Deno.test("Constants", () => {
       creature.neurons[1].bias,
   );
 
+  const delta = Math.abs(creature.neurons[2].bias - 0.6);
   assert(
-    (creature.neurons[2].bias) > 0.60001 ||
-      (creature.neurons[2].bias) < 0.59999,
-    "Should have changed the hidden node was: " + creature.neurons[2].bias,
+    delta > 0.000_01,
+    `Should have changed the hidden node was: ${
+      creature.neurons[2].bias
+    } delta: ${delta}`,
   );
 
   assert(

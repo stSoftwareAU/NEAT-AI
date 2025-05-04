@@ -1,8 +1,6 @@
 import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
-import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { ActivationRange } from "../propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,
@@ -16,7 +14,7 @@ import { accumulateWeight, adjustedWeight } from "../propagate/Weight.ts";
 /**
  * @deprecated No longer used. A normal neural network can mimic the behavior of this activation.
  */
-export class MEAN implements NeuronActivationInterface, NeuronFixableInterface {
+export class MEAN implements NeuronActivationInterface {
   public static NAME = "MEAN";
   public readonly range: ActivationRange = new ActivationRange(
     MEAN.NAME,
@@ -44,27 +42,6 @@ export class MEAN implements NeuronActivationInterface, NeuronFixableInterface {
     const value = limitValue(sum / len);
 
     return value + neuron.bias;
-  }
-
-  fix(neuron: Neuron) {
-    const fromListA = neuron.creature.inwardConnections(neuron.index);
-    for (let i = fromListA.length; i--;) {
-      const c = fromListA[i];
-      if (c.from === c.to) {
-        neuron.creature.disconnect(c.from, c.to);
-      }
-    }
-
-    const fromListB = neuron.creature.inwardConnections(neuron.index);
-
-    if (fromListB.length === 0) {
-      neuron.creature.makeRandomConnection(neuron.index);
-    } else {
-      fromListB.forEach((c) => {
-        c.weight /= fromListB.length;
-      });
-      neuron.setSquash(IDENTITY.NAME);
-    }
   }
 
   activateAndTrace(neuron: Neuron) {
