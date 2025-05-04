@@ -1,4 +1,5 @@
 import type { Neuron } from "../architecture/Neuron.ts";
+import type { AbstractActivationInterface } from "../methods/activations/AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
@@ -53,6 +54,12 @@ export type BackPropagationArguments = {
 
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
+
+  /**
+   * If true, the derivative propagation will be used. This is a more advanced method of back propagation
+   * that can lead to better results, but it is also more complex and slower.
+   */
+  useDerivativePropagation: boolean;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -109,6 +116,7 @@ export function createBackPropagationConfig(
     disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
     batchSize: options?.batchSize ?? 1,
     sparseRatio: options?.sparseRatio ?? 1,
+    useDerivativePropagation: options?.useDerivativePropagation ?? false,
   };
 
   return Object.freeze(config);
@@ -144,4 +152,37 @@ export function limitValue(value: number) {
   if (value < -1e12) return -1e12;
 
   return value;
+}
+
+export function calculateDerivativeError(
+  squashMethod: AbstractActivationInterface,
+  currentActivation: number,
+  targetActivation: number,
+  hintValue?: number,
+): number {
+  // Correct derivative-based approach (clear glasses!)
+  const rawError = targetActivation - currentActivation;
+
+  // Calculate current raw input value once
+  let currentValue = currentActivation;
+  const unsquashMethod = squashMethod as UnSquashInterface;
+  if (unsquashMethod.unSquash !== undefined) {
+    currentValue = unsquashMethod.unSquash(currentActivation, hintValue);
+  }
+
+  let safeSlope = squashMethod.derivative!(currentValue);
+
+  if (!Number.isFinite(safeSlope)) {
+    console.warn(
+      `⚠️ Slope is not finite: ${safeSlope}, squash: ${squashMethod.getName()}, currentValue: ${currentValue}`,
+    );
+    safeSlope = Math.sign(safeSlope);
+  } else if (Math.abs(safeSlope) < 1e-8) {
+    safeSlope = 0;
+  } else if (Math.abs(safeSlope) > 50) {
+    safeSlope = Math.sign(safeSlope) * 50;
+  }
+
+  const error = rawError * safeSlope;
+  return error;
 }

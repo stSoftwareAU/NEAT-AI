@@ -1,5 +1,5 @@
 import { assert } from "@std/assert/assert";
-import { blue, yellow } from "@std/fmt/colors";
+import { blue, cyan, magenta, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import { Costs } from "../Costs.ts";
@@ -103,7 +103,11 @@ function trainDirBinary(
         yellow(iterations.toString())
       }, sample rate: ${fp(trainingSampleRate)}, sparse: ${
         fp(backPropConfig.sparseRatio)
-      }`,
+      }, propagation: ${
+        backPropConfig.useDerivativePropagation
+          ? cyan("clear")
+          : magenta("foggy")
+      } glasses`,
     );
   }
   const valuesCount = creature.input + creature.output;
