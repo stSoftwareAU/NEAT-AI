@@ -105,9 +105,9 @@ function trainDirBinary(
         fp(backPropConfig.sparseRatio)
       }, propagation: ${
         backPropConfig.useDerivativePropagation
-          ? cyan("clear")
-          : magenta("foggy")
-      } glasses`,
+          ? cyan("Derivative")
+          : magenta("UnSquash")
+      }`,
     );
   }
   const valuesCount = creature.input + creature.output;
