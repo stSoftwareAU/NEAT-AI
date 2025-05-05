@@ -5,7 +5,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class LeakyReLU implements ActivationInterface, UnSquashInterface {
   public static NAME = "LeakyReLU";
 
-  private static ALPHA = 0.01;
+  public static readonly ALPHA = 0.01;
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     LeakyReLU.NAME,
@@ -36,5 +36,20 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
     if (!Number.isFinite(x)) return 0; // <- guard for NaN or Infinity
     const value = x > 0 ? x : LeakyReLU.ALPHA * x;
     return LeakyReLU.rangeStatic.limit(value);
+  }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    // Reconstruct the raw pre-activation value using unSquash
+    const raw = this.unSquash(currentActivation, hint);
+
+    const slope = this.derivative(raw);
+
+    return rawError * slope;
   }
 }
