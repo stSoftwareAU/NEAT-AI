@@ -86,6 +86,14 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     return Number.isFinite(swishDerivative) ? swishDerivative : 0;
   }
 
+  /**
+   * Calculate the error based on the current and target activations.
+   *
+   * @param currentActivation The current activation value.
+   * @param targetActivation The target activation value.
+   * @param hint Optional hint for unSquash.
+   * @returns The calculated error.
+   */
   calculateError(
     currentActivation: number,
     targetActivation: number,
@@ -93,13 +101,22 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   ): number {
     const rawError = targetActivation - currentActivation;
 
-    // We can only use the derivative form
-    const slope = this.derivative(hint ?? 0); // fallback if hint missing
+    const x = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(x);
 
     const safeSlope = Number.isFinite(slope)
       ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
       : Math.sign(slope);
 
-    return rawError * safeSlope;
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🥽 Fallback: foggy glasses
+    const currentRaw = this.unSquash(currentActivation, hint);
+    const targetRaw = this.unSquash(targetActivation, hint);
+    const error = targetRaw - currentRaw;
+
+    return Number.isFinite(error) ? error : 0;
   }
 }
