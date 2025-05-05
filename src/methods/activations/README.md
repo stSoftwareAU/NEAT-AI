@@ -1,6 +1,12 @@
 # 🧠 NEAT-AI: Activation Function Backpropagation Strategy
 
-This document is a planning guide for tuning backpropagation.
+## ✅ Summary
+
+This README captures:
+
+- Which squash functions should use derivative vs unSquash for error propagation
+- Priority weights for evolution
+- Expert and beginner-friendly notes
 
 ---
 
@@ -44,51 +50,62 @@ This document is a planning guide for tuning backpropagation.
 
 ## 📊 Squash Function Summary
 
-| Activation      | Invertible | Derivative-Based Error           | Foggy Glasses Error          | Priority | Recommendation                  |
-| :-------------- | :--------- | :------------------------------- | :--------------------------- | -------: | :------------------------------ |
-| RELU            | ❌         | ⚠️ Fails (0 slope if x ≤ 0)      | ✅ Works (unSquash possible) |       10 | 🔍 Foggy (fast + accurate)      |
-| LeakyReLU       | ❌         | ✅ Works (non-zero slope)        | ✅ Works                     |        9 | 🟰 Either (balanced)            |
-| GELU            | ✅         | ✅ Smooth, non-zero slope        | ⚠️ Expensive                 |        9 | 🚀 Derivative (fast + accurate) |
-| Swish           | ❌         | ✅ Works well                    | ❌ Inversion is undefined    |        8 | 🚀 Derivative (fast + accurate) |
-| TANH            | ✅         | ✅ Good except at ±1             | ⚠️ Unstable near ±1          |        8 | 🚀 Derivative (fast + accurate) |
-| LOGISTIC        | ✅         | ✅ OK, fades at edges            | ⚠️ Expensive to invert       |        7 | 🚀 Derivative (fast + accurate) |
-| Softplus        | ✅         | ✅ Smooth, good slope            | ⚠️ Inversion tricky          |        7 | 🚀 Derivative (fast + accurate) |
-| Mish            | ❌         | ✅ Stable and smooth             | ❌ Very hard to invert       |        6 | 🚀 Derivative (fast + accurate) |
-| ELU             | ✅         | ✅ Continuous and differentiable | ⚠️ Inversion edge cases      |        6 | 🚀 Derivative (fast + accurate) |
-| SELU            | ✅         | ✅ Good for normalized flows     | ⚠️ Tricky to invert          |        5 | 🚀 Derivative (fast + accurate) |
-| HARD_TANH       | ❌         | ⚠️ Flat at edges                 | ✅ Can estimate raw          |        5 | 🔍 Foggy (fast + accurate)      |
-| BENT_IDENTITY   | ✅         | ✅ Works well                    | ✅ Easy to invert            |        4 | 🟰 Either (balanced)            |
-| SOFTSIGN        | ✅         | ✅ Derivative good               | ⚠️ Steep near 0              |        4 | 🚀 Derivative (fast + accurate) |
-| ArcTan          | ✅         | ✅ Stable                        | ✅ Invertible                |        4 | 🟰 Either (balanced)            |
-| ReLU6           | ❌         | ⚠️ Dead zones                    | ✅ UnSquash possible         |        4 | 🔍 Foggy (fast + accurate)      |
-| SINE            | ✅         | ⚠️ Oscillating slope             | ✅ Works                     |        3 | 🔍 Foggy (fast + accurate)      |
-| ABSOLUTE        | ❌         | ❌ Derivative undefined at 0     | ✅ Can guess raw             |        2 | 🔍 Foggy (fast + accurate)      |
-| Cosine          | ✅         | ⚠️ Oscillates                    | ✅ Works                     |        2 | 🔍 Foggy (fast + accurate)      |
-| Cube            | ✅         | ✅ Easy                          | ✅ Exact                     |        2 | 🟰 Either (balanced)            |
-| Exponential     | ✅         | ✅ Derivative stable             | ⚠️ Inversion dangerous       |        2 | 🚀 Derivative (fast + accurate) |
-| GAUSSIAN        | ✅         | ⚠️ Derivative fades              | ✅ Inversion tough           |        2 | 🔍 Foggy (fast + accurate)      |
-| ISRU            | ✅         | ✅ Good with normalization       | ⚠️ Expensive                 |        2 | 🚀 Derivative (fast + accurate) |
-| LogSigmoid      | ✅         | ✅ Stable                        | ⚠️ Inversion hard            |        2 | 🚀 Derivative (fast + accurate) |
-| STEP            | ❌         | ❌ Derivative is 0               | ⚠️ Foggy guesstimate         |        2 | 🟰 Either                       |
-| TAN             | ✅         | ⚠️ Wild slopes                   | ✅ Works in range            |        2 | 🔍 Foggy (fast + accurate)      |
-| COMPLEMENT      | ❌         | ✅ Simple inverse                | ✅ Works                     |        1 | 🟰 Either (balanced)            |
-| StdInverse      | ✅         | ✅ Fine                          | ✅ Cheap                     |        1 | 🟰 Either (balanced)            |
-| IDENTITY        | ✅         | ✅ Derivative = 1                | ✅ Exact                     |        1 | 🟰 Either (balanced)            |
-| IF              | ❌         | ❌ Not differentiable            | ✅ Works if stable           |        1 | 🔍 Foggy (fast + accurate)      |
-| HYPOT           | ❌         | ⚠️ Conditional                   | ⚠️ Inversion unknown         |        1 | 🟰 Either                       |
-| HYPOTv2         | ❌         | ⚠️ Same                          | ⚠️ Same                      |        1 | 🟰 Either                       |
-| MAXIMUM         | ❌         | ❌ Flat in some regions          | ⚠️ Needs guessing            |        1 | 🟰 Either                       |
-| MINIMUM         | ❌         | ❌ Flat                          | ⚠️ Needs guessing            |        1 | 🟰 Either                       |
-| BIPOLAR         | ❌         | ❌ Often flat                    | ⚠️ Roughly invertible        |        1 | 🟰 Either                       |
-| BIPOLAR_SIGMOID | ✅         | ✅ Good                          | ⚠️ Steep                     |        1 | 🚀 Derivative (fast + accurate) |
+| Activation      | Invertible | Derivative-Based Error           | Foggy Glasses Error          | Priority | Recommendation | Why?                                                                                    |
+| :-------------- | :--------- | :------------------------------- | :--------------------------- | :------: | :------------- | :-------------------------------------------------------------------------------------- |
+| RELU            | ❌         | ⚠️ 0 slope if x ≤ 0 — stuck zone | ✅ Fast & clear when active  |  10 ⤵ 5  | 🔍 Foggy       | Derivative fails at zero; unSquash is accurate. Deprioritise in favour of LeakyReLU.    |
+| LeakyReLU       | ✅         | ✅ Fast & stable (slope never 0) | ✅ Inversion is trivial      |    9     | 🚀 Derivative  | Both methods are valid, but derivative is faster and widely accepted in practice.       |
+| GELU            | ✅         | ✅ Smooth, non-zero slope        | ⚠️ Expensive                 |    9     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| Swish           | ❌         | ✅ Works well                    | ❌ Inversion is undefined    |    8     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| TANH            | ✅         | ✅ Good except at ±1             | ⚠️ Unstable near ±1          |    8     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| LOGISTIC        | ✅         | ✅ OK, fades at edges            | ⚠️ Expensive to invert       |    7     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| Softplus        | ✅         | ✅ Smooth, good slope            | ⚠️ Inversion tricky          |    7     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| Mish            | ❌         | ✅ Stable and smooth             | ❌ Very hard to invert       |    6     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| ELU             | ✅         | ✅ Continuous and differentiable | ⚠️ Inversion edge cases      |    6     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| SELU            | ✅         | ✅ Good for normalized flows     | ⚠️ Tricky to invert          |    5     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| HARD_TANH       | ❌         | ⚠️ Flat at edges                 | ✅ Can estimate raw          |    5     | 🔍 Foggy       | (fast + accurate)                                                                       |
+| BENT_IDENTITY   | ✅         | ✅ Works well                    | ✅ Easy to invert            |    4     | 🟰 Either      | (balanced)                                                                              |
+| SOFTSIGN        | ✅         | ✅ Derivative good               | ⚠️ Steep near 0              |    4     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| ArcTan          | ✅         | ✅ Stable                        | ✅ Invertible                |    4     | 🟰 Either      | (balanced)                                                                              |
+| ReLU6           | ❌         | ⚠️ Dead zones                    | ✅ UnSquash possible         |    4     | 🔍 Foggy       | (fast + accurate)                                                                       |
+| SINE            | ✅         | ⚠️ Oscillating slope             | ✅ Works                     |    3     | 🔍 Foggy       | (fast + accurate)                                                                       |
+| ABSOLUTE        | ❌         | ❌ Derivative undefined at 0     | ✅ Can guess raw             |    2     | 🔍 Foggy       | (fast + accurate)                                                                       |
+| Cosine          | ✅         | ⚠️ Oscillates                    | ✅ Works                     |    2     | 🔍 Foggy       | (fast + accurate)                                                                       |
+| Cube            | ✅         | ✅ Easy                          | ✅ Exact                     |    2     | 🟰 Either      | (balanced)                                                                              |
+| Exponential     | ✅         | ✅ Derivative stable             | ⚠️ Inversion dangerous       |    2     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| GAUSSIAN        | ✅         | ⚠️ Derivative fades              | ✅ Inversion tough           |    2     | 🔍 Foggy       | (fast + accurate)                                                                       |
+| ISRU            | ✅         | ✅ Good with normalization       | ⚠️ Expensive                 |    2     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| LogSigmoid      | ✅         | ✅ Stable                        | ⚠️ Inversion hard            |    2     | 🚀 Derivative  | (fast + accurate)                                                                       |
+| ABSOLUTE        | ❌         | ❌ Derivative undefined at 0     | ✅ Symmetric, invertible-ish |    2     | 🔍 Foggy       | Derivative is undefined at 0; unSquash is fast and gives useful symmetric error signal. |
+| STEP            | ❌         | ❌ Derivative is 0               | ⚠️ Foggy guesstimate         |   ⬇ 0    | 🟰 Either      | ❌ Derivative is zero everywhere (no learning), foggy also unreliable                   |
+| TAN             | ✅         | ⚠️ Wild slopes                   | ✅ Works in range            |    2     | 🔍 Foggy       | (fast + accurate)                                                                       |
+| Complement      | ❌         | ✅ Simple inverse                | ✅ Works                     |   ⬇ 0    | 🟰 Either      | ❌ Not an activation function in any known framework                                    |
+| StdInverse      | ✅         | ✅ Fine                          | ✅ Cheap                     |    1     | 🟰 Either      | (balanced), low priority Custom logic                                                   |
+| IDENTITY        | ✅         | ✅ Derivative = 1                | ✅ Exact                     |    1     | 🟰 Either      | (balanced)                                                                              |
+| IF              | ❌         | ❌ Not differentiable            | ✅ Works if stable           |   ⬇ 0    | 🔍 Foggy       | ❌ Hard conditional logic — breaks continuity and gradient assumptions                  |
+| HYPOT           | ❌         | ⚠️ Conditional                   | ⚠️ Inversion unknown         |   ⬇ 0    | 🟰 Either      | ❌ Not suitable as squash; expensive and odd behaviour                                  |
+| HYPOTv2         | ❌         | ⚠️ Same                          | ⚠️ Same                      |   ⬇ 0    | 🟰 Either      | ❌ Not suitable as squash; expensive and odd behaviour                                  |
+| MAXIMUM         | ❌         | ❌ Flat in some regions          | ⚠️ Needs guessing            |   ⬇ 0    | 🟰 Either      | ❌ Flat plateaus, no gradient flow                                                      |
+| MINIMUM         | ❌         | ❌ Flat                          | ⚠️ Needs guessing            |   ⬇ 0    | 🟰 Either      | ❌ Flat plateaus, no gradient flow                                                      |
+| BIPOLAR         | ❌         | ❌ Often flat                    | ⚠️ Roughly invertible        |   ⬇ 0    | 🟰 Either      | ❌ Harsh transition, poor learning, rarely used in practice                             |
+| BIPOLAR_SIGMOID | ✅         | ✅ Good                          | ⚠️ Steep                     |    1     | 🚀 Derivative  | (fast + accurate),low priority, Non-standard behaviour                                  |
 
 ---
 
-## ✅ Planning Notes
+## 📋 Planning
 
 - Migrate `calculateError()` into each squash class.
 - Default to Derivative when slope is stable and unSquash is slow.
 - Use fast UnSquash only when precise and inexpensive.
-- Reduce `RELU` priority; increase `LeakyReLU`, `GELU`, and `Swish`.
+- Reduce `ReLU` priority; increase `LeakyReLU`, `GELU`, and `Swish`.
 - Benchmark back propagation vs evolution: optimize to reduce training time
   bottlenecks.
+
+### 📌 Notes
+
+- “Priority” controls how often a squash is picked during evolution mutation.
+  Still allowed to for mutation or legacy models — just reduce the chance of
+  selection.
+- “Foggy Glasses” was coined jokingly by the author’s son — but in some cases,
+  it's clearer than derivatives!
+
+> This document evolves with your AI — keep it fun, fast, and factual! 🎨🧬
