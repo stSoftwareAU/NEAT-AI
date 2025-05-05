@@ -66,17 +66,21 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     return x >= 0 ? 1 : this.squash(x) + ELU.ALPHA;
   }
 
-  calculateError(currentActivation: number, targetActivation: number, hint?: number): number {
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
     const rawError = targetActivation - currentActivation;
-  
+
     // Reconstruct input from unSquash if needed
     const raw = this.unSquash(currentActivation, hint);
     const slope = this.derivative(raw);
-  
+
     const safeSlope = Number.isFinite(slope)
       ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
       : Math.sign(slope);
-  
+
     return rawError * safeSlope;
   }
 }

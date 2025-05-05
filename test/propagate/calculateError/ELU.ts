@@ -1,4 +1,4 @@
-import { assertEquals, assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { ELU } from "../../../src/methods/activations/types/ELU.ts";
 
 Deno.test("ELU.calculateError: positive input", () => {
