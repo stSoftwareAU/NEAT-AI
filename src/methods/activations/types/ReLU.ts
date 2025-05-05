@@ -53,6 +53,17 @@ export class ReLU
     return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
   }
 
+  /**
+   * Calculate the error based on the current and target activations.
+   * In the active zone, we treat it like identity: error = target - current.
+   * In the inactive (flat) zone, we fallback to "foggy glasses" i.e., calculate
+   * raw error using inverse.
+   *
+   * @param currentActivation The current activation value.
+   * @param targetActivation The target activation value.
+   * @param hint Optional hint for unSquash.
+   * @returns The calculated error.
+   */
   calculateError(
     currentActivation: number,
     targetActivation: number,
