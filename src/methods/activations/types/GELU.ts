@@ -94,4 +94,20 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     // Minimal safeguard (no clamping) to ensure finite numeric output
     return Number.isFinite(result) ? result : 0;
   }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+    const x = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(x);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    return rawError * safeSlope;
+  }
 }
