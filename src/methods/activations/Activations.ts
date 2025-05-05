@@ -81,6 +81,7 @@ export class Activations {
       [Mish.NAME, new Mish()],
 
       [ReLU.NAME, new ReLU()],
+      ["RELU", new ReLU()],
       [ReLU6.NAME, new ReLU6()],
 
       [SELU.NAME, new SELU()],
@@ -97,18 +98,16 @@ export class Activations {
     ]);
 
   public static readonly NAMES = [...Activations.MAP.keys()].filter(
-    (key) => !["INVERSE", "SINUSOID", MEAN.NAME, "CLIPPED"].includes(key),
+    (key) =>
+      !["INVERSE", "SINUSOID", MEAN.NAME, "CLIPPED", "RELU"].includes(key),
   );
 
   static find(
     name: string,
   ): AbstractActivationInterface {
-    let activation = this.MAP.get(name);
+    const activation = this.MAP.get(name);
     if (activation === undefined) {
-      activation = this.MAP.get(name.toUpperCase());
-      if (activation === undefined) {
-        throw new Error(`Unknown activation: ${name}`);
-      }
+      throw new Error(`Unknown activation: ${name}`);
     }
     return activation as AbstractActivationInterface;
   }
