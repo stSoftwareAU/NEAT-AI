@@ -62,7 +62,7 @@ This README captures:
 | ELU             | ✅         | ✅ Continuous and differentiable | ⚠️ Inversion edge cases      |    6     | 🚀 Derivative  | (fast + accurate)                                                                       |
 | SELU            | ✅         | ✅ Good for normalized flows     | ⚠️ Tricky to invert          |    5     | 🚀 Derivative  | (fast + accurate)                                                                       |
 | HARD_TANH       | ❌         | ⚠️ Flat at edges                 | ✅ Can estimate raw          |    5     | 🔍 Foggy       | (fast + accurate)                                                                       |
-| RELU            | ❌         | ⚠️ 0 slope if x ≤ 0 — stuck zone | ✅ Fast & clear when active  |    5     | 🔍 Foggy       | Derivative fails at zero; unSquash is accurate. Deprioritise in favour of LeakyReLU.    |
+| ReLU            | ❌         | ⚠️ 0 slope if x ≤ 0 — stuck zone | ✅ Fast & clear when active  |    5     | 🔍 Foggy       | Derivative fails at zero; unSquash is accurate. Deprioritise in favour of LeakyReLU.    |
 | BENT_IDENTITY   | ✅         | ✅ Works well                    | ✅ Easy to invert            |    4     | 🟰 Either      | (balanced)                                                                              |
 | SOFTSIGN        | ✅         | ✅ Derivative good               | ⚠️ Steep near 0              |    4     | 🚀 Derivative  | (fast + accurate)                                                                       |
 | ArcTan          | ✅         | ✅ Stable                        | ✅ Invertible                |    4     | 🟰 Either      | (balanced)                                                                              |
