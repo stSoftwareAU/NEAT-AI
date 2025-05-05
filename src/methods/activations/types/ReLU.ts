@@ -52,4 +52,20 @@ export class ReLU
 
     return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
   }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    if (currentActivation > 0) {
+      // When ReLU is active, we treat it like identity: error = target - current
+      return targetActivation - currentActivation;
+    } else {
+      // In the inactive (flat) zone, derivative is 0 — fallback to "foggy glasses"
+      // i.e., calculate raw error using inverse
+      return this.unSquash(targetActivation, hint) -
+        this.unSquash(currentActivation, hint);
+    }
+  }
 }

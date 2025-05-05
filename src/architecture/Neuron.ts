@@ -474,7 +474,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
       let targetValue: number | undefined;
 
-      if (config.useDerivativePropagation && squashMethod.derivative) {
+      if (squashMethod.calculateError) {
+        error = squashMethod.calculateError(
+          activation,
+          targetActivation,
+          ns.hintValue,
+        );
+      } else if (squashMethod.derivative) {
         /* Current (clear glasses) */
         error = calculateDerivativeError(
           squashMethod,
