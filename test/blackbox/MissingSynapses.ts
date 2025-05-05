@@ -26,7 +26,7 @@ const baseCreatureJSON: CreatureExport = {
       uuid: "output-1",
       bias: -0.3,
       type: "output",
-      squash: "RELU",
+      squash: "ReLU",
     },
   ],
   synapses: [
