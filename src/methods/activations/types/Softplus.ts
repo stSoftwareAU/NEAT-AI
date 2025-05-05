@@ -15,11 +15,11 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Softplus";
 
   private static readonly LARGE_THRESHOLD = 100;
-  private static readonly SMALL_THRESHOLD = 1e-10;
+  private static readonly SMALL_THRESHOLD = 1e-15;
 
   public static readonly rangeStatic = new ActivationRange(
     Softplus.NAME,
-    0,
+    Softplus.SMALL_THRESHOLD,
     Softplus.LARGE_THRESHOLD,
   );
 
