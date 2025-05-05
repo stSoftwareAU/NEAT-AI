@@ -75,4 +75,29 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     }
     return x / (2 * Math.sqrt(x * x + 1)) + 1;
   }
+
+  /**
+   * Calculate the error based on the current and target activations.
+   * Uses the unSquash function to compute the raw error.
+   * @param currentActivation The current activation value.
+   * @param targetActivation The target activation value.
+   * @param hint Optional hint for unSquash.
+   * @returns The calculated error.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    const x = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(x);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    return rawError * safeSlope;
+  }
 }
