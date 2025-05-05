@@ -66,6 +66,14 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     return x >= 0 ? 1 : this.squash(x) + ELU.ALPHA;
   }
 
+  /**
+   * Calculate the error for the ELU activation function.
+   *
+   * @param currentActivation The current activation value.
+   * @param targetActivation The target activation value.
+   * @param hint Optional hint for unSquash.
+   * @returns The calculated error.
+   */
   calculateError(
     currentActivation: number,
     targetActivation: number,
@@ -73,14 +81,22 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   ): number {
     const rawError = targetActivation - currentActivation;
 
-    // Reconstruct input from unSquash if needed
-    const raw = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(raw);
+    const x = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(x);
 
     const safeSlope = Number.isFinite(slope)
       ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
       : Math.sign(slope);
 
-    return rawError * safeSlope;
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🥽 Fallback to unSquash-based error
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+
+    return Number.isFinite(error) ? error : 0;
   }
 }
