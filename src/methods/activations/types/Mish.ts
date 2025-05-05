@@ -83,4 +83,22 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     const { derivative } = this.squashAndDerive(x);
     return derivative;
   }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    // Use the hint (raw x) if given, fallback to 0
+    const x = hint ?? 0;
+    const slope = this.derivative(x);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    return rawError * safeSlope;
+  }
 }
