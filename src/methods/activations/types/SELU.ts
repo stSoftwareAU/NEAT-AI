@@ -75,4 +75,21 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     // SELU derivative: scale if x ≥ 0; else scale * alpha * exp(x)
     return x >= 0 ? SELU.SCALE : SELU.SCALE * SELU.ALPHA * Math.exp(x);
   }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    const raw = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(raw);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    return rawError * safeSlope;
+  }
 }
