@@ -80,4 +80,22 @@ export class TANH
     // Ensure the result is finite and safe to use in back propagation.
     return Number.isFinite(d) ? d : 0;
   }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    // Reconstruct the raw input
+    const raw = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(raw);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    return rawError * safeSlope;
+  }
 }
