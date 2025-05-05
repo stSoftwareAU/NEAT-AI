@@ -1,28 +1,40 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { LOGISTIC } from "../../../src/methods/activations/types/LOGISTIC.ts";
 
-Deno.test("LOGISTIC.calculateError: standard values", () => {
-  const sigmoid = new LOGISTIC();
+Deno.test("LOGISTIC.calculateError: mid-range", () => {
+  const logistic = new LOGISTIC();
+  const act = logistic.squash(0.0);
+  const target = logistic.squash(1.0);
+  const error = logistic.calculateError(act, target, 0.0);
 
-  assertEquals(sigmoid.calculateError(0.5, 0.5), 0.0);
-
-  const e = sigmoid.calculateError(0.5, 0.7);
-  assert(e > 0 && Number.isFinite(e));
+  assert(Number.isFinite(error));
+  assert(error > 0);
 });
 
-Deno.test("LOGISTIC.calculateError: with hint", () => {
-  const sigmoid = new LOGISTIC();
+Deno.test("LOGISTIC.calculateError: upper flat slope", () => {
+  const logistic = new LOGISTIC();
+  const act = logistic.squash(10);
+  const target = logistic.squash(8);
+  const error = logistic.calculateError(act, target, 10);
 
-  const e = sigmoid.calculateError(0.3, 0.9, 1.0);
-  assert(Number.isFinite(e));
-  assert(e > 0);
+  assert(Number.isFinite(error));
+  assert(error < 0);
 });
 
-Deno.test("LOGISTIC.calculateError: edge zone", () => {
-  const sigmoid = new LOGISTIC();
+Deno.test("LOGISTIC.calculateError: lower flat slope", () => {
+  const logistic = new LOGISTIC();
+  const act = logistic.squash(-10);
+  const target = logistic.squash(-8);
+  const error = logistic.calculateError(act, target, -10);
 
-  const e1 = sigmoid.calculateError(0.001, 0.0, -10);
-  const e2 = sigmoid.calculateError(0.999, 1.0, 10);
-  assert(Number.isFinite(e1));
-  assert(Number.isFinite(e2));
+  assert(Number.isFinite(error));
+  assert(error > 0);
+});
+
+Deno.test("LOGISTIC.calculateError: perfect match", () => {
+  const logistic = new LOGISTIC();
+  const val = logistic.squash(-1.23);
+  const error = logistic.calculateError(val, val, -1.23);
+
+  assertAlmostEquals(error, 0, 1e-10);
 });

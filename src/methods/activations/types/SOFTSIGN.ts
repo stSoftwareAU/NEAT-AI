@@ -59,4 +59,42 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
     const denom = 1 + Math.abs(x);
     return 1 / (denom * denom);
   }
+
+  /**
+   * Calculates error for SoftSign activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x)       = x / (1 + |x|)
+   *   f′(x)      = 1 / (1 + |x|)^2
+   *   Inverse    = y / (1 - |y|)
+   *
+   * Strategy:
+   *   ✅ Use derivative when slope is stable.
+   *   🥽 Fallback to unSquash (raw-space error) if slope is near zero or non-finite.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    const x = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(x);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🥽 Fallback to foggy glasses
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+
+    return Number.isFinite(error) ? error : 0;
+  }
 }

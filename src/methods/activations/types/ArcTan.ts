@@ -83,4 +83,49 @@ export class ArcTan
 
     return 2 / (Math.PI * (1 + x * x));
   }
+
+  /**
+   * Calculate the error based on the current and target activations.
+   *
+   * @param currentActivation The current activation value.
+   * @param targetActivation The target activation value.
+   * @param hint Optional hint for unSquash.
+   * @returns The calculated error.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    const hasHint = Number.isFinite(hint);
+    let x: number | undefined = hasHint ? hint : undefined;
+
+    if (!hasHint) {
+      try {
+        x = this.unSquash(currentActivation);
+      } catch {
+        x = undefined;
+      }
+    }
+
+    if (x !== undefined) {
+      const slope = this.derivative(x);
+      const safeSlope = Number.isFinite(slope)
+        ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+        : Math.sign(slope);
+
+      if (safeSlope !== 0) {
+        return rawError * safeSlope;
+      }
+    }
+
+    // 🥽 Fallback: foggy glasses (inverse-based)
+    const raw = this.unSquash(currentActivation, hint);
+    const targetRaw = this.unSquash(targetActivation, hint);
+    const error = targetRaw - raw;
+
+    return Number.isFinite(error) ? error : 0;
+  }
 }
