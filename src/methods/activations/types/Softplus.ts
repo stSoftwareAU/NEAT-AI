@@ -15,11 +15,11 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   public static readonly NAME = "Softplus";
 
   private static readonly LARGE_THRESHOLD = 100;
-  private static readonly SMALL_THRESHOLD = 1e-15;
+  private static readonly SMALL_THRESHOLD = 1e-10;
 
   public static readonly rangeStatic = new ActivationRange(
     Softplus.NAME,
-    Softplus.SMALL_THRESHOLD,
+    0,
     Softplus.LARGE_THRESHOLD,
   );
 
@@ -56,6 +56,7 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
     return Math.log(diff);
   }
+
   derivative(x: number): number {
     if (!Number.isFinite(x)) {
       throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
@@ -63,5 +64,23 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
     const d = 1 / (1 + Math.exp(-x)); // sigmoid(x)
     return Number.isFinite(d) ? d : 0;
+  }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    // Use hint (raw x) if available to evaluate the slope
+    const raw = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(raw);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-12 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    return rawError * safeSlope;
   }
 }
