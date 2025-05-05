@@ -3,7 +3,7 @@ import { Creature, type CreatureExport } from "../../../mod.ts";
 import { ABSOLUTE } from "../../../src/methods/activations/types/ABSOLUTE.ts";
 import { Exponential } from "../../../src/methods/activations/types/Exponential.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { RELU } from "../../../src/methods/activations/types/RELU.ts";
+import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
 import { STEP } from "../../../src/methods/activations/types/STEP.ts";
 import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
@@ -18,7 +18,7 @@ Deno.test("ABSOLUTE", () => {
       {
         bias: -Math.SQRT1_2,
         type: "hidden",
-        squash: RELU.NAME,
+        squash: ReLU.NAME,
         uuid: "hidden-0",
       },
       {

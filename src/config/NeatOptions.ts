@@ -144,9 +144,6 @@ export interface NeatArguments {
 
   /** The maximum number of neurons to discover */
   discoveryMaxNeurons: number;
-
-  /** use clear glasses */
-  useDerivativePropagation: boolean;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

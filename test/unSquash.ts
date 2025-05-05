@@ -12,7 +12,7 @@ import { Cosine } from "../src/methods/activations/types/Cosine.ts";
 import { ELU } from "../src/methods/activations/types/ELU.ts";
 import { GELU } from "../src/methods/activations/types/GELU.ts";
 import { Mish } from "../src/methods/activations/types/Mish.ts";
-import { RELU } from "../src/methods/activations/types/RELU.ts";
+import { ReLU } from "../src/methods/activations/types/ReLU.ts";
 import { ReLU6 } from "../src/methods/activations/types/ReLU6.ts";
 import { SELU } from "../src/methods/activations/types/SELU.ts";
 import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
@@ -92,7 +92,7 @@ function check(squashName: string, values: number[]) {
             hint = v - Number.EPSILON;
           }
           break;
-        case RELU.NAME:
+        case ReLU.NAME:
         case ReLU6.NAME:
           if (v < 0) {
             hint = v;

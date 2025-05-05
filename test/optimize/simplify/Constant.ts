@@ -7,7 +7,7 @@ import { Exponential } from "../../../src/methods/activations/types/Exponential.
 import { GAUSSIAN } from "../../../src/methods/activations/types/GAUSSIAN.ts";
 import { GELU } from "../../../src/methods/activations/types/GELU.ts";
 import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
-import { RELU } from "../../../src/methods/activations/types/RELU.ts";
+import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
 import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
@@ -50,7 +50,7 @@ Deno.test("Constant", () => {
       {
         bias: -10,
         type: "output",
-        squash: RELU.NAME,
+        squash: ReLU.NAME,
         uuid: "output-2",
       },
       {

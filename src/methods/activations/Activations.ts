@@ -24,7 +24,7 @@ import { LOGISTIC } from "./types/LOGISTIC.ts";
 import { LeakyReLU } from "./types/LeakyReLU.ts";
 import { LogSigmoid } from "./types/LogSigmoid.ts";
 import { Mish } from "./types/Mish.ts";
-import { RELU } from "./types/RELU.ts";
+import { ReLU } from "./types/ReLU.ts";
 import { ReLU6 } from "./types/ReLU6.ts";
 import { SELU } from "./types/SELU.ts";
 import { SINE } from "./types/SINE.ts";
@@ -80,7 +80,8 @@ export class Activations {
       [MINIMUM.NAME, new MINIMUM()],
       [Mish.NAME, new Mish()],
 
-      [RELU.NAME, new RELU()],
+      [ReLU.NAME, new ReLU()],
+      ["RELU", new ReLU()],
       [ReLU6.NAME, new ReLU6()],
 
       [SELU.NAME, new SELU()],
@@ -97,7 +98,8 @@ export class Activations {
     ]);
 
   public static readonly NAMES = [...Activations.MAP.keys()].filter(
-    (key) => !["INVERSE", "SINUSOID", MEAN.NAME, "CLIPPED"].includes(key),
+    (key) =>
+      !["INVERSE", "SINUSOID", MEAN.NAME, "CLIPPED", "RELU"].includes(key),
   );
 
   static find(
@@ -112,8 +114,7 @@ export class Activations {
 
   private static readonly WEIGHTED_POOL: string[] = (() => {
     const weighted: [string, number][] = [
-      [RELU.NAME, 10],
-      [LeakyReLU.NAME, 9],
+      [LeakyReLU.NAME, 10],
       [GELU.NAME, 9],
       [Swish.NAME, 8],
       [TANH.NAME, 8],
@@ -123,6 +124,7 @@ export class Activations {
       [ELU.NAME, 6],
       [SELU.NAME, 5],
       [HARD_TANH.NAME, 5],
+      [ReLU.NAME, 5],
       [BENT_IDENTITY.NAME, 4],
       [SOFTSIGN.NAME, 4],
       [ArcTan.NAME, 4],

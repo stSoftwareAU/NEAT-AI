@@ -12,20 +12,18 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
  */
-export class RELU
+export class ReLU
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
-  public static readonly NAME = "RELU";
+  public static readonly NAME = "ReLU";
 
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
-    RELU.NAME,
+  public readonly range = new ActivationRange(
+    ReLU.NAME,
     0,
     Number.MAX_VALUE,
   );
 
-  public readonly range = RELU.rangeStatic;
-
   getName(): string {
-    return RELU.NAME;
+    return ReLU.NAME;
   }
 
   inlineSquash(value: string): string {
@@ -35,7 +33,7 @@ export class RELU
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
     const value = Math.max(0, x);
-    return RELU.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   derivative(x: number): number {
@@ -53,5 +51,21 @@ export class RELU
     }
 
     return typeof hint === "number" && Number.isFinite(hint) ? hint : 0;
+  }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    if (currentActivation > 0) {
+      // When ReLU is active, we treat it like identity: error = target - current
+      return targetActivation - currentActivation;
+    } else {
+      // In the inactive (flat) zone, derivative is 0 — fallback to "foggy glasses"
+      // i.e., calculate raw error using inverse
+      return this.unSquash(targetActivation, hint) -
+        this.unSquash(currentActivation, hint);
+    }
   }
 }

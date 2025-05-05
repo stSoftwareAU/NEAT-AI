@@ -54,12 +54,6 @@ export type BackPropagationArguments = {
 
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
-
-  /**
-   * If true, the derivative propagation will be used. This is a more advanced method of back propagation
-   * that can lead to better results, but it is also more complex and slower.
-   */
-  useDerivativePropagation: boolean;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -116,7 +110,6 @@ export function createBackPropagationConfig(
     disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
     batchSize: options?.batchSize ?? 1,
     sparseRatio: options?.sparseRatio ?? 1,
-    useDerivativePropagation: options?.useDerivativePropagation ?? false,
   };
 
   return Object.freeze(config);
