@@ -59,4 +59,32 @@ export class HARD_TANH
     }
     return x > -1 && x < 1 ? 1 : 0;
   }
+
+  /**
+   * Calculate the error between the current and target activations.
+   * Uses the unSquash function to compute the raw error.
+   * @param currentActivation The current activation value.
+   * @param targetActivation The target activation value.
+   * @param hint Optional hint for unSquashing.
+   * @returns The calculated error.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    // HARD_TANH is linear in range (-1, 1)
+    if (currentActivation > -1 && currentActivation < 1) {
+      return rawError * 1; // slope = 1
+    }
+
+    // Outside range — derivative is 0, so fallback to foggy (unsquash)
+    const raw = this.unSquash(currentActivation, hint);
+    const targetRaw = this.unSquash(targetActivation, hint);
+
+    const error = targetRaw - raw;
+    return Number.isFinite(error) ? error : 0;
+  }
 }
