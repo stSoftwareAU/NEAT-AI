@@ -12,8 +12,8 @@ import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
 import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
-import { RELU } from "../methods/activations/types/RELU.ts";
 import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
+import { ReLU } from "../methods/activations/types/ReLU.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
@@ -112,7 +112,7 @@ export function removeKnownSign(exported: CreatureExport) {
   for (let indx = 0; indx < exported.neurons.length; indx++) {
     const neuron = exported.neurons[indx];
     if (neuron.type === "hidden") {
-      if (neuron.squash === ABSOLUTE.NAME || neuron.squash === RELU.NAME) {
+      if (neuron.squash === ABSOLUTE.NAME || neuron.squash === ReLU.NAME) {
         let allNonNegative = true;
         const fromMap = synapseMap.get(neuron.uuid);
 

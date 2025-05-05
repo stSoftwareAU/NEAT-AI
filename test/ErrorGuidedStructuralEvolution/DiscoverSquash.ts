@@ -8,9 +8,9 @@ import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
-import { RELU } from "../../src/methods/activations/types/RELU.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { ReLU6 } from "../../src/methods/activations/types/ReLU6.ts";
+import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -150,7 +150,7 @@ Deno.test("Error-Driven Squash Discovery", async () => {
       .squash;
 
   if (
-    adjustedSquash !== RELU.NAME &&
+    adjustedSquash !== ReLU.NAME &&
     adjustedSquash !== LeakyReLU.NAME &&
     adjustedSquash !== ReLU6.NAME
   ) {

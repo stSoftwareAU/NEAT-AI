@@ -4,7 +4,7 @@ import { Cosine } from "../../../src/methods/activations/types/Cosine.ts";
 import { SINE } from "../../../src/methods/activations/types/SINE.ts";
 import { TANH } from "../../../src/methods/activations/types/TANH.ts";
 import { LOGISTIC } from "../../../src/methods/activations/types/LOGISTIC.ts";
-import { RELU } from "../../../src/methods/activations/types/RELU.ts";
+import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
 import { LeakyReLU } from "../../../src/methods/activations/types/LeakyReLU.ts";
 import { ELU } from "../../../src/methods/activations/types/ELU.ts";
 import { Swish } from "../../../src/methods/activations/types/Swish.ts";
@@ -249,7 +249,7 @@ Deno.test("SIGMOID unSquash with hint", () => {
 
 // RELU tests
 Deno.test("RELU unSquash with hint", () => {
-  const relu = new RELU();
+  const relu = new ReLU();
   testUnSquashWithHint(relu, [
     { activation: relu.squash(0), hint: 0, expected: 0 },
     { activation: relu.squash(1), hint: 1, expected: 1 },

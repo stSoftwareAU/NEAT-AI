@@ -1,7 +1,7 @@
 import { assertAlmostEquals } from "@std/assert/almost-equals";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { calculateDerivativeError } from "../../src/propagate/BackPropagation.ts";
-import { RELU } from "../../src/methods/activations/types/RELU.ts";
+import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
 
 Deno.test("Derivative error calculation worked example", () => {
   const fn = new TANH();
@@ -36,24 +36,24 @@ Deno.test("TANH - activation at zero", () => {
   assertAlmostEquals(err, 0.5 * 1, 1e-6); // tanh(0) = 0, tanh'(0) = 1
 });
 
-const ReLU = new RELU();
+const relu = new ReLU();
 
 Deno.test("ReLU - normal positive value uses derivative", () => {
-  const err = calculateDerivativeError(ReLU, 0.5, 0.7);
+  const err = calculateDerivativeError(relu, 0.5, 0.7);
   assertAlmostEquals(err, 0.2 * 1, 1e-6);
 });
 
 Deno.test("ReLU - negative raw value triggers fallback", () => {
-  const err = calculateDerivativeError(ReLU, 0, 1); // activation is 0 → raw input ≤ 0
+  const err = calculateDerivativeError(relu, 0, 1); // activation is 0 → raw input ≤ 0
   assertAlmostEquals(err, 1.0, 1e-6); // fallback = target - current (1 - 0)
 });
 
 Deno.test("ReLU - zero slope triggers fallback", () => {
-  const err = calculateDerivativeError(ReLU, 0.00000001, 0.9);
+  const err = calculateDerivativeError(relu, 0.00000001, 0.9);
   assertAlmostEquals(err, 0.9 - 0.00000001, 1e-6); // fallback again
 });
 
 Deno.test("ReLU - dead neuron (raw input deeply negative)", () => {
-  const err = calculateDerivativeError(ReLU, 0, 0.5);
+  const err = calculateDerivativeError(relu, 0, 0.5);
   assertAlmostEquals(err, 0.5, 1e-6); // fallback logic
 });
