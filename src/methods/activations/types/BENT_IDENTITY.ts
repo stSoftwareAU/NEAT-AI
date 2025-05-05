@@ -98,6 +98,15 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
       ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
       : Math.sign(slope);
 
-    return rawError * safeSlope;
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🥽 Fallback to foggy glasses
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+
+    return Number.isFinite(error) ? error : 0;
   }
 }
