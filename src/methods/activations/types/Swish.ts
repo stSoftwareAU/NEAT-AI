@@ -85,4 +85,21 @@ export class Swish implements ActivationInterface, UnSquashInterface {
 
     return Number.isFinite(swishDerivative) ? swishDerivative : 0;
   }
+
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    // We can only use the derivative form
+    const slope = this.derivative(hint ?? 0); // fallback if hint missing
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    return rawError * safeSlope;
+  }
 }
