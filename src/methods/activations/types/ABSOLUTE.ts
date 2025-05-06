@@ -58,4 +58,27 @@ export class ABSOLUTE
     // At x=0 the derivative is undefined, we return 0 as a neutral approximation.
     return 0;
   }
+
+  /**
+   * Calculates error for ABSOLUTE activation using foggy-glasses only.
+   *
+   * Summary:
+   *   f(x) = |x|
+   *   f′(x) = -1 if x < 0; 1 if x > 0; undefined at x = 0
+   *
+   * Strategy:
+   *   🥽 Always fallback to foggy-glasses unSquash-based error.
+   *   Derivative is discontinuous and not reliable near x = 0.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+
+    return Number.isFinite(error) ? error : 0;
+  }
 }
