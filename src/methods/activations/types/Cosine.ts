@@ -98,4 +98,41 @@ export class Cosine
 
     return -Math.sin(x);
   }
+
+  /**
+   * Calculates error for Cosine activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = cos(x)
+   *   f′(x) = -sin(x)
+   *
+   * Strategy:
+   *   ✅ Use derivative when slope is stable and non-zero.
+   *   🥽 Fallback to unSquash if slope is flat (near π or 0).
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    const x = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(x);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🥽 Fallback
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+
+    return Number.isFinite(error) ? error : 0;
+  }
 }

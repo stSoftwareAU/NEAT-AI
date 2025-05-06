@@ -69,4 +69,37 @@ export class ReLU6
 
     return x > 0 && x < 6 ? 1 : 0;
   }
+
+  /**
+   * Calculates error for ReLU6 activation using piecewise logic.
+   *
+   * Summary:
+   *   f(x) = min(max(0, x), 6)
+   *   f′(x) = 0 if x ≤ 0 or x ≥ 6; 1 if 0 < x < 6
+   *
+   * Strategy:
+   *   ✅ Use slope = 1 if inside active zone.
+   *   🥽 Fallback to foggy unSquash if in dead zones (slope = 0).
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    const x = this.unSquash(currentActivation, hint);
+    const slope = (x > 0 && x < 6) ? 1 : 0;
+
+    if (slope !== 0) {
+      return rawError * slope;
+    }
+
+    // Fallback: approximate via unSquashed delta
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+
+    return Number.isFinite(error) ? error : 0;
+  }
 }

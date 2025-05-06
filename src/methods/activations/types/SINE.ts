@@ -106,4 +106,41 @@ export class SINE
 
     return Math.cos(x);
   }
+
+  /**
+   * Calculates error for SINE activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = sin(x)
+   *   f′(x) = cos(x)
+   *
+   * Strategy:
+   *   ✅ Use derivative if slope is non-zero and finite.
+   *   🥽 Fallback to foggy-glasses unSquash-based error if slope too small or not finite.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    const x = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(x);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🥽 Fallback: use unSquash delta if derivative fails
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+
+    return Number.isFinite(error) ? error : 0;
+  }
 }
