@@ -139,7 +139,7 @@ export class Activations {
       [LogSigmoid.NAME, 2],
       [STEP.NAME, 2],
       [TAN.NAME, 2],
-      [COMPLEMENT.NAME, 0],
+      [COMPLEMENT.NAME, 1],
       [StdInverse.NAME, 1],
       [IDENTITY.NAME, 1],
       [IF.NAME, 0],
@@ -147,7 +147,7 @@ export class Activations {
       [HYPOTv2.NAME, 0],
       [MAXIMUM.NAME, 0],
       [MINIMUM.NAME, 0],
-      [BIPOLAR.NAME, 0],
+      [BIPOLAR.NAME, 1],
       [BIPOLAR_SIGMOID.NAME, 1],
     ];
     const result: string[] = [];
