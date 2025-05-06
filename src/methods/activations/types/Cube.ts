@@ -52,4 +52,42 @@ export class Cube implements ActivationInterface, UnSquashInterface {
 
     return 3 * x * x;
   }
+
+  /**
+   * Calculates error for Cube activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = x³
+   *   f′(x) = 3x²
+   *   f⁻¹(y) = ∛y
+   *
+   * Strategy:
+   *   ✅ Use derivative if slope is non-zero and finite.
+   *   🥽 Fallback to foggy unSquash-based error if slope ≈ 0.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    const x = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(x);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // Fallback to foggy-glasses if slope ≈ 0
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+
+    return Number.isFinite(error) ? error : 0;
+  }
 }
