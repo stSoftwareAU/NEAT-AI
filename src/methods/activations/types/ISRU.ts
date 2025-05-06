@@ -70,4 +70,44 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
 
     return Math.pow(denom, -1.5);
   }
+  /**
+   * Calculates error for ISRU activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = x / √(1 + αx²)
+   *   f′(x) = (1 + αx²)^(-3/2)
+   *   f⁻¹(y) = y / √(1 - αy²)
+   *
+   * Strategy:
+   *   ✅ Use derivative if slope is safe and finite.
+   *   🥽 Fallback to foggy unSquash-based error if slope ≈ 0 or invalid.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    /** Close enough */
+    if (Math.abs(rawError) < 1e-10) {
+      return 0;
+    }
+
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(rawCurrent);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-3 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🕶️ Fallback
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+    return Number.isFinite(error) ? error : 0;
+  }
 }
