@@ -137,7 +137,7 @@ export class Activations {
       [GAUSSIAN.NAME, 2],
       [ISRU.NAME, 2],
       [LogSigmoid.NAME, 2],
-      [STEP.NAME, 0],
+      [STEP.NAME, 2],
       [TAN.NAME, 2],
       [COMPLEMENT.NAME, 0],
       [StdInverse.NAME, 1],
