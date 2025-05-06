@@ -58,4 +58,44 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
 
     return result;
   }
+
+  /**
+   * Calculates error for GAUSSIAN activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = exp(-x²)
+   *   f′(x) = -2x * exp(-x²)
+   *   f⁻¹(y) = ±√(-ln(y))  ← ambiguous without sign
+   *
+   * Strategy:
+   *   ✅ Use derivative if slope is finite and non-zero.
+   *   🥽 Fallback to foggy unSquash if slope is too flat.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+
+    /** Close enough */
+    if (Math.abs(rawError) < 1e-10) {
+      return 0;
+    }
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(rawCurrent);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-6 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🕶️ Fallback: foggy glasses approach
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+    return Number.isFinite(error) ? error : 0;
+  }
 }
