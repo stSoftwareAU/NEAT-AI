@@ -87,12 +87,20 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculate the error based on the current and target activations.
+   * Calculates error for Swish activation using derivative or fallback.
    *
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for unSquash.
-   * @returns The calculated error.
+   * Summary:
+   *   f(x) = x * sigmoid(x) = x / (1 + e^(-x))
+   *   f′(x) = sigmoid(x) + x * sigmoid(x) * (1 - sigmoid(x))
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is finite and non-zero (typical case).
+   *   🥽 Falls back to unSquash if derivative becomes unstable or flat (rare).
+   *
+   * Notes:
+   *   - Derivative is smooth, non-zero, and preferred.
+   *   - No closed-form inverse: unSquash uses Newton-Raphson.
+   *   - Derivative is typically faster and accurate — used unless fallback is triggered.
    */
   calculateError(
     currentActivation: number,

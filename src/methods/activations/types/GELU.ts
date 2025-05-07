@@ -94,7 +94,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     // Minimal safeguard (no clamping) to ensure finite numeric output
     return Number.isFinite(result) ? result : 0;
   }
-  
+
   /**
    * Calculates error for GELU (Gaussian Error Linear Unit) using derivative or fallback.
    *
