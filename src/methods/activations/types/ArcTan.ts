@@ -85,12 +85,21 @@ export class ArcTan
   }
 
   /**
-   * Calculate the error based on the current and target activations.
+   * Calculates error for ArcTan activation using derivative or foggy fallback.
    *
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for unSquash.
-   * @returns The calculated error.
+   * Summary:
+   *   f(x) = arctangent(x)
+   *   f′(x) = 1 / (1 + x²)
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is finite and non-trivial.
+   *   🥽 Falls back to foggy (unSquash) when slope is too flat or divergent.
+   *
+   * Notes:
+   *   - Smooth, bounded, and always invertible.
+   *   - Derivative shrinks with large |x|, causing flat gradient risk.
+   *   - Fallback unSquash is fast and accurate, so both approaches are valid.
+   *   - Reasonable default for smooth but saturating activation.
    */
   calculateError(
     currentActivation: number,
