@@ -50,7 +50,7 @@ This README captures:
 
 ## 📊 Squash Function Summary
 
-| Activation      | Invertible | Derivative-Based Error              | Foggy Glasses Error           | Priority | Recommendation | Why?                                                                                             | Relative Performance | ✅ Done |
+| Activation      | Invertible | Derivative-Based Error              | Foggy Glasses Error           | Priority | Recommendation | Why?                                                                                             | Relative Performance | ✅ |
 | :-------------- | :--------- | :---------------------------------- | :---------------------------- | :------: | :------------- | :----------------------------------------------------------------------------------------------- | :------------------- | :-----: |
 | LeakyReLU       | ✅         | ✅ Fast & stable (slope never 0)    | ✅ Inversion is trivial       |    10    | 🚀 Derivative  | Both methods are valid, but derivative is faster and widely accepted in practice.                | 🟩                   |   ✖️    |
 | GELU            | ✅         | ✅ Smooth, non-zero slope           | ⚠️ Expensive                  |    9     | 🚀 Derivative  | 🐌 UnSquash Slower than most (due to tanh, pow, Newton-Raphson),Derivative (accurate and common) | 🟩                   |   ✖️    |
@@ -77,7 +77,7 @@ This README captures:
 | LogSigmoid      | ✅         | ✅ Stable                           | ⚠️ Inversion hard             |    2     | 🚀 Derivative  | (fast + accurate)                                                                                | 🟩                   |   ✖️    |
 | STEP            | ❌         | ❌ Derivative is 0                  | ⚠️ Foggy guesstimate          |   ⬇ 0    | 🟰 Either      | ❌ Derivative is zero everywhere (no learning), foggy also unreliable                            | 🟩                   |   ✖️    |
 | TAN             | ✅         | ⚠️ Wild slopes                      | ✅ Works in range             |    2     | 🔍 Foggy       | (fast + accurate)                                                                                | 🟩                   |   ✖️    |
-| Complement      | ❌         | ✅ Simple inverse                   | ✅ Works                      |   ⬇ 0    | 🟰 Either      | ❌ Not an activation function in any known framework                                             | ❓                   |   ✅    |
+| Complement      | ❌         | ✅ Simple inverse                   | ✅ Works                      |   ⬇ 0    | 🟰 Either      | ❌ Not an activation function in any known framework                                             | ❓                   |   ✖️    |
 | StdInverse      | ✅         | ✅ Fine                             | ✅ Cheap                      |    1     | 🟰 Either      | (balanced), low priority Custom logic                                                            | ❓                   |   ✖️    |
 | IDENTITY        | ✅         | ✅ Derivative = 1                   | ✅ Exact                      |    1     | 🟰 Either      | (balanced)                                                                                       | 🟩                   |   ✖️    |
 | IF              | ❌         | ❌ Not differentiable               | ✅ Works if stable            |   ⬇ 0    | 🔍 Foggy       | ❌ Hard conditional logic — breaks continuity and gradient assumptions                           | ❓                   |   ✖️    |
