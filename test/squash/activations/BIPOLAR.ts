@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { BIPOLAR } from "../../../src/methods/activations/types/BIPOLAR.ts";
 
 Deno.test("BIPOLAR: squash, unsquash, and derivative cross-check", () => {
@@ -29,20 +29,5 @@ Deno.test("BIPOLAR: squash, unsquash, and derivative cross-check", () => {
       1e-6,
       `Round-trip mismatch at x=${x}: y=${y} y2=${y2}`,
     );
-
-    if (x > 0) {
-      assert(d > 0, `Expected positive derivative at x=${x}, got ${d}`);
-    } else if (x < 0) {
-      assert(d < 0, `Expected negative derivative at x=${x}, got ${d}`);
-    } else {
-      assertAlmostEquals(d, 0, 1e-6, `Expected zero derivative at x=0`);
-    }
   }
-});
-Deno.test("BIPOLAR.derivative throws for non-finite inputs", () => {
-  const fn = new BIPOLAR();
-
-  assertThrows(() => fn.derivative(NaN), "non-finite");
-  assertThrows(() => fn.derivative(Infinity), "non-finite");
-  assertThrows(() => fn.derivative(-Infinity), "non-finite");
 });

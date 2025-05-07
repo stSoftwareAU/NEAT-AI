@@ -29,7 +29,9 @@ export class BIPOLAR
     this.range.validate(activation, hint);
 
     if (typeof hint === "number" && Number.isFinite(hint)) {
-      return hint;
+      if (Math.sign(hint) === Math.sign(activation)) {
+        return hint;
+      }
     }
 
     // Use safe fallback: any positive number maps to 1, negative to -1
@@ -58,6 +60,7 @@ export class BIPOLAR
   derivative(_x: number): number {
     return 0; // not differentiable anywhere
   }
+
   /**
    * Calculates error for BIPOLAR activation using foggy fallback.
    *
