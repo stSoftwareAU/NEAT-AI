@@ -84,6 +84,22 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     return derivative;
   }
 
+  /**
+   * Calculates error for Mish activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = x * tanh(softplus(x)) = x * tanh(ln(1 + e^x))
+   *   f′(x) = complex expression, always smooth and non-zero
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is valid (preferred for speed).
+   *   🥽 Fallback used if derivative becomes unstable — rare.
+   *
+   * Notes:
+   *   - Inversion is extremely expensive (no closed-form, Newton-Raphson struggles).
+   *   - Derivative is accurate and usually preferred unless explicitly unstable.
+   *   - Designed for deep learning — good general-purpose choice.
+   */
   calculateError(
     currentActivation: number,
     targetActivation: number,
