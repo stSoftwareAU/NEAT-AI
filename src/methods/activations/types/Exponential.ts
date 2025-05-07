@@ -54,7 +54,6 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-
     const raw = Math.exp(x);
 
     // Avoid wasting effort on sub-tiny updates
@@ -80,7 +79,6 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
     targetActivation: number,
     hint?: number,
   ): number {
-
     const rawCurrent = this.unSquash(currentActivation, hint);
 
     const rawTarget = this.unSquash(targetActivation, hint);
