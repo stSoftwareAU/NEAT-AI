@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { Exponential } from "../../../src/methods/activations/types/Exponential.ts";
 
 Deno.test("Exponential: squash and derivative finite and correct", () => {
@@ -45,12 +45,4 @@ Deno.test("Exponential: squash and derivative finite and correct", () => {
       );
     }
   }
-});
-
-Deno.test("Exponential.derivative throws for non-finite inputs", () => {
-  const fn = new Exponential();
-
-  assertThrows(() => fn.derivative(NaN), "Non-finite");
-  assertThrows(() => fn.derivative(Infinity), "Non-finite");
-  assertThrows(() => fn.derivative(-Infinity), "Non-finite");
 });

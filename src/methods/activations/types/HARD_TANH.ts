@@ -61,12 +61,21 @@ export class HARD_TANH
   }
 
   /**
-   * Calculate the error between the current and target activations.
-   * Uses the unSquash function to compute the raw error.
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for unSquashing.
-   * @returns The calculated error.
+   * Calculates error for HARD_TANH activation using foggy fallback only.
+   *
+   * Summary:
+   *   f(x) = -1 if x < -1
+   *        =  x if -1 ≤ x ≤ 1
+   *        =  1 if x > 1
+   *   f′(x) = 0 outside (-1, 1), 1 inside
+   *
+   * Strategy:
+   *   🥽 Always uses foggy (unSquash) fallback.
+   *
+   * Notes:
+   *   - Not differentiable at ±1 and completely flat outside [-1, 1].
+   *   - Derivative is unreliable near edges → fallback is more robust.
+   *   - Very fast squash, very cheap unSquash — fallback is preferred.
    */
   calculateError(
     currentActivation: number,

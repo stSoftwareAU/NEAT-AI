@@ -54,15 +54,20 @@ export class ReLU
   }
 
   /**
-   * Calculate the error based on the current and target activations.
-   * In the active zone, we treat it like identity: error = target - current.
-   * In the inactive (flat) zone, we fallback to "foggy glasses" i.e., calculate
-   * raw error using inverse.
+   * Calculates error for ReLU (Rectified Linear Unit) using foggy (unSquash) fallback.
    *
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for unSquash.
-   * @returns The calculated error.
+   * Summary:
+   *   f(x) = max(0, x)
+   *   f′(x) = 1 if x > 0, 0 otherwise
+   *
+   * Strategy:
+   *   🥽 Always uses foggy (unSquash) fallback.
+   *
+   * Notes:
+   *   - Derivative is 0 for all x ≤ 0, which blocks backpropagation (the "dying ReLU" problem).
+   *   - Not invertible for x = 0 (flat region).
+   *   - UnSquash is fast and accurate in practice — preferred for ReLU.
+   *   - Should be deprioritised in favour of LeakyReLU for smoother learning.
    */
   calculateError(
     currentActivation: number,

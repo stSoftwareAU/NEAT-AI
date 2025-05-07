@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { ISRU } from "../../../src/methods/activations/types/ISRU.ts";
 
 Deno.test("ISRU: squash, unsquash, and derivative cross-check", () => {
@@ -53,12 +53,4 @@ Deno.test("ISRU: squash, unsquash, and derivative cross-check", () => {
       );
     }
   }
-});
-
-Deno.test("ISRU.derivative throws for non-finite input", () => {
-  const fn = new ISRU();
-
-  assertThrows(() => fn.derivative(NaN), "non-finite");
-  assertThrows(() => fn.derivative(Infinity), "non-finite");
-  assertThrows(() => fn.derivative(-Infinity), "non-finite");
 });

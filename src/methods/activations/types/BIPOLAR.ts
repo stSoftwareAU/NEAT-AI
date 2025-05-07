@@ -29,7 +29,12 @@ export class BIPOLAR
     this.range.validate(activation, hint);
 
     if (typeof hint === "number" && Number.isFinite(hint)) {
-      return hint;
+      if (Math.sign(hint) === Math.sign(activation)) {
+        return hint;
+      }
+      if (Math.abs(hint) < 1e-10 && activation < 0) {
+        return hint;
+      }
     }
 
     // Use safe fallback: any positive number maps to 1, negative to -1
@@ -50,18 +55,43 @@ export class BIPOLAR
   }
 
   /**
-   * Returns a small slope in the correct direction for use in gradient-based methods.
-   * Not mathematically correct, but serves training stability.
+   * Derivative of BIPOLAR step function.
+   *
+   * f(x) = -1 if x < 0, +1 if x ≥ 0
+   * f′(x) = 0 everywhere (non-differentiable step)
    */
-  derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
+  derivative(_x: number): number {
+    return 0; // not differentiable anywhere
+  }
+
+  /**
+   * Calculates error for BIPOLAR activation using foggy fallback.
+   *
+   * Summary:
+   *   f(x) = -1 if x < 0, +1 otherwise
+   *   f′(x) = 0 (undefined everywhere)
+   *
+   * Strategy:
+   *   ❌ Derivative-based error not usable.
+   *   🥽 Always fallback to foggy unSquash-based error.
+   *
+   * Notes:
+   *   - Discrete jump: very limited in gradient-based learning.
+   *   - Typically used in simple logic or binary classification.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    if (Math.abs(targetActivation - currentActivation) < 1e-10) {
+      return 0;
     }
 
-    if (x > 0) return 1e-2;
-    if (x < 0) return -1e-2;
-    return 0;
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+
+    const error = rawTarget - rawCurrent;
+    return Number.isFinite(error) ? error : 0;
   }
 }

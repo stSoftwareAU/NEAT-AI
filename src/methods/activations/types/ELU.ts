@@ -58,21 +58,27 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
-    }
-
     // ELU derivative: 1 if x ≥ 0, else (f(x) + α)
     return x >= 0 ? 1 : this.squash(x) + ELU.ALPHA;
   }
 
   /**
-   * Calculate the error for the ELU activation function.
+   * Calculates error for ELU (Exponential Linear Unit) using derivative or fallback.
    *
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for unSquash.
-   * @returns The calculated error.
+   * Summary:
+   *   f(x) = x              if x ≥ 0
+   *        = α * (e^x - 1) if x < 0
+   *   f′(x) = 1             if x ≥ 0
+   *        = f(x) + α      if x < 0
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is finite and non-zero (typical).
+   *   🥽 Falls back to unSquash if derivative is flat or diverges.
+   *
+   * Notes:
+   *   - Invertible, but inversion for negative x is non-trivial.
+   *   - Derivative is stable and cheap, so preferred unless suspicious.
+   *   - Avoids dead zones (unlike ReLU) while retaining efficiency.
    */
   calculateError(
     currentActivation: number,
@@ -81,8 +87,8 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   ): number {
     const rawError = targetActivation - currentActivation;
 
-    const x = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(x);
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(rawCurrent);
 
     const safeSlope = Number.isFinite(slope)
       ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
@@ -93,7 +99,6 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     }
 
     // 🥽 Fallback to unSquash-based error
-    const rawCurrent = this.unSquash(currentActivation, hint);
     const rawTarget = this.unSquash(targetActivation, hint);
     const error = rawTarget - rawCurrent;
 

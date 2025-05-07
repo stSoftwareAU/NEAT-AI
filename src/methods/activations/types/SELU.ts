@@ -77,12 +77,22 @@ export class SELU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculate the error for the SELU activation function.
+   * Calculates error for SELU (Scaled Exponential Linear Unit) using derivative or fallback.
    *
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for unSquash.
-   * @returns The calculated error.
+   * Summary:
+   *   f(x) = λ * x                       if x ≥ 0
+   *        = λ * α * (e^x - 1)          if x < 0
+   *   f′(x) = λ                         if x ≥ 0
+   *        = λ * (f(x)/x + α)           if x < 0
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is finite and reliable.
+   *   🥽 Falls back to unSquash if derivative fails or activation is flat.
+   *
+   * Notes:
+   *   - Combines linearity and exponential growth for self-normalizing networks.
+   *   - Inversion for x < 0 is expensive but always possible.
+   *   - Derivative is efficient and accurate in nearly all practical cases.
    */
   calculateError(
     currentActivation: number,

@@ -53,12 +53,20 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculate the error based on the current and target activations.
+   * Calculates error for LOGISTIC (sigmoid) activation using derivative or fallback.
    *
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for un-squashing.
-   * @returns The calculated error.
+   * Summary:
+   *   f(x) = 1 / (1 + e^(-x))
+   *   f′(x) = f(x) * (1 - f(x))
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is valid (not near 0 or 1).
+   *   🥽 Falls back to unSquash in flat regions (slope near 0).
+   *
+   * Notes:
+   *   - Invertible with closed-form inverse, but inversion is expensive.
+   *   - Derivative is fast and accurate in the central region (0.1–0.9).
+   *   - Fallback handles saturated zones where derivative underflows.
    */
   calculateError(
     currentActivation: number,

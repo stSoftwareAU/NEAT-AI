@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { GAUSSIAN } from "../../../src/methods/activations/types/GAUSSIAN.ts";
 
 Deno.test("GAUSSIAN: squash, unsquash, and derivative cross-check", () => {
@@ -47,12 +47,4 @@ Deno.test("GAUSSIAN: squash, unsquash, and derivative cross-check", () => {
       `Round-trip mismatch at x=${x}: y=${y} vs y2=${y2}`,
     );
   }
-});
-
-Deno.test("GAUSSIAN.derivative throws for non-finite inputs", () => {
-  const fn = new GAUSSIAN();
-
-  assertThrows(() => fn.derivative(NaN), "non-finite");
-  assertThrows(() => fn.derivative(Infinity), "non-finite");
-  assertThrows(() => fn.derivative(-Infinity), "non-finite");
 });

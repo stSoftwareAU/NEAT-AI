@@ -34,6 +34,7 @@ export class IDENTITY
   squash(x: number) {
     return this.range.limit(x);
   }
+
   /**
    * The derivative of the Identity function.
    *
@@ -48,12 +49,31 @@ export class IDENTITY
    * @param x - The input value.
    * @returns 1 always.
    */
-  derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
-    }
+  derivative(_x: number): number {
     return 1;
+  }
+
+  /**
+   * Calculates error for IDENTITY activation using derivative.
+   *
+   * Summary:
+   *   f(x) = x
+   *   f′(x) = 1
+   *   f⁻¹(y) = y
+   *
+   * Strategy:
+   *   ✅ Derivative is always 1, error = (target - current).
+   *   🧠 Fallback never needed — exact and trivial.
+   *
+   * Notes:
+   *   - Fastest and most accurate case.
+   *   - Used in output layers for regression problems.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    _hint?: number,
+  ): number {
+    return targetActivation - currentActivation;
   }
 }

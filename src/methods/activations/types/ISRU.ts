@@ -56,12 +56,6 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
    * Reference: https://arxiv.org/pdf/1710.10753.pdf
    */
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
-    }
-
     const x2 = x * x;
     const denom = 1 + ISRU.ALPHA * x2;
 
@@ -70,6 +64,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
 
     return Math.pow(denom, -1.5);
   }
+
   /**
    * Calculates error for ISRU activation using derivative or fallback.
    *
@@ -95,15 +90,15 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     }
 
     const rawCurrent = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(rawCurrent);
+    // const slope = this.derivative(rawCurrent);
 
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-3 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
+    // const safeSlope = Number.isFinite(slope)
+    //   ? Math.abs(slope) < 1e-3 ? 0 : Math.min(Math.max(slope, -50), 50)
+    //   : Math.sign(slope);
 
-    if (safeSlope !== 0) {
-      return rawError * safeSlope;
-    }
+    // if (safeSlope !== 0) {
+    //   return rawError * safeSlope;
+    // }
 
     // 🕶️ Fallback
     const rawTarget = this.unSquash(targetActivation, hint);

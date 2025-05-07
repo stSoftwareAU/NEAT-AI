@@ -54,12 +54,6 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
-    }
-
     const raw = Math.exp(x);
 
     // Avoid wasting effort on sub-tiny updates
@@ -85,21 +79,8 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
     targetActivation: number,
     hint?: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
-
-    const x = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(x);
-
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
-
-    if (safeSlope !== 0) {
-      return rawError * safeSlope;
-    }
-
-    // Fallback
     const rawCurrent = this.unSquash(currentActivation, hint);
+
     const rawTarget = this.unSquash(targetActivation, hint);
     const error = rawTarget - rawCurrent;
 

@@ -77,12 +77,21 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculate the error based on the current and target activations.
-   * Uses the unSquash function to compute the raw error.
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for unSquash.
-   * @returns The calculated error.
+   * Calculates error for BENT_IDENTITY activation using derivative or foggy fallback.
+   *
+   * Summary:
+   *   f(x) = (√(x² + 1) - 1)/2 + x
+   *   f′(x) = x / (2√(x² + 1)) + 1
+   *
+   * Strategy:
+   *   ✅ Uses derivative if slope is finite and significant.
+   *   🥽 Falls back to foggy (unSquash) if slope is flat or diverges.
+   *
+   * Notes:
+   *   - Fully invertible and numerically stable.
+   *   - Derivative is smooth and rarely zero — often preferred.
+   *   - Inversion is cheap, so fallback is also viable.
+   *   - Safe to use either method based on performance preference.
    */
   calculateError(
     currentActivation: number,

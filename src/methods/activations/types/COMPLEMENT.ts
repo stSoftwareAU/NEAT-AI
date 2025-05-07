@@ -66,4 +66,30 @@ export class COMPLEMENT
     }
     return -1;
   }
+
+  /**
+   * Calculates error for COMPLEMENT activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = 1 - x
+   *   f′(x) = -1
+   *   f⁻¹(y) = 1 - y
+   *
+   * Strategy:
+   *   ✅ Derivative is constant (-1), so always used.
+   *   🥽 Fallback is technically possible but not needed.
+   *
+   * Notes:
+   *   - Simple, linear, and invertible.
+   *   - Error calculation is reliable, fast, and exact via derivative.
+   *   - Rarely useful on its own, more useful when composed with other activations.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    _hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+    return rawError * -1; // constant slope = -1
+  }
 }
