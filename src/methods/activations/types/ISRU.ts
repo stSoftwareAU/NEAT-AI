@@ -90,15 +90,15 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     }
 
     const rawCurrent = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(rawCurrent);
+    // const slope = this.derivative(rawCurrent);
 
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-3 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
+    // const safeSlope = Number.isFinite(slope)
+    //   ? Math.abs(slope) < 1e-3 ? 0 : Math.min(Math.max(slope, -50), 50)
+    //   : Math.sign(slope);
 
-    if (safeSlope !== 0) {
-      return rawError * safeSlope;
-    }
+    // if (safeSlope !== 0) {
+    //   return rawError * safeSlope;
+    // }
 
     // 🕶️ Fallback
     const rawTarget = this.unSquash(targetActivation, hint);
