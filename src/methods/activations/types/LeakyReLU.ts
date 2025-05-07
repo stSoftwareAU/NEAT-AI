@@ -38,6 +38,23 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
     return LeakyReLU.rangeStatic.limit(value);
   }
 
+  /**
+   * Calculates error for LeakyReLU activation using derivative.
+   *
+   * Summary:
+   *   f(x) = x       if x ≥ 0
+   *        = α * x  if x < 0
+   *   f′(x) = 1      if x ≥ 0
+   *        = α      if x < 0
+   *
+   * Strategy:
+   *   ✅ Always uses derivative: slope is never zero.
+   *   ✅ Invertible with closed-form unSquash: used as fallback if derivative fails.
+   *   ✅ Fast and accurate in all regions.
+   *
+   * This is a high-performance, stable function with no dead zones.
+   */
+
   calculateError(
     currentActivation: number,
     targetActivation: number,

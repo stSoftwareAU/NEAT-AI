@@ -94,7 +94,23 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     // Minimal safeguard (no clamping) to ensure finite numeric output
     return Number.isFinite(result) ? result : 0;
   }
-
+  
+  /**
+   * Calculates error for GELU (Gaussian Error Linear Unit) using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) ≈ 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
+   *   f′(x) = smooth, always finite and non-zero across domain
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is valid — fast and accurate.
+   *   🥽 Falls back to foggy unSquash only if derivative is too flat or invalid.
+   *
+   * Notes:
+   *   - Derivative is expensive but numerically stable.
+   *   - Inversion uses Newton-Raphson and is safe but costly.
+   *   - Preferred to use derivative unless extreme precision is required.
+   */
   calculateError(
     currentActivation: number,
     targetActivation: number,
