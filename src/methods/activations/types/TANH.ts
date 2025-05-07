@@ -82,12 +82,20 @@ export class TANH
   }
 
   /**
-   * Calculate the error based on the current and target activations.
+   * Calculates error for TANH activation using derivative or fallback.
    *
-   * @param currentActivation The current activation value.
-   * @param targetActivation The target activation value.
-   * @param hint Optional hint for unSquash.
-   * @returns The calculated error.
+   * Summary:
+   *   f(x) = tanh(x)
+   *   f′(x) = 1 - tanh²(x)
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is finite and non-zero.
+   *   🥽 Falls back to unSquash if derivative is too flat (e.g. near ±1).
+   *
+   * Notes:
+   *   - Tanh is smooth and invertible.
+   *   - Near edges (±1), slope approaches zero — fallback is more reliable.
+   *   - Derivative is fast and usually accurate unless saturated.
    */
   calculateError(
     currentActivation: number,
