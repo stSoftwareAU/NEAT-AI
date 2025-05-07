@@ -17,7 +17,6 @@ import {
 import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
 import {
   type BackPropagationConfig,
-  calculateDerivativeError,
   toValue,
 } from "../propagate/BackPropagation.ts";
 import {
@@ -470,31 +469,18 @@ export class Neuron implements TagsInterface, NeuronInternal {
         sparseConfig,
       );
     } else {
-      let error: number;
-
       let targetValue: number | undefined;
 
-      if (squashMethod.calculateError) {
-        error = squashMethod.calculateError(
-          activation,
-          targetActivation,
-          ns.hintValue,
-        );
-      } else if (squashMethod.derivative) {
-        /* Current (clear glasses) */
-        error = calculateDerivativeError(
-          squashMethod,
-          activation,
-          targetActivation,
-          ns.hintValue,
-        );
-      } else {
-        const currentValue = toValue(this, activation, ns.hintValue);
+      // assert(
+      //   squashMethod.calculateError !== undefined,
+      //   `SquashMethod ${squashMethod.getName()} does not have calculateError`,
+      // );
 
-        targetValue = toValue(this, targetActivation, ns.hintValue);
-        /* Current (foggy glasses) fallback */
-        error = targetValue - currentValue;
-      }
+      const error = squashMethod.calculateError!(
+        activation,
+        targetActivation,
+        ns.hintValue,
+      );
 
       const currentBias = adjustedBias(this, config);
       let improvedValue = currentBias;
