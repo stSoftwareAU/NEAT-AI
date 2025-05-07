@@ -70,4 +70,31 @@ export class STEP
     const epsilon = 0.01;
     return Math.abs(x) < epsilon ? 0.01 : 0;
   }
+
+  /**
+   * Calculates error for STEP activation using foggy (unSquash) fallback only.
+   *
+   * Summary:
+   *   f(x) = 1 if x > 0
+   *        = 0 if x ≤ 0
+   *   f′(x) = 0 almost everywhere (undefined at x = 0)
+   *
+   * Strategy:
+   *   🥽 Always uses foggy (unSquash) fallback.
+   *
+   * Notes:
+   *   - Not differentiable; flat gradient makes learning impossible via derivatives.
+   *   - Only reliable path is to estimate raw input difference via unSquash.
+   *   - Typically avoided in gradient-based learning.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+    return Number.isFinite(error) ? error : 0;
+  }
 }
