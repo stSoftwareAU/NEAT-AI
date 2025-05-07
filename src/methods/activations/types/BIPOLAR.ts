@@ -32,6 +32,9 @@ export class BIPOLAR
       if (Math.sign(hint) === Math.sign(activation)) {
         return hint;
       }
+      if (Math.abs(hint) < 1e-10 && activation < 0) {
+        return hint;
+      }
     }
 
     // Use safe fallback: any positive number maps to 1, negative to -1
