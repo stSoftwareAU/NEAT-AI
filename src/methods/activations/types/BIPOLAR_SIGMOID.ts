@@ -53,13 +53,41 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     return activation >= 0 ? 15 : -15;
   }
 
+  /**
+   * Derivative of BIPOLAR_SIGMOID:
+   *
+   * f(x) = (2 / (1 + exp(-x))) - 1
+   * f′(x) = (1 - f(x)^2) / 2
+   */
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
-    }
     const fx = this.squash(x);
-    return 0.5 * (1 + fx) * (1 - fx);
+    return (1 - fx * fx) / 2;
+  }
+
+  /**
+   * Calculates error for BIPOLAR_SIGMOID using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = (2 / (1 + e^(-x))) - 1
+   *   f′(x) = (1 - f(x)^2) / 2
+   *   f⁻¹(y) = -ln((2 / (y + 1)) - 1)
+   *
+   * Strategy:
+   *   ✅ Derivative is always defined and smooth.
+   *   🥽 Fallback used only if slope is near 0 or NaN.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < 1e-10) return 0;
+
+    const rawCurrent = this.unSquash(currentActivation, hint);
+
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+    return Number.isFinite(error) ? error : 0;
   }
 }

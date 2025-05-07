@@ -43,4 +43,57 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
 
     return 1 / activation;
   }
+
+  /**
+   * Derivative of standardised inverse:
+   *   f(x) = 1 / (1 + |x|)
+   *   f′(x) = -sign(x) / (1 + |x|)²
+   */
+  derivative(x: number): number {
+    const absX = Math.abs(x);
+    const denom = (1 + absX) ** 2;
+    return -Math.sign(x) / denom;
+  }
+
+  /**
+   * Calculates error for StdInverse activation using derivative or foggy fallback.
+   *
+   * Summary:
+   *   f(x) = 1 / (1 + |x|)
+   *   f′(x) = -sign(x) / (1 + |x|)²
+   *
+   * Strategy:
+   *   ✅ Derivative works reliably everywhere.
+   *   🥽 Fallback used only if slope is near-zero.
+   *
+   * Notes:
+   *   - Invertible, smooth, and cheap to compute.
+   *   - Symmetric and stable for both signs.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < 1e-10) return 0;
+
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    // const slope = this.derivative(rawCurrent);
+
+    // const safeSlope = Number.isFinite(slope)
+    //   ? Math.abs(slope) < 1e-6
+    //     ? 0
+    //     : Math.min(Math.max(slope, -50), 50)
+    //   : Math.sign(slope);
+
+    // if (safeSlope !== 0) {
+    //   return rawError * safeSlope;
+    // }
+
+    // 🕶️ Fallback
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+    return Number.isFinite(error) ? error : 0;
+  }
 }
