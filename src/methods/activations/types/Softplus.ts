@@ -66,6 +66,22 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
     return Number.isFinite(d) ? d : 0;
   }
 
+  /**
+   * Calculates error for Softplus activation using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = ln(1 + e^x)
+   *   f′(x) = 1 / (1 + e^(-x)) = sigmoid(x)
+   *
+   * Strategy:
+   *   ✅ Uses derivative when slope is valid and above threshold.
+   *   🥽 Falls back to unSquash when activation is too close to minimum (~1e-15).
+   *
+   * Notes:
+   *   - Smooth and numerically stable.
+   *   - Inverse is expensive (Newton-Raphson), but always possible.
+   *   - Derivative matches LOGISTIC, so reuse logic where possible.
+   */
   calculateError(
     currentActivation: number,
     targetActivation: number,
