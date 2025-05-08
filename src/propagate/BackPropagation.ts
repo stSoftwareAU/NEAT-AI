@@ -1,5 +1,4 @@
 import type { Neuron } from "../architecture/Neuron.ts";
-import type { AbstractActivationInterface } from "../methods/activations/AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 
@@ -145,44 +144,4 @@ export function limitValue(value: number) {
   if (value < -1e12) return -1e12;
 
   return value;
-}
-
-export function calculateDerivativeError(
-  squashMethod: AbstractActivationInterface,
-  currentActivation: number,
-  targetActivation: number,
-  hintValue?: number,
-): number {
-  // Correct derivative-based approach (clear glasses!)
-  const rawError = targetActivation - currentActivation;
-
-  // Calculate current raw input value once
-  let currentValue = currentActivation;
-  const unsquashMethod = squashMethod as UnSquashInterface;
-  if (unsquashMethod.unSquash !== undefined) {
-    currentValue = unsquashMethod.unSquash(currentActivation, hintValue);
-  }
-
-  let safeSlope = squashMethod.derivative!(currentValue);
-
-  if (!Number.isFinite(safeSlope)) {
-    console.warn(
-      `⚠️ Slope is not finite: ${safeSlope}, squash: ${squashMethod.getName()}, currentValue: ${currentValue}`,
-    );
-    safeSlope = Math.sign(safeSlope);
-  } else if (Math.abs(safeSlope) < 1e-8) {
-    // fallback to foggy glasses
-    let targetValue = targetActivation;
-    const unsquashMethod = squashMethod as UnSquashInterface;
-    if (unsquashMethod.unSquash !== undefined) {
-      targetValue = unsquashMethod.unSquash(targetActivation, hintValue);
-    }
-
-    return targetValue - currentValue;
-  } else if (Math.abs(safeSlope) > 50) {
-    safeSlope = Math.sign(safeSlope) * 50;
-  }
-
-  const error = rawError * safeSlope;
-  return error;
 }

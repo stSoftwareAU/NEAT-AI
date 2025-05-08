@@ -92,4 +92,45 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
     // Always clamp to safe float range
     return Math.max(Math.min(value, 1), 1e-6);
   }
+
+  /**
+   * Calculates error for LogSigmoid using derivative or fallback.
+   *
+   * Summary:
+   *   f(x) = -log(1 + e^(-x))
+   *   f′(x) = 1 / (1 + e^x)
+   *   f⁻¹(y) = -log(exp(-y) - 1)
+   *
+   * Strategy:
+   *   ✅ Use derivative when slope is stable and finite.
+   *   🥽 Fallback to unSquash when slope is too flat or unstable.
+   *
+   * Notes:
+   *   - Smooth, monotonic, invertible.
+   *   - Slope approaches 0 for large x, triggering fallback in tails.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < 1e-10) return 0;
+
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(rawCurrent);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-6 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🕶️ Fallback
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+    return Number.isFinite(error) ? error : 0;
+  }
 }
