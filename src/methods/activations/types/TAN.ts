@@ -94,4 +94,45 @@ export class TAN
     if (!Number.isFinite(d) || d > 1000) return 1000;
     return d;
   }
+
+  /**
+   * Calculates error for TAN activation using derivative or foggy fallback.
+   *
+   * Summary:
+   *   f(x) = tan(x)
+   *   f′(x) = 1 / cos²(x)
+   *   f⁻¹(y) = arctan(y)
+   *
+   * Strategy:
+   *   ✅ Use derivative when slope is finite and stable.
+   *   🥽 Falls back to unSquash if derivative explodes near ±π/2.
+   *
+   * Notes:
+   *   - tan(x) has vertical asymptotes at odd multiples of π/2.
+   *   - Fallback needed in steep zones to avoid instability.
+   */
+  calculateError(
+    currentActivation: number,
+    targetActivation: number,
+    hint?: number,
+  ): number {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < 1e-10) return 0;
+
+    const rawCurrent = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(rawCurrent);
+
+    const safeSlope = Number.isFinite(slope)
+      ? Math.abs(slope) < 1e-6 ? 0 : Math.min(Math.max(slope, -50), 50)
+      : Math.sign(slope);
+
+    if (safeSlope !== 0) {
+      return rawError * safeSlope;
+    }
+
+    // 🕶️ Fallback: foggy
+    const rawTarget = this.unSquash(targetActivation, hint);
+    const error = rawTarget - rawCurrent;
+    return Number.isFinite(error) ? error : 0;
+  }
 }
