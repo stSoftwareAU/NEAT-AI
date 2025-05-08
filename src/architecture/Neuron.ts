@@ -471,11 +471,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     } else {
       let targetValue: number | undefined;
 
-      assert(
-        squashMethod.calculateError !== undefined,
-        `SquashMethod ${squashMethod.getName()} does not have calculateError`,
-      );
-
       const error = squashMethod.calculateError!(
         activation,
         targetActivation,
