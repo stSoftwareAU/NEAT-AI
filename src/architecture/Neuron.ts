@@ -471,10 +471,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
     } else {
       let targetValue: number | undefined;
 
+      const currentValue = ns.hintValue;
+      assert(Number.isFinite(currentValue));
       const error = squashMethod.calculateError!(
         activation,
         targetActivation,
-        ns.hintValue,
+        currentValue,
       );
 
       const currentBias = adjustedBias(this, config);

@@ -141,14 +141,14 @@ export class Activations {
       [StdInverse.NAME, 1],
       [IDENTITY.NAME, 1],
       [BIPOLAR_SIGMOID.NAME, 1],
-      // [STEP.NAME, 2],
-      // [COMPLEMENT.NAME, 1],
-      // [IF.NAME, 1],
-      // [HYPOT.NAME, 1],
-      // [HYPOTv2.NAME, 1],
-      // [MAXIMUM.NAME, 1],
-      // [MINIMUM.NAME, 1],
-      // [BIPOLAR.NAME, 1],
+      [STEP.NAME, 2],
+      [COMPLEMENT.NAME, 1],
+      [IF.NAME, 1],
+      [HYPOT.NAME, 1],
+      [HYPOTv2.NAME, 1],
+      [MAXIMUM.NAME, 1],
+      [MINIMUM.NAME, 1],
+      [BIPOLAR.NAME, 1],
     ];
     const result: string[] = [];
     for (const [name, weight] of weighted) {

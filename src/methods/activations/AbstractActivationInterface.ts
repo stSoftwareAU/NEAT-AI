@@ -7,6 +7,6 @@ export interface AbstractActivationInterface {
   calculateError?(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number;
 }
