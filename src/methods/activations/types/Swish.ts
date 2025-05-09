@@ -105,12 +105,11 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
 
-    const x = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(x);
+    const slope = this.derivative(currentValue);
 
     const safeSlope = Number.isFinite(slope)
       ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
@@ -120,11 +119,9 @@ export class Swish implements ActivationInterface, UnSquashInterface {
       return rawError * safeSlope;
     }
 
-    // 🥽 Fallback: foggy glasses
-    const currentRaw = this.unSquash(currentActivation, hint);
-    const targetRaw = this.unSquash(targetActivation, hint);
-    const error = targetRaw - currentRaw;
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = Math.tanh(targetValue - currentValue);
 
-    return Number.isFinite(error) ? error : 0;
+    return error;
   }
 }

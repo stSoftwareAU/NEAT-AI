@@ -11,13 +11,6 @@ Deno.test("Swish.calculateError: basic delta", () => {
   assert(e2 > 0 && Number.isFinite(e2));
 });
 
-Deno.test("Swish.calculateError: fallback slope if no hint", () => {
-  const swish = new Swish();
-
-  const e = swish.calculateError(0.2, 1.0);
-  assert(Number.isFinite(e));
-});
-
 Deno.test("Swish.calculateError: negative region", () => {
   const swish = new Swish();
 
