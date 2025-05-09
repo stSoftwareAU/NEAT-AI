@@ -114,22 +114,26 @@ export class Activations {
 
   private static readonly WEIGHTED_POOL: string[] = (() => {
     const weighted: [string, number][] = [
-      [LeakyReLU.NAME, 10],
-      [GELU.NAME, 9],
-      [Swish.NAME, 8],
-      [TANH.NAME, 8],
-      [LOGISTIC.NAME, 7],
-      [Softplus.NAME, 7],
-      [Mish.NAME, 6],
-      [ELU.NAME, 6],
-      [SELU.NAME, 5],
-      [HARD_TANH.NAME, 5],
-      [ReLU.NAME, 5],
-      [BENT_IDENTITY.NAME, 4],
-      [SOFTSIGN.NAME, 4],
-      [ArcTan.NAME, 4],
-      [ReLU6.NAME, 4],
-      [SINE.NAME, 3],
+      [Mish.NAME, 10], // 🔼 Highest priority
+      [Swish.NAME, 9], // 🔼 Very strong performance
+      [GELU.NAME, 8], // 🔼 Popular in Transformers
+      [ELU.NAME, 7], // 🔼 Smooth and stable
+      [LeakyReLU.NAME, 6], // ✅ Safe fallback to avoid dead neurons
+      [ReLU.NAME, 5], // ⚠️ Still common, but has issues
+
+      // Stable legacy + secondary options
+      [TANH.NAME, 5],
+      [LOGISTIC.NAME, 4],
+      [Softplus.NAME, 4],
+      [SELU.NAME, 4],
+      [HARD_TANH.NAME, 3],
+      [BENT_IDENTITY.NAME, 3],
+      [SOFTSIGN.NAME, 3],
+      [ArcTan.NAME, 3],
+      [ReLU6.NAME, 3],
+
+      // Niche/specialized or legacy functions
+      [SINE.NAME, 2],
       [ABSOLUTE.NAME, 2],
       [Cosine.NAME, 2],
       [Cube.NAME, 2],
@@ -138,10 +142,12 @@ export class Activations {
       [ISRU.NAME, 2],
       [LogSigmoid.NAME, 2],
       [TAN.NAME, 2],
+      [STEP.NAME, 2],
+
+      // Experimental or rarely beneficial
       [StdInverse.NAME, 1],
       [IDENTITY.NAME, 1],
       [BIPOLAR_SIGMOID.NAME, 1],
-      [STEP.NAME, 2],
       [COMPLEMENT.NAME, 1],
       [IF.NAME, 1],
       [HYPOT.NAME, 1],
