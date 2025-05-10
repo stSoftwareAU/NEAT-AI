@@ -1,6 +1,6 @@
-import { assert } from "@std/assert/assert";
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -66,11 +66,13 @@ export class ABSOLUTE
    *   Derivative is discontinuous and not reliable near x = 0.
    */
   calculateError(
-    _currentActivation: number,
+    currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    assert(targetActivation >= 0, "Target activation must be non-negative.");
+    if (Math.abs(currentActivation - targetActivation) < ERROR_EPSILON) {
+      return 0;
+    }
     const targetValue = Math.sign(currentValue) * targetActivation;
     const error = targetValue - currentValue;
 

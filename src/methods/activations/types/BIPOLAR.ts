@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -82,9 +83,8 @@ export class BIPOLAR
     targetActivation: number,
     currentValue: number,
   ): number {
-    if (Math.abs(targetActivation - currentActivation) < 1e-10) {
-      return 0;
-    }
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const targetValue = this.unSquash(targetActivation, currentValue);
 

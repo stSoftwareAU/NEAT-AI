@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -62,11 +63,13 @@ export class Cube implements ActivationInterface, UnSquashInterface {
     targetActivation: number,
     currentValue: number,
   ): number {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
     const slope = this.derivative(currentValue);
 
     if (Math.abs(slope) > 1e-8) {
       const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return (targetActivation - currentActivation) * safeSlope;
+      return rawError * safeSlope;
     }
 
     // 🥽 Fallback to foggy glasses

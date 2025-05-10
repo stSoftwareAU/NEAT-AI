@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -75,18 +76,24 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
    *
    * Strategy:
    *   ✅ Use derivative if slope is safe and finite.
-   *   🥽 Fallback to foggy unSquash-based error if slope ≈ 0 or invalid.
+   *   🥽 Fallback to unSquash-based error only if slope ≈ 0 (very large x).
+   *
+   * Notes:
+   *   - Derivative is smooth and well-behaved for all finite x.
+   *   - Safe to use derivative in most cases for performance.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
     const slope = this.derivative(currentValue);
 
     if (Math.abs(slope) > 1e-8) {
       const safeSlope = Math.max(Math.min(slope, 50), -50);
-      const rawError = targetActivation - currentActivation;
+
       return rawError * safeSlope;
     }
 

@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -81,12 +82,14 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     targetActivation: number,
     currentValue: number,
   ): number {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
     // Derivative using current activation (squash output)
     const slope = 0.5 * (1 - currentActivation ** 2);
 
     if (Number.isFinite(slope) && Math.abs(slope) > 1e-8) {
       const safeSlope = Math.min(Math.max(slope, -50), 50);
-      const rawError = targetActivation - currentActivation;
+
       return rawError * safeSlope;
     }
 
