@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
@@ -46,12 +47,6 @@ export class ABSOLUTE
   }
 
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
-    }
-
     if (x > 0) return 1;
     if (x < 0) return -1;
 
@@ -71,14 +66,14 @@ export class ABSOLUTE
    *   Derivative is discontinuous and not reliable near x = 0.
    */
   calculateError(
-    currentActivation: number,
+    _currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
+    assert(targetActivation >= 0, "Target activation must be non-negative.");
+    const targetValue = Math.sign(currentValue) * targetActivation;
+    const error = targetValue - currentValue;
 
-    return Number.isFinite(error) ? error : 0;
+    return error;
   }
 }
