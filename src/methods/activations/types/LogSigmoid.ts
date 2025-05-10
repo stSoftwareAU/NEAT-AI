@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -112,25 +113,21 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
-    if (Math.abs(rawError) < 1e-10) return 0;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    const slope = this.derivative(currentValue);
 
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(rawCurrent);
-
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-6 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
-
-    if (safeSlope !== 0) {
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
       return rawError * safeSlope;
     }
 
-    // 🕶️ Fallback
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
-    return Number.isFinite(error) ? error : 0;
+    // 🥽 Fallback to foggy glasses
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
+
+    return Math.tanh(error);
   }
 }

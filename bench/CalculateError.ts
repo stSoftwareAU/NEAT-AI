@@ -57,12 +57,12 @@ Activations.NAMES.forEach((name) => {
  *  IDENTITY                 102.0 ns   102.0 ns
  *  ISRU                     152.0 ns   210.7 ns*
  *  LeakyReLU                132.6 ns   117.1 ns
- *  LOGISTIC                 479.2 ns
-    LogSigmoid               698.0 ns     1,433,000 (399.3 ns …   3.3 µs) 790.9 ns   3.3 µs   3.3 µs
-    Mish                     744.3 ns     1,343,000 (478.8 ns …   2.6 µs) 744.9 ns   2.6 µs   2.6 µs
-    ReLU                     194.5 ns     5,142,000 (117.0 ns …   2.5 µs) 128.1 ns   1.4 µs   1.6 µs
-    ReLU6                    222.1 ns     4,502,000 (141.2 ns …   2.3 µs) 145.3 ns   1.8 µs   1.9 µs
-    SELU                     344.9 ns     2,900,000 (235.5 ns …   2.5 µs) 239.6 ns   1.6 µs   2.5 µs
+ *  LOGISTIC                 479.2 ns   324.8 ns
+ *  LogSigmoid               698.0 ns   223.2 ns
+ *  Mish                     489.2 ns   486.3 ns
+ *  ReLU                     123.5 ns   127.6 ns
+ *  ReLU6                    148.9 ns   204.7 ns
+ *  SELU                     244.2 ns
     SINE                       4.4 µs       228,400 (  2.7 µs …  10.1 ms)   2.9 µs   8.3 µs  11.2 µs
     SOFTSIGN                 201.1 ns     4,972,000 (136.8 ns …   1.8 µs) 145.6 ns   1.7 µs   1.7 µs
     Softplus                 614.5 ns     1,627,000 (385.9 ns …   2.4 µs) 685.0 ns   2.4 µs   2.4 µs
