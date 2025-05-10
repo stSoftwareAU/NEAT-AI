@@ -77,13 +77,20 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawCurrent = this.unSquash(currentActivation, hint);
+    const slope = this.derivative(currentValue);
 
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
+      const rawError = targetActivation - currentActivation;
+      return rawError * safeSlope;
+    }
 
-    return Number.isFinite(error) ? error : 0;
+    // 🥽 Fallback to foggy glasses
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
+
+    return Math.tanh(error);
   }
 }

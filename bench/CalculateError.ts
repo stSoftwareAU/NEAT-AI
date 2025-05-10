@@ -50,8 +50,8 @@ Activations.NAMES.forEach((name) => {
  *  Cosine                     5.3 µs   768.8 ns
  *  Cube                     238.4 ns   176.2 ns
  *  ELU                      230.5 ns   173.4 ns
- *  Exponential              233.1 ns
-    GAUSSIAN                 624.9 ns     1,600,000 (393.1 ns …   5.4 µs) 451.3 ns   5.4 µs   5.4 µs
+ *  Exponential              233.1 ns   233.5 ns
+ *  GAUSSIAN                 400.5 ns
     GELU                       1.1 µs       888,900 (748.0 ns …   3.5 µs)   1.1 µs   3.5 µs   3.5 µs
     HARD_TANH                174.9 ns     5,718,000 (113.5 ns …   3.0 µs) 118.3 ns   1.4 µs   1.5 µs
     IDENTITY                 154.6 ns     6,468,000 ( 99.9 ns …   1.6 µs) 103.5 ns 933.2 ns   1.3 µs
