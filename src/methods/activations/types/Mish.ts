@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -85,31 +86,29 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for Mish activation using derivative or fallback.
+   * Calculates error for Mish activation using the derivative only.
    *
    * Summary:
    *   f(x) = x * tanh(softplus(x)) = x * tanh(ln(1 + e^x))
-   *   f′(x) = complex expression, always smooth and non-zero
+   *   f′(x) = smooth, positive, and well-behaved for all x
    *
    * Strategy:
-   *   ✅ Uses derivative when slope is valid (preferred for speed).
-   *   🥽 Fallback used if derivative becomes unstable — rare.
+   *   ✅ Always uses the derivative — reliable and efficient.
+   *   ❌ No fallback to unSquash (too expensive for Mish).
    *
    * Notes:
-   *   - Inversion is extremely expensive (no closed-form, Newton-Raphson struggles).
-   *   - Derivative is accurate and usually preferred unless explicitly unstable.
-   *   - Designed for deep learning — good general-purpose choice.
+   *   - Derivative is computed via an analytical approximation.
+   *   - Squash and derivative are jointly calculated for efficiency.
+   *   - No dead zones — Mish is non-monotonic but differentiable everywhere.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
-
-    // Use the hint (raw x) if given, fallback to 0
-    const x = hint ?? 0;
-    const slope = this.derivative(x);
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    const slope = this.derivative(currentValue);
 
     const safeSlope = Number.isFinite(slope)
       ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)

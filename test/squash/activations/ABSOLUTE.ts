@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { ABSOLUTE } from "../../../src/methods/activations/types/ABSOLUTE.ts";
 
 Deno.test("ABSOLUTE: derivative behavior", () => {
@@ -18,12 +18,4 @@ Deno.test("ABSOLUTE: derivative behavior", () => {
     const result = fn.derivative(x);
     assertEquals(result, expected, `Expected derivative(${x}) = ${expected}`);
   }
-});
-
-Deno.test("ABSOLUTE.derivative throws for non-finite inputs", () => {
-  const fn = new ABSOLUTE();
-
-  assertThrows(() => fn.derivative(NaN), "Non-finite");
-  assertThrows(() => fn.derivative(Infinity), "Non-finite");
-  assertThrows(() => fn.derivative(-Infinity), "Non-finite");
 });

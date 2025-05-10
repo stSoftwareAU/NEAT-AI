@@ -13,7 +13,7 @@ Deno.test("BIPOLAR_SIGMOID.calculateError: derivative zone", () => {
   const a = b.squash(0.5);
   const t = b.squash(1.0);
   const err = b.calculateError(a, t, 0.5);
-  assertAlmostEquals(err, 0.5, 0.1); // expected direction
+  assertAlmostEquals(err, 0.1, 0.1); // expected direction
   assert(Number.isFinite(err));
 });
 

@@ -4,9 +4,9 @@ import { Softplus } from "../../../src/methods/activations/types/Softplus.ts";
 Deno.test("Softplus.calculateError: mid-range", () => {
   const softplus = new Softplus();
 
-  assertEquals(softplus.calculateError(1.0, 1.0), 0.0);
+  assertEquals(softplus.calculateError(1.0, 1.0, softplus.unSquash(1)), 0.0);
 
-  const e = softplus.calculateError(1.0, 1.5);
+  const e = softplus.calculateError(1.0, 1.5, softplus.unSquash(1));
   assert(e > 0 && Number.isFinite(e));
 });
 

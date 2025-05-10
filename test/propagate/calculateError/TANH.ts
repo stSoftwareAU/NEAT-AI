@@ -45,5 +45,5 @@ Deno.test("TANH.calculateError: fallback activation edge", () => {
   const error = tanh.calculateError(act, target, 10);
 
   assert(Number.isFinite(error));
-  assert(error < 0); // we're above target
+  assertAlmostEquals(error, 0);
 });

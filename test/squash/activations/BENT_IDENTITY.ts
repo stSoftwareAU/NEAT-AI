@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { BENT_IDENTITY } from "../../../src/methods/activations/types/BENT_IDENTITY.ts";
 
 Deno.test("BENT_IDENTITY: squash, unsquash, and derivative cross-check", () => {
@@ -20,11 +20,4 @@ Deno.test("BENT_IDENTITY: squash, unsquash, and derivative cross-check", () => {
     // Round-trip squash check
     assertAlmostEquals(y, y2, 1e-6, `Round-trip mismatch at x=${x}`);
   }
-});
-
-Deno.test("BENT_IDENTITY.derivative throws on non-finite", () => {
-  const fn = new BENT_IDENTITY();
-  assertThrows(() => fn.derivative(NaN));
-  assertThrows(() => fn.derivative(Infinity));
-  assertThrows(() => fn.derivative(-Infinity));
 });

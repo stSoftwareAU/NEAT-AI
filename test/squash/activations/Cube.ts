@@ -1,4 +1,4 @@
-import { assertAlmostEquals, assertThrows } from "@std/assert";
+import { assertAlmostEquals } from "@std/assert";
 import { Cube } from "../../../src/methods/activations/types/Cube.ts";
 
 Deno.test("Cube: derivative behavior", () => {
@@ -29,12 +29,4 @@ Deno.test("Cube: derivative behavior", () => {
       `Mismatch at x=${x}: expected ${expected}, got ${actual}`,
     );
   }
-});
-
-Deno.test("Cube.derivative throws for non-finite inputs", () => {
-  const fn = new Cube();
-
-  assertThrows(() => fn.derivative(NaN), "Non-finite");
-  assertThrows(() => fn.derivative(Infinity), "Non-finite");
-  assertThrows(() => fn.derivative(-Infinity), "Non-finite");
 });

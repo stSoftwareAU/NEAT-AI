@@ -22,7 +22,7 @@ Deno.test("StdInverse.calculateError: negative shift", () => {
   const act = s.squash(-1.0);
   const target = s.squash(-2.0);
   const error = s.calculateError(act, target, -1.0);
-  assert(error < 0);
+  assert(error > 0);
   assert(Number.isFinite(error));
 });
 

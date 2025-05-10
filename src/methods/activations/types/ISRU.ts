@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -75,34 +76,30 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
    *
    * Strategy:
    *   ✅ Use derivative if slope is safe and finite.
-   *   🥽 Fallback to foggy unSquash-based error if slope ≈ 0 or invalid.
+   *   🥽 Fallback to unSquash-based error only if slope ≈ 0 (very large x).
+   *
+   * Notes:
+   *   - Derivative is smooth and well-behaved for all finite x.
+   *   - Safe to use derivative in most cases for performance.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    const slope = this.derivative(currentValue);
 
-    /** Close enough */
-    if (Math.abs(rawError) < 1e-10) {
-      return 0;
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.max(Math.min(slope, 50), -50);
+
+      return rawError * safeSlope;
     }
 
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    // const slope = this.derivative(rawCurrent);
-
-    // const safeSlope = Number.isFinite(slope)
-    //   ? Math.abs(slope) < 1e-3 ? 0 : Math.min(Math.max(slope, -50), 50)
-    //   : Math.sign(slope);
-
-    // if (safeSlope !== 0) {
-    //   return rawError * safeSlope;
-    // }
-
-    // 🕶️ Fallback
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
-    return Number.isFinite(error) ? error : 0;
+    // 🥽 Fallback to unSquash only if slope is ~0 (extreme x)
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
+    return Math.tanh(error);
   }
 }

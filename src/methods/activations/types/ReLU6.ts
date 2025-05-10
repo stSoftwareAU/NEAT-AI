@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -84,22 +85,20 @@ export class ReLU6
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    const x = this.unSquash(currentActivation, hint);
-    const slope = (x > 0 && x < 6) ? 1 : 0;
+    const slope = (currentValue > 0 && currentValue < 6) ? 1 : 0;
 
-    if (slope !== 0) {
-      return rawError * slope;
+    if (slope > 0) {
+      return rawError;
     }
 
-    // Fallback: approximate via unSquashed delta
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
-
-    return Number.isFinite(error) ? error : 0;
+    // Fallback when slope = 0
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
+    return Math.tanh(error);
   }
 }

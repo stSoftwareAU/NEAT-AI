@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -26,8 +27,6 @@ export class BIPOLAR
   }
 
   unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
     if (typeof hint === "number" && Number.isFinite(hint)) {
       if (Math.sign(hint) === Math.sign(activation)) {
         return hint;
@@ -82,16 +81,14 @@ export class BIPOLAR
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    if (Math.abs(targetActivation - currentActivation) < 1e-10) {
-      return 0;
-    }
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    const rawTarget = this.unSquash(targetActivation, hint);
+    const targetValue = this.unSquash(targetActivation, currentValue);
 
-    const error = rawTarget - rawCurrent;
-    return Number.isFinite(error) ? error : 0;
+    const error = targetValue - currentValue;
+    return error;
   }
 }

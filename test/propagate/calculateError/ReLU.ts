@@ -4,17 +4,17 @@ import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
 Deno.test("ReLU.calculateError: active region", () => {
   const relu = new ReLU();
 
-  assertEquals(relu.calculateError(1.0, 1.0), 0.0);
-  assertEquals(relu.calculateError(0.5, 1.0), 0.5);
-  assertEquals(relu.calculateError(1.5, 1.0), -0.5);
+  assertEquals(relu.calculateError(1.0, 1.0, relu.unSquash(1)), 0.0);
+  assertEquals(relu.calculateError(0.5, 1.0, relu.unSquash(0.5)), 0.5);
+  assertEquals(relu.calculateError(1.5, 1.0, relu.unSquash(1.5)), -0.5);
 });
 
 Deno.test("ReLU.calculateError: inactive region", () => {
   const relu = new ReLU();
 
-  assertEquals(relu.calculateError(0.0, 0.0), 0.0);
-  assertEquals(relu.calculateError(0.0, 1.0), 1.0);
-  assertEquals(relu.calculateError(0.0, 0.5), 0.5);
+  assertEquals(relu.calculateError(0.0, 0.0, relu.unSquash(0)), 0.0);
+  assertEquals(relu.calculateError(0.0, 1.0, relu.unSquash(0)), 1.0);
+  assertEquals(relu.calculateError(0.0, 0.5, relu.unSquash(0)), 0.5);
 });
 
 Deno.test("ReLU.calculateError: flat region with hint", () => {

@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -90,11 +91,13 @@ export class STEP
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
-    return Number.isFinite(error) ? error : 0;
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
+    return error;
   }
 }

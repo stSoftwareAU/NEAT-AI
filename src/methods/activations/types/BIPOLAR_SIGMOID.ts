@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -79,15 +80,23 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
-    if (Math.abs(rawError) < 1e-10) return 0;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    // Derivative using current activation (squash output)
+    const slope = 0.5 * (1 - currentActivation ** 2);
 
-    const rawCurrent = this.unSquash(currentActivation, hint);
+    if (Number.isFinite(slope) && Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
 
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
-    return Number.isFinite(error) ? error : 0;
+      return rawError * safeSlope;
+    }
+
+    // Fallback using unSquash (i.e., calculate x for desired output)
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
+
+    return Math.tanh(error); // 🥽 Foggy-glasses fallback
   }
 }

@@ -4,8 +4,8 @@ import { HARD_TANH } from "../../../src/methods/activations/types/HARD_TANH.ts";
 Deno.test("HARD_TANH.calculateError: linear region", () => {
   const ht = new HARD_TANH();
 
-  assertAlmostEquals(ht.calculateError(0.0, 0.5), 0.5);
-  assertAlmostEquals(ht.calculateError(-0.2, -0.8), -0.6);
+  assertAlmostEquals(ht.calculateError(0.0, 0.5, ht.unSquash(0)), 0.5);
+  assertAlmostEquals(ht.calculateError(-0.2, -0.8, ht.unSquash(-0.2)), -0.6);
 });
 
 Deno.test("HARD_TANH.calculateError: flat region fallback", () => {

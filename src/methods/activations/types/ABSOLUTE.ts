@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -46,12 +47,6 @@ export class ABSOLUTE
   }
 
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
-    }
-
     if (x > 0) return 1;
     if (x < 0) return -1;
 
@@ -73,12 +68,14 @@ export class ABSOLUTE
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
+    if (Math.abs(currentActivation - targetActivation) < ERROR_EPSILON) {
+      return 0;
+    }
+    const targetValue = Math.sign(currentValue) * targetActivation;
+    const error = targetValue - currentValue;
 
-    return Number.isFinite(error) ? error : 0;
+    return error;
   }
 }

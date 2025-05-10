@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -61,28 +62,30 @@ export class HARD_TANH
   }
 
   /**
-   * Calculates error for HARD_TANH activation using foggy fallback only.
+   * Calculates error for HARD_TANH activation using slope when in linear zone.
    *
    * Summary:
    *   f(x) = -1 if x < -1
    *        =  x if -1 ≤ x ≤ 1
    *        =  1 if x > 1
-   *   f′(x) = 0 outside (-1, 1), 1 inside
+   *   f′(x) = 1 for -1 < x < 1, else 0
    *
    * Strategy:
-   *   🥽 Always uses foggy (unSquash) fallback.
+   *   ✅ Use slope = 1 inside linear region (-1, 1)
+   *   🥽 Use foggy fallback outside that region (where slope = 0)
    *
    * Notes:
-   *   - Not differentiable at ±1 and completely flat outside [-1, 1].
-   *   - Derivative is unreliable near edges → fallback is more robust.
-   *   - Very fast squash, very cheap unSquash — fallback is preferred.
+   *   - This matches the piecewise nature of the function.
+   *   - unSquash fallback is cheap and reliable for clipped zones.
    */
+
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     // HARD_TANH is linear in range (-1, 1)
     if (currentActivation > -1 && currentActivation < 1) {
@@ -90,10 +93,10 @@ export class HARD_TANH
     }
 
     // Outside range — derivative is 0, so fallback to foggy (unsquash)
-    const raw = this.unSquash(currentActivation, hint);
-    const targetRaw = this.unSquash(targetActivation, hint);
 
-    const error = targetRaw - raw;
-    return Number.isFinite(error) ? error : 0;
+    const targetValue = this.unSquash(targetActivation, currentValue);
+
+    const error = targetValue - currentValue;
+    return Math.tanh(error); // smooth fallback
   }
 }

@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -87,9 +88,11 @@ export class COMPLEMENT
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    _hint?: number,
+    _currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
-    return rawError * -1; // constant slope = -1
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
+    return rawError * -1;
   }
 }

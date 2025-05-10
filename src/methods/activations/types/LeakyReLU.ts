@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -58,14 +59,12 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    // Reconstruct the raw pre-activation value using unSquash
-    const raw = this.unSquash(currentActivation, hint);
-
-    const slope = this.derivative(raw);
+    const slope = this.derivative(currentValue);
 
     return rawError * slope;
   }

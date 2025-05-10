@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
 
 Deno.test("ArcTan: squash, unsquash, and derivative cross-check", () => {
@@ -36,11 +36,4 @@ Deno.test("ArcTan: squash, unsquash, and derivative cross-check", () => {
       `Derivative mismatch at x=${x}: ${d} vs ${expected}`,
     );
   }
-});
-
-Deno.test("ArcTan.derivative throws on non-finite", () => {
-  const fn = new ArcTan();
-  assertThrows(() => fn.derivative(NaN));
-  assertThrows(() => fn.derivative(Infinity));
-  assertThrows(() => fn.derivative(-Infinity));
 });

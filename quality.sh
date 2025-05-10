@@ -17,5 +17,4 @@ deno test \
   --trace-leaks \
   --v8-flags=--max-old-space-size=8192 \
   --parallel \
-  --coverage=.coverage \
   --config ./deno.json

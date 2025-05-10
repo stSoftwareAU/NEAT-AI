@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -76,14 +77,10 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
-    }
-
     const sigmoid = 1 / (1 + Math.exp(-x));
     const swishDerivative = sigmoid + x * sigmoid * (1 - sigmoid);
 
-    return Number.isFinite(swishDerivative) ? swishDerivative : 0;
+    return swishDerivative;
   }
 
   /**
@@ -105,26 +102,21 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    const slope = this.derivative(currentValue);
 
-    const x = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(x);
-
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
-
-    if (safeSlope !== 0) {
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
       return rawError * safeSlope;
     }
 
-    // 🥽 Fallback: foggy glasses
-    const currentRaw = this.unSquash(currentActivation, hint);
-    const targetRaw = this.unSquash(targetActivation, hint);
-    const error = targetRaw - currentRaw;
+    // 🥽 Fallback to foggy glasses
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
 
-    return Number.isFinite(error) ? error : 0;
+    return Math.tanh(error);
   }
 }

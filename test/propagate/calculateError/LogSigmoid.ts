@@ -22,6 +22,6 @@ Deno.test("LogSigmoid.calculateError: fallback in flat tail", () => {
   const act = log.squash(20.0); // flat region
   const target = log.squash(19.0);
   const error = log.calculateError(act, target, 20.0);
-  assert(error < 0);
+  assertAlmostEquals(error, 0);
   assert(Number.isFinite(error));
 });

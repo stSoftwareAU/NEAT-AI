@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -77,13 +78,22 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawCurrent = this.unSquash(currentActivation, hint);
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    const slope = this.derivative(currentValue);
 
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
 
-    return Number.isFinite(error) ? error : 0;
+      return rawError * safeSlope;
+    }
+
+    // 🥽 Fallback to foggy glasses
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
+
+    return Math.tanh(error);
   }
 }
