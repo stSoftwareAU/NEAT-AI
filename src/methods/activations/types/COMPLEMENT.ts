@@ -87,9 +87,9 @@ export class COMPLEMENT
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    _hint?: number,
+    _currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
-    return rawError * -1; // constant slope = -1
+    // rawError×(−1)=(target−current)×(−1)=current−target
+    return currentActivation - targetActivation;
   }
 }
