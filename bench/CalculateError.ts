@@ -44,7 +44,7 @@ Activations.NAMES.forEach((name) => {
  *  ABSOLUTE                  43.8 ns      19 ns
  *  ArcTan                   172.2 ns    72.1 ns
  *  BENT_IDENTITY            227.7 ns    99.0 ns
- *  BIPOLAR                  127.5 ns
+ *  BIPOLAR                  127.5 ns   101.8 ns
     BIPOLAR_SIGMOID          381.4 ns     2,622,000 (242.2 ns …   2.1 µs) 256.1 ns   1.6 µs   2.1 µs
     COMPLEMENT               161.4 ns     6,194,000 ( 98.0 ns …   2.0 µs) 104.0 ns   1.6 µs   1.9 µs
     Cosine                     5.3 µs       188,900 (  2.8 µs …  13.3 ms)   3.0 µs   8.6 µs  12.8 µs
