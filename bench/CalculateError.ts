@@ -39,11 +39,10 @@ Activations.NAMES.forEach((name) => {
 });
 
 /**
- *  9th may 2025.
- *  benchmark         time/iter (avg)        iter/s      (min … max)           p75      p99     p995
-    ----------------- ----------------------------- --------------------- --------------------------
-    ABSOLUTE                  43.8 ns    22,850,000 ( 28.2 ns …   2.1 µs)  28.4 ns 368.3 ns 660.6 ns
-    ArcTan                   172.2 ns     5,807,000 (119.8 ns …   2.2 µs) 123.5 ns   1.1 µs   1.8 µs
+ *  benchmark                   9 May     10 May
+ *  -----------------       ---------    -------
+ *  ABSOLUTE                  43.8 ns      19 ns
+ *  ArcTan                   172.2 ns    72.1 ns
     BENT_IDENTITY            227.7 ns     4,391,000 (129.7 ns …   3.1 µs) 136.6 ns   2.0 µs   2.7 µs
     BIPOLAR                  189.8 ns     5,267,000 (125.8 ns …   1.6 µs) 130.9 ns   1.4 µs   1.5 µs
     BIPOLAR_SIGMOID          381.4 ns     2,622,000 (242.2 ns …   2.1 µs) 256.1 ns   1.6 µs   2.1 µs

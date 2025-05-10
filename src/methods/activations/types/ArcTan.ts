@@ -104,37 +104,19 @@ export class ArcTan
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const slope = this.derivative(currentValue);
 
-    const hasHint = Number.isFinite(hint);
-    let x: number | undefined = hasHint ? hint : undefined;
-
-    if (!hasHint) {
-      try {
-        x = this.unSquash(currentActivation);
-      } catch {
-        x = undefined;
-      }
+    if (Number.isFinite(slope) && Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
+      const rawError = targetActivation - currentActivation;
+      return rawError * safeSlope;
     }
 
-    if (x !== undefined) {
-      const slope = this.derivative(x);
-      const safeSlope = Number.isFinite(slope)
-        ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
-        : Math.sign(slope);
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
 
-      if (safeSlope !== 0) {
-        return rawError * safeSlope;
-      }
-    }
-
-    // 🥽 Fallback: foggy glasses (inverse-based)
-    const raw = this.unSquash(currentActivation, hint);
-    const targetRaw = this.unSquash(targetActivation, hint);
-    const error = targetRaw - raw;
-
-    return Number.isFinite(error) ? error : 0;
+    return Math.tanh(error);
   }
 }

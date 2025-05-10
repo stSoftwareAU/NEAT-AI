@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { ABSOLUTE } from "../../../src/methods/activations/types/ABSOLUTE.ts";
 
 Deno.test("ABSOLUTE: derivative behavior", () => {
