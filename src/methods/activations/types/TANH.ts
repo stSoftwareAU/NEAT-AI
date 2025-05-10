@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -100,26 +101,21 @@ export class TANH
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    const slope = this.derivative(currentValue);
 
-    const x = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(x);
-
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
-
-    if (safeSlope !== 0) {
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
       return rawError * safeSlope;
     }
 
-    // 🥽 Fallback to unSquash-based error
-    const currentRaw = this.unSquash(currentActivation, hint);
-    const targetRaw = this.unSquash(targetActivation, hint);
-    const error = targetRaw - currentRaw;
+    // 🥽 Fallback to foggy glasses
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
 
-    return Number.isFinite(error) ? error : 0;
+    return Math.tanh(error);
   }
 }
