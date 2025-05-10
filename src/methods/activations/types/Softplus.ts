@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -67,31 +68,31 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for Softplus activation using derivative or fallback.
+   * Calculates error for Softplus activation using the sigmoid-based derivative.
    *
    * Summary:
    *   f(x) = ln(1 + e^x)
    *   f′(x) = 1 / (1 + e^(-x)) = sigmoid(x)
    *
    * Strategy:
-   *   ✅ Uses derivative when slope is valid and above threshold.
-   *   🥽 Falls back to unSquash when activation is too close to minimum (~1e-15).
+   *   ✅ Always uses the derivative — smooth, fast, and non-zero.
+   *   ❌ No fallback needed — unSquash is slow and unnecessary.
    *
    * Notes:
-   *   - Smooth and numerically stable.
-   *   - Inverse is expensive (Newton-Raphson), but always possible.
-   *   - Derivative matches LOGISTIC, so reuse logic where possible.
+   *   - Softplus is numerically stable and differentiable everywhere.
+   *   - Derivative matches LOGISTIC — derivative(x) = sigmoid(x).
+   *   - Efficient for gradient-based learning without dead zones.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
     const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     // Use hint (raw x) if available to evaluate the slope
-    const raw = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(raw);
+    const slope = this.derivative(currentValue);
 
     const safeSlope = Number.isFinite(slope)
       ? Math.abs(slope) < 1e-12 ? 0 : Math.min(Math.max(slope, -50), 50)
