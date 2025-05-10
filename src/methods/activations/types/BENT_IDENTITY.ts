@@ -70,9 +70,6 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
    * @returns The derivative value.
    */
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
-    }
     return x / (2 * Math.sqrt(x * x + 1)) + 1;
   }
 
@@ -96,26 +93,20 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const slope = this.derivative(currentValue);
 
-    const x = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(x);
-
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
-
-    if (safeSlope !== 0) {
+    if (Number.isFinite(slope) && Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
+      const rawError = targetActivation - currentActivation;
       return rawError * safeSlope;
     }
 
     // 🥽 Fallback to foggy glasses
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
 
-    return Number.isFinite(error) ? error : 0;
+    return Math.tanh(error);
   }
 }

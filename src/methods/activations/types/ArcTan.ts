@@ -75,12 +75,6 @@ export class ArcTan
    * @returns The derivative of the ArcTan function at the given input.
    */
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
-    }
-
     return 2 / (Math.PI * (1 + x * x));
   }
 
@@ -114,6 +108,7 @@ export class ArcTan
       return rawError * safeSlope;
     }
 
+    // 🥽 Fallback to foggy glasses
     const targetValue = this.unSquash(targetActivation, currentValue);
     const error = targetValue - currentValue;
 
