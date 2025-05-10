@@ -40,13 +40,13 @@ Activations.NAMES.forEach((name) => {
 
 /**
  *  benchmark                   9 May     10 May
- *  -----------------       ---------    -------
+ *  -----------------       ---------   --------
  *  ABSOLUTE                  43.8 ns      19 ns
  *  ArcTan                   172.2 ns    72.1 ns
  *  BENT_IDENTITY            227.7 ns    99.0 ns
  *  BIPOLAR                  127.5 ns   101.8 ns
-    BIPOLAR_SIGMOID          381.4 ns     2,622,000 (242.2 ns …   2.1 µs) 256.1 ns   1.6 µs   2.1 µs
-    COMPLEMENT               161.4 ns     6,194,000 ( 98.0 ns …   2.0 µs) 104.0 ns   1.6 µs   1.9 µs
+ *  BIPOLAR_SIGMOID          245.1 ns   196.3 ns
+ *  COMPLEMENT               101.5 ns   
     Cosine                     5.3 µs       188,900 (  2.8 µs …  13.3 ms)   3.0 µs   8.6 µs  12.8 µs
     Cube                     367.2 ns     2,723,000 (230.8 ns …   3.8 µs) 236.4 ns   1.6 µs   3.8 µs
     ELU                      345.9 ns     2,891,000 (224.5 ns …   2.2 µs) 229.2 ns   2.1 µs   2.2 µs
