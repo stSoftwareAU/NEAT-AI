@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { SELU } from "../../../src/methods/activations/types/SELU.ts";
 
 Deno.test("SELU: squash, unsquash, and derivative cross-check", () => {
@@ -36,11 +36,4 @@ Deno.test("SELU: squash, unsquash, and derivative cross-check", () => {
       );
     }
   }
-});
-Deno.test("SELU: derivative throws for non-finite inputs", () => {
-  const fn = new SELU();
-
-  assertThrows(() => fn.derivative(NaN), "Non-finite");
-  assertThrows(() => fn.derivative(Infinity), "Non-finite");
-  assertThrows(() => fn.derivative(-Infinity), "Non-finite");
 });

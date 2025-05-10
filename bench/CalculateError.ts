@@ -62,9 +62,9 @@ Activations.NAMES.forEach((name) => {
  *  Mish                     489.2 ns   486.3 ns
  *  ReLU                     123.5 ns   127.6 ns
  *  ReLU6                    148.9 ns   204.7 ns
- *  SELU                     244.2 ns
-    SINE                       4.4 µs       228,400 (  2.7 µs …  10.1 ms)   2.9 µs   8.3 µs  11.2 µs
-    SOFTSIGN                 201.1 ns     4,972,000 (136.8 ns …   1.8 µs) 145.6 ns   1.7 µs   1.7 µs
+ *  SELU                     244.2 ns   167.3 ns
+ *  SINE                       2.9 µs   738.7 ns
+ *  SOFTSIGN                 140.8 ns
     Softplus                 614.5 ns     1,627,000 (385.9 ns …   2.4 µs) 685.0 ns   2.4 µs   2.4 µs
     StdInverse               210.8 ns     4,745,000 (136.4 ns …   1.8 µs) 142.5 ns   1.7 µs   1.7 µs
     STEP                     225.6 ns     4,432,000 (135.7 ns …   1.7 µs) 174.6 ns   1.4 µs   1.5 µs
