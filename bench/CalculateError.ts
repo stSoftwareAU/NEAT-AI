@@ -54,9 +54,9 @@ Activations.NAMES.forEach((name) => {
  *  GAUSSIAN                 400.5 ns   438.8 ns
  *  GELU                     753.2 ns   442.7 ns
  *  HARD_TANH                120.0 ns   139.6 ns
- *  IDENTITY                 102.0 ns
-    ISRU                     242.8 ns     4,119,000 (147.9 ns …   3.3 µs) 153.1 ns   2.4 µs   2.4 µs
-    LeakyReLU                233.6 ns     4,282,000 (129.3 ns …   2.2 µs) 161.5 ns   1.7 µs   1.9 µs
+ *  IDENTITY                 102.0 ns   102.0 ns
+ *  ISRU                     152.0 ns   210.7 ns*
+ *  LeakyReLU                132.6 ns
     LOGISTIC                 729.1 ns     1,372,000 (470.0 ns …   2.7 µs) 833.9 ns   2.7 µs   2.7 µs
     LogSigmoid               698.0 ns     1,433,000 (399.3 ns …   3.3 µs) 790.9 ns   3.3 µs   3.3 µs
     Mish                     744.3 ns     1,343,000 (478.8 ns …   2.6 µs) 744.9 ns   2.6 µs   2.6 µs

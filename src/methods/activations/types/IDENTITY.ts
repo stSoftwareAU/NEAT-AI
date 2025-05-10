@@ -72,7 +72,7 @@ export class IDENTITY
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    _hint?: number,
+    _currentValue: number,
   ): number {
     return targetActivation - currentActivation;
   }

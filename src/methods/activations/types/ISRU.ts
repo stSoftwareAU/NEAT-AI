@@ -80,29 +80,19 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const slope = this.derivative(currentValue);
 
-    /** Close enough */
-    if (Math.abs(rawError) < 1e-10) {
-      return 0;
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.max(Math.min(slope, 50), -50);
+      const rawError = targetActivation - currentActivation;
+      return rawError * safeSlope;
     }
 
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    // const slope = this.derivative(rawCurrent);
-
-    // const safeSlope = Number.isFinite(slope)
-    //   ? Math.abs(slope) < 1e-3 ? 0 : Math.min(Math.max(slope, -50), 50)
-    //   : Math.sign(slope);
-
-    // if (safeSlope !== 0) {
-    //   return rawError * safeSlope;
-    // }
-
-    // 🕶️ Fallback
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
-    return Number.isFinite(error) ? error : 0;
+    // 🥽 Fallback to unSquash only if slope is ~0 (extreme x)
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
+    return Math.tanh(error);
   }
 }
