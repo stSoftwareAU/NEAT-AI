@@ -47,10 +47,10 @@ Activations.NAMES.forEach((name) => {
  *  BIPOLAR                  127.5 ns   101.8 ns
  *  BIPOLAR_SIGMOID          245.1 ns   196.3 ns
  *  COMPLEMENT               101.5 ns   101.6 ns
- *  Cosine                     5.3 µs
-    Cube                     367.2 ns     2,723,000 (230.8 ns …   3.8 µs) 236.4 ns   1.6 µs   3.8 µs
-    ELU                      345.9 ns     2,891,000 (224.5 ns …   2.2 µs) 229.2 ns   2.1 µs   2.2 µs
-    Exponential              386.2 ns     2,589,000 (227.1 ns …   4.3 µs) 235.1 ns   3.0 µs   4.3 µs
+ *  Cosine                     5.3 µs   768.8 ns
+ *  Cube                     238.4 ns   176.2 ns
+ *  ELU                      230.5 ns   173.4 ns
+ *  Exponential              233.1 ns
     GAUSSIAN                 624.9 ns     1,600,000 (393.1 ns …   5.4 µs) 451.3 ns   5.4 µs   5.4 µs
     GELU                       1.1 µs       888,900 (748.0 ns …   3.5 µs)   1.1 µs   3.5 µs   3.5 µs
     HARD_TANH                174.9 ns     5,718,000 (113.5 ns …   3.0 µs) 118.3 ns   1.4 µs   1.5 µs

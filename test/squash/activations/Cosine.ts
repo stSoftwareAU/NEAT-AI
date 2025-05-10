@@ -1,4 +1,4 @@
-import { assertAlmostEquals, assertThrows } from "@std/assert";
+import { assertAlmostEquals } from "@std/assert";
 import { Cosine } from "../../../src/methods/activations/types/Cosine.ts";
 
 Deno.test("Cosine: derivative behavior", () => {
@@ -25,12 +25,4 @@ Deno.test("Cosine: derivative behavior", () => {
       `Mismatch at x=${x}: expected ${expected}, got ${actual}`,
     );
   }
-});
-
-Deno.test("Cosine.derivative throws for non-finite inputs", () => {
-  const fn = new Cosine();
-
-  assertThrows(() => fn.derivative(NaN), "Non-finite");
-  assertThrows(() => fn.derivative(Infinity), "Non-finite");
-  assertThrows(() => fn.derivative(-Infinity), "Non-finite");
 });

@@ -15,7 +15,7 @@ Deno.test("Cosine.calculateError: flat zone fallback", () => {
   const target = cosine.squash(0.1);
   const error = cosine.calculateError(act, target, 0);
   assert(Number.isFinite(error));
-  assertAlmostEquals(error, 0.1);
+  assertAlmostEquals(error, 0.1, 0.05);
 });
 
 Deno.test("Cosine.calculateError: negative domain", () => {

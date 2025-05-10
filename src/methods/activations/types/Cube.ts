@@ -25,9 +25,7 @@ export class Cube implements ActivationInterface, UnSquashInterface {
   );
 
   // Function to estimate the input from the activation value (inverse of the cube function).
-  unSquash(activation: number, hint?: number): number {
-    this.range.validate(activation, hint);
-
+  unSquash(activation: number, _hint?: number): number {
     // The inverse of the cube function is the cube root
     return Math.cbrt(activation);
   }
@@ -44,12 +42,6 @@ export class Cube implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    if (!Number.isFinite(x)) {
-      throw new Error(
-        `${this.getName()}.derivative received non-finite input: ${x}`,
-      );
-    }
-
     return 3 * x * x;
   }
 
@@ -68,26 +60,19 @@ export class Cube implements ActivationInterface, UnSquashInterface {
   calculateError(
     currentActivation: number,
     targetActivation: number,
-    hint?: number,
+    currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const slope = this.derivative(currentValue);
 
-    const x = this.unSquash(currentActivation, hint);
-    const slope = this.derivative(x);
-
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
-
-    if (safeSlope !== 0) {
-      return rawError * safeSlope;
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
+      return (targetActivation - currentActivation) * safeSlope;
     }
 
-    // Fallback to foggy-glasses if slope ≈ 0
-    const rawCurrent = this.unSquash(currentActivation, hint);
-    const rawTarget = this.unSquash(targetActivation, hint);
-    const error = rawTarget - rawCurrent;
+    // 🥽 Fallback to foggy glasses
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
 
-    return Number.isFinite(error) ? error : 0;
+    return Math.tanh(error);
   }
 }
