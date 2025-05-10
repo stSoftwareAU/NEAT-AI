@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -103,17 +104,19 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     targetActivation: number,
     currentValue: number,
   ): number {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
     const slope = this.derivative(currentValue);
 
-    if (Number.isFinite(slope) && Math.abs(slope) > 1e-8) {
-      const rawError = targetActivation - currentActivation;
-      const safeSlope = Math.min(slope, 50);
+    if (Math.abs(slope) > 1e-8) {
+      const safeSlope = Math.min(Math.max(slope, -50), 50);
       return rawError * safeSlope;
     }
 
+    // 🥽 Fallback to foggy glasses
     const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = Math.tanh(targetValue - currentValue);
+    const error = targetValue - currentValue;
 
-    return error;
+    return Math.tanh(error);
   }
 }
