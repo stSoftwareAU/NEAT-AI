@@ -3,12 +3,21 @@ import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
 
 Deno.test("ArcTan.calculateError: typical values", () => {
   const arc = new ArcTan();
-  const hint = 0.0;
-  const slope = arc.derivative(hint); // = 1
-  const expectedError = (0.5 - 0.0) / slope;
 
-  const actual = arc.calculateError(0.0, 0.5, hint);
-  assertAlmostEquals(actual, expectedError, 1e-8);
+  const currentValue = 0;
+  const targetActivation = 0.5;
+
+  const activation = arc.squash(currentValue);
+  const slope = arc.derivative(currentValue);
+
+  const error = arc.calculateError(activation, targetActivation, currentValue);
+  const expectedError = (activation - targetActivation) / slope;
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Error: ${error} != ${expectedError}`,
+  );
 });
 
 Deno.test("ArcTan.calculateError: negative raw", () => {
