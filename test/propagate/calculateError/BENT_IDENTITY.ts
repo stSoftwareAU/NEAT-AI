@@ -14,12 +14,25 @@ Deno.test("BentIdentity.calculateError: mid-range input", () => {
 });
 
 Deno.test("BENT_IDENTITY.calculateError: negative values", () => {
-  const bent = new BENT_IDENTITY();
-  const act = bent.squash(-2.0);
-  const target = bent.squash(-1.5);
-  const error = bent.calculateError(act, target, -2.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  const squasher = new BENT_IDENTITY();
+  const currentValue = -2;
+  const targetActivation = -1.5;
+
+  const activation = squasher.squash(currentValue);
+  const slope = squasher.derivative(currentValue);
+
+  const error = squasher.calculateError(
+    activation,
+    targetActivation,
+    currentValue,
+  );
+  const expectedError = (activation - targetActivation) / slope;
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Error: ${error} != ${expectedError}`,
+  );
 });
 
 Deno.test("BENT_IDENTITY.calculateError: flat slope edge (large x)", () => {
@@ -27,8 +40,17 @@ Deno.test("BENT_IDENTITY.calculateError: flat slope edge (large x)", () => {
   const act = bent.squash(10.0);
   const target = bent.squash(9.5);
   const error = bent.calculateError(act, target, 10.0);
+
+  const slope = bent.derivative(10.0);
+  const expectedError = (act - target) / slope;
+
   assert(Number.isFinite(error));
-  assert(error < 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Error: ${error} != ${expectedError}`,
+  );
 });
 
 Deno.test("BENT_IDENTITY.calculateError: perfect match", () => {
