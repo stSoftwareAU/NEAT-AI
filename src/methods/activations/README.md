@@ -57,7 +57,7 @@ This README captures:
 
 | Activation      | Invertible | Derivative-Based Error              | Foggy Glasses Error           | Priority | Recommendation | Why?                                                                                             | 🐇🦥 |
 | :-------------- | :--------- | :---------------------------------- | :---------------------------- | :------: | :------------- | :----------------------------------------------------------------------------------------------- | :--- |
-| LeakyReLU       | ✅         | ✅ Fast & stable (slope never 0)    | ✅ Inversion is trivial       |    10    | 🚀 Derivative  | Both methods are valid, but derivative is faster and widely accepted in practice.                | 🟩   |
+| LeakyReLU       | ✅         | ❌ Overshoots easily if slope small | ✅ Inversion is trivial       |    10    | 🎯 UnSquash    | Always use unSquash — it's fast, safe, and avoids giant updates from small slopes.               | 🟩   |
 | GELU            | ✅         | ✅ Smooth, non-zero slope           | ⚠️ Expensive                  |    9     | 🚀 Derivative  | 🐌 UnSquash Slower than most (due to tanh, pow, Newton-Raphson),Derivative (accurate and common) | 🟩   |
 | Swish           | ❌         | ✅ Works well                       | ❌ Inversion is undefined     |   8 📈   | 🚀 Derivative  | Widely used in deep learning; derivative is stable and avoids undefined inversion.               | 🟩   |
 | TANH            | ✅         | ✅ Smooth & stable across range     | ⚠️ Inversion unstable near ±1 |    8     | 🚀 Derivative  | Fast, stable gradient. Inversion works but becomes numerically unstable near ±1.                 | 🟩   |
@@ -91,7 +91,7 @@ This README captures:
 | MAXIMUM         | ❌         | ❌ Flat in some regions             | ⚠️ Needs guessing             |   ⬇ 0    | 🟰 Either      | ❌ Flat plateaus, no gradient flow                                                               | ❓   |
 | MINIMUM         | ❌         | ❌ Flat                             | ⚠️ Needs guessing             |   ⬇ 0    | 🟰 Either      | ❌ Flat plateaus, no gradient flow                                                               | ❓   |
 | BIPOLAR         | ❌         | ❌ Often flat                       | ⚠️ Roughly invertible         |   ⬇ 0    | 🟰 Either      | ❌ Harsh transition, poor learning, rarely used in practice                                      | 🟩   |
-| BIPOLAR_SIGMOID | ✅         | ✅ Good                             | ⚠️ Steep                      |    1     | 🔍 Foggy       | Use unsquash, works well and fast                                                                | 🟨   |
+| BIPOLAR_SIGMOID | ✅         | ✅ Stable in center, fades at edges | ✅ Invertible                 |    1     | 🟰 Either      | Use derivative for mid-range; fallback to unSquash + clamp to avoid huge errors near ±1.         | 🟩   |
 
 ---
 

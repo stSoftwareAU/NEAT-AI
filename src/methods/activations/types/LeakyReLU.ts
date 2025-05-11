@@ -49,11 +49,7 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
    *        = α      if x < 0
    *
    * Strategy:
-   *   ✅ Always uses derivative: slope is never zero.
-   *   ✅ Invertible with closed-form unSquash: used as fallback if derivative fails.
-   *   ✅ Fast and accurate in all regions.
-   *
-   * This is a high-performance, stable function with no dead zones.
+   *   🎯 Always use unSquash as it's fast and accurate.
    */
   calculateError(
     currentActivation: number,
@@ -63,8 +59,8 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
     const rawError = targetActivation - currentActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    const slope = this.derivative(currentValue);
+    const targetValue = this.unSquash(targetActivation, currentValue);
 
-    return rawError / slope;
+    return targetValue - currentValue;
   }
 }

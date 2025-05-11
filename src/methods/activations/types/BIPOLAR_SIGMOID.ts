@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -64,39 +65,48 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     const fx = this.squash(x);
     return (1 - fx * fx) / 2;
   }
-
   /**
-   * Calculates error for BIPOLAR_SIGMOID using derivative or fallback.
+   * Calculates error for BIPOLAR_SIGMOID activation with slope safeguards.
    *
    * Summary:
-   *   f(x) = (2 / (1 + e^(-x))) - 1
-   *   f′(x) = (1 - f(x)^2) / 2
+   *   f(x)   = (2 / (1 + e^(-x))) - 1
+   *   f′(x)  = 0.5 × (1 - f(x)^2)
    *   f⁻¹(y) = -ln((2 / (y + 1)) - 1)
    *
    * Strategy:
-   *   ✅ Derivative is always defined and smooth.
-   *   🥽 Fallback used only if slope is near 0 or NaN.
+   *   ✅ Prefer derivative (efficient and usually accurate)
+   *   🥽 Fall back to unSquash if slope is too small or invalid
+   *   🔒 Clamp extreme error values to prevent overflow
+   *
+   * Notes:
+   *   - Derivative fades near ±1 → can cause large weight swings
+   *   - unSquash is exact and cheap, safe fallback for edge cases
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-    // Derivative using current activation (squash output)
+
     const slope = 0.5 * (1 - currentActivation ** 2);
+    const MIN_SLOPE = 1e-8;
 
-    if (Number.isFinite(slope) && Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
+    let error: number;
 
-      return rawError * safeSlope;
+    if (Number.isFinite(slope) && Math.abs(slope) >= MIN_SLOPE) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // Fallback using unSquash (i.e., calculate x for desired output)
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
+    // 🔒 Clamp to avoid numeric overflows
+    if (!Number.isFinite(error)) {
+      return 0; // Defensive fallback
+    }
 
-    return Math.tanh(error); // 🥽 Foggy-glasses fallback
+    return ErrorHelper.calculateClampedError(error);
   }
 }
