@@ -75,41 +75,30 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for BENT_IDENTITY activation using derivative or foggy fallback.
+   * Calculates error for BENT_IDENTITY activation using derivative only.
    *
    * Summary:
    *   f(x) = (√(x² + 1) - 1)/2 + x
    *   f′(x) = x / (2√(x² + 1)) + 1
    *
    * Strategy:
-   *   ✅ Uses derivative if slope is finite and significant.
-   *   🥽 Falls back to foggy (unSquash) if slope is flat or diverges.
+   *   ✅ Always use derivative — slope is continuous, smooth, and non-zero.
+   *   ❌ No fallback needed — unSquash is valid but unnecessary.
    *
    * Notes:
-   *   - Fully invertible and numerically stable.
-   *   - Derivative is smooth and rarely zero — often preferred.
-   *   - Inversion is cheap, so fallback is also viable.
-   *   - Safe to use either method based on performance preference.
+   *   - Bent Identity is fully invertible and differentiable.
+   *   - Derivative remains ≥ 1 across the entire domain, ensuring learning signal.
+   *   - Derivative-based error propagation is preferred for speed and simplicity.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
-
-    if (Number.isFinite(slope) && Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-
-      return rawError * safeSlope;
-    }
-
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return rawError / slope;
   }
 }
