@@ -13,11 +13,16 @@ This README captures:
 ## 📘 Terminology
 
 - 📐 **Clear Glasses** (_Derivative-based_):\
-  Uses the activation's slope to propagate error.
+  Uses the activation's slope to back out the raw input error.\
+  Appropriate when you know the **output activation** and want to estimate how
+  much to change the raw input.
+
   ```
-  error = (targetActivation - currentActivation) × derivative(currentRawInput)
+  error = (currentActivation - targetActivation) / derivative(currentRawInput)
   ```
-  Fast and standard in most neural networks.
+  Fast and standard in most neural networks.\
+  ⚠️ Be careful: multiplying by the derivative is incorrect when computing the
+  raw input delta.
 
 - 🔍 **Foggy Glasses** (_UnSquash Delta_):\
   Computes how far the raw input is from the desired activation via inversion:
@@ -68,7 +73,7 @@ This README captures:
 | ArcTan          | ✅         | ✅ Stable                           | ✅ Invertible                 |    4     | 🟰 Either      | Fast, well-behaved on both squash and inverse. Use derivative unless hint is better.             | 🟩   |
 | ReLU6           | ❌         | ⚠️ Dead zones (0 slope outside 0–6) | ✅ UnSquash works             |    4     | 🔍 Foggy       | Derivative fails at edges; unSquash gives stable, fast error. Prefer foggy in dead zones.        | 🟩   |
 | SINE            | ✅         | ⚠️ Oscillating slope                | ✅ Works                      |    3     | 🔍 Foggy       | Derivative unstable near ±π/2; unSquash gives accurate fallback. Use foggy when slope is flat.   | 🟩   |
-| ABSOLUTE        | ❌         | ❌ Derivative undefined at 0        | ✅ Can guess raw              |    2     | 🔍 Foggy       | No sign in output → unSquash is safe fallback; use foggy only.                                   | 🟩   |
+| ABSOLUTE        | ❌         | ❌ Derivative undefined at 0        | ✅ Choose closest raw input   |    2     | 🔍 Foggy       | Output loses sign — estimate closest valid raw input (`±targetActivation`). Derivative unusable. | 🟩   |
 | Cosine          | ❌         | ⚠️ Oscillates                       | ✅ Works                      |    2     | 🔍 Foggy       | Derivative fades at ±π/2; unSquash works reliably. Use foggy fallback.                           | 🟩   |
 | Cube            | ✅         | ✅ Easy                             | ✅ Exact                      |    2     | 🟰 Either      | Fully invertible and simple; derivative and foggy both reliable. Use either.                     | 🟩   |
 | Exponential     | ✅         | ✅ Derivative stable                | ⚠️ Inversion dangerous        |    2     | 🔍 Foggy       | UnSquash faster.                                                                                 | 🟨   |

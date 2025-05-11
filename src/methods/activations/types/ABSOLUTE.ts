@@ -55,27 +55,43 @@ export class ABSOLUTE
   }
 
   /**
-   * Calculates error for ABSOLUTE activation using foggy-glasses only.
+   * Calculates the error for ABSOLUTE activation using foggy-glasses logic.
    *
    * Summary:
    *   f(x) = |x|
    *   f′(x) = -1 if x < 0; 1 if x > 0; undefined at x = 0
    *
    * Strategy:
-   *   🥽 Always fallback to foggy-glasses unSquash-based error.
-   *   Derivative is discontinuous and not reliable near x = 0.
+   *   The ABSOLUTE function loses the sign of the input, so multiple input values
+   *   can yield the same activation. To compute the error, we determine the two
+   *   possible input values that would produce the target activation (`-target` and `+target`),
+   *   and select the one closest to the current input (`currentValue`). The error is then
+   *   the distance from `currentValue` to that nearest valid input.
+   *
+   *   This avoids relying on the undefined or discontinuous derivative at x = 0,
+   *   and ensures meaningful training signals even near sharp corners.
+   *
+   * Example:
+   *   currentValue = -2, targetActivation = 1 → nearest valid pre-image is -1 → error = +1
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    if (Math.abs(currentActivation - targetActivation) < ERROR_EPSILON) {
-      return 0;
-    }
-    const targetValue = Math.sign(currentValue) * targetActivation;
-    const error = targetValue - currentValue;
+    const error = currentActivation - targetActivation;
+    if (Math.abs(error) < ERROR_EPSILON) return 0;
 
-    return error;
+    // Both -target and +target are valid inputs to ABSOLUTE
+    const negTarget = -targetActivation;
+    const posTarget = targetActivation;
+
+    // Choose the target value (before squash) closest to currentValue
+    const closestTarget =
+      Math.abs(currentValue - negTarget) < Math.abs(currentValue - posTarget)
+        ? negTarget
+        : posTarget;
+
+    return closestTarget - currentValue;
   }
 }

@@ -55,7 +55,6 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
    *
    * This is a high-performance, stable function with no dead zones.
    */
-
   calculateError(
     currentActivation: number,
     targetActivation: number,
@@ -66,6 +65,6 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
 
     const slope = this.derivative(currentValue);
 
-    return rawError * slope;
+    return rawError / slope;
   }
 }
