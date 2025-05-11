@@ -290,45 +290,47 @@ export class Neat {
       const errorTx = getTag(creature, "error");
       assert(errorTx, "No error tag found");
 
+      let trainingImprovement = true;
       if (r.train.error > parseFloat(errorTx)) {
         console.warn(
           `Training ${
             blue(r.train.ID)
           } caused a higher error of ${r.train.error} from ${errorTx}`,
         );
-        const trainedCreature = Creature.fromJSON(JSON.parse(r.train.creature));
-        trainedCreature.score = calculateScore(
-          trainedCreature,
-          r.train.error,
-          this.config.costOfGrowth,
-        );
-        const backtracked = fineTuneImprovement(
-          creature,
-          trainedCreature,
-          1,
-          true,
-        );
-        const forward = fineTuneImprovement(
-          creature,
-          trainedCreature,
-          1,
-          false,
-        );
+        trainingImprovement = false;
+      }
+      const trainedCreature = Creature.fromJSON(JSON.parse(r.train.creature));
+      trainedCreature.score = calculateScore(
+        trainedCreature,
+        r.train.error,
+        this.config.costOfGrowth,
+      );
+      const backtracked = fineTuneImprovement(
+        creature,
+        trainedCreature,
+        1,
+        true,
+      );
+      const forward = fineTuneImprovement(
+        creature,
+        trainedCreature,
+        1,
+        false,
+      );
 
-        if (backtracked.length > 0 || forward.length > 0) {
-          if (backtracked.length > 0) {
-            r.train.backtracked = JSON.stringify(backtracked[0].exportJSON());
-          }
-          if (forward.length > 0) {
-            r.train.forward = JSON.stringify(forward[0].exportJSON());
-          }
-        } else {
-          console.warn(
-            `Training ${
-              blue(r.train.ID)
-            } caused a higher error of ${r.train.error} from ${errorTx} and no tuning`,
-          );
+      if (backtracked.length > 0 || forward.length > 0) {
+        if (backtracked.length > 0) {
+          r.train.backtracked = JSON.stringify(backtracked[0].exportJSON());
         }
+        if (forward.length > 0) {
+          r.train.forward = JSON.stringify(forward[0].exportJSON());
+        }
+      } else if (trainingImprovement === false) {
+        console.warn(
+          `Training ${
+            blue(r.train.ID)
+          } caused a higher error of ${r.train.error} from ${errorTx} and no tuning`,
+        );
       }
 
       this.trainingComplete.push(r);

@@ -81,10 +81,10 @@ export function logVerbose(creatures: Creature[]): number {
         } Score: ${yellow(score.toString())}, Error: ${
           yellow(untrainedError)
         } -> ${yellow(error)}` + (diff > 0
-          ? ` ${"improved " + bold(green(diff.toString()))}`
+          ? ` ${"👌 " + bold(green(diff.toString()))}`
           : diff < 0
-          ? ` ${"regression " + red(diff.toString())}`
-          : white(" neutral")),
+          ? ` ${"👿 " + red(diff.toString())}`
+          : white(" 🫥")),
       );
     }
     const sourceUUID = getTag(creature, "CRISPR-SOURCE");
