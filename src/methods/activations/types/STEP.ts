@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -73,7 +74,7 @@ export class STEP
   }
 
   /**
-   * Calculates error for STEP activation using foggy (unSquash) fallback only.
+   * Calculates error for STEP activation using directional guess.
    *
    * Summary:
    *   f(x) = 1 if x > 0
@@ -81,12 +82,14 @@ export class STEP
    *   f′(x) = 0 almost everywhere (undefined at x = 0)
    *
    * Strategy:
-   *   🥽 Always uses foggy (unSquash) fallback.
+   *   🧠 Always uses directional fallback — pushes input toward correct side of step.
+   *   ❌ Derivative not usable (flat or undefined).
+   *   ❌ Not truly invertible — fallback uses a hint-based guess, not a real unSquash.
    *
    * Notes:
-   *   - Not differentiable; flat gradient makes learning impossible via derivatives.
-   *   - Only reliable path is to estimate raw input difference via unSquash.
-   *   - Typically avoided in gradient-based learning.
+   *   - Step breaks gradient flow; unsuitable for backpropagation.
+   *   - We estimate the input movement direction from the activation mismatch.
+   *   - `unSquash()` here serves only to bias the guess based on currentValue.
    */
   calculateError(
     currentActivation: number,
@@ -98,6 +101,6 @@ export class STEP
 
     const targetValue = this.unSquash(targetActivation, currentValue);
     const error = targetValue - currentValue;
-    return error;
+    return ErrorHelper.calculateClampedError(error);
   }
 }
