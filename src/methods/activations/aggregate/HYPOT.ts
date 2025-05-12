@@ -12,7 +12,7 @@ import { IDENTITY } from "../types/IDENTITY.ts";
 export class HYPOT
   implements NeuronActivationInterface, MakeActivationFunctionInterface {
   public static NAME = "HYPOT";
-
+  complexityPenalty = 2;
   public readonly range = new ActivationRange(
     HYPOT.NAME,
     Number.MIN_SAFE_INTEGER,

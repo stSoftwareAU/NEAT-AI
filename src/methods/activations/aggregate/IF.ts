@@ -26,7 +26,7 @@ export class IF
     MakeActivationFunctionInterface,
     InlineActivationInterface {
   public static NAME = "IF";
-
+  complexityPenalty = 3;
   public readonly range = new ActivationRange(
     IF.NAME,
     Number.MIN_SAFE_INTEGER,

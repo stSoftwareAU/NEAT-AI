@@ -26,4 +26,5 @@ export interface AbstractActivationInterface {
     targetActivation: number,
     currentValue: number,
   ): number;
+  complexityPenalty?: number;
 }

@@ -1,5 +1,6 @@
 import { assert } from "@std/assert/assert";
 import type { CreatureInternal } from "./CreatureInterfaces.ts";
+import { Activations } from "../methods/activations/Activations.ts";
 
 export function calculate(
   creature: CreatureInternal,
@@ -116,6 +117,19 @@ function calculateScore(
   penalty: number,
   growthCost: number,
 ): number {
+  const endIndex = creature.neurons.length;
+  for (let indx = creature.input; indx < endIndex; indx++) {
+    const neuron = creature.neurons[indx];
+    if (neuron.squash) {
+      const squashFunction = Activations.find(
+        neuron.squash,
+      );
+      if (squashFunction.complexityPenalty) {
+        penalty += squashFunction.complexityPenalty;
+      }
+    }
+  }
+
   const hiddenNeuronCount = creature.neurons.length - creature.input -
     creature.output;
 

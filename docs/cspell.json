@@ -55,6 +55,7 @@
     "Backpropagation",
     "Deprioritise",
     "deprioritised",
-    "nonzero"
+    "nonzero",
+    "arctanh"
   ]
 }

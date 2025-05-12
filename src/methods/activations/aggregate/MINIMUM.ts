@@ -24,6 +24,7 @@ export class MINIMUM
     ApplyLearningsInterface,
     MakeActivationFunctionInterface,
     InlineActivationInterface {
+  complexityPenalty = 2;
   inlineActivation(neuron: Neuron) {
     let valueList = "";
 
