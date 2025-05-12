@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -67,39 +68,36 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for ISRU activation using derivative or fallback.
+   * Calculates error for ISRU (Inverse Square Root Unit).
    *
    * Summary:
-   *   f(x) = x / √(1 + αx²)
-   *   f′(x) = (1 + αx²)^(-3/2)
-   *   f⁻¹(y) = y / √(1 - αy²)
+   *   f(x)   = x / sqrt(1 + αx²)
+   *   f′(x)  = (1 + αx²)^(-3/2)
+   *   f⁻¹(y) = y / sqrt(1 - αy²), valid when |y| < 1 / sqrt(α)
    *
    * Strategy:
-   *   ✅ Use derivative if slope is safe and finite.
-   *   🥽 Fallback to unSquash-based error only if slope ≈ 0 (very large x).
-   *
-   * Notes:
-   *   - Derivative is smooth and well-behaved for all finite x.
-   *   - Safe to use derivative in most cases for performance.
+   *   ✅ Use derivative when slope is stable
+   *   🥽 Fallback to unSquash when slope is small or unsafe
+   *   🔒 Clamp error to prevent exploding weights
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
 
+    let error: number;
     if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.max(Math.min(slope, 50), -50);
-
-      return rawError * safeSlope;
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to unSquash only if slope is ~0 (extreme x)
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

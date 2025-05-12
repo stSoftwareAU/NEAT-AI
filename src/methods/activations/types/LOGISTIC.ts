@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -54,40 +55,40 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for LOGISTIC (sigmoid) activation using derivative or fallback.
+   * Calculates error for LOGISTIC (sigmoid) activation.
    *
    * Summary:
-   *   f(x) = 1 / (1 + e^(-x))
-   *   f′(x) = f(x) * (1 - f(x))
+   *   f(x)   = 1 / (1 + e^(-x))
+   *   f′(x)  = f(x) * (1 - f(x))
+   *   f⁻¹(y) = ln(y / (1 - y)), valid when 0 < y < 1
    *
    * Strategy:
-   *   ✅ Uses derivative when slope is valid (not near 0 or 1).
-   *   🥽 Falls back to unSquash in flat regions (slope near 0).
+   *   ✅ Use derivative when slope is strong (center region)
+   *   🥽 Use unSquash in tails (slope near 0)
+   *   🔒 Clamp to prevent exploding weights
    *
    * Notes:
-   *   - Invertible with closed-form inverse, but inversion is expensive.
-   *   - Derivative is fast and accurate in the central region (0.1–0.9).
-   *   - Fallback handles saturated zones where derivative underflows.
+   *   - Derivative fades in tails → unsafe to trust near y ≈ 0 or 1
+   *   - Inversion is exact and cheap
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    const slope = this.derivative(currentValue);
+    const slope = currentActivation * (1 - currentActivation);
 
-    if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.max(Math.min(slope, 50), -50);
-
-      return rawError * safeSlope;
+    let error: number;
+    if (slope > 1e-8) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to unSquash only if slope is ~0 (extreme x)
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

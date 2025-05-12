@@ -1,12 +1,32 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
 
-Deno.test("ReLU.calculateError: active region", () => {
-  const relu = new ReLU();
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new ReLU();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
 
-  assertEquals(relu.calculateError(1.0, 1.0, relu.unSquash(1)), 0.0);
-  assertEquals(relu.calculateError(0.5, 1.0, relu.unSquash(0.5)), 0.5);
-  assertEquals(relu.calculateError(1.5, 1.0, relu.unSquash(1.5)), -0.5);
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
+  assert(Number.isFinite(error));
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
+Deno.test("ReLU.calculateError: active region", () => {
+  check(1.0, 1.0);
+  check(0.5, 1.0);
+  check(1.5, 1);
 });
 
 Deno.test("ReLU.calculateError: inactive region", () => {

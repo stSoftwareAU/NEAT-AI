@@ -1,5 +1,5 @@
+import { assertAlmostEquals } from "@std/assert";
 import { BIPOLAR_SIGMOID } from "../../../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
-import { assert, assertAlmostEquals } from "@std/assert";
 
 Deno.test("BIPOLAR_SIGMOID.calculateError: match", () => {
   const b = new BIPOLAR_SIGMOID();
@@ -8,20 +8,14 @@ Deno.test("BIPOLAR_SIGMOID.calculateError: match", () => {
   assertAlmostEquals(error, 0, 1e-10);
 });
 
-Deno.test("BIPOLAR_SIGMOID.calculateError: derivative zone", () => {
+Deno.test("BIPOLAR_SIGMOID.calculateError: mid-range", () => {
   const b = new BIPOLAR_SIGMOID();
-  const a = b.squash(0.5);
-  const t = b.squash(1.0);
-  const err = b.calculateError(a, t, 0.5);
-  assertAlmostEquals(err, 0.1, 0.1); // expected direction
-  assert(Number.isFinite(err));
-});
+  const x = 0.8;
+  const act = b.squash(x);
+  const slope = 0.5 * (1 - act ** 2);
+  const target = 0.5;
+  const error = b.calculateError(act, target, x);
 
-Deno.test("BIPOLAR_SIGMOID.calculateError: fallback", () => {
-  const b = new BIPOLAR_SIGMOID();
-  const a = b.squash(-10);
-  const t = b.squash(10);
-  const err = b.calculateError(a, t, -10);
-  assert(err > 0);
-  assert(Number.isFinite(err));
+  const expected = (act - target) / slope;
+  assertAlmostEquals(error, expected, 0.0001);
 });

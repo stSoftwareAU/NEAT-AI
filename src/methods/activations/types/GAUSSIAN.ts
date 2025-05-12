@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -55,36 +56,40 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for GAUSSIAN activation using derivative or fallback.
+   * Calculates error for GAUSSIAN activation using derivative with fallback.
    *
    * Summary:
-   *   f(x) = exp(-x²)
-   *   f′(x) = -2x * exp(-x²)
-   *   f⁻¹(y) = ±√(-ln(y))  ← ambiguous without sign
+   *   f(x)   = exp(-x²)
+   *   f′(x)  = -2x * exp(-x²)
+   *   f⁻¹(y) = ±√(-ln(y))
    *
    * Strategy:
-   *   ✅ Use derivative if slope is finite and non-zero.
-   *   🥽 Fallback to foggy unSquash if slope is too flat.
+   *   ✅ Use derivative when slope is nonzero
+   *   🥽 Fallback to unSquash and choose ±√(-ln(y)) closest to currentValue
+   *   🔒 Clamp error to avoid extreme weight updates
+   *
+   * Notes:
+   *   - Slope is 0 at x = 0 (peak), and fades quickly in tails
+   *   - UnSquash is ambiguous — fallback must resolve sign based on currentValue
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
 
+    let error: number;
     if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-
-      return rawError * safeSlope;
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

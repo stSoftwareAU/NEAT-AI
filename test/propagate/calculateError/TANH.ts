@@ -1,14 +1,29 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { TANH } from "../../../src/methods/activations/types/TANH.ts";
 
-Deno.test("TANH.calculateError: mid-range", () => {
-  const tanh = new TANH();
-  const act = tanh.squash(0.5);
-  const target = tanh.squash(1.0);
-  const error = tanh.calculateError(act, target, 0.5);
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new TANH();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
 
   assert(Number.isFinite(error));
-  assert(error > 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+Deno.test("TANH.calculateError: mid-range", () => {
+  check(0.5, 1.0);
 });
 
 Deno.test("TANH.calculateError: near +1 (flat slope)", () => {

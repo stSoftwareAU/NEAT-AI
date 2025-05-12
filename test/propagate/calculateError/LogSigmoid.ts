@@ -1,6 +1,28 @@
 import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
 import { assert, assertAlmostEquals } from "@std/assert";
 
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new LogSigmoid();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
+  assert(Number.isFinite(error));
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
 Deno.test("LogSigmoid.calculateError: no difference", () => {
   const log = new LogSigmoid();
   const val = log.squash(0.5);
@@ -9,12 +31,7 @@ Deno.test("LogSigmoid.calculateError: no difference", () => {
 });
 
 Deno.test("LogSigmoid.calculateError: derivative works", () => {
-  const log = new LogSigmoid();
-  const act = log.squash(1.0);
-  const target = log.squash(1.5);
-  const error = log.calculateError(act, target, 1.0);
-  assert(error > 0);
-  assert(Number.isFinite(error));
+  check(1.0, 1.5);
 });
 
 Deno.test("LogSigmoid.calculateError: fallback in flat tail", () => {

@@ -1,12 +1,30 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Mish } from "../../../src/methods/activations/types/Mish.ts";
 
-Deno.test("Mish.calculateError: standard case", () => {
-  const mish = new Mish();
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new Mish();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
 
-  const error = mish.calculateError(0.5, 1.0, 1.0); // x = 1.0
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
   assert(Number.isFinite(error));
-  assert(error > 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
+Deno.test("Mish.calculateError: standard case", () => {
+  check(0.5, 1.0);
 });
 
 Deno.test("Mish.calculateError: exact match", () => {

@@ -1,6 +1,7 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import type { SimplifyBiasInterface } from "../../../optimize/SimplifyBiasInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -97,39 +98,42 @@ export class TAN
   }
 
   /**
-   * Calculates error for TAN activation using derivative or foggy fallback.
+   * Calculates error for TAN (tangent) activation.
    *
    * Summary:
-   *   f(x) = tan(x)
-   *   f′(x) = 1 / cos²(x)
+   *   f(x)   = tan(x)
+   *   f′(x)  = 1 / cos²(x)
    *   f⁻¹(y) = arctan(y)
    *
    * Strategy:
-   *   ✅ Use derivative when slope is finite and stable.
-   *   🥽 Falls back to unSquash if derivative explodes near ±π/2.
+   *   ✅ Use derivative unless slope is dangerously large (near asymptote)
+   *   🥽 Fallback to unSquash (arctan) if slope > MAX_SAFE
+   *   🔒 Clamp result to prevent exploding gradients
    *
    * Notes:
-   *   - tan(x) has vertical asymptotes at odd multiples of π/2.
-   *   - Fallback needed in steep zones to avoid instability.
+   *   - tan(x) is periodic and unbounded
+   *   - Derivative explodes near x = ±π/2 ± nπ
+   *   - Fallback to arctan is fast and exact
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-    const slope = this.derivative(currentValue);
 
-    if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
+    const slope = this.derivative(currentValue);
+    const MAX_SAFE_SLOPE = 1e8;
+
+    let error: number;
+    if (Math.abs(slope) < MAX_SAFE_SLOPE) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

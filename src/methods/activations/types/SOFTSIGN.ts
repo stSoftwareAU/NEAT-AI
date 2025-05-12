@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -62,35 +63,40 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for SoftSign activation using derivative or fallback.
+   * Calculates error for SOFTSIGN activation.
    *
    * Summary:
-   *   f(x)       = x / (1 + |x|)
-   *   f′(x)      = 1 / (1 + |x|)^2
-   *   Inverse    = y / (1 - |y|)
+   *   f(x)   = x / (1 + |x|)
+   *   f′(x)  = 1 / (1 + |x|)^2
+   *   f⁻¹(y) = y / (1 − |y|), valid for |y| < 1
    *
    * Strategy:
-   *   ✅ Use derivative when slope is stable.
-   *   🥽 Fallback to unSquash (raw-space error) if slope is near zero or non-finite.
+   *   ✅ Use derivative when slope is stable
+   *   🥽 Fallback to unSquash when slope is very small
+   *   🔒 Clamp result to avoid large weight changes
+   *
+   * Notes:
+   *   - Derivative fades in tails (large |x|)
+   *   - Inversion is safe for |y| < 1
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-    const slope = this.derivative(currentValue);
 
-    if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
+    const slope = 1 / ((1 + Math.abs(currentValue)) ** 2);
+
+    let error: number;
+    if (slope > 1e-8) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

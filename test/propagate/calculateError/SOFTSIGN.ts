@@ -1,31 +1,38 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { SOFTSIGN } from "../../../src/methods/activations/types/SOFTSIGN.ts";
 
-Deno.test("SOFTSIGN.calculateError: mid-range", () => {
-  const softsign = new SOFTSIGN();
-  const act = softsign.squash(0.5);
-  const target = softsign.squash(1.0);
-  const error = softsign.calculateError(act, target, 0.5);
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new SOFTSIGN();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
   assert(Number.isFinite(error));
-  assert(error > 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
+Deno.test("SOFTSIGN.calculateError: mid-range", () => {
+  check(0.5, 1.0);
 });
 
 Deno.test("SOFTSIGN.calculateError: large positive input", () => {
-  const softsign = new SOFTSIGN();
-  const act = softsign.squash(10.0);
-  const target = softsign.squash(9.5);
-  const error = softsign.calculateError(act, target, 10.0);
-  assert(Number.isFinite(error));
-  assert(error < 0); // too high
+  check(10, 9.5);
 });
 
 Deno.test("SOFTSIGN.calculateError: large negative input", () => {
-  const softsign = new SOFTSIGN();
-  const act = softsign.squash(-10.0);
-  const target = softsign.squash(-9.5);
-  const error = softsign.calculateError(act, target, -10.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  check(-10, -9.5);
 });
 
 Deno.test("SOFTSIGN.calculateError: perfect match", () => {

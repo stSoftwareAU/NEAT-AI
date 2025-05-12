@@ -23,5 +23,5 @@ Deno.test("IDENTITY.calculateError: always finite", () => {
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
-  assertAlmostEquals(err, Number.MIN_SAFE_INTEGER - Number.MAX_SAFE_INTEGER);
+  assertAlmostEquals(err, -100);
 });

@@ -1,31 +1,38 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { SELU } from "../../../src/methods/activations/types/SELU.ts";
 
-Deno.test("SELU.calculateError: positive region", () => {
-  const selu = new SELU();
-  const act = selu.squash(1.0);
-  const target = selu.squash(2.0);
-  const error = selu.calculateError(act, target, 1.0);
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new SELU();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
   assert(Number.isFinite(error));
-  assert(error > 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
+Deno.test("SELU.calculateError: positive region", () => {
+  check(1.0, 2);
 });
 
 Deno.test("SELU.calculateError: negative region", () => {
-  const selu = new SELU();
-  const act = selu.squash(-1.0);
-  const target = selu.squash(-0.5);
-  const error = selu.calculateError(act, target, -1.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  check(-1.0, -0.5);
 });
 
 Deno.test("SELU.calculateError: fallback at low x", () => {
-  const selu = new SELU();
-  const act = selu.squash(-10.0);
-  const target = selu.squash(-9.9);
-  const error = selu.calculateError(act, target, -10.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  check(-10.0, -9.9);
 });
 
 Deno.test("SELU.calculateError: perfect match", () => {

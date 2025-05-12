@@ -3,11 +3,22 @@ import { Cube } from "../../../src/methods/activations/types/Cube.ts";
 
 Deno.test("Cube.calculateError: normal region", () => {
   const cube = new Cube();
-  const act = cube.squash(1.0); // 1³ = 1
-  const target = cube.squash(2.0); // 8
-  const error = cube.calculateError(act, target, 1.0);
+  const currentValue = 1.0;
+  const act = cube.squash(currentValue);
+  const target = cube.squash(2.0);
+
+  const slope = cube.derivative(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = cube.calculateError(act, target, currentValue);
+
   assert(Number.isFinite(error));
-  assert(error > 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
 });
 
 Deno.test("Cube.calculateError: small x (slope ≈ 0)", () => {
@@ -20,11 +31,22 @@ Deno.test("Cube.calculateError: small x (slope ≈ 0)", () => {
 
 Deno.test("Cube.calculateError: negative region", () => {
   const cube = new Cube();
-  const act = cube.squash(-2.0);
+  const currentValue = -2.0;
+  const act = cube.squash(currentValue);
   const target = cube.squash(-1.0);
-  const error = cube.calculateError(act, target, -2.0);
+
+  const slope = cube.derivative(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = cube.calculateError(act, target, currentValue);
+
   assert(Number.isFinite(error));
-  assert(error > 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
 });
 
 Deno.test("Cube.calculateError: perfect match", () => {

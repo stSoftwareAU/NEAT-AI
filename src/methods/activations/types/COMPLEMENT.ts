@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -69,30 +70,30 @@ export class COMPLEMENT
   }
 
   /**
-   * Calculates error for COMPLEMENT activation using derivative or fallback.
+   * Calculates error for COMPLEMENT activation using derivative only.
    *
    * Summary:
-   *   f(x) = 1 - x
-   *   f′(x) = -1
+   *   f(x)   = 1 - x
+   *   f′(x)  = -1
    *   f⁻¹(y) = 1 - y
    *
    * Strategy:
-   *   ✅ Derivative is constant (-1), so always used.
-   *   🥽 Fallback is technically possible but not needed.
+   *   ✅ Always use derivative — constant, simple, fast
+   *   ❌ No fallback or slope check needed
    *
    * Notes:
-   *   - Simple, linear, and invertible.
-   *   - Error calculation is reliable, fast, and exact via derivative.
-   *   - Rarely useful on its own, more useful when composed with other activations.
+   *   - COMPLEMENT is linear and invertible.
+   *   - Derivative is exactly -1, so error = actual - target.
+   *   - Most useful when composed with conditional or composite activations.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     _currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
-    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    const error = currentActivation - targetActivation;
+    if (Math.abs(error) < ERROR_EPSILON) return 0;
 
-    return rawError * -1;
+    return ErrorHelper.calculateClampedError(error);
   }
 }

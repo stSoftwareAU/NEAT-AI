@@ -1,6 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
-import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
@@ -72,33 +72,24 @@ export class ReLU6
   }
 
   /**
-   * Calculates error for ReLU6 activation using piecewise logic.
+   * Calculates error for ReLU6 using unSquash only.
    *
    * Summary:
-   *   f(x) = min(max(0, x), 6)
-   *   f′(x) = 0 if x ≤ 0 or x ≥ 6; 1 if 0 < x < 6
+   *   f(x) = clamp(x, 0, 6)
+   *   f⁻¹(y) = y (clamped), always defined
    *
    * Strategy:
-   *   ✅ Use slope = 1 if inside active zone.
-   *   🥽 Fallback to foggy unSquash if in dead zones (slope = 0).
+   *   🎯 Always use unSquash — it's cheap and safe
+   *   🔒 Clamp result to avoid extreme updates
    */
   calculateError(
-    currentActivation: number,
+    _currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
-    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-
-    const slope = (currentValue > 0 && currentValue < 6) ? 1 : 0;
-
-    if (slope > 0) {
-      return rawError;
-    }
-
-    // Fallback when slope = 0
     const targetValue = this.unSquash(targetActivation, currentValue);
     const error = targetValue - currentValue;
-    return Math.tanh(error);
+
+    return ErrorHelper.calculateClampedError(error);
   }
 }

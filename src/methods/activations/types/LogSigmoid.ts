@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -93,41 +94,41 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
     // Always clamp to safe float range
     return Math.max(Math.min(value, 1), 1e-6);
   }
-
   /**
-   * Calculates error for LogSigmoid using derivative or fallback.
+   * Calculates error for LogSigmoid activation.
    *
    * Summary:
-   *   f(x) = -log(1 + e^(-x))
-   *   f′(x) = 1 / (1 + e^x)
-   *   f⁻¹(y) = -log(exp(-y) - 1)
+   *   f(x)   = -log(1 + e^(-x))
+   *   f′(x)  = 1 / (1 + e^x)
+   *   f⁻¹(y) = log(e^y - 1), valid only for y < 0
    *
    * Strategy:
-   *   ✅ Use derivative when slope is stable and finite.
-   *   🥽 Fallback to unSquash when slope is too flat or unstable.
+   *   ✅ Use derivative when slope is above threshold
+   *   🥽 Fallback to unSquash in near-zero slope cases
+   *   🔒 Clamp result to prevent weight spikes
    *
    * Notes:
-   *   - Smooth, monotonic, invertible.
-   *   - Slope approaches 0 for large x, triggering fallback in tails.
+   *   - Output always < 0
+   *   - Derivative stable except for very large x
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-    const slope = this.derivative(currentValue);
 
-    if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
+    const slope = 1 / (1 + Math.exp(currentValue)); // 1 - σ(x)
+
+    let error: number;
+    if (slope > 1e-8) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

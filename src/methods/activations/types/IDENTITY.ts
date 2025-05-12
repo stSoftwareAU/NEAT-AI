@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -55,7 +56,7 @@ export class IDENTITY
   }
 
   /**
-   * Calculates error for IDENTITY activation using derivative.
+   * Calculates error for IDENTITY activation.
    *
    * Summary:
    *   f(x) = x
@@ -63,12 +64,12 @@ export class IDENTITY
    *   f⁻¹(y) = y
    *
    * Strategy:
-   *   ✅ Derivative is always 1, error = (target - current).
-   *   🧠 Fallback never needed — exact and trivial.
+   *   ✅ Always use raw error directly
+   *   🔒 Clamp result to prevent overflow
    *
    * Notes:
-   *   - Fastest and most accurate case.
-   *   - Used in output layers for regression problems.
+   *   - Linear, invertible, and stable
+   *   - No need for slope or fallback logic
    */
   calculateError(
     currentActivation: number,
@@ -77,6 +78,7 @@ export class IDENTITY
   ): number {
     const rawError = targetActivation - currentActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-    return rawError;
+
+    return ErrorHelper.calculateClampedError(rawError);
   }
 }

@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -68,36 +69,40 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for Softplus activation using the sigmoid-based derivative.
+   * Calculates error for SOFTPLUS activation.
    *
    * Summary:
-   *   f(x) = ln(1 + e^x)
-   *   f′(x) = 1 / (1 + e^(-x)) = sigmoid(x)
+   *   f(x)   = ln(1 + e^x)
+   *   f′(x)  = 1 / (1 + e^(-x)) = sigmoid(x)
+   *   f⁻¹(y) = ln(e^y - 1), valid when y > 0
    *
    * Strategy:
-   *   ✅ Always uses the derivative — smooth, fast, and non-zero.
-   *   ❌ No fallback needed — unSquash is slow and unnecessary.
+   *   ✅ Use derivative when slope is safe
+   *   🥽 Use unSquash when slope is near 0 (large negative x)
+   *   🔒 Clamp result to prevent extreme weight updates
    *
    * Notes:
-   *   - Softplus is numerically stable and differentiable everywhere.
-   *   - Derivative matches LOGISTIC — derivative(x) = sigmoid(x).
-   *   - Efficient for gradient-based learning without dead zones.
+   *   - Derivative is sigmoid(x), smooth and always positive
+   *   - Fallback to unSquash near log(1) region is safe with clamping
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    // Use hint (raw x) if available to evaluate the slope
-    const slope = this.derivative(currentValue);
+    const slope = 1 / (1 + Math.exp(-currentValue)); // sigmoid(x)
 
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-12 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
+    let error: number;
+    if (slope > 1e-8) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
+    }
 
-    return rawError * safeSlope;
+    return ErrorHelper.calculateClampedError(error);
   }
 }

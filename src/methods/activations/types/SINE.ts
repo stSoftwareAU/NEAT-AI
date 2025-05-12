@@ -5,6 +5,7 @@ import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 
 /**
  * SINE Activation Function
@@ -112,31 +113,37 @@ export class SINE
    * Calculates error for SINE activation using derivative or fallback.
    *
    * Summary:
-   *   f(x) = sin(x)
-   *   f′(x) = cos(x)
+   *   f(x)   = sin(x)
+   *   f′(x)  = cos(x)
+   *   f⁻¹(y) = arcsin(y), ambiguous without sign/hint
    *
    * Strategy:
-   *   ✅ Use derivative if slope is non-zero and finite.
-   *   🥽 Fallback to foggy-glasses unSquash-based error if slope too small or not finite.
+   *   ✅ Use derivative when slope (cos(x)) is stable
+   *   🥽 Fallback to unSquash (arcsin) when slope is near 0
+   *   🔒 Clamp result to prevent extreme weight changes
+   *
+   * Notes:
+   *   - Slope is periodic and vanishes near x = ±π/2, ±3π/2, ...
+   *   - arcsin fallback is safe if hint is used to resolve ambiguity
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-    const slope = this.derivative(currentValue);
 
+    const slope = this.derivative(currentValue); // cos(x)
+
+    let error: number;
     if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue); // arcsin with hint
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

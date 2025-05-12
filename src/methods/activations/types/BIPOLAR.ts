@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -89,6 +90,6 @@ export class BIPOLAR
     const targetValue = this.unSquash(targetActivation, currentValue);
 
     const error = targetValue - currentValue;
-    return error;
+    return ErrorHelper.calculateClampedError(error);
   }
 }

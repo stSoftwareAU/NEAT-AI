@@ -1,5 +1,28 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { GAUSSIAN } from "../../../src/methods/activations/types/GAUSSIAN.ts";
+import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
+
+function check(
+  squashFunction: ActivationInterface,
+  currentValue: number,
+  targetValue: number,
+) {
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
+  assert(Number.isFinite(error));
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
 
 Deno.test("GAUSSIAN.calculateError: peak region (fallback)", () => {
   const g = new GAUSSIAN();
@@ -12,10 +35,8 @@ Deno.test("GAUSSIAN.calculateError: peak region (fallback)", () => {
 
 Deno.test("GAUSSIAN.calculateError: shoulder region", () => {
   const g = new GAUSSIAN();
-  const act = g.squash(1.0); // ≈ 0.3679
-  const target = g.squash(1.5); // ≈ 0.1054
-  const error = g.calculateError(act, target, 1.0);
-  assertAlmostEquals(error, 0.193, 1e-3); // correct path, correct slope
+
+  check(g, 1.0, 1.5); // check the same values with the correct slope
 });
 
 Deno.test("GAUSSIAN.calculateError: tail region (fallback)", () => {

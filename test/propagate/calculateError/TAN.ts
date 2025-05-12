@@ -1,13 +1,30 @@
 import { TAN } from "../../../src/methods/activations/types/TAN.ts";
 import { assert, assertAlmostEquals } from "@std/assert";
 
-Deno.test("TAN.calculateError: small x (safe slope)", () => {
-  const t = new TAN();
-  const act = t.squash(0.5); // tan(0.5)
-  const target = t.squash(0.6); // slightly higher
-  const error = t.calculateError(act, target, 0.5);
-  assert(error > 0);
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new TAN();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
   assert(Number.isFinite(error));
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
+Deno.test("TAN.calculateError: small x (safe slope)", () => {
+  check(0.5, 0.6);
 });
 
 Deno.test("TAN.calculateError: zero error", () => {
@@ -18,19 +35,9 @@ Deno.test("TAN.calculateError: zero error", () => {
 });
 
 Deno.test("TAN.calculateError: near π/2 fallback", () => {
-  const t = new TAN();
-  const act = t.squash(1.55); // very steep
-  const target = t.squash(1.52);
-  const error = t.calculateError(act, target, 1.55);
-  assert(Number.isFinite(error));
-  assert(error < 0);
+  check(1.55, 1.52);
 });
 
 Deno.test("TAN.calculateError: negative slope zone", () => {
-  const t = new TAN();
-  const act = t.squash(-1.0);
-  const target = t.squash(-1.3);
-  const error = t.calculateError(act, target, -1.0);
-  assert(error < 0);
-  assert(Number.isFinite(error));
+  check(-1, -1.3);
 });

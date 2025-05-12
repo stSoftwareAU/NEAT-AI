@@ -1,20 +1,32 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { Swish } from "../../../src/methods/activations/types/Swish.ts";
 
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new Swish();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
+  assert(Number.isFinite(error));
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
 Deno.test("Swish.calculateError: basic delta", () => {
-  const swish = new Swish();
-
-  const e1 = swish.calculateError(1.0, 1.0, 1.0); // no error
-  assertEquals(e1, 0);
-
-  const e2 = swish.calculateError(0.5, 1.0, 0.5);
-  assert(e2 > 0 && Number.isFinite(e2));
+  check(1, 1);
 });
 
 Deno.test("Swish.calculateError: negative region", () => {
-  const swish = new Swish();
-
-  const error = swish.calculateError(-0.2, 0.0, -1.0);
-  assert(Number.isFinite(error));
-  assert(error > -1 && error < 1);
+  check(-0.2, 0);
 });

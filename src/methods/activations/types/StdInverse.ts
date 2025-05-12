@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -80,15 +81,15 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
     const slope = this.derivative(currentValue);
 
+    let error: number;
     if (Math.abs(slope) > 1e-8) {
       const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
+      error = rawError / safeSlope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

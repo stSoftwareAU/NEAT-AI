@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -80,42 +81,32 @@ export class ArcTan
   }
 
   /**
-   * Calculates error for ArcTan activation using derivative or foggy fallback.
+   * Calculates error for ArcTan activation using derivative-based strategy.
    *
    * Summary:
    *   f(x) = arctangent(x)
    *   f′(x) = 1 / (1 + x²)
    *
    * Strategy:
-   *   ✅ Uses derivative when slope is finite and non-trivial.
-   *   🥽 Falls back to foggy (unSquash) when slope is too flat or divergent.
+   *   ✅ Always use derivative (slope is finite and non-zero).
+   *   ❌ No fallback required — ArcTan is smooth and invertible with no dead zones.
    *
    * Notes:
-   *   - Smooth, bounded, and always invertible.
-   *   - Derivative shrinks with large |x|, causing flat gradient risk.
-   *   - Fallback unSquash is fast and accurate, so both approaches are valid.
-   *   - Reasonable default for smooth but saturating activation.
+   *   - Error is scaled by inverse of slope to estimate pre-activation delta.
+   *   - Derivative shrinks for large |x|, but never reaches zero.
+   *   - ArcTan is well-suited for derivative-based error propagation.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
 
-    if (Number.isFinite(slope) && Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-
-      return rawError * safeSlope;
-    }
-
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    // Always safe: derivative never zero or undefined for ArcTan
+    return ErrorHelper.calculateClampedError(rawError / slope);
   }
 }

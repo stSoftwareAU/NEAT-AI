@@ -1,31 +1,41 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { ELU } from "../../../src/methods/activations/types/ELU.ts";
+import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
+
+function check(
+  squashFunction: ActivationInterface,
+  currentValue: number,
+  targetValue: number,
+) {
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
+  assert(Number.isFinite(error));
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
 
 Deno.test("ELU.calculateError: positive region", () => {
-  const elu = new ELU();
-  const act = elu.squash(1.0);
-  const target = elu.squash(2.0);
-  const error = elu.calculateError(act, target, 1.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  const squashFunction = new ELU();
+
+  check(squashFunction, 1, 2);
 });
 
 Deno.test("ELU.calculateError: negative region", () => {
-  const elu = new ELU();
-  const act = elu.squash(-2.0);
-  const target = elu.squash(-1.5);
-  const error = elu.calculateError(act, target, -2.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  check(new ELU(), -2, -1.5);
 });
 
 Deno.test("ELU.calculateError: fallback at low x", () => {
-  const elu = new ELU();
-  const act = elu.squash(-10.0);
-  const target = elu.squash(-9.9);
-  const error = elu.calculateError(act, target, -10.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  check(new ELU(), -10, -9.9);
 });
 
 Deno.test("ELU.calculateError: perfect match", () => {

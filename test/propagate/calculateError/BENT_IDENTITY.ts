@@ -1,22 +1,38 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { BENT_IDENTITY } from "../../../src/methods/activations/types/BENT_IDENTITY.ts";
 
-Deno.test("BENT_IDENTITY.calculateError: mid-range", () => {
+Deno.test("BentIdentity.calculateError: mid-range input", () => {
   const bent = new BENT_IDENTITY();
-  const act = bent.squash(1.0);
-  const target = bent.squash(1.5);
-  const error = bent.calculateError(act, target, 1.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  const x = 1.5;
+  const activation = bent.squash(x);
+  const slope = bent.derivative(x);
+  const targetActivation = 1.0;
+  const error = bent.calculateError(activation, targetActivation, x);
+
+  const expected = (activation - targetActivation) / slope;
+  assertAlmostEquals(error, expected, 0.0001);
 });
 
 Deno.test("BENT_IDENTITY.calculateError: negative values", () => {
-  const bent = new BENT_IDENTITY();
-  const act = bent.squash(-2.0);
-  const target = bent.squash(-1.5);
-  const error = bent.calculateError(act, target, -2.0);
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  const squasher = new BENT_IDENTITY();
+  const currentValue = -2;
+  const targetActivation = -1.5;
+
+  const activation = squasher.squash(currentValue);
+  const slope = squasher.derivative(currentValue);
+
+  const error = squasher.calculateError(
+    activation,
+    targetActivation,
+    currentValue,
+  );
+  const expectedError = (activation - targetActivation) / slope;
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Error: ${error} != ${expectedError}`,
+  );
 });
 
 Deno.test("BENT_IDENTITY.calculateError: flat slope edge (large x)", () => {
@@ -24,8 +40,17 @@ Deno.test("BENT_IDENTITY.calculateError: flat slope edge (large x)", () => {
   const act = bent.squash(10.0);
   const target = bent.squash(9.5);
   const error = bent.calculateError(act, target, 10.0);
+
+  const slope = bent.derivative(10.0);
+  const expectedError = (act - target) / slope;
+
   assert(Number.isFinite(error));
-  assert(error < 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Error: ${error} != ${expectedError}`,
+  );
 });
 
 Deno.test("BENT_IDENTITY.calculateError: perfect match", () => {

@@ -1,34 +1,38 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { LOGISTIC } from "../../../src/methods/activations/types/LOGISTIC.ts";
 
-Deno.test("LOGISTIC.calculateError: mid-range", () => {
-  const logistic = new LOGISTIC();
-  const act = logistic.squash(0.0);
-  const target = logistic.squash(1.0);
-  const error = logistic.calculateError(act, target, 0.0);
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new LOGISTIC();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
 
   assert(Number.isFinite(error));
-  assert(error > 0);
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
+Deno.test("LOGISTIC.calculateError: mid-range", () => {
+  check(0, 1.0);
 });
 
 Deno.test("LOGISTIC.calculateError: upper flat slope", () => {
-  const logistic = new LOGISTIC();
-  const act = logistic.squash(10);
-  const target = logistic.squash(8);
-  const error = logistic.calculateError(act, target, 10);
-
-  assert(Number.isFinite(error));
-  assert(error < 0);
+  check(10, 8);
 });
 
 Deno.test("LOGISTIC.calculateError: lower flat slope", () => {
-  const logistic = new LOGISTIC();
-  const act = logistic.squash(-10);
-  const target = logistic.squash(-8);
-  const error = logistic.calculateError(act, target, -10);
-
-  assert(Number.isFinite(error));
-  assert(error > 0);
+  check(-10, -8);
 });
 
 Deno.test("LOGISTIC.calculateError: perfect match", () => {

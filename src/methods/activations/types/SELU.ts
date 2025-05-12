@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -74,41 +75,34 @@ export class SELU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for SELU (Scaled Exponential Linear Unit) using derivative or fallback.
+   * Calculates error for SELU (Scaled Exponential Linear Unit).
    *
    * Summary:
-   *   f(x) = λ * x                       if x ≥ 0
-   *        = λ * α * (e^x - 1)          if x < 0
-   *   f′(x) = λ                         if x ≥ 0
-   *        = λ * (f(x)/x + α)           if x < 0
+   *   f(x) = λ * x                     if x ≥ 0
+   *        = λ * α * (e^x − 1)        if x < 0
+   *   f′(x) = λ                        if x ≥ 0
+   *        = λ * α * e^x              if x < 0
    *
    * Strategy:
-   *   ✅ Uses derivative when slope is finite and reliable.
-   *   🥽 Falls back to unSquash if derivative fails or activation is flat.
+   *   ✅ Always use derivative — slope is always finite and non-zero
+   *   ❌ No fallback required
+   *   🔒 Clamp result to avoid extreme weight updates
    *
    * Notes:
-   *   - Combines linearity and exponential growth for self-normalizing networks.
-   *   - Inversion for x < 0 is expensive but always possible.
-   *   - Derivative is efficient and accurate in nearly all practical cases.
+   *   - Derivative is cheap and exact
+   *   - No dead zones — suitable for stable back propagation
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
+    const error = rawError / slope;
 
-    if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
-    }
-
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }
