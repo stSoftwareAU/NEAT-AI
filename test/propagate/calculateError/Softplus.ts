@@ -1,24 +1,35 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { Softplus } from "../../../src/methods/activations/types/Softplus.ts";
 
+function check(
+  currentValue: number,
+  targetValue: number,
+) {
+  const squashFunction = new Softplus();
+  const act = squashFunction.squash(currentValue);
+  const target = squashFunction.squash(targetValue);
+
+  const slope = squashFunction.derivative!(currentValue);
+  const expectedError = (act - target) / slope;
+
+  const error = squashFunction.calculateError!(act, target, currentValue);
+
+  assert(Number.isFinite(error));
+  assertAlmostEquals(
+    error,
+    expectedError,
+    0.0001,
+    `Expected ${expectedError}, got ${error}`,
+  );
+}
+
 Deno.test("Softplus.calculateError: mid-range", () => {
-  const softplus = new Softplus();
-
-  assertEquals(softplus.calculateError(1.0, 1.0, softplus.unSquash(1)), 0.0);
-
-  const e = softplus.calculateError(1.0, 1.5, softplus.unSquash(1));
-  assert(e > 0 && Number.isFinite(e));
+  check(1, 1);
+  check(1, 1.5);
 });
 
 Deno.test("Softplus.calculateError: hint-based slope", () => {
-  const softplus = new Softplus();
-
-  const min = 1e-15;
-  const e = softplus.calculateError(min, 0.8, 1.0); // near valid edge
-
-  assert(Number.isFinite(e), `Error should be finite: ${e}`);
-  assert(e >= 0, `Error should not be negative: ${e}`);
-  //   assert(e > 1e-6, `Error unexpectedly small: ${e}`);
+  check(1e-15, 0.8);
 });
 
 Deno.test("Softplus.calculateError: near flat zone", () => {
