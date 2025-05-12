@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -97,34 +98,32 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for GELU (Gaussian Error Linear Unit) using the derivative.
+   * Calculates error for GELU (Gaussian Error Linear Unit) activation.
    *
    * Summary:
    *   f(x) ≈ 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
-   *   f′(x) is smooth, always finite, and never zero across real numbers.
    *
    * Strategy:
-   *   ✅ Uses the derivative directly — fast, smooth, and safe.
-   *   ❌ No fallback needed or used — unSquash is expensive and unnecessary.
+   *   ✅ Always use derivative — smooth and nonzero
+   *   ❌ No fallback — inverse does not exist in closed form
+   *   🔒 Clamp result to prevent large updates
    *
    * Notes:
-   *   - GELU derivative is stable and non-zero everywhere.
-   *   - Clamping protects against exploding gradients at large x.
+   *   - GELU derivative is stable and behaves well across input space
+   *   - No risk of slope = 0 in typical input ranges
+   *   - Derivative is faster than unSquash and only option
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
+    const error = rawError / slope;
 
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
-
-    return rawError * safeSlope;
+    return ErrorHelper.calculateClampedError(error);
   }
 }
