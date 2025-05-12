@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -47,35 +48,40 @@ export class Cube implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for Cube activation using derivative or fallback.
+   * Calculates error for CUBE activation using derivative with fallback.
    *
    * Summary:
-   *   f(x) = x³
-   *   f′(x) = 3x²
+   *   f(x)   = x³
+   *   f′(x)  = 3x²
    *   f⁻¹(y) = ∛y
    *
    * Strategy:
-   *   ✅ Use derivative if slope is non-zero and finite.
-   *   🥽 Fallback to foggy unSquash-based error if slope ≈ 0.
+   *   ✅ Use derivative when slope is significant (x ≠ 0)
+   *   🥽 Fall back to unSquash when x ≈ 0 (slope ≈ 0)
+   *   🔒 Clamp result to avoid weight spikes
+   *
+   * Notes:
+   *   - Fully differentiable and invertible
+   *   - Slope vanishes at x = 0, which would cause unstable bac propagation
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
 
+    let error: number;
     if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -64,41 +65,35 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for ELU (Exponential Linear Unit) using derivative or fallback.
+   * Calculates error for ELU (Exponential Linear Unit) using derivative only.
    *
    * Summary:
    *   f(x) = x              if x ≥ 0
-   *        = α * (e^x - 1) if x < 0
+   *        = α * (e^x - 1)  if x < 0
+   *
    *   f′(x) = 1             if x ≥ 0
-   *        = f(x) + α      if x < 0
+   *        = f(x) + α       if x < 0
    *
    * Strategy:
-   *   ✅ Uses derivative when slope is finite and non-zero (typical).
-   *   🥽 Falls back to unSquash if derivative is flat or diverges.
+   *   ✅ Always use derivative — slope is always defined and non-zero
+   *   ❌ No fallback required
+   *   🔒 Clamp result to prevent extreme values
    *
    * Notes:
-   *   - Invertible, but inversion for negative x is non-trivial.
-   *   - Derivative is stable and cheap, so preferred unless suspicious.
-   *   - Avoids dead zones (unlike ReLU) while retaining efficiency.
+   *   - ELU is smooth and avoids dead zones like ReLU.
+   *   - UnSquash is complex and unnecessary; derivative is fast and safe.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
+    const error = rawError / slope;
 
-    if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
-    }
-
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }
