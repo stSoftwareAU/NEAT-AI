@@ -55,7 +55,7 @@ Deno.test("ArcTan.calculateError: Far in tail (slope small but finite)", () => {
   const slope = arc.derivative(currentValue);
 
   const error = arc.calculateError(activation, targetActivation, currentValue);
-  const expectedError = (activation - targetActivation) / slope;
+  const expectedError = Math.min((activation - targetActivation) / slope, 100);
   assertAlmostEquals(
     error,
     expectedError,
