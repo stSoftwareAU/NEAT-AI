@@ -15,6 +15,7 @@ import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 
 export class Cosine
   implements
@@ -102,34 +103,40 @@ export class Cosine
   }
 
   /**
-   * Calculates error for Cosine activation using derivative or fallback.
+   * Calculates error for COSINE activation with derivative fallback.
    *
    * Summary:
-   *   f(x) = cos(x)
-   *   f′(x) = -sin(x)
+   *   f(x)   = cos(x)
+   *   f′(x)  = -sin(x)
+   *   f⁻¹(y) = acos(y)
    *
    * Strategy:
-   *   ✅ Use derivative when slope is stable and non-zero.
-   *   🥽 Fallback to unSquash if slope is flat (near π or 0).
+   *   ✅ Use derivative when slope is stable (|sin(x)| > ε)
+   *   🥽 Fall back to unSquash when slope is near 0 (e.g., at x ≈ 0, π, 2π)
+   *   🔒 Clamp result to avoid overshoot
+   *
+   * Notes:
+   *   - Derivative vanishes at peaks (cos(x) ≈ ±1), causing risk of large error.
+   *   - acos() is fast and accurate, making fallback safe.
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
 
+    let error: number;
     if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }
