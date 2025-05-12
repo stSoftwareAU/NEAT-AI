@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -60,7 +61,7 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const targetValue = this.unSquash(targetActivation, currentValue);
-
-    return targetValue - currentValue;
+    const error = targetValue - currentValue;
+    return ErrorHelper.calculateClampedError(error);
   }
 }
