@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -82,40 +83,24 @@ export class TANH
     return Number.isFinite(d) ? d : 0;
   }
 
-  /**
-   * Calculates error for TANH activation using derivative or fallback.
-   *
-   * Summary:
-   *   f(x) = tanh(x)
-   *   f′(x) = 1 - tanh²(x)
-   *
-   * Strategy:
-   *   ✅ Uses derivative when slope is finite and non-zero.
-   *   🥽 Falls back to unSquash if derivative is too flat (e.g. near ±1).
-   *
-   * Notes:
-   *   - Tanh is smooth and invertible.
-   *   - Near edges (±1), slope approaches zero — fallback is more reliable.
-   *   - Derivative is fast and usually accurate unless saturated.
-   */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
 
-    if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
+    let error: number;
+    if (slope > 1e-8) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation, currentValue);
+      error = targetValue - currentValue;
     }
 
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }

@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -84,39 +85,31 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for Swish activation using derivative or fallback.
+   * Calculates error for Swish activation.
    *
    * Summary:
    *   f(x) = x * sigmoid(x) = x / (1 + e^(-x))
-   *   f′(x) = sigmoid(x) + x * sigmoid(x) * (1 - sigmoid(x))
    *
    * Strategy:
-   *   ✅ Uses derivative when slope is finite and non-zero (typical case).
-   *   🥽 Falls back to unSquash if derivative becomes unstable or flat (rare).
+   *   ✅ Always use derivative — smooth and non-zero
+   *   ❌ No inverse; do not use unSquash
+   *   🔒 Clamp result to prevent exploding updates
    *
    * Notes:
-   *   - Derivative is smooth, non-zero, and preferred.
-   *   - No closed-form inverse: unSquash uses Newton-Raphson.
-   *   - Derivative is typically faster and accurate — used unless fallback is triggered.
+   *   - Swish has no dead zones
+   *   - Suitable for deep networks with stable training
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
+    const error = rawError / slope;
 
-    if (Math.abs(slope) > 1e-8) {
-      const safeSlope = Math.min(Math.max(slope, -50), 50);
-      return rawError * safeSlope;
-    }
-
-    // 🥽 Fallback to foggy glasses
-    const targetValue = this.unSquash(targetActivation, currentValue);
-    const error = targetValue - currentValue;
-
-    return Math.tanh(error);
+    return ErrorHelper.calculateClampedError(error);
   }
 }
