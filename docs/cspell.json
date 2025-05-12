@@ -54,6 +54,7 @@
     "unsquash",
     "Backpropagation",
     "Deprioritise",
-    "deprioritised"
+    "deprioritised",
+    "nonzero"
   ]
 }
