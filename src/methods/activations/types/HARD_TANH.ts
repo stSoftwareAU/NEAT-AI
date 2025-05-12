@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -62,23 +63,25 @@ export class HARD_TANH
   }
 
   /**
-   * Calculates error for HARD_TANH activation using slope when in linear zone.
+   * Calculates error for HARD_TANH activation using piecewise logic.
    *
    * Summary:
-   *   f(x) = -1 if x < -1
-   *        =  x if -1 ≤ x ≤ 1
-   *        =  1 if x > 1
-   *   f′(x) = 1 for -1 < x < 1, else 0
+   *   f(x) = -1           if x ≤ -1
+   *        = x            if -1 < x < 1
+   *        = +1           if x ≥ 1
+   *
+   *   f′(x) = 0           if |x| ≥ 1 (flat plateau)
+   *        = 1            otherwise
    *
    * Strategy:
-   *   ✅ Use slope = 1 inside linear region (-1, 1)
-   *   🥽 Use foggy fallback outside that region (where slope = 0)
+   *   ✅ Use derivative (1) when in center region
+   *   🥽 Use direct error in flat regions where derivative = 0
+   *   🔒 Clamp result to avoid runaway weights
    *
    * Notes:
-   *   - This matches the piecewise nature of the function.
-   *   - unSquash fallback is cheap and reliable for clipped zones.
+   *   - Flat zones make back propagation unreliable — must fall back to direct signal
+   *   - UnSquash not possible (not truly invertible)
    */
-
   calculateError(
     currentActivation: number,
     targetActivation: number,
@@ -87,16 +90,12 @@ export class HARD_TANH
     const rawError = targetActivation - currentActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    // HARD_TANH is linear in range (-1, 1)
-    if (currentActivation > -1 && currentActivation < 1) {
-      return rawError * 1; // slope = 1
-    }
+    const inRange = currentValue > -1 && currentValue < 1;
 
-    // Outside range — derivative is 0, so fallback to foggy (unsquash)
+    const error = inRange
+      ? rawError // slope = 1
+      : targetActivation - currentValue; // fallback: rough directional signal
 
-    const targetValue = this.unSquash(targetActivation, currentValue);
-
-    const error = targetValue - currentValue;
-    return Math.tanh(error); // smooth fallback
+    return ErrorHelper.calculateClampedError(error);
   }
 }
