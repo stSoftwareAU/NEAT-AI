@@ -22,6 +22,7 @@ function check(
     `Expected ${expectedError}, got ${error}`,
   );
 }
+
 Deno.test("LOGISTIC.calculateError: mid-range", () => {
   check(0, 1.0);
 });

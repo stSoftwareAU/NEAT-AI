@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -86,34 +87,31 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for Mish activation using the derivative only.
+   * Calculates error for Mish activation using derivative only.
    *
    * Summary:
-   *   f(x) = x * tanh(softplus(x)) = x * tanh(ln(1 + e^x))
-   *   f′(x) = smooth, positive, and well-behaved for all x
+   *   f(x) = x * tanh(ln(1 + e^x))  (i.e., x * tanh(softplus(x)))
    *
    * Strategy:
-   *   ✅ Always uses the derivative — reliable and efficient.
-   *   ❌ No fallback to unSquash (too expensive for Mish).
+   *   ✅ Always use derivative — smooth and defined across ℝ
+   *   ❌ No fallback — inverse is not defined
+   *   🔒 Clamp result to prevent extreme values
    *
    * Notes:
-   *   - Derivative is computed via an analytical approximation.
-   *   - Squash and derivative are jointly calculated for efficiency.
-   *   - No dead zones — Mish is non-monotonic but differentiable everywhere.
+   *   - Mish is non-monotonic near 0, but that does not affect derivative-based learning
+   *   - Use caution in extreme tails to avoid exploding weights
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
+    const rawError = currentActivation - targetActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+
     const slope = this.derivative(currentValue);
+    const error = rawError / slope;
 
-    const safeSlope = Number.isFinite(slope)
-      ? Math.abs(slope) < 1e-8 ? 0 : Math.min(Math.max(slope, -50), 50)
-      : Math.sign(slope);
-
-    return rawError * safeSlope;
+    return ErrorHelper.calculateClampedError(error);
   }
 }

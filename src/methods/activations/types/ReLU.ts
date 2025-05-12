@@ -1,5 +1,6 @@
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
@@ -59,32 +60,26 @@ export class ReLU
    *
    * Summary:
    *   f(x) = max(0, x)
-   *   f′(x) = 1 if x > 0, 0 otherwise
+   *   f′(x) = 1 if x > 0; otherwise 0
    *
    * Strategy:
-   *   ✅ Uses slope = 1 when ReLU is active (x > 0)
-   *   🥽 Falls back to unSquash in the inactive (flat) region
-   *
-   * Notes:
-   *   - ReLU has a dead zone for x ≤ 0 where the gradient is 0.
-   *   - To propagate error when ReLU is inactive, we estimate via unSquash.
-   *   - This approach balances correctness and speed for training.
+   *   ✅ Use derivative when x > 0
+   *   🥽 Use unSquash(targetActivation, currentValue) when x ≤ 0
+   *   🔒 Clamp result to prevent large weight updates
    */
   calculateError(
     currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
-    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-    if (currentActivation > 0) {
-      // When ReLU is active, we treat it like identity: error = target - current
-      return rawError;
-    } else {
-      // In the inactive (flat) zone, derivative is 0 — fallback to "foggy glasses"
-      // i.e., calculate raw error using inverse
-      return this.unSquash(targetActivation, currentValue) -
-        currentValue;
+    if (Math.abs(currentActivation - targetActivation) < ERROR_EPSILON) {
+      return 0;
     }
+
+    const error = currentValue > 0
+      ? currentActivation - targetActivation
+      : this.unSquash(targetActivation, currentValue) - currentValue;
+
+    return ErrorHelper.calculateClampedError(error);
   }
 }
