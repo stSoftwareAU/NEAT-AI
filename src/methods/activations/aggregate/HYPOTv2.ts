@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
@@ -91,7 +92,7 @@ export class HYPOTv2
 
     if (Math.abs(error) < config.plankConstant) return targetActivation;
     const hypotValue = activation || 1;
-
+    assert(Number.isFinite(hypotValue), "hypotValue must be finite");
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
     for (let indx = inward.length; indx--;) {
@@ -104,7 +105,8 @@ export class HYPOTv2
         let improvedActivation = fromActivation;
         if (c.to !== c.from) {
           if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
-            const partialDerivative = values[indx] / hypotValue;
+            const currentValue = neuron.bias + improvedActivation * c.weight;
+            const partialDerivative = currentValue / hypotValue;
             const fromError = error * partialDerivative;
             improvedActivation = fromNeuron.propagate(
               fromActivation + fromError,
