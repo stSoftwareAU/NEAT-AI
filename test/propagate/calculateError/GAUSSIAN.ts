@@ -11,7 +11,7 @@ function check(
   const target = squashFunction.squash(targetValue);
 
   const slope = squashFunction.derivative!(currentValue);
-  const expectedError = (act - target) / slope;
+  const expectedError = (target - act) / slope;
 
   const error = squashFunction.calculateError!(act, target, currentValue);
 
@@ -68,4 +68,37 @@ Deno.test("GAUSSIAN.calculateError: symmetric", () => {
   const target = g.squash(1.0);
   const error = g.calculateError(act, target, -1);
   assertAlmostEquals(error, 0);
+});
+
+Deno.test("GAUSSIAN.calculateError: sign check with positive slope", () => {
+  const g = new GAUSSIAN();
+  const currentValue = 0.5;
+  const targetValue = 1.0;
+
+  const act = g.squash(currentValue);
+  const target = g.squash(targetValue);
+
+  const error = g.calculateError(act, target, currentValue);
+
+  // Expect error to be positive — we need to move x from 0.5 toward 1.0
+  assert(error > 0, `Expected error > 0, got ${error}`);
+});
+
+Deno.test("GAUSSIAN.calculateError: sign check with negative slope", () => {
+  const g = new GAUSSIAN();
+  const currentValue = -0.5;
+  const targetValue = -1.0;
+
+  const act = g.squash(currentValue);
+  const target = g.squash(targetValue);
+
+  const error = g.calculateError(act, target, currentValue);
+
+  // Expect error to be negative — we need to move x from -0.5 toward -1.0
+  assert(error < 0, `Expected error < 0, got ${error}`);
+});
+Deno.test("GAUSSIAN.calculateError: sign + value via check helper", () => {
+  const g = new GAUSSIAN();
+  check(g, 0.5, 1.0); // should give a positive error
+  check(g, -0.5, -1.0); // should give a negative error
 });

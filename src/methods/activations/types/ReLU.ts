@@ -72,12 +72,13 @@ export class ReLU
     targetActivation: number,
     currentValue: number,
   ): number {
-    if (Math.abs(currentActivation - targetActivation) < ERROR_EPSILON) {
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) {
       return 0;
     }
 
     const error = currentValue > 0
-      ? currentActivation - targetActivation
+      ? rawError
       : this.unSquash(targetActivation, currentValue) - currentValue;
 
     return ErrorHelper.calculateClampedError(error);

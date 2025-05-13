@@ -31,7 +31,6 @@ export class HARD_TANH
   }
 
   squash(x: number): number {
-    if (!Number.isFinite(x)) return 0;
     return Math.max(-1, Math.min(1, x));
   }
 
@@ -87,14 +86,12 @@ export class HARD_TANH
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
-    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    if (Math.abs(currentActivation - targetActivation) < ERROR_EPSILON) {
+      return 0;
+    }
 
-    const inRange = currentValue > -1 && currentValue < 1;
-
-    const error = inRange
-      ? rawError // slope = 1
-      : targetActivation - currentValue; // fallback: rough directional signal
+    const targetValue = this.unSquash(targetActivation, currentValue);
+    const error = targetValue - currentValue;
 
     return ErrorHelper.calculateClampedError(error);
   }

@@ -12,10 +12,10 @@ Deno.test("ArcTan: squash, unsquash, and derivative cross-check", () => {
     const y2 = fn.squash(xRestored);
     const d = fn.derivative(x);
 
-    // Derivative should always be finite and in (0, 2/π]
+    // Derivative should always be finite and in (0, 1]
     assert(Number.isFinite(d), `Non-finite derivative at x=${x}: ${d}`);
     assert(
-      d > 0 && d <= 2 / Math.PI,
+      d > 0 && d <= 1,
       `Derivative out of range at x=${x}: ${d}`,
     );
 
@@ -27,8 +27,8 @@ Deno.test("ArcTan: squash, unsquash, and derivative cross-check", () => {
       `Round-trip mismatch at x=${x}: y=${y} y2=${y2}`,
     );
 
-    // Correct derivative formula: (2 / π) * (1 / (1 + x²))
-    const expected = (2 / Math.PI) * (1 / (1 + x * x));
+    // Correct derivative formula: 1 / (1 + x²)
+    const expected = 1 / (1 + x * x);
     assertAlmostEquals(
       d,
       expected,

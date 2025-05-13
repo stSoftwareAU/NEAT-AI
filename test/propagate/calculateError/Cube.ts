@@ -8,7 +8,7 @@ Deno.test("Cube.calculateError: normal region", () => {
   const target = cube.squash(2.0);
 
   const slope = cube.derivative(currentValue);
-  const expectedError = (act - target) / slope;
+  const expectedError = (target - act) / slope;
 
   const error = cube.calculateError(act, target, currentValue);
 
@@ -36,7 +36,7 @@ Deno.test("Cube.calculateError: negative region", () => {
   const target = cube.squash(-1.0);
 
   const slope = cube.derivative(currentValue);
-  const expectedError = (act - target) / slope;
+  const expectedError = (target - act) / slope;
 
   const error = cube.calculateError(act, target, currentValue);
 

@@ -35,17 +35,7 @@ export function makeElitists(
 
 export function sortCreaturesByScore(creatures: Creature[]): Creature[] {
   creatures.sort((a, b) => {
-    if (Number.isFinite(a.score)) {
-      if (Number.isFinite(b.score)) {
-        return (b.score as number) - (a.score as number);
-      } else {
-        return -1;
-      }
-    } else if (Number.isFinite(b.score)) {
-      return 1;
-    } else {
-      return 0;
-    }
+    return b.score! - a.score!;
   });
 
   return creatures;

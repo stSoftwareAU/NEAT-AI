@@ -11,7 +11,7 @@ function check(
   const target = squashFunction.squash(targetValue);
 
   const slope = squashFunction.derivative!(currentValue);
-  const expectedError = (act - target) / slope;
+  const expectedError = (target - act) / slope;
 
   const error = squashFunction.calculateError!(act, target, currentValue);
 

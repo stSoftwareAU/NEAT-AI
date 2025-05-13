@@ -71,13 +71,12 @@ export class ArcTan
   }
 
   /**
-   * The derivative of the ArcTan function.
-   *
-   * @param x The input value.
-   * @returns The derivative of the ArcTan function at the given input.
+   * Derivative of arctangent function:
+   * f(x) = arctan(x)
+   * f′(x) = 1 / (1 + x²)
    */
   derivative(x: number): number {
-    return 2 / (Math.PI * (1 + x * x));
+    return 1 / (1 + x * x);
   }
 
   /**
@@ -101,7 +100,7 @@ export class ArcTan
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = currentActivation - targetActivation;
+    const rawError = targetActivation - currentActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
