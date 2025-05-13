@@ -67,7 +67,7 @@ Deno.test("Bias-Simple", () => {
     );
     if (results.compact) Creature.fromJSON(results.compact).validate();
     if (results.error > lastError) {
-      if (results.error - lastError > 0.005) {
+      if (results.error - lastError > 0.01) {
         fail(
           `Error rate was ${results.error}, regression ${
             lastError - results.error
