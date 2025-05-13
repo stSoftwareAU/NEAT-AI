@@ -80,7 +80,7 @@ export class ABSOLUTE
     targetActivation: number,
     currentValue: number,
   ): number {
-    const error = currentActivation - targetActivation;
+    const error = targetActivation - currentActivation;
     if (Math.abs(error) < ERROR_EPSILON) return 0;
 
     // Both -target and +target are valid inputs to ABSOLUTE

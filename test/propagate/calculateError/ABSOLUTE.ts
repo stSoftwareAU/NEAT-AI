@@ -70,3 +70,21 @@ Deno.test("ABSOLUTE.calculateError: corner cases", () => {
     0.4,
   );
 });
+
+Deno.test("ABSOLUTE.calculateError: fallback direction is correct", () => {
+  const a = new ABSOLUTE();
+
+  const currentValue = -2;
+  const targetActivation = 1;
+  const currentActivation = a.squash(currentValue); // 2
+
+  const error = a.calculateError(
+    currentActivation,
+    targetActivation,
+    currentValue,
+  );
+
+  // UnSquash(1) = ±1 → closest to -2 is -1
+  // So: error = -1 - (-2) = +1
+  assertAlmostEquals(error, 1, 0.0001);
+});
