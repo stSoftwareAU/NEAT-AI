@@ -106,7 +106,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = currentActivation - targetActivation;
+    const rawError = targetActivation - currentActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);

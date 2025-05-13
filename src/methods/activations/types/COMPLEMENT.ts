@@ -91,9 +91,9 @@ export class COMPLEMENT
     targetActivation: number,
     _currentValue: number,
   ): number {
-    const error = currentActivation - targetActivation;
-    if (Math.abs(error) < ERROR_EPSILON) return 0;
+    const rawError = targetActivation - currentActivation;
+    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    return ErrorHelper.calculateClampedError(error);
+    return ErrorHelper.calculateClampedError(rawError / -1);
   }
 }

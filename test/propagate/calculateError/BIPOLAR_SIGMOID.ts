@@ -26,7 +26,7 @@ Deno.test("BIPOLAR_SIGMOID.calculateError: derivative - positive direction", () 
   const currentValue = 0;
   const targetValue = 1.0;
 
-  const act = b.squash(currentValue);   // ≈ 0
+  const act = b.squash(currentValue); // ≈ 0
   const target = b.squash(targetValue); // ≈ 0.761
 
   const slope = b.derivative(currentValue); // = (1 - 0²) / 2 = 0.5
@@ -43,7 +43,7 @@ Deno.test("BIPOLAR_SIGMOID.calculateError: derivative - negative direction", () 
   const currentValue = 0;
   const targetValue = -1.0;
 
-  const act = b.squash(currentValue);   // ≈ 0
+  const act = b.squash(currentValue); // ≈ 0
   const target = b.squash(targetValue); // ≈ -0.761
 
   const slope = b.derivative(currentValue); // still ≈ 0.5
