@@ -9,7 +9,7 @@ Deno.test("BentIdentity.calculateError: mid-range input", () => {
   const targetActivation = 1.0;
   const error = bent.calculateError(activation, targetActivation, x);
 
-  const expected = (activation - targetActivation) / slope;
+  const expected = (targetActivation - activation) / slope;
   assertAlmostEquals(error, expected, 0.0001);
 });
 
@@ -26,7 +26,7 @@ Deno.test("BENT_IDENTITY.calculateError: negative values", () => {
     targetActivation,
     currentValue,
   );
-  const expectedError = (activation - targetActivation) / slope;
+  const expectedError = (targetActivation - activation) / slope;
   assertAlmostEquals(
     error,
     expectedError,
