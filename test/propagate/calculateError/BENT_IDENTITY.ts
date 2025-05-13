@@ -42,7 +42,7 @@ Deno.test("BENT_IDENTITY.calculateError: flat slope edge (large x)", () => {
   const error = bent.calculateError(act, target, 10.0);
 
   const slope = bent.derivative(10.0);
-  const expectedError = (act - target) / slope;
+  const expectedError = (target - act) / slope;
 
   assert(Number.isFinite(error));
   assertAlmostEquals(

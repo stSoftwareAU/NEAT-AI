@@ -16,6 +16,6 @@ Deno.test("BIPOLAR_SIGMOID.calculateError: mid-range", () => {
   const target = 0.5;
   const error = b.calculateError(act, target, x);
 
-  const expected = (act - target) / slope;
+  const expected = (target - act) / slope;
   assertAlmostEquals(error, expected, 0.0001);
 });
