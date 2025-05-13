@@ -85,10 +85,16 @@ export class HYPOT
 
   propagate(
     neuron: Neuron,
-    _targetActivation: number,
+    targetActivation: number,
     config: BackPropagationConfig,
     sparseConfig: SparseConfig,
   ): number {
+    const activation = neuron.adjustedActivation(config);
+
+    const error = targetActivation - activation;
+
+    if (Math.abs(error) < config.plankConstant) return targetActivation;
+    const hypotValue = (activation - neuron.bias) || 1;
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
     for (let indx = inward.length; indx--;) {
@@ -97,12 +103,15 @@ export class HYPOT
       const fromNeuron = neuron.creature.neurons[c.from];
 
       const fromActivation = fromNeuron.adjustedActivation(config);
+
       if (fromNeuron.type === "hidden") {
         let improvedActivation = fromActivation;
         if (c.to !== c.from) {
           if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+            const partialDerivative = values[indx] / hypotValue;
+            const fromError = error * partialDerivative;
             improvedActivation = fromNeuron.propagate(
-              fromActivation,
+              fromActivation + fromError,
               config,
               sparseConfig,
             );

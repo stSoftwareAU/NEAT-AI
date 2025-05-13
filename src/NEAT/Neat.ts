@@ -319,11 +319,22 @@ export class Neat {
       );
 
       if (backtracked.length > 0 || forward.length > 0) {
+        const untrainedError = getTag(trainedCreature, "untrained-error");
         if (backtracked.length > 0) {
-          r.train.backtracked = JSON.stringify(backtracked[0].exportJSON());
+          const backtrackedCreature = backtracked[0].exportJSON();
+          addTag(backtrackedCreature, "trainID", r.train.ID);
+          if (untrainedError) {
+            addTag(backtrackedCreature, "untrained-error", untrainedError);
+          }
+          r.train.backtracked = JSON.stringify(backtrackedCreature);
         }
         if (forward.length > 0) {
-          r.train.forward = JSON.stringify(forward[0].exportJSON());
+          const forwardCreature = forward[0].exportJSON();
+          addTag(forwardCreature, "trainID", r.train.ID);
+          if (untrainedError) {
+            addTag(forwardCreature, "untrained-error", untrainedError);
+          }
+          r.train.forward = JSON.stringify(forwardCreature);
         }
       } else if (trainingImprovement === false) {
         console.warn(
