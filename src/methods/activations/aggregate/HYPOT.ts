@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
@@ -85,10 +86,17 @@ export class HYPOT
 
   propagate(
     neuron: Neuron,
-    _targetActivation: number,
+    targetActivation: number,
     config: BackPropagationConfig,
     sparseConfig: SparseConfig,
   ): number {
+    const activation = neuron.adjustedActivation(config);
+
+    const error = targetActivation - activation;
+
+    if (Math.abs(error) < config.plankConstant) return targetActivation;
+    const hypotValue = (activation - neuron.bias) || 1;
+    assert(Number.isFinite(hypotValue), "hypotValue must be finite");
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
     for (let indx = inward.length; indx--;) {
@@ -97,12 +105,22 @@ export class HYPOT
       const fromNeuron = neuron.creature.neurons[c.from];
 
       const fromActivation = fromNeuron.adjustedActivation(config);
+
       if (fromNeuron.type === "hidden") {
         let improvedActivation = fromActivation;
         if (c.to !== c.from) {
           if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+            const currentValue = improvedActivation * c.weight;
+            const partialDerivative = currentValue / hypotValue;
+
+            const fromError = error * partialDerivative;
+            const fromTargetActivation = fromActivation + fromError;
+            assert(
+              Number.isFinite(fromTargetActivation),
+              `fromTargetActivation must be finite, fromActivation: ${fromActivation}, error: ${error}, hypotValue ${hypotValue}, partialDerivative: ${partialDerivative}`,
+            );
             improvedActivation = fromNeuron.propagate(
-              fromActivation,
+              fromTargetActivation,
               config,
               sparseConfig,
             );

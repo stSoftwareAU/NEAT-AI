@@ -377,6 +377,12 @@ export class IF
     config: BackPropagationConfig,
     sparseConfig: SparseConfig,
   ): number {
+    const activation = neuron.adjustedActivation(config);
+
+    const rawError = targetActivation - activation;
+
+    if (Math.abs(rawError) < config.plankConstant) return targetActivation;
+
     const inward = neuron.creature.inwardConnections(neuron.index);
     let condition = 0;
     let negativeCount = 0;
@@ -399,8 +405,6 @@ export class IF
           positiveCount++;
       }
     }
-
-    const activation = neuron.adjustedActivation(config);
 
     const ns = state.node(neuron.index);
     const currentBias = adjustedBias(neuron, config);
