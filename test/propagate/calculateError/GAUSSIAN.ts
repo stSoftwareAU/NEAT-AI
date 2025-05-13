@@ -97,3 +97,8 @@ Deno.test("GAUSSIAN.calculateError: sign check with negative slope", () => {
   // Expect error to be negative — we need to move x from -0.5 toward -1.0
   assert(error < 0, `Expected error < 0, got ${error}`);
 });
+Deno.test("GAUSSIAN.calculateError: sign + value via check helper", () => {
+  const g = new GAUSSIAN();
+  check(g, 0.5, 1.0); // should give a positive error
+  check(g, -0.5, -1.0); // should give a negative error
+});
