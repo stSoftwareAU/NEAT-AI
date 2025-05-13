@@ -90,21 +90,14 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     const rawError = targetActivation - currentActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    const slope = 0.5 * (1 - currentActivation ** 2);
-    const MIN_SLOPE = 1e-8;
+    const slope = this.derivative(currentValue);
 
     let error: number;
-
-    if (Number.isFinite(slope) && Math.abs(slope) >= MIN_SLOPE) {
+    if (Math.abs(slope) > 1e-8) {
       error = rawError / slope;
     } else {
       const targetValue = this.unSquash(targetActivation, currentValue);
       error = targetValue - currentValue;
-    }
-
-    // 🔒 Clamp to avoid numeric overflows
-    if (!Number.isFinite(error)) {
-      return 0; // Defensive fallback
     }
 
     return ErrorHelper.calculateClampedError(error);
