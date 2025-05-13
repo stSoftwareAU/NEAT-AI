@@ -86,7 +86,7 @@ export class HARD_TANH
     targetActivation: number,
     currentValue: number,
   ): number {
-    if (Math.abs(currentActivation - targetActivation) < ERROR_EPSILON) {
+    if (Math.abs(targetActivation - currentActivation) < ERROR_EPSILON) {
       return 0;
     }
 

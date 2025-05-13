@@ -93,7 +93,7 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
     const rawError = targetActivation - currentActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    const slope = 1 / (1 + Math.exp(-currentValue)); // sigmoid(x)
+    const slope = this.derivative(currentValue);
 
     let error: number;
     if (slope > 1e-8) {
