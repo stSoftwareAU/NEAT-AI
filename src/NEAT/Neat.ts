@@ -323,6 +323,7 @@ export class Neat {
         if (backtracked.length > 0) {
           const backtrackedCreature = backtracked[0].exportJSON();
           addTag(backtrackedCreature, "trainID", r.train.ID);
+          addTag(backtrackedCreature, "trainVariant", "overshot");
           if (untrainedError) {
             addTag(backtrackedCreature, "untrained-error", untrainedError);
           }
@@ -331,6 +332,7 @@ export class Neat {
         if (forward.length > 0) {
           const forwardCreature = forward[0].exportJSON();
           addTag(forwardCreature, "trainID", r.train.ID);
+          addTag(forwardCreature, "trainVariant", "undershot");
           if (untrainedError) {
             addTag(forwardCreature, "untrained-error", untrainedError);
           }
