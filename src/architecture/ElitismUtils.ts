@@ -61,20 +61,30 @@ export function logVerbose(creatures: Creature[]): number {
       addTag(creature, "notified", "Yes");
 
       const approach = getTag(creature, "approach") as Approach;
+      const trainVariant = getTag(creature, "trainVariant");
       const untrainedError = getTag(creature, "untrained-error") ?? "99999";
 
       const diff = Number.parseFloat(untrainedError) -
         Number.parseFloat(error);
-      const trainMsg =
-        `${approach.substring(0, 1).toUpperCase() + approach.substring(1)} ${
-          blue(trainID)
-        } Score: ${yellow(score.toString())}, Error: ${
-          yellow(untrainedError)
-        } -> ${yellow(error)}` + (diff > 0
-          ? ` ${"👌 " + bold(green(diff.toString()))}`
-          : diff < 0
-          ? ` ${"👿 " + red(diff.toString())}`
-          : white(" 🫥"));
+      const approachName = `${
+        approach.substring(0, 1).toUpperCase() + approach.substring(1)
+      }`;
+
+      let trainMsg = `${approachName} ${blue(trainID)} Score: ${
+        yellow(score.toString())
+      }, Error: ${yellow(untrainedError)} -> ${yellow(error)}, `;
+
+      const diffAmount = diff.toPrecision(3);
+      if (diff > 0) {
+        trainMsg += "👌 " + bold(green(diffAmount));
+      } else if (diff < 0) {
+        trainMsg += "👿 " + red(diffAmount);
+      } else {
+        trainMsg += white(" 🫥");
+      }
+      if (trainVariant) {
+        trainMsg += `, Variant: ${trainVariant}`;
+      }
       console.info(trainMsg);
       addTag(creature, "trainMsg", trainMsg);
     }
