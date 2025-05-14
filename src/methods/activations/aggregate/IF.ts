@@ -379,10 +379,6 @@ export class IF
   ): number {
     const activation = neuron.adjustedActivation(config);
 
-    const rawError = targetActivation - activation;
-
-    if (Math.abs(rawError) < config.plankConstant) return targetActivation;
-
     const inward = neuron.creature.inwardConnections(neuron.index);
     let condition = 0;
     let negativeCount = 0;
