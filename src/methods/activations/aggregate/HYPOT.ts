@@ -94,7 +94,6 @@ export class HYPOT
 
     const error = targetActivation - activation;
 
-    if (Math.abs(error) < config.plankConstant) return targetActivation;
     const hypotValue = (activation - neuron.bias) || 1;
     assert(Number.isFinite(hypotValue), "hypotValue must be finite");
     const inward = neuron.creature.inwardConnections(neuron.index);
