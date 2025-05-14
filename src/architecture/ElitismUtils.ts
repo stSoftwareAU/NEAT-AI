@@ -65,7 +65,7 @@ export function logVerbose(creatures: Creature[]): number {
 
       const diff = Number.parseFloat(untrainedError) -
         Number.parseFloat(error);
-      console.info(
+      const trainMsg =
         `${approach.substring(0, 1).toUpperCase() + approach.substring(1)} ${
           blue(trainID)
         } Score: ${yellow(score.toString())}, Error: ${
@@ -74,8 +74,9 @@ export function logVerbose(creatures: Creature[]): number {
           ? ` ${"👌 " + bold(green(diff.toString()))}`
           : diff < 0
           ? ` ${"👿 " + red(diff.toString())}`
-          : white(" 🫥")),
-      );
+          : white(" 🫥"));
+      console.info(trainMsg);
+      addTag(creature, "trainMsg", trainMsg);
     }
     const sourceUUID = getTag(creature, "CRISPR-SOURCE");
     if (sourceUUID) {
