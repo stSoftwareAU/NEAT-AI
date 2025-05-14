@@ -150,8 +150,8 @@ export class Activations {
       [BIPOLAR_SIGMOID.NAME, 1],
       [COMPLEMENT.NAME, 1],
       [IF.NAME, 1],
-      [HYPOT.NAME, 1],
-      [HYPOTv2.NAME, 1],
+      [HYPOT.NAME, 0], // ⚠️ very non standard and back propagation is very hard. Evolve away from HYPOT.
+      [HYPOTv2.NAME, 0], // ⚠️ very non standard and back propagation is very hard. Evolve away from HYPOTv2.
       [MAXIMUM.NAME, 1],
       [MINIMUM.NAME, 1],
       [BIPOLAR.NAME, 1],

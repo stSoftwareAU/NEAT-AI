@@ -45,6 +45,7 @@ export class HYPOTv2
     0,
     Number.MAX_SAFE_INTEGER,
   );
+
   makeActivationFunction(
     neuron: Neuron,
     cache: {
@@ -90,7 +91,6 @@ export class HYPOTv2
 
     const error = targetActivation - activation;
 
-    if (Math.abs(error) < config.plankConstant) return targetActivation;
     const hypotValue = activation || 1;
     assert(Number.isFinite(hypotValue), "hypotValue must be finite");
     const inward = neuron.creature.inwardConnections(neuron.index);
