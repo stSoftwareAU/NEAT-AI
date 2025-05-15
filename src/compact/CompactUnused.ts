@@ -5,6 +5,7 @@ import type { NeuronActivationInterface } from "../methods/activations/NeuronAct
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 import { assert } from "@std/assert/assert";
+import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
 
 export function compactUnused(
   traced: CreatureTrace,
@@ -35,6 +36,9 @@ export function compactUnused(
 
   CreatureUtil.shuffle(indices);
 
+  let neuronForRemoval: NeuronTrace | undefined;
+  let maxEffect: number = Number.MAX_VALUE;
+
   for (let i = indices.length; i--;) {
     const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
@@ -43,28 +47,42 @@ export function compactUnused(
       assert(counter !== undefined, "Counter should not be undefined");
       const maxScale = neuronScale.get(neuron.uuid);
       assert(maxScale !== undefined, "Max Scale should not be undefined");
-      const maxEffect = Math.abs(
-        neuron.trace.maximumActivation - neuron.trace.minimumActivation,
-      ) * Math.min(maxScale, 1);
-      if (
-        maxEffect < plankConstant * counter
-      ) {
-        if (
-          removeNeuron(neuron.uuid, compacted, neuron.trace.maximumActivation)
-        ) {
-          addTag(compacted, "unused", neuron.uuid);
-          try {
-            creatureValidate(compacted);
-          } catch (e) {
-            const errorMsg = (e as Error).message;
-            console.warn("compactUnused", errorMsg);
-            compacted.fix();
-          }
+
+      const neuronEffect = Math.abs(
+            neuron.trace.maximumActivation - neuron.trace.minimumActivation,
+          ) * Math.min(maxScale, 1) - (plankConstant * counter);
+
+      if (neuronEffect < maxEffect) {
+        neuronForRemoval = neuron;
+        maxEffect = neuronEffect;
+        if (neuronEffect < 0) { // Lets stop early if we find a neuron that is not used at all
           break;
         }
       }
     }
   }
+
+  if (
+    neuronForRemoval
+  ) {
+    if (
+      removeNeuron(
+        neuronForRemoval.uuid,
+        compacted,
+        neuronForRemoval.trace.maximumActivation,
+      )
+    ) {
+      addTag(compacted, "unused", neuronForRemoval.uuid);
+      try {
+        creatureValidate(compacted);
+      } catch (e) {
+        const errorMsg = (e as Error).message;
+        console.warn("compactUnused", errorMsg);
+        compacted.fix();
+      }
+    }
+  }
+
   const cleanUUID = CreatureUtil.makeUUID(clean);
   const compactedUUID = CreatureUtil.makeUUID(compacted);
   if (cleanUUID !== compactedUUID) {
