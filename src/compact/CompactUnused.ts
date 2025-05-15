@@ -55,7 +55,7 @@ export function compactUnused(
       if (neuronEffect < maxEffect) {
         neuronForRemoval = neuron;
         maxEffect = neuronEffect;
-        if( neuronEffect < 0) { // Lets stop early if we find a neuron that is not used at all
+        if (neuronEffect < 0) { // Lets stop early if we find a neuron that is not used at all
           break;
         }
       }
