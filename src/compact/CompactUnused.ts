@@ -45,7 +45,7 @@ export function compactUnused(
       assert(maxScale !== undefined, "Max Scale should not be undefined");
       const maxEffect = Math.abs(
         neuron.trace.maximumActivation - neuron.trace.minimumActivation,
-      ) * maxScale;
+      ) * Math.min(maxScale, 1);
       if (
         maxEffect < plankConstant * counter
       ) {
