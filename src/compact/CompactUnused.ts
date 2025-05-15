@@ -13,6 +13,12 @@ export function compactUnused(
   const clean = Creature.fromJSON(start.exportJSON());
   const compacted = Creature.fromJSON(clean.exportJSON());
 
+  const synapseCount = new Map<string, number>();
+  traced.synapses.forEach((synaspe) => {
+    let counter: number = synapseCount.get(synaspe.toUUID) || 0;
+    counter++;
+    synapseCount.set(synaspe.toUUID, counter);
+  });
   const indices = Int32Array.from(
     { length: traced.neurons.length },
     (_, i) => i,
@@ -24,10 +30,11 @@ export function compactUnused(
     const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
     if (neuron.trace && neuron.trace.count >= 1) {
+      const counter: number = synapseCount.get(neuron.uuid) || 1;
       if (
         Math.abs(
           neuron.trace.maximumActivation - neuron.trace.minimumActivation,
-        ) < plankConstant
+        ) < plankConstant * counter
       ) {
         if (
           removeNeuron(neuron.uuid, compacted, neuron.trace.maximumActivation)
