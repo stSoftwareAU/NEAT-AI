@@ -4,6 +4,7 @@ import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
+import { assert } from "@std/assert/assert";
 
 export function compactUnused(
   traced: CreatureTrace,
@@ -38,9 +39,10 @@ export function compactUnused(
     const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
     if (neuron.trace && neuron.trace.count >= 1) {
-      const counter: number = synapseCount.get(neuron.uuid) || 1;
-      const maxScale: number = neuronScale.get(neuron.uuid) || 0;
-
+      const counter = synapseCount.get(neuron.uuid);
+      assert(counter !== undefined, "Counter should not be undefined");
+      const maxScale = neuronScale.get(neuron.uuid);
+      assert(maxScale !== undefined, "Max Scale should not be undefined");
       const maxEffect = Math.abs(
         neuron.trace.maximumActivation - neuron.trace.minimumActivation,
       ) * maxScale;
