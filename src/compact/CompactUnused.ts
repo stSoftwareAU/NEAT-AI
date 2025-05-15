@@ -39,7 +39,7 @@ export function compactUnused(
   let neuronForRemoval: NeuronTrace | undefined;
   let maxEffect: number = Number.MAX_VALUE;
 
-  for (let i = Math.min(indices.length, 24); i--;) {
+  for (let i = indices.length; i--;) {
     const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
     if (neuron.trace && neuron.trace.count >= 1) {
@@ -55,6 +55,9 @@ export function compactUnused(
       if (neuronEffect < maxEffect) {
         neuronForRemoval = neuron;
         maxEffect = neuronEffect;
+        if( neuronEffect < 0) { // Lets stop early if we find a neuron that is not used at all
+          break;
+        }
       }
     }
   }
