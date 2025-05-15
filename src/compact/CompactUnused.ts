@@ -4,6 +4,7 @@ import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
+import { assert } from "@std/assert/assert";
 
 export function compactUnused(
   traced: CreatureTrace,
@@ -13,11 +14,19 @@ export function compactUnused(
   const clean = Creature.fromJSON(start.exportJSON());
   const compacted = Creature.fromJSON(clean.exportJSON());
 
+  const neuronScale = new Map<string, number>();
   const synapseCount = new Map<string, number>();
   traced.synapses.forEach((synapse) => {
     let counter: number = synapseCount.get(synapse.toUUID) || 0;
     counter++;
     synapseCount.set(synapse.toUUID, counter);
+
+    let maxScale: number = neuronScale.get(synapse.fromUUID) || 0;
+    const scale = Math.abs(synapse.weight);
+    if (scale > maxScale) {
+      maxScale = scale;
+    }
+    neuronScale.set(synapse.fromUUID, maxScale);
   });
   const indices = Int32Array.from(
     { length: traced.neurons.length },
@@ -30,11 +39,15 @@ export function compactUnused(
     const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
     if (neuron.trace && neuron.trace.count >= 1) {
-      const counter: number = synapseCount.get(neuron.uuid) || 1;
+      const counter = synapseCount.get(neuron.uuid);
+      assert(counter !== undefined, "Counter should not be undefined");
+      const maxScale = neuronScale.get(neuron.uuid);
+      assert(maxScale !== undefined, "Max Scale should not be undefined");
+      const maxEffect = Math.abs(
+        neuron.trace.maximumActivation - neuron.trace.minimumActivation,
+      ) * Math.min(maxScale, 1);
       if (
-        Math.abs(
-          neuron.trace.maximumActivation - neuron.trace.minimumActivation,
-        ) < plankConstant * counter
+        maxEffect < plankConstant * counter
       ) {
         if (
           removeNeuron(neuron.uuid, compacted, neuron.trace.maximumActivation)
