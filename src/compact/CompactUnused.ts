@@ -14,10 +14,10 @@ export function compactUnused(
   const compacted = Creature.fromJSON(clean.exportJSON());
 
   const synapseCount = new Map<string, number>();
-  traced.synapses.forEach((synaspe) => {
-    let counter: number = synapseCount.get(synaspe.toUUID) || 0;
+  traced.synapses.forEach((synapse) => {
+    let counter: number = synapseCount.get(synapse.toUUID) || 0;
     counter++;
-    synapseCount.set(synaspe.toUUID, counter);
+    synapseCount.set(synapse.toUUID, counter);
   });
   const indices = Int32Array.from(
     { length: traced.neurons.length },
