@@ -30,13 +30,13 @@ Deno.test("Complex Back Propagation", () => {
 
   Deno.writeTextFileSync(
     `${testDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const generated = makeInputs(creature);
   Deno.writeTextFileSync(
     `${testDir}/input.json`,
-    JSON.stringify(generated, null, 2),
+    JSON.stringify(generated, null, 1),
   );
 
   const inputs = JSON.parse(
@@ -61,7 +61,7 @@ Deno.test("Complex Back Propagation", () => {
 
   Deno.writeTextFileSync(
     `${testDir}/1-trace.json`,
-    JSON.stringify(creature.traceJSON(), null, 2),
+    JSON.stringify(creature.traceJSON(), null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
@@ -69,7 +69,7 @@ Deno.test("Complex Back Propagation", () => {
 
   Deno.writeTextFileSync(
     `${testDir}/2-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   for (let i = 0; i < inputs.length; i++) {

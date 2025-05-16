@@ -21,7 +21,7 @@ Deno.test("FromUUID", () => {
   const exported = creatureB.exportJSON();
   Deno.writeTextFileSync(
     "test/data/CRISPR/.actual-from-to.json",
-    JSON.stringify(exported, null, 2),
+    JSON.stringify(exported, null, 1),
   );
   let foundFromToA = false;
   let foundFromToB = false;

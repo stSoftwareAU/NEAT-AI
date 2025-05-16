@@ -372,7 +372,7 @@ function debugWrite(creature: Creature) {
       creature.DEBUG = false;
       Deno.writeTextFileSync(
         ".validate.json",
-        JSON.stringify(creature.exportJSON(), null, 2),
+        JSON.stringify(creature.exportJSON(), null, 1),
       );
     } finally {
       creature.DEBUG = true;

@@ -332,7 +332,7 @@ function trainDirBinary(
         CreatureUtil.makeUUID(creature);
         Deno.writeTextFileSync(
           `${failedDir}/${creature.uuid}.json`,
-          JSON.stringify(creature.traceJSON(), null, 2),
+          JSON.stringify(creature.traceJSON(), null, 1),
         );
       }
       creature.loadFrom(bestCreatureJSON, false);

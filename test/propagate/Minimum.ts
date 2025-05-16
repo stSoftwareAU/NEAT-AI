@@ -31,7 +31,7 @@ Deno.test("PropagateMinimum", () => {
 
     Deno.writeTextFileSync(
       ".trace/data.json",
-      JSON.stringify(ts, null, 2),
+      JSON.stringify(ts, null, 1),
     );
     ts.forEach((item) => {
       const result = creature.activate(new Float32Array(item.input));
@@ -44,7 +44,7 @@ Deno.test("PropagateMinimum", () => {
 
     Deno.writeTextFileSync(
       ".trace/A-clean.json",
-      JSON.stringify(exportJSON, null, 2),
+      JSON.stringify(exportJSON, null, 1),
     );
 
     exportJSON.neurons.forEach((neuron, indx) => {
@@ -58,7 +58,7 @@ Deno.test("PropagateMinimum", () => {
 
     Deno.writeTextFileSync(
       ".trace/B-modified.json",
-      JSON.stringify(exportJSON, null, 2),
+      JSON.stringify(exportJSON, null, 1),
     );
 
     const creatureB = Creature.fromJSON(exportJSON);
@@ -79,12 +79,12 @@ Deno.test("PropagateMinimum", () => {
 
     Deno.writeTextFileSync(
       ".trace/C-trace.json",
-      JSON.stringify(resultC.trace, null, 2),
+      JSON.stringify(resultC.trace, null, 1),
     );
 
     Deno.writeTextFileSync(
       ".trace/C-creature.json",
-      JSON.stringify(creatureC.exportJSON(), null, 2),
+      JSON.stringify(creatureC.exportJSON(), null, 1),
     );
 
     if (attempts < 24) {
@@ -115,17 +115,17 @@ Deno.test("PropagateMinimum", () => {
 
     Deno.writeTextFileSync(
       ".trace/D-creature.json",
-      JSON.stringify(creatureD.exportJSON(), null, 2),
+      JSON.stringify(creatureD.exportJSON(), null, 1),
     );
 
     Deno.writeTextFileSync(
       ".trace/D-trace.json",
-      JSON.stringify(creatureD.traceJSON(), null, 2),
+      JSON.stringify(creatureD.traceJSON(), null, 1),
     );
 
     Deno.writeTextFileSync(
       ".trace/E-creature.json",
-      JSON.stringify(creatureE.exportJSON(), null, 2),
+      JSON.stringify(creatureE.exportJSON(), null, 1),
     );
 
     assert(
@@ -140,7 +140,7 @@ Deno.test("PropagateMinimum", () => {
 
     Deno.writeTextFileSync(
       ".trace/result.json",
-      JSON.stringify(resultC.trace, null, 2),
+      JSON.stringify(resultC.trace, null, 1),
     );
 
     break;

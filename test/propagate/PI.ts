@@ -45,7 +45,7 @@ Deno.test("PI-repeat", () => {
   });
   Deno.writeTextFileSync(
     `${traceDir}/0.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const inA = [-1, 1, 0];
@@ -62,7 +62,7 @@ Deno.test("PI-repeat", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/traced-${i}.json`,
-      JSON.stringify(creature.traceJSON(), null, 2),
+      JSON.stringify(creature.traceJSON(), null, 1),
     );
 
     creature.propagateUpdate(config, sparseConfig);
@@ -83,7 +83,7 @@ Deno.test("PI-single", () => {
   });
   Deno.writeTextFileSync(
     ".trace/0.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const inA = [-1, 1, 0];
@@ -97,7 +97,7 @@ Deno.test("PI-single", () => {
 
   Deno.writeTextFileSync(
     ".trace/1.json",
-    JSON.stringify(creature.traceJSON(), null, 2),
+    JSON.stringify(creature.traceJSON(), null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
@@ -112,7 +112,7 @@ Deno.test("PI-single", () => {
 
   Deno.writeTextFileSync(
     ".trace/2.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   assertAlmostEquals(
@@ -143,7 +143,7 @@ Deno.test("PI Multiple", () => {
 
   Deno.writeTextFileSync(
     ".trace/0.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
@@ -159,7 +159,7 @@ Deno.test("PI Multiple", () => {
 
   Deno.writeTextFileSync(
     ".trace/2.json",
-    JSON.stringify(creature.traceJSON(), null, 2),
+    JSON.stringify(creature.traceJSON(), null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
@@ -175,7 +175,7 @@ Deno.test("PI Multiple", () => {
 
   Deno.writeTextFileSync(
     ".trace/3.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   assertAlmostEquals(

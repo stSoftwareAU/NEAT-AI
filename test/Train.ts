@@ -80,7 +80,7 @@ Deno.test("train-XOR", () => {
 
   Deno.writeTextFileSync(
     `.trace/start.json`,
-    JSON.stringify(network.internalJSON(), null, 2),
+    JSON.stringify(network.internalJSON(), null, 1),
   );
   for (let attempts = 0; true; attempts++) {
     const results = train(network, trainingSet, {
@@ -89,7 +89,7 @@ Deno.test("train-XOR", () => {
     });
     Deno.writeTextFileSync(
       `.trace/${attempts}.json`,
-      JSON.stringify(results.trace, null, 2),
+      JSON.stringify(results.trace, null, 1),
     );
 
     if (results.error <= 0.26) {

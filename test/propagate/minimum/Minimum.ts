@@ -39,7 +39,7 @@ function check() {
 
   Deno.writeTextFileSync(
     `${directory}/A-clean.json`,
-    JSON.stringify(exportJSON, null, 2),
+    JSON.stringify(exportJSON, null, 1),
   );
 
   exportJSON.neurons.forEach((neuron, indx) => {
@@ -54,14 +54,14 @@ function check() {
   const modifiedCreature = Creature.fromJSON(exportJSON);
   Deno.writeTextFileSync(
     `${directory}/B-modified.json`,
-    JSON.stringify(exportJSON, null, 2),
+    JSON.stringify(exportJSON, null, 1),
   );
   let lastError = calculateError(modifiedCreature, td);
 
   for (let i = 0; i < 10; i++) {
     Deno.writeTextFileSync(
       `${directory}/${i}.json`,
-      JSON.stringify(modifiedCreature.exportJSON(), null, 2),
+      JSON.stringify(modifiedCreature.exportJSON(), null, 1),
     );
     const results = train(modifiedCreature, td, {
       targetError: 0.01,
@@ -79,14 +79,14 @@ function check() {
 
     Deno.writeTextFileSync(
       `${directory}/${i}-trace.json`,
-      JSON.stringify(results.trace, null, 2),
+      JSON.stringify(results.trace, null, 1),
     );
 
     if (results.compact) Creature.fromJSON(results.compact).validate();
     if (results.error > lastError) {
       Deno.writeTextFileSync(
         `${directory}/.error.json`,
-        JSON.stringify(modifiedCreature.exportJSON(), null, 2),
+        JSON.stringify(modifiedCreature.exportJSON(), null, 1),
       );
       Deno.writeTextFileSync(
         `${directory}/error-trace.json`,
@@ -164,7 +164,7 @@ function makeTrainData(creature: Creature) {
 
   Deno.writeTextFileSync(
     tdFN,
-    JSON.stringify(td, null, 2),
+    JSON.stringify(td, null, 1),
   );
   return td;
 }

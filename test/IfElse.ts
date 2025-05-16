@@ -36,7 +36,7 @@ Deno.test("if-bias", () => {
     creature.exportJSON(),
     createBackPropagationConfig({}),
   );
-  const tmpJSON = JSON.stringify(creature.exportJSON(), null, 2);
+  const tmpJSON = JSON.stringify(creature.exportJSON(), null, 1);
 
   console.log(tmpJSON);
 
@@ -75,7 +75,7 @@ Deno.test("if/Else", () => {
     output: 1,
   };
   const network1 = Creature.fromJSON(json);
-  const tmpJSON = JSON.stringify(network1.exportJSON(), null, 2);
+  const tmpJSON = JSON.stringify(network1.exportJSON(), null, 1);
 
   console.log(tmpJSON);
   const creature2 = Creature.fromJSON(JSON.parse(tmpJSON));

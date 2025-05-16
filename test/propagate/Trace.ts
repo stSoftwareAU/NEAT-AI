@@ -25,7 +25,7 @@ Deno.test("Trace", () => {
 
   Deno.writeTextFileSync(
     "test/data/.learned.json",
-    JSON.stringify(json2, null, 2),
+    JSON.stringify(json2, null, 1),
   );
 });
 

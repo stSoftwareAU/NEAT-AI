@@ -49,11 +49,11 @@ function checkMutation(method: { name: string }) {
     }
   }
 
-  const json1 = JSON.stringify(creature.exportJSON(), null, 2);
+  const json1 = JSON.stringify(creature.exportJSON(), null, 1);
   for (let i = 10; i--;) {
     creature.mutate(method);
   }
-  const json2 = JSON.stringify(creature.exportJSON(), null, 2);
+  const json2 = JSON.stringify(creature.exportJSON(), null, 1);
 
   assertNotEquals(json1, json2);
 
@@ -122,13 +122,13 @@ async function evolveSet(
     if (Math.abs(nt0 - nt1) > 0.0001) {
       Deno.writeTextFileSync(
         ".start.json",
-        JSON.stringify(lastCreature.exportJSON(), null, 2),
+        JSON.stringify(lastCreature.exportJSON(), null, 1),
       );
       const nt2 = lastCreature.activate(input)[0];
 
       Deno.writeTextFileSync(
         ".end.json",
-        JSON.stringify(lastCreature.exportJSON(), null, 2),
+        JSON.stringify(lastCreature.exportJSON(), null, 1),
       );
 
       const n0 = Creature.fromJSON(lastCreature.exportJSON()).activate(
@@ -210,7 +210,7 @@ function trainSet(
     const results = train(creature, set, options);
     Deno.writeTextFileSync(
       `.trace/${attempts}.json`,
-      JSON.stringify(results.trace, null, 2),
+      JSON.stringify(results.trace, null, 1),
     );
     if (results.error >= error && attempts < 12) {
       console.info(`Error is: ${results.error}, required: ${error} RETRY`);
@@ -463,7 +463,7 @@ Deno.test("evolve XORgate", async () => {
   // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".evolve/XOR.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 });
 
@@ -650,7 +650,7 @@ Deno.test("NARX Sequence", async () => {
       } of ${maxAttempts}`,
     );
     if (attempts > maxAttempts) {
-      fail(JSON.stringify(result, null, 2));
+      fail(JSON.stringify(result, null, 1));
     }
   }
 });
@@ -721,7 +721,7 @@ Deno.test("evolveSHIFT", async () => {
   // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".evolve/SHIFT.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 });
 

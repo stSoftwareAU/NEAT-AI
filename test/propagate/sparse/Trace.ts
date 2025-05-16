@@ -28,7 +28,7 @@ Deno.test("propagate-trace", () => {
 
   Deno.writeTextFileSync(
     `${directory}/trace.json`,
-    JSON.stringify(results.trace, null, 2),
+    JSON.stringify(results.trace, null, 1),
   );
 
   let allNeuronTraced = true;
@@ -218,7 +218,7 @@ function makeTrainData(creature: Creature) {
 
   Deno.writeTextFileSync(
     tdFN,
-    JSON.stringify(td, null, 2),
+    JSON.stringify(td, null, 1),
   );
   return td;
 }

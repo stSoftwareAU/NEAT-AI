@@ -52,14 +52,14 @@ Deno.test("PropagateSTEP", () => {
 
   Deno.writeTextFileSync(
     `${testDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   if (!existsSync(`${testDir}/input.json`)) {
     const generated = makeInputs();
     Deno.writeTextFileSync(
       `${testDir}/input.json`,
-      JSON.stringify(generated, null, 2),
+      JSON.stringify(generated, null, 1),
     );
   }
 
@@ -97,14 +97,14 @@ Deno.test("PropagateSTEP", () => {
   const traced = creature.traceJSON();
   Deno.writeTextFileSync(
     `${testDir}/1-trace.json`,
-    JSON.stringify(traced, null, 2),
+    JSON.stringify(traced, null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
 
   Deno.writeTextFileSync(
     `${testDir}/2-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   assertAlmostEquals(stepNeuron.bias, 1, 0.7);

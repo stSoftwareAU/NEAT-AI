@@ -30,12 +30,12 @@ Deno.test("PropagateMaximumSimple", () => {
 
   Deno.writeTextFileSync(
     ".trace/A-clean.json",
-    JSON.stringify(exportJSON, null, 2),
+    JSON.stringify(exportJSON, null, 1),
   );
 
   Deno.writeTextFileSync(
     ".trace/data.json",
-    JSON.stringify(ts, null, 2),
+    JSON.stringify(ts, null, 1),
   );
 
   exportJSON.neurons.forEach((node, indx) => {
@@ -49,7 +49,7 @@ Deno.test("PropagateMaximumSimple", () => {
 
   Deno.writeTextFileSync(
     ".trace/B-modified.json",
-    JSON.stringify(exportJSON, null, 2),
+    JSON.stringify(exportJSON, null, 1),
   );
 
   const creatureB = Creature.fromJSON(exportJSON);
@@ -75,7 +75,7 @@ Deno.test("PropagateMaximumSimple", () => {
 
   Deno.writeTextFileSync(
     ".trace/C-trace.json",
-    JSON.stringify(creatureC.traceJSON(), null, 2),
+    JSON.stringify(creatureC.traceJSON(), null, 1),
   );
 
   creatureC.propagateUpdate(config, sparseConfig);
@@ -84,7 +84,7 @@ Deno.test("PropagateMaximumSimple", () => {
 
   Deno.writeTextFileSync(
     ".trace/D-creature.json",
-    JSON.stringify(creatureD.exportJSON(), null, 2),
+    JSON.stringify(creatureD.exportJSON(), null, 1),
   );
 
   const errorD = calculateError(creatureD, ts);

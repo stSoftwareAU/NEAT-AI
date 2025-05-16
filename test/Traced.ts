@@ -13,7 +13,7 @@ Deno.test("Traced", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/A.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
   const config = createBackPropagationConfig();
 
@@ -21,7 +21,7 @@ Deno.test("Traced", () => {
   if (compact) {
     Deno.writeTextFileSync(
       `${traceDir}/C.json`,
-      JSON.stringify(compact.exportJSON(), null, 2),
+      JSON.stringify(compact.exportJSON(), null, 1),
     );
   }
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
@@ -30,6 +30,6 @@ Deno.test("Traced", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/B.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 });

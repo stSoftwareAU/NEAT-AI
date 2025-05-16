@@ -65,7 +65,7 @@ Deno.test("AddNeuron", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
   for (let i = 0; i < 100; i++) {
     const tmpCreature = Creature.fromJSON(creature.exportJSON());

@@ -36,7 +36,7 @@ Deno.test("CRISPR/Append", () => {
 
   Deno.writeTextFileSync(
     "test/data/CRISPR/.actual-range.json",
-    JSON.stringify((networkIF as Creature).exportJSON(), null, 2),
+    JSON.stringify((networkIF as Creature).exportJSON(), null, 1),
   );
   Deno.writeTextFileSync("test/data/CRISPR/.actual-range.json", actualTXT);
   assertEquals(actualTXT, expectedTXT, "should have converted");

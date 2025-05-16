@@ -80,7 +80,7 @@ Deno.test("CompactSimple", () => {
   b.validate();
   Deno.writeTextFileSync(
     ".b.json",
-    JSON.stringify(b.internalJSON(), null, 2),
+    JSON.stringify(b.internalJSON(), null, 1),
   );
   const endNodes = b.neurons.length;
   const endConnections = b.synapses.length;
@@ -135,7 +135,7 @@ Deno.test("RandomizeCompact", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/a.json`,
-      JSON.stringify(a.internalJSON(), null, 2),
+      JSON.stringify(a.internalJSON(), null, 1),
     );
     const b = a.compact();
     if (!b) {
@@ -145,7 +145,7 @@ Deno.test("RandomizeCompact", () => {
       b.DEBUG = false;
       Deno.writeTextFileSync(
         `${traceDir}/b.json`,
-        JSON.stringify(b.internalJSON(), null, 2),
+        JSON.stringify(b.internalJSON(), null, 1),
       );
       b.DEBUG = true;
       b.validate();
@@ -226,7 +226,7 @@ Deno.test("CompactSelf", () => {
   b.validate();
   Deno.writeTextFileSync(
     ".b.json",
-    JSON.stringify(b.internalJSON(), null, 2),
+    JSON.stringify(b.internalJSON(), null, 1),
   );
   const endNodes = b.neurons.length;
   const endConnections = b.synapses.length;

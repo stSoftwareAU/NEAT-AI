@@ -109,12 +109,12 @@ Deno.test("KeepOrder", () => {
   const mum = makeMum();
   Deno.writeTextFileSync(
     `${testDir}/mum.json`,
-    JSON.stringify(mum.exportJSON(), null, 2),
+    JSON.stringify(mum.exportJSON(), null, 1),
   );
   const dad = makeDad();
   Deno.writeTextFileSync(
     `${testDir}/dad.json`,
-    JSON.stringify(dad.exportJSON(), null, 2),
+    JSON.stringify(dad.exportJSON(), null, 1),
   );
   for (let i = 0; i < 10; i++) {
     const child = Offspring.breed(mum, dad);
@@ -128,6 +128,6 @@ function check(child: Creature) {
 
   Deno.writeTextFileSync(
     `${testDir}/child.json`,
-    JSON.stringify(child.exportJSON(), null, 2),
+    JSON.stringify(child.exportJSON(), null, 1),
   );
 }

@@ -114,7 +114,7 @@ Deno.test("propagateMultiLevelRandom", () => {
 
   Deno.writeTextFileSync(
     ".trace/data.json",
-    JSON.stringify(ts, null, 2),
+    JSON.stringify(ts, null, 1),
   );
   ts.forEach((item) => {
     const result = creatureA.activate(new Float32Array(item.input));
@@ -127,7 +127,7 @@ Deno.test("propagateMultiLevelRandom", () => {
 
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
-    JSON.stringify(internalJSON, null, 2),
+    JSON.stringify(internalJSON, null, 1),
   );
 
   internalJSON.neurons.forEach((node, indx) => {
@@ -141,7 +141,7 @@ Deno.test("propagateMultiLevelRandom", () => {
 
   Deno.writeTextFileSync(
     ".trace/2-modified.json",
-    JSON.stringify(internalJSON, null, 2),
+    JSON.stringify(internalJSON, null, 1),
   );
 
   for (let attempts = 0; true; attempts++) {
@@ -155,7 +155,7 @@ Deno.test("propagateMultiLevelRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.internalJSON(), null, 2),
+      JSON.stringify(creatureB.internalJSON(), null, 1),
     );
 
     const result2 = train(creatureB, ts, {
@@ -165,7 +165,7 @@ Deno.test("propagateMultiLevelRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.internalJSON(), null, 2),
+      JSON.stringify(creatureB.internalJSON(), null, 1),
     );
 
     if (result2.error < 0.0001) break;
@@ -177,7 +177,7 @@ Deno.test("propagateMultiLevelRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/result.json",
-      JSON.stringify(result2.trace, null, 2),
+      JSON.stringify(result2.trace, null, 1),
     );
 
     break;
@@ -334,7 +334,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
 
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
-    JSON.stringify(internalJSON, null, 2),
+    JSON.stringify(internalJSON, null, 1),
   );
 
   internalJSON.neurons.forEach((node, indx) => {
@@ -348,7 +348,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
 
   Deno.writeTextFileSync(
     ".trace/2-modified.json",
-    JSON.stringify(internalJSON, null, 2),
+    JSON.stringify(internalJSON, null, 1),
   );
 
   for (let attempts = 0; true; attempts++) {
@@ -362,7 +362,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
 
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.internalJSON(), null, 2),
+      JSON.stringify(creatureB.internalJSON(), null, 1),
     );
 
     const result2 = train(creatureB, ts, {
@@ -372,12 +372,12 @@ Deno.test("propagateMultiLevelKnownA", () => {
 
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.internalJSON(), null, 2),
+      JSON.stringify(creatureB.internalJSON(), null, 1),
     );
 
     Deno.writeTextFileSync(
       ".trace/result.json",
-      JSON.stringify(result2.trace, null, 2),
+      JSON.stringify(result2.trace, null, 1),
     );
 
     if (attempts < 12) {
@@ -540,7 +540,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
   Deno.writeTextFileSync(
     ".trace/start.json",
-    JSON.stringify(internalJSON, null, 2),
+    JSON.stringify(internalJSON, null, 1),
   );
 
   internalJSON.neurons.forEach((node, indx) => {
@@ -554,7 +554,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
   Deno.writeTextFileSync(
     ".trace/changed.json",
-    JSON.stringify(internalJSON, null, 2),
+    JSON.stringify(internalJSON, null, 1),
   );
 
   for (let attempts = 0; true; attempts++) {
@@ -568,7 +568,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
     Deno.writeTextFileSync(
       ".trace/first.json",
-      JSON.stringify(creatureB.internalJSON(), null, 2),
+      JSON.stringify(creatureB.internalJSON(), null, 1),
     );
 
     const result2 = train(creatureB, ts, {
@@ -578,7 +578,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
     Deno.writeTextFileSync(
       ".trace/last.json",
-      JSON.stringify(creatureB.internalJSON(), null, 2),
+      JSON.stringify(creatureB.internalJSON(), null, 1),
     );
 
     if (result2.error < 0.0001) break;
@@ -590,7 +590,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
     Deno.writeTextFileSync(
       ".trace/result.json",
-      JSON.stringify(result2.trace, null, 2),
+      JSON.stringify(result2.trace, null, 1),
     );
 
     break;

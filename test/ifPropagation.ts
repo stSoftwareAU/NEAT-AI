@@ -62,7 +62,7 @@ Deno.test("ifPropagation", () => {
   const traceJson = result.trace;
   Deno.writeTextFileSync(
     ".trace/ifPropagation.json",
-    JSON.stringify(traceJson, null, 2),
+    JSON.stringify(traceJson, null, 1),
   );
   let usedCount = 0;
   if (traceJson) {
