@@ -160,7 +160,7 @@ Deno.test("CrossOver", () => {
     if (n.squash === "IF") {
       Deno.writeTextFileSync(
         ".cross_over.json",
-        JSON.stringify(child.exportJSON(), null, 2),
+        JSON.stringify(child.exportJSON(), null, 1),
       );
 
       break;

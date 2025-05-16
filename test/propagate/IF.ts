@@ -27,7 +27,7 @@ Deno.test("PropagateWeightsIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/data.json",
-      JSON.stringify(ts, null, 2),
+      JSON.stringify(ts, null, 1),
     );
     ts.forEach((item) => {
       const result = creatureA.activate(new Float32Array(item.input));
@@ -40,7 +40,7 @@ Deno.test("PropagateWeightsIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/A-clean.json",
-      JSON.stringify(exportJSON, null, 2),
+      JSON.stringify(exportJSON, null, 1),
     );
 
     exportJSON.synapses.forEach((c, indx) => {
@@ -51,7 +51,7 @@ Deno.test("PropagateWeightsIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/B-modified.json",
-      JSON.stringify(exportJSON, null, 2),
+      JSON.stringify(exportJSON, null, 1),
     );
 
     const creatureB = Creature.fromJSON(exportJSON);
@@ -70,12 +70,12 @@ Deno.test("PropagateWeightsIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/C-trace.json",
-      JSON.stringify(resultC.trace, null, 2),
+      JSON.stringify(resultC.trace, null, 1),
     );
 
     Deno.writeTextFileSync(
       ".trace/C-creature.json",
-      JSON.stringify(creatureC.exportJSON(), null, 2),
+      JSON.stringify(creatureC.exportJSON(), null, 1),
     );
 
     const errorC = calculateError(creatureC, ts);
@@ -100,7 +100,7 @@ Deno.test("PropagateWeightsIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/result.json",
-      JSON.stringify(resultC.trace, null, 2),
+      JSON.stringify(resultC.trace, null, 1),
     );
 
     break;
@@ -126,7 +126,7 @@ Deno.test("PropagateBiasIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/data.json",
-      JSON.stringify(ts, null, 2),
+      JSON.stringify(ts, null, 1),
     );
     ts.forEach((item) => {
       const result = creatureA.activate(new Float32Array(item.input));
@@ -139,7 +139,7 @@ Deno.test("PropagateBiasIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/A-clean.json",
-      JSON.stringify(exportJSON, null, 2),
+      JSON.stringify(exportJSON, null, 1),
     );
 
     exportJSON.neurons.forEach((node, indx) => {
@@ -151,7 +151,7 @@ Deno.test("PropagateBiasIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/B-modified.json",
-      JSON.stringify(exportJSON, null, 2),
+      JSON.stringify(exportJSON, null, 1),
     );
 
     const creatureB = Creature.fromJSON(exportJSON);
@@ -170,12 +170,12 @@ Deno.test("PropagateBiasIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/C-trace.json",
-      JSON.stringify(resultC.trace, null, 2),
+      JSON.stringify(resultC.trace, null, 1),
     );
 
     Deno.writeTextFileSync(
       ".trace/C-creature.json",
-      JSON.stringify(creatureC.exportJSON(), null, 2),
+      JSON.stringify(creatureC.exportJSON(), null, 1),
     );
 
     const errorC = calculateError(creatureC, ts);
@@ -200,7 +200,7 @@ Deno.test("PropagateBiasIF", () => {
 
     Deno.writeTextFileSync(
       ".trace/result.json",
-      JSON.stringify(resultC.trace, null, 2),
+      JSON.stringify(resultC.trace, null, 1),
     );
 
     const aHidden1 = creatureA.neurons.find((node) => node.uuid === "hidden-1");

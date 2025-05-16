@@ -56,7 +56,7 @@ Deno.test("CRISPR_twice", () => {
   const expectedJSON = JSON.parse(
     Deno.readTextFileSync("test/data/CRISPR/expected-IF.json"),
   );
-  const expectedTXT = JSON.stringify(clean(expectedJSON), null, 2);
+  const expectedTXT = JSON.stringify(clean(expectedJSON), null, 1);
   const actualTXT = JSON.stringify(
     clean((networkIF2 as Creature).exportJSON()),
     null,
@@ -72,7 +72,7 @@ Deno.test("CRISPR-Volume", () => {
   const network = Creature.fromJSON(JSON.parse(networkTXT));
   Deno.writeTextFileSync(
     "test/data/CRISPR/.network.json",
-    JSON.stringify(network.internalJSON(), null, 2),
+    JSON.stringify(network.internalJSON(), null, 1),
   );
   network.validate();
   const crispr = new CRISPR(network);
@@ -181,7 +181,7 @@ Deno.test("CRISPR-multi-outputs1", () => {
   const network = Creature.fromJSON(json);
   Deno.writeTextFileSync(
     "test/data/CRISPR/.network-sane.json",
-    JSON.stringify(network.internalJSON(), null, 2),
+    JSON.stringify(network.internalJSON(), null, 1),
   );
   network.validate();
   const crispr = new CRISPR(network);
@@ -266,7 +266,7 @@ Deno.test("CRISPR-multi-outputs2", () => {
   const network = Creature.fromJSON(json);
   Deno.writeTextFileSync(
     "test/data/CRISPR/.network-sane2.json",
-    JSON.stringify(network.internalJSON(), null, 2),
+    JSON.stringify(network.internalJSON(), null, 1),
   );
   network.validate();
   const crispr = new CRISPR(network);
@@ -333,7 +333,7 @@ Deno.test("CRISPR-uuid", () => {
   const creature = Creature.fromJSON(json);
   Deno.writeTextFileSync(
     "test/data/CRISPR/.network-proximity-to-delisting.json",
-    JSON.stringify(creature.internalJSON(), null, 2),
+    JSON.stringify(creature.internalJSON(), null, 1),
   );
   creature.validate();
   const crispr = new CRISPR(creature);

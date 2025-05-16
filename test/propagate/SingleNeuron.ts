@@ -78,7 +78,7 @@ Deno.test("OneAndDone", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const input = [-1, 0, 1];
@@ -92,7 +92,7 @@ Deno.test("OneAndDone", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/1-trace.json`,
-    JSON.stringify(creature.traceJSON(), null, 2),
+    JSON.stringify(creature.traceJSON(), null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
@@ -101,7 +101,7 @@ Deno.test("OneAndDone", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/2-done.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   assertAlmostEquals(
@@ -129,7 +129,7 @@ Deno.test("TwoSame", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/0-start.json`,
-      JSON.stringify(creature.traceJSON(), null, 2),
+      JSON.stringify(creature.traceJSON(), null, 1),
     );
     const config = createBackPropagationConfig({
       generations: 0,
@@ -147,7 +147,7 @@ Deno.test("TwoSame", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/1-trace.json`,
-      JSON.stringify(creature.traceJSON(), null, 2),
+      JSON.stringify(creature.traceJSON(), null, 1),
     );
 
     creature.propagateUpdate(config, sparseConfig);
@@ -157,7 +157,7 @@ Deno.test("TwoSame", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/2-done.json`,
-      JSON.stringify(creature.exportJSON(), null, 2),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     if (
@@ -202,7 +202,7 @@ Deno.test("ManySame", () => {
 
     Deno.writeTextFileSync(
       ".trace/0-start.json",
-      JSON.stringify(creature.traceJSON(), null, 2),
+      JSON.stringify(creature.traceJSON(), null, 1),
     );
 
     const inA = [-1, 0, 1];
@@ -216,7 +216,7 @@ Deno.test("ManySame", () => {
 
     Deno.writeTextFileSync(
       ".trace/1-inA.json",
-      JSON.stringify(creature.traceJSON(), null, 2),
+      JSON.stringify(creature.traceJSON(), null, 1),
     );
 
     creature.propagateUpdate(config, sparseConfig);
@@ -226,7 +226,7 @@ Deno.test("ManySame", () => {
 
     Deno.writeTextFileSync(
       ".trace/4-done.json",
-      JSON.stringify(creature.exportJSON(), null, 2),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     if (
@@ -260,7 +260,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
   const creature = makeCreature();
   Deno.writeTextFileSync(
     ".trace/0-start.json",
-    JSON.stringify(creature.traceJSON(), null, 2),
+    JSON.stringify(creature.traceJSON(), null, 1),
   );
   const config = createBackPropagationConfig({});
 
@@ -281,7 +281,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
 
   Deno.writeTextFileSync(
     ".trace/4-done.json",
-    JSON.stringify(creature.internalJSON(), null, 2),
+    JSON.stringify(creature.internalJSON(), null, 1),
   );
 
   for (let loop = 0; loop < 5; loop++) {

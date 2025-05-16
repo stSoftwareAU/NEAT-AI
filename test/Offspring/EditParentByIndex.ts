@@ -103,7 +103,7 @@ function makeTestCreature(uuidPrefix: string): Creature {
   CreatureUtil.makeUUID(creature);
   Deno.writeTextFileSync(
     `${testDir}/${uuidPrefix}.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
   return creature;
 }
@@ -123,7 +123,7 @@ Deno.test("Edit Parent by Index", () => {
   parent.validate();
   Deno.writeTextFileSync(
     `${testDir}/editedTarget.json`,
-    JSON.stringify(editedTarget.exportJSON(), null, 2),
+    JSON.stringify(editedTarget.exportJSON(), null, 1),
   );
 
   // Check overlap has increased

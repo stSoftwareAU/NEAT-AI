@@ -85,14 +85,14 @@ Deno.test("PropagateMean", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   if (!existsSync(`${traceDir}/input.json`)) {
     const generated = makeInputs();
     Deno.writeTextFileSync(
       `${traceDir}/input.json`,
-      JSON.stringify(generated, null, 2),
+      JSON.stringify(generated, null, 1),
     );
   }
 
@@ -122,14 +122,14 @@ Deno.test("PropagateMean", () => {
   const traced = creature.traceJSON();
   Deno.writeTextFileSync(
     `${traceDir}/1-trace.json`,
-    JSON.stringify(traced, null, 2),
+    JSON.stringify(traced, null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
 
   Deno.writeTextFileSync(
     `${traceDir}/2-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   if (neuron.bias < 0.00001 || neuron.bias > 1) {

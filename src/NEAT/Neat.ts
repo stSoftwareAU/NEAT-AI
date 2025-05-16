@@ -359,7 +359,7 @@ export class Neat {
           ensureDirSync(this.config.traceStore);
           Deno.writeTextFileSync(
             `${this.config.traceStore}/${traceNetwork.uuid}.json`,
-            JSON.stringify(traceNetwork.traceJSON(), null, 2),
+            JSON.stringify(traceNetwork.traceJSON(), null, 1),
           );
         }
       }

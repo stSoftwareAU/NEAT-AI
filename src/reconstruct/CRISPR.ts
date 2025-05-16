@@ -440,7 +440,7 @@ export class CRISPR {
       const name = `.CRISPR-ERROR-${dna.id}.json`;
       Deno.writeTextFileSync(
         name,
-        JSON.stringify(modifiedCreature.exportJSON(), null, 2),
+        JSON.stringify(modifiedCreature.exportJSON(), null, 1),
       );
 
       console.warn(`Invalid creature saved to ${name}`, e);

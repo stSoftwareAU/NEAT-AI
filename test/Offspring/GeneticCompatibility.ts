@@ -102,7 +102,7 @@ function makeTestCreature(uuidPrefix: string): Creature {
   CreatureUtil.makeUUID(creature);
   Deno.writeTextFileSync(
     `${testDir}/${uuidPrefix}.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
   return creature;
 }

@@ -86,13 +86,13 @@ Deno.test("PropagateIdentity", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const inputs = makeData();
   Deno.writeTextFileSync(
     `${traceDir}/input.json`,
-    JSON.stringify(inputs, null, 2),
+    JSON.stringify(inputs, null, 1),
   );
 
   const targets: Float32Array[] = new Array(inputs.length);
@@ -108,7 +108,7 @@ Deno.test("PropagateIdentity", () => {
   neuron.bias = 0;
   Deno.writeTextFileSync(
     `${traceDir}/1-modified.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const modifiedError = calculateError(creature, inputs, targets);
@@ -127,13 +127,13 @@ Deno.test("PropagateIdentity", () => {
   const traced = creature.traceJSON();
   Deno.writeTextFileSync(
     `${traceDir}/2-trace.json`,
-    JSON.stringify(traced, null, 2),
+    JSON.stringify(traced, null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
   Deno.writeTextFileSync(
     `${traceDir}/3-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const endError = calculateError(creature, inputs, targets);
@@ -155,13 +155,13 @@ Deno.test("PropagateIdentityNoRealChange", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const inputs = makeData();
   Deno.writeTextFileSync(
     `${traceDir}/input.json`,
-    JSON.stringify(inputs, null, 2),
+    JSON.stringify(inputs, null, 1),
   );
 
   const targets: Float32Array[] = new Array(inputs.length);
@@ -178,7 +178,7 @@ Deno.test("PropagateIdentityNoRealChange", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/1-modified.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const startError = calculateError(creature, inputs, targets);
@@ -201,13 +201,13 @@ Deno.test("PropagateIdentityNoRealChange", () => {
   const traced = creature.traceJSON();
   Deno.writeTextFileSync(
     `${traceDir}/2-trace.json`,
-    JSON.stringify(traced, null, 2),
+    JSON.stringify(traced, null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
   Deno.writeTextFileSync(
     `${traceDir}/3-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const endError = calculateError(creature, inputs, targets);

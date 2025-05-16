@@ -92,7 +92,7 @@ Deno.test("CompactCascade", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/trace.json`,
-      JSON.stringify(creature.traceJSON(), null, 2),
+      JSON.stringify(creature.traceJSON(), null, 1),
     );
 
     compacted = compactUnused(creature.traceJSON(), config.plankConstant);
@@ -105,7 +105,7 @@ Deno.test("CompactCascade", () => {
   compacted.validate();
   Deno.writeTextFileSync(
     `${traceDir}/compacted.json`,
-    JSON.stringify(compacted.exportJSON(), null, 2),
+    JSON.stringify(compacted.exportJSON(), null, 1),
   );
 
   for (let i = data.length; i--;) {

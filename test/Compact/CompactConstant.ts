@@ -84,7 +84,7 @@ Deno.test("CompactConstants", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const outputs: Float32Array[] = new Array(data.length);
@@ -117,7 +117,7 @@ Deno.test("CompactConstants", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/1-trace.json`,
-    JSON.stringify(creature.traceJSON(), null, 2),
+    JSON.stringify(creature.traceJSON(), null, 1),
   );
 
   const compacted = compactUnused(
@@ -130,7 +130,7 @@ Deno.test("CompactConstants", () => {
   }
   Deno.writeTextFileSync(
     `${traceDir}/2-compacted.json`,
-    JSON.stringify(compacted.exportJSON(), null, 2),
+    JSON.stringify(compacted.exportJSON(), null, 1),
   );
 
   for (let i = data.length; i--;) {
@@ -174,7 +174,7 @@ Deno.test("CompactConstants", () => {
 
   Deno.writeTextFileSync(
     `${traceDir}/3-trace.json`,
-    JSON.stringify(compacted.traceJSON(), null, 2),
+    JSON.stringify(compacted.traceJSON(), null, 1),
   );
 
   const compacted2 = compactUnused(
@@ -185,7 +185,7 @@ Deno.test("CompactConstants", () => {
   if (compacted2) {
     Deno.writeTextFileSync(
       `${traceDir}/4-compacted.json`,
-      JSON.stringify(compacted2.exportJSON(), null, 2),
+      JSON.stringify(compacted2.exportJSON(), null, 1),
     );
 
     for (let i = data.length; i--;) {

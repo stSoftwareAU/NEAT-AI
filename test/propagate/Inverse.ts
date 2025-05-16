@@ -115,7 +115,7 @@ Deno.test("propagateInverseRandom", () => {
 
   Deno.writeTextFileSync(
     ".trace/data.json",
-    JSON.stringify(ts, null, 2),
+    JSON.stringify(ts, null, 1),
   );
   ts.forEach((item) => {
     const result = creatureA.activate(new Float32Array(item.input));
@@ -128,7 +128,7 @@ Deno.test("propagateInverseRandom", () => {
 
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
-    JSON.stringify(exportJSON, null, 2),
+    JSON.stringify(exportJSON, null, 1),
   );
 
   exportJSON.neurons.forEach((node, indx) => {
@@ -142,7 +142,7 @@ Deno.test("propagateInverseRandom", () => {
 
   Deno.writeTextFileSync(
     ".trace/2-modified.json",
-    JSON.stringify(exportJSON, null, 2),
+    JSON.stringify(exportJSON, null, 1),
   );
 
   for (let attempts = 0; true; attempts++) {
@@ -156,7 +156,7 @@ Deno.test("propagateInverseRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.exportJSON(), null, 2),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     const result2 = train(creatureB, ts, {
@@ -167,7 +167,7 @@ Deno.test("propagateInverseRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.exportJSON(), null, 2),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     if (result1.error <= result2.error && attempts < 12) continue;
@@ -181,7 +181,7 @@ Deno.test("propagateInverseRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/result.json",
-      JSON.stringify(result2.trace, null, 2),
+      JSON.stringify(result2.trace, null, 1),
     );
 
     creatureA.neurons.forEach((n, indx) => {

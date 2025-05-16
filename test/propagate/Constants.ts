@@ -46,7 +46,7 @@ Deno.test("Constants", () => {
 
     Deno.writeTextFileSync(
       ".trace/0.json",
-      JSON.stringify(creature.exportJSON(), null, 2),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     const config = createBackPropagationConfig({
@@ -72,7 +72,7 @@ Deno.test("Constants", () => {
 
     Deno.writeTextFileSync(
       ".trace/1.json",
-      JSON.stringify(creature.traceJSON(), null, 2),
+      JSON.stringify(creature.traceJSON(), null, 1),
     );
 
     creature.propagateUpdate(config, sparseConfig);
@@ -88,7 +88,7 @@ Deno.test("Constants", () => {
 
     Deno.writeTextFileSync(
       ".trace/2.json",
-      JSON.stringify(creature.exportJSON(), null, 2),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     if (diff < 0.001 || attempts > 100) {
@@ -119,7 +119,7 @@ Deno.test("Constants Same", () => {
 
     Deno.writeTextFileSync(
       ".trace/0-clean.json",
-      JSON.stringify(creature.exportJSON(), null, 2),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
     const config = createBackPropagationConfig({
       disableRandomSamples: true,
@@ -142,7 +142,7 @@ Deno.test("Constants Same", () => {
 
     Deno.writeTextFileSync(
       ".trace/2-trace.json",
-      JSON.stringify(creature.traceJSON(), null, 2),
+      JSON.stringify(creature.traceJSON(), null, 1),
     );
 
     creature.propagateUpdate(config, sparseConfig);
@@ -159,7 +159,7 @@ Deno.test("Constants Same", () => {
 
     Deno.writeTextFileSync(
       ".trace/3-updated.json",
-      JSON.stringify(creature.exportJSON(), null, 2),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     if (diff < 0.5 || attempts > 100) {
@@ -188,7 +188,7 @@ Deno.test("Constants Known Few", () => {
 
   Deno.writeTextFileSync(
     ".trace/0.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const inputs = [
@@ -216,7 +216,7 @@ Deno.test("Constants Known Few", () => {
 
   Deno.writeTextFileSync(
     ".trace/2.json",
-    JSON.stringify(creature.traceJSON(), null, 2),
+    JSON.stringify(creature.traceJSON(), null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
@@ -232,7 +232,7 @@ Deno.test("Constants Known Few", () => {
 
   Deno.writeTextFileSync(
     ".trace/3.json",
-    JSON.stringify(creature.exportJSON(), null, 2),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   assertAlmostEquals(
@@ -256,14 +256,14 @@ Deno.test("ConstantsMany", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/0-start.json`,
-      JSON.stringify(creature.exportJSON(), null, 2),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     const observations = makeInputs();
 
     Deno.writeTextFileSync(
       `${traceDir}/observations.json`,
-      JSON.stringify(observations, null, 2),
+      JSON.stringify(observations, null, 1),
     );
     sampleInput = observations[22];
     let config = createBackPropagationConfig({
@@ -291,7 +291,7 @@ Deno.test("ConstantsMany", () => {
       }
       Deno.writeTextFileSync(
         `${traceDir}/1-trace.json`,
-        JSON.stringify(creature.traceJSON(), null, 2),
+        JSON.stringify(creature.traceJSON(), null, 1),
       );
 
       creature.propagateUpdate(config, sparseConfig);
@@ -304,7 +304,7 @@ Deno.test("ConstantsMany", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/2-end.json`,
-      JSON.stringify(creature.exportJSON(), null, 2),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     if (attempt > 121) break;

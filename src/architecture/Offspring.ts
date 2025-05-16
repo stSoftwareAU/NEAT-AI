@@ -305,15 +305,15 @@ export class Offspring {
           offspring.DEBUG = false;
           Deno.writeTextFileSync(
             ".offspring-mother.json",
-            JSON.stringify(mother.exportJSON(), null, 2),
+            JSON.stringify(mother.exportJSON(), null, 1),
           );
           Deno.writeTextFileSync(
             ".offspring-offspring.json",
-            JSON.stringify(offspring.exportJSON(), null, 2),
+            JSON.stringify(offspring.exportJSON(), null, 1),
           );
           Deno.writeTextFileSync(
             ".offspring-father.json",
-            JSON.stringify(father.exportJSON(), null, 2),
+            JSON.stringify(father.exportJSON(), null, 1),
           );
 
           throw e;

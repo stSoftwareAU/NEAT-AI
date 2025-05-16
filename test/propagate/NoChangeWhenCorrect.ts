@@ -111,7 +111,7 @@ Deno.test("NoChangeWhenCorrect", () => {
   const traced = creature.traceJSON();
   Deno.writeTextFileSync(
     `${traceDir}/trace.json`,
-    JSON.stringify(traced, null, 2),
+    JSON.stringify(traced, null, 1),
   );
 
   const info = traced.neurons.find((n) => n.uuid === "hidden-3b")?.trace;
