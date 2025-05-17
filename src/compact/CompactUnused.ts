@@ -163,9 +163,7 @@ export function removeNeuron(
             }
           } else {
             console.warn(
-              `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid} with weight ${connection.weight} required ${
-                synapse.weight
-              }`,
+              `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid} with weight ${connection.weight} required ${synapse.weight}`,
             );
             return false;
           }
