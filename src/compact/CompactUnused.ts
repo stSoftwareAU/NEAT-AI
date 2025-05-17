@@ -37,7 +37,7 @@ export function compactUnused(
   CreatureUtil.shuffle(indices);
 
   let neuronForRemoval: NeuronTrace | undefined;
-  let maxEffect: number = Number.MAX_VALUE;
+  let smallestEffect: number = Number.MAX_VALUE;
 
   for (let i = indices.length; i--;) {
     const neuron = traced.neurons[indices[i]];
@@ -52,9 +52,9 @@ export function compactUnused(
             neuron.trace.maximumActivation - neuron.trace.minimumActivation,
           ) * Math.min(maxScale, 1) - (plankConstant * counter);
 
-      if (neuronEffect < maxEffect) {
+      if (neuronEffect < smallestEffect) {
         neuronForRemoval = neuron;
-        maxEffect = neuronEffect;
+        smallestEffect = neuronEffect;
         if (neuronEffect < 0) { // Lets stop early if we find a neuron that is not used at all
           break;
         }
@@ -119,40 +119,79 @@ export function removeNeuron(
   activation: number,
 ) {
   const neuron = creature.neurons.find((n) => n.uuid === uuid);
-  if (neuron?.index) {
-    let useConstant = false;
-    const fromList = creature.outwardConnections(neuron.index);
+  assert(neuron !== undefined, "Neuron should not be undefined");
 
-    for (const synapse of fromList) {
-      const squash = creature.neurons[synapse.to].findSquash();
+  let useConstant = false;
+  const fromList = creature.outwardConnections(neuron.index);
 
-      const propagateUpdateMethod = squash as NeuronActivationInterface;
-      if (propagateUpdateMethod.propagate !== undefined) {
-        useConstant = true;
+  for (const synapse of fromList) {
+    const squash = creature.neurons[synapse.to].findSquash();
 
-        break;
+    const propagateUpdateMethod = squash as NeuronActivationInterface;
+    if (propagateUpdateMethod.propagate !== undefined) {
+      useConstant = true;
+
+      break;
+    }
+  }
+
+  if (useConstant) {
+    let constantNeuron = createConstantOne(creature, 0);
+    for (let count = 1; count < 3; count++) {
+      for (const synapse of fromList) {
+        if (creature.getSynapse(constantNeuron.index, synapse.to)) {
+          constantNeuron = createConstantOne(creature, count);
+        } else {
+          break;
+        }
       }
     }
 
-    if (useConstant) {
-      let constantNeuron = createConstantOne(creature, 0);
-      for (let count = 1; count < 3; count++) {
-        for (const synapse of fromList) {
-          if (creature.getSynapse(constantNeuron.index, synapse.to)) {
-            constantNeuron = createConstantOne(creature, count);
+    for (const synapse of fromList) {
+      const connection = creature.getSynapse(constantNeuron.index, synapse.to);
+      if (connection) {
+        console.info(
+          `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid}`,
+        );
+        if (!synapse.type || !connection.type) {
+          let weight = connection.weight;
+          weight += synapse.weight * activation;
+          if (Number.isFinite(weight)) {
+            synapse.weight = weight;
+            if (connection.type) {
+              synapse.type = connection.type;
+            }
           } else {
-            break;
+            console.warn(
+              `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid} with weight ${connection.weight} required ${
+                synapse.weight
+              }`,
+            );
+            return false;
           }
-        }
-      }
-
-      for (const synapse of fromList) {
-        if (creature.getSynapse(constantNeuron.index, synapse.to)) {
+        } else {
+          console.warn(
+            `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid} with type ${connection.type} required ${connection.type}`,
+          );
           return false;
         }
       }
+    }
 
-      for (const synapse of fromList) {
+    for (const synapse of fromList) {
+      const connection = creature.getSynapse(
+        constantNeuron.index,
+        synapse.to,
+      );
+      if (connection) {
+        console.info(
+          `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid}`,
+        );
+        if (synapse.type) {
+          connection.type = synapse.type;
+        }
+        connection.weight = synapse.weight;
+      } else {
         creature.connect(
           constantNeuron.index,
           synapse.to,
@@ -160,26 +199,25 @@ export function removeNeuron(
           synapse.type,
         );
       }
-      removeHiddenNeuron(creature, neuron.index);
+    }
+    removeHiddenNeuron(creature, neuron.index);
 
-      return true;
-    } else {
-      for (const synapse of fromList) {
-        const adjustedBias = synapse.weight * activation;
-        creature.neurons[synapse.to].bias += adjustedBias;
+    return true;
+  } else {
+    for (const synapse of fromList) {
+      const adjustedBias = synapse.weight * activation;
+      creature.neurons[synapse.to].bias += adjustedBias;
 
-        const toList = creature.inwardConnections(synapse.to);
-        if (toList.length < 2) {
-          const randomFromIndx = Math.floor(Math.random() * creature.input);
+      const toList = creature.inwardConnections(synapse.to);
+      if (toList.length < 2) {
+        const randomFromIndx = Math.floor(Math.random() * creature.input);
 
-          /* Add a new connection which will be removed later because weight is zero */
-          creature.connect(randomFromIndx, synapse.to, 0);
-        }
+        /* Add a new connection which will be removed later because weight is zero */
+        creature.connect(randomFromIndx, synapse.to, 0);
       }
     }
-
-    removeHiddenNeuron(creature, neuron.index);
-    return true;
   }
-  return false;
+
+  removeHiddenNeuron(creature, neuron.index);
+  return true;
 }

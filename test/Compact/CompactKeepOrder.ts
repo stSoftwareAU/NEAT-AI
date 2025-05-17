@@ -69,11 +69,11 @@ function makeCreature() {
 function makeData() {
   const inputs: number[][] = [];
 
-  for (let i = 1000; i--;) {
+  for (let i = 10_000; i--;) {
     inputs.push([
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
+      Math.random() * 3 - 1.5,
+      Math.random() * 3 - 1.5,
+      Math.random() * 3 - 1.5,
     ]);
   }
   return inputs;
