@@ -5,7 +5,7 @@ import {
   assertNotEquals,
 } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
-import { addTag, getTag } from "@stsoftware/tags";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../src/Creature.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";

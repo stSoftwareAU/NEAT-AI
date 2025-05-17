@@ -1,9 +1,9 @@
-import { removeTag } from "@stsoftware/tags";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { removeTag } from "@stsoftware/tags/mod";
 import { Creature, Mutation } from "../../mod.ts";
-import type { NeatConfig } from "../config/NeatConfig.ts";
+import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
+import type { NeatConfig } from "../config/NeatConfig.ts";
 
 export class Mutator {
   private config: NeatConfig;

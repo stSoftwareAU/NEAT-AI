@@ -1,4 +1,4 @@
-import type { TagInterface } from "@stsoftware/tags";
+import type { TagInterface } from "@stsoftware/tags/mod";
 import type { SynapseState } from "../propagate/SynapseState.ts";
 
 interface SynapseCommon {

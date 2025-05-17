@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { addTag } from "@stsoftware/tags";
+import { addTag } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
 import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
 import { Breed } from "../src/breed/Breed.ts";

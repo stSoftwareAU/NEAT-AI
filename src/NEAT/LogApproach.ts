@@ -1,4 +1,4 @@
-import { addTag, getTag } from "@stsoftware/tags";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
 import { blue, bold, cyan, green } from "@std/fmt/colors";
 import { assert } from "@std/assert";

@@ -3,7 +3,12 @@ import { fail } from "@std/assert/fail";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
-import { addTag, getTag, removeTag, type TagInterface } from "@stsoftware/tags";
+import {
+  addTag,
+  getTag,
+  removeTag,
+  type TagInterface,
+} from "@stsoftware/tags/mod";
 import { Mutation } from "../mod.ts";
 import type {
   CreatureExport,
@@ -56,8 +61,11 @@ import { SwapNeurons } from "./mutate/SwapNeurons.ts";
 import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import { makeCreatureActivationFunction } from "./optimize/MakeCreatureActivationFunction.ts";
-import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
-import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
+import {
+  type BackPropagationConfig,
+  createBackPropagationConfig,
+} from "./propagate/BackPropagation.ts";
+import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 
 /**
  * Creature Class
@@ -997,6 +1005,103 @@ export class Creature implements CreatureInternal {
       config.costOfGrowth,
     );
     return { error: result.error, score: this.score };
+  }
+
+  /**
+   * Trace the creature using a dataset.
+   *
+   * @param dataDir The directory containing the dataset.
+   * @param options The NEAT configuration options.
+   * @returns the score and error of the creature.
+   */
+  traceDir(
+    dataDir: string,
+    options: NeatOptions,
+  ): { score: number; error: number } {
+    const dataResult = dataFiles(dataDir);
+    assert(dataResult.files.length > 0, "No data files found");
+    const config = createNeatConfig(options);
+    const cost = Costs.find(config.costName);
+    let error = 0;
+    let count = 0;
+    const backPropConfig = createBackPropagationConfig(config);
+    const sparseConfig = new SparseConfig(
+      this.exportJSON(),
+      backPropConfig,
+    );
+
+    const valuesCount = this.input + this.output;
+    const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
+    const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB
+    const BATCH_SIZE = Math.max(
+      1,
+      Math.floor(SSD_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
+    );
+    const BYTES_PER_BATCH = BYTES_PER_RECORD * BATCH_SIZE;
+
+    // Shared buffers for batch processing
+    const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
+    const batchArray = new Float32Array(batchBuffer.buffer);
+
+    for (let fileIndx = dataResult.files.length; fileIndx--;) {
+      const filePath = dataResult.files[fileIndx];
+      const file = Deno.openSync(filePath, { read: true });
+
+      try {
+        while (true) {
+          // Read a batch of records
+          const bytesRead = file.readSync(batchBuffer);
+          if (bytesRead === null) {
+            break;
+          }
+          assert(bytesRead > 0, "Invalid number of bytes read");
+
+          const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
+          assert(
+            bytesRead % BYTES_PER_RECORD === 0,
+            "Invalid number of bytes read",
+          );
+
+          // Process each record in the batch
+          for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
+            const offset = recordIndex * valuesCount;
+            const inputEnd = offset + this.input;
+            const observations = batchArray.subarray(
+              offset,
+              inputEnd,
+            );
+
+            const actuals = this.activateAndTrace(
+              observations,
+              true,
+              sparseConfig,
+            );
+
+            const targets = batchArray.subarray(
+              inputEnd,
+              offset + valuesCount,
+            );
+            this.propagate(targets, backPropConfig, sparseConfig);
+
+            error += cost.calculate(targets, actuals);
+            count++;
+          }
+        }
+      } finally {
+        file.close();
+      }
+    }
+    let averageError = 0;
+    if (count > 0) {
+      averageError = error / count;
+    }
+    this.score = calculateScore(
+      this,
+      averageError,
+      config.costOfGrowth,
+    );
+
+    return { error: averageError, score: this.score };
   }
 
   /**

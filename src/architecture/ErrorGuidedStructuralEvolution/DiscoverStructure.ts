@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { parse as parseCsv } from "@std/csv";
-import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags";
+import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "../../../mod.ts";
 import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";

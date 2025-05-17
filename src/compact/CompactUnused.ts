@@ -1,4 +1,4 @@
-import { addTag, removeTag } from "@stsoftware/tags";
+import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature, type CreatureTrace, CreatureUtil } from "../../mod.ts";
 import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
@@ -65,11 +65,22 @@ export function compactUnused(
   if (
     neuronForRemoval
   ) {
+    let averageActivation = (neuronForRemoval.trace.maximumActivation +
+      neuronForRemoval.trace.minimumActivation) / 2;
+    if (
+      neuronForRemoval.trace.count > 1 &&
+      neuronForRemoval.trace.totalActivation !== undefined &&
+      Number.isFinite(neuronForRemoval.trace.totalActivation)
+    ) {
+      averageActivation = neuronForRemoval.trace.totalActivation /
+        neuronForRemoval.trace.count;
+    }
+
     if (
       removeNeuron(
         neuronForRemoval.uuid,
         compacted,
-        neuronForRemoval.trace.maximumActivation,
+        averageActivation,
       )
     ) {
       addTag(compacted, "unused", neuronForRemoval.uuid);
@@ -102,7 +113,11 @@ export function compactUnused(
   }
 }
 
-function removeNeuron(uuid: string, creature: Creature, activation: number) {
+export function removeNeuron(
+  uuid: string,
+  creature: Creature,
+  activation: number,
+) {
   const neuron = creature.neurons.find((n) => n.uuid === uuid);
   if (neuron?.index) {
     let useConstant = false;

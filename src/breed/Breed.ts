@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { getTag } from "@stsoftware/tags";
+import { getTag } from "@stsoftware/tags/mod";
 import { Creature, type NeatOptions, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import { discover } from "../blackbox/Discover.ts";

@@ -1,4 +1,4 @@
-import { addTag } from "@stsoftware/tags";
+import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 
 export function editParentByIndex(

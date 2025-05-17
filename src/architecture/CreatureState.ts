@@ -10,6 +10,7 @@ export interface NeuronStateInterface {
 
   maximumActivation: number;
   minimumActivation: number;
+  totalActivation?: number;
   noChange?: boolean;
 }
 
@@ -27,6 +28,8 @@ export class NeuronState implements NeuronStateInterface {
    * The minimum activation value for the creature state.
    */
   public minimumActivation: number;
+  public totalActivation: number;
+
   public noChange?: boolean;
 
   constructor() {
@@ -36,6 +39,7 @@ export class NeuronState implements NeuronStateInterface {
     this.hintValue = 0;
     this.maximumActivation = -Infinity;
     this.minimumActivation = Infinity;
+    this.totalActivation = 0;
   }
 
   traceActivation(activation: number) {
@@ -46,6 +50,7 @@ export class NeuronState implements NeuronStateInterface {
     if (activation < this.minimumActivation) {
       this.minimumActivation = activation;
     }
+    this.totalActivation += activation;
   }
 }
 

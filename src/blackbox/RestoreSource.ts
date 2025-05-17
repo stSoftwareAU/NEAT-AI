@@ -1,7 +1,7 @@
-import { addTag } from "@stsoftware/tags";
+import { assert } from "@std/assert/assert";
+import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../mod.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
-import { assert } from "@std/assert/assert";
 
 export function restoreSource(creature: Creature): Creature | undefined {
   if (!creature.memetic) return;

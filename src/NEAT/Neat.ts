@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import { blue } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
-import { addTag, getTag, removeTag } from "@stsoftware/tags";
+import { addTag, getTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";

@@ -1,4 +1,4 @@
-import type { TagInterface } from "@stsoftware/tags";
+import type { TagInterface } from "@stsoftware/tags/mod";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 import { assert } from "@std/assert/assert";
 

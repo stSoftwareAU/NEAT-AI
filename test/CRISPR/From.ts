@@ -1,5 +1,5 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import { getTag } from "@stsoftware/tags";
+import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
 import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
 
