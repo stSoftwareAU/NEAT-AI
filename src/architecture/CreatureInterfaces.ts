@@ -1,4 +1,4 @@
-import type { TagsInterface } from "@stsoftware/tags";
+import type { TagsInterface } from "@stsoftware/tags/mod";
 import type {
   SynapseExport,
   SynapseInternal,

@@ -1,4 +1,4 @@
-import { addTag, removeTag } from "@stsoftware/tags";
+import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";

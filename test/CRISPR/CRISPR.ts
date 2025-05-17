@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { getTag } from "@stsoftware/tags";
+import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import type { Neuron } from "../../src/architecture/Neuron.ts";

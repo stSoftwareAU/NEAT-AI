@@ -1,4 +1,4 @@
-import { addTag, removeTag } from "@stsoftware/tags";
+import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
@@ -12,8 +12,8 @@ import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
 import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
-import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
 import { ReLU } from "../methods/activations/types/ReLU.ts";
+import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);

@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { addTag, getTag, type TagsInterface } from "@stsoftware/tags";
+import { addTag, getTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil, Upgrade } from "../../mod.ts";

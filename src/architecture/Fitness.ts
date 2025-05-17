@@ -1,4 +1,4 @@
-import { addTag } from "@stsoftware/tags";
+import { addTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { calculate as calculateScore } from "./Score.ts";

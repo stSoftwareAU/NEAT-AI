@@ -1,5 +1,5 @@
 import { fail } from "@std/assert/fail";
-import { getTag } from "@stsoftware/tags";
+import { getTag } from "@stsoftware/tags/mod";
 import {
   Creature,
   type CreatureExport,

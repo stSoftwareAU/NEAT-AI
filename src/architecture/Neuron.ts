@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags";
+import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";

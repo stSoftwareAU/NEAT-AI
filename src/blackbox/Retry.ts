@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { addTag } from "@stsoftware/tags";
+import { addTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 import { fineTuneImprovement } from "./FineTune.ts";

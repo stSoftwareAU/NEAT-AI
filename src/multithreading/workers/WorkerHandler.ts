@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { addTag, getTag } from "@stsoftware/tags";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../Creature.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";

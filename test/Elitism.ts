@@ -1,5 +1,5 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import { addTag } from "@stsoftware/tags";
+import { addTag } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "../mod.ts";
 import { Creature } from "../src/Creature.ts";
 import type { Approach } from "../src/NEAT/LogApproach.ts";

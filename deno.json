@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "0.175.3",
+  "version": "0.176.0",
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.13",
     "@std/bytes": "jsr:@std/bytes@1.0.6",
@@ -12,7 +12,7 @@
     "@std/path": "jsr:@std/path@1.0.9",
     "@std/streams": "jsr:@std/streams@1.0.9",
     "@std/uuid": "jsr:@std/uuid@1.0.7",
-    "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.6"
+    "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13"
   },
   "test": {
     "include": ["test/**/*.ts"]
