@@ -66,6 +66,7 @@ import {
   createBackPropagationConfig,
 } from "./propagate/BackPropagation.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
+import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 
 /**
  * Creature Class
@@ -74,7 +75,6 @@ import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
  * It encapsulates the neural network structure and its associated behaviors, including activation, mutation,
  * propagation, and evolution processes. This class is integral to the simulation and evolution of neural networks.
  */
-
 export class Creature implements CreatureInternal {
   /**
    * The unique identifier of this creature.
@@ -132,6 +132,9 @@ export class Creature implements CreatureInternal {
   private cacheSelf = new Map<number, Synapse[]>();
   private cacheFocus: Map<number, boolean> = new Map();
 
+  /** The version of this creature */
+  public readonly semanticVersion: string;
+
   /**
    * Debug mode flag.
    * @type {boolean}
@@ -153,6 +156,7 @@ export class Creature implements CreatureInternal {
     options: {
       lazyInitialization?: boolean;
       layers?: { squash?: string; count: number }[];
+      semanticVersion?: string;
     } = {},
   ) {
     this.input = input;
@@ -162,6 +166,7 @@ export class Creature implements CreatureInternal {
 
     this.tags = undefined;
     this.score = undefined;
+    this.semanticVersion = options.semanticVersion ?? "0.0.1";
 
     if (!options.lazyInitialization) {
       this.initialize(options);
@@ -1490,6 +1495,7 @@ export class Creature implements CreatureInternal {
     }
 
     const json: CreatureExport = {
+      semanticVersion: this.semanticVersion,
       neurons: new Array<NeuronExport>(
         this.neurons.length - this.input,
       ),
@@ -1749,8 +1755,14 @@ export class Creature implements CreatureInternal {
     json: CreatureInternal | CreatureExport,
     validate = false,
   ): Creature {
+    const semanticVersion = json.semanticVersion ?? "0.0.0";
+    if (semanticVersion.startsWith("0.")) {
+      json = upgradeOne(json);
+    }
+
     const creature = new Creature(json.input, json.output, {
       lazyInitialization: true,
+      semanticVersion: json.semanticVersion,
     });
 
     const legacy = (json as unknown) as {

@@ -32,10 +32,10 @@ Deno.test("TagNode", () => {
     input: 3,
     output: 1,
   };
-  const network = Creature.fromJSON(json);
+  const creature = Creature.fromJSON(json);
 
-  const json2 = network.exportJSON();
-
+  const json2 = creature.exportJSON();
+  console.log(json2);
   const network2 = Creature.fromJSON(json2);
   const json3 = network2.exportJSON();
 

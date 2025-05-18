@@ -22,6 +22,9 @@ interface CreatureCommon extends TagsInterface {
   output: number;
 
   memetic?: MemeticInterface;
+
+  /** Semantic version of the creature */
+  semanticVersion?: string;
 }
 
 /**
