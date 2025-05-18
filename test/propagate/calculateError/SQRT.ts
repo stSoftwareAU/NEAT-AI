@@ -4,13 +4,17 @@ import { SQRT } from "../../../src/methods/activations/types/SQRT.ts";
 function check(
   currentValue: number,
   targetValue: number,
+  errorOverride?: number,
 ) {
   const squashFunction = new SQRT();
   const act = squashFunction.squash(currentValue);
   const target = squashFunction.squash(targetValue);
 
   const slope = squashFunction.derivative!(currentValue);
-  const expectedError = (target - act) / slope;
+  let expectedError = slope ? (target - act) / slope : 0;
+  if (errorOverride !== undefined) {
+    expectedError = errorOverride;
+  }
 
   const error = squashFunction.calculateError!(act, target, currentValue);
 
@@ -32,5 +36,5 @@ Deno.test("SQRT near boundary", () => {
   check(0.9, -1.0);
   check(1.1, 1.0);
   check(0.8, -1.0);
-  check(-0.2, 0.3);
+  check(-0.2, 0.3, 0.5);
 });

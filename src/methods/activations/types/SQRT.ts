@@ -46,8 +46,18 @@ export class SQRT implements ActivationInterface {
     return 1 / (2 * Math.sqrt(x));
   }
 
-  unSquash(activation: number): number {
-    return Math.max(0, activation * activation);
+  unSquash(activation: number, hint?: number): number {
+    this.range.validate(activation, hint);
+    let sign = 1;
+    if (hint !== undefined && Number.isFinite(hint)) {
+      if (activation <= 0) {
+        return hint;
+      }
+      if (hint < 0) {
+        sign = -1;
+      }
+    }
+    return Math.max(0, activation * activation) * sign;
   }
 
   calculateError(
