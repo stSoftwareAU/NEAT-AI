@@ -55,6 +55,7 @@ function check(squashName: string, values: number[]) {
         case "BIPOLAR":
           expected = v > 0 ? 1 : -1;
           break;
+        case "SQRT":
         case "SQUARE":
           hint = v;
           break;

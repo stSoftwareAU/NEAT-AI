@@ -30,7 +30,9 @@ function checkMutation(method: { name: string }) {
     ],
   });
   creatureValidate(creature);
-  creature.mutate(method);
+  for (let i = 12; i--;) {
+    if (creature.mutate(method)) break;
+  }
   creature.mutate(Mutation.ADD_BACK_CONN);
   creature.mutate(Mutation.ADD_SELF_CONN);
   creatureValidate(creature);
@@ -51,8 +53,8 @@ function checkMutation(method: { name: string }) {
   }
 
   const json1 = JSON.stringify(creature.exportJSON(), null, 1);
-  for (let i = 10; i--;) {
-    creature.mutate(method);
+  for (let i = 12; i--;) {
+    if (creature.mutate(method)) break;
   }
   const json2 = JSON.stringify(creature.exportJSON(), null, 1);
 
@@ -77,13 +79,15 @@ function checkMutation(method: { name: string }) {
     );
     Deno.writeTextFileSync(
       ".clean.json",
-      JSON.stringify(json1, null, 1),
+      JSON.stringify(JSON.parse(json1), null, 1),
     );
     Deno.writeTextFileSync(
       ".mutated.json",
-      JSON.stringify(json2, null, 1),
+      JSON.stringify(JSON.parse(json2), null, 1),
     );
-    fail("Output of original network is the same as the mutated network!");
+    fail(
+      `${method} failed: Output of original network is the same as the mutated network!`,
+    );
   }
 }
 let first = true;

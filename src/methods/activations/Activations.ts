@@ -29,6 +29,7 @@ import { ReLU6 } from "./types/ReLU6.ts";
 import { SELU } from "./types/SELU.ts";
 import { SINE } from "./types/SINE.ts";
 import { SOFTSIGN } from "./types/SOFTSIGN.ts";
+import { SQRT } from "./types/SQRT.ts";
 import { SQUARE } from "./types/SQUARE.ts";
 import { STEP } from "./types/STEP.ts";
 import { Softplus } from "./types/Softplus.ts";
@@ -90,13 +91,14 @@ export class Activations {
       ["SINUSOID", new SINE()],
       [SOFTSIGN.NAME, new SOFTSIGN()],
       [Softplus.NAME, new Softplus()],
+      [SQRT.NAME, new SQRT()],
+      [SQUARE.NAME, new SQUARE()],
       [StdInverse.NAME, new StdInverse()],
       [STEP.NAME, new STEP()],
       [Swish.NAME, new Swish()],
 
       [TAN.NAME, new TAN()],
       [TANH.NAME, new TANH()],
-      [SQUARE.NAME, new SQUARE()],
     ]);
 
   public static readonly NAMES = [...Activations.MAP.keys()].filter(
@@ -158,6 +160,7 @@ export class Activations {
       [MINIMUM.NAME, 1],
       [BIPOLAR.NAME, 1],
       [SQUARE.NAME, 1],
+      [SQRT.NAME, 1],
     ];
     const result: string[] = [];
     for (const [name, weight] of weighted) {

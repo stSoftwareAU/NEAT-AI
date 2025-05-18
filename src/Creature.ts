@@ -302,6 +302,7 @@ export class Creature implements CreatureInternal {
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
+        fixNeeded = true;
       }
 
       // Connect input neurons with output neurons directly
