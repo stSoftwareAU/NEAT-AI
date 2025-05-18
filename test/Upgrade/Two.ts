@@ -31,6 +31,12 @@ Deno.test("HYPOT", () => {
     JSON.stringify(upgraded.exportJSON(), null, 1),
   );
 
+  upgraded.neurons.forEach((neuron) => {
+    if (neuron.squash === HYPOT.NAME) {
+      console.warn(`Didn't remove HYPOT ${neuron.uuid}`);
+    }
+  });
+
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, start.input);
 

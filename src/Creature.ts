@@ -264,7 +264,7 @@ export class Creature implements CreatureInternal {
           type,
           Math.random() * 0.2 - 0.1,
           this,
-          LOGISTIC.NAME,
+          Activations.pickRandomWeighted(),
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
