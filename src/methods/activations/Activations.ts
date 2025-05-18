@@ -29,6 +29,7 @@ import { ReLU6 } from "./types/ReLU6.ts";
 import { SELU } from "./types/SELU.ts";
 import { SINE } from "./types/SINE.ts";
 import { SOFTSIGN } from "./types/SOFTSIGN.ts";
+import { SQUARE } from "./types/SQUARE.ts";
 import { STEP } from "./types/STEP.ts";
 import { Softplus } from "./types/Softplus.ts";
 import { StdInverse } from "./types/StdInverse.ts";
@@ -95,6 +96,7 @@ export class Activations {
 
       [TAN.NAME, new TAN()],
       [TANH.NAME, new TANH()],
+      [SQUARE.NAME, new SQUARE()],
     ]);
 
   public static readonly NAMES = [...Activations.MAP.keys()].filter(
@@ -155,6 +157,7 @@ export class Activations {
       [MAXIMUM.NAME, 1],
       [MINIMUM.NAME, 1],
       [BIPOLAR.NAME, 1],
+      [SQUARE.NAME, 1],
     ];
     const result: string[] = [];
     for (const [name, weight] of weighted) {

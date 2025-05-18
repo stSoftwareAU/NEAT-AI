@@ -21,7 +21,7 @@ export class ReLU
   public readonly range = new ActivationRange(
     ReLU.NAME,
     0,
-    Number.MAX_VALUE,
+    Number.MAX_SAFE_INTEGER,
   );
 
   getName(): string {

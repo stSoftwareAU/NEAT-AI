@@ -55,6 +55,9 @@ function check(squashName: string, values: number[]) {
         case "BIPOLAR":
           expected = v > 0 ? 1 : -1;
           break;
+        case "SQUARE":
+          hint = v;
+          break;
         case "CLIPPED":
           if (v < -1) {
             expected = -1;
@@ -125,13 +128,15 @@ function check(squashName: string, values: number[]) {
           : (tmpValue - expected) / (expected + Number.EPSILON),
       ) * 100;
 
-      const options = hint === undefined ? "" : " hint=" + hint.toFixed(3);
+      const options = hint === undefined ? "" : " hint=" + hint.toPrecision(3);
       assert(
         percentage <= tolerancePercent + 1e-7,
-        `Activation '${tmpSquash.getName()}' Value ${v.toFixed(3)} -> Squash ${
-          activation.toFixed(3)
-        } -> UnSquashed ${tmpValue.toFixed(3)}${options} error of ${
-          percentage.toFixed(2)
+        `Activation '${tmpSquash.getName()}' Value ${
+          v.toPrecision(3)
+        } -> Squash ${activation.toPrecision(3)} -> UnSquashed ${
+          tmpValue.toFixed(3)
+        }${options} error of ${
+          percentage.toPrecision(2)
         }% is greater than tolerance of ${tolerancePercent}%`,
       );
     });

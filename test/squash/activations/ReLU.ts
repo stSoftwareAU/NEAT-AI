@@ -30,7 +30,7 @@ Deno.test("RELU.unSquash handles positive activation", () => {
 
   assertEquals(relu.unSquash(5), 5);
   assertEquals(relu.unSquash(0.0001), 0.0001);
-  assertEquals(relu.unSquash(Number.MAX_VALUE), Number.MAX_VALUE);
+  assertEquals(relu.unSquash(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER);
 });
 
 Deno.test("RELU.unSquash uses finite hint if activation is 0", () => {
