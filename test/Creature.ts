@@ -3,6 +3,7 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
+  fail,
 } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags/mod";
@@ -70,11 +71,20 @@ function checkMutation(method: { name: string }) {
     }
   }
 
-  assertNotEquals(
-    originalOutput,
-    mutatedOutput,
-    "Output of original network should be different from the mutated network!",
-  );
+  if (originalOutput.toString() === mutatedOutput.toString()) {
+    console.warn(
+      "Output of original network is the same as the mutated network!",
+    );
+    Deno.writeTextFileSync(
+      ".clean.json",
+      JSON.stringify(json1, null, 1),
+    );
+    Deno.writeTextFileSync(
+      ".mutated.json",
+      JSON.stringify(json2, null, 1),
+    );
+    fail("Output of original network is the same as the mutated network!");
+  }
 }
 let first = true;
 async function evolveSet(
@@ -325,14 +335,6 @@ Deno.test("ADD_BACK_CONN", () => {
 
 Deno.test("SUB_SELF_CONN", () => {
   checkMutation(Mutation.SUB_SELF_CONN);
-});
-
-Deno.test("ADD_BACK_CONN", () => {
-  checkMutation(Mutation.ADD_BACK_CONN);
-});
-
-Deno.test("SUB_BACK_CONN", () => {
-  checkMutation(Mutation.SUB_BACK_CONN);
 });
 
 Deno.test("SWAP_NODES", () => {

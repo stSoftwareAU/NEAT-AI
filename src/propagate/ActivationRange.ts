@@ -15,6 +15,14 @@ export class ActivationRange {
   ) {
     this.name = name;
     assert(low < high, "ActivationRange: low must be less than high");
+    assert(
+      high <= Number.MAX_SAFE_INTEGER,
+      "ActivationRange: high must be less than or equal to Number.MAX_SAFE_INTEGER",
+    );
+    assert(
+      low >= Number.MIN_SAFE_INTEGER,
+      "ActivationRange: low must be greater than or equal to Number.MIN_SAFE_INTEGER",
+    );
     this.low = low;
     this.high = high;
   }
