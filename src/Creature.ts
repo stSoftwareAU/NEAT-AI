@@ -226,7 +226,7 @@ export class Creature implements CreatureInternal {
         const layer = options.layers[i];
 
         for (let j = 0; j < layer.count; j++) {
-          let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
+          let tmpSquash = layer.squash ?? "*";
           if (tmpSquash === "*") {
             tmpSquash = Activations.pickRandomWeighted();
             fixNeeded = true;
@@ -284,7 +284,7 @@ export class Creature implements CreatureInternal {
           type,
           Math.random() * 0.2 - 0.1,
           this,
-          LOGISTIC.NAME,
+          Activations.pickRandomWeighted(),
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
