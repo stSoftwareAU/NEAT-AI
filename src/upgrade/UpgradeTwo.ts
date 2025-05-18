@@ -34,8 +34,6 @@ function removeHYPOT(json: CreatureExport) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOT") {
       console.log("removing HYPOT neuron", neuron.uuid);
-      // neuron.squash = S;
-      break;
     }
   }
 
