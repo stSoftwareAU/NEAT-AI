@@ -100,6 +100,7 @@ export { randomConnectMissing } from "./src/reconstruct/ConnectMissing.ts";
  * Neuron Class
  */
 export { type NeuronExport } from "./src/architecture/NeuronInterfaces.ts";
+
 /**
  * Synapse Class
  */

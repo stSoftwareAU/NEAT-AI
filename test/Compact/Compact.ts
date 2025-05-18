@@ -2,6 +2,7 @@ import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -51,16 +52,16 @@ Deno.test("removeDanglingHidden", () => {
 Deno.test("CompactSimple", () => {
   const a = new Creature(2, 2, {
     layers: [
-      { count: 1 },
-      { count: 1 },
-      { count: 1 },
-      { count: 1 },
-      { count: 1 },
-      { count: 1 },
-      { count: 1 },
-      { count: 1 },
-      { count: 1 },
-      { count: 1 },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: LOGISTIC.NAME },
     ],
   });
 

@@ -66,6 +66,16 @@ import {
   createBackPropagationConfig,
 } from "./propagate/BackPropagation.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
+import { upgradeOne } from "./upgrade/UpgradeOne.ts";
+
+interface CreatureOptions {
+  semanticVersion?: string;
+  lazyInitialization?: boolean;
+  layers?: { squash?: string; count: number }[];
+  outputLayer?: {
+    squash?: string;
+  };
+}
 
 /**
  * Creature Class
@@ -74,7 +84,6 @@ import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
  * It encapsulates the neural network structure and its associated behaviors, including activation, mutation,
  * propagation, and evolution processes. This class is integral to the simulation and evolution of neural networks.
  */
-
 export class Creature implements CreatureInternal {
   /**
    * The unique identifier of this creature.
@@ -132,6 +141,9 @@ export class Creature implements CreatureInternal {
   private cacheSelf = new Map<number, Synapse[]>();
   private cacheFocus: Map<number, boolean> = new Map();
 
+  /** The version of this creature */
+  public readonly semanticVersion: string;
+
   /**
    * Debug mode flag.
    * @type {boolean}
@@ -150,10 +162,7 @@ export class Creature implements CreatureInternal {
   constructor(
     input: number,
     output: number,
-    options: {
-      lazyInitialization?: boolean;
-      layers?: { squash?: string; count: number }[];
-    } = {},
+    options: CreatureOptions = {},
   ) {
     this.input = input;
     this.output = output;
@@ -162,6 +171,7 @@ export class Creature implements CreatureInternal {
 
     this.tags = undefined;
     this.score = undefined;
+    this.semanticVersion = options.semanticVersion ?? "0.0.1";
 
     if (!options.lazyInitialization) {
       this.initialize(options);
@@ -203,6 +213,9 @@ export class Creature implements CreatureInternal {
 
   private initialize(options: {
     layers?: { squash?: string; count: number }[];
+    outputLayer?: {
+      squash?: string;
+    };
   }) {
     let fixNeeded = false;
     // Create input neurons
@@ -221,7 +234,7 @@ export class Creature implements CreatureInternal {
         const layer = options.layers[i];
 
         for (let j = 0; j < layer.count; j++) {
-          let tmpSquash = layer.squash ? layer.squash : LOGISTIC.NAME;
+          let tmpSquash = layer.squash ?? "*";
           if (tmpSquash === "*") {
             tmpSquash = Activations.pickRandomWeighted();
             fixNeeded = true;
@@ -254,12 +267,16 @@ export class Creature implements CreatureInternal {
       // Create output neurons
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
+        let squash = Activations.pickRandomWeighted();
+        if (options.outputLayer?.squash) {
+          squash = options.outputLayer.squash;
+        }
         const neuron = new Neuron(
           `output-${indx}`,
           type,
           Math.random() * 0.2 - 0.1,
           this,
-          LOGISTIC.NAME,
+          squash,
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
@@ -279,7 +296,7 @@ export class Creature implements CreatureInternal {
           type,
           Math.random() * 0.2 - 0.1,
           this,
-          LOGISTIC.NAME,
+          Activations.pickRandomWeighted(),
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
@@ -1490,6 +1507,7 @@ export class Creature implements CreatureInternal {
     }
 
     const json: CreatureExport = {
+      semanticVersion: this.semanticVersion,
       neurons: new Array<NeuronExport>(
         this.neurons.length - this.input,
       ),
@@ -1749,8 +1767,14 @@ export class Creature implements CreatureInternal {
     json: CreatureInternal | CreatureExport,
     validate = false,
   ): Creature {
+    const semanticVersion = json.semanticVersion ?? "0.0.0";
+    if (semanticVersion.startsWith("0.")) {
+      json = upgradeOne(json);
+    }
+
     const creature = new Creature(json.input, json.output, {
       lazyInitialization: true,
+      semanticVersion: json.semanticVersion,
     });
 
     const legacy = (json as unknown) as {
