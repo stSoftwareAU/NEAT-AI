@@ -33,8 +33,11 @@ function checkMutation(method: { name: string }) {
   for (let i = 12; i--;) {
     if (creature.mutate(method)) break;
   }
-  creature.mutate(Mutation.ADD_BACK_CONN);
+  for (let i = 6; i--;) {
+    creature.mutate(Mutation.ADD_BACK_CONN);
+  }
   creature.mutate(Mutation.ADD_SELF_CONN);
+
   creatureValidate(creature);
   const originalOutput = [];
   const sparseConfig = new SparseConfig(
@@ -86,7 +89,7 @@ function checkMutation(method: { name: string }) {
       JSON.stringify(JSON.parse(json2), null, 1),
     );
     fail(
-      `${method} failed: Output of original network is the same as the mutated network!`,
+      `${method.name} failed: Output of original network is the same as the mutated network!`,
     );
   }
 }
