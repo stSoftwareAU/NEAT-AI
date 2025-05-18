@@ -67,6 +67,7 @@ import {
 } from "./propagate/BackPropagation.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
+import { CreatureUtil } from "./architecture/CreatureUtils.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -1335,7 +1336,7 @@ export class Creature implements CreatureInternal {
    */
   mutate(method: { name: string }, focusList?: number[]): boolean {
     assert(method.name, "Mutate name is required");
-
+    const startUUID = CreatureUtil.makeUUID(this);
     let mutator: RadioactiveInterface | undefined;
     switch (method.name) {
       case Mutation.ADD_NODE.name:
@@ -1399,7 +1400,15 @@ export class Creature implements CreatureInternal {
       creatureValidate(this);
     }
 
-    return changed;
+    const endUUID = CreatureUtil.makeUUID(this);
+    if (startUUID === endUUID) {
+      console.warn(
+        `UUID didn't change after ${method.name} mutation, changed: ${changed}`,
+      );
+      return false;
+    } else {
+      return true;
+    }
   }
 
   /**
@@ -1460,6 +1469,7 @@ export class Creature implements CreatureInternal {
             return c.from !== c.to;
           }).length === 0
         ) {
+          console.info("Removing neuron", pos);
           removeHiddenNeuron(this, pos);
           neuronRemoved = true;
           break;

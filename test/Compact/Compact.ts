@@ -63,6 +63,9 @@ Deno.test("CompactSimple", () => {
       { count: 1, squash: LOGISTIC.NAME },
       { count: 1, squash: LOGISTIC.NAME },
     ],
+    outputLayer: {
+      squash: LOGISTIC.NAME,
+    },
   });
 
   a.validate();

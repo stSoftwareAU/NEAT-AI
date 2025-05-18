@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { CreatureUtil } from "../../mod.ts";
 import type { Creature } from "../Creature.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import { Neuron } from "../architecture/Neuron.ts";
@@ -18,6 +19,7 @@ export class AddNeuron implements RadioactiveInterface {
    */
   public mutate(focusList?: number[]): boolean {
     const creature = this.creature;
+    const startUUID = CreatureUtil.makeUUID(creature);
     const neuron = new Neuron(
       crypto.randomUUID(),
       "hidden",
@@ -112,7 +114,13 @@ export class AddNeuron implements RadioactiveInterface {
     }
 
     delete this.creature.memetic;
-    return true;
+    const endUUID = CreatureUtil.makeUUID(creature);
+    if (startUUID === endUUID) {
+      console.warn("AddNeuron: No change.");
+      return false;
+    } else {
+      return true;
+    }
   }
 
   private insertNeuron(neuron: Neuron) {
