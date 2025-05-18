@@ -2,7 +2,7 @@ import {
   assert,
   assertAlmostEquals,
   assertEquals,
-  assertNotEquals
+  assertNotEquals,
 } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags/mod";
