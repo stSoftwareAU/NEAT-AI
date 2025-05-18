@@ -23,10 +23,11 @@ export function upgradeTwo(
   const exported = json as CreatureExport;
 
   const updated = removeHYPOT(exported);
+  const updated2 = removeHYPOTv2(updated);
 
   // CreatureExport
   return {
-    ...updated as CreatureExport,
+    ...updated2 as CreatureExport,
     semanticVersion: "2.0.0",
   } as CreatureExport;
 }
@@ -98,6 +99,54 @@ function removeHYPOT(json: CreatureExport) {
 
   if (changed) {
     return removeHYPOT(json);
+  }
+
+  const tempCreature = Creature.fromJSON(json, true);
+
+  return tempCreature.exportJSON();
+}
+
+function removeHYPOTv2(json: CreatureExport) {
+  const neurons = json.neurons;
+  const synapses = json.synapses;
+  let changed = false;
+  const neuronsLength = neurons.length;
+  const synapsesLength = synapses.length;
+  for (let i = 0; i < neuronsLength; i++) {
+    const neuron = neurons[i];
+    if (neuron.squash === "HYPOTv2") {
+      console.log("removing HYPOTv2 neuron", neuron.uuid);
+      changed = true;
+      for (let j = 0; j < synapsesLength; j++) {
+        const synapse = synapses[j];
+        if (synapse.toUUID === neuron.uuid) {
+          const newNeuron: NeuronExport = {
+            type: "hidden",
+            uuid: crypto.randomUUID(),
+            squash: SQUARE.NAME,
+            bias: neuron.bias,
+          };
+
+          neurons.splice(i, 0, newNeuron);
+          synapse.toUUID = newNeuron.uuid;
+          const newSynapse: SynapseExport = {
+            fromUUID: newNeuron.uuid,
+            toUUID: neuron.uuid,
+            weight: 1,
+          };
+          synapses.push(newSynapse);
+        }
+      }
+
+      neuron.squash = SQRT.NAME;
+      neuron.bias = 0;
+
+      break;
+    }
+  }
+
+  if (changed) {
+    return removeHYPOTv2(json);
   }
 
   const tempCreature = Creature.fromJSON(json, true);
