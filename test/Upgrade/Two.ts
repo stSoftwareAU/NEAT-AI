@@ -1,4 +1,4 @@
-import { assertAlmostEquals, assertEquals } from "@std/assert";
+import { assertAlmostEquals, assertEquals, fail } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { HYPOT } from "../../src/methods/activations/aggregate/HYPOT.ts";
 import { upgradeTwo } from "../../src/upgrade/UpgradeTwo.ts";
@@ -33,7 +33,7 @@ Deno.test("HYPOT", () => {
 
   upgraded.neurons.forEach((neuron) => {
     if (neuron.squash === HYPOT.NAME) {
-      console.warn(`Didn't remove HYPOT ${neuron.uuid}`);
+      fail(`Didn't remove HYPOT ${neuron.uuid}`);
     }
   });
 
