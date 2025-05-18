@@ -74,9 +74,9 @@ Deno.test("train-XOR", () => {
     layers: [
       { count: 5 },
     ],
-    outputLayer:{
+    outputLayer: {
       squash: "LOGISTIC",
-    }
+    },
   });
   const traceDir = ".trace";
   ensureDirSync(traceDir);
