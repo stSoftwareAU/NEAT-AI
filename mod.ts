@@ -105,3 +105,8 @@ export { type NeuronExport } from "./src/architecture/NeuronInterfaces.ts";
  * Synapse Class
  */
 export { type SynapseExport } from "./src/architecture/SynapseInterfaces.ts";
+
+/**
+ * Upgrade to version 2.0.0
+ */
+export { upgradeTwo } from "./src/upgrade/UpgradeTwo.ts";

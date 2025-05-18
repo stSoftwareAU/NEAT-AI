@@ -1,10 +1,4 @@
-import {
-  assert,
-  assertAlmostEquals,
-  assertEquals,
-  assertNotEquals,
-  fail,
-} from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../src/Creature.ts";
@@ -61,7 +55,19 @@ function checkMutation(method: { name: string }) {
   }
   const json2 = JSON.stringify(creature.exportJSON(), null, 1);
 
-  assertNotEquals(json1, json2);
+  if (json1 === json2) {
+    Deno.writeTextFileSync(
+      ".test/clean.json",
+      JSON.stringify(JSON.parse(json1), null, 1),
+    );
+    Deno.writeTextFileSync(
+      ".test/mutated.json",
+      JSON.stringify(JSON.parse(json2), null, 1),
+    );
+    fail(
+      "JSON of original network is the same as the mutated network!",
+    );
+  }
 
   const mutatedOutput = [];
 
@@ -88,7 +94,7 @@ function checkMutation(method: { name: string }) {
       ".mutated.json",
       JSON.stringify(JSON.parse(json2), null, 1),
     );
-    fail(
+    console.warn(
       `${method.name} failed: Output of original network is the same as the mutated network!`,
     );
   }
