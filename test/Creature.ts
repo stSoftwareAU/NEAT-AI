@@ -199,6 +199,9 @@ function trainSet(
             count: 5,
           },
         ],
+        outputLayer: {
+          squash: "LOGISTIC",
+        },
       },
     );
 

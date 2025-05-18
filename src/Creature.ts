@@ -68,6 +68,15 @@ import {
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 
+interface CreatureOptions {
+  semanticVersion?: string;
+  lazyInitialization?: boolean;
+  layers?: { squash?: string; count: number }[];
+  outputLayer?: {
+    squash?: string;
+  };
+}
+
 /**
  * Creature Class
  *
@@ -153,11 +162,7 @@ export class Creature implements CreatureInternal {
   constructor(
     input: number,
     output: number,
-    options: {
-      lazyInitialization?: boolean;
-      layers?: { squash?: string; count: number }[];
-      semanticVersion?: string;
-    } = {},
+    options: CreatureOptions = {},
   ) {
     this.input = input;
     this.output = output;
@@ -208,6 +213,9 @@ export class Creature implements CreatureInternal {
 
   private initialize(options: {
     layers?: { squash?: string; count: number }[];
+    outputLayer?: {
+      squash?: string;
+    };
   }) {
     let fixNeeded = false;
     // Create input neurons
@@ -259,12 +267,16 @@ export class Creature implements CreatureInternal {
       // Create output neurons
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
+        let squash = Activations.pickRandomWeighted();
+        if (options.outputLayer?.squash) {
+          squash = options.outputLayer.squash;
+        }
         const neuron = new Neuron(
           `output-${indx}`,
           type,
           Math.random() * 0.2 - 0.1,
           this,
-          Activations.pickRandomWeighted(),
+          squash,
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
