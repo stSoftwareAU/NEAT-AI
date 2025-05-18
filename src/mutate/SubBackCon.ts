@@ -18,10 +18,12 @@ export class SubBackCon implements RadioactiveInterface {
       if (this.creature.inFocus(to, focusList)) {
         for (let from = 0; from < to; from++) {
           if (this.creature.inFocus(from, focusList)) {
+            const neuronType = this.creature.neurons[from].type;
             if (
               (
                 this.creature.outwardConnections(from).length > 1 ||
-                this.creature.neurons[from].type === "input"
+                neuronType === "input" ||
+                neuronType === "constant"
               ) && this.creature.inwardConnections(to).length > 1
             ) {
               if (this.creature.getSynapse(from, to) !== null) {
