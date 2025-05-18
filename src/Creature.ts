@@ -270,6 +270,8 @@ export class Creature implements CreatureInternal {
         let squash = Activations.pickRandomWeighted();
         if (options.outputLayer?.squash) {
           squash = options.outputLayer.squash;
+        } else {
+          fixNeeded = true;
         }
         const neuron = new Neuron(
           `output-${indx}`,
