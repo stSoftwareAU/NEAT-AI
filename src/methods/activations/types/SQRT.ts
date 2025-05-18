@@ -38,6 +38,7 @@ export class SQRT implements ActivationInterface {
 
   squash(x: number): number {
     if (!Number.isFinite(x) || x < 0) return 0;
+
     return this.range.limit(Math.sqrt(x));
   }
 
