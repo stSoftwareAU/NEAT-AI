@@ -41,14 +41,14 @@ function removeHYPOT(json: CreatureExport) {
   for (let i = 0; i < neuronsLength; i++) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOT") {
-      console.log("removing HYPOT neuron", neuron.uuid);
+      console.log("Replacing HYPOT neuron", neuron.uuid);
       changed = true;
       for (let j = 0; j < synapsesLength; j++) {
         const synapse = synapses[j];
         if (synapse.toUUID === neuron.uuid) {
           const newNeuron: NeuronExport = {
             type: "hidden",
-            uuid: crypto.randomUUID(),
+            uuid: neuron.uuid + "-" + j,
             squash: SQUARE.NAME,
             bias: 0,
           };
@@ -66,13 +66,13 @@ function removeHYPOT(json: CreatureExport) {
 
       const identityNeuron: NeuronExport = {
         type: "hidden",
-        uuid: crypto.randomUUID(),
+        uuid: neuron.uuid + "-bias",
         squash: IDENTITY.NAME,
         bias: neuron.bias,
         tags: [
           {
             name: "upgrade",
-            value: "HYPOT",
+            value: "2.0.0",
           },
         ],
       };
@@ -101,8 +101,9 @@ function removeHYPOT(json: CreatureExport) {
     return removeHYPOT(json);
   }
 
-  const tempCreature = Creature.fromJSON(json, true);
-
+  const tempCreature = Creature.fromJSON(json);
+  tempCreature.fix();
+  tempCreature.validate();
   return tempCreature.exportJSON();
 }
 
@@ -115,14 +116,14 @@ function removeHYPOTv2(json: CreatureExport) {
   for (let i = 0; i < neuronsLength; i++) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOTv2") {
-      console.log("removing HYPOTv2 neuron", neuron.uuid);
+      console.log("Replacing HYPOTv2 neuron", neuron.uuid);
       changed = true;
       for (let j = 0; j < synapsesLength; j++) {
         const synapse = synapses[j];
         if (synapse.toUUID === neuron.uuid) {
           const newNeuron: NeuronExport = {
             type: "hidden",
-            uuid: crypto.randomUUID(),
+            uuid: neuron.uuid + "-" + j,
             squash: SQUARE.NAME,
             bias: neuron.bias,
           };
@@ -149,7 +150,8 @@ function removeHYPOTv2(json: CreatureExport) {
     return removeHYPOTv2(json);
   }
 
-  const tempCreature = Creature.fromJSON(json, true);
-
+  const tempCreature = Creature.fromJSON(json);
+  tempCreature.fix();
+  tempCreature.validate();
   return tempCreature.exportJSON();
 }
