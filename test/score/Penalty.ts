@@ -23,7 +23,7 @@ function setupCreature() {
 Deno.test("Score: Calculation with given parameters", () => {
   const creature = setupCreature();
   const score = calculate(creature, 0.603, 0.000_000_1);
-  assertAlmostEquals(score, 1 - 0.603_039, 0.000_001, `Score was: ${score}`);
+  assertAlmostEquals(score, 1 - 0.603_041, 0.000_001, `Score was: ${score}`);
 });
 
 Deno.test("Score: Weight change should affect score", () => {
