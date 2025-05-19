@@ -17,7 +17,7 @@ export class HYPOTv2
     MakeActivationFunctionInterface,
     InlineActivationInterface {
   public static NAME = "HYPOTv2";
-  complexityPenalty = 10;
+  complexityPenalty = 100;
   inlineActivation(neuron: Neuron) {
     let valueLine = "";
 

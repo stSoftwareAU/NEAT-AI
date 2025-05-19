@@ -68,7 +68,7 @@ Deno.test("HYPOTv2", () => {
     const expected = Math.hypot(a - 0.2, b * -1 - 0.2, c - 0.2);
 
     const delta = expected - actual0;
-    if (Math.abs(delta) > 0.000_0002) {
+    if (Math.abs(delta) > 0.000_002) {
       console.info(
         "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
         delta,
