@@ -1780,7 +1780,7 @@ export class Creature implements CreatureInternal {
     json: CreatureInternal | CreatureExport,
     validate = false,
   ): Creature {
-    const semanticVersion = json.semanticVersion ?? "0.0.0";
+    const semanticVersion = json.semanticVersion ?? "0.0.1";
     if (semanticVersion.startsWith("0.")) {
       json = upgradeOne(json);
     }
