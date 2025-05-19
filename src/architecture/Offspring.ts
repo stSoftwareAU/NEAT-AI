@@ -49,6 +49,7 @@ export class Offspring {
     // Initialize offspring
     const offspring = new Creature(mother.input, mother.output, {
       lazyInitialization: true,
+      semanticVersion: mother.semanticVersion,
     });
     offspring.synapses = [];
     offspring.neurons = [];
