@@ -41,9 +41,20 @@ Deno.test("Score: Weight change should affect score", () => {
   const creature = setupCreature();
   const initialScore = calculate(creature, 0.603, 0.000_000_1);
 
+  let maxWeight = 0;
+  let maxConnection;
+  creature.synapses.forEach((c) => {
+    const absWieght = Math.abs(c.weight);
+    if (absWieght > maxWeight) {
+      maxWeight = absWieght;
+      maxConnection = c;
+    }
+  });
+  console.log(maxConnection);
+
   // Modify weight of a specific connection
   creature.synapses.forEach((c) => {
-    if (c.from === 636 && c.to === 860) {
+    if (c.from === 440 && c.to === 1487) {
       c.weight /= 2;
     }
   });
