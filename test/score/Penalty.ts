@@ -1,6 +1,7 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { calculate, valuePenalty } from "../../src/architecture/Score.ts";
+import { upgradeTwo } from "../../mod.ts";
 
 function setupCreature() {
   const creature = Creature.fromJSON(
@@ -23,7 +24,17 @@ function setupCreature() {
 Deno.test("Score: Calculation with given parameters", () => {
   const creature = setupCreature();
   const score = calculate(creature, 0.603, 0.000_000_1);
-  assertAlmostEquals(score, 1 - 0.603_041, 0.000_001, `Score was: ${score}`);
+  const upgradeExport = upgradeTwo(creature.exportJSON());
+  const upgradeCreature = Creature.fromJSON(upgradeExport);
+  const upgradedScore = calculate(upgradeCreature, 0.603, 0.000_000_1);
+  if (upgradedScore < score) {
+    fail(
+      `Upgraded score: ${upgradedScore} difference: ${upgradedScore - score}`,
+    );
+  }
+
+  const expectedScore = 0.396_803;
+  assertAlmostEquals(score, expectedScore, 0.000_001, `Score was: ${score}`);
 });
 
 Deno.test("Score: Weight change should affect score", () => {
