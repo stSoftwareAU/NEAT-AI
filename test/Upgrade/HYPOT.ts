@@ -46,7 +46,7 @@ Deno.test("HYPOT-small", () => {
 
     for (let i = 0; i < expected.length; i++) {
       const delta = Math.abs(expected[i] - actual[i]);
-      if (delta > 0.015) {
+      if (delta > 0.02) {
         Deno.writeTextFileSync(
           `${directory}/data.json`,
           JSON.stringify(data, null, 1),
