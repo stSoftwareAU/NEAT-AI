@@ -33,7 +33,7 @@ Deno.test("Score: Calculation with given parameters", () => {
     );
   }
 
-  const expectedScore = 0.396_803;
+  const expectedScore = 0.396_802;
   assertAlmostEquals(score, expectedScore, 0.000_001, `Score was: ${score}`);
 });
 

@@ -1,6 +1,7 @@
 import { assert } from "@std/assert/assert";
 import type { CreatureInternal } from "./CreatureInterfaces.ts";
 import { Activations } from "../methods/activations/Activations.ts";
+import { SEMANTIC_MAJOR_VERSION } from "../Creature.ts";
 
 export function calculate(
   creature: CreatureInternal,
@@ -135,7 +136,14 @@ function calculateScore(
 
   const complexityPenalty = hiddenNeuronCount * growthCost +
     creature.synapses.length * growthCost / 10 + penalty * growthCost / 100;
-  const score = 1 - error - complexityPenalty;
+  let versionPenalty = 0;
+  if (
+    !creature.semanticVersion ||
+    !creature.semanticVersion.startsWith(`${SEMANTIC_MAJOR_VERSION}.`)
+  ) {
+    versionPenalty = 1e-6;
+  }
+  const score = 1 - error - complexityPenalty - versionPenalty;
   assert(score <= 1, `Score: ${score} is greater than 1`);
 
   return score;
