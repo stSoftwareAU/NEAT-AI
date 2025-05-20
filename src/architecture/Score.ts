@@ -1,9 +1,7 @@
 import { assert } from "@std/assert/assert";
 import type { CreatureInternal } from "./CreatureInterfaces.ts";
 import { Activations } from "../methods/activations/Activations.ts";
-
-/** The current major version */
-const MAJOR_VERSION = 2;
+import { SEMANTIC_MAJOR_VERSION } from "../Creature.ts";
 
 export function calculate(
   creature: CreatureInternal,
@@ -141,7 +139,7 @@ function calculateScore(
   let versionPenalty = 0;
   if (
     !creature.semanticVersion ||
-    !creature.semanticVersion.startsWith(`${MAJOR_VERSION}.`)
+    !creature.semanticVersion.startsWith(`${SEMANTIC_MAJOR_VERSION}.`)
   ) {
     versionPenalty = 1e-6;
   }

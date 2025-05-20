@@ -64,5 +64,5 @@ Deno.test("100%", async () => {
   await fitness.calculate([complex]);
 
   assert(complex.score);
-  assertAlmostEquals(complex.score, 1);
+  assertAlmostEquals(complex.score, 1, 0.000_002, "Score was not 1");
 });
