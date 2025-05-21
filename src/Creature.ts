@@ -69,9 +69,6 @@ import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 import { CreatureUtil } from "./architecture/CreatureUtils.ts";
 
-/** The current major version */
-export const SEMANTIC_MAJOR_VERSION = 2;
-
 interface CreatureOptions {
   semanticVersion?: string;
   lazyInitialization?: boolean;
@@ -89,6 +86,9 @@ interface CreatureOptions {
  * propagation, and evolution processes. This class is integral to the simulation and evolution of neural networks.
  */
 export class Creature implements CreatureInternal {
+  /** The current major version */
+  public readonly static SEMANTIC_MAJOR_VERSION = 2;
+
   /**
    * The unique identifier of this creature.
    * @type {string | undefined}
