@@ -55,6 +55,7 @@ function makeMum() {
     },
     score: -0.2,
   };
+
   return creature;
 }
 

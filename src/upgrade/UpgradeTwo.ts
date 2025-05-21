@@ -5,9 +5,9 @@ import type {
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { SQRT } from "../methods/activations/types/SQRT.ts";
 import { SQUARE } from "../methods/activations/types/SQUARE.ts";
-import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 
 export function upgradeTwo(
   json: CreatureInternal | CreatureExport,
@@ -102,8 +102,12 @@ function removeHYPOT(json: CreatureExport) {
   }
 
   const tempCreature = Creature.fromJSON(json);
-  tempCreature.fix();
-  tempCreature.validate();
+  try {
+    tempCreature.validate();
+  } catch (e) {
+    console.log("Creature is not valid", e);
+    tempCreature.fix();
+  }
   return tempCreature.exportJSON();
 }
 
@@ -151,7 +155,11 @@ function removeHYPOTv2(json: CreatureExport) {
   }
 
   const tempCreature = Creature.fromJSON(json);
-  tempCreature.fix();
-  tempCreature.validate();
+  try {
+    tempCreature.validate();
+  } catch (e) {
+    console.log("Creature is not valid", e);
+    tempCreature.fix();
+  }
   return tempCreature.exportJSON();
 }
