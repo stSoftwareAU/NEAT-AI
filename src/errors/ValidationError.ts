@@ -3,7 +3,8 @@ export type ValidationErrorName =
   | "NO_OUTWARD_CONNECTIONS"
   | "NO_INWARD_CONNECTIONS"
   | "IF_CONDITIONS"
-  | "RECURSIVE_SYNAPSE";
+  | "RECURSIVE_SYNAPSE"
+  | "MEMETIC";
 
 export class ValidationError extends Error {
   constructor(message: string, name: ValidationErrorName) {

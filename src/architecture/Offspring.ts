@@ -302,6 +302,10 @@ export class Offspring {
           offspring.fix();
           creatureValidate(offspring);
           return offspring;
+        case "MEMETIC":
+          delete offspring.memetic;
+          offspring.validate();
+          return offspring;
         default:
           console.error(e);
           offspring.DEBUG = false;

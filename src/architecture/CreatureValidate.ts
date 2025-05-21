@@ -316,47 +316,54 @@ export function creatureValidate(
     for (const neuronUUID in memetic.biases) {
       const neuronIndex = uuidMap.get(neuronUUID);
       if (neuronIndex === undefined) {
-        throw new Error(
+        throw new ValidationError(
           `Neuron with UUID ${neuronUUID} not found in the creature.`,
+          "MEMETIC",
         );
       }
     }
     for (const synapseUUID in memetic.weights) {
       const synapseIndex = uuidMap.get(synapseUUID);
       if (synapseIndex === undefined) {
-        throw new Error(
+        throw new ValidationError(
           `Synapse with UUID ${synapseUUID} not found in the creature.`,
+          "MEMETIC",
         );
       }
 
       const memeticWeights = memetic.weights[synapseUUID];
       if (!Array.isArray(memeticWeights)) {
-        throw new Error(
+        throw new ValidationError(
           `Synapse with UUID ${synapseUUID} has invalid weights.`,
+          "MEMETIC",
         );
       }
       memeticWeights.forEach((weight, indx) => {
         if (weight.toUUID === undefined) {
-          throw new Error(
+          throw new ValidationError(
             `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} is invalid.`,
+            "MEMETIC",
           );
         }
         if (weight.weight === undefined) {
-          throw new Error(
+          throw new ValidationError(
             `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has invalid weight at index ${indx}.`,
+            "MEMETIC",
           );
         }
         const toIndex = uuidMap.get(weight.toUUID);
 
         if (toIndex === undefined) {
-          throw new Error(
+          throw new ValidationError(
             `Memetic from UUID ${synapseUUID} has no valid neuron.`,
+            "MEMETIC",
           );
         }
         if (!synapsesSet.has(`${synapseUUID}->${weight.toUUID}`)) {
           debugWrite(creature);
-          throw new Error(
+          throw new ValidationError(
             `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has no matching synapses.`,
+            "MEMETIC",
           );
         }
       });
