@@ -56,8 +56,6 @@ function makeMum() {
     score: -0.2,
   };
 
-  creature.fix();
-  creature.validate();
   return creature;
 }
 
@@ -66,8 +64,7 @@ function makeDad() {
   creature.neurons[3].bias = -0.12;
   creature.synapses[2].weight = 0.456;
   creature.score = -0.2;
-  creature.fix();
-  creature.validate();
+
   return creature;
 }
 
