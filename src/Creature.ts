@@ -87,7 +87,7 @@ interface CreatureOptions {
  */
 export class Creature implements CreatureInternal {
   /** The current major version */
-  public readonly static SEMANTIC_MAJOR_VERSION = 2;
+  public static readonly SEMANTIC_MAJOR_VERSION = 2;
 
   /**
    * The unique identifier of this creature.
