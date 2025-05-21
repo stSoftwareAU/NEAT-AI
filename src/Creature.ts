@@ -69,9 +69,6 @@ import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 import { CreatureUtil } from "./architecture/CreatureUtils.ts";
 
-/** The current major version */
-export const SEMANTIC_MAJOR_VERSION = 2;
-
 interface CreatureOptions {
   semanticVersion?: string;
   lazyInitialization?: boolean;
