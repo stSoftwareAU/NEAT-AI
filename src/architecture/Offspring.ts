@@ -8,6 +8,7 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import { upgrade } from "../upgrade/Upgrade.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -25,9 +26,9 @@ export class Offspring {
     dad: Creature,
     options: { geneticCompatibilityThreshold?: number } = {},
   ): Creature | undefined {
-    const mother = Creature.fromJSON(mum.exportJSON());
+    const mother = upgrade(Creature.fromJSON(mum.exportJSON()));
     CreatureUtil.makeUUID(mother);
-    let father = Creature.fromJSON(dad.exportJSON());
+    let father = upgrade(Creature.fromJSON(dad.exportJSON()));
     CreatureUtil.makeUUID(father);
     assert(
       mother.input === father.input && mother.output === father.output,

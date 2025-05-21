@@ -1,7 +1,7 @@
 import { assert } from "@std/assert/assert";
 import type { CreatureInternal } from "./CreatureInterfaces.ts";
 import { Activations } from "../methods/activations/Activations.ts";
-import { SEMANTIC_MAJOR_VERSION } from "../Creature.ts";
+import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
 
 export function calculate(
   creature: CreatureInternal,
