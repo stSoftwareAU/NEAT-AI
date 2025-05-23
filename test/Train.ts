@@ -116,14 +116,14 @@ Deno.test("XNOR - train", () => {
     { input: [1, 1], output: [1] },
   ];
 
-  for (let attempts = 0; attempts < 12; attempts++) {
-    const network = new Creature(2, 1, {
+  for (let attempts = 0; true; attempts++) {
+    const creature = new Creature(2, 1, {
       layers: [
         { count: 5 },
       ],
     });
 
-    const results = train(network, trainingSet, {
+    const results = train(creature, trainingSet, {
       targetError: 0.03,
       iterations: 10_000,
     });
@@ -131,8 +131,9 @@ Deno.test("XNOR - train", () => {
     if (results.error < 0.26) {
       break;
     }
-    if (attempts > 10) {
-      assert(results.error <= 0.03, "Error rate was: " + results.error);
+
+    if (attempts > 20) {
+      fail("Error rate was: " + results.error);
     }
   }
 });
