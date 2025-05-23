@@ -143,7 +143,7 @@ export class Creature implements CreatureInternal {
   private cacheFocus: Map<number, boolean> = new Map();
 
   /** The version of this creature */
-  public readonly semanticVersion: string;
+  public semanticVersion: string;
 
   /**
    * Debug mode flag.
@@ -1656,6 +1656,7 @@ export class Creature implements CreatureInternal {
    */
   loadFrom(json: CreatureInternal | CreatureExport, validate: boolean) {
     this.uuid = (json as CreatureInternal).uuid;
+    this.semanticVersion = json.semanticVersion ?? "0.0.1";
 
     // Preallocate arrays
     const neuronCount = json.neurons.length;
