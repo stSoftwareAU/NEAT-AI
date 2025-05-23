@@ -1656,7 +1656,9 @@ export class Creature implements CreatureInternal {
    */
   loadFrom(json: CreatureInternal | CreatureExport, validate: boolean) {
     this.uuid = (json as CreatureInternal).uuid;
-    this.semanticVersion = json.semanticVersion ?? "0.0.1";
+    if (json.semanticVersion) {
+      this.semanticVersion = json.semanticVersion;
+    }
 
     // Preallocate arrays
     const neuronCount = json.neurons.length;
