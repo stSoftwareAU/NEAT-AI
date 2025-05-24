@@ -443,8 +443,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
     const state = this.creature.state;
+    const rawErrorAbs = Math.abs(targetActivation - activation);
     if (
-      Math.abs(targetActivation - activation) < config.plankConstant
+      rawErrorAbs < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);
       state.cacheAdjustedActivation.set(this.index, activation);
@@ -452,6 +453,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
 
     const ns = state.node(this.index);
+    ns.totalErrorAbsolute += rawErrorAbs;
 
     const updateNeeded = sparseConfig.updateNeeded(this.uuid);
 
