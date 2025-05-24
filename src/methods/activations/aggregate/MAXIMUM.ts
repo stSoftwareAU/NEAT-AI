@@ -25,7 +25,7 @@ export class MAXIMUM
     MakeActivationFunctionInterface,
     InlineActivationInterface {
   public static NAME = "MAXIMUM";
-  complexityPenalty = 2;
+  public mutationProbability = 1;
   inlineActivation(neuron: Neuron) {
     let valueList = "";
 

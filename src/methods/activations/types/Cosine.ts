@@ -23,6 +23,7 @@ export class Cosine
     UnSquashInterface,
     InlineSquashInterface,
     SimplifyBiasInterface {
+  public mutationProbability = 2;
   public static NAME = "Cosine";
   public readonly range: ActivationRange = new ActivationRange(
     Cosine.NAME,

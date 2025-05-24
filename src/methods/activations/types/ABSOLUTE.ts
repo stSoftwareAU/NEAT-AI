@@ -16,6 +16,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class ABSOLUTE
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public mutationProbability = 2;
   public static NAME = "ABSOLUTE";
   private static rangeStatic: ActivationRange = new ActivationRange(
     ABSOLUTE.NAME,

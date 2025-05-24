@@ -19,6 +19,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class COMPLEMENT
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public mutationProbability = 1;
   public static NAME = "COMPLEMENT";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(

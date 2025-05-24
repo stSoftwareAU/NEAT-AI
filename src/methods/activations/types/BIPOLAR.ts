@@ -17,6 +17,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class BIPOLAR
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "BIPOLAR";
+  public mutationProbability = 1;
   public readonly range: ActivationRange = new ActivationRange(
     BIPOLAR.NAME,
     -1,

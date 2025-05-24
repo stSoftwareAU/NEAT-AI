@@ -317,7 +317,8 @@ Deno.test("Swish", () => {
 Deno.test("unSquash", () => {
   const values = makeValues();
 
-  Activations.NAMES.forEach((name) => {
+  Activations.list().forEach((activation) => {
+    const name = activation.getName();
     if (
       name === MINIMUM.NAME ||
       name === MAXIMUM.NAME ||

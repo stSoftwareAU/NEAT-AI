@@ -16,6 +16,7 @@ export class HYPOTv2
     NeuronActivationInterface,
     MakeActivationFunctionInterface,
     InlineActivationInterface {
+  public mutationProbability = 0;
   public static NAME = "HYPOTv2";
   complexityPenalty = 9_000;
   inlineActivation(neuron: Neuron) {

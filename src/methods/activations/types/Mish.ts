@@ -13,6 +13,9 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://arxiv.org/abs/1908.08681
  */
 export class Mish implements ActivationInterface, UnSquashInterface {
+  complexityPenalty?: number | undefined;
+  public mutationProbability = 10;
+
   public static readonly NAME = "Mish";
   private static readonly MAX_ITERATIONS = 100;
   private static readonly TOLERANCE = 1e-4;

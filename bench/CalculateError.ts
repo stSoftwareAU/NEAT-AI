@@ -3,8 +3,8 @@ import type { UnSquashInterface } from "../src/methods/activations/UnSquashInter
 
 const TEST_INPUTS = [0, 0.5, -0.5, 5, -5, 1e-8, -1e-8];
 
-Activations.NAMES.forEach((name) => {
-  const activation = Activations.find(name);
+Activations.list().forEach((activation) => {
+  const name = activation.getName();
 
   const unSquashActivation = activation as UnSquashInterface;
 

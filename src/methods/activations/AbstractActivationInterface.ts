@@ -27,4 +27,6 @@ export interface AbstractActivationInterface {
     currentValue: number,
   ): number;
   complexityPenalty?: number;
+
+  mutationProbability: number;
 }

@@ -13,6 +13,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * unSquash uses Newton-Raphson, with an optional hint to improve convergence.
  */
 export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 3;
   public static NAME = "BENT_IDENTITY";
   private static readonly MAX_ITERATIONS = 100;
   private static readonly EPSILON = 1e-6;

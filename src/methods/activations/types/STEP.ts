@@ -16,6 +16,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class STEP
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public mutationProbability = 2;
   public static readonly NAME = "STEP";
 
   public readonly range: ActivationRange = new ActivationRange(

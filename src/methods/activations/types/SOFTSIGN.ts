@@ -14,6 +14,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Activation_function#Comparison_of_activation_functions
  */
 export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 3;
   public static readonly NAME = "SOFTSIGN";
   private static readonly LIMIT = 0.99;
 

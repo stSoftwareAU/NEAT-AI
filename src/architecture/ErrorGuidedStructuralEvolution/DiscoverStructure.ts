@@ -696,20 +696,24 @@ export class DiscoverStructure {
     let lowestError = baselineError;
     let bestSquash = currentSquash;
 
-    const squashFunctions: ActivationInterface[] = Activations.NAMES.map(
-      (name) => {
-        if (name !== currentSquash) {
-          const activation = Activations.find(name);
-          if (activation !== undefined) {
-            if ((activation as ActivationInterface).squash !== undefined) {
-              return activation as ActivationInterface;
-            }
-          }
-        }
+    const squashFunctions: ActivationInterface[] = Activations.list().filter(
+      (activation) => {
+        return (activation as ActivationInterface).squash !== undefined;
       },
-    ).filter((activation) => {
-      return activation !== undefined;
-    });
+    ) as ActivationInterface[];
+    //   (name) => {
+    //     if (name !== currentSquash) {
+    //       const activation = Activations.find(name);
+    //       if (activation !== undefined) {
+    //         if ((activation as ActivationInterface).squash !== undefined) {
+    //           return activation as ActivationInterface;
+    //         }
+    //       }
+    //     }
+    //   },
+    // ).filter((activation) => {
+    //   return activation !== undefined;
+    // });
 
     // Randomize the order of the squash functions using Fisher-Yates shuffle
     for (let i = squashFunctions.length - 1; i > 0; i--) {

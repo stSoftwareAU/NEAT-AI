@@ -25,6 +25,7 @@ export class IF
     ApplyLearningsInterface,
     MakeActivationFunctionInterface,
     InlineActivationInterface {
+  public mutationProbability = 1;
   public static NAME = "IF";
   complexityPenalty = 3;
   public readonly range = new ActivationRange(

@@ -16,6 +16,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class ReLU
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public mutationProbability = 5;
   public static readonly NAME = "ReLU";
 
   public readonly range = new ActivationRange(

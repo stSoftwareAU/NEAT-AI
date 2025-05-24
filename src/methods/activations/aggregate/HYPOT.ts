@@ -12,6 +12,7 @@ import { IDENTITY } from "../types/IDENTITY.ts";
 
 export class HYPOT
   implements NeuronActivationInterface, MakeActivationFunctionInterface {
+  public mutationProbability = 0;
   public static NAME = "HYPOT";
   complexityPenalty = 10_000;
   public readonly range = new ActivationRange(
