@@ -31,7 +31,7 @@ function checkMutation(method: { name: string }) {
     creature.mutate(Mutation.ADD_BACK_CONN);
   }
   for (let i = 6; i--;) {
-  if(creature.mutate(Mutation.ADD_SELF_CONN))break;
+    if (creature.mutate(Mutation.ADD_SELF_CONN)) break;
   }
   creatureValidate(creature);
   const originalOutput = [];
