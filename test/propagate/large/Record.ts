@@ -37,7 +37,7 @@ Deno.test("record", () => {
   let errorSum = 0;
   let counter = 0;
   trainingSet.forEach((dataSet: DataRecordInterface) => {
-    const output = creature.activate(new Float32Array(dataSet.input),true);
+    const output = creature.activate(new Float32Array(dataSet.input),false);
     const sampleError = cost.calculate(
       new Float32Array(dataSet.output),
       new Float32Array(output),
@@ -45,7 +45,7 @@ Deno.test("record", () => {
     errorSum += sampleError;
     counter++;
   });
-
+  
   const errorStart = errorSum / counter;
   console.log("Error", errorStart);
 
@@ -54,14 +54,14 @@ Deno.test("record", () => {
   errorSum = 0;
   counter = 0;
   trainingSet.forEach((dataSet: DataRecordInterface) => {
-    const output = creature.activateAndTrace(new Float32Array(dataSet.input),true,sparseConfig);
+    const output = creature.activateAndTrace(new Float32Array(dataSet.input),false,sparseConfig);
     const sampleError = cost.calculate(
       new Float32Array(dataSet.output),
       new Float32Array(output),
     );
     errorSum += sampleError;
     counter++;
-    // creature.propagate(new Float32Array(dataSet.output), backProductionConfig,sparseConfig);
+    creature.propagate(new Float32Array(dataSet.output), backProductionConfig,sparseConfig);
   });
 
   const error = errorSum / counter;
