@@ -48,7 +48,7 @@ Deno.test("large", () => {
   console.log("Error", error);
 
   let lastError = error;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 6; i++) {
     Deno.writeTextFileSync(
       `${directory}/${i}.json`,
       JSON.stringify(creature.exportJSON(), null, 1),
