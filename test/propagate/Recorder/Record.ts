@@ -62,7 +62,9 @@ export class Record implements ActivationInterface, UnSquashInterface {
     if (this.playback) {
       const playbackValue = this.playbackMap.get(x.toPrecision(6));
       if (playbackValue !== undefined) {
-        console.info(`playback value: ${playbackValue} found for ${x.toPrecision(6)}`);
+        console.info(
+          `playback value: ${playbackValue} found for ${x.toPrecision(6)}`,
+        );
         return playbackValue;
       } else {
         console.info(`No playback value found for ${x.toPrecision(6)}`);
