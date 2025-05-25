@@ -72,10 +72,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
           );
         }
       } else {
-        if( squash){
-        this.squash = squash;
-        }else{
-          this.squash=Activations.pickRandomSquash();
+        if (squash) {
+          this.squash = squash;
+        } else {
+          this.squash = Activations.pickRandomSquash();
         }
       }
     } else {
