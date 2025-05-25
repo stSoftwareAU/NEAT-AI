@@ -63,6 +63,50 @@ Deno.test("Output", () => {
   }
 });
 
+Deno.test("Wrong order", () => {
+  const tmp: CreatureExport = {
+    neurons: [
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+      {
+        squash: "IDENTITY",
+        uuid: "output-1",
+        bias: 0,
+        type: "output",
+      },
+      {
+        squash: "Mish",
+        uuid: "wrong-1",
+        bias: 0,
+        type: "hidden",
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "wrong-1", weight: -0.3 },
+      { fromUUID: "wrong-1", toUUID: "output-0", weight: 0.8 },
+    ],
+    input: 3,
+    output: 1,
+  };
+
+  const creature = Creature.fromJSON(tmp);
+
+  try {
+    creatureValidate(creature);
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "OTHER",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+});
+
 Deno.test("IF", () => {
   const tmp: CreatureExport = {
     neurons: [
