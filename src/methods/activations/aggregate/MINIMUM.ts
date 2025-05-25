@@ -143,6 +143,7 @@ export class MINIMUM
 
     const value = tmpValue + neuron.bias;
 
+    neuron.creature.state.activations[neuron.index] = value;
     return this.range.limit(value);
   }
 
