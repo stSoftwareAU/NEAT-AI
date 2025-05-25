@@ -23,7 +23,7 @@ import { Activations } from "../src/methods/activations/Activations.ts";
 Deno.test("pickRandomWeighted never returns excluded squash", () => {
   const excluded = "RELU";
   for (let i = 0; i < 100; i++) {
-    const result = Activations.pickRandomWeighted(excluded);
+    const result = Activations.pickRandomSquash(excluded);
     assertNotEquals(result, excluded);
   }
 });

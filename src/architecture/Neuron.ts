@@ -72,7 +72,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
           );
         }
       } else {
+        if( squash){
         this.squash = squash;
+        }else{
+          this.squash=Activations.pickRandomSquash();
+        }
       }
     } else {
       this.bias = Infinity;
@@ -766,7 +770,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           default:
             throw new Error(`Can't modify activation for type ${this.type}`);
         }
-        const tmpSquash = Activations.pickRandomWeighted(this.squash);
+        const tmpSquash = Activations.pickRandomSquash(this.squash);
 
         this.setSquash(tmpSquash);
 

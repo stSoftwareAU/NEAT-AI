@@ -237,7 +237,7 @@ export class Creature implements CreatureInternal {
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ?? "*";
           if (tmpSquash === "*") {
-            tmpSquash = Activations.pickRandomWeighted();
+            tmpSquash = Activations.pickRandomSquash();
             fixNeeded = true;
           }
 
@@ -268,7 +268,7 @@ export class Creature implements CreatureInternal {
       // Create output neurons
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
-        let squash = Activations.pickRandomWeighted();
+        let squash = Activations.pickRandomSquash();
         if (options.outputLayer?.squash) {
           squash = options.outputLayer.squash;
         } else {
@@ -299,7 +299,7 @@ export class Creature implements CreatureInternal {
           type,
           Math.random() * 0.2 - 0.1,
           this,
-          Activations.pickRandomWeighted(),
+          Activations.pickRandomSquash(),
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);

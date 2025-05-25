@@ -85,7 +85,7 @@ export class Activations {
     return activation as AbstractActivationInterface;
   }
 
-  public static pickRandomWeighted(exclude?: string): string {
+  public static pickRandomSquash(exclude?: string): string {
     const pool = exclude
       ? Activations.WEIGHTED_POOL.filter((name) => name !== exclude)
       : Activations.WEIGHTED_POOL;
