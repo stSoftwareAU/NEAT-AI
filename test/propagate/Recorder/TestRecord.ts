@@ -55,7 +55,7 @@ Deno.test("record", () => {
     creature.exportJSON(),
     backProductionConfig,
   );
-/*
+  /*
   console.log("Back Production Config", backProductionConfig);
   errorSum = 0;
   counter = 0;
