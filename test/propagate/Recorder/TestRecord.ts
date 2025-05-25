@@ -1,10 +1,14 @@
 import { assertAlmostEquals } from "@std/assert/almost-equals";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { Costs } from "../../src/Costs.ts";
-import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
-import { upgrade } from "../../src/upgrade/Upgrade.ts";
+import { assert } from "@std/assert/assert";
+import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
+import type { NeuronTrace } from "../../../src/architecture/NeuronInterfaces.ts";
+import { Costs } from "../../../src/Costs.ts";
+import { Creature } from "../../../src/Creature.ts";
+import { Activations } from "../../../src/methods/activations/Activations.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
+import { upgrade } from "../../../src/upgrade/Upgrade.ts";
+import { Record } from "./Record.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -90,7 +94,7 @@ Deno.test("record", () => {
     "Error should be almost the same as before",
   );
   let worseError = 0;
-  let worseNeuron;
+  let worseNeuron: NeuronTrace | undefined;
   trace.neurons.forEach((neuron) => {
     if (!neuron.trace || !neuron.trace.totalErrorAbsolute) {
       return;
@@ -102,5 +106,73 @@ Deno.test("record", () => {
     }
   });
 
+  assert(worseNeuron, "Worse neuron should be found");
   console.log(`Worse neuron, Error:${worseError}`, worseNeuron);
+
+  const record = new Record();
+  Activations.register(record, {});
+
+  const exported = creature.exportJSON();
+  for (const neuron of exported.neurons) {
+    if (neuron.uuid === worseNeuron.uuid) {
+      neuron.squash = record.getName();
+    }
+  }
+
+  const recordedCreature = Creature.fromJSON(exported);
+
+  errorSum = 0;
+  counter = 0;
+  trainingSet.forEach((dataSet: DataRecordInterface) => {
+    const output = recordedCreature.activateAndTrace(
+      new Float32Array(dataSet.input),
+      false,
+      sparseConfig,
+    );
+    const sampleError = cost.calculate(
+      new Float32Array(dataSet.output),
+      new Float32Array(output),
+    );
+    errorSum += sampleError;
+    counter++;
+    recordedCreature.propagate(
+      new Float32Array(dataSet.output),
+      backProductionConfig,
+      sparseConfig,
+    );
+  });
+
+  const recordingError = errorSum / counter;
+
+  assertAlmostEquals(
+    recordingError,
+    errorStart,
+    0.0001,
+    "Recorded error should be almost the same as before",
+  );
+
+  record.playback = true;
+
+  errorSum = 0;
+  counter = 0;
+  trainingSet.forEach((dataSet: DataRecordInterface) => {
+    const output = recordedCreature.activateAndTrace(
+      new Float32Array(dataSet.input),
+      false,
+      sparseConfig,
+    );
+    const sampleError = cost.calculate(
+      new Float32Array(dataSet.output),
+      new Float32Array(output),
+    );
+    errorSum += sampleError;
+    counter++;
+  });
+
+  const playBackError = errorSum / counter;
+
+  assert(
+    playBackError < errorStart,
+    `Playback error: ${playBackError} should be less than starting error: ${errorStart}`,
+  );
 });
