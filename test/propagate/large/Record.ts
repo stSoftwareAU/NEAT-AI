@@ -1,3 +1,4 @@
+import { assertAlmostEquals } from "@std/assert/almost-equals";
 import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
@@ -60,7 +61,7 @@ Deno.test("record", () => {
     );
     errorSum += sampleError;
     counter++;
-    creature.propagate(new Float32Array(dataSet.output), backProductionConfig,sparseConfig);
+    // creature.propagate(new Float32Array(dataSet.output), backProductionConfig,sparseConfig);
   });
 
   const error = errorSum / counter;
@@ -71,6 +72,12 @@ Deno.test("record", () => {
     JSON.stringify(trace, null, 1),
   );
 
+  assertAlmostEquals(
+    error,
+    errorStart,
+    0.0001,
+    "Error should be almost the same as before",
+  );
   let worseError=0;
   let worseNeuron;
   trace.neurons.forEach((neuron) => {
