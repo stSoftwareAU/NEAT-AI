@@ -1417,7 +1417,7 @@ export class Creature implements CreatureInternal {
   fix() {
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
-    const startTxt = JSON.stringify(this.internalJSON());
+    const startUUID = CreatureUtil.makeUUID(this);
     this.DEBUG = holdDebug;
     const maxTo = this.neurons.length - 1;
     const minTo = this.input;
@@ -1469,7 +1469,7 @@ export class Creature implements CreatureInternal {
             return c.from !== c.to;
           }).length === 0
         ) {
-          console.info("Removing neuron", pos);
+          console.info("Removing neuron", this.neurons[pos].ID());
           removeHiddenNeuron(this, pos);
           neuronRemoved = true;
           break;
@@ -1483,11 +1483,11 @@ export class Creature implements CreatureInternal {
 
     const tmpDebug = this.DEBUG;
     this.DEBUG = false;
-    const endTxt = JSON.stringify(this.internalJSON());
+    delete this.uuid;
+    const endUUID = CreatureUtil.makeUUID(this);
     this.DEBUG = tmpDebug;
-    if (startTxt !== endTxt) {
+    if (startUUID !== endUUID) {
       delete this.memetic;
-      delete this.uuid;
     }
   }
 
