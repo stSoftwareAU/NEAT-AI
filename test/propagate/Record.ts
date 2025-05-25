@@ -1,15 +1,15 @@
 import { assertAlmostEquals } from "@std/assert/almost-equals";
-import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
-import { Costs } from "../../../src/Costs.ts";
-import { Creature } from "../../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
-import { upgrade } from "../../../src/upgrade/Upgrade.ts";
+import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { Costs } from "../../src/Costs.ts";
+import { Creature } from "../../src/Creature.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { upgrade } from "../../src/upgrade/Upgrade.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("record", () => {
-  const directory = ".test/propagate/large/Record";
+  const directory = ".test/propagate/Record";
   const trainingSet = JSON.parse(
     Deno.readTextFileSync("test/propagate/large/td.json"),
   );

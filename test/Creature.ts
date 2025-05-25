@@ -30,8 +30,9 @@ function checkMutation(method: { name: string }) {
   for (let i = 6; i--;) {
     creature.mutate(Mutation.ADD_BACK_CONN);
   }
-  creature.mutate(Mutation.ADD_SELF_CONN);
-
+  for (let i = 6; i--;) {
+  if(creature.mutate(Mutation.ADD_SELF_CONN))break;
+  }
   creatureValidate(creature);
   const originalOutput = [];
   const sparseConfig = new SparseConfig(

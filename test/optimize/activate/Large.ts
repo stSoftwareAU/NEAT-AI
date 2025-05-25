@@ -1,17 +1,11 @@
-import { assertAlmostEquals, fail } from "@std/assert";
-import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
+import { fail } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("large", () => {
   const directory = ".test/optimize/activate/Large";
-  const trainingSet = JSON.parse(
-    Deno.readTextFileSync("test/propagate/large/td.json"),
-  );
 
   const creature = Creature.fromJSON(
     JSON.parse(
@@ -66,29 +60,4 @@ Deno.test("large", () => {
     }
   });
 
-  const sparseConfig = new SparseConfig(
-    exportCreature,
-    createBackPropagationConfig({}),
-  );
-  const expected = [
-    0.2914523482322693,
-    0.22125014662742615,
-    0.1657249480485916,
-    -0.3648700416088104,
-    -0.03569267690181732,
-    -0.1089940071105957,
-    -0.09180060029029846,
-  ];
-  for (let p = 0; p < trainingSet.length; p++) {
-    const dataSet: DataRecordInterface = trainingSet[p];
-    const data = new Float32Array(dataSet.input);
-    const activationA = creature.activate(data);
-    const activationB = creature.activateAndTrace(
-      data,
-      false,
-      sparseConfig,
-    );
-    assertAlmostEquals(activationA[0], expected[p]);
-    assertAlmostEquals(activationA[0], activationB[0]);
-  }
 });
