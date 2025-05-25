@@ -26,7 +26,7 @@ export class AddNeuron implements RadioactiveInterface {
       Math.random() * 0.2 - 0.1,
       creature,
     );
-    
+
     let indx = Math.floor(
       Math.random() *
         (creature.neurons.length - creature.output - creature.input + 1),
