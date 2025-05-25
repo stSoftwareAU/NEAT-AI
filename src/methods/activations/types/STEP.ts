@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
@@ -10,7 +11,7 @@ class StepRange extends ActivationRange {
   }
 
   override limit(value: number): number {
-    if (!Number.isFinite(value)) return 0;
+    assert(Number.isFinite(value));
     return value > 0 ? 1 : 0;
   }
 }
