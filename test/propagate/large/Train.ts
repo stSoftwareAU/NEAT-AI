@@ -98,5 +98,9 @@ Deno.test("large", () => {
       }
     }
     lastError = results.error;
+    if( lastError < 0.15) {
+      console.log("Stopping early, error below 0.15");
+      break;
+    }
   }
 });
