@@ -1,7 +1,6 @@
 import { assert } from "@std/assert";
 import { CreatureUtil } from "../../mod.ts";
 import type { Creature } from "../Creature.ts";
-import { Mutation } from "../NEAT/Mutation.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
@@ -20,16 +19,14 @@ export class AddNeuron implements RadioactiveInterface {
   public mutate(focusList?: number[]): boolean {
     const creature = this.creature;
     const startUUID = CreatureUtil.makeUUID(creature);
+    delete creature.uuid;
     const neuron = new Neuron(
       crypto.randomUUID(),
       "hidden",
       Math.random() * 0.2 - 0.1,
       creature,
     );
-
-    // Random squash function
-    neuron.mutate(Mutation.MOD_ACTIVATION.name);
-
+    
     let indx = Math.floor(
       Math.random() *
         (creature.neurons.length - creature.output - creature.input + 1),

@@ -43,8 +43,8 @@ export const Mutation: MutationType = Object.freeze({
   /**
    * Mutation strategy to modify the activation function of a node.
    */
-  MOD_ACTIVATION: Object.freeze<MutationInterface>({
-    name: "MOD_ACTIVATION",
+  MOD_SQUASH: Object.freeze<MutationInterface>({
+    name: "MOD_SQUASH",
   }),
   /**
    * Mutation strategy to add a self-connection to a node.
@@ -87,7 +87,7 @@ export const Mutation: MutationType = Object.freeze({
     { name: "SUB_CONN" },
     { name: "MOD_WEIGHT" },
     { name: "MOD_BIAS" },
-    { name: "MOD_ACTIVATION" },
+    { name: "MOD_SQUASH" },
     { name: "SWAP_NODES" },
   ]),
 
@@ -101,7 +101,7 @@ export const Mutation: MutationType = Object.freeze({
     { name: "SUB_CONN" },
     { name: "MOD_WEIGHT" },
     { name: "MOD_BIAS" },
-    { name: "MOD_ACTIVATION" },
+    { name: "MOD_SQUASH" },
     { name: "SWAP_NODES" },
     { name: "ADD_SELF_CONN" },
     { name: "SUB_SELF_CONN" },

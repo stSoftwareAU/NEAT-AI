@@ -49,7 +49,7 @@ import { AddBackCon } from "./mutate/AddBackCon.ts";
 import { AddConnection } from "./mutate/AddConnection.ts";
 import { AddNeuron } from "./mutate/AddNeuron.ts";
 import { AddSelfCon } from "./mutate/AddSelfCon.ts";
-import { ModActivation } from "./mutate/ModActivation.ts";
+import { ModActivation as ModSquash } from "./mutate/ModSquash.ts";
 import { ModBias } from "./mutate/ModBias.ts";
 import { ModWeight } from "./mutate/ModWeight.ts";
 import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
@@ -1357,8 +1357,8 @@ export class Creature implements CreatureInternal {
       case Mutation.MOD_BIAS.name:
         mutator = new ModBias(this);
         break;
-      case Mutation.MOD_ACTIVATION.name:
-        mutator = new ModActivation(this);
+      case Mutation.MOD_SQUASH.name:
+        mutator = new ModSquash(this);
         break;
       case Mutation.ADD_SELF_CONN.name:
         mutator = new AddSelfCon(this);

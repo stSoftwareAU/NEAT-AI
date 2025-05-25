@@ -762,7 +762,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
     let changed = false;
     switch (method) {
-      case Mutation.MOD_ACTIVATION.name: {
+      case Mutation.MOD_SQUASH.name: {
         switch (this.type) {
           case "hidden":
           case "output":

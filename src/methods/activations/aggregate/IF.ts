@@ -232,7 +232,7 @@ export class IF
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {
-      neuron.mutate(Mutation.MOD_ACTIVATION.name);
+      neuron.mutate(Mutation.MOD_SQUASH.name);
     }
   }
 

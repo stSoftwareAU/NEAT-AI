@@ -331,8 +331,8 @@ Deno.test("SUB_NODE", () => {
   checkMutation(Mutation.SUB_NODE);
 });
 
-Deno.test("MOD_ACTIVATION", () => {
-  checkMutation(Mutation.MOD_ACTIVATION);
+Deno.test("MOD_SQUASH", () => {
+  checkMutation(Mutation.MOD_SQUASH);
 });
 
 Deno.test("ADD_SELF_CONN", () => {
