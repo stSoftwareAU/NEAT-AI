@@ -37,7 +37,7 @@ Deno.test("record", () => {
   let errorSum = 0;
   let counter = 0;
   trainingSet.forEach((dataSet: DataRecordInterface) => {
-    const output = creature.activate(new Float32Array(dataSet.input),false);
+    const output = creature.activate(new Float32Array(dataSet.input), false);
     const sampleError = cost.calculate(
       new Float32Array(dataSet.output),
       new Float32Array(output),
@@ -45,23 +45,34 @@ Deno.test("record", () => {
     errorSum += sampleError;
     counter++;
   });
-  
+
   const errorStart = errorSum / counter;
   console.log("Error", errorStart);
 
   const backProductionConfig = createBackPropagationConfig({});
-  const sparseConfig=new SparseConfig(creature.exportJSON(), backProductionConfig);
+  const sparseConfig = new SparseConfig(
+    creature.exportJSON(),
+    backProductionConfig,
+  );
   errorSum = 0;
   counter = 0;
   trainingSet.forEach((dataSet: DataRecordInterface) => {
-    const output = creature.activateAndTrace(new Float32Array(dataSet.input),false,sparseConfig);
+    const output = creature.activateAndTrace(
+      new Float32Array(dataSet.input),
+      false,
+      sparseConfig,
+    );
     const sampleError = cost.calculate(
       new Float32Array(dataSet.output),
       new Float32Array(output),
     );
     errorSum += sampleError;
     counter++;
-    creature.propagate(new Float32Array(dataSet.output), backProductionConfig,sparseConfig);
+    creature.propagate(
+      new Float32Array(dataSet.output),
+      backProductionConfig,
+      sparseConfig,
+    );
   });
 
   const error = errorSum / counter;
@@ -78,19 +89,18 @@ Deno.test("record", () => {
     0.0001,
     "Error should be almost the same as before",
   );
-  let worseError=0;
+  let worseError = 0;
   let worseNeuron;
   trace.neurons.forEach((neuron) => {
-    if( !neuron.trace || !neuron.trace.totalErrorAbsolute) {
+    if (!neuron.trace || !neuron.trace.totalErrorAbsolute) {
       return;
     }
-    const averageError=neuron.trace.totalErrorAbsolute / neuron.trace.count;
+    const averageError = neuron.trace.totalErrorAbsolute / neuron.trace.count;
     if (averageError > worseError) {
       worseError = averageError;
       worseNeuron = neuron;
     }
-  }
-  );
+  });
 
   console.log(`Worse neuron, Error:${worseError}`, worseNeuron);
 });
