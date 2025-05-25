@@ -49,7 +49,7 @@ import { AddBackCon } from "./mutate/AddBackCon.ts";
 import { AddConnection } from "./mutate/AddConnection.ts";
 import { AddNeuron } from "./mutate/AddNeuron.ts";
 import { AddSelfCon } from "./mutate/AddSelfCon.ts";
-import { ModActivation } from "./mutate/ModActivation.ts";
+import { ModActivation as ModSquash } from "./mutate/ModSquash.ts";
 import { ModBias } from "./mutate/ModBias.ts";
 import { ModWeight } from "./mutate/ModWeight.ts";
 import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
@@ -237,7 +237,7 @@ export class Creature implements CreatureInternal {
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ?? "*";
           if (tmpSquash === "*") {
-            tmpSquash = Activations.pickRandomWeighted();
+            tmpSquash = Activations.pickRandomSquash();
             fixNeeded = true;
           }
 
@@ -268,7 +268,7 @@ export class Creature implements CreatureInternal {
       // Create output neurons
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
-        let squash = Activations.pickRandomWeighted();
+        let squash = Activations.pickRandomSquash();
         if (options.outputLayer?.squash) {
           squash = options.outputLayer.squash;
         } else {
@@ -299,7 +299,7 @@ export class Creature implements CreatureInternal {
           type,
           Math.random() * 0.2 - 0.1,
           this,
-          Activations.pickRandomWeighted(),
+          Activations.pickRandomSquash(),
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
@@ -1357,8 +1357,8 @@ export class Creature implements CreatureInternal {
       case Mutation.MOD_BIAS.name:
         mutator = new ModBias(this);
         break;
-      case Mutation.MOD_ACTIVATION.name:
-        mutator = new ModActivation(this);
+      case Mutation.MOD_SQUASH.name:
+        mutator = new ModSquash(this);
         break;
       case Mutation.ADD_SELF_CONN.name:
         mutator = new AddSelfCon(this);
@@ -1417,7 +1417,7 @@ export class Creature implements CreatureInternal {
   fix() {
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
-    const startTxt = JSON.stringify(this.internalJSON());
+    const startUUID = CreatureUtil.makeUUID(this);
     this.DEBUG = holdDebug;
     const maxTo = this.neurons.length - 1;
     const minTo = this.input;
@@ -1469,7 +1469,7 @@ export class Creature implements CreatureInternal {
             return c.from !== c.to;
           }).length === 0
         ) {
-          console.info("Removing neuron", pos);
+          console.info("Removing neuron", this.neurons[pos].ID());
           removeHiddenNeuron(this, pos);
           neuronRemoved = true;
           break;
@@ -1483,11 +1483,11 @@ export class Creature implements CreatureInternal {
 
     const tmpDebug = this.DEBUG;
     this.DEBUG = false;
-    const endTxt = JSON.stringify(this.internalJSON());
+    delete this.uuid;
+    const endUUID = CreatureUtil.makeUUID(this);
     this.DEBUG = tmpDebug;
-    if (startTxt !== endTxt) {
+    if (startUUID !== endUUID) {
       delete this.memetic;
-      delete this.uuid;
     }
   }
 

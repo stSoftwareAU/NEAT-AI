@@ -1,6 +1,6 @@
 import { assertEquals, fail } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import { HYPOT } from "../../src/methods/activations/aggregate/HYPOT.ts";
+import { HYPOT } from "../../src/deprecated/HYPOT.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { upgradeTwo } from "../../src/upgrade/UpgradeTwo.ts";
 

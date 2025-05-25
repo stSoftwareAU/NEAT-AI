@@ -1,23 +1,29 @@
 import { assert } from "@std/assert/assert";
-import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { Neuron } from "../../../architecture/Neuron.ts";
-import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
-import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
-import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
-import { makeSynapsesValue } from "../../../optimize/MakeNeuronActivation.ts";
-import { ActivationRange } from "../../../propagate/ActivationRange.ts";
-import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
-import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
-import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
-import { IDENTITY } from "../types/IDENTITY.ts";
+import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { Neuron } from "../architecture/Neuron.ts";
+import { findActivationFunction } from "../optimize/FunctionCache.ts";
+import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
+import { makeSynapsesValue } from "../optimize/MakeNeuronActivation.ts";
+import { ActivationRange } from "../propagate/ActivationRange.ts";
+import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
+import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 
-export class HYPOTv2
-  implements
-    NeuronActivationInterface,
-    MakeActivationFunctionInterface,
-    InlineActivationInterface {
-  public static NAME = "HYPOTv2";
-  complexityPenalty = 9_000;
+/**
+ * @deprecated No longer used since v2.0.0. A normal neural network can mimic the behavior using SQRT & SQUARE.
+ */
+export class HYPOT
+  implements NeuronActivationInterface, MakeActivationFunctionInterface {
+  public mutationProbability = 0;
+  public static NAME = "HYPOT";
+  complexityPenalty = 10_000;
+  public readonly range = new ActivationRange(
+    HYPOT.NAME,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
+
   inlineActivation(neuron: Neuron) {
     let valueLine = "";
 
@@ -32,19 +38,19 @@ export class HYPOTv2
         neuron.creature.neurons,
       );
       valueLine += value;
-      valueLine += ` + ${neuron.bias}`;
     }
 
-    const functionBody = `a[${neuron.index}]= Math.hypot(${valueLine});\n`;
+    let functionBody = `a[${neuron.index}]= Math.hypot(${valueLine})`;
+    if (neuron.bias > 0) {
+      functionBody += ` + ${neuron.bias};\n`;
+    } else if (neuron.bias < 0) {
+      functionBody += ` ${neuron.bias};\n`;
+    } else {
+      functionBody += `;\n`;
+    }
 
     return functionBody;
   }
-
-  public readonly range = new ActivationRange(
-    HYPOTv2.NAME,
-    0,
-    Number.MAX_SAFE_INTEGER,
-  );
 
   makeActivationFunction(
     neuron: Neuron,
@@ -60,6 +66,7 @@ export class HYPOTv2
     functionBody += this.inlineActivation(neuron);
 
     functionBody += `return { activation: a[${neuron.index}], value:0 };`;
+
     const foundFunction = findActivationFunction(functionBody, cache);
     if (foundFunction) {
       return foundFunction;
@@ -91,7 +98,7 @@ export class HYPOTv2
 
     const error = targetActivation - activation;
 
-    const hypotValue = activation || 1;
+    const hypotValue = (activation - neuron.bias) || 1;
     assert(Number.isFinite(hypotValue), "hypotValue must be finite");
     const inward = neuron.creature.inwardConnections(neuron.index);
     const values: number[] = new Array(inward.length);
@@ -101,32 +108,39 @@ export class HYPOTv2
       const fromNeuron = neuron.creature.neurons[c.from];
 
       const fromActivation = fromNeuron.adjustedActivation(config);
+
       if (fromNeuron.type === "hidden") {
         let improvedActivation = fromActivation;
         if (c.to !== c.from) {
           if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
-            const currentValue = neuron.bias + improvedActivation * c.weight;
+            const currentValue = improvedActivation * c.weight;
             const partialDerivative = currentValue / hypotValue;
+
             const fromError = error * partialDerivative;
+            const fromTargetActivation = fromActivation + fromError;
+            assert(
+              Number.isFinite(fromTargetActivation),
+              `fromTargetActivation must be finite, fromActivation: ${fromActivation}, error: ${error}, hypotValue ${hypotValue}, partialDerivative: ${partialDerivative}`,
+            );
             improvedActivation = fromNeuron.propagate(
-              fromActivation + fromError,
+              fromTargetActivation,
               config,
               sparseConfig,
             );
           }
         }
-        values[indx] = neuron.bias + improvedActivation * c.weight;
+        values[indx] = improvedActivation * c.weight;
       } else {
-        values[indx] = neuron.bias + fromActivation * c.weight;
+        values[indx] = fromActivation * c.weight;
       }
     }
 
-    const value = Math.hypot(...values);
+    const value = Math.hypot(...values) + neuron.bias;
     return this.range.limit(value);
   }
 
   getName() {
-    return HYPOTv2.NAME;
+    return HYPOT.NAME;
   }
 
   activate(neuron: Neuron) {
@@ -137,10 +151,10 @@ export class HYPOTv2
     for (let i = inward.length; i--;) {
       const { from, weight } = inward[i];
 
-      values[i] = neuron.bias + activations[from] * weight;
+      values[i] = activations[from] * weight;
     }
 
-    const value = Math.hypot(...values);
+    const value = Math.hypot(...values) + neuron.bias;
     return this.range.limit(value);
   }
 

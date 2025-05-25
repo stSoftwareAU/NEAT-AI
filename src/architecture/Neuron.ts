@@ -72,7 +72,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
           );
         }
       } else {
-        this.squash = squash;
+        if (squash) {
+          this.squash = squash;
+        } else {
+          this.squash = Activations.pickRandomSquash();
+        }
       }
     } else {
       this.bias = Infinity;
@@ -443,8 +447,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
     const state = this.creature.state;
+    const rawErrorAbs = Math.abs(targetActivation - activation);
     if (
-      Math.abs(targetActivation - activation) < config.plankConstant
+      rawErrorAbs < config.plankConstant
     ) {
       noChangePropagate(this, activation, config);
       state.cacheAdjustedActivation.set(this.index, activation);
@@ -452,6 +457,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
 
     const ns = state.node(this.index);
+    ns.totalErrorAbsolute += rawErrorAbs;
 
     const updateNeeded = sparseConfig.updateNeeded(this.uuid);
 
@@ -756,7 +762,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
     let changed = false;
     switch (method) {
-      case Mutation.MOD_ACTIVATION.name: {
+      case Mutation.MOD_SQUASH.name: {
         switch (this.type) {
           case "hidden":
           case "output":
@@ -764,7 +770,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
           default:
             throw new Error(`Can't modify activation for type ${this.type}`);
         }
-        const tmpSquash = Activations.pickRandomWeighted(this.squash);
+        const tmpSquash = Activations.pickRandomSquash(this.squash);
 
         this.setSquash(tmpSquash);
 

@@ -1,9 +1,20 @@
+import { assert } from "@std/assert";
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
+class StepRange extends ActivationRange {
+  constructor() {
+    super(STEP.NAME, 0, 1);
+  }
+
+  override limit(value: number): number {
+    assert(Number.isFinite(value));
+    return value > 0 ? 1 : 0;
+  }
+}
 
 /**
  * STEP Activation Function
@@ -16,13 +27,10 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class STEP
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public mutationProbability = 2;
   public static readonly NAME = "STEP";
 
-  public readonly range: ActivationRange = new ActivationRange(
-    STEP.NAME,
-    0,
-    1,
-  );
+  public readonly range: ActivationRange = new StepRange();
 
   getName(): string {
     return STEP.NAME;

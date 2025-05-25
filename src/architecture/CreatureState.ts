@@ -12,6 +12,7 @@ export interface NeuronStateInterface {
   minimumActivation: number;
   totalActivation?: number;
   noChange?: boolean;
+  totalErrorAbsolute?: number;
 }
 
 export class NeuronState implements NeuronStateInterface {
@@ -31,6 +32,7 @@ export class NeuronState implements NeuronStateInterface {
   public totalActivation: number;
 
   public noChange?: boolean;
+  public totalErrorAbsolute: number;
 
   constructor() {
     this.count = 0;
@@ -40,6 +42,7 @@ export class NeuronState implements NeuronStateInterface {
     this.maximumActivation = -Infinity;
     this.minimumActivation = Infinity;
     this.totalActivation = 0;
+    this.totalErrorAbsolute = 0;
   }
 
   traceActivation(activation: number) {

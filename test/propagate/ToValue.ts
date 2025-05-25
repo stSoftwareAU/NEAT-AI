@@ -65,7 +65,8 @@ Deno.test("toValue", () => {
   const neuron = creature.neurons[3];
 
   const activations = [0.3, -0.3, 1.3, -1.6, 0, 7, -8, 1];
-  Activations.NAMES.forEach((name) => {
+  Activations.list().forEach((activation) => {
+    const name = activation.getName();
     neuron.setSquash(name);
 
     const squash = neuron.findSquash();

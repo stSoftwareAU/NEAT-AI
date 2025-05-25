@@ -1,9 +1,20 @@
+import { assert } from "@std/assert";
 import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
+class BipolarRange extends ActivationRange {
+  constructor() {
+    super("BIPOLAR", -1, 1);
+  }
+
+  override limit(value: number): number {
+    assert(Number.isFinite(value));
+    return value > 0 ? 1 : -1;
+  }
+}
 
 /**
  * Bipolar Activation Function
@@ -17,11 +28,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class BIPOLAR
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
   public static NAME = "BIPOLAR";
-  public readonly range: ActivationRange = new ActivationRange(
-    BIPOLAR.NAME,
-    -1,
-    1,
-  );
+  public mutationProbability = 1;
+  public readonly range: ActivationRange = new BipolarRange();
 
   getName() {
     return BIPOLAR.NAME;

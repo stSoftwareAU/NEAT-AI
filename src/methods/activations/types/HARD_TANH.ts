@@ -15,6 +15,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class HARD_TANH
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public mutationProbability = 3;
   public static NAME = "HARD_TANH";
   public readonly range: ActivationRange = new ActivationRange(
     HARD_TANH.NAME,

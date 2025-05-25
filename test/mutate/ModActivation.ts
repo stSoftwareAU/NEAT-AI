@@ -1,7 +1,7 @@
 import { assertNotEquals } from "@std/assert";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { ModActivation } from "../../src/mutate/ModActivation.ts";
+import { ModActivation } from "../../src/mutate/ModSquash.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

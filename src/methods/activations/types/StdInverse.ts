@@ -13,6 +13,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Avoids division by near-zero and NaN. Returns 0 for input = 0.
  */
 export class StdInverse implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 1;
   public static NAME = "StdInverse";
 
   public static readonly rangeStatic = new ActivationRange(

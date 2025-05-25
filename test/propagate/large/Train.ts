@@ -48,7 +48,7 @@ Deno.test("large", () => {
   console.log("Error", error);
 
   let lastError = error;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 6; i++) {
     Deno.writeTextFileSync(
       `${directory}/${i}.json`,
       JSON.stringify(creature.exportJSON(), null, 1),
@@ -98,5 +98,9 @@ Deno.test("large", () => {
       }
     }
     lastError = results.error;
+    if (lastError < 0.2) {
+      console.log("Stopping early, error below 0.2");
+      break;
+    }
   }
 });

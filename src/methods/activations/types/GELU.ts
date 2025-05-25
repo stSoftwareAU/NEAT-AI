@@ -15,6 +15,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://arxiv.org/abs/1606.08415
  */
 export class GELU implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 8;
   public static readonly NAME = "GELU";
   private static readonly CUBIC_COEF = 0.044715;
   private static readonly MAX_ITERATIONS = 100;

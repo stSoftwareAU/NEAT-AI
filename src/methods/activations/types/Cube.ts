@@ -15,6 +15,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Power_function
  */
 export class Cube implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 2;
   public static NAME = "Cube";
 
   // Safe maximum input value to prevent overflow when cubing

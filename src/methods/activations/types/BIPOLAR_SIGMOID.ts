@@ -16,6 +16,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Activation_function#Bipolar_sigmoid
  */
 export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 1;
   public static NAME = "BIPOLAR_SIGMOID";
 
   private static readonly rangeStatic = new ActivationRange(

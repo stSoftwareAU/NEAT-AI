@@ -16,6 +16,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Activation_function#Inverse_Square_Root_Unit_(ISRU)
  */
 export class ISRU implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 2;
   public static readonly NAME = "ISRU";
   private static readonly ALPHA = 1.0;
 

@@ -16,7 +16,7 @@ export interface MutationType {
   SUB_CONN: MutationInterface;
   MOD_WEIGHT: MutationInterface;
   MOD_BIAS: MutationInterface;
-  MOD_ACTIVATION: MutationInterface;
+  MOD_SQUASH: MutationInterface;
   ADD_SELF_CONN: MutationInterface;
   SUB_SELF_CONN: MutationInterface;
   ADD_BACK_CONN: MutationInterface;

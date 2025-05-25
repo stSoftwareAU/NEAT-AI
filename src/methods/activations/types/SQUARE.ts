@@ -28,6 +28,7 @@ import type { ActivationInterface } from "../ActivationInterface.ts";
  */
 export class SQUARE implements ActivationInterface {
   public static NAME = "SQUARE";
+  public mutationProbability = 1;
 
   /**
    * The output range is from 0 to +∞.

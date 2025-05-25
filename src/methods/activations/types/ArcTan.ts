@@ -17,6 +17,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class ArcTan
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public mutationProbability = 3;
   public static NAME = "ArcTan";
 
   private static readonly EPSILON = 1e-5;

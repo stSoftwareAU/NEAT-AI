@@ -14,6 +14,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Exponential_function
  */
 export class Exponential implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 2;
   public static NAME = "Exponential";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(

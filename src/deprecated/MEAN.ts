@@ -16,6 +16,7 @@ import { accumulateWeight, adjustedWeight } from "../propagate/Weight.ts";
  */
 export class MEAN implements NeuronActivationInterface {
   public static NAME = "MEAN";
+  public mutationProbability = 0;
   public readonly range: ActivationRange = new ActivationRange(
     MEAN.NAME,
     Number.MIN_SAFE_INTEGER,

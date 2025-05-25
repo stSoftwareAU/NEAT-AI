@@ -21,6 +21,7 @@ export class TAN
     UnSquashInterface,
     InlineSquashInterface,
     SimplifyBiasInterface {
+  public mutationProbability = 2;
   public static readonly NAME = "TAN";
 
   public readonly range: ActivationRange = new ActivationRange(

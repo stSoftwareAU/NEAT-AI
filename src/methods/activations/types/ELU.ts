@@ -16,6 +16,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#ELU
  */
 export class ELU implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 7;
   public static NAME = "ELU";
 
   // Common α value

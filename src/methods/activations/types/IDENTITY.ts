@@ -11,6 +11,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  */
 export class IDENTITY
   implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+  public mutationProbability = 1;
   public static NAME = "IDENTITY";
 
   public readonly range = new ActivationRange(

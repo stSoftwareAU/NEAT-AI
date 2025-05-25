@@ -117,7 +117,7 @@ Deno.test("REMOVE", () => {
     const tag = getTag(node, "CRISPR");
     if (tag) {
       for (let attempts = 0; attempts < 10; attempts++) {
-        node.mutate(Mutation.MOD_ACTIVATION.name);
+        node.mutate(Mutation.MOD_SQUASH.name);
       }
 
       const tag = getTag(node, "CRISPR");

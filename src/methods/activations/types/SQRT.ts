@@ -24,6 +24,7 @@ import type { ActivationInterface } from "../ActivationInterface.ts";
  * - Gentle slope for large x, steep near 0
  */
 export class SQRT implements ActivationInterface {
+  public mutationProbability = 1;
   public static NAME = "SQRT";
 
   public readonly range = new ActivationRange(

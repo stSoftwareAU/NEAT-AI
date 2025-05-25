@@ -23,6 +23,7 @@ export class SINE
     UnSquashInterface,
     InlineSquashInterface,
     SimplifyBiasInterface {
+  public mutationProbability = 2;
   simplifyBias(bias: number): number {
     return bias % (2 * Math.PI);
   }

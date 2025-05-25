@@ -25,6 +25,7 @@ export class IF
     ApplyLearningsInterface,
     MakeActivationFunctionInterface,
     InlineActivationInterface {
+  public mutationProbability = 1;
   public static NAME = "IF";
   complexityPenalty = 3;
   public readonly range = new ActivationRange(
@@ -231,7 +232,7 @@ export class IF
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {
-      neuron.mutate(Mutation.MOD_ACTIVATION.name);
+      neuron.mutate(Mutation.MOD_SQUASH.name);
     }
   }
 

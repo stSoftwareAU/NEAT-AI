@@ -30,8 +30,9 @@ function checkMutation(method: { name: string }) {
   for (let i = 6; i--;) {
     creature.mutate(Mutation.ADD_BACK_CONN);
   }
-  creature.mutate(Mutation.ADD_SELF_CONN);
-
+  for (let i = 6; i--;) {
+    if (creature.mutate(Mutation.ADD_SELF_CONN)) break;
+  }
   creatureValidate(creature);
   const originalOutput = [];
   const sparseConfig = new SparseConfig(
@@ -330,8 +331,8 @@ Deno.test("SUB_NODE", () => {
   checkMutation(Mutation.SUB_NODE);
 });
 
-Deno.test("MOD_ACTIVATION", () => {
-  checkMutation(Mutation.MOD_ACTIVATION);
+Deno.test("MOD_SQUASH", () => {
+  checkMutation(Mutation.MOD_SQUASH);
 });
 
 Deno.test("ADD_SELF_CONN", () => {

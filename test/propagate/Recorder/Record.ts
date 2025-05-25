@@ -1,8 +1,6 @@
-import { ActivationRange } from "../../../propagate/ActivationRange.ts";
-import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
-import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
-import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
+import type { UnSquashInterface } from "../../../src/methods/activations/UnSquashInterface.ts";
+import { ActivationRange } from "../../../src/propagate/ActivationRange.ts";
 
 /**
  * Bent Identity (BENT_IDENTITY) activation function.
@@ -12,20 +10,24 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  *
  * unSquash uses Newton-Raphson, with an optional hint to improve convergence.
  */
-export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
+export class Record implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 3;
-  public static NAME = "BENT_IDENTITY";
+  public static NAME = "Record";
   private static readonly MAX_ITERATIONS = 100;
   private static readonly EPSILON = 1e-6;
   private static readonly OVERFLOW_LIMIT = 1e153;
 
+  playback: boolean = false;
+
+  private playbackMap: Map<string, number> = new Map();
+
   private static rangeStatic: ActivationRange = new ActivationRange(
-    BENT_IDENTITY.NAME,
+    Record.NAME,
     Number.MIN_SAFE_INTEGER,
     Number.MAX_SAFE_INTEGER,
   );
 
-  public readonly range: ActivationRange = BENT_IDENTITY.rangeStatic;
+  public readonly range: ActivationRange = Record.rangeStatic;
 
   unSquash(activation: number, hint?: number): number {
     this.range.validate(activation, hint);
@@ -34,14 +36,14 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
       ? hint
       : activation; // fallback guess if hint isn't usable
 
-    for (let i = 0; i < BENT_IDENTITY.MAX_ITERATIONS; i++) {
-      if (Math.abs(x) >= BENT_IDENTITY.OVERFLOW_LIMIT) {
+    for (let i = 0; i < Record.MAX_ITERATIONS; i++) {
+      if (Math.abs(x) >= Record.OVERFLOW_LIMIT) {
         return x; // return best guess if diverging
       }
 
       const d = Math.sqrt(x * x + 1);
       const fx = (d - 1) / 2 + x - activation;
-      if (Math.abs(fx) < BENT_IDENTITY.EPSILON) {
+      if (Math.abs(fx) < Record.EPSILON) {
         break;
       }
 
@@ -53,17 +55,29 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   }
 
   getName(): string {
-    return BENT_IDENTITY.NAME;
+    return Record.NAME;
   }
 
   squash(x: number): number {
-    if (Math.abs(x) >= BENT_IDENTITY.OVERFLOW_LIMIT) {
-      return BENT_IDENTITY.rangeStatic.limit(x);
+    if (this.playback) {
+      const playbackValue = this.playbackMap.get(x.toPrecision(6));
+      if (playbackValue !== undefined) {
+        console.info(
+          `playback value: ${playbackValue} found for ${x.toPrecision(6)}`,
+        );
+        return playbackValue;
+      } else {
+        console.info(`No playback value found for ${x.toPrecision(6)}`);
+      }
+    }
+
+    if (Math.abs(x) >= Record.OVERFLOW_LIMIT) {
+      return Record.rangeStatic.limit(x);
     }
 
     const d = Math.sqrt(x * x + 1);
     const value = (d - 1) / 2 + x;
-    return BENT_IDENTITY.rangeStatic.limit(value);
+    return Record.rangeStatic.limit(value);
   }
 
   /**
@@ -93,14 +107,20 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
    *   - Derivative-based error propagation is preferred for speed and simplicity.
    */
   calculateError(
-    currentActivation: number,
+    _currentActivation: number,
     targetActivation: number,
     currentValue: number,
   ): number {
-    const rawError = targetActivation - currentActivation;
-    if (Math.abs(rawError) < ERROR_EPSILON) return 0;
+    this.playbackMap.set(
+      currentValue.toPrecision(6),
+      targetActivation,
+    );
+    console.info(`Record: ${currentValue} -> ${targetActivation}`);
+    return 0;
+    // const rawError = targetActivation - currentActivation;
+    // if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
-    const slope = this.derivative(currentValue);
-    return ErrorHelper.calculateClampedError(rawError / slope);
+    // const slope = this.derivative(currentValue);
+    // return ErrorHelper.calculateClampedError(rawError / slope);
   }
 }

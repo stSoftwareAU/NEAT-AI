@@ -13,6 +13,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://arxiv.org/abs/1710.05941
  */
 export class Swish implements ActivationInterface, UnSquashInterface {
+  public mutationProbability = 9;
+
   public static readonly NAME = "Swish";
   private static readonly MAX_ITERATIONS = 100;
   private static readonly EPSILON = 1e-6;
