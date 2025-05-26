@@ -524,10 +524,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
                   const fromNS = state.node(from);
                   const derivative = fromSquash.derivative(fromNS.hintValue);
                   if (Math.abs(derivative) < config.plankConstant) {
-                    safeZone = false;
-                    // console.warn(
-                    //   `Derivative is too small for neuron ${fromNeuron.uuid} with squash ${fromSquash.getName()}. Derivative: ${derivative}`,
-                    // );
+                    // safeZone = false;
+                    console.warn(
+                      `Derivative is too small for neuron ${fromNeuron.uuid} with squash ${fromSquash.getName()}. Derivative: ${derivative}`,
+                    );
                   }
                 }
                 if (safeZone) {
