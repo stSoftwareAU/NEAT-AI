@@ -1,4 +1,5 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
@@ -101,5 +102,33 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
     }
 
     return ErrorHelper.calculateClampedError(error);
+  }
+
+  safeZoneAdjustment(
+    rawInput: number,
+    _config: BackPropagationConfig,
+    error: number,
+  ): number {
+    // Good range: [-8, 20]
+    // Fade in from -15 to -8
+    // Fade out from 20 to 35
+
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const safeLow = -8;
+    const safeHigh = 20;
+
+    if (rawInput >= safeLow && rawInput <= safeHigh) return 1;
+
+    // Out of bounds — check if error would move it toward the zone
+    if (rawInput < safeLow && error > 0) {
+      return 0.2; // small nudge toward safe zone
+    }
+
+    if (rawInput > safeHigh && error < 0) {
+      return 0.2;
+    }
+
+    return 0;
   }
 }

@@ -1,4 +1,5 @@
 import type { ActivationRange } from "../../propagate/ActivationRange.ts";
+import type { BackPropagationConfig } from "../../propagate/BackPropagation.ts";
 
 /**
  * Smallest meaningful difference between target and actual activation.
@@ -29,4 +30,9 @@ export interface AbstractActivationInterface {
   complexityPenalty?: number;
 
   mutationProbability: number;
+  safeZoneAdjustment?(
+    rawInput: number,
+    config: BackPropagationConfig,
+    error: number,
+  ): number;
 }

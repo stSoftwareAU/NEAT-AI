@@ -104,8 +104,7 @@ Deno.test("record", () => {
       return;
     }
     const averageError = neuron.trace.totalErrorAbsolute / neuron.trace.count;
-    // if (averageError > worseError) {
-    if( neuron.uuid === "863ea815-7984-4684-8b00-59389fc2cb3e") {
+    if (averageError > worseError) {
       worseError = averageError;
       worseNeuron = neuron;
     }
@@ -185,9 +184,9 @@ Deno.test("record", () => {
     `${directory}/playback.json`,
     JSON.stringify(playbackTrace, null, 1),
   );
-  const errorDiff =playBackError - recordingError;
+  const errorDiff = playBackError - recordingError;
   assert(
     errorDiff < 0,
-    `Playback error: ${playBackError} should be less than starting error: ${errorStart}, difference: ${errorDiff}`
+    `Playback error: ${playBackError} should be less than starting error: ${errorStart}, difference: ${errorDiff}`,
   );
 });
