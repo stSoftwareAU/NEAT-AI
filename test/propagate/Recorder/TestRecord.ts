@@ -185,7 +185,8 @@ Deno.test("record", () => {
     JSON.stringify(playbackTrace, null, 1),
   );
   const errorDiff = playBackError - recordingError;
-  const msg =`Playback error: ${playBackError} should be less than starting error: ${errorStart}, difference: ${errorDiff}`;
+  const msg =
+    `Playback error: ${playBackError} should be less than starting error: ${errorStart}, difference: ${errorDiff}`;
   console.log(msg);
   // assert(
   //   errorDiff < 0,
