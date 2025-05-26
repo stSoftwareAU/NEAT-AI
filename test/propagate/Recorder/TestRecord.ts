@@ -184,8 +184,8 @@ Deno.test("record", () => {
     `${directory}/playback.json`,
     JSON.stringify(playbackTrace, null, 1),
   );
-  // assert(
-  //   playBackError < errorStart,
-  //   `Playback error: ${playBackError} should be less than starting error: ${errorStart}`,
-  // );
+  assert(
+    playBackError < errorStart,
+    `Playback error: ${playBackError} should be less than starting error: ${errorStart}`,
+  );
 });
