@@ -17,13 +17,11 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 2;
   public static NAME = "Exponential";
 
-  public static readonly rangeStatic: ActivationRange = new ActivationRange(
+  public readonly range = new ActivationRange(
     Exponential.NAME,
     0,
     Number.MAX_SAFE_INTEGER,
   );
-
-  public readonly range = Exponential.rangeStatic;
 
   getName(): string {
     return Exponential.NAME;
@@ -31,16 +29,16 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
 
   squash(x: number): number {
     if (!Number.isFinite(x)) {
-      return Exponential.rangeStatic.limit(Number.MAX_SAFE_INTEGER);
+      return this.range.limit(Number.MAX_SAFE_INTEGER);
     }
 
     // Avoid overflow
-    if (x >= 709) {
+    if (x >= 36) {
       return Number.MAX_SAFE_INTEGER;
     }
 
     const value = Math.exp(x);
-    return Exponential.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {

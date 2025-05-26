@@ -1,9 +1,14 @@
+import { assert, assertAlmostEquals } from "@std/assert";
 import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
+import type { NeuronTrace } from "../../../src/architecture/NeuronInterfaces.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
+import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
+import { Activations } from "../../../src/methods/activations/Activations.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 import { upgrade } from "../../../src/upgrade/Upgrade.ts";
+import { ReplaySquash } from "./ReplaySquash.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -51,12 +56,12 @@ Deno.test("record", () => {
   const backProductionConfig = createBackPropagationConfig({
     disableRandomSamples: true,
   });
-  const _sparseConfig = new SparseConfig(
+  const sparseConfig = new SparseConfig(
     creature.exportJSON(),
     backProductionConfig,
   );
-  /*
-  console.log("Back Production Config", backProductionConfig);
+
+  // console.log("Back Production Config", backProductionConfig);
   errorSum = 0;
   counter = 0;
   trainingSet.forEach((dataSet: DataRecordInterface) => {
@@ -107,9 +112,13 @@ Deno.test("record", () => {
 
   assert(worseNeuron, "Worse neuron should be found");
   console.log(`Worse neuron, Error:${worseError}`, worseNeuron);
+  const squash: ActivationInterface = Activations.find(
+    worseNeuron.squash!,
+  ) as ActivationInterface;
+  assert(squash, "Worse neuron should have a squash function");
+  assert(squash.calculateError, "Must have a calculate error function");
+  const record = new ReplaySquash(worseNeuron.uuid, squash);
 
-  const record = new Record();
-  Activations.register(record, {});
   //"801f2ede-a53a-4b0e-901c-b31c228953cc"
   const exported = creature.exportJSON();
   for (const neuron of exported.neurons) {
@@ -179,5 +188,4 @@ Deno.test("record", () => {
     playBackError < errorStart,
     `Playback error: ${playBackError} should be less than starting error: ${errorStart}`,
   );
-  */
 });

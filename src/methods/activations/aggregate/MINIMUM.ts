@@ -188,42 +188,8 @@ export class MINIMUM
 
     return changed;
   }
+
   propagate(
-    neuron: Neuron,
-    targetActivation: number,
-    config: BackPropagationConfig,
-    sparseConfig: SparseConfig,
-  ): number {
-    const inward = neuron.creature.inwardConnections(neuron.index);
-    const actual = neuron.adjustedActivation(config);
-    const error = targetActivation - actual;
-
-    if (Math.abs(error) < config.plankConstant) {
-      return targetActivation;
-    }
-
-    for (const conn of inward) {
-      const fromNeuron = neuron.creature.neurons[conn.from];
-      const fromActivation = fromNeuron.adjustedActivation(config);
-      const weightedInput = fromActivation * conn.weight;
-
-      if (weightedInput < targetActivation) {
-        if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
-          const desiredFromOutput = weightedInput + error;
-
-          fromNeuron.propagate(
-            desiredFromOutput / (conn.weight || 1e-8),
-            config,
-            sparseConfig,
-          );
-        }
-      }
-    }
-
-    // ✅ Return what we *want* this neuron’s new activation to be
-    return targetActivation;
-  }
-  propagate2(
     neuron: Neuron,
     targetActivation: number,
     config: BackPropagationConfig,
