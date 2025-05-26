@@ -518,12 +518,26 @@ export class Neuron implements TagsInterface, NeuronInternal {
               if (
                 sparseConfig.propagateNeeded(fromNeuron.uuid)
               ) {
-                const targetFromActivation = targetFromValue / fromWeight;
-                improvedFromActivation = fromNeuron.propagate(
-                  targetFromActivation,
-                  config,
-                  sparseConfig,
-                );
+                const fromSquash = fromNeuron.findSquash();
+                let safeZone = true;
+                if (fromSquash.derivative) {
+                  const fromNS = state.node(from);
+                  const derivative = fromSquash.derivative(fromNS.hintValue);
+                  if (Math.abs(derivative) < config.plankConstant) {
+                    safeZone = false;
+                    // console.warn(
+                    //   `Derivative is too small for neuron ${fromNeuron.uuid} with squash ${fromSquash.getName()}. Derivative: ${derivative}`,
+                    // );
+                  }
+                }
+                if (safeZone) {
+                  const targetFromActivation = targetFromValue / fromWeight;
+                  improvedFromActivation = fromNeuron.propagate(
+                    targetFromActivation,
+                    config,
+                    sparseConfig,
+                  );
+                }
               }
             }
 
