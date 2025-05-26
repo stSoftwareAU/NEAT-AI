@@ -56,6 +56,10 @@
     "Deprioritise",
     "deprioritised",
     "nonzero",
-    "arctanh"
+    "arctanh",
+    "cutoff",
+    "Nonlinear",
+    "backpropagate",
+    "Backprop"
   ]
 }

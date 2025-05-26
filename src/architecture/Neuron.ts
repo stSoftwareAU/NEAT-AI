@@ -519,19 +519,27 @@ export class Neuron implements TagsInterface, NeuronInternal {
                 sparseConfig.propagateNeeded(fromNeuron.uuid)
               ) {
                 const fromSquash = fromNeuron.findSquash();
-                let safeZone = true;
-                if (fromSquash.derivative) {
-                  const fromNS = state.node(from);
-                  const derivative = fromSquash.derivative(fromNS.hintValue);
-                  if (Math.abs(derivative) < config.plankConstant) {
-                    safeZone = false;
-                    // console.warn(
-                    //   `Derivative is too small for neuron ${fromNeuron.uuid} with squash ${fromSquash.getName()}. Derivative: ${derivative}`,
-                    // );
-                  }
+                let safeZoneAdj = 1;
+                if (fromSquash.safeZoneAdjustment) {
+                  safeZoneAdj = fromSquash.safeZoneAdjustment(
+                    targetFromValue,
+                    errorPerLink,
+                  );
+                  // if (Math.abs(safeZoneAdj) < config.plankConstant) {
+                  //   console.warn(
+                  //     `Out of safe zone for neuron ${fromNeuron.uuid}, squash ${fromSquash.getName()}, safeZoneAdj: ${safeZoneAdj}, targetFromValue: ${
+                  //       targetFromValue.toPrecision(3)
+                  //     }, errorPerLink: ${errorPerLink.toPrecision(3)}, `,
+                  //   );
+                  // }
                 }
-                if (safeZone) {
-                  const targetFromActivation = targetFromValue / fromWeight;
+                const safeTargetFromValue = fromValue +
+                  errorPerLink * safeZoneAdj;
+                if (
+                  Math.abs(safeTargetFromValue - fromValue) >
+                    config.plankConstant
+                ) {
+                  const targetFromActivation = safeTargetFromValue / fromWeight;
                   improvedFromActivation = fromNeuron.propagate(
                     targetFromActivation,
                     config,

@@ -93,4 +93,40 @@ export class ReLU6
 
     return ErrorHelper.calculateClampedError(error);
   }
+  /**
+   * Indicates how suitable it is to propagate error through a ReLU6 neuron.
+   *
+   * ReLU6 is a capped linear function:
+   *    f(x) = 0 when x ≤ 0
+   *         = x when 0 < x < 6
+   *         = 6 when x ≥ 6
+   *
+   * Safe propagation occurs in the linear zone. Recovery is allowed from the
+   * saturation zones if the error direction would push back into the linear region.
+   * Otherwise, backpropagation is disabled to prevent wasted effort.
+   *
+   * @param rawInput The raw input to the neuron before applying ReLU6.
+   * @param error The error from the output layer.
+   * @returns A value from 0 (do not propagate) to 1 (fully propagate).
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    if (rawInput > 0 && rawInput < 6) {
+      return 1;
+    }
+
+    if (rawInput <= 0 && error > 0) {
+      return 1; // Try to reactivate
+    }
+
+    if (rawInput >= 6 && error < 0) {
+      return 1; // Try to lower from saturated high
+    }
+
+    return 0;
+  }
 }

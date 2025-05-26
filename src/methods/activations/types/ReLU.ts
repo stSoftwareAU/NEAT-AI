@@ -84,4 +84,41 @@ export class ReLU
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Indicates how safe or meaningful it is to propagate error through a ReLU neuron.
+   *
+   * ReLU (Rectified Linear Unit):
+   *    f(x) = x when x > 0
+   *         = 0 otherwise
+   *
+   * Only positive raw inputs allow error propagation. Neurons with x ≤ 0 are "dead"
+   * unless the error is positive, in which case we attempt to reactivate them.
+   *
+   * A negative raw input with a negative error makes no sense for ReLU and likely
+   * indicates an upstream squash mismatch or learning conflict.
+   *
+   * @param rawInput The raw (pre-squash) input value.
+   * @param _config Backprop config, unused.
+   * @param error The error value from the output layer.
+   * @returns A value from 0 (useless) to 1 (safe to propagate).
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    if (rawInput > 0) {
+      return 1; // Fully active
+    }
+
+    // Recovery: try to push back into positive zone
+    if (rawInput <= 0 && error > 0) {
+      return 1;
+    }
+
+    // Dead and shouldn't wake up
+    return 0;
+  }
 }
