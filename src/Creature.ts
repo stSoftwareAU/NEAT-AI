@@ -1469,7 +1469,6 @@ export class Creature implements CreatureInternal {
             return c.from !== c.to;
           }).length === 0
         ) {
-          console.info("Removing neuron", this.neurons[pos].ID());
           removeHiddenNeuron(this, pos);
           neuronRemoved = true;
           break;
