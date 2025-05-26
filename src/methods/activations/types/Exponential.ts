@@ -1,5 +1,4 @@
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
-import type { BackPropagationConfig } from "../../../propagate/BackPropagation.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
@@ -106,7 +105,6 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
 
   safeZoneAdjustment(
     rawInput: number,
-    _config: BackPropagationConfig,
     error: number,
   ): number {
     // Good range: [-8, 20]

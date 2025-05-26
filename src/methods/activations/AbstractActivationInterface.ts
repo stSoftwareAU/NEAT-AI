@@ -1,5 +1,4 @@
 import type { ActivationRange } from "../../propagate/ActivationRange.ts";
-import type { BackPropagationConfig } from "../../propagate/BackPropagation.ts";
 
 /**
  * Smallest meaningful difference between target and actual activation.
@@ -30,9 +29,32 @@ export interface AbstractActivationInterface {
   complexityPenalty?: number;
 
   mutationProbability: number;
+
+  /**
+   * NEED Safe Zone Logic
+   * These functions can explode, vanish, or otherwise make backprop unstable or ineffective in certain raw input ranges:
+   *
+   * Squash	            Reason
+   * -----------------	-------------------------------------------------------------
+   * Exponential	      Explodes > 36, vanishes < -10
+   * LOGISTIC	          Flat outside [-6, 6]
+   * TANH	              Flat outside [-4, 4]
+   * Hard_TANH	        Hard cutoff outside [-1, 1]
+   * ReLU	              Dead when x ≤ 0
+   * ReLU6	            Dead x ≤ 0, saturated x ≥ 6
+   *
+   * Softplus	          Flat when x ≪ 0
+   * GELU	              Saturation on both ends
+   * Mish	              Explodes or saturates on extremes
+   * Swish            	Mild vanishing at low x, sometimes unstable
+   * ELU	              Nonlinear tail for x < 0
+   * SELU	              Same as ELU but with scaling
+   * LeakyReLU	        Small gradient x < 0; safe but asymmetry may matter
+   * ISRU             	Division by sqrt-like term — flattens at high abs(x)
+   * GAUSSIAN	          Only sensitive around x ≈ 0
+   */
   safeZoneAdjustment?(
     rawInput: number,
-    config: BackPropagationConfig,
     error: number,
   ): number;
 }

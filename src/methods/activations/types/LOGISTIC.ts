@@ -92,4 +92,62 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Determines how suitable it is to backpropagate through the LOGISTIC squash
+   * based on the raw input value and error direction.
+   *
+   * The logistic activation function:
+   *    squash(x) = 1 / (1 + exp(-x))
+   *
+   * It has its steepest gradient around x = 0 and flattens toward 0 or 1 as x → ±∞.
+   * The safe gradient zone is approximately [-6, 6].
+   *
+   * This function returns a float in [0, 1] where:
+   * - 1 means it's fully safe to backpropagate through this neuron.
+   * - 0 means the gradient is too flat (i.e., near-saturation).
+   * - Values in between indicate partial safety — used to scale error propagation.
+   *
+   * It also includes "recovery logic": if the raw input is outside the safe zone,
+   * but the error would move it *toward* the safe zone, a small nonzero value is returned.
+   * This allows neurons to recover from saturation through consistent error signals.
+   *
+   * @param rawInput The pre-squash value of the neuron.
+   * @param config Global backpropagation config (plank constant, thresholds, etc.)
+   * @param error The current output error (used to determine recovery direction).
+   * @returns A number in [0, 1] indicating how suitable it is to adjust this neuron via activation.
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const safeLow = -6;
+    const safeHigh = 6;
+    const min = -10;
+    const max = 10;
+
+    // Fully safe zone
+    if (rawInput >= safeLow && rawInput <= safeHigh) return 1;
+
+    // Recovery logic: if we're out of zone, but error would push us back in
+    if (rawInput < safeLow && error > 0) {
+      return 0.2; // Pushes rawInput toward center
+    }
+    if (rawInput > safeHigh && error < 0) {
+      return 0.2;
+    }
+
+    // Fading out logic: scale linearly from edge of safe zone to extreme
+    if (rawInput > safeHigh && rawInput <= max) {
+      return 1 - (rawInput - safeHigh) / (max - safeHigh); // fade from 1 to 0
+    }
+    if (rawInput < safeLow && rawInput >= min) {
+      return (rawInput - min) / (safeLow - min); // fade from 0 to 1
+    }
+
+    // Beyond hard saturation
+    return 0;
+  }
 }

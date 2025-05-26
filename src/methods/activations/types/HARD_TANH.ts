@@ -96,4 +96,56 @@ export class HARD_TANH
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Returns a score indicating how safe it is to backpropagate through HARD_TANH.
+   *
+   * HARD_TANH behaves like a clipped linear function:
+   *    f(x) = -1 for x ≤ -1
+   *           x  for -1 < x < 1
+   *           1  for x ≥ 1
+   *
+   * It is only differentiable in the linear zone (-1, 1). Outside that range,
+   * backpropagation will have no effect unless the error pushes the raw input
+   * back into the linear region.
+   *
+   * This function returns:
+   * - 1.0 in the fully linear zone
+   * - ~0.2 if recovery is possible
+   * - 0 outside of useful range
+   *
+   * @param rawInput The raw input to the neuron before squash
+   * @param _config Not used, but present for interface compatibility
+   * @param error The current output error
+   * @returns A float in [0, 1] representing propagation safety
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const safeLow = -0.9;
+    const safeHigh = 0.9;
+    const min = -1.2;
+    const max = 1.2;
+
+    // Fully safe region
+    if (rawInput >= safeLow && rawInput <= safeHigh) return 1;
+
+    // Recovery: out of bounds but error would bring it back
+    if (rawInput <= -1 && error > 0) return 0.2;
+    if (rawInput >= 1 && error < 0) return 0.2;
+
+    // Fade into the dead zone
+    if (rawInput > safeHigh && rawInput <= max) {
+      return 1 - (rawInput - safeHigh) / (max - safeHigh);
+    }
+
+    if (rawInput < safeLow && rawInput >= min) {
+      return (rawInput - min) / (safeLow - min);
+    }
+
+    return 0;
+  }
 }

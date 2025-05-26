@@ -104,4 +104,53 @@ export class TANH
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Determines how suitable it is to backpropagate through the TANH squash
+   * based on the raw input value and error direction.
+   *
+   * The tanh function:
+   *    tanh(x) = (e^x - e^-x) / (e^x + e^-x)
+   *
+   * Its derivative is steepest at x = 0 and approaches 0 as x moves toward ±∞.
+   * This function returns a float from 0 (not safe) to 1 (fully safe) indicating
+   * how useful it is to backpropagate through this neuron via activation.
+   *
+   * Recovery logic is applied when the neuron is saturated but the error direction
+   * suggests that a small backprop step could move it back into the useful range.
+   *
+   * @param rawInput The raw input to the tanh squash function.
+   * @param _config Global backprop config (currently unused).
+   * @param error The current error value for the neuron.
+   * @returns A float in [0, 1] indicating backpropagation safety.
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const safeLow = -2;
+    const safeHigh = 2;
+    const min = -6;
+    const max = 6;
+
+    // Fully in safe zone
+    if (rawInput >= safeLow && rawInput <= safeHigh) return 1;
+
+    // Recovery direction logic
+    if (rawInput < safeLow && error > 0) return 0.2;
+    if (rawInput > safeHigh && error < 0) return 0.2;
+
+    // Gradual fade to saturation
+    if (rawInput > safeHigh && rawInput <= max) {
+      return 1 - (rawInput - safeHigh) / (max - safeHigh);
+    }
+
+    if (rawInput < safeLow && rawInput >= min) {
+      return (rawInput - min) / (safeLow - min);
+    }
+
+    return 0;
+  }
 }
