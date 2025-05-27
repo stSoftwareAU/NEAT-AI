@@ -117,4 +117,53 @@ export class Mish implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Returns a normalized score [0, 1] indicating how suitable it is to
+   * backpropagate error through a neuron using the Mish activation function.
+   *
+   * Mish is a smooth, non-monotonic activation defined as:
+   *    mish(x) = x * tanh(softplus(x))
+   *            = x * tanh(ln(1 + exp(x)))
+   *
+   * It has a strong gradient zone around x ∈ [−3, 4] and fades out toward ±∞.
+   *
+   * This function:
+   *   - Returns 1.0 for inputs within the strong gradient zone
+   *   - Fades to 0.0 outside of ±6
+   *   - Allows weak propagation (0.2) when error is pushing back into the safe zone
+   *   - Ignores weight
+   *
+   * @param rawInput Pre-activation input x
+   * @param error Output error signal
+   * @param _weight Currently unused
+   * @returns A float in [0, 1] indicating propagation safety
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    _weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const min = -6;
+    const max = 6;
+    const safeLow = -3;
+    const safeHigh = 4;
+
+    if (rawInput >= safeLow && rawInput <= safeHigh) return 1;
+
+    if (rawInput < safeLow && error > 0) return 0.2;
+    if (rawInput > safeHigh && error < 0) return 0.2;
+
+    if (rawInput > safeHigh && rawInput <= max) {
+      return 1 - (rawInput - safeHigh) / (max - safeHigh);
+    }
+
+    if (rawInput < safeLow && rawInput >= min) {
+      return (rawInput - min) / (safeLow - min);
+    }
+
+    return 0;
+  }
 }
