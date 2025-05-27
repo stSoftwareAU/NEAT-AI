@@ -93,4 +93,63 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Returns a score [0, 1] indicating whether it is useful to propagate
+   * error through a GAUSSIAN-activated neuron.
+   *
+   * Gaussian(x) = exp(−x²)
+   *
+   * Properties:
+   * - Output ∈ (0, 1], centered at x = 0
+   * - Gradient peaks near x = 0 and vanishes toward ±∞
+   *
+   * This function:
+   * - Returns 1.0 when x ∈ [−1.5, 1.5] (high learning zone)
+   * - Fades to 0.0 outside x ∈ [−3, 3]
+   * - Allows recovery propagation if error would push x toward 0
+   * - Penalizes propagation when rawInput is large and weight is too small
+   *
+   * Constants:
+   * - RAW_MAX = 1000
+   * - WEIGHT_MIN = 1e-8
+   *
+   * @param rawInput The input value before applying Gaussian
+   * @param error The error signal for this neuron
+   * @param weight The synapse weight (used to penalize extreme inputs)
+   * @returns A float in [0, 1] indicating propagation suitability
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const abs = Math.abs(rawInput);
+    const safe = 1.5;
+    const max = 3;
+
+    let score: number;
+
+    if (abs <= safe) {
+      score = 1;
+    } else if (rawInput < -safe && error > 0) {
+      score = 0.2; // recovery left
+    } else if (rawInput > safe && error < 0) {
+      score = 0.2; // recovery right
+    } else if (abs <= max) {
+      score = 1 - (abs - safe) / (max - safe); // fade
+    } else {
+      score = 0;
+    }
+
+    const RAW_MAX = 1000;
+    const WEIGHT_MIN = 1e-8;
+
+    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
+    const rawPenalty = Math.min(1, RAW_MAX / abs);
+
+    return score * weightPenalty * rawPenalty;
+  }
 }

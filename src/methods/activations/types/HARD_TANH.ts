@@ -115,7 +115,6 @@ export class HARD_TANH
    * - 0 outside of useful range
    *
    * @param rawInput The raw input to the neuron before squash
-   * @param _config Not used, but present for interface compatibility
    * @param error The current output error
    * @returns A float in [0, 1] representing propagation safety
    */

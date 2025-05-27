@@ -99,7 +99,6 @@ export class ReLU
    * indicates an upstream squash mismatch or learning conflict.
    *
    * @param rawInput The raw (pre-squash) input value.
-   * @param _config Backprop config, unused.
    * @param error The error value from the output layer.
    * @returns A value from 0 (useless) to 1 (safe to propagate).
    */

@@ -127,4 +127,56 @@ export class GELU implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Returns a score [0, 1] indicating how suitable it is to propagate
+   * error through a GELU-activated neuron.
+   *
+   * GELU is a smooth, differentiable activation that behaves like a soft
+   * ReLU for positive x and like a softened exp(x) for negative x.
+   *
+   * This function:
+   * 1. Returns 1.0 for x ∈ [−3, 3] (optimal learning zone)
+   * 2. Fades linearly for x ∈ [−6, −3] and [3, 6]
+   * 3. Allows small recovery propagation (0.2) if error is pushing x back toward center
+   * 4. Penalizes propagation when rawInput is extremely large and weight is too small
+   *
+   * @param rawInput The raw input value to GELU
+   * @param error The output-layer error signal
+   * @param weight The synapse weight contributing to this input
+   * @returns A float in [0, 1] representing propagation usefulness
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const abs = Math.abs(rawInput);
+    const safe = 3;
+    const max = 6;
+
+    let score: number;
+
+    if (abs <= safe) {
+      score = 1;
+    } else if (rawInput < -safe && error > 0) {
+      score = 0.2; // recovery
+    } else if (rawInput > safe && error < 0) {
+      score = 0.2; // recovery
+    } else if (abs <= max) {
+      score = 1 - (abs - safe) / (max - safe); // fade
+    } else {
+      score = 0;
+    }
+
+    const RAW_MAX = 1000;
+    const WEIGHT_MIN = 1e-8;
+
+    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
+    const rawPenalty = Math.min(1, RAW_MAX / abs);
+
+    return score * weightPenalty * rawPenalty;
+  }
 }

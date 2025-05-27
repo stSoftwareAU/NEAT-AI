@@ -60,6 +60,7 @@
     "cutoff",
     "Nonlinear",
     "backpropagate",
-    "Backprop"
+    "Backprop",
+    "centered"
   ]
 }

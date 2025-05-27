@@ -524,14 +524,18 @@ export class Neuron implements TagsInterface, NeuronInternal {
                   safeZoneAdj = fromSquash.safeZoneAdjustment(
                     targetFromValue,
                     errorPerLink,
+                    fromWeight,
                   );
-                  // if (Math.abs(safeZoneAdj) < config.plankConstant) {
-                  //   console.warn(
-                  //     `Out of safe zone for neuron ${fromNeuron.uuid}, squash ${fromSquash.getName()}, safeZoneAdj: ${safeZoneAdj}, targetFromValue: ${
-                  //       targetFromValue.toPrecision(3)
-                  //     }, errorPerLink: ${errorPerLink.toPrecision(3)}, `,
-                  //   );
-                  // }
+                  if (
+                    fromSquash.verbose &&
+                    Math.abs(safeZoneAdj) < config.plankConstant
+                  ) {
+                    console.warn(
+                      `Out of safe zone for neuron ${fromNeuron.uuid}, squash ${fromSquash.getName()}, safeZoneAdj: ${safeZoneAdj}, targetFromValue: ${
+                        targetFromValue.toPrecision(3)
+                      }, errorPerLink: ${errorPerLink.toPrecision(3)}, `,
+                    );
+                  }
                 }
                 const safeTargetFromValue = fromValue +
                   errorPerLink * safeZoneAdj;

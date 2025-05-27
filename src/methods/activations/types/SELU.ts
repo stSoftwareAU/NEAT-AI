@@ -106,4 +106,64 @@ export class SELU implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Returns a normalized score [0, 1] indicating how appropriate it is
+   * to propagate error through a SELU-activated neuron.
+   *
+   * SELU is a scaled variant of ELU:
+   *   SELU(x) = λ * x                          for x > 0
+   *          = λ * α * (exp(x) - 1)           for x ≤ 0
+   *
+   * Its gradient is constant in the linear region and flattens in the
+   * exponential region. SELU is designed to maintain normalization, but
+   * can still saturate in the tails.
+   *
+   * This function:
+   * - Returns 1.0 for x ∈ [−4, 4] (strong learning zone)
+   * - Fades out linearly for x ∈ [−7, −4]
+   * - Allows recovery from deep saturation if the error pushes x toward 0
+   * - Penalizes propagation when rawInput is large and weight is too small
+   *
+   * Constants:
+   * - RAW_MAX = 1000 (above this, prefer weight or bias adjustment)
+   * - WEIGHT_MIN = 1e-8 (too small to support large raw values)
+   *
+   * @param rawInput The raw pre-activation value.
+   * @param error The current error signal for this neuron.
+   * @param weight The weight of the contributing synapse.
+   * @returns A score in [0, 1] for suitability of activation-based propagation.
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const min = -7;
+    const safeLow = -4;
+    const safeHigh = 4;
+
+    let score: number;
+
+    if (rawInput >= safeLow && rawInput <= safeHigh) {
+      score = 1;
+    } else if (rawInput < safeLow && error > 0) {
+      score = 0.2;
+    } else if (rawInput >= min && rawInput < safeLow) {
+      score = (rawInput - min) / (safeLow - min);
+    } else {
+      score = 0;
+    }
+
+    // Soft fade if raw is very large and weight is small
+    const RAW_MAX = 1000;
+    const WEIGHT_MIN = 1e-8;
+
+    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
+    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
+
+    return score * weightPenalty * rawPenalty;
+  }
 }
