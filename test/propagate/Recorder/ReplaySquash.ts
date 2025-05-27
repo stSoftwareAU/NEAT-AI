@@ -29,7 +29,7 @@ export class ReplaySquash implements ActivationInterface {
 
   playback: boolean = false;
 
-  private playbackMap: Map<string, number>;
+  private playbackMap: Map<string, { sum: number; count: number }>;
 
   public readonly range: ActivationRange;
 
@@ -41,10 +41,13 @@ export class ReplaySquash implements ActivationInterface {
     if (this.playback) {
       const playbackValue = this.playbackMap.get(x.toPrecision(6));
       if (playbackValue !== undefined) {
+        const averageTargetActivation = playbackValue.sum / playbackValue.count;
         console.info(
-          `playback value: ${playbackValue} found for ${x.toPrecision(6)}`,
+          `playback value: ${averageTargetActivation} found for ${
+            x.toPrecision(6)
+          }`,
         );
-        return playbackValue;
+        return averageTargetActivation;
       } else {
         console.info(`No playback value found for ${x.toPrecision(6)}`);
       }
@@ -58,16 +61,15 @@ export class ReplaySquash implements ActivationInterface {
     targetActivation: number,
     currentValue: number,
   ): number {
-    this.playbackMap.set(
-      currentValue.toPrecision(6),
-      targetActivation,
-    );
+    const rounded = currentValue.toPrecision(6);
+    const existing = this.playbackMap.get(rounded);
+    if (existing) {
+      existing.sum += targetActivation;
+      existing.count += 1;
+    } else {
+      this.playbackMap.set(rounded, { sum: targetActivation, count: 1 });
+    }
     console.info(`Record: ${currentValue} -> ${targetActivation}`);
     return 0;
-    // const rawError = targetActivation - currentActivation;
-    // if (Math.abs(rawError) < ERROR_EPSILON) return 0;
-
-    // const slope = this.derivative(currentValue);
-    // return ErrorHelper.calculateClampedError(rawError / slope);
   }
 }
