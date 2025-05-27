@@ -85,4 +85,60 @@ export class Cube implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Returns a normalized score [0, 1] indicating how suitable it is to
+   * propagate an error signal through this neuron when using the Cube
+   * activation function: f(x) = x³.
+   *
+   * The cube function grows extremely fast for large |x| values:
+   *   - f(5) = 125
+   *   - f(10) = 1000
+   *   - f(100) = 1,000,000
+   *
+   * Its derivative is f'(x) = 3x², which means:
+   *   - Derivative is small near x = 0 (but fine),
+   *   - Derivative becomes **very large** as |x| increases.
+   *
+   * This makes backpropagation through neurons with large raw inputs
+   * unstable or ineffective, especially when combined with weight scaling.
+   *
+   * This function helps prevent such instability by:
+   *   - Returning 1.0 in the "safe zone" of x ∈ [−5, 5],
+   *   - Gradually fading the score to 0.0 for x ∈ [−10, −5] ∪ [5, 10],
+   *   - Returning 0.2 for "recovery conditions" where the error would move
+   *     the neuron back toward the safe zone,
+   *   - Returning 0.0 if raw input is far out of range and uncorrectable.
+   *
+   * The weight is currently unused, but included in the signature for
+   * compatibility with squashes that scale sensitivity via connection weight.
+   *
+   * @param rawInput The raw pre-activation input of the neuron (x in f(x) = x³).
+   * @param error The current neuron error (used to determine recovery direction).
+   * @param _weight The connection weight — currently unused for Cube.
+   * @returns A float in [0, 1] indicating whether it's useful to propagate here.
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    _weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const abs = Math.abs(rawInput);
+
+    // Safe zone: x ∈ [−5, 5]
+    if (abs <= 5) return 1;
+
+    // Recovery: error moves us back in
+    if (rawInput < -5 && error > 0) return 0.2;
+    if (rawInput > 5 && error < 0) return 0.2;
+
+    // Fade: x ∈ [5, 10]
+    if (abs <= 10) {
+      return 1 - (abs - 5) / 5;
+    }
+
+    return 0;
+  }
 }

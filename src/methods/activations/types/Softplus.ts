@@ -106,4 +106,54 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Returns a normalized score [0, 1] indicating how safe it is to
+   * backpropagate through a Softplus-activated neuron.
+   *
+   * Softplus:
+   *    f(x) = ln(1 + exp(x))
+   *
+   * Derivative:
+   *    f'(x) = 1 / (1 + exp(−x)) = logistic(x)
+   *
+   * Behavior:
+   *   - x ≫ 0 → behaves like ReLU(x), gradient ≈ 1 (safe)
+   *   - x ≪ 0 → behaves like exp(x), gradient ≈ 0 (flat)
+   *
+   * This function:
+   *   - Returns 1.0 for x ∈ [−5, 5] (ideal learning zone)
+   *   - Returns 0.2 if the error would move x back toward center
+   *   - Fades from 1.0 → 0.0 for x ∈ [−8, −5]
+   *   - Ignores weight (currently unused)
+   *
+   * @param rawInput The pre-activation value x
+   * @param error The output error
+   * @param _weight The synapse weight (currently unused)
+   * @returns A float in [0, 1] indicating propagation suitability
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    _weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const min = -8;
+    const fadeStart = -5;
+    const max = 5;
+
+    // Fully safe learning zone
+    if (rawInput >= fadeStart && rawInput <= max) return 1;
+
+    // Recovery: x is negative, but error is positive (we want to increase output)
+    if (rawInput < fadeStart && error > 0) return 0.2;
+
+    // Fade out below -5
+    if (rawInput >= min && rawInput < fadeStart) {
+      return (rawInput - min) / (fadeStart - min); // fades from 0 to 1
+    }
+
+    return 0;
+  }
 }

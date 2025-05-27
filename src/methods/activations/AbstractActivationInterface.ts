@@ -56,5 +56,8 @@ export interface AbstractActivationInterface {
   safeZoneAdjustment?(
     rawInput: number,
     error: number,
+    weight: number,
   ): number;
+
+  verbose?: boolean;
 }

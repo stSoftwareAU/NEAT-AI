@@ -127,4 +127,51 @@ export class GELU implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Returns a normalized score [0, 1] indicating how suitable it is to
+   * propagate error through a GELU neuron.
+   *
+   * GELU is a smooth, differentiable approximation of ReLU with a
+   * non-monotonic bend near x = -1.
+   *
+   * f(x) ≈ 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
+   *
+   * Derivatives are strongest around x ∈ [−3, 3] and flatten toward ±∞.
+   * This function:
+   *   - Returns 1.0 for x ∈ [−3, 3]
+   *   - Fades to 0 for |x| ∈ [3, 6]
+   *   - Allows recovery if error pushes rawInput back toward center
+   *   - Ignores weight (included for signature compatibility)
+   *
+   * @param rawInput Raw pre-squash input
+   * @param error Output error at this neuron
+   * @param _weight Currently unused
+   * @returns A float in [0, 1] indicating propagation suitability
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    _weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const abs = Math.abs(rawInput);
+    const safe = 3;
+    const max = 6;
+
+    // Fully safe region
+    if (abs <= safe) return 1;
+
+    // Recovery: error points toward center
+    if (rawInput < -safe && error > 0) return 0.2;
+    if (rawInput > safe && error < 0) return 0.2;
+
+    // Fading zone
+    if (abs <= max) {
+      return 1 - (abs - safe) / (max - safe); // fade from 1 → 0
+    }
+
+    return 0;
+  }
 }
