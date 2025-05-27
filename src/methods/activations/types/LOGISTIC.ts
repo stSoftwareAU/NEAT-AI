@@ -113,7 +113,6 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
    * This allows neurons to recover from saturation through consistent error signals.
    *
    * @param rawInput The pre-squash value of the neuron.
-   * @param config Global backpropagation config (plank constant, thresholds, etc.)
    * @param error The current output error (used to determine recovery direction).
    * @returns A number in [0, 1] indicating how suitable it is to adjust this neuron via activation.
    */
