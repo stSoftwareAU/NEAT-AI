@@ -114,4 +114,68 @@ export class Swish implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Indicates the usefulness of backpropagation through a neuron
+   * using the Swish activation function.
+   *
+   * Swish(x) = x * sigmoid(x)
+   *          = x / (1 + exp(-x))
+   *
+   * Characteristics:
+   * - Smooth, non-monotonic near x = 0
+   * - Behaves like ReLU for x ≫ 0, and x * exp(x) for x ≪ 0
+   * - Gradient saturates slowly outside x ∈ [−5, 5]
+   *
+   * This function:
+   * 1. Returns 1.0 for x ∈ [−3, 3] (ideal learning zone)
+   * 2. Linearly fades for x ∈ [−6, −3] and [3, 6]
+   * 3. Allows recovery if the error moves x toward center
+   * 4. Penalizes high-magnitude rawInput when weight is too small to support propagation
+   *
+   * Constants:
+   * - RAW_MAX = 1000
+   * - WEIGHT_MIN = 1e-8
+   *
+   * @param rawInput The pre-activation value to the Swish squash
+   * @param error The error signal for this neuron
+   * @param weight The synapse weight feeding into this neuron
+   * @returns A float in [0, 1] indicating propagation suitability
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const safeLow = -3;
+    const safeHigh = 3;
+    const min = -6;
+    const max = 6;
+
+    let score: number;
+
+    if (rawInput >= safeLow && rawInput <= safeHigh) {
+      score = 1;
+    } else if (rawInput < safeLow && error > 0) {
+      score = 0.2;
+    } else if (rawInput > safeHigh && error < 0) {
+      score = 0.2;
+    } else if (rawInput > safeHigh && rawInput <= max) {
+      score = 1 - (rawInput - safeHigh) / (max - safeHigh);
+    } else if (rawInput < safeLow && rawInput >= min) {
+      score = (rawInput - min) / (safeLow - min);
+    } else {
+      score = 0;
+    }
+
+    const RAW_MAX = 1000;
+    const WEIGHT_MIN = 1e-8;
+
+    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
+    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
+
+    return score * weightPenalty * rawPenalty;
+  }
 }

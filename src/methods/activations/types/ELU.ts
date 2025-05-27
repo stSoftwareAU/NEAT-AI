@@ -22,13 +22,11 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   // Common α value
   private static readonly ALPHA = 1.0;
 
-  public static readonly rangeStatic = new ActivationRange(
+  public readonly range = new ActivationRange(
     ELU.NAME,
     -ELU.ALPHA,
     Number.MAX_SAFE_INTEGER,
   );
-
-  public readonly range = ELU.rangeStatic;
 
   getName(): string {
     return ELU.NAME;
@@ -36,7 +34,7 @@ export class ELU implements ActivationInterface, UnSquashInterface {
 
   squash(x: number): number {
     const value = x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
-    return ELU.rangeStatic.limit(value);
+    return this.range.limit(value);
   }
 
   unSquash(activation: number, hint?: number): number {
@@ -96,5 +94,76 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     const error = rawError / slope;
 
     return ErrorHelper.calculateClampedError(error);
+  }
+
+  /**
+   * Returns a normalized score [0, 1] indicating how safe or appropriate
+   * it is to propagate error through a neuron using the ELU activation.
+   *
+   * ELU is defined as:
+   *   f(x) = x                      when x > 0
+   *        = α * (exp(x) - 1)      when x ≤ 0
+   *
+   * Characteristics:
+   * - For x > 0, ELU is linear and fully differentiable with f'(x) = 1.
+   * - For x < 0, it behaves like an exponential curve approaching −α.
+   * - Large x values can produce very large outputs, though the gradient remains constant.
+   *
+   * This function:
+   * 1. Returns 1.0 in the "safe learning zone" (x ∈ [−4, 4]).
+   * 2. Applies a soft fade between x ∈ [−7, −4] using a linear scale.
+   * 3. Allows recovery (0.2) if the error would move x back into the safe zone.
+   * 4. Multiplies the base score by a soft penalty factor based on:
+   *    - How large the raw input is (discourages pushing already large values higher).
+   *    - How small the weight is (discourages trying to push a large signal through a nearly-zero weight).
+   *
+   * This encourages the network to:
+   * - Avoid wasting gradient effort in flat or unstable zones.
+   * - Prefer adjusting weights or biases when the signal becomes extreme.
+   *
+   * Constants:
+   * - RAW_MAX = 1000 (above this, we prefer weight/bias change)
+   * - WEIGHT_MIN = 1e-8 (below this, weight is too small to support large raw input)
+   *
+   * @param rawInput The raw pre-activation input to the neuron.
+   * @param error The error signal from the output.
+   * @param weight The weight of the incoming synapse responsible for this input.
+   * @returns A float in [0, 1] representing propagation suitability.
+   */
+
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const min = -7;
+    const safeLow = -4;
+    const safeHigh = 4;
+
+    let score: number;
+
+    // Fully safe learning zone
+    if (rawInput >= safeLow && rawInput <= safeHigh) {
+      score = 1;
+    } else if (rawInput < safeLow && error > 0) {
+      // Recovery case
+      score = 0.2;
+    } else if (rawInput >= min && rawInput < safeLow) {
+      // Fade-in from -7 to -4
+      score = (rawInput - min) / (safeLow - min);
+    } else {
+      score = 0;
+    }
+
+    // Soft fade if signal is too extreme
+    const RAW_MAX = 1000;
+    const WEIGHT_MIN = 1e-8;
+
+    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
+    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
+
+    return score * weightPenalty * rawPenalty;
   }
 }

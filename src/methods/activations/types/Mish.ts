@@ -122,48 +122,62 @@ export class Mish implements ActivationInterface, UnSquashInterface {
    * Returns a normalized score [0, 1] indicating how suitable it is to
    * backpropagate error through a neuron using the Mish activation function.
    *
-   * Mish is a smooth, non-monotonic activation defined as:
-   *    mish(x) = x * tanh(softplus(x))
-   *            = x * tanh(ln(1 + exp(x)))
+   * Mish(x) = x * tanh(ln(1 + exp(x))) = x * tanh(Softplus(x))
    *
-   * It has a strong gradient zone around x ∈ [−3, 4] and fades out toward ±∞.
+   * Characteristics:
+   * - Smooth and differentiable
+   * - Gradient strongest around x ∈ [−3, 4]
+   * - Flattens or explodes outside x ∈ [−6, 6]
    *
    * This function:
-   *   - Returns 1.0 for inputs within the strong gradient zone
-   *   - Fades to 0.0 outside of ±6
-   *   - Allows weak propagation (0.2) when error is pushing back into the safe zone
-   *   - Ignores weight
+   * 1. Returns 1.0 for x ∈ [−3, 4] (ideal learning region)
+   * 2. Linearly fades for x ∈ [−6, −3] and [4, 6]
+   * 3. Allows recovery propagation (0.2) if error moves x back toward center
+   * 4. Penalizes learning when raw input is extreme and weight is too small
    *
-   * @param rawInput Pre-activation input x
-   * @param error Output error signal
-   * @param _weight Currently unused
-   * @returns A float in [0, 1] indicating propagation safety
+   * Constants:
+   * - RAW_MAX = 1000
+   * - WEIGHT_MIN = 1e-8
+   *
+   * @param rawInput The raw input value (pre-squash)
+   * @param error Error signal from output
+   * @param weight The weight of the synapse contributing to raw input
+   * @returns A float in [0, 1] representing propagation suitability
    */
   safeZoneAdjustment(
     rawInput: number,
     error: number,
-    _weight: number,
+    weight: number,
   ): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const min = -6;
-    const max = 6;
     const safeLow = -3;
     const safeHigh = 4;
+    const min = -6;
+    const max = 6;
 
-    if (rawInput >= safeLow && rawInput <= safeHigh) return 1;
+    let score: number;
 
-    if (rawInput < safeLow && error > 0) return 0.2;
-    if (rawInput > safeHigh && error < 0) return 0.2;
-
-    if (rawInput > safeHigh && rawInput <= max) {
-      return 1 - (rawInput - safeHigh) / (max - safeHigh);
+    if (rawInput >= safeLow && rawInput <= safeHigh) {
+      score = 1;
+    } else if (rawInput < safeLow && error > 0) {
+      score = 0.2; // recovery from saturation
+    } else if (rawInput > safeHigh && error < 0) {
+      score = 0.2; // recovery from explosive output
+    } else if (rawInput > safeHigh && rawInput <= max) {
+      score = 1 - (rawInput - safeHigh) / (max - safeHigh);
+    } else if (rawInput < safeLow && rawInput >= min) {
+      score = (rawInput - min) / (safeLow - min);
+    } else {
+      score = 0;
     }
 
-    if (rawInput < safeLow && rawInput >= min) {
-      return (rawInput - min) / (safeLow - min);
-    }
+    const RAW_MAX = 1000;
+    const WEIGHT_MIN = 1e-8;
 
-    return 0;
+    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
+    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
+
+    return score * weightPenalty * rawPenalty;
   }
 }

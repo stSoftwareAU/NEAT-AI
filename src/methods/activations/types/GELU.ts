@@ -129,30 +129,27 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Returns a normalized score [0, 1] indicating how suitable it is to
-   * propagate error through a GELU neuron.
+   * Returns a score [0, 1] indicating how suitable it is to propagate
+   * error through a GELU-activated neuron.
    *
-   * GELU is a smooth, differentiable approximation of ReLU with a
-   * non-monotonic bend near x = -1.
+   * GELU is a smooth, differentiable activation that behaves like a soft
+   * ReLU for positive x and like a softened exp(x) for negative x.
    *
-   * f(x) ≈ 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
-   *
-   * Derivatives are strongest around x ∈ [−3, 3] and flatten toward ±∞.
    * This function:
-   *   - Returns 1.0 for x ∈ [−3, 3]
-   *   - Fades to 0 for |x| ∈ [3, 6]
-   *   - Allows recovery if error pushes rawInput back toward center
-   *   - Ignores weight (included for signature compatibility)
+   * 1. Returns 1.0 for x ∈ [−3, 3] (optimal learning zone)
+   * 2. Fades linearly for x ∈ [−6, −3] and [3, 6]
+   * 3. Allows small recovery propagation (0.2) if error is pushing x back toward center
+   * 4. Penalizes propagation when rawInput is extremely large and weight is too small
    *
-   * @param rawInput Raw pre-squash input
-   * @param error Output error at this neuron
-   * @param _weight Currently unused
-   * @returns A float in [0, 1] indicating propagation suitability
+   * @param rawInput The raw input value to GELU
+   * @param error The output-layer error signal
+   * @param weight The synapse weight contributing to this input
+   * @returns A float in [0, 1] representing propagation usefulness
    */
   safeZoneAdjustment(
     rawInput: number,
     error: number,
-    _weight: number,
+    weight: number,
   ): number {
     if (!Number.isFinite(rawInput)) return 0;
 
@@ -160,18 +157,26 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     const safe = 3;
     const max = 6;
 
-    // Fully safe region
-    if (abs <= safe) return 1;
+    let score: number;
 
-    // Recovery: error points toward center
-    if (rawInput < -safe && error > 0) return 0.2;
-    if (rawInput > safe && error < 0) return 0.2;
-
-    // Fading zone
-    if (abs <= max) {
-      return 1 - (abs - safe) / (max - safe); // fade from 1 → 0
+    if (abs <= safe) {
+      score = 1;
+    } else if (rawInput < -safe && error > 0) {
+      score = 0.2; // recovery
+    } else if (rawInput > safe && error < 0) {
+      score = 0.2; // recovery
+    } else if (abs <= max) {
+      score = 1 - (abs - safe) / (max - safe); // fade
+    } else {
+      score = 0;
     }
 
-    return 0;
+    const RAW_MAX = 1000;
+    const WEIGHT_MIN = 1e-8;
+
+    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
+    const rawPenalty = Math.min(1, RAW_MAX / abs);
+
+    return score * weightPenalty * rawPenalty;
   }
 }

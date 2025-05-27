@@ -101,4 +101,63 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Determines how suitable it is to propagate error through a neuron using ISRU.
+   *
+   * ISRU(x) = x / sqrt(1 + αx²)
+   *
+   * Properties:
+   * - Smooth and bounded
+   * - Most sensitive near x = 0
+   * - Flattens for |x| ≫ 5
+   *
+   * This function:
+   * - Returns 1.0 for |x| ∈ [−3, 3]
+   * - Fades to 0.0 for |x| > 6
+   * - Allows recovery if error moves x toward center
+   * - Penalizes large |x| with very small weights
+   *
+   * Constants:
+   * - RAW_MAX = 1000
+   * - WEIGHT_MIN = 1e-8
+   *
+   * @param rawInput The pre-activation input
+   * @param error Error signal from the output
+   * @param weight Weight of the connection to the input
+   * @returns A float in [0, 1] for propagation suitability
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const abs = Math.abs(rawInput);
+    const safe = 3;
+    const max = 6;
+
+    let score: number;
+
+    if (abs <= safe) {
+      score = 1;
+    } else if (rawInput < -safe && error > 0) {
+      score = 0.2; // recovery
+    } else if (rawInput > safe && error < 0) {
+      score = 0.2; // recovery
+    } else if (abs <= max) {
+      score = 1 - (abs - safe) / (max - safe); // linear fade
+    } else {
+      score = 0;
+    }
+
+    const RAW_MAX = 1000;
+    const WEIGHT_MIN = 1e-8;
+
+    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
+    const rawPenalty = Math.min(1, RAW_MAX / abs);
+
+    return score * weightPenalty * rawPenalty;
+  }
 }
