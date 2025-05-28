@@ -116,66 +116,54 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Indicates the usefulness of backpropagation through a neuron
-   * using the Swish activation function.
+   * Swish Safe Zone Adjustment Logic
    *
-   * Swish(x) = x * sigmoid(x)
-   *          = x / (1 + exp(-x))
+   * Swish combines identity with sigmoid: f(x) = x * sigmoid(x).
+   * It saturates for large |x|, flattening gradients.
+   * This function encourages raw input adjustments only when gradients are strong.
    *
-   * Characteristics:
-   * - Smooth, non-monotonic near x = 0
-   * - Behaves like ReLU for x ≫ 0, and x * exp(x) for x ≪ 0
-   * - Gradient saturates slowly outside x ∈ [−5, 5]
+   * - Safe zone: x ∈ [−10, 10] — avoid flat sigmoid tails
+   * - Avoid raw input adjustments that push further outside this range
+   * - Consider weight adjustment fallback when weights are far outside [1e-3, 1e3]
+   *   and moving in the correct direction
    *
-   * This function:
-   * 1. Returns 1.0 for x ∈ [−3, 3] (ideal learning zone)
-   * 2. Linearly fades for x ∈ [−6, −3] and [3, 6]
-   * 3. Allows recovery if the error moves x toward center
-   * 4. Penalizes high-magnitude rawInput when weight is too small to support propagation
-   *
-   * Constants:
-   * - RAW_MAX = 1000
-   * - WEIGHT_MIN = 1e-8
-   *
-   * @param rawInput The pre-activation value to the Swish squash
-   * @param error The error signal for this neuron
-   * @param weight The synapse weight feeding into this neuron
-   * @returns A float in [0, 1] indicating propagation suitability
+   * @param rawInput Raw pre-activation value
+   * @param error Error signal to propagate
+   * @param weight Connection weight
+   * @returns A number between 0 (avoid propagation) and 1 (safe to propagate)
    */
-  safeZoneAdjustment(
-    rawInput: number,
-    error: number,
-    weight: number,
-  ): number {
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const safeLow = -3;
-    const safeHigh = 3;
-    const min = -6;
-    const max = 6;
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
 
-    let score: number;
+    const safeMin = -10;
+    const safeMax = 10;
+    const inSafeRange = rawInput >= safeMin && rawInput <= safeMax;
 
-    if (rawInput >= safeLow && rawInput <= safeHigh) {
-      score = 1;
-    } else if (rawInput < safeLow && error > 0) {
-      score = 0.2;
-    } else if (rawInput > safeHigh && error < 0) {
-      score = 0.2;
-    } else if (rawInput > safeHigh && rawInput <= max) {
-      score = 1 - (rawInput - safeHigh) / (max - safeHigh);
-    } else if (rawInput < safeLow && rawInput >= min) {
-      score = (rawInput - min) / (safeLow - min);
-    } else {
-      score = 0;
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (!inSafeRange && rawGettingWorse) return 0;
+    if (inSafeRange && (weightTooSmall || weightTooLarge) && weightImproving) {
+      return 0;
     }
 
-    const RAW_MAX = 1000;
-    const WEIGHT_MIN = 1e-8;
+    if (inSafeRange) return 1;
+    if (rawInput > safeMax && rawInput <= safeMax + 10) {
+      return 1 - (rawInput - safeMax) / 10;
+    }
+    if (rawInput < safeMin && rawInput >= safeMin - 10) {
+      return 1 - (safeMin - rawInput) / 10;
+    }
 
-    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
-    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
-
-    return score * weightPenalty * rawPenalty;
+    return 0;
   }
 }

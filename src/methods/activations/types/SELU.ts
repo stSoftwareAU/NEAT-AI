@@ -108,62 +108,56 @@ export class SELU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Returns a normalized score [0, 1] indicating how appropriate it is
-   * to propagate error through a SELU-activated neuron.
+   * SELU Safe Zone Adjustment Logic
    *
-   * SELU is a scaled variant of ELU:
-   *   SELU(x) = λ * x                          for x > 0
-   *          = λ * α * (exp(x) - 1)           for x ≤ 0
+   * SELU combines exponential and linear components. Like ELU,
+   * it can flatten or explode on extreme negative raw inputs.
+   * This function determines whether it's safe to propagate error
+   * through the neuron based on input and weight conditions.
    *
-   * Its gradient is constant in the linear region and flattens in the
-   * exponential region. SELU is designed to maintain normalization, but
-   * can still saturate in the tails.
+   * Strategy:
+   * - Safe zone: x ∈ [−10, 10]
+   * - Avoid worsening raw inputs outside that range
+   * - Adjust weight if it's far from [1e-3, 1e3] and the update brings it closer
+   * - Soft fade for near-borderline raw inputs
    *
-   * This function:
-   * - Returns 1.0 for x ∈ [−4, 4] (strong learning zone)
-   * - Fades out linearly for x ∈ [−7, −4]
-   * - Allows recovery from deep saturation if the error pushes x toward 0
-   * - Penalizes propagation when rawInput is large and weight is too small
-   *
-   * Constants:
-   * - RAW_MAX = 1000 (above this, prefer weight or bias adjustment)
-   * - WEIGHT_MIN = 1e-8 (too small to support large raw values)
-   *
-   * @param rawInput The raw pre-activation value.
-   * @param error The current error signal for this neuron.
-   * @param weight The weight of the contributing synapse.
-   * @returns A score in [0, 1] for suitability of activation-based propagation.
+   * @param rawInput Raw input before squashing
+   * @param error Backpropagated error
+   * @param weight Connection weight
+   * @returns A number between 0 and 1 indicating adjustment strength
    */
-  safeZoneAdjustment(
-    rawInput: number,
-    error: number,
-    weight: number,
-  ): number {
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const min = -7;
-    const safeLow = -4;
-    const safeHigh = 4;
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
 
-    let score: number;
+    const safeMin = -10;
+    const safeMax = 10;
+    const inSafeRange = rawInput >= safeMin && rawInput <= safeMax;
 
-    if (rawInput >= safeLow && rawInput <= safeHigh) {
-      score = 1;
-    } else if (rawInput < safeLow && error > 0) {
-      score = 0.2;
-    } else if (rawInput >= min && rawInput < safeLow) {
-      score = (rawInput - min) / (safeLow - min);
-    } else {
-      score = 0;
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (!inSafeRange && rawGettingWorse) return 0;
+    if (inSafeRange && (weightTooSmall || weightTooLarge) && weightImproving) {
+      return 0;
     }
 
-    // Soft fade if raw is very large and weight is small
-    const RAW_MAX = 1000;
-    const WEIGHT_MIN = 1e-8;
+    if (inSafeRange) return 1;
+    if (rawInput > safeMax && rawInput <= safeMax + 10) {
+      return 1 - (rawInput - safeMax) / 10;
+    }
+    if (rawInput < safeMin && rawInput >= safeMin - 10) {
+      return 1 - (safeMin - rawInput) / 10;
+    }
 
-    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
-    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
-
-    return score * weightPenalty * rawPenalty;
+    return 0;
   }
 }

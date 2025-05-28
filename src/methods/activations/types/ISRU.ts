@@ -103,61 +103,55 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Determines how suitable it is to propagate error through a neuron using ISRU.
+   * ISRU Safe Zone Adjustment Logic
    *
-   * ISRU(x) = x / sqrt(1 + αx²)
+   * The ISRU (Inverse Square Root Unit) function saturates at large |x|,
+   * which reduces the effectiveness of gradient descent outside the central region.
+   * This function evaluates whether the current raw input and weight are conducive to effective updates.
    *
-   * Properties:
-   * - Smooth and bounded
-   * - Most sensitive near x = 0
-   * - Flattens for |x| ≫ 5
+   * Strategy:
+   * - Prefer propagation if raw input ∈ [−10, 10]
+   * - Avoid propagation if raw input is extreme and the error makes it worse
+   * - If weight is outside [1e-3, 1e3] and the error would reduce its extremity, return 0
+   * - Soft fade when near the boundaries
    *
-   * This function:
-   * - Returns 1.0 for |x| ∈ [−3, 3]
-   * - Fades to 0.0 for |x| > 6
-   * - Allows recovery if error moves x toward center
-   * - Penalizes large |x| with very small weights
-   *
-   * Constants:
-   * - RAW_MAX = 1000
-   * - WEIGHT_MIN = 1e-8
-   *
-   * @param rawInput The pre-activation input
-   * @param error Error signal from the output
-   * @param weight Weight of the connection to the input
-   * @returns A float in [0, 1] for propagation suitability
+   * @param rawInput Raw value before squashing
+   * @param error Backpropagated error
+   * @param weight Synapse weight
+   * @returns A number between 0 and 1 indicating whether to propagate
    */
-  safeZoneAdjustment(
-    rawInput: number,
-    error: number,
-    weight: number,
-  ): number {
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const abs = Math.abs(rawInput);
-    const safe = 3;
-    const max = 6;
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
 
-    let score: number;
+    const safeMin = -10;
+    const safeMax = 10;
+    const inSafeRange = rawInput >= safeMin && rawInput <= safeMax;
 
-    if (abs <= safe) {
-      score = 1;
-    } else if (rawInput < -safe && error > 0) {
-      score = 0.2; // recovery
-    } else if (rawInput > safe && error < 0) {
-      score = 0.2; // recovery
-    } else if (abs <= max) {
-      score = 1 - (abs - safe) / (max - safe); // linear fade
-    } else {
-      score = 0;
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (!inSafeRange && rawGettingWorse) return 0;
+    if (inSafeRange && (weightTooSmall || weightTooLarge) && weightImproving) {
+      return 0;
     }
 
-    const RAW_MAX = 1000;
-    const WEIGHT_MIN = 1e-8;
+    if (inSafeRange) return 1;
+    if (rawInput > safeMax && rawInput <= safeMax + 10) {
+      return 1 - (rawInput - safeMax) / 10;
+    }
+    if (rawInput < safeMin && rawInput >= safeMin - 10) {
+      return 1 - (safeMin - rawInput) / 10;
+    }
 
-    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
-    const rawPenalty = Math.min(1, RAW_MAX / abs);
-
-    return score * weightPenalty * rawPenalty;
+    return 0;
   }
 }

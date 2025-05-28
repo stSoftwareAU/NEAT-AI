@@ -111,4 +111,47 @@ export class STEP
     const error = targetValue - currentValue;
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * Safe zone estimator for the `STEP` activation function, which is discontinuous:
+   *
+   *   f(x) = 1 if x > 0
+   *        = 0 otherwise
+   *
+   * This function helps determine whether it's safe or beneficial to adjust
+   * the `rawInput` directly during backpropagation.
+   *
+   * ### Behavior:
+   * - Returns `1` if the raw input is on the **wrong side** of the step and the error is pushing it **toward the threshold (x=0)**
+   * - Returns `0.2` if input is already on the **correct side**, and small error remains
+   * - Returns `0` for invalid or no-op adjustments
+   *
+   * ### Rationale:
+   * - STEP has no derivative (gradient is zero or undefined)
+   * - Only meaningful direction is crossing the threshold (x = 0)
+   * - We want to adjust input only if that adjustment **could cause a class flip**
+   * - Otherwise, prefer adjusting weights/biases upstream
+   *
+   * ### Notes:
+   * - `weight` is included for API consistency, but unused
+   * - This is a hard discontinuous function, so use with caution in gradient-based learning
+   */
+
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    _weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    // STEP function: threshold at x = 0
+    const isAbove = rawInput > 0;
+    const expectedAbove = error > 0;
+
+    // If we're on the wrong side and the error pushes us toward the correct side
+    if (isAbove !== expectedAbove) return 1;
+
+    // If we're on the correct side, but error is still non-zero, reduce confidence
+    return 0.2;
+  }
 }

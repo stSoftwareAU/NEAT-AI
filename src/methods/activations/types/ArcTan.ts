@@ -109,4 +109,50 @@ export class ArcTan
     // Always safe: derivative never zero or undefined for ArcTan
     return ErrorHelper.calculateClampedError(rawError / slope);
   }
+
+  /**
+   * Determines how safe or beneficial it is to adjust the input value
+   * during backpropagation when using the `ArcTan` squash function.
+   *
+   * ArcTan is a smooth, saturating function:
+   *   - Gradients are strong near x = 0
+   *   - Gradients flatten as |x| → ∞
+   *
+   * ### Behavior:
+   * - Returns `1` inside the strong gradient zone x ∈ [−2, 2]
+   * - Allows recovery toward the center if the error is pulling in that direction
+   * - Gradually fades to `0` for |x| ∈ [2, 4]
+   * - Completely avoids updates when input is far into saturation
+   *
+   * ### Rationale:
+   * - Encourages error correction in the high-sensitivity region
+   * - Discourages pushing already-saturated neurons further
+   * - Allows correction of runaway weights using bias/weight paths instead
+   *
+   * ### Notes:
+   * - `weight` is included for API consistency, but unused
+   */
+
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    _weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const abs = Math.abs(rawInput);
+
+    // Ideal gradient zone: roughly x ∈ [−2, 2]
+    if (abs <= 2) return 1;
+
+    // Recovery zone: allow updates that move toward center
+    if (rawInput > 2 && error < 0) return 0.3;
+    if (rawInput < -2 && error > 0) return 0.3;
+
+    // Fade zone: x ∈ [2, 4]
+    if (abs <= 4) return 1 - (abs - 2) / 2;
+
+    // Out of bounds: too flat for meaningful updates
+    return 0;
+  }
 }

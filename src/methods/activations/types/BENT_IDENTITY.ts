@@ -103,4 +103,49 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
     const slope = this.derivative(currentValue);
     return ErrorHelper.calculateClampedError(rawError / slope);
   }
+
+  /**
+   * Estimates the safety and usefulness of adjusting the raw input
+   * for a neuron using the `BENT_IDENTITY` activation function.
+   *
+   * `BENT_IDENTITY`:
+   *   f(x) = (√(x² + 1) - 1)/2 + x
+   *
+   * This is a mostly-linear function with a gentle nonlinearity.
+   *
+   * ### Behavior:
+   * - Strong zone: x ∈ [−10, 10] where gradients ≈ 1
+   * - Recovery zone: allow nudges back toward the center
+   * - Fadeout: gradually reduce adjustment confidence in [10, 20]
+   * - Saturation zone: discourage input changes if already far from origin
+   *
+   * ### Rationale:
+   * - Keeps activations in range where gradient is strongest and stable
+   * - Avoids wasting effort on very large inputs (≈ linear, low impact)
+   * - Bias/weight tuning is preferred beyond the soft boundary
+   *
+   * ### Notes:
+   * - `weight` unused here but passed for interface compatibility
+   */
+  safeZoneAdjustment(
+    rawInput: number,
+    error: number,
+    _weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const abs = Math.abs(rawInput);
+
+    // Safe/strong zone: x ∈ [−10, 10] is nearly linear
+    if (abs <= 10) return 1;
+
+    // Allow recovery if error is pulling us back toward center
+    if (rawInput > 10 && error < 0) return 0.3;
+    if (rawInput < -10 && error > 0) return 0.3;
+
+    // Fade between 10 and 20
+    if (abs <= 20) return 1 - (abs - 10) / 10;
+
+    return 0;
+  }
 }

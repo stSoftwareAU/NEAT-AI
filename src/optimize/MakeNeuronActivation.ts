@@ -1,6 +1,7 @@
 import type { Neuron } from "../architecture/Neuron.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import { ReLU } from "../methods/activations/types/ReLU.ts";
 import type { InlineActivationInterface } from "./InlineActivationInterface.ts";
 import type { InlineSquashInterface } from "./InlineSquashInterface.ts";
 
@@ -58,7 +59,7 @@ export function inlineActivation(neuron: Neuron): string {
     valueLine += value;
   }
 
-  if (neuron.squash === "RELU") {
+  if (neuron.squash === ReLU.NAME) {
     return `const t${neuron.index}=${valueLine};\na[${neuron.index}]=t${neuron.index}>0?t${neuron.index}:0;\n`;
   }
 

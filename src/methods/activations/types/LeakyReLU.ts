@@ -67,57 +67,56 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Returns a score [0, 1] indicating the suitability of backpropagation
-   * through a neuron using LeakyReLU activation.
+   * LeakyReLU Safe Zone Adjustment Logic
    *
-   * LeakyReLU is a linear activation with a small slope on the negative side:
-   *    f(x) = x         if x ≥ 0
-   *         = a * x     if x < 0 (where a is small, e.g., 0.01)
+   * LeakyReLU avoids a dead zone by preserving a small gradient for negative inputs.
+   * This function determines whether the neuron should propagate error based on whether
+   * the raw input is in a reasonable range and whether the connection weight is appropriate.
    *
-   * This makes it more resilient to dead neurons, but still has very low
-   * sensitivity when x is extremely negative.
+   * Strategy:
+   * - Always allows propagation in [−50, 50]
+   * - Avoid propagating if rawInput is extremely large and getting worse
+   * - If weight is far outside [1e-3, 1e3] and the update would bring it closer to that range,
+   *   prefer adjusting the weight instead
+   * - Uses a soft fade for borderline rawInput values
    *
-   * This function:
-   * - Returns 1.0 for x ∈ [−4, 4] (good gradient zone)
-   * - Fades out from x ∈ [−10, −4]
-   * - Allows recovery from deep negatives if error > 0
-   * - Applies weight-based penalty if x ≫ 1000 and weight ≪ 1e-8
-   *
-   * @param rawInput The pre-activation input value
-   * @param error The output error at this neuron
-   * @param weight The connection weight to the input
-   * @returns A float in [0, 1] representing backpropagation suitability
+   * @param rawInput Raw value before squashing
+   * @param error Backpropagated error
+   * @param weight Synapse weight
+   * @returns A value [0, 1] indicating how strongly to allow error propagation
    */
-  safeZoneAdjustment(
-    rawInput: number,
-    error: number,
-    weight: number,
-  ): number {
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const min = -10;
-    const safeLow = -4;
-    const safeHigh = 4;
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
 
-    let score: number;
+    const safeMin = -50;
+    const safeMax = 50;
+    const inSafeRange = rawInput >= safeMin && rawInput <= safeMax;
 
-    if (rawInput >= safeLow && rawInput <= safeHigh) {
-      score = 1;
-    } else if (rawInput < safeLow && error > 0) {
-      score = 0.2;
-    } else if (rawInput >= min && rawInput < safeLow) {
-      score = (rawInput - min) / (safeLow - min);
-    } else {
-      score = 0;
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (!inSafeRange && rawGettingWorse) return 0;
+    if (inSafeRange && (weightTooSmall || weightTooLarge) && weightImproving) {
+      return 0;
     }
 
-    // Penalty if raw input is large but weight is tiny
-    const RAW_MAX = 1000;
-    const WEIGHT_MIN = 1e-8;
+    if (inSafeRange) return 1;
+    if (rawInput > safeMax && rawInput <= safeMax + 20) {
+      return 1 - (rawInput - safeMax) / 20;
+    }
+    if (rawInput < safeMin && rawInput >= safeMin - 20) {
+      return 1 - (safeMin - rawInput) / 20;
+    }
 
-    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
-    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
-
-    return score * weightPenalty * rawPenalty;
+    return 0;
   }
 }

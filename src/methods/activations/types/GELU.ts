@@ -129,54 +129,50 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Returns a score [0, 1] indicating how suitable it is to propagate
-   * error through a GELU-activated neuron.
+   * GELU (Gaussian Error Linear Unit) Safe Zone Adjustment
    *
-   * GELU is a smooth, differentiable activation that behaves like a soft
-   * ReLU for positive x and like a softened exp(x) for negative x.
+   * Reasoning:
+   * - GELU transitions smoothly but flattens at extreme values.
+   * - Safe zone for raw input is approximately [-6, 6], beyond which gradients diminish.
+   * - If raw input is out of safe zone and error would worsen it, return 0.
+   * - If weight is outside safe range and adjusting weight would improve, return 0.
+   * - Otherwise fade or return 1.
    *
-   * This function:
-   * 1. Returns 1.0 for x ∈ [−3, 3] (optimal learning zone)
-   * 2. Fades linearly for x ∈ [−6, −3] and [3, 6]
-   * 3. Allows small recovery propagation (0.2) if error is pushing x back toward center
-   * 4. Penalizes propagation when rawInput is extremely large and weight is too small
-   *
-   * @param rawInput The raw input value to GELU
-   * @param error The output-layer error signal
-   * @param weight The synapse weight contributing to this input
-   * @returns A float in [0, 1] representing propagation usefulness
+   * @param rawInput - Input to GELU function before activation
+   * @param error - Propagation error
+   * @param weight - Synaptic weight
+   * @returns value between 0 (discourage) and 1 (safe to propagate)
    */
-  safeZoneAdjustment(
-    rawInput: number,
-    error: number,
-    weight: number,
-  ): number {
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const abs = Math.abs(rawInput);
-    const safe = 3;
-    const max = 6;
+    const safeMin = -6;
+    const safeMax = 6;
+    const inSafeRaw = rawInput >= safeMin && rawInput <= safeMax;
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
 
-    let score: number;
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproves = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
 
-    if (abs <= safe) {
-      score = 1;
-    } else if (rawInput < -safe && error > 0) {
-      score = 0.2; // recovery
-    } else if (rawInput > safe && error < 0) {
-      score = 0.2; // recovery
-    } else if (abs <= max) {
-      score = 1 - (abs - safe) / (max - safe); // fade
-    } else {
-      score = 0;
+    if (!inSafeRaw && rawGettingWorse) return 0;
+    if (inSafeRaw && (weightTooSmall || weightTooLarge) && weightImproves) {
+      return 0;
     }
 
-    const RAW_MAX = 1000;
-    const WEIGHT_MIN = 1e-8;
+    if (inSafeRaw) return 1;
+    if (rawInput > safeMax && rawInput <= safeMax + 10) {
+      return 1 - (rawInput - safeMax) / 10;
+    }
+    if (rawInput < safeMin && rawInput >= safeMin - 10) {
+      return 1 - (safeMin - rawInput) / 10;
+    }
 
-    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
-    const rawPenalty = Math.min(1, RAW_MAX / abs);
-
-    return score * weightPenalty * rawPenalty;
+    return 0;
   }
 }
