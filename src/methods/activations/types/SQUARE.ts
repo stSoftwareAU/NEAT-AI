@@ -103,51 +103,50 @@ export class SQUARE implements ActivationInterface {
   }
 
   /**
-  * Guides the backpropagation engine on how safe it is to push `rawInput`
-  * further in its current direction — useful when choosing between adjusting
-  * the input neuron or the synapse weight/bias.
-  *
-  * ### Behavior:
-  * - Full confidence (`1`) in the range x ∈ [−5, 5]
-  * - Linearly reduced confidence toward x ∈ ±10
-  * - Very low confidence outside x ∈ ±10
-  * - If error points **toward zero**, a small value (`0.2`) is returned even outside the range
-  *
-  * ### Rationale:
-  * - The SQUARE function is x², with large gradients at high x.
-  * - Large x values (e.g., ±100) cause instability and are hard to learn from.
-  * - This helper encourages training to **stay within a tractable input range**.
-  * - The weight can be adjusted instead to maintain output without huge inputs.
-  *
-  * ### Why include `error`?
-  * - When the error moves us **back toward the center**, we allow a recovery push.
-  *
-  * ### Why include `weight`?
-  * - Not directly used here, but included to support future extensions.
-  */
+   * Guides the backpropagation engine on how safe it is to push `rawInput`
+   * further in its current direction — useful when choosing between adjusting
+   * the input neuron or the synapse weight/bias.
+   *
+   * ### Behavior:
+   * - Full confidence (`1`) in the range x ∈ [−5, 5]
+   * - Linearly reduced confidence toward x ∈ ±10
+   * - Very low confidence outside x ∈ ±10
+   * - If error points **toward zero**, a small value (`0.2`) is returned even outside the range
+   *
+   * ### Rationale:
+   * - The SQUARE function is x², with large gradients at high x.
+   * - Large x values (e.g., ±100) cause instability and are hard to learn from.
+   * - This helper encourages training to **stay within a tractable input range**.
+   * - The weight can be adjusted instead to maintain output without huge inputs.
+   *
+   * ### Why include `error`?
+   * - When the error moves us **back toward the center**, we allow a recovery push.
+   *
+   * ### Why include `weight`?
+   * - Not directly used here, but included to support future extensions.
+   */
   safeZoneAdjustment(
-rawInput: number,
-error: number,
-_weight: number,
-): number {
-if (!Number.isFinite(rawInput)) return 0;
+    rawInput: number,
+    error: number,
+    _weight: number,
+  ): number {
+    if (!Number.isFinite(rawInput)) return 0;
 
-const abs = Math.abs(rawInput);
+    const abs = Math.abs(rawInput);
 
-// Safe zone: input ∈ [−5, 5]
-if (abs <= 5) return 1;
+    // Safe zone: input ∈ [−5, 5]
+    if (abs <= 5) return 1;
 
-// If error direction pushes input toward center, allow it (recovery zone)
-if (rawInput > 5 && error < 0) return 0.2;
-if (rawInput < -5 && error > 0) return 0.2;
+    // If error direction pushes input toward center, allow it (recovery zone)
+    if (rawInput > 5 && error < 0) return 0.2;
+    if (rawInput < -5 && error > 0) return 0.2;
 
-// Fade between 5 and 10
-if (abs <= 10) {
-return 1 - (abs - 5) / 5;
-}
+    // Fade between 5 and 10
+    if (abs <= 10) {
+      return 1 - (abs - 5) / 5;
+    }
 
-// Beyond 10, input dominates and gradients explode
-return 0;
-}
-
+    // Beyond 10, input dominates and gradients explode
+    return 0;
+  }
 }
