@@ -61,6 +61,8 @@
     "Nonlinear",
     "backpropagate",
     "Backprop",
-    "centered"
+    "centered",
+    "Backpropagated",
+    "favorable"
   ]
 }
