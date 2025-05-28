@@ -128,7 +128,7 @@ export class SQUARE implements ActivationInterface {
   safeZoneAdjustment(
 rawInput: number,
 error: number,
-weight: number,
+_weight: number,
 ): number {
 if (!Number.isFinite(rawInput)) return 0;
 
