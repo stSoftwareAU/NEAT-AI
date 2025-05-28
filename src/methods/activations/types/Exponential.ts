@@ -102,33 +102,34 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
   /**
-   * Returns a normalized score [0, 1] indicating how suitable it is
-   * to propagate error through an exponential-activated neuron.
+   * Heuristic for determining whether it is safe and productive to propagate error
+   * upstream to the source neuron for the Exponential squash function.
    *
-   * Exponential(x) = exp(x)
+   * Exponential grows rapidly for large raw inputs:
+   *   f(x) = e^x → [~0, ∞)
    *
-   * Characteristics:
-   * - Grows very rapidly: exp(36) ~ Number.MAX_SAFE_INTEGER
-   * - Vanishes quickly as x → −∞
-   * - Gradient = exp(x) → explodes for x > 36 and vanishes for x < -10
+   * Ideal raw input range (safe zone): [-10, 30]
+   *   - Below -10: output vanishes, gradient vanishes
+   *   - Above 30: output explodes, gradient vanishes
    *
-   * This function:
-   * 1. Returns 1.0 for x ∈ [−8, 20] (effective learning region)
-   * 2. Fades to 0 for x < -15 or x > 36
-   * 3. Allows weak propagation (0.2) if the error would push x toward center
-   * 4. Applies a penalty when:
-   *    - rawInput is very large
-   *    - AND the weight is too small to meaningfully support propagation
+   * This function returns a value between 0 and 1:
+   *   - 1 means safe and desirable to backpropagate
+   *   - 0 means it's better to adjust weights/biases instead
+   *   - Values between 0–1 create a soft fade zone
    *
-   * Constants (hardcoded here for simplicity):
-   * - RAW_MAX = 1000
-   * - WEIGHT_MIN = 1e-8
+   * Return 0 if:
+   *   1. The raw input is outside the safe zone, and the direction of error would worsen it.
+   *   2. The weight is out of safe bounds and the error would adjust it *towards* the safe range.
    *
-   * @param rawInput Pre-activation input x
-   * @param error Error signal from output layer
-   * @param weight The weight of the synapse feeding into this neuron
-   * @returns A float in [0, 1] indicating propagation suitability
+   * These cases signal that raw input adjustment is either unhelpful or costly,
+   * and weight tuning is the better route.
+   *
+   * @param rawInput - The current value input into the activation function.
+   * @param error - The direction and magnitude of desired adjustment.
+   * @param weight - The synapse weight linking this neuron.
+   * @returns A number between 0–1 representing how favorable it is to propagate upstream.
    */
   safeZoneAdjustment(
     rawInput: number,
@@ -137,37 +138,41 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
   ): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const safeLow = -8;
-    const safeHigh = 20;
-    const min = -15;
-    const max = 36;
+    // Safe zone for Exponential raw input
+    const safeMin = -10;
+    const safeMax = 30;
+    const inSafeRaw = rawInput >= safeMin && rawInput <= safeMax;
 
-    let score: number;
+    // Check if pushing raw input would make it worse
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
 
-    // Safe learning region
-    if (rawInput >= safeLow && rawInput <= safeHigh) {
-      score = 1;
-    } else if (rawInput < safeLow && error > 0) {
-      // Recovery: error tries to increase x from flat zone
-      score = 0.2;
-    } else if (rawInput > safeHigh && error < 0) {
-      // Recovery: error tries to decrease x from saturation
-      score = 0.2;
-    } else if (rawInput > safeHigh && rawInput <= max) {
-      score = 1 - (rawInput - safeHigh) / (max - safeHigh);
-    } else if (rawInput < safeLow && rawInput >= min) {
-      score = (rawInput - min) / (safeLow - min);
-    } else {
-      score = 0;
+    // Safe weight bounds
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+
+    // Is weight improvement in direction of error?
+    const weightImproves = (weightTooSmall && weight * error > 0) || // growing small weight
+      (weightTooLarge && weight * error < 0); // shrinking big weight
+
+    // Fallback to weight adjustment
+    if (!inSafeRaw && rawGettingWorse) return 0;
+    if (inSafeRaw && (weightTooSmall || weightTooLarge) && weightImproves) {
+      return 0;
     }
 
-    // Weight penalty logic
-    const RAW_MAX = 1000;
-    const WEIGHT_MIN = 1e-8;
+    // Default logic (fade outside the soft safe zone)
+    if (inSafeRaw) return 1;
+    if (rawInput > safeMax && rawInput <= safeMax + 10) {
+      return 1 - (rawInput - safeMax) / 10;
+    }
+    if (rawInput < safeMin && rawInput >= safeMin - 10) {
+      return 1 - (safeMin - rawInput) / 10;
+    }
 
-    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
-    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
-
-    return score * weightPenalty * rawPenalty;
+    return 0;
   }
 }

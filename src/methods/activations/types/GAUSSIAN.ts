@@ -95,29 +95,21 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Returns a score [0, 1] indicating whether it is useful to propagate
-   * error through a GAUSSIAN-activated neuron.
+   * GAUSSIAN Safe Zone Adjustment Logic
    *
-   * Gaussian(x) = exp(−x²)
+   * The GAUSSIAN activation peaks at x=0 and quickly decays toward 0 for large |x|.
+   * This makes it only effective when the raw input is near 0.
    *
-   * Properties:
-   * - Output ∈ (0, 1], centered at x = 0
-   * - Gradient peaks near x = 0 and vanishes toward ±∞
+   * Strategy:
+   * - Only allow propagation when raw input is close to 0: ∈ [−3, 3]
+   * - If raw input is far and error would push it even further, disallow propagation
+   * - If weight is far out of bounds and error would bring it back toward the safe range, disallow propagation to allow weight fix
+   * - Smooth fade as we move out of ideal zone
    *
-   * This function:
-   * - Returns 1.0 when x ∈ [−1.5, 1.5] (high learning zone)
-   * - Fades to 0.0 outside x ∈ [−3, 3]
-   * - Allows recovery propagation if error would push x toward 0
-   * - Penalizes propagation when rawInput is large and weight is too small
-   *
-   * Constants:
-   * - RAW_MAX = 1000
-   * - WEIGHT_MIN = 1e-8
-   *
-   * @param rawInput The input value before applying Gaussian
-   * @param error The error signal for this neuron
-   * @param weight The synapse weight (used to penalize extreme inputs)
-   * @returns A float in [0, 1] indicating propagation suitability
+   * @param rawInput Raw pre-activation input
+   * @param error Backpropagated error
+   * @param weight Synapse weight
+   * @returns A float from 0 (don't propagate) to 1 (freely propagate)
    */
   safeZoneAdjustment(
     rawInput: number,
@@ -126,30 +118,29 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   ): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const abs = Math.abs(rawInput);
-    const safe = 1.5;
-    const max = 3;
+    const absRaw = Math.abs(rawInput);
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
 
-    let score: number;
+    const inSafeZone = absRaw <= 3;
 
-    if (abs <= safe) {
-      score = 1;
-    } else if (rawInput < -safe && error > 0) {
-      score = 0.2; // recovery left
-    } else if (rawInput > safe && error < 0) {
-      score = 0.2; // recovery right
-    } else if (abs <= max) {
-      score = 1 - (abs - safe) / (max - safe); // fade
-    } else {
-      score = 0;
+    const rawGettingWorse = (rawInput < -3 && error < 0) ||
+      (rawInput > 3 && error > 0);
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (!inSafeZone && rawGettingWorse) return 0;
+    if (inSafeZone && (weightTooSmall || weightTooLarge) && weightImproving) {
+      return 0;
     }
 
-    const RAW_MAX = 1000;
-    const WEIGHT_MIN = 1e-8;
+    if (inSafeZone) return 1;
+    if (absRaw <= 6) return 1 - (absRaw - 3) / 3;
 
-    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
-    const rawPenalty = Math.min(1, RAW_MAX / abs);
-
-    return score * weightPenalty * rawPenalty;
+    return 0;
   }
 }

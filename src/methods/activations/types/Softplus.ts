@@ -106,60 +106,57 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+
   /**
-   * Determines the suitability of propagating error through a neuron using
-   * the Softplus activation function.
+   * Determines whether it's appropriate to propagate error to upstream neurons,
+   * or instead adjust the synaptic weight or bias.
    *
-   * Softplus(x) = ln(1 + exp(x))
+   * Softplus: f(x) = log(1 + exp(x))
+   *   - Behaves like ReLU for large x
+   *   - Smooths around 0, flattens for x << 0
    *
-   * Characteristics:
-   * - For x ≪ 0: squash ~ exp(x), gradient ≈ 0
-   * - For x ≫ 0: squash ~ x, gradient ≈ 1
+   * Logic:
+   *   - Safe zone for raw input is [-10, 20].
+   *   - If raw input is outside safe zone and error would worsen it, return 0.
+   *   - If weight is out of safe bounds (too small or too large) and error would bring it back into range, return 0.
+   *   - Otherwise return 1 (or fade between 0–1 near safe zone edges).
    *
-   * This function:
-   * 1. Returns 1.0 when x ∈ [−5, 5] (good learning region)
-   * 2. Fades out linearly for x ∈ [−8, −5]
-   * 3. Allows recovery (0.2) if the error would push x back into the learning zone
-   * 4. Penalizes propagation when x is extremely large and weight is too small to be meaningful
-   *
-   * Constants:
-   * - RAW_MAX = 1000
-   * - WEIGHT_MIN = 1e-8
-   *
-   * @param rawInput The neuron's pre-squash input
-   * @param error The error value driving propagation
-   * @param weight The connection weight leading to this input
-   * @returns A float in [0, 1] indicating the usefulness of activation-based propagation
+   * @param rawInput - Raw input to the activation function.
+   * @param error - Error signal.
+   * @param weight - Incoming synapse weight.
+   * @returns A number between 0–1 representing propagation safety.
    */
-  safeZoneAdjustment(
-    rawInput: number,
-    error: number,
-    weight: number,
-  ): number {
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
     if (!Number.isFinite(rawInput)) return 0;
 
-    const min = -8;
-    const fadeStart = -5;
-    const safeHigh = 5;
+    const safeMin = -10;
+    const safeMax = 20;
+    const inSafeRaw = rawInput >= safeMin && rawInput <= safeMax;
 
-    let score: number;
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
 
-    if (rawInput >= fadeStart && rawInput <= safeHigh) {
-      score = 1;
-    } else if (rawInput < fadeStart && error > 0) {
-      score = 0.2; // recovery from flat zone
-    } else if (rawInput >= min && rawInput < fadeStart) {
-      score = (rawInput - min) / (fadeStart - min); // fade from 0 → 1
-    } else {
-      score = 0;
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproves = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (!inSafeRaw && rawGettingWorse) return 0;
+    if (inSafeRaw && (weightTooSmall || weightTooLarge) && weightImproves) {
+      return 0;
     }
 
-    const RAW_MAX = 1000;
-    const WEIGHT_MIN = 1e-8;
+    if (inSafeRaw) return 1;
+    if (rawInput > safeMax && rawInput <= safeMax + 10) {
+      return 1 - (rawInput - safeMax) / 10;
+    }
+    if (rawInput < safeMin && rawInput >= safeMin - 10) {
+      return 1 - (safeMin - rawInput) / 10;
+    }
 
-    const weightPenalty = Math.min(1, Math.abs(weight) / WEIGHT_MIN);
-    const rawPenalty = Math.min(1, RAW_MAX / Math.abs(rawInput));
-
-    return score * weightPenalty * rawPenalty;
+    return 0;
   }
 }
