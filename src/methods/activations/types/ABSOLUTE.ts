@@ -113,7 +113,6 @@ export class ABSOLUTE
    * @returns        Value in [0,1] indicating confidence in adjusting the raw input
    */
   safeZoneAdjustment(rawInput: number, _error: number, weight: number): number {
-
     const absInput = Math.abs(rawInput);
     const absWeight = Math.abs(weight);
 
