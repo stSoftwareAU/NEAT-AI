@@ -132,4 +132,64 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+  /**
+   * LogSigmoid Safe Zone Adjustment Logic
+   *
+   * The LogSigmoid function flattens sharply for large negative raw inputs,
+   * making error propagation ineffective in those regions. This helper guides
+   * backpropagation by preferring updates only when:
+   * - The raw input is within a numerically useful range (e.g., [-20, 20])
+   * - The weight is not excessively small or large
+   * - If raw input is far out of bounds, prefer adjusting the weight
+   *
+   * Strategy:
+   * - Allow full propagation if raw input is within [-20, 20]
+   * - If raw input < -20 and error would push it more negative → avoid
+   * - If weight is outside [1e-3, 1e3] and adjustment would normalize it → prefer that
+   * - Soft fade for borderline values (between -20 and -30, or 20 and 30)
+   *
+   * @param rawInput Raw value before squashing
+   * @param error Backpropagated error
+   * @param weight Synapse weight
+   * @returns A number between 0 and 1 for propagation preference
+   */
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
+
+    const safeMin = -20;
+    const safeMax = 20;
+    const fadeMin = -30;
+    const fadeMax = 30;
+
+    const inSafeRange = rawInput >= safeMin && rawInput <= safeMax;
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    // Prefer not to propagate if the raw input is very bad and the weight would help
+    if (!inSafeRange && rawGettingWorse) return 0;
+    if (inSafeRange && (weightTooSmall || weightTooLarge) && weightImproving) {
+      return 0;
+    }
+
+    if (inSafeRange) return 1;
+
+    // Soft fade zones
+    if (rawInput > safeMax && rawInput <= fadeMax) {
+      return 1 - (rawInput - safeMax) / 10;
+    }
+    if (rawInput < safeMin && rawInput >= fadeMin) {
+      return 1 - (safeMin - rawInput) / 10;
+    }
+
+    return 0;
+  }
 }

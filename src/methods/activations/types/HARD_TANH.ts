@@ -98,7 +98,7 @@ export class HARD_TANH
   }
 
   /**
-   * Returns a score indicating how safe it is to backpropagate through HARD_TANH.
+   * Returns a score indicating how safe it is to back propagate through HARD_TANH.
    *
    * HARD_TANH behaves like a clipped linear function:
    *    f(x) = -1 for x ≤ -1

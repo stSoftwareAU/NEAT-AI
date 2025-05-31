@@ -147,4 +147,55 @@ export class SINE
 
     return ErrorHelper.calculateClampedError(error);
   }
+
+  /**
+   * SINE Safe Zone Adjustment Logic
+   *
+   * The sine activation function is periodic and bounded within [-1, 1],
+   * but its derivative (cosine) vanishes at odd multiples of π/2 (±π/2, ±3π/2, ...),
+   * making gradient-based error propagation unstable in those regions.
+   *
+   * This function aims to:
+   * - Prefer propagation when raw input is away from low-derivative zones
+   * - Avoid updates that worsen derivative flatness
+   * - Use weight updates when weight is far from optimal and could improve
+   *
+   * Strategy:
+   * - Fully propagate when rawInput is not near a multiple of ±π/2
+   * - If rawInput is near a flat slope region and error worsens it, return 0
+   * - If weight is out of bounds and adjustment moves it toward ideal, prefer weight update
+   * - Soft fade around problematic zones
+   *
+   * @param rawInput Raw input value (pre-squash)
+   * @param error Backpropagated error
+   * @param weight Synapse weight
+   * @returns A number between 0 and 1 indicating preference to propagate
+   */
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
+
+    const slope = Math.cos(rawInput); // derivative of sin(x)
+    const inFlatZone = Math.abs(slope) < 0.1;
+    const rawGettingWorse = slope * error < 0;
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (inFlatZone && rawGettingWorse) return 0;
+    if (!inFlatZone && (weightTooSmall || weightTooLarge) && weightImproving) {
+      return 0;
+    }
+
+    if (!inFlatZone) return 1;
+
+    // Soft fade for near-flat slope areas
+    const fade = Math.abs(slope) / 0.1;
+    return Math.max(Math.min(fade, 1), 0);
+  }
 }

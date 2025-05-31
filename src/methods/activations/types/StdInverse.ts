@@ -93,4 +93,58 @@ export class StdInverse implements ActivationInterface, UnSquashInterface {
 
     return ErrorHelper.calculateClampedError(error);
   }
+  /**
+   * Safe Zone Adjustment for StdInverse
+   *
+   * The StdInverse function is sensitive around zero (x → 0 leads to extreme outputs),
+   * which can destabilize learning. This method prevents raw input updates when doing
+   * so would exacerbate instability, especially for small |x|.
+   *
+   * Strategy:
+   * - Define safe raw input range: [-10, 10] (most stable slope region)
+   * - If outside safe range and error would worsen it, return 0
+   * - If weight is extreme and the error would reduce its magnitude, return 0
+   * - Otherwise:
+   *   - return 1 inside safe zone
+   *   - apply soft fade when near the edge
+   *
+   * @param rawInput Raw value before squashing
+   * @param error Backpropagated error
+   * @param weight Synapse weight
+   * @returns A confidence score (0–1) whether to propagate to raw input
+   */
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
+
+    const safeMin = -10;
+    const safeMax = 10;
+    const inSafeRange = rawInput >= safeMin && rawInput <= safeMax;
+
+    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
+      (rawInput > safeMax && error > 0);
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (!inSafeRange && rawGettingWorse) return 0;
+    if (inSafeRange && (weightTooSmall || weightTooLarge) && weightImproving) {
+      return 0;
+    }
+
+    if (inSafeRange) return 1;
+    if (rawInput > safeMax && rawInput <= safeMax + 10) {
+      return 1 - (rawInput - safeMax) / 10;
+    }
+    if (rawInput < safeMin && rawInput >= safeMin - 10) {
+      return 1 - (safeMin - rawInput) / 10;
+    }
+
+    return 0;
+  }
 }

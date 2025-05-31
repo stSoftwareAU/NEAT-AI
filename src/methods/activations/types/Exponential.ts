@@ -115,7 +115,7 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
    *   - Above 30: output explodes, gradient vanishes
    *
    * This function returns a value between 0 and 1:
-   *   - 1 means safe and desirable to backpropagate
+   *   - 1 means safe and desirable to back propagate
    *   - 0 means it's better to adjust weights/biases instead
    *   - Values between 0–1 create a soft fade zone
    *
