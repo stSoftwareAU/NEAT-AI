@@ -82,4 +82,37 @@ export class IDENTITY
 
     return ErrorHelper.calculateClampedError(rawError);
   }
+
+  /**
+   * IDENTITY Safe Zone Adjustment Logic
+   *
+   * The identity function f(x) = x has a constant gradient and doesn't saturate.
+   * However, extremely large raw values and extremely small weights may result in
+   * numerically unstable or inefficient updates.
+   *
+   * Strategy:
+   * - Prefer propagation unless raw input is extreme (>1e6) and weight is small (<1e-6)
+   * - If raw input is extreme and weight is tiny, return 0 to nudge weight instead
+   * - Otherwise, return full propagation signal
+   *
+   * @param rawInput Raw value before squashing (same as output)
+   * @param _error Backpropagated error (ignored — always 1:1)
+   * @param weight Synapse weight
+   * @returns A number between 0 and 1
+   */
+  safeZoneAdjustment(rawInput: number, _error: number, weight: number): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const absRaw = Math.abs(rawInput);
+    const absWeight = Math.abs(weight);
+
+    const rawIsExtreme = absRaw > 1e6;
+    const weightTooSmall = absWeight < 1e-6;
+
+    if (rawIsExtreme && weightTooSmall) {
+      return 0; // suggest adjusting the weight instead
+    }
+
+    return 1;
+  }
 }

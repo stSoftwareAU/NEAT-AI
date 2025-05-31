@@ -107,7 +107,7 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
    * - Smooth fade as we move out of ideal zone
    *
    * @param rawInput Raw pre-activation input
-   * @param error Backpropagated error
+   * @param error Back propagated error
    * @param weight Synapse weight
    * @returns A float from 0 (don't propagate) to 1 (freely propagate)
    */

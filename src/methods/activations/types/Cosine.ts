@@ -140,4 +140,49 @@ export class Cosine
 
     return ErrorHelper.calculateClampedError(error);
   }
+  /**
+   * COSINE Safe Zone Adjustment Logic
+   *
+   * The Cosine activation function oscillates periodically with vanishing gradients at
+   * x ≈ 0, ±π, ±2π... (where the slope is zero). These "flat tops" cause propagation
+   * problems during training because backpropagated errors can't effectively adjust weights.
+   *
+   * Strategy:
+   * - Prefer propagation when |sin(x)| > 0.1 — where gradient is strong
+   * - Avoid propagation at flat tops (cosine peaks/troughs)
+   * - If weight is extreme and would improve with adjustment, reduce propagation to shift effort to weight
+   * - Gradual fade when |sin(x)| ∈ [0.05, 0.1]
+   *
+   * @param rawInput Raw value before squashing
+   * @param error Backpropagated error
+   * @param weight Synapse weight
+   * @returns Number between 0 and 1 indicating whether to propagate to previous neuron
+   */
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const slope = Math.abs(Math.sin(rawInput));
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
+
+    // When slope is strong
+    if (slope > 0.1) {
+      if (
+        (absWeight < minWeight && weight * error > 0) ||
+        (absWeight > maxWeight && weight * error < 0)
+      ) {
+        return 0; // allow weight to correct first
+      }
+      return 1;
+    }
+
+    // Fade zone
+    if (slope > 0.05) {
+      return (slope - 0.05) / 0.05;
+    }
+
+    // Flat zone — poor for learning
+    return 0;
+  }
 }

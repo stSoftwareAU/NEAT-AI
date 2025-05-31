@@ -132,7 +132,6 @@ export class ArcTan
    * ### Notes:
    * - `weight` is included for API consistency, but unused
    */
-
   safeZoneAdjustment(
     rawInput: number,
     error: number,

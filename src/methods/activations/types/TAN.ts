@@ -137,4 +137,54 @@ export class TAN
 
     return ErrorHelper.calculateClampedError(error);
   }
+  /**
+   * Safe Zone Adjustment for TAN
+   *
+   * The TAN function explodes at odd multiples of π/2, making updates near these
+   * discontinuities unstable. This method evaluates the stability of the raw input
+   * and weight to determine whether to backpropagate to the raw input or adjust weight instead.
+   *
+   * Strategy:
+   * - Define safe raw input zone: ∄ (x % π) ≈ ±π/2
+   * - Reject updates where raw input is too close to a vertical asymptote
+   * - If weight is outside [1e-3, 1e3] and error moves weight toward safe zone → return 0
+   * - Soft fade for values near unsafe zones (±0.2 around ±π/2)
+   *
+   * @param rawInput Raw value before squash
+   * @param error Backpropagated error
+   * @param weight Synapse weight
+   * @returns Confidence (0–1) that rawInput should be adjusted
+   */
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
+    const absWeight = Math.abs(weight);
+    const minWeight = 1e-3;
+    const maxWeight = 1e3;
+
+    const π = Math.PI;
+    const mod = rawInput % π;
+    const distFromAsymptote = Math.abs(Math.abs(mod) - π / 2);
+
+    const nearAsymptote = distFromAsymptote < 0.2;
+    const rawGettingWorse = (mod > π / 2 && error > 0) ||
+      (mod < -π / 2 && error < 0);
+
+    const weightTooSmall = absWeight < minWeight;
+    const weightTooLarge = absWeight > maxWeight;
+    const weightImproving = (weightTooSmall && weight * error > 0) ||
+      (weightTooLarge && weight * error < 0);
+
+    if (nearAsymptote && rawGettingWorse) return 0;
+    if (
+      !nearAsymptote && (weightTooSmall || weightTooLarge) && weightImproving
+    ) return 0;
+
+    // Soft fade if near π/2 mod
+    if (distFromAsymptote < 0.5) {
+      return 1 - (0.5 - distFromAsymptote) * 2;
+    }
+
+    return 1;
+  }
 }
