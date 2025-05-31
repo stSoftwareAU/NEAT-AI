@@ -100,7 +100,7 @@ export class ABSOLUTE
    * Safe Zone Adjustment for ABSOLUTE activation
    *
    * The ABSOLUTE function loses sign information and has a sharp transition at 0.
-   * This logic determines when to favor adjusting weights over raw input.
+   * This logic determines when to favour adjusting weights over raw input.
    *
    * Strategy:
    * - If raw input is very large (|rawInput| > 1000) and weight is tiny (|weight| < 1e-3), prefer weight adjustment

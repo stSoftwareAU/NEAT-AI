@@ -113,7 +113,7 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
    * Strategy:
    * - If raw input is within [−4, 4], allow full propagation.
    * - If raw input is outside and the error would worsen saturation, disallow propagation.
-   * - If weight is extreme and adjusting it would improve its magnitude, favor weight update.
+   * - If weight is extreme and adjusting it would improve its magnitude, favour weight update.
    * - Smoothly fade between 4–8 to prevent abrupt cutoff.
    *
    * @param rawInput Raw input before squashing
