@@ -96,6 +96,7 @@ export class ABSOLUTE
 
     return ErrorHelper.calculateClampedError(closestTarget - currentValue);
   }
+
   /**
    * Safe Zone Adjustment for ABSOLUTE activation
    *
@@ -104,7 +105,6 @@ export class ABSOLUTE
    *
    * Strategy:
    * - If raw input is very large (|rawInput| > 1000) and weight is tiny (|weight| < 1e-3), prefer weight adjustment
-   * - If raw input is close to 0 (within ±1), gradient information is too ambiguous — return 0
    * - Else: default to adjusting raw input
    *
    * @param rawInput Raw value before applying abs()
@@ -113,16 +113,15 @@ export class ABSOLUTE
    * @returns        Value in [0,1] indicating confidence in adjusting the raw input
    */
   safeZoneAdjustment(rawInput: number, _error: number, weight: number): number {
-    if (!Number.isFinite(rawInput)) return 0;
 
     const absInput = Math.abs(rawInput);
     const absWeight = Math.abs(weight);
 
-    const nearZeroInput = absInput < 1;
+    // const nearZeroInput = absInput < 1;
     const veryLargeInput = absInput > 1000;
     const tinyWeight = absWeight < 1e-3;
 
-    if (nearZeroInput) return 0; // raw input is ambiguous
+    // if (nearZeroInput) return 0; // raw input is ambiguous
     if (veryLargeInput && tinyWeight) return 0; // raw input extreme, but weight could move
 
     return 1;
