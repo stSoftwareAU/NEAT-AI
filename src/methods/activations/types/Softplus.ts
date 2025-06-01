@@ -14,7 +14,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Softplus
  */
 export class Softplus implements ActivationInterface, UnSquashInterface {
-  public mutationProbability = 4;
+  public mutationProbability = 24;
   public static readonly NAME = "Softplus";
 
   private static readonly LARGE_THRESHOLD = 100;

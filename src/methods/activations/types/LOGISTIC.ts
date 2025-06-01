@@ -15,7 +15,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Sigmoid_function
  */
 export class LOGISTIC implements ActivationInterface, UnSquashInterface {
-  public mutationProbability = 4;
+  public mutationProbability = 25;
   public static readonly NAME = "LOGISTIC";
 
   public readonly range: ActivationRange = new ActivationRange(
