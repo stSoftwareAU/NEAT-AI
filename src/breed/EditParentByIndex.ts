@@ -1,5 +1,6 @@
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 
 export function editParentByIndex(
   parent: Creature,
@@ -47,6 +48,18 @@ export function editParentByIndex(
   }
 
   const child = Creature.fromJSON(targetExport);
-  child.validate();
+  try {
+    child.validate();
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      if (error.name === "MEMETIC") {
+        delete child.memetic;
+        child.fix();
+        child.validate();
+        return child;
+      }
+    }
+    throw error;
+  }
   return child;
 }

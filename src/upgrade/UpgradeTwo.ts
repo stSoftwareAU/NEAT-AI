@@ -159,7 +159,9 @@ function removeHYPOTv2(json: CreatureExport) {
     tempCreature.validate();
   } catch (e) {
     console.log("Creature is not valid", e);
+    delete tempCreature.memetic;
     tempCreature.fix();
   }
+
   return tempCreature.exportJSON();
 }
