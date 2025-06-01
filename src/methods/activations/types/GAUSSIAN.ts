@@ -14,7 +14,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Gaussian_function
  */
 export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
-  public mutationProbability = 2;
+  public mutationProbability = 10;
   public static NAME = "GAUSSIAN";
 
   public readonly range: ActivationRange = new ActivationRange(

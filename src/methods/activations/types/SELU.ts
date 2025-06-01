@@ -20,7 +20,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * For more details, see the paper: https://arxiv.org/pdf/1706.02515.pdf
  */
 export class SELU implements ActivationInterface, UnSquashInterface {
-  public mutationProbability = 4;
+  public mutationProbability = 32;
   public static NAME = "SELU";
 
   private static ALPHA = 1.6732632423543772848170429916717;

@@ -14,7 +14,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Logistic_function
  */
 export class LogSigmoid implements ActivationInterface, UnSquashInterface {
-  public mutationProbability = 2;
+  public mutationProbability = 11;
   public static readonly NAME = "LogSigmoid";
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(

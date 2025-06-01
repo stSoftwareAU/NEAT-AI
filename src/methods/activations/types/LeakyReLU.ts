@@ -5,7 +5,7 @@ import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 export class LeakyReLU implements ActivationInterface, UnSquashInterface {
-  public mutationProbability = 6;
+  public mutationProbability = 36;
   public static NAME = "LeakyReLU";
 
   public static readonly ALPHA = 0.01;
