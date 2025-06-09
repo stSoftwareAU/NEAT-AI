@@ -45,9 +45,13 @@ export function inlineActivation(neuron: Neuron): string {
   if (isNeuronActivationInterface(squash)) {
     return `a[${neuron.index}] = ${neuron.squash}(neurons[${neuron.index}]);\n`;
   }
-  let valueLine = neuron.bias ? `${neuron.bias}` : "";
 
   const inwardList = neuron.creature.inwardConnections(neuron.index);
+  let valueLine = "";
+  if (neuron.bias || inwardList.length === 0) {
+    valueLine = `${neuron.bias}`;
+  }
+
   const neurons = neuron.creature.neurons;
   const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
   for (let i = 0, len = inwardListClone.length; i < len; i++) {

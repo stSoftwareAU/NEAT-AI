@@ -92,17 +92,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (!this.squash) {
         throw new Error(`Missing squash for ${this.type} neuron`);
       }
-
-      // if (this.squashMethodCache === undefined) {
-      //   throw new Error(
-      //     `Missing squashMethodCache for ${this.type} neuron with squash ${this.squash}`,
-      //   );
-      // }
-      // if (this.squashMethodCache.getName() !== this.squash) {
-      //   throw new Error(
-      //     `Mismatched squashMethodCache for ${this.type} neuron was ${this.squashMethodCache.getName()} expected ${this.squash}`,
-      //   );
-      // }
     } else {
       if (this.squash) {
         throw new Error(`Unexpected squash for ${this.type} neuron`);
