@@ -1,6 +1,7 @@
 import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import { ReLU } from "../methods/activations/types/ReLU.ts";
 import type { InlineActivationInterface } from "./InlineActivationInterface.ts";
 import type { InlineSquashInterface } from "./InlineSquashInterface.ts";
 import { inlineActivation } from "./MakeNeuronActivation.ts";
@@ -13,7 +14,8 @@ export function makeCreatureActivationFunction(creature: Creature) {
     const neuron = creature.neurons[indx];
     functionBody += inlineActivation(neuron);
     if (
-      neuron.squash && !squashMap.has(neuron.squash) && neuron.squash !== "RELU"
+      neuron.squash && !squashMap.has(neuron.squash) &&
+      neuron.squash !== ReLU.NAME
     ) {
       const sf = neuron.findSquash();
       const inlineSquash = (sf as unknown) as InlineSquashInterface;
