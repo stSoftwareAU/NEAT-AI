@@ -110,11 +110,6 @@ export class AddNeuron implements RadioactiveInterface {
       );
     }
 
-    try {
-      creature.validate();
-    } catch (e) {
-      console.error("ADD Node", e);
-    }
     // delete this.creature.memetic;
     const endUUID = CreatureUtil.makeUUID(creature);
     if (startUUID === endUUID) {

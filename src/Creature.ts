@@ -1465,9 +1465,7 @@ export class Creature implements CreatureInternal {
       ) {
         if (this.neurons[pos].type === "output") continue;
         if (
-          this.outwardConnections(pos).filter((c) => {
-            return c.from !== c.to;
-          }).length === 0
+          this.outwardConnections(pos).length === 0
         ) {
           removeHiddenNeuron(this, pos);
           neuronRemoved = true;
