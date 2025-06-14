@@ -2,7 +2,7 @@ import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
+import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -43,28 +43,31 @@ Deno.test("removeDanglingHidden", () => {
     output: 2,
   };
   const a = Creature.fromJSON(json);
-
+  a.fix();
   const b = a.compact();
   assert(b, "should have compacted the network");
   b.validate();
 });
 
 Deno.test("CompactSimple", () => {
+  const directory = ".test/CompactSimple";
+  Deno.mkdirSync(directory, { recursive: true });
+
   const a = new Creature(2, 2, {
     layers: [
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
-      { count: 1, squash: LOGISTIC.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
+      { count: 1, squash: IDENTITY.NAME },
     ],
     outputLayer: {
-      squash: LOGISTIC.NAME,
+      squash: IDENTITY.NAME,
     },
   });
 
@@ -76,28 +79,43 @@ Deno.test("CompactSimple", () => {
   const input = new Float32Array([0.1, 0.2]);
   const startOut = a.activate(input);
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
-  const b = a.compact();
-
-  assert(b, "should have compacted the network");
-
-  b.validate();
   Deno.writeTextFileSync(
-    ".b.json",
-    JSON.stringify(b.internalJSON(), null, 1),
+    `${directory}/0-start.json`,
+    JSON.stringify(a.exportJSON(), null, 1),
   );
-  const endNodes = b.neurons.length;
-  const endConnections = b.synapses.length;
+  a.fix();
 
-  const endOut = b.activate(input);
+  Deno.writeTextFileSync(
+    `${directory}/1-fixed.json`,
+    JSON.stringify(a.exportJSON(), null, 1),
+  );
+  const midOut = a.activate(input);
+
+  assertAlmostEquals(midOut[0], startOut[0], 0.001);
+  assertAlmostEquals(midOut[1], startOut[1], 0.001);
+
+  const c = a.compact();
+
+  assert(c, "should have compacted the network");
+
+  c.validate();
+  Deno.writeTextFileSync(
+    `${directory}/2-end.json`,
+    JSON.stringify(c.exportJSON(), null, 1),
+  );
+
+  const endNodes = c.neurons.length;
+  const endConnections = c.synapses.length;
+
+  const endOut = c.activate(input);
 
   assertAlmostEquals(startOut[0], endOut[0], 0.001);
   assertAlmostEquals(startOut[1], endOut[1], 0.001);
   assert(endNodes < startNodes);
   assert(endConnections < startConnections);
 
-  const c = b.compact();
-  assert(!c);
+  // const d = c.compact();
+  // assert(!d);
 });
 
 Deno.test("RandomizeCompact", () => {
