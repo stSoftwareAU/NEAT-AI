@@ -10,8 +10,14 @@ export class Synapse implements SynapseInternal {
 
   public tags?: TagInterface[];
 
+  /** create a random weight between -0.5 and 0.5 */
   public static randomWeight(): number {
-    return Math.random() * 0.2 - 0.1;
+    const epsilon = 1e-4;
+    let weight = Math.random() - 0.5;
+    if (Math.abs(weight) < epsilon) {
+      weight += epsilon * Math.sign(weight);
+    }
+    return weight;
   }
 
   constructor(
