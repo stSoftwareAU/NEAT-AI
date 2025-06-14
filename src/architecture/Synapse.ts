@@ -13,7 +13,8 @@ export class Synapse implements SynapseInternal {
   /** create a random weight between -0.5 and 0.5 */
   public static randomWeight(): number {
     const epsilon = 1e-4;
-    let weight = Math.random() - 0.5;
+    const scale = 5;
+    let weight = Math.random() * scale - scale / 2;
     if (Math.abs(weight) < epsilon) {
       weight += epsilon * Math.sign(weight);
     }

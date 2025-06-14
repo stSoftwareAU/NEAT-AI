@@ -398,105 +398,145 @@ export class Creature implements CreatureInternal {
    * @returns {Creature | undefined} A new compacted creature or undefined if no compaction occurred.
    */
   compact(): Creature | undefined {
-    const holdDebug = this.DEBUG;
-    this.DEBUG = false;
-    const json = this.exportJSON();
-    this.DEBUG = holdDebug;
-    const compactCreature = Creature.fromJSON(json);
-    compactCreature.fix();
+    const startExport = this.exportJSON();
 
-    let complete = false;
-    for (let changes = 0; complete === false; changes++) {
-      complete = true;
-      for (
-        let pos = compactCreature.input;
-        pos < compactCreature.neurons.length - compactCreature.output;
-        pos++
-      ) {
-        const fromList = compactCreature.outwardConnections(pos).filter(
-          (c: SynapseInternal) => {
-            return c.from !== c.to;
-          },
-        );
+    const compactCreature = JSON.parse(
+      JSON.stringify(startExport),
+    ) as CreatureExport;
 
-        if (fromList.length === 0) {
-          removeHiddenNeuron(compactCreature, pos);
-          complete = false;
-        } else {
-          const toList = compactCreature.inwardConnections(pos).filter(
-            (c: SynapseInternal) => {
-              return c.from !== c.to;
-            },
-          );
-          if (toList.length === 1) {
-            const fromList = compactCreature.outwardConnections(pos).filter(
-              (c: SynapseInternal) => {
-                return c.from !== c.to;
-              },
+    const neuronMap = new Map<string, typeof compactCreature.neurons[number]>();
+    compactCreature.neurons.forEach((neuron) =>
+      neuronMap.set(neuron.uuid, neuron)
+    );
+
+    const inwardConnections = new Map<string, SynapseExport[]>();
+    const outwardConnections = new Map<string, SynapseExport[]>();
+
+    compactCreature.synapses.forEach((synapse) => {
+      outwardConnections.set(
+        synapse.fromUUID,
+        (outwardConnections.get(synapse.fromUUID) || []).concat(synapse),
+      );
+      inwardConnections.set(
+        synapse.toUUID,
+        (inwardConnections.get(synapse.toUUID) || []).concat(synapse),
+      );
+    });
+
+    let didCompact = false;
+    let iterations = 0;
+    const maxIterations = 20;
+
+    while (iterations++ < maxIterations) {
+      let changed = false;
+
+      for (const neuron of compactCreature.neurons) {
+        if (neuron.type !== "hidden") continue;
+
+        const inConns = inwardConnections.get(neuron.uuid) || [];
+        const outConns = outwardConnections.get(neuron.uuid) || [];
+
+        if (inConns.length === 1 && outConns.length === 1) {
+          const [inConn] = inConns;
+          const [outConn] = outConns;
+
+          const fromNeuron = neuronMap.get(inConn.fromUUID);
+          const toNeuron = neuronMap.get(outConn.toUUID);
+
+          // Ensure the neurons and conditions are valid
+          if (
+            fromNeuron &&
+            toNeuron &&
+            neuron.squash === fromNeuron.squash &&
+            (neuron.squash === IDENTITY.NAME ||
+              neuron.squash === LOGISTIC.NAME) &&
+            inConn.fromUUID !== neuron.uuid &&
+            outConn.toUUID !== neuron.uuid
+          ) {
+            // Calculate new combined weight & bias
+            const combinedWeight = inConn.weight * outConn.weight;
+            assert(
+              Number.isFinite(combinedWeight),
+              "combinedWeight not finite",
             );
-            if (fromList.length === 1) {
-              const to = fromList[0].to;
-              const from = toList[0].from;
 
-              const fromSquash = compactCreature.neurons[from].squash;
-              if (
-                from > this.input &&
-                fromSquash ===
-                  compactCreature.neurons[pos].squash &&
-                (fromSquash === IDENTITY.NAME || fromSquash === LOGISTIC.NAME)
-              ) {
-                if (compactCreature.getSynapse(from, to) === null) {
-                  const weightA = fromList[0].weight * toList[0].weight;
-                  assert(Number.isFinite(weightA), "weightA is not finite");
+            const combinedBias = fromNeuron.bias * outConn.weight + neuron.bias;
+            assert(Number.isFinite(combinedBias), "combinedBias not finite");
 
-                  const tmpFromBias = compactCreature.neurons[from].bias;
-                  const tmpToBias = compactCreature.neurons[pos].bias;
-                  const biasA = tmpFromBias * toList[0].weight + tmpToBias;
-                  assert(Number.isFinite(biasA), "biasA is not finite");
+            // Update fromNeuron bias
+            fromNeuron.bias = combinedBias;
 
-                  compactCreature.neurons[from].bias = biasA;
+            // Remove old synapses
+            compactCreature.synapses = compactCreature.synapses.filter(
+              (s) => s !== inConn && s !== outConn,
+            );
 
-                  removeHiddenNeuron(compactCreature, pos);
-                  let adjustedTo = to;
-                  if (adjustedTo > pos) {
-                    adjustedTo--;
-                  }
+            // Add new synapse directly connecting fromNeuron to toNeuron
+            compactCreature.synapses.push({
+              weight: combinedWeight,
+              fromUUID: fromNeuron.uuid,
+              toUUID: toNeuron.uuid,
+            });
 
-                  compactCreature.connect(
-                    from,
-                    adjustedTo,
-                    weightA,
-                    fromList[0].type,
-                  );
+            // Remove neuron from neurons list
+            compactCreature.neurons = compactCreature.neurons.filter((n) =>
+              n.uuid !== neuron.uuid
+            );
+            neuronMap.delete(neuron.uuid);
 
-                  if (changes < 12) {
-                    complete = false;
-                  }
-                  break;
-                }
-              }
-            }
+            // Rebuild inward and outward maps after changes
+            inwardConnections.clear();
+            outwardConnections.clear();
+            compactCreature.synapses.forEach((synapse) => {
+              outwardConnections.set(
+                synapse.fromUUID,
+                (outwardConnections.get(synapse.fromUUID) || []).concat(
+                  synapse,
+                ),
+              );
+              inwardConnections.set(
+                synapse.toUUID,
+                (inwardConnections.get(synapse.toUUID) || []).concat(synapse),
+              );
+            });
+
+            changed = true;
+            didCompact = true;
+            break; // restart the loop after each mutation
           }
         }
+
+        // Remove neurons with no inbound and no outbound connections
+        if (
+          inConns.length === 0 && outConns.length === 0 &&
+          neuron.type === "hidden"
+        ) {
+          compactCreature.neurons = compactCreature.neurons.filter((n) =>
+            n.uuid !== neuron.uuid
+          );
+          neuronMap.delete(neuron.uuid);
+          changed = true;
+          didCompact = true;
+          break;
+        }
       }
+
+      if (!changed) break; // no more compacting possible
     }
 
-    const json2 = compactCreature.exportJSON();
-    if (JSON.stringify(json) !== JSON.stringify(json2)) {
+    // Verify if there are actual meaningful changes
+    if (
+      didCompact &&
+      JSON.stringify(startExport) !== JSON.stringify(compactCreature)
+    ) {
       addTag(compactCreature, "approach", "compact" as Approach);
       delete compactCreature.memetic;
       removeTag(compactCreature, "approach-logged");
-      addTag(compactCreature, "old-neurons", this.neurons.length.toString());
-      addTag(
-        compactCreature,
-        "old-synapses",
-        this.synapses.length.toString(),
-      );
 
-      return compactCreature;
-    } else {
-      return undefined;
+      return Creature.fromJSON(compactCreature);
     }
+
+    return undefined;
   }
 
   /**
