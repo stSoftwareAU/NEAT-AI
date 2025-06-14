@@ -515,7 +515,9 @@ export class Creature implements CreatureInternal {
       delete compactCreature.memetic;
       removeTag(compactCreature, "approach-logged");
 
-      return Creature.fromJSON(compactCreature);
+      const c = Creature.fromJSON(compactCreature);
+
+      return c;
     }
 
     return undefined;

@@ -43,7 +43,7 @@ Deno.test("removeDanglingHidden", () => {
     output: 2,
   };
   const a = Creature.fromJSON(json);
-
+  a.fix();
   const b = a.compact();
   assert(b, "should have compacted the network");
   b.validate();
