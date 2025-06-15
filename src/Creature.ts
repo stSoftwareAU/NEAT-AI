@@ -1674,44 +1674,6 @@ export class Creature implements CreatureInternal {
     if (validate) {
       creatureValidate(this);
     }
-
-    // ZZZZ
-
-    lastFrom = -1;
-    lastTo = -1;
-
-    for (let indx = 0; indx < this.synapses.length; indx++) {
-      const c = this.synapses[indx];
-      const toNode = this.neurons[c.to];
-
-      if (toNode.type === "input") {
-        throw new Error(indx + ") connection points to an input node");
-      }
-
-      if (c.from < lastFrom) {
-        throw new Error(indx + ") synapses not sorted");
-      } else if (c.from > lastFrom) {
-        lastTo = -1;
-      }
-
-      if (c.from === lastFrom && c.to <= lastTo) {
-        Deno.writeTextFileSync(
-          ".not-sorted-synapses.json",
-          JSON.stringify(this.synapses, null, 1),
-        );
-        this.DEBUG = false;
-        Deno.writeTextFileSync(
-          ".not-sorted.json",
-          JSON.stringify(this.exportJSON(), null, 1),
-        );
-        throw new Error(
-          `${indx}) synapses not sorted ${c.from}->${c.to} lastFrom: ${lastFrom}, lastTo: ${lastTo}`,
-        );
-      }
-
-      lastFrom = c.from;
-      lastTo = c.to;
-    }
   }
 
   /**
