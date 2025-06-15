@@ -184,6 +184,13 @@ export function compactCreature(
       compactCreature.input - compactCreature.output;
     addTag(compactCreature, "old-neurons", oldNeurons.toString());
     const c = Creature.fromJSON(compactCreature);
+    try {
+      c.validate();
+    } catch (e) {
+      console.error("Error validating compacted creature", e);
+      c.fix();
+      c.validate();
+    }
 
     return c;
   }
