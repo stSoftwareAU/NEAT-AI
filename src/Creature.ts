@@ -496,18 +496,6 @@ export class Creature implements CreatureInternal {
           break; // restart the loop after each mutation
         }
       }
-
-      // if (
-      //   inConns.length === 0 && outConns.length === 0 &&
-      //   neuron.type === "hidden"
-      // ) {
-      //   compactCreature.neurons = compactCreature.neurons.filter((n) =>
-      //     n.uuid !== neuron.uuid
-      //   );
-      //   neuronMap.delete(neuron.uuid);
-      //   didCompact = true;
-      //   break;
-      // }
     }
 
     if (feedbackLoop) {
