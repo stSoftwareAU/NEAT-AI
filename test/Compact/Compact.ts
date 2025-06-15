@@ -245,6 +245,9 @@ Deno.test("RandomizeCompact", () => {
 });
 
 Deno.test("CompactSelf", () => {
+  const directory = ".test/CompactSelf";
+  Deno.mkdirSync(directory, { recursive: true });
+
   const json: CreatureInternal = {
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
@@ -284,7 +287,10 @@ Deno.test("CompactSelf", () => {
   const input = new Float32Array([0.1, 0.2, 0.3]);
   const aOut = a.activate(input);
 
-  Deno.writeTextFileSync(".a.json", JSON.stringify(a.internalJSON(), null, 2));
+  Deno.writeTextFileSync(
+    `${directory}/0-start.json`,
+    JSON.stringify(a.exportJSON(), null, 1),
+  );
 
   const aOut2 = a.activate(input);
 
@@ -295,9 +301,10 @@ Deno.test("CompactSelf", () => {
 
   b.validate();
   Deno.writeTextFileSync(
-    ".b.json",
-    JSON.stringify(b.internalJSON(), null, 1),
+    `${directory}/1-end.json`,
+    JSON.stringify(b.exportJSON(), null, 1),
   );
+
   const endNodes = b.neurons.length;
   const endConnections = b.synapses.length;
 

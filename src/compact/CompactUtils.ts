@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
@@ -24,9 +25,7 @@ export function createConstantOne(creature: Creature, count: number) {
       }
     }
     if (n.uuid === uuid) {
-      if (n.type !== "constant") {
-        throw new Error(`Must be a constant was: ${n.type}`);
-      }
+      assert(n.type === "constant", "Must be a constant");
       foundConstant = n;
       foundConstant.bias = 1;
       if (firstHiddenIndx === -1) {
@@ -96,18 +95,15 @@ export function createConstantOne(creature: Creature, count: number) {
  *  Removes a node from the creature
  */
 export function removeHiddenNeuron(creature: Creature, indx: number) {
-  if (Number.isInteger(indx) === false || indx < 0) {
-    throw new Error("Must be a positive integer was: " + indx);
-  }
+  assert(indx >= 0, "Must be a positive integer");
 
   delete creature.memetic;
   const neuron = creature.neurons[indx];
 
-  if (neuron.type !== "hidden" && neuron.type !== "constant") {
-    throw new Error(
-      `${indx}) Node must be a 'hidden' type was: ${neuron.type}`,
-    );
-  }
+  assert(
+    neuron.type === "constant" || neuron.type === "hidden",
+    "Node must be a 'constant' or 'hidden' type",
+  );
   const left = creature.neurons.slice(0, indx);
   const right = creature.neurons.slice(indx + 1);
   right.forEach((item) => {

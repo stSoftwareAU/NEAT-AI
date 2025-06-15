@@ -1318,19 +1318,27 @@ export class Creature implements CreatureInternal {
     const minTo = this.input;
 
     const tmpSynapses: Synapse[] = [];
+    let lastFrom = -1;
+    let lastTo = -1;
     this.synapses.forEach((synapse) => {
-      if (synapse.to > maxTo) {
-        console.debug("Ignoring connection to above max", maxTo, synapse);
-      } else if (synapse.to < minTo) {
-        console.debug("Ignoring connection to below min", minTo, synapse);
-      } else if (synapse.weight && Number.isFinite(synapse.weight)) {
-        /** Zero weight may as well be removed */
-        tmpSynapses.push(synapse as Synapse);
+      if (synapse.from === lastFrom && synapse.to === lastTo) {
+        console.warn("duplicate synapse " + synapse.from + "->" + synapse.to);
       } else {
-        if (this.neurons[synapse.to].type === "output") {
-          /** Don't remove the last one for an output neuron */
-          if (this.inwardConnections(synapse.to).length === 1) {
-            tmpSynapses.push(synapse as Synapse);
+        lastFrom = synapse.from;
+        lastTo = synapse.to;
+        if (synapse.to > maxTo) {
+          console.debug("Ignoring connection to above max", maxTo, synapse);
+        } else if (synapse.to < minTo) {
+          console.debug("Ignoring connection to below min", minTo, synapse);
+        } else if (synapse.weight && Number.isFinite(synapse.weight)) {
+          /** Zero weight may as well be removed */
+          tmpSynapses.push(synapse as Synapse);
+        } else {
+          if (this.neurons[synapse.to].type === "output") {
+            /** Don't remove the last one for an output neuron */
+            if (this.inwardConnections(synapse.to).length === 1) {
+              tmpSynapses.push(synapse as Synapse);
+            }
           }
         }
       }
@@ -1657,10 +1665,10 @@ export class Creature implements CreatureInternal {
 
     // Perform sorting only if needed
     if (!isSorted) {
-      this.synapses.sort((
-        a,
-        b,
-      ) => (a.from === b.from ? a.to - b.to : a.from - b.from));
+      this.synapses.sort((a, b) => {
+        if (a.from !== b.from) return a.from - b.from;
+        return a.to - b.to;
+      });
     }
 
     if (validate) {

@@ -263,8 +263,17 @@ export function creatureValidate(
       lastTo = -1;
     }
 
-    if (c.from === lastFrom && c.to <= lastTo) {
-      throw new Error(indx + ") synapses not sorted " + c.from + "->" + c.to);
+    if (c.from === lastFrom) {
+      if (c.to < lastTo) {
+        throw new Error(
+          indx + ") synapses not sorted " + c.from + "->" + c.to +
+            " last to: " + lastTo,
+        );
+      } else if (c.to === lastTo) {
+        throw new Error(
+          indx + ") duplicate self connection synapse " + c.from + "->" + c.to,
+        );
+      }
     }
 
     if (c.from > c.to) {
@@ -375,10 +384,12 @@ export function creatureValidate(
 
 function debugWrite(creature: Creature) {
   if (creature.DEBUG) {
+    const directory = ".test";
+    Deno.mkdirSync(directory, { recursive: true });
     try {
       creature.DEBUG = false;
       Deno.writeTextFileSync(
-        ".validate.json",
+        `${directory}/creatureValidate.json`,
         JSON.stringify(creature.exportJSON(), null, 1),
       );
     } finally {
