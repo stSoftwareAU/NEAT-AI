@@ -28,9 +28,9 @@ This project is a unique implementation of a neural network based on the NEAT (N
    quick and easy deployment of the trained model.
 
 5. **Unique Squash Functions**: The neural network supports unique squash
-   functions such as IF, MAX and MIN. These functions provide more
-   options for the activation function, which can lead to different network
-   behaviours, offering a wider range of potential solutions. More about
+   functions such as IF, MAX and MIN. These functions provide more options for
+   the activation function, which can lead to different network behaviours,
+   offering a wider range of potential solutions. More about
    [Activation Functions](https://en.wikipedia.org/wiki/Activation_function).
 
 6. **Neuron Pruning**: Neurons whose activations don't vary during training are
