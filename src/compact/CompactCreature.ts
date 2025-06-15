@@ -188,8 +188,16 @@ export function compactCreature(
       c.validate();
     } catch (e) {
       console.error("Error validating compacted creature", e);
+      Deno.writeTextFileSync(
+        ".compacted-error.json",
+        JSON.stringify(compactCreature, null, 1),
+      );
       c.fix();
       c.validate();
+      Deno.writeTextFileSync(
+        ".compacted-fixed.json",
+        JSON.stringify(c.exportJSON(), null, 1),
+      );
     }
 
     return c;
