@@ -263,8 +263,12 @@ export function creatureValidate(
       lastTo = -1;
     }
 
-    if (c.from === lastFrom && c.to <= lastTo) {
-      throw new Error(indx + ") synapses not sorted " + c.from + "->" + c.to);
+    if (c.from === lastFrom) {
+      if( c.to < lastTo){
+        throw new Error(indx + ") synapses not sorted " + c.from + "->" + c.to + " last to: " + lastTo);
+      } else if( c.to === lastTo){
+        throw new Error(indx + ") duplicate self connection synapse " + c.from + "->" + c.to);
+      }
     }
 
     if (c.from > c.to) {

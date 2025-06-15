@@ -1318,7 +1318,15 @@ export class Creature implements CreatureInternal {
     const minTo = this.input;
 
     const tmpSynapses: Synapse[] = [];
+    let lastFrom = -1;
+    let lastTo = -1;
     this.synapses.forEach((synapse) => {
+      if( synapse.from === lastFrom && synapse.to === lastTo){
+        console.warn("duplicate synapse " + synapse.from + "->" + synapse.to);
+      }
+      else {
+      lastFrom = synapse.from;
+      lastTo = synapse.to;
       if (synapse.to > maxTo) {
         console.debug("Ignoring connection to above max", maxTo, synapse);
       } else if (synapse.to < minTo) {
@@ -1334,6 +1342,7 @@ export class Creature implements CreatureInternal {
           }
         }
       }
+    }
     });
 
     this.synapses = tmpSynapses;
@@ -1657,15 +1666,47 @@ export class Creature implements CreatureInternal {
 
     // Perform sorting only if needed
     if (!isSorted) {
-      this.synapses.sort((
-        a,
-        b,
-      ) => (a.from === b.from ? a.to - b.to : a.from - b.from));
+        this.synapses.sort((a, b) => {
+          if (a.from !== b.from) return a.from - b.from;
+          return a.to - b.to;
+        });
+      
     }
-
+    
     if (validate) {
       creatureValidate(this);
     }
+
+    // ZZZZ
+
+  lastFrom = -1;
+  lastTo = -1;
+  
+for (let indx = 0; indx < this.synapses.length; indx++) {
+  const c = this.synapses[indx];
+    const toNode = this.neurons[c.to];
+
+    if (toNode.type === "input") {
+      throw new Error(indx + ") connection points to an input node");
+    }
+
+    if (c.from < lastFrom) {
+      throw new Error(indx + ") synapses not sorted");
+    } else if (c.from > lastFrom) {
+      lastTo = -1;
+    }
+
+    if (c.from === lastFrom && c.to <= lastTo) {
+      Deno.writeTextFileSync(".not-sorted-synapses.json", JSON.stringify(this.synapses, null, 1));
+      this.DEBUG=false;
+      Deno.writeTextFileSync(".not-sorted.json", JSON.stringify(this.exportJSON(), null, 1));
+      throw new Error(`${indx}) synapses not sorted ${c.from}->${c.to} lastFrom: ${lastFrom}, lastTo: ${lastTo}`);
+    }
+
+
+    lastFrom = c.from;
+    lastTo = c.to;
+}
   }
 
   /**

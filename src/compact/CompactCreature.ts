@@ -183,6 +183,10 @@ export function compactCreature(
     const oldNeurons = compactCreature.neurons.length -
       compactCreature.input - compactCreature.output;
     addTag(compactCreature, "old-neurons", oldNeurons.toString());
+    Deno.writeTextFileSync(
+      ".compacted-before.json",
+      JSON.stringify(compactCreature, null, 1),
+    );
     const c = Creature.fromJSON(compactCreature);
     try {
       c.validate();
