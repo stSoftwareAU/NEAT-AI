@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, fail } from "@std/assert";
+import { assert, assertAlmostEquals, assertFalse, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type {
@@ -90,8 +90,11 @@ Deno.test("removeFeedbackLoop", () => {
   a.validate();
 
   const b = a.compact(true);
-  assert(b, "should have removed feedback loop");
-  b.validate();
+  assertFalse(b, "should not have removed feedback loop");
+
+  const c = a.compact(false);
+  assert(c, "should have removed feedback loop");
+  c.validate();
 });
 
 Deno.test("CompactSimple", () => {

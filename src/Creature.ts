@@ -498,7 +498,8 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    if (feedbackLoop) {
+    /** If not feedback loop, remove synapses that are going backwards */
+    if (!feedbackLoop) {
       // Create a map of neuron UUIDs to their indices for quick lookup
       const neuronIndexMap = new Map<string, number>();
       compactCreature.neurons.forEach((neuron, index) => {
