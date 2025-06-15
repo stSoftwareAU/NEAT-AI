@@ -71,6 +71,12 @@ export function compactCreature(
         inConn.fromUUID !== neuron.uuid &&
         outConn.toUUID !== neuron.uuid
       ) {
+        const existingSynapse = compactCreature.synapses.find(
+          (s) => s.fromUUID === fromNeuron.uuid && s.toUUID === toNeuron.uuid,
+        );
+
+        if (existingSynapse) continue; // Skip compaction if synapse already exists
+
         // Correct bias accumulation using neuron.bias multiplied by outgoing weight
         const combinedWeight = inConn.weight * outConn.weight;
         assert(Number.isFinite(combinedWeight), "combinedWeight not finite");
@@ -183,26 +189,8 @@ export function compactCreature(
     const oldNeurons = compactCreature.neurons.length -
       compactCreature.input - compactCreature.output;
     addTag(compactCreature, "old-neurons", oldNeurons.toString());
-    Deno.writeTextFileSync(
-      ".compacted-before.json",
-      JSON.stringify(compactCreature, null, 1),
-    );
+
     const c = Creature.fromJSON(compactCreature);
-    try {
-      c.validate();
-    } catch (e) {
-      console.error("Error validating compacted creature", e);
-      Deno.writeTextFileSync(
-        ".compacted-error.json",
-        JSON.stringify(compactCreature, null, 1),
-      );
-      c.fix();
-      c.validate();
-      Deno.writeTextFileSync(
-        ".compacted-fixed.json",
-        JSON.stringify(c.exportJSON(), null, 1),
-      );
-    }
 
     return c;
   }

@@ -1321,28 +1321,27 @@ export class Creature implements CreatureInternal {
     let lastFrom = -1;
     let lastTo = -1;
     this.synapses.forEach((synapse) => {
-      if( synapse.from === lastFrom && synapse.to === lastTo){
+      if (synapse.from === lastFrom && synapse.to === lastTo) {
         console.warn("duplicate synapse " + synapse.from + "->" + synapse.to);
-      }
-      else {
-      lastFrom = synapse.from;
-      lastTo = synapse.to;
-      if (synapse.to > maxTo) {
-        console.debug("Ignoring connection to above max", maxTo, synapse);
-      } else if (synapse.to < minTo) {
-        console.debug("Ignoring connection to below min", minTo, synapse);
-      } else if (synapse.weight && Number.isFinite(synapse.weight)) {
-        /** Zero weight may as well be removed */
-        tmpSynapses.push(synapse as Synapse);
       } else {
-        if (this.neurons[synapse.to].type === "output") {
-          /** Don't remove the last one for an output neuron */
-          if (this.inwardConnections(synapse.to).length === 1) {
-            tmpSynapses.push(synapse as Synapse);
+        lastFrom = synapse.from;
+        lastTo = synapse.to;
+        if (synapse.to > maxTo) {
+          console.debug("Ignoring connection to above max", maxTo, synapse);
+        } else if (synapse.to < minTo) {
+          console.debug("Ignoring connection to below min", minTo, synapse);
+        } else if (synapse.weight && Number.isFinite(synapse.weight)) {
+          /** Zero weight may as well be removed */
+          tmpSynapses.push(synapse as Synapse);
+        } else {
+          if (this.neurons[synapse.to].type === "output") {
+            /** Don't remove the last one for an output neuron */
+            if (this.inwardConnections(synapse.to).length === 1) {
+              tmpSynapses.push(synapse as Synapse);
+            }
           }
         }
       }
-    }
     });
 
     this.synapses = tmpSynapses;
@@ -1666,47 +1665,53 @@ export class Creature implements CreatureInternal {
 
     // Perform sorting only if needed
     if (!isSorted) {
-        this.synapses.sort((a, b) => {
-          if (a.from !== b.from) return a.from - b.from;
-          return a.to - b.to;
-        });
-      
+      this.synapses.sort((a, b) => {
+        if (a.from !== b.from) return a.from - b.from;
+        return a.to - b.to;
+      });
     }
-    
+
     if (validate) {
       creatureValidate(this);
     }
 
     // ZZZZ
 
-  lastFrom = -1;
-  lastTo = -1;
-  
-for (let indx = 0; indx < this.synapses.length; indx++) {
-  const c = this.synapses[indx];
-    const toNode = this.neurons[c.to];
+    lastFrom = -1;
+    lastTo = -1;
 
-    if (toNode.type === "input") {
-      throw new Error(indx + ") connection points to an input node");
+    for (let indx = 0; indx < this.synapses.length; indx++) {
+      const c = this.synapses[indx];
+      const toNode = this.neurons[c.to];
+
+      if (toNode.type === "input") {
+        throw new Error(indx + ") connection points to an input node");
+      }
+
+      if (c.from < lastFrom) {
+        throw new Error(indx + ") synapses not sorted");
+      } else if (c.from > lastFrom) {
+        lastTo = -1;
+      }
+
+      if (c.from === lastFrom && c.to <= lastTo) {
+        Deno.writeTextFileSync(
+          ".not-sorted-synapses.json",
+          JSON.stringify(this.synapses, null, 1),
+        );
+        this.DEBUG = false;
+        Deno.writeTextFileSync(
+          ".not-sorted.json",
+          JSON.stringify(this.exportJSON(), null, 1),
+        );
+        throw new Error(
+          `${indx}) synapses not sorted ${c.from}->${c.to} lastFrom: ${lastFrom}, lastTo: ${lastTo}`,
+        );
+      }
+
+      lastFrom = c.from;
+      lastTo = c.to;
     }
-
-    if (c.from < lastFrom) {
-      throw new Error(indx + ") synapses not sorted");
-    } else if (c.from > lastFrom) {
-      lastTo = -1;
-    }
-
-    if (c.from === lastFrom && c.to <= lastTo) {
-      Deno.writeTextFileSync(".not-sorted-synapses.json", JSON.stringify(this.synapses, null, 1));
-      this.DEBUG=false;
-      Deno.writeTextFileSync(".not-sorted.json", JSON.stringify(this.exportJSON(), null, 1));
-      throw new Error(`${indx}) synapses not sorted ${c.from}->${c.to} lastFrom: ${lastFrom}, lastTo: ${lastTo}`);
-    }
-
-
-    lastFrom = c.from;
-    lastTo = c.to;
-}
   }
 
   /**
