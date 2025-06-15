@@ -1,7 +1,10 @@
-import { assert, assertAlmostEquals, fail } from "@std/assert";
+import { assert, assertAlmostEquals, assertFalse, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type {
+  CreatureExport,
+  CreatureInternal,
+} from "../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -43,10 +46,55 @@ Deno.test("removeDanglingHidden", () => {
     output: 2,
   };
   const a = Creature.fromJSON(json);
-  a.fix();
-  const b = a.compact();
+
+  const b = a.compact(false);
   assert(b, "should have compacted the network");
   b.validate();
+});
+
+Deno.test("removeFeedbackLoop", () => {
+  const json: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-3", squash: "Cosine", bias: 2 },
+      { type: "hidden", uuid: "hidden-4", squash: "CLIPPED", bias: 2 },
+
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+      {
+        squash: "IDENTITY",
+        uuid: "output-1",
+        bias: 0,
+        type: "output",
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
+      { weight: 0.3, fromUUID: "input-1", toUUID: "hidden-3" },
+
+      { toUUID: "hidden-4", weight: -0.5, fromUUID: "hidden-3" },
+      { fromUUID: "hidden-4", toUUID: "output-0", weight: 0.6 },
+
+      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
+      { fromUUID: "hidden-4", toUUID: "hidden-4", weight: -0.7 },
+      { fromUUID: "output-0", toUUID: "hidden-4", weight: -0.2 },
+      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
+    ],
+    input: 3,
+    output: 2,
+  };
+  const a = Creature.fromJSON(json);
+  a.validate();
+
+  const b = a.compact(true);
+  assertFalse(b, "should not have removed feedback loop");
+
+  const c = a.compact(false);
+  assert(c, "should have removed feedback loop");
+  c.validate();
 });
 
 Deno.test("CompactSimple", () => {
@@ -94,7 +142,7 @@ Deno.test("CompactSimple", () => {
   assertAlmostEquals(midOut[0], startOut[0], 0.001);
   assertAlmostEquals(midOut[1], startOut[1], 0.001);
 
-  const c = a.compact();
+  const c = a.compact(false);
 
   assert(c, "should have compacted the network");
 
@@ -159,7 +207,7 @@ Deno.test("RandomizeCompact", () => {
       `${traceDir}/a.json`,
       JSON.stringify(a.internalJSON(), null, 1),
     );
-    const b = a.compact();
+    const b = a.compact(false);
     if (!b) {
       console.info("Did not compact");
       break;
@@ -181,9 +229,9 @@ Deno.test("RandomizeCompact", () => {
       assert(endNodes <= startNodes);
       assert(endConnections <= startConnections);
 
-      const c = b.compact();
+      const c = b.compact(false);
       if (c) {
-        const d = c.compact();
+        const d = c.compact(false);
         if (!d) break;
 
         if (attempts > 13) {
@@ -241,7 +289,7 @@ Deno.test("CompactSelf", () => {
   const aOut2 = a.activate(input);
 
   assertAlmostEquals(aOut[0], aOut2[0], 0.001);
-  const b = a.compact();
+  const b = a.compact(false);
 
   assert(b, "should have compacted the network");
 
@@ -259,6 +307,6 @@ Deno.test("CompactSelf", () => {
   assert(endNodes < startNodes);
   assert(endConnections < startConnections);
 
-  const c = b.compact();
+  const c = b.compact(false);
   assert(!c);
 });

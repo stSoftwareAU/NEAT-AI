@@ -50,6 +50,7 @@ Deno.test("tune", () => {
   const fineTuned = fineTuneImprovement(
     fittest,
     previousFittest,
+    false,
     10,
   );
 
@@ -63,6 +64,7 @@ Deno.test("tune", () => {
   const fineTuned2 = fineTuneImprovement(
     fittest,
     previousFittest,
+    false,
     3,
   );
 
@@ -74,6 +76,7 @@ Deno.test("tune", () => {
   const fineTuned3 = fineTuneImprovement(
     fittest,
     previousFittest,
+    false,
     4,
   );
 
@@ -126,6 +129,7 @@ Deno.test("many", () => {
   const fineTuned = fineTuneImprovement(
     fittest,
     previousFittest,
+    false,
     7,
   );
 

@@ -3,12 +3,7 @@ import { fail } from "@std/assert/fail";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
-import {
-  addTag,
-  getTag,
-  removeTag,
-  type TagInterface,
-} from "@stsoftware/tags/mod";
+import { getTag, type TagInterface } from "@stsoftware/tags/mod";
 import { Mutation } from "../mod.ts";
 import type {
   CreatureExport,
@@ -16,6 +11,7 @@ import type {
   CreatureTrace,
 } from "./architecture/CreatureInterfaces.ts";
 import { CreatureState } from "./architecture/CreatureState.ts";
+import { CreatureUtil } from "./architecture/CreatureUtils.ts";
 import { creatureValidate } from "./architecture/CreatureValidate.ts";
 import {
   type DataRecordInterface,
@@ -37,20 +33,19 @@ import type {
 } from "./architecture/SynapseInterfaces.ts";
 import { dataFiles } from "./architecture/Training.ts";
 import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
+import { compactCreature } from "./compact/CompactCreature.ts";
 import { removeHiddenNeuron } from "./compact/CompactUtils.ts";
 import { createNeatConfig } from "./config/NeatConfig.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
 import { type CostInterface, Costs } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
-import { IDENTITY } from "./methods/activations/types/IDENTITY.ts";
-import { LOGISTIC } from "./methods/activations/types/LOGISTIC.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { AddBackCon } from "./mutate/AddBackCon.ts";
 import { AddConnection } from "./mutate/AddConnection.ts";
 import { AddNeuron } from "./mutate/AddNeuron.ts";
 import { AddSelfCon } from "./mutate/AddSelfCon.ts";
-import { ModActivation as ModSquash } from "./mutate/ModSquash.ts";
 import { ModBias } from "./mutate/ModBias.ts";
+import { ModActivation as ModSquash } from "./mutate/ModSquash.ts";
 import { ModWeight } from "./mutate/ModWeight.ts";
 import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
 import { SubBackCon } from "./mutate/SubBackCon.ts";
@@ -58,7 +53,6 @@ import { SubConnection } from "./mutate/SubConnection.ts";
 import { SubNeuron } from "./mutate/SubNeuron.ts";
 import { SubSelfCon } from "./mutate/SubSelfCon.ts";
 import { SwapNeurons } from "./mutate/SwapNeurons.ts";
-import type { Approach } from "./NEAT/LogApproach.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import { makeCreatureActivationFunction } from "./optimize/MakeCreatureActivationFunction.ts";
 import {
@@ -67,7 +61,6 @@ import {
 } from "./propagate/BackPropagation.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
-import { CreatureUtil } from "./architecture/CreatureUtils.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -397,130 +390,8 @@ export class Creature implements CreatureInternal {
    *
    * @returns {Creature | undefined} A new compacted creature or undefined if no compaction occurred.
    */
-  compact(): Creature | undefined {
-    const startExport = this.exportJSON();
-
-    const compactCreature = JSON.parse(
-      JSON.stringify(startExport),
-    ) as CreatureExport;
-
-    const neuronMap = new Map<string, typeof compactCreature.neurons[number]>();
-    compactCreature.neurons.forEach((neuron) =>
-      neuronMap.set(neuron.uuid, neuron)
-    );
-
-    const inwardConnections = new Map<string, SynapseExport[]>();
-    const outwardConnections = new Map<string, SynapseExport[]>();
-
-    compactCreature.synapses.forEach((synapse) => {
-      outwardConnections.set(
-        synapse.fromUUID,
-        (outwardConnections.get(synapse.fromUUID) || []).concat(synapse),
-      );
-      inwardConnections.set(
-        synapse.toUUID,
-        (inwardConnections.get(synapse.toUUID) || []).concat(synapse),
-      );
-    });
-
-    let didCompact = false;
-
-    for (const neuron of compactCreature.neurons) {
-      if (neuron.type !== "hidden") continue;
-
-      const inConns = inwardConnections.get(neuron.uuid) || [];
-      const outConns = outwardConnections.get(neuron.uuid) || [];
-
-      if (inConns.length === 1 && outConns.length === 1) {
-        const [inConn] = inConns;
-        const [outConn] = outConns;
-
-        const fromNeuron = neuronMap.get(inConn.fromUUID);
-        const toNeuron = neuronMap.get(outConn.toUUID);
-
-        if (
-          fromNeuron &&
-          toNeuron &&
-          neuron.squash === fromNeuron.squash &&
-          (neuron.squash === IDENTITY.NAME ||
-            neuron.squash === LOGISTIC.NAME) &&
-          inConn.fromUUID !== neuron.uuid &&
-          outConn.toUUID !== neuron.uuid
-        ) {
-          // Correct bias accumulation using neuron.bias multiplied by outgoing weight
-          const combinedWeight = inConn.weight * outConn.weight;
-          assert(Number.isFinite(combinedWeight), "combinedWeight not finite");
-
-          const combinedBias = neuron.bias + inConn.weight * fromNeuron.bias;
-          assert(Number.isFinite(combinedBias), "combinedBias not finite");
-
-          // Update toNeuron bias correctly to reflect chain accumulation
-          neuron.bias = combinedBias;
-
-          // Remove old synapses
-          compactCreature.synapses = compactCreature.synapses.filter(
-            (s) => s !== inConn && s !== outConn,
-          );
-
-          // Add new synapse directly connecting fromNeuron to toNeuron
-          compactCreature.synapses.push({
-            weight: combinedWeight,
-            fromUUID: fromNeuron.uuid,
-            toUUID: toNeuron.uuid,
-          });
-
-          // Remove neuron from neurons list
-          compactCreature.neurons = compactCreature.neurons.filter((n) =>
-            n.uuid !== neuron.uuid
-          );
-          neuronMap.delete(neuron.uuid);
-
-          // Rebuild inward and outward maps after changes
-          inwardConnections.clear();
-          outwardConnections.clear();
-          compactCreature.synapses.forEach((synapse) => {
-            outwardConnections.set(
-              synapse.fromUUID,
-              (outwardConnections.get(synapse.fromUUID) || []).concat(synapse),
-            );
-            inwardConnections.set(
-              synapse.toUUID,
-              (inwardConnections.get(synapse.toUUID) || []).concat(synapse),
-            );
-          });
-
-          didCompact = true;
-          break; // restart the loop after each mutation
-        }
-      }
-
-      if (
-        inConns.length === 0 && outConns.length === 0 &&
-        neuron.type === "hidden"
-      ) {
-        compactCreature.neurons = compactCreature.neurons.filter((n) =>
-          n.uuid !== neuron.uuid
-        );
-        neuronMap.delete(neuron.uuid);
-        didCompact = true;
-        break;
-      }
-    }
-
-    if (
-      didCompact &&
-      JSON.stringify(startExport) !== JSON.stringify(compactCreature)
-    ) {
-      addTag(compactCreature, "approach", "compact" as Approach);
-      delete compactCreature.memetic;
-      removeTag(compactCreature, "approach-logged");
-
-      const c = Creature.fromJSON(compactCreature);
-
-      return c;
-    }
-
-    return undefined;
+  compact(feedbackLoop: boolean): Creature | undefined {
+    return compactCreature(this, feedbackLoop);
   }
 
   /**
@@ -1592,7 +1463,7 @@ export class Creature implements CreatureInternal {
       if (n.type !== "input") {
         const indx = n.index;
 
-        const traceNeuron: NeuronExport = json
+        const traceNeuron: NeuronTrace = json
           .neurons[exportIndex] as NeuronTrace;
 
         if (n.type !== "constant") {

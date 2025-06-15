@@ -95,6 +95,7 @@ Deno.test("FineTune-missing synapses", () => {
   const tunedCreatures = fineTuneImprovement(
     fittest,
     previous,
+    false,
     3,
   );
 

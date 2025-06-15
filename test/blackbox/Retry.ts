@@ -66,6 +66,7 @@ Deno.test("retry", () => {
   const population = fineTuneImprovement(
     fittest,
     previous,
+    false,
   );
 
   assert(population.length > 0);
@@ -83,7 +84,7 @@ Deno.test("retry", () => {
     }
   });
 
-  const retryPopulation = retry(population, "FORWARD");
+  const retryPopulation = retry(population, false, "FORWARD");
 
   assertEquals(retryPopulation.length, 2);
 });

@@ -264,7 +264,7 @@ export function creatureValidate(
     }
 
     if (c.from === lastFrom && c.to <= lastTo) {
-      throw new Error(indx + ") synapses not sorted");
+      throw new Error(indx + ") synapses not sorted " + c.from + "->" + c.to);
     }
 
     if (c.from > c.to) {
