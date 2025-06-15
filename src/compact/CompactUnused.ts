@@ -100,7 +100,8 @@ export function compactUnused(
     addTag(compacted, "approach", "compact" as Approach);
     delete compacted.memetic;
     removeTag(compacted, "approach-logged");
-    addTag(compacted, "old-neurons", clean.neurons.length.toString());
+    const oldNeurons = clean.neurons.length - clean.input - clean.output;
+    addTag(compacted, "old-neurons", oldNeurons.toString());
     addTag(
       compacted,
       "old-synapses",

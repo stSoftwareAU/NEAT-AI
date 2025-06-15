@@ -234,6 +234,7 @@ function tuneRandomize(
 export function fineTuneImprovement(
   fittest: Creature,
   previousFittest: Creature | null,
+  feedbackLoop: boolean,
   popSize = 10,
   backtrack = false,
 ) {
@@ -254,7 +255,7 @@ export function fineTuneImprovement(
   UUIDs.add(fittestUUID);
 
   const fineTuned: Creature[] = [];
-  const compactNetwork = fittest.compact();
+  const compactNetwork = fittest.compact(feedbackLoop);
   if (compactNetwork) {
     const compactUUID = CreatureUtil.makeUUID(compactNetwork);
 

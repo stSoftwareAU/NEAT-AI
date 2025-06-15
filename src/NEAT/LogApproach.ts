@@ -107,8 +107,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
         case "compact": {
           const oldNeuronsTxt = getTag(fittest, "old-neurons");
           assert(oldNeuronsTxt, "Old neurons must be defined");
-          const oldNeurons = Number.parseInt(oldNeuronsTxt) -
-            fittest.input - fittest.output;
+          const oldNeurons = Number.parseInt(oldNeuronsTxt);
           console.info(
             "Compacting increased fitness by",
             fScore - pScore,

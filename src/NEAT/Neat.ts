@@ -308,12 +308,14 @@ export class Neat {
       const backtracked = fineTuneImprovement(
         creature,
         trainedCreature,
+        this.config.feedbackLoop,
         1,
         true,
       );
       const forward = fineTuneImprovement(
         creature,
         trainedCreature,
+        this.config.feedbackLoop,
         1,
         false,
       );

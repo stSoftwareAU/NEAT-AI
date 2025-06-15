@@ -66,6 +66,7 @@ Deno.test("memetic preserved", () => {
   const population = fineTuneImprovement(
     fittest,
     previous,
+    false,
   );
 
   assert(population.length > 0);

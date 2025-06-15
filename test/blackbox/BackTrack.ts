@@ -67,6 +67,7 @@ Deno.test("backtrack", () => {
   const population = fineTuneImprovement(
     fittest,
     previous,
+    false,
   );
 
   assert(population.length > 0);
@@ -84,7 +85,7 @@ Deno.test("backtrack", () => {
     }
   });
 
-  const backtrackPopulation = retry(population, "BACKWARDS");
+  const backtrackPopulation = retry(population, false, "BACKWARDS");
 
   assertEquals(backtrackPopulation.length, 2);
 

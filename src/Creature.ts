@@ -397,14 +397,17 @@ export class Creature implements CreatureInternal {
    *
    * @returns {Creature | undefined} A new compacted creature or undefined if no compaction occurred.
    */
-  compact(): Creature | undefined {
+  compact(feedbackLoop: boolean): Creature | undefined {
+    const holdDebug = this.DEBUG;
+    this.DEBUG = false;
     const startExport = this.exportJSON();
+    this.DEBUG = holdDebug;
 
     const compactCreature = JSON.parse(
       JSON.stringify(startExport),
     ) as CreatureExport;
 
-    const neuronMap = new Map<string, typeof compactCreature.neurons[number]>();
+    const neuronMap = new Map<string, NeuronExport>();
     compactCreature.neurons.forEach((neuron) =>
       neuronMap.set(neuron.uuid, neuron)
     );
@@ -494,27 +497,85 @@ export class Creature implements CreatureInternal {
         }
       }
 
-      if (
-        inConns.length === 0 && outConns.length === 0 &&
-        neuron.type === "hidden"
-      ) {
-        compactCreature.neurons = compactCreature.neurons.filter((n) =>
-          n.uuid !== neuron.uuid
-        );
-        neuronMap.delete(neuron.uuid);
+      // if (
+      //   inConns.length === 0 && outConns.length === 0 &&
+      //   neuron.type === "hidden"
+      // ) {
+      //   compactCreature.neurons = compactCreature.neurons.filter((n) =>
+      //     n.uuid !== neuron.uuid
+      //   );
+      //   neuronMap.delete(neuron.uuid);
+      //   didCompact = true;
+      //   break;
+      // }
+    }
+
+    if (feedbackLoop) {
+      // Create a map of neuron UUIDs to their indices for quick lookup
+      const neuronIndexMap = new Map<string, number>();
+      compactCreature.neurons.forEach((neuron, index) => {
+        neuronIndexMap.set(neuron.uuid, index);
+      });
+
+      // Create a set of synapses to remove
+      const synapsesToRemove = new Set<SynapseExport>();
+
+      // Check each synapse
+      compactCreature.synapses.forEach((synapse) => {
+        const fromIndex = neuronIndexMap.get(synapse.fromUUID);
+        const toIndex = neuronIndexMap.get(synapse.toUUID);
+
+        // If the source neuron appears later in the array than the target neuron
+        if (
+          fromIndex !== undefined && toIndex !== undefined &&
+          fromIndex > toIndex
+        ) {
+          synapsesToRemove.add(synapse);
+        }
+      });
+
+      // Remove the identified synapses
+      compactCreature.synapses = compactCreature.synapses.filter(
+        (synapse) => !synapsesToRemove.has(synapse),
+      );
+      if (synapsesToRemove.size > 0) {
         didCompact = true;
-        break;
       }
     }
 
+    /** clean up dangling neurons */
+    let danglesFound: boolean;
+    do {
+      danglesFound = false;
+      for (const neuron of compactCreature.neurons) {
+        if (neuron.type === "hidden" || neuron.type === "constant") {
+          // const inConns = inwardConnections.get(neuron.uuid) || [];
+          const outConns = outwardConnections.get(neuron.uuid) || [];
+          if (outConns.length === 0) {
+            compactCreature.neurons = compactCreature.neurons.filter((n) =>
+              n.uuid !== neuron.uuid
+            );
+            neuronMap.delete(neuron.uuid);
+            compactCreature.synapses = compactCreature.synapses.filter((s) =>
+              s.toUUID !== neuron.uuid
+            );
+            didCompact = true;
+            break;
+          }
+        }
+      }
+    } while (danglesFound);
+
     if (
-      didCompact &&
-      JSON.stringify(startExport) !== JSON.stringify(compactCreature)
+      didCompact
     ) {
       addTag(compactCreature, "approach", "compact" as Approach);
       delete compactCreature.memetic;
       removeTag(compactCreature, "approach-logged");
 
+      const oldNeurons = compactCreature.neurons.length -
+        compactCreature.input - compactCreature.output;
+      addTag(compactCreature, "old-neurons", oldNeurons.toString());
       const c = Creature.fromJSON(compactCreature);
 
       return c;
@@ -1592,7 +1653,7 @@ export class Creature implements CreatureInternal {
       if (n.type !== "input") {
         const indx = n.index;
 
-        const traceNeuron: NeuronExport = json
+        const traceNeuron: NeuronTrace = json
           .neurons[exportIndex] as NeuronTrace;
 
         if (n.type !== "constant") {

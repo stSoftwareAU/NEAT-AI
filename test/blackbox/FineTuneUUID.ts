@@ -164,7 +164,7 @@ Deno.test("tune", () => {
 
   previousFittest.score = -0.5;
 
-  const fineTuned = fineTuneImprovement(fittest, previousFittest);
+  const fineTuned = fineTuneImprovement(fittest, previousFittest, false);
 
   fineTuned.forEach((n) => {
     const en = n.exportJSON();

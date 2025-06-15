@@ -10,6 +10,7 @@ export type Filter = "NONE" | "FORWARD" | "BACKWARDS";
 const PLANK_CONSTANT = 0.000_000_000_001;
 export function retry(
   population: Creature[],
+  feedbackLoop: boolean,
   filter: Filter = "NONE",
 ): Creature[] {
   const possibleRetryPopulation = population.filter((creature) => {
@@ -76,6 +77,7 @@ export function retry(
     const retryPopulation = fineTuneImprovement(
       fittest,
       previous,
+      feedbackLoop,
       2,
       approach === "backtrack",
     );

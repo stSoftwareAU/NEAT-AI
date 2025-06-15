@@ -80,7 +80,7 @@ function trainDirBinary(
   const backPropConfig = createBackPropagationConfig(options);
 
   const cost = Costs.find(options.cost ?? "MSE");
-
+  const feedbackLoop = options.feedbackLoop ?? false;
   const targetError =
     options.targetError !== undefined && Number.isFinite(options.targetError)
       ? Math.max(options.targetError, 0.000_001)
@@ -176,7 +176,7 @@ function trainDirBinary(
             (_, i) => i,
           ); // Create an array of indices
 
-          if (!options.disableRandomSamples && !options.feedbackLoop) {
+          if (!options.disableRandomSamples && !feedbackLoop) {
             CreatureUtil.shuffle(tmpIndexes);
           }
           const indices = tmpIndexes.slice(0, len);
@@ -210,7 +210,7 @@ function trainDirBinary(
 
             const output = creature.activateAndTrace(
               observations,
-              options.feedbackLoop ?? false,
+              feedbackLoop,
               sparseConfig,
             );
 
@@ -366,7 +366,7 @@ function trainDirBinary(
 
       let compact = compactUnused(bestTraceJSON, iterationConfig.plankConstant);
       if (!compact) {
-        compact = Creature.fromJSON(bestTraceJSON).compact();
+        compact = Creature.fromJSON(bestTraceJSON).compact(feedbackLoop);
       }
 
       return {
