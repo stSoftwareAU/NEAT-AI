@@ -1,9 +1,23 @@
 import { removeTag } from "@stsoftware/tags/mod";
-import { Creature, Mutation } from "../../mod.ts";
+import { Creature, CreatureUtil, Mutation } from "../../mod.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
+import type { RadioactiveInterface } from "../mutate/RadioactiveInterface.ts";
+import { AddNeuron } from "../mutate/AddNeuron.ts";
+import { SubNeuron } from "../mutate/SubNeuron.ts";
+import { AddConnection } from "../mutate/AddConnection.ts";
+import { SubConnection } from "../mutate/SubConnection.ts";
+import { ModWeight } from "../mutate/ModWeight.ts";
+import { ModBias } from "../mutate/ModBias.ts";
+import { assert } from "@std/assert";
+import { ModActivation as ModSquash } from "../mutate/ModSquash.ts";
+import { AddSelfCon } from "../mutate/AddSelfCon.ts";
+import { SubSelfCon } from "../mutate/SubSelfCon.ts";
+import { AddBackCon } from "../mutate/AddBackCon.ts";
+import { SubBackCon } from "../mutate/SubBackCon.ts";
+import { SwapNeurons } from "../mutate/SwapNeurons.ts";
 
 export class Mutator {
   private config: NeatConfig;
@@ -27,7 +41,8 @@ export class Mutator {
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
 
-          const flag = creature.mutate(
+          const flag = this.mutateCreature(
+            creature,
             mutationMethod,
             Math.random() < this.config.focusRate
               ? this.config.focusList
@@ -155,6 +170,94 @@ export class Mutator {
       }
 
       return mutationMethod;
+    }
+  }
+
+  /**
+   * Mutate the creature using a specific method.
+   *
+   * @param {Object} method - The mutation method.
+   * @param {string} method.name - The name of the mutation method.
+   * @param {number[]} [focusList] - The list of focus indices.
+   */
+  public mutateCreature(
+    creature: Creature,
+    method: { name: string },
+    focusList?: number[],
+  ): boolean {
+    assert(method.name, "Mutate name is required");
+    const startUUID = CreatureUtil.makeUUID(creature);
+    let mutator: RadioactiveInterface | undefined;
+    switch (method.name) {
+      case Mutation.ADD_NODE.name:
+        mutator = new AddNeuron(creature);
+        break;
+      case Mutation.SUB_NODE.name:
+        mutator = new SubNeuron(creature);
+        break;
+      case Mutation.ADD_CONN.name:
+        mutator = new AddConnection(creature);
+        break;
+      case Mutation.SUB_CONN.name:
+        mutator = new SubConnection(creature);
+        break;
+      case Mutation.MOD_WEIGHT.name:
+        mutator = new ModWeight(creature);
+        break;
+      case Mutation.MOD_BIAS.name:
+        mutator = new ModBias(creature);
+        break;
+      case Mutation.MOD_SQUASH.name:
+        mutator = new ModSquash(creature);
+        break;
+      case Mutation.ADD_SELF_CONN.name:
+        mutator = new AddSelfCon(creature);
+        break;
+      case Mutation.SUB_SELF_CONN.name:
+        mutator = new SubSelfCon(creature);
+        break;
+      case Mutation.ADD_BACK_CONN.name:
+        mutator = new AddBackCon(creature);
+        break;
+      case Mutation.SUB_BACK_CONN.name:
+        mutator = new SubBackCon(creature);
+        break;
+      case Mutation.SWAP_NODES.name:
+        mutator = new SwapNeurons(creature);
+        break;
+      default: {
+        throw new Error("unknown: " + method);
+      }
+    }
+
+    let changed = false;
+    changed = mutator.mutate(focusList);
+
+    if (!changed && (!focusList || focusList.length === 0)) {
+      console.info(
+        `${method.name} didn't mutate the creature. ${creature.input} observations, ${
+          creature.neurons.length - creature.input - creature.output
+        } neurons, ${creature.output} outputs, ${creature.synapses.length} synapses`,
+      );
+    }
+
+    if (changed) {
+      delete creature.uuid;
+      creature.state.preparedNeurons = false;
+      creature.fix();
+    }
+    if (creature.DEBUG) {
+      creatureValidate(creature);
+    }
+
+    const endUUID = CreatureUtil.makeUUID(creature);
+    if (startUUID === endUUID) {
+      console.warn(
+        `UUID didn't change after ${method.name} mutation, changed: ${changed}`,
+      );
+      return false;
+    } else {
+      return true;
     }
   }
 }
