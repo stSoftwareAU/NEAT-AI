@@ -1,9 +1,8 @@
-import type { Creature } from "../Creature.ts";
 import type { ConnectionOptions } from "../ConnectionOptions.ts";
+import type { Creature } from "../Creature.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
-import { assert } from "@std/assert/assert";
 
 export class AddConnection implements RadioactiveInterface {
   private creature: Creature;
@@ -55,25 +54,9 @@ export class AddConnection implements RadioactiveInterface {
     const pair = available[Math.floor(Math.random() * available.length)];
     const fromIndex = pair[0].index;
     const toIndex = pair[1].index;
-    const weightScale = options.weightScale;
-    const rawWeight = Synapse.randomWeight() * weightScale;
 
-    const plank = 0.000_000_1;
-    /* Ensure the weight is at least one plank different and within sensible limits */
-    const weightUnit = Math.max(
-      Math.min(Math.round(Math.abs(rawWeight / plank)), 1),
-      10 / plank,
-    );
+    const weight = Synapse.randomWeight(options.weightScale);
 
-    const weight = Math.sign(rawWeight) * weightUnit * plank;
-    assert(
-      Math.abs(weight) >= plank,
-      `weight must be at least ${plank}, was ${weight}, rawWeight ${rawWeight}, weightUnit ${weightUnit}, plank ${plank}`,
-    );
-    assert(
-      Number.isFinite(weight),
-      `weight must be a number was ${weight}, rawWeight ${rawWeight}, weightUnit ${weightUnit}, plank ${plank}`,
-    );
     this.creature.connect(fromIndex, toIndex, weight);
     delete this.creature.memetic;
     return true;

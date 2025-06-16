@@ -4,7 +4,6 @@ import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { getTag, type TagInterface } from "@stsoftware/tags/mod";
-import { Mutation } from "../mod.ts";
 import type {
   CreatureExport,
   CreatureInternal,
@@ -40,19 +39,6 @@ import type { NeatOptions } from "./config/NeatOptions.ts";
 import { type CostInterface, Costs } from "./Costs.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
-import { AddBackCon } from "./mutate/AddBackCon.ts";
-import { AddConnection } from "./mutate/AddConnection.ts";
-import { AddNeuron } from "./mutate/AddNeuron.ts";
-import { AddSelfCon } from "./mutate/AddSelfCon.ts";
-import { ModBias } from "./mutate/ModBias.ts";
-import { ModActivation as ModSquash } from "./mutate/ModSquash.ts";
-import { ModWeight } from "./mutate/ModWeight.ts";
-import type { RadioactiveInterface } from "./mutate/RadioactiveInterface.ts";
-import { SubBackCon } from "./mutate/SubBackCon.ts";
-import { SubConnection } from "./mutate/SubConnection.ts";
-import { SubNeuron } from "./mutate/SubNeuron.ts";
-import { SubSelfCon } from "./mutate/SubSelfCon.ts";
-import { SwapNeurons } from "./mutate/SwapNeurons.ts";
 import { Neat } from "./NEAT/Neat.ts";
 import { makeCreatureActivationFunction } from "./optimize/MakeCreatureActivationFunction.ts";
 import {
@@ -1220,90 +1206,6 @@ export class Creature implements CreatureInternal {
       }
     }
     return null;
-  }
-
-  /**
-   * Mutate the creature using a specific method.
-   *
-   * @param {Object} method - The mutation method.
-   * @param {string} method.name - The name of the mutation method.
-   * @param {number[]} [focusList] - The list of focus indices.
-   */
-  mutate(method: { name: string }, focusList?: number[]): boolean {
-    assert(method.name, "Mutate name is required");
-    const startUUID = CreatureUtil.makeUUID(this);
-    let mutator: RadioactiveInterface | undefined;
-    switch (method.name) {
-      case Mutation.ADD_NODE.name:
-        mutator = new AddNeuron(this);
-        break;
-      case Mutation.SUB_NODE.name:
-        mutator = new SubNeuron(this);
-        break;
-      case Mutation.ADD_CONN.name:
-        mutator = new AddConnection(this);
-        break;
-      case Mutation.SUB_CONN.name:
-        mutator = new SubConnection(this);
-        break;
-      case Mutation.MOD_WEIGHT.name:
-        mutator = new ModWeight(this);
-        break;
-      case Mutation.MOD_BIAS.name:
-        mutator = new ModBias(this);
-        break;
-      case Mutation.MOD_SQUASH.name:
-        mutator = new ModSquash(this);
-        break;
-      case Mutation.ADD_SELF_CONN.name:
-        mutator = new AddSelfCon(this);
-        break;
-      case Mutation.SUB_SELF_CONN.name:
-        mutator = new SubSelfCon(this);
-        break;
-      case Mutation.ADD_BACK_CONN.name:
-        mutator = new AddBackCon(this);
-        break;
-      case Mutation.SUB_BACK_CONN.name:
-        mutator = new SubBackCon(this);
-        break;
-      case Mutation.SWAP_NODES.name:
-        mutator = new SwapNeurons(this);
-        break;
-      default: {
-        throw new Error("unknown: " + method);
-      }
-    }
-
-    let changed = false;
-    changed = mutator.mutate(focusList);
-
-    if (!changed && (!focusList || focusList.length === 0)) {
-      console.info(
-        `${method.name} didn't mutate the creature. ${this.input} observations, ${
-          this.neurons.length - this.input - this.output
-        } neurons, ${this.output} outputs, ${this.synapses.length} synapses`,
-      );
-    }
-
-    if (changed) {
-      delete this.uuid;
-      this.state.preparedNeurons = false;
-      this.fix();
-    }
-    if (this.DEBUG) {
-      creatureValidate(this);
-    }
-
-    const endUUID = CreatureUtil.makeUUID(this);
-    if (startUUID === endUUID) {
-      console.warn(
-        `UUID didn't change after ${method.name} mutation, changed: ${changed}`,
-      );
-      return false;
-    } else {
-      return true;
-    }
   }
 
   /**

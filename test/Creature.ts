@@ -3,9 +3,11 @@ import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../src/Creature.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";
+import { Mutator } from "../src/NEAT/Mutator.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
 import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import { Offspring } from "../src/architecture/Offspring.ts";
+import { createNeatConfig } from "../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
@@ -24,14 +26,15 @@ function checkMutation(method: { name: string }) {
     ],
   });
   creatureValidate(creature);
+  const mutator = new Mutator(createNeatConfig({}));
   for (let i = 12; i--;) {
-    if (creature.mutate(method)) break;
+    if (mutator.mutateCreature(creature, method)) break;
   }
   for (let i = 6; i--;) {
-    creature.mutate(Mutation.ADD_BACK_CONN);
+    mutator.mutateCreature(creature, Mutation.ADD_BACK_CONN);
   }
   for (let i = 6; i--;) {
-    if (creature.mutate(Mutation.ADD_SELF_CONN)) break;
+    if (mutator.mutateCreature(creature, Mutation.ADD_SELF_CONN)) break;
   }
   creatureValidate(creature);
   const originalOutput = [];
@@ -52,7 +55,7 @@ function checkMutation(method: { name: string }) {
 
   const json1 = JSON.stringify(creature.exportJSON(), null, 1);
   for (let i = 12; i--;) {
-    if (creature.mutate(method)) break;
+    if (mutator.mutateCreature(creature, method)) break;
   }
   const json2 = JSON.stringify(creature.exportJSON(), null, 1);
 
@@ -66,7 +69,7 @@ function checkMutation(method: { name: string }) {
       JSON.stringify(JSON.parse(json2), null, 1),
     );
     fail(
-      "JSON of original network is the same as the mutated network!",
+      "JSON of original creature is the same as the mutated creature!",
     );
   }
 
@@ -85,7 +88,7 @@ function checkMutation(method: { name: string }) {
 
   if (originalOutput.toString() === mutatedOutput.toString()) {
     console.warn(
-      "Output of original network is the same as the mutated network!",
+      "Output of original creature is the same as the mutated creature!",
     );
     Deno.writeTextFileSync(
       ".clean.json",
@@ -96,7 +99,7 @@ function checkMutation(method: { name: string }) {
       JSON.stringify(JSON.parse(json2), null, 1),
     );
     console.warn(
-      `${method.name} failed: Output of original network is the same as the mutated network!`,
+      `${method.name} failed: Output of original creature is the same as the mutated creature!`,
     );
   }
 }
@@ -164,9 +167,9 @@ async function evolveSet(
       const n1 = Creature.fromJSON(lastCreature.exportJSON()).activate(
         input,
       )[0];
-      const network2 = Creature.fromJSON(lastCreature.exportJSON());
-      const n2 = network2.activate(input)[0];
-      const n2b = network2.activate(input)[0];
+      const creature2 = Creature.fromJSON(lastCreature.exportJSON());
+      const n2 = creature2.activate(input)[0];
+      const n2b = creature2.activate(input)[0];
       assertAlmostEquals(
         nt0,
         nt1,
@@ -298,14 +301,14 @@ function testEquality(original: Creature, copied: Creature) {
       ORout,
       COout,
       copied instanceof Creature
-        ? "Original and JSON copied networks are not the same!"
-        : "Original and standalone networks are not the same!",
+        ? "Original and JSON copied creatures are not the same!"
+        : "Original and standalone creatures are not the same!",
     );
   }
 }
 
 /*******************************************************************************************
-                          Test the performance of networks
+                          Test the performance of creatures
 *******************************************************************************************/
 Deno.test("ADD_NODE", () => {
   checkMutation(Mutation.ADD_NODE);
@@ -374,31 +377,31 @@ Deno.test("gender-tag", () => {
 });
 
 Deno.test("Feed-forward", () => {
-  const network1 = new Creature(2, 2);
-  const network2 = new Creature(2, 2);
-
+  const creature1 = new Creature(2, 2);
+  const creature2 = new Creature(2, 2);
+  const mutator = new Mutator(createNeatConfig({}));
   // mutate it a couple of times
   let i;
   for (i = 0; i < 100; i++) {
-    network1.mutate(Mutation.ADD_NODE);
-    network2.mutate(Mutation.ADD_NODE);
+    mutator.mutateCreature(creature1, Mutation.ADD_NODE);
+    mutator.mutateCreature(creature2, Mutation.ADD_NODE);
   }
   for (i = 0; i < 400; i++) {
-    network1.mutate(Mutation.ADD_CONN);
-    network2.mutate(Mutation.ADD_NODE);
+    mutator.mutateCreature(creature1, Mutation.ADD_CONN);
+    mutator.mutateCreature(creature2, Mutation.ADD_NODE);
   }
 
   // Crossover
-  const child = Offspring.breed(network1, network2);
+  const child = Offspring.breed(creature1, creature2);
 
   if (child) {
-    // Check if the network is feed-forward correctly
+    // Check if the creature is feed-forward correctly
     for (i = 0; i < child.synapses.length; i++) {
       const from = child.synapses[i].from;
       const to = child.synapses[i].to;
 
       // Exception will be made for memory connections soon
-      assert(from <= to, "network is not feeding forward correctly");
+      assert(from <= to, "creature is not feeding forward correctly");
     }
   }
 });
@@ -758,14 +761,14 @@ Deno.test("from-to", () => {
   ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = false;
   for (let i = LOOPS; i--;) {
     performance.mark("from-start");
-    const currentNetwork = Creature.fromJSON(currentJson);
+    const currentCreature = Creature.fromJSON(currentJson);
     performance.mark("from-end");
     const fromMS = performance.measure("", "from-start", "from-end").duration;
     fromMinMS = fromMinMS > fromMS ? fromMS : fromMinMS;
     fromTotalMS += fromMS;
 
     performance.mark("to-start");
-    currentJson = currentNetwork.exportJSON();
+    currentJson = currentCreature.exportJSON();
     performance.mark("to-end");
     const toMS = performance.measure("", "to-start", "to-end").duration;
     toMinMS = toMinMS > toMS ? toMS : toMinMS;

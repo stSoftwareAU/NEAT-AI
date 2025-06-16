@@ -1,7 +1,14 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
+import {
+  Creature,
+  type CreatureExport,
+  CreatureUtil,
+  Mutation,
+} from "../../mod.ts";
 import { Genus } from "../../src/NEAT/Genus.ts";
 import { Species } from "../../src/NEAT/Species.ts";
+import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 
 const baseCreatureJSON: CreatureExport = {
   neurons: [
@@ -125,7 +132,8 @@ Deno.test("Find Closest Matching Species", () => {
       const json = createCreatureJSON();
 
       const creature = Creature.fromJSON(json);
-      creature.mutate({ name: "ADD_NODE" });
+      const mutator = new Mutator(createNeatConfig({}));
+      mutator.mutateCreature(creature, Mutation.ADD_NODE);
       CreatureUtil.makeUUID(creature);
       genus.addCreature(creature);
     }
@@ -135,7 +143,8 @@ Deno.test("Find Closest Matching Species", () => {
   const testCreatureJSON = createCreatureJSON();
 
   const testCreature: Creature = Creature.fromJSON(testCreatureJSON);
-  testCreature.mutate({ name: "SUB_NODE" });
+  const mutator = new Mutator(createNeatConfig({}));
+  mutator.mutateCreature(testCreature, Mutation.SUB_NODE);
   CreatureUtil.makeUUID(testCreature);
   genus.addCreature(testCreature);
 

@@ -11,13 +11,26 @@ export class Synapse implements SynapseInternal {
   public tags?: TagInterface[];
 
   /** create a random weight between -0.5 and 0.5 */
-  public static randomWeight(): number {
-    const epsilon = 1e-4;
-    const scale = 1;
-    let weight = Math.random() * scale - scale / 2;
-    if (Math.abs(weight) < epsilon) {
-      weight += epsilon * Math.sign(weight);
-    }
+  public static randomWeight(scale = 1): number {
+    const rawWeight = Math.random() * scale - scale / 2;
+
+    const plank = 0.000_000_1;
+    /* Ensure the weight is at least one plank different and within sensible limits */
+    const weightUnit = Math.max(
+      Math.round(Math.abs(rawWeight / plank)),
+      1,
+    );
+
+    const weight = Math.sign(rawWeight) * weightUnit * plank;
+    assert(
+      Math.abs(weight) >= plank,
+      `weight must be at least ${plank}, was ${weight}, rawWeight ${rawWeight}, weightUnit ${weightUnit}, plank ${plank}`,
+    );
+    assert(
+      Number.isFinite(weight),
+      `weight must be a number was ${weight}, rawWeight ${rawWeight}, weightUnit ${weightUnit}, plank ${plank}`,
+    );
+
     return weight;
   }
 
