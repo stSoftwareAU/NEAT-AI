@@ -1,9 +1,8 @@
-import type { Creature } from "../Creature.ts";
 import type { ConnectionOptions } from "../ConnectionOptions.ts";
+import type { Creature } from "../Creature.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
-import type { assert } from "@std/assert/assert";
 
 export class AddConnection implements RadioactiveInterface {
   private creature: Creature;
