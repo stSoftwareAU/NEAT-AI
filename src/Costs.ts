@@ -13,11 +13,33 @@ import { MSELimit } from "./costs/MSELimit.ts";
 import { MSLE } from "./costs/MSLE.ts";
 import { TwelveSteps } from "./costs/TwelveSteps.ts";
 
+/**
+ * Interface for cost functions used in neural network training.
+ * Defines the contract for calculating error between target and output values.
+ */
 export interface CostInterface {
+  /**
+   * Calculates the cost/error between target and output values.
+   *
+   * @param target - The expected output values
+   * @param output - The actual output values from the neural network
+   * @returns The calculated cost/error value
+   */
   calculate(target: Float32Array, output: Float32Array): number;
 }
 
+/**
+ * Factory class for creating cost function instances.
+ * Provides access to various loss functions used in neural network training.
+ */
 export class Costs {
+  /**
+   * Finds and returns a cost function instance by name.
+   *
+   * @param name - The name of the cost function to retrieve
+   * @returns A cost function instance implementing CostInterface
+   * @throws {Error} When an unknown cost function name is provided
+   */
   static find(name: string): CostInterface {
     switch (name) {
       /** Cross entropy error */

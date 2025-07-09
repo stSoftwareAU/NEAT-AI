@@ -3,6 +3,25 @@ import type { CreatureInternal } from "./CreatureInterfaces.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
 
+/**
+ * Calculates the fitness score for a creature based on its error and complexity.
+ *
+ * The score is computed as: 1 - error - complexityPenalty - versionPenalty
+ * where complexityPenalty accounts for the number of hidden neurons, synapses,
+ * and activation function complexity.
+ *
+ * @param creature - The creature to score
+ * @param error - The error value from fitness evaluation
+ * @param growthCost - The cost factor for network complexity
+ * @returns A score between 0 and 1, where higher is better
+ * @throws {Error} When input parameters are invalid (NaN, negative, etc.)
+ *
+ * @example
+ * ```ts
+ * const score = calculate(creature, 0.1, 0.0001);
+ * console.log(`Creature score: ${score}`);
+ * ```
+ */
 export function calculate(
   creature: CreatureInternal,
   error: number,
@@ -71,6 +90,24 @@ function calculateMaxOutOfBounds(
   return { max, avg };
 }
 
+/**
+ * Calculates a penalty value based on the magnitude of a given value.
+ *
+ * This function applies a penalty that increases with the magnitude of the input,
+ * encouraging the network to use smaller weights and biases. The penalty is
+ * designed to prevent values from growing too large while still allowing
+ * reasonable values.
+ *
+ * @param value - The value to calculate penalty for (must be non-negative)
+ * @returns A penalty value between 0 and 1
+ * @throws {Error} When the value is negative or non-finite
+ *
+ * @example
+ * ```ts
+ * const penalty = valuePenalty(10.5);
+ * console.log(`Penalty for value 10.5: ${penalty}`);
+ * ```
+ */
 export function valuePenalty(value: number): number {
   assert(value >= 0, `Value: ${value} is negative`);
   if (value <= 1) return 0;

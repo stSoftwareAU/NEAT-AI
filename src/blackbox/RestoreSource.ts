@@ -3,6 +3,26 @@ import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../mod.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 
+/**
+ * Restores a creature from its memetic source data.
+ *
+ * This function takes a creature that has been modified through memetic learning
+ * and restores it to a state based on the original memetic data. It applies
+ * the stored biases and weights from the memetic interface to create a new
+ * creature instance.
+ *
+ * @param creature - The creature to restore from memetic data
+ * @returns A new creature instance with restored memetic data, or undefined if no memetic data exists
+ * @throws {Error} When memetic data references non-existent neurons
+ *
+ * @example
+ * ```ts
+ * const restoredCreature = restoreSource(creature);
+ * if (restoredCreature) {
+ *   console.log("Creature restored from memetic data");
+ * }
+ * ```
+ */
 export function restoreSource(creature: Creature): Creature | undefined {
   if (!creature.memetic) return;
 

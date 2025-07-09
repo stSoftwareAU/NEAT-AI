@@ -5,9 +5,31 @@ import type { NeatArguments } from "./NeatOptions.ts";
 
 /**
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
+ * Provides a read-only configuration object for the NEAT algorithm.
  */
 export type NeatConfig = Readonly<NeatArguments>;
 
+/**
+ * Creates a validated NEAT configuration from user options.
+ *
+ * This function takes partial user options and fills in default values
+ * to create a complete, validated configuration for the NEAT algorithm.
+ * It handles selection strategy randomization and validates all parameters
+ * to ensure they are within acceptable ranges.
+ *
+ * @param options - Partial configuration options from the user
+ * @returns A frozen, validated NEAT configuration object
+ * @throws {Error} When configuration parameters are invalid
+ *
+ * @example
+ * ```ts
+ * const config = createNeatConfig({
+ *   populationSize: 100,
+ *   mutationRate: 0.3,
+ *   costName: "MSE"
+ * });
+ * ```
+ */
 export function createNeatConfig(options: NeatOptions) {
   let selection: SelectionInterface = Selection.POWER;
   if (options.selection) {
