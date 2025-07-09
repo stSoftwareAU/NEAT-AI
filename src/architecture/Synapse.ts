@@ -4,17 +4,17 @@ import { assert } from "@std/assert/assert";
 
 /**
  * Represents a synapse (connection) between two neurons in a neural network.
- * 
+ *
  * A synapse carries a weighted signal from one neuron to another. The weight
  * determines the strength and direction of the connection, and can be modified
  * during training to optimize the network's performance.
- * 
+ *
  * Key features:
  * - Weighted connections between neurons
  * - Support for different synapse types (positive, negative, condition)
  * - Tagging system for metadata
  * - JSON serialization support
- * 
+ *
  * @example
  * ```ts
  * const synapse = new Synapse(0, 1, 0.5, "positive");
@@ -36,10 +36,10 @@ export class Synapse implements SynapseInternal {
 
   /**
    * Generates a random weight value with controlled precision.
-   * 
+   *
    * Creates a weight that is at least one "plank" unit different from zero
    * to ensure meaningful connections in the network.
-   * 
+   *
    * @param scale - Scaling factor for the weight range (default: 1)
    * @returns A random weight value between -scale/2 and scale/2
    */
@@ -68,7 +68,7 @@ export class Synapse implements SynapseInternal {
 
   /**
    * Creates a new synapse instance.
-   * 
+   *
    * @param from - Index of the source neuron
    * @param to - Index of the destination neuron
    * @param weight - Weight of the connection
@@ -89,7 +89,7 @@ export class Synapse implements SynapseInternal {
 
   /**
    * Converts the synapse to a JSON object for export.
-   * 
+   *
    * @param uuidMap - Mapping from neuron indices to UUIDs
    * @returns JSON representation of the synapse
    */
@@ -109,7 +109,7 @@ export class Synapse implements SynapseInternal {
 
   /**
    * Converts the synapse to internal JSON format.
-   * 
+   *
    * @returns Internal JSON representation with index-based connections
    */
   internalJSON(): SynapseInternal {

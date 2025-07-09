@@ -20,7 +20,7 @@ import { TwelveSteps } from "./costs/TwelveSteps.ts";
 export interface CostInterface {
   /**
    * Calculates the cost/error between target and output values.
-   * 
+   *
    * @param target - The expected output values
    * @param output - The actual output values from the neural network
    * @returns The calculated cost/error value
@@ -35,7 +35,7 @@ export interface CostInterface {
 export class Costs {
   /**
    * Finds and returns a cost function instance by name.
-   * 
+   *
    * @param name - The name of the cost function to retrieve
    * @returns A cost function instance implementing CostInterface
    * @throws {Error} When an unknown cost function name is provided

@@ -33,18 +33,18 @@ import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolutio
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
- * 
+ *
  * This class implements the NEAT algorithm for evolving neural networks.
  * NEAT is a genetic algorithm that evolves both the topology and weights
  * of neural networks simultaneously.
- * 
+ *
  * Key features:
  * - Population management and evolution
  * - Species-based selection and reproduction
  * - Mutation and crossover operations
  * - Fitness evaluation and scoring
  * - Multi-threaded training and discovery
- * 
+ *
  * @example
  * ```ts
  * const neat = new Neat(2, 1, options, workers);
@@ -72,7 +72,7 @@ export class Neat {
 
   /**
    * Creates a new NEAT instance for evolving neural networks.
-   * 
+   *
    * @param input - Number of input neurons in the networks
    * @param output - Number of output neurons in the networks
    * @param options - Configuration options for the NEAT algorithm
@@ -111,7 +111,7 @@ export class Neat {
 
   /**
    * Deep clones and shuffles an array using JSON serialization.
-   * 
+   *
    * @param arr - The array to clone and shuffle
    * @returns A new shuffled array with deep-cloned elements
    */

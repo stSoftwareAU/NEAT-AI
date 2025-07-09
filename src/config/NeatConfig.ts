@@ -11,16 +11,16 @@ export type NeatConfig = Readonly<NeatArguments>;
 
 /**
  * Creates a validated NEAT configuration from user options.
- * 
+ *
  * This function takes partial user options and fills in default values
  * to create a complete, validated configuration for the NEAT algorithm.
  * It handles selection strategy randomization and validates all parameters
  * to ensure they are within acceptable ranges.
- * 
+ *
  * @param options - Partial configuration options from the user
  * @returns A frozen, validated NEAT configuration object
  * @throws {Error} When configuration parameters are invalid
- * 
+ *
  * @example
  * ```ts
  * const config = createNeatConfig({

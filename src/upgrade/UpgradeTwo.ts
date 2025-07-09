@@ -13,7 +13,7 @@ import { SQUARE } from "../methods/activations/types/SQUARE.ts";
  * Upgrades a creature from version 1.x to version 2.0.0.
  * This function handles the migration of deprecated activation functions
  * and ensures compatibility with the new version.
- * 
+ *
  * @param json - The creature data to upgrade (either internal or export format)
  * @returns The upgraded creature data with semantic version 2.0.0
  * @throws {Error} When the creature is already at version 2.x or higher

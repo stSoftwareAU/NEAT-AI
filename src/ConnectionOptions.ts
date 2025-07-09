@@ -1,6 +1,6 @@
 /**
  * Options for configuring neural network connections.
- * 
+ *
  * This interface defines parameters that control how connections
  * are created and modified in neural networks.
  */

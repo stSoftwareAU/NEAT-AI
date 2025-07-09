@@ -5,11 +5,11 @@ import { AddConnection } from "../mutate/AddConnection.ts";
 /**
  * Connects missing neurons in the creature's brain by adding connections
  * from unconnected input neurons to random neurons in the network.
- * 
+ *
  * This function identifies input neurons that have no outgoing connections
  * and creates new connections with small random weights to ensure all
  * inputs are utilized in the network.
- * 
+ *
  * @param creature - The creature instance to modify
  * @returns The modified creature with missing connections added
  */

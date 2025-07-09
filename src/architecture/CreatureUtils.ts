@@ -3,15 +3,15 @@ import type { Creature } from "../Creature.ts";
 
 /**
  * Utility class for Creature-related operations.
- * 
+ *
  * Provides static methods for common operations on Creature instances,
  * including UUID generation and array manipulation utilities.
- * 
+ *
  * Key features:
  * - UUID generation for creatures based on their structure
  * - Array shuffling utilities
  * - Consistent creature identification
- * 
+ *
  * @example
  * ```ts
  * const uuid = CreatureUtil.makeUUID(creature);
@@ -26,10 +26,10 @@ export class CreatureUtil {
 
   /**
    * Shuffle an array in place using the Fisher-Yates shuffle algorithm.
-   * 
+   *
    * This method modifies the original array by randomly reordering its elements.
    * The shuffle is performed in-place for memory efficiency.
-   * 
+   *
    * @param array - The array to be shuffled
    */
   static shuffle(array: Int32Array): void {
@@ -43,17 +43,17 @@ export class CreatureUtil {
 
   /**
    * Generate a UUID for a creature based on its neurons and synapses.
-   * 
+   *
    * Creates a deterministic UUID based on the creature's neural network structure.
    * The UUID is generated from a sorted representation of neurons and synapses,
    * ensuring that structurally identical creatures receive the same UUID.
-   * 
+   *
    * If the creature already has a UUID, it returns the existing one.
-   * 
+   *
    * @param creature - The creature for which to generate the UUID
    * @returns The generated UUID string
    * @throws {Error} When the creature is invalid or missing required properties
-   * 
+   *
    * @example
    * ```ts
    * const uuid = CreatureUtil.makeUUID(creature);

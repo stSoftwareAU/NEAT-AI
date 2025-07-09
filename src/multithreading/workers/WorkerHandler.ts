@@ -1,6 +1,6 @@
 import { assert } from "@std/assert/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import { Creature } from "../../Creature.ts";
+import type { Creature } from "../../Creature.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
@@ -11,7 +11,7 @@ import type {
 
 /**
  * Data structure for requests sent to workers.
- * 
+ *
  * Defines the format of messages sent from the main thread to worker threads
  * for various operations like evaluation, training, and discovery.
  */
@@ -59,7 +59,7 @@ export interface RequestData {
 
 /**
  * Data structure for responses received from workers.
- * 
+ *
  * Defines the format of messages sent from worker threads back to the main thread
  * containing results of various operations.
  */
@@ -121,14 +121,14 @@ interface WorkerEventListener {
 
 /**
  * Interface for worker implementations.
- * 
+ *
  * Defines the contract that worker implementations must follow,
  * whether they are actual Web Workers or mock implementations.
  */
 export interface WorkerInterface {
   /**
    * Adds an event listener to the worker.
-   * 
+   *
    * @param type - Type of event to listen for
    * @param listener - Event listener function
    * @param options - Optional event listener options
@@ -141,7 +141,7 @@ export interface WorkerInterface {
 
   /**
    * Sends a message to the worker.
-   * 
+   *
    * @param data - Data to send to the worker
    */
   postMessage(data: RequestData): void;
@@ -156,18 +156,18 @@ let globalWorkerID = 0;
 
 /**
  * Manages communication with worker threads for parallel processing.
- * 
+ *
  * This class handles the creation, communication, and lifecycle management
  * of worker threads used for evaluating, training, and discovering creatures
  * in parallel. It supports both real Web Workers and mock implementations.
- * 
+ *
  * Key features:
  * - Asynchronous task execution
  * - Promise-based communication
  * - Busy state tracking
  * - Idle event notifications
  * - Error handling
- * 
+ *
  * @example
  * ```ts
  * const worker = new WorkerHandler("./data", "MSE", false);
@@ -192,7 +192,7 @@ export class WorkerHandler {
 
   /**
    * Creates a new WorkerHandler instance.
-   * 
+   *
    * @param dataSetDir - Directory containing the dataset
    * @param costName - Name of the cost function to use
    * @param direct - Whether to use direct (mock) worker or Web Worker
@@ -238,7 +238,7 @@ export class WorkerHandler {
 
   /**
    * Checks if the worker is currently busy with tasks.
-   * 
+   *
    * @returns True if the worker has pending tasks, false otherwise
    */
   isBusy() {
@@ -247,7 +247,7 @@ export class WorkerHandler {
 
   /**
    * Adds a listener to be notified when the worker becomes idle.
-   * 
+   *
    * @param callback - Function to call when worker becomes idle
    */
   addIdleListener(callback: WorkerEventListener) {

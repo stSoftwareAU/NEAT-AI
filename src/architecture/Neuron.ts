@@ -37,18 +37,18 @@ import { Synapse } from "./Synapse.ts";
 
 /**
  * Represents a neuron in a neural network.
- * 
+ *
  * A neuron is a computational unit that receives inputs, applies an activation function,
  * and produces an output. Neurons can be of different types (input, hidden, output, constant)
  * and can have various activation functions applied to them.
- * 
+ *
  * Key features:
  * - Supports different neuron types (input, hidden, output, constant)
  * - Configurable activation functions
  * - Bias values for fine-tuning
  * - UUID-based identification
  * - Tagging system for metadata
- * 
+ *
  * @example
  * ```ts
  * const neuron = new Neuron("hidden-1", "hidden", 0.5, creature, "TANH");
@@ -78,7 +78,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
   /**
    * Creates a new neuron instance.
-   * 
+   *
    * @param uuid - Unique identifier for the neuron
    * @param type - Type of neuron (input, output, hidden, or constant)
    * @param bias - Bias value for the neuron
