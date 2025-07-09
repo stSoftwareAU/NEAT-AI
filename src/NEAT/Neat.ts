@@ -32,47 +32,52 @@ import { simplify } from "../optimize/Simplify.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
 /**
- * NEAT, or NeuroEvolution of Augmenting Topologies, is an algorithm developed by Kenneth O. Stanley for evolving artificial neural networks.
- * It's particularly known for its effectiveness in optimizing both the weights and structures of neural networks simultaneously.
- *
- * Encoding: NEAT represents each neural network as a genome, which includes a list of connection genes, each with an innovation number (a unique historical marker identifying when a gene first appeared),
- *           an input node, an output node, a weight, an enable bit, and possibly a bias term.
- *
- * Initialization: Populations start with simple networks containing no hidden nodes, just direct connections from inputs to outputs.
- *                 This allows the algorithm to begin learning the simplest structure necessary for the task.
- *
- * Speciation: To protect innovation, NEAT sorts genomes into species based on genetic similarity.
- *             Each genome is assigned to a species if it is sufficiently similar to at least one exemplar genome in the species.
- *             This similarity is typically measured using excess and disjoint genes and average weight differences.
- *
- * Reproduction: Within each species, genomes reproduce based on their fitness scores.
- *               Reproduction may involve crossover (where parts of two genomes are combined into a new genome) and mutation (which can alter connection weights, add new connections, or add new nodes).
- *
- * Mutation: NEAT has three types of mutations:
- *     - Weights mutation: This can involve perturbing the existing weights or assigning new random values.
- *     - Add connection: A new connection is added between previously unconnected nodes.
- *     - Add node: This mutation takes an existing connection and splits it into two connections via a new node.
- *                 This new node can develop its own connections over time.
- *
- * Crossover: When two genomes crossover, their genes are combined to produce a new genome. If genes match in terms of their innovation numbers,
- *            they are inherited randomly from one parent or the other. Disjoint and excess genes (those that do not match) are inherited from the fitter parent.
- *
- * Fitness evaluation: Each genome is decoded into a neural network, and the network is evaluated to determine its fitness in solving the given task.
- *
- * Selection and speciation adjustment: Over time, species with consistently poor performance may have their allowed reproduction rates decreased,
- *                                      while successful species may gain a larger proportion of the next generation’s population.
+ * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
+ * 
+ * This class implements the NEAT algorithm for evolving neural networks.
+ * NEAT is a genetic algorithm that evolves both the topology and weights
+ * of neural networks simultaneously.
+ * 
+ * Key features:
+ * - Population management and evolution
+ * - Species-based selection and reproduction
+ * - Mutation and crossover operations
+ * - Fitness evaluation and scoring
+ * - Multi-threaded training and discovery
+ * 
+ * @example
+ * ```ts
+ * const neat = new Neat(2, 1, options, workers);
+ * const result = await neat.evolve();
+ * ```
  */
 export class Neat {
+  /** Number of input neurons in the networks */
   readonly input: number;
+  /** Number of output neurons in the networks */
   readonly output: number;
+  /** Configuration settings for the NEAT algorithm */
   readonly config: NeatConfig;
+  /** Array of worker handlers for parallel processing */
   readonly workers: WorkerHandler[];
+  /** Fitness evaluation system */
   readonly fitness: Fitness;
 
+  /** Timestamp when evolution should end (if timeout is set) */
   readonly endTimeTS: number;
+  /** Current population of creatures */
   population: Creature[];
+  /** Available CRISPR modifications for targeted evolution */
   CRISPRs: CrisprInterface[];
 
+  /**
+   * Creates a new NEAT instance for evolving neural networks.
+   * 
+   * @param input - Number of input neurons in the networks
+   * @param output - Number of output neurons in the networks
+   * @param options - Configuration options for the NEAT algorithm
+   * @param workers - Array of worker handlers for parallel processing
+   */
   constructor(
     input: number,
     output: number,
@@ -104,6 +109,12 @@ export class Neat {
     this.CRISPRs = Neat.deepCloneAndShuffle(this.config.CRISPRs);
   }
 
+  /**
+   * Deep clones and shuffles an array using JSON serialization.
+   * 
+   * @param arr - The array to clone and shuffle
+   * @returns A new shuffled array with deep-cloned elements
+   */
   static deepCloneAndShuffle<T>(arr: T[]): T[] {
     if (arr.length === 0) return [];
 

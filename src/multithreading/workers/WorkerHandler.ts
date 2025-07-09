@@ -1,65 +1,116 @@
-import { assert } from "@std/assert";
+import { assert } from "@std/assert/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import type { Creature } from "../../Creature.ts";
+import { Creature } from "../../Creature.ts";
+import type { NeatOptions } from "../../config/NeatOptions.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
-import type { NeatOptions } from "../../../mod.ts";
 import type {
   CandidateSquash,
   CandidateSynapse,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
+/**
+ * Data structure for requests sent to workers.
+ * 
+ * Defines the format of messages sent from the main thread to worker threads
+ * for various operations like evaluation, training, and discovery.
+ */
 export interface RequestData {
+  /** Unique identifier for the task */
   taskID: number;
+  /** Debug flag for verbose logging */
   debug?: boolean;
+  /** Initialization data for worker setup */
   initialize?: {
+    /** Directory containing the dataset */
     dataSetDir: string;
+    /** Name of the cost function to use */
     costName: string;
   };
+  /** Creature evaluation request */
   evaluate?: {
+    /** JSON string representation of the creature */
     creature: string;
+    /** Whether to use feedback loop evaluation */
     feedbackLoop: boolean;
   };
+  /** Creature training request */
   train?: {
+    /** JSON string representation of the creature */
     creature: string;
+    /** Training configuration options */
     options: TrainOptions;
   };
+  /** Echo request for testing worker communication */
   echo?: {
-    ms: number;
+    /** Message to echo back */
     message: string;
+    /** Duration to wait before responding */
+    ms: number;
   };
+  /** Creature discovery request */
   discover?: {
+    /** JSON string representation of the creature */
     creature: string;
+    /** NEAT configuration options */
     options: NeatOptions;
   };
 }
 
+/**
+ * Data structure for responses received from workers.
+ * 
+ * Defines the format of messages sent from worker threads back to the main thread
+ * containing results of various operations.
+ */
 export interface ResponseData {
+  /** Unique identifier for the task */
   taskID: number;
+  /** Debug flag for verbose logging */
   debug?: boolean;
+  /** Duration of the operation in milliseconds */
   duration: number;
+  /** Initialization response */
   initialize?: {
+    /** Status of the initialization */
     status: string;
   };
+  /** Evaluation response */
   evaluate?: {
+    /** Error value from the evaluation */
     error: number;
   };
+  /** Training response */
   train?: {
+    /** Unique identifier for the training session */
     ID: string;
+    /** JSON string representation of the trained creature */
     creature: string;
+    /** Error value after training */
     error: number;
+    /** JSON string representation of the trace data */
     trace: string;
+    /** Optional compact creature representation */
     compact?: string;
+    /** Optional backtracked creature representation */
     backtracked?: string;
+    /** Optional forward creature representation */
     forward?: string;
   };
+  /** Echo response */
   echo?: {
+    /** Echoed message */
     message: string;
   };
+  /** Discovery response */
   discover?: {
+    /** Unique identifier for the discovery session */
     ID: string;
+    /** Optional helpful synapses to add */
     addHelpfulSynapses?: CandidateSynapse[];
+    /** Optional harmful synapse to remove */
     removeHarmfulSynapse?: CandidateSynapse;
+    /** Optional candidate activation functions */
     candidateSquashes?: CandidateSquash[];
   };
 }
@@ -67,27 +118,85 @@ export interface ResponseData {
 interface WorkerEventListener {
   (worker: WorkerHandler): void;
 }
+
+/**
+ * Interface for worker implementations.
+ * 
+ * Defines the contract that worker implementations must follow,
+ * whether they are actual Web Workers or mock implementations.
+ */
 export interface WorkerInterface {
+  /**
+   * Adds an event listener to the worker.
+   * 
+   * @param type - Type of event to listen for
+   * @param listener - Event listener function
+   * @param options - Optional event listener options
+   */
   addEventListener(
     type: string,
     listener: EventListenerOrEventListenerObject,
     options?: boolean | AddEventListenerOptions,
   ): void;
 
+  /**
+   * Sends a message to the worker.
+   * 
+   * @param data - Data to send to the worker
+   */
   postMessage(data: RequestData): void;
+
+  /**
+   * Terminates the worker.
+   */
   terminate(): void;
 }
 
 let globalWorkerID = 0;
+
+/**
+ * Manages communication with worker threads for parallel processing.
+ * 
+ * This class handles the creation, communication, and lifecycle management
+ * of worker threads used for evaluating, training, and discovering creatures
+ * in parallel. It supports both real Web Workers and mock implementations.
+ * 
+ * Key features:
+ * - Asynchronous task execution
+ * - Promise-based communication
+ * - Busy state tracking
+ * - Idle event notifications
+ * - Error handling
+ * 
+ * @example
+ * ```ts
+ * const worker = new WorkerHandler("./data", "MSE", false);
+ * const result = await worker.evaluate(creature, false);
+ * console.log(`Evaluation error: ${result.evaluate?.error}`);
+ * ```
+ */
 export class WorkerHandler {
+  /** The underlying worker implementation */
   private worker: WorkerInterface;
 
+  /** Counter for generating unique task IDs */
   private taskID = 1;
+  /** Unique identifier for this worker instance */
   private workerID = ++globalWorkerID;
+  /** Number of currently executing tasks */
   private busyCount = 0;
+  /** Map of task IDs to their callback functions */
   private callbacks = new Map<number, CallableFunction>();
+  /** Listeners to notify when worker becomes idle */
   private idleListeners: WorkerEventListener[] = [];
 
+  /**
+   * Creates a new WorkerHandler instance.
+   * 
+   * @param dataSetDir - Directory containing the dataset
+   * @param costName - Name of the cost function to use
+   * @param direct - Whether to use direct (mock) worker or Web Worker
+   */
   constructor(
     dataSetDir: string,
     costName: string,
@@ -127,11 +236,20 @@ export class WorkerHandler {
     this.makePromise(data);
   }
 
+  /**
+   * Checks if the worker is currently busy with tasks.
+   * 
+   * @returns True if the worker has pending tasks, false otherwise
+   */
   isBusy() {
     return this.busyCount > 0;
   }
 
-  /** Notify listeners when worker no longer busy */
+  /**
+   * Adds a listener to be notified when the worker becomes idle.
+   * 
+   * @param callback - Function to call when worker becomes idle
+   */
   addIdleListener(callback: WorkerEventListener) {
     this.idleListeners.push(callback);
   }

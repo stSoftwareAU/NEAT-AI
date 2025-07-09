@@ -11,6 +11,23 @@ import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
+/**
+ * Scans a data directory for binary training files.
+ * 
+ * This function reads a directory and returns information about available
+ * binary training files. It can optionally shuffle the file order for
+ * randomized training or sort them for deterministic training.
+ * 
+ * @param dataDir - Path to the directory containing training data
+ * @param options - Training options including randomization settings
+ * @returns Object containing array of binary file paths
+ * 
+ * @example
+ * ```ts
+ * const dataResult = dataFiles("./training-data", { disableRandomSamples: false });
+ * console.log(`Found ${dataResult.files.length} training files`);
+ * ```
+ */
 export function dataFiles(dataDir: string, options: TrainOptions = {}) {
   const binaryFiles: string[] = [];
 
@@ -40,7 +57,27 @@ export function dataFiles(dataDir: string, options: TrainOptions = {}) {
 }
 
 /**
- * Train the given set to this network
+ * Trains a creature using data from a directory.
+ * 
+ * This function trains a neural network creature using binary training data
+ * stored in the specified directory. It handles file discovery, batch processing,
+ * and training iteration management.
+ * 
+ * @param creature - The creature to train
+ * @param dataDir - Directory containing binary training data files
+ * @param options - Training configuration options
+ * @returns Training result with error metrics and trace data
+ * @throws {Error} When no training files are found in the directory
+ * 
+ * @example
+ * ```ts
+ * const result = trainDir(creature, "./training-data", {
+ *   iterations: 10,
+ *   targetError: 0.01,
+ *   cost: "MSE"
+ * });
+ * console.log(`Training completed with error: ${result.error}`);
+ * ```
  */
 export function trainDir(
   creature: Creature,

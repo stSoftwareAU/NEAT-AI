@@ -98,7 +98,7 @@ function makeData(input: number) {
     const observations: number[] = [];
     for (let j = input; j--;) {
       observations.push(
-        Math.random() * 2 - 1,
+        Math.random() * 4 - 2,
       );
     }
     inputs.push(observations);

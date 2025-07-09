@@ -35,19 +35,56 @@ import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
 import { Synapse } from "./Synapse.ts";
 
+/**
+ * Represents a neuron in a neural network.
+ * 
+ * A neuron is a computational unit that receives inputs, applies an activation function,
+ * and produces an output. Neurons can be of different types (input, hidden, output, constant)
+ * and can have various activation functions applied to them.
+ * 
+ * Key features:
+ * - Supports different neuron types (input, hidden, output, constant)
+ * - Configurable activation functions
+ * - Bias values for fine-tuning
+ * - UUID-based identification
+ * - Tagging system for metadata
+ * 
+ * @example
+ * ```ts
+ * const neuron = new Neuron("hidden-1", "hidden", 0.5, creature, "TANH");
+ * neuron.activateNeuron();
+ * ```
+ */
 export class Neuron implements TagsInterface, NeuronInternal {
+  /** Reference to the parent creature */
   readonly creature: Creature;
+  /** Type of the neuron (input, output, hidden, or constant) */
   type: "input" | "output" | "hidden" | "constant";
+  /** Unique identifier for the neuron */
   uuid: string;
+  /** Bias value added to the neuron's input */
   bias: number;
+  /** Name of the activation function to apply */
   squash?: string;
+  /** Cached activation function instance for performance */
   private squashMethodCache?:
     | NeuronActivationInterface
     | ActivationInterface;
 
+  /** Index position of the neuron in the creature's neuron array */
   public index: number;
+  /** Tags for storing metadata about the neuron */
   public tags = undefined;
 
+  /**
+   * Creates a new neuron instance.
+   * 
+   * @param uuid - Unique identifier for the neuron
+   * @param type - Type of neuron (input, output, hidden, or constant)
+   * @param bias - Bias value for the neuron
+   * @param creature - Reference to the parent creature
+   * @param squash - Optional activation function name
+   */
   constructor(
     uuid: string,
     type: "input" | "output" | "hidden" | "constant",
