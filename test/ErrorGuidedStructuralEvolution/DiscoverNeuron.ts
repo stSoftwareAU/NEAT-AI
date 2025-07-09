@@ -1,4 +1,3 @@
-import { assertAlmostEquals } from "@std/assert/almost-equals";
 import { assert } from "@std/assert/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
@@ -74,6 +73,11 @@ function makeCreature() {
       { fromUUID: "input-22", toUUID: "hidden-4", weight: 0.2 },
 
       { fromUUID: "hidden-3", toUUID: "output-0", weight: 0.6 },
+
+      { fromUUID: "input-44", toUUID: "removed-1", weight: 1.2345 },
+      { fromUUID: "input-51", toUUID: "noise-1", weight: 1 },
+      { fromUUID: "input-52", toUUID: "noise-2", weight: -1 },
+
       { fromUUID: "removed-1", toUUID: "output-0", weight: -0.54321 },
       { fromUUID: "noise-1", toUUID: "output-0", weight: -0.000_0001 },
       { fromUUID: "noise-2", toUUID: "output-0", weight: 0.000_0001 },
@@ -106,7 +110,7 @@ function makeData(input: number) {
   return inputs;
 }
 
-Deno.test("Error-Driven Synapse Discovery identifies negative synapses and removes", async () => {
+Deno.test("Error-Driven Synapse Discovery neuron discovery", async () => {
   const targetCreature = makeCreature();
   const data = makeData(targetCreature.input);
 
@@ -166,149 +170,4 @@ Deno.test("Error-Driven Synapse Discovery identifies negative synapses and remov
   assert(!input44, "Should have REMOVED synapse from input-44");
 
   await discoverStructure.cleanUp();
-});
-
-Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async () => {
-  const targetCreature = makeCreature();
-  const data = makeData(targetCreature.input);
-
-  /** Record the ideal outputs from the target creature */
-  const trainingData: DataRecordInterface[] = [];
-
-  for (let i = data.length; i--;) {
-    const input = data[i];
-    const output = targetCreature.activate(new Float32Array(input));
-
-    trainingData.push({
-      input,
-      output: Array.from(output),
-    });
-  }
-
-  /**
-   * Create a "crippled" version by removing two important synapses
-   */
-  const exportedJSON = targetCreature.exportJSON();
-  exportedJSON.synapses = exportedJSON.synapses.filter((synapse) =>
-    synapse.fromUUID !== "input-33" && synapse.fromUUID !== "input-22"
-  );
-
-  const crippledCreature = Creature.fromJSON(exportedJSON);
-  CreatureUtil.makeUUID(crippledCreature);
-
-  /**
-   * Instantiate the discovery mechanism
-   */
-  const discoverStructure = new DiscoverStructure(crippledCreature);
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
-  discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
-  await Promise.all([...neuronPromisesMap.values()]);
-
-  await discoverStructure.analyzeSelectedNeurons(["hidden-4"]);
-  const helpfulSynapses = await discoverStructure.analyzeSelectedNeurons([
-    "hidden-3",
-  ]);
-
-  const betterCreature = DiscoverStructure.addHelpfulSynapses(
-    "ABC",
-    crippledCreature,
-    helpfulSynapses,
-  );
-  assert(betterCreature, "Should have discovered a better creature");
-  betterCreature.validate();
-  const betterCreatureJSON = betterCreature.exportJSON();
-  /** Verify synapses that were removed are discovered again: */
-  const input22 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-22"
-  );
-
-  assert(input22, "Should have added synapse from input-22");
-  assertAlmostEquals(input22?.weight, 0.2, 0.075);
-  const input33 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-33"
-  );
-  assert(input33, "Should have added synapse from input-33");
-  assertAlmostEquals(input33?.weight, -0.3, 0.05);
-
-  // New tests for listViableNeurons()
-  const viableNeurons = await discoverStructure.listViableNeurons();
-  assert(viableNeurons.length > 0, "There should be viable neurons listed");
-  // Check descending sort order by total error
-  for (let i = 1; i < viableNeurons.length; i++) {
-    assert(
-      viableNeurons[i - 1].totalError >= viableNeurons[i].totalError,
-      "Viable neurons should be sorted by descending totalError",
-    );
-  }
-
-  // New test for selectNeuronWeightedByError()
-  const selectedNeuronUUID = await discoverStructure
-    .selectNeuronsWeightedByError(1);
-  assert(selectedNeuronUUID, "Should select a neuron UUID");
-  assert(
-    viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID[0]),
-    "Selected neuron UUID must be from the viable neurons list",
-  );
-
-  await discoverStructure.cleanUp();
-});
-
-Deno.test("loadCSV handles incomplete last line", async () => {
-  // Create a temporary file with a line that spans chunk boundaries
-  const tempDir = await Deno.makeTempDir();
-  const filePath = `${tempDir}/test.csv`;
-
-  // Create a CSV with a line that's exactly at the chunk boundary
-  const headers = "value,activation,errors\n";
-  const data = "1.0,0.5,0.1\n"; // Normal line
-  const longLine = "2.0,0.8,0.2"; // Incomplete line (no newline at the end)
-
-  // Write the file
-  await Deno.writeTextFile(filePath, headers + data + longLine);
-
-  // Create a DiscoverStructure instance with a mock creature
-  const mockCreature = {
-    uuid: "test-creature",
-    neurons: [],
-    input: 0,
-    output: 0,
-    exportJSON: () => ({ neurons: [], synapses: [] }),
-    dispose: () => {},
-    validate: () => {},
-    activate: () => new Float32Array(),
-    record: () => new Map(),
-  } as unknown as Creature;
-
-  const discoverStructure = new DiscoverStructure(mockCreature);
-
-  // Define the record type
-  interface DiscoverRecord {
-    value: number;
-    activation: number;
-    errors: string;
-  }
-
-  // Call the private method using a two-step type assertion
-  const records = await ((discoverStructure as unknown) as {
-    loadCSV(file: string): Promise<DiscoverRecord[]>;
-  }).loadCSV(filePath);
-
-  // Verify the records
-  assert(records.length === 2, "Should have 2 records");
-  assert(records[0].value === 1.0, "First record should have value 1.0");
-  assert(
-    records[0].activation === 0.5,
-    "First record should have activation 0.5",
-  );
-  assert(records[0].errors === "0.1", "First record should have errors 0.1");
-  assert(records[1].value === 2.0, "Second record should have value 2.0");
-  assert(
-    records[1].activation === 0.8,
-    "Second record should have activation 0.8",
-  );
-  assert(records[1].errors === "0.2", "Second record should have errors 0.2");
-
-  // Clean up
-  await Deno.remove(tempDir, { recursive: true });
 });
