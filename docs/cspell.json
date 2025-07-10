@@ -63,6 +63,7 @@
     "Backprop",
     "centered",
     "Backpropagated",
-    "favorable"
+    "favorable",
+    "cleanup"
   ]
 }
