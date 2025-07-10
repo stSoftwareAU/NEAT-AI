@@ -234,23 +234,11 @@ export class Neat {
 
     const options = { ...this.config };
     options.discoveryTimeOutMinutes = timeOutMinutes;
-
-    // Add timeout to prevent hanging discovery operations
-    const timeoutPromise = new Promise<ResponseData>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Discovery timeout after ${timeOutMinutes} minutes`));
-      }, timeOutMinutes * 60 * 1000);
-    });
-
-    const discoveryPromise = w.discover(creature, options);
-    const p = Promise.race([discoveryPromise, timeoutPromise]).then((r) => {
+    const p = w.discover(creature, options).then((r) => {
       assert(r.discover, "No discovery found");
 
       this.discoveryComplete.push(r);
 
-      this.discoveryInProgress.delete(uuid);
-    }).catch((error) => {
-      console.error(`Discovery failed for ${uuid}:`, error);
       this.discoveryInProgress.delete(uuid);
     });
 
