@@ -52,7 +52,7 @@ export class MockWorker implements WorkerInterface {
         };
       } else if (data.echo) {
         errorResponse.echo = {
-          message: `Error: ${error.message}`,
+          message: `Error: ${error?.message || String(error)}`,
         };
       } else if (data.initialize) {
         errorResponse.initialize = {

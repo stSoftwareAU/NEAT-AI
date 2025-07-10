@@ -119,9 +119,13 @@ export class WorkerProcessor {
         duration: Date.now() - start,
         discover: {
           ID: result.ID,
-          addHelpfulSynapses: result.addHelpfulSynapses,
+          addHelpfulSynapses: result.addHelpfulSynapses
+            ? [...result.addHelpfulSynapses]
+            : undefined,
           removeHarmfulSynapse: result.removeHarmfulSynapse,
-          candidateSquashes: result.candidateSquashes,
+          candidateSquashes: result.candidateSquashes
+            ? [...result.candidateSquashes]
+            : undefined,
         },
       };
 
