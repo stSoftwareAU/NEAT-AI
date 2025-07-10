@@ -19,7 +19,6 @@ import {
 import type { DiscoverRecord } from "./architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Neuron } from "./architecture/Neuron.ts";
 import type {
-  NeuronExport,
   NeuronInternal,
   NeuronTrace,
 } from "./architecture/NeuronInterfaces.ts";
@@ -47,6 +46,7 @@ import {
 } from "./propagate/BackPropagation.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
+import { CreatureExportBuilder } from "./utils/CreatureExportBuilder.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -1320,40 +1320,8 @@ export class Creature implements CreatureInternal {
     if (this.DEBUG) {
       creatureValidate(this);
     }
-
-    const json: CreatureExport = {
-      semanticVersion: this.semanticVersion,
-      neurons: new Array<NeuronExport>(
-        this.neurons.length - this.input,
-      ),
-      synapses: new Array<SynapseExport>(this.synapses.length),
-      input: this.input,
-      output: this.output,
-      tags: this.tags ? this.tags.slice() : undefined,
-    };
-
-    const uuidMap = new Map<number, string>();
-    for (let i = this.neurons.length; i--;) {
-      const neuron = this.neurons[i];
-      uuidMap.set(i, neuron.uuid ?? `unknown-${i}`);
-      if (neuron.type === "input") continue;
-
-      const tojson = neuron.exportJSON();
-
-      json.neurons[i - this.input] = tojson;
-    }
-
-    for (let i = this.synapses.length; i--;) {
-      const exportJSON = this.synapses[i].exportJSON(
-        uuidMap,
-      );
-
-      json.synapses[i] = exportJSON;
-    }
-
-    if (this.memetic) {
-      json.memetic = JSON.parse(JSON.stringify(this.memetic));
-    }
+    const builder = new CreatureExportBuilder(this);
+    const json: CreatureExport = builder.build();
 
     return json;
   }
