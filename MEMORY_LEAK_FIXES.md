@@ -6,7 +6,8 @@ The application is experiencing **fatal out-of-memory errors** after ~17-18
 generations, with memory usage growing from 235MB to 296MB rapidly. The garbage
 collector is failing to reclaim memory effectively.
 
-**Note**: Forced garbage collection is disabled due to a Deno version compatibility issue. This fix focuses on aggressive object clearing instead.
+**Note**: Forced garbage collection is disabled due to a Deno version
+compatibility issue. This fix focuses on aggressive object clearing instead.
 
 ## Applied Fixes
 
@@ -46,15 +47,20 @@ creature.synapses = null;
 ```
 
 <<<<<<< HEAD
+
 ### 3. **Evolution Loop Memory Management**
 
 - **Problem**: Memory accumulates over generations without cleanup
-- **Fix**: Periodic memory monitoring and forced garbage collection
-=======
+- **Fix**: Periodic memory monitoring and forced garbage collection =======
+
 ### 3. **Evolution Loop Memory Monitoring**
+
 - **Problem**: Memory accumulates over generations without monitoring
 - **Fix**: Periodic memory monitoring without forced garbage collection
->>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management strategies)
+
+>>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management
+>>>>>>> strategies)
+
 - **Files**: `src/Creature.ts`
 
 ```typescript
@@ -96,6 +102,7 @@ r.train.forward = null;
 ```
 
 <<<<<<< HEAD
+
 ### 5. **Improved Worker Termination**
 
 - **Problem**: Event listeners and callbacks not properly cleaned up
@@ -118,7 +125,9 @@ deno run --v8-flags=--expose-gc --allow-read --allow-write --allow-net your-scri
 If still needed, increase the memory limit:
 
 =======
+
 ### 5. **Discovery Completion Cleanup**
+
 - **Problem**: Large discovery result objects accumulate in arrays
 - **Fix**: Immediately clear large objects after processing
 - **Files**: `src/NEAT/Neat.ts`
@@ -131,6 +140,7 @@ r.discover.candidateSquashes = null;
 ```
 
 ### 6. **Fitness Calculation Cleanup**
+
 - **Problem**: Global calculation data accumulates between fitness calculations
 - **Fix**: Clear global calculation data after each fitness calculation
 - **Files**: `src/architecture/Fitness.ts`
@@ -143,6 +153,7 @@ this.schedule().finally(() => {
 ```
 
 ### 7. **Creature Disposal Enhancement**
+
 - **Problem**: Large object references not fully cleared during disposal
 - **Fix**: More aggressive clearing of all large object references
 - **Files**: `src/Creature.ts`
@@ -158,6 +169,7 @@ this.creatureActivationFunction = null;
 ```
 
 ### 8. **NEAT Evolution Cleanup**
+
 - **Problem**: Large objects created during evolution not cleared
 - **Fix**: Clear large objects after each evolution cycle
 - **Files**: `src/NEAT/Neat.ts`
@@ -173,7 +185,10 @@ deDuplicator = null;
 ## Runtime Configuration
 
 ### Increase Memory Limit (if needed)
->>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management strategies)
+
+>>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management
+>>>>>>> strategies)
+
 ```bash
 deno run --v8-flags=--max-old-space-size=32768 --allow-read --allow-write --allow-net your-script.ts
 ```
@@ -234,4 +249,6 @@ Consider using smaller batch sizes or streaming data to reduce memory pressure.
 Implement more aggressive creature simplification to reduce JSON size.
 
 ### 5. **Deno Version**
-Consider downgrading Deno if the GC issue persists, or wait for the Deno team to fix the GC compatibility issue.
+
+Consider downgrading Deno if the GC issue persists, or wait for the Deno team to
+fix the GC compatibility issue.
