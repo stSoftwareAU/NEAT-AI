@@ -149,11 +149,15 @@ export class Neat {
 
     if (this.discoveryInProgress.size > 0) {
       console.info("Waiting for discovery to complete");
+      // Log memory usage during discovery wait
+      this.logMemoryUsage("Discovery in progress");
       return false;
     }
 
     if (this.trainingInProgress.size > 0) {
       console.info("Waiting for training to complete");
+      // Log memory usage during training wait
+      this.logMemoryUsage("Training in progress");
       return false;
     }
 
@@ -173,6 +177,19 @@ export class Neat {
       return false;
     }
     return true;
+  }
+
+  private logMemoryUsage(context: string) {
+    try {
+      const memUsage = Deno.memoryUsage();
+      console.info(
+        `Memory usage (${context}): ${
+          Math.round(memUsage.heapUsed / 1024 / 1024)
+        }MB used, ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB total`,
+      );
+    } catch (_error) {
+      // Ignore memory usage errors
+    }
   }
 
   private trainingInProgress = new Map<string, Promise<void>>();
@@ -692,6 +709,16 @@ export class Neat {
             trainedPopulation.push(combinedSynapseCreature);
           }
         }
+      }
+
+      // Clear large objects immediately to help GC
+      if (r.discover.addHelpfulSynapses) {
+        // @ts-ignore - clearing to help GC
+        r.discover.addHelpfulSynapses = null;
+      }
+      if (r.discover.candidateSquashes) {
+        // @ts-ignore - clearing to help GC
+        r.discover.candidateSquashes = null;
       }
     }
     this.discoveryComplete.length = 0;
