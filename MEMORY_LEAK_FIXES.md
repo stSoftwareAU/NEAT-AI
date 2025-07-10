@@ -2,12 +2,16 @@
 
 ## Critical Issue: Out of Memory Errors
 
-The application is experiencing **fatal out-of-memory errors** after ~17-18 generations, with memory usage growing from 235MB to 296MB rapidly. The garbage collector is failing to reclaim memory effectively.
+The application is experiencing **fatal out-of-memory errors** after ~17-18
+generations, with memory usage growing from 235MB to 296MB rapidly. The garbage
+collector is failing to reclaim memory effectively.
 
 ## Applied Fixes
 
 ### 1. **Aggressive JSON String Cleanup**
-- **Problem**: Large JSON objects created for worker communication stay in memory
+
+- **Problem**: Large JSON objects created for worker communication stay in
+  memory
 - **Fix**: Immediately clear large object properties after JSON.stringify()
 - **Files**: `src/multithreading/workers/WorkerHandler.ts`
 
@@ -21,6 +25,7 @@ json.synapses = null;
 ```
 
 ### 2. **Worker-Level Memory Cleanup**
+
 - **Problem**: Large result objects accumulate in worker memory
 - **Fix**: Clear large objects immediately after processing
 - **Files**: `src/multithreading/workers/WorkerProcessor.ts`
@@ -39,6 +44,7 @@ creature.synapses = null;
 ```
 
 ### 3. **Evolution Loop Memory Management**
+
 - **Problem**: Memory accumulates over generations without cleanup
 - **Fix**: Periodic memory monitoring and forced garbage collection
 - **Files**: `src/Creature.ts`
@@ -48,16 +54,21 @@ creature.synapses = null;
 const currentTime = Date.now();
 if (currentTime - lastMemoryCheck > MEMORY_CHECK_INTERVAL) {
   const memUsage = Deno.memoryUsage();
-  console.log(`Memory usage (Generation ${generation}): ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB used`);
-  
+  console.log(
+    `Memory usage (Generation ${generation}): ${
+      Math.round(memUsage.heapUsed / 1024 / 1024)
+    }MB used`,
+  );
+
   // Force garbage collection if available
-  if (typeof (globalThis as any).gc === 'function') {
+  if (typeof (globalThis as any).gc === "function") {
     (globalThis as any).gc();
   }
 }
 ```
 
 ### 4. **Training Completion Cleanup**
+
 - **Problem**: Large training result objects accumulate in arrays
 - **Fix**: Immediately clear large objects after processing
 - **Files**: `src/NEAT/Neat.ts`
@@ -72,20 +83,26 @@ r.train.forward = null;
 ```
 
 ### 5. **Improved Worker Termination**
+
 - **Problem**: Event listeners and callbacks not properly cleaned up
 - **Fix**: Clear all callbacks and listeners in terminate() method
-- **Files**: `src/multithreading/workers/WorkerHandler.ts`, `src/multithreading/workers/MockWorker.ts`
+- **Files**: `src/multithreading/workers/WorkerHandler.ts`,
+  `src/multithreading/workers/MockWorker.ts`
 
 ## Runtime Configuration
 
 ### Enable Garbage Collection
+
 Run with garbage collection enabled:
+
 ```bash
 deno run --v8-flags=--expose-gc --allow-read --allow-write --allow-net your-script.ts
 ```
 
 ### Increase Memory Limit
+
 If still needed, increase the memory limit:
+
 ```bash
 deno run --v8-flags=--max-old-space-size=32768 --allow-read --allow-write --allow-net your-script.ts
 ```
@@ -93,17 +110,23 @@ deno run --v8-flags=--max-old-space-size=32768 --allow-read --allow-write --allo
 ## Monitoring Memory Usage
 
 Add this to your main script to monitor memory:
+
 ```typescript
 // Monitor memory every 10 generations
 if (generation % 10 === 0) {
   const memUsage = Deno.memoryUsage();
-  console.log(`Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB used, ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB total`);
+  console.log(
+    `Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB used, ${
+      Math.round(memUsage.heapTotal / 1024 / 1024)
+    }MB total`,
+  );
 }
 ```
 
 ## Expected Results
 
 After applying these fixes, you should see:
+
 - **Stable memory usage** over long runs (100+ generations)
 - **No out-of-memory errors**
 - **Reduced garbage collection pressure**
@@ -119,16 +142,22 @@ After applying these fixes, you should see:
 ## Additional Recommendations
 
 ### 1. **Worker Pool Recycling**
-Consider implementing a worker pool that recycles workers every N generations to prevent memory accumulation.
+
+Consider implementing a worker pool that recycles workers every N generations to
+prevent memory accumulation.
 
 ### 2. **Memory Profiling**
+
 Use Deno's built-in memory profiling:
+
 ```bash
 deno run --inspect-brk --allow-all your-script.ts
 ```
 
 ### 3. **Dataset Optimization**
+
 Consider using smaller batch sizes or streaming data to reduce memory pressure.
 
 ### 4. **Creature Simplification**
+
 Implement more aggressive creature simplification to reduce JSON size.
