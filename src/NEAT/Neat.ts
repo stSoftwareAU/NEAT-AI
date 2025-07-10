@@ -723,15 +723,13 @@ export class Neat {
         }
       }
 
-      // Clear large objects immediately to help GC
-      if (r.discover.addHelpfulSynapses) {
-        // @ts-ignore - clearing to help GC
-        r.discover.addHelpfulSynapses = null;
-      }
-      if (r.discover.candidateSquashes) {
-        // @ts-ignore - clearing to help GC
-        r.discover.candidateSquashes = null;
-      }
+      // Immediately clear large objects to help GC
+      // @ts-ignore - clearing to help GC
+      r.discover.addHelpfulSynapses = null;
+      // @ts-ignore - clearing to help GC
+      r.discover.removeHarmfulSynapse = null;
+      // @ts-ignore - clearing to help GC
+      r.discover.candidateSquashes = null;
     }
     this.discoveryComplete.length = 0;
 

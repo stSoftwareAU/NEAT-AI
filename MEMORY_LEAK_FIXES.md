@@ -6,6 +6,8 @@ The application is experiencing **fatal out-of-memory errors** after ~17-18
 generations, with memory usage growing from 235MB to 296MB rapidly. The garbage
 collector is failing to reclaim memory effectively.
 
+**Note**: Forced garbage collection is disabled due to a Deno version compatibility issue. This fix focuses on aggressive object clearing instead.
+
 ## Applied Fixes
 
 ### 1. **Aggressive JSON String Cleanup**
@@ -43,17 +45,24 @@ creature.neurons = null;
 creature.synapses = null;
 ```
 
+<<<<<<< HEAD
 ### 3. **Evolution Loop Memory Management**
 
 - **Problem**: Memory accumulates over generations without cleanup
 - **Fix**: Periodic memory monitoring and forced garbage collection
+=======
+### 3. **Evolution Loop Memory Monitoring**
+- **Problem**: Memory accumulates over generations without monitoring
+- **Fix**: Periodic memory monitoring without forced garbage collection
+>>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management strategies)
 - **Files**: `src/Creature.ts`
 
 ```typescript
-// Periodic memory cleanup every 30 seconds
+// Periodic memory monitoring every 30 seconds
 const currentTime = Date.now();
 if (currentTime - lastMemoryCheck > MEMORY_CHECK_INTERVAL) {
   const memUsage = Deno.memoryUsage();
+<<<<<<< HEAD
   console.log(
     `Memory usage (Generation ${generation}): ${
       Math.round(memUsage.heapUsed / 1024 / 1024)
@@ -64,6 +73,10 @@ if (currentTime - lastMemoryCheck > MEMORY_CHECK_INTERVAL) {
   if (typeof (globalThis as any).gc === "function") {
     (globalThis as any).gc();
   }
+=======
+  console.log(`Memory usage (Generation ${generation}): ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB used`);
+  lastMemoryCheck = currentTime;
+>>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management strategies)
 }
 ```
 
@@ -82,6 +95,7 @@ r.train.backtracked = null;
 r.train.forward = null;
 ```
 
+<<<<<<< HEAD
 ### 5. **Improved Worker Termination**
 
 - **Problem**: Event listeners and callbacks not properly cleaned up
@@ -103,6 +117,63 @@ deno run --v8-flags=--expose-gc --allow-read --allow-write --allow-net your-scri
 
 If still needed, increase the memory limit:
 
+=======
+### 5. **Discovery Completion Cleanup**
+- **Problem**: Large discovery result objects accumulate in arrays
+- **Fix**: Immediately clear large objects after processing
+- **Files**: `src/NEAT/Neat.ts`
+
+```typescript
+// Immediately clear large objects to help GC
+r.discover.addHelpfulSynapses = null;
+r.discover.removeHarmfulSynapse = null;
+r.discover.candidateSquashes = null;
+```
+
+### 6. **Fitness Calculation Cleanup**
+- **Problem**: Global calculation data accumulates between fitness calculations
+- **Fix**: Clear global calculation data after each fitness calculation
+- **Files**: `src/architecture/Fitness.ts`
+
+```typescript
+this.schedule().finally(() => {
+  // Clear global calculation data to prevent memory leaks
+  calculationData = null;
+});
+```
+
+### 7. **Creature Disposal Enhancement**
+- **Problem**: Large object references not fully cleared during disposal
+- **Fix**: More aggressive clearing of all large object references
+- **Files**: `src/Creature.ts`
+
+```typescript
+// Clear large object references to help memory management
+this.state = null;
+this.cacheTo = null;
+this.cacheFrom = null;
+this.cacheSelf = null;
+this.cacheFocus = null;
+this.creatureActivationFunction = null;
+```
+
+### 8. **NEAT Evolution Cleanup**
+- **Problem**: Large objects created during evolution not cleared
+- **Fix**: Clear large objects after each evolution cycle
+- **Files**: `src/NEAT/Neat.ts`
+
+```typescript
+// Clear large objects to help memory management
+genus = null;
+breed = null;
+mutator = null;
+deDuplicator = null;
+```
+
+## Runtime Configuration
+
+### Increase Memory Limit (if needed)
+>>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management strategies)
 ```bash
 deno run --v8-flags=--max-old-space-size=32768 --allow-read --allow-write --allow-net your-script.ts
 ```
@@ -129,14 +200,14 @@ After applying these fixes, you should see:
 
 - **Stable memory usage** over long runs (100+ generations)
 - **No out-of-memory errors**
-- **Reduced garbage collection pressure**
+- **Reduced memory growth rate**
 - **More predictable memory footprint**
 
 ## Testing Strategy
 
 1. **Run Long Evolution**: Test with 50+ generations
 2. **Monitor Memory**: Watch for memory stabilization
-3. **Check GC Logs**: Look for reduced GC frequency
+3. **Check Memory Growth**: Look for reduced memory growth rate
 4. **Stress Test**: Run with multiple workers and large datasets
 
 ## Additional Recommendations
@@ -161,3 +232,6 @@ Consider using smaller batch sizes or streaming data to reduce memory pressure.
 ### 4. **Creature Simplification**
 
 Implement more aggressive creature simplification to reduce JSON size.
+
+### 5. **Deno Version**
+Consider downgrading Deno if the GC issue persists, or wait for the Deno team to fix the GC compatibility issue.
