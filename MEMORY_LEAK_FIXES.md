@@ -68,7 +68,6 @@ creature.synapses = null;
 const currentTime = Date.now();
 if (currentTime - lastMemoryCheck > MEMORY_CHECK_INTERVAL) {
   const memUsage = Deno.memoryUsage();
-<<<<<<< HEAD
   console.log(
     `Memory usage (Generation ${generation}): ${
       Math.round(memUsage.heapUsed / 1024 / 1024)
@@ -79,10 +78,6 @@ if (currentTime - lastMemoryCheck > MEMORY_CHECK_INTERVAL) {
   if (typeof (globalThis as any).gc === "function") {
     (globalThis as any).gc();
   }
-=======
-  console.log(`Memory usage (Generation ${generation}): ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB used`);
-  lastMemoryCheck = currentTime;
->>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management strategies)
 }
 ```
 
@@ -100,8 +95,6 @@ r.train.compact = null;
 r.train.backtracked = null;
 r.train.forward = null;
 ```
-
-<<<<<<< HEAD
 
 ### 5. **Improved Worker Termination**
 
@@ -124,69 +117,6 @@ deno run --v8-flags=--expose-gc --allow-read --allow-write --allow-net your-scri
 
 If still needed, increase the memory limit:
 
-=======
-
-### 5. **Discovery Completion Cleanup**
-
-- **Problem**: Large discovery result objects accumulate in arrays
-- **Fix**: Immediately clear large objects after processing
-- **Files**: `src/NEAT/Neat.ts`
-
-```typescript
-// Immediately clear large objects to help GC
-r.discover.addHelpfulSynapses = null;
-r.discover.removeHarmfulSynapse = null;
-r.discover.candidateSquashes = null;
-```
-
-### 6. **Fitness Calculation Cleanup**
-
-- **Problem**: Global calculation data accumulates between fitness calculations
-- **Fix**: Clear global calculation data after each fitness calculation
-- **Files**: `src/architecture/Fitness.ts`
-
-```typescript
-this.schedule().finally(() => {
-  // Clear global calculation data to prevent memory leaks
-  calculationData = null;
-});
-```
-
-### 7. **Creature Disposal Enhancement**
-
-- **Problem**: Large object references not fully cleared during disposal
-- **Fix**: More aggressive clearing of all large object references
-- **Files**: `src/Creature.ts`
-
-```typescript
-// Clear large object references to help memory management
-this.state = null;
-this.cacheTo = null;
-this.cacheFrom = null;
-this.cacheSelf = null;
-this.cacheFocus = null;
-this.creatureActivationFunction = null;
-```
-
-### 8. **NEAT Evolution Cleanup**
-
-- **Problem**: Large objects created during evolution not cleared
-- **Fix**: Clear large objects after each evolution cycle
-- **Files**: `src/NEAT/Neat.ts`
-
-```typescript
-// Clear large objects to help memory management
-genus = null;
-breed = null;
-mutator = null;
-deDuplicator = null;
-```
-
-## Runtime Configuration
-
-### Increase Memory Limit (if needed)
-
->>>>>>> 8f95386 (Update version to 0.179.12 and enhance memory management
 >>>>>>> strategies)
 
 ```bash
