@@ -1,17 +1,13 @@
 # Memory Leak Fixes for NEAT-AI Multithreading
 
-## Main Issue: Large JSON String Memory Accumulation
+## Critical Issue: Out of Memory Errors
 
-The primary cause of memory leaks is the accumulation of large JSON strings
-during worker communication. Each creature evaluation, training, and discovery
-operation creates large JSON objects that need immediate cleanup.
+The application is experiencing **fatal out-of-memory errors** after ~17-18 generations, with memory usage growing from 235MB to 296MB rapidly. The garbage collector is failing to reclaim memory effectively.
 
 ## Applied Fixes
 
-### 1. **Immediate JSON String Cleanup in WorkerHandler**
-
-- **Problem**: Large JSON objects created for worker communication stay in
-  memory
+### 1. **Aggressive JSON String Cleanup**
+- **Problem**: Large JSON objects created for worker communication stay in memory
 - **Fix**: Immediately clear large object properties after JSON.stringify()
 - **Files**: `src/multithreading/workers/WorkerHandler.ts`
 
@@ -24,8 +20,7 @@ json.neurons = null;
 json.synapses = null;
 ```
 
-### 2. **Aggressive Cleanup in WorkerProcessor**
-
+### 2. **Worker-Level Memory Cleanup**
 - **Problem**: Large result objects accumulate in worker memory
 - **Fix**: Clear large objects immediately after processing
 - **Files**: `src/multithreading/workers/WorkerProcessor.ts`
@@ -38,58 +33,102 @@ if (result.trace) {
 if (result.compact) {
   result.compact = null;
 }
+// Force cleanup of creature objects
+creature.neurons = null;
+creature.synapses = null;
 ```
 
-### 3. **Improved Worker Termination**
-
-- **Problem**: Event listeners and callbacks not properly cleaned up
-- **Fix**: Clear all callbacks and listeners in terminate() method
-- **Files**: `src/multithreading/workers/WorkerHandler.ts`,
-  `src/multithreading/workers/MockWorker.ts`
-
-## Why Other Issues Were Not Real Problems
-
-### Training/Discovery Completion Arrays
-
-- These are cleared at the end of each evolution generation
-- Training/discovery takes much longer than evaluation cycles
-- Arrays don't grow beyond a few entries per generation
-
-### Already Scheduled Map
-
-- Only stores UUID strings (small memory footprint)
-- Maximum 1000 entries is negligible
-- Has built-in cleanup mechanism
-
-### Worker Crashes
-
-- Workers don't crash or hang in this implementation
-- If they do, the entire program fails
-- No need for timeout mechanisms
-
-## Performance Impact
-
-These optimizations should significantly reduce memory usage by:
-
-- **Immediate cleanup** of large JSON objects
-- **Reduced garbage collection pressure**
-- **Lower peak memory usage** during long runs
-- **More stable memory footprint** over time
-
-## Testing
-
-Monitor memory usage during long evolution runs:
+### 3. **Evolution Loop Memory Management**
+- **Problem**: Memory accumulates over generations without cleanup
+- **Fix**: Periodic memory monitoring and forced garbage collection
+- **Files**: `src/Creature.ts`
 
 ```typescript
+// Periodic memory cleanup every 30 seconds
+const currentTime = Date.now();
+if (currentTime - lastMemoryCheck > MEMORY_CHECK_INTERVAL) {
+  const memUsage = Deno.memoryUsage();
+  console.log(`Memory usage (Generation ${generation}): ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB used`);
+  
+  // Force garbage collection if available
+  if (typeof (globalThis as any).gc === 'function') {
+    (globalThis as any).gc();
+  }
+}
+```
+
+### 4. **Training Completion Cleanup**
+- **Problem**: Large training result objects accumulate in arrays
+- **Fix**: Immediately clear large objects after processing
+- **Files**: `src/NEAT/Neat.ts`
+
+```typescript
+// Immediately clear large objects to help GC
+r.train.creature = null;
+r.train.trace = null;
+r.train.compact = null;
+r.train.backtracked = null;
+r.train.forward = null;
+```
+
+### 5. **Improved Worker Termination**
+- **Problem**: Event listeners and callbacks not properly cleaned up
+- **Fix**: Clear all callbacks and listeners in terminate() method
+- **Files**: `src/multithreading/workers/WorkerHandler.ts`, `src/multithreading/workers/MockWorker.ts`
+
+## Runtime Configuration
+
+### Enable Garbage Collection
+Run with garbage collection enabled:
+```bash
+deno run --v8-flags=--expose-gc --allow-read --allow-write --allow-net your-script.ts
+```
+
+### Increase Memory Limit
+If still needed, increase the memory limit:
+```bash
+deno run --v8-flags=--max-old-space-size=32768 --allow-read --allow-write --allow-net your-script.ts
+```
+
+## Monitoring Memory Usage
+
+Add this to your main script to monitor memory:
+```typescript
+// Monitor memory every 10 generations
 if (generation % 10 === 0) {
   const memUsage = Deno.memoryUsage();
-  console.log(`Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
+  console.log(`Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB used, ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB total`);
 }
 ```
 
 ## Expected Results
 
-- **Reduced memory growth** during long runs
-- **Fewer GC cycles** and errors
-- **More stable performance** over 20+ minute runs
-- **Lower peak memory usage**
+After applying these fixes, you should see:
+- **Stable memory usage** over long runs (100+ generations)
+- **No out-of-memory errors**
+- **Reduced garbage collection pressure**
+- **More predictable memory footprint**
+
+## Testing Strategy
+
+1. **Run Long Evolution**: Test with 50+ generations
+2. **Monitor Memory**: Watch for memory stabilization
+3. **Check GC Logs**: Look for reduced GC frequency
+4. **Stress Test**: Run with multiple workers and large datasets
+
+## Additional Recommendations
+
+### 1. **Worker Pool Recycling**
+Consider implementing a worker pool that recycles workers every N generations to prevent memory accumulation.
+
+### 2. **Memory Profiling**
+Use Deno's built-in memory profiling:
+```bash
+deno run --inspect-brk --allow-all your-script.ts
+```
+
+### 3. **Dataset Optimization**
+Consider using smaller batch sizes or streaming data to reduce memory pressure.
+
+### 4. **Creature Simplification**
+Implement more aggressive creature simplification to reduce JSON size.

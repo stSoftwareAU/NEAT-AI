@@ -653,6 +653,18 @@ export class Neat {
           Creature.fromJSON(compactJSON, this.config.debug),
         );
       }
+
+      // Immediately clear large objects to help GC
+      // @ts-ignore - clearing to help GC
+      r.train.creature = null;
+      // @ts-ignore - clearing to help GC
+      r.train.trace = null;
+      // @ts-ignore - clearing to help GC
+      r.train.compact = null;
+      // @ts-ignore - clearing to help GC
+      r.train.backtracked = null;
+      // @ts-ignore - clearing to help GC
+      r.train.forward = null;
     }
     this.trainingComplete.length = 0;
 
