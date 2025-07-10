@@ -108,7 +108,19 @@ export class DiscoverStructure {
     this.recorded = false;
     this.creature.dispose();
     this.discoveries = [];
-    await Deno.remove(this.tempDir, { recursive: true });
+
+    // Clear references to help GC
+    // @ts-ignore - clearing to help GC
+    this.creature = null;
+    // @ts-ignore - clearing to help GC
+    this.discoveries = null;
+
+    try {
+      await Deno.remove(this.tempDir, { recursive: true });
+    } catch (error) {
+      // Ignore cleanup errors to prevent crashes
+      console.warn(`Failed to cleanup discovery temp dir: ${error}`);
+    }
   }
 
   /**
@@ -348,38 +360,46 @@ export class DiscoverStructure {
 
     // Open file for streaming with retry mechanism
     const fileHandle = await this.openFileWithRetry(file);
-    // We need to process chunks sequentially to maintain record order
-    while (true) {
-      const bytesRead = fileHandle.readSync(buffer);
-      if (bytesRead === null) {
-        fileHandle.close();
+    try {
+      // We need to process chunks sequentially to maintain record order
+      while (true) {
+        const bytesRead = fileHandle.readSync(buffer);
+        if (bytesRead === null) {
+          break;
+        }
+        assert(bytesRead > 0, "Invalid number of bytes read");
 
-        break;
+        // Convert buffer to string and process
+        const chunk = TD.decode(buffer.slice(0, bytesRead));
+
+        partialLine = this.processCSVChunk(
+          chunk,
+          partialLine,
+          headers,
+          isFirstChunk,
+          records,
+        );
+
+        isFirstChunk = false;
+
+        // Give GC a chance to run periodically
+        if (records.length % 1000 === 0) {
+          // deno-lint-ignore no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
       }
-      assert(bytesRead > 0, "Invalid number of bytes read");
 
-      // Convert buffer to string and process
-      const chunk = TD.decode(buffer.slice(0, bytesRead));
+      if (partialLine.trim()) {
+        assert(headers.length > 0, "No headers found");
+        const values = parseCsv(partialLine, { skipFirstRow: false })[0];
 
-      partialLine = this.processCSVChunk(
-        chunk,
-        partialLine,
-        headers,
-        isFirstChunk,
-        records,
-      );
-
-      isFirstChunk = false;
-    }
-
-    if (partialLine.trim()) {
-      assert(headers.length > 0, "No headers found");
-      const values = parseCsv(partialLine, { skipFirstRow: false })[0];
-
-      const record = this.processCSVRecord(headers, values);
-      if (record) {
-        records.push(record);
+        const record = this.processCSVRecord(headers, values);
+        if (record) {
+          records.push(record);
+        }
       }
+    } finally {
+      fileHandle.close();
     }
 
     return records;
