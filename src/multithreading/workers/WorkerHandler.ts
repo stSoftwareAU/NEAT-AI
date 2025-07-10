@@ -284,8 +284,10 @@ export class WorkerHandler {
   }
 
   terminate() {
-    this.worker.terminate();
+    // Clear all pending callbacks to prevent memory leaks
+    this.callbacks.clear();
     this.idleListeners.length = 0;
+    this.worker.terminate();
   }
 
   echo(message: string, ms: number) {
@@ -336,6 +338,14 @@ export class WorkerHandler {
       },
     };
 
+    // Immediately clear the large JSON object to help GC
+    // @ts-ignore - clearing to help GC
+    json.tags = null;
+    // @ts-ignore - clearing to help GC
+    json.neurons = null;
+    // @ts-ignore - clearing to help GC
+    json.synapses = null;
+
     return this.makePromise(data);
   }
 
@@ -349,6 +359,12 @@ export class WorkerHandler {
         options: options,
       },
     };
+
+    // Immediately clear the large JSON object to help GC
+    // @ts-ignore - clearing to help GC
+    json.neurons = null;
+    // @ts-ignore - clearing to help GC
+    json.synapses = null;
 
     return this.makePromise(data);
   }

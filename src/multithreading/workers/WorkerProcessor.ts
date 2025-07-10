@@ -66,7 +66,7 @@ export class WorkerProcessor {
 
       creature.dispose();
 
-      return {
+      const response = {
         taskID: data.taskID,
         duration: Date.now() - start,
         train: {
@@ -77,6 +77,18 @@ export class WorkerProcessor {
           compact: result.compact ? JSON.stringify(result.compact) : undefined,
         },
       };
+
+      // Immediately clear large objects to help GC
+      if (result.trace) {
+        // @ts-ignore - clearing to help GC
+        result.trace = null;
+      }
+      if (result.compact) {
+        // @ts-ignore - clearing to help GC
+        result.compact = null;
+      }
+
+      return response;
     } else if (data.echo) {
       await new Promise((f) => setTimeout(f, data.echo?.ms));
       return {
@@ -102,16 +114,32 @@ export class WorkerProcessor {
       );
       creature.dispose();
 
-      return {
+      const response = {
         taskID: data.taskID,
         duration: Date.now() - start,
         discover: {
           ID: result.ID,
-          addHelpfulSynapses: result.addHelpfulSynapses,
+          addHelpfulSynapses: result.addHelpfulSynapses
+            ? [...result.addHelpfulSynapses]
+            : undefined,
           removeHarmfulSynapse: result.removeHarmfulSynapse,
-          candidateSquashes: result.candidateSquashes,
+          candidateSquashes: result.candidateSquashes
+            ? [...result.candidateSquashes]
+            : undefined,
         },
       };
+
+      // Immediately clear large objects to help GC
+      if (result.addHelpfulSynapses) {
+        // @ts-ignore - clearing to help GC
+        result.addHelpfulSynapses = null;
+      }
+      if (result.candidateSquashes) {
+        // @ts-ignore - clearing to help GC
+        result.candidateSquashes = null;
+      }
+
+      return response;
     } else {
       throw new Error("unknown message");
     }
