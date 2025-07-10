@@ -85,10 +85,7 @@ export class Fitness {
         that: this,
       };
 
-      this.schedule().finally(() => {
-        // Clear global calculation data to prevent memory leaks
-        calculationData = null;
-      });
+      this.schedule();
     });
   }
 }

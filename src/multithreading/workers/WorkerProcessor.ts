@@ -38,12 +38,6 @@ export class WorkerProcessor {
 
       creature.dispose();
 
-      // Force cleanup of large objects
-      // @ts-ignore - clearing to help GC
-      creature.neurons = null;
-      // @ts-ignore - clearing to help GC
-      creature.synapses = null;
-
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
@@ -93,12 +87,6 @@ export class WorkerProcessor {
         // @ts-ignore - clearing to help GC
         result.compact = null;
       }
-
-      // Force cleanup of creature objects
-      // @ts-ignore - clearing to help GC
-      creature.neurons = null;
-      // @ts-ignore - clearing to help GC
-      creature.synapses = null;
 
       return response;
     } else if (data.echo) {
@@ -150,12 +138,6 @@ export class WorkerProcessor {
         // @ts-ignore - clearing to help GC
         result.candidateSquashes = null;
       }
-
-      // Force cleanup of creature objects
-      // @ts-ignore - clearing to help GC
-      creature.neurons = null;
-      // @ts-ignore - clearing to help GC
-      creature.synapses = null;
 
       return response;
     } else {
