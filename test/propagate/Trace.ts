@@ -35,6 +35,15 @@ Deno.test("Trace-load-memetic", () => {
   checkMemetic(creature);
 });
 
+Deno.test("Trace-load-traces", () => {
+  const creature = Creature.fromJSON(
+    JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
+  );
+  const nodeState = creature.state.node(999);
+  console.info(nodeState);
+  assertEquals(nodeState.count, 1386);
+});
+
 Deno.test("Trace-export-memetic", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
