@@ -171,6 +171,12 @@ class DataRecorder {
         }
         batchStart += batchSize;
       }
+
+      // Clear large buffers to help GC
+      // @ts-ignore - clearing to help GC
+      batchBuffer.fill(0);
+      // @ts-ignore - clearing to help GC
+      batchArray.fill(0);
     } finally {
       file.close();
     }
@@ -229,6 +235,10 @@ class DataRecorder {
       if (dataSet.length > 0) {
         discoverStructure.record(dataSet, neuronPromisesMap);
       }
+
+      // Clear large arrays to help GC
+      dataSet.length = 0;
+
       if (options.log) {
         const scannedTime = Date.now() - startTime;
         console.log(
@@ -238,6 +248,10 @@ class DataRecorder {
         );
       }
       await Promise.all([...neuronPromisesMap.values()]);
+
+      // Clear the promises map to help GC
+      neuronPromisesMap.clear();
+
       if (options.log) {
         const recordTime = Date.now() - startTime;
         console.log(

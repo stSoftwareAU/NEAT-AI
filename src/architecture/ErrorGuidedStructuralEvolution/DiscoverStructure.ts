@@ -203,6 +203,9 @@ export class DiscoverStructure {
       (candidate) => candidate.expectedImprovementPercentage > 0.1,
     );
 
+    // Clear large arrays to help GC
+    candidateArrays.length = 0;
+
     if (allCandidates.length > 0) {
       allCandidates.sort((a, b) =>
         b.expectedImprovementPercentage - a.expectedImprovementPercentage
@@ -400,6 +403,10 @@ export class DiscoverStructure {
       }
     } finally {
       fileHandle.close();
+
+      // Clear large buffers to help GC
+      // @ts-ignore - clearing to help GC
+      buffer.fill(0);
     }
 
     return records;
@@ -456,6 +463,9 @@ export class DiscoverStructure {
             );
             return sum + recordError;
           }, 0);
+
+          // Clear records array to help GC
+          records.length = 0;
 
           return { uuid: neuron.uuid, totalError };
         } catch (e) {
@@ -604,6 +614,10 @@ export class DiscoverStructure {
       weight = Math.max(-1, Math.min(1, weight));
     }
 
+    // Clear large arrays to help GC
+    toRecords.length = 0;
+    fromRecords.length = 0;
+
     return {
       fromNeuronUUID,
       toNeuronUUID,
@@ -721,19 +735,6 @@ export class DiscoverStructure {
         return (activation as ActivationInterface).squash !== undefined;
       },
     ) as ActivationInterface[];
-    //   (name) => {
-    //     if (name !== currentSquash) {
-    //       const activation = Activations.find(name);
-    //       if (activation !== undefined) {
-    //         if ((activation as ActivationInterface).squash !== undefined) {
-    //           return activation as ActivationInterface;
-    //         }
-    //       }
-    //     }
-    //   },
-    // ).filter((activation) => {
-    //   return activation !== undefined;
-    // });
 
     // Randomize the order of the squash functions using Fisher-Yates shuffle
     for (let i = squashFunctions.length - 1; i > 0; i--) {
@@ -758,6 +759,11 @@ export class DiscoverStructure {
         bestSquash = squashFunction.getName();
       }
     }
+
+    // Clear large arrays to help GC
+    rawValues.length = 0;
+    currentActivations.length = 0;
+    idealActivations.length = 0;
 
     if (bestSquash !== currentSquash) {
       const expectedImprovementPercentage = (baselineError - lowestError) /
