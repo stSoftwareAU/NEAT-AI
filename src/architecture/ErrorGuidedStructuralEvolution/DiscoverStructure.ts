@@ -210,26 +210,21 @@ export class DiscoverStructure {
       allCandidates.sort((a, b) =>
         b.expectedImprovementPercentage - a.expectedImprovementPercentage
       );
-      const bestCandidate = allCandidates[0];
-      assert(bestCandidate.expectedImprovementPercentage > 0);
-
-      console.info(
-        `Discovered beneficial synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${
-          bestCandidate.weight.toFixed(4)
-        }, helping ${
-          (
-            bestCandidate.expectedImprovementPercentage * 100
-          ).toFixed(1)
-        }% more records than it harms (${bestCandidate.improvedCount}/${bestCandidate.totalCount})`,
-      );
-
-      this.discoveries.push(bestCandidate);
+      // Log all discovered candidates for debugging
+      allCandidates.forEach((candidate) => {
+        if (candidate.expectedImprovementPercentage > 0) {
+          console.info(
+            `Discovered beneficial synapse from ${candidate.fromNeuronUUID} to ${candidate.toNeuronUUID} with weight ${
+              candidate.weight.toFixed(4)
+            }, helping ${
+              (candidate.expectedImprovementPercentage * 100).toFixed(1)
+            }% more records than it harms (${candidate.improvedCount}/${candidate.totalCount})`,
+          );
+        }
+      });
+      return allCandidates;
     }
-    if (this.discoveries.length === 0) {
-      return undefined;
-    }
-
-    return this.discoveries;
+    return undefined;
   }
 
   /**
@@ -540,6 +535,9 @@ export class DiscoverStructure {
     const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
     let fromRecords = await this.loadCSV(fileName);
 
+    // Store the total count before any potential array modifications
+    const totalCount = toRecords.length;
+
     // Handle mismatched record counts more gracefully
     if (fromRecords.length !== activationCount) {
       // Use the smaller count to avoid index out of bounds errors
@@ -596,9 +594,6 @@ export class DiscoverStructure {
     const activationSum = usePositive
       ? positiveActivationSum
       : negativeActivationSum;
-
-    // Store the total count before clearing arrays
-    const totalCount = toRecords.length;
 
     // Net percentage improvement: positive means overall help, negative means harm
     const expectedImprovementPercentage = (improvedCount - worsenCount) /
