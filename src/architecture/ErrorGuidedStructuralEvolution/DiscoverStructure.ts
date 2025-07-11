@@ -597,9 +597,12 @@ export class DiscoverStructure {
       ? positiveActivationSum
       : negativeActivationSum;
 
+    // Store the total count before clearing arrays
+    const totalCount = toRecords.length;
+
     // Net percentage improvement: positive means overall help, negative means harm
     const expectedImprovementPercentage = (improvedCount - worsenCount) /
-      toRecords.length;
+      totalCount;
 
     // Estimate weight magnitude and apply correct sign
     let weight = 0;
@@ -623,7 +626,7 @@ export class DiscoverStructure {
       toNeuronUUID,
       weight,
       improvedCount,
-      totalCount: toRecords.length,
+      totalCount,
       expectedImprovementPercentage,
     };
   }
