@@ -784,7 +784,7 @@ export class Neat {
     const mutator = new Mutator(this.config);
     while (this.population.length < this.config.populationSize - 1) {
       const clonedCreature = Creature.fromJSON(
-        creature.internalJSON(),
+        creature.exportJSON(),
         this.config.debug,
       );
       const creatures = [clonedCreature];

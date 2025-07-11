@@ -281,7 +281,7 @@ Deno.test("propagateSingleNeuronRandom", () => {
 
   Deno.writeTextFileSync(
     ".trace/4-done.json",
-    JSON.stringify(creature.internalJSON(), null, 1),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   for (let loop = 0; loop < 5; loop++) {

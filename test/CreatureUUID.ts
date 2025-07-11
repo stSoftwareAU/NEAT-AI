@@ -144,7 +144,6 @@ Deno.test("ignoreTags", () => {
 
 Deno.test("keepUUID", () => {
   const creature: CreatureInternal = {
-    uuid: crypto.randomUUID(),
     neurons: [
       {
         bias: 0,
@@ -191,12 +190,16 @@ Deno.test("keepUUID", () => {
   };
 
   const n1 = Creature.fromJSON(creature);
-  const j1 = n1.internalJSON();
+  CreatureUtil.makeUUID(n1);
+
+  const j1 = n1.exportJSON();
+
   const n2 = Creature.fromJSON(j1);
+  CreatureUtil.makeUUID(n2);
 
   assertEquals(
     n2.uuid,
-    creature.uuid,
+    n1.uuid,
     "Exported creature should match was: " + n2.uuid,
   );
 });

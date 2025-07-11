@@ -60,14 +60,6 @@ Deno.test("export-memetic", () => {
   checkMemetic(creature2);
 });
 
-Deno.test("internal-memetic", () => {
-  const creature = Creature.fromJSON(
-    JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
-  );
-  const creature2 = Creature.fromJSON(creature.internalJSON());
-  checkMemetic(creature2);
-});
-
 Deno.test("Trace", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
