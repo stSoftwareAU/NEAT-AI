@@ -3,14 +3,67 @@ import { createBackPropagationConfig } from "../../src/propagate/BackPropagation
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+function checkMemetic(creature: Creature) {
+  creature.validate();
+  assertEquals(creature.neurons.length, 1001);
+  assertEquals(creature.synapses.length, 2449);
+  assert(creature.memetic);
+  assert(creature.memetic.generation === 6);
+  assert(creature.memetic.score === 0.47133930519315353);
+  assert(creature.memetic.biases);
+  assertAlmostEquals(
+    creature.memetic.biases["552c68d3-6ea2-4e0c-a6bb-d7d1b0ad2661"],
+    0.0001412,
+  );
+  assert(creature.memetic.weights);
+  assert(creature.memetic.weights["input-115"]);
+  assert(
+    creature.memetic.weights["input-115"][1].toUUID ===
+      "115b0169-65c3-4c87-9904-316bae966a6f",
+  );
+  assertAlmostEquals(creature.memetic.weights["input-115"][1].weight, 0.1234);
+}
+
+Deno.test("Trace-load-memetic", () => {
+  const creature = Creature.fromJSON(
+    JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
+  );
+  checkMemetic(creature);
+});
+
+Deno.test("Trace-export-memetic", () => {
+  const creature = Creature.fromJSON(
+    JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
+  );
+  const creature2 = Creature.fromJSON(creature.traceJSON());
+  checkMemetic(creature2);
+});
+
+Deno.test("export-memetic", () => {
+  const creature = Creature.fromJSON(
+    JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
+  );
+  const creature2 = Creature.fromJSON(creature.exportJSON());
+  checkMemetic(creature2);
+});
+
+Deno.test("internal-memetic", () => {
+  const creature = Creature.fromJSON(
+    JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
+  );
+  const creature2 = Creature.fromJSON(creature.internalJSON());
+  checkMemetic(creature2);
+});
 
 Deno.test("Trace", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
-
+  creature.validate();
   const json = creature.exportJSON();
 
   stats(json);

@@ -1367,10 +1367,6 @@ export class Creature implements CreatureInternal {
     });
     json.synapses = traceConnections;
 
-    if (this.memetic) {
-      json.memetic = JSON.parse(JSON.stringify(this.memetic));
-    }
-
     return json as CreatureTrace;
   }
 

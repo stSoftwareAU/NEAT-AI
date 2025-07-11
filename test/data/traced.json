@@ -27998,11 +27998,99 @@
   "tags": [
     {
       "name": "untrained-error",
-      "value": "0.5698102321916992"
+      "value": "0.5284948125428953"
     },
     {
       "name": "untrained-score",
-      "value": "-0.5700932158536204"
+      "value": "0.4712790628641832"
+    },
+    {
+      "name": "unused",
+      "value": "57a513ba-3dc9-43d2-a1e1-7b8152f6ccdd"
+    },
+    {
+      "name": "old-neurons",
+      "value": "507"
+    },
+    {
+      "name": "old-synapses",
+      "value": "14952"
+    },
+    {
+      "name": "error",
+      "value": "0.5284588073077661"
+    },
+    {
+      "name": "score",
+      "value": "0.4713410536966273"
+    },
+    {
+      "name": "notified",
+      "value": "Yes"
+    },
+    {
+      "name": "trainMsg",
+      "value": "Compact a6954c06 Score: 0.4712792028640286, Error: 0.5285206981402077 -> 0.5285206981403612, 👿 -1.53e-13"
+    },
+    {
+      "name": "adjusted",
+      "value": "1 weight"
+    },
+    {
+      "name": "name",
+      "value": "Arianna Kilback"
+    },
+    {
+      "name": "version",
+      "value": "87"
+    },
+    {
+      "name": "LEARN_HOST",
+      "value": "Mac-Ultra-M2"
+    },
+    {
+      "name": "trainVariant",
+      "value": "undershot"
+    },
+    {
+      "name": "intelligentDesign",
+      "value": "💍  Tacit Knowledge, score: 0.471341 improved by 0.00000173"
+    },
+    {
+      "name": "SAMPLER_HOST",
+      "value": "GRQ-10"
+    },
+    {
+      "name": "approach",
+      "value": "fine"
     }
-  ]
+  ],
+  "memetic": {
+    "generation": 6,
+    "score": 0.47133930519315353,
+    "biases": {
+      "4d393dfb-113e-4f1f-93a3-fb3b121d3d30": 0.0001412,
+      "d6ed0611-4466-494f-a156-30609c9d4010": 0,
+      "6c2bea2f-f3a2-42a6-aabb-e91b07f80685": -0.0001412,
+      "552c68d3-6ea2-4e0c-a6bb-d7d1b0ad2661": 0.0001412
+    },
+    "weights": {
+      "input-91": [
+        {
+          "toUUID": "fdbffc1d-122f-4e85-bae9-829c834e74b5",
+          "weight": 0
+        }
+      ],
+      "input-115": [
+        {
+          "toUUID": "cc9f8c41-ae54-40a1-93cb-b6f3e5f780fa",
+          "weight": -0.0001412
+        },
+        {
+          "toUUID": "115b0169-65c3-4c87-9904-316bae966a6f",
+          "weight": 0.1234
+        }
+      ]
+    }
+  }
 }
