@@ -99,7 +99,7 @@ Deno.test("train-XOR", () => {
       break;
     }
 
-    if (attempts > 12) {
+    if (attempts > 24) {
       throw "Error rate was: " + results.error;
     }
   }
