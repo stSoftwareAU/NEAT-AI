@@ -53,7 +53,7 @@ Deno.test("FromUUID", () => {
 
   assert(foundTag, "Should have found the ID tag");
 
-  const creatureD = Creature.fromJSON(creatureC.internalJSON());
+  const creatureD = Creature.fromJSON(creatureC.exportJSON());
 
   creatureD.validate();
 

@@ -18,11 +18,7 @@ import {
 } from "./architecture/DataSet.ts";
 import type { DiscoverRecord } from "./architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Neuron } from "./architecture/Neuron.ts";
-import type {
-  NeuronExport,
-  NeuronInternal,
-  NeuronTrace,
-} from "./architecture/NeuronInterfaces.ts";
+import type { NeuronTrace } from "./architecture/NeuronInterfaces.ts";
 import { calculate as calculateScore } from "./architecture/Score.ts";
 import { Synapse } from "./architecture/Synapse.ts";
 import type {
@@ -47,6 +43,7 @@ import {
 } from "./propagate/BackPropagation.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
+import { CreatureExportBuilder } from "./utils/CreatureExportBuilder.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -1320,42 +1317,10 @@ export class Creature implements CreatureInternal {
     if (this.DEBUG) {
       creatureValidate(this);
     }
+    const builder = new CreatureExportBuilder(this);
+    const exportCreature: CreatureExport = builder.build();
 
-    const json: CreatureExport = {
-      semanticVersion: this.semanticVersion,
-      neurons: new Array<NeuronExport>(
-        this.neurons.length - this.input,
-      ),
-      synapses: new Array<SynapseExport>(this.synapses.length),
-      input: this.input,
-      output: this.output,
-      tags: this.tags ? this.tags.slice() : undefined,
-    };
-
-    const uuidMap = new Map<number, string>();
-    for (let i = this.neurons.length; i--;) {
-      const neuron = this.neurons[i];
-      uuidMap.set(i, neuron.uuid ?? `unknown-${i}`);
-      if (neuron.type === "input") continue;
-
-      const tojson = neuron.exportJSON();
-
-      json.neurons[i - this.input] = tojson;
-    }
-
-    for (let i = this.synapses.length; i--;) {
-      const exportJSON = this.synapses[i].exportJSON(
-        uuidMap,
-      );
-
-      json.synapses[i] = exportJSON;
-    }
-
-    if (this.memetic) {
-      json.memetic = JSON.parse(JSON.stringify(this.memetic));
-    }
-
-    return json;
+    return exportCreature;
   }
 
   /**
@@ -1364,90 +1329,36 @@ export class Creature implements CreatureInternal {
    * @returns {CreatureTrace} The trace JSON representation of the creature.
    */
   traceJSON(): CreatureTrace {
-    const json = this.exportJSON();
+    const exportCreature = this.exportJSON();
 
     const state = this.state;
-    const traceNeurons = Array<NeuronTrace>(json.neurons.length);
     let exportIndex = 0;
     this.neurons.forEach((n) => {
       if (n.type !== "input") {
-        const indx = n.index;
-
-        const traceNeuron: NeuronTrace = json
-          .neurons[exportIndex] as NeuronTrace;
-
         if (n.type !== "constant") {
+          const indx = n.index;
+
+          const traceNeuron: NeuronTrace = exportCreature
+            .neurons[exportIndex] as NeuronTrace;
+
           const ns = state.node(indx);
           if (ns.count) {
             (traceNeuron as NeuronTrace).trace = ns;
           }
         }
-        traceNeurons[exportIndex] = traceNeuron as NeuronTrace;
         exportIndex++;
       }
     });
-    json.neurons = traceNeurons;
-    const traceConnections = Array<SynapseTrace>(json.synapses.length);
+
     this.synapses.forEach((c, indx) => {
-      const exportConnection = json.synapses[indx] as SynapseTrace;
+      const exportConnection = exportCreature.synapses[indx] as SynapseTrace;
       const cs = state.connection(c.from, c.to);
       if (cs.count) {
         exportConnection.trace = cs;
       }
-
-      traceConnections[indx] = exportConnection;
     });
-    json.synapses = traceConnections;
 
-    if (this.memetic) {
-      json.memetic = JSON.parse(JSON.stringify(this.memetic));
-    }
-
-    return json as CreatureTrace;
-  }
-
-  /**
-   * Convert the creature to an internal JSON object.
-   *
-   * @returns {CreatureInternal} The internal JSON representation of the creature.
-   */
-  internalJSON(): CreatureInternal {
-    if (this.DEBUG) {
-      creatureValidate(this);
-    }
-
-    const json: CreatureInternal = {
-      uuid: this.uuid,
-      neurons: new Array<NeuronInternal>(
-        this.neurons.length - this.input,
-      ),
-      synapses: new Array<SynapseInternal>(this.synapses.length),
-      input: this.input,
-      output: this.output,
-      tags: this.tags ? this.tags.slice() : undefined,
-    };
-
-    for (let i = this.neurons.length; i--;) {
-      const neuron = this.neurons[i];
-
-      if (neuron.type === "input") continue;
-
-      const tojson = neuron.internalJSON(i);
-
-      json.neurons[i - this.input] = tojson;
-    }
-
-    for (let i = this.synapses.length; i--;) {
-      const internalJSON = this.synapses[i].internalJSON();
-
-      json.synapses[i] = internalJSON;
-    }
-
-    if (this.memetic) {
-      json.memetic = JSON.parse(JSON.stringify(this.memetic));
-    }
-
-    return json;
+    return exportCreature as CreatureTrace;
   }
 
   /**

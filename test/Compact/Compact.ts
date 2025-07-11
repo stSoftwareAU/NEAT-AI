@@ -205,7 +205,7 @@ Deno.test("RandomizeCompact", () => {
 
     Deno.writeTextFileSync(
       `${traceDir}/a.json`,
-      JSON.stringify(a.internalJSON(), null, 1),
+      JSON.stringify(a.exportJSON(), null, 1),
     );
     const b = a.compact(false);
     if (!b) {
@@ -215,7 +215,7 @@ Deno.test("RandomizeCompact", () => {
       b.DEBUG = false;
       Deno.writeTextFileSync(
         `${traceDir}/b.json`,
-        JSON.stringify(b.internalJSON(), null, 1),
+        JSON.stringify(b.exportJSON(), null, 1),
       );
       b.DEBUG = true;
       b.validate();

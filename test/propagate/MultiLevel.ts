@@ -123,7 +123,7 @@ Deno.test("propagateMultiLevelRandom", () => {
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
 
-  const internalJSON = creatureA.internalJSON();
+  const internalJSON = creatureA.exportJSON();
 
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
@@ -155,7 +155,7 @@ Deno.test("propagateMultiLevelRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.internalJSON(), null, 1),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     const result2 = train(creatureB, ts, {
@@ -165,7 +165,7 @@ Deno.test("propagateMultiLevelRandom", () => {
 
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.internalJSON(), null, 1),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     if (result2.error < 0.0001) break;
@@ -330,7 +330,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
 
-  const internalJSON = creatureA.internalJSON();
+  const internalJSON = creatureA.exportJSON();
 
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
@@ -362,7 +362,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
 
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.internalJSON(), null, 1),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     const result2 = train(creatureB, ts, {
@@ -372,7 +372,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
 
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.internalJSON(), null, 1),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     Deno.writeTextFileSync(
@@ -536,7 +536,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
 
-  const internalJSON = creatureA.internalJSON();
+  const internalJSON = creatureA.exportJSON();
 
   Deno.writeTextFileSync(
     ".trace/start.json",
@@ -568,7 +568,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
     Deno.writeTextFileSync(
       ".trace/first.json",
-      JSON.stringify(creatureB.internalJSON(), null, 1),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     const result2 = train(creatureB, ts, {
@@ -578,7 +578,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
     Deno.writeTextFileSync(
       ".trace/last.json",
-      JSON.stringify(creatureB.internalJSON(), null, 1),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     if (result2.error < 0.0001) break;
