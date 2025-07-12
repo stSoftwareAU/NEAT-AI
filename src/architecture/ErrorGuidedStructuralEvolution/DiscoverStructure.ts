@@ -203,6 +203,9 @@ export class DiscoverStructure {
       (candidate) => candidate.expectedImprovementPercentage > 0.1,
     );
 
+    // Clear large arrays to help GC
+    candidateArrays.length = 0;
+
     if (allCandidates.length > 0) {
       allCandidates.sort((a, b) =>
         b.expectedImprovementPercentage - a.expectedImprovementPercentage
