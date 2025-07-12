@@ -222,9 +222,12 @@ export class DiscoverStructure {
           );
         }
       });
-      return allCandidates;
+      this.discoveries.push(...allCandidates);
     }
-    return undefined;
+    if (this.discoveries.length === 0) {
+      return undefined;
+    }
+    return this.discoveries;
   }
 
   /**
@@ -535,9 +538,6 @@ export class DiscoverStructure {
     const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
     let fromRecords = await this.loadCSV(fileName);
 
-    // Store the total count before any potential array modifications
-    const totalCount = toRecords.length;
-
     // Handle mismatched record counts more gracefully
     if (fromRecords.length !== activationCount) {
       // Use the smaller count to avoid index out of bounds errors
@@ -545,6 +545,9 @@ export class DiscoverStructure {
       toRecords = toRecords.slice(0, minCount);
       fromRecords = fromRecords.slice(0, minCount);
     }
+
+    // Store the total count after any potential array modifications
+    const totalCount = toRecords.length;
 
     // Track stats for evaluating the benefit of a positive vs. negative weight
     let positiveCount = 0;
