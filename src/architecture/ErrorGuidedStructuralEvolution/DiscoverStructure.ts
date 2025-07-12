@@ -203,30 +203,29 @@ export class DiscoverStructure {
       (candidate) => candidate.expectedImprovementPercentage > 0.1,
     );
 
-    // Clear large arrays to help GC
-    candidateArrays.length = 0;
-
     if (allCandidates.length > 0) {
       allCandidates.sort((a, b) =>
         b.expectedImprovementPercentage - a.expectedImprovementPercentage
       );
-      // Log all discovered candidates for debugging
-      allCandidates.forEach((candidate) => {
-        if (candidate.expectedImprovementPercentage > 0) {
-          console.info(
-            `Discovered beneficial synapse from ${candidate.fromNeuronUUID} to ${candidate.toNeuronUUID} with weight ${
-              candidate.weight.toFixed(4)
-            }, helping ${
-              (candidate.expectedImprovementPercentage * 100).toFixed(1)
-            }% more records than it harms (${candidate.improvedCount}/${candidate.totalCount})`,
-          );
-        }
-      });
-      this.discoveries.push(...allCandidates);
+      const bestCandidate = allCandidates[0];
+      assert(bestCandidate.expectedImprovementPercentage > 0);
+
+      console.info(
+        `Discovered beneficial synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${
+          bestCandidate.weight.toFixed(4)
+        }, helping ${
+          (
+            bestCandidate.expectedImprovementPercentage * 100
+          ).toFixed(1)
+        }% more records than it harms (${bestCandidate.improvedCount}/${bestCandidate.totalCount})`,
+      );
+
+      this.discoveries.push(bestCandidate);
     }
     if (this.discoveries.length === 0) {
       return undefined;
     }
+
     return this.discoveries;
   }
 
@@ -401,10 +400,6 @@ export class DiscoverStructure {
       }
     } finally {
       fileHandle.close();
-
-      // Clear large buffers to help GC
-      // @ts-ignore - clearing to help GC
-      buffer.fill(0);
     }
 
     return records;
@@ -461,9 +456,6 @@ export class DiscoverStructure {
             );
             return sum + recordError;
           }, 0);
-
-          // Clear records array to help GC
-          records.length = 0;
 
           return { uuid: neuron.uuid, totalError };
         } catch (e) {
@@ -546,9 +538,6 @@ export class DiscoverStructure {
       fromRecords = fromRecords.slice(0, minCount);
     }
 
-    // Store the total count after any potential array modifications
-    const totalCount = toRecords.length;
-
     // Track stats for evaluating the benefit of a positive vs. negative weight
     let positiveCount = 0;
     let negativeCount = 0;
@@ -600,7 +589,7 @@ export class DiscoverStructure {
 
     // Net percentage improvement: positive means overall help, negative means harm
     const expectedImprovementPercentage = (improvedCount - worsenCount) /
-      totalCount;
+      toRecords.length;
 
     // Estimate weight magnitude and apply correct sign
     let weight = 0;
@@ -615,16 +604,12 @@ export class DiscoverStructure {
       weight = Math.max(-1, Math.min(1, weight));
     }
 
-    // Clear large arrays to help GC
-    toRecords.length = 0;
-    fromRecords.length = 0;
-
     return {
       fromNeuronUUID,
       toNeuronUUID,
       weight,
       improvedCount,
-      totalCount,
+      totalCount: toRecords.length,
       expectedImprovementPercentage,
     };
   }
@@ -736,6 +721,19 @@ export class DiscoverStructure {
         return (activation as ActivationInterface).squash !== undefined;
       },
     ) as ActivationInterface[];
+    //   (name) => {
+    //     if (name !== currentSquash) {
+    //       const activation = Activations.find(name);
+    //       if (activation !== undefined) {
+    //         if ((activation as ActivationInterface).squash !== undefined) {
+    //           return activation as ActivationInterface;
+    //         }
+    //       }
+    //     }
+    //   },
+    // ).filter((activation) => {
+    //   return activation !== undefined;
+    // });
 
     // Randomize the order of the squash functions using Fisher-Yates shuffle
     for (let i = squashFunctions.length - 1; i > 0; i--) {
@@ -760,11 +758,6 @@ export class DiscoverStructure {
         bestSquash = squashFunction.getName();
       }
     }
-
-    // Clear large arrays to help GC
-    rawValues.length = 0;
-    currentActivations.length = 0;
-    idealActivations.length = 0;
 
     if (bestSquash !== currentSquash) {
       const expectedImprovementPercentage = (baselineError - lowestError) /
