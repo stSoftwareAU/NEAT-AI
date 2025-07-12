@@ -50,27 +50,8 @@ export class CreatureExportBuilder {
 
     const memetic = creature.memetic;
     if (memetic) {
-      // json.memetic = JSON.parse(JSON.stringify(memetic));
-
-      // const weights = Object.fromEntries(
-      //   Object.entries(memetic.weights).map(([key, value]) => [
-      //     key,
-      //     value.map((weight) => ({ ...weight })),
-      //   ]),
-      // );
-      // let weights= {};
-      // if (memetic.weights) {
-
-      const weights = JSON.parse(JSON.stringify(memetic.weights));
-      // }
-
-      // Deep clone memetic data efficiently
-      json.memetic = {
-        generation: memetic.generation,
-        score: memetic.score,
-        biases: { ...memetic.biases },
-        weights: weights,
-      };
+      // Deep clone memetic data using JSON.parse/stringify for robust cloning
+      json.memetic = JSON.parse(JSON.stringify(memetic));
     }
     return json;
   }
