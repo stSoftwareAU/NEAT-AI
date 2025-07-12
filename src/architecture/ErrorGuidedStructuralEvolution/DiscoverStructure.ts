@@ -1047,6 +1047,11 @@ export class DiscoverStructure {
     const allCandidates: CandidateSynapse[] = candidates.filter(
       (candidate) => candidate.expectedImprovementPercentage < -0.1,
     );
+
+    // Clear large arrays to help GC
+    promises.length = 0;
+    candidates.length = 0;
+
     if (allCandidates.length > 0) {
       allCandidates.sort((a, b) =>
         a.expectedImprovementPercentage - b.expectedImprovementPercentage
@@ -1062,8 +1067,14 @@ export class DiscoverStructure {
         }% more records than it helps (${worseCandidate.improvedCount}/${worseCandidate.totalCount})`,
       );
 
+      // Clear allCandidates array to help GC
+      allCandidates.length = 0;
+
       return worseCandidate;
     }
+
+    // Clear allCandidates array to help GC
+    allCandidates.length = 0;
 
     return undefined;
   }
