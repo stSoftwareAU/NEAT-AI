@@ -172,11 +172,14 @@ class DataRecorder {
         batchStart += batchSize;
       }
 
-      // Clear large buffers to help GC
+      // Clear large buffers and arrays to help GC
       // @ts-ignore - clearing to help GC
-      batchBuffer.fill(0);
+      batchBuffer.length = 0;
       // @ts-ignore - clearing to help GC
-      batchArray.fill(0);
+      batchArray.length = 0;
+      // @ts-ignore - clearing to help GC
+      tmpIndexes.length = 0;
+      recordSet.clear();
     } finally {
       file.close();
     }

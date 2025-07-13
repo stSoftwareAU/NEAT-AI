@@ -63,6 +63,7 @@ interface NeuronErrorInfo {
 export class DiscoverStructure {
   private creature: Creature;
   private tempDir: string;
+  private textDecoder: TextDecoder;
 
   private initialized = false;
   private recorded = false;
@@ -73,6 +74,7 @@ export class DiscoverStructure {
     this.tempDir = `.discovery/${creature.uuid}_${
       Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     }`;
+    this.textDecoder = new TextDecoder();
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
@@ -185,6 +187,12 @@ export class DiscoverStructure {
 
       neuronPromisesMap.set(neuronUUID, nextPromise);
     }
+
+    // Clear data map and its arrays to help GC
+    for (const records of data.values()) {
+      records.length = 0;
+    }
+    data.clear();
   }
 
   private discoveries: CandidateSynapse[] = [];
@@ -312,6 +320,9 @@ export class DiscoverStructure {
       }
     }
 
+    // Clear lines array to help GC
+    lines.length = 0;
+
     return newPartialLine;
   }
 
@@ -355,7 +366,6 @@ export class DiscoverStructure {
     const records: DiscoverRecord[] = [];
     const headers: string[] = [];
     let isFirstChunk = true;
-    const TD = new TextDecoder();
 
     // Process the file in chunks to avoid memory issues
     const bufferSize = 10 * 1024; // Was 256k
@@ -374,7 +384,7 @@ export class DiscoverStructure {
         assert(bytesRead > 0, "Invalid number of bytes read");
 
         // Convert buffer to string and process
-        const chunk = TD.decode(buffer.slice(0, bytesRead));
+        const chunk = this.textDecoder.decode(buffer.slice(0, bytesRead));
 
         partialLine = this.processCSVChunk(
           chunk,
@@ -407,7 +417,7 @@ export class DiscoverStructure {
 
       // Clear large buffers to help GC
       // @ts-ignore - clearing to help GC
-      buffer.length=0;
+      buffer.length = 0;
     }
 
     return records;
@@ -586,6 +596,9 @@ export class DiscoverStructure {
         negativeActivationSum += Math.abs(activation);
       }
     }
+
+    // Clear fromRecords array to help GC
+    fromRecords.length = 0;
 
     // Determine the better weight direction
     const usePositive = positiveCount >= negativeCount;
@@ -835,6 +848,9 @@ export class DiscoverStructure {
         helpfulCount++;
       }
     }
+
+    // Clear fromRecords array to help GC
+    fromRecords.length = 0;
 
     const expectedHarmPercentage = (harmfulCount - helpfulCount) /
       activationCount;
