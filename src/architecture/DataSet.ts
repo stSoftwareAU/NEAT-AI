@@ -6,6 +6,7 @@ export interface DataRecordInterface {
 export function makeDataDir(
   dataSet: DataRecordInterface[],
   partitionBreak: number,
+  validate?: { input: number; output: number },
 ) {
   if (partitionBreak < 1) {
     throw new Error(
@@ -32,6 +33,18 @@ export function makeDataDir(
       }
 
       const record = dataSet[pos];
+      if (validate) {
+        if (record.input.length !== validate.input) {
+          throw new Error(
+            `input length mismatch: ${record.input.length} !== ${validate.input}`,
+          );
+        }
+        if (record.output.length !== validate.output) {
+          throw new Error(
+            `output length mismatch: ${record.output.length} !== ${validate.output}`,
+          );
+        }
+      }
       const array = new Float32Array(
         record.input.length + record.output.length,
       );
