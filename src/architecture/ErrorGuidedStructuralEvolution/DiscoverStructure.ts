@@ -382,7 +382,7 @@ export class DiscoverStructure {
     let isFirstChunk = true;
 
     // Process the file in chunks to avoid memory issues
-    const bufferSize = 64 * 1024; // Was 256k, reduced to 64KB for balance
+    const bufferSize = 10 * 1024; // Was 256k
     const buffer = new Uint8Array(bufferSize);
     let partialLine = "";
 
@@ -727,30 +727,22 @@ export class DiscoverStructure {
     const currentActivations: number[] = [];
     const idealActivations: number[] = [];
 
-    // Pre-allocate arrays for better performance
-    const recordCount = records.length;
-    rawValues.length = recordCount;
-    currentActivations.length = recordCount;
-    idealActivations.length = recordCount;
-
-    for (let i = 0; i < recordCount; i++) {
-      const record = records[i];
+    records.forEach((record) => {
       const value = record.value;
       if (value === undefined) {
         throw new Error("Value is undefined");
       }
-      rawValues[i] = value;
+      rawValues.push(value);
       const activation = record.activation;
       if (activation === undefined) {
         throw new Error("Activation is undefined");
       }
-      currentActivations[i] = activation;
-
+      currentActivations.push(activation);
       const errors = record.errors.split("|").map(Number);
       const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
 
-      idealActivations[i] = activation + avgError;
-    }
+      idealActivations.push(activation + avgError);
+    });
 
     const baselineError = this.calculateSquashError(
       idealActivations,
