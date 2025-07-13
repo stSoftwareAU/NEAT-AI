@@ -25,6 +25,8 @@ class DataRecorder {
   private ID: string;
   private timeoutTS: number;
   private discoveryMaxNeurons: number;
+  private bufferPool: Float32Array[] = [];
+  private poolIndex = 0;
   constructor(
     private creature: Creature,
     private options: NeatOptions,
@@ -52,6 +54,12 @@ class DataRecorder {
       1,
       options.discoveryMaxNeurons || 6,
     );
+
+    // Pre-allocate buffer pool for memory efficiency
+    const poolSize = Math.min(this.discoveryBatchSize, 100); // Limit pool size
+    for (let i = 0; i < poolSize; i++) {
+      this.bufferPool.push(new Float32Array(creature.input + creature.output));
+    }
   }
 
   private shuffleFiles(files: string[]): string[] {
@@ -146,20 +154,28 @@ class DataRecorder {
           params.counter.count++;
 
           const offset = j * (creature.input + creature.output);
-          // Create new buffers for each record to avoid shared buffer issues
-          const inputBuffer = new Float32Array(creature.input);
-          const outputBuffer = new Float32Array(creature.output);
 
-          // Copy data to new buffers
-          inputBuffer.set(batchArray.subarray(offset, offset + creature.input));
-          outputBuffer.set(batchArray.subarray(
-            offset + creature.input,
-            offset + creature.input + creature.output,
-          ));
+          // Get buffer from pool or create new one if pool is exhausted
+          let buffer: Float32Array;
+          if (this.poolIndex < this.bufferPool.length) {
+            buffer = this.bufferPool[this.poolIndex++];
+          } else {
+            buffer = new Float32Array(creature.input + creature.output);
+          }
+
+          // Copy data to buffer
+          buffer.set(batchArray.subarray(offset, offset + creature.input), 0);
+          buffer.set(
+            batchArray.subarray(
+              offset + creature.input,
+              offset + creature.input + creature.output,
+            ),
+            creature.input,
+          );
 
           const data: DataRecordInterface = {
-            input: inputBuffer,
-            output: outputBuffer,
+            input: buffer.subarray(0, creature.input),
+            output: buffer.subarray(creature.input),
           };
           params.dataSet.push(data);
 
@@ -169,6 +185,8 @@ class DataRecorder {
               params.neuronPromisesMap,
             );
             assert(params.dataSet.length === 0, "Data set not empty");
+            // Reset pool index for next batch
+            this.poolIndex = 0;
             // deno-lint-ignore no-await-in-loop
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
