@@ -30,7 +30,7 @@ jobs:
             --parallel \
             --coverage=.coverage \
             --config ./deno.json --reporter junit > junit.xml
-            
+
         continue-on-error: true
 
       - name: Upload test results to Codecov
