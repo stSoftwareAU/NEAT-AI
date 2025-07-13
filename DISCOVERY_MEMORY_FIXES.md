@@ -36,7 +36,8 @@ neuronPromisesMap.clear();
 
 ### 3. **DiscoverDirectory.ts - Index Arrays Cleanup**
 
-- **Problem**: `tmpIndexes` array and `recordSet` not cleared after file processing
+- **Problem**: `tmpIndexes` array and `recordSet` not cleared after file
+  processing
 - **Fix**: Clear arrays and sets after processing each file
 - **Impact**: Reduces memory usage during file processing
 
