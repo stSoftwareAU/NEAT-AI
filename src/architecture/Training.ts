@@ -145,16 +145,10 @@ function trainDirBinary(
   }
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
-  const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB
-  const BATCH_SIZE = Math.max(
-    1,
-    Math.floor(SSD_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
-  );
-  const BYTES_PER_BATCH = BYTES_PER_RECORD * BATCH_SIZE;
 
-  // Shared buffers for batch processing
-  const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
-  const batchArray = new Float32Array(batchBuffer.buffer);
+  // Reusable record buffer to avoid repeated allocations
+  const recordBuffer = new Uint8Array(BYTES_PER_RECORD);
+  const recordArray = new Float32Array(recordBuffer.buffer);
 
   const indxMap = new Map<string, Set<number>>();
 
@@ -216,126 +210,125 @@ function trainDirBinary(
           if (!options.disableRandomSamples && !feedbackLoop) {
             CreatureUtil.shuffle(tmpIndexes);
           }
-          const indices = tmpIndexes.slice(0, len);
+          const selectedIndexes = tmpIndexes.slice(0, len).sort((a, b) =>
+            a - b
+          );
 
-          recordSet = new Set(indices);
+          recordSet = new Set(selectedIndexes);
           indxMap.set(fn, recordSet);
         }
 
-        let batchStart = 0;
-        while (true) {
-          const remainingRecords = fileRecords - batchStart;
-          if (remainingRecords <= 0) break;
+        // Process selected records using individual seeking
+        for (const recordIndex of recordSet) {
+          if (trainingStopped) break;
 
-          const batchSize = Math.min(BATCH_SIZE, remainingRecords);
-          const bytesRead = file.readSync(
-            batchBuffer.subarray(0, batchSize * BYTES_PER_RECORD),
+          // Calculate the target position
+          const targetPosition = recordIndex * BYTES_PER_RECORD;
+
+          // Seek to the specific record from beginning
+          file.seekSync(targetPosition, Deno.SeekMode.Start);
+
+          // Read the single record
+          const bytesRead = file.readSync(recordBuffer);
+          if (bytesRead === null || bytesRead !== BYTES_PER_RECORD) {
+            console.warn(
+              `Failed to read complete record at index ${recordIndex}`,
+            );
+            continue;
+          }
+
+          // Reuse Float32Array views instead of creating new arrays
+          const observations = new Float32Array(
+            recordArray.subarray(0, creature.input),
           );
-          if (bytesRead === null) break;
-          assert(bytesRead > 0, "Invalid number of bytes read");
 
-          const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
-          for (let j = 0; j < recordsRead; j++) {
-            const recordIndex = batchStart + j;
-            if (!recordSet.has(recordIndex)) continue;
+          const output = creature.activateAndTrace(
+            observations,
+            feedbackLoop,
+            sparseConfig,
+          );
 
-            const offset = j * valuesCount;
-            const observations = batchArray.subarray(
-              offset,
-              offset + creature.input,
+          const targets = new Float32Array(
+            recordArray.subarray(creature.input),
+          );
+
+          const sampleError = cost.calculate(
+            targets,
+            new Float32Array(output),
+          );
+          assert(Number.isFinite(sampleError), "Sample error is not finite");
+          errorSum += sampleError;
+          counter++;
+          if (Number.isFinite(errorSum) === false) {
+            console.warn(
+              `Training ${
+                blue(ID)
+              } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} record.output: ${targets} output: ${output}`,
             );
-
-            const output = creature.activateAndTrace(
-              observations,
-              feedbackLoop,
-              sparseConfig,
-            );
-
-            const targets = batchArray.subarray(
-              offset + creature.input,
-              offset + valuesCount,
-            );
-
-            const sampleError = cost.calculate(
-              targets,
-              new Float32Array(output),
-            );
-            assert(Number.isFinite(sampleError), "Sample error is not finite");
-            errorSum += sampleError;
-            counter++;
-            if (Number.isFinite(errorSum) === false) {
+            trainingStopped = true;
+            break;
+          } else if (bestError !== undefined && counter < knownSampleCount) {
+            const bestPossibleError = errorSum / knownSampleCount;
+            if (bestPossibleError > bestError) {
               console.warn(
-                `Training ${
-                  blue(ID)
-                } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} record.output: ${targets} output: ${output}`,
+                `Training ${blue(ID)} stopped as 'best possible' error ${
+                  yellow(bestPossibleError.toFixed(3))
+                } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
+                  yellow(counter.toFixed(0))
+                } of ${yellow(knownSampleCount.toFixed(0))}`,
               );
               trainingStopped = true;
               break;
-            } else if (bestError !== undefined && counter < knownSampleCount) {
-              const bestPossibleError = errorSum / knownSampleCount;
-              if (bestPossibleError > bestError) {
-                console.warn(
-                  `Training ${blue(ID)} stopped as 'best possible' error ${
-                    yellow(bestPossibleError.toFixed(3))
-                  } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
-                    yellow(counter.toFixed(0))
-                  } of ${yellow(knownSampleCount.toFixed(0))}`,
-                );
-                trainingStopped = true;
-                break;
-              }
-            }
-            creature.propagate(targets, iterationConfig, sparseConfig);
-
-            const now = Date.now();
-            const diff = now - lastTS;
-
-            if (diff > 60_000) {
-              lastTS = now;
-              const totalTime = now - startTS;
-              console.log(
-                `Training ${blue(ID)} samples`,
-                yellow(counter.toLocaleString("en-AU")),
-                `${
-                  knownSampleCount > 0
-                    ? "of " + yellow(knownSampleCount.toLocaleString("en-AU")) +
-                      " " +
-                      yellow(
-                        (counter / knownSampleCount * 100).toFixed(1) + "%",
-                      )
-                    : ""
-                }${
-                  trainingSampleRate < 1
-                    ? "( rate " +
-                      yellow((trainingSampleRate * 100).toFixed(1) + "% )")
-                    : ""
-                }`,
-                "error",
-                yellow((errorSum / counter).toFixed(3)),
-                "time average:",
-                yellow(
-                  format(totalTime / counter, { ignoreZero: true }),
-                ),
-                "total:",
-                yellow(
-                  format(totalTime, { ignoreZero: true }),
-                ),
-              );
-
-              if (timeoutTS && now > timeoutTS) {
-                timedOut = true;
-                console.log(
-                  `Training ${blue(ID)} timed out after ${
-                    yellow(format(totalTime, { ignoreZero: true }))
-                  }`,
-                );
-                trainingStopped = true;
-                break;
-              }
             }
           }
-          if (trainingStopped) break;
-          batchStart += batchSize;
+          creature.propagate(targets, iterationConfig, sparseConfig);
+
+          const now = Date.now();
+          const diff = now - lastTS;
+
+          if (diff > 60_000) {
+            lastTS = now;
+            const totalTime = now - startTS;
+            console.log(
+              `Training ${blue(ID)} samples`,
+              yellow(counter.toLocaleString("en-AU")),
+              `${
+                knownSampleCount > 0
+                  ? "of " + yellow(knownSampleCount.toLocaleString("en-AU")) +
+                    " " +
+                    yellow(
+                      (counter / knownSampleCount * 100).toFixed(1) + "%",
+                    )
+                  : ""
+              }${
+                trainingSampleRate < 1
+                  ? "( rate " +
+                    yellow((trainingSampleRate * 100).toFixed(1) + "% )")
+                  : ""
+              }`,
+              "error",
+              yellow((errorSum / counter).toFixed(3)),
+              "time average:",
+              yellow(
+                format(totalTime / counter, { ignoreZero: true }),
+              ),
+              "total:",
+              yellow(
+                format(totalTime, { ignoreZero: true }),
+              ),
+            );
+
+            if (timeoutTS && now > timeoutTS) {
+              timedOut = true;
+              console.log(
+                `Training ${blue(ID)} timed out after ${
+                  yellow(format(totalTime, { ignoreZero: true }))
+                }`,
+              );
+              trainingStopped = true;
+              break;
+            }
+          }
         }
       } finally {
         file.close();
