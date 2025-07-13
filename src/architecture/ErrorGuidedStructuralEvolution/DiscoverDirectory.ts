@@ -225,6 +225,7 @@ class DataRecorder {
           dataSet,
           neuronPromisesMap: neuronPromisesMap,
         });
+        if (this.timeoutTS && Date.now() > this.timeoutTS) break;
       }
 
       if (dataSet.length > 0) {
