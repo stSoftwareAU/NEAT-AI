@@ -114,67 +114,64 @@ class DataRecorder {
       const fileRecords = stat.size / this.BYTES_PER_RECORD;
       const sampleSize = Math.ceil(fileRecords * this.sampleRate);
 
+      // Generate random indexes and sort them for efficient seeking
       const tmpIndexes = Int32Array.from({ length: fileRecords }, (_, i) => i);
       CreatureUtil.shuffle(tmpIndexes);
-      const recordSet = new Set(tmpIndexes.slice(0, sampleSize));
-
-      const batchBuffer = new Uint8Array(
-        this.BATCH_SIZE * this.BYTES_PER_RECORD,
+      const selectedIndexes = tmpIndexes.slice(0, sampleSize).sort((a, b) =>
+        a - b
       );
-      const batchArray = new Float32Array(batchBuffer.buffer);
 
-      let batchStart = 0;
-      while (
-        batchStart < fileRecords && recordSet.size &&
-        (!this.timeoutTS || Date.now() <= this.timeoutTS)
-      ) {
-        const batchSize = Math.min(this.BATCH_SIZE, fileRecords - batchStart);
+      // Single record buffer for seeking
+      const recordBuffer = new Uint8Array(this.BYTES_PER_RECORD);
+      const recordArray = new Float32Array(recordBuffer.buffer);
 
+      for (const recordIndex of selectedIndexes) {
+        if (this.timeoutTS && Date.now() > this.timeoutTS) break;
+
+        // Calculate the target position
+        const targetPosition = recordIndex * this.BYTES_PER_RECORD;
+
+        // Seek to the specific record from beginning (simpler and more reliable)
+        file.seekSync(targetPosition, Deno.SeekMode.Start);
+
+        // Read the single record
         const readStartTime = Date.now();
-        const bytesRead = file.readSync(
-          batchBuffer.subarray(0, batchSize * this.BYTES_PER_RECORD),
-        );
+        const bytesRead = file.readSync(recordBuffer);
         readTime += Date.now() - readStartTime;
-        if (bytesRead === null) break;
-        assert(bytesRead > 0, "Invalid number of bytes read");
 
-        const recordsRead = Math.floor(bytesRead / this.BYTES_PER_RECORD);
-
-        for (let j = 0; j < recordsRead && recordSet.size; j++) {
-          const recordIndex = batchStart + j;
-          if (!recordSet.delete(recordIndex)) continue;
-          params.counter.count++;
-
-          const offset = j * (creature.input + creature.output);
-          const data: DataRecordInterface = {
-            input: new Float32Array(
-              batchArray.subarray(offset, offset + creature.input),
-            ),
-            output: new Float32Array(
-              batchArray.subarray(
-                offset + creature.input,
-                offset + creature.input + creature.output,
-              ),
-            ),
-          };
-          params.dataSet.push(data);
-
-          if (params.dataSet.length >= this.discoveryBatchSize) {
-            discoverStructure.record(
-              params.dataSet.splice(0),
-              params.neuronPromisesMap,
-            );
-            assert(params.dataSet.length === 0, "Data set not empty");
-
-            // deno-lint-ignore no-await-in-loop
-            await new Promise((resolve) => setTimeout(resolve, 0));
-          }
+        if (bytesRead === null || bytesRead !== this.BYTES_PER_RECORD) {
+          console.warn(
+            `Failed to read complete record at index ${recordIndex}`,
+          );
+          continue;
         }
-        batchStart += batchSize;
+
+        params.counter.count++;
+
+        const data: DataRecordInterface = {
+          input: new Float32Array(
+            recordArray.subarray(0, creature.input),
+          ),
+          output: new Float32Array(
+            recordArray.subarray(creature.input),
+          ),
+        };
+        params.dataSet.push(data);
+
+        if (params.dataSet.length >= this.discoveryBatchSize) {
+          discoverStructure.record(
+            params.dataSet.splice(0),
+            params.neuronPromisesMap,
+          );
+          assert(params.dataSet.length === 0, "Data set not empty");
+
+          // deno-lint-ignore no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
       }
 
-      // Clear large buffers and arrays to help GC
-      recordSet.clear();
+      // Clear large arrays to help GC
+      // Note: Int32Array.length is read-only, so we can't clear it
     } finally {
       file.close();
     }
