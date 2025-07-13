@@ -414,10 +414,6 @@ export class DiscoverStructure {
       }
     } finally {
       fileHandle.close();
-
-      // Clear large buffers to help GC
-      // @ts-ignore - clearing to help GC
-      buffer.length = 0;
     }
 
     return records;
