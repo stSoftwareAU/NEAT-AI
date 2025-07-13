@@ -9,10 +9,10 @@ import { train } from "./TrainTestOnlyUtil.ts";
 Deno.test("AND", () => {
   // Train the AND gate
   const trainingSet = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [0] },
-    { input: [1, 0], output: [0] },
-    { input: [1, 1], output: [1] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
   ];
 
   for (let attempts = 0; true; attempts++) {
@@ -35,10 +35,10 @@ Deno.test("AND", () => {
 Deno.test("MT", () => {
   // Train the AND gate
   const trainingSet = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [0] },
-    { input: [1, 0], output: [0] },
-    { input: [1, 1], output: [1] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
   ];
 
   for (let attempts = 0; true; attempts++) {
@@ -65,10 +65,10 @@ Deno.test("MT", () => {
 Deno.test("train-XOR", () => {
   // Train the XOR gate
   const trainingSet = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [1] },
-    { input: [1, 0], output: [1] },
-    { input: [1, 1], output: [0] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
   ];
   const network = new Creature(2, 1, {
     layers: [
@@ -110,10 +110,10 @@ Deno.test("train-XOR", () => {
  */
 Deno.test("XNOR - train", () => {
   const trainingSet = [
-    { input: [0, 0], output: [1] },
-    { input: [0, 1], output: [0] },
-    { input: [1, 0], output: [0] },
-    { input: [1, 1], output: [1] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([1]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
   ];
 
   for (let attempts = 0; true; attempts++) {

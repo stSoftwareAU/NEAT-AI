@@ -16,8 +16,8 @@ Deno.test("storePopulation", async () => {
     for (let j = 100; j--;) {
       if (i === 50) continue;
       const item = {
-        input: [i, j],
-        output: [Math.sqrt(i * i + j * j)],
+        input: new Float32Array([i, j]),
+        output: new Float32Array([Math.sqrt(i * i + j * j)]),
       };
 
       ts.push(item);

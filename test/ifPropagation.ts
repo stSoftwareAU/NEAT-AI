@@ -38,8 +38,8 @@ Deno.test("ifPropagation", () => {
       const positive = Math.random();
       const negative = Math.random();
       const item = {
-        input: [condition, positive, negative],
-        output: [condition > 0 ? positive : negative],
+        input: new Float32Array([condition, positive, negative]),
+        output: new Float32Array([condition > 0 ? positive : negative]),
       };
 
       ts.push(item);

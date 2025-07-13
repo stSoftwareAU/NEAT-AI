@@ -127,8 +127,8 @@ async function doAttempt() {
 
   inputs.forEach((input) => {
     ds.push({
-      input: Array.from(input),
-      output: Array.from(enhancedCreature.activate(input)),
+      input: new Float32Array(input),
+      output: new Float32Array(enhancedCreature.activate(input)),
     });
   });
   const options: NeatOptions = {

@@ -58,14 +58,10 @@ Deno.test("TraceDir", () => {
     const a = Math.random() * 2 - 1;
     const b = Math.random() * 2 - 1;
     const c = Math.random() * 2 - 1;
-    const input = [
-      a,
-      b,
-      c,
-    ];
+    const input = [a, b, c];
     dataSet.push({
-      input,
-      output: [a * 0.42, b + c * -0.42],
+      input: new Float32Array(input),
+      output: new Float32Array([a * 0.42, b + c * -0.42]),
     });
   }
 

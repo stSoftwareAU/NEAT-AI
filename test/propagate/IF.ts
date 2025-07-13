@@ -17,8 +17,8 @@ Deno.test("PropagateWeightsIF", () => {
       const output = creatureA.activate(new Float32Array(input));
 
       ts.push({
-        input,
-        output: Array.from(output),
+        input: new Float32Array(input),
+        output: new Float32Array(Array.from(output)),
       });
     }
 
@@ -116,8 +116,8 @@ Deno.test("PropagateBiasIF", () => {
       const output = creatureA.activate(new Float32Array(input));
 
       ts.push({
-        input,
-        output: Array.from(output),
+        input: new Float32Array(input),
+        output: new Float32Array(Array.from(output)),
       });
     }
 

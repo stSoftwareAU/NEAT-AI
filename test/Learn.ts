@@ -59,13 +59,13 @@ Deno.test("Learn", () => {
   };
 
   const dataSet: DataRecordInterface[] = [];
-  for (let i = 0; i < 10; i++) {
-    const input = [Math.random() * 2 - 1, Math.random() * 2 - 1];
-    const dr = {
-      input: input,
-      output: [(input[0] + input[1]) / -2, input[0] + input[1]],
+  for (let i = 0; i < 100; i++) {
+    const input = [Math.random(), Math.random()];
+    const output = [input[0] + input[1]];
+    const dr: DataRecordInterface = {
+      input: new Float32Array(input),
+      output: new Float32Array(output),
     };
-
     dataSet.push(dr);
   }
 

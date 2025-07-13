@@ -445,10 +445,10 @@ Deno.test("from/toJSON equivalency", () => {
 Deno.test("train_AND_gate", () => {
   trainSet(
     [
-      { input: [0, 0], output: [0] },
-      { input: [0, 1], output: [0] },
-      { input: [1, 0], output: [0] },
-      { input: [1, 1], output: [1] },
+      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
     1000,
     0.26,
@@ -458,10 +458,10 @@ Deno.test("train_AND_gate", () => {
 Deno.test("evolve_AND_gate", async () => {
   await evolveSet(
     [
-      { input: [0, 0], output: [0] },
-      { input: [0, 1], output: [0] },
-      { input: [1, 0], output: [0] },
-      { input: [1, 1], output: [1] },
+      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
     10000,
     0.003,
@@ -471,10 +471,10 @@ Deno.test("evolve_AND_gate", async () => {
 Deno.test("evolve XORgate", async () => {
   const creature = await evolveSet(
     [
-      { input: [0, 0], output: [0] },
-      { input: [0, 1], output: [1] },
-      { input: [1, 0], output: [1] },
-      { input: [1, 1], output: [0] },
+      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+      { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
     ],
     1_000,
     0.05,
@@ -492,10 +492,10 @@ Deno.test("evolve XORgate", async () => {
 Deno.test("train XOR gate", () => {
   trainSet(
     [
-      { input: [0, 0], output: [0] },
-      { input: [0, 1], output: [1] },
-      { input: [1, 0], output: [1] },
-      { input: [1, 1], output: [0] },
+      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+      { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
     ],
     100000,
     0.26,
@@ -505,8 +505,8 @@ Deno.test("train XOR gate", () => {
 Deno.test("evolve_NOT_gate", async () => {
   await evolveSet(
     [
-      { input: [0], output: [1] },
-      { input: [1], output: [0] },
+      { input: new Float32Array([0]), output: new Float32Array([1]) },
+      { input: new Float32Array([1]), output: new Float32Array([0]) },
     ],
     1000,
     0.002,
@@ -516,8 +516,8 @@ Deno.test("evolve_NOT_gate", async () => {
 Deno.test("train_NOT_gate", () => {
   trainSet(
     [
-      { input: [0], output: [1] },
-      { input: [1], output: [0] },
+      { input: new Float32Array([0]), output: new Float32Array([1]) },
+      { input: new Float32Array([1]), output: new Float32Array([0]) },
     ],
     1000,
     0.26,
@@ -527,10 +527,10 @@ Deno.test("train_NOT_gate", () => {
 Deno.test("evolve_XNOR_gate", async () => {
   await evolveSet(
     [
-      { input: [0, 0], output: [1] },
-      { input: [0, 1], output: [0] },
-      { input: [1, 0], output: [0] },
-      { input: [1, 1], output: [1] },
+      { input: new Float32Array([0, 0]), output: new Float32Array([1]) },
+      { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
     1_000,
     0.002,
@@ -541,10 +541,10 @@ Deno.test("evolve_XNOR_gate", async () => {
 Deno.test("train_XNOR_gate", () => {
   trainSet(
     [
-      { input: [0, 0], output: [1] },
-      { input: [0, 1], output: [0] },
-      { input: [1, 0], output: [0] },
-      { input: [1, 1], output: [1] },
+      { input: new Float32Array([0, 0]), output: new Float32Array([1]) },
+      { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
     100000,
     0.26,
@@ -554,10 +554,10 @@ Deno.test("train_XNOR_gate", () => {
 Deno.test("train OR gate", () => {
   trainSet(
     [
-      { input: [0, 0], output: [0] },
-      { input: [0, 1], output: [1] },
-      { input: [1, 0], output: [1] },
-      { input: [1, 1], output: [1] },
+      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+      { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
     1000,
     0.26,
@@ -567,10 +567,10 @@ Deno.test("train OR gate", () => {
 Deno.test("evolve OR gate", async () => {
   await evolveSet(
     [
-      { input: [0, 0], output: [0] },
-      { input: [0, 1], output: [1] },
-      { input: [1, 0], output: [1] },
-      { input: [1, 1], output: [1] },
+      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+      { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
     1000,
     0.002,
@@ -583,8 +583,8 @@ Deno.test("train_SIN_function", () => {
   while (set.length < 100) {
     const inputValue = Math.random() * Math.PI * 2;
     set.push({
-      input: [inputValue / (Math.PI * 2)],
-      output: [(Math.sin(inputValue) + 1) / 2],
+      input: new Float32Array([inputValue / (Math.PI * 2)]),
+      output: new Float32Array([(Math.sin(inputValue) + 1) / 2]),
     });
   }
 
@@ -597,8 +597,8 @@ Deno.test("evolve_SIN_function", async () => {
   while (set.length < 100) {
     const inputValue = Math.random() * Math.PI * 2;
     set.push({
-      input: [inputValue / (Math.PI * 2)],
-      output: [(Math.sin(inputValue) + 1) / 2],
+      input: new Float32Array([inputValue / (Math.PI * 2)]),
+      output: new Float32Array([(Math.sin(inputValue) + 1) / 2]),
     });
   }
 
@@ -613,7 +613,10 @@ Deno.test("train_Bigger_than", () => {
     const y = Math.random();
     const z = x > y ? 1 : 0;
 
-    set.push({ input: [x, y], output: [z] });
+    set.push({
+      input: new Float32Array([x, y]),
+      output: new Float32Array([z]),
+    });
   }
 
   trainSet(set, 500, 0.26);
@@ -627,7 +630,10 @@ Deno.test("evolve_Bigger_than", async () => {
     const y = Math.random();
     const z = x > y ? 1 : 0;
 
-    set.push({ input: [x, y], output: [z] });
+    set.push({
+      input: new Float32Array([x, y]),
+      output: new Float32Array([z]),
+    });
   }
 
   await evolveSet(set, 10000, 0.08);
@@ -684,11 +690,11 @@ Deno.test("train SIN + COS", () => {
   while (set.length < 100) {
     const inputValue = Math.random() * Math.PI * 2;
     set.push({
-      input: [inputValue / (Math.PI * 2)],
-      output: [
+      input: new Float32Array([inputValue / (Math.PI * 2)]),
+      output: new Float32Array([
         (Math.sin(inputValue) + 1) / 2,
         (Math.cos(inputValue) + 1) / 2,
-      ],
+      ]),
     });
   }
 
@@ -701,11 +707,11 @@ Deno.test("evolve SIN + COS", async () => {
   while (set.length < 100) {
     const inputValue = Math.random() * Math.PI * 2;
     set.push({
-      input: [inputValue / (Math.PI * 2)],
-      output: [
+      input: new Float32Array([inputValue / (Math.PI * 2)]),
+      output: new Float32Array([
         (Math.sin(inputValue) + 1) / 2,
         (Math.cos(inputValue) + 1) / 2,
-      ],
+      ]),
     });
   }
 
@@ -720,7 +726,10 @@ Deno.test("train_SHIFT", () => {
     const y = Math.random();
     const z = Math.random();
 
-    set.push({ input: [x, y, z], output: [z, x, y] });
+    set.push({
+      input: new Float32Array([x, y, z]),
+      output: new Float32Array([z, x, y]),
+    });
   }
 
   trainSet(set, 500, 0.1);
@@ -734,7 +743,10 @@ Deno.test("evolveSHIFT", async () => {
     const y = Math.random();
     const z = Math.random();
 
-    set.push({ input: [x, y, z], output: [z, x, y] });
+    set.push({
+      input: new Float32Array([x, y, z]),
+      output: new Float32Array([z, x, y]),
+    });
   }
 
   const creature = await evolveSet(set, 5000, 0.03);

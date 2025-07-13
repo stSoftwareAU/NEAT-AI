@@ -10,10 +10,10 @@ import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 Deno.test("AND", async () => {
   // Train the AND gate
   const trainingSet = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [0] },
-    { input: [1, 0], output: [0] },
-    { input: [1, 1], output: [1] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
   ];
 
   const creature = new Creature(2, 1);
@@ -33,10 +33,10 @@ Deno.test("AND", async () => {
 Deno.test("evolve-MT", async () => {
   // Train the AND gate
   const trainingSet = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [0] },
-    { input: [1, 0], output: [0] },
-    { input: [1, 1], output: [1] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
   ];
 
   const creature = new Creature(2, 1);
@@ -55,10 +55,10 @@ Deno.test("evolve-MT", async () => {
 Deno.test("XOR-evolve", async () => {
   // Train the XOR gate
   const trainingSet = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [1] },
-    { input: [1, 0], output: [1] },
-    { input: [1, 1], output: [0] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
   ];
 
   let bestError = Number.POSITIVE_INFINITY;
@@ -85,10 +85,10 @@ Deno.test("XOR-evolve", async () => {
 Deno.test("booleanXOR", async () => {
   // Train the XOR gate
   const trainingSet = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [1] },
-    { input: [1, 0], output: [1] },
-    { input: [1, 1], output: [0] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
   ];
 
   let creature = new Creature(2, 1);
@@ -122,10 +122,10 @@ Deno.test("booleanXOR", async () => {
 
 Deno.test("XNOR - evolve", async () => {
   const trainingSet = [
-    { input: [0, 0], output: [1] },
-    { input: [0, 1], output: [0] },
-    { input: [1, 0], output: [0] },
-    { input: [1, 1], output: [1] },
+    { input: new Float32Array([0, 0]), output: new Float32Array([1]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
   ];
 
   for (let attempt = 0; true; attempt++) {

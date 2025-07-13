@@ -38,8 +38,8 @@ Deno.test("traceNode", async () => {
     const b = Math.random();
     const c = Math.random();
     const item = {
-      input: [a, b, c],
-      output: [a * b * c + 0.1],
+      input: new Float32Array([a, b, c]),
+      output: new Float32Array([a * b * c + 0.1]),
     };
 
     ts.push(item);

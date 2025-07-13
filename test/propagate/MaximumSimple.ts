@@ -19,8 +19,8 @@ Deno.test("PropagateMaximumSimple", () => {
     const output = creatureA.activate(new Float32Array(input));
 
     ts.push({
-      input,
-      output: Array.from(output),
+      input: new Float32Array(input),
+      output: new Float32Array(Array.from(output)),
     });
   }
 

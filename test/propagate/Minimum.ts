@@ -21,8 +21,8 @@ Deno.test("PropagateMinimum", () => {
       const output = creature.activate(new Float32Array(input));
 
       ts.push({
-        input,
-        output: Array.from(output),
+        input: new Float32Array(input),
+        output: new Float32Array(Array.from(output)),
       });
     }
 

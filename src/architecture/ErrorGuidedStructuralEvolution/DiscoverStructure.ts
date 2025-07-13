@@ -804,7 +804,6 @@ export class DiscoverStructure {
    * @param weight - The existing weight of the synapse to evaluate.
    * @returns A CandidateSynapse with the measured error impact of this existing synapse.
    */
-
   async analyzeExistingSynapseImpact(
     toNeuronUUID: string,
     fromNeuronUUID: string,

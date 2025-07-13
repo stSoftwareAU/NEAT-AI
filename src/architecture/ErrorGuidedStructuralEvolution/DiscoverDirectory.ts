@@ -147,14 +147,10 @@ class DataRecorder {
 
           const offset = j * (creature.input + creature.output);
           const data: DataRecordInterface = {
-            input: Array.from(
-              batchArray.subarray(offset, offset + creature.input),
-            ),
-            output: Array.from(
-              batchArray.subarray(
-                offset + creature.input,
-                offset + creature.input + creature.output,
-              ),
+            input: batchArray.subarray(offset, offset + creature.input),
+            output: batchArray.subarray(
+              offset + creature.input,
+              offset + creature.input + creature.output,
             ),
           };
           params.dataSet.push(data);
@@ -174,11 +170,11 @@ class DataRecorder {
 
       // Clear large buffers and arrays to help GC
       // @ts-ignore - clearing to help GC
-      batchBuffer.length = 0;
+      batchBuffer.fill(0);
       // @ts-ignore - clearing to help GC
-      batchArray.length = 0;
+      batchArray.fill(0);
       // @ts-ignore - clearing to help GC
-      tmpIndexes.length = 0;
+      tmpIndexes.fill(0);
       recordSet.clear();
     } finally {
       file.close();

@@ -1,6 +1,6 @@
 export interface DataRecordInterface {
-  input: number[];
-  output: number[];
+  input: Float32Array;
+  output: Float32Array;
 }
 
 export function makeDataDir(

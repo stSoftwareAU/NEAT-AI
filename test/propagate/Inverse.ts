@@ -103,8 +103,8 @@ Deno.test("propagateInverseRandom", () => {
     const o10 = squash.squash((h8 * -0.4) + (h7 * 0.2) + 0.3);
 
     const item = {
-      input: [i0, i1, i2, i3, i4],
-      output: [o9, o10],
+      input: new Float32Array([i0, i1, i2, i3, i4]),
+      output: new Float32Array([o9, o10]),
     };
 
     ts.push(item);
