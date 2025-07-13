@@ -146,12 +146,20 @@ class DataRecorder {
           params.counter.count++;
 
           const offset = j * (creature.input + creature.output);
+          // Create new buffers for each record to avoid shared buffer issues
+          const inputBuffer = new Float32Array(creature.input);
+          const outputBuffer = new Float32Array(creature.output);
+
+          // Copy data to new buffers
+          inputBuffer.set(batchArray.subarray(offset, offset + creature.input));
+          outputBuffer.set(batchArray.subarray(
+            offset + creature.input,
+            offset + creature.input + creature.output,
+          ));
+
           const data: DataRecordInterface = {
-            input: batchArray.subarray(offset, offset + creature.input),
-            output: batchArray.subarray(
-              offset + creature.input,
-              offset + creature.input + creature.output,
-            ),
+            input: inputBuffer,
+            output: outputBuffer,
           };
           params.dataSet.push(data);
 
