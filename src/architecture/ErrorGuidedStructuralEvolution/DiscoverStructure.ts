@@ -379,7 +379,7 @@ export class DiscoverStructure {
     let isFirstChunk = true;
 
     // Process the file in chunks to avoid memory issues
-    const bufferSize = 10 * 1024; // Was 256k
+    const bufferSize = 8 * 1024; // Reduced from 10KB for better memory efficiency
     const buffer = new Uint8Array(bufferSize);
     let partialLine = "";
 
@@ -407,8 +407,8 @@ export class DiscoverStructure {
 
         isFirstChunk = false;
 
-        // Give GC a chance to run periodically
-        if (records.length % 1000 === 0) {
+        // Give GC a chance to run periodically (more frequent for smaller buffers)
+        if (records.length % 500 === 0) {
           // deno-lint-ignore no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
@@ -582,11 +582,29 @@ export class DiscoverStructure {
       const activation = fromRecord.activation;
       if (Math.abs(activation) <= Number.EPSILON) continue;
 
-      // Compute average downstream error
-      const errorList = toRecord.errors.split("|").map(Number);
-      if (errorList.length === 0) continue; // Skip if no errors
+      // Compute average downstream error - optimize string splitting
+      const errors = toRecord.errors;
+      if (errors.length === 0) continue; // Skip if no errors
 
-      const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
+      // Use manual parsing for better performance than split().map()
+      let avgError = 0;
+      let errorCount = 0;
+      let start = 0;
+      for (let j = 0; j < errors.length; j++) {
+        if (errors[j] === "|" || j === errors.length - 1) {
+          const end = j === errors.length - 1 ? j + 1 : j;
+          const errorValue = Number.parseFloat(errors.slice(start, end));
+          if (Number.isFinite(errorValue)) {
+            avgError += errorValue;
+            errorCount++;
+          }
+          start = j + 1;
+        }
+      }
+
+      if (errorCount === 0) continue;
+      avgError /= errorCount;
+
       if (Math.abs(avgError) <= Number.EPSILON) continue;
 
       // Determine if a positive or negative weight would reduce the error
@@ -721,22 +739,49 @@ export class DiscoverStructure {
     const rawValues: number[] = [];
     const currentActivations: number[] = [];
     const idealActivations: number[] = [];
-    records.forEach((record) => {
+
+    // Pre-allocate arrays for better performance
+    const recordCount = records.length;
+    rawValues.length = recordCount;
+    currentActivations.length = recordCount;
+    idealActivations.length = recordCount;
+
+    for (let i = 0; i < recordCount; i++) {
+      const record = records[i];
       const value = record.value;
       if (value === undefined) {
         throw new Error("Value is undefined");
       }
-      rawValues.push(value);
+      rawValues[i] = value;
       const activation = record.activation;
       if (activation === undefined) {
         throw new Error("Activation is undefined");
       }
-      currentActivations.push(activation);
-      const errors = record.errors.split("|").map(Number);
-      const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
+      currentActivations[i] = activation;
 
-      idealActivations.push(activation + avgError);
-    });
+      // Optimize error parsing similar to analyzeCandidateSynapse
+      const errors = record.errors;
+      let avgError = 0;
+      let errorCount = 0;
+      let start = 0;
+      for (let j = 0; j < errors.length; j++) {
+        if (errors[j] === "|" || j === errors.length - 1) {
+          const end = j === errors.length - 1 ? j + 1 : j;
+          const errorValue = Number.parseFloat(errors.slice(start, end));
+          if (Number.isFinite(errorValue)) {
+            avgError += errorValue;
+            errorCount++;
+          }
+          start = j + 1;
+        }
+      }
+
+      if (errorCount > 0) {
+        avgError /= errorCount;
+      }
+
+      idealActivations[i] = activation + avgError;
+    }
 
     const baselineError = this.calculateSquashError(
       idealActivations,

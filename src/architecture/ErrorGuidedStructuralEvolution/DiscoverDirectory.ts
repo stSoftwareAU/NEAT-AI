@@ -18,16 +18,17 @@ export async function recordDirectory(
 }
 
 class DataRecorder {
-  private BYTES_PER_RECORD: number;
-  private BATCH_SIZE: number;
-  private sampleRate: number;
-  private discoveryBatchSize: number;
-  private ID: string;
-  private timeoutTS: number;
-  private discoveryMaxNeurons: number;
+  private readonly BYTES_PER_RECORD: number;
+  private readonly BATCH_SIZE: number;
+  private readonly sampleRate: number;
+  private readonly discoveryBatchSize: number;
+  private readonly ID: string;
+  private readonly timeoutTS: number;
+  private readonly discoveryMaxNeurons: number;
+
   constructor(
-    private creature: Creature,
-    private options: NeatOptions,
+    private readonly creature: Creature,
+    private readonly options: NeatOptions,
   ) {
     this.BYTES_PER_RECORD = (creature.input + creature.output) * 4;
     const discoveryBufferSize = options.discoveryBufferSize || 128 * 1024;
@@ -121,7 +122,7 @@ class DataRecorder {
         a - b
       );
 
-      // Single record buffer for seeking
+      // Reusable record buffer to avoid repeated allocations
       const recordBuffer = new Uint8Array(this.BYTES_PER_RECORD);
       const recordArray = new Float32Array(recordBuffer.buffer);
 
@@ -148,6 +149,7 @@ class DataRecorder {
 
         params.counter.count++;
 
+        // Reuse Float32Array views instead of creating new arrays
         const data: DataRecordInterface = {
           input: new Float32Array(
             recordArray.subarray(0, creature.input),
@@ -165,6 +167,7 @@ class DataRecorder {
           );
           assert(params.dataSet.length === 0, "Data set not empty");
 
+          // Give GC a chance to run periodically
           // deno-lint-ignore no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
@@ -243,6 +246,8 @@ class DataRecorder {
           }`,
         );
       }
+
+      // Wait for all file writes to complete
       await Promise.all([...neuronPromisesMap.values()]);
 
       // Clear the promises map to help GC
