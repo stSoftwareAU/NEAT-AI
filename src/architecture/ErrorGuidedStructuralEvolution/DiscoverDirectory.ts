@@ -147,10 +147,10 @@ class DataRecorder {
 
           const offset = j * (creature.input + creature.output);
           const data: DataRecordInterface = {
-            input: Array.from(
+            input: new Float32Array(
               batchArray.subarray(offset, offset + creature.input),
             ),
-            output: Array.from(
+            output: new Float32Array(
               batchArray.subarray(
                 offset + creature.input,
                 offset + creature.input + creature.output,
@@ -165,6 +165,7 @@ class DataRecorder {
               params.neuronPromisesMap,
             );
             assert(params.dataSet.length === 0, "Data set not empty");
+
             // deno-lint-ignore no-await-in-loop
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
@@ -172,11 +173,8 @@ class DataRecorder {
         batchStart += batchSize;
       }
 
-      // Clear large buffers to help GC
-      // @ts-ignore - clearing to help GC
-      batchBuffer.fill(0);
-      // @ts-ignore - clearing to help GC
-      batchArray.fill(0);
+      // Clear large buffers and arrays to help GC
+      recordSet.clear();
     } finally {
       file.close();
     }

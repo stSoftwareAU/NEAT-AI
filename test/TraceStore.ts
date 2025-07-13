@@ -5,6 +5,7 @@ import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import type { SynapseTrace } from "../src/architecture/SynapseInterfaces.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
+import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -46,6 +47,13 @@ Deno.test("TraceStore", async () => {
     }
   }
 
+  const dataSet: DataRecordInterface[] = [];
+  for (const item of ts) {
+    dataSet.push({
+      input: new Float32Array(item.input),
+      output: new Float32Array(item.output),
+    });
+  }
   const traceDir = ".test/TraceStore/trace";
   ensureDirSync(traceDir);
   const creaturesDir = ".test/TraceStore/creatures";
@@ -65,7 +73,7 @@ Deno.test("TraceStore", async () => {
     const network = Creature.fromJSON(json);
 
     // deno-lint-ignore no-await-in-loop
-    await network.evolveDataSet(ts, options);
+    await network.evolveDataSet(dataSet, options);
 
     for (const dirEntry of Deno.readDirSync(traceDir)) {
       if (dirEntry.name.endsWith(".json")) {

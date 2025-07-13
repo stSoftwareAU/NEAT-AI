@@ -1,17 +1,18 @@
 import { assert } from "@std/assert";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Creature } from "../src/Creature.ts";
+import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("hypotenuse", async () => {
-  const ts = [];
+  const ts: DataRecordInterface[] = [];
   for (let i = 100; i--;) {
     for (let j = 100; j--;) {
       if (i === 50) continue;
       const item = {
-        input: [i, j],
-        output: [Math.sqrt(i * i + j * j)],
+        input: new Float32Array([i, j]),
+        output: new Float32Array([Math.sqrt(i * i + j * j)]),
       };
 
       ts.push(item);

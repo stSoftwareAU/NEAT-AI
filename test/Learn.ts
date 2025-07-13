@@ -62,8 +62,11 @@ Deno.test("Learn", () => {
   for (let i = 0; i < 10; i++) {
     const input = [Math.random() * 2 - 1, Math.random() * 2 - 1];
     const dr = {
-      input: input,
-      output: [(input[0] + input[1]) / -2, input[0] + input[1]],
+      input: new Float32Array(input),
+      output: new Float32Array([
+        (input[0] + input[1]) / -2,
+        input[0] + input[1],
+      ]),
     };
 
     dataSet.push(dr);

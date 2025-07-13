@@ -63,6 +63,7 @@ interface NeuronErrorInfo {
 export class DiscoverStructure {
   private creature: Creature;
   private tempDir: string;
+  private textDecoder: TextDecoder;
 
   private initialized = false;
   private recorded = false;
@@ -73,6 +74,7 @@ export class DiscoverStructure {
     this.tempDir = `.discovery/${creature.uuid}_${
       Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     }`;
+    this.textDecoder = new TextDecoder();
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
@@ -185,6 +187,12 @@ export class DiscoverStructure {
 
       neuronPromisesMap.set(neuronUUID, nextPromise);
     }
+
+    // Clear data map and its arrays to help GC
+    for (const records of data.values()) {
+      records.length = 0;
+    }
+    data.clear();
   }
 
   private discoveries: CandidateSynapse[] = [];
@@ -295,21 +303,25 @@ export class DiscoverStructure {
     const newPartialLine = lines.pop() || ""; // Keep the last partial line for next iteration
 
     for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (trimmedLine.length === 0) continue;
+
       if (isFirstLine) {
-        const headerValues = parseCsv(line, { skipFirstRow: false })[0];
+        const headerValues = parseCsv(trimmedLine, { skipFirstRow: false })[0];
         headers.push(...headerValues);
         isFirstLine = false;
         continue;
       }
 
-      if (line.trim()) {
-        const values = parseCsv(line, { skipFirstRow: false })[0];
-        const record = this.processCSVRecord(headers, values);
-        if (record) {
-          records.push(record);
-        }
+      const values = parseCsv(trimmedLine, { skipFirstRow: false })[0];
+      const record = this.processCSVRecord(headers, values);
+      if (record) {
+        records.push(record);
       }
     }
+
+    // Clear lines array to help GC
+    lines.length = 0;
 
     return newPartialLine;
   }
@@ -354,10 +366,9 @@ export class DiscoverStructure {
     const records: DiscoverRecord[] = [];
     const headers: string[] = [];
     let isFirstChunk = true;
-    const TD = new TextDecoder();
 
     // Process the file in chunks to avoid memory issues
-    const bufferSize = 256 * 1024;
+    const bufferSize = 10 * 1024; // Was 256k
     const buffer = new Uint8Array(bufferSize);
     let partialLine = "";
 
@@ -373,7 +384,7 @@ export class DiscoverStructure {
         assert(bytesRead > 0, "Invalid number of bytes read");
 
         // Convert buffer to string and process
-        const chunk = TD.decode(buffer.slice(0, bytesRead));
+        const chunk = this.textDecoder.decode(buffer.slice(0, bytesRead));
 
         partialLine = this.processCSVChunk(
           chunk,
@@ -403,10 +414,6 @@ export class DiscoverStructure {
       }
     } finally {
       fileHandle.close();
-
-      // Clear large buffers to help GC
-      // @ts-ignore - clearing to help GC
-      buffer.fill(0);
     }
 
     return records;
@@ -585,6 +592,9 @@ export class DiscoverStructure {
         negativeActivationSum += Math.abs(activation);
       }
     }
+
+    // Clear fromRecords array to help GC
+    fromRecords.length = 0;
 
     // Determine the better weight direction
     const usePositive = positiveCount >= negativeCount;
@@ -794,7 +804,6 @@ export class DiscoverStructure {
    * @param weight - The existing weight of the synapse to evaluate.
    * @returns A CandidateSynapse with the measured error impact of this existing synapse.
    */
-
   async analyzeExistingSynapseImpact(
     toNeuronUUID: string,
     fromNeuronUUID: string,
@@ -834,6 +843,9 @@ export class DiscoverStructure {
         helpfulCount++;
       }
     }
+
+    // Clear fromRecords array to help GC
+    fromRecords.length = 0;
 
     const expectedHarmPercentage = (harmfulCount - helpfulCount) /
       activationCount;

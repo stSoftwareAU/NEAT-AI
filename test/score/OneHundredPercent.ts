@@ -46,8 +46,8 @@ Deno.test("100%", async () => {
       Math.random() * 2 - 1,
     ];
     dataSet.push({
-      input,
-      output: [0.42, -0.42],
+      input: new Float32Array(input),
+      output: new Float32Array([0.42, -0.42]),
     });
   }
 

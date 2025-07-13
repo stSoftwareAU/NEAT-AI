@@ -96,8 +96,8 @@ Deno.test("Error-Driven Squash Discovery", async () => {
     const output = targetCreature.activate(new Float32Array(input));
 
     trainingData.push({
-      input,
-      output: Array.from(output),
+      input: new Float32Array(input),
+      output: new Float32Array(output),
     });
   }
 

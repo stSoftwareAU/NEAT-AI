@@ -2,6 +2,7 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -144,11 +145,18 @@ Deno.test("propagateMultiLevelRandom", () => {
     JSON.stringify(internalJSON, null, 1),
   );
 
+  const dataSet: DataRecordInterface[] = [];
+  for (const item of ts) {
+    dataSet.push({
+      input: new Float32Array(item.input),
+      output: new Float32Array(item.output),
+    });
+  }
   for (let attempts = 0; true; attempts++) {
     const creatureB = Creature.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = train(creatureB, ts, {
+    const result1 = train(creatureB, dataSet, {
       iterations: 2,
       targetError: 0,
     });
@@ -158,7 +166,7 @@ Deno.test("propagateMultiLevelRandom", () => {
       JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
-    const result2 = train(creatureB, ts, {
+    const result2 = train(creatureB, dataSet, {
       iterations: 100,
       targetError: 0,
     });
@@ -351,11 +359,18 @@ Deno.test("propagateMultiLevelKnownA", () => {
     JSON.stringify(internalJSON, null, 1),
   );
 
+  const dataSet: DataRecordInterface[] = [];
+  for (const item of ts) {
+    dataSet.push({
+      input: new Float32Array(item.input),
+      output: new Float32Array(item.output),
+    });
+  }
   for (let attempts = 0; true; attempts++) {
     const creatureB = Creature.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = train(creatureB, ts, {
+    const result1 = train(creatureB, dataSet, {
       iterations: 2,
       targetError: 0,
     });
@@ -365,7 +380,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
       JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
-    const result2 = train(creatureB, ts, {
+    const result2 = train(creatureB, dataSet, {
       iterations: 10000,
       targetError: 0,
     });
@@ -557,11 +572,18 @@ Deno.test("propagateMultiLevelKnownB", () => {
     JSON.stringify(internalJSON, null, 1),
   );
 
+  const dataSet: DataRecordInterface[] = [];
+  for (const item of ts) {
+    dataSet.push({
+      input: new Float32Array(item.input),
+      output: new Float32Array(item.output),
+    });
+  }
   for (let attempts = 0; true; attempts++) {
     const creatureB = Creature.fromJSON(internalJSON);
     creatureB.validate();
 
-    const result1 = train(creatureB, ts, {
+    const result1 = train(creatureB, dataSet, {
       iterations: 2,
       targetError: 0,
     });
@@ -571,7 +593,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
       JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
-    const result2 = train(creatureB, ts, {
+    const result2 = train(creatureB, dataSet, {
       iterations: 100,
       targetError: 0,
     });

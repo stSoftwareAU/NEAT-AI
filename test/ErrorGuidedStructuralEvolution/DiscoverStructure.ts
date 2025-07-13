@@ -94,8 +94,8 @@ Deno.test("Error-Driven Synapse Discovery identifies negative synapses and remov
     const output = targetCreature.activate(new Float32Array(input));
 
     trainingData.push({
-      input,
-      output: Array.from(output),
+      input: new Float32Array(input),
+      output: new Float32Array(output),
     });
   }
 
@@ -156,8 +156,8 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
     const output = targetCreature.activate(new Float32Array(input));
 
     trainingData.push({
-      input,
-      output: Array.from(output),
+      input: new Float32Array(input),
+      output: new Float32Array(output),
     });
   }
 

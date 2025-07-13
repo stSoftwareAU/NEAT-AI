@@ -870,7 +870,10 @@ export class Creature implements CreatureInternal {
   ): Promise<{ error: number; score: number; time: number }> {
     const config = createNeatConfig(options);
 
-    const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak);
+    const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak, {
+      input: this.input,
+      output: this.output,
+    });
 
     const result = await this.evolveDir(dataSetDir, config);
 
