@@ -31,13 +31,29 @@ Deno.test("TraceStore", async () => {
     output: 1,
   };
 
-  const trainingSet: DataRecordInterface[] = [
-    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
-    { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
-    { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
-    { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
-  ];
+  const ts = [];
+  for (let i = 100; i--;) {
+    for (let j = 100; j--;) {
+      if (i === 50) continue;
+      const condition = Math.random() * 2 - 1;
+      const positive = Math.random();
+      const negative = Math.random();
+      const item = {
+        input: [condition, positive, negative],
+        output: [condition > 0 ? positive : negative],
+      };
 
+      ts.push(item);
+    }
+  }
+
+  const dataSet: DataRecordInterface[] = [];
+  for (const item of ts) {
+    dataSet.push({
+      input: new Float32Array(item.input),
+      output: new Float32Array(item.output),
+    });
+  }
   const traceDir = ".test/TraceStore/trace";
   ensureDirSync(traceDir);
   const creaturesDir = ".test/TraceStore/creatures";
@@ -57,7 +73,7 @@ Deno.test("TraceStore", async () => {
     const network = Creature.fromJSON(json);
 
     // deno-lint-ignore no-await-in-loop
-    await network.evolveDataSet(trainingSet, options);
+    await network.evolveDataSet(dataSet, options);
 
     for (const dirEntry of Deno.readDirSync(traceDir)) {
       if (dirEntry.name.endsWith(".json")) {
