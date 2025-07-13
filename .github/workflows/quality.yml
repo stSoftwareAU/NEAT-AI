@@ -33,9 +33,7 @@ jobs:
 
       - name: Check
         run: |
-          find src -name "*.ts" -print0 | xargs -0 -n 50 deno check
-          find test -name "*.ts" -print0 | xargs -0 -n 50 deno check
-          find bench -name "*.ts" -print0 | xargs -0 -n 50 deno check
+          deno check
 
       # Check for Changes
 
