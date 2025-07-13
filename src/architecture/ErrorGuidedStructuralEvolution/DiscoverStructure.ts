@@ -127,6 +127,7 @@ export class DiscoverStructure {
 
   /**
    * Records neuron activations and errors across the provided training data.
+   * Optimized for memory efficiency and performance.
    */
   public record(
     trainingData: DataRecordInterface[],
@@ -135,11 +136,14 @@ export class DiscoverStructure {
     assert(this.initialized, "Not initialized");
     this.recorded = true;
 
+    // Process input neurons first (simpler, no activation needed)
     this.creature.neurons.forEach((neuron) => {
       if (neuron.type === "input") {
-        const dataCSV = trainingData.map((record) => {
-          return `${record.input[neuron.index]}\n`;
-        }).join("");
+        // Build CSV string directly without intermediate array
+        let dataCSV = "";
+        for (let i = 0; i < trainingData.length; i++) {
+          dataCSV += `${trainingData[i].input[neuron.index]}\n`;
+        }
 
         const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
         const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
@@ -152,32 +156,42 @@ export class DiscoverStructure {
       }
     });
 
-    const data = new Map<string, Array<DiscoverRecord>>();
-    trainingData.forEach((record) => {
-      this.creature.activate(new Float32Array(record.input));
-      const discoverMap = this.creature.record(new Float32Array(record.output));
+    // Process non-input neurons with streaming approach
+    const nonInputNeurons = this.creature.neurons.filter((neuron) =>
+      neuron.type !== "input"
+    );
 
-      this.creature.neurons.forEach((neuron) => {
-        if (neuron.type !== "input") {
-          const discoverRecord = discoverMap.get(neuron.uuid) || {
-            activation: this.creature.state.activations[neuron.index],
-            errors: "",
-          };
-          if (!data.has(neuron.uuid)) {
-            data.set(neuron.uuid, []);
-          }
-          data.get(neuron.uuid)!.push(discoverRecord);
-        }
-      });
+    // Pre-allocate CSV builders for each neuron to avoid repeated string concatenation
+    const csvBuilders = new Map<string, string[]>();
+    nonInputNeurons.forEach((neuron) => {
+      csvBuilders.set(neuron.uuid, []);
     });
 
-    for (const [neuronUUID, records] of data.entries()) {
-      const dataCSV = records.map((discoverRecord) =>
-        `${
-          discoverRecord.value ?? ""
-        },${discoverRecord.activation},${discoverRecord.errors}\n`
-      ).join("");
+    // Process each record and build CSV data incrementally
+    for (let i = 0; i < trainingData.length; i++) {
+      const record = trainingData[i];
 
+      // Activate creature with existing input (no new Float32Array creation)
+      this.creature.activate(record.input);
+      const discoverMap = this.creature.record(record.output);
+
+      // Build CSV lines for each neuron
+      nonInputNeurons.forEach((neuron) => {
+        const discoverRecord = discoverMap.get(neuron.uuid) || {
+          activation: this.creature.state.activations[neuron.index],
+          errors: "",
+        };
+
+        const csvLine = `${
+          discoverRecord.value ?? ""
+        },${discoverRecord.activation},${discoverRecord.errors}\n`;
+        csvBuilders.get(neuron.uuid)!.push(csvLine);
+      });
+    }
+
+    // Write CSV data for each neuron
+    for (const [neuronUUID, csvLines] of csvBuilders.entries()) {
+      const dataCSV = csvLines.join("");
       const fileName = `${this.tempDir}/${neuronUUID}.csv`;
       const previousPromise = neuronPromisesMap.get(neuronUUID)!;
 
@@ -188,11 +202,8 @@ export class DiscoverStructure {
       neuronPromisesMap.set(neuronUUID, nextPromise);
     }
 
-    // Clear data map and its arrays to help GC
-    for (const records of data.values()) {
-      records.length = 0;
-    }
-    data.clear();
+    // Clear CSV builders to help GC
+    csvBuilders.clear();
   }
 
   private discoveries: CandidateSynapse[] = [];
