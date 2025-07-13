@@ -169,12 +169,6 @@ class DataRecorder {
       }
 
       // Clear large buffers and arrays to help GC
-      // @ts-ignore - clearing to help GC
-      batchBuffer.fill(0);
-      // @ts-ignore - clearing to help GC
-      batchArray.fill(0);
-      // @ts-ignore - clearing to help GC
-      tmpIndexes.fill(0);
       recordSet.clear();
     } finally {
       file.close();
