@@ -19,7 +19,7 @@ export function train(
   assert(dataSet[0].input.length > 0, "No input data in the data set");
   assert(dataSet[0].output.length > 0, "No output data in the data set");
 
-  const dataSetDir = makeDataDir(dataSet, dataSet.length,{
+  const dataSetDir = makeDataDir(dataSet, dataSet.length, {
     input: creature.input,
     output: creature.output,
   });
