@@ -64,17 +64,19 @@ export class DiscoverStructure {
   private creature: Creature;
   private tempDir: string;
   private textDecoder: TextDecoder;
+  private timeoutTS: number;
 
   private initialized = false;
   private recorded = false;
 
-  constructor(creature: Creature) {
+  constructor(creature: Creature, timeoutTS?: number) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
     this.tempDir = `.discovery/${creature.uuid}_${
       Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     }`;
     this.textDecoder = new TextDecoder();
+    this.timeoutTS = timeoutTS || 0;
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
@@ -212,6 +214,7 @@ export class DiscoverStructure {
     focusList: string[],
   ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return undefined;
+
     const candidatePromises = focusList.map(async (neuronUUID) => {
       const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
       return this.loadCandidateSynapses(neuronUUID, records);
@@ -683,6 +686,7 @@ export class DiscoverStructure {
     focusList: string[],
   ): Promise<CandidateSquash[] | undefined> {
     if (focusList.length === 0) return undefined;
+
     const candidatePromises = focusList.map(async (neuronUUID) => {
       const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
       return this.findCandidateSquash(neuronUUID, records);

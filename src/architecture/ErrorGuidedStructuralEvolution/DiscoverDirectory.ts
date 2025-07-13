@@ -203,7 +203,7 @@ class DataRecorder {
       );
     }
 
-    const discoverStructure = new DiscoverStructure(creature);
+    const discoverStructure = new DiscoverStructure(creature, this.timeoutTS);
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     const initializeStartTime = Date.now();
