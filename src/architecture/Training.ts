@@ -330,6 +330,7 @@ function trainDirBinary(
             }
           }
         }
+        if (trainingStopped) break;
       } finally {
         file.close();
       }
