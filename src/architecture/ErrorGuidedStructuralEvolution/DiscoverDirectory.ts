@@ -128,9 +128,11 @@ class DataRecorder {
       for (const recordIndex of selectedIndexes) {
         if (this.timeoutTS && Date.now() > this.timeoutTS) break;
 
-        // Seek to the specific record
-        const seekOffset = recordIndex * this.BYTES_PER_RECORD;
-        file.seekSync(seekOffset, Deno.SeekMode.Start);
+        // Calculate the target position
+        const targetPosition = recordIndex * this.BYTES_PER_RECORD;
+
+        // Seek to the specific record from beginning (simpler and more reliable)
+        file.seekSync(targetPosition, Deno.SeekMode.Start);
 
         // Read the single record
         const readStartTime = Date.now();
