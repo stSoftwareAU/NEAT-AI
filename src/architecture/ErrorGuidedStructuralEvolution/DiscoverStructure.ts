@@ -64,17 +64,19 @@ export class DiscoverStructure {
   private creature: Creature;
   private tempDir: string;
   private textDecoder: TextDecoder;
+  private timeoutTS: number;
 
   private initialized = false;
   private recorded = false;
 
-  constructor(creature: Creature) {
+  constructor(creature: Creature, timeoutTS?: number) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
     this.tempDir = `.discovery/${creature.uuid}_${
       Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     }`;
     this.textDecoder = new TextDecoder();
+    this.timeoutTS = timeoutTS || 0;
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
@@ -212,6 +214,7 @@ export class DiscoverStructure {
     focusList: string[],
   ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return undefined;
+
     const candidatePromises = focusList.map(async (neuronUUID) => {
       const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
       return this.loadCandidateSynapses(neuronUUID, records);
@@ -587,6 +590,7 @@ export class DiscoverStructure {
       if (errorList.length === 0) continue; // Skip if no errors
 
       const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
+
       if (Math.abs(avgError) <= Number.EPSILON) continue;
 
       // Determine if a positive or negative weight would reduce the error
@@ -682,6 +686,7 @@ export class DiscoverStructure {
     focusList: string[],
   ): Promise<CandidateSquash[] | undefined> {
     if (focusList.length === 0) return undefined;
+
     const candidatePromises = focusList.map(async (neuronUUID) => {
       const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
       return this.findCandidateSquash(neuronUUID, records);
@@ -721,6 +726,7 @@ export class DiscoverStructure {
     const rawValues: number[] = [];
     const currentActivations: number[] = [];
     const idealActivations: number[] = [];
+
     records.forEach((record) => {
       const value = record.value;
       if (value === undefined) {

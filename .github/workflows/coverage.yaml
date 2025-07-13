@@ -25,7 +25,12 @@ jobs:
         name: Create coverage files
         run: |
           export NO_COLOR=true
-          deno test -A --parallel --coverage=.coverage --config ./deno.json --reporter junit > junit.xml
+          deno test -A \
+            --v8-flags=--max-old-space-size=8192 \
+            --parallel \
+            --coverage=.coverage \
+            --config ./deno.json --reporter junit > junit.xml
+
         continue-on-error: true
 
       - name: Upload test results to Codecov
