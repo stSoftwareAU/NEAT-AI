@@ -379,7 +379,7 @@ export class DiscoverStructure {
     let isFirstChunk = true;
 
     // Process the file in chunks to avoid memory issues
-    const bufferSize = 8 * 1024; // Reduced from 10KB for better memory efficiency
+    const bufferSize = 64 * 1024; // Was 256k, reduced to 64KB for balance
     const buffer = new Uint8Array(bufferSize);
     let partialLine = "";
 
@@ -407,8 +407,8 @@ export class DiscoverStructure {
 
         isFirstChunk = false;
 
-        // Give GC a chance to run periodically (more frequent for smaller buffers)
-        if (records.length % 500 === 0) {
+        // Give GC a chance to run periodically
+        if (records.length % 1000 === 0) {
           // deno-lint-ignore no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
@@ -582,28 +582,11 @@ export class DiscoverStructure {
       const activation = fromRecord.activation;
       if (Math.abs(activation) <= Number.EPSILON) continue;
 
-      // Compute average downstream error - optimize string splitting
-      const errors = toRecord.errors;
-      if (errors.length === 0) continue; // Skip if no errors
+      // Compute average downstream error
+      const errorList = toRecord.errors.split("|").map(Number);
+      if (errorList.length === 0) continue; // Skip if no errors
 
-      // Use manual parsing for better performance than split().map()
-      let avgError = 0;
-      let errorCount = 0;
-      let start = 0;
-      for (let j = 0; j < errors.length; j++) {
-        if (errors[j] === "|" || j === errors.length - 1) {
-          const end = j === errors.length - 1 ? j + 1 : j;
-          const errorValue = Number.parseFloat(errors.slice(start, end));
-          if (Number.isFinite(errorValue)) {
-            avgError += errorValue;
-            errorCount++;
-          }
-          start = j + 1;
-        }
-      }
-
-      if (errorCount === 0) continue;
-      avgError /= errorCount;
+      const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
 
       if (Math.abs(avgError) <= Number.EPSILON) continue;
 
@@ -759,26 +742,8 @@ export class DiscoverStructure {
       }
       currentActivations[i] = activation;
 
-      // Optimize error parsing similar to analyzeCandidateSynapse
-      const errors = record.errors;
-      let avgError = 0;
-      let errorCount = 0;
-      let start = 0;
-      for (let j = 0; j < errors.length; j++) {
-        if (errors[j] === "|" || j === errors.length - 1) {
-          const end = j === errors.length - 1 ? j + 1 : j;
-          const errorValue = Number.parseFloat(errors.slice(start, end));
-          if (Number.isFinite(errorValue)) {
-            avgError += errorValue;
-            errorCount++;
-          }
-          start = j + 1;
-        }
-      }
-
-      if (errorCount > 0) {
-        avgError /= errorCount;
-      }
+      const errors = record.errors.split("|").map(Number);
+      const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
 
       idealActivations[i] = activation + avgError;
     }
