@@ -127,7 +127,7 @@ export class DiscoverStructure {
 
   /**
    * Records neuron activations and errors across the provided training data.
-   * Optimized for memory efficiency and performance.
+   * Uses streaming for maximum memory efficiency.
    */
   public record(
     trainingData: DataRecordInterface[],
@@ -136,74 +136,80 @@ export class DiscoverStructure {
     assert(this.initialized, "Not initialized");
     this.recorded = true;
 
-    // Process input neurons first (simpler, no activation needed)
+    // Process input neurons with streaming
     this.creature.neurons.forEach((neuron) => {
       if (neuron.type === "input") {
-        // Build CSV string directly without intermediate array
-        let dataCSV = "";
-        for (let i = 0; i < trainingData.length; i++) {
-          dataCSV += `${trainingData[i].input[neuron.index]}\n`;
-        }
-
         const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
         const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
 
-        const nextPromise = previousPromise.then(() =>
-          Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
-        );
+        const nextPromise = previousPromise.then(async () => {
+          // Create a readable stream that yields CSV lines
+          const stream = new ReadableStream({
+            start(controller) {
+              for (let i = 0; i < trainingData.length; i++) {
+                const line = `${trainingData[i].input[neuron.index]}\n`;
+                controller.enqueue(line);
+              }
+              controller.close();
+            },
+          });
+
+          await Deno.writeTextFile(fileName, stream, {
+            append: true,
+            create: false,
+          });
+        });
 
         neuronPromisesMap.set(neuron.uuid, nextPromise);
       }
     });
 
-    // Process non-input neurons with streaming approach
+    // Process non-input neurons with streaming
     const nonInputNeurons = this.creature.neurons.filter((neuron) =>
       neuron.type !== "input"
     );
 
-    // Pre-allocate CSV builders for each neuron to avoid repeated string concatenation
-    const csvBuilders = new Map<string, string[]>();
-    nonInputNeurons.forEach((neuron) => {
-      csvBuilders.set(neuron.uuid, []);
-    });
+    // Create streaming promises for each neuron
+    for (const neuron of nonInputNeurons) {
+      const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
+      const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
 
-    // Process each record and build CSV data incrementally
-    for (let i = 0; i < trainingData.length; i++) {
-      const record = trainingData[i];
+      const nextPromise = previousPromise.then(async () => {
+        // Capture context for the stream
+        const creature = this.creature;
 
-      // Activate creature with existing input (no new Float32Array creation)
-      this.creature.activate(record.input);
-      const discoverMap = this.creature.record(record.output);
+        // Create a readable stream that yields CSV lines
+        const stream = new ReadableStream({
+          start(controller) {
+            for (let i = 0; i < trainingData.length; i++) {
+              const record = trainingData[i];
 
-      // Build CSV lines for each neuron
-      nonInputNeurons.forEach((neuron) => {
-        const discoverRecord = discoverMap.get(neuron.uuid) || {
-          activation: this.creature.state.activations[neuron.index],
-          errors: "",
-        };
+              // Activate creature with existing input (no new Float32Array creation)
+              creature.activate(record.input);
+              const discoverMap = creature.record(record.output);
 
-        const csvLine = `${
-          discoverRecord.value ?? ""
-        },${discoverRecord.activation},${discoverRecord.errors}\n`;
-        csvBuilders.get(neuron.uuid)!.push(csvLine);
+              const discoverRecord = discoverMap.get(neuron.uuid) || {
+                activation: creature.state.activations[neuron.index],
+                errors: "",
+              };
+
+              const csvLine = `${
+                discoverRecord.value ?? ""
+              },${discoverRecord.activation},${discoverRecord.errors}\n`;
+              controller.enqueue(csvLine);
+            }
+            controller.close();
+          },
+        });
+
+        await Deno.writeTextFile(fileName, stream, {
+          append: true,
+          create: false,
+        });
       });
+
+      neuronPromisesMap.set(neuron.uuid, nextPromise);
     }
-
-    // Write CSV data for each neuron
-    for (const [neuronUUID, csvLines] of csvBuilders.entries()) {
-      const dataCSV = csvLines.join("");
-      const fileName = `${this.tempDir}/${neuronUUID}.csv`;
-      const previousPromise = neuronPromisesMap.get(neuronUUID)!;
-
-      const nextPromise = previousPromise.then(() =>
-        Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
-      );
-
-      neuronPromisesMap.set(neuronUUID, nextPromise);
-    }
-
-    // Clear CSV builders to help GC
-    csvBuilders.clear();
   }
 
   private discoveries: CandidateSynapse[] = [];
