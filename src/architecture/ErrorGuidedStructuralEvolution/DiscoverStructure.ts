@@ -295,19 +295,20 @@ export class DiscoverStructure {
     const newPartialLine = lines.pop() || ""; // Keep the last partial line for next iteration
 
     for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (trimmedLine.length === 0) continue;
+
       if (isFirstLine) {
-        const headerValues = parseCsv(line, { skipFirstRow: false })[0];
+        const headerValues = parseCsv(trimmedLine, { skipFirstRow: false })[0];
         headers.push(...headerValues);
         isFirstLine = false;
         continue;
       }
 
-      if (line.trim()) {
-        const values = parseCsv(line, { skipFirstRow: false })[0];
-        const record = this.processCSVRecord(headers, values);
-        if (record) {
-          records.push(record);
-        }
+      const values = parseCsv(trimmedLine, { skipFirstRow: false })[0];
+      const record = this.processCSVRecord(headers, values);
+      if (record) {
+        records.push(record);
       }
     }
 
@@ -357,7 +358,7 @@ export class DiscoverStructure {
     const TD = new TextDecoder();
 
     // Process the file in chunks to avoid memory issues
-    const bufferSize = 256 * 1024;
+    const bufferSize = 10 * 1024; // Was 256k
     const buffer = new Uint8Array(bufferSize);
     let partialLine = "";
 
@@ -406,7 +407,7 @@ export class DiscoverStructure {
 
       // Clear large buffers to help GC
       // @ts-ignore - clearing to help GC
-      buffer.fill(0);
+      buffer.length=0;
     }
 
     return records;
