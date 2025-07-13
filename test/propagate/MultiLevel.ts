@@ -199,7 +199,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
   ensureDirSync(traceDir);
 
   ts.forEach((item) => {
-    const result = creatureA.activate(new Float32Array(item.input));
+    const result = creatureA.activate(item.input);
 
     assertAlmostEquals(item.output[0], result[0], 0.00001);
     assertAlmostEquals(item.output[1], result[1], 0.00001);
