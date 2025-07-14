@@ -202,17 +202,23 @@ function trainDirBinary(
             knownSampleCount = totalRecords;
           }
           const len = Math.ceil(fileRecords * trainingSampleRate);
-          const tmpIndexes = Int32Array.from(
-            { length: fileRecords },
-            (_, i) => i,
-          ); // Create an array of indices
+
+          // Pre-allocate array and use direct assignment instead of Int32Array.from
+          const tmpIndexes = new Int32Array(fileRecords);
+          for (let i = 0; i < fileRecords; i++) {
+            tmpIndexes[i] = i;
+          }
 
           if (!options.disableRandomSamples && !feedbackLoop) {
             CreatureUtil.shuffle(tmpIndexes);
           }
-          const selectedIndexes = tmpIndexes.slice(0, len).sort((a, b) =>
-            a - b
-          );
+
+          // Create sorted array directly instead of slice + sort
+          const selectedIndexes = new Int32Array(len);
+          for (let i = 0; i < len; i++) {
+            selectedIndexes[i] = tmpIndexes[i];
+          }
+          selectedIndexes.sort((a, b) => a - b);
 
           recordSet = new Set(selectedIndexes);
           indxMap.set(fn, recordSet);
