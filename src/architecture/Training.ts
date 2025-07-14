@@ -238,9 +238,7 @@ function trainDirBinary(
           }
 
           // Reuse Float32Array views instead of creating new arrays
-          const observations = new Float32Array(
-            recordArray.subarray(0, creature.input),
-          );
+          const observations = recordArray.subarray(0, creature.input);
 
           const output = creature.activateAndTrace(
             observations,
@@ -248,9 +246,7 @@ function trainDirBinary(
             sparseConfig,
           );
 
-          const targets = new Float32Array(
-            recordArray.subarray(creature.input),
-          );
+          const targets = recordArray.subarray(creature.input);
 
           const sampleError = cost.calculate(
             targets,
