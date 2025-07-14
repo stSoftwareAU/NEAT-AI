@@ -968,10 +968,10 @@ export class Creature implements CreatureInternal {
           for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
             const offset = recordIndex * valuesCount;
             const inputEnd = offset + this.input;
-            const observations = batchArray.subarray(
+            const observations = new Float32Array(batchArray.subarray(
               offset,
               inputEnd,
-            );
+            ));
 
             const actuals = this.activateAndTrace(
               observations,
@@ -979,10 +979,10 @@ export class Creature implements CreatureInternal {
               sparseConfig,
             );
 
-            const targets = batchArray.subarray(
+            const targets = new Float32Array(batchArray.subarray(
               inputEnd,
               offset + valuesCount,
-            );
+            ));
             this.propagate(targets, backPropConfig, sparseConfig);
 
             error += cost.calculate(targets, actuals);
@@ -1061,17 +1061,17 @@ export class Creature implements CreatureInternal {
           for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
             const offset = recordIndex * valuesCount;
             const inputEnd = offset + this.input;
-            const observations = batchArray.subarray(
+            const observations = new Float32Array(batchArray.subarray(
               offset,
               inputEnd,
-            );
+            ));
 
             const actual = this.activate(observations, feedbackLoop);
 
-            const target = batchArray.subarray(
+            const target = new Float32Array(batchArray.subarray(
               inputEnd,
               offset + valuesCount,
-            );
+            ));
 
             error += cost.calculate(target, actual);
             count++;
