@@ -254,7 +254,7 @@ function trainDirBinary(
 
           const sampleError = cost.calculate(
             targets,
-            output
+            output,
           );
           assert(Number.isFinite(sampleError), "Sample error is not finite");
           errorSum += sampleError;
