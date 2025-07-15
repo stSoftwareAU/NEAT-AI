@@ -214,8 +214,10 @@ function trainDirBinary(
           }
 
           // Create sorted array directly instead of slice + sort
-          const selectedIndexes = new Int32Array(len);
-          for (let i = 0; i < len; i++) {
+          // Ensure we don't copy more elements than exist in tmpIndexes
+          const actualLen = Math.min(len, tmpIndexes.length);
+          const selectedIndexes = new Int32Array(actualLen);
+          for (let i = 0; i < actualLen; i++) {
             selectedIndexes[i] = tmpIndexes[i];
           }
           selectedIndexes.sort((a, b) => a - b);
