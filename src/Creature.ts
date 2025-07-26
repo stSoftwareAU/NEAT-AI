@@ -362,7 +362,14 @@ export class Creature implements CreatureInternal {
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
-    this.creatureActivationFunction!();
+    try {
+      this.creatureActivationFunction!();
+    } catch (e) {
+      console.error("Error in creature activation function", e);
+      const functionBody = makeCreatureActivationFunction(this).inlineText;
+      Deno.writeTextFileSync(".error-function.js", functionBody);
+      throw e;
+    }
 
     const lastHiddenNode = this.neurons.length - this.output;
     return new Float32Array(activations.subarray(lastHiddenNode));
