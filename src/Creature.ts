@@ -304,16 +304,23 @@ export class Creature implements CreatureInternal {
   clearState() {
     delete this.score;
     this.state.clear();
+    delete this.creatureActivationResult;
   }
 
   private creatureActivationFunction?: () => undefined;
+  private creatureActivationResult?: {
+    inlineFunction: () => undefined;
+    inlineText: string;
+    squashList: string[];
+  };
   private prepareNeurons() {
     if (this.state.preparedNeurons) {
       return;
     }
 
+    this.creatureActivationResult = makeCreatureActivationFunction(this);
     this.creatureActivationFunction =
-      makeCreatureActivationFunction(this).inlineFunction;
+      this.creatureActivationResult.inlineFunction;
     for (let i = this.input, len = this.neurons.length; i < len; i++) {
       this.neurons[i].prepare();
     }
@@ -366,7 +373,8 @@ export class Creature implements CreatureInternal {
       this.creatureActivationFunction!();
     } catch (e) {
       console.error("Error in creature activation function", e);
-      const functionBody = makeCreatureActivationFunction(this).inlineText;
+      const functionBody = this.creatureActivationResult?.inlineText ??
+        "Function body not available";
       Deno.writeTextFileSync(".error-function.js", functionBody);
       throw e;
     }
