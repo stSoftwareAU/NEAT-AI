@@ -33,11 +33,6 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number): number {
-    // Guard against non-finite inputs
-    if (!Number.isFinite(x)) {
-      return 0;
-    }
-
     // For very large negative values, return a very small negative number
     if (x < -GELU.MAX_X) return -0;
 
@@ -50,12 +45,6 @@ export class GELU implements ActivationInterface, UnSquashInterface {
         Math.tanh(
           Math.sqrt(2 / Math.PI) * (x + GELU.CUBIC_COEF * Math.pow(x, 3)),
         ));
-
-    // Guard against NaN or infinite results
-    if (!Number.isFinite(value)) {
-      // Fallback to a safe value based on input sign
-      return x > 0 ? this.range.limit(x) : 0;
-    }
 
     return this.range.limit(value, x);
   }
@@ -95,11 +84,6 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    // Guard against non-finite inputs
-    if (!Number.isFinite(x)) {
-      return 0;
-    }
-
     const inner = Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3));
     const tanhInner = Math.tanh(inner);
 
@@ -110,13 +94,8 @@ export class GELU implements ActivationInterface, UnSquashInterface {
 
     const result = cdf + pdf;
 
-    // Guard against NaN or infinite results
-    if (!Number.isFinite(result)) {
-      // Fallback to a small positive value to avoid division by zero
-      return 0.1;
-    }
-
-    return result;
+    // Minimal safeguard (no clamping) to ensure finite numeric output
+    return Number.isFinite(result) ? result : 0;
   }
 
   /**
@@ -140,24 +119,10 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     targetActivation: number,
     currentValue: number,
   ): number {
-    // Guard against non-finite inputs
-    if (
-      !Number.isFinite(currentActivation) ||
-      !Number.isFinite(targetActivation) || !Number.isFinite(currentValue)
-    ) {
-      return 0;
-    }
-
     const rawError = targetActivation - currentActivation;
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
-
-    // Guard against division by zero or very small slopes
-    if (Math.abs(slope) < 1e-10) {
-      return 0;
-    }
-
     const error = rawError / slope;
 
     return ErrorHelper.calculateClampedError(error);
