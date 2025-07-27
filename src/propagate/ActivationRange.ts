@@ -41,7 +41,7 @@ export class ActivationRange {
     }
   }
 
-  limit(activation: number): number {
+  limit(activation: number, rawInput?: number): number {
     let value = activation;
     if (Number.isFinite(value) === false) {
       if (value === Infinity) {
@@ -50,7 +50,7 @@ export class ActivationRange {
         value = this.low;
       } else {
         throw new Error(
-          `${this.name}: Activation ${activation} is not finite`,
+          `${this.name}: Activation ${activation} is not finite, rawInput: ${rawInput}`,
         );
       }
     }

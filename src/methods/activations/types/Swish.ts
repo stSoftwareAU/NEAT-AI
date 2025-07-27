@@ -35,7 +35,7 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     if (!Number.isFinite(x)) return 0;
     const expNegX = x < -20 ? 0 : Math.exp(-x);
     const value = x / (1 + expNegX);
-    return Swish.rangeStatic.limit(value);
+    return Swish.rangeStatic.limit(value, x);
   }
 
   /**

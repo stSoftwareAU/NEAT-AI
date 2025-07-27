@@ -67,7 +67,7 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     const fx = safeX > 0 ? safeX : SELU.ALPHA * Math.exp(safeX) - SELU.ALPHA;
 
     const scaled = fx * SELU.SCALE;
-    return this.range.limit(scaled);
+    return this.range.limit(scaled, x);
   }
 
   derivative(x: number): number {

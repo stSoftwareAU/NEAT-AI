@@ -31,7 +31,7 @@ export class LOGISTIC implements ActivationInterface, UnSquashInterface {
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0.5; // avoid NaN/Inf
     const fx = 1 / (1 + Math.exp(-x));
-    return this.range.limit(fx); // enforce (0, 1) safety
+    return this.range.limit(fx, x); // enforce (0, 1) safety
   }
 
   unSquash(activation: number, hint?: number): number {

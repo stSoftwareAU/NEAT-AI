@@ -29,7 +29,7 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
 
   squash(x: number): number {
     if (!Number.isFinite(x)) {
-      return this.range.limit(Number.MAX_SAFE_INTEGER);
+      return this.range.limit(Number.MAX_SAFE_INTEGER, x);
     }
 
     // Avoid overflow
@@ -38,7 +38,7 @@ export class Exponential implements ActivationInterface, UnSquashInterface {
     }
 
     const value = Math.exp(x);
-    return this.range.limit(value);
+    return this.range.limit(value, x);
   }
 
   unSquash(activation: number, hint?: number): number {

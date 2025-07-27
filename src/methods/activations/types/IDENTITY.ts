@@ -35,7 +35,7 @@ export class IDENTITY
   }
 
   squash(x: number) {
-    return this.range.limit(x);
+    return this.range.limit(x, x);
   }
 
   /**

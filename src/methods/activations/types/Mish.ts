@@ -35,7 +35,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
     const value = x * Math.tanh(Math.log(1 + Math.exp(x)));
-    return Mish.rangeStatic.limit(value);
+    return Mish.rangeStatic.limit(value, x);
   }
 
   squashAndDerive(x: number) {

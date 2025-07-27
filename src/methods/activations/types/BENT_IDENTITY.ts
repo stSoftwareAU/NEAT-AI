@@ -58,12 +58,12 @@ export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
 
   squash(x: number): number {
     if (Math.abs(x) >= BENT_IDENTITY.OVERFLOW_LIMIT) {
-      return BENT_IDENTITY.rangeStatic.limit(x);
+      return BENT_IDENTITY.rangeStatic.limit(x, x);
     }
 
     const d = Math.sqrt(x * x + 1);
     const value = (d - 1) / 2 + x;
-    return BENT_IDENTITY.rangeStatic.limit(value);
+    return BENT_IDENTITY.rangeStatic.limit(value, x);
   }
 
   /**

@@ -37,7 +37,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     if (x < -GELU.MAX_X) return -0;
 
     // For very large positive values, return the input
-    if (x > GELU.MAX_X) return this.range.limit(x);
+    if (x > GELU.MAX_X) return this.range.limit(x, x);
 
     // Standard GELU approximation
     const value = 0.5 * x *
@@ -46,7 +46,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
           Math.sqrt(2 / Math.PI) * (x + GELU.CUBIC_COEF * Math.pow(x, 3)),
         ));
 
-    return this.range.limit(value);
+    return this.range.limit(value, x);
   }
 
   unSquash(activation: number, hint?: number): number {

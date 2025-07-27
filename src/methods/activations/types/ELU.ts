@@ -34,7 +34,7 @@ export class ELU implements ActivationInterface, UnSquashInterface {
 
   squash(x: number): number {
     const value = x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
-    return this.range.limit(value);
+    return this.range.limit(value, x);
   }
 
   unSquash(activation: number, hint?: number): number {
