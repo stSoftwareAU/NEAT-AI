@@ -40,7 +40,7 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
     const expNegX = Math.exp(-x);
     const value = -Math.log(1 + expNegX);
 
-    return LogSigmoid.rangeStatic.limit(value);
+    return LogSigmoid.rangeStatic.limit(value, x);
   }
 
   unSquash(activation: number, hint?: number): number {

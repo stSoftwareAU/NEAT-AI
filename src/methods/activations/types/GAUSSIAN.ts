@@ -30,11 +30,11 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
   squash(x: number): number {
     if (!Number.isFinite(x)) return this.range.low;
 
-    // Use a safe max X beyond which exp(-x²) underflows to 0
+    // Use a safe max X beyond which exp(-x²) under-flows to 0
     const safeX = Math.min(Math.abs(x), 100); // x > ~15 means exp(-x²) ~ 0
 
     const value = Math.exp(-Math.pow(safeX, 2));
-    return this.range.limit(value);
+    return this.range.limit(value, x);
   }
 
   unSquash(activation: number, hint?: number): number {

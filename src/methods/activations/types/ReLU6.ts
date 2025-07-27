@@ -38,7 +38,7 @@ export class ReLU6
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
     const value = Math.min(Math.max(0, x), 6);
-    return ReLU6.rangeStatic.limit(value);
+    return ReLU6.rangeStatic.limit(value, x);
   }
 
   unSquash(activation: number, hint?: number): number {

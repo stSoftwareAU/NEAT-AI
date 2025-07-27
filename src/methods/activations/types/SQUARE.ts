@@ -51,7 +51,7 @@ export class SQUARE implements ActivationInterface {
    */
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
-    return this.range.limit(x * x);
+    return this.range.limit(x * x, x);
   }
 
   /**

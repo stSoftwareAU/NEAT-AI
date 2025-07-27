@@ -40,7 +40,7 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
     }
 
     const value = Math.log(1 + Math.exp(x));
-    return Softplus.rangeStatic.limit(value);
+    return Softplus.rangeStatic.limit(value, x);
   }
 
   unSquash(activation: number, hint?: number): number {

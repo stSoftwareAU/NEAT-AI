@@ -38,7 +38,7 @@ export class LeakyReLU implements ActivationInterface, UnSquashInterface {
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0; // <- guard for NaN or Infinity
     const value = x > 0 ? x : LeakyReLU.ALPHA * x;
-    return LeakyReLU.rangeStatic.limit(value);
+    return LeakyReLU.rangeStatic.limit(value, x);
   }
 
   /**

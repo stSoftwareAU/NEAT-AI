@@ -36,7 +36,7 @@ export class ReLU
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
     const value = Math.max(0, x);
-    return this.range.limit(value);
+    return this.range.limit(value, x);
   }
 
   derivative(x: number): number {

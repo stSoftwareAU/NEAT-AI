@@ -34,7 +34,7 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
     const d = 1 + Math.abs(x);
     const value = x / d;
 
-    return this.range.limit(value);
+    return this.range.limit(value, x);
   }
 
   unSquash(activation: number, hint?: number): number {

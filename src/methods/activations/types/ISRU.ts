@@ -35,7 +35,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
     const result = x / Math.sqrt(1 + ISRU.ALPHA * Math.pow(x, 2));
-    return this.range.limit(result);
+    return this.range.limit(result, x);
   }
 
   unSquash(activation: number, hint?: number): number {

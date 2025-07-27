@@ -39,7 +39,7 @@ export class COMPLEMENT
   }
 
   squash(x: number): number {
-    return COMPLEMENT.rangeStatic.limit(1 - x);
+    return COMPLEMENT.rangeStatic.limit(1 - x, x);
   }
 
   unSquash(activation: number, hint?: number): number {
