@@ -25,9 +25,83 @@ jobs:
         name: Create coverage files
         run: |
           export NO_COLOR=true
+          # Check available memory
+          echo "Available memory:"
+          free -h
+          echo "System memory info:"
+          cat /proc/meminfo | head -5
+          
+          # Dynamically calculate memory limit and thread count based on available resources
+          # Get total memory in MB and CPU cores
+          TOTAL_MEMORY_MB=$(grep MemTotal /proc/meminfo | awk '{print int($2/1024)}')
+          CPU_CORES=$(nproc)
+          
+          # Calculate memory per core (aim for 1-2GB per core)
+          MEMORY_PER_CORE=$((TOTAL_MEMORY_MB / CPU_CORES))
+          
+          # Determine optimal memory allocation based on cores and total memory
+          if [ $CPU_CORES -ge 8 ] && [ $TOTAL_MEMORY_MB -ge 8192 ]; then
+            # High-end system: use more memory and parallelism
+            V8_MEMORY_MB=$(($TOTAL_MEMORY_MB * 70 / 100))
+            PARALLEL_FLAG="--parallel"
+          elif [ $CPU_CORES -ge 4 ] && [ $TOTAL_MEMORY_MB -ge 4096 ]; then
+            # Mid-range system: moderate memory and parallelism
+            V8_MEMORY_MB=$(($TOTAL_MEMORY_MB * 60 / 100))
+            PARALLEL_FLAG="--parallel"
+          else
+            # Low-end system: conservative memory, no parallelism
+            V8_MEMORY_MB=$(($TOTAL_MEMORY_MB * 50 / 100))
+            PARALLEL_FLAG=""
+          fi
+          
+          # Ensure we don't exceed reasonable limits (min 1GB, max 8GB)
+          if [ $V8_MEMORY_MB -lt 1024 ]; then
+            V8_MEMORY_MB=1024
+          elif [ $V8_MEMORY_MB -gt 8192 ]; then
+            V8_MEMORY_MB=8192
+          fi
+          
+          echo "System specs: ${CPU_CORES} cores, ${TOTAL_MEMORY_MB}MB RAM"
+          echo "Memory per core: ${MEMORY_PER_CORE}MB"
+          echo "Setting V8 memory limit to: ${V8_MEMORY_MB}MB"
+          echo "Parallel execution: $([ -n "$PARALLEL_FLAG" ] && echo "enabled" || echo "disabled")"
+          
+          # Add garbage collection flags to help with memory management
           deno test -A \
-            --v8-flags=--max-old-space-size=8192 \
-            --parallel \
+            --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
+            ${PARALLEL_FLAG} \
+            --coverage=.coverage \
+            --config ./deno.json --reporter junit > junit.xml
+
+        continue-on-error: true
+
+      - id: create_coverage_files_fallback
+        name: Create coverage files (fallback - reduced memory)
+        if: ${{ steps.create_coverage_files.outcome == 'failure' }}
+        run: |
+          export NO_COLOR=true
+          echo "First attempt failed, trying with reduced memory and no parallelism"
+          
+          # Dynamically calculate conservative memory limit for fallback
+          TOTAL_MEMORY_MB=$(grep MemTotal /proc/meminfo | awk '{print int($2/1024)}')
+          CPU_CORES=$(nproc)
+          
+          # Conservative fallback: use 25% of memory, no parallelism
+          V8_MEMORY_MB=$(($TOTAL_MEMORY_MB * 25 / 100))
+          
+          # Ensure minimum 512MB and maximum 4GB for fallback
+          if [ $V8_MEMORY_MB -lt 512 ]; then
+            V8_MEMORY_MB=512
+          elif [ $V8_MEMORY_MB -gt 4096 ]; then
+            V8_MEMORY_MB=4096
+          fi
+          
+          echo "Fallback: System specs: ${CPU_CORES} cores, ${TOTAL_MEMORY_MB}MB RAM"
+          echo "Fallback: Setting V8 memory limit to: ${V8_MEMORY_MB}MB (conservative mode)"
+          
+          # Use conservative memory limit and no parallelism for memory-constrained environments
+          deno test -A \
+            --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
             --coverage=.coverage \
             --config ./deno.json --reporter junit > junit.xml
 
@@ -40,15 +114,21 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Fail Build if Tests Fail
-        if: ${{ steps.create_coverage_files.outcome == 'failure' }}
+        if: ${{ steps.create_coverage_files.outcome == 'failure' && steps.create_coverage_files_fallback.outcome == 'failure' }}
         run: |
-          echo "Tests failed. Failing the build."
+          echo "Both test attempts failed. Failing the build."
           exit 1
 
       - name: Create coverage report
-        run: deno coverage .coverage --lcov > .coverage.lcov # create coverage report
+        if: ${{ steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success' }}
+        run: |
+          # Check memory usage after tests
+          echo "Memory usage after tests:"
+          free -h
+          deno coverage .coverage --lcov > .coverage.lcov # create coverage report
 
       - name: Upload coverage to Codecov
+        if: ${{ steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success' }}
         uses: codecov/codecov-action@v5
         with:
           files: .coverage.lcov
