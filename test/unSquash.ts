@@ -413,7 +413,10 @@ function checkKnownActivations(squashName: string) {
         console.log(
           `squashedValue ${tmpActivation} outside range ${squasher.range.low} ${squasher.range.high}`,
         );
-        const limitedActivation = squasher.range.limit(tmpActivation, tempValue);
+        const limitedActivation = squasher.range.limit(
+          tmpActivation,
+          tempValue,
+        );
         console.log(`limitedActivation ${limitedActivation}`);
         squasher.range.validate(limitedActivation);
       }
