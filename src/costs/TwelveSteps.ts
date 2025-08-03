@@ -2,6 +2,12 @@ import type { CostInterface } from "../Costs.ts";
 const MAX_VALUE = 1000;
 /** Twelve steps Error */
 export class TwelveSteps implements CostInterface {
+  static readonly NAME = "12STEPS";
+
+  getName(): string {
+    return TwelveSteps.NAME;
+  }
+
   calculate(target: Float32Array, output: Float32Array): number {
     let error = 0;
     const len = output.length;

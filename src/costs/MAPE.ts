@@ -2,6 +2,12 @@ import type { CostInterface } from "../Costs.ts";
 
 /** Mean Absolute Percentage Error */
 export class MAPE implements CostInterface {
+  static readonly NAME = "MAPE";
+
+  getName(): string {
+    return MAPE.NAME;
+  }
+
   calculate(target: Float32Array, output: Float32Array): number {
     let error = 0;
     const len = output.length;

@@ -1,5 +1,5 @@
 import { assert } from "@std/assert/assert";
-import type { CreatureInternal } from "./CreatureInterfaces.ts";
+import type { Creature } from "../Creature.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
 
@@ -23,7 +23,7 @@ import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
  * ```
  */
 export function calculate(
-  creature: CreatureInternal,
+  creature: Creature,
   error: number,
   growthCost: number,
 ): number {
@@ -42,7 +42,7 @@ export function calculate(
 }
 
 function calculateMaxOutOfBounds(
-  creature: CreatureInternal,
+  creature: Creature,
 ): { max: number; avg: number } {
   let max = 0;
   let total = 0;
@@ -151,7 +151,7 @@ function calculatePenalty(max: number, avg: number): number {
 
 function calculateScore(
   error: number,
-  creature: CreatureInternal,
+  creature: Creature,
   penalty: number,
   growthCost: number,
 ): number {

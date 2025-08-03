@@ -2,6 +2,7 @@ import type {
   CreatureExport,
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
+
 import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { SelectionInterface } from "../methods/Selection.ts";
 import type { CrisprInterface } from "../../mod.ts";
@@ -36,6 +37,9 @@ export interface NeatArguments {
 
   /** List of DNA segments to attempt to inject */
   CRISPRs: CrisprInterface[];
+
+  /** Custom cost function to use instead of predefined cost functions */
+  customCost?: { filePath: string };
 
   /**
    * Enable feedback loop where the previous result feeds back into the next interaction.

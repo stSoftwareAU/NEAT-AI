@@ -2,6 +2,12 @@ import type { CostInterface } from "../Costs.ts";
 
 /** Binary error */
 export class BINARY implements CostInterface {
+  static readonly NAME = "BINARY";
+
+  getName(): string {
+    return BINARY.NAME;
+  }
+
   calculate(target: Float32Array, output: Float32Array): number {
     let misses = 0;
     for (let i = output.length; i--;) {

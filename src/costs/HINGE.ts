@@ -2,6 +2,12 @@ import type { CostInterface } from "../Costs.ts";
 
 /** Hinge loss, for classifiers */
 export class HINGE implements CostInterface {
+  static readonly NAME = "HINGE";
+
+  getName(): string {
+    return HINGE.NAME;
+  }
+
   calculate(target: Float32Array, output: Float32Array): number {
     let error = 0;
     for (let i = output.length; i--;) {

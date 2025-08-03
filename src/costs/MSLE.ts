@@ -2,6 +2,12 @@ import type { CostInterface } from "../Costs.ts";
 
 /** Mean Squared Logarithmic Error */
 export class MSLE implements CostInterface {
+  static readonly NAME = "MSLE";
+
+  getName(): string {
+    return MSLE.NAME;
+  }
+
   calculate(target: Float32Array, output: Float32Array): number {
     let error = 0;
     for (let i = output.length; i--;) {

@@ -11,10 +11,54 @@ export class WorkerProcessor {
 
   private cost?: CostInterface;
 
+  /**
+   * Loads a custom cost function from a file path using dynamic import.
+   * This allows external programs to provide custom cost functions without
+   * needing to register constructors in advance.
+   *
+   * @param filePath - Path to the file containing the custom cost function
+   * @returns Promise resolving to the cost function instance
+   */
+  private async loadCustomCostFromFile(
+    filePath: string,
+  ): Promise<CostInterface> {
+    try {
+      // Dynamic import of the custom cost function file
+      const module = await import(filePath);
+
+      // Try to get the default export first, then look for named exports
+      const CostClass = module.default || module.CustomCost ||
+        Object.values(module)[0];
+
+      if (!CostClass) {
+        throw new Error(`No cost function class found in ${filePath}`);
+      }
+
+      // Create an instance of the cost function
+      return new CostClass();
+    } catch (error) {
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
+      throw new Error(
+        `Failed to load custom cost function from ${filePath}: ${errorMessage}`,
+      );
+    }
+  }
+
   async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();
     if (data.initialize) {
-      this.cost = Costs.find(data.initialize.costName);
+      // Handle custom cost function if provided
+      if (data.initialize.customCostData) {
+        const customCostInfo = JSON.parse(data.initialize.customCostData);
+
+        // Load custom cost function from file
+        this.cost = await this.loadCustomCostFromFile(customCostInfo.filePath);
+      } else {
+        this.cost = Costs.find(data.initialize.costName);
+      }
+
       this.dataSetDir = data.initialize.dataSetDir;
       return {
         taskID: data.taskID,
