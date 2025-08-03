@@ -19,6 +19,7 @@ import { Breed } from "../breed/Breed.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
+
 import type {
   ResponseData,
   WorkerHandler,
@@ -87,6 +88,10 @@ export class Neat {
     this.input = input; // The input size of the networks
     this.output = output; // The output size of the networks
     this.workers = workers;
+
+    // Custom cost functions are now handled by file path in WorkerHandler
+    // No registration needed in the main thread
+
     this.config = createNeatConfig(options);
 
     // The fitness function to evaluate the networks

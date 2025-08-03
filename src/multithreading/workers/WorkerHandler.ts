@@ -1,6 +1,7 @@
 import { assert } from "@std/assert/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../Creature.ts";
+
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
@@ -26,6 +27,8 @@ export interface RequestData {
     dataSetDir: string;
     /** Name of the cost function to use */
     costName: string;
+    /** Serialized custom cost function data (if using custom cost) */
+    customCostData?: string;
   };
   /** Creature evaluation request */
   evaluate?: {
@@ -201,12 +204,23 @@ export class WorkerHandler {
     dataSetDir: string,
     costName: string,
     direct: boolean,
+    customCost?: { filePath: string },
   ) {
+    let customCostData: string | undefined;
+
+    if (customCost) {
+      // File path-based custom cost
+      customCostData = JSON.stringify({
+        filePath: customCost.filePath,
+      });
+    }
+
     const data: RequestData = {
       taskID: this.taskID++,
       initialize: {
         dataSetDir: dataSetDir,
         costName: costName,
+        customCostData,
       },
     };
 

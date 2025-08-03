@@ -757,7 +757,12 @@ export class Creature implements CreatureInternal {
 
     for (let i = threads; i--;) {
       workers.push(
-        new WorkerHandler(dataSetDir, config.costName, threads === 1),
+        new WorkerHandler(
+          dataSetDir,
+          config.costName,
+          threads === 1,
+          config.customCost,
+        ),
       );
     }
 

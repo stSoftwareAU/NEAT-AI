@@ -3,6 +3,12 @@ import type { CostInterface } from "../Costs.ts";
 
 /** Cross entropy error */
 export class CrossEntropy implements CostInterface {
+  static readonly NAME = "CROSS_ENTROPY";
+
+  getName(): string {
+    return CrossEntropy.NAME;
+  }
+
   calculate(target: Float32Array, output: Float32Array): number {
     let error = 0;
     const len = output.length;

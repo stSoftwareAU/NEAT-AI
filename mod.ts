@@ -55,6 +55,16 @@ export { CreatureUtil } from "./src/architecture/CreatureUtils.ts";
 export type { NeatOptions } from "./src/config/NeatOptions.ts";
 
 /**
+ * Cost Interface
+ *
+ * This interface defines the contract for cost functions used in neural network training.
+ * External programs can implement this interface to create custom cost functions.
+ *
+ * @see {@link module:src/Costs}
+ */
+export type { CostInterface } from "./src/Costs.ts";
+
+/**
  * Selection Class
  *
  * This class handles the selection process within the NEAT algorithm, responsible for selecting the fittest individuals for reproduction.

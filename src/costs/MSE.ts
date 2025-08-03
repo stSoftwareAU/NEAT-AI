@@ -2,6 +2,12 @@ import type { CostInterface } from "../Costs.ts";
 
 /** Mean Squared Error */
 export class MSE implements CostInterface {
+  static readonly NAME = "MSE";
+
+  getName(): string {
+    return MSE.NAME;
+  }
+
   calculate(target: Float32Array, output: Float32Array): number {
     let error = 0;
     const len = output.length;
