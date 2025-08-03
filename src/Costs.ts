@@ -130,7 +130,7 @@ export class Costs {
 
     // Check predefined cost functions
     const factory = this.costRegistry.get(name);
-    if (factory) {
+    if (typeof factory === "function") {
       return factory();
     }
 
