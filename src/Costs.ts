@@ -3,15 +3,12 @@
  ** https://en.wikipedia.org/wiki/Loss_function
  *******************************************************************************/
 
-import { BINARY } from "./costs/BINARY.ts";
 import { CrossEntropy } from "./costs/CrossEntropy.ts";
 import { HINGE } from "./costs/HINGE.ts";
 import { MAE } from "./costs/MAE.ts";
 import { MAPE } from "./costs/MAPE.ts";
 import { MSE } from "./costs/MSE.ts";
-import { MSELimit } from "./costs/MSELimit.ts";
 import { MSLE } from "./costs/MSLE.ts";
-import { TwelveSteps } from "./costs/TwelveSteps.ts";
 
 /**
  * Interface for cost functions used in neural network training.
@@ -66,13 +63,10 @@ export class Costs {
     // Register predefined cost functions using their getName() method
     this.registerFromInstance(new CrossEntropy());
     this.registerFromInstance(new MSE());
-    this.registerFromInstance(new MSELimit());
-    this.registerFromInstance(new BINARY());
     this.registerFromInstance(new MAE());
     this.registerFromInstance(new MAPE());
     this.registerFromInstance(new MSLE());
     this.registerFromInstance(new HINGE());
-    this.registerFromInstance(new TwelveSteps());
   }
 
   /**
