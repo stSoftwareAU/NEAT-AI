@@ -2,7 +2,7 @@ import { Creature } from "../mod.ts";
 
 /**
  * Example: External program using file path-based custom cost functions
- * 
+ *
  * This demonstrates how external programs can provide custom cost functions
  * by simply pointing to a file, without needing to register constructors.
  */
@@ -57,4 +57,4 @@ function main() {
 
 if (import.meta.main) {
   main();
-} 
+}

@@ -3,7 +3,7 @@ import type { CostInterface } from "../mod.ts";
 /**
  * Example external cost function that could be in a separate project.
  * This file would be in the external program's codebase.
- * 
+ *
  * Requirements:
  * 1. Must implement CostInterface
  * 2. Must have a parameterless constructor
@@ -28,4 +28,4 @@ export class MyCustomCost implements CostInterface {
 }
 
 // Default export for the library to use
-export default MyCustomCost; 
+export default MyCustomCost;

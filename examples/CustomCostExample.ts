@@ -1,4 +1,4 @@
-import { Creature, type CostInterface } from "../mod.ts";
+import { type CostInterface, Creature } from "../mod.ts";
 
 /**
  * Example custom cost function that weights different outputs differently.
