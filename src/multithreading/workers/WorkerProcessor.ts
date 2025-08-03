@@ -34,6 +34,13 @@ export class WorkerProcessor {
         throw new Error(`No cost function class found in ${filePath}`);
       }
 
+      // Validate that CostClass is a constructor function
+      if (typeof CostClass !== "function") {
+        throw new Error(
+          `Exported value in ${filePath} is not a constructor function. Expected a class or function, got ${typeof CostClass}`,
+        );
+      }
+
       // Create an instance of the cost function
       return new CostClass();
     } catch (error) {
