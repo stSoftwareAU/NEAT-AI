@@ -66,8 +66,9 @@ export function logVerbose(creatures: Creature[]): number {
 
       const diff = Number.parseFloat(untrainedError) -
         Number.parseFloat(error);
+      const tmpApproach = approach ?? "unknown";
       const approachName = `${
-        approach.substring(0, 1).toUpperCase() + approach.substring(1)
+        tmpApproach.substring(0, 1).toUpperCase() + tmpApproach.substring(1)
       }`;
 
       let trainMsg = `${approachName} ${blue(trainID)} Score: ${
