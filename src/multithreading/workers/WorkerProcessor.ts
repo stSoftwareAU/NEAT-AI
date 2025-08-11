@@ -79,22 +79,22 @@ export class WorkerProcessor {
       assert(this.cost, "No cost");
 
       try {
-      const creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
-      /* release some memory*/
-      data.evaluate.creature = "";
-      const result = creature.evaluateDir(
-        this.dataSetDir,
-        this.cost,
-        data.evaluate.feedbackLoop,
-      );
+        const creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
+        /* release some memory*/
+        data.evaluate.creature = "";
+        const result = creature.evaluateDir(
+          this.dataSetDir,
+          this.cost,
+          data.evaluate.feedbackLoop,
+        );
 
-      creature.dispose();
+        creature.dispose();
 
-      return {
-        taskID: data.taskID,
-        duration: Date.now() - start,
-        evaluate: {
-          error: result.error,
+        return {
+          taskID: data.taskID,
+          duration: Date.now() - start,
+          evaluate: {
+            error: result.error,
           },
         };
       } catch (error) {
