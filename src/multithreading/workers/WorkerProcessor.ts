@@ -78,6 +78,7 @@ export class WorkerProcessor {
       assert(this.dataSetDir, "No data dir");
       assert(this.cost, "No cost");
 
+      try {
       const creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
       /* release some memory*/
       data.evaluate.creature = "";
@@ -94,8 +95,25 @@ export class WorkerProcessor {
         duration: Date.now() - start,
         evaluate: {
           error: result.error,
-        },
-      };
+          },
+        };
+      } catch (error) {
+        console.error(error);
+        Deno.mkdirSync(".diagnostics", { recursive: true });
+        Deno.writeTextFileSync(
+          `.diagnostics/error.json`,
+          JSON.stringify(error, null, 2),
+        );
+        Deno.writeTextFileSync(
+          `.diagnostics/creature.txt`,
+          data.evaluate.creature,
+        );
+        Deno.writeTextFileSync(
+          `.diagnostics/data.json`,
+          JSON.stringify(data, null, 2),
+        );
+        throw error;
+      }
     } else if (data.train) {
       const creature = Creature.fromJSON(
         JSON.parse(data.train.creature),
