@@ -107,6 +107,7 @@ function removeHYPOT(json: CreatureExport) {
   }
 
   if (changed) {
+    delete json.memetic;
     return removeHYPOT(json);
   }
 
@@ -160,6 +161,7 @@ function removeHYPOTv2(json: CreatureExport) {
   }
 
   if (changed) {
+    delete json.memetic;
     return removeHYPOTv2(json);
   }
 
