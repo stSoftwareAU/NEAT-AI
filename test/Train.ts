@@ -70,22 +70,26 @@ Deno.test("train-XOR", () => {
     { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
     { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
   ];
-  const network = new Creature(2, 1, {
-    layers: [
-      { count: 5 },
-    ],
-    outputLayer: {
-      squash: "LOGISTIC",
-    },
-  });
+
   const traceDir = ".trace";
   ensureDirSync(traceDir);
-
-  Deno.writeTextFileSync(
-    `.trace/start.json`,
-    JSON.stringify(network.exportJSON(), null, 1),
-  );
   for (let attempts = 0; true; attempts++) {
+    const network = new Creature(2, 1, {
+      layers: [
+        { count: 5 },
+      ],
+      outputLayer: {
+        squash: "LOGISTIC",
+      },
+    });
+
+    if (attempts === 0) {
+      Deno.writeTextFileSync(
+        `.trace/start.json`,
+        JSON.stringify(network.exportJSON(), null, 1),
+      );
+    }
+
     const results = train(network, trainingSet, {
       targetError: 0.03,
       iterations: 10000,

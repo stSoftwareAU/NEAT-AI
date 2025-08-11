@@ -78,24 +78,42 @@ export class WorkerProcessor {
       assert(this.dataSetDir, "No data dir");
       assert(this.cost, "No cost");
 
-      const creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
-      /* release some memory*/
-      data.evaluate.creature = "";
-      const result = creature.evaluateDir(
-        this.dataSetDir,
-        this.cost,
-        data.evaluate.feedbackLoop,
-      );
+      try {
+        const creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
+        /* release some memory*/
+        data.evaluate.creature = "";
+        const result = creature.evaluateDir(
+          this.dataSetDir,
+          this.cost,
+          data.evaluate.feedbackLoop,
+        );
 
-      creature.dispose();
+        creature.dispose();
 
-      return {
-        taskID: data.taskID,
-        duration: Date.now() - start,
-        evaluate: {
-          error: result.error,
-        },
-      };
+        return {
+          taskID: data.taskID,
+          duration: Date.now() - start,
+          evaluate: {
+            error: result.error,
+          },
+        };
+      } catch (error) {
+        console.error(error);
+        Deno.mkdirSync(".diagnostics", { recursive: true });
+        Deno.writeTextFileSync(
+          `.diagnostics/error.json`,
+          JSON.stringify(error, null, 2),
+        );
+        Deno.writeTextFileSync(
+          `.diagnostics/creature.txt`,
+          data.evaluate.creature,
+        );
+        Deno.writeTextFileSync(
+          `.diagnostics/data.json`,
+          JSON.stringify(data, null, 2),
+        );
+        throw error;
+      }
     } else if (data.train) {
       const creature = Creature.fromJSON(
         JSON.parse(data.train.creature),
