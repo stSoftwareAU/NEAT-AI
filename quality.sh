@@ -3,6 +3,12 @@ set -e
 deno outdated --update --latest
 deno fmt src test bench mod.ts docs
 deno lint --fix src test bench mod.ts
+
+# Check bash script syntax
+echo "Checking bash script syntax..."
+find . -name "*.sh" -type f -exec bash -n {} \;
+echo "All bash scripts have valid syntax"
+
 rm -rf .trace .test .coverage
 deno check
 

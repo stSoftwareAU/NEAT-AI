@@ -21,6 +21,13 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
 
+      # Check bash script syntax
+      - name: Check Bash Script Syntax
+        run: |
+          echo "Checking bash script syntax..."
+          find . -name "*.sh" -type f -exec bash -n {} \;
+          echo "All bash scripts have valid syntax"
+
       - name: Update Deno
         run: deno outdated --update --latest
 
