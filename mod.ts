@@ -60,9 +60,18 @@ export type { NeatOptions } from "./src/config/NeatOptions.ts";
  * This interface defines the contract for cost functions used in neural network training.
  * External programs can implement this interface to create custom cost functions.
  *
+ * @see {@link module:src/costs/CostInterface}
+ */
+export type { CostInterface } from "./src/costs/CostInterface.ts";
+
+/**
+ * Costs Class
+ *
+ * This class provides a registry for cost functions used in neural network training.
+ *
  * @see {@link module:src/Costs}
  */
-export type { CostInterface } from "./src/Costs.ts";
+export { Costs } from "./src/Costs.ts";
 
 /**
  * Selection Class

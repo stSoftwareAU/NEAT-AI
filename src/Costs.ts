@@ -3,43 +3,13 @@
  ** https://en.wikipedia.org/wiki/Loss_function
  *******************************************************************************/
 
+import type { CostInterface } from "./costs/CostInterface.ts";
 import { CrossEntropy } from "./costs/CrossEntropy.ts";
 import { HINGE } from "./costs/HINGE.ts";
 import { MAE } from "./costs/MAE.ts";
 import { MAPE } from "./costs/MAPE.ts";
 import { MSE } from "./costs/MSE.ts";
 import { MSLE } from "./costs/MSLE.ts";
-
-/**
- * Interface for cost functions used in neural network training.
- * Defines the contract for calculating error between target and output values.
- */
-export interface CostInterface {
-  /**
-   * Gets the name of the cost function.
-   *
-   * @returns The name of the cost function
-   */
-  getName(): string;
-
-  /**
-   * Calculates the cost/error between target and output values.
-   *
-   * @param target - The expected output values
-   * @param output - The actual output values from the neural network
-   * @returns The calculated cost/error value
-   */
-  calculate(target: Float32Array, output: Float32Array): number;
-
-  /**
-   * Serializes the cost function for worker communication.
-   * Optional method - if not implemented, the cost function will be serialized using JSON.stringify.
-   * For most custom cost functions, you can simply implement this as: return JSON.stringify(this);
-   *
-   * @returns Serialized representation of the cost function
-   */
-  serialize?(): string;
-}
 
 /**
  * Factory class for creating cost function instances.

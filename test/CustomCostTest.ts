@@ -1,6 +1,6 @@
 import { assertAlmostEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import type { CostInterface } from "../src/Costs.ts";
+import type { CostInterface } from "../src/costs/CostInterface.ts";
 
 class CustomWeightedCost implements CostInterface {
   public static readonly NAME = "CustomWeightedCost";

@@ -1,9 +1,10 @@
 import { assert } from "@std/assert";
-import { type CostInterface, Costs } from "../../Costs.ts";
-import { Creature } from "../../Creature.ts";
 import { creatureValidate } from "../../architecture/CreatureValidate.ts";
 import { recordDirectory } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import { trainDir } from "../../architecture/Training.ts";
+import { Costs } from "../../Costs.ts";
+import type { CostInterface } from "../../costs/CostInterface.ts";
+import { Creature } from "../../Creature.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 export class WorkerProcessor {
