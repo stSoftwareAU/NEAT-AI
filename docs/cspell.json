@@ -64,6 +64,10 @@
     "centered",
     "Backpropagated",
     "favorable",
-    "cleanup"
+    "cleanup",
+    "pred",
+    "softmax",
+    "thresholding",
+    "modeling"
   ]
 }
