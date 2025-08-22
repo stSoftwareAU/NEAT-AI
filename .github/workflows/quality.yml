@@ -25,8 +25,17 @@ jobs:
       - name: Check Bash Script Syntax
         run: |
           echo "Checking bash script syntax..."
-          find . -name "*.sh" -type f -exec bash -n {} \;
-          echo "All bash scripts have valid syntax"
+          set -Eeuo pipefail
+          fail=0
+          while IFS= read -r f; do
+            if ! bash -n "$f"; then
+              echo "❌ syntax error in $f" >&2
+              fail=1
+            else
+              echo "✅ $f"
+            fi
+          done < <(find . -name "*.sh" -type f)
+          exit $fail
 
       - name: Update Deno
         run: deno outdated --update --latest
