@@ -116,6 +116,7 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryBatchSize: options.discoveryBatchSize || 0,
     discoveryBufferSize: options.discoveryBufferSize || 0,
     discoveryMaxNeurons: options.discoveryMaxNeurons || 0,
+    customCost: options.customCost,
   };
   validate(config);
   return Object.freeze(config);
