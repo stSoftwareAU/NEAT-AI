@@ -24,8 +24,8 @@ jobs:
       # Check bash script syntax
       - name: Check Bash Script Syntax
         run: |
-          echo "Checking bash script syntax..."
           set -Eeuo pipefail
+          echo "Checking bash script syntax..."
           fail=0
           while IFS= read -r f; do
             if ! bash -n "$f"; then
