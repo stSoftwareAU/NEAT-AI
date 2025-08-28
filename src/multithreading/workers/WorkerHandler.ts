@@ -289,7 +289,6 @@ export class WorkerHandler {
       };
 
       this.callbacks.set(data.taskID, call);
-      return call;
     });
 
     this.worker.postMessage(data);

@@ -79,8 +79,9 @@ export class WorkerProcessor {
       assert(this.dataSetDir, "No data dir");
       assert(this.cost, "No cost");
 
+      let creature: Creature | null = null;
       try {
-        const creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
+        creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
         /* release some memory*/
         data.evaluate.creature = "";
         const result = creature.evaluateDir(
@@ -88,8 +89,6 @@ export class WorkerProcessor {
           this.cost,
           data.evaluate.feedbackLoop,
         );
-
-        creature.dispose();
 
         return {
           taskID: data.taskID,
@@ -114,51 +113,64 @@ export class WorkerProcessor {
           JSON.stringify(data, null, 2),
         );
         throw error;
+      } finally {
+        // Ensure creature is disposed even if an error occurs
+        if (creature) {
+          creature.dispose();
+        }
       }
     } else if (data.train) {
-      const creature = Creature.fromJSON(
-        JSON.parse(data.train.creature),
-        data.debug,
-      );
-      /* release some memory*/
-      data.train.creature = "";
+      let creature: Creature | null = null;
+      try {
+        creature = Creature.fromJSON(
+          JSON.parse(data.train.creature),
+          data.debug,
+        );
+        /* release some memory*/
+        data.train.creature = "";
 
-      assert(this.dataSetDir, "No data dir");
+        assert(this.dataSetDir, "No data dir");
 
-      creatureValidate(creature);
-      const result = trainDir(
-        creature,
-        this.dataSetDir,
-        data.train.options,
-      );
-      creatureValidate(creature);
-      const json = JSON.stringify(creature.exportJSON());
+        creatureValidate(creature);
+        const result = trainDir(
+          creature,
+          this.dataSetDir,
+          data.train.options,
+        );
+        creatureValidate(creature);
+        const json = JSON.stringify(creature.exportJSON());
 
-      creature.dispose();
+        const response = {
+          taskID: data.taskID,
+          duration: Date.now() - start,
+          train: {
+            ID: result.ID,
+            creature: json,
+            error: result.error,
+            trace: JSON.stringify(result.trace),
+            compact: result.compact
+              ? JSON.stringify(result.compact)
+              : undefined,
+          },
+        };
 
-      const response = {
-        taskID: data.taskID,
-        duration: Date.now() - start,
-        train: {
-          ID: result.ID,
-          creature: json,
-          error: result.error,
-          trace: JSON.stringify(result.trace),
-          compact: result.compact ? JSON.stringify(result.compact) : undefined,
-        },
-      };
+        // Immediately clear large objects to help GC
+        if (result.trace) {
+          // @ts-ignore - clearing to help GC
+          result.trace = null;
+        }
+        if (result.compact) {
+          // @ts-ignore - clearing to help GC
+          result.compact = null;
+        }
 
-      // Immediately clear large objects to help GC
-      if (result.trace) {
-        // @ts-ignore - clearing to help GC
-        result.trace = null;
+        return response;
+      } finally {
+        // Ensure creature is disposed even if an error occurs
+        if (creature) {
+          creature.dispose();
+        }
       }
-      if (result.compact) {
-        // @ts-ignore - clearing to help GC
-        result.compact = null;
-      }
-
-      return response;
     } else if (data.echo) {
       await new Promise((f) => setTimeout(f, data.echo?.ms));
       return {
@@ -169,47 +181,54 @@ export class WorkerProcessor {
         },
       };
     } else if (data.discover) {
-      const creature = Creature.fromJSON(
-        JSON.parse(data.discover.creature),
-        data.debug,
-      );
+      let creature: Creature | null = null;
+      try {
+        creature = Creature.fromJSON(
+          JSON.parse(data.discover.creature),
+          data.debug,
+        );
 
-      assert(this.dataSetDir, "No data dir");
+        assert(this.dataSetDir, "No data dir");
 
-      creatureValidate(creature);
-      const result = await recordDirectory(
-        creature,
-        this.dataSetDir,
-        data.discover.options,
-      );
-      creature.dispose();
+        creatureValidate(creature);
+        const result = await recordDirectory(
+          creature,
+          this.dataSetDir,
+          data.discover.options,
+        );
 
-      const response = {
-        taskID: data.taskID,
-        duration: Date.now() - start,
-        discover: {
-          ID: result.ID,
-          addHelpfulSynapses: result.addHelpfulSynapses
-            ? [...result.addHelpfulSynapses]
-            : undefined,
-          removeHarmfulSynapse: result.removeHarmfulSynapse,
-          candidateSquashes: result.candidateSquashes
-            ? [...result.candidateSquashes]
-            : undefined,
-        },
-      };
+        const response = {
+          taskID: data.taskID,
+          duration: Date.now() - start,
+          discover: {
+            ID: result.ID,
+            addHelpfulSynapses: result.addHelpfulSynapses
+              ? [...result.addHelpfulSynapses]
+              : undefined,
+            removeHarmfulSynapse: result.removeHarmfulSynapse,
+            candidateSquashes: result.candidateSquashes
+              ? [...result.candidateSquashes]
+              : undefined,
+          },
+        };
 
-      // Immediately clear large objects to help GC
-      if (result.addHelpfulSynapses) {
-        // @ts-ignore - clearing to help GC
-        result.addHelpfulSynapses = null;
+        // Immediately clear large objects to help GC
+        if (result.addHelpfulSynapses) {
+          // @ts-ignore - clearing to help GC
+          result.addHelpfulSynapses = null;
+        }
+        if (result.candidateSquashes) {
+          // @ts-ignore - clearing to help GC
+          result.candidateSquashes = null;
+        }
+
+        return response;
+      } finally {
+        // Ensure creature is disposed even if an error occurs
+        if (creature) {
+          creature.dispose();
+        }
       }
-      if (result.candidateSquashes) {
-        // @ts-ignore - clearing to help GC
-        result.candidateSquashes = null;
-      }
-
-      return response;
     } else {
       throw new Error("unknown message");
     }
