@@ -102,8 +102,8 @@ export class WorkerProcessor {
         console.error(error);
         Deno.mkdirSync(".diagnostics", { recursive: true });
         Deno.writeTextFileSync(
-          `.diagnostics/error.json`,
-          JSON.stringify(error, null, 2),
+          `.diagnostics/error.txt`,
+          `error: ${error}`,
         );
         Deno.writeTextFileSync(
           `.diagnostics/creature.txt`,
