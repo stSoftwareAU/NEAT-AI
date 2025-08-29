@@ -227,7 +227,6 @@ export class DiscoverStructure {
 
     // Clear large arrays to help GC
     candidateArrays.length = 0;
-    candidatePromises.length = 0;
 
     if (allCandidates.length > 0) {
       allCandidates.sort((a, b) =>
@@ -249,8 +248,6 @@ export class DiscoverStructure {
       this.discoveries.push(bestCandidate);
     }
 
-    // Clear allCandidates array to help GC
-    allCandidates.length = 0;
     if (this.discoveries.length === 0) {
       return undefined;
     }
@@ -448,11 +445,6 @@ export class DiscoverStructure {
         .map((synapse) => synapse.fromUUID),
     );
 
-    // Clear large properties to help GC
-    // @ts-ignore - clearing to help GC
-    exportedJSON.neurons = null;
-    // @ts-ignore - clearing to help GC
-    exportedJSON.synapses = null;
     const promises: Promise<CandidateSynapse>[] = [];
     for (let indx = 0; indx < this.creature.neurons.length; indx++) {
       const neuron = this.creature.neurons[indx];
@@ -467,9 +459,6 @@ export class DiscoverStructure {
       promises.push(p);
     }
     const candidates = await Promise.all(promises);
-
-    // Clear promises array to help GC
-    promises.length = 0;
 
     return candidates;
   }
@@ -1087,21 +1076,10 @@ export class DiscoverStructure {
     });
     await Promise.all(candidatePromises);
 
-    // Clear large properties to help GC
-    // @ts-ignore - clearing to help GC
-    exportJSON.neurons = null;
-    // @ts-ignore - clearing to help GC
-    exportJSON.synapses = null;
-
     const candidates = await Promise.all(promises);
     const allCandidates: CandidateSynapse[] = candidates.filter(
       (candidate) => candidate.expectedImprovementPercentage < -0.1,
     );
-
-    // Clear large arrays to help GC
-    promises.length = 0;
-    candidates.length = 0;
-    candidatePromises.length = 0;
 
     if (allCandidates.length > 0) {
       allCandidates.sort((a, b) =>
@@ -1118,14 +1096,8 @@ export class DiscoverStructure {
         }% more records than it helps (${worseCandidate.improvedCount}/${worseCandidate.totalCount})`,
       );
 
-      // Clear allCandidates array to help GC
-      allCandidates.length = 0;
-
       return worseCandidate;
     }
-
-    // Clear allCandidates array to help GC
-    allCandidates.length = 0;
 
     return undefined;
   }

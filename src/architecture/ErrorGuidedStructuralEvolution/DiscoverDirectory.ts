@@ -239,9 +239,6 @@ class DataRecorder {
       // Clear large arrays to help GC
       dataSet.length = 0;
 
-      // Clear the promises map to help GC
-      neuronPromisesMap.clear();
-
       if (options.log) {
         const scannedTime = Date.now() - startTime;
         console.log(
