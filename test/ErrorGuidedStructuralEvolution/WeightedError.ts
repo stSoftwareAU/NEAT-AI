@@ -1,4 +1,4 @@
-import { assert } from "@std/assert/assert";
+import { assert, assertAlmostEquals, fail } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
@@ -8,7 +8,6 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
-import { assertAlmostEquals, fail } from "@std/assert";
 
 function makeCreature() {
   const json: CreatureExport = {

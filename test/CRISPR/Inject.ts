@@ -1,4 +1,4 @@
-import { fail } from "@std/assert/fail";
+import { fail } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import {
   Creature,

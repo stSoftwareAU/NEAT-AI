@@ -1,4 +1,4 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import { Creature, type SynapseExport } from "../../mod.ts";
 import type {
   CreatureExport,

@@ -1,4 +1,4 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";

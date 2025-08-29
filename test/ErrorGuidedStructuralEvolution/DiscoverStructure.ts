@@ -1,5 +1,4 @@
-import { assertAlmostEquals } from "@std/assert/almost-equals";
-import { assert } from "@std/assert/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";

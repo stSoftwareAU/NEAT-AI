@@ -1,8 +1,8 @@
-import { assertFalse } from "@std/assert/false";
+import { assertFalse } from "@std/assert";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
+import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { train } from "../../TrainTestOnlyUtil.ts";
-import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

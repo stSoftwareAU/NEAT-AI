@@ -1,5 +1,4 @@
-import { assert } from "@std/assert/assert";
-import { fail } from "@std/assert/fail";
+import { assert, fail } from "@std/assert";
 import { Activations } from "../../src/methods/activations/Activations.ts";
 
 Deno.test("ActivationRange-validate", () => {

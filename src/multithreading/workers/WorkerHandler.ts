@@ -1,14 +1,13 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../Creature.ts";
-
-import type { NeatOptions } from "../../config/NeatOptions.ts";
-import type { TrainOptions } from "../../config/TrainOptions.ts";
-import { MockWorker } from "./MockWorker.ts";
 import type {
   CandidateSquash,
   CandidateSynapse,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { NeatOptions } from "../../config/NeatOptions.ts";
+import type { TrainOptions } from "../../config/TrainOptions.ts";
+import { MockWorker } from "./MockWorker.ts";
 
 /**
  * Data structure for requests sent to workers.

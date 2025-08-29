@@ -1,6 +1,8 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
+import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { findActivationFunction } from "../optimize/FunctionCache.ts";
 import type { InlineActivationInterface } from "../optimize/InlineActivationInterface.ts";
 import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
@@ -8,8 +10,6 @@ import { makeSynapsesValue } from "../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../propagate/ActivationRange.ts";
 import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
 import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 
 /**
  * @deprecated No longer used since v2.0.0. A normal neural network can mimic the behavior using SQRT & SQUARE.

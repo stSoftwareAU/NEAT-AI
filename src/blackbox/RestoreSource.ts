@@ -1,4 +1,4 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../mod.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";

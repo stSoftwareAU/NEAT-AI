@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "@std/assert/almost-equals";
+import { assertAlmostEquals } from "@std/assert";
 import { TAN } from "../../src/methods/activations/types/TAN.ts";
 
 Deno.test("TAN", () => {
