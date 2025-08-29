@@ -174,7 +174,8 @@ class DataRecorder {
       }
 
       // Clear large arrays to help GC
-      // Note: Int32Array.length is read-only, so we can't clear it
+      // Note: TypedArray.length is read-only, so we can't clear them directly
+      // The arrays will be garbage collected when they go out of scope
     } finally {
       file.close();
     }
@@ -237,6 +238,9 @@ class DataRecorder {
 
       // Clear large arrays to help GC
       dataSet.length = 0;
+
+      // Clear the promises map to help GC
+      neuronPromisesMap.clear();
 
       if (options.log) {
         const scannedTime = Date.now() - startTime;
