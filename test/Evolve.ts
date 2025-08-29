@@ -121,6 +121,7 @@ Deno.test("booleanXOR", async () => {
 });
 
 Deno.test("XNOR - evolve", async () => {
+  await Deno.mkdir(".discovery", { recursive: true });
   const trainingSet = [
     { input: new Float32Array([0, 0]), output: new Float32Array([1]) },
     { input: new Float32Array([0, 1]), output: new Float32Array([0]) },

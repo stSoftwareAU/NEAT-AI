@@ -1,14 +1,14 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import { addTags, getTag, removeTag } from "@stsoftware/tags/mod";
 import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import { editParentByIndex } from "../breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
+import { upgrade } from "../upgrade/Upgrade.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
-import { upgrade } from "../upgrade/Upgrade.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {

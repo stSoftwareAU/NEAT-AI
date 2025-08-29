@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert/equals";
+import { assertEquals } from "@std/assert";
 import { Creature } from "../../mod.ts";
 
 Deno.test("LoadFrom", () => {

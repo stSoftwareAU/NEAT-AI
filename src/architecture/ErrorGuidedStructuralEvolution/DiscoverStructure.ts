@@ -247,6 +247,7 @@ export class DiscoverStructure {
 
       this.discoveries.push(bestCandidate);
     }
+
     if (this.discoveries.length === 0) {
       return undefined;
     }
@@ -428,6 +429,7 @@ export class DiscoverStructure {
       }
     } finally {
       fileHandle.close();
+      // Buffer will be garbage collected when it goes out of scope
     }
 
     return records;
@@ -442,6 +444,7 @@ export class DiscoverStructure {
       exportedJSON.synapses.filter((synapse) => synapse.toUUID === neuronUUID)
         .map((synapse) => synapse.fromUUID),
     );
+
     const promises: Promise<CandidateSynapse>[] = [];
     for (let indx = 0; indx < this.creature.neurons.length; indx++) {
       const neuron = this.creature.neurons[indx];
@@ -456,6 +459,7 @@ export class DiscoverStructure {
       promises.push(p);
     }
     const candidates = await Promise.all(promises);
+
     return candidates;
   }
 
@@ -1077,10 +1081,6 @@ export class DiscoverStructure {
       (candidate) => candidate.expectedImprovementPercentage < -0.1,
     );
 
-    // Clear large arrays to help GC
-    promises.length = 0;
-    candidates.length = 0;
-
     if (allCandidates.length > 0) {
       allCandidates.sort((a, b) =>
         a.expectedImprovementPercentage - b.expectedImprovementPercentage
@@ -1096,14 +1096,8 @@ export class DiscoverStructure {
         }% more records than it helps (${worseCandidate.improvedCount}/${worseCandidate.totalCount})`,
       );
 
-      // Clear allCandidates array to help GC
-      allCandidates.length = 0;
-
       return worseCandidate;
     }
-
-    // Clear allCandidates array to help GC
-    allCandidates.length = 0;
 
     return undefined;
   }

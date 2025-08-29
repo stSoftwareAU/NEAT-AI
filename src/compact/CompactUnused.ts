@@ -1,11 +1,11 @@
+import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature, type CreatureTrace, CreatureUtil } from "../../mod.ts";
-import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import type { Approach } from "../NEAT/LogApproach.ts";
-import { assert } from "@std/assert/assert";
 import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
+import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import type { Approach } from "../NEAT/LogApproach.ts";
+import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
 
 export function compactUnused(
   traced: CreatureTrace,

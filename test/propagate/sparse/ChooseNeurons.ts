@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "@std/assert/almost-equals";
+import { assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";

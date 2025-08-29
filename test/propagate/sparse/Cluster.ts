@@ -1,6 +1,4 @@
-import { assert } from "@std/assert/assert";
-import { assertEquals } from "@std/assert/equals";
-import { fail } from "@std/assert/fail";
+import { assert, assertEquals, fail } from "@std/assert";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";

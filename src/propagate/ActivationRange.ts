@@ -1,4 +1,4 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 
 /** Correct the target activation to a possible activation */
 type NormalizeFunction = (targetActivation: number) => number;

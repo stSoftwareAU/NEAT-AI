@@ -1,6 +1,6 @@
+import { assert } from "@std/assert";
 import type { TagInterface } from "@stsoftware/tags/mod";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
-import { assert } from "@std/assert/assert";
 
 /**
  * Represents a synapse (connection) between two neurons in a neural network.

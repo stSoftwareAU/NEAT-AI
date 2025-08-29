@@ -1,4 +1,4 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import type { CreatureState } from "../architecture/CreatureState.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
 import type { BackPropagationConfig } from "./BackPropagation.ts";

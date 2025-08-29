@@ -1,5 +1,4 @@
-import { assert } from "@std/assert/assert";
-import { fail } from "@std/assert/fail";
+import { assert, fail } from "@std/assert";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";

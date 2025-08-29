@@ -1,8 +1,8 @@
-import { assert } from "@std/assert/assert";
-import { MEAN } from "../../deprecated/MEAN.ts";
-import type { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
+import { assert } from "@std/assert";
 import { HYPOT } from "../../deprecated/HYPOT.ts";
 import { HYPOTv2 } from "../../deprecated/HYPOTv2.ts";
+import { MEAN } from "../../deprecated/MEAN.ts";
+import type { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
 import { IF } from "./aggregate/IF.ts";
 import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
 import { MINIMUM } from "./aggregate/MINIMUM.ts";

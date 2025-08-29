@@ -1,4 +1,4 @@
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import type { Creature } from "../../Creature.ts";
@@ -174,7 +174,8 @@ class DataRecorder {
       }
 
       // Clear large arrays to help GC
-      // Note: Int32Array.length is read-only, so we can't clear it
+      // Note: TypedArray.length is read-only, so we can't clear them directly
+      // The arrays will be garbage collected when they go out of scope
     } finally {
       file.close();
     }
