@@ -114,7 +114,7 @@ Deno.test("Error-Driven Synapse Discovery identifies negative synapses and remov
   /**
    * Instantiate the discovery mechanism
    */
-  const discoverStructure = new DiscoverStructure(crippledCreature);
+  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
   discoverStructure.record(trainingData, neuronPromisesMap);
@@ -174,7 +174,7 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
   /**
    * Instantiate the discovery mechanism
    */
-  const discoverStructure = new DiscoverStructure(crippledCreature);
+  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
   discoverStructure.record(trainingData, neuronPromisesMap);
@@ -255,7 +255,7 @@ Deno.test("loadCSV handles incomplete last line", async () => {
     record: () => new Map(),
   } as unknown as Creature;
 
-  const discoverStructure = new DiscoverStructure(mockCreature);
+  const discoverStructure = new DiscoverStructure(mockCreature, 60);
 
   // Define the record type
   interface DiscoverRecord {

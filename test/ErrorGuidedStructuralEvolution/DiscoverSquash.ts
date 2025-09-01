@@ -120,7 +120,7 @@ Deno.test("Error-Driven Squash Discovery", async () => {
   /**
    * Instantiate the discovery mechanism
    */
-  const discoverStructure = new DiscoverStructure(crippledCreature);
+  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
   discoverStructure.record(trainingData, neuronPromisesMap);

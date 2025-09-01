@@ -69,14 +69,19 @@ export class DiscoverStructure {
   private initialized = false;
   private recorded = false;
 
-  constructor(creature: Creature, timeoutTS?: number) {
+  constructor(creature: Creature, timeoutSeconds: number) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
     this.tempDir = `.discovery/${creature.uuid}_${
       Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     }`;
     this.textDecoder = new TextDecoder();
-    this.timeoutTS = timeoutTS || 0;
+    assert(timeoutSeconds > 0, "Timeout seconds must be greater than 0");
+    assert(
+      timeoutSeconds < 60 * 60,
+      "Timeout seconds must be less than 1 hour",
+    );
+    this.timeoutTS = Date.now() + timeoutSeconds * 1000;
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
@@ -134,8 +139,11 @@ export class DiscoverStructure {
   public record(
     trainingData: DataRecordInterface[],
     neuronPromisesMap: Map<string, Promise<void>>,
-  ) {
+  ): boolean {
     assert(this.initialized, "Not initialized");
+    if (Date.now() > this.timeoutTS) {
+      return false;
+    }
     this.recorded = true;
 
     // Process input neurons first (simpler, no activation needed)
@@ -189,6 +197,10 @@ export class DiscoverStructure {
         },${discoverRecord.activation},${discoverRecord.errors}\n`;
         csvBuilders.get(neuron.uuid)!.push(csvLine);
       });
+
+      if (Date.now() > this.timeoutTS) {
+        break;
+      }
     }
 
     // Write CSV data for each neuron
@@ -206,6 +218,7 @@ export class DiscoverStructure {
 
     // Clear CSV builders to help GC
     csvBuilders.clear();
+    return true;
   }
 
   private discoveries: CandidateSynapse[] = [];
