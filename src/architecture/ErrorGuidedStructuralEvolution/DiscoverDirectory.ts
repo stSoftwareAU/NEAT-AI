@@ -24,6 +24,7 @@ class DataRecorder {
   private readonly discoveryBatchSize: number;
   private readonly ID: string;
   private readonly timeoutTS: number;
+  private readonly timeoutSeconds: number;
   private readonly discoveryMaxNeurons: number;
 
   constructor(
@@ -45,9 +46,17 @@ class DataRecorder {
 
     this.ID = CreatureUtil.makeUUID(creature).slice(-8);
 
-    this.timeoutTS = options.discoveryTimeOutMinutes
-      ? Date.now() + options.discoveryTimeOutMinutes * 60 * 1000
-      : 0;
+    const discoveryTimeOutMinutes = options.discoveryTimeOutMinutes || 60;
+    assert(
+      discoveryTimeOutMinutes > 0,
+      "Discovery time out minutes must be greater than 0",
+    );
+    assert(
+      discoveryTimeOutMinutes < 60 * 60,
+      "Discovery time out minutes must be less than 1 hour",
+    );
+    this.timeoutSeconds = discoveryTimeOutMinutes * 60;
+    this.timeoutTS = Date.now() + this.timeoutSeconds * 1000;
 
     this.discoveryMaxNeurons = Math.max(
       1,
@@ -161,10 +170,11 @@ class DataRecorder {
         params.dataSet.push(data);
 
         if (params.dataSet.length >= this.discoveryBatchSize) {
-          discoverStructure.record(
+          const recorded = discoverStructure.record(
             params.dataSet.splice(0),
             params.neuronPromisesMap,
           );
+          if (!recorded) break;
           assert(params.dataSet.length === 0, "Data set not empty");
 
           // Give GC a chance to run periodically
@@ -204,7 +214,10 @@ class DataRecorder {
       );
     }
 
-    const discoverStructure = new DiscoverStructure(creature, this.timeoutTS);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      this.timeoutSeconds,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     const initializeStartTime = Date.now();

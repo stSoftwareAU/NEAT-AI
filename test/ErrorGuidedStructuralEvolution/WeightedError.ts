@@ -151,7 +151,7 @@ Deno.test("Error-Driven Synapse Discovery identifies negative synapses by weight
     /**
      * Instantiate the discovery mechanism
      */
-    const discoverStructure = new DiscoverStructure(crippledCreature);
+    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
     discoverStructure.record(trainingData, neuronPromisesMap);
@@ -208,7 +208,7 @@ Deno.test("Error-Driven Synapse Discovery missing synapses by weighted error", a
   /**
    * Instantiate the discovery mechanism
    */
-  const discoverStructure = new DiscoverStructure(crippledCreature);
+  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
   discoverStructure.record(trainingData, neuronPromisesMap);
