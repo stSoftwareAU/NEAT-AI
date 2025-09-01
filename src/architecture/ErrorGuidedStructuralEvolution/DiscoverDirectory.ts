@@ -46,14 +46,13 @@ class DataRecorder {
 
     this.ID = CreatureUtil.makeUUID(creature).slice(-8);
 
-    const discoveryTimeOutMinutes = options.discoveryTimeOutMinutes || 60;
+    const discoveryTimeOutMinutes = Math.min(
+      60,
+      options.discoveryTimeOutMinutes || 60,
+    );
     assert(
       discoveryTimeOutMinutes > 0,
       "Discovery time out minutes must be greater than 0",
-    );
-    assert(
-      discoveryTimeOutMinutes < 60 * 60,
-      "Discovery time out minutes must be less than 1 hour",
     );
     this.timeoutSeconds = discoveryTimeOutMinutes * 60;
     this.timeoutTS = Date.now() + this.timeoutSeconds * 1000;
