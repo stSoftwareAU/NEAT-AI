@@ -76,10 +76,13 @@ export class DiscoverStructure {
       Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     }`;
     this.textDecoder = new TextDecoder();
-    assert(timeoutSeconds > 0, "Timeout seconds must be greater than 0");
     assert(
-      timeoutSeconds < 60 * 60,
-      "Timeout seconds must be less than 1 hour",
+      timeoutSeconds > 0,
+      `Timeout seconds must be greater than 0, was: ${timeoutSeconds}`,
+    );
+    assert(
+      timeoutSeconds <= 60 * 60,
+      `Timeout seconds must be less than 1 hour: was ${timeoutSeconds}`,
     );
     this.timeoutTS = Date.now() + timeoutSeconds * 1000;
 
