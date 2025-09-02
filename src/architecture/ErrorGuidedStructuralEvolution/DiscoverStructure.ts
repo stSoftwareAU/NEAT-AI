@@ -200,10 +200,6 @@ export class DiscoverStructure {
         },${discoverRecord.activation},${discoverRecord.errors}\n`;
         csvBuilders.get(neuron.uuid)!.push(csvLine);
       });
-
-      if (Date.now() > this.timeoutTS) {
-        break;
-      }
     }
 
     // Write CSV data for each neuron
