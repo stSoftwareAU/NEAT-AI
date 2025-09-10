@@ -10,7 +10,7 @@
     "@std/fmt": "jsr:@std/fmt@1.0.8",
     "@std/fs": "jsr:@std/fs@1.0.19",
     "@std/path": "jsr:@std/path@1.1.2",
-    "@std/streams": "jsr:@std/streams@1.0.11",
+    "@std/streams": "jsr:@std/streams@1.0.12",
     "@std/uuid": "jsr:@std/uuid@1.0.9",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13"
   },
