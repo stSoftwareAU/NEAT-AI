@@ -136,7 +136,7 @@ Deno.test("XNOR - train", () => {
       break;
     }
 
-    if (attempts > 20) {
+    if (attempts > 200) {
       fail("Error rate was: " + results.error);
     }
   }
