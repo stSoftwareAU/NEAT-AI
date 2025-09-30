@@ -6,7 +6,8 @@ Current version only
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in this project, please report it responsibly by following these steps:
+If you discover a security vulnerability in this project, please report it
+responsibly by following these steps:
 
 ### Reporting Process
 
@@ -26,13 +27,17 @@ If you discover a security vulnerability in this project, please report it respo
 
 ### What to Expect
 
-- **If accepted**: We will work with you to understand the issue, develop a fix, and coordinate disclosure
-- **If declined**: We will provide a clear explanation of why the report does not qualify as a security vulnerability
+- **If accepted**: We will work with you to understand the issue, develop a fix,
+  and coordinate disclosure
+- **If declined**: We will provide a clear explanation of why the report does
+  not qualify as a security vulnerability
 
 ### Responsible Disclosure
 
 We request that you:
-- Allow us reasonable time to investigate and fix the issue before public disclosure
+
+- Allow us reasonable time to investigate and fix the issue before public
+  disclosure
 - Avoid accessing or modifying data that doesn't belong to you
 - Act in good faith and avoid privacy violations or service disruption
 
