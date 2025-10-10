@@ -148,21 +148,25 @@ export function calculateLearningRate(
   config: BackPropagationConfig,
   iteration: number,
 ): number {
-  switch (config.learningRateStrategy) {
-    case "fixed":
-      return config.learningRate;
-    case "decay":
-      return config.initialLearningRate *
-        Math.pow(config.learningRateDecay, iteration);
-    case "adaptive": {
-      // Simple adaptive strategy - could be enhanced with more sophisticated algorithms
-      const baseRate = config.initialLearningRate;
-      const decayFactor = Math.pow(config.learningRateDecay, iteration);
-      return baseRate * decayFactor;
+  const result = (() => {
+    switch (config.learningRateStrategy) {
+      case "fixed":
+        return config.learningRate;
+      case "decay":
+        return config.initialLearningRate *
+          Math.pow(config.learningRateDecay, iteration);
+      case "adaptive": {
+        // Simple adaptive strategy - could be enhanced with more sophisticated algorithms
+        const baseRate = config.initialLearningRate;
+        const decayFactor = Math.pow(config.learningRateDecay, iteration);
+        return baseRate * decayFactor;
+      }
+      default:
+        return config.learningRate;
     }
-    default:
-      return config.learningRate;
-  }
+  })();
+
+  return result;
 }
 
 export function toValue(neuron: Neuron, activation: number, hint?: number) {
