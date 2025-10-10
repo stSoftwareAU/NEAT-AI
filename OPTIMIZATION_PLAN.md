@@ -94,7 +94,8 @@ SSDs)
 
 #### 3.1 Unified Learning Strategy Interface
 
-**Current**: Separate implementations for back propagation, fine-tuning, memetic, Error-Guided Structural Evolution
+**Current**: Separate implementations for back propagation, fine-tuning,
+memetic, Error-Guided Structural Evolution
 
 **Files**: `src/blackbox/`, `src/architecture/Training.ts`, `src/NEAT/`
 
