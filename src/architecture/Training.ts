@@ -175,14 +175,14 @@ function trainDirBinary(
   const sparseConfig = new SparseConfig(bestCreatureJSON, backPropConfig);
 
   while (true) {
-    iteration++;
-    const startTS = Date.now();
-    let lastTS = startTS;
-
     const currentLearningRate = calculateLearningRate(
       backPropConfig,
       iteration,
     );
+    
+    iteration++;
+    const startTS = Date.now();
+    let lastTS = startTS;
     const iterationConfig = createBackPropagationConfig({
       ...backPropConfig,
       generations: backPropConfig.generations + iteration,
