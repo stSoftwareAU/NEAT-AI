@@ -55,6 +55,8 @@ Deno.test("Constants", () => {
       maximumWeightAdjustmentScale: 2,
       maximumBiasAdjustmentScale: 2,
       learningRate: 1,
+      batchSize: 1, // Disable mini-batching for deterministic behavior
+      sparseSelectionStrategy: "random", // Use random selection for deterministic behavior
     });
     const sparseConfig = new SparseConfig(creature.exportJSON(), config);
     const inA = [-1, 1, 0];

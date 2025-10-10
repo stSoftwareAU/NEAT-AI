@@ -53,6 +53,18 @@ export type BackPropagationArguments = {
 
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
+
+  /** Strategy for selecting neurons in sparse training: 'random', 'output-distance', 'error-weighted' */
+  sparseSelectionStrategy: "random" | "output-distance" | "error-weighted";
+
+  /** Learning rate strategy: 'fixed', 'decay', 'adaptive' */
+  learningRateStrategy: "fixed" | "decay" | "adaptive";
+
+  /** Initial learning rate for decay/adaptive strategies */
+  initialLearningRate: number;
+
+  /** Learning rate decay factor for decay strategy */
+  learningRateDecay: number;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -107,11 +119,50 @@ export function createBackPropagationConfig(
 
     disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
     disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
-    batchSize: options?.batchSize ?? 1,
+    batchSize: options?.batchSize ?? 64, // Enable mini-batching by default
     sparseRatio: options?.sparseRatio ?? 1,
+    sparseSelectionStrategy: options?.sparseSelectionStrategy ??
+      "output-distance", // Use smarter selection by default
+    learningRateStrategy: options?.learningRateStrategy ??
+      (options?.learningRate !== undefined ? "fixed" : "decay"),
+    initialLearningRate: Math.min(
+      Math.max(
+        options?.initialLearningRate ?? 0.01,
+        0.001,
+      ),
+      1,
+    ),
+    learningRateDecay: Math.min(
+      Math.max(
+        options?.learningRateDecay ?? 0.95,
+        0.1,
+      ),
+      1,
+    ),
   };
 
   return Object.freeze(config);
+}
+
+export function calculateLearningRate(
+  config: BackPropagationConfig,
+  iteration: number,
+): number {
+  switch (config.learningRateStrategy) {
+    case "fixed":
+      return config.learningRate;
+    case "decay":
+      return config.initialLearningRate *
+        Math.pow(config.learningRateDecay, iteration);
+    case "adaptive": {
+      // Simple adaptive strategy - could be enhanced with more sophisticated algorithms
+      const baseRate = config.initialLearningRate;
+      const decayFactor = Math.pow(config.learningRateDecay, iteration);
+      return baseRate * decayFactor;
+    }
+    default:
+      return config.learningRate;
+  }
 }
 
 export function toValue(neuron: Neuron, activation: number, hint?: number) {
