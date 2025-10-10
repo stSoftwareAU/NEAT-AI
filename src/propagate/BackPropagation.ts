@@ -126,12 +126,13 @@ export function createBackPropagationConfig(
     learningRateStrategy: options?.learningRateStrategy ??
       (options?.learningRate !== undefined
         ? "fixed"
-        // Randomize strategy selection for exploration
-        : (Math.random() < 0.4
-          ? "decay"
-          : Math.random() < 0.7
-          ? "adaptive"
-          : "fixed")),
+        // Randomize strategy selection for exploration with correct probabilities
+        : (() => {
+          const rand = Math.random();
+          if (rand < 0.4) return "decay";
+          if (rand < 0.7) return "adaptive";
+          return "fixed";
+        })()),
     initialLearningRate: Math.min(
       Math.max(
         options?.initialLearningRate ?? 0.01,
