@@ -179,7 +179,7 @@ function trainDirBinary(
       backPropConfig,
       iteration,
     );
-    
+
     iteration++;
     const startTS = Date.now();
     let lastTS = startTS;

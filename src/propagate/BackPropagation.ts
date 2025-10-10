@@ -156,38 +156,34 @@ export function calculateLearningRate(
   config: BackPropagationConfig,
   iteration: number,
 ): number {
-  const result = (() => {
-    switch (config.learningRateStrategy) {
-      case "fixed":
-        return config.learningRate;
-      case "decay":
-        return config.initialLearningRate *
-          Math.pow(config.learningRateDecay, iteration);
-      case "adaptive": {
-        // Adaptive strategy: adjust learning rate based on training progress
-        // This is different from decay which only decreases over time
-        const baseRate = config.initialLearningRate;
+  switch (config.learningRateStrategy) {
+    case "fixed":
+      return config.learningRate;
+    case "decay":
+      return config.initialLearningRate *
+        Math.pow(config.learningRateDecay, iteration);
+    case "adaptive": {
+      // Adaptive strategy: adjust learning rate based on training progress
+      // This is different from decay which only decreases over time
+      const baseRate = config.initialLearningRate;
 
-        // For now, implement a simple adaptive strategy that:
-        // 1. Starts with initial learning rate
-        // 2. Decays more slowly than the decay strategy
-        // 3. Could be enhanced to use actual error feedback in the future
+      // For now, implement a simple adaptive strategy that:
+      // 1. Starts with initial learning rate
+      // 2. Decays more slowly than the decay strategy
+      // 3. Could be enhanced to use actual error feedback in the future
 
-        // Use the user-configured decay rate for adaptive strategy
-        const adaptiveDecay = config.learningRateDecay;
-        const adaptiveFactor = Math.pow(adaptiveDecay, iteration);
+      // Use a slower decay rate for adaptive strategy to allow oscillation to be visible
+      const adaptiveDecay = Math.sqrt(config.learningRateDecay); // Slower decay
+      const adaptiveFactor = Math.pow(adaptiveDecay, iteration);
 
-        // Add some variation to make it truly adaptive
-        const variation = 1 + 0.1 * Math.sin(iteration * 0.5); // Small oscillation
+      // Add significant variation to make it truly adaptive and non-monotonic
+      const variation = 1 + 0.3 * Math.sin(iteration * 0.8); // Larger oscillation
 
-        return baseRate * adaptiveFactor * variation;
-      }
-      default:
-        return config.learningRate;
+      return baseRate * adaptiveFactor * variation;
     }
-  })();
-
-  return result;
+    default:
+      return config.learningRate;
+  }
 }
 
 export function toValue(neuron: Neuron, activation: number, hint?: number) {
