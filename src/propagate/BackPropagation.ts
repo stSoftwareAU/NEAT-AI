@@ -173,8 +173,8 @@ export function calculateLearningRate(
         // 2. Decays more slowly than the decay strategy
         // 3. Could be enhanced to use actual error feedback in the future
 
-        // Use a gentler decay for adaptive (0.98 vs 0.95 default)
-        const adaptiveDecay = Math.max(config.learningRateDecay, 0.98);
+        // Use the user-configured decay rate for adaptive strategy
+        const adaptiveDecay = config.learningRateDecay;
         const adaptiveFactor = Math.pow(adaptiveDecay, iteration);
 
         // Add some variation to make it truly adaptive
