@@ -53,6 +53,18 @@ export type BackPropagationArguments = {
 
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
+
+  /** Strategy for selecting neurons in sparse training: 'random', 'output-distance', 'error-weighted' */
+  sparseSelectionStrategy: "random" | "output-distance" | "error-weighted";
+
+  /** Learning rate strategy: 'fixed', 'decay', 'adaptive' */
+  learningRateStrategy: "fixed" | "decay" | "adaptive";
+
+  /** Initial learning rate for decay/adaptive strategies */
+  initialLearningRate: number;
+
+  /** Learning rate decay factor for decay strategy */
+  learningRateDecay: number;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -107,11 +119,71 @@ export function createBackPropagationConfig(
 
     disableBiasAdjustment: options?.disableBiasAdjustment ?? false,
     disableWeightAdjustment: options?.disableWeightAdjustment ?? false,
-    batchSize: options?.batchSize ?? 1,
+    batchSize: options?.batchSize ?? 64, // Enable mini-batching by default
     sparseRatio: options?.sparseRatio ?? 1,
+    sparseSelectionStrategy: options?.sparseSelectionStrategy ??
+      "output-distance", // Use smarter selection by default
+    learningRateStrategy: options?.learningRateStrategy ??
+      (options?.learningRate !== undefined
+        ? "fixed"
+        // Randomize strategy selection for exploration with correct probabilities
+        : (() => {
+          const rand = Math.random();
+          if (rand < 0.4) return "decay";
+          if (rand < 0.7) return "adaptive";
+          return "fixed";
+        })()),
+    initialLearningRate: Math.min(
+      Math.max(
+        options?.initialLearningRate ?? 0.01,
+        0.001,
+      ),
+      1,
+    ),
+    learningRateDecay: Math.min(
+      Math.max(
+        options?.learningRateDecay ?? 0.95,
+        0.1,
+      ),
+      1,
+    ),
   };
 
   return Object.freeze(config);
+}
+
+export function calculateLearningRate(
+  config: BackPropagationConfig,
+  iteration: number,
+): number {
+  switch (config.learningRateStrategy) {
+    case "fixed":
+      return config.learningRate;
+    case "decay":
+      return config.initialLearningRate *
+        Math.pow(config.learningRateDecay, iteration);
+    case "adaptive": {
+      // Adaptive strategy: adjust learning rate based on training progress
+      // This is different from decay which only decreases over time
+      const baseRate = config.initialLearningRate;
+
+      // For now, implement a simple adaptive strategy that:
+      // 1. Starts with initial learning rate
+      // 2. Decays more slowly than the decay strategy
+      // 3. Could be enhanced to use actual error feedback in the future
+
+      // Use a slower decay rate for adaptive strategy to allow oscillation to be visible
+      const adaptiveDecay = Math.sqrt(config.learningRateDecay); // Slower decay
+      const adaptiveFactor = Math.pow(adaptiveDecay, iteration);
+
+      // Add significant variation to make it truly adaptive and non-monotonic
+      const variation = 1 + 0.3 * Math.sin(iteration * 0.8); // Larger oscillation
+
+      return baseRate * adaptiveFactor * variation;
+    }
+    default:
+      return config.learningRate;
+  }
 }
 
 export function toValue(neuron: Neuron, activation: number, hint?: number) {

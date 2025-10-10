@@ -42,6 +42,8 @@ Deno.test("PI-repeat", () => {
     maximumBiasAdjustmentScale: 2,
     maximumWeightAdjustmentScale: 2,
     learningRate: 1,
+    batchSize: 1, // Disable mini-batching for deterministic behavior
+    sparseSelectionStrategy: "random", // Use random selection for deterministic behavior
   });
   Deno.writeTextFileSync(
     `${traceDir}/0.json`,
@@ -80,6 +82,8 @@ Deno.test("PI-single", () => {
     maximumBiasAdjustmentScale: 20,
     maximumWeightAdjustmentScale: 20,
     learningRate: 1,
+    batchSize: 1, // Disable mini-batching for deterministic behavior
+    sparseSelectionStrategy: "random", // Use random selection for deterministic behavior
   });
   Deno.writeTextFileSync(
     ".trace/0.json",

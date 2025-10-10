@@ -83,6 +83,8 @@ Deno.test("AccumulateBias-average", () => {
   let config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
+    batchSize: 1, // Disable mini-batching for deterministic behavior
+    sparseSelectionStrategy: "random", // Use random selection for deterministic behavior
   });
 
   const creature = makeCreature();

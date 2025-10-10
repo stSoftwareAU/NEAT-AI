@@ -68,6 +68,8 @@
     "pred",
     "softmax",
     "thresholding",
-    "modeling"
+    "modeling",
+    "EGSE",
+    "egse"
   ]
 }

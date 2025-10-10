@@ -6,7 +6,10 @@ import { Costs } from "../Costs.ts";
 import { Creature } from "../Creature.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
-import { createBackPropagationConfig } from "../propagate/BackPropagation.ts";
+import {
+  calculateLearningRate,
+  createBackPropagationConfig,
+} from "../propagate/BackPropagation.ts";
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
@@ -172,13 +175,18 @@ function trainDirBinary(
   const sparseConfig = new SparseConfig(bestCreatureJSON, backPropConfig);
 
   while (true) {
+    const currentLearningRate = calculateLearningRate(
+      backPropConfig,
+      iteration,
+    );
+
     iteration++;
     const startTS = Date.now();
     let lastTS = startTS;
-
     const iterationConfig = createBackPropagationConfig({
       ...backPropConfig,
       generations: backPropConfig.generations + iteration,
+      learningRate: currentLearningRate, // Use dynamic learning rate
     });
 
     let counter = 0;
