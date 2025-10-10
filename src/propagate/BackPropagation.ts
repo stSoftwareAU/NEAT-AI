@@ -124,7 +124,14 @@ export function createBackPropagationConfig(
     sparseSelectionStrategy: options?.sparseSelectionStrategy ??
       "output-distance", // Use smarter selection by default
     learningRateStrategy: options?.learningRateStrategy ??
-      (options?.learningRate !== undefined ? "fixed" : "decay"),
+      (options?.learningRate !== undefined
+        ? "fixed"
+        // Randomize strategy selection for exploration
+        : (Math.random() < 0.4
+          ? "decay"
+          : Math.random() < 0.7
+          ? "adaptive"
+          : "fixed")),
     initialLearningRate: Math.min(
       Math.max(
         options?.initialLearningRate ?? 0.01,
@@ -156,10 +163,23 @@ export function calculateLearningRate(
         return config.initialLearningRate *
           Math.pow(config.learningRateDecay, iteration);
       case "adaptive": {
-        // Simple adaptive strategy - could be enhanced with more sophisticated algorithms
+        // Adaptive strategy: adjust learning rate based on training progress
+        // This is different from decay which only decreases over time
         const baseRate = config.initialLearningRate;
-        const decayFactor = Math.pow(config.learningRateDecay, iteration);
-        return baseRate * decayFactor;
+
+        // For now, implement a simple adaptive strategy that:
+        // 1. Starts with initial learning rate
+        // 2. Decays more slowly than the decay strategy
+        // 3. Could be enhanced to use actual error feedback in the future
+
+        // Use a gentler decay for adaptive (0.98 vs 0.95 default)
+        const adaptiveDecay = Math.max(config.learningRateDecay, 0.98);
+        const adaptiveFactor = Math.pow(adaptiveDecay, iteration);
+
+        // Add some variation to make it truly adaptive
+        const variation = 1 + 0.1 * Math.sin(iteration * 0.5); // Small oscillation
+
+        return baseRate * adaptiveFactor * variation;
       }
       default:
         return config.learningRate;

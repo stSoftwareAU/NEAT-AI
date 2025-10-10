@@ -24,7 +24,7 @@ quality.
 - Apply averaged gradient updates once per batch
 - Make `batchSize` configurable in TrainOptions
 
-**Benefits**: 5-10x speedup from reduced overhead and better CPU cache
+**Benefits**: 5-10x speed up from reduced overhead and better CPU cache
 utilization
 
 #### 1.2 Adaptive Learning Rate Schedule ✅ COMPLETED
@@ -94,7 +94,7 @@ SSDs)
 
 #### 3.1 Unified Learning Strategy Interface
 
-**Current**: Separate implementations for backprop, fine-tuning, memetic, EGSE
+**Current**: Separate implementations for back propagation, fine-tuning, memetic, Error-Guided Structural Evolution
 
 **Files**: `src/blackbox/`, `src/architecture/Training.ts`, `src/NEAT/`
 
