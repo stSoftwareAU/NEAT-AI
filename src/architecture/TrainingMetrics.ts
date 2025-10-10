@@ -2,7 +2,7 @@
  * Training Metrics System
  *
  * Tracks performance improvements across different optimization strategies:
- * - Backpropagation (training)
+ * - Back propagation (training)
  * - Fine-tuning
  * - Memetic algorithms
  * - NEAT evolution

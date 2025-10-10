@@ -21,7 +21,7 @@ Deno.test("optimization/TrainingMetrics - should track improvements by strategy"
     structure: "neuron",
   });
 
-  assert(improved1, "Should record backpropagation improvement");
+  assert(improved1, "Should record back propagation improvement");
   assert(improved2, "Should record fine-tuning improvement");
   assert(improved3, "Should record memetic improvement");
   assert(!improved4, "Should not record non-improvement");
