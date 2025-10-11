@@ -137,8 +137,10 @@ export class Neat {
   private doNotStartMore = false;
   private cleanUpDelayCount = 0;
   private additionalGenerationCount = 0;
+  private discoveryWaitGenerations = 0;
+  private maxDiscoveryWaitGenerations = 0;
 
-  finishUp() {
+  finishUp(iterations?: number, endTimeMS?: number) {
     this.doNotStartMore = true;
 
     if (!this.cleanUpDelayCount) {
@@ -153,7 +155,59 @@ export class Neat {
     }
 
     if (this.discoveryInProgress.size > 0) {
-      console.info("Waiting for discovery to complete");
+      // Calculate max wait generations on first discovery wait
+      if (this.maxDiscoveryWaitGenerations === 0) {
+        let maxWaitByIterations = 20; // Default fallback
+        let maxWaitByTime = 20; // Default fallback
+
+        if (iterations) {
+          maxWaitByIterations = Math.max(1, Math.floor(iterations * 0.5));
+        }
+
+        if (endTimeMS) {
+          const remainingTimeMS = endTimeMS - Date.now();
+          if (remainingTimeMS > 0) {
+            // Estimate generations based on remaining time (assume 1 generation per 30 seconds as rough estimate)
+            const estimatedGenerations = Math.max(
+              1,
+              Math.floor(remainingTimeMS / 30000),
+            );
+            maxWaitByTime = Math.floor(estimatedGenerations * 0.5);
+          }
+        }
+
+        this.maxDiscoveryWaitGenerations = Math.min(
+          maxWaitByIterations,
+          maxWaitByTime,
+        );
+        console.info(
+          `Discovery timeout set to ${this.maxDiscoveryWaitGenerations} generations (50% of limiting factor)`,
+        );
+      }
+
+      this.discoveryWaitGenerations++;
+
+      if (this.discoveryWaitGenerations >= this.maxDiscoveryWaitGenerations) {
+        const stuckUUIDs = Array.from(this.discoveryInProgress.keys()).map(
+          (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
+        );
+        console.warn(
+          `Discovery timeout reached after ${this.discoveryWaitGenerations} generations. Clearing stuck discoveries: ${
+            stuckUUIDs.join(", ")
+          }`,
+        );
+
+        // Clear stuck discoveries to allow evolution to complete
+        this.discoveryInProgress.clear();
+        this.discoveryWaitGenerations = 0;
+        this.maxDiscoveryWaitGenerations = 0;
+
+        return false; // Continue to next iteration to check other conditions
+      }
+
+      console.info(
+        `Waiting for discovery to complete (${this.discoveryWaitGenerations}/${this.maxDiscoveryWaitGenerations})`,
+      );
 
       return false;
     }
@@ -229,6 +283,25 @@ export class Neat {
       this.discoveryComplete.push(r);
 
       this.discoveryInProgress.delete(uuid);
+    }).catch((error) => {
+      console.error(
+        `Discovery failed for creature ${
+          uuid.substring(Math.max(0, uuid.length - 8))
+        }:`,
+        error,
+      );
+
+      // Remove from discoveryInProgress to prevent infinite waiting
+      this.discoveryInProgress.delete(uuid);
+
+      // Add empty result to avoid breaking downstream logic
+      this.discoveryComplete.push({
+        taskID: 0,
+        duration: 0,
+        discover: {
+          ID: uuid,
+        },
+      });
     });
 
     this.discoveryInProgress.set(uuid, p);
@@ -382,6 +455,28 @@ export class Neat {
           );
         }
       }
+    }).catch((error) => {
+      console.error(
+        `Training failed for creature ${
+          uuid.substring(Math.max(0, uuid.length - 8))
+        }:`,
+        error,
+      );
+
+      // Remove from trainingInProgress to prevent infinite waiting
+      this.trainingInProgress.delete(uuid);
+
+      // Add empty result to avoid breaking downstream logic
+      this.trainingComplete.push({
+        taskID: 0,
+        duration: 0,
+        train: {
+          ID: uuid,
+          creature: JSON.stringify(creature.exportJSON()),
+          error: Number.POSITIVE_INFINITY,
+          trace: "",
+        },
+      });
     });
 
     this.trainingInProgress.set(uuid, p);
