@@ -90,6 +90,45 @@ export class DiscoverStructure {
   }
 
   /**
+   * Wraps file write operation with timeout and error handling to prevent deadlocks.
+   * @param fileName - The file to write to
+   * @param data - The data to write
+   * @param timeoutMS - Timeout in milliseconds (default 30 seconds)
+   * @returns Promise that resolves when write completes or times out
+   */
+  private safeFileWrite(
+    fileName: string,
+    data: string,
+    timeoutMS = 30000,
+  ): Promise<void> {
+    const writePromise = Deno.writeTextFile(fileName, data, {
+      append: true,
+      create: false,
+    });
+
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(
+            `File write timeout: ${fileName} took longer than ${
+              timeoutMS / 1000
+            }s`,
+          ),
+        );
+      }, timeoutMS);
+    });
+
+    return Promise.race([writePromise, timeoutPromise]).catch((error) => {
+      console.error(
+        `[DiscoverStructure] File write failed for ${fileName}:`,
+        error,
+      );
+      // Don't rethrow - allow the chain to continue even if one write fails
+      // This prevents a single file write failure from blocking all discovery
+    });
+  }
+
+  /**
    * Initializes the discovery process by preparing temporary storage for neuron data.
    */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
@@ -102,12 +141,32 @@ export class DiscoverStructure {
         : "activation\n";
       const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
 
+      // Create initial file with header - use Promise.race for timeout protection
       const writePromise = Deno.writeTextFile(filePath, headCSV, {
         append: false,
         createNew: true,
       });
 
-      neuronPromisesMap.set(neuron.uuid, writePromise);
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              `Initialization file write timeout: ${filePath} took longer than 30s`,
+            ),
+          );
+        }, 30000);
+      });
+
+      const safeWritePromise = Promise.race([writePromise, timeoutPromise])
+        .catch((error) => {
+          console.error(
+            `[DiscoverStructure] Failed to initialize file for neuron ${neuron.uuid}:`,
+            error,
+          );
+          // Don't rethrow - allow other neurons to continue
+        });
+
+      neuronPromisesMap.set(neuron.uuid, safeWritePromise);
     });
   }
 
@@ -162,8 +221,14 @@ export class DiscoverStructure {
         const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
 
         const nextPromise = previousPromise.then(() =>
-          Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
-        );
+          this.safeFileWrite(fileName, dataCSV)
+        ).catch((error) => {
+          console.error(
+            `[DiscoverStructure] Promise chain failed for input neuron ${neuron.uuid}:`,
+            error,
+          );
+          // Don't rethrow - allow other neurons to continue
+        });
 
         neuronPromisesMap.set(neuron.uuid, nextPromise);
       }
@@ -209,8 +274,14 @@ export class DiscoverStructure {
       const previousPromise = neuronPromisesMap.get(neuronUUID)!;
 
       const nextPromise = previousPromise.then(() =>
-        Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
-      );
+        this.safeFileWrite(fileName, dataCSV)
+      ).catch((error) => {
+        console.error(
+          `[DiscoverStructure] Promise chain failed for neuron ${neuronUUID}:`,
+          error,
+        );
+        // Don't rethrow - allow other neurons to continue
+      });
 
       neuronPromisesMap.set(neuronUUID, nextPromise);
     }

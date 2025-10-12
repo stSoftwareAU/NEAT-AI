@@ -261,7 +261,42 @@ class DataRecorder {
       }
 
       // Wait for all file writes to complete
-      await Promise.all([...neuronPromisesMap.values()]);
+      if (options.log) {
+        console.log(
+          `Discovery ${
+            blue(this.ID)
+          } waiting for ${neuronPromisesMap.size} neuron file write promises to complete...`,
+        );
+      }
+
+      // Add timeout protection to Promise.all() to prevent infinite waiting
+      const allWritesPromise = Promise.all([...neuronPromisesMap.values()]);
+      const writeTimeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              `File writes timeout: ${neuronPromisesMap.size} promises did not complete within 60s`,
+            ),
+          );
+        }, 60000); // 60 second timeout for all file writes
+      });
+
+      try {
+        await Promise.race([allWritesPromise, writeTimeoutPromise]);
+        if (options.log) {
+          console.log(
+            `Discovery ${
+              blue(this.ID)
+            } all file writes completed successfully.`,
+          );
+        }
+      } catch (error) {
+        console.error(
+          `Discovery ${blue(this.ID)} file writes failed or timed out:`,
+          error,
+        );
+        // Continue anyway - we'll work with what we have
+      }
 
       // Clear the promises map to help GC
       neuronPromisesMap.clear();
@@ -281,6 +316,12 @@ class DataRecorder {
         removeHarmfulSynapse: undefined,
         candidateSquashes: undefined,
       };
+
+      if (options.log) {
+        console.log(
+          `Discovery ${blue(this.ID)} starting analyze phase...`,
+        );
+      }
 
       const analyzeStartTime = Date.now();
 
@@ -302,6 +343,12 @@ class DataRecorder {
         discoverResult.addHelpfulSynapses = addHelpfulSynapse;
       }
 
+      if (options.log) {
+        console.log(
+          `Discovery ${blue(this.ID)} starting harmful synapse analysis...`,
+        );
+      }
+
       const harmfulStartTime = Date.now();
       const removeHarmfulSynapse = await discoverStructure
         .analyzeSynapsesForRemoval(
@@ -317,6 +364,12 @@ class DataRecorder {
       }
       if (removeHarmfulSynapse) {
         discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
+      }
+
+      if (options.log) {
+        console.log(
+          `Discovery ${blue(this.ID)} starting squash analysis...`,
+        );
       }
 
       const squashStartTime = Date.now();
@@ -351,9 +404,24 @@ class DataRecorder {
         discoverResult.candidateSquashes = candidateSquashes;
       }
 
+      if (options.log) {
+        const totalTime = Date.now() - startTime;
+        console.log(
+          `Discovery ${blue(this.ID)} analysis complete, total time ${
+            yellow(format(totalTime, { ignoreZero: true }))
+          }, starting cleanup...`,
+        );
+      }
+
       return discoverResult;
     } finally {
+      if (options.log) {
+        console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
+      }
       await discoverStructure.cleanUp();
+      if (options.log) {
+        console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
+      }
     }
   }
 }

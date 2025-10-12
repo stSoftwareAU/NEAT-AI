@@ -270,6 +270,14 @@ export class WorkerHandler {
   private callback(data: ResponseData) {
     const call = this.callbacks.get(data.taskID);
     assert(call, "No callback");
+
+    // Log discovery response receipt
+    if (data.discover) {
+      console.log(
+        `[WorkerHandler] Received discovery response for taskID: ${data.taskID}`,
+      );
+    }
+
     call(data);
     this.callbacks.delete(data.taskID);
   }
@@ -289,6 +297,13 @@ export class WorkerHandler {
 
       this.callbacks.set(data.taskID, call);
     });
+
+    // Log discovery request posting
+    if (data.discover) {
+      console.log(
+        `[WorkerHandler] Posting discovery request to worker (taskID: ${data.taskID})`,
+      );
+    }
 
     this.worker.postMessage(data);
 

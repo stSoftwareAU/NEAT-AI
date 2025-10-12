@@ -140,7 +140,12 @@ export class Neat {
   private discoveryWaitGenerations = 0;
   private maxDiscoveryWaitGenerations = 0;
 
-  finishUp(iterations?: number, endTimeMS?: number) {
+  finishUp(
+    iterations?: number,
+    endTimeMS?: number,
+    startTimeMS?: number,
+    currentGeneration?: number,
+  ) {
     this.doNotStartMore = true;
 
     if (!this.cleanUpDelayCount) {
@@ -157,6 +162,7 @@ export class Neat {
     if (this.discoveryInProgress.size > 0) {
       // Calculate max wait generations on first discovery wait
       if (this.maxDiscoveryWaitGenerations === 0) {
+        const DEFAULT_MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes
         let maxWaitByIterations = 20; // Default fallback
         let maxWaitByTime = 20; // Default fallback
 
@@ -164,7 +170,41 @@ export class Neat {
           maxWaitByIterations = Math.max(1, Math.floor(iterations * 0.5));
         }
 
-        if (endTimeMS) {
+        // Calculate based on actual average time per generation if available
+        if (startTimeMS && currentGeneration && currentGeneration > 0) {
+          const elapsedMS = Date.now() - startTimeMS;
+          const avgTimePerGeneration = elapsedMS / currentGeneration;
+
+          if (avgTimePerGeneration > 0) {
+            // Calculate how many generations fit in 5 minutes
+            const maxGenerationsIn5Minutes = Math.max(
+              1,
+              Math.floor(DEFAULT_MAX_WAIT_MS / avgTimePerGeneration),
+            );
+
+            // If we have endTimeMS, also calculate based on remaining time
+            if (endTimeMS) {
+              const remainingTimeMS = endTimeMS - Date.now();
+              if (remainingTimeMS > 0) {
+                const estimatedGenerations = Math.max(
+                  1,
+                  Math.floor(remainingTimeMS / avgTimePerGeneration),
+                );
+                maxWaitByTime = Math.floor(estimatedGenerations * 0.5);
+              }
+            } else {
+              // Use the 5-minute limit if no endTimeMS
+              maxWaitByTime = maxGenerationsIn5Minutes;
+            }
+
+            console.info(
+              `Avg time per generation: ${
+                Math.round(avgTimePerGeneration)
+              }ms, max wait: ${maxGenerationsIn5Minutes} generations in 5 minutes`,
+            );
+          }
+        } else if (endTimeMS) {
+          // Fallback to old estimation if we don't have timing data
           const remainingTimeMS = endTimeMS - Date.now();
           if (remainingTimeMS > 0) {
             // Estimate generations based on remaining time (assume 1 generation per 30 seconds as rough estimate)
@@ -181,7 +221,7 @@ export class Neat {
           maxWaitByTime,
         );
         console.info(
-          `Discovery timeout set to ${this.maxDiscoveryWaitGenerations} generations (50% of limiting factor)`,
+          `Discovery timeout set to ${this.maxDiscoveryWaitGenerations} generations (based on limiting factor)`,
         );
       }
 
@@ -192,7 +232,7 @@ export class Neat {
           (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
         );
         console.warn(
-          `Discovery timeout reached after ${this.discoveryWaitGenerations} generations. Clearing stuck discoveries: ${
+          `[Neat] Discovery timeout reached after ${this.discoveryWaitGenerations} generations. Clearing stuck discoveries: ${
             stuckUUIDs.join(", ")
           }`,
         );
@@ -205,8 +245,13 @@ export class Neat {
         return false; // Continue to next iteration to check other conditions
       }
 
+      const inProgressUUIDs = Array.from(this.discoveryInProgress.keys()).map(
+        (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
+      );
       console.info(
-        `Waiting for discovery to complete (${this.discoveryWaitGenerations}/${this.maxDiscoveryWaitGenerations})`,
+        `[Neat] Waiting for discovery to complete (${this.discoveryWaitGenerations}/${this.maxDiscoveryWaitGenerations}) - In progress: ${
+          inProgressUUIDs.join(", ")
+        }`,
       );
 
       return false;
@@ -277,17 +322,51 @@ export class Neat {
 
     const options = { ...this.config };
     options.discoveryTimeOutMinutes = timeOutMinutes;
-    const p = w.discover(creature, options).then((r) => {
+
+    const taskStartTime = Date.now();
+    if (this.config.verbose) {
+      console.info(
+        `[Neat] Discovery request sent to worker for ${
+          blue(uuid.substring(Math.max(0, uuid.length - 8)))
+        }`,
+      );
+    }
+
+    // Create a timeout promise to prevent indefinite hangs
+    const timeoutMS = (timeOutMinutes > 0 ? timeOutMinutes : 60) * 60 * 1000;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(
+            `Discovery timeout: No response after ${
+              (timeoutMS / 1000 / 60).toFixed(1)
+            } minutes`,
+          ),
+        );
+      }, timeoutMS);
+    });
+
+    const discoveryPromise = w.discover(creature, options);
+
+    const p = Promise.race([discoveryPromise, timeoutPromise]).then((r) => {
       assert(r.discover, "No discovery found");
+
+      if (this.config.verbose) {
+        console.info(
+          `[Neat] Discovery completed for ${
+            blue(uuid.substring(Math.max(0, uuid.length - 8)))
+          } after ${((Date.now() - taskStartTime) / 1000).toFixed(1)}s`,
+        );
+      }
 
       this.discoveryComplete.push(r);
 
       this.discoveryInProgress.delete(uuid);
     }).catch((error) => {
       console.error(
-        `Discovery failed for creature ${
+        `[Neat] Discovery failed for creature ${
           uuid.substring(Math.max(0, uuid.length - 8))
-        }:`,
+        } after ${((Date.now() - taskStartTime) / 1000).toFixed(1)}s:`,
         error,
       );
 
