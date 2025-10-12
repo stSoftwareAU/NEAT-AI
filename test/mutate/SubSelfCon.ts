@@ -241,14 +241,15 @@ Deno.test("SubSelfCon - stress test with repeated mutations", () => {
   }
 });
 
-Deno.test("SubSelfCon - stress test with constants", () => {
-  // Test with constant neurons which also shouldn't lose their only outward connection
+Deno.test("SubSelfCon - stress test with multiple hidden neurons", () => {
+  // Test with multiple hidden neurons with self-connections and other connections
   for (let iteration = 0; iteration < 50; iteration++) {
     const creature = Creature.fromJSON({
       neurons: [
         {
-          type: "constant",
-          bias: 1.0,
+          type: "hidden",
+          squash: "LOGISTIC",
+          bias: 0.5,
           index: 2,
         },
         {
@@ -265,10 +266,11 @@ Deno.test("SubSelfCon - stress test with constants", () => {
         },
       ],
       synapses: [
-        { from: 0, to: 3, weight: 1.0 },
-        { from: 2, to: 2, weight: 0.5 }, // Self-connection on constant
-        { from: 2, to: 4, weight: 0.7 },
-        { from: 3, to: 3, weight: 0.4 }, // Self-connection on hidden
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 2, weight: 0.8 },
+        { from: 2, to: 2, weight: 0.5 }, // Self-connection on hidden 1
+        { from: 2, to: 3, weight: 0.7 },
+        { from: 3, to: 3, weight: 0.4 }, // Self-connection on hidden 2
         { from: 3, to: 4, weight: 0.9 },
       ],
       input: 2,
