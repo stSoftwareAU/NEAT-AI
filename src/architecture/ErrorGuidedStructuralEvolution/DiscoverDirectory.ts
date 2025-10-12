@@ -201,6 +201,8 @@ class DataRecorder {
   private async recordFiles(binaryFiles: string[]): Promise<DiscoverResult> {
     const { creature, options } = this;
     const startTime = Date.now();
+    let currentPhase = "initialization"; // Track phase for timeout diagnostics
+    
     if (options.log) {
       console.info(
         `Discovery ${
@@ -221,8 +223,8 @@ class DataRecorder {
 
     const initializeStartTime = Date.now();
     discoverStructure.initialize(neuronPromisesMap);
+    const initializeTime = Date.now() - initializeStartTime;
     if (options.log) {
-      const initializeTime = Date.now() - initializeStartTime;
       console.log(
         `Discovery ${blue(this.ID)} initialize time ${
           yellow(format(initializeTime, { ignoreZero: true }))
@@ -234,6 +236,8 @@ class DataRecorder {
 
       const dataSet: DataRecordInterface[] = [];
 
+      currentPhase = "file_processing";
+      const fileProcessStartTime = Date.now();
       for (const filePath of binaryFiles) {
         // deno-lint-ignore no-await-in-loop
         await this.processFile(filePath, discoverStructure, {
@@ -241,18 +245,27 @@ class DataRecorder {
           dataSet,
           neuronPromisesMap: neuronPromisesMap,
         });
-        if (this.timeoutTS && Date.now() > this.timeoutTS) break;
+        if (this.timeoutTS && Date.now() > this.timeoutTS) {
+          console.warn(
+            `⚠️  Discovery ${blue(this.ID)} timeout reached during file processing (${counter.count} records processed)`,
+          );
+          break;
+        }
       }
+      const fileProcessTime = Date.now() - fileProcessStartTime;
 
+      currentPhase = "recording";
+      const recordStartTime = Date.now();
       if (dataSet.length > 0) {
         discoverStructure.record(dataSet, neuronPromisesMap);
       }
+      const recordTime = Date.now() - recordStartTime;
 
       // Clear large arrays to help GC
       dataSet.length = 0;
 
+      const scannedTime = Date.now() - startTime;
       if (options.log) {
-        const scannedTime = Date.now() - startTime;
         console.log(
           `Discovery ${blue(this.ID)} scanning time ${
             yellow(format(scannedTime, { ignoreZero: true }))
@@ -291,6 +304,8 @@ class DataRecorder {
       }
 
       // Wait for all file writes to complete with timeout protection
+      currentPhase = "promise_wait";
+      const promiseWaitStartTime = Date.now();
       const allWritesPromise = Promise.all([...trackedPromises.values()]);
       const WRITE_TIMEOUT_MS = 60000; // 60 seconds for all writes
       let writeTimeoutId: number | undefined;
@@ -311,7 +326,9 @@ class DataRecorder {
       } catch (error) {
         if (writeTimeoutId !== undefined) clearTimeout(writeTimeoutId);
 
-        // DIAGNOSTIC: Report which promises never completed
+        const promiseWaitTime = Date.now() - promiseWaitStartTime;
+
+        // DIAGNOSTIC: Report which promises never completed (ALWAYS show on timeout)
         const pendingPromises: string[] = [];
         const now = Date.now();
         for (const [neuronUUID, tracker] of promiseTracker.entries()) {
@@ -326,6 +343,8 @@ class DataRecorder {
         console.error(
           `❌ DISCOVERY DEADLOCK DIAGNOSTIC for ${blue(this.ID)}:`,
         );
+        console.error(`   Error: ${error}`);
+        console.error(`   Promise.all() wait time: ${format(promiseWaitTime, { ignoreZero: true })}`);
         console.error(
           `   Total promises: ${neuronPromisesMap.size}`,
         );
@@ -346,8 +365,7 @@ class DataRecorder {
         }
 
         console.warn(
-          `Discovery ${blue(this.ID)} file writes failed or timed out:`,
-          error,
+          `Discovery ${blue(this.ID)} file writes failed or timed out.`,
         );
         // Continue anyway - we'll work with whatever data we have
       }
@@ -371,6 +389,7 @@ class DataRecorder {
         candidateSquashes: undefined,
       };
 
+      currentPhase = "analyze_helpful";
       const analyzeStartTime = Date.now();
 
       const addHelpfulSynapse = await discoverStructure.analyze(
@@ -391,6 +410,7 @@ class DataRecorder {
         discoverResult.addHelpfulSynapses = addHelpfulSynapse;
       }
 
+      currentPhase = "analyze_harmful";
       const harmfulStartTime = Date.now();
       const removeHarmfulSynapse = await discoverStructure
         .analyzeSynapsesForRemoval(
@@ -408,6 +428,7 @@ class DataRecorder {
         discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
       }
 
+      currentPhase = "analyze_squash";
       const squashStartTime = Date.now();
       const candidateSquashes = await discoverStructure
         .analyzeNeuronsSquashes(
@@ -440,6 +461,7 @@ class DataRecorder {
         discoverResult.candidateSquashes = candidateSquashes;
       }
 
+      currentPhase = "complete";
       if (options.log) {
         const totalTime = Date.now() - startTime;
         console.log(
@@ -472,8 +494,19 @@ class DataRecorder {
 
       return discoverResult;
     } catch (error) {
-      // On error, we still need to cleanup synchronously
-      // Wrap in try-catch to prevent cleanup errors from masking the original error
+      // On error, show diagnostics unconditionally (indicates a bug)
+      const totalTime = Date.now() - startTime;
+      console.error(
+        `❌ DISCOVERY ERROR for ${blue(this.ID)} after ${format(totalTime, { ignoreZero: true })}:`,
+      );
+      console.error(`   Error: ${error}`);
+      console.error(`   Current phase: ${currentPhase}`);
+      console.error(`   Phase timing diagnostics:`);
+      console.error(`     - Initialize: ${format(initializeTime, { ignoreZero: true })}`);
+      console.error(`     - File processing: ${format(fileProcessTime, { ignoreZero: true })}`);
+      console.error(`     - Record: ${format(recordTime, { ignoreZero: true })}`);
+      console.error(`     - Total: ${format(totalTime, { ignoreZero: true })}`);
+      
       if (options.log) {
         console.log(
           `Discovery ${blue(this.ID)} error occurred, performing cleanup...`,
