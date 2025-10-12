@@ -2,11 +2,14 @@
 
 ## Problem
 
-Discovery was timing out after 10 minutes with no response, indicating a hang in the promise chain. The timeout detection was working correctly, but the underlying issue was that the discovery process was never completing.
+Discovery was timing out after 10 minutes with no response, indicating a hang in
+the promise chain. The timeout detection was working correctly, but the
+underlying issue was that the discovery process was never completing.
 
 ## Root Cause
 
-The **promise chains for file writes had NO error handlers**, causing silent deadlocks when any file write failed or hung:
+The **promise chains for file writes had NO error handlers**, causing silent
+deadlocks when any file write failed or hung:
 
 ```typescript
 // BEFORE - No error handling!
@@ -16,11 +19,14 @@ const nextPromise = previousPromise.then(() =>
 ```
 
 If ANY promise in the chain rejected or never resolved:
+
 - The entire `Promise.all()` would hang forever
 - No error messages would be generated
 - The timeout mechanism would eventually trigger (10 minutes later)
 
-This is **exactly what the DISCOVERY_DEADLOCK_PREVENTION.md document described**, but the `safeFileWrite()` fix it mentioned was **never actually implemented**.
+This is **exactly what the DISCOVERY_DEADLOCK_PREVENTION.md document
+described**, but the `safeFileWrite()` fix it mentioned was **never actually
+implemented**.
 
 ## The Fix
 
@@ -61,6 +67,7 @@ private safeFileWrite(
 ```
 
 **Key features:**
+
 - 30-second timeout per file write
 - Clears timeout on completion or error
 - Logs errors without breaking the chain
@@ -74,12 +81,16 @@ Updated all promise chains to use `safeFileWrite()` and add `.catch()` handlers:
 const nextPromise = previousPromise.then(() =>
   this.safeFileWrite(fileName, dataCSV, { append: true, create: false })
 ).catch((error) => {
-  console.error(`[DiscoverStructure] Promise chain failed for neuron ${neuronUUID}:`, error);
+  console.error(
+    `[DiscoverStructure] Promise chain failed for neuron ${neuronUUID}:`,
+    error,
+  );
   // Don't rethrow - allow other neurons to continue
 });
 ```
 
-**Result:** Each neuron's file write chain is independent. One failure doesn't break others.
+**Result:** Each neuron's file write chain is independent. One failure doesn't
+break others.
 
 ### Layer 3: Promise.all() Timeout Wrapper
 
@@ -106,6 +117,7 @@ try {
 ```
 
 **Key features:**
+
 - 60-second timeout for all file writes to complete
 - Clears timeout on completion or error
 - Continues with partial data if timeout occurs
@@ -114,15 +126,19 @@ try {
 ## Files Modified
 
 ### Source Code
+
 - `src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts`
   - Added `safeFileWrite()` method (lines 92-136)
   - Updated `initialize()` to use `safeFileWrite()` with error handling
-  - Updated `record()` to use `safeFileWrite()` for both input and non-input neurons
+  - Updated `record()` to use `safeFileWrite()` for both input and non-input
+    neurons
 
 - `src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts`
-  - Added Promise.all() timeout wrapper with proper timer cleanup (lines 272-303)
+  - Added Promise.all() timeout wrapper with proper timer cleanup (lines
+    272-303)
 
 ### Tests
+
 - `test/ErrorGuidedStructuralEvolution/PromiseChainErrorHandling.ts` (NEW)
   - Tests promise chain error handling
   - Tests graceful file write failure handling
@@ -131,6 +147,7 @@ try {
 ## Test Results
 
 All 23 discovery tests pass:
+
 ```
 ✅ 23/23 tests passing
 - 3 new promise chain error handling tests
@@ -138,6 +155,7 @@ All 23 discovery tests pass:
 ```
 
 **Test Coverage:**
+
 - ✅ Promise chains have error handlers
 - ✅ File write failures handled gracefully
 - ✅ Promise.all() completes within timeout
@@ -148,26 +166,29 @@ All 23 discovery tests pass:
 
 ## What This Fixes
 
-| Scenario | Before | After |
-|----------|--------|-------|
-| File write hangs | Entire discovery deadlocks forever | 30s timeout → error logged → continues |
-| File write fails | Silent hang, no errors | Error logged, other neurons continue |
-| Promise chain breaks | Hangs forever at Promise.all() | 60s timeout → continues with partial data |
-| Worker hangs | 10+ minute wait, timeout | Quick failure with clear error message |
+| Scenario             | Before                             | After                                     |
+| -------------------- | ---------------------------------- | ----------------------------------------- |
+| File write hangs     | Entire discovery deadlocks forever | 30s timeout → error logged → continues    |
+| File write fails     | Silent hang, no errors             | Error logged, other neurons continue      |
+| Promise chain breaks | Hangs forever at Promise.all()     | 60s timeout → continues with partial data |
+| Worker hangs         | 10+ minute wait, timeout           | Quick failure with clear error message    |
 
 ## Expected Behavior Now
 
 ### If Discovery Completes Successfully
+
 - All file writes succeed
 - No error messages
 - Discovery returns normally with results
 
 ### If File Writes Fail
+
 - Clear error messages: `[DiscoverStructure] File write failed for {file}`
 - Discovery continues with available data
 - Other neurons not affected by one failure
 
 ### If Discovery Still Hangs
+
 - Will timeout at the Promise.all() level (60 seconds)
 - Will log: `Discovery file writes failed or timed out`
 - Will continue with partial data
@@ -177,7 +198,8 @@ All 23 discovery tests pass:
 
 - **No more silent deadlocks**: Errors are logged immediately
 - **Fast failure**: Issues surface in 30-60 seconds, not 10 minutes
-- **Graceful degradation**: Continues with partial data instead of complete failure
+- **Graceful degradation**: Continues with partial data instead of complete
+  failure
 - **Better diagnostics**: Clear error messages identify exact failure points
 
 ## Testing Commands
@@ -195,8 +217,8 @@ bash quality.sh
 
 ## Notes
 
-- The timer leak issues in some evolve tests are pre-existing and unrelated to this fix
+- The timer leak issues in some evolve tests are pre-existing and unrelated to
+  this fix
 - All discovery-specific tests pass cleanly with no leaks
 - The fix follows the design outlined in DISCOVERY_DEADLOCK_PREVENTION.md
 - The implementation was validated with TDD approach as requested
-
