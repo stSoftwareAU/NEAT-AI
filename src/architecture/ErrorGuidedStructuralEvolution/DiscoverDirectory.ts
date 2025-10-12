@@ -393,15 +393,34 @@ class DataRecorder {
         );
       }
 
+      // Schedule cleanup to happen asynchronously without blocking the response
+      // This prevents slow filesystem operations from delaying the discovery result
+      const cleanupPromise = (async () => {
+        if (options.log) {
+          console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
+        }
+        await discoverStructure.cleanUp();
+        if (options.log) {
+          console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
+        }
+      })();
+
+      // Don't await cleanup - let it happen in the background
+      // Catch any errors to prevent unhandled rejections
+      cleanupPromise.catch((error) => {
+        console.error(`Discovery ${this.ID} cleanup error:`, error);
+      });
+
       return discoverResult;
-    } finally {
+    } catch (error) {
+      // On error, we still need to cleanup
       if (options.log) {
-        console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
+        console.log(
+          `Discovery ${blue(this.ID)} error occurred, performing cleanup...`,
+        );
       }
       await discoverStructure.cleanUp();
-      if (options.log) {
-        console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
-      }
+      throw error;
     }
   }
 }

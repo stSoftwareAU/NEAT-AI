@@ -333,7 +333,13 @@ export class Neat {
     }
 
     // Create a timeout promise to prevent indefinite hangs
-    const timeoutMS = (timeOutMinutes > 0 ? timeOutMinutes : 60) * 60 * 1000;
+    // Add 20% safety buffer (minimum 1 minute) to account for machine variation
+    const baseTimeoutMinutes = timeOutMinutes > 0 ? timeOutMinutes : 60;
+    const safetyBufferMinutes = Math.max(
+      1,
+      Math.ceil(baseTimeoutMinutes * 0.2),
+    );
+    const timeoutMS = (baseTimeoutMinutes + safetyBufferMinutes) * 60 * 1000;
     let discoveryTimeoutId: number;
     const timeoutPromise = new Promise<never>((_, reject) => {
       discoveryTimeoutId = setTimeout(() => {
@@ -341,7 +347,7 @@ export class Neat {
           new Error(
             `Discovery timeout: No response after ${
               (timeoutMS / 1000 / 60).toFixed(1)
-            } minutes`,
+            } minutes (${baseTimeoutMinutes}m base + ${safetyBufferMinutes}m buffer)`,
           ),
         );
       }, timeoutMS);
