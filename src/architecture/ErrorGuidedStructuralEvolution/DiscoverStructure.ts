@@ -106,7 +106,8 @@ export class DiscoverStructure {
 
       // Write header - fail fast if this doesn't work
       // We MUST create files with headers before record() tries to append
-      Deno.writeTextFileSync(filePath, headCSV);
+      // createNew: true ensures we don't overwrite existing files (safety check)
+      Deno.writeTextFileSync(filePath, headCSV, { createNew: true });
 
       // Create a resolved promise as placeholder for the promise chain
       neuronPromisesMap.set(neuron.uuid, Promise.resolve());
