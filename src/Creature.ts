@@ -848,7 +848,7 @@ export class Creature implements CreatureInternal {
 
       if (completed) {
         if (interrupted) break;
-        if (neat.finishUp(iterations, endTimeMS)) {
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
           break;
         }
       }

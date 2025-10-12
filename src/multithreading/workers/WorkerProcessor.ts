@@ -191,11 +191,24 @@ export class WorkerProcessor {
         assert(this.dataSetDir, "No data dir");
 
         creatureValidate(creature);
+
+        if (data.discover.options.log) {
+          console.log(
+            `[Worker] Starting discovery for creature (taskID: ${data.taskID})...`,
+          );
+        }
+
         const result = await recordDirectory(
           creature,
           this.dataSetDir,
           data.discover.options,
         );
+
+        if (data.discover.options.log) {
+          console.log(
+            `[Worker] Discovery complete for creature (taskID: ${data.taskID}), preparing response...`,
+          );
+        }
 
         const response = {
           taskID: data.taskID,
@@ -220,6 +233,12 @@ export class WorkerProcessor {
         if (result.candidateSquashes) {
           // @ts-ignore - clearing to help GC
           result.candidateSquashes = null;
+        }
+
+        if (data.discover!.options.log) {
+          console.log(
+            `[Worker] Returning discovery response (taskID: ${data.taskID})...`,
+          );
         }
 
         return response;
