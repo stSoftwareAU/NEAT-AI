@@ -151,12 +151,6 @@ export class DiscoverStructure {
       const writePromise = this.safeFileWrite(filePath, headCSV, {
         append: false,
         createNew: true,
-      }).catch((error) => {
-        console.error(
-          `[DiscoverStructure] Promise chain failed for neuron ${neuron.uuid}:`,
-          error,
-        );
-        // Don't rethrow - allow other neurons to continue
       });
 
       neuronPromisesMap.set(neuron.uuid, writePromise);
@@ -215,13 +209,7 @@ export class DiscoverStructure {
 
         const nextPromise = previousPromise.then(() =>
           this.safeFileWrite(fileName, dataCSV, { append: true, create: false })
-        ).catch((error) => {
-          console.error(
-            `[DiscoverStructure] Promise chain failed for neuron ${neuron.uuid}:`,
-            error,
-          );
-          // Don't rethrow - allow other neurons to continue
-        });
+        );
 
         neuronPromisesMap.set(neuron.uuid, nextPromise);
       }
@@ -268,13 +256,7 @@ export class DiscoverStructure {
 
       const nextPromise = previousPromise.then(() =>
         this.safeFileWrite(fileName, dataCSV, { append: true, create: false })
-      ).catch((error) => {
-        console.error(
-          `[DiscoverStructure] Promise chain failed for neuron ${neuronUUID}:`,
-          error,
-        );
-        // Don't rethrow - allow other neurons to continue
-      });
+      );
 
       neuronPromisesMap.set(neuronUUID, nextPromise);
     }

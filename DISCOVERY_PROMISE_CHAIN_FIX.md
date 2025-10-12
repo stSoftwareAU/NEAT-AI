@@ -39,11 +39,11 @@ Created `safeFileWrite()` method with timeout and error handling:
 ```typescript
 private safeFileWrite(
   fileName: string,
-  data: string | Uint8Array,
+  data: string,
   options?: Deno.WriteFileOptions,
   timeoutMS = 30000, // 30 seconds per write
 ): Promise<void> {
-  const writePromise = Deno.writeTextFile(fileName, data as string, options);
+  const writePromise = Deno.writeTextFile(fileName, data, options);
 
   let timeoutId: number;
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -73,24 +73,19 @@ private safeFileWrite(
 - Logs errors without breaking the chain
 - Prevents single failed write from blocking everything
 
-### Layer 2: Promise Chain Error Handlers
+### Layer 2: Promise Chain Integration
 
-Updated all promise chains to use `safeFileWrite()` and add `.catch()` handlers:
+Updated all promise chains to use `safeFileWrite()`:
 
 ```typescript
 const nextPromise = previousPromise.then(() =>
   this.safeFileWrite(fileName, dataCSV, { append: true, create: false })
-).catch((error) => {
-  console.error(
-    `[DiscoverStructure] Promise chain failed for neuron ${neuronUUID}:`,
-    error,
-  );
-  // Don't rethrow - allow other neurons to continue
-});
+);
 ```
 
 **Result:** Each neuron's file write chain is independent. One failure doesn't
-break others.
+break others because `safeFileWrite()` handles all errors internally without
+rejecting the promise.
 
 ### Layer 3: Promise.all() Timeout Wrapper
 
