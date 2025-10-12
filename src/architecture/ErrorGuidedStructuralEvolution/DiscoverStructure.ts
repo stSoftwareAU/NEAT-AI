@@ -101,11 +101,11 @@ export class DiscoverStructure {
    */
   private safeFileWrite(
     fileName: string,
-    data: string | Uint8Array,
+    data: string,
     options?: Deno.WriteFileOptions,
     timeoutMS = 30000,
   ): Promise<void> {
-    const writePromise = Deno.writeTextFile(fileName, data as string, options);
+    const writePromise = Deno.writeTextFile(fileName, data, options);
 
     let timeoutId: number;
     const timeoutPromise = new Promise<never>((_, reject) => {
