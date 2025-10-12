@@ -29,15 +29,15 @@ export class SubConnection implements RadioactiveInterface {
           // Pre-check: can we safely remove this connection?
           const fromNeuron = this.creature.neurons[conn.from];
           const toNeuron = this.creature.neurons[conn.to];
-          
+
           // For FROM neuron: if it's hidden, it needs either multiple outward connections or will be removed
           const fromSafe = fromNeuron.type !== "hidden" ||
             this.creature.outwardConnections(conn.from).length > 1;
-          
+
           // For TO neuron: if it's hidden, it needs multiple inward connections or will convert to constant
           const toSafe = toNeuron.type !== "hidden" ||
             this.creature.inwardConnections(conn.to).length > 1;
-          
+
           if (fromSafe && toSafe) {
             possible.push(conn);
           }
