@@ -24,7 +24,9 @@ export class WorkerProcessor {
     filePath: string,
   ): Promise<CostInterface> {
     try {
-      // Dynamic import of the custom cost function file
+      // Dynamic import of user-provided custom cost function file.
+      // JSR Warning: This dynamic import is intentional and loads external user files at runtime.
+      // The import path cannot be analyzed at publish time as it's provided by the user.
       const module = await import(filePath);
 
       // Try to get the default export first, then look for named exports
