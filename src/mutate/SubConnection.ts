@@ -26,21 +26,10 @@ export class SubConnection implements RadioactiveInterface {
           this.creature.inFocus(conn.to, focusList) ||
           this.creature.inFocus(conn.from, focusList)
         ) {
-          // Pre-check: can we safely remove this connection?
-          const fromNeuron = this.creature.neurons[conn.from];
-          const toNeuron = this.creature.neurons[conn.to];
-
-          // For FROM neuron: if it's hidden, it needs either multiple outward connections or will be removed
-          const fromSafe = fromNeuron.type !== "hidden" ||
-            this.creature.outwardConnections(conn.from).length > 1;
-
-          // For TO neuron: if it's hidden, it needs multiple inward connections or will convert to constant
-          const toSafe = toNeuron.type !== "hidden" ||
-            this.creature.inwardConnections(conn.to).length > 1;
-
-          if (fromSafe && toSafe) {
-            possible.push(conn);
-          }
+          // Post-removal logic handles neurons left with 0 connections:
+          // - Hidden neurons with 0 inward connections become constants
+          // - Hidden neurons with 0 outward connections are removed
+          possible.push(conn);
         }
       }
     }
