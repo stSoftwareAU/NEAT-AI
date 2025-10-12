@@ -90,6 +90,52 @@ export class DiscoverStructure {
   }
 
   /**
+   * Safely writes to a file with timeout and error handling to prevent promise chain deadlocks.
+   * This wrapper ensures that file write operations never hang indefinitely.
+   *
+   * @param fileName - Path to the file to write
+   * @param data - Data to write to the file
+   * @param options - Deno.WriteFileOptions for the write operation
+   * @param timeoutMS - Timeout in milliseconds (default: 30000ms / 30 seconds)
+   * @returns Promise that resolves when write completes or rejects on timeout/error
+   */
+  private safeFileWrite(
+    fileName: string,
+    data: string,
+    options?: Deno.WriteFileOptions,
+    timeoutMS = 30000,
+  ): Promise<void> {
+    const writePromise = Deno.writeTextFile(fileName, data, options);
+
+    let timeoutId: number;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(
+          new Error(
+            `File write timeout: ${fileName} took longer than ${timeoutMS}ms`,
+          ),
+        );
+      }, timeoutMS);
+    });
+
+    return Promise.race([writePromise, timeoutPromise]).then(
+      (result) => {
+        clearTimeout(timeoutId);
+        return result;
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        console.error(
+          `[DiscoverStructure] File write failed for ${fileName}:`,
+          error,
+        );
+        // Don't rethrow - allow other file writes to continue
+        // This prevents a single failed write from breaking the entire promise chain
+      },
+    );
+  }
+
+  /**
    * Initializes the discovery process by preparing temporary storage for neuron data.
    */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
@@ -102,7 +148,7 @@ export class DiscoverStructure {
         : "activation\n";
       const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
 
-      const writePromise = Deno.writeTextFile(filePath, headCSV, {
+      const writePromise = this.safeFileWrite(filePath, headCSV, {
         append: false,
         createNew: true,
       });
@@ -162,7 +208,7 @@ export class DiscoverStructure {
         const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
 
         const nextPromise = previousPromise.then(() =>
-          Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
+          this.safeFileWrite(fileName, dataCSV, { append: true, create: false })
         );
 
         neuronPromisesMap.set(neuron.uuid, nextPromise);
@@ -209,7 +255,7 @@ export class DiscoverStructure {
       const previousPromise = neuronPromisesMap.get(neuronUUID)!;
 
       const nextPromise = previousPromise.then(() =>
-        Deno.writeTextFile(fileName, dataCSV, { append: true, create: false })
+        this.safeFileWrite(fileName, dataCSV, { append: true, create: false })
       );
 
       neuronPromisesMap.set(neuronUUID, nextPromise);
