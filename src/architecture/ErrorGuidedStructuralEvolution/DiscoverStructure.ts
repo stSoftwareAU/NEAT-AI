@@ -645,8 +645,16 @@ export class DiscoverStructure {
     }
 
     // Use while loop with max iterations to prevent infinite loops
-    const maxIterations = count * 10; // Safety factor
+    // With skewed distributions, we may repeatedly select the same neuron
+    // Track stalls and switch to fallback if we're not making progress
+    // Base max iterations on the smaller of count or neuronErrors.length
+    const maxIterations = Math.min(count, neuronErrors.length) * 100;
     let iterations = 0;
+    let stallCount = 0;
+    let lastSize = 0;
+
+    // Stall threshold: be aggressive when we have few neurons
+    const stallThreshold = Math.min(neuronErrors.length * 3, count * 5);
 
     while (selectedUUIDs.size < count && iterations < maxIterations) {
       iterations++;
@@ -660,6 +668,24 @@ export class DiscoverStructure {
           break;
         }
       }
+
+      // Detect if we're stalling (not selecting new neurons)
+      if (selectedUUIDs.size === lastSize) {
+        stallCount++;
+        // If we've stalled for too long, switch to hybrid approach
+        if (stallCount > stallThreshold) {
+          // Fill remaining slots with random selection from unselected neurons
+          const unselected = neuronErrors
+            .filter((n) => !selectedUUIDs.has(n.uuid))
+            .sort(() => Math.random() - 0.5);
+          const needed = count - selectedUUIDs.size;
+          unselected.slice(0, needed).forEach((n) => selectedUUIDs.add(n.uuid));
+          break;
+        }
+      } else {
+        stallCount = 0;
+        lastSize = selectedUUIDs.size;
+      }
     }
 
     if (iterations >= maxIterations) {
@@ -667,7 +693,7 @@ export class DiscoverStructure {
         `❌ ERROR: Selection reached max iterations (${maxIterations}), only selected ${selectedUUIDs.size}/${count} neurons`,
       );
       console.error(
-        `   This indicates a bug in the weighted selection algorithm or corrupt error data`,
+        `   This should not happen with the hybrid approach. Please report this.`,
       );
       console.error(
         `   totalErrorSum: ${totalErrorSum}, neuronErrors.length: ${neuronErrors.length}`,
