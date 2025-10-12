@@ -90,53 +90,8 @@ export class DiscoverStructure {
   }
 
   /**
-   * Safely writes to a file with timeout and error handling to prevent promise chain deadlocks.
-   * This wrapper ensures that file write operations never hang indefinitely.
-   *
-   * @param fileName - Path to the file to write
-   * @param data - Data to write to the file
-   * @param options - Deno.WriteFileOptions for the write operation
-   * @param timeoutMS - Timeout in milliseconds (default: 30000ms / 30 seconds)
-   * @returns Promise that resolves when write completes or rejects on timeout/error
-   */
-  private safeFileWrite(
-    fileName: string,
-    data: string,
-    options?: Deno.WriteFileOptions,
-    timeoutMS = 30000,
-  ): Promise<void> {
-    const writePromise = Deno.writeTextFile(fileName, data, options);
-
-    let timeoutId: number;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(
-          new Error(
-            `File write timeout: ${fileName} took longer than ${timeoutMS}ms`,
-          ),
-        );
-      }, timeoutMS);
-    });
-
-    return Promise.race([writePromise, timeoutPromise]).then(
-      (result) => {
-        clearTimeout(timeoutId);
-        return result;
-      },
-      (error) => {
-        clearTimeout(timeoutId);
-        console.error(
-          `[DiscoverStructure] File write failed for ${fileName}:`,
-          error,
-        );
-        // Don't rethrow - allow other file writes to continue
-        // This prevents a single failed write from breaking the entire promise chain
-      },
-    );
-  }
-
-  /**
    * Initializes the discovery process by preparing temporary storage for neuron data.
+   * Uses synchronous writes for simple header creation.
    */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
@@ -148,12 +103,17 @@ export class DiscoverStructure {
         : "activation\n";
       const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
 
-      const writePromise = this.safeFileWrite(filePath, headCSV, {
-        append: false,
-        createNew: true,
-      });
+      try {
+        Deno.writeTextFileSync(filePath, headCSV);
+      } catch (error) {
+        console.error(
+          `[DiscoverStructure] Failed to initialize file ${filePath}:`,
+          error,
+        );
+      }
 
-      neuronPromisesMap.set(neuron.uuid, writePromise);
+      // Create a resolved promise as placeholder for the promise chain
+      neuronPromisesMap.set(neuron.uuid, Promise.resolve());
     });
   }
 
@@ -184,6 +144,7 @@ export class DiscoverStructure {
   /**
    * Records neuron activations and errors across the provided training data.
    * Optimized for memory efficiency and performance.
+   * Uses synchronous writes to avoid promise chain buildup.
    */
   public record(
     trainingData: DataRecordInterface[],
@@ -196,6 +157,7 @@ export class DiscoverStructure {
     this.recorded = true;
 
     // Process input neurons first (simpler, no activation needed)
+    // Use synchronous writes to avoid overwhelming the promise chain
     this.creature.neurons.forEach((neuron) => {
       if (neuron.type === "input") {
         // Build CSV string directly without intermediate array
@@ -207,9 +169,17 @@ export class DiscoverStructure {
         const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
         const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
 
-        const nextPromise = previousPromise.then(() =>
-          this.safeFileWrite(fileName, dataCSV, { append: true, create: false })
-        );
+        // Wait for previous write to complete, then write synchronously
+        const nextPromise = previousPromise.then(() => {
+          try {
+            Deno.writeTextFileSync(fileName, dataCSV, { append: true });
+          } catch (error) {
+            console.error(
+              `[DiscoverStructure] Sync file write failed for ${fileName}:`,
+              error,
+            );
+          }
+        });
 
         neuronPromisesMap.set(neuron.uuid, nextPromise);
       }
@@ -248,15 +218,23 @@ export class DiscoverStructure {
       });
     }
 
-    // Write CSV data for each neuron
+    // Write CSV data for each neuron using synchronous writes
     for (const [neuronUUID, csvLines] of csvBuilders.entries()) {
       const dataCSV = csvLines.join("");
       const fileName = `${this.tempDir}/${neuronUUID}.csv`;
       const previousPromise = neuronPromisesMap.get(neuronUUID)!;
 
-      const nextPromise = previousPromise.then(() =>
-        this.safeFileWrite(fileName, dataCSV, { append: true, create: false })
-      );
+      // Wait for previous write to complete, then write synchronously
+      const nextPromise = previousPromise.then(() => {
+        try {
+          Deno.writeTextFileSync(fileName, dataCSV, { append: true });
+        } catch (error) {
+          console.error(
+            `[DiscoverStructure] Sync file write failed for ${fileName}:`,
+            error,
+          );
+        }
+      });
 
       neuronPromisesMap.set(neuronUUID, nextPromise);
     }
