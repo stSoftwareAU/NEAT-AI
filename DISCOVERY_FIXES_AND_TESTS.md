@@ -2,14 +2,19 @@
 
 ## Summary
 
-Fixed critical bugs in the discovery process that caused 24+ hour hangs on Mac Air (and likely hidden failures on other machines killed by 3-hour timeouts). All fixes are covered by comprehensive TDD tests for Rust migration.
+Fixed critical bugs in the discovery process that caused 24+ hour hangs on Mac
+Air (and likely hidden failures on other machines killed by 3-hour timeouts).
+All fixes are covered by comprehensive TDD tests for Rust migration.
 
 ## Bugs Fixed
 
 ### 1. File Descriptor Exhaustion (Primary Bug)
-**Problem**: With 1967 neurons, `listViableNeurons()` attempted to open 1967+ CSV files simultaneously, exhausting file descriptors on Mac Air.
 
-**Fix**: Implemented batched processing (50 files at a time) with timeout checks between batches.
+**Problem**: With 1967 neurons, `listViableNeurons()` attempted to open 1967+
+CSV files simultaneously, exhausting file descriptors on Mac Air.
+
+**Fix**: Implemented batched processing (50 files at a time) with timeout checks
+between batches.
 
 ```typescript
 // Before: All neurons processed concurrently
@@ -28,16 +33,21 @@ for (let i = 0; i < neurons.length; i += BATCH_SIZE) {
 ```
 
 **Test Coverage**:
+
 - `Discovery handles large number of neurons (1967+) without file descriptor exhaustion`
 - `Discovery batching processes neurons in chunks`
 
 ### 2. Infinite Loop in Weighted Selection
-**Problem**: `selectNeuronsWeightedByError()` used a `for` loop that could run forever if:
-- `totalErrorSum` was NaN/Infinity  
+
+**Problem**: `selectNeuronsWeightedByError()` used a `for` loop that could run
+forever if:
+
+- `totalErrorSum` was NaN/Infinity
 - Roulette wheel selection never hit a valid neuron
 - Inner loop's `break` statement never executed
 
-**Fix**: Changed to `while` loop with maximum iteration limit and fallback to random selection.
+**Fix**: Changed to `while` loop with maximum iteration limit and fallback to
+random selection.
 
 ```typescript
 // Before: Infinite loop possible
@@ -62,13 +72,17 @@ if (iterations >= maxIterations) {
 ```
 
 **Test Coverage**:
+
 - `Discovery weighted selection completes within max iterations (prevents infinite loops)`
 - `Discovery handles all-zero error case without infinite loop`
 
 ### 3. Invalid Data Handling (Silent Failures)
-**Problem**: NaN/Infinity values in error calculations were silently filtered out, hiding bugs in error calculation or data corruption.
 
-**Fix**: Added comprehensive warning system that loudly reports data quality issues while still gracefully handling them.
+**Problem**: NaN/Infinity values in error calculations were silently filtered
+out, hiding bugs in error calculation or data corruption.
+
+**Fix**: Added comprehensive warning system that loudly reports data quality
+issues while still gracefully handling them.
 
 ```typescript
 // Now: Loud warnings instead of silent filtering
@@ -80,18 +94,21 @@ if (!Number.isFinite(e)) {
 // Then warn about it
 if (invalidErrorCount > 0) {
   console.warn(
-    `⚠️  WARNING: Neuron ${neuron.uuid} has ${invalidErrorCount} invalid error values...`
+    `⚠️  WARNING: Neuron ${neuron.uuid} has ${invalidErrorCount} invalid error values...`,
   );
 }
 ```
 
 **Test Coverage**:
+
 - `Discovery detects and warns about NaN in error values`
 - `Discovery detects invalid totalErrorSum (NaN/Infinity)`
 - `Discovery validates all neurons have finite error values`
 
 ### 4. Missing Timeout Checks
-**Problem**: Analysis phases could run indefinitely without checking timeout, even if timeout was reached.
+
+**Problem**: Analysis phases could run indefinitely without checking timeout,
+even if timeout was reached.
 
 **Fix**: Added timeout checks at the start of every major analysis function.
 
@@ -106,11 +123,15 @@ public async analyzeSelectedNeurons(...) {
 ```
 
 **Test Coverage**:
+
 - `Discovery handles timeout during listViableNeurons gracefully`
 - `Discovery analyze phases respect timeout`
 
 ### 5. Blocking Cleanup
-**Problem**: Cleanup in `finally` block blocked response delivery. Slow filesystem operations (recursive directory deletion) delayed worker response by ~7 seconds.
+
+**Problem**: Cleanup in `finally` block blocked response delivery. Slow
+filesystem operations (recursive directory deletion) delayed worker response by
+~7 seconds.
 
 **Fix**: Moved cleanup to background execution after returning results.
 
@@ -134,6 +155,7 @@ return discoverResult; // ← Returns immediately
 ### New Tests Created
 
 **DiscoveryRobustness.ts** (6 tests)
+
 1. ✅ Handles large number of neurons without file descriptor exhaustion
 2. ✅ Weighted selection completes within max iterations
 3. ✅ Handles timeout during listViableNeurons gracefully
@@ -142,15 +164,18 @@ return discoverResult; // ← Returns immediately
 6. ✅ Batching processes neurons in chunks
 
 **InvalidDataDetection.ts** (4 tests)
+
 1. ✅ Detects and warns about NaN in error values
 2. ✅ Detects invalid totalErrorSum (NaN/Infinity)
-3. ✅ Validates all neurons have finite error values  
+3. ✅ Validates all neurons have finite error values
 4. ✅ Selection falls back gracefully on invalid totalErrorSum
 
 **Existing Tests** (7 tests)
+
 - All existing discovery tests still pass (no regressions)
 
 ### Test Results
+
 ```
 ✅ 17/17 tests passing
 - 10 new regression tests
@@ -159,14 +184,18 @@ return discoverResult; // ← Returns immediately
 
 ## Why These Bugs Were Hidden
 
-1. **15 Linux machines**: 3-hour automated timeout killed hung processes before issue was visible
+1. **15 Linux machines**: 3-hour automated timeout killed hung processes before
+   issue was visible
 2. **Mac Air**: Ran manually without timeout, exposing full 24+ hour hang
-3. **Timing**: Mac Air's APFS filesystem made file operations slower, hitting edge cases
-4. **Data size**: Recent training data size/shape changes increased neurons from ~100 to 1967
+3. **Timing**: Mac Air's APFS filesystem made file operations slower, hitting
+   edge cases
+4. **Data size**: Recent training data size/shape changes increased neurons from
+   ~100 to 1967
 
 ## Impact for Rust Migration
 
 These comprehensive tests ensure:
+
 - ✅ Behavioral equivalence during rewrite can be verified
 - ✅ Edge cases are documented and tested
 - ✅ Performance characteristics are validated
@@ -187,6 +216,7 @@ deno test test/ErrorGuidedStructuralEvolution/InvalidDataDetection.ts --allow-re
 ## Files Modified
 
 ### Source Code
+
 - `src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts`
   - Added batched processing in `listViableNeurons()`
   - Added max iteration limits in `selectNeuronsWeightedByError()`
@@ -202,12 +232,14 @@ deno test test/ErrorGuidedStructuralEvolution/InvalidDataDetection.ts --allow-re
   - Improved timeout error messages
 
 ### Tests
+
 - `test/ErrorGuidedStructuralEvolution/DiscoveryRobustness.ts` (NEW)
 - `test/ErrorGuidedStructuralEvolution/InvalidDataDetection.ts` (NEW)
 
 ## Monitoring
 
 Watch for these warnings in production:
+
 ```
 ⚠️  WARNING: Neuron X has N invalid error values (NaN/Infinity)
 ❌ DISCOVERY DATA QUALITY ISSUE: Found N invalid error values across M neurons
@@ -216,8 +248,8 @@ Watch for these warnings in production:
 ```
 
 If you see any of these, investigate:
+
 1. `creature.record()` - Error calculation during recording
-2. `creature.activate()` - Activation calculations producing NaN  
+2. `creature.activate()` - Activation calculations producing NaN
 3. Data parsing - CSV writing/reading corruption
 4. Numeric overflow - Very large weight/bias values
-
