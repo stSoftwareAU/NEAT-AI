@@ -18,17 +18,8 @@ export class SubBackCon implements RadioactiveInterface {
       if (this.creature.inFocus(to, focusList)) {
         for (let from = 0; from < to; from++) {
           if (this.creature.inFocus(from, focusList)) {
-            const neuronType = this.creature.neurons[from].type;
-            if (
-              (
-                this.creature.outwardConnections(from).length > 1 ||
-                neuronType === "input" ||
-                neuronType === "constant"
-              ) && this.creature.inwardConnections(to).length > 1
-            ) {
-              if (this.creature.getSynapse(from, to) !== null) {
-                available.push([from, to]);
-              }
+            if (this.creature.getSynapse(from, to) !== null) {
+              available.push([from, to]);
             }
           }
         }
@@ -40,7 +31,22 @@ export class SubBackCon implements RadioactiveInterface {
     }
 
     const pair = available[Math.floor(Math.random() * available.length)];
-    this.creature.disconnect(pair[0], pair[1]);
+    const from = pair[0];
+    const to = pair[1];
+
+    // Double-check at removal time to prevent creating invalid creatures
+    const neuronType = this.creature.neurons[from].type;
+    const canRemoveFrom = this.creature.outwardConnections(from).length > 1 ||
+      neuronType === "input" ||
+      neuronType === "constant";
+    const canRemoveTo = this.creature.inwardConnections(to).length > 1;
+
+    if (!canRemoveFrom || !canRemoveTo) {
+      // Can't safely remove this connection
+      return false;
+    }
+
+    this.creature.disconnect(from, to);
 
     delete this.creature.memetic;
 

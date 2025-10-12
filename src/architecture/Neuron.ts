@@ -281,13 +281,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (this.type === "hidden") {
       const fromList = this.creature.outwardConnections(this.index);
       if (fromList.length === 0) {
-        const targetIndx = Math.min(
-          1,
-          Math.floor(
-            Math.random() * (this.creature.nodeCount() - this.index),
-          ),
-        ) +
-          this.index;
+        // Connect to this neuron or any neuron after it (including self-connections for memory/counters)
+        const remainingNeurons = this.creature.nodeCount() - this.index;
+        const offset = Math.floor(Math.random() * remainingNeurons);
+        const targetIndx = this.index + offset;
         this.creature.connect(
           this.index,
           targetIndx,

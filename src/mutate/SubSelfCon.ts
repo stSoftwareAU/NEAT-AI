@@ -34,9 +34,17 @@ export class SubSelfCon implements RadioactiveInterface {
 
     // Select a random node
     const neuron = possible[Math.floor(Math.random() * possible.length)];
-
-    // Connect it to himself
     const indx = neuron.index;
+
+    // Double-check at removal time to prevent creating invalid creatures
+    if (
+      neuron.type === "hidden" &&
+      this.creature.outwardConnections(indx).length <= 1
+    ) {
+      // Can't safely remove this self-connection
+      return false;
+    }
+
     this.creature.disconnect(indx, indx);
 
     delete this.creature.memetic;
