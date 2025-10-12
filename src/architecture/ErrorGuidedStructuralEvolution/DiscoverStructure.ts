@@ -227,6 +227,12 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return undefined;
 
+    // Check timeout before starting analysis
+    if (Date.now() > this.timeoutTS) {
+      console.warn(`Discovery timeout reached in analyzeSelectedNeurons`);
+      return undefined;
+    }
+
     const candidatePromises = focusList.map(async (neuronUUID) => {
       const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
       return this.loadCandidateSynapses(neuronUUID, records);
@@ -451,6 +457,14 @@ export class DiscoverStructure {
     neuronUUID: string,
     records: DiscoverRecord[],
   ): Promise<CandidateSynapse[]> {
+    // Check timeout before starting analysis
+    if (Date.now() > this.timeoutTS) {
+      console.warn(
+        `Discovery timeout reached in loadCandidateSynapses for ${neuronUUID}`,
+      );
+      return [];
+    }
+
     const exportedJSON = this.creature.exportJSON();
     const currentSynapses = new Set<string>(
       exportedJSON.synapses.filter((synapse) => synapse.toUUID === neuronUUID)
@@ -484,36 +498,96 @@ export class DiscoverStructure {
       return [];
     }
 
-    const neuronPromises = this.creature.neurons
-      .filter((neuron) => neuron.type !== "input")
-      .map(async (neuron) => {
+    const neurons = this.creature.neurons.filter((neuron) =>
+      neuron.type !== "input"
+    );
+
+    // Process neurons in batches to avoid overwhelming the file system
+    // with too many concurrent file operations (prevents "too many open files" errors)
+    const BATCH_SIZE = 50;
+    const results: NeuronErrorInfo[] = [];
+    let totalInvalidErrorCount = 0;
+    let neuronsWithInvalidErrors = 0;
+
+    for (let i = 0; i < neurons.length; i += BATCH_SIZE) {
+      const batch = neurons.slice(i, i + BATCH_SIZE);
+
+      // Check timeout before each batch
+      if (Date.now() > this.timeoutTS) {
+        console.warn(
+          `Discovery timeout reached while listing neurons (${i}/${neurons.length} processed)`,
+        );
+        break;
+      }
+
+      const batchPromises = batch.map(async (neuron) => {
         try {
           const records = await this.loadCSV(
             `${this.tempDir}/${neuron.uuid}.csv`,
           );
 
+          let invalidErrorCount = 0;
           const totalError = records.reduce((sum, record) => {
             const errors = record.errors.split("|").map(Number);
-            const recordError = errors.reduce(
-              (eSum, e) => eSum + Math.abs(e),
-              0,
-            );
+            const recordError = errors.reduce((eSum, e) => {
+              if (!Number.isFinite(e)) {
+                invalidErrorCount++;
+                return eSum;
+              }
+              return eSum + Math.abs(e);
+            }, 0);
             return sum + recordError;
           }, 0);
+
+          // Warn if invalid data was detected
+          if (invalidErrorCount > 0) {
+            totalInvalidErrorCount += invalidErrorCount;
+            neuronsWithInvalidErrors++;
+            console.warn(
+              `⚠️  WARNING: Neuron ${neuron.uuid} has ${invalidErrorCount} invalid error values (NaN/Infinity) out of ${
+                records.reduce((count, r) =>
+                  count + r.errors.split("|").length, 0)
+              } total error values. This indicates a bug in error calculation or data corruption.`,
+            );
+          }
 
           // Clear records array to help GC
           records.length = 0;
 
-          return { uuid: neuron.uuid, totalError };
+          // Check if totalError is valid
+          if (!Number.isFinite(totalError)) {
+            console.error(
+              `❌ ERROR: Neuron ${neuron.uuid} has invalid totalError (${totalError}). This should never happen!`,
+            );
+            return { uuid: neuron.uuid, totalError: 0 };
+          }
+
+          return { uuid: neuron.uuid, totalError: totalError };
         } catch (e) {
           console.error(`Error processing neuron ${neuron.uuid}`, e);
           return { uuid: neuron.uuid, totalError: 0 }; // Handle gracefully
         }
       });
 
-    const neuronErrors = await Promise.all(neuronPromises);
+      // deno-lint-ignore no-await-in-loop
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
 
-    return neuronErrors
+      // Clear batch results to help GC
+      batchResults.length = 0;
+    }
+
+    // Report summary of invalid data if any was found
+    if (totalInvalidErrorCount > 0) {
+      console.error(
+        `❌ DISCOVERY DATA QUALITY ISSUE: Found ${totalInvalidErrorCount} invalid error values across ${neuronsWithInvalidErrors} neurons (out of ${neurons.length} total)`,
+      );
+      console.error(
+        `   This suggests a bug in creature.record() or error calculation during discovery recording.`,
+      );
+    }
+
+    return results
       .filter((neuron) => neuron.totalError > 0)
       .sort((a, b) => b.totalError - a.totalError);
   }
@@ -540,7 +614,50 @@ export class DiscoverStructure {
       0,
     );
 
-    for (let i = 0; i < count; i++) {
+    // Guard against NaN, Infinity, or zero total error
+    if (!Number.isFinite(totalErrorSum)) {
+      console.error(
+        `❌ CRITICAL ERROR: totalErrorSum is ${totalErrorSum} (NaN or Infinity). This indicates corrupt error calculations in the discovery process!`,
+      );
+      console.error(
+        `   Neuron error summary: ${
+          neuronErrors.slice(0, 5).map((n) =>
+            `${n.uuid.slice(-8)}: ${n.totalError}`
+          ).join(", ")
+        }...`,
+      );
+      // Fallback to random selection to prevent infinite loops
+      console.warn(
+        `   Falling back to random neuron selection to continue discovery`,
+      );
+      const shuffled = [...neuronErrors].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count).map((n) => n.uuid);
+    }
+
+    if (totalErrorSum <= 0) {
+      console.warn(
+        `⚠️  WARNING: totalErrorSum is ${totalErrorSum} (zero or negative). All neurons have zero error?`,
+      );
+      console.warn(`   Falling back to random neuron selection`);
+      // Fallback to random selection without weighting
+      const shuffled = [...neuronErrors].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count).map((n) => n.uuid);
+    }
+
+    // Use while loop with max iterations to prevent infinite loops
+    // With skewed distributions, we may repeatedly select the same neuron
+    // Track stalls and switch to fallback if we're not making progress
+    // Base max iterations on the smaller of count or neuronErrors.length
+    const maxIterations = Math.min(count, neuronErrors.length) * 100;
+    let iterations = 0;
+    let stallCount = 0;
+    let lastSize = 0;
+
+    // Stall threshold: be aggressive when we have few neurons
+    const stallThreshold = Math.min(neuronErrors.length * 3, count * 5);
+
+    while (selectedUUIDs.size < count && iterations < maxIterations) {
+      iterations++;
       const randValue = Math.random() * totalErrorSum;
       let cumulativeError = 0;
 
@@ -551,6 +668,36 @@ export class DiscoverStructure {
           break;
         }
       }
+
+      // Detect if we're stalling (not selecting new neurons)
+      if (selectedUUIDs.size === lastSize) {
+        stallCount++;
+        // If we've stalled for too long, switch to hybrid approach
+        if (stallCount > stallThreshold) {
+          // Fill remaining slots with random selection from unselected neurons
+          const unselected = neuronErrors
+            .filter((n) => !selectedUUIDs.has(n.uuid))
+            .sort(() => Math.random() - 0.5);
+          const needed = count - selectedUUIDs.size;
+          unselected.slice(0, needed).forEach((n) => selectedUUIDs.add(n.uuid));
+          break;
+        }
+      } else {
+        stallCount = 0;
+        lastSize = selectedUUIDs.size;
+      }
+    }
+
+    if (iterations >= maxIterations) {
+      console.error(
+        `❌ ERROR: Selection reached max iterations (${maxIterations}), only selected ${selectedUUIDs.size}/${count} neurons`,
+      );
+      console.error(
+        `   This should not happen with the hybrid approach. Please report this.`,
+      );
+      console.error(
+        `   totalErrorSum: ${totalErrorSum}, neuronErrors.length: ${neuronErrors.length}`,
+      );
     }
 
     return Array.from(selectedUUIDs);
@@ -702,6 +849,14 @@ export class DiscoverStructure {
     focusList: string[],
   ): Promise<CandidateSquash[] | undefined> {
     if (focusList.length === 0) return undefined;
+
+    // Check timeout before starting analysis
+    if (Date.now() > this.timeoutTS) {
+      console.warn(
+        `Discovery timeout reached in analyzeSelectedNeuronsSquashes`,
+      );
+      return undefined;
+    }
 
     const candidatePromises = focusList.map(async (neuronUUID) => {
       const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
@@ -1067,6 +1222,14 @@ export class DiscoverStructure {
     focusList: string[],
   ): Promise<CandidateSynapse | undefined> {
     if (focusList.length === 0) return undefined;
+
+    // Check timeout before starting analysis
+    if (Date.now() > this.timeoutTS) {
+      console.warn(
+        `Discovery timeout reached in analyzeSelectedNeuronsForRemoval`,
+      );
+      return undefined;
+    }
 
     const promises: Promise<CandidateSynapse>[] = [];
     const exportJSON = this.creature.exportJSON();
