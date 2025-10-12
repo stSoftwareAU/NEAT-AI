@@ -16,6 +16,13 @@ export class SubSelfCon implements RadioactiveInterface {
         const indx = neuron.index;
         const c = this.creature.getSynapse(indx, indx);
         if (c !== null) {
+          // Don't remove self-connection if it's the only outward connection from a hidden neuron
+          if (
+            neuron.type === "hidden" &&
+            this.creature.outwardConnections(indx).length <= 1
+          ) {
+            continue;
+          }
           possible.push(neuron);
         }
       }
