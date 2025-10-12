@@ -224,6 +224,11 @@ class DataRecorder {
     const initializeStartTime = Date.now();
     discoverStructure.initialize(neuronPromisesMap);
     const initializeTime = Date.now() - initializeStartTime;
+    
+    // Declare timing variables outside try block for error diagnostics
+    let fileProcessTime = 0;
+    let recordTime = 0;
+    
     if (options.log) {
       console.log(
         `Discovery ${blue(this.ID)} initialize time ${
@@ -252,14 +257,14 @@ class DataRecorder {
           break;
         }
       }
-      const fileProcessTime = Date.now() - fileProcessStartTime;
+      fileProcessTime = Date.now() - fileProcessStartTime;
 
       currentPhase = "recording";
       const recordStartTime = Date.now();
       if (dataSet.length > 0) {
         discoverStructure.record(dataSet, neuronPromisesMap);
       }
-      const recordTime = Date.now() - recordStartTime;
+      recordTime = Date.now() - recordStartTime;
 
       // Clear large arrays to help GC
       dataSet.length = 0;
