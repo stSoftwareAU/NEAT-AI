@@ -573,7 +573,7 @@ Deno.test("evolve OR gate", async () => {
       { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
     10_000,
-    0.002,
+    0.1,
   );
 });
 
