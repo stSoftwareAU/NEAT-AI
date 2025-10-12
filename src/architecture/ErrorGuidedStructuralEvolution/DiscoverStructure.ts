@@ -92,6 +92,7 @@ export class DiscoverStructure {
   /**
    * Initializes the discovery process by preparing temporary storage for neuron data.
    * Uses synchronous writes for simple header creation.
+   * Throws on failure to ensure data integrity - we must have headers before appending data.
    */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
@@ -103,14 +104,9 @@ export class DiscoverStructure {
         : "activation\n";
       const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
 
-      try {
-        Deno.writeTextFileSync(filePath, headCSV);
-      } catch (error) {
-        console.error(
-          `[DiscoverStructure] Failed to initialize file ${filePath}:`,
-          error,
-        );
-      }
+      // Write header - fail fast if this doesn't work
+      // We MUST create files with headers before record() tries to append
+      Deno.writeTextFileSync(filePath, headCSV);
 
       // Create a resolved promise as placeholder for the promise chain
       neuronPromisesMap.set(neuron.uuid, Promise.resolve());
@@ -172,12 +168,18 @@ export class DiscoverStructure {
         // Wait for previous write to complete, then write synchronously
         const nextPromise = previousPromise.then(() => {
           try {
+            // Verify file exists before appending to prevent creating headerless files
+            const fileInfo = Deno.statSync(fileName);
+            if (!fileInfo.isFile) {
+              throw new Error(`Expected file but found directory: ${fileName}`);
+            }
             Deno.writeTextFileSync(fileName, dataCSV, { append: true });
           } catch (error) {
             console.error(
               `[DiscoverStructure] Sync file write failed for ${fileName}:`,
               error,
             );
+            throw error; // Re-throw to fail the promise chain
           }
         });
 
@@ -227,12 +229,18 @@ export class DiscoverStructure {
       // Wait for previous write to complete, then write synchronously
       const nextPromise = previousPromise.then(() => {
         try {
+          // Verify file exists before appending to prevent creating headerless files
+          const fileInfo = Deno.statSync(fileName);
+          if (!fileInfo.isFile) {
+            throw new Error(`Expected file but found directory: ${fileName}`);
+          }
           Deno.writeTextFileSync(fileName, dataCSV, { append: true });
         } catch (error) {
           console.error(
             `[DiscoverStructure] Sync file write failed for ${fileName}:`,
             error,
           );
+          throw error; // Re-throw to fail the promise chain
         }
       });
 
