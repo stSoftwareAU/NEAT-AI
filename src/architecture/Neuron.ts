@@ -283,22 +283,47 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (fromList.length === 0) {
         // Connect to this neuron or any neuron after it (including self-connections for memory/counters)
         const remainingNeurons = this.creature.nodeCount() - this.index;
-        const offset = Math.floor(Math.random() * remainingNeurons);
-        const targetIndx = this.index + offset;
-        this.creature.connect(
-          this.index,
-          targetIndx,
-          Synapse.randomWeight(),
-        );
+        
+        // Try all possible targets in random order
+        const possibleTargets: number[] = [];
+        for (let offset = 0; offset < remainingNeurons; offset++) {
+          const targetIndx = this.index + offset;
+          // Check if connection doesn't already exist
+          if (!this.creature.getSynapse(this.index, targetIndx)) {
+            possibleTargets.push(targetIndx);
+          }
+        }
+        
+        if (possibleTargets.length > 0) {
+          // Pick a random valid target
+          const targetIndx = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
+          this.creature.connect(
+            this.index,
+            targetIndx,
+            Synapse.randomWeight(),
+          );
+        }
       }
       const toList = this.creature.inwardConnections(this.index);
       if (toList.length === 0) {
-        const fromIndx = Math.floor(Math.random() * this.index);
-        this.creature.connect(
-          fromIndx,
-          this.index,
-          Synapse.randomWeight(),
-        );
+        // Try all possible sources in random order
+        const possibleSources: number[] = [];
+        for (let fromIndx = 0; fromIndx < this.index; fromIndx++) {
+          // Check if connection doesn't already exist
+          if (!this.creature.getSynapse(fromIndx, this.index)) {
+            possibleSources.push(fromIndx);
+          }
+        }
+        
+        if (possibleSources.length > 0) {
+          // Pick a random valid source
+          const fromIndx = possibleSources[Math.floor(Math.random() * possibleSources.length)];
+          this.creature.connect(
+            fromIndx,
+            this.index,
+            Synapse.randomWeight(),
+          );
+        }
       }
     } else if (this.type === "output") {
       const toList = this.creature.inwardConnections(this.index);

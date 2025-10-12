@@ -244,6 +244,25 @@ export class Mutator {
     if (changed) {
       delete creature.uuid;
       creature.state.preparedNeurons = false;
+      
+      // Safety check: ensure no hidden neurons are left without outward connections
+      // This prevents invalid creatures before fix() is called
+      let hasOrphanedHidden = false;
+      for (let i = creature.input; i < creature.neurons.length - creature.output; i++) {
+        const neuron = creature.neurons[i];
+        if (neuron.type === "hidden" && creature.outwardConnections(i).length === 0) {
+          hasOrphanedHidden = true;
+          break;
+        }
+      }
+      
+      if (hasOrphanedHidden) {
+        // The mutation created an invalid state - this should not happen with our checks
+        console.warn(
+          `${method.name} left hidden neuron(s) without outward connections. This should not happen.`,
+        );
+      }
+      
       creature.fix();
     }
     if (creature.DEBUG) {

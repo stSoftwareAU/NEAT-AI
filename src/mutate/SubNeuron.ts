@@ -32,6 +32,26 @@ export class SubNeuron implements RadioactiveInterface {
       );
 
       if (attempts < 12 && !this.creature.inFocus(indx, focusList)) continue;
+      
+      // CRITICAL CHECK: Before removing this neuron, ensure no hidden neurons
+      // depend on it as their only outward connection
+      const incomingConnections = this.creature.inwardConnections(indx);
+      let canRemove = true;
+      
+      for (const conn of incomingConnections) {
+        const sourceNeuron = this.creature.neurons[conn.from];
+        // If the source is a hidden neuron and this is its only outward connection
+        if (sourceNeuron.type === "hidden" && 
+            this.creature.outwardConnections(conn.from).length === 1) {
+          canRemove = false;
+          break;
+        }
+      }
+      
+      if (!canRemove) {
+        continue; // Try another neuron
+      }
+      
       removeHiddenNeuron(this.creature, indx);
       changed = true;
       break;
