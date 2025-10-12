@@ -260,22 +260,96 @@ class DataRecorder {
         );
       }
 
-      // Wait for all file writes to complete
-      if (options.log) {
-        console.log(
-          `Discovery ${
-            blue(this.ID)
-          } waiting for ${neuronPromisesMap.size} neuron file write promises to complete...`,
-        );
+      // Track promise completion for diagnostics (silent unless timeout occurs)
+      const promiseTracker = new Map<
+        string,
+        { completed: boolean; startTime: number }
+      >();
+      const trackedPromises = new Map<string, Promise<void>>();
+
+      for (const [neuronUUID, promise] of neuronPromisesMap.entries()) {
+        promiseTracker.set(neuronUUID, {
+          completed: false,
+          startTime: Date.now(),
+        });
+
+        // Wrap each promise to track completion
+        const trackedPromise = promise.then(() => {
+          const tracker = promiseTracker.get(neuronUUID);
+          if (tracker) {
+            tracker.completed = true;
+          }
+        }).catch((_error) => {
+          const tracker = promiseTracker.get(neuronUUID);
+          if (tracker) {
+            tracker.completed = true; // Mark as "done" even if errored
+          }
+          // Don't rethrow - we want to track all promises
+        });
+
+        trackedPromises.set(neuronUUID, trackedPromise);
       }
 
-      // Wait for all file writes to complete
-      await Promise.all([...neuronPromisesMap.values()]);
+      // Wait for all file writes to complete with timeout protection
+      const allWritesPromise = Promise.all([...trackedPromises.values()]);
+      const WRITE_TIMEOUT_MS = 60000; // 60 seconds for all writes
+      let writeTimeoutId: number | undefined;
+      const writeTimeoutPromise = new Promise<void>((_, reject) => {
+        writeTimeoutId = setTimeout(() => {
+          reject(
+            new Error(
+              `File writes timeout: ${neuronPromisesMap.size} promises did not complete within ${WRITE_TIMEOUT_MS}ms`,
+            ),
+          );
+        }, WRITE_TIMEOUT_MS);
+      });
 
-      if (options.log) {
-        console.log(
-          `Discovery ${blue(this.ID)} all file writes completed successfully.`,
+      try {
+        await Promise.race([allWritesPromise, writeTimeoutPromise]);
+        if (writeTimeoutId !== undefined) clearTimeout(writeTimeoutId);
+        // Success - no logging needed (fast path)
+      } catch (error) {
+        if (writeTimeoutId !== undefined) clearTimeout(writeTimeoutId);
+
+        // DIAGNOSTIC: Report which promises never completed
+        const pendingPromises: string[] = [];
+        const now = Date.now();
+        for (const [neuronUUID, tracker] of promiseTracker.entries()) {
+          if (!tracker.completed) {
+            const waitTime = now - tracker.startTime;
+            pendingPromises.push(
+              `${neuronUUID} (waiting ${(waitTime / 1000).toFixed(1)}s)`,
+            );
+          }
+        }
+
+        console.error(
+          `❌ DISCOVERY DEADLOCK DIAGNOSTIC for ${blue(this.ID)}:`,
         );
+        console.error(
+          `   Total promises: ${neuronPromisesMap.size}`,
+        );
+        console.error(
+          `   Completed: ${neuronPromisesMap.size - pendingPromises.length}`,
+        );
+        console.error(
+          `   Still pending: ${pendingPromises.length}`,
+        );
+        if (pendingPromises.length > 0 && pendingPromises.length <= 20) {
+          console.error(`   Pending neuron UUIDs:`);
+          pendingPromises.forEach((p) => console.error(`      - ${p}`));
+        } else if (pendingPromises.length > 20) {
+          console.error(`   Pending neuron UUIDs (first 20):`);
+          pendingPromises.slice(0, 20).forEach((p) =>
+            console.error(`      - ${p}`)
+          );
+        }
+
+        console.warn(
+          `Discovery ${blue(this.ID)} file writes failed or timed out:`,
+          error,
+        );
+        // Continue anyway - we'll work with whatever data we have
       }
 
       // Clear the promises map to help GC
@@ -297,12 +371,6 @@ class DataRecorder {
         candidateSquashes: undefined,
       };
 
-      if (options.log) {
-        console.log(
-          `Discovery ${blue(this.ID)} starting analyze phase...`,
-        );
-      }
-
       const analyzeStartTime = Date.now();
 
       const addHelpfulSynapse = await discoverStructure.analyze(
@@ -323,12 +391,6 @@ class DataRecorder {
         discoverResult.addHelpfulSynapses = addHelpfulSynapse;
       }
 
-      if (options.log) {
-        console.log(
-          `Discovery ${blue(this.ID)} starting harmful synapse analysis...`,
-        );
-      }
-
       const harmfulStartTime = Date.now();
       const removeHarmfulSynapse = await discoverStructure
         .analyzeSynapsesForRemoval(
@@ -344,12 +406,6 @@ class DataRecorder {
       }
       if (removeHarmfulSynapse) {
         discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
-      }
-
-      if (options.log) {
-        console.log(
-          `Discovery ${blue(this.ID)} starting squash analysis...`,
-        );
       }
 
       const squashStartTime = Date.now();
