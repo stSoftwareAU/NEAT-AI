@@ -202,7 +202,7 @@ class DataRecorder {
     const { creature, options } = this;
     const startTime = Date.now();
     let currentPhase = "initialization"; // Track phase for timeout diagnostics
-    
+
     if (options.log) {
       console.info(
         `Discovery ${
@@ -224,11 +224,11 @@ class DataRecorder {
     const initializeStartTime = Date.now();
     discoverStructure.initialize(neuronPromisesMap);
     const initializeTime = Date.now() - initializeStartTime;
-    
+
     // Declare timing variables outside try block for error diagnostics
     let fileProcessTime = 0;
     let recordTime = 0;
-    
+
     if (options.log) {
       console.log(
         `Discovery ${blue(this.ID)} initialize time ${
@@ -252,7 +252,9 @@ class DataRecorder {
         });
         if (this.timeoutTS && Date.now() > this.timeoutTS) {
           console.warn(
-            `⚠️  Discovery ${blue(this.ID)} timeout reached during file processing (${counter.count} records processed)`,
+            `⚠️  Discovery ${
+              blue(this.ID)
+            } timeout reached during file processing (${counter.count} records processed)`,
           );
           break;
         }
@@ -349,7 +351,11 @@ class DataRecorder {
           `❌ DISCOVERY DEADLOCK DIAGNOSTIC for ${blue(this.ID)}:`,
         );
         console.error(`   Error: ${error}`);
-        console.error(`   Promise.all() wait time: ${format(promiseWaitTime, { ignoreZero: true })}`);
+        console.error(
+          `   Promise.all() wait time: ${
+            format(promiseWaitTime, { ignoreZero: true })
+          }`,
+        );
         console.error(
           `   Total promises: ${neuronPromisesMap.size}`,
         );
@@ -502,16 +508,26 @@ class DataRecorder {
       // On error, show diagnostics unconditionally (indicates a bug)
       const totalTime = Date.now() - startTime;
       console.error(
-        `❌ DISCOVERY ERROR for ${blue(this.ID)} after ${format(totalTime, { ignoreZero: true })}:`,
+        `❌ DISCOVERY ERROR for ${blue(this.ID)} after ${
+          format(totalTime, { ignoreZero: true })
+        }:`,
       );
       console.error(`   Error: ${error}`);
       console.error(`   Current phase: ${currentPhase}`);
       console.error(`   Phase timing diagnostics:`);
-      console.error(`     - Initialize: ${format(initializeTime, { ignoreZero: true })}`);
-      console.error(`     - File processing: ${format(fileProcessTime, { ignoreZero: true })}`);
-      console.error(`     - Record: ${format(recordTime, { ignoreZero: true })}`);
+      console.error(
+        `     - Initialize: ${format(initializeTime, { ignoreZero: true })}`,
+      );
+      console.error(
+        `     - File processing: ${
+          format(fileProcessTime, { ignoreZero: true })
+        }`,
+      );
+      console.error(
+        `     - Record: ${format(recordTime, { ignoreZero: true })}`,
+      );
       console.error(`     - Total: ${format(totalTime, { ignoreZero: true })}`);
-      
+
       if (options.log) {
         console.log(
           `Discovery ${blue(this.ID)} error occurred, performing cleanup...`,
