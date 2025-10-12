@@ -283,7 +283,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (fromList.length === 0) {
         // Connect to this neuron or any neuron after it (including self-connections for memory/counters)
         const remainingNeurons = this.creature.nodeCount() - this.index;
-        
+
         // Try all possible targets in random order
         const possibleTargets: number[] = [];
         for (let offset = 0; offset < remainingNeurons; offset++) {
@@ -293,10 +293,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
             possibleTargets.push(targetIndx);
           }
         }
-        
+
         if (possibleTargets.length > 0) {
           // Pick a random valid target
-          const targetIndx = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
+          const targetIndx =
+            possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
           this.creature.connect(
             this.index,
             targetIndx,
@@ -314,10 +315,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
             possibleSources.push(fromIndx);
           }
         }
-        
+
         if (possibleSources.length > 0) {
           // Pick a random valid source
-          const fromIndx = possibleSources[Math.floor(Math.random() * possibleSources.length)];
+          const fromIndx =
+            possibleSources[Math.floor(Math.random() * possibleSources.length)];
           this.creature.connect(
             fromIndx,
             this.index,
