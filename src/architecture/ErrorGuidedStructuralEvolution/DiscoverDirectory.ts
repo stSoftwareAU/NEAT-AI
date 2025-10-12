@@ -269,33 +269,13 @@ class DataRecorder {
         );
       }
 
-      // Add timeout protection to Promise.all() to prevent infinite waiting
-      const allWritesPromise = Promise.all([...neuronPromisesMap.values()]);
-      const writeTimeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => {
-          reject(
-            new Error(
-              `File writes timeout: ${neuronPromisesMap.size} promises did not complete within 60s`,
-            ),
-          );
-        }, 60000); // 60 second timeout for all file writes
-      });
+      // Wait for all file writes to complete
+      await Promise.all([...neuronPromisesMap.values()]);
 
-      try {
-        await Promise.race([allWritesPromise, writeTimeoutPromise]);
-        if (options.log) {
-          console.log(
-            `Discovery ${
-              blue(this.ID)
-            } all file writes completed successfully.`,
-          );
-        }
-      } catch (error) {
-        console.error(
-          `Discovery ${blue(this.ID)} file writes failed or timed out:`,
-          error,
+      if (options.log) {
+        console.log(
+          `Discovery ${blue(this.ID)} all file writes completed successfully.`,
         );
-        // Continue anyway - we'll work with what we have
       }
 
       // Clear the promises map to help GC

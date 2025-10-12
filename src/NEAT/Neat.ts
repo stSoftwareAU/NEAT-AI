@@ -334,8 +334,9 @@ export class Neat {
 
     // Create a timeout promise to prevent indefinite hangs
     const timeoutMS = (timeOutMinutes > 0 ? timeOutMinutes : 60) * 60 * 1000;
+    let discoveryTimeoutId: number;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      discoveryTimeoutId = setTimeout(() => {
         reject(
           new Error(
             `Discovery timeout: No response after ${
@@ -349,6 +350,7 @@ export class Neat {
     const discoveryPromise = w.discover(creature, options);
 
     const p = Promise.race([discoveryPromise, timeoutPromise]).then((r) => {
+      clearTimeout(discoveryTimeoutId);
       assert(r.discover, "No discovery found");
 
       if (this.config.verbose) {
@@ -363,6 +365,7 @@ export class Neat {
 
       this.discoveryInProgress.delete(uuid);
     }).catch((error) => {
+      clearTimeout(discoveryTimeoutId);
       console.error(
         `[Neat] Discovery failed for creature ${
           uuid.substring(Math.max(0, uuid.length - 8))
