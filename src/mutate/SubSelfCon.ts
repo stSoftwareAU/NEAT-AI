@@ -8,7 +8,7 @@ export class SubSelfCon implements RadioactiveInterface {
   }
 
   mutate(focusList?: number[]): boolean {
-    // Check which neurons aren't self connected yet
+    // Check which neurons have safely removable self-connections
     const possible = [];
     for (let i = this.creature.input; i < this.creature.neurons.length; i++) {
       if (this.creature.inFocus(i, focusList)) {
@@ -16,7 +16,7 @@ export class SubSelfCon implements RadioactiveInterface {
         const indx = neuron.index;
         const c = this.creature.getSynapse(indx, indx);
         if (c !== null) {
-          // Don't remove self-connection if it's the only outward connection from a hidden neuron
+          // Only add to possible if it's safe to remove (not the only outward connection)
           if (
             neuron.type === "hidden" &&
             this.creature.outwardConnections(indx).length <= 1
@@ -32,18 +32,9 @@ export class SubSelfCon implements RadioactiveInterface {
       return false;
     }
 
-    // Select a random node
+    // All neurons in possible are safe to disconnect, so just pick one
     const neuron = possible[Math.floor(Math.random() * possible.length)];
     const indx = neuron.index;
-
-    // Double-check at removal time to prevent creating invalid creatures
-    if (
-      neuron.type === "hidden" &&
-      this.creature.outwardConnections(indx).length <= 1
-    ) {
-      // Can't safely remove this self-connection
-      return false;
-    }
 
     this.creature.disconnect(indx, indx);
 

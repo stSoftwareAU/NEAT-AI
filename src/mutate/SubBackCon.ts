@@ -8,7 +8,7 @@ export class SubBackCon implements RadioactiveInterface {
   }
 
   mutate(focusList?: number[]): boolean {
-    // Create an array of all uncreated (back fed) connections
+    // Create an array of all safely removable back connections
     const available = [];
     for (
       let to = this.creature.input;
@@ -19,7 +19,19 @@ export class SubBackCon implements RadioactiveInterface {
         for (let from = 0; from < to; from++) {
           if (this.creature.inFocus(from, focusList)) {
             if (this.creature.getSynapse(from, to) !== null) {
-              available.push([from, to]);
+              // Pre-check safety at collection time to improve mutation effectiveness
+              const neuronType = this.creature.neurons[from].type;
+              const canRemoveFrom =
+                this.creature.outwardConnections(from).length > 1 ||
+                neuronType === "input" ||
+                neuronType === "constant";
+              const canRemoveTo =
+                this.creature.inwardConnections(to).length > 1;
+
+              // Only add to available if safe to remove
+              if (canRemoveFrom && canRemoveTo) {
+                available.push([from, to]);
+              }
             }
           }
         }
@@ -30,23 +42,9 @@ export class SubBackCon implements RadioactiveInterface {
       return false;
     }
 
+    // All connections in available are safe to remove, so just pick one
     const pair = available[Math.floor(Math.random() * available.length)];
-    const from = pair[0];
-    const to = pair[1];
-
-    // Double-check at removal time to prevent creating invalid creatures
-    const neuronType = this.creature.neurons[from].type;
-    const canRemoveFrom = this.creature.outwardConnections(from).length > 1 ||
-      neuronType === "input" ||
-      neuronType === "constant";
-    const canRemoveTo = this.creature.inwardConnections(to).length > 1;
-
-    if (!canRemoveFrom || !canRemoveTo) {
-      // Can't safely remove this connection
-      return false;
-    }
-
-    this.creature.disconnect(from, to);
+    this.creature.disconnect(pair[0], pair[1]);
 
     delete this.creature.memetic;
 
