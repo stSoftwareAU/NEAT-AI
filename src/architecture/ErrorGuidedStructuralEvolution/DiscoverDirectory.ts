@@ -406,20 +406,35 @@ class DataRecorder {
       })();
 
       // Don't await cleanup - let it happen in the background
-      // Catch any errors to prevent unhandled rejections
+      // Catch any errors to prevent unhandled rejections and resource leaks
       cleanupPromise.catch((error) => {
-        console.error(`Discovery ${this.ID} cleanup error:`, error);
+        console.error(
+          `❌ CRITICAL: Discovery ${this.ID} cleanup failed - potential resource leak:`,
+          error,
+        );
       });
 
       return discoverResult;
     } catch (error) {
-      // On error, we still need to cleanup
+      // On error, we still need to cleanup synchronously
+      // Wrap in try-catch to prevent cleanup errors from masking the original error
       if (options.log) {
         console.log(
           `Discovery ${blue(this.ID)} error occurred, performing cleanup...`,
         );
       }
-      await discoverStructure.cleanUp();
+      try {
+        await discoverStructure.cleanUp();
+        if (options.log) {
+          console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
+        }
+      } catch (cleanupError) {
+        console.error(
+          `❌ WARNING: Discovery ${this.ID} cleanup failed after error:`,
+          cleanupError,
+        );
+        // Don't throw - preserve the original error
+      }
       throw error;
     }
   }
