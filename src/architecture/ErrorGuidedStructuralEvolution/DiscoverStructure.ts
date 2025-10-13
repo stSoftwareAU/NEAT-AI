@@ -102,6 +102,19 @@ export class DiscoverStructure {
   }
 
   /**
+   * Extends the timeout to allow analysis phase to complete.
+   * Call this after recording phase completes to ensure analysis gets adequate time.
+   * @param analysisTimeSeconds - Number of seconds to allocate for analysis phase
+   */
+  public extendTimeoutForAnalysis(analysisTimeSeconds: number): void {
+    assert(
+      analysisTimeSeconds > 0,
+      `Analysis time must be greater than 0, was: ${analysisTimeSeconds}`,
+    );
+    this.timeoutTS = Date.now() + analysisTimeSeconds * 1000;
+  }
+
+  /**
    * Initializes the discovery process by preparing temporary storage for neuron data.
    * Uses synchronous writes for simple header creation.
    * Throws on failure to ensure data integrity - we must have headers before appending data.

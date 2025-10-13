@@ -417,6 +417,21 @@ class DataRecorder {
         );
       }
 
+      // Extend timeout for analysis phase - give it dedicated time regardless of recording duration
+      // This ensures analysis isn't starved if recording takes a long time
+      const analysisTimeoutMinutes = options.discoveryAnalysisTimeoutMinutes ||
+        3; // Default 3 minutes for analysis
+      const analysisTimeoutSeconds = analysisTimeoutMinutes * 60;
+      discoverStructure.extendTimeoutForAnalysis(analysisTimeoutSeconds);
+
+      if (options.log) {
+        console.log(
+          `Discovery ${blue(this.ID)} analysis timeout extended by ${
+            yellow(analysisTimeoutMinutes.toString())
+          }m`,
+        );
+      }
+
       const discoverResult: DiscoverResult = {
         ID: this.ID,
         addHelpfulSynapses: undefined,
