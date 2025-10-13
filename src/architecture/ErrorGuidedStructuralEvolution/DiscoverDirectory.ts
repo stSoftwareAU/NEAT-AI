@@ -109,6 +109,7 @@ class DataRecorder {
       counter: { count: number };
       dataSet: DataRecordInterface[];
       neuronPromisesMap: Map<string, Promise<void>>;
+      selectedIndices: number[]; // Track which record indices we sampled
     },
   ) {
     if (this.options.log) {
@@ -157,6 +158,9 @@ class DataRecorder {
 
         params.counter.count++;
 
+        // Track which record index we sampled for this file
+        params.selectedIndices.push(recordIndex);
+
         // Reuse Float32Array views instead of creating new arrays
         const data: DataRecordInterface = {
           input: new Float32Array(
@@ -172,9 +176,12 @@ class DataRecorder {
           const recorded = discoverStructure.record(
             params.dataSet.splice(0),
             params.neuronPromisesMap,
+            filePath,
+            params.selectedIndices.splice(0), // Pass and clear indices
           );
           if (!recorded) break;
           assert(params.dataSet.length === 0, "Data set not empty");
+          assert(params.selectedIndices.length === 0, "Indices not empty");
 
           // Give GC a chance to run periodically
           // deno-lint-ignore no-await-in-loop
@@ -240,15 +247,19 @@ class DataRecorder {
       const counter = { count: 0 };
 
       const dataSet: DataRecordInterface[] = [];
+      const selectedIndices: number[] = [];
 
       currentPhase = "file_processing";
       const fileProcessStartTime = Date.now();
+      let lastFilePath = "";
       for (const filePath of binaryFiles) {
+        lastFilePath = filePath;
         // deno-lint-ignore no-await-in-loop
         await this.processFile(filePath, discoverStructure, {
           counter,
           dataSet,
           neuronPromisesMap: neuronPromisesMap,
+          selectedIndices,
         });
         if (this.timeoutTS && Date.now() > this.timeoutTS) {
           console.warn(
@@ -264,7 +275,12 @@ class DataRecorder {
       currentPhase = "recording";
       const recordStartTime = Date.now();
       if (dataSet.length > 0) {
-        discoverStructure.record(dataSet, neuronPromisesMap);
+        discoverStructure.record(
+          dataSet,
+          neuronPromisesMap,
+          lastFilePath,
+          selectedIndices,
+        );
       }
       recordTime = Date.now() - recordStartTime;
 

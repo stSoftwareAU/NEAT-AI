@@ -28,6 +28,14 @@ export interface DiscoverRecord {
 }
 
 /**
+ * Tracks which binary file records were selected during discovery.
+ * Maps binary file paths to arrays of record indices.
+ */
+export interface BinaryRecordIndices {
+  [binaryFile: string]: number[];
+}
+
+/**
  * Represents a potential new synapse and the associated metrics calculated during discovery.
  */
 export interface CandidateSynapse {
@@ -69,12 +77,16 @@ export class DiscoverStructure {
   private initialized = false;
   private recorded = false;
 
+  private selectedIndices: BinaryRecordIndices = {};
+  private indicesFilePath: string;
+
   constructor(creature: Creature, timeoutSeconds: number) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
     this.tempDir = `.discovery/${creature.uuid}_${
       Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     }`;
+    this.indicesFilePath = `${this.tempDir}/selected_indices.json`;
     this.textDecoder = new TextDecoder();
     assert(
       timeoutSeconds > 0,
@@ -93,25 +105,34 @@ export class DiscoverStructure {
    * Initializes the discovery process by preparing temporary storage for neuron data.
    * Uses synchronous writes for simple header creation.
    * Throws on failure to ensure data integrity - we must have headers before appending data.
+   * For input neurons, we skip CSV creation and will read directly from binary files.
    */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
     this.creature.neurons.forEach((neuron) => {
-      const headCSV = neuron.type !== "input"
-        ? "value,activation,errors\n"
-        : "activation\n";
-      const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
+      if (neuron.type === "input") {
+        // For input neurons, we don't create CSV files
+        // Data will be read directly from binary files using selectedIndices
+        neuronPromisesMap.set(neuron.uuid, Promise.resolve());
+      } else {
+        // For non-input neurons, create CSV files as before
+        const headCSV = "value,activation,errors\n";
+        const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
 
-      // Write header - fail fast if this doesn't work
-      // We MUST create files with headers before record() tries to append
-      // createNew: true ensures we don't overwrite existing files (safety check)
-      Deno.writeTextFileSync(filePath, headCSV, { createNew: true });
+        // Write header - fail fast if this doesn't work
+        // We MUST create files with headers before record() tries to append
+        // createNew: true ensures we don't overwrite existing files (safety check)
+        Deno.writeTextFileSync(filePath, headCSV, { createNew: true });
 
-      // Create a resolved promise as placeholder for the promise chain
-      neuronPromisesMap.set(neuron.uuid, Promise.resolve());
+        // Create a resolved promise as placeholder for the promise chain
+        neuronPromisesMap.set(neuron.uuid, Promise.resolve());
+      }
     });
+
+    // Initialize the indices file as an empty JSON object
+    Deno.writeTextFileSync(this.indicesFilePath, "{}", { createNew: true });
   }
 
   /**
@@ -123,6 +144,9 @@ export class DiscoverStructure {
     this.recorded = false;
     this.creature.dispose();
     this.discoveries = [];
+
+    // Clear selectedIndices to help GC
+    this.selectedIndices = {};
 
     // Clear references to help GC
     // @ts-ignore - clearing to help GC
@@ -142,10 +166,13 @@ export class DiscoverStructure {
    * Records neuron activations and errors across the provided training data.
    * Optimized for memory efficiency and performance.
    * Uses synchronous writes to avoid promise chain buildup.
+   * For input neurons, records indices instead of writing CSV files.
    */
   public record(
     trainingData: DataRecordInterface[],
     neuronPromisesMap: Map<string, Promise<void>>,
+    binaryFilePath?: string,
+    recordIndices?: number[],
   ): boolean {
     assert(this.initialized, "Not initialized");
     if (Date.now() > this.timeoutTS) {
@@ -153,40 +180,45 @@ export class DiscoverStructure {
     }
     this.recorded = true;
 
-    // Process input neurons first (simpler, no activation needed)
-    // Use synchronous writes to avoid overwhelming the promise chain
-    this.creature.neurons.forEach((neuron) => {
-      if (neuron.type === "input") {
-        // Build CSV string directly without intermediate array
-        let dataCSV = "";
-        for (let i = 0; i < trainingData.length; i++) {
-          dataCSV += `${trainingData[i].input[neuron.index]}\n`;
-        }
-
-        const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
-        const previousPromise = neuronPromisesMap.get(neuron.uuid)!;
-
-        // Wait for previous write to complete, then write synchronously
-        const nextPromise = previousPromise.then(() => {
-          try {
-            // Verify file exists before appending to prevent creating headerless files
-            const fileInfo = Deno.statSync(fileName);
-            if (!fileInfo.isFile) {
-              throw new Error(`Expected file but found directory: ${fileName}`);
-            }
-            Deno.writeTextFileSync(fileName, dataCSV, { append: true });
-          } catch (error) {
-            console.error(
-              `[DiscoverStructure] Sync file write failed for ${fileName}:`,
-              error,
-            );
-            throw error; // Re-throw to fail the promise chain
-          }
-        });
-
-        neuronPromisesMap.set(neuron.uuid, nextPromise);
+    // Track selected indices if provided (from binary file processing)
+    if (binaryFilePath && recordIndices && recordIndices.length > 0) {
+      if (!this.selectedIndices[binaryFilePath]) {
+        this.selectedIndices[binaryFilePath] = [];
       }
-    });
+      this.selectedIndices[binaryFilePath].push(...recordIndices);
+
+      // Write indices to JSON file after accumulating them
+      Deno.writeTextFileSync(
+        this.indicesFilePath,
+        JSON.stringify(this.selectedIndices),
+      );
+    } else {
+      // Backward compatibility: If no binary file info provided (e.g., in unit tests),
+      // write input neuron data to CSV files as before
+      this.creature.neurons.forEach((neuron) => {
+        if (neuron.type === "input") {
+          // Build CSV string directly without intermediate array
+          let dataCSV = "";
+          for (let i = 0; i < trainingData.length; i++) {
+            dataCSV += `${trainingData[i].input[neuron.index]}\n`;
+          }
+
+          const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
+
+          // Write to CSV for backward compatibility
+          try {
+            // Check if file exists (it won't if we're in binary mode)
+            const fileInfo = Deno.statSync(fileName);
+            if (fileInfo.isFile) {
+              Deno.writeTextFileSync(fileName, dataCSV, { append: true });
+            }
+          } catch {
+            // File doesn't exist - create it with header and data
+            Deno.writeTextFileSync(fileName, "activation\n" + dataCSV);
+          }
+        }
+      });
+    }
 
     // Process non-input neurons with streaming approach
     const nonInputNeurons = this.creature.neurons.filter((neuron) =>
@@ -425,7 +457,108 @@ export class DiscoverStructure {
     }
   }
 
+  /**
+   * Loads input neuron activation data directly from binary files using stored indices.
+   * This avoids writing and reading CSV files for input neurons.
+   */
+  private async loadInputNeuronFromBinary(
+    neuronIndex: number,
+  ): Promise<DiscoverRecord[]> {
+    // Read the selected indices from JSON file
+    const indicesContent = await Deno.readTextFile(this.indicesFilePath);
+    const indices: BinaryRecordIndices = JSON.parse(indicesContent);
+
+    const records: DiscoverRecord[] = [];
+    const BYTES_PER_RECORD = (this.creature.input + this.creature.output) * 4;
+
+    // Process each binary file that has selected indices
+    // Collect file reading promises to avoid await in loop
+    const fileReadPromises = Object.entries(indices).map(
+      async ([binaryFile, recordIndices]) => {
+        const file = await this.openFileWithRetry(binaryFile);
+        const fileRecords: DiscoverRecord[] = [];
+
+        try {
+          const recordBuffer = new Uint8Array(BYTES_PER_RECORD);
+          const recordArray = new Float32Array(recordBuffer.buffer);
+
+          for (const recordIndex of recordIndices) {
+            // Seek to the record position
+            const targetPosition = recordIndex * BYTES_PER_RECORD;
+            file.seekSync(targetPosition, Deno.SeekMode.Start);
+
+            // Read the record
+            const bytesRead = file.readSync(recordBuffer);
+            if (bytesRead === null || bytesRead !== BYTES_PER_RECORD) {
+              console.warn(
+                `Failed to read record ${recordIndex} from ${binaryFile}`,
+              );
+              continue;
+            }
+
+            // Extract the input value at the specified index
+            // Binary format: [input0, input1, ..., inputN, output0, ..., outputM]
+            const activation = recordArray[neuronIndex];
+
+            fileRecords.push({
+              activation,
+              errors: "", // Input neurons don't have errors
+            });
+          }
+        } finally {
+          file.close();
+        }
+
+        return fileRecords;
+      },
+    );
+
+    // Wait for all file reads to complete
+    const allFileRecords = await Promise.all(fileReadPromises);
+
+    // Flatten the results into a single array
+    for (const fileRecords of allFileRecords) {
+      records.push(...fileRecords);
+    }
+
+    return records;
+  }
+
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
+    // Check if this is an input neuron - if so, try binary first, then fall back to CSV
+    const fileName = file.split("/").pop();
+    if (fileName && fileName.startsWith("input-")) {
+      // Extract neuron index from filename like "input-5.csv"
+      const match = fileName.match(/^input-(\d+)\.csv$/);
+      if (match) {
+        const neuronIndex = parseInt(match[1], 10);
+
+        // Try to read from binary files if we have indices
+        try {
+          const indicesContent = await Deno.readTextFile(this.indicesFilePath);
+          const indices: BinaryRecordIndices = JSON.parse(indicesContent);
+
+          // If we have binary indices, use them
+          if (Object.keys(indices).length > 0) {
+            return await this.loadInputNeuronFromBinary(neuronIndex);
+          }
+        } catch {
+          // No indices file or empty - fall back to CSV
+        }
+
+        // Fall back to CSV if it exists (backward compatibility)
+        try {
+          const fileInfo = await Deno.stat(file);
+          if (!fileInfo.isFile) {
+            return []; // Not a file, return empty
+          }
+        } catch {
+          return []; // File doesn't exist, return empty
+        }
+      }
+    }
+
+    // For non-input neurons, use regular CSV loading
     const fileInfo = await Deno.stat(file);
     assert(fileInfo.isFile, "Not a file");
 
