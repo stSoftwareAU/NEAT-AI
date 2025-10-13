@@ -286,6 +286,8 @@ export class Neat {
   trainingComplete: ResponseData[] = [];
 
   private alreadyScheduledMap = new Map<string, number>();
+  private lastDiscoveryDurationMS = 0;
+  private readonly MIN_DISCOVERY_TIME_MINUTES = 2;
 
   scheduleDiscovery(creature: Creature, timeOutMinutes: number) {
     if (this.config.discoverySampleRate <= 0) {
@@ -332,38 +334,21 @@ export class Neat {
       );
     }
 
-    // Create a timeout promise to prevent indefinite hangs
-    // Add 20% safety buffer (minimum 1 minute) to account for machine variation
-    const baseTimeoutMinutes = timeOutMinutes > 0 ? timeOutMinutes : 60;
-    const safetyBufferMinutes = Math.max(
-      1,
-      Math.ceil(baseTimeoutMinutes * 0.2),
-    );
-    const timeoutMS = (baseTimeoutMinutes + safetyBufferMinutes) * 60 * 1000;
-    let discoveryTimeoutId: number;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      discoveryTimeoutId = setTimeout(() => {
-        reject(
-          new Error(
-            `Discovery timeout: No response after ${
-              (timeoutMS / 1000 / 60).toFixed(1)
-            } minutes (${baseTimeoutMinutes}m base + ${safetyBufferMinutes}m buffer)`,
-          ),
-        );
-      }, timeoutMS);
-    });
-
+    // Use internal timeout handling in DiscoverDirectory.ts instead of external wrapper
+    // This allows internal diagnostics to run and partial results to be returned
     const discoveryPromise = w.discover(creature, options);
 
-    const p = Promise.race([discoveryPromise, timeoutPromise]).then((r) => {
-      clearTimeout(discoveryTimeoutId);
+    const p = discoveryPromise.then((r) => {
       assert(r.discover, "No discovery found");
+
+      const discoveryDurationMS = Date.now() - taskStartTime;
+      this.lastDiscoveryDurationMS = discoveryDurationMS;
 
       if (this.config.verbose) {
         console.info(
           `[Neat] Discovery completed for ${
             blue(uuid.substring(Math.max(0, uuid.length - 8)))
-          } after ${((Date.now() - taskStartTime) / 1000).toFixed(1)}s`,
+          } after ${(discoveryDurationMS / 1000).toFixed(1)}s`,
         );
       }
 
@@ -371,7 +356,6 @@ export class Neat {
 
       this.discoveryInProgress.delete(uuid);
     }).catch((error) => {
-      clearTimeout(discoveryTimeoutId);
       console.error(
         `[Neat] Discovery failed for creature ${
           uuid.substring(Math.max(0, uuid.length - 8))
@@ -674,7 +658,20 @@ export class Neat {
       }
 
       if (trainingTimeOutMinutes !== -1) {
-        this.scheduleDiscovery(fittest, trainingTimeOutMinutes);
+        // Estimate if we have enough time for discovery
+        const estimatedDiscoveryMinutes = this.lastDiscoveryDurationMS > 0
+          ? Math.ceil(this.lastDiscoveryDurationMS / 60000) + 1 // Add 1 min buffer
+          : this.MIN_DISCOVERY_TIME_MINUTES;
+
+        if (trainingTimeOutMinutes >= estimatedDiscoveryMinutes) {
+          this.scheduleDiscovery(fittest, trainingTimeOutMinutes);
+        } else {
+          if (this.config.verbose) {
+            console.info(
+              `Skipping discovery: insufficient time (${trainingTimeOutMinutes}m remaining, ${estimatedDiscoveryMinutes}m estimated)`,
+            );
+          }
+        }
       }
     }
 

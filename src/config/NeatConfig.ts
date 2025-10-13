@@ -113,7 +113,7 @@ export function createNeatConfig(options: NeatOptions) {
       : options.discoverySampleRate,
 
     discoveryTimeOutMinutes: options.discoveryTimeOutMinutes || 0,
-    discoveryBatchSize: options.discoveryBatchSize || 0,
+    discoveryBatchSize: options.discoveryBatchSize || 128,
     discoveryBufferSize: options.discoveryBufferSize || 0,
     discoveryMaxNeurons: options.discoveryMaxNeurons || 0,
     customCost: options.customCost,

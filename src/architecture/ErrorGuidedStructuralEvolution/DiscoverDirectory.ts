@@ -275,11 +275,14 @@ class DataRecorder {
         }
 
         if (this.timeoutTS && Date.now() > this.timeoutTS) {
-          console.warn(
-            `⚠️  Discovery ${
-              blue(this.ID)
-            } timeout reached during file processing (${counter.count} records processed)`,
-          );
+          if (this.options.log) {
+            console.warn(
+              `⚠️  Discovery ${
+                blue(this.ID)
+              } timeout reached during file processing. ` +
+                `Processed ${counter.count} records. Proceeding with partial results for analysis.`,
+            );
+          }
           break;
         }
       }
