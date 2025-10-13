@@ -109,6 +109,7 @@ class DataRecorder {
       counter: { count: number };
       dataSet: DataRecordInterface[];
       neuronPromisesMap: Map<string, Promise<void>>;
+      selectedIndices: number[]; // Track which record indices we sampled
     },
   ) {
     if (this.options.log) {
@@ -157,6 +158,9 @@ class DataRecorder {
 
         params.counter.count++;
 
+        // Track which record index we sampled for this file
+        params.selectedIndices.push(recordIndex);
+
         // Reuse Float32Array views instead of creating new arrays
         const data: DataRecordInterface = {
           input: new Float32Array(
@@ -172,9 +176,12 @@ class DataRecorder {
           const recorded = discoverStructure.record(
             params.dataSet.splice(0),
             params.neuronPromisesMap,
+            filePath,
+            params.selectedIndices.splice(0), // Pass and clear indices
           );
           if (!recorded) break;
           assert(params.dataSet.length === 0, "Data set not empty");
+          assert(params.selectedIndices.length === 0, "Indices not empty");
 
           // Give GC a chance to run periodically
           // deno-lint-ignore no-await-in-loop
@@ -227,7 +234,6 @@ class DataRecorder {
 
     // Declare timing variables outside try block for error diagnostics
     let fileProcessTime = 0;
-    let recordTime = 0;
 
     if (options.log) {
       console.log(
@@ -240,6 +246,7 @@ class DataRecorder {
       const counter = { count: 0 };
 
       const dataSet: DataRecordInterface[] = [];
+      const selectedIndices: number[] = [];
 
       currentPhase = "file_processing";
       const fileProcessStartTime = Date.now();
@@ -249,7 +256,24 @@ class DataRecorder {
           counter,
           dataSet,
           neuronPromisesMap: neuronPromisesMap,
+          selectedIndices,
         });
+
+        // Flush any remaining data for this file to ensure indices are correctly associated
+        if (dataSet.length > 0) {
+          discoverStructure.record(
+            dataSet.splice(0),
+            neuronPromisesMap,
+            filePath,
+            selectedIndices.splice(0),
+          );
+          assert(dataSet.length === 0, "Data set not empty after flush");
+          assert(
+            selectedIndices.length === 0,
+            "Indices not empty after flush",
+          );
+        }
+
         if (this.timeoutTS && Date.now() > this.timeoutTS) {
           console.warn(
             `⚠️  Discovery ${
@@ -261,15 +285,12 @@ class DataRecorder {
       }
       fileProcessTime = Date.now() - fileProcessStartTime;
 
-      currentPhase = "recording";
-      const recordStartTime = Date.now();
-      if (dataSet.length > 0) {
-        discoverStructure.record(dataSet, neuronPromisesMap);
-      }
-      recordTime = Date.now() - recordStartTime;
-
-      // Clear large arrays to help GC
-      dataSet.length = 0;
+      // All data has been flushed per-file, so dataSet should be empty
+      assert(dataSet.length === 0, "Data set should be empty after processing");
+      assert(
+        selectedIndices.length === 0,
+        "Indices should be empty after processing",
+      );
 
       const scannedTime = Date.now() - startTime;
       if (options.log) {
@@ -522,9 +543,6 @@ class DataRecorder {
         `     - File processing: ${
           format(fileProcessTime, { ignoreZero: true })
         }`,
-      );
-      console.error(
-        `     - Record: ${format(recordTime, { ignoreZero: true })}`,
       );
       console.error(`     - Total: ${format(totalTime, { ignoreZero: true })}`);
 
