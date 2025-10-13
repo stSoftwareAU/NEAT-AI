@@ -1,4 +1,6 @@
+import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { Creature } from "../Creature.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
 export class SubSelfCon implements RadioactiveInterface {
@@ -39,6 +41,34 @@ export class SubSelfCon implements RadioactiveInterface {
     this.creature.disconnect(indx, indx);
 
     delete this.creature.memetic;
+
+    // Cleanup: Check if neuron now needs handling after losing self-connection
+    const inwardList = this.creature.inwardConnections(indx);
+    if (inwardList.length === 0 && neuron.type === "hidden") {
+      const outwardList = this.creature.outwardConnections(indx);
+      if (outwardList.length === 0) {
+        console.info(
+          `Remove neuron ${neuron.uuid} as completely disconnected`,
+        );
+        removeHiddenNeuron(this.creature, indx);
+      } else {
+        console.info(
+          `Convert neuron ${neuron.uuid} from ${neuron.type} to constant`,
+        );
+        const squash = neuron.findSquash();
+        const activation = squash as ActivationInterface;
+        if (activation.squash) {
+          const constantBias = activation.squash(neuron.bias);
+          console.info(
+            `Adjust neuron ${neuron.uuid} bias ${neuron.bias} to ${constantBias}`,
+          );
+          neuron.bias = constantBias;
+        }
+        neuron.type = "constant";
+        neuron.setSquash(undefined);
+      }
+    }
+
     return true;
   }
 }

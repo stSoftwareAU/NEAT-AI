@@ -33,10 +33,9 @@ export class SubNeuron implements RadioactiveInterface {
 
       if (attempts < 12 && !this.creature.inFocus(indx, focusList)) continue;
 
-      // CRITICAL CHECK: Before removing this neuron, ensure no hidden neurons
-      // depend on it as their only outward connection
+      // Collect neurons that might need cleanup after removing this one
       const incomingConnections = this.creature.inwardConnections(indx);
-      let canRemove = true;
+      const neuronsToCheck: number[] = [];
 
       for (const conn of incomingConnections) {
         const sourceNeuron = this.creature.neurons[conn.from];
@@ -45,16 +44,36 @@ export class SubNeuron implements RadioactiveInterface {
           sourceNeuron.type === "hidden" &&
           this.creature.outwardConnections(conn.from).length === 1
         ) {
-          canRemove = false;
-          break;
+          neuronsToCheck.push(conn.from);
         }
       }
 
-      if (!canRemove) {
-        continue; // Try another neuron
+      removeHiddenNeuron(this.creature, indx);
+
+      // Cleanup: Remove source neurons that are now left with 0 outward connections
+      // Sort in reverse order so removal doesn't affect indices
+      neuronsToCheck.sort((a, b) => b - a);
+      for (const sourceIndx of neuronsToCheck) {
+        // Adjust index if neurons before it were removed
+        let adjustedIndx = sourceIndx;
+        if (sourceIndx > indx) {
+          adjustedIndx--;
+        }
+
+        if (this.creature.outwardConnections(adjustedIndx).length === 0) {
+          const sourceNeuron = this.creature.neurons[adjustedIndx];
+          if (
+            sourceNeuron &&
+            (sourceNeuron.type === "hidden" || sourceNeuron.type === "constant")
+          ) {
+            console.info(
+              `Remove neuron ${sourceNeuron.uuid} as no longer connected`,
+            );
+            removeHiddenNeuron(this.creature, adjustedIndx);
+          }
+        }
       }
 
-      removeHiddenNeuron(this.creature, indx);
       changed = true;
       break;
     }
