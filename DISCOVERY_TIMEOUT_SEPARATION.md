@@ -2,7 +2,8 @@
 
 ## Problem
 
-Discovery was failing to analyze recorded data because a **single timeout** covered both phases:
+Discovery was failing to analyze recorded data because a **single timeout**
+covered both phases:
 
 ```
 Recording phase: 7m 9s (processing 20 records)
@@ -10,7 +11,9 @@ Analysis phase: 0 seconds - TIMED OUT before processing ANY neurons (0/469 proce
 Result: 0 candidates found for all analyses
 ```
 
-When recording consumed the entire timeout, analysis had no time left and exited immediately with:
+When recording consumed the entire timeout, analysis had no time left and exited
+immediately with:
+
 ```
 Discovery timeout reached while listing neurons (0/469 processed)
 ```
@@ -19,11 +22,12 @@ Discovery timeout reached while listing neurons (0/469 processed)
 
 **Separate timeouts for each phase:**
 
-1. **Recording Phase** - Times out based on `discoveryTimeOutMinutes` 
+1. **Recording Phase** - Times out based on `discoveryTimeOutMinutes`
    - Prevents spending forever collecting data
    - Can exit early with partial data
 
-2. **Analysis Phase** - Gets **fresh timeout allocation** via `discoveryAnalysisTimeoutMinutes`
+2. **Analysis Phase** - Gets **fresh timeout allocation** via
+   `discoveryAnalysisTimeoutMinutes`
    - Guaranteed time to analyze whatever was recorded
    - Default: 3 minutes (configurable)
    - Timeout is **reset** after recording completes
@@ -33,6 +37,7 @@ Discovery timeout reached while listing neurons (0/469 processed)
 ### 1. New Config Option
 
 **`NeatOptions.discoveryAnalysisTimeoutMinutes`**
+
 - Default: 3 minutes
 - Allocates dedicated time for analysis after recording completes
 
@@ -68,6 +73,7 @@ await discoverStructure.analyzeNeuronsSquashes(...);
 ## Expected Behavior
 
 ### Before Fix
+
 ```
 Discovery recording: 7m 9s
 Discovery timeout reached while listing neurons (0/469 processed)
@@ -75,6 +81,7 @@ Discovery found 0 candidates
 ```
 
 ### After Fix
+
 ```
 Discovery recording: 7m 9s
 Discovery analysis timeout extended by 3m
@@ -89,8 +96,8 @@ Users can customize analysis timeout:
 
 ```typescript
 const neat = new Neat(inputs, outputs, {
-  discoveryTimeOutMinutes: 5,        // Recording phase timeout
-  discoveryAnalysisTimeoutMinutes: 3 // Analysis phase timeout (NEW)
+  discoveryTimeOutMinutes: 5, // Recording phase timeout
+  discoveryAnalysisTimeoutMinutes: 3, // Analysis phase timeout (NEW)
 });
 ```
 
@@ -111,9 +118,8 @@ const neat = new Neat(inputs, outputs, {
 
 ## Benefits
 
-✅ **Analysis always runs** - Even if recording times out or runs slow
-✅ **No wasted work** - Recorded data is always analyzed
-✅ **Predictable behavior** - Analysis gets guaranteed time allocation
-✅ **Configurable** - Users can tune both timeouts independently
-✅ **Backward compatible** - Default of 3 minutes works for existing code
-
+✅ **Analysis always runs** - Even if recording times out or runs slow ✅ **No
+wasted work** - Recorded data is always analyzed ✅ **Predictable behavior** -
+Analysis gets guaranteed time allocation ✅ **Configurable** - Users can tune
+both timeouts independently ✅ **Backward compatible** - Default of 3 minutes
+works for existing code
