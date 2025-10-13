@@ -140,6 +140,9 @@ export interface NeatArguments {
   /** The maximum number of minutes to record for */
   discoveryTimeOutMinutes: number;
 
+  /** The maximum number of minutes allocated for the analysis phase (after recording completes). Default: 3 minutes */
+  discoveryAnalysisTimeoutMinutes: number;
+
   /** The number of observations per promise */
   discoveryBatchSize: number;
 

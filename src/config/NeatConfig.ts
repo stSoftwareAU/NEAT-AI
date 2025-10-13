@@ -113,6 +113,8 @@ export function createNeatConfig(options: NeatOptions) {
       : options.discoverySampleRate,
 
     discoveryTimeOutMinutes: options.discoveryTimeOutMinutes || 0,
+    discoveryAnalysisTimeoutMinutes: options.discoveryAnalysisTimeoutMinutes ??
+      3,
     discoveryBatchSize: options.discoveryBatchSize || 128,
     discoveryBufferSize: options.discoveryBufferSize || 0,
     discoveryMaxNeurons: options.discoveryMaxNeurons || 0,
@@ -268,6 +270,14 @@ function validate(config: NeatArguments) {
   ) {
     throw new Error(
       `Genetic Compatibility Threshold must be between 0 and 1 was: ${config.geneticCompatibilityThreshold}`,
+    );
+  }
+  if (
+    Number.isInteger(config.discoveryAnalysisTimeoutMinutes) === false ||
+    config.discoveryAnalysisTimeoutMinutes <= 0
+  ) {
+    throw new Error(
+      `Discovery Analysis Timeout Minutes must be greater than 0 was: ${config.discoveryAnalysisTimeoutMinutes}`,
     );
   }
 }
