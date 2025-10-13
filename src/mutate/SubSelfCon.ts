@@ -1,4 +1,6 @@
+import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { Creature } from "../Creature.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
 export class SubSelfCon implements RadioactiveInterface {
@@ -8,7 +10,7 @@ export class SubSelfCon implements RadioactiveInterface {
   }
 
   mutate(focusList?: number[]): boolean {
-    // Check which neurons aren't self connected yet
+    // Check which neurons have safely removable self-connections
     const possible = [];
     for (let i = this.creature.input; i < this.creature.neurons.length; i++) {
       if (this.creature.inFocus(i, focusList)) {
@@ -16,7 +18,7 @@ export class SubSelfCon implements RadioactiveInterface {
         const indx = neuron.index;
         const c = this.creature.getSynapse(indx, indx);
         if (c !== null) {
-          // Don't remove self-connection if it's the only outward connection from a hidden neuron
+          // Only add to possible if it's safe to remove (not the only outward connection)
           if (
             neuron.type === "hidden" &&
             this.creature.outwardConnections(indx).length <= 1
@@ -32,14 +34,41 @@ export class SubSelfCon implements RadioactiveInterface {
       return false;
     }
 
-    // Select a random node
+    // All neurons in possible are safe to disconnect, so just pick one
     const neuron = possible[Math.floor(Math.random() * possible.length)];
-
-    // Connect it to himself
     const indx = neuron.index;
+
     this.creature.disconnect(indx, indx);
 
     delete this.creature.memetic;
+
+    // Cleanup: Check if neuron now needs handling after losing self-connection
+    const inwardList = this.creature.inwardConnections(indx);
+    if (inwardList.length === 0 && neuron.type === "hidden") {
+      const outwardList = this.creature.outwardConnections(indx);
+      if (outwardList.length === 0) {
+        console.info(
+          `Remove neuron ${neuron.uuid} as completely disconnected`,
+        );
+        removeHiddenNeuron(this.creature, indx);
+      } else {
+        console.info(
+          `Convert neuron ${neuron.uuid} from ${neuron.type} to constant`,
+        );
+        const squash = neuron.findSquash();
+        const activation = squash as ActivationInterface;
+        if (activation.squash) {
+          const constantBias = activation.squash(neuron.bias);
+          console.info(
+            `Adjust neuron ${neuron.uuid} bias ${neuron.bias} to ${constantBias}`,
+          );
+          neuron.bias = constantBias;
+        }
+        neuron.type = "constant";
+        neuron.setSquash(undefined);
+      }
+    }
+
     return true;
   }
 }

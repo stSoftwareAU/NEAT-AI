@@ -20,12 +20,15 @@ export class SubConnection implements RadioactiveInterface {
 
     for (let i = 0; i < this.creature.synapses.length; i++) {
       const conn = this.creature.synapses[i];
-      // Check if it is not disabling a node
+      // Check if it is not disabling a node (forward connections only)
       if (conn.to > conn.from) {
         if (
           this.creature.inFocus(conn.to, focusList) ||
           this.creature.inFocus(conn.from, focusList)
         ) {
+          // Post-removal logic handles neurons left with 0 connections:
+          // - Hidden neurons with 0 inward connections become constants
+          // - Hidden neurons with 0 outward connections are removed
           possible.push(conn);
         }
       }
@@ -44,21 +47,32 @@ export class SubConnection implements RadioactiveInterface {
     if (inwardList.length === 0) {
       const neuron = this.creature.neurons[randomConn.to];
       if (neuron.type === "hidden") {
-        console.info(
-          `Constant neuron ${neuron.uuid} convert ${neuron.type} to constant`,
-        );
-
-        const squash = neuron.findSquash();
-        const activation = squash as ActivationInterface;
-        if (activation.squash) {
-          const constantBias = activation.squash(neuron.bias);
+        // Check if this neuron also has no outward connections
+        const outwardList = this.creature.outwardConnections(randomConn.to);
+        if (outwardList.length === 0) {
+          // No inward or outward connections - remove entirely
           console.info(
-            `Adjust neuron ${neuron.uuid} bias ${neuron.bias} to ${constantBias}`,
+            `Remove neuron ${neuron.uuid} as completely disconnected`,
           );
-          neuron.bias = constantBias;
+          removeHiddenNeuron(this.creature, randomConn.to);
+        } else {
+          // Has outward connections - convert to constant
+          console.info(
+            `Constant neuron ${neuron.uuid} convert ${neuron.type} to constant`,
+          );
+
+          const squash = neuron.findSquash();
+          const activation = squash as ActivationInterface;
+          if (activation.squash) {
+            const constantBias = activation.squash(neuron.bias);
+            console.info(
+              `Adjust neuron ${neuron.uuid} bias ${neuron.bias} to ${constantBias}`,
+            );
+            neuron.bias = constantBias;
+          }
+          neuron.type = "constant";
+          neuron.setSquash(undefined);
         }
-        neuron.type = "constant";
-        neuron.setSquash(undefined);
       }
     }
 
