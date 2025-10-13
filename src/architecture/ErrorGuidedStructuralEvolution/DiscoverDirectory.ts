@@ -234,7 +234,6 @@ class DataRecorder {
 
     // Declare timing variables outside try block for error diagnostics
     let fileProcessTime = 0;
-    let recordTime = 0;
 
     if (options.log) {
       console.log(
@@ -251,9 +250,7 @@ class DataRecorder {
 
       currentPhase = "file_processing";
       const fileProcessStartTime = Date.now();
-      let lastFilePath = "";
       for (const filePath of binaryFiles) {
-        lastFilePath = filePath;
         // deno-lint-ignore no-await-in-loop
         await this.processFile(filePath, discoverStructure, {
           counter,
@@ -261,6 +258,22 @@ class DataRecorder {
           neuronPromisesMap: neuronPromisesMap,
           selectedIndices,
         });
+
+        // Flush any remaining data for this file to ensure indices are correctly associated
+        if (dataSet.length > 0) {
+          discoverStructure.record(
+            dataSet.splice(0),
+            neuronPromisesMap,
+            filePath,
+            selectedIndices.splice(0),
+          );
+          assert(dataSet.length === 0, "Data set not empty after flush");
+          assert(
+            selectedIndices.length === 0,
+            "Indices not empty after flush",
+          );
+        }
+
         if (this.timeoutTS && Date.now() > this.timeoutTS) {
           console.warn(
             `⚠️  Discovery ${
@@ -272,20 +285,12 @@ class DataRecorder {
       }
       fileProcessTime = Date.now() - fileProcessStartTime;
 
-      currentPhase = "recording";
-      const recordStartTime = Date.now();
-      if (dataSet.length > 0) {
-        discoverStructure.record(
-          dataSet,
-          neuronPromisesMap,
-          lastFilePath,
-          selectedIndices,
-        );
-      }
-      recordTime = Date.now() - recordStartTime;
-
-      // Clear large arrays to help GC
-      dataSet.length = 0;
+      // All data has been flushed per-file, so dataSet should be empty
+      assert(dataSet.length === 0, "Data set should be empty after processing");
+      assert(
+        selectedIndices.length === 0,
+        "Indices should be empty after processing",
+      );
 
       const scannedTime = Date.now() - startTime;
       if (options.log) {
@@ -538,9 +543,6 @@ class DataRecorder {
         `     - File processing: ${
           format(fileProcessTime, { ignoreZero: true })
         }`,
-      );
-      console.error(
-        `     - Record: ${format(recordTime, { ignoreZero: true })}`,
       );
       console.error(`     - Total: ${format(totalTime, { ignoreZero: true })}`);
 
