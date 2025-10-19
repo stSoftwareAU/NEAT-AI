@@ -277,7 +277,7 @@ class DataRecorder {
         if (this.timeoutTS && Date.now() > this.timeoutTS) {
           if (this.options.log) {
             console.warn(
-              `⚠️  Discovery ${
+              `⏲  Discovery ${
                 blue(this.ID)
               } timeout reached during file processing. ` +
                 `Processed ${counter.count} records. Proceeding with partial results for analysis.`,
