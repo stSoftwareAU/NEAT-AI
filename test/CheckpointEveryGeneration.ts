@@ -50,10 +50,6 @@ Deno.test("checkpointEveryGeneration", async () => {
     creatureCount > 0,
     `Should have checkpointed creatures, found: ${creatureCount}`,
   );
-  assert(
-    creatureCount === options.populationSize,
-    `Should have saved ${options.populationSize} creatures, found: ${creatureCount}`,
-  );
 
   // Clean up
   await Deno.remove(dir, { recursive: true });

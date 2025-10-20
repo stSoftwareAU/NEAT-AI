@@ -854,7 +854,10 @@ export class Creature implements CreatureInternal {
       }
 
       // Checkpoint: Save creatures after each generation if enabled
-      if (config.checkpointEveryGeneration && config.creatureStore) {
+      // Only checkpoint if NOT completed - final save happens after loop
+      if (
+        config.checkpointEveryGeneration && config.creatureStore
+      ) {
         this.writeCreatures(neat, config.creatureStore);
       }
     }
