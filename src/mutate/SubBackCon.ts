@@ -40,6 +40,7 @@ export class SubBackCon implements RadioactiveInterface {
 
     // Cleanup: Check if TO neuron needs handling
     const inwardList = this.creature.inwardConnections(pair[1]);
+    let toNeuronRemoved = false;
     if (inwardList.length === 0) {
       const toNeuron = this.creature.neurons[pair[1]];
       if (toNeuron.type === "hidden") {
@@ -49,6 +50,7 @@ export class SubBackCon implements RadioactiveInterface {
             `Remove neuron ${toNeuron.uuid} as completely disconnected`,
           );
           removeHiddenNeuron(this.creature, pair[1]);
+          toNeuronRemoved = true;
         } else {
           console.info(
             `Convert neuron ${toNeuron.uuid} from ${toNeuron.type} to constant`,
@@ -68,15 +70,20 @@ export class SubBackCon implements RadioactiveInterface {
       }
     }
 
+    // Adjust the 'from' index if the 'to' neuron was removed and it came before the 'from' neuron
+    let fromIndex = pair[0];
+    if (toNeuronRemoved && pair[1] < pair[0]) {
+      fromIndex--;
+    }
     // Cleanup: Check if FROM neuron needs removal
-    const fromOutwardList = this.creature.outwardConnections(pair[0]);
+    const fromOutwardList = this.creature.outwardConnections(fromIndex);
     if (fromOutwardList.length === 0) {
-      const fromNeuron = this.creature.neurons[pair[0]];
+      const fromNeuron = this.creature.neurons[fromIndex];
       if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
         console.info(
           `Remove neuron ${fromNeuron.uuid} as no longer connected`,
         );
-        removeHiddenNeuron(this.creature, pair[0]);
+        removeHiddenNeuron(this.creature, fromIndex);
       }
     }
 

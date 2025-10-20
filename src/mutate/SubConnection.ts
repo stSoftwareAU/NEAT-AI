@@ -44,6 +44,7 @@ export class SubConnection implements RadioactiveInterface {
     delete this.creature.memetic;
     const inwardList = this.creature.inwardConnections(randomConn.to);
 
+    let toNeuronRemoved = false;
     if (inwardList.length === 0) {
       const neuron = this.creature.neurons[randomConn.to];
       if (neuron.type === "hidden") {
@@ -55,6 +56,7 @@ export class SubConnection implements RadioactiveInterface {
             `Remove neuron ${neuron.uuid} as completely disconnected`,
           );
           removeHiddenNeuron(this.creature, randomConn.to);
+          toNeuronRemoved = true;
         } else {
           // Has outward connections - convert to constant
           console.info(
@@ -76,12 +78,17 @@ export class SubConnection implements RadioactiveInterface {
       }
     }
 
-    const fromOutwardList = this.creature.outwardConnections(randomConn.from);
+    // Adjust the 'from' index if the 'to' neuron was removed and it came before the 'from' neuron
+    let fromIndex = randomConn.from;
+    if (toNeuronRemoved && randomConn.to < randomConn.from) {
+      fromIndex--;
+    }
+    const fromOutwardList = this.creature.outwardConnections(fromIndex);
     if (fromOutwardList.length === 0) {
-      const fromNeuron = this.creature.neurons[randomConn.from];
+      const fromNeuron = this.creature.neurons[fromIndex];
       if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
         console.info(`Remove neuron ${fromNeuron.uuid} as no longer connected`);
-        removeHiddenNeuron(this.creature, randomConn.from);
+        removeHiddenNeuron(this.creature, fromIndex);
       }
     }
     return true;
