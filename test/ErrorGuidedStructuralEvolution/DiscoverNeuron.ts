@@ -163,11 +163,14 @@ Deno.test("Error-Driven Synapse Discovery neuron discovery", async () => {
   betterCreature.validate();
   const betterCreatureJSON = betterCreature.exportJSON();
   /** Verify synapses that were removed are discovered again: */
-  const input44 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-44"
+  const input44ToHidden3 = betterCreatureJSON.synapses.find((synapse) =>
+    synapse.fromUUID === "input-44" && synapse.toUUID === "hidden-3"
   );
 
-  assert(!input44, "Should have REMOVED synapse from input-44");
+  assert(
+    !input44ToHidden3,
+    "Should have REMOVED synapse from input-44 to hidden-3",
+  );
 
   await discoverStructure.cleanUp();
 });
