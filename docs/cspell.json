@@ -76,6 +76,7 @@
     "APFS",
     "analyzed",
     "buildup",
-    "headerless"
+    "headerless",
+    "checkpointed"
   ]
 }

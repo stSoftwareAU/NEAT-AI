@@ -304,109 +304,108 @@ class DataRecorder {
         );
       }
 
-      // Track promise completion for diagnostics (silent unless timeout occurs)
-      const promiseTracker = new Map<
+      // Incremental promise cleanup: remove promises as they complete to reduce memory
+      // This allows GC to collect completed promises instead of accumulating them all
+      const promiseCompletionTracker = new Map<
         string,
-        { completed: boolean; startTime: number }
+        { startTime: number }
       >();
-      const trackedPromises = new Map<string, Promise<void>>();
+      const totalPromises = neuronPromisesMap.size;
 
+      // Wrap each promise to remove itself from the map on completion
       for (const [neuronUUID, promise] of neuronPromisesMap.entries()) {
-        promiseTracker.set(neuronUUID, {
-          completed: false,
+        promiseCompletionTracker.set(neuronUUID, {
           startTime: Date.now(),
         });
 
-        // Wrap each promise to track completion
-        const trackedPromise = promise.then(() => {
-          const tracker = promiseTracker.get(neuronUUID);
-          if (tracker) {
-            tracker.completed = true;
-          }
+        // Wrap promise to clean up on completion
+        const cleanupPromise = promise.then(() => {
+          neuronPromisesMap.delete(neuronUUID);
+          promiseCompletionTracker.delete(neuronUUID);
         }).catch((_error) => {
-          const tracker = promiseTracker.get(neuronUUID);
-          if (tracker) {
-            tracker.completed = true; // Mark as "done" even if errored
-          }
-          // Don't rethrow - we want to track all promises
+          // Clean up even on error
+          neuronPromisesMap.delete(neuronUUID);
+          promiseCompletionTracker.delete(neuronUUID);
         });
 
-        trackedPromises.set(neuronUUID, trackedPromise);
+        neuronPromisesMap.set(neuronUUID, cleanupPromise);
       }
 
-      // Wait for all file writes to complete with timeout protection
+      // Poll for completion instead of Promise.all() to allow incremental GC
       currentPhase = "promise_wait";
       const promiseWaitStartTime = Date.now();
-      const allWritesPromise = Promise.all([...trackedPromises.values()]);
       const WRITE_TIMEOUT_MS = 60000; // 60 seconds for all writes
-      let writeTimeoutId: number | undefined;
-      const writeTimeoutPromise = new Promise<void>((_, reject) => {
-        writeTimeoutId = setTimeout(() => {
-          reject(
-            new Error(
-              `File writes timeout: ${neuronPromisesMap.size} promises did not complete within ${WRITE_TIMEOUT_MS}ms`,
-            ),
-          );
-        }, WRITE_TIMEOUT_MS);
-      });
+      const POLL_INTERVAL_MS = 100; // Check every 100ms
+      let completedCount = 0;
 
-      try {
-        await Promise.race([allWritesPromise, writeTimeoutPromise]);
-        if (writeTimeoutId !== undefined) clearTimeout(writeTimeoutId);
-        // Success - no logging needed (fast path)
-      } catch (error) {
-        if (writeTimeoutId !== undefined) clearTimeout(writeTimeoutId);
-
-        const promiseWaitTime = Date.now() - promiseWaitStartTime;
-
-        // DIAGNOSTIC: Report which promises never completed (ALWAYS show on timeout)
-        const pendingPromises: string[] = [];
-        const now = Date.now();
-        for (const [neuronUUID, tracker] of promiseTracker.entries()) {
-          if (!tracker.completed) {
+      while (neuronPromisesMap.size > 0) {
+        const elapsed = Date.now() - promiseWaitStartTime;
+        if (elapsed > WRITE_TIMEOUT_MS) {
+          // Timeout - report diagnostics
+          const pendingPromises: string[] = [];
+          const now = Date.now();
+          for (
+            const [neuronUUID, tracker] of promiseCompletionTracker.entries()
+          ) {
             const waitTime = now - tracker.startTime;
             pendingPromises.push(
               `${neuronUUID} (waiting ${(waitTime / 1000).toFixed(1)}s)`,
             );
           }
-        }
 
-        console.error(
-          `❌ DISCOVERY DEADLOCK DIAGNOSTIC for ${blue(this.ID)}:`,
-        );
-        console.error(`   Error: ${error}`);
-        console.error(
-          `   Promise.all() wait time: ${
-            format(promiseWaitTime, { ignoreZero: true })
-          }`,
-        );
-        console.error(
-          `   Total promises: ${neuronPromisesMap.size}`,
-        );
-        console.error(
-          `   Completed: ${neuronPromisesMap.size - pendingPromises.length}`,
-        );
-        console.error(
-          `   Still pending: ${pendingPromises.length}`,
-        );
-        if (pendingPromises.length > 0 && pendingPromises.length <= 20) {
-          console.error(`   Pending neuron UUIDs:`);
-          pendingPromises.forEach((p) => console.error(`      - ${p}`));
-        } else if (pendingPromises.length > 20) {
-          console.error(`   Pending neuron UUIDs (first 20):`);
-          pendingPromises.slice(0, 20).forEach((p) =>
-            console.error(`      - ${p}`)
+          console.error(
+            `❌ DISCOVERY DEADLOCK DIAGNOSTIC for ${blue(this.ID)}:`,
           );
+          console.error(
+            `   Timeout: ${WRITE_TIMEOUT_MS}ms exceeded`,
+          );
+          console.error(
+            `   Wait time: ${format(elapsed, { ignoreZero: true })}`,
+          );
+          console.error(
+            `   Total promises: ${totalPromises}`,
+          );
+          console.error(
+            `   Completed: ${completedCount}`,
+          );
+          console.error(
+            `   Still pending: ${pendingPromises.length}`,
+          );
+          if (pendingPromises.length > 0 && pendingPromises.length <= 20) {
+            console.error(`   Pending neuron UUIDs:`);
+            pendingPromises.forEach((p) => console.error(`      - ${p}`));
+          } else if (pendingPromises.length > 20) {
+            console.error(`   Pending neuron UUIDs (first 20):`);
+            pendingPromises.slice(0, 20).forEach((p) =>
+              console.error(`      - ${p}`)
+            );
+          }
+
+          console.warn(
+            `Discovery ${blue(this.ID)} file writes timed out.`,
+          );
+          break; // Exit loop on timeout
         }
 
-        console.warn(
-          `Discovery ${blue(this.ID)} file writes failed or timed out.`,
-        );
-        // Continue anyway - we'll work with whatever data we have
+        // Yield to allow promises to complete and GC to run
+        // deno-lint-ignore no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+
+        // Track progress
+        const newCompletedCount = totalPromises - neuronPromisesMap.size;
+        if (newCompletedCount > completedCount) {
+          completedCount = newCompletedCount;
+          // Every 100 completions, give extra time for GC
+          if (completedCount % 100 === 0) {
+            // deno-lint-ignore no-await-in-loop
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+        }
       }
 
-      // Clear the promises map to help GC
+      // Clear remaining entries to help GC
       neuronPromisesMap.clear();
+      promiseCompletionTracker.clear();
 
       if (options.log) {
         const recordTime = Date.now() - startTime;
