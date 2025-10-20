@@ -151,6 +151,9 @@ export interface NeatArguments {
 
   /** The maximum number of neurons to discover */
   discoveryMaxNeurons: number;
+
+  /** When enabled with creatureStore, saves population after each generation for crash recovery */
+  checkpointEveryGeneration: boolean;
 }
 
 export type NeatOptions = Partial<NeatArguments>;
