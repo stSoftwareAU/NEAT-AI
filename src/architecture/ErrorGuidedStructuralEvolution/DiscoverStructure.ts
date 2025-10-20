@@ -1244,7 +1244,7 @@ export class DiscoverStructure {
     const creatureUUID = CreatureUtil.makeUUID(creature);
     const exportJSON = creature.exportJSON();
     exportJSON.synapses = exportJSON.synapses.filter((synapse) => {
-      return synapse.fromUUID !== worseCandidate.fromNeuronUUID &&
+      return synapse.fromUUID !== worseCandidate.fromNeuronUUID ||
         synapse.toUUID !== worseCandidate.toNeuronUUID;
     });
 
