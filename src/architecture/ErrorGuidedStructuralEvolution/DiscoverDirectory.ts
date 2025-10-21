@@ -65,7 +65,7 @@ class DataRecorder {
 
     this.drainEveryNBatches = Math.max(
       1,
-      options.discoveryDrainEveryNBatches || 10,
+      options.discoveryDrainEveryNBatches ?? 10,
     );
   }
 
