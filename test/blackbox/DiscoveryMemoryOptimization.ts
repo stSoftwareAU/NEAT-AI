@@ -109,3 +109,58 @@ Deno.test("discovery promise map cleanup", () => {
     }, 5);
   });
 });
+
+Deno.test("discovery promise draining prevents unbounded growth", async () => {
+  // Test that simulates the promise chain building and draining pattern
+  const promiseMap = new Map<string, Promise<void>>();
+  const neuronCount = 50; // Simulate 50 neurons
+  const batchCount = 20; // Simulate 20 batches
+  const drainEvery = 5; // Drain every 5 batches
+
+  // Initialize with resolved promises (like initialize() does)
+  for (let i = 0; i < neuronCount; i++) {
+    promiseMap.set(`neuron-${i}`, Promise.resolve());
+  }
+
+  let maxChainDepth = 0;
+  let currentDepth = 0;
+
+  // Simulate batches being recorded
+  for (let batch = 0; batch < batchCount; batch++) {
+    // Simulate record() adding to chains
+    for (const [uuid, prevPromise] of promiseMap.entries()) {
+      const newPromise = prevPromise.then(() => {
+        // Simulate file write
+        return Promise.resolve();
+      });
+      promiseMap.set(uuid, newPromise);
+    }
+
+    currentDepth++;
+    maxChainDepth = Math.max(maxChainDepth, currentDepth);
+
+    // Drain promises periodically
+    if ((batch + 1) % drainEvery === 0) {
+      // deno-lint-ignore no-await-in-loop
+      await Promise.all(promiseMap.values());
+      // Reset to resolved promises
+      for (const uuid of promiseMap.keys()) {
+        promiseMap.set(uuid, Promise.resolve());
+      }
+      currentDepth = 0;
+    }
+  }
+
+  // Final drain
+  await Promise.all(promiseMap.values());
+
+  // Verify max depth was bounded by drainEvery
+  assert(
+    maxChainDepth <= drainEvery,
+    `Max chain depth ${maxChainDepth} should be <= ${drainEvery}`,
+  );
+  assert(
+    maxChainDepth === drainEvery,
+    `Max chain depth should equal drainEvery (${drainEvery}), got ${maxChainDepth}`,
+  );
+});

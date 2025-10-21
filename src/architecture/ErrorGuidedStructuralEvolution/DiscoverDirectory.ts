@@ -26,6 +26,7 @@ class DataRecorder {
   private readonly timeoutTS: number;
   private readonly timeoutSeconds: number;
   private readonly discoveryMaxNeurons: number;
+  private readonly drainEveryNBatches: number;
 
   constructor(
     private readonly creature: Creature,
@@ -60,6 +61,11 @@ class DataRecorder {
     this.discoveryMaxNeurons = Math.max(
       1,
       options.discoveryMaxNeurons || 6,
+    );
+
+    this.drainEveryNBatches = Math.max(
+      1,
+      options.discoveryDrainEveryNBatches ?? 10,
     );
   }
 
@@ -110,6 +116,7 @@ class DataRecorder {
       dataSet: DataRecordInterface[];
       neuronPromisesMap: Map<string, Promise<void>>;
       selectedIndices: number[]; // Track which record indices we sampled
+      drainCounter: { count: number };
     },
   ) {
     if (this.options.log) {
@@ -183,6 +190,28 @@ class DataRecorder {
           assert(params.dataSet.length === 0, "Data set not empty");
           assert(params.selectedIndices.length === 0, "Indices not empty");
 
+          // Increment drain counter
+          params.drainCounter.count++;
+
+          // Drain promises periodically to prevent unbounded chain growth
+          if (params.drainCounter.count >= this.drainEveryNBatches) {
+            // deno-lint-ignore no-await-in-loop
+            await Promise.all(params.neuronPromisesMap.values());
+            // Reset all promises to resolved state to break chains
+            for (const uuid of params.neuronPromisesMap.keys()) {
+              params.neuronPromisesMap.set(uuid, Promise.resolve());
+            }
+            params.drainCounter.count = 0;
+
+            if (this.options.log) {
+              console.log(
+                `Discovery ${
+                  blue(this.ID)
+                } drained promises after ${this.drainEveryNBatches} batches`,
+              );
+            }
+          }
+
           // Give GC a chance to run periodically
           // deno-lint-ignore no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 0));
@@ -244,6 +273,7 @@ class DataRecorder {
     }
     try {
       const counter = { count: 0 };
+      const drainCounter = { count: 0 };
 
       const dataSet: DataRecordInterface[] = [];
       const selectedIndices: number[] = [];
@@ -257,6 +287,7 @@ class DataRecorder {
           dataSet,
           neuronPromisesMap: neuronPromisesMap,
           selectedIndices,
+          drainCounter,
         });
 
         // Flush any remaining data for this file to ensure indices are correctly associated
@@ -271,6 +302,23 @@ class DataRecorder {
           assert(
             selectedIndices.length === 0,
             "Indices not empty after flush",
+          );
+        }
+
+        // Drain promises after each file to limit memory usage
+        // deno-lint-ignore no-await-in-loop
+        await Promise.all(neuronPromisesMap.values());
+        // Reset all promises to resolved state
+        for (const uuid of neuronPromisesMap.keys()) {
+          neuronPromisesMap.set(uuid, Promise.resolve());
+        }
+        drainCounter.count = 0; // Reset drain counter after file
+
+        if (this.options.log) {
+          console.log(
+            `Discovery ${
+              blue(this.ID)
+            } drained promises after file ${filePath}`,
           );
         }
 
@@ -304,108 +352,43 @@ class DataRecorder {
         );
       }
 
-      // Incremental promise cleanup: remove promises as they complete to reduce memory
-      // This allows GC to collect completed promises instead of accumulating them all
-      const promiseCompletionTracker = new Map<
-        string,
-        { startTime: number }
-      >();
-      const totalPromises = neuronPromisesMap.size;
-
-      // Wrap each promise to remove itself from the map on completion
-      for (const [neuronUUID, promise] of neuronPromisesMap.entries()) {
-        promiseCompletionTracker.set(neuronUUID, {
-          startTime: Date.now(),
-        });
-
-        // Wrap promise to clean up on completion
-        const cleanupPromise = promise.then(() => {
-          neuronPromisesMap.delete(neuronUUID);
-          promiseCompletionTracker.delete(neuronUUID);
-        }).catch((_error) => {
-          // Clean up even on error
-          neuronPromisesMap.delete(neuronUUID);
-          promiseCompletionTracker.delete(neuronUUID);
-        });
-
-        neuronPromisesMap.set(neuronUUID, cleanupPromise);
-      }
-
-      // Poll for completion instead of Promise.all() to allow incremental GC
+      // Wait for all pending writes to complete
       currentPhase = "promise_wait";
-      const promiseWaitStartTime = Date.now();
       const WRITE_TIMEOUT_MS = 60000; // 60 seconds for all writes
-      const POLL_INTERVAL_MS = 100; // Check every 100ms
-      let completedCount = 0;
 
-      while (neuronPromisesMap.size > 0) {
-        const elapsed = Date.now() - promiseWaitStartTime;
-        if (elapsed > WRITE_TIMEOUT_MS) {
-          // Timeout - report diagnostics
-          const pendingPromises: string[] = [];
-          const now = Date.now();
-          for (
-            const [neuronUUID, tracker] of promiseCompletionTracker.entries()
-          ) {
-            const waitTime = now - tracker.startTime;
-            pendingPromises.push(
-              `${neuronUUID} (waiting ${(waitTime / 1000).toFixed(1)}s)`,
+      let timeoutId: number | undefined;
+      try {
+        // Create a timeout promise with clearable timer
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(
+              new Error(
+                `Discovery ${this.ID} file writes timed out after ${WRITE_TIMEOUT_MS}ms`,
+              ),
             );
-          }
+          }, WRITE_TIMEOUT_MS);
+        });
 
-          console.error(
-            `❌ DISCOVERY DEADLOCK DIAGNOSTIC for ${blue(this.ID)}:`,
-          );
-          console.error(
-            `   Timeout: ${WRITE_TIMEOUT_MS}ms exceeded`,
-          );
-          console.error(
-            `   Wait time: ${format(elapsed, { ignoreZero: true })}`,
-          );
-          console.error(
-            `   Total promises: ${totalPromises}`,
-          );
-          console.error(
-            `   Completed: ${completedCount}`,
-          );
-          console.error(
-            `   Still pending: ${pendingPromises.length}`,
-          );
-          if (pendingPromises.length > 0 && pendingPromises.length <= 20) {
-            console.error(`   Pending neuron UUIDs:`);
-            pendingPromises.forEach((p) => console.error(`      - ${p}`));
-          } else if (pendingPromises.length > 20) {
-            console.error(`   Pending neuron UUIDs (first 20):`);
-            pendingPromises.slice(0, 20).forEach((p) =>
-              console.error(`      - ${p}`)
-            );
-          }
-
-          console.warn(
-            `Discovery ${blue(this.ID)} file writes timed out.`,
-          );
-          break; // Exit loop on timeout
-        }
-
-        // Yield to allow promises to complete and GC to run
-        // deno-lint-ignore no-await-in-loop
-        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-
-        // Track progress
-        const newCompletedCount = totalPromises - neuronPromisesMap.size;
-        if (newCompletedCount > completedCount) {
-          completedCount = newCompletedCount;
-          // Every 100 completions, give extra time for GC
-          if (completedCount % 100 === 0) {
-            // deno-lint-ignore no-await-in-loop
-            await new Promise((resolve) => setTimeout(resolve, 0));
-          }
+        // Race between all writes completing and timeout
+        await Promise.race([
+          Promise.all(neuronPromisesMap.values()),
+          timeoutPromise,
+        ]);
+      } catch (error) {
+        console.error(
+          `❌ DISCOVERY WRITE ERROR for ${blue(this.ID)}:`,
+          error,
+        );
+        throw error;
+      } finally {
+        // Always clear timeout to prevent resource leak
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
         }
       }
 
-      // Clear remaining entries to help GC
+      // Clear map to help GC
       neuronPromisesMap.clear();
-      promiseCompletionTracker.clear();
 
       if (options.log) {
         const recordTime = Date.now() - startTime;

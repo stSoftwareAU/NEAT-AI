@@ -77,6 +77,7 @@
     "analyzed",
     "buildup",
     "headerless",
-    "checkpointed"
+    "checkpointed",
+    "clearable"
   ]
 }
