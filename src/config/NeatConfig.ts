@@ -118,6 +118,7 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryBatchSize: options.discoveryBatchSize || 128,
     discoveryBufferSize: options.discoveryBufferSize || 0,
     discoveryMaxNeurons: options.discoveryMaxNeurons || 0,
+    discoveryDrainEveryNBatches: options.discoveryDrainEveryNBatches ?? 10,
     customCost: options.customCost,
     checkpointEveryGeneration: options.checkpointEveryGeneration ?? false,
   };

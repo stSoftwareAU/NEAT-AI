@@ -152,6 +152,9 @@ export interface NeatArguments {
   /** The maximum number of neurons to discover */
   discoveryMaxNeurons: number;
 
+  /** Drain promise chains every N batches during discovery recording to prevent memory buildup. Default: 10 */
+  discoveryDrainEveryNBatches: number;
+
   /** When enabled with creatureStore, saves population after each generation for crash recovery */
   checkpointEveryGeneration: boolean;
 }
