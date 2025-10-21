@@ -374,17 +374,17 @@ class DataRecorder {
           Promise.all(neuronPromisesMap.values()),
           timeoutPromise,
         ]);
-
-        // Clear timeout if promises completed first
-        if (timeoutId !== undefined) {
-          clearTimeout(timeoutId);
-        }
       } catch (error) {
         console.error(
           `❌ DISCOVERY WRITE ERROR for ${blue(this.ID)}:`,
           error,
         );
         throw error;
+      } finally {
+        // Always clear timeout to prevent resource leak
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
       }
 
       // Clear map to help GC
