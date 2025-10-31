@@ -30,19 +30,19 @@ jobs:
         id: check_version
         run: |
           set -Eeuo pipefail
-          
+
           # Get the base branch version
           git fetch origin ${{ github.base_ref }}:${{ github.base_ref }} || true
           git show origin/${{ github.base_ref }}:deno.json > /tmp/base_deno.json 2>/dev/null || echo "{}" > /tmp/base_deno.json
-          
+
           BASE_VERSION=$(deno eval "try { const json = JSON.parse(Deno.readTextFileSync('/tmp/base_deno.json')); console.log(json.version || ''); } catch { console.log(''); }")
-          
+
           # Get the current PR version
           CURRENT_VERSION=$(deno eval "const json = JSON.parse(Deno.readTextFileSync('deno.json')); console.log(json.version)")
-          
+
           echo "Base version: $BASE_VERSION"
           echo "Current version: $CURRENT_VERSION"
-          
+
           if [ -z "$BASE_VERSION" ]; then
             echo "Could not determine base version, skipping update"
             echo "needs_update=false" >> $GITHUB_OUTPUT
@@ -60,28 +60,28 @@ jobs:
         if: steps.check_version.outputs.needs_update == 'true'
         run: |
           set -Eeuo pipefail
-          
+
           BASE_VERSION="${{ steps.check_version.outputs.base_version }}"
-          
+
           # Parse version (e.g., 0.193.0 -> 0.193.1)
           IFS='.' read -ra VERSION_PARTS <<< "$BASE_VERSION"
           MAJOR=${VERSION_PARTS[0]}
           MINOR=${VERSION_PARTS[1]}
           PATCH=${VERSION_PARTS[2]}
-          
+
           # Increment patch version
           NEW_PATCH=$((PATCH + 1))
           NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
-          
+
           echo "Updating version from $BASE_VERSION to $NEW_VERSION"
-          
+
           # Update deno.json using Deno
           deno eval "
             const json = JSON.parse(Deno.readTextFileSync('deno.json'));
             json.version = '$NEW_VERSION';
             Deno.writeTextFileSync('deno.json', JSON.stringify(json, null, 2) + '\n');
           "
-          
+
           echo "Updated version to: $NEW_VERSION"
 
       # Commit Changes
