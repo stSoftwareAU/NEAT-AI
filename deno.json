@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "0.193.0",
+  "version": "0.193.1",
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.15",
     "@std/bytes": "jsr:@std/bytes@1.0.6",
@@ -15,11 +15,16 @@
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13"
   },
   "test": {
-    "include": ["test/**/*.ts"]
+    "include": [
+      "test/**/*.ts"
+    ]
   },
   "lint": {
     "rules": {
-      "tags": ["recommended", "jsr"],
+      "tags": [
+        "recommended",
+        "jsr"
+      ],
       "include": [
         "ban-untagged-todo",
         "camelcase",
