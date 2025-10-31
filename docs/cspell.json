@@ -78,6 +78,15 @@
     "buildup",
     "headerless",
     "checkpointed",
-    "clearable"
+    "clearable",
+    "Plotly",
+    "Cytoscape",
+    "cytoscape",
+    "textposition",
+    "yaxis",
+    "automargin",
+    "autorange",
+    "xaxis",
+    "uniques"
   ]
 }
