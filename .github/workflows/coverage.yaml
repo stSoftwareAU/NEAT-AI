@@ -77,7 +77,7 @@ jobs:
             --config ./deno.json --reporter junit > junit.xml
           TEST_EXIT_CODE=$?
           set -e
-          
+
           # Check if tests failed (exit code 1 means tests failed)
           if [ "$TEST_EXIT_CODE" -eq 1 ]; then
             echo "Tests failed with exit code 1"
@@ -85,7 +85,7 @@ jobs:
           else
             echo "test_failed=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # If test command failed completely (not just test failures), fail the step
           if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
             echo "Test command failed with exit code $TEST_EXIT_CODE"
@@ -126,7 +126,7 @@ jobs:
             --config ./deno.json --reporter junit > junit.xml
           TEST_EXIT_CODE=$?
           set -e
-          
+
           # Check if tests failed (exit code 1 means tests failed)
           if [ "$TEST_EXIT_CODE" -eq 1 ]; then
             echo "Tests failed with exit code 1"
@@ -134,7 +134,7 @@ jobs:
           else
             echo "test_failed=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # If test command failed completely (not just test failures), fail the step
           if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
             echo "Test command failed with exit code $TEST_EXIT_CODE"
@@ -155,7 +155,7 @@ jobs:
         with:
           files: junit.xml
           check_name: Test Results
-          fail_on: 'test failures'
+          fail_on: "test failures"
           report_individual_runs: true
 
       - name: Upload test results to Codecov
