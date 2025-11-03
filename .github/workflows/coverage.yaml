@@ -78,7 +78,7 @@ jobs:
             --config ./deno.json --reporter junit > junit.xml 2>test-errors.log
           TEST_EXIT_CODE=$?
           set -e
-          
+
           # Show any errors that occurred
           if [ -s test-errors.log ]; then
             echo "Test errors/warnings:"
@@ -134,7 +134,7 @@ jobs:
             --config ./deno.json --reporter junit > junit.xml 2>test-errors.log
           TEST_EXIT_CODE=$?
           set -e
-          
+
           # Show any errors that occurred
           if [ -s test-errors.log ]; then
             echo "Test errors/warnings:"
@@ -164,13 +164,13 @@ jobs:
             echo "JUnit XML file does not exist"
             exit 0
           fi
-          
+
           if [ ! -s junit.xml ]; then
             echo "junit_exists=false" >> $GITHUB_OUTPUT
             echo "JUnit XML file is empty"
             exit 0
           fi
-          
+
           # Validate XML format (basic check)
           if command -v xmllint &> /dev/null; then
             if xmllint --noout junit.xml 2>/dev/null; then
