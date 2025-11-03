@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - Develop
-  push:
-    branches:
-      - Develop
 
 jobs:
   quality:
