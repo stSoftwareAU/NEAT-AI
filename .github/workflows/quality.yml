@@ -1,7 +1,9 @@
-name: Format Code Automatically with Deno 2
+name: Quality reviews
 
 on:
   pull_request:
+    branches:
+      - Develop
   workflow_dispatch: # Allow manual trigger if needed
 
 jobs:
@@ -13,15 +15,38 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.ACTIONS_PUSH }}
-          ref: ${{ github.head_ref }} # Ensures the branch is checked out
-          fetch-depth: 0 # Ensure the full branch history is available
+          token: ${{ secrets.ACTIONS_PUSH }} # Use the GitHub Actions token for write access
+          # For pull_request events, explicitly checkout the PR head branch to enable pushing
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          fetch-depth: 0
 
-      # Set up Deno 2.x
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      # Ensure we're on the correct branch and prevent pushing to protected branches
+      - name: Setup Branch
+        id: branch_setup
+        run: |
+          set -Eeuo pipefail
+          # Determine the branch name
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          else
+            BRANCH_NAME="${{ github.ref_name }}"
+          fi
 
-      # Check bash script syntax
+          # Protect default branch - never push to Develop
+          PROTECTED_BRANCHES="Develop main master"
+          for protected in $PROTECTED_BRANCHES; do
+            if [[ "$BRANCH_NAME" == "$protected" ]]; then
+              echo "❌ Cannot push to protected branch: $BRANCH_NAME" >&2
+              echo "Protected branches can only be updated via PR." >&2
+              exit 1
+            fi
+          done
+
+          # Ensure we're on the branch (checkout@v4 with ref: may leave us in detached HEAD)
+          git checkout "$BRANCH_NAME" 2>/dev/null || git checkout -b "$BRANCH_NAME"
+
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
       - name: Check Bash Script Syntax
         run: |
           set -Eeuo pipefail
@@ -37,21 +62,124 @@ jobs:
           done < <(find . -name "*.sh" -type f)
           exit $fail
 
+      - name: Check for Zero-Length Files
+        run: |
+          set -Eeuo pipefail
+          echo "Checking for zero-length files..."
+          fail=0
+          while IFS= read -r f; do
+            if [[ ! -s "$f" ]]; then
+              echo "❌ Zero-length file detected: $f" >&2
+              fail=1
+            fi
+          done < <(find . -type f \( -name "*.json" -o -name "*.ts" -o -name "*.js" -o -name "*.sh" \) ! -path "*/node_modules/*" ! -path "*/.git/*")
+          if [[ $fail -eq 1 ]]; then
+            echo "❌ Zero-length files found. All files must have content." >&2
+            exit 1
+          fi
+          echo "✅ No zero-length files found"
+
+      - name: Check for Merge Conflict Markers
+        run: |
+          set -Eeuo pipefail
+          echo "Checking for merge conflict markers..."
+          fail=0
+          while IFS= read -r f; do
+            if grep -qE '^(<{7}|={7}|>{7})' "$f" 2>/dev/null; then
+              echo "❌ Merge conflict markers found in: $f" >&2
+              fail=1
+            fi
+          done < <(find . -type f \( -name "*.ts" -o -name "*.js" -o -name "*.json" -o -name "*.sh" \) ! -path "*/node_modules/*" ! -path "*/.git/*")
+          if [[ $fail -eq 1 ]]; then
+            echo "❌ Merge conflict markers detected. Please resolve conflicts before submitting." >&2
+            exit 1
+          fi
+          echo "✅ No merge conflict markers found"
+
+      - name: Validate JSON Files
+        run: |
+          set -Eeuo pipefail
+          echo "Validating JSON files..."
+          if ! command -v jq &> /dev/null; then
+            echo "Installing jq..."
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+          fail=0
+          while IFS= read -r f; do
+            if ! jq empty "$f" > /dev/null 2>&1; then
+              echo "❌ Invalid JSON: $f" >&2
+              jq empty "$f" 2>&1 || true
+              fail=1
+            else
+              echo "✅ $f"
+            fi
+          done < <(find . -name "*.json" -type f ! -path "*/node_modules/*" ! -path "*/.git/*")
+          if [[ $fail -eq 1 ]]; then
+            echo "❌ JSON validation failed. Please fix invalid JSON files." >&2
+            exit 1
+          fi
+          echo "✅ All JSON files are valid"
+
+      - name: Check for Large Files
+        run: |
+          set -Eeuo pipefail
+          echo "Checking for unexpectedly large files..."
+          # Check for files larger than 10MB (excluding expected large files like models)
+          fail=0
+          while IFS= read -r f; do
+            size=$(stat -f%z "$f" 2>/dev/null || stat -c%s "$f" 2>/dev/null || echo "0")
+            if [[ $size -gt 10485760 ]]; then  # 10MB in bytes
+              # Allow large JSON model files in docs/models directory
+              if [[ "$f" == *.json ]] && [[ "$f" == */docs/models/* ]]; then
+                echo "⚠️  Large model file detected (allowed): $f ($(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size} bytes"))" >&2
+              else
+                echo "❌ Unexpectedly large file: $f ($(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size} bytes"))" >&2
+                fail=1
+              fi
+            fi
+          done < <(find . -type f ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.trace/*" ! -path "*/.test/*" ! -path "*/.coverage/*")
+          if [[ $fail -eq 1 ]]; then
+            echo "❌ Unexpectedly large files found. Please review before committing." >&2
+            exit 1
+          fi
+          echo "✅ No unexpectedly large files found"
+
+      # Fetch base branch for PR comparison (only needed for pull_request events)
+      - name: Fetch Base Branch
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin Develop:Develop || true
+
+      - name: Detect Secrets with gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # License key for organization scanning
+      # Note: gitleaks-action@v2 automatically detects PRs and scans the diff
+      # For workflow_dispatch, it scans the entire repository by default
+
+      # Set up Deno 2.x
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+
+      # Update Deno
       - name: Update Deno
         run: deno outdated --update --latest
-
-      # Run Deno fmt
-      - name: Format Code
-        run: deno fmt
-
-      - name: Lint Code
-        run: deno lint --fix src test bench mod.ts
 
       - name: Check
         run: |
           deno check
 
-      # Check for Changes
+      # Format Code
+      - name: Format Code
+        run: deno fmt
+
+      # Lint Code
+      - name: Lint Code
+        run: deno lint --fix src test bench mod.ts
+
+      - name: Make executable
+        run: find . -type f -name "*.sh" -exec chmod u+x {} +
 
       # Check for Changes
       - name: Check for Changes
@@ -73,6 +201,6 @@ jobs:
 
       # Push Changes
       - name: Push Changes
-        if: steps.check_changes.outputs.has_changes == 'true' # Use step output
+        if: steps.check_changes.outputs.has_changes == 'true' && steps.branch_setup.outputs.branch_name != ''
         run: |
-          git push origin
+          git push origin "${{ steps.branch_setup.outputs.branch_name }}"

@@ -1,6 +1,11 @@
-name: "Check spelling"
-on: # rebuild any PRs
+name: "Spelling"
+on:
   pull_request:
+    branches:
+      - Develop
+  push:
+    branches:
+      - Develop
 
 jobs:
   spellcheck: # run the action
@@ -10,5 +15,5 @@ jobs:
       - uses: streetsidesoftware/cspell-action@v6
         with:
           # Specify the files to check
-          files: "**/*.{md,html,js,ts,css}"
+          files: "**/*.{md,html,js,ts,css,sh}"
           config: "docs/cspell.json"
