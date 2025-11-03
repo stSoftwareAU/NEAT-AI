@@ -24,6 +24,7 @@ jobs:
       - id: create_coverage_files
         name: Create coverage files
         run: |
+          set -Eeuo pipefail
           export NO_COLOR=true
           # Check available memory
           echo "Available memory:"
@@ -67,18 +68,56 @@ jobs:
           echo "Parallel execution: $([ -n "$PARALLEL_FLAG" ] && echo "enabled" || echo "disabled")"
 
           # Add garbage collection flags to help with memory management
+          # Capture exit code to check if tests failed (disable exit on error for this command)
+          # Only capture stdout to junit.xml, keep stderr separate to avoid corrupting XML
+          set +e
           deno test -A \
             --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
             ${PARALLEL_FLAG} \
             --coverage=.coverage \
-            --config ./deno.json --reporter junit > junit.xml
+            --config ./deno.json --reporter junit > junit-raw.xml 2>test-errors.log
+          TEST_EXIT_CODE=$?
+          set -e
 
-        continue-on-error: true
+          # Show any errors that occurred
+          if [ -s test-errors.log ]; then
+            echo "Test errors/warnings:"
+            cat test-errors.log
+          fi
+
+          # Extract only valid XML content (from <?xml to </testsuites>)
+          # This removes any trailing content that might corrupt the XML
+          if [ -f junit-raw.xml ]; then
+            # Find the last line containing </testsuites> and extract everything up to that line
+            CLOSING_LINE=$(grep -n '</testsuites>' junit-raw.xml | tail -1 | cut -d: -f1)
+            if [ -n "$CLOSING_LINE" ]; then
+              # Extract everything from start to the closing tag line (inclusive)
+              head -n "$CLOSING_LINE" junit-raw.xml > junit.xml
+            else
+              # Fallback: try sed to extract XML block
+              sed -n '/^<?xml/,/<\/testsuites>/p' junit-raw.xml > junit.xml || cp junit-raw.xml junit.xml
+            fi
+          fi
+
+          # Check if tests failed (exit code 1 means tests failed)
+          if [ "$TEST_EXIT_CODE" -eq 1 ]; then
+            echo "Tests failed with exit code 1"
+            echo "test_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "test_failed=false" >> $GITHUB_OUTPUT
+          fi
+
+          # If test command failed completely (not just test failures), fail the step
+          if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
+            echo "Test command failed with exit code $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          fi
 
       - id: create_coverage_files_fallback
         name: Create coverage files (fallback - reduced memory)
         if: ${{ steps.create_coverage_files.outcome == 'failure' }}
         run: |
+          set -Eeuo pipefail
           export NO_COLOR=true
           echo "First attempt failed, trying with reduced memory and no parallelism"
 
@@ -100,23 +139,123 @@ jobs:
           echo "Fallback: Setting V8 memory limit to: ${V8_MEMORY_MB}MB (conservative mode)"
 
           # Use conservative memory limit and no parallelism for memory-constrained environments
+          # Capture exit code to check if tests failed (disable exit on error for this command)
+          # Only capture stdout to junit.xml, keep stderr separate to avoid corrupting XML
+          set +e
           deno test -A \
             --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
             --coverage=.coverage \
-            --config ./deno.json --reporter junit > junit.xml
+            --config ./deno.json --reporter junit > junit-raw.xml 2>test-errors.log
+          TEST_EXIT_CODE=$?
+          set -e
 
+          # Show any errors that occurred
+          if [ -s test-errors.log ]; then
+            echo "Test errors/warnings:"
+            cat test-errors.log
+          fi
+
+          # Extract only valid XML content (from <?xml to </testsuites>)
+          # This removes any trailing content that might corrupt the XML
+          if [ -f junit-raw.xml ]; then
+            # Find the last line containing </testsuites> and extract everything up to that line
+            CLOSING_LINE=$(grep -n '</testsuites>' junit-raw.xml | tail -1 | cut -d: -f1)
+            if [ -n "$CLOSING_LINE" ]; then
+              # Extract everything from start to the closing tag line (inclusive)
+              head -n "$CLOSING_LINE" junit-raw.xml > junit.xml
+            else
+              # Fallback: try sed to extract XML block
+              sed -n '/^<?xml/,/<\/testsuites>/p' junit-raw.xml > junit.xml || cp junit-raw.xml junit.xml
+            fi
+          fi
+
+          # Check if tests failed (exit code 1 means tests failed)
+          if [ "$TEST_EXIT_CODE" -eq 1 ]; then
+            echo "Tests failed with exit code 1"
+            echo "test_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "test_failed=false" >> $GITHUB_OUTPUT
+          fi
+
+          # If test command failed completely (not just test failures), fail the step
+          if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
+            echo "Test command failed with exit code $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          fi
+
+      - name: Check if test results exist and validate XML
+        id: check_junit
+        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') }}
+        run: |
+          if [ ! -f junit.xml ]; then
+            echo "junit_exists=false" >> $GITHUB_OUTPUT
+            echo "JUnit XML file does not exist"
+            exit 0
+          fi
+
+          if [ ! -s junit.xml ]; then
+            echo "junit_exists=false" >> $GITHUB_OUTPUT
+            echo "JUnit XML file is empty"
+            exit 0
+          fi
+
+          # Validate XML format (basic check)
+          if command -v xmllint &> /dev/null; then
+            if xmllint --noout junit.xml 2>/dev/null; then
+              echo "junit_exists=true" >> $GITHUB_OUTPUT
+              echo "JUnit XML file exists and is valid"
+            else
+              echo "junit_exists=false" >> $GITHUB_OUTPUT
+              echo "JUnit XML file exists but is not valid XML"
+              xmllint --noout junit.xml 2>&1 || true
+            fi
+          else
+            # Fallback: basic XML structure check
+            if grep -q '<?xml' junit.xml && grep -q '</testsuites>' junit.xml; then
+              echo "junit_exists=true" >> $GITHUB_OUTPUT
+              echo "JUnit XML file exists and appears valid"
+            else
+              echo "junit_exists=false" >> $GITHUB_OUTPUT
+              echo "JUnit XML file exists but does not appear to be valid XML"
+            fi
+          fi
+
+      - name: Upload test results to GitHub Actions
+        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') && steps.check_junit.outputs.junit_exists == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: junit.xml
+          retention-days: 30
+
+      - name: Publish Test Results
+        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') && steps.check_junit.outputs.junit_exists == 'true' }}
         continue-on-error: true
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: junit.xml
+          check_name: Test Results
+          fail_on: "test failures"
+          report_individual_runs: true
+          check_run_annotations: all
+          check_run_annotations_branch: ${{ github.head_ref || github.ref_name }}
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') }}
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Fail Build if Tests Fail
+      - name: Fail Build if Tests Failed
+        if: ${{ steps.create_coverage_files.outputs.test_failed == 'true' || steps.create_coverage_files_fallback.outputs.test_failed == 'true' }}
+        run: |
+          echo "❌ Tests failed. Build cannot proceed."
+          exit 1
+
+      - name: Fail Build if All Test Attempts Failed
         if: ${{ steps.create_coverage_files.outcome == 'failure' && steps.create_coverage_files_fallback.outcome == 'failure' }}
         run: |
-          echo "Both test attempts failed. Failing the build."
+          echo "❌ Both test attempts failed. Build cannot proceed."
           exit 1
 
       - name: Create coverage report
