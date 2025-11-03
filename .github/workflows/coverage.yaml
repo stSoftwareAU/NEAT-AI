@@ -84,7 +84,7 @@ jobs:
             echo "Test errors/warnings:"
             cat test-errors.log
           fi
-          
+
           # Extract only valid XML content (from <?xml to </testsuites>)
           # This removes any trailing content that might corrupt the XML
           if [ -f junit-raw.xml ]; then
@@ -98,7 +98,7 @@ jobs:
               sed -n '/^<?xml/,/<\/testsuites>/p' junit-raw.xml > junit.xml || cp junit-raw.xml junit.xml
             fi
           fi
-          
+
           # Check if tests failed (exit code 1 means tests failed)
           if [ "$TEST_EXIT_CODE" -eq 1 ]; then
             echo "Tests failed with exit code 1"
@@ -106,7 +106,7 @@ jobs:
           else
             echo "test_failed=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # If test command failed completely (not just test failures), fail the step
           if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
             echo "Test command failed with exit code $TEST_EXIT_CODE"
@@ -154,7 +154,7 @@ jobs:
             echo "Test errors/warnings:"
             cat test-errors.log
           fi
-          
+
           # Extract only valid XML content (from <?xml to </testsuites>)
           # This removes any trailing content that might corrupt the XML
           if [ -f junit-raw.xml ]; then
@@ -168,7 +168,7 @@ jobs:
               sed -n '/^<?xml/,/<\/testsuites>/p' junit-raw.xml > junit.xml || cp junit-raw.xml junit.xml
             fi
           fi
-          
+
           # Check if tests failed (exit code 1 means tests failed)
           if [ "$TEST_EXIT_CODE" -eq 1 ]; then
             echo "Tests failed with exit code 1"
@@ -176,7 +176,7 @@ jobs:
           else
             echo "test_failed=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # If test command failed completely (not just test failures), fail the step
           if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
             echo "Test command failed with exit code $TEST_EXIT_CODE"
