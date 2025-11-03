@@ -24,6 +24,7 @@ jobs:
       - id: create_coverage_files
         name: Create coverage files
         run: |
+          set -Eeuo pipefail
           export NO_COLOR=true
           # Check available memory
           echo "Available memory:"
@@ -67,18 +68,35 @@ jobs:
           echo "Parallel execution: $([ -n "$PARALLEL_FLAG" ] && echo "enabled" || echo "disabled")"
 
           # Add garbage collection flags to help with memory management
+          # Capture exit code to check if tests failed (disable exit on error for this command)
+          set +e
           deno test -A \
             --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
             ${PARALLEL_FLAG} \
             --coverage=.coverage \
             --config ./deno.json --reporter junit > junit.xml
-
-        continue-on-error: true
+          TEST_EXIT_CODE=$?
+          set -e
+          
+          # Check if tests failed (exit code 1 means tests failed)
+          if [ "$TEST_EXIT_CODE" -eq 1 ]; then
+            echo "Tests failed with exit code 1"
+            echo "test_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "test_failed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # If test command failed completely (not just test failures), fail the step
+          if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
+            echo "Test command failed with exit code $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          fi
 
       - id: create_coverage_files_fallback
         name: Create coverage files (fallback - reduced memory)
         if: ${{ steps.create_coverage_files.outcome == 'failure' }}
         run: |
+          set -Eeuo pipefail
           export NO_COLOR=true
           echo "First attempt failed, trying with reduced memory and no parallelism"
 
@@ -100,23 +118,62 @@ jobs:
           echo "Fallback: Setting V8 memory limit to: ${V8_MEMORY_MB}MB (conservative mode)"
 
           # Use conservative memory limit and no parallelism for memory-constrained environments
+          # Capture exit code to check if tests failed (disable exit on error for this command)
+          set +e
           deno test -A \
             --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
             --coverage=.coverage \
             --config ./deno.json --reporter junit > junit.xml
+          TEST_EXIT_CODE=$?
+          set -e
+          
+          # Check if tests failed (exit code 1 means tests failed)
+          if [ "$TEST_EXIT_CODE" -eq 1 ]; then
+            echo "Tests failed with exit code 1"
+            echo "test_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "test_failed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # If test command failed completely (not just test failures), fail the step
+          if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
+            echo "Test command failed with exit code $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          fi
 
-        continue-on-error: true
+      - name: Upload test results to GitHub Actions
+        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: junit.xml
+          retention-days: 30
+
+      - name: Publish Test Results
+        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') }}
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: junit.xml
+          check_name: Test Results
+          fail_on: 'test failures'
+          report_individual_runs: true
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') }}
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Fail Build if Tests Fail
+      - name: Fail Build if Tests Failed
+        if: ${{ steps.create_coverage_files.outputs.test_failed == 'true' || steps.create_coverage_files_fallback.outputs.test_failed == 'true' }}
+        run: |
+          echo "❌ Tests failed. Build cannot proceed."
+          exit 1
+
+      - name: Fail Build if All Test Attempts Failed
         if: ${{ steps.create_coverage_files.outcome == 'failure' && steps.create_coverage_files_fallback.outcome == 'failure' }}
         run: |
-          echo "Both test attempts failed. Failing the build."
+          echo "❌ Both test attempts failed. Build cannot proceed."
           exit 1
 
       - name: Create coverage report
