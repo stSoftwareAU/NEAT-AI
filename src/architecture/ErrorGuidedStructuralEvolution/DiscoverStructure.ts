@@ -11,10 +11,10 @@ import { Activations } from "../../methods/activations/Activations.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import {
   creatureToRustFormat,
+  isRustDiscoveryEnabled,
   isRustLibraryAvailable,
   readDiscoveryRecords,
   recordDiscovery,
-  rustLibraryExists,
   type RustRecordInput,
 } from "./RustDiscovery.ts";
 
@@ -138,10 +138,10 @@ export class DiscoverStructure {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
-    // Check if Rust library is available (required for discovery)
-    if (!rustLibraryExists()) {
+    // Check if Rust discovery is enabled (requires both library file AND FFI permissions)
+    if (!isRustDiscoveryEnabled()) {
       console.warn(
-        `⚠️  Discovery requires the NEAT-AI-Discovery Rust library. Discovery will be skipped.`,
+        `⚠️  Discovery requires the NEAT-AI-Discovery Rust library and FFI permissions. Discovery will be skipped.`,
       );
       // Set up empty promises - discovery will fail gracefully
       this.creature.neurons.forEach((neuron) => {
@@ -150,7 +150,7 @@ export class DiscoverStructure {
       return;
     }
 
-    // Rust library exists - set up for Rust recording
+    // Rust discovery is enabled - set up for Rust recording
     this.usingRustDualWrite = true;
 
     // Set up promise placeholders for all neurons (Rust handles file creation)

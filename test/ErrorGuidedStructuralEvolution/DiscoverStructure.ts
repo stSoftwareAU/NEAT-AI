@@ -82,178 +82,171 @@ function makeData(input: number) {
   return inputs;
 }
 
-Deno.test("Error-Driven Synapse Discovery identifies negative synapses and removes", async () => {
-  // This test requires Rust module (FFI) to function
-  if (!isRustDiscoveryEnabled()) {
-    console.log(
-      "⚠️  Skipping test: Rust discovery module not available (FFI required)",
-    );
-    return;
-  }
+Deno.test({
+  name:
+    "Error-Driven Synapse Discovery identifies negative synapses and removes",
+  ignore: !isRustDiscoveryEnabled(),
+  fn: async () => {
+    const targetCreature = makeCreature();
+    const data = makeData(targetCreature.input);
 
-  const targetCreature = makeCreature();
-  const data = makeData(targetCreature.input);
+    /** Record the ideal outputs from the target creature */
+    const trainingData: DataRecordInterface[] = [];
 
-  /** Record the ideal outputs from the target creature */
-  const trainingData: DataRecordInterface[] = [];
+    for (let i = data.length; i--;) {
+      const input = data[i];
+      const output = targetCreature.activate(new Float32Array(input));
 
-  for (let i = data.length; i--;) {
-    const input = data[i];
-    const output = targetCreature.activate(new Float32Array(input));
+      trainingData.push({
+        input: new Float32Array(input),
+        output: new Float32Array(output),
+      });
+    }
 
-    trainingData.push({
-      input: new Float32Array(input),
-      output: new Float32Array(output),
+    /**
+     * Create a "crippled" version by removing two important synapses
+     */
+    const exportedJSON = targetCreature.exportJSON();
+    exportedJSON.synapses.push({
+      fromUUID: "input-44",
+      toUUID: "hidden-3",
+      weight: 1,
     });
-  }
 
-  /**
-   * Create a "crippled" version by removing two important synapses
-   */
-  const exportedJSON = targetCreature.exportJSON();
-  exportedJSON.synapses.push({
-    fromUUID: "input-44",
-    toUUID: "hidden-3",
-    weight: 1,
-  });
+    const crippledCreature = Creature.fromJSON(exportedJSON);
+    CreatureUtil.makeUUID(crippledCreature);
 
-  const crippledCreature = Creature.fromJSON(exportedJSON);
-  CreatureUtil.makeUUID(crippledCreature);
+    /**
+     * Instantiate the discovery mechanism
+     */
+    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed with Rust available");
+    await Promise.all([...neuronPromisesMap.values()]);
 
-  /**
-   * Instantiate the discovery mechanism
-   */
-  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
-  discoverStructure.initialize(neuronPromisesMap);
-  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
-  assert(recorded, "Record should succeed with Rust available");
-  await Promise.all([...neuronPromisesMap.values()]);
+    // Flush Rust recording
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
 
-  // Flush Rust recording
-  const flushSuccess = discoverStructure.flushRustRecording();
-  assert(flushSuccess, "Rust flush should succeed");
+    const removeHarmfulSynapse = await discoverStructure
+      .analyzeSelectedNeuronsForRemoval([
+        "hidden-3",
+      ]);
+    assert(removeHarmfulSynapse, "Should have discovered a harmful synapse");
+    const betterCreature = DiscoverStructure.removeSynapse(
+      "ABC",
+      crippledCreature,
+      removeHarmfulSynapse,
+    );
+    assert(betterCreature, "Should have discovered a better creature");
+    betterCreature.validate();
+    const betterCreatureJSON = betterCreature.exportJSON();
+    /** Verify synapses that were removed are discovered again: */
+    const input44 = betterCreatureJSON.synapses.find((synapse) =>
+      synapse.fromUUID === "input-44"
+    );
 
-  const removeHarmfulSynapse = await discoverStructure
-    .analyzeSelectedNeuronsForRemoval([
-      "hidden-3",
-    ]);
-  assert(removeHarmfulSynapse, "Should have discovered a harmful synapse");
-  const betterCreature = DiscoverStructure.removeSynapse(
-    "ABC",
-    crippledCreature,
-    removeHarmfulSynapse,
-  );
-  assert(betterCreature, "Should have discovered a better creature");
-  betterCreature.validate();
-  const betterCreatureJSON = betterCreature.exportJSON();
-  /** Verify synapses that were removed are discovered again: */
-  const input44 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-44"
-  );
+    assert(!input44, "Should have REMOVED synapse from input-44");
 
-  assert(!input44, "Should have REMOVED synapse from input-44");
-
-  await discoverStructure.cleanUp();
+    await discoverStructure.cleanUp();
+  },
 });
 
-Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async () => {
-  // This test requires Rust module (FFI) to function
-  if (!isRustDiscoveryEnabled()) {
-    console.log(
-      "⚠️  Skipping test: Rust discovery module not available (FFI required)",
+Deno.test({
+  name: "Error-Driven Synapse Discovery identifies missing synapses",
+  ignore: !isRustDiscoveryEnabled(),
+  fn: async () => {
+    const targetCreature = makeCreature();
+    const data = makeData(targetCreature.input);
+
+    /** Record the ideal outputs from the target creature */
+    const trainingData: DataRecordInterface[] = [];
+
+    for (let i = data.length; i--;) {
+      const input = data[i];
+      const output = targetCreature.activate(new Float32Array(input));
+
+      trainingData.push({
+        input: new Float32Array(input),
+        output: new Float32Array(output),
+      });
+    }
+
+    /**
+     * Create a "crippled" version by removing two important synapses
+     */
+    const exportedJSON = targetCreature.exportJSON();
+    exportedJSON.synapses = exportedJSON.synapses.filter((synapse) =>
+      synapse.fromUUID !== "input-33" && synapse.fromUUID !== "input-22"
     );
-    return;
-  }
 
-  const targetCreature = makeCreature();
-  const data = makeData(targetCreature.input);
+    const crippledCreature = Creature.fromJSON(exportedJSON);
+    CreatureUtil.makeUUID(crippledCreature);
 
-  /** Record the ideal outputs from the target creature */
-  const trainingData: DataRecordInterface[] = [];
+    /**
+     * Instantiate the discovery mechanism
+     */
+    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed with Rust available");
+    await Promise.all([...neuronPromisesMap.values()]);
 
-  for (let i = data.length; i--;) {
-    const input = data[i];
-    const output = targetCreature.activate(new Float32Array(input));
+    // Flush Rust recording
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
 
-    trainingData.push({
-      input: new Float32Array(input),
-      output: new Float32Array(output),
-    });
-  }
+    await discoverStructure.analyzeSelectedNeurons(["hidden-4"]);
+    const helpfulSynapses = await discoverStructure.analyzeSelectedNeurons([
+      "hidden-3",
+    ]);
 
-  /**
-   * Create a "crippled" version by removing two important synapses
-   */
-  const exportedJSON = targetCreature.exportJSON();
-  exportedJSON.synapses = exportedJSON.synapses.filter((synapse) =>
-    synapse.fromUUID !== "input-33" && synapse.fromUUID !== "input-22"
-  );
+    const betterCreature = DiscoverStructure.addHelpfulSynapses(
+      "ABC",
+      crippledCreature,
+      helpfulSynapses,
+    );
+    assert(betterCreature, "Should have discovered a better creature");
+    betterCreature.validate();
+    const betterCreatureJSON = betterCreature.exportJSON();
+    /** Verify synapses that were removed are discovered again: */
+    const input22 = betterCreatureJSON.synapses.find((synapse) =>
+      synapse.fromUUID === "input-22"
+    );
 
-  const crippledCreature = Creature.fromJSON(exportedJSON);
-  CreatureUtil.makeUUID(crippledCreature);
+    assert(input22, "Should have added synapse from input-22");
+    assertAlmostEquals(input22?.weight, 0.2, 0.075);
+    const input33 = betterCreatureJSON.synapses.find((synapse) =>
+      synapse.fromUUID === "input-33"
+    );
+    assert(input33, "Should have added synapse from input-33");
+    assertAlmostEquals(input33?.weight, -0.3, 0.05);
 
-  /**
-   * Instantiate the discovery mechanism
-   */
-  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
-  discoverStructure.initialize(neuronPromisesMap);
-  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
-  assert(recorded, "Record should succeed with Rust available");
-  await Promise.all([...neuronPromisesMap.values()]);
+    // New tests for listViableNeurons()
+    const viableNeurons = await discoverStructure.listViableNeurons();
+    assert(viableNeurons.length > 0, "There should be viable neurons listed");
+    // Check descending sort order by total error
+    for (let i = 1; i < viableNeurons.length; i++) {
+      assert(
+        viableNeurons[i - 1].totalError >= viableNeurons[i].totalError,
+        "Viable neurons should be sorted by descending totalError",
+      );
+    }
 
-  // Flush Rust recording
-  const flushSuccess = discoverStructure.flushRustRecording();
-  assert(flushSuccess, "Rust flush should succeed");
-
-  await discoverStructure.analyzeSelectedNeurons(["hidden-4"]);
-  const helpfulSynapses = await discoverStructure.analyzeSelectedNeurons([
-    "hidden-3",
-  ]);
-
-  const betterCreature = DiscoverStructure.addHelpfulSynapses(
-    "ABC",
-    crippledCreature,
-    helpfulSynapses,
-  );
-  assert(betterCreature, "Should have discovered a better creature");
-  betterCreature.validate();
-  const betterCreatureJSON = betterCreature.exportJSON();
-  /** Verify synapses that were removed are discovered again: */
-  const input22 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-22"
-  );
-
-  assert(input22, "Should have added synapse from input-22");
-  assertAlmostEquals(input22?.weight, 0.2, 0.075);
-  const input33 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-33"
-  );
-  assert(input33, "Should have added synapse from input-33");
-  assertAlmostEquals(input33?.weight, -0.3, 0.05);
-
-  // New tests for listViableNeurons()
-  const viableNeurons = await discoverStructure.listViableNeurons();
-  assert(viableNeurons.length > 0, "There should be viable neurons listed");
-  // Check descending sort order by total error
-  for (let i = 1; i < viableNeurons.length; i++) {
+    // New test for selectNeuronWeightedByError()
+    const selectedNeuronUUID = await discoverStructure
+      .selectNeuronsWeightedByError(1);
+    assert(selectedNeuronUUID, "Should select a neuron UUID");
     assert(
-      viableNeurons[i - 1].totalError >= viableNeurons[i].totalError,
-      "Viable neurons should be sorted by descending totalError",
+      viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID[0]),
+      "Selected neuron UUID must be from the viable neurons list",
     );
-  }
 
-  // New test for selectNeuronWeightedByError()
-  const selectedNeuronUUID = await discoverStructure
-    .selectNeuronsWeightedByError(1);
-  assert(selectedNeuronUUID, "Should select a neuron UUID");
-  assert(
-    viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID[0]),
-    "Selected neuron UUID must be from the viable neurons list",
-  );
-
-  await discoverStructure.cleanUp();
+    await discoverStructure.cleanUp();
+  },
 });
 
 Deno.test("Discovery gracefully skips when Rust module is not available", async () => {

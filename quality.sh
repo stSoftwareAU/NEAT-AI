@@ -24,15 +24,15 @@ rm -rf .trace .test .coverage
 deno check
 
 # # is intentionally loaded and kept in memory for performance (not a leak)
-# deno test \
-#   test/ErrorGuidedStructuralEvolution/* \
-#   --allow-read \
-#   --allow-write \
-#   --allow-net \
-#   --allow-env \
-#   --v8-flags=--max-old-space-size=8192 \
-#   --parallel \
-#   --config ./deno.json
+deno test \
+  test/ErrorGuidedStructuralEvolution/* \
+  --allow-read \
+  --allow-write \
+  --allow-net \
+  --allow-env \
+  --v8-flags=--max-old-space-size=8192 \
+  --parallel \
+  --config ./deno.json
 
 echo "Running tests with FFI enabled (full functionality)..."
 deno test \

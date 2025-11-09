@@ -154,33 +154,6 @@ export function findRustLibrary(): string | null {
     }
   }
 
-  // Check ../NEAT-AI-Discovery/target/release/ (development)
-  try {
-    const devPath = new URL(
-      `../../NEAT-AI-Discovery/target/release/${libName}`,
-      import.meta.url,
-    ).pathname;
-    const stat = Deno.statSync(devPath);
-    if (stat.isFile) {
-      return devPath;
-    }
-  } catch {
-    // File doesn't exist, continue
-  }
-
-  // Also check absolute path if we're in the workspace
-  try {
-    const absDevPath =
-      "/Users/nigelleck/Develop/NEAT-AI-Discovery/target/release/" +
-      libName;
-    const stat = Deno.statSync(absDevPath);
-    if (stat.isFile) {
-      return absDevPath;
-    }
-  } catch {
-    // File doesn't exist
-  }
-
   return null;
 }
 

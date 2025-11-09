@@ -87,6 +87,11 @@
     "automargin",
     "autorange",
     "xaxis",
-    "uniques"
+    "uniques",
+    "nonblocking",
+    "dylib",
+    "runlib",
+    "libneat",
+    "extern"
   ]
 }
