@@ -92,6 +92,7 @@ export class DiscoverStructure {
   private rustAccumulatedData: DataRecordInterface[] = [];
   private rustAccumulatedNeuronData: Array<Map<string, DiscoverRecord>> = [];
   private rustBinaryFilePath: string | null = null;
+  private rustBinaryFilePaths: Set<string> = new Set(); // Track all binary file paths
   private usingRustDualWrite = false;
   private parquetFilePath: string | null = null;
 
@@ -233,10 +234,12 @@ export class DiscoverStructure {
         JSON.stringify(this.selectedIndices),
       );
 
-      // Store binary file path for Rust
+      // Store binary file path for Rust (keep first for backward compatibility)
       if (!this.rustBinaryFilePath) {
         this.rustBinaryFilePath = binaryFilePath;
       }
+      // Track all binary file paths
+      this.rustBinaryFilePaths.add(binaryFilePath);
     }
 
     // Process each record and accumulate data for Rust batch processing
@@ -315,13 +318,33 @@ export class DiscoverStructure {
         };
       });
 
-      // Prepare record indices if we have a binary file with specific indices
-      // If no binary file, use sequential indices (0, 1, 2, ...) to match training data order
+      // Prepare record indices if we have binary files with specific indices
+      // NOTE: Indices stored in selectedIndices are file-specific (indices within each binary file),
+      // not training-data indices. When multiple files are processed, we can't reliably map
+      // file-specific indices to training-data indices without tracking offsets.
+      // For single file: use file-specific indices (they should map 1:1 to training data)
+      // For multiple files: use sequential indices (0, 1, 2, ...) to match training data order
       let recordIndices: number[] | undefined = undefined;
-      if (
-        this.rustBinaryFilePath && this.selectedIndices[this.rustBinaryFilePath]
-      ) {
-        recordIndices = this.selectedIndices[this.rustBinaryFilePath];
+      if (this.rustBinaryFilePaths.size === 1 && this.rustBinaryFilePath) {
+        // Single binary file: use its file-specific indices
+        // These should map 1:1 to training data since only one file was processed
+        const fileIndices = this.selectedIndices[this.rustBinaryFilePath];
+        if (fileIndices && fileIndices.length > 0) {
+          // Verify indices match training data length (should be 1:1 for single file)
+          if (fileIndices.length === this.rustAccumulatedData.length) {
+            recordIndices = fileIndices;
+          } else {
+            // Mismatch - use sequential indices for safety
+            recordIndices = undefined;
+          }
+        } else {
+          // No indices found - use sequential indices
+          recordIndices = undefined;
+        }
+      } else if (this.rustBinaryFilePaths.size > 1) {
+        // Multiple binary files: can't map file-specific indices to training-data indices
+        // Use sequential indices (0, 1, 2, ...) to match training data order
+        recordIndices = undefined;
       } else {
         // No binary file - don't provide record_indices (let Rust process all records sequentially)
         // This ensures obs_index in Parquet matches the training data index (0, 1, 2, ...)
@@ -343,18 +366,23 @@ export class DiscoverStructure {
         this.parquetFilePath = `${this.tempDir}/${result.file}`;
 
         // Write indices file for input neuron binary reading
-        if (this.rustBinaryFilePath) {
-          const indicesToUse = recordIndices ||
-            Array.from(
-              { length: this.rustAccumulatedData.length },
-              (_, i) => i,
-            );
-          const indices: BinaryRecordIndices = {
-            [this.rustBinaryFilePath]: indicesToUse,
-          };
+        // For single file: use the calculated recordIndices or sequential indices
+        // For multiple files: write all file-specific indices (even though we use sequential for Rust)
+        if (this.rustBinaryFilePaths.size > 0) {
+          let indicesToWrite: BinaryRecordIndices;
+          if (this.rustBinaryFilePaths.size === 1 && recordIndices) {
+            // Single file with valid indices: use the calculated indices
+            indicesToWrite = {
+              [this.rustBinaryFilePath!]: recordIndices,
+            };
+          } else {
+            // Multiple files or no valid indices: write all file-specific indices
+            // (Note: Rust will use sequential indices, but we preserve file-specific indices for reference)
+            indicesToWrite = { ...this.selectedIndices };
+          }
           Deno.writeTextFileSync(
             this.indicesFilePath,
-            JSON.stringify(indices),
+            JSON.stringify(indicesToWrite),
           );
         } else if (this.rustAccumulatedData.length > 0) {
           // No binary file path - create a temporary binary file from training data
