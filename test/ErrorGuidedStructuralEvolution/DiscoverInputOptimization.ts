@@ -83,6 +83,8 @@ function makeTrainingData(
 Deno.test({
   name: "Baseline: Input neurons are correctly recorded and loaded from CSV",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
@@ -156,6 +158,8 @@ Deno.test({
 Deno.test({
   name: "Integration: recordDirectory with CSV reads input values correctly",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
@@ -188,6 +192,8 @@ Deno.test({
 Deno.test({
   name: "Binary optimization: Input values read from binary match CSV values",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);

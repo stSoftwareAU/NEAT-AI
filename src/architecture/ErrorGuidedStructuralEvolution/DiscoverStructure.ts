@@ -261,15 +261,23 @@ export class DiscoverStructure {
   /**
    * Flushes accumulated Rust recording data and writes to Parquet via Rust module.
    * This is called after all record() batches complete.
-   * Returns true if Rust write succeeded, false if Rust not available or failed.
+   * Returns true if Rust write succeeded or if there's no data to flush (valid no-op),
+   * false if Rust not available or failed.
    *
    * NOTE: This is where we actually LOAD the Rust library (lazy loading).
    * We check file existence earlier (rustLibraryExists) to avoid loading unnecessarily.
    * If Rust module is not available, this returns false and discovery is skipped.
+   * If there's no accumulated data (empty training data), this returns true (valid no-op).
    */
   public flushRustRecording(): boolean {
-    if (!this.usingRustDualWrite || this.rustAccumulatedData.length === 0) {
+    // If Rust is not being used, return false (discovery skipped)
+    if (!this.usingRustDualWrite) {
       return false;
+    }
+
+    // If there's no data to flush, return true (valid no-op, not an error)
+    if (this.rustAccumulatedData.length === 0) {
+      return true;
     }
 
     // Now actually load the library (lazy loading - only when we need to write)
@@ -351,13 +359,27 @@ export class DiscoverStructure {
         recordIndices = undefined;
       }
 
+      // Check if timeout has expired before calculating timeout_seconds
+      // This prevents passing negative timeout values to the Rust module
+      if (Date.now() > this.timeoutTS) {
+        // Timeout has expired - return false to indicate discovery skipped
+        return false;
+      }
+
+      // Calculate timeout_seconds, ensuring it's non-negative
+      // Math.max ensures we never pass a negative value even if there's a race condition
+      const timeoutSeconds = Math.max(
+        0,
+        Math.floor((this.timeoutTS - Date.now()) / 1000),
+      );
+
       const rustInput: RustRecordInput = {
         creature: rustCreature,
         "training_data": rustTrainingData,
         "temp_dir": this.tempDir,
         "binary_file_path": this.rustBinaryFilePath || undefined,
         "record_indices": recordIndices,
-        "timeout_seconds": Math.floor((this.timeoutTS - Date.now()) / 1000),
+        "timeout_seconds": timeoutSeconds,
       };
 
       const result = recordDiscovery(rustInput);

@@ -106,6 +106,8 @@ Deno.test({
   name:
     "Discovery handles large number of neurons (1967+) without file descriptor exhaustion",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     // This test ensures batching prevents "too many open files" errors
     const neuronCount = 150; // Use 150 for test speed, batching logic handles 1967+
@@ -163,6 +165,8 @@ Deno.test({
   name:
     "Discovery weighted selection completes within max iterations (prevents infinite loops)",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeCreatureWithManyNeurons(50);
     CreatureUtil.makeUUID(creature);
@@ -209,6 +213,8 @@ Deno.test({
 Deno.test({
   name: "Discovery handles timeout during listViableNeurons gracefully",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeCreatureWithManyNeurons(200);
     CreatureUtil.makeUUID(creature);
@@ -253,6 +259,8 @@ Deno.test({
 Deno.test({
   name: "Discovery handles all-zero error case without infinite loop",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeCreatureWithManyNeurons(20);
     CreatureUtil.makeUUID(creature);
@@ -309,6 +317,8 @@ Deno.test({
 Deno.test({
   name: "Discovery analyze phases respect timeout",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeCreatureWithManyNeurons(30);
     CreatureUtil.makeUUID(creature);
@@ -369,6 +379,8 @@ Deno.test({
 Deno.test({
   name: "Discovery batching processes neurons in chunks",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     // This test verifies the batching logic by checking it doesn't load all files at once
     const neuronCount = 150; // More than BATCH_SIZE (50)

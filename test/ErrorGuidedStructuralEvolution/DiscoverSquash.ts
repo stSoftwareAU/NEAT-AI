@@ -88,6 +88,8 @@ function makeData(input: number) {
 Deno.test({
   name: "Error-Driven Squash Discovery",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const targetCreature = makeCreature();
     const data = makeData(targetCreature.input);

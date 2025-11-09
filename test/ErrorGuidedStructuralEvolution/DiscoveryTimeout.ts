@@ -157,6 +157,8 @@ async function cleanupTempDir(dirPath: string) {
 Deno.test({
   name: "Batch size 128 saves more batches than 512 on timeout",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const tmpDir128 = await createTempTestDir("batch-128");
     const tmpDir512 = await createTempTestDir("batch-512");

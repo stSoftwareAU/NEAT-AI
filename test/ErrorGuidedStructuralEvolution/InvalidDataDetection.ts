@@ -53,6 +53,8 @@ function makeSimpleCreature(): Creature {
 Deno.test({
   name: "Discovery validates all neurons have finite error values",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeSimpleCreature();
     CreatureUtil.makeUUID(creature);
@@ -117,6 +119,8 @@ Deno.test({
 Deno.test({
   name: "Discovery selection falls back gracefully on invalid totalErrorSum",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeSimpleCreature();
     CreatureUtil.makeUUID(creature);

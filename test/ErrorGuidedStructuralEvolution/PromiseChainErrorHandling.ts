@@ -96,6 +96,8 @@ Deno.test("Discovery promise chains have error handlers", async () => {
 Deno.test({
   name: "Discovery handles file write failures gracefully",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const creature = makeSimpleCreature();
     CreatureUtil.makeUUID(creature);

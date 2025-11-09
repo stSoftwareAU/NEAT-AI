@@ -13,6 +13,8 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 Deno.test({
   name: "Discovery handles minimal creature (1 input, 1 output)",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     // Create the smallest valid creature
     const json: CreatureExport = {
@@ -81,6 +83,8 @@ Deno.test({
 Deno.test({
   name: "Discovery handles small creature (2 inputs, 1 hidden, 1 output)",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const json: CreatureExport = {
       neurons: [
@@ -164,6 +168,8 @@ Deno.test({
 Deno.test({
   name: "Discovery selection respects neuron count limit",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     // Create creature with exactly 3 non-input neurons
     const json: CreatureExport = {

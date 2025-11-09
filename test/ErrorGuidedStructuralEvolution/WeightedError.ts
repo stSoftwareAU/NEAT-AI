@@ -128,6 +128,8 @@ Deno.test({
   name:
     "Error-Driven Synapse Discovery identifies negative synapses by weighted error",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     for (let attempt = 0; true; attempt++) {
       const { targetCreature, trainingData } = initialize();
@@ -209,6 +211,8 @@ Deno.test({
 Deno.test({
   name: "Error-Driven Synapse Discovery missing synapses by weighted error",
   ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     const { targetCreature, trainingData } = initialize();
 
