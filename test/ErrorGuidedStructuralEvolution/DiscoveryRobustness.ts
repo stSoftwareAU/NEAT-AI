@@ -113,8 +113,15 @@ Deno.test("Discovery handles large number of neurons (1967+) without file descri
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   // listViableNeurons should complete without hanging or file errors
   const viableNeurons = await discoverStructure.listViableNeurons();
@@ -156,8 +163,15 @@ Deno.test("Discovery weighted selection completes within max iterations (prevent
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   // selectNeuronsWeightedByError should complete even if selection is difficult
   const startTime = Date.now();
@@ -188,8 +202,15 @@ Deno.test("Discovery handles timeout during listViableNeurons gracefully", async
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   // Wait to ensure timeout has passed
   await new Promise((resolve) => setTimeout(resolve, 1100));
@@ -227,8 +248,15 @@ Deno.test("Discovery handles all-zero error case without infinite loop", async (
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   const viableNeurons = await discoverStructure.listViableNeurons();
 
@@ -262,8 +290,15 @@ Deno.test("Discovery analyze phases respect timeout", async () => {
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   // Wait for timeout to pass
   await new Promise((resolve) => setTimeout(resolve, 1100));
@@ -320,8 +355,15 @@ Deno.test("Discovery batching processes neurons in chunks", async () => {
     "Should initialize files for all neurons",
   );
 
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   // listViableNeurons uses batching internally - if this completes, batching works
   const startTime = Date.now();

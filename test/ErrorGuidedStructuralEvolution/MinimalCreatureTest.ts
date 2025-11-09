@@ -42,8 +42,15 @@ Deno.test("Discovery handles minimal creature (1 input, 1 output)", async () => 
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   // Should handle minimal creature without errors
   const viableNeurons = await discoverStructure.listViableNeurons();
@@ -109,8 +116,15 @@ Deno.test("Discovery handles small creature (2 inputs, 1 hidden, 1 output)", asy
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   const viableNeurons = await discoverStructure.listViableNeurons();
   assertExists(viableNeurons, "Should return viable neurons list");
@@ -190,8 +204,15 @@ Deno.test("Discovery selection respects neuron count limit", async () => {
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   // Request 10 neurons when only 3 exist
   const selected = await discoverStructure.selectNeuronsWeightedByError(10);

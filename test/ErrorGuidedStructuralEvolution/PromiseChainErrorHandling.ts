@@ -56,7 +56,12 @@ Deno.test("Discovery promise chains have error handlers", async () => {
   ];
 
   // Record should chain promises
-  discoverStructure.record(testData, neuronPromisesMap);
+  const recorded = discoverStructure.record(testData, neuronPromisesMap);
+  // Note: This test checks promise error handling, so we don't assert on recorded
+  // Flush Rust recording if using Rust
+  if (recorded) {
+    discoverStructure.flushRustRecording();
+  }
 
   // All promises should have error handlers (not throw on rejection)
   const promiseResults = await Promise.allSettled([
@@ -109,6 +114,12 @@ Deno.test("Discovery handles file write failures gracefully", async () => {
   const recorded = discoverStructure.record(testData, neuronPromisesMap);
   assert(recorded, "Record should succeed");
 
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
+
   // Wait for all promises - should not hang even if some fail
   let timeoutId: number | undefined;
   const timeout = new Promise<void>((_, reject) => {
@@ -151,7 +162,11 @@ Deno.test("Discovery Promise.all() completes within timeout", async () => {
     { input: new Float32Array([1.0]), output: new Float32Array([0.5]) },
   ];
 
-  discoverStructure.record(testData, neuronPromisesMap);
+  const recorded = discoverStructure.record(testData, neuronPromisesMap);
+  // Flush Rust recording if using Rust
+  if (recorded) {
+    discoverStructure.flushRustRecording();
+  }
 
   // Create a timeout to ensure Promise.all doesn't hang
   const TIMEOUT_MS = 10000; // 10 seconds should be plenty

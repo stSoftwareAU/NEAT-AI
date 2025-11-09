@@ -60,6 +60,12 @@ This project is a unique implementation of a neural network based on the NEAT (N
     structural adaptation improves performance by explicitly reducing
     neuron-level errors, blending evolutionary topology adjustments with
     error-driven learning.
+    
+    **Note**: Error-Guided Structural Evolution requires the
+    [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
+    extension library to be built and installed. The discovery process will
+    gracefully skip if the Rust library is not available, but discovery
+    functionality requires it.
 
 11. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
 

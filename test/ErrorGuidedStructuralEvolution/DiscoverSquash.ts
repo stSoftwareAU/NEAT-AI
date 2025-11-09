@@ -123,8 +123,15 @@ Deno.test("Error-Driven Squash Discovery", async () => {
   const discoverStructure = new DiscoverStructure(crippledCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   const candidateSquashes = await discoverStructure
     .analyzeSelectedNeuronsSquashes([

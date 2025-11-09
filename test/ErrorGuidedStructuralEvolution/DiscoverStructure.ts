@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
@@ -82,6 +83,14 @@ function makeData(input: number) {
 }
 
 Deno.test("Error-Driven Synapse Discovery identifies negative synapses and removes", async () => {
+  // This test requires Rust module (FFI) to function
+  if (!isRustDiscoveryEnabled()) {
+    console.log(
+      "⚠️  Skipping test: Rust discovery module not available (FFI required)",
+    );
+    return;
+  }
+
   const targetCreature = makeCreature();
   const data = makeData(targetCreature.input);
 
@@ -117,8 +126,13 @@ Deno.test("Error-Driven Synapse Discovery identifies negative synapses and remov
   const discoverStructure = new DiscoverStructure(crippledCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed with Rust available");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording
+  const flushSuccess = discoverStructure.flushRustRecording();
+  assert(flushSuccess, "Rust flush should succeed");
 
   const removeHarmfulSynapse = await discoverStructure
     .analyzeSelectedNeuronsForRemoval([
@@ -144,6 +158,14 @@ Deno.test("Error-Driven Synapse Discovery identifies negative synapses and remov
 });
 
 Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async () => {
+  // This test requires Rust module (FFI) to function
+  if (!isRustDiscoveryEnabled()) {
+    console.log(
+      "⚠️  Skipping test: Rust discovery module not available (FFI required)",
+    );
+    return;
+  }
+
   const targetCreature = makeCreature();
   const data = makeData(targetCreature.input);
 
@@ -177,8 +199,13 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
   const discoverStructure = new DiscoverStructure(crippledCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed with Rust available");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording
+  const flushSuccess = discoverStructure.flushRustRecording();
+  assert(flushSuccess, "Rust flush should succeed");
 
   await discoverStructure.analyzeSelectedNeurons(["hidden-4"]);
   const helpfulSynapses = await discoverStructure.analyzeSelectedNeurons([
@@ -229,61 +256,56 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
   await discoverStructure.cleanUp();
 });
 
-Deno.test("loadCSV handles incomplete last line", async () => {
-  // Create a temporary file with a line that spans chunk boundaries
-  const tempDir = await Deno.makeTempDir();
-  const filePath = `${tempDir}/test.csv`;
+Deno.test({
+  name: "loadCSV handles incomplete last line",
+  ignore: true, // NOTE: This test was for CSV file handling. Since we've migrated to Parquet,
+  // this test is no longer applicable. The Parquet format handles incomplete data
+  // differently (it's a binary format with proper structure).
+  // TODO(#parquet-migration): Add equivalent test for Parquet edge cases if needed.
+  fn: () => {
+    // Test skipped - see ignore comment above
+    return;
+  },
+});
 
-  // Create a CSV with a line that's exactly at the chunk boundary
-  const headers = "value,activation,errors\n";
-  const data = "1.0,0.5,0.1\n"; // Normal line
-  const longLine = "2.0,0.8,0.2"; // Incomplete line (no newline at the end)
+Deno.test("Discovery gracefully skips when Rust module is not available", async () => {
+  // This test specifically verifies graceful degradation WITHOUT FFI
+  // It should pass when run without --allow-ffi flag
 
-  // Write the file
-  await Deno.writeTextFile(filePath, headers + data + longLine);
+  const targetCreature = makeCreature();
+  CreatureUtil.makeUUID(targetCreature);
+  const data = makeData(targetCreature.input);
 
-  // Create a DiscoverStructure instance with a mock creature
-  const mockCreature = {
-    uuid: "test-creature",
-    neurons: [],
-    input: 0,
-    output: 0,
-    exportJSON: () => ({ neurons: [], synapses: [] }),
-    dispose: () => {},
-    validate: () => {},
-    activate: () => new Float32Array(),
-    record: () => new Map(),
-  } as unknown as Creature;
-
-  const discoverStructure = new DiscoverStructure(mockCreature, 60);
-
-  // Define the record type
-  interface DiscoverRecord {
-    value: number;
-    activation: number;
-    errors: string;
+  const trainingData: DataRecordInterface[] = [];
+  for (let i = data.length; i--;) {
+    const input = data[i];
+    const output = targetCreature.activate(new Float32Array(input));
+    trainingData.push({
+      input: new Float32Array(input),
+      output: new Float32Array(output),
+    });
   }
 
-  // Call the private method using a two-step type assertion
-  const records = await ((discoverStructure as unknown) as {
-    loadCSV(file: string): Promise<DiscoverRecord[]>;
-  }).loadCSV(filePath);
+  const discoverStructure = new DiscoverStructure(targetCreature, 60);
+  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+  discoverStructure.initialize(neuronPromisesMap);
 
-  // Verify the records
-  assert(records.length === 2, "Should have 2 records");
-  assert(records[0].value === 1.0, "First record should have value 1.0");
-  assert(
-    records[0].activation === 0.5,
-    "First record should have activation 0.5",
-  );
-  assert(records[0].errors === "0.1", "First record should have errors 0.1");
-  assert(records[1].value === 2.0, "Second record should have value 2.0");
-  assert(
-    records[1].activation === 0.8,
-    "Second record should have activation 0.8",
-  );
-  assert(records[1].errors === "0.2", "Second record should have errors 0.2");
+  // Record should return false when Rust is not available
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
 
-  // Clean up
-  await Deno.remove(tempDir, { recursive: true });
+  if (!isRustDiscoveryEnabled()) {
+    // Without Rust, recording should fail gracefully
+    assert(!recorded, "Record should return false when Rust is not available");
+    console.log(
+      "✅ Discovery correctly skipped when Rust module is not available",
+    );
+  } else {
+    // With Rust, recording should succeed
+    assert(recorded, "Record should succeed when Rust is available");
+    await Promise.all([...neuronPromisesMap.values()]);
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
+  }
+
+  await discoverStructure.cleanUp();
 });

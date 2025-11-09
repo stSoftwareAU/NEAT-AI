@@ -78,68 +78,78 @@ function makeTrainingData(
   return data;
 }
 
-Deno.test("Baseline: Input neurons are correctly recorded and loaded from CSV", async () => {
-  const creature = makeTestCreature();
-  CreatureUtil.makeUUID(creature);
+// Note: Leak detection disabled for this test - Rust library is intentionally loaded and kept in memory
+Deno.test({
+  name: "Baseline: Input neurons are correctly recorded and loaded from CSV",
+  ignore: false,
+  fn: async () => {
+    const creature = makeTestCreature();
+    CreatureUtil.makeUUID(creature);
 
-  const trainingData = makeTrainingData(creature.input, creature.output, 100);
+    const trainingData = makeTrainingData(creature.input, creature.output, 100);
 
-  // Initialize discovery and record data
-  const discoverStructure = new DiscoverStructure(creature, 60);
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    // Initialize discovery and record data
+    const discoverStructure = new DiscoverStructure(creature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
-  discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
-  await Promise.all([...neuronPromisesMap.values()]);
+    discoverStructure.initialize(neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed");
+    await Promise.all([...neuronPromisesMap.values()]);
 
-  // Access the private loadCSV method to verify input neurons are recorded
-  const testAccess =
-    discoverStructure as unknown as DiscoverStructureTestAccess;
-  const loadCSV = testAccess.loadCSV.bind(discoverStructure);
-  const tempDir = testAccess.tempDir;
+    // Flush Rust recording (required for Parquet file creation)
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
 
-  // Load input neuron records
-  const input0Records = await loadCSV(`${tempDir}/input-0.csv`);
-  const input1Records = await loadCSV(`${tempDir}/input-1.csv`);
-  const input2Records = await loadCSV(`${tempDir}/input-2.csv`);
+    // Access the private loadCSV method to verify input neurons are recorded
+    const testAccess =
+      discoverStructure as unknown as DiscoverStructureTestAccess;
+    const loadCSV = testAccess.loadCSV.bind(discoverStructure);
+    const tempDir = testAccess.tempDir;
 
-  // Verify we got the right number of records
-  assertEquals(
-    input0Records.length,
-    100,
-    "Should have 100 records for input-0",
-  );
-  assertEquals(
-    input1Records.length,
-    100,
-    "Should have 100 records for input-1",
-  );
-  assertEquals(
-    input2Records.length,
-    100,
-    "Should have 100 records for input-2",
-  );
+    // Load input neuron records
+    const input0Records = await loadCSV(`${tempDir}/input-0.csv`);
+    const input1Records = await loadCSV(`${tempDir}/input-1.csv`);
+    const input2Records = await loadCSV(`${tempDir}/input-2.csv`);
 
-  // Verify the values match the training data
-  for (let i = 0; i < trainingData.length; i++) {
+    // Verify we got the right number of records
     assertEquals(
-      input0Records[i].activation,
-      trainingData[i].input[0],
-      `Input-0 record ${i} should match training data`,
+      input0Records.length,
+      100,
+      "Should have 100 records for input-0",
     );
     assertEquals(
-      input1Records[i].activation,
-      trainingData[i].input[1],
-      `Input-1 record ${i} should match training data`,
+      input1Records.length,
+      100,
+      "Should have 100 records for input-1",
     );
     assertEquals(
-      input2Records[i].activation,
-      trainingData[i].input[2],
-      `Input-2 record ${i} should match training data`,
+      input2Records.length,
+      100,
+      "Should have 100 records for input-2",
     );
-  }
 
-  await discoverStructure.cleanUp();
+    // Verify the values match the training data
+    for (let i = 0; i < trainingData.length; i++) {
+      assertEquals(
+        input0Records[i].activation,
+        trainingData[i].input[0],
+        `Input-0 record ${i} should match training data`,
+      );
+      assertEquals(
+        input1Records[i].activation,
+        trainingData[i].input[1],
+        `Input-1 record ${i} should match training data`,
+      );
+      assertEquals(
+        input2Records[i].activation,
+        trainingData[i].input[2],
+        `Input-2 record ${i} should match training data`,
+      );
+    }
+
+    await discoverStructure.cleanUp();
+  },
 });
 
 Deno.test("Integration: recordDirectory with CSV reads input values correctly", async () => {
@@ -183,12 +193,20 @@ Deno.test("Binary optimization: Input values read from binary match CSV values",
     });
   }
 
-  // Method 1: Using CSV (backward compatibility)
+  // Method 1: Using Rust (Parquet) - Rust is required now
   const csvDiscoverStructure = new DiscoverStructure(creature, 60);
   const csvNeuronPromisesMap: Map<string, Promise<void>> = new Map();
   csvDiscoverStructure.initialize(csvNeuronPromisesMap);
-  csvDiscoverStructure.record(trainingData, csvNeuronPromisesMap); // No binary path = CSV mode
+  const csvRecorded = csvDiscoverStructure.record(
+    trainingData,
+    csvNeuronPromisesMap,
+  );
+  assert(csvRecorded, "Record should succeed");
   await Promise.all([...csvNeuronPromisesMap.values()]);
+
+  // Flush Rust recording (required for Parquet file creation)
+  const csvFlushSuccess = csvDiscoverStructure.flushRustRecording();
+  assert(csvFlushSuccess, "Rust flush should succeed");
 
   // Load CSV records
   const csvTestAccess =
@@ -228,13 +246,18 @@ Deno.test("Binary optimization: Input values read from binary match CSV values",
     }
 
     // Record using binary path
-    binaryDiscoverStructure.record(
+    const binaryRecorded = binaryDiscoverStructure.record(
       trainingData,
       binaryNeuronPromisesMap,
       filePath,
       recordIndices,
     );
+    assert(binaryRecorded, "Binary record should succeed");
     await Promise.all([...binaryNeuronPromisesMap.values()]);
+
+    // Flush Rust recording (required for Parquet file creation)
+    const binaryFlushSuccess = binaryDiscoverStructure.flushRustRecording();
+    assert(binaryFlushSuccess, "Rust flush should succeed");
 
     // Load binary records
     const binaryTestAccess =

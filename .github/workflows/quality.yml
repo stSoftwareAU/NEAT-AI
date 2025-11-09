@@ -204,3 +204,30 @@ jobs:
         if: steps.check_changes.outputs.has_changes == 'true' && steps.branch_setup.outputs.branch_name != ''
         run: |
           git push origin "${{ steps.branch_setup.outputs.branch_name }}"
+
+      # Run tests with FFI enabled (full functionality)
+      - name: Run Tests with FFI
+        run: |
+          deno test \
+            --allow-read \
+            --allow-write \
+            --allow-net \
+            --allow-ffi \
+            --trace-leaks \
+            --v8-flags=--max-old-space-size=8192 \
+            --parallel \
+            --config ./deno.json
+
+      # Run discovery tests without FFI to verify graceful degradation
+      - name: Test Discovery Graceful Degradation (No FFI)
+        run: |
+          echo "Testing discovery without FFI to verify graceful handling..."
+          deno test \
+            test/ErrorGuidedStructuralEvolution/ \
+            --allow-read \
+            --allow-write \
+            --allow-net \
+            --trace-leaks \
+            --v8-flags=--max-old-space-size=8192 \
+            --parallel \
+            --config ./deno.json

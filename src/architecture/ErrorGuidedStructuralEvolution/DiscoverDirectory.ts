@@ -7,6 +7,7 @@ import { CreatureUtil } from "../CreatureUtils.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
 import { DiscoverStructure } from "./DiscoverStructure.ts";
+import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 
 export async function recordDirectory(
   creature: Creature,
@@ -99,6 +100,22 @@ class DataRecorder {
   }
 
   async recordDirectory(dataDir: string): Promise<DiscoverResult> {
+    // Check if Rust discovery module is available
+    if (!isRustDiscoveryEnabled()) {
+      if (this.options.log) {
+        console.warn(
+          `⚠️  Discovery skipped: Rust module not available. Discovery requires the NEAT-AI-Discovery Rust library to be built and available.`,
+        );
+      }
+      // Return empty result - discovery is skipped
+      return {
+        ID: this.ID,
+        addHelpfulSynapses: undefined,
+        removeHarmfulSynapse: undefined,
+        candidateSquashes: undefined,
+      };
+    }
+
     const binaryFiles = await this.getBinaryFiles(dataDir);
     assert(
       binaryFiles.length > 0,
@@ -389,6 +406,25 @@ class DataRecorder {
 
       // Clear map to help GC
       neuronPromisesMap.clear();
+
+      // Flush Rust recording if we were using Rust
+      const rustFlushSuccess = discoverStructure.flushRustRecording();
+      if (!rustFlushSuccess) {
+        // Rust recording failed - return empty result (discovery skipped)
+        if (options.log) {
+          console.warn(
+            `⚠️  Discovery ${
+              blue(this.ID)
+            }: Rust recording failed, discovery skipped.`,
+          );
+        }
+        return {
+          ID: this.ID,
+          addHelpfulSynapses: undefined,
+          removeHarmfulSynapse: undefined,
+          candidateSquashes: undefined,
+        };
+      }
 
       if (options.log) {
         const recordTime = Date.now() - startTime;

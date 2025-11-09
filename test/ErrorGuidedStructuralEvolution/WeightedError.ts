@@ -154,9 +154,16 @@ Deno.test("Error-Driven Synapse Discovery identifies negative synapses by weight
     const discoverStructure = new DiscoverStructure(crippledCreature, 60);
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
-    discoverStructure.record(trainingData, neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed");
     // deno-lint-ignore no-await-in-loop
     await Promise.all([...neuronPromisesMap.values()]);
+
+    // Flush Rust recording if using Rust
+    const flushSuccess = discoverStructure.flushRustRecording();
+    if (recorded && !flushSuccess) {
+      throw new Error("Rust recording flush failed");
+    }
 
     // deno-lint-ignore no-await-in-loop
     const removeHarmfulSynapse = await discoverStructure
@@ -211,8 +218,15 @@ Deno.test("Error-Driven Synapse Discovery missing synapses by weighted error", a
   const discoverStructure = new DiscoverStructure(crippledCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+  assert(recorded, "Record should succeed");
   await Promise.all([...neuronPromisesMap.values()]);
+
+  // Flush Rust recording if using Rust
+  const flushSuccess = discoverStructure.flushRustRecording();
+  if (recorded && !flushSuccess) {
+    throw new Error("Rust recording flush failed");
+  }
 
   const helpfulSynapses = await discoverStructure.analyzeSelectedNeurons([
     "hidden-4",
