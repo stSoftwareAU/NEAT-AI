@@ -380,3 +380,53 @@ Deno.test({
     await discoverStructure.cleanUp();
   },
 });
+
+// Note: Leak detection may flag Rust library load/unload - this is expected with FFI
+Deno.test({
+  name: "flushRustRecording handles cleanup race condition gracefully",
+  ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    const targetCreature = makeCreature();
+    CreatureUtil.makeUUID(targetCreature);
+
+    // Create training data with correct input/output sizes
+    const inputArray = new Float32Array(targetCreature.input);
+    for (let i = 0; i < targetCreature.input; i++) {
+      inputArray[i] = Math.random() * 2 - 1;
+    }
+    const outputArray = targetCreature.activate(inputArray);
+
+    const trainingData: DataRecordInterface[] = [
+      {
+        input: inputArray,
+        output: outputArray,
+      },
+    ];
+
+    // Create DiscoverStructure
+    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
+
+    // Record some data
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed");
+    await Promise.all([...neuronPromisesMap.values()]);
+
+    // Start cleanup (async operation that sets creature to null)
+    const cleanupPromise = discoverStructure.cleanUp();
+
+    // Immediately try to flush (race condition scenario)
+    // This should handle the null creature gracefully and return false
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(
+      !flushSuccess,
+      "flushRustRecording should return false when creature has been cleaned up",
+    );
+
+    // Wait for cleanup to complete
+    await cleanupPromise;
+  },
+});

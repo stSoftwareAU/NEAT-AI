@@ -280,6 +280,15 @@ export class DiscoverStructure {
       return true;
     }
 
+    // Check if creature has been cleaned up (race condition protection)
+    // @ts-ignore - creature can be null after cleanUp()
+    if (!this.creature) {
+      console.warn(
+        `⚠️  Discovery recording skipped: creature has been cleaned up.`,
+      );
+      return false;
+    }
+
     // Now actually load the library (lazy loading - only when we need to write)
     if (!isRustLibraryAvailable()) {
       console.warn(
