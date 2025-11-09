@@ -300,18 +300,6 @@ export class DiscoverStructure {
             )
             : [];
 
-          // DEBUG: Log first record's errors
-          if (index === 0 && neuron.uuid === "hidden-3") {
-            console.log(
-              `[DEBUG] flushRustRecording: First record, neuron ${neuron.uuid}: activation=${discoverRecord.activation}, errors="${discoverRecord.errors}", errors.length=${errors.length}`,
-            );
-            console.log(
-              `[DEBUG] flushRustRecording: errors array=${
-                JSON.stringify(errors.slice(0, 3))
-              }`,
-            );
-          }
-
           return {
             neuron_uuid: neuron.uuid,
             activation: discoverRecord.activation,
@@ -319,26 +307,6 @@ export class DiscoverStructure {
             errors: errors,
           };
         });
-
-        // DEBUG: Log first record's neuron_data structure
-        if (index === 0) {
-          const hidden3Data = neuronData.find((n) =>
-            n.neuron_uuid === "hidden-3"
-          );
-          if (hidden3Data) {
-            console.log(
-              `[DEBUG] flushRustRecording: First record neuron_data for hidden-3: ${
-                JSON.stringify({
-                  neuron_uuid: hidden3Data.neuron_uuid,
-                  activation: hidden3Data.activation,
-                  value: hidden3Data.value,
-                  errors_length: hidden3Data.errors.length,
-                  errors_first3: hidden3Data.errors.slice(0, 3),
-                })
-              }`,
-            );
-          }
-        }
 
         return {
           input: Array.from(record.input),
@@ -360,14 +328,6 @@ export class DiscoverStructure {
         recordIndices = undefined;
       }
 
-      console.log(
-        `[DEBUG] flushRustRecording: rustAccumulatedData.length=${this.rustAccumulatedData.length}, recordIndices=${
-          recordIndices
-            ? JSON.stringify(recordIndices.slice(0, 5)) + "..."
-            : "undefined"
-        }`,
-      );
-
       const rustInput: RustRecordInput = {
         creature: rustCreature,
         "training_data": rustTrainingData,
@@ -379,30 +339,8 @@ export class DiscoverStructure {
 
       const result = recordDiscovery(rustInput);
 
-      console.log(
-        `[DEBUG] flushRustRecording: Result success=${result?.success}, file=${result?.file}, error=${
-          result?.error || "none"
-        }`,
-      );
-
       if (result && result.success && result.file) {
         this.parquetFilePath = `${this.tempDir}/${result.file}`;
-        console.log(
-          `[DEBUG] flushRustRecording: Parquet file path set to ${this.parquetFilePath}`,
-        );
-
-        // Verify file exists and has content
-        try {
-          const fileInfo = Deno.statSync(this.parquetFilePath);
-          console.log(
-            `[DEBUG] flushRustRecording: Parquet file exists, size=${fileInfo.size} bytes`,
-          );
-        } catch (e) {
-          console.error(
-            `[DEBUG] flushRustRecording: ERROR - Parquet file does not exist at ${this.parquetFilePath}:`,
-            e,
-          );
-        }
 
         // Write indices file for input neuron binary reading
         if (this.rustBinaryFilePath) {
@@ -762,15 +700,8 @@ export class DiscoverStructure {
 
     // Verify Parquet file exists before reading
     try {
-      const fileInfo = Deno.statSync(this.parquetFilePath);
-      console.log(
-        `[DEBUG] loadCSV: Parquet file exists, size=${fileInfo.size} bytes, path=${this.parquetFilePath}`,
-      );
-    } catch (e) {
-      console.error(
-        `[DEBUG] loadCSV: ERROR - Parquet file does not exist at ${this.parquetFilePath}:`,
-        e,
-      );
+      Deno.statSync(this.parquetFilePath);
+    } catch {
       throw new Error(
         `Parquet file does not exist: ${this.parquetFilePath}`,
       );
@@ -782,31 +713,7 @@ export class DiscoverStructure {
       neuron_uuid: neuronUUID,
     });
 
-    console.log(
-      `[DEBUG] loadCSV: readDiscoveryRecords result: success=${readResult?.success}, records.length=${
-        readResult?.records?.length || 0
-      }, error=${readResult?.error || "none"}`,
-    );
-
     if (readResult && readResult.success && readResult.records) {
-      // DEBUG: Log what we're reading
-      console.log(
-        `[DEBUG] loadCSV: Read ${readResult.records.length} records for neuron ${neuronUUID} from ${this.parquetFilePath}`,
-      );
-      if (readResult.records.length > 0) {
-        // Log first few records before sorting
-        const first3 = readResult.records.slice(0, 3).map((r) => ({
-          obs_index: r.obs_index,
-          activation: r.activation,
-          errors_length: r.errors.length,
-          errors: r.errors.slice(0, 3), // First 3 errors
-        }));
-        console.log(
-          `[DEBUG] loadCSV: First 3 records BEFORE sorting:`,
-          JSON.stringify(first3, null, 2),
-        );
-      }
-
       // Convert Rust records to TypeScript format
       // Sort by obs_index to ensure records are in the same order as they were written
       const sortedRecords = [...readResult.records].sort(
@@ -818,16 +725,9 @@ export class DiscoverStructure {
         errors: r.errors.map((e) => e.toString()).join("|"), // Join with pipe to match original format
       }));
 
-      console.log(
-        `[DEBUG] loadCSV: Converted ${converted.length} records for neuron ${neuronUUID}`,
-      );
       return converted;
     } else {
       // Rust reading failed
-      console.error(
-        `[DEBUG] loadCSV: Failed to read for neuron ${neuronUUID}:`,
-        readResult?.error || "Unknown error",
-      );
       throw new Error(
         `Failed to read discovery records from Parquet: ${
           readResult?.error || "Unknown error"
