@@ -256,18 +256,6 @@ Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async ()
   await discoverStructure.cleanUp();
 });
 
-Deno.test({
-  name: "loadCSV handles incomplete last line",
-  ignore: true, // NOTE: This test was for CSV file handling. Since we've migrated to Parquet,
-  // this test is no longer applicable. The Parquet format handles incomplete data
-  // differently (it's a binary format with proper structure).
-  // TODO(#parquet-migration): Add equivalent test for Parquet edge cases if needed.
-  fn: () => {
-    // Test skipped - see ignore comment above
-    return;
-  },
-});
-
 Deno.test("Discovery gracefully skips when Rust module is not available", async () => {
   // This test specifically verifies graceful degradation WITHOUT FFI
   // It should pass when run without --allow-ffi flag

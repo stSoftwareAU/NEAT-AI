@@ -49,28 +49,6 @@ function makeSimpleCreature(): Creature {
   return creature;
 }
 
-Deno.test({
-  name: "Discovery detects and warns about NaN in error values",
-  ignore: true, // NOTE: This test was for CSV file corruption. Since we've migrated to Parquet,
-  // this test needs to be updated to work with Parquet files or test validation differently.
-  // TODO(#parquet-migration): Update this test to work with Parquet format or test validation logic directly.
-  fn: () => {
-    // Test skipped - see ignore comment above
-    return;
-  },
-});
-
-Deno.test({
-  name: "Discovery detects invalid totalErrorSum (NaN/Infinity)",
-  ignore: true, // NOTE: This test was for CSV file corruption. Since we've migrated to Parquet,
-  // this test needs to be updated to work with Parquet files or test validation differently.
-  // TODO(#parquet-migration): Update this test to work with Parquet format or test validation logic directly.
-  fn: () => {
-    // Test skipped - see ignore comment above
-    return;
-  },
-});
-
 Deno.test("Discovery validates all neurons have finite error values", async () => {
   const creature = makeSimpleCreature();
   CreatureUtil.makeUUID(creature);
