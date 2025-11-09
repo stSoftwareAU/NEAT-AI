@@ -9,6 +9,14 @@ import { MSE } from "../../costs/MSE.ts";
 import type { ActivationInterface } from "../../methods/activations/ActivationInterface.ts";
 import { Activations } from "../../methods/activations/Activations.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
+import {
+  creatureToRustFormat,
+  isRustDiscoveryEnabled,
+  isRustLibraryAvailable,
+  readDiscoveryRecords,
+  recordDiscovery,
+  type RustRecordInput,
+} from "./RustDiscovery.ts";
 
 /**
  * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
@@ -80,6 +88,14 @@ export class DiscoverStructure {
   private selectedIndices: BinaryRecordIndices = {};
   private indicesFilePath: string;
 
+  // Rust recording: accumulate data for Rust Parquet writing (Rust is required)
+  private rustAccumulatedData: DataRecordInterface[] = [];
+  private rustAccumulatedNeuronData: Array<Map<string, DiscoverRecord>> = [];
+  private rustBinaryFilePath: string | null = null;
+  private rustBinaryFilePaths: Set<string> = new Set(); // Track all binary file paths
+  private usingRustDualWrite = false;
+  private parquetFilePath: string | null = null;
+
   constructor(creature: Creature, timeoutSeconds: number) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
@@ -115,33 +131,32 @@ export class DiscoverStructure {
   }
 
   /**
-   * Initializes the discovery process by preparing temporary storage for neuron data.
-   * Uses synchronous writes for simple header creation.
-   * Throws on failure to ensure data integrity - we must have headers before appending data.
-   * For input neurons, we skip CSV creation and will read directly from binary files.
+   * Initializes the discovery process.
+   * Requires the NEAT-AI-Discovery Rust library to be available.
+   * Discovery will fail gracefully if Rust module is not available.
    */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
+    // Check if Rust discovery is enabled (requires both library file AND FFI permissions)
+    if (!isRustDiscoveryEnabled()) {
+      console.warn(
+        `⚠️  Discovery requires the NEAT-AI-Discovery Rust library and FFI permissions. Discovery will be skipped.`,
+      );
+      // Set up empty promises - discovery will fail gracefully
+      this.creature.neurons.forEach((neuron) => {
+        neuronPromisesMap.set(neuron.uuid, Promise.resolve());
+      });
+      return;
+    }
+
+    // Rust discovery is enabled - set up for Rust recording
+    this.usingRustDualWrite = true;
+
+    // Set up promise placeholders for all neurons (Rust handles file creation)
     this.creature.neurons.forEach((neuron) => {
-      if (neuron.type === "input") {
-        // For input neurons, we don't create CSV files
-        // Data will be read directly from binary files using selectedIndices
-        neuronPromisesMap.set(neuron.uuid, Promise.resolve());
-      } else {
-        // For non-input neurons, create CSV files as before
-        const headCSV = "value,activation,errors\n";
-        const filePath = `${this.tempDir}/${neuron.uuid}.csv`;
-
-        // Write header - fail fast if this doesn't work
-        // We MUST create files with headers before record() tries to append
-        // createNew: true ensures we don't overwrite existing files (safety check)
-        Deno.writeTextFileSync(filePath, headCSV, { createNew: true });
-
-        // Create a resolved promise as placeholder for the promise chain
-        neuronPromisesMap.set(neuron.uuid, Promise.resolve());
-      }
+      neuronPromisesMap.set(neuron.uuid, Promise.resolve());
     });
 
     // Initialize the indices file as an empty JSON object
@@ -150,6 +165,7 @@ export class DiscoverStructure {
 
   /**
    * Cleans up temporary resources and resets the internal state after discovery.
+   * Also closes the Rust library to avoid leak detection warnings in tests.
    */
   public async cleanUp() {
     assert(this.initialized, "Not initialized");
@@ -167,6 +183,14 @@ export class DiscoverStructure {
     // @ts-ignore - clearing to help GC
     this.discoveries = null;
 
+    // Close Rust library if it was loaded (for test cleanup)
+    try {
+      const { closeRustLibrary } = await import("./RustDiscovery.ts");
+      closeRustLibrary();
+    } catch {
+      // Ignore errors during cleanup
+    }
+
     try {
       await Deno.remove(this.tempDir, { recursive: true });
     } catch (error) {
@@ -177,13 +201,12 @@ export class DiscoverStructure {
 
   /**
    * Records neuron activations and errors across the provided training data.
-   * Optimized for memory efficiency and performance.
-   * Uses synchronous writes to avoid promise chain buildup.
-   * For input neurons, records indices instead of writing CSV files.
+   * Requires the NEAT-AI-Discovery Rust library - discovery fails gracefully if not available.
+   * Accumulates data for batch processing via Rust module (Parquet format).
    */
   public record(
     trainingData: DataRecordInterface[],
-    neuronPromisesMap: Map<string, Promise<void>>,
+    _neuronPromisesMap: Map<string, Promise<void>>,
     binaryFilePath?: string,
     recordIndices?: number[],
   ): boolean {
@@ -192,6 +215,11 @@ export class DiscoverStructure {
       return false;
     }
     this.recorded = true;
+
+    // Rust module is required - if not available, discovery was already skipped in initialize()
+    if (!this.usingRustDualWrite) {
+      return false; // Discovery skipped - Rust not available
+    }
 
     // Track selected indices if provided (from binary file processing)
     if (binaryFilePath && recordIndices && recordIndices.length > 0) {
@@ -205,97 +233,250 @@ export class DiscoverStructure {
         this.indicesFilePath,
         JSON.stringify(this.selectedIndices),
       );
-    } else {
-      // Backward compatibility: If no binary file info provided (e.g., in unit tests),
-      // write input neuron data to CSV files as before
-      this.creature.neurons.forEach((neuron) => {
-        if (neuron.type === "input") {
-          // Build CSV string directly without intermediate array
-          let dataCSV = "";
-          for (let i = 0; i < trainingData.length; i++) {
-            dataCSV += `${trainingData[i].input[neuron.index]}\n`;
-          }
 
-          const fileName = `${this.tempDir}/${neuron.uuid}.csv`;
-
-          // Write to CSV for backward compatibility
-          try {
-            // Check if file exists (it won't if we're in binary mode)
-            const fileInfo = Deno.statSync(fileName);
-            if (fileInfo.isFile) {
-              Deno.writeTextFileSync(fileName, dataCSV, { append: true });
-            }
-          } catch {
-            // File doesn't exist - create it with header and data
-            Deno.writeTextFileSync(fileName, "activation\n" + dataCSV);
-          }
-        }
-      });
+      // Store binary file path for Rust (keep first for backward compatibility)
+      if (!this.rustBinaryFilePath) {
+        this.rustBinaryFilePath = binaryFilePath;
+      }
+      // Track all binary file paths
+      this.rustBinaryFilePaths.add(binaryFilePath);
     }
 
-    // Process non-input neurons with streaming approach
-    const nonInputNeurons = this.creature.neurons.filter((neuron) =>
-      neuron.type !== "input"
-    );
-
-    // Pre-allocate CSV builders for each neuron to avoid repeated string concatenation
-    const csvBuilders = new Map<string, string[]>();
-    nonInputNeurons.forEach((neuron) => {
-      csvBuilders.set(neuron.uuid, []);
-    });
-
-    // Process each record and build CSV data incrementally
+    // Process each record and accumulate data for Rust batch processing
     for (let i = 0; i < trainingData.length; i++) {
       const record = trainingData[i];
 
-      // Activate creature with existing input (no new Float32Array creation)
+      // Activate creature with existing input
       this.creature.activate(record.input);
       const discoverMap = this.creature.record(record.output);
 
-      // Build CSV lines for each neuron
-      nonInputNeurons.forEach((neuron) => {
-        const discoverRecord = discoverMap.get(neuron.uuid) || {
-          activation: this.creature.state.activations[neuron.index],
-          errors: "",
-        };
-
-        const csvLine = `${
-          discoverRecord.value ?? ""
-        },${discoverRecord.activation},${discoverRecord.errors}\n`;
-        csvBuilders.get(neuron.uuid)!.push(csvLine);
-      });
+      // Accumulate data for Rust (Parquet format)
+      this.rustAccumulatedData.push(record);
+      this.rustAccumulatedNeuronData.push(discoverMap);
     }
 
-    // Write CSV data for each neuron using synchronous writes
-    for (const [neuronUUID, csvLines] of csvBuilders.entries()) {
-      const dataCSV = csvLines.join("");
-      const fileName = `${this.tempDir}/${neuronUUID}.csv`;
-      const previousPromise = neuronPromisesMap.get(neuronUUID)!;
-
-      // Wait for previous write to complete, then write synchronously
-      const nextPromise = previousPromise.then(() => {
-        try {
-          // Verify file exists before appending to prevent creating headerless files
-          const fileInfo = Deno.statSync(fileName);
-          if (!fileInfo.isFile) {
-            throw new Error(`Expected file but found directory: ${fileName}`);
-          }
-          Deno.writeTextFileSync(fileName, dataCSV, { append: true });
-        } catch (error) {
-          console.error(
-            `[DiscoverStructure] Sync file write failed for ${fileName}:`,
-            error,
-          );
-          throw error; // Re-throw to fail the promise chain
-        }
-      });
-
-      neuronPromisesMap.set(neuronUUID, nextPromise);
-    }
-
-    // Clear CSV builders to help GC
-    csvBuilders.clear();
     return true;
+  }
+
+  /**
+   * Flushes accumulated Rust recording data and writes to Parquet via Rust module.
+   * This is called after all record() batches complete.
+   * Returns true if Rust write succeeded or if there's no data to flush (valid no-op),
+   * false if Rust not available or failed.
+   *
+   * NOTE: This is where we actually LOAD the Rust library (lazy loading).
+   * We check file existence earlier (rustLibraryExists) to avoid loading unnecessarily.
+   * If Rust module is not available, this returns false and discovery is skipped.
+   * If there's no accumulated data (empty training data), this returns true (valid no-op).
+   */
+  public flushRustRecording(): boolean {
+    // If Rust is not being used, return false (discovery skipped)
+    if (!this.usingRustDualWrite) {
+      return false;
+    }
+
+    // If there's no data to flush, return true (valid no-op, not an error)
+    if (this.rustAccumulatedData.length === 0) {
+      return true;
+    }
+
+    // Check if creature has been cleaned up (race condition protection)
+    // @ts-ignore - creature can be null after cleanUp()
+    if (!this.creature) {
+      console.warn(
+        `⚠️  Discovery recording skipped: creature has been cleaned up.`,
+      );
+      return false;
+    }
+
+    // Now actually load the library (lazy loading - only when we need to write)
+    if (!isRustLibraryAvailable()) {
+      console.warn(
+        `⚠️  Rust library not available when flushing. Discovery recording failed.`,
+      );
+      return false;
+    }
+
+    try {
+      const creatureExport = this.creature.exportJSON();
+      const rustCreature = creatureToRustFormat(creatureExport);
+
+      const nonInputNeurons = this.creature.neurons.filter((neuron) =>
+        neuron.type !== "input"
+      );
+
+      const rustTrainingData = this.rustAccumulatedData.map((record, index) => {
+        const discoverMap = this.rustAccumulatedNeuronData[index];
+
+        const neuronData = nonInputNeurons.map((neuron) => {
+          const discoverRecord = discoverMap.get(neuron.uuid) || {
+            activation: this.creature.state.activations[neuron.index],
+            errors: "",
+          };
+
+          const errors = discoverRecord.errors
+            ? discoverRecord.errors.split("|").map(Number).filter(
+              Number.isFinite,
+            )
+            : [];
+
+          return {
+            neuron_uuid: neuron.uuid,
+            activation: discoverRecord.activation,
+            value: discoverRecord.value,
+            errors: errors,
+          };
+        });
+
+        return {
+          input: Array.from(record.input),
+          output: Array.from(record.output),
+          neuron_data: neuronData,
+        };
+      });
+
+      // Prepare record indices if we have binary files with specific indices
+      // NOTE: Indices stored in selectedIndices are file-specific (indices within each binary file),
+      // not training-data indices. When multiple files are processed, we can't reliably map
+      // file-specific indices to training-data indices without tracking offsets.
+      // For single file: use file-specific indices (they should map 1:1 to training data)
+      // For multiple files: use sequential indices (0, 1, 2, ...) to match training data order
+      let recordIndices: number[] | undefined = undefined;
+      if (this.rustBinaryFilePaths.size === 1 && this.rustBinaryFilePath) {
+        // Single binary file: use its file-specific indices
+        // These should map 1:1 to training data since only one file was processed
+        const fileIndices = this.selectedIndices[this.rustBinaryFilePath];
+        if (fileIndices && fileIndices.length > 0) {
+          // Verify indices match training data length (should be 1:1 for single file)
+          if (fileIndices.length === this.rustAccumulatedData.length) {
+            recordIndices = fileIndices;
+          } else {
+            // Mismatch - use sequential indices for safety
+            recordIndices = undefined;
+          }
+        } else {
+          // No indices found - use sequential indices
+          recordIndices = undefined;
+        }
+      } else if (this.rustBinaryFilePaths.size > 1) {
+        // Multiple binary files: can't map file-specific indices to training-data indices
+        // Use sequential indices (0, 1, 2, ...) to match training data order
+        recordIndices = undefined;
+      } else {
+        // No binary file - don't provide record_indices (let Rust process all records sequentially)
+        // This ensures obs_index in Parquet matches the training data index (0, 1, 2, ...)
+        recordIndices = undefined;
+      }
+
+      // Check if timeout has expired before calculating timeout_seconds
+      // This prevents passing negative timeout values to the Rust module
+      if (Date.now() > this.timeoutTS) {
+        // Timeout has expired - return false to indicate discovery skipped
+        return false;
+      }
+
+      // Calculate timeout_seconds, ensuring it's non-negative
+      // Math.max ensures we never pass a negative value even if there's a race condition
+      const timeoutSeconds = Math.max(
+        0,
+        Math.floor((this.timeoutTS - Date.now()) / 1000),
+      );
+
+      const rustInput: RustRecordInput = {
+        creature: rustCreature,
+        "training_data": rustTrainingData,
+        "temp_dir": this.tempDir,
+        "binary_file_path": this.rustBinaryFilePath || undefined,
+        "record_indices": recordIndices,
+        "timeout_seconds": timeoutSeconds,
+      };
+
+      const result = recordDiscovery(rustInput);
+
+      if (result && result.success && result.file) {
+        this.parquetFilePath = `${this.tempDir}/${result.file}`;
+
+        // Write indices file for input neuron binary reading
+        // For single file: use the calculated recordIndices or sequential indices
+        // For multiple files: write all file-specific indices (even though we use sequential for Rust)
+        if (this.rustBinaryFilePaths.size > 0) {
+          let indicesToWrite: BinaryRecordIndices;
+          if (this.rustBinaryFilePaths.size === 1 && recordIndices) {
+            // Single file with valid indices: use the calculated indices
+            indicesToWrite = {
+              [this.rustBinaryFilePath!]: recordIndices,
+            };
+          } else {
+            // Multiple files or no valid indices: write all file-specific indices
+            // (Note: Rust will use sequential indices, but we preserve file-specific indices for reference)
+            indicesToWrite = { ...this.selectedIndices };
+          }
+          Deno.writeTextFileSync(
+            this.indicesFilePath,
+            JSON.stringify(indicesToWrite),
+          );
+        } else if (this.rustAccumulatedData.length > 0) {
+          // No binary file path - create a temporary binary file from training data
+          // This allows input neurons to be read (they're always read from binary files)
+          const tempBinaryFile = `${this.tempDir}/training_data.bin`;
+          const BYTES_PER_RECORD =
+            (this.creature.input + this.creature.output) * 4;
+          const file = Deno.openSync(tempBinaryFile, {
+            create: true,
+            write: true,
+            truncate: true,
+          });
+
+          try {
+            const buffer = new Uint8Array(BYTES_PER_RECORD);
+            const recordArray = new Float32Array(buffer.buffer);
+            const sequentialIndices: number[] = [];
+
+            for (let i = 0; i < this.rustAccumulatedData.length; i++) {
+              const record = this.rustAccumulatedData[i];
+              // Write input values
+              for (let j = 0; j < this.creature.input; j++) {
+                recordArray[j] = record.input[j];
+              }
+              // Write output values
+              for (let j = 0; j < this.creature.output; j++) {
+                recordArray[this.creature.input + j] = record.output[j];
+              }
+
+              file.writeSync(buffer);
+              sequentialIndices.push(i);
+            }
+
+            // Write indices file pointing to the temporary binary file
+            const indices: BinaryRecordIndices = {
+              [tempBinaryFile]: sequentialIndices,
+            };
+            Deno.writeTextFileSync(
+              this.indicesFilePath,
+              JSON.stringify(indices),
+            );
+
+            // Store the temporary binary file path
+            this.rustBinaryFilePath = tempBinaryFile;
+          } finally {
+            file.close();
+          }
+        }
+
+        // Clear accumulated data after successful write
+        this.rustAccumulatedData = [];
+        this.rustAccumulatedNeuronData = [];
+        return true;
+      }
+      console.error(
+        `❌ Rust discovery recording failed: ${
+          result?.error || "Unknown error"
+        }`,
+      );
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   private discoveries: CandidateSynapse[] = [];
@@ -538,7 +719,7 @@ export class DiscoverStructure {
   }
 
   private async loadCSV(file: string): Promise<DiscoverRecord[]> {
-    // Check if this is an input neuron - if so, try binary first, then fall back to CSV
+    // Check if this is an input neuron - always read from binary files
     const fileName = file.split("/").pop();
     if (fileName && fileName.startsWith("input-")) {
       // Extract neuron index from filename like "input-5.csv"
@@ -546,7 +727,7 @@ export class DiscoverStructure {
       if (match) {
         const neuronIndex = parseInt(match[1], 10);
 
-        // Try to read from binary files if we have indices
+        // Always read from binary files (input neurons are never in Parquet)
         try {
           const indicesContent = await Deno.readTextFile(this.indicesFilePath);
           const indices: BinaryRecordIndices = JSON.parse(indicesContent);
@@ -556,80 +737,62 @@ export class DiscoverStructure {
             return await this.loadInputNeuronFromBinary(neuronIndex);
           }
         } catch {
-          // No indices file or empty - fall back to CSV
-        }
-
-        // Fall back to CSV if it exists (backward compatibility)
-        try {
-          const fileInfo = await Deno.stat(file);
-          if (!fileInfo.isFile) {
-            return []; // Not a file, return empty
-          }
-        } catch {
-          return []; // File doesn't exist, return empty
+          // No indices file or empty - return empty
+          return [];
         }
       }
     }
 
-    // For non-input neurons, use regular CSV loading
-    const fileInfo = await Deno.stat(file);
-    assert(fileInfo.isFile, "Not a file");
+    // For non-input neurons, read from Parquet (Rust is required)
+    if (!this.parquetFilePath) {
+      throw new Error(
+        "Parquet file path not set. Discovery requires the NEAT-AI-Discovery Rust library.",
+      );
+    }
 
-    const records: DiscoverRecord[] = [];
-    const headers: string[] = [];
-    let isFirstChunk = true;
+    // Extract neuron UUID from filename like "hidden-3.csv"
+    const match = fileName?.match(/^(.+)\.csv$/);
+    if (!match) {
+      throw new Error(`Invalid neuron file name: ${fileName}`);
+    }
+    const neuronUUID = match[1];
 
-    // Process the file in chunks to avoid memory issues
-    const bufferSize = 10 * 1024; // Was 256k
-    const buffer = new Uint8Array(bufferSize);
-    let partialLine = "";
-
-    // Open file for streaming with retry mechanism
-    const fileHandle = await this.openFileWithRetry(file);
+    // Verify Parquet file exists before reading
     try {
-      // We need to process chunks sequentially to maintain record order
-      while (true) {
-        const bytesRead = fileHandle.readSync(buffer);
-        if (bytesRead === null) {
-          break;
-        }
-        assert(bytesRead > 0, "Invalid number of bytes read");
-
-        // Convert buffer to string and process
-        const chunk = this.textDecoder.decode(buffer.slice(0, bytesRead));
-
-        partialLine = this.processCSVChunk(
-          chunk,
-          partialLine,
-          headers,
-          isFirstChunk,
-          records,
-        );
-
-        isFirstChunk = false;
-
-        // Give GC a chance to run periodically
-        if (records.length % 1000 === 0) {
-          // deno-lint-ignore no-await-in-loop
-          await new Promise((resolve) => setTimeout(resolve, 0));
-        }
-      }
-
-      if (partialLine.trim()) {
-        assert(headers.length > 0, "No headers found");
-        const values = parseCsv(partialLine, { skipFirstRow: false })[0];
-
-        const record = this.processCSVRecord(headers, values);
-        if (record) {
-          records.push(record);
-        }
-      }
-    } finally {
-      fileHandle.close();
-      // Buffer will be garbage collected when it goes out of scope
+      Deno.statSync(this.parquetFilePath);
+    } catch {
+      throw new Error(
+        `Parquet file does not exist: ${this.parquetFilePath}`,
+      );
     }
 
-    return records;
+    // Read from Parquet via Rust FFI (simple approach - optimize later)
+    const readResult = readDiscoveryRecords({
+      parquet_file: this.parquetFilePath,
+      neuron_uuid: neuronUUID,
+    });
+
+    if (readResult && readResult.success && readResult.records) {
+      // Convert Rust records to TypeScript format
+      // Sort by obs_index to ensure records are in the same order as they were written
+      const sortedRecords = [...readResult.records].sort(
+        (a, b) => a.obs_index - b.obs_index,
+      );
+      const converted = sortedRecords.map((r) => ({
+        activation: r.activation,
+        value: r.value ?? r.activation, // Use activation as fallback for value
+        errors: r.errors.map((e) => e.toString()).join("|"), // Join with pipe to match original format
+      }));
+
+      return converted;
+    } else {
+      // Rust reading failed
+      throw new Error(
+        `Failed to read discovery records from Parquet: ${
+          readResult?.error || "Unknown error"
+        }`,
+      );
+    }
   }
 
   private async loadCandidateSynapses(

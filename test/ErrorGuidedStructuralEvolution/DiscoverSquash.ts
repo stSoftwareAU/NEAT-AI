@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
@@ -84,80 +85,94 @@ function makeData(input: number) {
   return inputs;
 }
 
-Deno.test("Error-Driven Squash Discovery", async () => {
-  const targetCreature = makeCreature();
-  const data = makeData(targetCreature.input);
+Deno.test({
+  name: "Error-Driven Squash Discovery",
+  ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    const targetCreature = makeCreature();
+    const data = makeData(targetCreature.input);
 
-  /** Record the ideal outputs from the target creature */
-  const trainingData: DataRecordInterface[] = [];
+    /** Record the ideal outputs from the target creature */
+    const trainingData: DataRecordInterface[] = [];
 
-  for (let i = data.length; i--;) {
-    const input = data[i];
-    const output = targetCreature.activate(new Float32Array(input));
+    for (let i = data.length; i--;) {
+      const input = data[i];
+      const output = targetCreature.activate(new Float32Array(input));
 
-    trainingData.push({
-      input: new Float32Array(input),
-      output: new Float32Array(output),
+      trainingData.push({
+        input: new Float32Array(input),
+        output: new Float32Array(output),
+      });
+    }
+
+    /**
+     * Create a "crippled" version by changing the squash function of a neuron
+     * and adding a synapse to cause random noise.
+     */
+    const exportedJSON = targetCreature.exportJSON();
+    exportedJSON.neurons.find((neuron) => neuron.uuid === "hidden-3")!.squash =
+      TANH.NAME; // Change the squash function
+    exportedJSON.synapses.push({
+      fromUUID: "input-44",
+      toUUID: "hidden-3",
+      weight: 0.000_001,
     });
-  }
 
-  /**
-   * Create a "crippled" version by changing the squash function of a neuron
-   * and adding a synapse to cause random noise.
-   */
-  const exportedJSON = targetCreature.exportJSON();
-  exportedJSON.neurons.find((neuron) => neuron.uuid === "hidden-3")!.squash =
-    TANH.NAME; // Change the squash function
-  exportedJSON.synapses.push({
-    fromUUID: "input-44",
-    toUUID: "hidden-3",
-    weight: 0.000_001,
-  });
+    const crippledCreature = Creature.fromJSON(exportedJSON);
+    CreatureUtil.makeUUID(crippledCreature);
 
-  const crippledCreature = Creature.fromJSON(exportedJSON);
-  CreatureUtil.makeUUID(crippledCreature);
+    /**
+     * Instantiate the discovery mechanism
+     */
+    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed");
+    await Promise.all([...neuronPromisesMap.values()]);
 
-  /**
-   * Instantiate the discovery mechanism
-   */
-  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
-  discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
-  await Promise.all([...neuronPromisesMap.values()]);
+    // Flush Rust recording if using Rust
+    const flushSuccess = discoverStructure.flushRustRecording();
+    if (recorded && !flushSuccess) {
+      throw new Error("Rust recording flush failed");
+    }
 
-  const candidateSquashes = await discoverStructure
-    .analyzeSelectedNeuronsSquashes([
-      "hidden-3",
-    ]);
+    const candidateSquashes = await discoverStructure
+      .analyzeSelectedNeuronsSquashes([
+        "hidden-3",
+      ]);
 
-  assert(candidateSquashes, "Should have discovered a squash improvement");
-  assert(
-    candidateSquashes.length > 0,
-    "Should have discovered some candidate squashes",
-  );
-  const betterCreature = DiscoverStructure.changeSquash(
-    "ABC",
-    crippledCreature,
-    candidateSquashes,
-  );
-  assert(betterCreature, "Should have discovered a better creature");
-  betterCreature.validate();
-  const betterCreatureJSON = betterCreature.exportJSON();
+    assert(candidateSquashes, "Should have discovered a squash improvement");
+    assert(
+      candidateSquashes.length > 0,
+      "Should have discovered some candidate squashes",
+    );
+    const betterCreature = DiscoverStructure.changeSquash(
+      "ABC",
+      crippledCreature,
+      candidateSquashes,
+    );
+    assert(betterCreature, "Should have discovered a better creature");
+    betterCreature.validate();
+    const betterCreatureJSON = betterCreature.exportJSON();
 
-  const adjustedSquash =
-    betterCreatureJSON.neurons.find((neuron) => neuron.uuid === "hidden-3")!
+    const adjustedSquash = betterCreatureJSON.neurons.find((neuron) =>
+      neuron.uuid === "hidden-3"
+    )!
       .squash;
 
-  if (
-    adjustedSquash !== ReLU.NAME &&
-    adjustedSquash !== LeakyReLU.NAME &&
-    adjustedSquash !== ReLU6.NAME
-  ) {
-    fail(
-      `Should have discovered RELU, ReLU6 or LeakyReLU as the best squash was ${adjustedSquash}`,
-    );
-  }
+    if (
+      adjustedSquash !== ReLU.NAME &&
+      adjustedSquash !== LeakyReLU.NAME &&
+      adjustedSquash !== ReLU6.NAME
+    ) {
+      fail(
+        `Should have discovered RELU, ReLU6 or LeakyReLU as the best squash was ${adjustedSquash}`,
+      );
+    }
 
-  await discoverStructure.cleanUp();
+    await discoverStructure.cleanUp();
+  },
 });

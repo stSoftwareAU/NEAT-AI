@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
@@ -153,68 +154,82 @@ async function cleanupTempDir(dirPath: string) {
   }
 }
 
-Deno.test("Batch size 128 saves more batches than 512 on timeout", async () => {
-  const tmpDir128 = await createTempTestDir("batch-128");
-  const tmpDir512 = await createTempTestDir("batch-512");
+Deno.test({
+  name: "Batch size 128 saves more batches than 512 on timeout",
+  ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    const tmpDir128 = await createTempTestDir("batch-128");
+    const tmpDir512 = await createTempTestDir("batch-512");
 
-  try {
-    // Create separate creatures for each test to avoid state issues
-    const creature128 = makeTestCreature(20);
-    CreatureUtil.makeUUID(creature128);
-    creature128.clearState();
-    await createTestBinaryFile(creature128, 200, tmpDir128, "test1.bin");
+    try {
+      // Create separate creatures for each test to avoid state issues
+      const creature128 = makeTestCreature(20);
+      CreatureUtil.makeUUID(creature128);
+      creature128.clearState();
+      await createTestBinaryFile(creature128, 200, tmpDir128, "test1.bin");
 
-    const creature512 = makeTestCreature(20);
-    CreatureUtil.makeUUID(creature512);
-    creature512.clearState();
-    await createTestBinaryFile(creature512, 200, tmpDir512, "test1.bin");
+      const creature512 = makeTestCreature(20);
+      CreatureUtil.makeUUID(creature512);
+      creature512.clearState();
+      await createTestBinaryFile(creature512, 200, tmpDir512, "test1.bin");
 
-    // Test with batch size 128, very short timeout (1 second)
-    const options128 = {
-      discoveryBatchSize: 128,
-      discoveryTimeOutMinutes: 0.0167, // ~1 second
-      discoverySampleRate: 1.0, // 100% sample rate
-      log: 0,
-    };
+      // Test with batch size 128, very short timeout (1 second)
+      const options128 = {
+        discoveryBatchSize: 128,
+        discoveryTimeOutMinutes: 0.0167, // ~1 second
+        discoverySampleRate: 1.0, // 100% sample rate
+        log: 0,
+      };
 
-    const result128 = await recordDirectory(creature128, tmpDir128, options128);
+      const result128 = await recordDirectory(
+        creature128,
+        tmpDir128,
+        options128,
+      );
 
-    // Test with batch size 512, same timeout
-    const options512 = {
-      discoveryBatchSize: 512,
-      discoveryTimeOutMinutes: 0.0167, // ~1 second
-      discoverySampleRate: 1.0,
-      log: 0,
-    };
+      // Test with batch size 512, same timeout
+      const options512 = {
+        discoveryBatchSize: 512,
+        discoveryTimeOutMinutes: 0.0167, // ~1 second
+        discoverySampleRate: 1.0,
+        log: 0,
+      };
 
-    const result512 = await recordDirectory(creature512, tmpDir512, options512);
+      const result512 = await recordDirectory(
+        creature512,
+        tmpDir512,
+        options512,
+      );
 
-    // Both should return results (not throw) - this tests that partial results work
-    assertExists(result128, "Batch 128 should return result");
-    assertExists(result512, "Batch 512 should return result");
+      // Both should return results (not throw) - this tests that partial results work
+      assertExists(result128, "Batch 128 should return result");
+      assertExists(result512, "Batch 512 should return result");
 
-    // Count results to verify both got some data processed
-    const count128 = (result128.addHelpfulSynapses?.length || 0) +
-      (result128.candidateSquashes?.length || 0) +
-      (result128.removeHarmfulSynapse ? 1 : 0);
+      // Count results to verify both got some data processed
+      const count128 = (result128.addHelpfulSynapses?.length || 0) +
+        (result128.candidateSquashes?.length || 0) +
+        (result128.removeHarmfulSynapse ? 1 : 0);
 
-    const count512 = (result512.addHelpfulSynapses?.length || 0) +
-      (result512.candidateSquashes?.length || 0) +
-      (result512.removeHarmfulSynapse ? 1 : 0);
+      const count512 = (result512.addHelpfulSynapses?.length || 0) +
+        (result512.candidateSquashes?.length || 0) +
+        (result512.removeHarmfulSynapse ? 1 : 0);
 
-    // Both should produce some results (the key is they complete without throwing)
-    assert(
-      count128 > 0 || count512 > 0,
-      `At least one batch size should produce results: 128=${count128}, 512=${count512}`,
-    );
+      // Both should produce some results (the key is they complete without throwing)
+      assert(
+        count128 > 0 || count512 > 0,
+        `At least one batch size should produce results: 128=${count128}, 512=${count512}`,
+      );
 
-    console.log(
-      `Batch comparison: 128 produced ${count128} results, 512 produced ${count512} results`,
-    );
-  } finally {
-    await cleanupTempDir(tmpDir128);
-    await cleanupTempDir(tmpDir512);
-  }
+      console.log(
+        `Batch comparison: 128 produced ${count128} results, 512 produced ${count512} results`,
+      );
+    } finally {
+      await cleanupTempDir(tmpDir128);
+      await cleanupTempDir(tmpDir512);
+    }
+  },
 });
 
 Deno.test("DiscoverDirectory returns partial results on timeout", async () => {

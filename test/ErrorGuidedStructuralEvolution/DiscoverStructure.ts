@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
@@ -81,209 +82,351 @@ function makeData(input: number) {
   return inputs;
 }
 
-Deno.test("Error-Driven Synapse Discovery identifies negative synapses and removes", async () => {
-  const targetCreature = makeCreature();
-  const data = makeData(targetCreature.input);
+Deno.test({
+  name:
+    "Error-Driven Synapse Discovery identifies negative synapses and removes",
+  ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    const targetCreature = makeCreature();
+    const data = makeData(targetCreature.input);
 
-  /** Record the ideal outputs from the target creature */
-  const trainingData: DataRecordInterface[] = [];
+    /** Record the ideal outputs from the target creature */
+    const trainingData: DataRecordInterface[] = [];
 
-  for (let i = data.length; i--;) {
-    const input = data[i];
-    const output = targetCreature.activate(new Float32Array(input));
+    for (let i = data.length; i--;) {
+      const input = data[i];
+      const output = targetCreature.activate(new Float32Array(input));
 
-    trainingData.push({
-      input: new Float32Array(input),
-      output: new Float32Array(output),
+      trainingData.push({
+        input: new Float32Array(input),
+        output: new Float32Array(output),
+      });
+    }
+
+    /**
+     * Create a "crippled" version by removing two important synapses
+     */
+    const exportedJSON = targetCreature.exportJSON();
+    exportedJSON.synapses.push({
+      fromUUID: "input-44",
+      toUUID: "hidden-3",
+      weight: 1,
     });
-  }
 
-  /**
-   * Create a "crippled" version by removing two important synapses
-   */
-  const exportedJSON = targetCreature.exportJSON();
-  exportedJSON.synapses.push({
-    fromUUID: "input-44",
-    toUUID: "hidden-3",
-    weight: 1,
-  });
+    const crippledCreature = Creature.fromJSON(exportedJSON);
+    CreatureUtil.makeUUID(crippledCreature);
 
-  const crippledCreature = Creature.fromJSON(exportedJSON);
-  CreatureUtil.makeUUID(crippledCreature);
+    /**
+     * Instantiate the discovery mechanism
+     */
+    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed with Rust available");
+    await Promise.all([...neuronPromisesMap.values()]);
 
-  /**
-   * Instantiate the discovery mechanism
-   */
-  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
-  discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
-  await Promise.all([...neuronPromisesMap.values()]);
+    // Flush Rust recording
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
 
-  const removeHarmfulSynapse = await discoverStructure
-    .analyzeSelectedNeuronsForRemoval([
+    const removeHarmfulSynapse = await discoverStructure
+      .analyzeSelectedNeuronsForRemoval([
+        "hidden-3",
+      ]);
+    assert(removeHarmfulSynapse, "Should have discovered a harmful synapse");
+    const betterCreature = DiscoverStructure.removeSynapse(
+      "ABC",
+      crippledCreature,
+      removeHarmfulSynapse,
+    );
+    assert(betterCreature, "Should have discovered a better creature");
+    betterCreature.validate();
+    const betterCreatureJSON = betterCreature.exportJSON();
+    /** Verify synapses that were removed are discovered again: */
+    const input44 = betterCreatureJSON.synapses.find((synapse) =>
+      synapse.fromUUID === "input-44"
+    );
+
+    assert(!input44, "Should have REMOVED synapse from input-44");
+
+    await discoverStructure.cleanUp();
+  },
+});
+
+Deno.test({
+  name: "Error-Driven Synapse Discovery identifies missing synapses",
+  ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    const targetCreature = makeCreature();
+    const data = makeData(targetCreature.input);
+
+    /** Record the ideal outputs from the target creature */
+    const trainingData: DataRecordInterface[] = [];
+
+    for (let i = data.length; i--;) {
+      const input = data[i];
+      const output = targetCreature.activate(new Float32Array(input));
+
+      trainingData.push({
+        input: new Float32Array(input),
+        output: new Float32Array(output),
+      });
+    }
+
+    /**
+     * Create a "crippled" version by removing two important synapses
+     */
+    const exportedJSON = targetCreature.exportJSON();
+    exportedJSON.synapses = exportedJSON.synapses.filter((synapse) =>
+      synapse.fromUUID !== "input-33" && synapse.fromUUID !== "input-22"
+    );
+
+    const crippledCreature = Creature.fromJSON(exportedJSON);
+    CreatureUtil.makeUUID(crippledCreature);
+
+    /**
+     * Instantiate the discovery mechanism
+     */
+    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed with Rust available");
+    await Promise.all([...neuronPromisesMap.values()]);
+
+    // Flush Rust recording
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
+
+    await discoverStructure.analyzeSelectedNeurons(["hidden-4"]);
+    const helpfulSynapses = await discoverStructure.analyzeSelectedNeurons([
       "hidden-3",
     ]);
-  assert(removeHarmfulSynapse, "Should have discovered a harmful synapse");
-  const betterCreature = DiscoverStructure.removeSynapse(
-    "ABC",
-    crippledCreature,
-    removeHarmfulSynapse,
-  );
-  assert(betterCreature, "Should have discovered a better creature");
-  betterCreature.validate();
-  const betterCreatureJSON = betterCreature.exportJSON();
-  /** Verify synapses that were removed are discovered again: */
-  const input44 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-44"
-  );
 
-  assert(!input44, "Should have REMOVED synapse from input-44");
+    const betterCreature = DiscoverStructure.addHelpfulSynapses(
+      "ABC",
+      crippledCreature,
+      helpfulSynapses,
+    );
+    assert(betterCreature, "Should have discovered a better creature");
+    betterCreature.validate();
+    const betterCreatureJSON = betterCreature.exportJSON();
+    /** Verify synapses that were removed are discovered again: */
+    const input22 = betterCreatureJSON.synapses.find((synapse) =>
+      synapse.fromUUID === "input-22"
+    );
 
-  await discoverStructure.cleanUp();
+    assert(input22, "Should have added synapse from input-22");
+    assertAlmostEquals(input22?.weight, 0.2, 0.075);
+    const input33 = betterCreatureJSON.synapses.find((synapse) =>
+      synapse.fromUUID === "input-33"
+    );
+    assert(input33, "Should have added synapse from input-33");
+    assertAlmostEquals(input33?.weight, -0.3, 0.05);
+
+    // New tests for listViableNeurons()
+    const viableNeurons = await discoverStructure.listViableNeurons();
+    assert(viableNeurons.length > 0, "There should be viable neurons listed");
+    // Check descending sort order by total error
+    for (let i = 1; i < viableNeurons.length; i++) {
+      assert(
+        viableNeurons[i - 1].totalError >= viableNeurons[i].totalError,
+        "Viable neurons should be sorted by descending totalError",
+      );
+    }
+
+    // New test for selectNeuronWeightedByError()
+    const selectedNeuronUUID = await discoverStructure
+      .selectNeuronsWeightedByError(1);
+    assert(selectedNeuronUUID, "Should select a neuron UUID");
+    assert(
+      viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID[0]),
+      "Selected neuron UUID must be from the viable neurons list",
+    );
+
+    await discoverStructure.cleanUp();
+  },
 });
 
-Deno.test("Error-Driven Synapse Discovery identifies missing synapses", async () => {
+Deno.test("Discovery gracefully skips when Rust module is not available", async () => {
+  // This test specifically verifies graceful degradation WITHOUT FFI
+  // It should pass when run without --allow-ffi flag
+
   const targetCreature = makeCreature();
+  CreatureUtil.makeUUID(targetCreature);
   const data = makeData(targetCreature.input);
 
-  /** Record the ideal outputs from the target creature */
   const trainingData: DataRecordInterface[] = [];
-
   for (let i = data.length; i--;) {
     const input = data[i];
     const output = targetCreature.activate(new Float32Array(input));
-
     trainingData.push({
       input: new Float32Array(input),
       output: new Float32Array(output),
     });
   }
 
-  /**
-   * Create a "crippled" version by removing two important synapses
-   */
-  const exportedJSON = targetCreature.exportJSON();
-  exportedJSON.synapses = exportedJSON.synapses.filter((synapse) =>
-    synapse.fromUUID !== "input-33" && synapse.fromUUID !== "input-22"
-  );
-
-  const crippledCreature = Creature.fromJSON(exportedJSON);
-  CreatureUtil.makeUUID(crippledCreature);
-
-  /**
-   * Instantiate the discovery mechanism
-   */
-  const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+  const discoverStructure = new DiscoverStructure(targetCreature, 60);
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
   discoverStructure.initialize(neuronPromisesMap);
-  discoverStructure.record(trainingData, neuronPromisesMap);
-  await Promise.all([...neuronPromisesMap.values()]);
 
-  await discoverStructure.analyzeSelectedNeurons(["hidden-4"]);
-  const helpfulSynapses = await discoverStructure.analyzeSelectedNeurons([
-    "hidden-3",
-  ]);
+  // Record should return false when Rust is not available
+  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
 
-  const betterCreature = DiscoverStructure.addHelpfulSynapses(
-    "ABC",
-    crippledCreature,
-    helpfulSynapses,
-  );
-  assert(betterCreature, "Should have discovered a better creature");
-  betterCreature.validate();
-  const betterCreatureJSON = betterCreature.exportJSON();
-  /** Verify synapses that were removed are discovered again: */
-  const input22 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-22"
-  );
-
-  assert(input22, "Should have added synapse from input-22");
-  assertAlmostEquals(input22?.weight, 0.2, 0.075);
-  const input33 = betterCreatureJSON.synapses.find((synapse) =>
-    synapse.fromUUID === "input-33"
-  );
-  assert(input33, "Should have added synapse from input-33");
-  assertAlmostEquals(input33?.weight, -0.3, 0.05);
-
-  // New tests for listViableNeurons()
-  const viableNeurons = await discoverStructure.listViableNeurons();
-  assert(viableNeurons.length > 0, "There should be viable neurons listed");
-  // Check descending sort order by total error
-  for (let i = 1; i < viableNeurons.length; i++) {
-    assert(
-      viableNeurons[i - 1].totalError >= viableNeurons[i].totalError,
-      "Viable neurons should be sorted by descending totalError",
+  if (!isRustDiscoveryEnabled()) {
+    // Without Rust, recording should fail gracefully
+    assert(!recorded, "Record should return false when Rust is not available");
+    console.log(
+      "✅ Discovery correctly skipped when Rust module is not available",
     );
+  } else {
+    // With Rust, recording should succeed
+    assert(recorded, "Record should succeed when Rust is available");
+    await Promise.all([...neuronPromisesMap.values()]);
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
   }
-
-  // New test for selectNeuronWeightedByError()
-  const selectedNeuronUUID = await discoverStructure
-    .selectNeuronsWeightedByError(1);
-  assert(selectedNeuronUUID, "Should select a neuron UUID");
-  assert(
-    viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID[0]),
-    "Selected neuron UUID must be from the viable neurons list",
-  );
 
   await discoverStructure.cleanUp();
 });
 
-Deno.test("loadCSV handles incomplete last line", async () => {
-  // Create a temporary file with a line that spans chunk boundaries
-  const tempDir = await Deno.makeTempDir();
-  const filePath = `${tempDir}/test.csv`;
+// Note: Leak detection may flag Rust library load/unload - this is expected with FFI
+Deno.test({
+  name: "flushRustRecording returns true for empty training data (valid no-op)",
+  ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    const targetCreature = makeCreature();
+    CreatureUtil.makeUUID(targetCreature);
 
-  // Create a CSV with a line that's exactly at the chunk boundary
-  const headers = "value,activation,errors\n";
-  const data = "1.0,0.5,0.1\n"; // Normal line
-  const longLine = "2.0,0.8,0.2"; // Incomplete line (no newline at the end)
+    // Create empty training data
+    const trainingData: DataRecordInterface[] = [];
 
-  // Write the file
-  await Deno.writeTextFile(filePath, headers + data + longLine);
+    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
 
-  // Create a DiscoverStructure instance with a mock creature
-  const mockCreature = {
-    uuid: "test-creature",
-    neurons: [],
-    input: 0,
-    output: 0,
-    exportJSON: () => ({ neurons: [], synapses: [] }),
-    dispose: () => {},
-    validate: () => {},
-    activate: () => new Float32Array(),
-    record: () => new Map(),
-  } as unknown as Creature;
+    // Record with empty data
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed even with empty data");
+    await Promise.all([...neuronPromisesMap.values()]);
 
-  const discoverStructure = new DiscoverStructure(mockCreature, 60);
+    // Flush should return true (valid no-op, not an error)
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(
+      flushSuccess,
+      "flushRustRecording should return true for empty data (valid no-op)",
+    );
 
-  // Define the record type
-  interface DiscoverRecord {
-    value: number;
-    activation: number;
-    errors: string;
-  }
+    await discoverStructure.cleanUp();
+  },
+});
 
-  // Call the private method using a two-step type assertion
-  const records = await ((discoverStructure as unknown) as {
-    loadCSV(file: string): Promise<DiscoverRecord[]>;
-  }).loadCSV(filePath);
+// Note: Leak detection may flag Rust library load/unload - this is expected with FFI
+Deno.test({
+  name: "flushRustRecording handles expired timeout gracefully",
+  ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    const targetCreature = makeCreature();
+    CreatureUtil.makeUUID(targetCreature);
 
-  // Verify the records
-  assert(records.length === 2, "Should have 2 records");
-  assert(records[0].value === 1.0, "First record should have value 1.0");
-  assert(
-    records[0].activation === 0.5,
-    "First record should have activation 0.5",
-  );
-  assert(records[0].errors === "0.1", "First record should have errors 0.1");
-  assert(records[1].value === 2.0, "Second record should have value 2.0");
-  assert(
-    records[1].activation === 0.8,
-    "Second record should have activation 0.8",
-  );
-  assert(records[1].errors === "0.2", "Second record should have errors 0.2");
+    // Create training data with correct input/output sizes
+    const inputArray = new Float32Array(targetCreature.input);
+    for (let i = 0; i < targetCreature.input; i++) {
+      inputArray[i] = Math.random() * 2 - 1;
+    }
+    const outputArray = targetCreature.activate(inputArray);
 
-  // Clean up
-  await Deno.remove(tempDir, { recursive: true });
+    const trainingData: DataRecordInterface[] = [
+      {
+        input: inputArray,
+        output: outputArray,
+      },
+    ];
+
+    // Create DiscoverStructure with normal timeout
+    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
+
+    // Record some data
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed");
+    await Promise.all([...neuronPromisesMap.values()]);
+
+    // Manually set timeoutTS to a past value to simulate expired timeout
+    // This tests the timeout check without waiting
+    (discoverStructure as unknown as { timeoutTS: number }).timeoutTS =
+      Date.now() - 1000; // Set to 1 second in the past
+
+    // flushRustRecording should handle expired timeout gracefully
+    // It should return false (timeout expired) rather than passing negative timeout_seconds
+    const flushSuccess = discoverStructure.flushRustRecording();
+    // When timeout expires, flush should fail gracefully (return false)
+    // This prevents passing negative timeout_seconds to Rust module
+    assert(
+      !flushSuccess,
+      "flushRustRecording should return false when timeout has expired",
+    );
+
+    await discoverStructure.cleanUp();
+  },
+});
+
+// Note: Leak detection may flag Rust library load/unload - this is expected with FFI
+Deno.test({
+  name: "flushRustRecording handles cleanup race condition gracefully",
+  ignore: !isRustDiscoveryEnabled(),
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    const targetCreature = makeCreature();
+    CreatureUtil.makeUUID(targetCreature);
+
+    // Create training data with correct input/output sizes
+    const inputArray = new Float32Array(targetCreature.input);
+    for (let i = 0; i < targetCreature.input; i++) {
+      inputArray[i] = Math.random() * 2 - 1;
+    }
+    const outputArray = targetCreature.activate(inputArray);
+
+    const trainingData: DataRecordInterface[] = [
+      {
+        input: inputArray,
+        output: outputArray,
+      },
+    ];
+
+    // Create DiscoverStructure
+    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
+
+    // Record some data
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed");
+    await Promise.all([...neuronPromisesMap.values()]);
+
+    // Start cleanup (async operation that sets creature to null)
+    const cleanupPromise = discoverStructure.cleanUp();
+
+    // Immediately try to flush (race condition scenario)
+    // This should handle the null creature gracefully and return false
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(
+      !flushSuccess,
+      "flushRustRecording should return false when creature has been cleaned up",
+    );
+
+    // Wait for cleanup to complete
+    await cleanupPromise;
+  },
 });

@@ -23,11 +23,29 @@ fi
 rm -rf .trace .test .coverage
 deno check
 
+# # is intentionally loaded and kept in memory for performance (not a leak)
+deno test \
+  test/ErrorGuidedStructuralEvolution/* \
+  --allow-read \
+  --allow-write \
+  --allow-net \
+  --allow-env \
+  --v8-flags=--max-old-space-size=8192 \
+  --parallel \
+  --config ./deno.json
+
+echo "Running tests with FFI enabled (full functionality)..."
 deno test \
   --allow-read \
   --allow-write \
   --allow-net \
   --trace-leaks \
+  --allow-ffi \
   --v8-flags=--max-old-space-size=8192 \
   --parallel \
   --config ./deno.json
+
+  # --trace-leaks \
+echo ""
+echo "Running discovery tests without FFI to verify graceful degradation..."
+# Note: --trace-leaks is disabled for discovery tests because the Rust library

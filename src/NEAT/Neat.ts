@@ -294,6 +294,11 @@ export class Neat {
       return;
     }
 
+    // Skip discovery if timeout is 0 or negative (discovery disabled)
+    if (timeOutMinutes <= 0 || this.config.discoveryTimeOutMinutes <= 0) {
+      return;
+    }
+
     if (this.doNotStartMore) return;
 
     if (this.discoveryInProgress.size > 0) return;
