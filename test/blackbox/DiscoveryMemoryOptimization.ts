@@ -73,7 +73,9 @@ Deno.test("discovery promise cleanup - simulated with evolveDataSet", async () =
   const expectedPopulationSize = options.populationSize ?? 5;
   assert(
     creatureCount >= expectedPopulationSize - 1,
-    `Expected at least ${expectedPopulationSize - 1} checkpointed creatures, found ${creatureCount}`,
+    `Expected at least ${
+      expectedPopulationSize - 1
+    } checkpointed creatures, found ${creatureCount}`,
   );
 
   // Clean up
