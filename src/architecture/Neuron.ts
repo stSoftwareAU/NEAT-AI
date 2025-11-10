@@ -677,7 +677,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (discoverRecord === undefined) {
       discoverRecord = {
         activation: currentActivation,
-        errors: "",
+        errors: [],
       };
       assert(discoverRecord !== undefined);
       discoverMap.set(this.uuid, discoverRecord);
@@ -715,11 +715,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         error = targetValue - currentValue!;
       }
 
-      if (discoverRecord.errors) {
-        discoverRecord.errors += "|" + error;
-      } else {
-        discoverRecord.errors = error.toString();
-      }
+      discoverRecord.errors.push(error);
 
       if (listLength) {
         const errorPerLink = error / listLength;

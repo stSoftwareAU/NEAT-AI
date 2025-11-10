@@ -31,7 +31,7 @@ import {
 
 export interface DiscoverRecord {
   activation: number;
-  errors: string;
+  errors: number[];
   value?: number;
 }
 
@@ -311,14 +311,10 @@ export class DiscoverStructure {
         const neuronData = nonInputNeurons.map((neuron) => {
           const discoverRecord = discoverMap.get(neuron.uuid) || {
             activation: this.creature.state.activations[neuron.index],
-            errors: "",
+            errors: [] as number[],
           };
 
-          const errors = discoverRecord.errors
-            ? discoverRecord.errors.split("|").map(Number).filter(
-              Number.isFinite,
-            )
-            : [];
+          const errors = discoverRecord.errors.filter(Number.isFinite);
 
           return {
             neuron_uuid: neuron.uuid,
@@ -581,7 +577,12 @@ export class DiscoverStructure {
       value = activation;
     }
 
-    return { value, activation, errors: record.errors };
+    const rawErrors = record.errors ?? "";
+    const errors = rawErrors.length === 0
+      ? []
+      : rawErrors.split("|").map(Number).filter(Number.isFinite);
+
+    return { value, activation, errors };
   }
 
   private processCSVChunk(
@@ -696,7 +697,7 @@ export class DiscoverStructure {
 
             fileRecords.push({
               activation,
-              errors: "", // Input neurons don't have errors
+              errors: [], // Input neurons don't have errors
             });
           }
         } finally {
@@ -781,7 +782,7 @@ export class DiscoverStructure {
       const converted = sortedRecords.map((r) => ({
         activation: r.activation,
         value: r.value ?? r.activation, // Use activation as fallback for value
-        errors: r.errors.map((e) => e.toString()).join("|"), // Join with pipe to match original format
+        errors: [...r.errors],
       }));
 
       return converted;
@@ -870,7 +871,7 @@ export class DiscoverStructure {
 
           let invalidErrorCount = 0;
           const totalError = records.reduce((sum, record) => {
-            const errors = record.errors.split("|").map(Number);
+            const errors = record.errors;
             const recordError = errors.reduce((eSum, e) => {
               if (!Number.isFinite(e)) {
                 invalidErrorCount++;
@@ -887,8 +888,7 @@ export class DiscoverStructure {
             neuronsWithInvalidErrors++;
             console.warn(
               `⚠️  WARNING: Neuron ${neuron.uuid} has ${invalidErrorCount} invalid error values (NaN/Infinity) out of ${
-                records.reduce((count, r) =>
-                  count + r.errors.split("|").length, 0)
+                records.reduce((count, r) => count + r.errors.length, 0)
               } total error values. This indicates a bug in error calculation or data corruption.`,
             );
           }
@@ -1091,7 +1091,7 @@ export class DiscoverStructure {
       if (Math.abs(activation) <= Number.EPSILON) continue;
 
       // Compute average downstream error
-      const errorList = toRecord.errors.split("|").map(Number);
+      const errorList = toRecord.errors;
       if (errorList.length === 0) continue; // Skip if no errors
 
       const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
@@ -1251,8 +1251,10 @@ export class DiscoverStructure {
         throw new Error("Activation is undefined");
       }
       currentActivations.push(activation);
-      const errors = record.errors.split("|").map(Number);
-      const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
+      const errors = record.errors;
+      const avgError = errors.length
+        ? errors.reduce((a, b) => a + b, 0) / errors.length
+        : 0;
 
       idealActivations.push(activation + avgError);
     });
@@ -1359,7 +1361,8 @@ export class DiscoverStructure {
       const activation = fromRecord.activation;
       if (Math.abs(activation) <= Number.EPSILON) continue;
 
-      const errorList = toRecord.errors.split("|").map(Number);
+      const errorList = toRecord.errors;
+      if (errorList.length === 0) continue;
       const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
       if (Math.abs(avgError) <= Number.EPSILON) continue;
 
