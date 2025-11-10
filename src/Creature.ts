@@ -44,6 +44,11 @@ import {
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "./utils/CreatureExportBuilder.ts";
+import {
+  type DiscoveryDirInput,
+  type DiscoveryDirResult,
+  DiscoveryRunner,
+} from "./discovery/DiscoveryRunner.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -53,6 +58,10 @@ interface CreatureOptions {
     squash?: string;
   };
 }
+
+type DiscoveryRunnerLike = {
+  discoverDir(input: DiscoveryDirInput): Promise<DiscoveryDirResult>;
+};
 
 /**
  * Creature Class
@@ -935,6 +944,27 @@ export class Creature implements CreatureInternal {
       config.costOfGrowth,
     );
     return { error: result.error, score: this.score };
+  }
+
+  /**
+   * Run the discovery process for this creature using a dataset directory.
+   *
+   * @param dataDir Directory containing the dataset subset used for discovery.
+   * @param options NEAT configuration options controlling discovery behaviour.
+   * @param deps Optional overrides, primarily for testing.
+   */
+  async discoveryDir(
+    dataDir: string,
+    options: NeatOptions,
+    deps?: { runner?: DiscoveryRunnerLike },
+  ): Promise<DiscoveryDirResult> {
+    const runner = deps?.runner ?? new DiscoveryRunner();
+
+    return await runner.discoverDir({
+      creature: this,
+      dataDir,
+      options,
+    });
   }
 
   /**
