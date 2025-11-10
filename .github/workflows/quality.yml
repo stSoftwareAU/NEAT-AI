@@ -9,6 +9,8 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      NEAT_RUST_DISCOVERY_OPTIONAL: "true"
 
     steps:
       # Checkout the code

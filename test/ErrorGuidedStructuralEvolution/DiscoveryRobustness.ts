@@ -3,7 +3,10 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import {
+  assertRustDiscoveryAvailable,
+  shouldSkipRustDiscoveryTests,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
@@ -105,10 +108,11 @@ function makeTrainingData(
 Deno.test({
   name:
     "Discovery handles large number of neurons (1967+) without file descriptor exhaustion",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     // This test ensures batching prevents "too many open files" errors
     const neuronCount = 150; // Use 150 for test speed, batching logic handles 1967+
     const creature = makeCreatureWithManyNeurons(neuronCount);
@@ -164,10 +168,11 @@ Deno.test({
 Deno.test({
   name:
     "Discovery weighted selection completes within max iterations (prevents infinite loops)",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const creature = makeCreatureWithManyNeurons(50);
     CreatureUtil.makeUUID(creature);
 
@@ -212,10 +217,11 @@ Deno.test({
 
 Deno.test({
   name: "Discovery handles timeout during listViableNeurons gracefully",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const creature = makeCreatureWithManyNeurons(200);
     CreatureUtil.makeUUID(creature);
 
@@ -258,10 +264,11 @@ Deno.test({
 
 Deno.test({
   name: "Discovery handles all-zero error case without infinite loop",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const creature = makeCreatureWithManyNeurons(20);
     CreatureUtil.makeUUID(creature);
 
@@ -316,10 +323,11 @@ Deno.test({
 
 Deno.test({
   name: "Discovery analyze phases respect timeout",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const creature = makeCreatureWithManyNeurons(30);
     CreatureUtil.makeUUID(creature);
 
@@ -378,10 +386,11 @@ Deno.test({
 
 Deno.test({
   name: "Discovery batching processes neurons in chunks",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     // This test verifies the batching logic by checking it doesn't load all files at once
     const neuronCount = 150; // More than BATCH_SIZE (50)
     const creature = makeCreatureWithManyNeurons(neuronCount);

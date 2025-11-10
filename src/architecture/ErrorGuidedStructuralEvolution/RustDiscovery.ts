@@ -12,6 +12,8 @@
  */
 
 import { assert } from "@std/assert";
+import { fromFileUrl } from "@std/path/from-file-url";
+import { join } from "@std/path/join";
 
 /**
  * Result of recording discovery data via Rust module.
@@ -120,17 +122,62 @@ function getLibraryExtension(): string {
   }
 }
 
+function resolveLibraryCandidate(
+  candidate: string,
+  libName: string,
+): string | null {
+  try {
+    const stat = Deno.statSync(candidate);
+    if (stat.isFile) {
+      return candidate;
+    }
+
+    if (stat.isDirectory) {
+      const nestedPath = join(candidate, libName);
+      const nestedStat = Deno.statSync(nestedPath);
+      if (nestedStat.isFile) {
+        return nestedPath;
+      }
+    }
+  } catch {
+    // Candidate path is not viable
+  }
+
+  return null;
+}
+
+function resolveOverridePath(libName: string): string | null {
+  try {
+    const override = Deno.env.get("NEAT_AI_DISCOVERY_LIB_PATH");
+    if (!override || override.trim() === "") {
+      return null;
+    }
+
+    return resolveLibraryCandidate(override, libName);
+  } catch {
+    // --allow-env not granted, ignore override
+    return null;
+  }
+}
+
 /**
  * Resolves the path to the Rust library.
  *
  * Checks in order:
+ * 0. NEAT_AI_DISCOVERY_LIB_PATH override (file or directory)
  * 1. ~/.cargo/lib/ (from runlib.sh installation)
- * 2. ../NEAT-AI-Discovery/target/release/ (for development)
+ * 2. ./target/release/ (local build artefacts)
+ * 3. ../NEAT-AI-Discovery/target/release/ (for development)
  *
  * @returns The library path if found, null otherwise.
  */
 export function findRustLibrary(): string | null {
   const libName = `libneat_ai_discovery${getLibraryExtension()}`;
+
+  const overridePath = resolveOverridePath(libName);
+  if (overridePath) {
+    return overridePath;
+  }
 
   // Try to get home directory, but handle gracefully if --allow-env is not granted
   let homeDir: string | undefined;
@@ -143,15 +190,34 @@ export function findRustLibrary(): string | null {
 
   // Check ~/.cargo/lib/ first (production installation)
   if (homeDir) {
-    const cargoLibPath = `${homeDir}/.cargo/lib/${libName}`;
-    try {
-      const stat = Deno.statSync(cargoLibPath);
-      if (stat.isFile) {
-        return cargoLibPath;
-      }
-    } catch {
-      // File doesn't exist, continue to next check
+    const cargoLibPath = resolveLibraryCandidate(
+      join(homeDir, ".cargo", "lib"),
+      libName,
+    );
+    if (cargoLibPath) {
+      return cargoLibPath;
     }
+  }
+
+  // Check local build artifacts inside this repository
+  const localTargetPath = resolveLibraryCandidate(
+    join(Deno.cwd(), "target", "release"),
+    libName,
+  );
+  if (localTargetPath) {
+    return localTargetPath;
+  }
+
+  // Check sibling NEAT-AI-Discovery repository (development workflow)
+  const siblingDir = fromFileUrl(
+    new URL(
+      "../../../NEAT-AI-Discovery/target/release",
+      import.meta.url,
+    ),
+  );
+  const siblingTargetPath = resolveLibraryCandidate(siblingDir, libName);
+  if (siblingTargetPath) {
+    return siblingTargetPath;
   }
 
   return null;
@@ -278,6 +344,46 @@ export function isRustDiscoveryEnabled(): boolean {
   } catch {
     // FFI not allowed or library not available
     return false;
+  }
+}
+
+const RUST_DISCOVERY_OPTIONAL_ENV = "NEAT_RUST_DISCOVERY_OPTIONAL";
+
+/**
+ * Returns true when discovery tests should be skipped (Rust library absent and
+ * not explicitly required), false otherwise.
+ */
+export function shouldSkipRustDiscoveryTests(): boolean {
+  const optional = (() => {
+    try {
+      const value = Deno.env.get(RUST_DISCOVERY_OPTIONAL_ENV);
+      if (!value) {
+        return false;
+      }
+      const normalized = value.trim().toLowerCase();
+      return normalized === "1" || normalized === "true" ||
+        normalized === "yes";
+    } catch {
+      return false;
+    }
+  })();
+
+  if (!optional) {
+    return false;
+  }
+  return !isRustDiscoveryEnabled();
+}
+
+/**
+ * Throws an explicit error when discovery is required but unavailable.
+ */
+export function assertRustDiscoveryAvailable(): void {
+  if (!isRustDiscoveryEnabled()) {
+    const exists = rustLibraryExists();
+    const hint = exists
+      ? "The discovery library was found but could not be loaded. Rebuild it via the NEAT-AI-Discovery project."
+      : "The discovery library was not found. Install it into ~/.cargo/lib or set NEAT_AI_DISCOVERY_LIB_PATH.";
+    throw new Error(`Rust discovery library not available. ${hint}`);
   }
 }
 

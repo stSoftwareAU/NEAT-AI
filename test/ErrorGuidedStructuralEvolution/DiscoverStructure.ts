@@ -3,7 +3,11 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import {
+  assertRustDiscoveryAvailable,
+  isRustDiscoveryEnabled,
+  shouldSkipRustDiscoveryTests,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
@@ -85,10 +89,11 @@ function makeData(input: number) {
 Deno.test({
   name:
     "Error-Driven Synapse Discovery identifies negative synapses and removes",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const targetCreature = makeCreature();
     const data = makeData(targetCreature.input);
 
@@ -158,10 +163,11 @@ Deno.test({
 
 Deno.test({
   name: "Error-Driven Synapse Discovery identifies missing synapses",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const targetCreature = makeCreature();
     const data = makeData(targetCreature.input);
 
@@ -278,13 +284,14 @@ Deno.test("Discovery gracefully skips when Rust module is not available", async 
   // Record should return false when Rust is not available
   const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
 
-  if (!isRustDiscoveryEnabled()) {
+  if (shouldSkipRustDiscoveryTests()) {
     // Without Rust, recording should fail gracefully
     assert(!recorded, "Record should return false when Rust is not available");
     console.log(
       "✅ Discovery correctly skipped when Rust module is not available",
     );
   } else {
+    assertRustDiscoveryAvailable();
     // With Rust, recording should succeed
     assert(recorded, "Record should succeed when Rust is available");
     await Promise.all([...neuronPromisesMap.values()]);

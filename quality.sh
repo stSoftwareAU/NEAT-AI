@@ -24,21 +24,38 @@ rm -rf .trace .test .coverage
 deno check
 
 # # is intentionally loaded and kept in memory for performance (not a leak)
-deno test \
-  test/ErrorGuidedStructuralEvolution/* \
+
+echo "Verifying discovery library availability..."
+if ! deno run \
+  --allow-read \
+  --allow-env \
+  --allow-ffi \
+  --config ./deno.json \
+  scripts/check_discovery.ts; then
+  echo "❌ Discovery checks failed"
+  exit 1
+fi
+
+echo ""
+echo "Running discovery tests without FFI to verify graceful degradation..."
+
+NEAT_RUST_DISCOVERY_OPTIONAL=true deno test \
   --allow-read \
   --allow-write \
   --allow-net \
   --allow-env \
   --v8-flags=--max-old-space-size=8192 \
   --parallel \
-  --config ./deno.json
+  --config ./deno.json \
+  --ignore=test/ErrorGuidedStructuralEvolution/RustDiscoveryRequired.ts \
+  test/ErrorGuidedStructuralEvolution/*.ts
 
 echo "Running tests with FFI enabled (full functionality)..."
 deno test \
   --allow-read \
   --allow-write \
   --allow-net \
+  --allow-env \
   --trace-leaks \
   --allow-ffi \
   --v8-flags=--max-old-space-size=8192 \
@@ -46,6 +63,4 @@ deno test \
   --config ./deno.json
 
   # --trace-leaks \
-echo ""
-echo "Running discovery tests without FFI to verify graceful degradation..."
 # Note: --trace-leaks is disabled for discovery tests because the Rust library

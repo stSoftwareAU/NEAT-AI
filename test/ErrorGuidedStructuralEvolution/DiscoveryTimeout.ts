@@ -3,7 +3,10 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
-import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import {
+  assertRustDiscoveryAvailable,
+  shouldSkipRustDiscoveryTests,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
@@ -156,10 +159,11 @@ async function cleanupTempDir(dirPath: string) {
 
 Deno.test({
   name: "Batch size 128 saves more batches than 512 on timeout",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const tmpDir128 = await createTempTestDir("batch-128");
     const tmpDir512 = await createTempTestDir("batch-512");
 
@@ -232,106 +236,121 @@ Deno.test({
   },
 });
 
-Deno.test("DiscoverDirectory returns partial results on timeout", async () => {
-  const creature = makeTestCreature(30);
-  CreatureUtil.makeUUID(creature);
-  creature.clearState();
+Deno.test({
+  name: "DiscoverDirectory returns partial results on timeout",
+  ignore: shouldSkipRustDiscoveryTests(),
+  async fn() {
+    assertRustDiscoveryAvailable();
+    const creature = makeTestCreature(30);
+    CreatureUtil.makeUUID(creature);
+    creature.clearState();
 
-  const tmpDir = await createTempTestDir("partial-results");
+    const tmpDir = await createTempTestDir("partial-results");
 
-  try {
-    // Create a larger dataset
-    await createTestBinaryFile(creature, 500, tmpDir, "test.bin");
+    try {
+      // Create a larger dataset
+      await createTestBinaryFile(creature, 500, tmpDir, "test.bin");
 
-    // Set 2-second timeout
-    const options = {
-      discoveryBatchSize: 128,
-      discoveryTimeOutMinutes: 0.033, // 2 seconds
-      discoverySampleRate: 1.0,
-      log: 1, // Enable logging to verify diagnostics appear
-    };
+      // Set 2-second timeout
+      const options = {
+        discoveryBatchSize: 128,
+        discoveryTimeOutMinutes: 0.033, // 2 seconds
+        discoverySampleRate: 1.0,
+        log: 1, // Enable logging to verify diagnostics appear
+      };
 
-    const result = await recordDirectory(creature, tmpDir, options);
+      const result = await recordDirectory(creature, tmpDir, options);
 
-    // Should return result (not throw)
-    assertExists(result, "Should return result even with timeout");
-    assertExists(result.ID, "Result should have ID");
+      // Should return result (not throw)
+      assertExists(result, "Should return result even with timeout");
+      assertExists(result.ID, "Result should have ID");
 
-    // Note: with short timeout, might not complete analysis, which is acceptable
-    // The key is that it doesn't throw and returns a valid result structure
-    console.log(`Partial results: ${JSON.stringify(result, null, 2)}`);
-  } finally {
-    await cleanupTempDir(tmpDir);
-  }
+      // Note: with short timeout, might not complete analysis, which is acceptable
+      // The key is that it doesn't throw and returns a valid result structure
+      console.log(`Partial results: ${JSON.stringify(result, null, 2)}`);
+    } finally {
+      await cleanupTempDir(tmpDir);
+    }
+  },
 });
 
-Deno.test("Timeout during file reading returns partial data", async () => {
-  const creature = makeTestCreature(25);
-  CreatureUtil.makeUUID(creature);
-  creature.clearState();
+Deno.test({
+  name: "Timeout during file reading returns partial data",
+  ignore: shouldSkipRustDiscoveryTests(),
+  async fn() {
+    assertRustDiscoveryAvailable();
+    const creature = makeTestCreature(25);
+    CreatureUtil.makeUUID(creature);
+    creature.clearState();
 
-  const tmpDir = await createTempTestDir("file-timeout");
+    const tmpDir = await createTempTestDir("file-timeout");
 
-  try {
-    // Create multiple binary files
-    await createTestBinaryFile(creature, 200, tmpDir, "test1.bin");
-    await createTestBinaryFile(creature, 200, tmpDir, "test2.bin");
-    await createTestBinaryFile(creature, 200, tmpDir, "test3.bin");
+    try {
+      // Create multiple binary files
+      await createTestBinaryFile(creature, 200, tmpDir, "test1.bin");
+      await createTestBinaryFile(creature, 200, tmpDir, "test2.bin");
+      await createTestBinaryFile(creature, 200, tmpDir, "test3.bin");
 
-    // Very short timeout - will hit during file processing
-    const options = {
-      discoveryBatchSize: 128,
-      discoveryTimeOutMinutes: 0.02, // ~1.2 seconds
-      discoverySampleRate: 1.0,
-      log: 1, // Enable to see diagnostic logs
-    };
+      // Very short timeout - will hit during file processing
+      const options = {
+        discoveryBatchSize: 128,
+        discoveryTimeOutMinutes: 0.02, // ~1.2 seconds
+        discoverySampleRate: 1.0,
+        log: 1, // Enable to see diagnostic logs
+      };
 
-    const result = await recordDirectory(creature, tmpDir, options);
+      const result = await recordDirectory(creature, tmpDir, options);
 
-    // Should complete without throwing
-    assertExists(result, "Should return result despite timeout");
-    assertExists(result.ID, "Result should have ID");
+      // Should complete without throwing
+      assertExists(result, "Should return result despite timeout");
+      assertExists(result.ID, "Result should have ID");
 
-    // Should have processed at least some files
-    // The diagnostic log should show "timeout reached during file processing"
-    // (visible in test output with log: true)
-  } finally {
-    await cleanupTempDir(tmpDir);
-  }
+      // Should have processed at least some files
+      // The diagnostic log should show "timeout reached during file processing"
+      // (visible in test output with log: true)
+    } finally {
+      await cleanupTempDir(tmpDir);
+    }
+  },
 });
 
-Deno.test("Discovery completes successfully with reasonable timeout", async () => {
-  const creature = makeTestCreature(15);
-  CreatureUtil.makeUUID(creature);
-  creature.clearState();
+Deno.test({
+  name: "Discovery completes successfully with reasonable timeout",
+  ignore: shouldSkipRustDiscoveryTests(),
+  async fn() {
+    assertRustDiscoveryAvailable();
+    const creature = makeTestCreature(15);
+    CreatureUtil.makeUUID(creature);
+    creature.clearState();
 
-  const tmpDir = await createTempTestDir("success");
+    const tmpDir = await createTempTestDir("success");
 
-  try {
-    // Create small dataset that should complete
-    await createTestBinaryFile(creature, 50, tmpDir, "test.bin");
+    try {
+      // Create small dataset that should complete
+      await createTestBinaryFile(creature, 50, tmpDir, "test.bin");
 
-    const options = {
-      discoveryBatchSize: 128,
-      discoveryTimeOutMinutes: 0.1, // 6 seconds - plenty of time
-      discoverySampleRate: 1.0,
-      log: 1,
-    };
+      const options = {
+        discoveryBatchSize: 128,
+        discoveryTimeOutMinutes: 0.1, // 6 seconds - plenty of time
+        discoverySampleRate: 1.0,
+        log: 1,
+      };
 
-    const result = await recordDirectory(creature, tmpDir, options);
+      const result = await recordDirectory(creature, tmpDir, options);
 
-    // Should complete successfully
-    assertExists(result, "Should return result");
-    assertExists(result.ID, "Result should have ID");
+      // Should complete successfully
+      assertExists(result, "Should return result");
+      assertExists(result.ID, "Result should have ID");
 
-    console.log(
-      `Complete results: helpful=${result.addHelpfulSynapses?.length}, ` +
-        `harmful=${result.removeHarmfulSynapse ? 1 : 0}, ` +
-        `squashes=${result.candidateSquashes?.length}`,
-    );
-  } finally {
-    await cleanupTempDir(tmpDir);
-  }
+      console.log(
+        `Complete results: helpful=${result.addHelpfulSynapses?.length}, ` +
+          `harmful=${result.removeHarmfulSynapse ? 1 : 0}, ` +
+          `squashes=${result.candidateSquashes?.length}`,
+      );
+    } finally {
+      await cleanupTempDir(tmpDir);
+    }
+  },
 });
 
 // Note: Tests for Neat class behavior (tracking duration, skipping discovery)
