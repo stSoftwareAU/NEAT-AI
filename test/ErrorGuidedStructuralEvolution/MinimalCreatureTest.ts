@@ -2,7 +2,10 @@ import { assert, assertExists } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import {
+  assertRustDiscoveryAvailable,
+  shouldSkipRustDiscoveryTests,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
@@ -12,10 +15,11 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
 Deno.test({
   name: "Discovery handles minimal creature (1 input, 1 output)",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     // Create the smallest valid creature
     const json: CreatureExport = {
       neurons: [
@@ -82,10 +86,11 @@ Deno.test({
 
 Deno.test({
   name: "Discovery handles small creature (2 inputs, 1 hidden, 1 output)",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const json: CreatureExport = {
       neurons: [
         {
@@ -167,10 +172,11 @@ Deno.test({
 
 Deno.test({
   name: "Discovery selection respects neuron count limit",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     // Create creature with exactly 3 non-input neurons
     const json: CreatureExport = {
       neurons: [

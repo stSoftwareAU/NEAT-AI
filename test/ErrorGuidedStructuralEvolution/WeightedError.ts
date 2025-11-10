@@ -3,7 +3,10 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import {
+  assertRustDiscoveryAvailable,
+  shouldSkipRustDiscoveryTests,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
@@ -127,10 +130,11 @@ function initialize() {
 Deno.test({
   name:
     "Error-Driven Synapse Discovery identifies negative synapses by weighted error",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     for (let attempt = 0; true; attempt++) {
       const { targetCreature, trainingData } = initialize();
       /**
@@ -210,10 +214,11 @@ Deno.test({
 
 Deno.test({
   name: "Error-Driven Synapse Discovery missing synapses by weighted error",
-  ignore: !isRustDiscoveryEnabled(),
+  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    assertRustDiscoveryAvailable();
     const { targetCreature, trainingData } = initialize();
 
     /**
