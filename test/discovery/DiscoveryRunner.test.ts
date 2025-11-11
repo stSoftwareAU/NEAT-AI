@@ -28,6 +28,7 @@ function makeBaseCreature() {
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;
   #computeError: (creature: Creature) => number;
+  lastDiscoverOptions?: NeatOptions;
 
   constructor(
     discoverResult: DiscoverResult,
@@ -39,8 +40,9 @@ class FakeWorker implements DiscoveryRunnerWorker {
 
   discover(
     _creature: Creature,
-    _options: NeatOptions,
+    options: NeatOptions,
   ): Promise<Awaited<ReturnType<DiscoveryRunnerWorker["discover"]>>> {
+    this.lastDiscoverOptions = options;
     return Promise.resolve({
       taskID: 1,
       duration: 10,
@@ -97,6 +99,39 @@ Deno.test("DiscoveryRunner throws when Rust discovery is disabled", async () => 
       Error,
       "Discovery requires the NEAT-AI-Discovery Rust library",
     );
+  } finally {
+    // nothing
+  }
+});
+
+Deno.test("DiscoveryRunner enables verbose discovery logging when verbose option is set", async () => {
+  const discoveryResult: DiscoverResult = {
+    ID: "VERBOSE",
+    addHelpfulSynapses: undefined,
+    removeHarmfulSynapse: undefined,
+    candidateSquashes: undefined,
+  };
+
+  const worker = new FakeWorker(
+    discoveryResult,
+    () => 1.0,
+  );
+
+  const runner = new DiscoveryRunner({
+    rustDiscoveryEnabled: () => true,
+    workerFactory: () => worker,
+  });
+
+  try {
+    await runner.discoverDir({
+      creature: makeBaseCreature(),
+      dataDir: "/tmp/data",
+      options: makeOptions({ verbose: true }),
+    });
+
+    assert(worker.lastDiscoverOptions);
+    assertEquals(worker.lastDiscoverOptions.verbose, true);
+    assertEquals(worker.lastDiscoverOptions.log, 1);
   } finally {
     // nothing
   }

@@ -100,6 +100,11 @@ export class DiscoveryRunner {
 
     const { creature, dataDir } = input;
     const config = createNeatConfig(input.options);
+    const verboseLog = (...args: unknown[]) => {
+      if (config.verbose) {
+        console.info("[DiscoveryRunner]", ...args);
+      }
+    };
     if (config.discoverySampleRate <= 0) {
       throw new Error(
         "Discovery requires a positive discoverySampleRate.",
@@ -113,6 +118,7 @@ export class DiscoveryRunner {
 
     CreatureUtil.makeUUID(creature);
 
+    const verboseLogging = Boolean(config.verbose);
     const workerCount = Math.max(1, config.threads);
     const workers: DiscoveryRunnerWorker[] = [];
     try {
@@ -125,9 +131,20 @@ export class DiscoveryRunner {
         }));
       }
 
+      const workerOptions: NeatOptions = (config.log && config.log > 0) ||
+          !config.verbose
+        ? config
+        : { ...config, log: 1 };
+
+      verboseLog(
+        `Starting discovery for creature ${creature.uuid ?? "unknown"} using ${
+          workerCount === 1 ? "single" : workerCount
+        } worker${workerCount === 1 ? "" : "s"}.`,
+      );
+
       const discoveryResponse = await workers[0].discover(
         creature,
-        config,
+        workerOptions,
       );
       assert(
         discoveryResponse.discover,
@@ -141,7 +158,19 @@ export class DiscoveryRunner {
         candidateSquashes: rawDiscover.candidateSquashes ?? undefined,
       };
 
+      const addCount = discoverResult.addHelpfulSynapses?.length ?? 0;
+      const removePresent = discoverResult.removeHarmfulSynapse ? 1 : 0;
+      const squashCount = discoverResult.candidateSquashes?.length ?? 0;
+      verboseLog(
+        `Discovery ${discoverResult.ID} suggested ${addCount} add, ${removePresent} remove, ${squashCount} squash candidate(s).`,
+      );
+
       const candidates = this.#candidateBuilder(creature, discoverResult);
+      verboseLog(
+        `Built ${candidates.length} candidate creature${
+          candidates.length === 1 ? "" : "s"
+        }: ${candidates.map((c) => c.change.type).join(", ") || "none"}.`,
+      );
 
       const evaluationTasks: Array<{
         kind: "original" | "candidate";
@@ -161,6 +190,7 @@ export class DiscoveryRunner {
         evaluationTasks,
         config.feedbackLoop,
         config.costOfGrowth,
+        verboseLogging,
       );
 
       const original = evaluationResults.find((result) =>
@@ -224,6 +254,7 @@ export class DiscoveryRunner {
     }>,
     feedbackLoop: boolean,
     costOfGrowth: number,
+    verbose: boolean,
   ) {
     const queue = tasks.slice();
     const results: Array<{
@@ -256,6 +287,15 @@ export class DiscoveryRunner {
         error,
         score,
       });
+
+      if (verbose) {
+        console.info("[DiscoveryRunner] Evaluation result", {
+          kind: task.kind,
+          change: task.candidate?.change.type,
+          error,
+          score,
+        });
+      }
 
       await processNext(worker);
     };

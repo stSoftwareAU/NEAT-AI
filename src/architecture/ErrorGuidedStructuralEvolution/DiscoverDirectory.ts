@@ -9,6 +9,9 @@ import type { DiscoverResult } from "./DiscoverResult.ts";
 import { DiscoverStructure } from "./DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 
+const shouldLogDiscovery = (options: NeatOptions): boolean =>
+  Boolean(options.verbose || (options.log && options.log > 0));
+
 export async function recordDirectory(
   creature: Creature,
   dataDir: string,
@@ -102,7 +105,7 @@ class DataRecorder {
   async recordDirectory(dataDir: string): Promise<DiscoverResult> {
     // Check if Rust discovery module is available
     if (!isRustDiscoveryEnabled()) {
-      if (this.options.log) {
+      if (shouldLogDiscovery(this.options)) {
         console.warn(
           `⚠️  Discovery skipped: Rust module not available. Discovery requires the NEAT-AI-Discovery Rust library to be built and available.`,
         );
@@ -136,7 +139,7 @@ class DataRecorder {
       drainCounter: { count: number };
     },
   ) {
-    if (this.options.log) {
+    if (shouldLogDiscovery(this.options)) {
       console.log(`Discovery ${blue(this.ID)} processing ${filePath}`);
     }
 
@@ -220,7 +223,7 @@ class DataRecorder {
             }
             params.drainCounter.count = 0;
 
-            if (this.options.log) {
+            if (shouldLogDiscovery(this.options)) {
               console.log(
                 `Discovery ${
                   blue(this.ID)
@@ -242,7 +245,7 @@ class DataRecorder {
       file.close();
     }
 
-    if (this.options.log) {
+    if (shouldLogDiscovery(this.options)) {
       console.log(
         `Discovery ${blue(this.ID)} read time ${
           yellow(format(readTime, { ignoreZero: true }))
@@ -256,7 +259,7 @@ class DataRecorder {
     const startTime = Date.now();
     let currentPhase = "initialization"; // Track phase for timeout diagnostics
 
-    if (options.log) {
+    if (shouldLogDiscovery(options)) {
       console.info(
         `Discovery ${
           blue(this.ID)
@@ -281,7 +284,7 @@ class DataRecorder {
     // Declare timing variables outside try block for error diagnostics
     let fileProcessTime = 0;
 
-    if (options.log) {
+    if (shouldLogDiscovery(options)) {
       console.log(
         `Discovery ${blue(this.ID)} initialize time ${
           yellow(format(initializeTime, { ignoreZero: true }))
@@ -331,7 +334,7 @@ class DataRecorder {
         }
         drainCounter.count = 0; // Reset drain counter after file
 
-        if (this.options.log) {
+        if (shouldLogDiscovery(this.options)) {
           console.log(
             `Discovery ${
               blue(this.ID)
@@ -340,7 +343,7 @@ class DataRecorder {
         }
 
         if (this.timeoutTS && Date.now() > this.timeoutTS) {
-          if (this.options.log) {
+          if (shouldLogDiscovery(this.options)) {
             console.warn(
               `⏲  Discovery ${
                 blue(this.ID)
@@ -361,7 +364,7 @@ class DataRecorder {
       );
 
       const scannedTime = Date.now() - startTime;
-      if (options.log) {
+      if (shouldLogDiscovery(options)) {
         console.log(
           `Discovery ${blue(this.ID)} scanning time ${
             yellow(format(scannedTime, { ignoreZero: true }))
@@ -411,7 +414,7 @@ class DataRecorder {
       const rustFlushSuccess = discoverStructure.flushRustRecording();
       if (!rustFlushSuccess) {
         // Rust recording failed - return empty result (discovery skipped)
-        if (options.log) {
+        if (shouldLogDiscovery(options)) {
           console.warn(
             `⚠️  Discovery ${
               blue(this.ID)
@@ -426,7 +429,7 @@ class DataRecorder {
         };
       }
 
-      if (options.log) {
+      if (shouldLogDiscovery(options)) {
         const recordTime = Date.now() - startTime;
         console.log(
           `Discovery ${blue(this.ID)} recorded time ${
@@ -442,7 +445,7 @@ class DataRecorder {
       const analysisTimeoutSeconds = analysisTimeoutMinutes * 60;
       discoverStructure.extendTimeoutForAnalysis(analysisTimeoutSeconds);
 
-      if (options.log) {
+      if (shouldLogDiscovery(options)) {
         console.log(
           `Discovery ${blue(this.ID)} analysis timeout extended by ${
             yellow(analysisTimeoutMinutes.toString())
@@ -463,7 +466,7 @@ class DataRecorder {
       const addHelpfulSynapse = await discoverStructure.analyze(
         this.discoveryMaxNeurons,
       );
-      if (options.log) {
+      if (shouldLogDiscovery(options)) {
         const analyzeTime = Date.now() - analyzeStartTime;
         console.log(
           `Discovery ${blue(this.ID)} analyze time ${
@@ -484,7 +487,7 @@ class DataRecorder {
         .analyzeSynapsesForRemoval(
           this.discoveryMaxNeurons,
         );
-      if (options.log) {
+      if (shouldLogDiscovery(options)) {
         const harmfulTime = Date.now() - harmfulStartTime;
         console.log(
           `Discovery ${blue(this.ID)} analyze harmful time ${
@@ -502,7 +505,7 @@ class DataRecorder {
         .analyzeNeuronsSquashes(
           this.discoveryMaxNeurons,
         );
-      if (options.log) {
+      if (shouldLogDiscovery(options)) {
         const squashTime = Date.now() - squashStartTime;
         const squashCount = candidateSquashes ? candidateSquashes.length : 0;
         let squashSummaryText = "";
@@ -530,7 +533,7 @@ class DataRecorder {
       }
 
       currentPhase = "complete";
-      if (options.log) {
+      if (shouldLogDiscovery(options)) {
         const totalTime = Date.now() - startTime;
         console.log(
           `Discovery ${blue(this.ID)} analysis complete, total time ${
@@ -542,11 +545,11 @@ class DataRecorder {
       // Schedule cleanup to happen asynchronously without blocking the response
       // This prevents slow filesystem operations from delaying the discovery result
       const cleanupPromise = (async () => {
-        if (options.log) {
+        if (shouldLogDiscovery(options)) {
           console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
         }
         await discoverStructure.cleanUp();
-        if (options.log) {
+        if (shouldLogDiscovery(options)) {
           console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
         }
       })();
@@ -582,14 +585,14 @@ class DataRecorder {
       );
       console.error(`     - Total: ${format(totalTime, { ignoreZero: true })}`);
 
-      if (options.log) {
+      if (shouldLogDiscovery(options)) {
         console.log(
           `Discovery ${blue(this.ID)} error occurred, performing cleanup...`,
         );
       }
       try {
         await discoverStructure.cleanUp();
-        if (options.log) {
+        if (shouldLogDiscovery(options)) {
           console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
         }
       } catch (cleanupError) {
