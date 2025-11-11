@@ -92,6 +92,8 @@
     "dylib",
     "runlib",
     "libneat",
-    "extern"
+    "extern",
+    "overfitting",
+    "unscored"
   ]
 }
