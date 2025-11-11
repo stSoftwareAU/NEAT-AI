@@ -275,6 +275,10 @@ class DataRecorder {
       creature,
       this.timeoutSeconds,
     );
+    discoverStructure.configureLogging({
+      discoveryID: this.ID,
+      verbose: shouldLogDiscovery(options),
+    });
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     const initializeStartTime = Date.now();

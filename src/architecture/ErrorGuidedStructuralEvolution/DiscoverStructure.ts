@@ -10,11 +10,15 @@ import type { ActivationInterface } from "../../methods/activations/ActivationIn
 import { Activations } from "../../methods/activations/Activations.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import {
+  analyzeSynapses,
   creatureToRustFormat,
   isRustDiscoveryEnabled,
   isRustLibraryAvailable,
   readDiscoveryRecords,
   recordDiscovery,
+  type RustAnalyzeSynapsesInput,
+  type RustAnalyzeSynapsesResult,
+  type RustCandidateSynapse,
   type RustRecordInput,
 } from "./RustDiscovery.ts";
 
@@ -72,6 +76,9 @@ interface NeuronErrorInfo {
   totalError: number;
 }
 
+const RUST_HELPFUL_THRESHOLD = 0.1;
+const RUST_HARMFUL_THRESHOLD = -0.1;
+
 /**
  * Implements Error-Driven Synapse Discovery, analyzing neuron activations
  * and errors to identify beneficial new synapses that explicitly reduce neuron-level errors.
@@ -81,6 +88,8 @@ export class DiscoverStructure {
   private tempDir: string;
   private textDecoder: TextDecoder;
   private timeoutTS: number;
+  private loggingEnabled = false;
+  private discoveryID: string;
 
   private initialized = false;
   private recorded = false;
@@ -95,7 +104,6 @@ export class DiscoverStructure {
   private rustBinaryFilePaths: Set<string> = new Set(); // Track all binary file paths
   private usingRustDualWrite = false;
   private parquetFilePath: string | null = null;
-
   constructor(creature: Creature, timeoutSeconds: number) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
@@ -104,6 +112,7 @@ export class DiscoverStructure {
     }`;
     this.indicesFilePath = `${this.tempDir}/selected_indices.json`;
     this.textDecoder = new TextDecoder();
+    this.discoveryID = creature.uuid;
     assert(
       timeoutSeconds > 0,
       `Timeout seconds must be greater than 0, was: ${timeoutSeconds}`,
@@ -115,6 +124,16 @@ export class DiscoverStructure {
     this.timeoutTS = Date.now() + timeoutSeconds * 1000;
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
+  }
+
+  public configureLogging(options: {
+    verbose?: boolean;
+    discoveryID?: string;
+  }): void {
+    this.loggingEnabled = Boolean(options?.verbose);
+    if (options?.discoveryID) {
+      this.discoveryID = options.discoveryID;
+    }
   }
 
   /**
@@ -300,6 +319,7 @@ export class DiscoverStructure {
     try {
       const creatureExport = this.creature.exportJSON();
       const rustCreature = creatureToRustFormat(creatureExport);
+      const pendingSamples = this.rustAccumulatedData.length;
 
       const nonInputNeurons = this.creature.neurons.filter((neuron) =>
         neuron.type !== "input"
@@ -364,19 +384,20 @@ export class DiscoverStructure {
         recordIndices = undefined;
       }
 
-      // Check if timeout has expired before calculating timeout_seconds
-      // This prevents passing negative timeout values to the Rust module
-      if (Date.now() > this.timeoutTS) {
-        // Timeout has expired - return false to indicate discovery skipped
-        return false;
+      const now = Date.now();
+      const timedOut = now > this.timeoutTS;
+      if (timedOut) {
+        this.log(
+          "warn",
+          "Submitting flush request to Rust after recording timeout expired. Continuing with captured data.",
+        );
       }
 
-      // Calculate timeout_seconds, ensuring it's non-negative
-      // Math.max ensures we never pass a negative value even if there's a race condition
-      const timeoutSeconds = Math.max(
-        0,
-        Math.floor((this.timeoutTS - Date.now()) / 1000),
-      );
+      // Calculate timeout_seconds, ensuring it's non-negative. If we've already
+      // exceeded the timeout window we pass zero so Rust can decide whether to proceed.
+      const timeoutSeconds = timedOut
+        ? 0
+        : Math.max(0, Math.floor((this.timeoutTS - now) / 1000));
 
       const rustInput: RustRecordInput = {
         creature: rustCreature,
@@ -462,6 +483,18 @@ export class DiscoverStructure {
         // Clear accumulated data after successful write
         this.rustAccumulatedData = [];
         this.rustAccumulatedNeuronData = [];
+        const flushDuration = Date.now() - now;
+        const remainingSeconds = Math.max(
+          0,
+          Math.floor((this.timeoutTS - Date.now()) / 1000),
+        );
+        this.log(
+          "info",
+          `Flushed ${pendingSamples} samples to ${this.parquetFilePath} in ${
+            this.formatMillis(flushDuration)
+          } (timeout remaining: ${remainingSeconds}s).`,
+        );
+
         return true;
       }
       console.error(
@@ -482,50 +515,349 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return undefined;
 
-    // Check timeout before starting analysis
     if (Date.now() > this.timeoutTS) {
-      console.warn(`Discovery timeout reached in analyzeSelectedNeurons`);
+      this.log("warn", "Discovery timeout reached in analyzeSelectedNeurons");
       return undefined;
     }
 
+    if (this.parquetFilePath && isRustDiscoveryEnabled()) {
+      const rustCandidatesRaw = this.tryRustHelpfulSynapses(focusList);
+      if (rustCandidatesRaw && rustCandidatesRaw.length > 0) {
+        const rustCandidates = rustCandidatesRaw;
+        const tsCandidates = await this.getTypeScriptHelpfulCandidates(
+          focusList,
+        );
+        const combined = this.mergeHelpfulCandidates(
+          rustCandidates,
+          tsCandidates,
+        );
+        if (combined.length > 0) {
+          const topCandidate = combined[0];
+          const origin = this.containsCandidate(rustCandidates, topCandidate)
+            ? "Rust"
+            : "TypeScript";
+          this.upsertDiscovery(topCandidate);
+          this.logHelpfulSynapse(origin, topCandidate);
+          return this.discoveries;
+        }
+
+        const topCandidate = rustCandidates[0];
+        this.upsertDiscovery(topCandidate);
+        this.logHelpfulSynapse("Rust", topCandidate);
+        return this.discoveries;
+      }
+
+      if (
+        rustCandidatesRaw && rustCandidatesRaw.length === 0 &&
+        this.loggingEnabled
+      ) {
+        this.log(
+          "debug",
+          `Rust helpful synapse analysis returned no candidates for ${
+            focusList.join(", ")
+          }. Falling back to TypeScript logic.`,
+        );
+      }
+    }
+
+    const tsCandidates = await this.analyzeSelectedNeuronsTypeScript(focusList);
+    if (tsCandidates && tsCandidates.length > 0) {
+      tsCandidates.forEach((candidate) => this.upsertDiscovery(candidate));
+      return this.discoveries;
+    }
+    return this.discoveries.length > 0 ? this.discoveries : undefined;
+  }
+
+  private async analyzeSelectedNeuronsTypeScript(
+    focusList: string[],
+  ): Promise<CandidateSynapse[] | undefined> {
+    const candidates = await this.getTypeScriptHelpfulCandidates(focusList);
+    if (candidates.length === 0) {
+      return undefined;
+    }
+
+    const bestCandidate = candidates[0];
+    assert(bestCandidate.expectedImprovementPercentage > 0);
+    this.logHelpfulSynapse("TypeScript", bestCandidate);
+    return [bestCandidate];
+  }
+
+  private async getTypeScriptHelpfulCandidates(
+    focusList: string[],
+  ): Promise<CandidateSynapse[]> {
     const candidatePromises = focusList.map(async (neuronUUID) => {
       const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
       return this.loadCandidateSynapses(neuronUUID, records);
     });
 
     const candidateArrays = await Promise.all(candidatePromises);
-    const allCandidates: CandidateSynapse[] = candidateArrays.flat().filter(
-      (candidate) => candidate.expectedImprovementPercentage > 0.1,
-    );
+    const candidates: CandidateSynapse[] = candidateArrays
+      .flat()
+      .filter((candidate) =>
+        candidate.expectedImprovementPercentage > RUST_HELPFUL_THRESHOLD
+      );
 
-    // Clear large arrays to help GC
     candidateArrays.length = 0;
 
-    if (allCandidates.length > 0) {
-      allCandidates.sort((a, b) =>
-        b.expectedImprovementPercentage - a.expectedImprovementPercentage
-      );
-      const bestCandidate = allCandidates[0];
-      assert(bestCandidate.expectedImprovementPercentage > 0);
+    candidates.sort((a, b) =>
+      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+    );
+    return candidates;
+  }
 
-      console.info(
-        `Discovered beneficial synapse from ${bestCandidate.fromNeuronUUID} to ${bestCandidate.toNeuronUUID} with weight ${
-          bestCandidate.weight.toFixed(4)
-        }, helping ${
-          (
-            bestCandidate.expectedImprovementPercentage * 100
-          ).toFixed(1)
-        }% more records than it harms (${bestCandidate.improvedCount}/${bestCandidate.totalCount})`,
-      );
+  private logHelpfulSynapse(
+    origin: "Rust" | "TypeScript",
+    candidate: CandidateSynapse,
+  ): void {
+    const prefix = origin === "Rust"
+      ? "Rust discovered"
+      : "TypeScript discovered";
+    this.log(
+      "info",
+      `${prefix} beneficial synapse from ${candidate.fromNeuronUUID} to ${candidate.toNeuronUUID} with weight ${
+        candidate.weight.toFixed(4)
+      }, helping ${
+        (candidate.expectedImprovementPercentage * 100).toFixed(1)
+      }% more records than it harms (${candidate.improvedCount}/${candidate.totalCount})`,
+    );
+  }
 
-      this.discoveries.push(bestCandidate);
-    }
-
-    if (this.discoveries.length === 0) {
+  private tryRustHelpfulSynapses(
+    focusList: string[],
+  ): CandidateSynapse[] | undefined {
+    const rustResult = this.runRustSynapseAnalysis(focusList);
+    if (!rustResult || !rustResult.helpfulSynapses) {
       return undefined;
     }
 
-    return this.discoveries;
+    const candidates = rustResult.helpfulSynapses
+      .map((candidate) => this.mapRustCandidate(candidate))
+      .filter((candidate) =>
+        candidate.expectedImprovementPercentage > RUST_HELPFUL_THRESHOLD
+      );
+
+    if (candidates.length === 0) {
+      return [];
+    }
+
+    candidates.sort((a, b) =>
+      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+    );
+    return candidates;
+  }
+
+  private tryRustHarmfulCandidates(
+    focusList: string[],
+  ): CandidateSynapse[] | undefined {
+    const rustResult = this.runRustSynapseAnalysis(focusList);
+    if (!rustResult || !rustResult.harmfulSynapses) {
+      return undefined;
+    }
+
+    const candidates = rustResult.harmfulSynapses
+      .map((candidate) => this.mapRustCandidate(candidate))
+      .filter((candidate) =>
+        candidate.expectedImprovementPercentage < RUST_HARMFUL_THRESHOLD
+      );
+
+    if (candidates.length === 0) {
+      return [];
+    }
+
+    candidates.sort((a, b) =>
+      a.expectedImprovementPercentage - b.expectedImprovementPercentage
+    );
+    return candidates;
+  }
+
+  private mergeHelpfulCandidates(
+    rustCandidates: CandidateSynapse[],
+    tsCandidates: CandidateSynapse[],
+  ): CandidateSynapse[] {
+    const merged = new Map<string, CandidateSynapse>();
+    const addCandidate = (candidate: CandidateSynapse) => {
+      const key = this.candidateKey(candidate);
+      const existing = merged.get(key);
+      if (
+        !existing || candidate.expectedImprovementPercentage >
+          existing.expectedImprovementPercentage
+      ) {
+        merged.set(key, candidate);
+      }
+    };
+
+    rustCandidates.forEach(addCandidate);
+    tsCandidates.forEach(addCandidate);
+
+    return Array.from(merged.values()).sort((a, b) =>
+      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+    );
+  }
+
+  private mergeHarmfulCandidates(
+    rustCandidates: CandidateSynapse[],
+    tsCandidates: CandidateSynapse[],
+  ): CandidateSynapse[] {
+    const merged = new Map<string, CandidateSynapse>();
+    const addCandidate = (candidate: CandidateSynapse) => {
+      const key = this.candidateKey(candidate);
+      const existing = merged.get(key);
+      if (
+        !existing || candidate.expectedImprovementPercentage <
+          existing.expectedImprovementPercentage
+      ) {
+        merged.set(key, candidate);
+      }
+    };
+
+    rustCandidates.forEach(addCandidate);
+    tsCandidates.forEach(addCandidate);
+
+    return Array.from(merged.values()).sort((a, b) =>
+      a.expectedImprovementPercentage - b.expectedImprovementPercentage
+    );
+  }
+
+  private candidateKey(candidate: CandidateSynapse): string {
+    return `${candidate.fromNeuronUUID}->${candidate.toNeuronUUID}`;
+  }
+
+  private upsertDiscovery(candidate: CandidateSynapse): void {
+    const key = this.candidateKey(candidate);
+    const existingIndex = this.discoveries.findIndex((existing) =>
+      this.candidateKey(existing) === key
+    );
+    if (existingIndex >= 0) {
+      this.discoveries[existingIndex] = candidate;
+    } else {
+      this.discoveries.push(candidate);
+    }
+    this.discoveries.sort((a, b) =>
+      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+    );
+  }
+
+  private containsCandidate(
+    candidates: CandidateSynapse[],
+    target: CandidateSynapse,
+  ): boolean {
+    const targetKey = this.candidateKey(target);
+    return candidates.some((candidate) =>
+      this.candidateKey(candidate) === targetKey
+    );
+  }
+
+  private logHarmfulSynapse(
+    origin: "Rust" | "TypeScript",
+    candidate: CandidateSynapse,
+  ): void {
+    const prefix = origin === "Rust"
+      ? "Rust discovered"
+      : "TypeScript discovered";
+    const harmPercent = Math.abs(candidate.expectedImprovementPercentage * 100);
+    this.log(
+      "info",
+      `${prefix} harmful synapse from ${candidate.fromNeuronUUID} to ${candidate.toNeuronUUID}, harming ${
+        harmPercent.toFixed(1)
+      }% more records than it helps (${candidate.improvedCount}/${candidate.totalCount})`,
+    );
+  }
+
+  private async getTypeScriptHarmfulCandidates(
+    focusList: string[],
+  ): Promise<CandidateSynapse[]> {
+    const promises: Promise<CandidateSynapse>[] = [];
+    const exportJSON = this.creature.exportJSON();
+
+    const candidatePromises = focusList.map(async (toUUID) => {
+      const records = await this.loadCSV(`${this.tempDir}/${toUUID}.csv`);
+      exportJSON.synapses.map((synapse) => {
+        if (synapse.toUUID === toUUID) {
+          const p = this.analyzeExistingSynapseImpact(
+            toUUID,
+            synapse.fromUUID,
+            records,
+            synapse.weight,
+          );
+
+          promises.push(p);
+        }
+      });
+    });
+    await Promise.all(candidatePromises);
+
+    const candidates = await Promise.all(promises);
+    const filtered = candidates.filter((candidate) =>
+      candidate.expectedImprovementPercentage < RUST_HARMFUL_THRESHOLD
+    );
+
+    filtered.sort((a, b) =>
+      a.expectedImprovementPercentage - b.expectedImprovementPercentage
+    );
+    return filtered;
+  }
+
+  private mapRustCandidate(
+    candidate: RustCandidateSynapse,
+  ): CandidateSynapse {
+    return {
+      fromNeuronUUID: candidate.fromNeuronUuid,
+      toNeuronUUID: candidate.toNeuronUuid,
+      weight: candidate.weight,
+      expectedImprovementPercentage: candidate.expectedImprovementPercentage,
+      improvedCount: candidate.improvedCount,
+      totalCount: candidate.totalCount,
+    };
+  }
+
+  private runRustSynapseAnalysis(
+    focusList: string[],
+  ): RustAnalyzeSynapsesResult | undefined {
+    if (!this.parquetFilePath) {
+      return undefined;
+    }
+
+    if (!isRustDiscoveryEnabled() || !isRustLibraryAvailable()) {
+      return undefined;
+    }
+
+    const rustInput: RustAnalyzeSynapsesInput = {
+      parquetFile: this.parquetFilePath,
+      creature: creatureToRustFormat(this.creature.exportJSON()),
+      focusNeurons: focusList,
+      improvementThreshold: RUST_HELPFUL_THRESHOLD,
+      maxCandidates: Math.max(50, focusList.length * 10),
+      requireGpu: Deno.build.os === "darwin",
+    };
+
+    try {
+      const result = analyzeSynapses(rustInput);
+      if (!result || !result.success) {
+        if (this.loggingEnabled) {
+          this.log(
+            "debug",
+            `Rust synapse analysis failed: ${result?.error ?? "Unknown error"}`,
+          );
+        }
+        return undefined;
+      }
+      if (Deno.env.get("DEBUG_RUST_ANALYSIS") === "1") {
+        console.log(
+          "rust-analysis",
+          JSON.stringify({ focusList, result }, (_key, value) => value, 2),
+        );
+      }
+      return result;
+    } catch (error) {
+      this.log(
+        "warn",
+        `Rust synapse analysis threw error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error,
+      );
+      return undefined;
+    }
   }
 
   /**
@@ -535,13 +867,86 @@ export class DiscoverStructure {
     discoveryMaxNeurons: number,
   ): Promise<CandidateSynapse[] | undefined> {
     if (this.recorded === false) {
-      console.warn("No recorded data to analyze.");
+      this.log("warn", "No recorded data to analyze.");
       return undefined;
     }
     const focusList = await this.selectNeuronsWeightedByError(
       discoveryMaxNeurons,
     );
     return this.analyzeSelectedNeurons(focusList);
+  }
+
+  private log(
+    level: "debug" | "info" | "warn" | "error",
+    message: string,
+    details?: unknown,
+  ): void {
+    const prefix = `[Discovery ${this.discoveryID}] ${message}`;
+    const args = details === undefined ? [prefix] : [prefix, details];
+
+    switch (level) {
+      case "debug":
+        if (this.loggingEnabled) console.debug(...args);
+        break;
+      case "info":
+        if (this.loggingEnabled) console.info(...args);
+        break;
+      case "warn":
+        console.warn(...args);
+        break;
+      case "error":
+        console.error(...args);
+        break;
+      default:
+        console.log(...args);
+        break;
+    }
+  }
+
+  private formatMillis(duration: number): string {
+    const seconds = Math.floor(duration / 1000);
+    const milliseconds = duration % 1000;
+    if (seconds <= 0) {
+      return `${milliseconds}ms`;
+    }
+    return `${seconds}s ${milliseconds.toString().padStart(3, "0")}ms`;
+  }
+
+  private async loadCandidateSynapses(
+    neuronUUID: string,
+    records: DiscoverRecord[],
+  ): Promise<CandidateSynapse[]> {
+    // Check timeout before starting analysis
+    if (Date.now() > this.timeoutTS) {
+      this.log(
+        "warn",
+        `Discovery timeout reached in loadCandidateSynapses for ${neuronUUID}`,
+      );
+      return [];
+    }
+
+    const exportedJSON = this.creature.exportJSON();
+    const currentSynapses = new Set<string>(
+      exportedJSON.synapses.filter((synapse) => synapse.toUUID === neuronUUID)
+        .map((synapse) => synapse.fromUUID),
+    );
+
+    const promises: Promise<CandidateSynapse>[] = [];
+    for (let indx = 0; indx < this.creature.neurons.length; indx++) {
+      const neuron = this.creature.neurons[indx];
+      if (neuron.uuid === neuronUUID) {
+        break;
+      }
+      if (currentSynapses.has(neuron.uuid)) {
+        continue;
+      }
+
+      const p = this.analyzeCandidateSynapse(neuronUUID, neuron.uuid, records);
+      promises.push(p);
+    }
+    const candidates = await Promise.all(promises);
+
+    return candidates;
   }
 
   private processCSVRecord(
@@ -794,42 +1199,6 @@ export class DiscoverStructure {
         }`,
       );
     }
-  }
-
-  private async loadCandidateSynapses(
-    neuronUUID: string,
-    records: DiscoverRecord[],
-  ): Promise<CandidateSynapse[]> {
-    // Check timeout before starting analysis
-    if (Date.now() > this.timeoutTS) {
-      console.warn(
-        `Discovery timeout reached in loadCandidateSynapses for ${neuronUUID}`,
-      );
-      return [];
-    }
-
-    const exportedJSON = this.creature.exportJSON();
-    const currentSynapses = new Set<string>(
-      exportedJSON.synapses.filter((synapse) => synapse.toUUID === neuronUUID)
-        .map((synapse) => synapse.fromUUID),
-    );
-
-    const promises: Promise<CandidateSynapse>[] = [];
-    for (let indx = 0; indx < this.creature.neurons.length; indx++) {
-      const neuron = this.creature.neurons[indx];
-      if (neuron.uuid === neuronUUID) {
-        break;
-      }
-      if (currentSynapses.has(neuron.uuid)) {
-        continue;
-      }
-
-      const p = this.analyzeCandidateSynapse(neuronUUID, neuron.uuid, records);
-      promises.push(p);
-    }
-    const candidates = await Promise.all(promises);
-
-    return candidates;
   }
 
   /**
@@ -1151,8 +1520,65 @@ export class DiscoverStructure {
       toNeuronUUID,
       weight,
       improvedCount,
-      totalCount: totalCount,
+      totalCount,
       expectedImprovementPercentage,
+    };
+  }
+
+  async analyzeExistingSynapseImpact(
+    toNeuronUUID: string,
+    fromNeuronUUID: string,
+    toRecords: DiscoverRecord[],
+    weight: number,
+  ): Promise<CandidateSynapse> {
+    const activationCount = toRecords.length;
+    const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
+    const fromRecords = await this.loadCSV(fileName);
+    assert(
+      fromRecords.length === activationCount,
+      `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
+    );
+
+    let harmfulCount = 0;
+    let helpfulCount = 0;
+    let errorImpactSum = 0;
+
+    for (let i = 0; i < activationCount; i++) {
+      const toRecord = toRecords[i];
+      const fromRecord = fromRecords[i];
+
+      const activation = fromRecord.activation;
+      if (Math.abs(activation) <= Number.EPSILON) continue;
+
+      const errorList = toRecord.errors;
+      if (errorList.length === 0) continue;
+      const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
+      if (Math.abs(avgError) <= Number.EPSILON) continue;
+
+      const signal = activation * weight;
+      const signMatch = Math.sign(signal) === Math.sign(avgError);
+
+      if (signMatch) {
+        harmfulCount++;
+        errorImpactSum += Math.abs(avgError);
+      } else {
+        helpfulCount++;
+      }
+    }
+
+    // Clear fromRecords array to help GC
+    fromRecords.length = 0;
+
+    const expectedHarmPercentage = (harmfulCount - helpfulCount) /
+      activationCount;
+
+    return {
+      fromNeuronUUID,
+      toNeuronUUID,
+      weight,
+      improvedCount: harmfulCount,
+      totalCount: activationCount,
+      expectedImprovementPercentage: expectedHarmPercentage,
     };
   }
 
@@ -1322,75 +1748,6 @@ export class DiscoverStructure {
     }
 
     return undefined;
-  }
-
-  /**
-   * Analyzes an existing synapse to estimate whether it contributes to increased downstream error.
-   *
-   * A synapse is considered harmful if the product of its signal (activation × weight)
-   * aligns with the direction of the observed error (i.e., it reinforces the error).
-   *
-   * @param toNeuronUUID - UUID of the downstream neuron receiving the signal.
-   * @param fromNeuronUUID - UUID of the upstream neuron sending the signal.
-   * @param toRecords - Activation and error records for the target neuron.
-   * @param weight - The existing weight of the synapse to evaluate.
-   * @returns A CandidateSynapse with the measured error impact of this existing synapse.
-   */
-  async analyzeExistingSynapseImpact(
-    toNeuronUUID: string,
-    fromNeuronUUID: string,
-    toRecords: DiscoverRecord[],
-    weight: number,
-  ): Promise<CandidateSynapse> {
-    const activationCount = toRecords.length;
-    const fileName = `${this.tempDir}/${fromNeuronUUID}.csv`;
-    const fromRecords = await this.loadCSV(fileName);
-    assert(
-      fromRecords.length === activationCount,
-      `Mismatched records ${fromRecords.length} != ${activationCount} for ${fileName}`,
-    );
-
-    let harmfulCount = 0;
-    let helpfulCount = 0;
-    let errorImpactSum = 0;
-
-    for (let i = 0; i < activationCount; i++) {
-      const toRecord = toRecords[i];
-      const fromRecord = fromRecords[i];
-
-      const activation = fromRecord.activation;
-      if (Math.abs(activation) <= Number.EPSILON) continue;
-
-      const errorList = toRecord.errors;
-      if (errorList.length === 0) continue;
-      const avgError = errorList.reduce((a, b) => a + b, 0) / errorList.length;
-      if (Math.abs(avgError) <= Number.EPSILON) continue;
-
-      const signal = activation * weight;
-      const signMatch = Math.sign(signal) === Math.sign(avgError);
-
-      if (signMatch) {
-        harmfulCount++;
-        errorImpactSum += Math.abs(avgError);
-      } else {
-        helpfulCount++;
-      }
-    }
-
-    // Clear fromRecords array to help GC
-    fromRecords.length = 0;
-
-    const expectedHarmPercentage = (harmfulCount - helpfulCount) /
-      activationCount;
-
-    return {
-      fromNeuronUUID,
-      toNeuronUUID,
-      weight,
-      improvedCount: harmfulCount,
-      totalCount: activationCount,
-      expectedImprovementPercentage: expectedHarmPercentage,
-    };
   }
 
   /**
@@ -1568,57 +1925,73 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse | undefined> {
     if (focusList.length === 0) return undefined;
 
-    // Check timeout before starting analysis
     if (Date.now() > this.timeoutTS) {
-      console.warn(
-        `Discovery timeout reached in analyzeSelectedNeuronsForRemoval`,
+      this.log(
+        "warn",
+        "Discovery timeout reached in analyzeSelectedNeuronsForRemoval",
       );
       return undefined;
     }
 
-    const promises: Promise<CandidateSynapse>[] = [];
-    const exportJSON = this.creature.exportJSON();
-
-    const candidatePromises = focusList.map(async (toUUID) => {
-      const records = await this.loadCSV(`${this.tempDir}/${toUUID}.csv`);
-      exportJSON.synapses.map((synapse) => {
-        if (synapse.toUUID === toUUID) {
-          const p = this.analyzeExistingSynapseImpact(
-            toUUID,
-            synapse.fromUUID,
-            records,
-            synapse.weight,
-          );
-
-          promises.push(p);
+    if (this.parquetFilePath && isRustDiscoveryEnabled()) {
+      const rustCandidatesRaw = this.tryRustHarmfulCandidates(focusList);
+      if (rustCandidatesRaw && rustCandidatesRaw.length > 0) {
+        const rustCandidates = rustCandidatesRaw;
+        const tsCandidates = await this.getTypeScriptHarmfulCandidates(
+          focusList,
+        );
+        const combined = this.mergeHarmfulCandidates(
+          rustCandidates,
+          tsCandidates,
+        );
+        if (combined.length > 0) {
+          const worstCandidate = combined[0];
+          const origin = this.containsCandidate(rustCandidates, worstCandidate)
+            ? "Rust"
+            : "TypeScript";
+          this.logHarmfulSynapse(origin, worstCandidate);
+          return worstCandidate;
         }
-      });
-    });
-    await Promise.all(candidatePromises);
 
-    const candidates = await Promise.all(promises);
-    const allCandidates: CandidateSynapse[] = candidates.filter(
-      (candidate) => candidate.expectedImprovementPercentage < -0.1,
-    );
+        const worstCandidate = rustCandidates[0];
+        this.logHarmfulSynapse("Rust", worstCandidate);
+        return worstCandidate;
+      }
 
-    if (allCandidates.length > 0) {
-      allCandidates.sort((a, b) =>
-        a.expectedImprovementPercentage - b.expectedImprovementPercentage
-      );
-      const worseCandidate = allCandidates[0];
-      assert(worseCandidate.expectedImprovementPercentage < 0);
-
-      console.info(
-        `Discovered harmful synapse from ${worseCandidate.fromNeuronUUID} to ${worseCandidate.toNeuronUUID}, harming ${
-          (
-            -1 * worseCandidate.expectedImprovementPercentage * 100
-          ).toFixed(1)
-        }% more records than it helps (${worseCandidate.improvedCount}/${worseCandidate.totalCount})`,
-      );
-
-      return worseCandidate;
+      if (
+        rustCandidatesRaw && rustCandidatesRaw.length === 0 &&
+        this.loggingEnabled
+      ) {
+        this.log(
+          "debug",
+          `Rust harmful synapse analysis returned no candidates for ${
+            focusList.join(", ")
+          }. Falling back to TypeScript logic.`,
+        );
+      }
     }
 
-    return undefined;
+    const tsCandidates = await this.getTypeScriptHarmfulCandidates(focusList);
+    if (tsCandidates.length === 0) {
+      return undefined;
+    }
+
+    const worstCandidate = tsCandidates[0];
+    this.logHarmfulSynapse("TypeScript", worstCandidate);
+    return worstCandidate;
+  }
+
+  private async analyzeSelectedNeuronsForRemovalTypeScript(
+    focusList: string[],
+  ): Promise<CandidateSynapse | undefined> {
+    const candidates = await this.getTypeScriptHarmfulCandidates(focusList);
+    if (candidates.length === 0) {
+      return undefined;
+    }
+
+    const worseCandidate = candidates[0];
+    assert(worseCandidate.expectedImprovementPercentage < 0);
+    this.logHarmfulSynapse("TypeScript", worseCandidate);
+    return worseCandidate;
   }
 }

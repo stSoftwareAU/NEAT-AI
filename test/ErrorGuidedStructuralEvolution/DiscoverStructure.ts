@@ -259,47 +259,55 @@ Deno.test({
   },
 });
 
-Deno.test("Discovery gracefully skips when Rust module is not available", async () => {
-  // This test specifically verifies graceful degradation WITHOUT FFI
-  // It should pass when run without --allow-ffi flag
+Deno.test({
+  name: "Discovery gracefully skips when Rust module is not available",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  fn: async () => {
+    // This test specifically verifies graceful degradation WITHOUT FFI
+    // It should pass when run without --allow-ffi flag
 
-  const targetCreature = makeCreature();
-  CreatureUtil.makeUUID(targetCreature);
-  const data = makeData(targetCreature.input);
+    const targetCreature = makeCreature();
+    CreatureUtil.makeUUID(targetCreature);
+    const data = makeData(targetCreature.input);
 
-  const trainingData: DataRecordInterface[] = [];
-  for (let i = data.length; i--;) {
-    const input = data[i];
-    const output = targetCreature.activate(new Float32Array(input));
-    trainingData.push({
-      input: new Float32Array(input),
-      output: new Float32Array(output),
-    });
-  }
+    const trainingData: DataRecordInterface[] = [];
+    for (let i = data.length; i--;) {
+      const input = data[i];
+      const output = targetCreature.activate(new Float32Array(input));
+      trainingData.push({
+        input: new Float32Array(input),
+        output: new Float32Array(output),
+      });
+    }
 
-  const discoverStructure = new DiscoverStructure(targetCreature, 60);
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
-  discoverStructure.initialize(neuronPromisesMap);
+    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    discoverStructure.initialize(neuronPromisesMap);
 
-  // Record should return false when Rust is not available
-  const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    // Record should return false when Rust is not available
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
 
-  if (shouldSkipRustDiscoveryTests()) {
-    // Without Rust, recording should fail gracefully
-    assert(!recorded, "Record should return false when Rust is not available");
-    console.log(
-      "✅ Discovery correctly skipped when Rust module is not available",
-    );
-  } else {
-    assertRustDiscoveryAvailable();
-    // With Rust, recording should succeed
-    assert(recorded, "Record should succeed when Rust is available");
-    await Promise.all([...neuronPromisesMap.values()]);
-    const flushSuccess = discoverStructure.flushRustRecording();
-    assert(flushSuccess, "Rust flush should succeed");
-  }
+    if (shouldSkipRustDiscoveryTests()) {
+      // Without Rust, recording should fail gracefully
+      assert(
+        !recorded,
+        "Record should return false when Rust is not available",
+      );
+      console.log(
+        "✅ Discovery correctly skipped when Rust module is not available",
+      );
+    } else {
+      assertRustDiscoveryAvailable();
+      // With Rust, recording should succeed
+      assert(recorded, "Record should succeed when Rust is available");
+      await Promise.all([...neuronPromisesMap.values()]);
+      const flushSuccess = discoverStructure.flushRustRecording();
+      assert(flushSuccess, "Rust flush should succeed");
+    }
 
-  await discoverStructure.cleanUp();
+    await discoverStructure.cleanUp();
+  },
 });
 
 // Note: Leak detection may flag Rust library load/unload - this is expected with FFI
@@ -375,13 +383,11 @@ Deno.test({
       Date.now() - 1000; // Set to 1 second in the past
 
     // flushRustRecording should handle expired timeout gracefully
-    // It should return false (timeout expired) rather than passing negative timeout_seconds
+    // It should still succeed so that partial data can be analysed
     const flushSuccess = discoverStructure.flushRustRecording();
-    // When timeout expires, flush should fail gracefully (return false)
-    // This prevents passing negative timeout_seconds to Rust module
     assert(
-      !flushSuccess,
-      "flushRustRecording should return false when timeout has expired",
+      flushSuccess,
+      "flushRustRecording should return true when timeout has expired so partial data persists",
     );
 
     await discoverStructure.cleanUp();

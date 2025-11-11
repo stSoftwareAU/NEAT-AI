@@ -25,6 +25,32 @@ export interface RustRecordResult {
   error?: string;
 }
 
+export interface RustCandidateSynapse {
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  weight: number;
+  expectedImprovementPercentage: number;
+  improvedCount: number;
+  totalCount: number;
+}
+
+export interface RustAnalyzeSynapsesInput {
+  parquetFile: string;
+  creature: RustRecordInput["creature"];
+  focusNeurons: string[];
+  improvementThreshold?: number;
+  maxCandidates?: number;
+  requireGpu?: boolean;
+}
+
+export interface RustAnalyzeSynapsesResult {
+  success: boolean;
+  gpuUsed?: boolean;
+  helpfulSynapses?: RustCandidateSynapse[];
+  harmfulSynapses?: RustCandidateSynapse[];
+  error?: string;
+}
+
 /**
  * Input structure for Rust record_discovery function.
  * Matches the RecordDiscoveryInput struct in Rust.
@@ -238,6 +264,11 @@ type RustDiscoverySymbols = {
     result: "pointer";
     nonblocking: false;
   };
+  "analyze_synapses": {
+    parameters: ["pointer"];
+    result: "pointer";
+    nonblocking: false;
+  };
   "read_discovery_records_ffi": {
     parameters: ["pointer"];
     result: "pointer";
@@ -284,6 +315,11 @@ export function loadRustLibrary(): boolean {
   try {
     const symbols: RustDiscoverySymbols = {
       "record_discovery": {
+        parameters: ["pointer"],
+        result: "pointer",
+        nonblocking: false,
+      },
+      "analyze_synapses": {
         parameters: ["pointer"],
         result: "pointer",
         nonblocking: false,
@@ -551,6 +587,46 @@ export function recordDiscovery(
     // Parse the JSON result
     const result = JSON.parse(resultJson) as RustRecordResult;
 
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export function analyzeSynapses(
+  input: RustAnalyzeSynapsesInput,
+): RustAnalyzeSynapsesResult | null {
+  if (!isRustLibraryAvailable()) {
+    return null;
+  }
+
+  assert(rustLib !== null, "Rust library should be loaded");
+
+  try {
+    const inputJson = JSON.stringify(input);
+    const inputBytes = new TextEncoder().encode(inputJson);
+
+    const inputBuffer = new Uint8Array(inputBytes.length + 1);
+    inputBuffer.set(inputBytes);
+    inputBuffer[inputBytes.length] = 0;
+
+    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
+    const resultPtr = rustLib.symbols["analyze_synapses"](inputPtr);
+
+    if (resultPtr === null) {
+      return {
+        success: false,
+        error: "Rust function returned null pointer",
+      };
+    }
+
+    const resultJson = readCString(resultPtr);
+    rustLib.symbols["free_discovery_result"](resultPtr);
+
+    const result = JSON.parse(resultJson) as RustAnalyzeSynapsesResult;
     return result;
   } catch (error) {
     return {
