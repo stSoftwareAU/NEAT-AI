@@ -2,7 +2,10 @@ import { assert, assertAlmostEquals, fail } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  DEFAULT_RUST_FLUSH_RECORDS,
+  DiscoverStructure,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   assertRustDiscoveryAvailable,
   shouldSkipRustDiscoveryTests,
@@ -162,7 +165,11 @@ Deno.test({
       /**
        * Instantiate the discovery mechanism
        */
-      const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+      const discoverStructure = new DiscoverStructure(
+        crippledCreature,
+        60,
+        DEFAULT_RUST_FLUSH_RECORDS,
+      );
       const neuronPromisesMap: Map<string, Promise<void>> = new Map();
       discoverStructure.initialize(neuronPromisesMap);
       const recorded = discoverStructure.record(
@@ -237,7 +244,11 @@ Deno.test({
     /**
      * Instantiate the discovery mechanism
      */
-    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const discoverStructure = new DiscoverStructure(
+      crippledCreature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);

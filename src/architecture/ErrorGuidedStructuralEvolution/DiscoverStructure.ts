@@ -15,6 +15,7 @@ import {
   creatureToRustFormat,
   isRustDiscoveryEnabled,
   isRustLibraryAvailable,
+  mergeDiscoveryParquet,
   readDiscoveryRecords,
   recordDiscovery,
   type RustAnalyzeNeuronsInput,
@@ -25,6 +26,29 @@ import {
   type RustCandidateSynapse,
   type RustRecordInput,
 } from "./RustDiscovery.ts";
+import { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
+
+export { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
+
+export interface DiscoverStructureDeps {
+  isRustDiscoveryEnabled: typeof isRustDiscoveryEnabled;
+  isRustLibraryAvailable: typeof isRustLibraryAvailable;
+  recordDiscovery: typeof recordDiscovery;
+  mergeDiscoveryParquet: typeof mergeDiscoveryParquet;
+  analyzeNeurons: typeof analyzeNeurons;
+  analyzeSynapses: typeof analyzeSynapses;
+  readDiscoveryRecords: typeof readDiscoveryRecords;
+}
+
+const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
+  isRustDiscoveryEnabled,
+  isRustLibraryAvailable,
+  recordDiscovery,
+  mergeDiscoveryParquet,
+  analyzeNeurons,
+  analyzeSynapses,
+  readDiscoveryRecords,
+};
 
 /**
  * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
@@ -120,7 +144,17 @@ export class DiscoverStructure {
   private rustBinaryFilePaths: Set<string> = new Set(); // Track all binary file paths
   private usingRustDualWrite = false;
   private parquetFilePath: string | null = null;
-  constructor(creature: Creature, timeoutSeconds: number) {
+  private rustFlushRecords: number;
+  private rustChunkFiles: string[] = [];
+  private rustChunkCounter = 0;
+  private syntheticBinaryMode = false;
+  private deps: DiscoverStructureDeps;
+  constructor(
+    creature: Creature,
+    timeoutSeconds: number,
+    rustFlushRecords: number = DEFAULT_RUST_FLUSH_RECORDS,
+    deps: Partial<DiscoverStructureDeps> = {},
+  ) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
     this.tempDir = `.discovery/${creature.uuid}_${
@@ -138,6 +172,8 @@ export class DiscoverStructure {
       `Timeout seconds must be less than 1 hour: was ${timeoutSeconds}`,
     );
     this.timeoutTS = Date.now() + timeoutSeconds * 1000;
+    this.rustFlushRecords = Math.max(1, rustFlushRecords);
+    this.deps = { ...DEFAULT_DISCOVER_STRUCTURE_DEPS, ...deps };
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
   }
@@ -175,7 +211,7 @@ export class DiscoverStructure {
     this.initialized = true;
 
     // Check if Rust discovery is enabled (requires both library file AND FFI permissions)
-    if (!isRustDiscoveryEnabled()) {
+    if (!this.deps.isRustDiscoveryEnabled()) {
       console.warn(
         `⚠️  Discovery requires the NEAT-AI-Discovery Rust library and FFI permissions. Discovery will be skipped.`,
       );
@@ -296,6 +332,11 @@ export class DiscoverStructure {
     return true;
   }
 
+  public shouldFlushRustChunk(): boolean {
+    if (!this.usingRustDualWrite) return false;
+    return this.rustAccumulatedData.length >= this.rustFlushRecords;
+  }
+
   /**
    * Flushes accumulated Rust recording data and writes to Parquet via Rust module.
    * This is called after all record() batches complete.
@@ -307,224 +348,234 @@ export class DiscoverStructure {
    * If Rust module is not available, this returns false and discovery is skipped.
    * If there's no accumulated data (empty training data), this returns true (valid no-op).
    */
-  public flushRustRecording(): boolean {
-    // If Rust is not being used, return false (discovery skipped)
-    if (!this.usingRustDualWrite) {
-      return false;
+  private getNextChunkDir(): string {
+    const index = ++this.rustChunkCounter;
+    const dir = `${this.tempDir}/chunks/chunk-${
+      index.toString().padStart(5, "0")
+    }`;
+    try {
+      Deno.mkdirSync(dir, { recursive: true });
+    } catch (error) {
+      if (!(error instanceof Deno.errors.AlreadyExists)) {
+        throw error;
+      }
     }
+    return dir;
+  }
 
-    // If there's no data to flush, return true (valid no-op, not an error)
-    if (this.rustAccumulatedData.length === 0) {
-      return true;
-    }
-
+  private writeRustParquetChunk(tempDir: string): string | null {
     // Check if creature has been cleaned up (race condition protection)
     // @ts-ignore - creature can be null after cleanUp()
     if (!this.creature) {
       console.warn(
         `⚠️  Discovery recording skipped: creature has been cleaned up.`,
       );
-      return false;
+      return null;
     }
 
-    // Now actually load the library (lazy loading - only when we need to write)
-    if (!isRustLibraryAvailable()) {
+    if (!this.deps.isRustLibraryAvailable()) {
       console.warn(
         `⚠️  Rust library not available when flushing. Discovery recording failed.`,
       );
+      return null;
+    }
+
+    const creatureExport = this.creature.exportJSON();
+    const rustCreature = creatureToRustFormat(creatureExport);
+    const pendingSamples = this.rustAccumulatedData.length;
+
+    const nonInputNeurons = this.creature.neurons.filter((neuron) =>
+      neuron.type !== "input"
+    );
+
+    const rustTrainingData = this.rustAccumulatedData.map((record, index) => {
+      const discoverMap = this.rustAccumulatedNeuronData[index];
+
+      const neuronData = nonInputNeurons.map((neuron) => {
+        const discoverRecord = discoverMap.get(neuron.uuid) || {
+          activation: this.creature.state.activations[neuron.index],
+          errors: [] as number[],
+        };
+
+        const errors = discoverRecord.errors.filter(Number.isFinite);
+
+        return {
+          neuron_uuid: neuron.uuid,
+          activation: discoverRecord.activation,
+          value: discoverRecord.value,
+          errors: errors,
+        };
+      });
+
+      return {
+        input: Array.from(record.input),
+        output: Array.from(record.output),
+        neuron_data: neuronData,
+      };
+    });
+
+    let recordIndices: number[] | undefined = undefined;
+    if (this.rustBinaryFilePaths.size === 1 && this.rustBinaryFilePath) {
+      const fileIndices = this.selectedIndices[this.rustBinaryFilePath];
+      if (
+        fileIndices && fileIndices.length === this.rustAccumulatedData.length
+      ) {
+        recordIndices = fileIndices;
+      }
+    }
+
+    const now = Date.now();
+    const timedOut = now > this.timeoutTS;
+    if (timedOut) {
+      this.log(
+        "warn",
+        "Submitting flush request to Rust after recording timeout expired. Continuing with captured data.",
+      );
+    }
+
+    const timeoutSeconds = timedOut
+      ? 0
+      : Math.max(0, Math.floor((this.timeoutTS - now) / 1000));
+
+    const rustInput: RustRecordInput = {
+      creature: rustCreature,
+      "training_data": rustTrainingData,
+      "temp_dir": tempDir,
+      "binary_file_path": this.rustBinaryFilePath || undefined,
+      "record_indices": recordIndices,
+      "timeout_seconds": timeoutSeconds,
+    };
+
+    const result = this.deps.recordDiscovery(rustInput);
+
+    if (result && result.success && result.file) {
+      const parquetPath = `${tempDir}/${result.file}`;
+
+      if (this.syntheticBinaryMode || this.rustBinaryFilePaths.size === 0) {
+        this.syntheticBinaryMode = true;
+        const tempBinaryFile = `${tempDir}/training_data.bin`;
+        const BYTES_PER_RECORD = (this.creature.input + this.creature.output) *
+          4;
+        const file = Deno.openSync(tempBinaryFile, {
+          create: true,
+          write: true,
+          truncate: true,
+        });
+
+        try {
+          const buffer = new Uint8Array(BYTES_PER_RECORD);
+          const recordArray = new Float32Array(buffer.buffer);
+          const sequentialIndices: number[] = [];
+
+          for (let i = 0; i < this.rustAccumulatedData.length; i++) {
+            const record = this.rustAccumulatedData[i];
+            for (let j = 0; j < this.creature.input; j++) {
+              recordArray[j] = record.input[j];
+            }
+            for (let j = 0; j < this.creature.output; j++) {
+              recordArray[this.creature.input + j] = record.output[j];
+            }
+            file.writeSync(buffer);
+            sequentialIndices.push(i);
+          }
+
+          this.selectedIndices[tempBinaryFile] = sequentialIndices;
+          this.rustBinaryFilePaths.add(tempBinaryFile);
+          if (!this.rustBinaryFilePath) {
+            this.rustBinaryFilePath = tempBinaryFile;
+          }
+        } finally {
+          file.close();
+        }
+      }
+
+      Deno.writeTextFileSync(
+        this.indicesFilePath,
+        JSON.stringify(this.selectedIndices),
+      );
+
+      this.rustAccumulatedData = [];
+      this.rustAccumulatedNeuronData = [];
+      const flushDuration = Date.now() - now;
+      const remainingSeconds = Math.max(
+        0,
+        Math.floor((this.timeoutTS - Date.now()) / 1000),
+      );
+      this.log(
+        "info",
+        `Flushed ${pendingSamples} samples to ${parquetPath} in ${
+          this.formatMillis(flushDuration)
+        } (timeout remaining: ${remainingSeconds}s).`,
+      );
+
+      return parquetPath;
+    }
+
+    console.error(
+      `❌ Rust discovery recording failed: ${result?.error || "Unknown error"}`,
+    );
+    return null;
+  }
+
+  public flushRustChunk(): boolean {
+    if (!this.usingRustDualWrite || this.rustAccumulatedData.length === 0) {
       return false;
     }
 
     try {
-      const creatureExport = this.creature.exportJSON();
-      const rustCreature = creatureToRustFormat(creatureExport);
-      const pendingSamples = this.rustAccumulatedData.length;
-
-      const nonInputNeurons = this.creature.neurons.filter((neuron) =>
-        neuron.type !== "input"
-      );
-
-      const rustTrainingData = this.rustAccumulatedData.map((record, index) => {
-        const discoverMap = this.rustAccumulatedNeuronData[index];
-
-        const neuronData = nonInputNeurons.map((neuron) => {
-          const discoverRecord = discoverMap.get(neuron.uuid) || {
-            activation: this.creature.state.activations[neuron.index],
-            errors: [] as number[],
-          };
-
-          const errors = discoverRecord.errors.filter(Number.isFinite);
-
-          return {
-            neuron_uuid: neuron.uuid,
-            activation: discoverRecord.activation,
-            value: discoverRecord.value,
-            errors: errors,
-          };
-        });
-
-        return {
-          input: Array.from(record.input),
-          output: Array.from(record.output),
-          neuron_data: neuronData,
-        };
-      });
-
-      // Prepare record indices if we have binary files with specific indices
-      // NOTE: Indices stored in selectedIndices are file-specific (indices within each binary file),
-      // not training-data indices. When multiple files are processed, we can't reliably map
-      // file-specific indices to training-data indices without tracking offsets.
-      // For single file: use file-specific indices (they should map 1:1 to training data)
-      // For multiple files: use sequential indices (0, 1, 2, ...) to match training data order
-      let recordIndices: number[] | undefined = undefined;
-      if (this.rustBinaryFilePaths.size === 1 && this.rustBinaryFilePath) {
-        // Single binary file: use its file-specific indices
-        // These should map 1:1 to training data since only one file was processed
-        const fileIndices = this.selectedIndices[this.rustBinaryFilePath];
-        if (fileIndices && fileIndices.length > 0) {
-          // Verify indices match training data length (should be 1:1 for single file)
-          if (fileIndices.length === this.rustAccumulatedData.length) {
-            recordIndices = fileIndices;
-          } else {
-            // Mismatch - use sequential indices for safety
-            recordIndices = undefined;
-          }
-        } else {
-          // No indices found - use sequential indices
-          recordIndices = undefined;
-        }
-      } else if (this.rustBinaryFilePaths.size > 1) {
-        // Multiple binary files: can't map file-specific indices to training-data indices
-        // Use sequential indices (0, 1, 2, ...) to match training data order
-        recordIndices = undefined;
-      } else {
-        // No binary file - don't provide record_indices (let Rust process all records sequentially)
-        // This ensures obs_index in Parquet matches the training data index (0, 1, 2, ...)
-        recordIndices = undefined;
+      const chunkDir = this.getNextChunkDir();
+      const parquetPath = this.writeRustParquetChunk(chunkDir);
+      if (!parquetPath) {
+        return false;
       }
-
-      const now = Date.now();
-      const timedOut = now > this.timeoutTS;
-      if (timedOut) {
-        this.log(
-          "warn",
-          "Submitting flush request to Rust after recording timeout expired. Continuing with captured data.",
-        );
-      }
-
-      // Calculate timeout_seconds, ensuring it's non-negative. If we've already
-      // exceeded the timeout window we pass zero so Rust can decide whether to proceed.
-      const timeoutSeconds = timedOut
-        ? 0
-        : Math.max(0, Math.floor((this.timeoutTS - now) / 1000));
-
-      const rustInput: RustRecordInput = {
-        creature: rustCreature,
-        "training_data": rustTrainingData,
-        "temp_dir": this.tempDir,
-        "binary_file_path": this.rustBinaryFilePath || undefined,
-        "record_indices": recordIndices,
-        "timeout_seconds": timeoutSeconds,
-      };
-
-      const result = recordDiscovery(rustInput);
-
-      if (result && result.success && result.file) {
-        this.parquetFilePath = `${this.tempDir}/${result.file}`;
-
-        // Write indices file for input neuron binary reading
-        // For single file: use the calculated recordIndices or sequential indices
-        // For multiple files: write all file-specific indices (even though we use sequential for Rust)
-        if (this.rustBinaryFilePaths.size > 0) {
-          let indicesToWrite: BinaryRecordIndices;
-          if (this.rustBinaryFilePaths.size === 1 && recordIndices) {
-            // Single file with valid indices: use the calculated indices
-            indicesToWrite = {
-              [this.rustBinaryFilePath!]: recordIndices,
-            };
-          } else {
-            // Multiple files or no valid indices: write all file-specific indices
-            // (Note: Rust will use sequential indices, but we preserve file-specific indices for reference)
-            indicesToWrite = { ...this.selectedIndices };
-          }
-          Deno.writeTextFileSync(
-            this.indicesFilePath,
-            JSON.stringify(indicesToWrite),
-          );
-        } else if (this.rustAccumulatedData.length > 0) {
-          // No binary file path - create a temporary binary file from training data
-          // This allows input neurons to be read (they're always read from binary files)
-          const tempBinaryFile = `${this.tempDir}/training_data.bin`;
-          const BYTES_PER_RECORD =
-            (this.creature.input + this.creature.output) * 4;
-          const file = Deno.openSync(tempBinaryFile, {
-            create: true,
-            write: true,
-            truncate: true,
-          });
-
-          try {
-            const buffer = new Uint8Array(BYTES_PER_RECORD);
-            const recordArray = new Float32Array(buffer.buffer);
-            const sequentialIndices: number[] = [];
-
-            for (let i = 0; i < this.rustAccumulatedData.length; i++) {
-              const record = this.rustAccumulatedData[i];
-              // Write input values
-              for (let j = 0; j < this.creature.input; j++) {
-                recordArray[j] = record.input[j];
-              }
-              // Write output values
-              for (let j = 0; j < this.creature.output; j++) {
-                recordArray[this.creature.input + j] = record.output[j];
-              }
-
-              file.writeSync(buffer);
-              sequentialIndices.push(i);
-            }
-
-            // Write indices file pointing to the temporary binary file
-            const indices: BinaryRecordIndices = {
-              [tempBinaryFile]: sequentialIndices,
-            };
-            Deno.writeTextFileSync(
-              this.indicesFilePath,
-              JSON.stringify(indices),
-            );
-
-            // Store the temporary binary file path
-            this.rustBinaryFilePath = tempBinaryFile;
-          } finally {
-            file.close();
-          }
-        }
-
-        // Clear accumulated data after successful write
-        this.rustAccumulatedData = [];
-        this.rustAccumulatedNeuronData = [];
-        const flushDuration = Date.now() - now;
-        const remainingSeconds = Math.max(
-          0,
-          Math.floor((this.timeoutTS - Date.now()) / 1000),
-        );
-        this.log(
-          "info",
-          `Flushed ${pendingSamples} samples to ${this.parquetFilePath} in ${
-            this.formatMillis(flushDuration)
-          } (timeout remaining: ${remainingSeconds}s).`,
-        );
-
-        return true;
-      }
-      console.error(
-        `❌ Rust discovery recording failed: ${
-          result?.error || "Unknown error"
-        }`,
-      );
-      return false;
-    } catch {
+      this.rustChunkFiles.push(parquetPath);
+      return true;
+    } catch (error) {
+      console.error("❌ Failed to flush discovery chunk:", error);
       return false;
     }
+  }
+
+  public flushRustRecording(): boolean {
+    if (!this.usingRustDualWrite) {
+      return false;
+    }
+
+    if (this.rustAccumulatedData.length > 0) {
+      if (!this.flushRustChunk()) {
+        return false;
+      }
+    }
+
+    if (this.rustChunkFiles.length === 0) {
+      this.parquetFilePath = null;
+      return true;
+    }
+
+    if (!this.deps.isRustLibraryAvailable()) {
+      console.warn(
+        `⚠️  Rust library not available when merging discovery chunks. Discovery recording failed.`,
+      );
+      return false;
+    }
+
+    const outputFile = `${this.tempDir}/discovery_data.parquet`;
+    const mergeResult = this.deps.mergeDiscoveryParquet({
+      outputFile,
+      inputFiles: [...this.rustChunkFiles],
+    });
+
+    if (!mergeResult || !mergeResult.success) {
+      console.error(
+        "❌ Rust discovery merge failed:",
+        mergeResult?.error ?? "Unknown error",
+      );
+      return false;
+    }
+
+    this.parquetFilePath = mergeResult.outputFile ?? outputFile;
+    this.rustChunkFiles = [];
+    return true;
   }
 
   private discoveries: CandidateSynapse[] = [];
@@ -540,7 +591,7 @@ export class DiscoverStructure {
       return Promise.resolve(undefined);
     }
 
-    if (!this.parquetFilePath || !isRustDiscoveryEnabled()) {
+    if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
       if (this.loggingEnabled) {
         this.log(
           "debug",
@@ -579,7 +630,7 @@ export class DiscoverStructure {
       return Promise.resolve(undefined);
     }
 
-    if (!this.parquetFilePath || !isRustDiscoveryEnabled()) {
+    if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
       if (this.loggingEnabled) {
         this.log(
           "debug",
@@ -811,7 +862,10 @@ export class DiscoverStructure {
       return undefined;
     }
 
-    if (!isRustDiscoveryEnabled() || !isRustLibraryAvailable()) {
+    if (
+      !this.deps.isRustDiscoveryEnabled() ||
+      !this.deps.isRustLibraryAvailable()
+    ) {
       return undefined;
     }
 
@@ -825,7 +879,7 @@ export class DiscoverStructure {
     };
 
     try {
-      const result = analyzeNeurons(rustInput);
+      const result = this.deps.analyzeNeurons(rustInput);
       if (!result || !result.success) {
         if (this.loggingEnabled) {
           this.log(
@@ -861,7 +915,10 @@ export class DiscoverStructure {
       return undefined;
     }
 
-    if (!isRustDiscoveryEnabled() || !isRustLibraryAvailable()) {
+    if (
+      !this.deps.isRustDiscoveryEnabled() ||
+      !this.deps.isRustLibraryAvailable()
+    ) {
       return undefined;
     }
 
@@ -875,7 +932,7 @@ export class DiscoverStructure {
     };
 
     try {
-      const result = analyzeSynapses(rustInput);
+      const result = this.deps.analyzeSynapses(rustInput);
       if (!result || !result.success) {
         if (this.loggingEnabled) {
           this.log(
@@ -1180,7 +1237,7 @@ export class DiscoverStructure {
     }
 
     // Read from Parquet via Rust FFI (simple approach - optimize later)
-    const readResult = readDiscoveryRecords({
+    const readResult = this.deps.readDiscoveryRecords({
       parquet_file: this.parquetFilePath,
       neuron_uuid: neuronUUID,
     });
@@ -1617,7 +1674,9 @@ export class DiscoverStructure {
     if (tmpUUID !== creatureUUID) {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
-      addTag(tmpCreature, "discovery", "harmful");
+      const summary =
+        `☣️ Removed harmful synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}`;
+      addTag(tmpCreature, "Discovery", summary);
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
       tmpCreature.validate();
@@ -1643,6 +1702,8 @@ export class DiscoverStructure {
     if (!helpfulSynapses || helpfulSynapses.length === 0) return;
     const creatureUUID = CreatureUtil.makeUUID(creature);
     const exportJSON = creature.exportJSON();
+
+    const appliedSynapses: CandidateSynapse[] = [];
 
     helpfulSynapses.forEach((bestCandidate) => {
       const foundSynapse = exportJSON.synapses.find((synapse) => {
@@ -1675,16 +1736,21 @@ export class DiscoverStructure {
 
       addTag(addSynapse as TagsInterface, "discovery", "beneficial");
       exportJSON.synapses.push(addSynapse);
+      appliedSynapses.push(bestCandidate);
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
     tmpCreature.fix();
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
-    if (tmpUUID !== creatureUUID) {
+    if (tmpUUID !== creatureUUID && appliedSynapses.length > 0) {
+      const exemplar = appliedSynapses[0];
+      const summary = appliedSynapses.length === 1
+        ? `🕵🏻‍♂️ Added helpful synapse ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID}`
+        : `🕵🏻‍♂️ Added ${appliedSynapses.length} helpful synapses (eg ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID})`;
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
-      addTag(tmpCreature, "discovery", "beneficial");
+      addTag(tmpCreature, "Discovery", summary);
       if (tmpCreature.memetic) {
         tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
       }
@@ -1711,6 +1777,7 @@ export class DiscoverStructure {
     );
     const processedKeys = new Set<string>();
     const addedNeuronUUIDs: string[] = [];
+    const appliedCandidates: CandidateNeuron[] = [];
 
     helpfulNeurons.forEach((candidate) => {
       const key = `${candidate.fromNeuronUUID}->${candidate.toNeuronUUID}`;
@@ -1747,6 +1814,7 @@ export class DiscoverStructure {
       }
       existingNeuronUUIDs.add(newNeuronUUID);
       addedNeuronUUIDs.push(newNeuronUUID);
+      appliedCandidates.push(candidate);
 
       const incomingSynapse = {
         fromUUID: candidate.fromNeuronUUID,
@@ -1776,7 +1844,13 @@ export class DiscoverStructure {
     if (tmpUUID !== creatureUUID) {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
-      addTag(tmpCreature, "discovery", "neuron");
+      if (appliedCandidates.length > 0) {
+        const exemplar = appliedCandidates[0];
+        const summary = appliedCandidates.length === 1
+          ? `🕵🏻‍♂️ Added discovery neuron linking ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID}`
+          : `🕵🏻‍♂️ Added ${appliedCandidates.length} discovery neurons (eg ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID})`;
+        addTag(tmpCreature, "Discovery", summary);
+      }
       if (tmpCreature.memetic) {
         tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
       }
@@ -1806,6 +1880,8 @@ export class DiscoverStructure {
     const creatureUUID = CreatureUtil.makeUUID(creature);
     const exportJSON = creature.exportJSON();
 
+    const appliedSquashes: CandidateSquash[] = [];
+
     helpfulSquashes.forEach((bestCandidate) => {
       const foundNeuron = exportJSON.neurons.find((neuron) => {
         return neuron.uuid === bestCandidate.neuronUUID;
@@ -1819,6 +1895,7 @@ export class DiscoverStructure {
       addTag(foundNeuron as TagsInterface, "discovered", bestCandidate.squash);
 
       foundNeuron.squash = bestCandidate.squash;
+      appliedSquashes.push(bestCandidate);
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
@@ -1828,7 +1905,13 @@ export class DiscoverStructure {
     if (tmpUUID !== creatureUUID) {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
-      addTag(tmpCreature, "discovery", "squash");
+      if (appliedSquashes.length > 0) {
+        const exemplar = appliedSquashes[0];
+        const summary = appliedSquashes.length === 1
+          ? `🕵🏻‍♂️ Swapped ${exemplar.neuronUUID} squash to ${exemplar.squash}`
+          : `🕵🏻‍♂️ Updated squash on ${appliedSquashes.length} neurons (eg ${exemplar.neuronUUID} -> ${exemplar.squash})`;
+        addTag(tmpCreature, "Discovery", summary);
+      }
       if (tmpCreature.memetic) {
         tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
       }
@@ -1864,7 +1947,7 @@ export class DiscoverStructure {
       return Promise.resolve(undefined);
     }
 
-    if (!this.parquetFilePath || !isRustDiscoveryEnabled()) {
+    if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
       if (this.loggingEnabled) {
         this.log(
           "debug",

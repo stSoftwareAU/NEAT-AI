@@ -1,6 +1,6 @@
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
-import { blue, bold, cyan, green } from "@std/fmt/colors";
+import { blue, bold, cyan } from "@std/fmt/colors";
 import { assert } from "@std/assert";
 
 // Define a union type for the possible approaches
@@ -89,14 +89,13 @@ export function logApproach(fittest: Creature, previous: Creature) {
         }
         case "discovery": {
           const discoveryID = getTag(fittest, "discoveryID");
-          const evaluation = getTag(fittest, "discovery");
+          const evaluation = getTag(fittest, "Discovery") ??
+            getTag(fittest, "discovery");
 
           console.info(
             bold(cyan("Discovery")),
             blue(`${discoveryID}`),
-            evaluation === "beneficial"
-              ? green("beneficial")
-              : cyan(evaluation ?? "unknown"),
+            evaluation ?? cyan("unknown"),
             "increased fitness by",
             fScore - pScore,
             "to",

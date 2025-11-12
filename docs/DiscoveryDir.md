@@ -116,6 +116,17 @@ adapt:
   running any side-effects.
 - Touch `.run.pid` to acknowledge the worker is still alive between iterations.
 
+## Memory Management
+
+- Tune `discoveryRustFlushRecords` to control how many discovery samples are
+  buffered in memory before the Rust recorder is flushed. Lowering the value
+  (for example `--discoveryRustFlushRecords=2048`) reduces V8 heap growth at the
+  cost of more frequent, smaller Parquet chunks and extra merge work at the end
+  of the run.
+- The default chunk size (4,096 samples) balances throughput and peak memory for
+  most workloads, but busy datasets or constrained workers may benefit from
+  smaller chunks coupled with increased batch timeout settings.
+
 ## Handling Discovery Results
 
 `discoveryDir()` returns an object containing baseline metrics, raw discovery

@@ -235,6 +235,15 @@ if (options.log) {
 Consider recycling discovery workers periodically to prevent memory accumulation
 in long-running processes.
 
+### 5. **Chunked Rust Recording**
+
+- **Problem**: Large in-memory buffers being converted to JSON for a single Rust
+  flush could exceed the V8 heap limit.
+- **Fix**: Introduced `discoveryRustFlushRecords` so recordings are flushed to
+  the Rust side in smaller Parquet chunks, merging them after scanning.
+- **Impact**: Dramatically lowers JavaScript heap pressure, allowing workers to
+  process much larger sample sets without exhausting memory.
+
 ## Performance Improvements Summary
 
 - **Buffer size reduction**: 256KB → 10KB (25x reduction)

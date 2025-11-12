@@ -1,7 +1,10 @@
 import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  DEFAULT_RUST_FLUSH_RECORDS,
+  DiscoverStructure,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   assertRustDiscoveryAvailable,
   shouldSkipRustDiscoveryTests,
@@ -47,7 +50,11 @@ function makeSimpleCreature(): Creature {
 Deno.test("Discovery promise chains have error handlers", async () => {
   const creature = makeSimpleCreature();
   CreatureUtil.makeUUID(creature);
-  const discoverStructure = new DiscoverStructure(creature, 60);
+  const discoverStructure = new DiscoverStructure(
+    creature,
+    60,
+    DEFAULT_RUST_FLUSH_RECORDS,
+  );
 
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
@@ -107,7 +114,11 @@ Deno.test({
     CreatureUtil.makeUUID(creature);
 
     // Use an invalid temp directory path to force file write errors
-    const discoverStructure = new DiscoverStructure(creature, 60);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
 
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
@@ -163,7 +174,11 @@ Deno.test({
 Deno.test("Discovery Promise.all() completes within timeout", async () => {
   const creature = makeSimpleCreature();
   CreatureUtil.makeUUID(creature);
-  const discoverStructure = new DiscoverStructure(creature, 60);
+  const discoverStructure = new DiscoverStructure(
+    creature,
+    60,
+    DEFAULT_RUST_FLUSH_RECORDS,
+  );
 
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 

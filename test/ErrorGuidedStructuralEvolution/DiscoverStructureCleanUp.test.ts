@@ -4,6 +4,7 @@ import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import {
   type CandidateNeuron,
   type CandidateSynapse,
+  DEFAULT_RUST_FLUSH_RECORDS,
   DiscoverStructure,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -50,7 +51,11 @@ Deno.test({
   sanitizeResources: false,
   fn: async () => {
     const creature = makeMinimalCreature();
-    const discovery = new DiscoverStructure(creature, 5);
+    const discovery = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
 
     const neuronPromises = new Map<string, Promise<void>>();
     discovery.initialize(neuronPromises);

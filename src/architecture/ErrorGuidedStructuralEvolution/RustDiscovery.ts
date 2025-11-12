@@ -307,6 +307,11 @@ type RustDiscoverySymbols = {
     result: "pointer";
     nonblocking: false;
   };
+  "merge_discovery_parquet": {
+    parameters: ["pointer"];
+    result: "pointer";
+    nonblocking: false;
+  };
   "free_discovery_result": {
     parameters: ["pointer"];
     result: "void";
@@ -363,6 +368,11 @@ export function loadRustLibrary(): boolean {
         nonblocking: false,
       },
       "read_discovery_records_ffi": {
+        parameters: ["pointer"],
+        result: "pointer",
+        nonblocking: false,
+      },
+      "merge_discovery_parquet": {
         parameters: ["pointer"],
         result: "pointer",
         nonblocking: false,
@@ -530,6 +540,56 @@ export function readDiscoveryRecords(
     // Parse the JSON result
     const result = JSON.parse(resultJson) as RustReadResult;
 
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export interface RustMergeParquetInput {
+  outputFile: string;
+  inputFiles: string[];
+}
+
+export interface RustMergeParquetResult {
+  success: boolean;
+  outputFile?: string;
+  error?: string;
+}
+
+export function mergeDiscoveryParquet(
+  input: RustMergeParquetInput,
+): RustMergeParquetResult | null {
+  if (!isRustLibraryAvailable()) {
+    return null;
+  }
+
+  assert(rustLib !== null, "Rust library should be loaded");
+
+  try {
+    const inputJson = JSON.stringify(input);
+    const inputBytes = new TextEncoder().encode(inputJson);
+    const inputBuffer = new Uint8Array(inputBytes.length + 1);
+    inputBuffer.set(inputBytes);
+    inputBuffer[inputBytes.length] = 0;
+
+    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
+    const resultPtr = rustLib.symbols["merge_discovery_parquet"](inputPtr);
+
+    if (resultPtr === null) {
+      return {
+        success: false,
+        error: "Rust function returned null pointer",
+      };
+    }
+
+    const resultJson = readCString(resultPtr);
+    rustLib.symbols["free_discovery_result"](resultPtr);
+
+    const result = JSON.parse(resultJson) as RustMergeParquetResult;
     return result;
   } catch (error) {
     return {

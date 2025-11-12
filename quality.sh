@@ -22,7 +22,7 @@ fi
 
 rm -rf .trace .test .coverage
 deno check
-
+(cd ../NEAT-AI-Discovery && ./scripts/runlib.sh)
 # # is intentionally loaded and kept in memory for performance (not a leak)
 
 echo "Verifying discovery library availability..."

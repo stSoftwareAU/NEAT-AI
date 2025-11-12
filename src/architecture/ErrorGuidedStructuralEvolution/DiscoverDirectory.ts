@@ -6,7 +6,11 @@ import type { NeatOptions } from "../../config/NeatOptions.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
-import { DiscoverStructure } from "./DiscoverStructure.ts";
+import {
+  DEFAULT_RUST_FLUSH_RECORDS,
+  DiscoverStructure,
+  type DiscoverStructureDeps,
+} from "./DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 
 const shouldLogDiscovery = (options: NeatOptions): boolean =>
@@ -16,8 +20,9 @@ export async function recordDirectory(
   creature: Creature,
   dataDir: string,
   options: NeatOptions,
+  deps: Partial<DiscoverStructureDeps> = {},
 ) {
-  const recorder = new DataRecorder(creature, options);
+  const recorder = new DataRecorder(creature, options, deps);
   return await recorder.recordDirectory(dataDir);
 }
 
@@ -31,10 +36,13 @@ class DataRecorder {
   private readonly timeoutSeconds: number;
   private readonly discoveryMaxNeurons: number;
   private readonly drainEveryNBatches: number;
+  private readonly rustFlushRecords: number;
+  private readonly discoverDeps: Partial<DiscoverStructureDeps>;
 
   constructor(
     private readonly creature: Creature,
     private readonly options: NeatOptions,
+    deps: Partial<DiscoverStructureDeps>,
   ) {
     this.BYTES_PER_RECORD = (creature.input + creature.output) * 4;
     const discoveryBufferSize = options.discoveryBufferSize || 128 * 1024;
@@ -71,6 +79,11 @@ class DataRecorder {
       1,
       options.discoveryDrainEveryNBatches ?? 10,
     );
+    this.rustFlushRecords = Math.max(
+      1,
+      options.discoveryRustFlushRecords ?? DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    this.discoverDeps = deps;
   }
 
   private shuffleFiles(files: string[]): string[] {
@@ -104,7 +117,10 @@ class DataRecorder {
 
   async recordDirectory(dataDir: string): Promise<DiscoverResult> {
     // Check if Rust discovery module is available
-    if (!isRustDiscoveryEnabled()) {
+    const rustEnabled = this.discoverDeps.isRustDiscoveryEnabled
+      ? this.discoverDeps.isRustDiscoveryEnabled()
+      : isRustDiscoveryEnabled();
+    if (!rustEnabled) {
       if (shouldLogDiscovery(this.options)) {
         console.warn(
           `⚠️  Discovery skipped: Rust module not available. Discovery requires the NEAT-AI-Discovery Rust library to be built and available.`,
@@ -232,6 +248,17 @@ class DataRecorder {
             }
           }
 
+          if (discoverStructure.shouldFlushRustChunk()) {
+            const flushed = discoverStructure.flushRustChunk();
+            if (!flushed) {
+              console.warn(
+                `⚠️  Discovery ${
+                  blue(this.ID)
+                } failed to flush discovery chunk after batch.`,
+              );
+            }
+          }
+
           // Give GC a chance to run periodically
           // deno-lint-ignore no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 0));
@@ -274,6 +301,8 @@ class DataRecorder {
     const discoverStructure = new DiscoverStructure(
       creature,
       this.timeoutSeconds,
+      this.rustFlushRecords,
+      this.discoverDeps,
     );
     discoverStructure.configureLogging({
       discoveryID: this.ID,
@@ -327,6 +356,16 @@ class DataRecorder {
             selectedIndices.length === 0,
             "Indices not empty after flush",
           );
+          if (discoverStructure.shouldFlushRustChunk()) {
+            const flushed = discoverStructure.flushRustChunk();
+            if (!flushed) {
+              console.warn(
+                `⚠️  Discovery ${
+                  blue(this.ID)
+                } failed to flush discovery chunk after file ${filePath}.`,
+              );
+            }
+          }
         }
 
         // Drain promises after each file to limit memory usage

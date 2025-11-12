@@ -2,7 +2,10 @@ import { assert, assertEquals, assertExists } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  DEFAULT_RUST_FLUSH_RECORDS,
+  DiscoverStructure,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   assertRustDiscoveryAvailable,
   shouldSkipRustDiscoveryTests,
@@ -120,7 +123,11 @@ Deno.test({
 
     const trainingData = makeTrainingData(creature.input, 100);
 
-    const discoverStructure = new DiscoverStructure(creature, 60);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
@@ -178,7 +185,11 @@ Deno.test({
 
     const trainingData = makeTrainingData(creature.input, 100);
 
-    const discoverStructure = new DiscoverStructure(creature, 60);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
@@ -228,7 +239,11 @@ Deno.test({
     const trainingData = makeTrainingData(creature.input, 50);
 
     // Use very short timeout (1 second) to trigger timeout
-    const discoverStructure = new DiscoverStructure(creature, 1);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      1,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
@@ -284,7 +299,11 @@ Deno.test({
       trainingData.push({ input, output: new Float32Array(output) });
     }
 
-    const discoverStructure = new DiscoverStructure(creature, 60);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
@@ -334,7 +353,11 @@ Deno.test({
     const trainingData = makeTrainingData(creature.input, 100);
 
     // Very short timeout
-    const discoverStructure = new DiscoverStructure(creature, 1);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      1,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
@@ -398,7 +421,11 @@ Deno.test({
 
     const trainingData = makeTrainingData(creature.input, 50);
 
-    const discoverStructure = new DiscoverStructure(creature, 60);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
