@@ -63,6 +63,13 @@ Deno.test("rust discovery honours NEAT_AI_DISCOVERY_LIB_PATH override", async ()
   await Deno.writeTextFile(fakeLibraryPath, "");
 
   try {
+    // Temporarily clear existing override so the baseline assertion is meaningful
+    try {
+      Deno.env.delete("NEAT_AI_DISCOVERY_LIB_PATH");
+    } catch {
+      // Ignore if we cannot delete (no env permission); the guard below will still pass if override is absent.
+    }
+
     // Point HOME/USERPROFILE to empty directories so default search cannot succeed
     Deno.env.set("HOME", tempHome);
     Deno.env.set("USERPROFILE", tempHome);
