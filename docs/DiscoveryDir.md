@@ -32,6 +32,11 @@ export function isRustDiscoveryEnabled(): boolean {
 If `isRustDiscoveryEnabled()` returns `false`, skip the discovery pass or
 surface a configuration error to the operator.
 
+When the analyser is available, neuron discovery currently explores industry
+standard squashes including ReLU, GELU, ELU, SELU, Softplus, LOGISTIC (sigmoid),
+and TANH. There is no TypeScript fallback path; without the Rust module the
+discovery phase is skipped.
+
 ## Data Layout Expectations
 
 Discovery operates on two directories that can be shared across nodes:

@@ -59,13 +59,14 @@ This project is a unique implementation of a neural network based on the NEAT (N
     new synapses by analyzing neuron activations and errors. This targeted
     structural adaptation improves performance by explicitly reducing
     neuron-level errors, blending evolutionary topology adjustments with
-    error-driven learning.
+    error-driven learning. The Rust discovery engine can currently reconstruct
+    hidden neurons using standard squashes including ReLU, GELU, ELU, SELU,
+    Softplus, LOGISTIC (sigmoid), and TANH.
 
-    **Note**: Error-Guided Structural Evolution requires the
+    **Note**: Error-Guided Structural Evolution now relies entirely on the
     [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
-    extension library to be built and installed. The discovery process will
-    gracefully skip if the Rust library is not available, but discovery
-    functionality requires it.
+    extension library. If the library is not available, the discovery phase is
+    skipped wholesale; there is no TypeScript fallback.
 
 11. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
 12. **Discovery Integration Guide**: Step-by-step instructions for running

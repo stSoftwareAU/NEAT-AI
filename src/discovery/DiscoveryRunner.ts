@@ -119,9 +119,16 @@ export class DiscoveryRunner {
     CreatureUtil.makeUUID(creature);
 
     const verboseLogging = Boolean(config.verbose);
+    const runStart = performance.now();
+    const markPhase = (label: string, startedAt: number) => {
+      if (!verboseLogging) return;
+      const duration = performance.now() - startedAt;
+      verboseLog(`${label} completed in ${duration.toFixed(1)} ms.`);
+    };
     const workerCount = Math.max(1, config.threads);
     const workers: DiscoveryRunnerWorker[] = [];
     try {
+      const workersStart = performance.now();
       for (let i = 0; i < workerCount; i++) {
         workers.push(this.#workerFactory({
           dataDir,
@@ -130,6 +137,7 @@ export class DiscoveryRunner {
           customCost: config.customCost,
         }));
       }
+      markPhase("Worker initialisation", workersStart);
 
       const workerOptions: NeatOptions = (config.log && config.log > 0) ||
           !config.verbose
@@ -142,6 +150,7 @@ export class DiscoveryRunner {
         } worker${workerCount === 1 ? "" : "s"}.`,
       );
 
+      const discoveryStart = performance.now();
       const discoveryResponse = await workers[0].discover(
         creature,
         workerOptions,
@@ -164,13 +173,16 @@ export class DiscoveryRunner {
       verboseLog(
         `Discovery ${discoverResult.ID} suggested ${addCount} add, ${removePresent} remove, ${squashCount} squash candidate(s).`,
       );
+      markPhase("Discovery phase", discoveryStart);
 
+      const candidateBuildStart = performance.now();
       const candidates = this.#candidateBuilder(creature, discoverResult);
       verboseLog(
         `Built ${candidates.length} candidate creature${
           candidates.length === 1 ? "" : "s"
         }: ${candidates.map((c) => c.change.type).join(", ") || "none"}.`,
       );
+      markPhase("Candidate synthesis", candidateBuildStart);
 
       const evaluationTasks: Array<{
         kind: "original" | "candidate";
@@ -185,6 +197,7 @@ export class DiscoveryRunner {
         })),
       ];
 
+      const evaluationStart = performance.now();
       const evaluationResults = await this.#evaluateAll(
         workers,
         evaluationTasks,
@@ -192,6 +205,7 @@ export class DiscoveryRunner {
         config.costOfGrowth,
         verboseLogging,
       );
+      markPhase("Candidate evaluation", evaluationStart);
 
       const original = evaluationResults.find((result) =>
         result.kind === "original"
@@ -233,6 +247,7 @@ export class DiscoveryRunner {
         };
       }
 
+      markPhase("Total discoveryDir run", runStart);
       return outcome;
     } finally {
       for (const worker of workers) {
