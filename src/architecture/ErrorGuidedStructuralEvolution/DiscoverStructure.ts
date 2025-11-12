@@ -218,6 +218,8 @@ export class DiscoverStructure {
     this.creature = null;
     // @ts-ignore - clearing to help GC
     this.discoveries = null;
+    // @ts-ignore - clearing to help GC
+    this.neuronDiscoveries = null;
 
     // Close Rust library if it was loaded (for test cleanup)
     try {
