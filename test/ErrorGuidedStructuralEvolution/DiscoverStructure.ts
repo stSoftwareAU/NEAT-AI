@@ -4,6 +4,7 @@ import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import {
   type CandidateNeuron,
+  DEFAULT_RUST_FLUSH_RECORDS,
   DiscoverStructure,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
@@ -379,7 +380,11 @@ for (const testCase of NEURON_DISCOVERY_CASES) {
         targetCreature,
       );
       const neuronPromisesMap: Map<string, Promise<void>> = new Map();
-      const discoverStructure = new DiscoverStructure(crippledCreature, 120);
+      const discoverStructure = new DiscoverStructure(
+        crippledCreature,
+        120,
+        DEFAULT_RUST_FLUSH_RECORDS,
+      );
       discoverStructure.initialize(neuronPromisesMap);
       const recorded = discoverStructure.record(
         trainingData,
@@ -549,7 +554,11 @@ Deno.test({
     /**
      * Instantiate the discovery mechanism
      */
-    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const discoverStructure = new DiscoverStructure(
+      crippledCreature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -621,7 +630,11 @@ Deno.test({
     /**
      * Instantiate the discovery mechanism
      */
-    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const discoverStructure = new DiscoverStructure(
+      crippledCreature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -704,7 +717,11 @@ Deno.test({
       });
     }
 
-    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const discoverStructure = new DiscoverStructure(
+      targetCreature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
 
@@ -746,7 +763,11 @@ Deno.test({
     // Create empty training data
     const trainingData: DataRecordInterface[] = [];
 
-    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const discoverStructure = new DiscoverStructure(
+      targetCreature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
 
@@ -791,7 +812,11 @@ Deno.test({
     ];
 
     // Create DiscoverStructure with normal timeout
-    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const discoverStructure = new DiscoverStructure(
+      targetCreature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
 
@@ -842,7 +867,11 @@ Deno.test({
     ];
 
     // Create DiscoverStructure
-    const discoverStructure = new DiscoverStructure(targetCreature, 60);
+    const discoverStructure = new DiscoverStructure(
+      targetCreature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
 

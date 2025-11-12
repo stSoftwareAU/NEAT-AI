@@ -2,7 +2,10 @@ import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  DEFAULT_RUST_FLUSH_RECORDS,
+  DiscoverStructure,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import {
   assertRustDiscoveryAvailable,
@@ -185,7 +188,11 @@ Deno.test({
     const trainingData = generateTrainingData(targetCreature);
     const crippledCreature = makeCrippledCreature(targetCreature);
 
-    const discoverStructure = new DiscoverStructure(crippledCreature, 60);
+    const discoverStructure = new DiscoverStructure(
+      crippledCreature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromises: Map<string, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromises);
     try {

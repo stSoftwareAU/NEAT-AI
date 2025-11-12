@@ -5,6 +5,7 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { makeDataDir } from "../../src/architecture/DataSet.ts";
 import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import {
+  DEFAULT_RUST_FLUSH_RECORDS,
   type DiscoverRecord,
   DiscoverStructure,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -92,7 +93,11 @@ Deno.test({
     const trainingData = makeTrainingData(creature.input, creature.output, 100);
 
     // Initialize discovery and record data
-    const discoverStructure = new DiscoverStructure(creature, 60);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
@@ -208,7 +213,11 @@ Deno.test({
     }
 
     // Method 1: Using Rust (Parquet) - Rust is required now
-    const csvDiscoverStructure = new DiscoverStructure(creature, 60);
+    const csvDiscoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
     const csvNeuronPromisesMap: Map<string, Promise<void>> = new Map();
     csvDiscoverStructure.initialize(csvNeuronPromisesMap);
     const csvRecorded = csvDiscoverStructure.record(
@@ -240,7 +249,11 @@ Deno.test({
       const binaryCreature = makeTestCreature();
       CreatureUtil.makeUUID(binaryCreature);
 
-      const binaryDiscoverStructure = new DiscoverStructure(binaryCreature, 60);
+      const binaryDiscoverStructure = new DiscoverStructure(
+        binaryCreature,
+        60,
+        DEFAULT_RUST_FLUSH_RECORDS,
+      );
       const binaryNeuronPromisesMap: Map<string, Promise<void>> = new Map();
       binaryDiscoverStructure.initialize(binaryNeuronPromisesMap);
 

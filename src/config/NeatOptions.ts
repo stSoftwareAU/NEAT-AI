@@ -149,6 +149,13 @@ export interface NeatArguments {
   /** The read buffer size, default 128k */
   discoveryBufferSize: number;
 
+  /**
+   * Maximum number of discovery samples to keep in memory before forcing a flush
+   * to the Rust recorder. Lower values reduce peak memory usage at the cost of
+   * more frequent I/O.
+   */
+  discoveryRustFlushRecords: number;
+
   /** The maximum number of neurons to discover */
   discoveryMaxNeurons: number;
 

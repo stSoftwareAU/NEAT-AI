@@ -2,6 +2,7 @@ import type { NeatOptions } from "../../mod.ts";
 import { Selection, type SelectionInterface } from "../methods/Selection.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import type { NeatArguments } from "./NeatOptions.ts";
+import { DEFAULT_RUST_FLUSH_RECORDS } from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
 
 /**
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
@@ -90,7 +91,7 @@ export function createNeatConfig(options: NeatOptions) {
     traceStore: options.traceStore,
     trainPerGen: options.trainPerGen ?? 1,
 
-    log: options.log ?? 0,
+    log: options.log ?? (options.verbose ? 1 : 0),
     verbose: options.verbose ? true : false,
 
     enableRepetitiveTraining: options.enableRepetitiveTraining || false,
@@ -117,6 +118,8 @@ export function createNeatConfig(options: NeatOptions) {
       3,
     discoveryBatchSize: options.discoveryBatchSize || 128,
     discoveryBufferSize: options.discoveryBufferSize || 0,
+    discoveryRustFlushRecords: options.discoveryRustFlushRecords ??
+      DEFAULT_RUST_FLUSH_RECORDS,
     discoveryMaxNeurons: options.discoveryMaxNeurons || 0,
     discoveryDrainEveryNBatches: options.discoveryDrainEveryNBatches ?? 10,
     customCost: options.customCost,
@@ -280,6 +283,14 @@ function validate(config: NeatArguments) {
   ) {
     throw new Error(
       `Discovery Analysis Timeout Minutes must be greater than 0 was: ${config.discoveryAnalysisTimeoutMinutes}`,
+    );
+  }
+  if (
+    Number.isInteger(config.discoveryRustFlushRecords) === false ||
+    config.discoveryRustFlushRecords < 1
+  ) {
+    throw new Error(
+      `Discovery Rust Flush Records must be an integer greater than 0 was: ${config.discoveryRustFlushRecords}`,
     );
   }
 }
