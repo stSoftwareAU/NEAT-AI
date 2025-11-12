@@ -39,46 +39,56 @@ function makeMinimalCreature(): Creature {
   return creature;
 }
 
-Deno.test("cleanUp clears neuron discovery references", async () => {
-  const creature = makeMinimalCreature();
-  const discovery = new DiscoverStructure(creature, 5);
+Deno.test({
+  name: "cleanUp clears neuron discovery references",
+  permissions: {
+    read: true,
+    write: true,
+    ffi: false,
+  },
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const creature = makeMinimalCreature();
+    const discovery = new DiscoverStructure(creature, 5);
 
-  const neuronPromises = new Map<string, Promise<void>>();
-  discovery.initialize(neuronPromises);
+    const neuronPromises = new Map<string, Promise<void>>();
+    discovery.initialize(neuronPromises);
 
-  const internals = discovery as unknown as {
-    initialized: boolean;
-    discoveries: CandidateSynapse[];
-    neuronDiscoveries: CandidateNeuron[];
-  };
+    const internals = discovery as unknown as {
+      initialized: boolean;
+      discoveries: CandidateSynapse[];
+      neuronDiscoveries: CandidateNeuron[];
+    };
 
-  internals.discoveries = [{
-    fromNeuronUUID: "hidden-0",
-    toNeuronUUID: "output-0",
-    weight: 0.5,
-    expectedImprovementPercentage: 1,
-    improvedCount: 1,
-    totalCount: 1,
-  }];
-  internals.neuronDiscoveries = [{
-    fromNeuronUUID: "hidden-0",
-    toNeuronUUID: "output-0",
-    incomingWeight: 0.5,
-    outgoingWeight: 0.75,
-    squash: IDENTITY.NAME,
-    bias: 0,
-    expectedImprovementPercentage: 1,
-    improvedCount: 1,
-    totalCount: 1,
-  }];
+    internals.discoveries = [{
+      fromNeuronUUID: "hidden-0",
+      toNeuronUUID: "output-0",
+      weight: 0.5,
+      expectedImprovementPercentage: 1,
+      improvedCount: 1,
+      totalCount: 1,
+    }];
+    internals.neuronDiscoveries = [{
+      fromNeuronUUID: "hidden-0",
+      toNeuronUUID: "output-0",
+      incomingWeight: 0.5,
+      outgoingWeight: 0.75,
+      squash: IDENTITY.NAME,
+      bias: 0,
+      expectedImprovementPercentage: 1,
+      improvedCount: 1,
+      totalCount: 1,
+    }];
 
-  await discovery.cleanUp();
+    await discovery.cleanUp();
 
-  const post = discovery as unknown as {
-    discoveries: CandidateSynapse[] | null;
-    neuronDiscoveries: CandidateNeuron[] | null;
-  };
+    const post = discovery as unknown as {
+      discoveries: CandidateSynapse[] | null;
+      neuronDiscoveries: CandidateNeuron[] | null;
+    };
 
-  assertEquals(post.discoveries, null);
-  assertEquals(post.neuronDiscoveries, null);
+    assertEquals(post.discoveries, null);
+    assertEquals(post.neuronDiscoveries, null);
+  },
 });
