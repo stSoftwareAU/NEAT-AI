@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
@@ -12,6 +12,7 @@ import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
+import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
 function makeCreature() {
@@ -85,6 +86,343 @@ function makeData(input: number) {
   }
   return inputs;
 }
+
+const RELU_NEURON_UUID = "hidden-relu";
+const DRIVER_NEURON_UUID = "hidden-driver";
+const SUPPORT_NEURON_UUID = "hidden-support";
+
+const LARGE_RECORD_COUNT = 1024;
+const LARGE_INPUT_COUNT = 1024;
+
+const POSITIVE_INCOMING_WEIGHT = 0.85;
+const POSITIVE_OUTGOING_WEIGHT = 1.1;
+const NEGATIVE_INCOMING_WEIGHT = -0.9;
+const NEGATIVE_OUTGOING_WEIGHT = 0.95;
+
+type NeuronExport = CreatureExport["neurons"][number];
+type SynapseExport = CreatureExport["synapses"][number];
+
+interface ReluTargetConfig {
+  incomingWeight: number;
+  outgoingWeight: number;
+}
+
+function makeReluTargetCreature(
+  { incomingWeight, outgoingWeight }: ReluTargetConfig,
+): Creature {
+  const json: CreatureExport = {
+    input: LARGE_INPUT_COUNT,
+    output: 1,
+    neurons: [
+      {
+        type: "hidden",
+        uuid: DRIVER_NEURON_UUID,
+        squash: IDENTITY.NAME,
+        bias: 0,
+      },
+      {
+        type: "hidden",
+        uuid: SUPPORT_NEURON_UUID,
+        squash: TANH.NAME,
+        bias: 0.1,
+      },
+      {
+        type: "hidden",
+        uuid: RELU_NEURON_UUID,
+        squash: ReLU.NAME,
+        bias: 0,
+      },
+      {
+        type: "output",
+        uuid: "output-0",
+        squash: Mish.NAME,
+        bias: -0.12,
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-7", toUUID: DRIVER_NEURON_UUID, weight: 0.75 },
+      { fromUUID: "input-55", toUUID: DRIVER_NEURON_UUID, weight: -0.42 },
+      { fromUUID: "input-13", toUUID: SUPPORT_NEURON_UUID, weight: 0.31 },
+      {
+        fromUUID: SUPPORT_NEURON_UUID,
+        toUUID: "output-0",
+        weight: -0.28,
+      },
+      {
+        fromUUID: DRIVER_NEURON_UUID,
+        toUUID: SUPPORT_NEURON_UUID,
+        weight: 0.22,
+      },
+      {
+        fromUUID: DRIVER_NEURON_UUID,
+        toUUID: RELU_NEURON_UUID,
+        weight: incomingWeight,
+      },
+      {
+        fromUUID: RELU_NEURON_UUID,
+        toUUID: "output-0",
+        weight: outgoingWeight,
+      },
+    ],
+  };
+
+  const creature = Creature.fromJSON(json);
+  creature.validate();
+  return creature;
+}
+
+function generateLargeTrainingData(
+  creature: Creature,
+  recordCount = LARGE_RECORD_COUNT,
+): DataRecordInterface[] {
+  const trainingData: DataRecordInterface[] = [];
+
+  for (let i = 0; i < recordCount; i++) {
+    const input = new Float32Array(LARGE_INPUT_COUNT);
+    for (let j = 0; j < LARGE_INPUT_COUNT; j++) {
+      input[j] = Math.random() * 2 - 1;
+    }
+    const output = creature.activate(input);
+    trainingData.push({
+      input,
+      output: Float32Array.from(output),
+    });
+  }
+
+  return trainingData;
+}
+
+function createCrippledCreatureWithoutRelu(
+  targetCreature: Creature,
+): Creature {
+  const exportedJSON = targetCreature.exportJSON();
+  exportedJSON.neurons = exportedJSON.neurons.filter((neuron) =>
+    neuron.uuid !== RELU_NEURON_UUID
+  );
+  exportedJSON.synapses = exportedJSON.synapses.filter((synapse) =>
+    synapse.fromUUID !== RELU_NEURON_UUID &&
+    synapse.toUUID !== RELU_NEURON_UUID
+  );
+
+  const crippledCreature = Creature.fromJSON(exportedJSON);
+  CreatureUtil.makeUUID(crippledCreature);
+  crippledCreature.validate();
+  return crippledCreature;
+}
+
+function calculateAverageOutputError(
+  creature: Creature,
+  trainingData: DataRecordInterface[],
+): number {
+  let totalError = 0;
+
+  for (const record of trainingData) {
+    const actual = creature.activate(new Float32Array(record.input));
+    const expected = record.output;
+    for (let i = 0; i < expected.length; i++) {
+      const diff = expected[i] - actual[i];
+      totalError += diff * diff;
+    }
+  }
+
+  return totalError / trainingData.length;
+}
+
+Deno.test({
+  name:
+    "Error-Driven Neuron Discovery recreates missing ReLU neuron (positive incoming weight)",
+  ignore: shouldSkipRustDiscoveryTests(),
+  sanitizeResources: false,
+  sanitizeOps: false,
+  fn: async () => {
+    assertRustDiscoveryAvailable();
+    const targetCreature = makeReluTargetCreature({
+      incomingWeight: POSITIVE_INCOMING_WEIGHT,
+      outgoingWeight: POSITIVE_OUTGOING_WEIGHT,
+    });
+    const trainingData = generateLargeTrainingData(targetCreature);
+    const crippledCreature = createCrippledCreatureWithoutRelu(targetCreature);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const discoverStructure = new DiscoverStructure(crippledCreature, 120);
+    discoverStructure.initialize(neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed with Rust available");
+    await Promise.all([...neuronPromisesMap.values()]);
+
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
+
+    const helpfulNeurons = await discoverStructure.analyzeMissingNeurons([
+      "output-0",
+    ]);
+    assert(
+      helpfulNeurons && helpfulNeurons.length > 0,
+      "Should have neuron candidates",
+    );
+
+    const crippledError = calculateAverageOutputError(
+      crippledCreature,
+      trainingData,
+    );
+
+    const betterCreature = DiscoverStructure.addHelpfulNeurons(
+      "ABC",
+      crippledCreature,
+      helpfulNeurons,
+    );
+    assert(betterCreature, "Should build creature with reconstructed ReLU");
+    betterCreature!.validate();
+
+    const betterError = calculateAverageOutputError(
+      betterCreature!,
+      trainingData,
+    );
+    assert(
+      betterError < crippledError,
+      "Discovered ReLU neuron should reduce error",
+    );
+
+    const crippledJSON = crippledCreature.exportJSON();
+    const betterJSON = betterCreature!.exportJSON();
+    const existingNeuronUUIDs = new Set(
+      crippledJSON.neurons.map((neuron) => neuron.uuid),
+    );
+    const newNeurons = betterJSON.neurons.filter((neuron: NeuronExport) =>
+      !existingNeuronUUIDs.has(neuron.uuid)
+    );
+
+    assert(
+      newNeurons.length === 1,
+      "Should create exactly one new hidden neuron",
+    );
+    const discoveredNeuron = newNeurons[0];
+    assertEquals(discoveredNeuron.squash, ReLU.NAME);
+    assertAlmostEquals(discoveredNeuron.bias ?? 0, 0, 1e-6);
+
+    const incomingSynapse = betterJSON.synapses.find((synapse: SynapseExport) =>
+      synapse.toUUID === discoveredNeuron.uuid
+    );
+    assert(incomingSynapse, "New neuron should have an incoming synapse");
+    assertEquals(incomingSynapse!.fromUUID, DRIVER_NEURON_UUID);
+    assert(
+      incomingSynapse!.weight > 0,
+      "Incoming synapse should preserve positive orientation",
+    );
+
+    const outgoingSynapse = betterJSON.synapses.find((synapse: SynapseExport) =>
+      synapse.fromUUID === discoveredNeuron.uuid &&
+      synapse.toUUID === "output-0"
+    );
+    assert(outgoingSynapse, "New neuron should connect to output-0");
+    const expectedCombinedWeight = POSITIVE_INCOMING_WEIGHT *
+      POSITIVE_OUTGOING_WEIGHT;
+    assertAlmostEquals(
+      outgoingSynapse!.weight,
+      expectedCombinedWeight,
+      0.2,
+    );
+
+    await discoverStructure.cleanUp();
+  },
+});
+
+Deno.test({
+  name:
+    "Error-Driven Neuron Discovery recreates missing ReLU neuron (negative incoming weight)",
+  ignore: shouldSkipRustDiscoveryTests(),
+  sanitizeResources: false,
+  sanitizeOps: false,
+  fn: async () => {
+    assertRustDiscoveryAvailable();
+    const targetCreature = makeReluTargetCreature({
+      incomingWeight: NEGATIVE_INCOMING_WEIGHT,
+      outgoingWeight: NEGATIVE_OUTGOING_WEIGHT,
+    });
+    const trainingData = generateLargeTrainingData(targetCreature);
+    const crippledCreature = createCrippledCreatureWithoutRelu(targetCreature);
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const discoverStructure = new DiscoverStructure(crippledCreature, 120);
+    discoverStructure.initialize(neuronPromisesMap);
+    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
+    assert(recorded, "Record should succeed with Rust available");
+    await Promise.all([...neuronPromisesMap.values()]);
+
+    const flushSuccess = discoverStructure.flushRustRecording();
+    assert(flushSuccess, "Rust flush should succeed");
+
+    const helpfulNeurons = await discoverStructure.analyzeMissingNeurons([
+      "output-0",
+    ]);
+    assert(
+      helpfulNeurons && helpfulNeurons.length > 0,
+      "Should have neuron candidates",
+    );
+
+    const crippledError = calculateAverageOutputError(
+      crippledCreature,
+      trainingData,
+    );
+
+    const betterCreature = DiscoverStructure.addHelpfulNeurons(
+      "ABC",
+      crippledCreature,
+      helpfulNeurons,
+    );
+    assert(betterCreature, "Should build creature with reconstructed ReLU");
+    betterCreature!.validate();
+
+    const betterError = calculateAverageOutputError(
+      betterCreature!,
+      trainingData,
+    );
+    assert(
+      betterError < crippledError,
+      "Discovered ReLU neuron should reduce error",
+    );
+
+    const crippledJSON = crippledCreature.exportJSON();
+    const betterJSON = betterCreature!.exportJSON();
+    const existingNeuronUUIDs = new Set(
+      crippledJSON.neurons.map((neuron) => neuron.uuid),
+    );
+    const newNeurons = betterJSON.neurons.filter((neuron: NeuronExport) =>
+      !existingNeuronUUIDs.has(neuron.uuid)
+    );
+
+    assert(
+      newNeurons.length === 1,
+      "Should create exactly one new hidden neuron",
+    );
+    const discoveredNeuron = newNeurons[0];
+    assertEquals(discoveredNeuron.squash, ReLU.NAME);
+    assertAlmostEquals(discoveredNeuron.bias ?? 0, 0, 1e-6);
+
+    const incomingSynapse = betterJSON.synapses.find((synapse: SynapseExport) =>
+      synapse.toUUID === discoveredNeuron.uuid
+    );
+    assert(incomingSynapse, "New neuron should have an incoming synapse");
+    assertEquals(incomingSynapse!.fromUUID, DRIVER_NEURON_UUID);
+    assert(
+      incomingSynapse!.weight < 0,
+      "Incoming synapse should preserve negative orientation",
+    );
+
+    const outgoingSynapse = betterJSON.synapses.find((synapse: SynapseExport) =>
+      synapse.fromUUID === discoveredNeuron.uuid &&
+      synapse.toUUID === "output-0"
+    );
+    assert(outgoingSynapse, "New neuron should connect to output-0");
+    const expectedCombinedWeight = Math.abs(NEGATIVE_INCOMING_WEIGHT) *
+      NEGATIVE_OUTGOING_WEIGHT;
+    assertAlmostEquals(
+      Math.abs(outgoingSynapse!.weight),
+      expectedCombinedWeight,
+      0.2,
+    );
+
+    await discoverStructure.cleanUp();
+  },
+});
 
 Deno.test({
   name:

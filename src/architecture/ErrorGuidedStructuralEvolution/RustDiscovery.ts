@@ -34,6 +34,18 @@ export interface RustCandidateSynapse {
   totalCount: number;
 }
 
+export interface RustCandidateNeuron {
+  sourceNeuronUuid: string;
+  targetNeuronUuid: string;
+  incomingWeight: number;
+  outgoingWeight: number;
+  squash: string;
+  bias: number;
+  expectedImprovementPercentage: number;
+  improvedCount: number;
+  totalCount: number;
+}
+
 export interface RustAnalyzeSynapsesInput {
   parquetFile: string;
   creature: RustRecordInput["creature"];
@@ -48,6 +60,22 @@ export interface RustAnalyzeSynapsesResult {
   gpuUsed?: boolean;
   helpfulSynapses?: RustCandidateSynapse[];
   harmfulSynapses?: RustCandidateSynapse[];
+  error?: string;
+}
+
+export interface RustAnalyzeNeuronsInput {
+  parquetFile: string;
+  creature: RustRecordInput["creature"];
+  focusNeurons: string[];
+  improvementThreshold?: number;
+  maxCandidates?: number;
+  requireGpu?: boolean;
+}
+
+export interface RustAnalyzeNeuronsResult {
+  success: boolean;
+  gpuUsed?: boolean;
+  helpfulNeurons?: RustCandidateNeuron[];
   error?: string;
 }
 
@@ -269,6 +297,11 @@ type RustDiscoverySymbols = {
     result: "pointer";
     nonblocking: false;
   };
+  "analyze_neurons": {
+    parameters: ["pointer"];
+    result: "pointer";
+    nonblocking: false;
+  };
   "read_discovery_records_ffi": {
     parameters: ["pointer"];
     result: "pointer";
@@ -320,6 +353,11 @@ export function loadRustLibrary(): boolean {
         nonblocking: false,
       },
       "analyze_synapses": {
+        parameters: ["pointer"],
+        result: "pointer",
+        nonblocking: false,
+      },
+      "analyze_neurons": {
         parameters: ["pointer"],
         result: "pointer",
         nonblocking: false,
@@ -627,6 +665,46 @@ export function analyzeSynapses(
     rustLib.symbols["free_discovery_result"](resultPtr);
 
     const result = JSON.parse(resultJson) as RustAnalyzeSynapsesResult;
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export function analyzeNeurons(
+  input: RustAnalyzeNeuronsInput,
+): RustAnalyzeNeuronsResult | null {
+  if (!isRustLibraryAvailable()) {
+    return null;
+  }
+
+  assert(rustLib !== null, "Rust library should be loaded");
+
+  try {
+    const inputJson = JSON.stringify(input);
+    const inputBytes = new TextEncoder().encode(inputJson);
+
+    const inputBuffer = new Uint8Array(inputBytes.length + 1);
+    inputBuffer.set(inputBytes);
+    inputBuffer[inputBytes.length] = 0;
+
+    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
+    const resultPtr = rustLib.symbols["analyze_neurons"](inputPtr);
+
+    if (resultPtr === null) {
+      return {
+        success: false,
+        error: "Rust function returned null pointer",
+      };
+    }
+
+    const resultJson = readCString(resultPtr);
+    rustLib.symbols["free_discovery_result"](resultPtr);
+
+    const result = JSON.parse(resultJson) as RustAnalyzeNeuronsResult;
     return result;
   } catch (error) {
     return {

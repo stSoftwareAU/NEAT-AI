@@ -10,14 +10,18 @@ import type { ActivationInterface } from "../../methods/activations/ActivationIn
 import { Activations } from "../../methods/activations/Activations.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import {
+  analyzeNeurons,
   analyzeSynapses,
   creatureToRustFormat,
   isRustDiscoveryEnabled,
   isRustLibraryAvailable,
   readDiscoveryRecords,
   recordDiscovery,
+  type RustAnalyzeNeuronsInput,
+  type RustAnalyzeNeuronsResult,
   type RustAnalyzeSynapsesInput,
   type RustAnalyzeSynapsesResult,
+  type RustCandidateNeuron,
   type RustCandidateSynapse,
   type RustRecordInput,
 } from "./RustDiscovery.ts";
@@ -66,6 +70,18 @@ export interface CandidateSquash {
   expectedImprovementPercentage: number;
   improvedError: number;
   currentError: number;
+}
+
+export interface CandidateNeuron {
+  fromNeuronUUID: string;
+  toNeuronUUID: string;
+  incomingWeight: number;
+  outgoingWeight: number;
+  squash: string;
+  bias: number;
+  expectedImprovementPercentage: number;
+  improvedCount: number;
+  totalCount: number;
 }
 
 /**
@@ -192,6 +208,7 @@ export class DiscoverStructure {
     this.recorded = false;
     this.creature.dispose();
     this.discoveries = [];
+    this.neuronDiscoveries = [];
 
     // Clear selectedIndices to help GC
     this.selectedIndices = {};
@@ -509,6 +526,7 @@ export class DiscoverStructure {
   }
 
   private discoveries: CandidateSynapse[] = [];
+  private neuronDiscoveries: CandidateNeuron[] = [];
 
   public async analyzeSelectedNeurons(
     focusList: string[],
@@ -568,6 +586,60 @@ export class DiscoverStructure {
     return this.discoveries.length > 0 ? this.discoveries : undefined;
   }
 
+  public async analyzeMissingNeurons(
+    focusList: string[],
+  ): Promise<CandidateNeuron[] | undefined> {
+    if (focusList.length === 0) return undefined;
+
+    if (Date.now() > this.timeoutTS) {
+      this.log("warn", "Discovery timeout reached in analyzeMissingNeurons");
+      return undefined;
+    }
+
+    if (this.parquetFilePath && isRustDiscoveryEnabled()) {
+      const rustCandidates = this.tryRustHelpfulNeurons(focusList);
+      if (rustCandidates && rustCandidates.length > 0) {
+        const bestCandidates = this.filterTopNeuronCandidates(rustCandidates);
+        bestCandidates.forEach((candidate) => {
+          this.upsertNeuronDiscovery(candidate);
+          this.logHelpfulNeuron("Rust", candidate);
+        });
+        return bestCandidates;
+      }
+
+      if (
+        rustCandidates && rustCandidates.length === 0 && this.loggingEnabled
+      ) {
+        this.log(
+          "debug",
+          `Rust neuron analysis returned no candidates for ${
+            focusList.join(", ")
+          }. Falling back to TypeScript logic.`,
+        );
+      }
+    }
+
+    const tsCandidates = await this.analyzeMissingNeuronsTypeScript(focusList);
+    if (tsCandidates && tsCandidates.length > 0) {
+      const bestCandidates = this.filterTopNeuronCandidates(tsCandidates);
+      bestCandidates.forEach((candidate) => {
+        this.upsertNeuronDiscovery(candidate);
+        this.logHelpfulNeuron("TypeScript", candidate);
+      });
+      return bestCandidates;
+    }
+
+    return this.neuronDiscoveries.length > 0
+      ? this.neuronDiscoveries
+      : undefined;
+  }
+
+  private analyzeMissingNeuronsTypeScript(
+    _focusList: string[],
+  ): Promise<CandidateNeuron[] | undefined> {
+    return Promise.resolve(undefined);
+  }
+
   private async analyzeSelectedNeuronsTypeScript(
     focusList: string[],
   ): Promise<CandidateSynapse[] | undefined> {
@@ -620,6 +692,47 @@ export class DiscoverStructure {
         (candidate.expectedImprovementPercentage * 100).toFixed(1)
       }% more records than it harms (${candidate.improvedCount}/${candidate.totalCount})`,
     );
+  }
+
+  private logHelpfulNeuron(
+    origin: "Rust" | "TypeScript",
+    candidate: CandidateNeuron,
+  ): void {
+    const prefix = origin === "Rust"
+      ? "Rust discovered"
+      : "TypeScript discovered";
+    this.log(
+      "info",
+      `${prefix} beneficial ${candidate.squash} neuron linking ${candidate.fromNeuronUUID} -> ${candidate.toNeuronUUID} with incoming ${
+        candidate.incomingWeight.toFixed(4)
+      } and outgoing ${candidate.outgoingWeight.toFixed(4)}, improving ${
+        (candidate.expectedImprovementPercentage * 100).toFixed(1)
+      }% of records (${candidate.improvedCount}/${candidate.totalCount})`,
+    );
+  }
+
+  private tryRustHelpfulNeurons(
+    focusList: string[],
+  ): CandidateNeuron[] | undefined {
+    const rustResult = this.runRustNeuronAnalysis(focusList);
+    if (!rustResult || !rustResult.helpfulNeurons) {
+      return undefined;
+    }
+
+    const candidates = rustResult.helpfulNeurons
+      .map((candidate) => this.mapRustNeuronCandidate(candidate))
+      .filter((candidate) =>
+        candidate.expectedImprovementPercentage > RUST_HELPFUL_THRESHOLD
+      );
+
+    if (candidates.length === 0) {
+      return [];
+    }
+
+    candidates.sort((a, b) =>
+      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+    );
+    return candidates;
   }
 
   private tryRustHelpfulSynapses(
@@ -722,6 +835,10 @@ export class DiscoverStructure {
     return `${candidate.fromNeuronUUID}->${candidate.toNeuronUUID}`;
   }
 
+  private neuronCandidateKey(candidate: CandidateNeuron): string {
+    return `${candidate.fromNeuronUUID}->${candidate.toNeuronUUID}`;
+  }
+
   private upsertDiscovery(candidate: CandidateSynapse): void {
     const key = this.candidateKey(candidate);
     const existingIndex = this.discoveries.findIndex((existing) =>
@@ -733,6 +850,40 @@ export class DiscoverStructure {
       this.discoveries.push(candidate);
     }
     this.discoveries.sort((a, b) =>
+      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+    );
+  }
+
+  private upsertNeuronDiscovery(candidate: CandidateNeuron): void {
+    const key = this.neuronCandidateKey(candidate);
+    const existingIndex = this.neuronDiscoveries.findIndex((existing) =>
+      this.neuronCandidateKey(existing) === key
+    );
+    if (existingIndex >= 0) {
+      this.neuronDiscoveries[existingIndex] = candidate;
+    } else {
+      this.neuronDiscoveries.push(candidate);
+    }
+    this.neuronDiscoveries.sort((a, b) =>
+      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+    );
+  }
+
+  private filterTopNeuronCandidates(
+    candidates: CandidateNeuron[],
+  ): CandidateNeuron[] {
+    const grouped = new Map<string, CandidateNeuron>();
+    candidates.forEach((candidate) => {
+      const existing = grouped.get(candidate.toNeuronUUID);
+      if (
+        !existing ||
+        candidate.expectedImprovementPercentage >
+          existing.expectedImprovementPercentage
+      ) {
+        grouped.set(candidate.toNeuronUUID, candidate);
+      }
+    });
+    return Array.from(grouped.values()).sort((a, b) =>
       b.expectedImprovementPercentage - a.expectedImprovementPercentage
     );
   }
@@ -808,6 +959,72 @@ export class DiscoverStructure {
       improvedCount: candidate.improvedCount,
       totalCount: candidate.totalCount,
     };
+  }
+
+  private mapRustNeuronCandidate(
+    candidate: RustCandidateNeuron,
+  ): CandidateNeuron {
+    return {
+      fromNeuronUUID: candidate.sourceNeuronUuid,
+      toNeuronUUID: candidate.targetNeuronUuid,
+      incomingWeight: candidate.incomingWeight,
+      outgoingWeight: candidate.outgoingWeight,
+      squash: candidate.squash,
+      bias: candidate.bias,
+      expectedImprovementPercentage: candidate.expectedImprovementPercentage,
+      improvedCount: candidate.improvedCount,
+      totalCount: candidate.totalCount,
+    };
+  }
+
+  private runRustNeuronAnalysis(
+    focusList: string[],
+  ): RustAnalyzeNeuronsResult | undefined {
+    if (!this.parquetFilePath) {
+      return undefined;
+    }
+
+    if (!isRustDiscoveryEnabled() || !isRustLibraryAvailable()) {
+      return undefined;
+    }
+
+    const rustInput: RustAnalyzeNeuronsInput = {
+      parquetFile: this.parquetFilePath,
+      creature: creatureToRustFormat(this.creature.exportJSON()),
+      focusNeurons: focusList,
+      improvementThreshold: RUST_HELPFUL_THRESHOLD,
+      maxCandidates: Math.max(25, focusList.length * 5),
+      requireGpu: Deno.build.os === "darwin",
+    };
+
+    try {
+      const result = analyzeNeurons(rustInput);
+      if (!result || !result.success) {
+        if (this.loggingEnabled) {
+          this.log(
+            "debug",
+            `Rust neuron analysis failed: ${result?.error ?? "Unknown error"}`,
+          );
+        }
+        return undefined;
+      }
+      if (Deno.env.get("DEBUG_RUST_ANALYSIS") === "1") {
+        console.log(
+          "rust-neuron-analysis",
+          JSON.stringify({ focusList, result }, (_key, value) => value, 2),
+        );
+      }
+      return result;
+    } catch (error) {
+      this.log(
+        "warn",
+        `Rust neuron analysis threw error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error,
+      );
+      return undefined;
+    }
   }
 
   private runRustSynapseAnalysis(
@@ -1846,6 +2063,98 @@ export class DiscoverStructure {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
       addTag(tmpCreature, "discovery", "beneficial");
+      if (tmpCreature.memetic) {
+        tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
+      }
+
+      removeTag(tmpCreature, "approach-logged");
+      tmpCreature.validate();
+
+      return tmpCreature;
+    }
+    return;
+  }
+
+  public static addHelpfulNeurons(
+    ID: string,
+    creature: Creature,
+    helpfulNeurons?: CandidateNeuron[],
+  ): Creature | undefined {
+    if (!helpfulNeurons || helpfulNeurons.length === 0) return;
+    const creatureUUID = CreatureUtil.makeUUID(creature);
+    const exportJSON = creature.exportJSON();
+
+    const existingNeuronUUIDs = new Set(
+      exportJSON.neurons.map((neuron) => neuron.uuid),
+    );
+    const processedKeys = new Set<string>();
+    const addedNeuronUUIDs: string[] = [];
+
+    helpfulNeurons.forEach((candidate) => {
+      const key = `${candidate.fromNeuronUUID}->${candidate.toNeuronUUID}`;
+      if (processedKeys.has(key)) return;
+      processedKeys.add(key);
+
+      const sourceExists = existingNeuronUUIDs.has(candidate.fromNeuronUUID) ||
+        candidate.fromNeuronUUID.startsWith("input-");
+      if (!sourceExists) return;
+
+      const targetNeuron = exportJSON.neurons.find((neuron) => {
+        if (neuron.type !== "hidden" && neuron.type !== "output") return false;
+        return neuron.uuid === candidate.toNeuronUUID;
+      });
+      if (!targetNeuron) return;
+
+      const newNeuronUUID =
+        `hidden-discovery-${(globalThis.crypto?.randomUUID?.() ??
+          `fallback-${Math.random().toString(16).slice(2)}`)}`;
+      const newNeuron = {
+        type: "hidden" as const,
+        uuid: newNeuronUUID,
+        squash: candidate.squash,
+        bias: candidate.bias,
+      };
+      addTag(newNeuron as TagsInterface, "discovered", candidate.squash);
+      const firstOutputIndex = exportJSON.neurons.findIndex((neuron) =>
+        neuron.type === "output"
+      );
+      if (firstOutputIndex >= 0) {
+        exportJSON.neurons.splice(firstOutputIndex, 0, newNeuron);
+      } else {
+        exportJSON.neurons.push(newNeuron);
+      }
+      existingNeuronUUIDs.add(newNeuronUUID);
+      addedNeuronUUIDs.push(newNeuronUUID);
+
+      const incomingSynapse = {
+        fromUUID: candidate.fromNeuronUUID,
+        toUUID: newNeuronUUID,
+        weight: candidate.incomingWeight,
+      };
+      addTag(incomingSynapse as TagsInterface, "discovery", "beneficial");
+      exportJSON.synapses.push(incomingSynapse);
+
+      const outgoingSynapse = {
+        fromUUID: newNeuronUUID,
+        toUUID: candidate.toNeuronUUID,
+        weight: candidate.outgoingWeight,
+      };
+      addTag(outgoingSynapse as TagsInterface, "discovery", "beneficial");
+      exportJSON.synapses.push(outgoingSynapse);
+    });
+
+    if (addedNeuronUUIDs.length === 0) {
+      return;
+    }
+
+    const tmpCreature = Creature.fromJSON(exportJSON);
+    tmpCreature.fix();
+
+    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
+    if (tmpUUID !== creatureUUID) {
+      addTag(tmpCreature, "approach", "discovery" as Approach);
+      addTag(tmpCreature, "discoveryID", ID);
+      addTag(tmpCreature, "discovery", "neuron");
       if (tmpCreature.memetic) {
         tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
       }
