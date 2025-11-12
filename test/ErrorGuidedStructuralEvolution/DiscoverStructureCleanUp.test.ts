@@ -43,13 +43,15 @@ Deno.test("cleanUp clears neuron discovery references", async () => {
   const creature = makeMinimalCreature();
   const discovery = new DiscoverStructure(creature, 5);
 
+  const neuronPromises = new Map<string, Promise<void>>();
+  discovery.initialize(neuronPromises);
+
   const internals = discovery as unknown as {
     initialized: boolean;
     discoveries: CandidateSynapse[];
     neuronDiscoveries: CandidateNeuron[];
   };
 
-  internals.initialized = true;
   internals.discoveries = [{
     fromNeuronUUID: "hidden-0",
     toNeuronUUID: "output-0",
