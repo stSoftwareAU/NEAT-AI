@@ -257,6 +257,41 @@ Deno.test("Duplicate UUID", () => {
   }
 });
 
+Deno.test("UUID too long", () => {
+  const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
+  creature.DEBUG = true;
+  const hiddenIndex = creature.input;
+  const longSuffix = "x".repeat(300);
+  creature.neurons[hiddenIndex].uuid = `hidden-${longSuffix}`;
+  try {
+    creatureValidate(creature);
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "OTHER",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+});
+
+Deno.test("UUID invalid characters", () => {
+  const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
+  creature.DEBUG = true;
+  const hiddenIndex = creature.input;
+  creature.neurons[hiddenIndex].uuid = "hidden uuid";
+  try {
+    creatureValidate(creature);
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "OTHER",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+});
+
 Deno.test("invalid input UUID", () => {
   const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
   creature.DEBUG = true;
