@@ -380,6 +380,8 @@ export class DiscoverStructure {
       return null;
     }
 
+    this.creature.validate();
+
     const creatureExport = this.creature.exportJSON();
     const rustCreature = creatureToRustFormat(creatureExport);
     const pendingSamples = this.rustAccumulatedData.length;
@@ -868,6 +870,8 @@ export class DiscoverStructure {
       return undefined;
     }
 
+    this.creature.validate();
+
     const rustInput: RustAnalyzeNeuronsInput = {
       parquetFile: this.parquetFilePath,
       creature: creatureToRustFormat(this.creature.exportJSON()),
@@ -920,6 +924,8 @@ export class DiscoverStructure {
     ) {
       return undefined;
     }
+
+    this.creature.validate();
 
     const rustInput: RustAnalyzeSynapsesInput = {
       parquetFile: this.parquetFilePath,

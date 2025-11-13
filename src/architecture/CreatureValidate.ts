@@ -2,6 +2,9 @@ import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 
+const MAX_NEURON_UUID_LENGTH = 256;
+const VALID_NEURON_UUID_PATTERN = /^[A-Za-z0-9-]+$/;
+
 /**
  * Validate the creature
  * @param options specific values to check
@@ -47,6 +50,20 @@ export function creatureValidate(
     const uuid = neuron.uuid;
     if (!uuid) {
       throw new ValidationError(`${neuron.ID()}) no UUID`, "OTHER");
+    }
+    if (uuid.length > MAX_NEURON_UUID_LENGTH) {
+      debugWrite(creature);
+      throw new ValidationError(
+        `${neuron.ID()}) UUID length ${uuid.length} exceeds maximum allowed ${MAX_NEURON_UUID_LENGTH}`,
+        "OTHER",
+      );
+    }
+    if (!VALID_NEURON_UUID_PATTERN.test(uuid)) {
+      debugWrite(creature);
+      throw new ValidationError(
+        `${neuron.ID()}) invalid UUID characters: ${uuid}`,
+        "OTHER",
+      );
     }
     if (UUIDs.has(uuid)) {
       debugWrite(creature);
