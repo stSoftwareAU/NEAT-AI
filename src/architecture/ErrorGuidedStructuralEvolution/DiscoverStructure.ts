@@ -417,10 +417,9 @@ export class DiscoverStructure {
     let recordIndices: number[] | undefined = undefined;
     if (this.rustBinaryFilePaths.size === 1 && this.rustBinaryFilePath) {
       const fileIndices = this.selectedIndices[this.rustBinaryFilePath];
-      if (
-        fileIndices && fileIndices.length === this.rustAccumulatedData.length
-      ) {
-        recordIndices = fileIndices;
+      if (fileIndices && fileIndices.length >= pendingSamples) {
+        const recentIndices = fileIndices.slice(-pendingSamples);
+        recordIndices = recentIndices.map((_value, idx) => idx);
       }
     }
 
