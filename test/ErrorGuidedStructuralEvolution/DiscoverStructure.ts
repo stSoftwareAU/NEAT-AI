@@ -7,6 +7,7 @@ import {
   DEFAULT_RUST_FLUSH_RECORDS,
   type DiscoverRecord,
   DiscoverStructure,
+  type RustFlushMetrics,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   assertRustDiscoveryAvailable,
@@ -591,8 +592,6 @@ Deno.test({
     );
 
     assert(!input44, "Should have REMOVED synapse from input-44");
-
-    await discoverStructure.cleanUp();
   },
 });
 
@@ -779,8 +778,6 @@ Deno.test({
       viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID[0]),
       "Selected neuron UUID must be from the viable neurons list",
     );
-
-    await discoverStructure.cleanUp();
   },
 });
 
@@ -987,12 +984,12 @@ Deno.test({
 
 Deno.test({
   name: "inspectRustFlushBatch exposes metrics for longest UUID tracking",
-  fn: () => {
+  fn() {
     const longUuid = "hidden-neuron-with-extended-identifier-001";
     const trainingData: RustRecordInput["training_data"] = [{
       input: [0.1, -0.2],
       output: [0.3],
-      neuron_data: [
+      "neuron_data": [
         {
           neuron_uuid: longUuid,
           activation: 0.51,
@@ -1008,20 +1005,44 @@ Deno.test({
       ],
     }];
 
-    const metrics = (DiscoverStructure as unknown as {
-      computeRustFlushMetrics: (
-        data: RustRecordInput["training_data"],
-        expectedNeuronCount: number,
+    const creature = makeCreature();
+    creature.validate();
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+
+    const aggregation = (discoverStructure as unknown as {
+      createRustFlushAggregation: (
         expectedInputLength: number,
         expectedOutputLength: number,
-      ) => {
-        longestNeuronUuidLength: number;
-        totalNeuronUuidBytes: number;
-        totalErrorValues: number;
-        maxErrorValuesPerNeuron: number;
-      };
-    }).computeRustFlushMetrics(trainingData, 2, 2, 1);
+        expectedNeuronCount: number,
+      ) => unknown;
+    }).createRustFlushAggregation(2, 1, 2);
 
+    (discoverStructure as unknown as {
+      observeRustTrainingRecord: (
+        aggregation: unknown,
+        record: RustRecordInput["training_data"][number],
+        globalSampleIndex: number,
+      ) => void;
+    }).observeRustTrainingRecord(aggregation, trainingData[0], 0);
+
+    const diagnostics = (discoverStructure as unknown as {
+      finalizeRustFlushDiagnostics: (
+        aggregation: unknown,
+      ) => {
+        summary: string;
+        warnings: string[];
+        errors: string[];
+        metrics: RustFlushMetrics;
+      };
+    }).finalizeRustFlushDiagnostics(aggregation);
+
+    const metrics = diagnostics.metrics;
     assertEquals(metrics.longestNeuronUuidLength, longUuid.length);
     assertEquals(
       metrics.totalNeuronUuidBytes,
@@ -1152,7 +1173,7 @@ Deno.test({
         return {
           input: Array.from(record.input),
           output: Array.from(record.output),
-          neuron_data: neuronData,
+          "neuron_data": neuronData,
         };
       });
 
