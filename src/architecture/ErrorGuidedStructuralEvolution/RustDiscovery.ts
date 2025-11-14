@@ -351,6 +351,21 @@ export function loadRustLibrary(): boolean {
   }
 
   try {
+    // Ensure the process has FFI access to the discovery library before loading.
+    if (typeof Deno.permissions?.querySync === "function") {
+      const permission = Deno.permissions.querySync({
+        name: "ffi",
+        path: libPath,
+      });
+      if (permission.state !== "granted") {
+        console.warn(
+          `FFI permission denied for discovery library at ${libPath}. ` +
+            "Run with --allow-ffi to enable Rust discovery.",
+        );
+        return false;
+      }
+    }
+
     const symbols: RustDiscoverySymbols = {
       "record_discovery": {
         parameters: ["pointer"],

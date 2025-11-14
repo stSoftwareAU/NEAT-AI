@@ -220,6 +220,9 @@ export class WorkerProcessor {
             addHelpfulSynapses: result.addHelpfulSynapses
               ? [...result.addHelpfulSynapses]
               : undefined,
+            addHelpfulNeurons: result.addHelpfulNeurons
+              ? [...result.addHelpfulNeurons]
+              : undefined,
             removeHarmfulSynapse: result.removeHarmfulSynapse,
             candidateSquashes: result.candidateSquashes
               ? [...result.candidateSquashes]
@@ -231,6 +234,10 @@ export class WorkerProcessor {
         if (result.addHelpfulSynapses) {
           // @ts-ignore - clearing to help GC
           result.addHelpfulSynapses = null;
+        }
+        if (result.addHelpfulNeurons) {
+          // @ts-ignore - clearing to help GC
+          result.addHelpfulNeurons = null;
         }
         if (result.candidateSquashes) {
           // @ts-ignore - clearing to help GC

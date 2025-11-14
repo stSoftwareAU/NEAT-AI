@@ -86,6 +86,29 @@ Discovery is now documented in detail in
 preparation, orchestration patterns, and safe-write practices for
 `Creature.discoveryDir()`.
 
+### Forced Focus Overrides
+
+The discovery recorder now honours an optional `discoveryFocusNeuronUUIDs`
+override. When supplied, the recorder prioritises those hidden/output neuron
+UUIDs instead of sampling by error, giving you deterministic reproduction of a
+known gap. Each entry must match a neuron in the crippled creature.
+
+To see the override in action, run the sibling
+[`NEAT-AI-Examples`](../NEAT-AI-Examples) repository. The
+`discovery/discover_missing_neuron.ts` script generates a wide, long synthetic
+dataset, removes a known neuron, and invokes `Creature.discoveryDir()` with a
+forced focus list so you can reproduce production time-outs safely:
+
+```bash
+deno run --allow-read --allow-write --allow-env --allow-ffi \
+  ../NEAT-AI-Examples/discovery/discover_missing_neuron.ts
+```
+
+The example writes synthetic assets to a hidden `.synthetic-discovery/`
+directory (ignored by git) and logs extended diagnostics whenever the Rust
+recorder flushes or hits the time-out path. Use it as the starting point for
+debugging “Invalid string length” failures without touching live workloads.
+
 ## Enabling the Rust Discovery Module
 
 The Rust FFI extension shipped via

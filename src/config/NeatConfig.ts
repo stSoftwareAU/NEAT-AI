@@ -122,6 +122,9 @@ export function createNeatConfig(options: NeatOptions) {
       DEFAULT_RUST_FLUSH_RECORDS,
     discoveryMaxNeurons: options.discoveryMaxNeurons || 0,
     discoveryDrainEveryNBatches: options.discoveryDrainEveryNBatches ?? 10,
+    discoveryFocusNeuronUUIDs: options.discoveryFocusNeuronUUIDs
+      ? [...options.discoveryFocusNeuronUUIDs]
+      : [],
     customCost: options.customCost,
     checkpointEveryGeneration: options.checkpointEveryGeneration ?? false,
   };
@@ -292,5 +295,19 @@ function validate(config: NeatArguments) {
     throw new Error(
       `Discovery Rust Flush Records must be an integer greater than 0 was: ${config.discoveryRustFlushRecords}`,
     );
+  }
+  if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {
+    throw new Error(
+      "Discovery focus neuron UUIDs must be an array when provided.",
+    );
+  }
+  for (const uuid of config.discoveryFocusNeuronUUIDs) {
+    if (typeof uuid !== "string" || uuid.trim().length === 0) {
+      throw new Error(
+        `Discovery focus neuron UUIDs must be non-empty strings, found: ${
+          String(uuid)
+        }`,
+      );
+    }
   }
 }

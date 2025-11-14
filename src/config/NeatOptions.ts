@@ -162,6 +162,12 @@ export interface NeatArguments {
   /** Drain promise chains every N batches during discovery recording to prevent memory buildup. Default: 10 */
   discoveryDrainEveryNBatches: number;
 
+  /**
+   * Optional ordered list of neuron UUIDs to prioritise during discovery analysis.
+   * When provided, discovery focuses on these neurons before performing weighted selection.
+   */
+  discoveryFocusNeuronUUIDs: string[];
+
   /** When enabled with creatureStore, saves population after each generation for crash recovery */
   checkpointEveryGeneration: boolean;
 }

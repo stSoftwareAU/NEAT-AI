@@ -5,6 +5,7 @@ import type { Creature } from "../Creature.ts";
 
 export type DiscoveryChangeType =
   | "add-synapses"
+  | "add-neurons"
   | "remove-synapse"
   | "change-squash"
   | "combo-add-remove"
@@ -36,6 +37,27 @@ export function buildDiscoveryCandidates(
 
   const { addHelpfulSynapses, removeHarmfulSynapse, candidateSquashes } =
     discovery;
+
+  const helpfulNeuronCandidates = discovery.addHelpfulNeurons;
+  const addedNeuronCreature = helpfulNeuronCandidates &&
+      helpfulNeuronCandidates.length > 0
+    ? DiscoverStructure.addHelpfulNeurons(
+      discovery.ID,
+      baseCreature,
+      helpfulNeuronCandidates,
+    )
+    : undefined;
+  if (addedNeuronCreature && helpfulNeuronCandidates) {
+    candidates.push({
+      creature: addedNeuronCreature,
+      change: {
+        type: "add-neurons",
+        description: `Added ${helpfulNeuronCandidates.length} helpful neuron${
+          helpfulNeuronCandidates.length === 1 ? "" : "s"
+        }`,
+      },
+    });
+  }
 
   const addedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
     discovery.ID,

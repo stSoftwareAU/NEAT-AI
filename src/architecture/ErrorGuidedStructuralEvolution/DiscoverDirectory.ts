@@ -130,6 +130,7 @@ class DataRecorder {
       return {
         ID: this.ID,
         addHelpfulSynapses: undefined,
+        addHelpfulNeurons: undefined,
         removeHarmfulSynapse: undefined,
         candidateSquashes: undefined,
       };
@@ -308,6 +309,10 @@ class DataRecorder {
       discoveryID: this.ID,
       verbose: shouldLogDiscovery(options),
     });
+    const focusOverride = this.options.discoveryFocusNeuronUUIDs;
+    if (Array.isArray(focusOverride) && focusOverride.length > 0) {
+      discoverStructure.setForcedFocusNeurons(focusOverride);
+    }
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     const initializeStartTime = Date.now();
@@ -467,6 +472,7 @@ class DataRecorder {
         return {
           ID: this.ID,
           addHelpfulSynapses: undefined,
+          addHelpfulNeurons: undefined,
           removeHarmfulSynapse: undefined,
           candidateSquashes: undefined,
         };
@@ -499,16 +505,32 @@ class DataRecorder {
       const discoverResult: DiscoverResult = {
         ID: this.ID,
         addHelpfulSynapses: undefined,
+        addHelpfulNeurons: undefined,
         removeHarmfulSynapse: undefined,
         candidateSquashes: undefined,
       };
 
+      const focusSelectStart = Date.now();
+      const focusList = await discoverStructure.selectNeuronsWeightedByError(
+        this.discoveryMaxNeurons,
+      );
+      if (shouldLogDiscovery(options)) {
+        const selectTime = Date.now() - focusSelectStart;
+        console.log(
+          `Discovery ${blue(this.ID)} selected ${
+            yellow(focusList.length.toString())
+          } focus neuron${focusList.length === 1 ? "" : "s"} in ${
+            yellow(format(selectTime, { ignoreZero: true }))
+          }`,
+        );
+      }
+
       currentPhase = "analyze_helpful";
       const analyzeStartTime = Date.now();
 
-      const addHelpfulSynapse = await discoverStructure.analyze(
-        this.discoveryMaxNeurons,
-      );
+      const addHelpfulSynapse = focusList.length > 0
+        ? await discoverStructure.analyzeSelectedNeurons(focusList)
+        : undefined;
       if (shouldLogDiscovery(options)) {
         const analyzeTime = Date.now() - analyzeStartTime;
         console.log(
@@ -516,7 +538,7 @@ class DataRecorder {
             yellow(format(analyzeTime, { ignoreZero: true }))
           } found ${
             addHelpfulSynapse ? addHelpfulSynapse.length : 0
-          } candidates`,
+          } synapse candidates`,
         );
       }
 
@@ -524,12 +546,30 @@ class DataRecorder {
         discoverResult.addHelpfulSynapses = addHelpfulSynapse;
       }
 
+      currentPhase = "analyze_neurons";
+      const neuronAnalyzeStart = Date.now();
+      const addHelpfulNeurons = focusList.length > 0
+        ? await discoverStructure.analyzeMissingNeurons(focusList)
+        : undefined;
+      if (shouldLogDiscovery(options)) {
+        const neuronAnalyzeTime = Date.now() - neuronAnalyzeStart;
+        console.log(
+          `Discovery ${blue(this.ID)} analyze neurons time ${
+            yellow(format(neuronAnalyzeTime, { ignoreZero: true }))
+          } found ${
+            addHelpfulNeurons ? addHelpfulNeurons.length : 0
+          } neuron candidates`,
+        );
+      }
+      if (addHelpfulNeurons && addHelpfulNeurons.length > 0) {
+        discoverResult.addHelpfulNeurons = addHelpfulNeurons;
+      }
+
       currentPhase = "analyze_harmful";
       const harmfulStartTime = Date.now();
-      const removeHarmfulSynapse = await discoverStructure
-        .analyzeSynapsesForRemoval(
-          this.discoveryMaxNeurons,
-        );
+      const removeHarmfulSynapse = focusList.length > 0
+        ? await discoverStructure.analyzeSelectedNeuronsForRemoval(focusList)
+        : undefined;
       if (shouldLogDiscovery(options)) {
         const harmfulTime = Date.now() - harmfulStartTime;
         console.log(
@@ -544,10 +584,9 @@ class DataRecorder {
 
       currentPhase = "analyze_squash";
       const squashStartTime = Date.now();
-      const candidateSquashes = await discoverStructure
-        .analyzeNeuronsSquashes(
-          this.discoveryMaxNeurons,
-        );
+      const candidateSquashes = focusList.length > 0
+        ? await discoverStructure.analyzeSelectedNeuronsSquashes(focusList)
+        : undefined;
       if (shouldLogDiscovery(options)) {
         const squashTime = Date.now() - squashStartTime;
         const squashCount = candidateSquashes ? candidateSquashes.length : 0;
