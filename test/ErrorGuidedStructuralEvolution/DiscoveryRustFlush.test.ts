@@ -102,6 +102,8 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
     };
 
     await recordDirectory(creature, tempDir, options, deps);
+    // Allow asynchronous cleanup triggered by recordDirectory to complete.
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     assertEquals(recordCallSizes, [2, 2]);
     assertEquals(mergedChunks.length, 1);

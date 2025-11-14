@@ -594,6 +594,92 @@ Deno.test({
 });
 
 Deno.test({
+  name:
+    "DiscoverStructure honours forced focus neurons before weighted selection",
+  ignore: false,
+  sanitizeResources: false,
+  sanitizeOps: false,
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 2,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-focus-1",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        { type: "hidden", uuid: "hidden-focus-2", squash: TANH.NAME, bias: 0 },
+        { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "hidden-focus-1", weight: 0.5 },
+        { fromUUID: "hidden-focus-1", toUUID: "output-0", weight: 0.5 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+      {
+        isRustDiscoveryEnabled: () => true,
+        isRustLibraryAvailable: () => true,
+        recordDiscovery: () => {
+          throw new Error("recordDiscovery should not be called in focus test");
+        },
+        mergeDiscoveryParquet: () => {
+          throw new Error(
+            "mergeDiscoveryParquet should not be called in focus test",
+          );
+        },
+        analyzeNeurons: () => {
+          throw new Error("analyzeNeurons should not be called in focus test");
+        },
+        analyzeSynapses: () => {
+          throw new Error("analyzeSynapses should not be called in focus test");
+        },
+        readDiscoveryRecords: () => {
+          throw new Error(
+            "readDiscoveryRecords should not be called in focus test",
+          );
+        },
+      },
+    );
+
+    const dsAny = discoverStructure as unknown as {
+      forcedFocusNeurons?: string[];
+      listViableNeurons: () => Promise<
+        Array<{ uuid: string; totalError: number }>
+      >;
+      tempDir: string;
+    };
+
+    let listCalled = false;
+    dsAny.listViableNeurons = () => {
+      listCalled = true;
+      return Promise.resolve([
+        { uuid: "hidden-focus-1", totalError: 5 },
+        { uuid: "hidden-focus-2", totalError: 3 },
+      ]);
+    };
+    dsAny.forcedFocusNeurons = ["hidden-focus-2", "hidden-focus-1"];
+
+    try {
+      const focusList = await discoverStructure.selectNeuronsWeightedByError(1);
+      assertEquals(focusList, ["hidden-focus-2"]);
+      assertEquals(listCalled, false);
+    } finally {
+      await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
+    }
+  },
+});
+
+Deno.test({
   name: "Error-Driven Synapse Discovery identifies missing synapses",
   ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected

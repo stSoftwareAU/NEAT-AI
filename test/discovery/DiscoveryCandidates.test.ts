@@ -3,6 +3,7 @@ import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import {
+  type CandidateNeuron,
   DEFAULT_RUST_FLUSH_RECORDS,
   DiscoverStructure,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -163,6 +164,7 @@ Deno.test("buildDiscoveryCandidates returns empty list when there are no suggest
   const discovery: DiscoverResult = {
     ID: "ABCD1234",
     addHelpfulSynapses: undefined,
+    addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
     candidateSquashes: undefined,
   };
@@ -221,6 +223,7 @@ Deno.test({
       const discovery: DiscoverResult = {
         ID: "TEST-DISCOVERY",
         addHelpfulSynapses: helpfulSynapses ?? undefined,
+        addHelpfulNeurons: undefined,
         removeHarmfulSynapse: removeCandidate,
         candidateSquashes: undefined,
       };
@@ -297,4 +300,51 @@ Deno.test({
       await discoverStructure.cleanUp();
     }
   },
+});
+
+Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => {
+  const base = makeBaselineCreature();
+  const neuronCandidate: CandidateNeuron = {
+    fromNeuronUUID: "input-0",
+    toNeuronUUID: "hidden-1",
+    incomingWeight: 0.42,
+    outgoingWeight: -0.27,
+    squash: TANH.NAME,
+    bias: 0.11,
+    expectedImprovementPercentage: 0.25,
+    improvedCount: 8,
+    totalCount: 10,
+  };
+
+  const discovery: DiscoverResult = {
+    ID: "NEURON-123",
+    addHelpfulSynapses: undefined,
+    addHelpfulNeurons: [neuronCandidate],
+    removeHarmfulSynapse: undefined,
+    candidateSquashes: undefined,
+  };
+
+  const candidates = buildDiscoveryCandidates(base, discovery);
+  const addedNeuron = findCandidate(candidates, "add-neurons");
+  const exported = addedNeuron.creature.exportJSON();
+
+  const discoveryNeuron = exported.neurons.find((neuron) =>
+    neuron.uuid.startsWith("hidden-discovery-")
+  );
+  assert(discoveryNeuron, "Expected a discovered neuron to be added.");
+  assertEquals(discoveryNeuron?.squash, neuronCandidate.squash);
+
+  const incomingSynapseExists = exported.synapses.some((synapse) =>
+    synapse.toUUID === discoveryNeuron?.uuid &&
+    synapse.fromUUID === neuronCandidate.fromNeuronUUID
+  );
+  const outgoingSynapseExists = exported.synapses.some((synapse) =>
+    synapse.fromUUID === discoveryNeuron?.uuid &&
+    synapse.toUUID === neuronCandidate.toNeuronUUID
+  );
+
+  assert(
+    incomingSynapseExists && outgoingSynapseExists,
+    "Expected discovered neuron to include incoming and outgoing synapses.",
+  );
 });

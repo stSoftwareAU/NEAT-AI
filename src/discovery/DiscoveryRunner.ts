@@ -163,15 +163,17 @@ export class DiscoveryRunner {
       const discoverResult: DiscoverResult = {
         ID: rawDiscover.ID,
         addHelpfulSynapses: rawDiscover.addHelpfulSynapses ?? undefined,
+        addHelpfulNeurons: rawDiscover.addHelpfulNeurons ?? undefined,
         removeHarmfulSynapse: rawDiscover.removeHarmfulSynapse ?? undefined,
         candidateSquashes: rawDiscover.candidateSquashes ?? undefined,
       };
 
       const addCount = discoverResult.addHelpfulSynapses?.length ?? 0;
+      const neuronCount = discoverResult.addHelpfulNeurons?.length ?? 0;
       const removePresent = discoverResult.removeHarmfulSynapse ? 1 : 0;
       const squashCount = discoverResult.candidateSquashes?.length ?? 0;
       verboseLog(
-        `Discovery ${discoverResult.ID} suggested ${addCount} add, ${removePresent} remove, ${squashCount} squash candidate(s).`,
+        `Discovery ${discoverResult.ID} suggested ${addCount} add, ${neuronCount} neuron, ${removePresent} remove, ${squashCount} squash candidate(s).`,
       );
       markPhase("Discovery phase", discoveryStart);
 
