@@ -116,10 +116,24 @@ interface NeuronErrorInfo {
   totalError: number;
 }
 
+export interface RustFlushMetrics {
+  sampleCount: number;
+  expectedNeuronCount: number;
+  expectedInputLength: number;
+  expectedOutputLength: number;
+  totalNeuronRecords: number;
+  totalNeuronUuidBytes: number;
+  longestNeuronUuid?: string;
+  longestNeuronUuidLength: number;
+  totalErrorValues: number;
+  maxErrorValuesPerNeuron: number;
+}
+
 interface RustFlushDiagnostics {
   summary: string;
   warnings: string[];
   errors: string[];
+  metrics: RustFlushMetrics;
 }
 
 const RUST_HELPFUL_THRESHOLD = 0.1;
@@ -183,6 +197,58 @@ export class DiscoverStructure {
     this.deps = { ...DEFAULT_DISCOVER_STRUCTURE_DEPS, ...deps };
 
     Deno.mkdirSync(this.tempDir, { recursive: true });
+  }
+
+  public static computeRustFlushMetrics(
+    rustTrainingData: RustRecordInput["training_data"],
+    expectedNeuronCount: number,
+    expectedInputLength: number,
+    expectedOutputLength: number,
+  ): RustFlushMetrics {
+    let totalNeuronRecords = 0;
+    let totalNeuronUuidBytes = 0;
+    let totalErrorValues = 0;
+    let maxErrorValuesPerNeuron = 0;
+    let longestNeuronUuid = "";
+    let longestNeuronUuidLength = 0;
+
+    for (const record of rustTrainingData) {
+      const neuronData = record.neuron_data ?? [];
+      totalNeuronRecords += neuronData.length;
+
+      for (const neuron of neuronData) {
+        const uuid = typeof neuron.neuron_uuid === "string"
+          ? neuron.neuron_uuid
+          : "";
+        const uuidLength = uuid.length;
+        totalNeuronUuidBytes += uuidLength;
+        if (uuidLength > longestNeuronUuidLength) {
+          longestNeuronUuid = uuid;
+          longestNeuronUuidLength = uuidLength;
+        }
+
+        const errorLength = neuron.errors?.length ?? 0;
+        totalErrorValues += errorLength;
+        if (errorLength > maxErrorValuesPerNeuron) {
+          maxErrorValuesPerNeuron = errorLength;
+        }
+      }
+    }
+
+    return {
+      sampleCount: rustTrainingData.length,
+      expectedNeuronCount,
+      expectedInputLength,
+      expectedOutputLength,
+      totalNeuronRecords,
+      totalNeuronUuidBytes,
+      longestNeuronUuid: longestNeuronUuidLength > 0
+        ? longestNeuronUuid
+        : undefined,
+      longestNeuronUuidLength,
+      totalErrorValues,
+      maxErrorValuesPerNeuron,
+    };
   }
 
   public configureLogging(options: {
@@ -490,6 +556,7 @@ export class DiscoverStructure {
       this.creature.output,
       nonInputNeurons.length,
     );
+    const metrics = diagnostics.metrics;
 
     let recordIndices: number[] | undefined = undefined;
     if (this.rustBinaryFilePaths.size === 1 && this.rustBinaryFilePath) {
@@ -590,17 +657,43 @@ export class DiscoverStructure {
     }
 
     const errorMessage = result?.error || "Unknown error";
+    const errorDetails = result?.errorDetails;
+    const errorMeta: Record<string, unknown> = {
+      pendingSamples,
+      timeoutExpired: timedOut,
+      binaryFilePath: this.rustBinaryFilePath,
+      forcedFocusNeurons: this.forcedFocusNeurons,
+      accumulatedSamples: this.rustAccumulatedData.length,
+      chunkFiles: this.rustChunkFiles.length,
+      longestRustUuid: metrics.longestNeuronUuid,
+      longestRustUuidLength: metrics.longestNeuronUuidLength,
+      totalRustUuidBytes: metrics.totalNeuronUuidBytes,
+      totalRustErrorValues: metrics.totalErrorValues,
+      maxRustErrorsPerNeuron: metrics.maxErrorValuesPerNeuron,
+      rustSampleCount: metrics.sampleCount,
+      expectedRustNeuronCount: metrics.expectedNeuronCount,
+      totalRustNeuronRecords: metrics.totalNeuronRecords,
+    };
+
+    if (errorDetails) {
+      if (errorDetails.stage) {
+        errorMeta.recordDiscoveryStage = errorDetails.stage;
+      }
+      if (errorDetails.inputJsonLength !== undefined) {
+        errorMeta.rustInputJsonLength = errorDetails.inputJsonLength;
+      }
+      if (errorDetails.inputBytesLength !== undefined) {
+        errorMeta.rustInputBytes = errorDetails.inputBytesLength;
+      }
+      if (errorDetails.stats) {
+        errorMeta.recordDiscoveryStats = errorDetails.stats;
+      }
+    }
+
     this.log(
       "error",
       `Rust discovery recording failed: ${errorMessage}`,
-      {
-        pendingSamples,
-        timeoutExpired: timedOut,
-        binaryFilePath: this.rustBinaryFilePath,
-        forcedFocusNeurons: this.forcedFocusNeurons,
-        accumulatedSamples: this.rustAccumulatedData.length,
-        chunkFiles: this.rustChunkFiles.length,
-      },
+      errorMeta,
     );
     return null;
   }
@@ -707,6 +800,11 @@ export class DiscoverStructure {
     let firstNonFiniteValueLocation: string | undefined;
     let firstNonFiniteErrorLocation: string | undefined;
     let longestUuid = "";
+    let longestUuidLength = 0;
+    let totalNeuronRecords = 0;
+    let totalUuidBytes = 0;
+    let totalErrorValues = 0;
+    let maxErrorValuesPerNeuron = 0;
 
     rustTrainingData.forEach((record, recordIndex) => {
       const neuronData = record.neuron_data ?? [];
@@ -725,19 +823,24 @@ export class DiscoverStructure {
         recordsWithOutputMismatch++;
       }
 
+      totalNeuronRecords += neuronData.length;
+
       neuronData.forEach((neuron, neuronIndex) => {
         const uuid = typeof neuron.neuron_uuid === "string"
           ? neuron.neuron_uuid
           : "";
+        const uuidLength = uuid.length;
+        totalUuidBytes += uuidLength;
 
-        if (uuid.length === 0) {
+        if (uuidLength === 0) {
           missingUuidEntries++;
           if (firstMissingUuidLocation === undefined) {
             firstMissingUuidLocation =
               `record ${recordIndex}, neuron ${neuronIndex}`;
           }
-        } else if (uuid.length > longestUuid.length) {
+        } else if (uuidLength > longestUuidLength) {
           longestUuid = uuid;
+          longestUuidLength = uuidLength;
         }
 
         if (!Number.isFinite(neuron.activation)) {
@@ -757,7 +860,12 @@ export class DiscoverStructure {
               `record ${recordIndex}, neuron ${neuronIndex}`;
           }
         }
-        neuron.errors.forEach((errorValue, errorIndex) => {
+        const errorValues = neuron.errors ?? [];
+        totalErrorValues += errorValues.length;
+        if (errorValues.length > maxErrorValuesPerNeuron) {
+          maxErrorValuesPerNeuron = errorValues.length;
+        }
+        errorValues.forEach((errorValue, errorIndex) => {
           if (!Number.isFinite(errorValue)) {
             nonFiniteErrorCount++;
             if (firstNonFiniteErrorLocation === undefined) {
@@ -768,6 +876,19 @@ export class DiscoverStructure {
         });
       });
     });
+
+    const metrics: RustFlushMetrics = {
+      sampleCount: rustTrainingData.length,
+      expectedNeuronCount,
+      expectedInputLength,
+      expectedOutputLength,
+      totalNeuronRecords,
+      totalNeuronUuidBytes: totalUuidBytes,
+      longestNeuronUuid: longestUuidLength > 0 ? longestUuid : undefined,
+      longestNeuronUuidLength: longestUuidLength,
+      totalErrorValues,
+      maxErrorValuesPerNeuron,
+    };
 
     const summaryParts = [
       `samples=${rustTrainingData.length}`,
@@ -780,11 +901,11 @@ export class DiscoverStructure {
       `nonFiniteErrorValues=${nonFiniteErrorCount}`,
     ];
 
-    if (longestUuid.length > 0) {
+    if (metrics.longestNeuronUuidLength > 0 && metrics.longestNeuronUuid) {
       summaryParts.push(
         `longestUuid="${
-          this.truncateForLog(longestUuid)
-        }" (${longestUuid.length})`,
+          this.truncateForLog(metrics.longestNeuronUuid)
+        }" (${metrics.longestNeuronUuidLength})`,
       );
     }
 
@@ -851,6 +972,7 @@ export class DiscoverStructure {
       summary: `Rust flush diagnostics: ${summaryParts.join(", ")}`,
       warnings,
       errors,
+      metrics,
     };
   }
 

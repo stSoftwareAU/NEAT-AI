@@ -18,11 +18,39 @@ import { join } from "@std/path/join";
 /**
  * Result of recording discovery data via Rust module.
  */
+export interface RustRecordBatchStats {
+  sampleCount: number;
+  expectedNeuronCount: number;
+  totalNeuronRecords: number;
+  totalNeuronUuidBytes: number;
+  longestNeuronUuid?: string;
+  longestNeuronUuidLength: number;
+  totalErrorValues: number;
+  maxErrorValuesPerNeuron: number;
+  inputLength?: number;
+  outputLength?: number;
+}
+
+export type RustRecordFailureStage =
+  | "stringify"
+  | "encode"
+  | "ffi"
+  | "parse"
+  | "rust";
+
+export interface RustRecordErrorDetails {
+  stage: RustRecordFailureStage;
+  inputJsonLength?: number;
+  inputBytesLength?: number;
+  stats: RustRecordBatchStats;
+}
+
 export interface RustRecordResult {
   success: boolean;
   "temp_dir"?: string;
   file?: string;
   error?: string;
+  errorDetails?: RustRecordErrorDetails;
 }
 
 export interface RustCandidateSynapse {
@@ -156,6 +184,69 @@ export function creatureToRustFormat(creature: {
     })),
     input: creature.input,
     output: creature.output,
+  };
+}
+
+export function computeRustRecordStats(
+  input: RustRecordInput,
+): RustRecordBatchStats {
+  const sampleCount = input.training_data.length;
+  const expectedNeuronCount =
+    input.creature.neurons.filter((neuron) => neuron.type !== "input").length;
+
+  let totalNeuronRecords = 0;
+  let totalNeuronUuidBytes = 0;
+  let totalErrorValues = 0;
+  let maxErrorValuesPerNeuron = 0;
+  let longestNeuronUuid = "";
+  let longestNeuronUuidLength = 0;
+  let inputLength: number | undefined;
+  let outputLength: number | undefined;
+
+  for (const record of input.training_data) {
+    if (inputLength === undefined) {
+      inputLength = record.input.length;
+    }
+    if (outputLength === undefined) {
+      outputLength = record.output.length;
+    }
+
+    const neuronData = record.neuron_data ?? [];
+    totalNeuronRecords += neuronData.length;
+
+    for (const neuron of neuronData) {
+      const uuid = typeof neuron.neuron_uuid === "string"
+        ? neuron.neuron_uuid
+        : "";
+      const uuidLength = uuid.length;
+      totalNeuronUuidBytes += uuidLength;
+
+      if (uuidLength > longestNeuronUuidLength) {
+        longestNeuronUuid = uuid;
+        longestNeuronUuidLength = uuidLength;
+      }
+
+      const errors = neuron.errors ?? [];
+      totalErrorValues += errors.length;
+      if (errors.length > maxErrorValuesPerNeuron) {
+        maxErrorValuesPerNeuron = errors.length;
+      }
+    }
+  }
+
+  return {
+    sampleCount,
+    expectedNeuronCount,
+    totalNeuronRecords,
+    totalNeuronUuidBytes,
+    longestNeuronUuid: longestNeuronUuidLength > 0
+      ? longestNeuronUuid
+      : undefined,
+    longestNeuronUuidLength,
+    totalErrorValues,
+    maxErrorValuesPerNeuron,
+    inputLength,
+    outputLength,
   };
 }
 
@@ -666,46 +757,105 @@ export function recordDiscovery(
 
   assert(rustLib !== null, "Rust library should be loaded");
 
+  const stats = computeRustRecordStats(input);
+
+  const buildFailure = (
+    stage: RustRecordFailureStage,
+    message: string,
+    overrides: Partial<RustRecordErrorDetails> = {},
+  ): RustRecordResult => {
+    const details: RustRecordErrorDetails = {
+      stage,
+      stats,
+      ...(overrides.stats ? { stats: overrides.stats } : {}),
+      ...overrides,
+    };
+
+    if (
+      details.inputJsonLength === undefined && typeof inputJson === "string"
+    ) {
+      details.inputJsonLength = inputJson.length;
+    }
+
+    if (
+      details.inputBytesLength === undefined && inputBytes !== undefined
+    ) {
+      details.inputBytesLength = inputBytes.length;
+    }
+
+    return {
+      success: false,
+      error: message,
+      errorDetails: details,
+    };
+  };
+
+  let inputJson: string | undefined;
   try {
-    // Serialize input to JSON
-    const inputJson = JSON.stringify(input);
-    const inputBytes = new TextEncoder().encode(inputJson);
+    inputJson = JSON.stringify(input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return buildFailure("stringify", message);
+  }
 
-    // Allocate memory for input string (C string - null terminated)
-    const inputBuffer = new Uint8Array(inputBytes.length + 1);
-    inputBuffer.set(inputBytes);
-    inputBuffer[inputBytes.length] = 0; // Null terminator
+  let inputBytes: Uint8Array | undefined;
+  try {
+    inputBytes = new TextEncoder().encode(inputJson);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return buildFailure("encode", message, {
+      inputJsonLength: inputJson.length,
+    });
+  }
 
-    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
+  // Allocate memory for input string (C string - null terminated)
+  const inputBuffer = new Uint8Array(inputBytes.length + 1);
+  inputBuffer.set(inputBytes);
+  inputBuffer[inputBytes.length] = 0; // Null terminator
 
-    // Call Rust function
-    // Note: The Rust function signature should be:
-    // extern "C" fn record_discovery(input: *const c_char) -> *mut c_char
-    // The function reads the C string until null terminator
-    const resultPtr = rustLib.symbols["record_discovery"](inputPtr);
+  const inputPtr = Deno.UnsafePointer.of(inputBuffer);
 
-    if (resultPtr === null) {
+  let resultPtr: Deno.PointerValue | null = null;
+  let currentStage: RustRecordFailureStage = "ffi";
+
+  try {
+    resultPtr = rustLib.symbols["record_discovery"](inputPtr);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return buildFailure(currentStage, message);
+  }
+
+  if (resultPtr === null) {
+    return buildFailure("ffi", "Rust function returned null pointer");
+  }
+
+  try {
+    const resultJson = readCString(resultPtr);
+    currentStage = "parse";
+    const parsed = JSON.parse(resultJson) as RustRecordResult;
+
+    if (
+      !parsed.success &&
+      parsed.error?.includes("Invalid string length") &&
+      !parsed.errorDetails
+    ) {
       return {
-        success: false,
-        error: "Rust function returned null pointer",
+        ...parsed,
+        errorDetails: {
+          stage: "rust",
+          inputJsonLength: inputJson.length,
+          inputBytesLength: inputBytes.length,
+          stats,
+        },
       };
     }
 
-    // Read the result string from the pointer
-    const resultJson = readCString(resultPtr);
-
-    // Free the memory allocated by Rust
-    rustLib.symbols["free_discovery_result"](resultPtr);
-
-    // Parse the JSON result
-    const result = JSON.parse(resultJson) as RustRecordResult;
-
-    return result;
+    return parsed;
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
+    const message = error instanceof Error ? error.message : String(error);
+    return buildFailure(currentStage, message);
+  } finally {
+    rustLib.symbols["free_discovery_result"](resultPtr);
   }
 }
 
