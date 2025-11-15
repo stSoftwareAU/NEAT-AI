@@ -24,7 +24,7 @@ function makeCreature(): Creature {
   return creature;
 }
 
-Deno.test("DiscoverStructure normalises record indices for single binary chunk", async () => {
+Deno.test("DiscoverStructure preserves record indices for single binary chunk", async () => {
   const creature = makeCreature();
   const recordedInputs: RustRecordInput[] = [];
 
@@ -96,13 +96,119 @@ Deno.test("DiscoverStructure normalises record indices for single binary chunk",
       1,
       "recordDiscovery should be invoked once",
     );
+
     const [input] = recordedInputs;
     assert(input.record_indices, "record indices should be provided to Rust");
-    const expectedIndices = rawIndices.map((_value, idx) => idx);
     assertEquals(
       input.record_indices,
-      expectedIndices,
-      "record indices should be normalised to chunk-relative offsets",
+      rawIndices,
+      "record indices should retain their absolute offsets",
+    );
+  } finally {
+    await structure.cleanUp();
+  }
+});
+
+function makeBatch(
+  startIndex: number,
+  count: number,
+): { trainingRecords: DataRecordInterface[]; rawIndices: number[] } {
+  const trainingRecords: DataRecordInterface[] = [];
+  const rawIndices: number[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const activationSeed = startIndex + i;
+    const input = Float32Array.from([activationSeed / 100, 1]);
+    const output = Float32Array.from([activationSeed / 200]);
+    trainingRecords.push({ input, output });
+    rawIndices.push(startIndex + i);
+  }
+
+  return { trainingRecords, rawIndices };
+}
+
+Deno.test("DiscoverStructure keeps slice offsets across multiple chunk flushes", async () => {
+  const creature = makeCreature();
+  const recordedInputs: RustRecordInput[] = [];
+
+  const structure = new DiscoverStructure(
+    creature,
+    60,
+    100,
+    {
+      isRustDiscoveryEnabled: () => true,
+      isRustLibraryAvailable: () => true,
+      recordDiscovery: (input) => {
+        recordedInputs.push(input);
+        return {
+          success: true,
+          file: `chunk-${recordedInputs.length}.parquet`,
+        };
+      },
+      mergeDiscoveryParquet: () => ({
+        success: true,
+        outputFile: "merged.parquet",
+      }),
+      analyzeNeurons: () => ({
+        success: true,
+        helpfulNeurons: [],
+      }),
+      analyzeSynapses: () => ({
+        success: true,
+        helpfulSynapses: [],
+        harmfulSynapses: [],
+      }),
+      readDiscoveryRecords: () => ({
+        success: true,
+        records: [],
+      }),
+    },
+  );
+
+  const neuronPromises = new Map<string, Promise<void>>();
+
+  try {
+    structure.initialize(neuronPromises);
+
+    const firstBatch = makeBatch(0, 4);
+    assert(
+      structure.record(
+        firstBatch.trainingRecords,
+        neuronPromises,
+        "/tmp/fake.bin",
+        firstBatch.rawIndices,
+      ),
+      "first slice should record successfully",
+    );
+    assertEquals(structure.flushRustChunk(), true);
+
+    const secondBatch = makeBatch(512, 4);
+    assert(
+      structure.record(
+        secondBatch.trainingRecords,
+        neuronPromises,
+        "/tmp/fake.bin",
+        secondBatch.rawIndices,
+      ),
+      "second slice should record successfully",
+    );
+    assertEquals(structure.flushRustChunk(), true);
+
+    assertEquals(
+      recordedInputs.length,
+      2,
+      "each flush should invoke recordDiscovery",
+    );
+
+    assertEquals(
+      recordedInputs[0].record_indices,
+      firstBatch.rawIndices,
+      "first slice should keep base offsets",
+    );
+    assertEquals(
+      recordedInputs[1].record_indices,
+      secondBatch.rawIndices,
+      "second slice should reference its original offsets",
     );
   } finally {
     await structure.cleanUp();

@@ -5,13 +5,17 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import {
   type CandidateNeuron,
   DEFAULT_RUST_FLUSH_RECORDS,
+  type DiscoverRecord,
   DiscoverStructure,
+  type RustFlushMetrics,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   assertRustDiscoveryAvailable,
   isRustDiscoveryEnabled,
   type RustAnalyzeNeuronsResult,
   type RustCandidateNeuron,
+  type RustRecordBatchStats,
+  type RustRecordInput,
   shouldSkipRustDiscoveryTests,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -588,8 +592,6 @@ Deno.test({
     );
 
     assert(!input44, "Should have REMOVED synapse from input-44");
-
-    await discoverStructure.cleanUp();
   },
 });
 
@@ -776,8 +778,6 @@ Deno.test({
       viableNeurons.some((neuron) => neuron.uuid === selectedNeuronUUID[0]),
       "Selected neuron UUID must be from the viable neurons list",
     );
-
-    await discoverStructure.cleanUp();
   },
 });
 
@@ -979,5 +979,274 @@ Deno.test({
 
     // Wait for cleanup to complete
     await cleanupPromise;
+  },
+});
+
+Deno.test({
+  name: "inspectRustFlushBatch exposes metrics for longest UUID tracking",
+  fn() {
+    const longUuid = "hidden-neuron-with-extended-identifier-001";
+    const trainingData: RustRecordInput["training_data"] = [{
+      input: [0.1, -0.2],
+      output: [0.3],
+      "neuron_data": [
+        {
+          neuron_uuid: longUuid,
+          activation: 0.51,
+          value: 0.42,
+          errors: [0.01, -0.02, 0.03],
+        },
+        {
+          neuron_uuid: "output-0",
+          activation: 0.37,
+          value: 0.22,
+          errors: [-0.05],
+        },
+      ],
+    }];
+
+    const creature = makeCreature();
+    creature.validate();
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+
+    const aggregation = (discoverStructure as unknown as {
+      createRustFlushAggregation: (
+        expectedInputLength: number,
+        expectedOutputLength: number,
+        expectedNeuronCount: number,
+      ) => unknown;
+    }).createRustFlushAggregation(2, 1, 2);
+
+    (discoverStructure as unknown as {
+      observeRustTrainingRecord: (
+        aggregation: unknown,
+        record: RustRecordInput["training_data"][number],
+        globalSampleIndex: number,
+      ) => void;
+    }).observeRustTrainingRecord(aggregation, trainingData[0], 0);
+
+    const diagnostics = (discoverStructure as unknown as {
+      finalizeRustFlushDiagnostics: (
+        aggregation: unknown,
+      ) => {
+        summary: string;
+        warnings: string[];
+        errors: string[];
+        metrics: RustFlushMetrics;
+      };
+    }).finalizeRustFlushDiagnostics(aggregation);
+
+    const metrics = diagnostics.metrics;
+    assertEquals(metrics.longestNeuronUuidLength, longUuid.length);
+    assertEquals(
+      metrics.totalNeuronUuidBytes,
+      longUuid.length + "output-0".length,
+    );
+    assertEquals(metrics.totalErrorValues, 4);
+    assertEquals(metrics.maxErrorValuesPerNeuron, 3);
+  },
+});
+
+Deno.test({
+  name:
+    "writeRustParquetChunk logs metrics when Invalid string length is reported",
+  fn: () => {
+    const longUuid = "hidden-neuron-with-extended-identifier-001";
+    const creature = Creature.fromJSON({
+      input: 2,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: longUuid,
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: longUuid, weight: 0.5 },
+        { fromUUID: longUuid, toUUID: "output-0", weight: -0.25 },
+      ],
+    });
+    creature.validate();
+    CreatureUtil.makeUUID(creature);
+
+    let expectedStats!: RustRecordBatchStats;
+
+    const recordDiscoveryCalls: RustRecordInput[] = [];
+    const originalMkdirSync = Deno.mkdirSync;
+    (Deno as unknown as { mkdirSync: typeof Deno.mkdirSync }).mkdirSync =
+      () => {};
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      60,
+      DEFAULT_RUST_FLUSH_RECORDS,
+      {
+        isRustDiscoveryEnabled: () => true,
+        isRustLibraryAvailable: () => true,
+        recordDiscovery: (input) => {
+          recordDiscoveryCalls.push(input);
+          return {
+            success: false,
+            error: "Invalid string length",
+            errorDetails: {
+              stage: "encode",
+              inputJsonLength: 512,
+              inputBytesLength: 704,
+              stats: expectedStats,
+            },
+          };
+        },
+        mergeDiscoveryParquet: () => ({ success: true, outputFile: "" }),
+        analyzeNeurons: () => ({ success: true, helpfulNeurons: [] }),
+        analyzeSynapses: () => ({
+          success: true,
+          helpfulSynapses: [],
+          harmfulSynapses: [],
+        }),
+        readDiscoveryRecords: () => ({ success: true, records: [] }),
+      },
+    );
+
+    const neuronMap = new Map<string, DiscoverRecord>();
+    neuronMap.set(longUuid, {
+      activation: 0.51,
+      value: 0.42,
+      errors: [0.01, -0.02, 0.03, -0.04],
+    });
+    neuronMap.set("output-0", {
+      activation: 0.37,
+      value: 0.22,
+      errors: [-0.05],
+    });
+
+    (discoverStructure as unknown as { usingRustDualWrite: boolean })
+      .usingRustDualWrite = true;
+    (discoverStructure as unknown as {
+      rustAccumulatedData: DataRecordInterface[];
+    })
+      .rustAccumulatedData = [{
+        input: new Float32Array([0.1, -0.2]),
+        output: new Float32Array([0.3]),
+      }];
+    (discoverStructure as unknown as {
+      rustAccumulatedNeuronData: Array<Map<string, DiscoverRecord>>;
+    }).rustAccumulatedNeuronData = [neuronMap];
+    (discoverStructure as unknown as { rustChunkFiles: string[] })
+      .rustChunkFiles = [];
+
+    {
+      const nonInputNeurons = creature.neurons.filter((neuron) =>
+        neuron.type !== "input"
+      );
+      const rustTrainingData = (discoverStructure as unknown as {
+        rustAccumulatedData: DataRecordInterface[];
+        rustAccumulatedNeuronData: Array<Map<string, DiscoverRecord>>;
+      }).rustAccumulatedData.map((record, index) => {
+        const discover = ((discoverStructure as unknown as {
+          rustAccumulatedNeuronData: Array<Map<string, DiscoverRecord>>;
+        }).rustAccumulatedNeuronData[index]) ??
+          new Map<string, DiscoverRecord>();
+
+        const neuronData = nonInputNeurons.map((neuron) => {
+          const mapped = discover.get(neuron.uuid);
+          return {
+            neuron_uuid: neuron.uuid,
+            activation: mapped?.activation ?? 0,
+            value: mapped?.value,
+            errors: mapped?.errors ? Array.from(mapped.errors) : [],
+          };
+        });
+
+        return {
+          input: Array.from(record.input),
+          output: Array.from(record.output),
+          "neuron_data": neuronData,
+        };
+      });
+
+      expectedStats = (DiscoverStructure as unknown as {
+        computeRustFlushMetrics: (
+          data: RustRecordInput["training_data"],
+          expectedNeuronCount: number,
+          expectedInputLength: number,
+          expectedOutputLength: number,
+        ) => RustRecordBatchStats;
+      }).computeRustFlushMetrics(
+        rustTrainingData,
+        nonInputNeurons.length,
+        creature.input,
+        creature.output,
+      );
+    }
+
+    const originalError = console.error;
+    const errorLogs: Array<{ message: string; details: unknown }> = [];
+    console.error = (...args: unknown[]) => {
+      errorLogs.push({
+        message: String(args[0]),
+        details: args[1],
+      });
+    };
+
+    try {
+      const chunkDir = (discoverStructure as unknown as {
+        getNextChunkDir: () => string;
+      }).getNextChunkDir();
+
+      const result = (discoverStructure as unknown as {
+        writeRustParquetChunk: (dir: string) => string | null;
+      }).writeRustParquetChunk(chunkDir);
+
+      assertEquals(result, null);
+    } finally {
+      console.error = originalError;
+      (Deno as unknown as { mkdirSync: typeof Deno.mkdirSync }).mkdirSync =
+        originalMkdirSync;
+    }
+
+    assertEquals(
+      recordDiscoveryCalls.length,
+      1,
+      "Expected recordDiscovery to be invoked exactly once",
+    );
+    const errorLog = errorLogs.find((log) =>
+      log.message.includes("Rust discovery recording failed")
+    );
+    assert(errorLog, "Expected invalid string length failure to be logged");
+    const details = errorLog!.details as Record<string, unknown>;
+    assert(details, "Expected error log to include metadata");
+    assertEquals(
+      details.longestRustUuidLength,
+      expectedStats.longestNeuronUuidLength,
+    );
+    assertEquals(
+      details.totalRustUuidBytes,
+      expectedStats.totalNeuronUuidBytes,
+    );
+    assertEquals(
+      details.maxRustErrorsPerNeuron,
+      expectedStats.maxErrorValuesPerNeuron,
+    );
+    assertEquals(details.totalRustErrorValues, expectedStats.totalErrorValues);
+    assertEquals(details.rustInputJsonLength, 512);
+    assertEquals(details.rustInputBytes, 704);
+    assertEquals(
+      (details.recordDiscoveryStats as typeof expectedStats)
+        .longestNeuronUuidLength,
+      expectedStats.longestNeuronUuidLength,
+    );
   },
 });
