@@ -280,7 +280,9 @@ Deno.test({
     );
 
     assert(input85, "Should have added synapse from input-22");
-    assertAlmostEquals(input85?.weight, -0.75, 0.1);
+    // Weight changed after v0.195.8 fix: errors now recorded once per sample (was multiple times)
+    // Old: ~-0.75, New: ~-0.439 (correct with proper error recording)
+    assertAlmostEquals(input85?.weight, -0.439, 0.05);
 
     await discoverStructure.cleanUp();
   },

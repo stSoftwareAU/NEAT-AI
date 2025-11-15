@@ -684,26 +684,23 @@ export class Neuron implements TagsInterface, NeuronInternal {
       discoverMap.set(this.uuid, discoverRecord);
     }
 
-    // DIAGNOSTIC: Log if we're being called multiple times for the same neuron
-    if (!isNewRecord && discoverRecord.errors.length > 50) {
+    // DIAGNOSTIC: Log if we're accumulating excessive errors
+    // Note: Errors accumulate from all paths (correct behavior), but recursion should only happen once
+    if (!isNewRecord && discoverRecord.errors.length > 200) {
       console.warn(
-        `⚠️  PERFORMANCE: Neuron ${this.uuid} record() called ${
-          discoverRecord.errors.length + 1
-        } times in single sample!`,
+        `⚠️  PERFORMANCE: Neuron ${this.uuid} has ${discoverRecord.errors.length} accumulated errors`,
       );
       console.warn(
-        `  Type: ${this.type}, Inward connections: ${listLength}, Current errors: ${discoverRecord.errors.length}`,
+        `  Type: ${this.type}, Inward connections: ${listLength}`,
       );
-      if (discoverRecord.errors.length > 100) {
+      if (discoverRecord.errors.length > 500) {
         console.error(
           `❌ CRITICAL: Neuron ${this.uuid} has ${discoverRecord.errors.length} errors - likely infinite recursion!`,
         );
         throw new Error(
-          `Excessive record() calls detected on neuron ${this.uuid}. ` +
-            `Expected 1-3 calls per sample, got ${
-              discoverRecord.errors.length + 1
-            }. ` +
-            `This explains the performance issue and timeout.`,
+          `Excessive error accumulation detected on neuron ${this.uuid}. ` +
+            `Got ${discoverRecord.errors.length} errors. ` +
+            `This suggests infinite recursion in backpropagation.`,
         );
       }
     }
@@ -740,35 +737,42 @@ export class Neuron implements TagsInterface, NeuronInternal {
         error = targetValue - currentValue!;
       }
 
-      discoverRecord.errors.push(error);
+      // CRITICAL FIX: Track if this is the first visit to this neuron
+      // Only process and record error on first visit to prevent exponential recursion
+      const isFirstVisit = discoverRecord.errors.length === 0;
 
-      if (listLength) {
-        const errorPerLink = error / listLength;
+      // Only process on first visit (prevents duplicate errors and exponential recursion)
+      if (isFirstVisit) {
+        discoverRecord.errors.push(error);
 
-        for (let indx = 0; indx < listLength; indx++) {
-          const c = inwardList[indx];
-          const { from, to } = c;
+        if (listLength) {
+          const errorPerLink = error / listLength;
 
-          if (from === to) continue;
+          for (let indx = 0; indx < listLength; indx++) {
+            const c = inwardList[indx];
+            const { from, to } = c;
 
-          const fromNeuron = this.creature.neurons[from];
+            if (from === to) continue;
 
-          const type = fromNeuron.type;
-          if (
-            c.weight &&
-            type !== "input" &&
-            type !== "constant"
-          ) {
-            const fromActivation = state.activations[from];
+            const fromNeuron = this.creature.neurons[from];
 
-            const fromValue = c.weight * fromActivation;
+            const type = fromNeuron.type;
+            if (
+              c.weight &&
+              type !== "input" &&
+              type !== "constant"
+            ) {
+              const fromActivation = state.activations[from];
 
-            const targetFromValue = fromValue + errorPerLink;
-            const targetFromActivation = targetFromValue / c.weight;
-            fromNeuron.record(
-              targetFromActivation,
-              discoverMap,
-            );
+              const fromValue = c.weight * fromActivation;
+
+              const targetFromValue = fromValue + errorPerLink;
+              const targetFromActivation = targetFromValue / c.weight;
+              fromNeuron.record(
+                targetFromActivation,
+                discoverMap,
+              );
+            }
           }
         }
       }

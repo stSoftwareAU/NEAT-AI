@@ -82,11 +82,12 @@ Deno.test({
             activation: 0.5,
             value: 0.4,
             // First neuron has way too many errors, rest have normal amounts
-            // First: 150 errors (exceeds max(100, 10*2) = 100)
-            // Total: 150 + 9*1 = 159 errors, max is 10 * 100 = 1000
-            // So this will trigger the per-neuron validation
+            // With corrected thresholds: max = Math.max(50, samples * outputs * 2)
+            // For 1 sample, 1 output: max = Math.max(50, 1 * 1 * 2) = 50
+            // First: 100 errors (exceeds max of 50)
+            // This will trigger the per-neuron validation
             errors: idx === 0
-              ? Array.from({ length: 150 }, (_, i) => i * 0.001)
+              ? Array.from({ length: 100 }, (_, i) => i * 0.001)
               : [0.001],
           })),
         },
@@ -94,7 +95,7 @@ Deno.test({
       "temp_dir": ".discovery/test",
     };
 
-    // This should throw because first neuron has 150 errors which exceeds max (100)
+    // This should throw because first neuron has 100 errors which exceeds max (50)
     assertThrows(
       () => computeRustRecordStats(input),
       Error,
@@ -238,8 +239,8 @@ Deno.test({
   name:
     "computeRustRecordStats accepts errors based on sample count and outputs",
   fn() {
-    // With 50 samples and 2 outputs, we can have up to max(50, 50*2*3) = 300 errors per neuron
-    // This reflects the fact that during backprop, record() is called once per sample per output
+    // With 50 samples and 2 outputs, we can have up to max(50, 50*2*2) = 200 errors per neuron
+    // Each neuron records ONE error per sample (fixed in v0.195.8)
     const neurons = Array.from({ length: 200 }, (_, i) => ({
       uuid: `hidden-${i}`,
       type: "hidden",
@@ -263,8 +264,8 @@ Deno.test({
               neuron_uuid: "hidden-0",
               activation: 0.5,
               value: 0.4,
-              // 250 errors: max(50, 50*2*3) = 300, so this should be accepted
-              errors: Array.from({ length: 250 }, (_, j) => j * 0.001),
+              // 180 errors: max(50, 50*2*2) = 200, so this should be accepted
+              errors: Array.from({ length: 180 }, (_, j) => j * 0.001),
             },
           ]
           : [],
@@ -272,8 +273,8 @@ Deno.test({
       "temp_dir": ".discovery/test",
     };
 
-    // This should NOT throw - 250 errors is within max(50, 50*2*3) = 300
+    // This should NOT throw - 180 errors is within max(50, 50*2*2) = 200
     const stats = computeRustRecordStats(input);
-    assertEquals(stats.maxErrorValuesPerNeuron, 250);
+    assertEquals(stats.maxErrorValuesPerNeuron, 180);
   },
 });

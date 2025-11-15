@@ -237,16 +237,14 @@ export function computeRustRecordStats(
       }
 
       // VALIDATION: Check for unreasonable error counts
-      // During backpropagation, each neuron's record() is called once per sample per output.
-      // Maximum errors per neuron = sampleCount * outputCount * pathMultiplier
-      // - Each sample records 1 error value per call to record()
-      // - A neuron is called at most once per output neuron that depends on it
-      // - A multiplier of 3 accounts for complex/recurrent paths
-      // - Additionally cap at 50 for very small sample sizes (e.g., 10 samples)
+      // During backpropagation, each neuron records ONE error per sample
+      // - Expected: sampleCount errors (one per sample)
+      // - Multiplier of 2 provides buffer for edge cases
+      // - Minimum threshold of 50 for small sample sizes
       const outputCount = outputLength ?? 1;
       const maxReasonableErrorsPerNeuron = Math.max(
         50,
-        sampleCount * outputCount * 3,
+        sampleCount * outputCount * 2,
       );
 
       if (errorCount > maxReasonableErrorsPerNeuron) {
@@ -267,8 +265,8 @@ export function computeRustRecordStats(
         );
       }
 
-      // LOG WARNING: If a neuron has more errors than samples * outputs * 1.5, log it
-      // This catches cases where record() is being called too many times per sample
+      // LOG WARNING: Log if we're seeing unusually high error counts
+      // This helps identify potential issues early
       const warningThreshold = Math.max(
         20,
         Math.ceil(sampleCount * outputCount * 1.5),
