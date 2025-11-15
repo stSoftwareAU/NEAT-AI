@@ -171,9 +171,7 @@ while (retryAttempt <= maxRetries) {
   );
 
   // Filter out already-attempted neurons
-  const newFocusList = focusList.filter((uuid) =>
-    !attemptedNeurons.has(uuid)
-  );
+  const newFocusList = focusList.filter((uuid) => !attemptedNeurons.has(uuid));
 
   // Run all four analysis types on these neurons
   const addHelpfulSynapse = await discoverStructure.analyzeSelectedNeurons(

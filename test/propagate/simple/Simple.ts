@@ -123,7 +123,14 @@ function makeTrainData(creature: Creature) {
     const input = JSON.parse(
       Deno.readTextFileSync(tdFN),
     );
-    return input;
+    // Convert cached objects back to Float32Arrays
+    // Float32Arrays serialize as objects with numeric keys {"0": val, "1": val}
+    return input.map((
+      record: { input: Record<string, number>; output: Record<string, number> },
+    ) => ({
+      input: new Float32Array(Object.values(record.input)),
+      output: new Float32Array(Object.values(record.output)),
+    }));
   } // deno-lint-ignore no-empty
   catch (_e) {}
 
