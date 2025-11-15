@@ -674,6 +674,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const currentActivation = state.activations[this.index];
 
     let discoverRecord = discoverMap.get(this.uuid);
+    const isNewRecord = discoverRecord === undefined;
     if (discoverRecord === undefined) {
       discoverRecord = {
         activation: currentActivation,
@@ -681,6 +682,30 @@ export class Neuron implements TagsInterface, NeuronInternal {
       };
       assert(discoverRecord !== undefined);
       discoverMap.set(this.uuid, discoverRecord);
+    }
+
+    // DIAGNOSTIC: Log if we're being called multiple times for the same neuron
+    if (!isNewRecord && discoverRecord.errors.length > 50) {
+      console.warn(
+        `⚠️  PERFORMANCE: Neuron ${this.uuid} record() called ${
+          discoverRecord.errors.length + 1
+        } times in single sample!`,
+      );
+      console.warn(
+        `  Type: ${this.type}, Inward connections: ${listLength}, Current errors: ${discoverRecord.errors.length}`,
+      );
+      if (discoverRecord.errors.length > 100) {
+        console.error(
+          `❌ CRITICAL: Neuron ${this.uuid} has ${discoverRecord.errors.length} errors - likely infinite recursion!`,
+        );
+        throw new Error(
+          `Excessive record() calls detected on neuron ${this.uuid}. ` +
+            `Expected 1-3 calls per sample, got ${
+              discoverRecord.errors.length + 1
+            }. ` +
+            `This explains the performance issue and timeout.`,
+        );
+      }
     }
 
     const propagateUpdateMethod = squashMethod as NeuronActivationInterface;

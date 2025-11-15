@@ -714,6 +714,39 @@ export class Creature implements CreatureInternal {
       );
     }
 
+    // DIAGNOSTIC: Check for excessive total error count per sample
+    let totalErrors = 0;
+    for (const record of errorMap.values()) {
+      totalErrors += record.errors.length;
+    }
+
+    // Expected: approximately neurons.length * output (one error per neuron per output)
+    const expectedMax = neurons.length * this.output * 3;
+    if (totalErrors > expectedMax) {
+      console.error(
+        `❌ CRITICAL: Sample generated ${totalErrors} total errors (expected ≤${expectedMax})`,
+      );
+      console.error(
+        `   Neurons: ${neurons.length}, Outputs: ${this.output}, ErrorMap size: ${errorMap.size}`,
+      );
+      // Log top 5 neurons with most errors
+      const sorted = Array.from(errorMap.entries())
+        .sort((a, b) => b[1].errors.length - a[1].errors.length)
+        .slice(0, 5);
+      console.error(`   Top 5 neurons by error count:`);
+      sorted.forEach(([uuid, rec]) => {
+        console.error(`     - ${uuid}: ${rec.errors.length} errors`);
+      });
+
+      if (totalErrors > expectedMax * 10) {
+        throw new Error(
+          `Excessive errors detected: ${totalErrors} total errors in single sample ` +
+            `(expected ≤${expectedMax}). This indicates record() is being called too many times, ` +
+            `causing the performance issue and timeout.`,
+        );
+      }
+    }
+
     return errorMap;
   }
 

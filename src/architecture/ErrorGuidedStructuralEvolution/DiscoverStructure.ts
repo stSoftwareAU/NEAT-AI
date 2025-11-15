@@ -412,13 +412,32 @@ export class DiscoverStructure {
     for (let i = 0; i < trainingData.length; i++) {
       const record = trainingData[i];
 
-      // Activate creature with existing input
-      this.creature.activate(record.input);
-      const discoverMap = this.creature.record(record.output);
+      try {
+        // Activate creature with existing input
+        this.creature.activate(record.input);
+        const discoverMap = this.creature.record(record.output);
 
-      // Accumulate data for Rust (Parquet format)
-      this.rustAccumulatedData.push(record);
-      this.rustAccumulatedNeuronData.push(discoverMap);
+        // Accumulate data for Rust (Parquet format)
+        this.rustAccumulatedData.push(record);
+        this.rustAccumulatedNeuronData.push(discoverMap);
+      } catch (error) {
+        // If we hit the excessive record() calls error, add context about which sample
+        if (
+          error instanceof Error && error.message.includes("Excessive record()")
+        ) {
+          console.error(
+            `❌ Error occurred while processing sample ${
+              i + 1
+            }/${trainingData.length}`,
+          );
+          console.error(
+            `   Total samples accumulated so far: ${this.rustAccumulatedData.length}`,
+          );
+          console.error(`   Input: ${record.input.slice(0, 5)}...`);
+          console.error(`   Output: ${record.output.slice(0, 5)}...`);
+        }
+        throw error;
+      }
     }
 
     return !timedOut;
@@ -931,9 +950,52 @@ export class DiscoverStructure {
       }
 
       const errors = Array.isArray(neuron.errors) ? neuron.errors : [];
-      metrics.totalErrorValues += errors.length;
-      if (errors.length > metrics.maxErrorValuesPerNeuron) {
-        metrics.maxErrorValuesPerNeuron = errors.length;
+      const errorCount = errors.length;
+      metrics.totalErrorValues += errorCount;
+      if (errorCount > metrics.maxErrorValuesPerNeuron) {
+        metrics.maxErrorValuesPerNeuron = errorCount;
+      }
+
+      // VALIDATION: Check for unreasonable error counts
+      // This is per-record (per-sample) validation.
+      // During backpropagation for ONE sample, a neuron's record() should be called once per output.
+      // Each call pushes ONE error value. So max errors = outputCount × smallMultiplier.
+      // A multiplier of 3 accounts for complex/recurrent paths.
+      const outputCount = aggregation.expectedOutputLength;
+      const maxReasonableErrorsPerNeuronPerRecord = Math.max(
+        10,
+        outputCount * 3,
+      );
+
+      if (errorCount > maxReasonableErrorsPerNeuronPerRecord) {
+        console.error(
+          `❌ CRITICAL: Neuron ${uuid} has ${errorCount} errors in record ${globalSampleIndex}, ` +
+            `which exceeds reasonable maximum (${maxReasonableErrorsPerNeuronPerRecord})!`,
+        );
+        console.error(
+          `Record ${globalSampleIndex}, Neuron ${neuronIndex}`,
+        );
+        console.error(
+          `Outputs: ${outputCount} (expected ≤${
+            outputCount * 3
+          } errors per neuron per sample)`,
+        );
+        console.error(`Errors array sample (first 10):`, errors.slice(0, 10));
+        throw new Error(
+          `Data corruption detected: neuron ${uuid} has ${errorCount} errors in a single record, ` +
+            `which far exceeds reasonable maximum (${maxReasonableErrorsPerNeuronPerRecord}). ` +
+            `During backprop, record() should be called once per output. This indicates record() is being called too many times.`,
+        );
+      }
+
+      // LOG WARNING: If a neuron has more errors than outputs * 1.5 in a single record
+      const warningThreshold = Math.max(5, Math.ceil(outputCount * 1.5));
+      if (errorCount > warningThreshold) {
+        console.warn(
+          `⚠️  Record ${globalSampleIndex}: Neuron ${uuid} has ${errorCount} errors ` +
+            `(expected ≤${warningThreshold} for ${outputCount} outputs). ` +
+            `During backprop, record() should be called once per output. Multiple calls suggest a logic error.`,
+        );
       }
 
       errors.forEach((errorValue, errorIndex) => {
