@@ -15,6 +15,8 @@ import { assert } from "@std/assert";
 import { fromFileUrl } from "@std/path/from-file-url";
 import { join } from "@std/path/join";
 
+const MAX_C_STRING_BYTES = 128 * 1024 * 1024; // 128 MiB guard for FFI strings
+
 /**
  * Result of recording discovery data via Rust module.
  */
@@ -720,8 +722,10 @@ function readCString(ptr: Deno.PointerValue): string {
   // Find null terminator
   while (view.getUint8(length) !== 0) {
     length++;
-    if (length > 1000000) { // Safety limit
-      throw new Error("C string too long or not null-terminated");
+    if (length >= MAX_C_STRING_BYTES) {
+      throw new Error(
+        `C string exceeded ${MAX_C_STRING_BYTES} bytes without null terminator`,
+      );
     }
   }
 
