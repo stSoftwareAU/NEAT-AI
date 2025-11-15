@@ -123,3 +123,142 @@ wasted work** - Recorded data is always analyzed ✅ **Predictable behavior** -
 Analysis gets guaranteed time allocation ✅ **Configurable** - Users can tune
 both timeouts independently ✅ **Backward compatible** - Default of 3 minutes
 works for existing code
+
+## Intelligent Retry Logic (15-Nov-2024)
+
+### Problem
+
+The expensive recording phase could take minutes, but if the randomly selected
+neurons didn't yield any discoveries, the entire effort was wasted:
+
+```
+Recording phase: 7m 9s (processing 20 records)
+Analysis phase: Selected 6 neurons randomly
+  - Analyze helpful synapses: found 0 candidates
+  - Analyze helpful neurons: found 0 candidates
+  - Analyze harmful synapses: found 0 candidates
+  - Analyze squashes: found 0 candidates
+Result: 0 candidates (wasted 7+ minutes of recording work)
+```
+
+The recorded data in the Parquet file was perfectly good, but we only tried one
+random set of neurons and gave up.
+
+### Solution
+
+**Retry with different neurons if no candidates found:**
+
+The analysis phase now automatically retries with different randomly selected
+neurons if:
+
+1. No candidates were found in the initial analysis
+2. Analysis timeout hasn't been reached (`discoveryAnalysisTimeoutMinutes`)
+3. There are still untried neurons available
+
+### Implementation
+
+**Retry Loop in DiscoverDirectory:**
+
+```typescript
+const attemptedNeurons = new Set<string>();
+let retryAttempt = 0;
+const maxRetries = 10;
+
+while (retryAttempt <= maxRetries) {
+  // Select neurons (weighted by error)
+  const focusList = await discoverStructure.selectNeuronsWeightedByError(
+    this.discoveryMaxNeurons,
+  );
+
+  // Filter out already-attempted neurons
+  const newFocusList = focusList.filter((uuid) => !attemptedNeurons.has(uuid));
+
+  // Run all four analysis types on these neurons
+  const addHelpfulSynapse = await discoverStructure.analyzeSelectedNeurons(
+    newFocusList,
+  );
+  const addHelpfulNeurons = await discoverStructure.analyzeMissingNeurons(
+    newFocusList,
+  );
+  const removeHarmfulSynapse = await discoverStructure
+    .analyzeSelectedNeuronsForRemoval(newFocusList);
+  const candidateSquashes = await discoverStructure
+    .analyzeSelectedNeuronsSquashes(newFocusList);
+
+  // Check if we found any candidates
+  const foundCandidates = Boolean(
+    addHelpfulSynapse ||
+      addHelpfulNeurons ||
+      removeHarmfulSynapse ||
+      candidateSquashes,
+  );
+
+  if (foundCandidates) {
+    break; // Success! Exit retry loop
+  }
+
+  // Check if we still have time for another retry
+  const timeRemaining = this.timeoutTS - Date.now();
+  if (timeRemaining <= 0) {
+    break; // Timeout reached, stop retrying
+  }
+
+  retryAttempt++;
+  // Try again with different neurons...
+}
+```
+
+### Expected Behavior
+
+**Before Retry Logic:**
+
+```
+Discovery recording: 7m 9s
+Discovery selected 6 focus neurons in 2s
+  - Analyze helpful: found 0 candidates
+  - Analyze neurons: found 0 candidates
+  - Analyze harmful: found 0 candidates
+  - Analyze squashes: found 0 candidates
+Total time: 7m 15s
+Result: 0 candidates (7+ minutes wasted)
+```
+
+**After Retry Logic:**
+
+```
+Discovery recording: 7m 9s
+Discovery selected 6 focus neurons in 2s
+  - Analyze helpful: found 0 candidates
+  - Analyze neurons: found 0 candidates
+  - Analyze harmful: found 0 candidates
+  - Analyze squashes: found 0 candidates
+Discovery no candidates found, retrying with different neurons (2m 58s remaining)
+Discovery selected 6 focus neurons in 2s (retry 1, 6 already tried)
+  - Analyze helpful: found 2 candidates ✓
+  - Analyze neurons: found 1 candidate ✓
+  - Analyze harmful: found 0 candidates
+  - Analyze squashes: found 1 candidate ✓
+Discovery found candidates after 1 retry attempt
+Total time: 7m 25s
+Result: 4 candidates found (recording work not wasted!)
+```
+
+### Key Features
+
+1. **Tracks attempted neurons** - Avoids analyzing the same neurons twice
+2. **Respects analysis timeout** - Only retries while time remains
+3. **Reuses recorded data** - No need to re-record, just analyze different
+   neurons
+4. **Max retry limit** - Prevents infinite loops (default: 10 retries)
+5. **Weighted selection** - Each retry still uses error-weighted selection for
+   new neurons
+6. **Early exit on success** - Stops immediately when candidates are found
+
+### Benefits
+
+✅ **Maximizes recording investment** - Tries multiple neuron sets using same
+recorded data ✅ **Increases discovery success rate** - More chances to find
+improvements ✅ **Time-bounded** - Respects `discoveryAnalysisTimeoutMinutes`
+limit ✅ **No duplicate work** - Tracks and skips already-analyzed neurons ✅
+**Automatic** - No configuration needed, works out of the box ✅ **Minimal
+overhead** - Only retries when needed (no candidates found)
