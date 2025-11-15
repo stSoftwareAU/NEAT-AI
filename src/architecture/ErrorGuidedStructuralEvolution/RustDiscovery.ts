@@ -759,6 +759,9 @@ export function recordDiscovery(
 
   const stats = computeRustRecordStats(input);
 
+  let inputJson: string | undefined;
+  let inputBytes: Uint8Array | undefined;
+
   const buildFailure = (
     stage: RustRecordFailureStage,
     message: string,
@@ -790,7 +793,6 @@ export function recordDiscovery(
     };
   };
 
-  let inputJson: string | undefined;
   try {
     inputJson = JSON.stringify(input);
   } catch (error) {
@@ -798,7 +800,6 @@ export function recordDiscovery(
     return buildFailure("stringify", message);
   }
 
-  let inputBytes: Uint8Array | undefined;
   try {
     inputBytes = new TextEncoder().encode(inputJson);
   } catch (error) {
