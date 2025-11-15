@@ -229,11 +229,87 @@ export function computeRustRecordStats(
       }
 
       const errors = neuron.errors ?? [];
-      totalErrorValues += errors.length;
-      if (errors.length > maxErrorValuesPerNeuron) {
-        maxErrorValuesPerNeuron = errors.length;
+      const errorCount = errors.length;
+      totalErrorValues += errorCount;
+
+      if (errorCount > maxErrorValuesPerNeuron) {
+        maxErrorValuesPerNeuron = errorCount;
+      }
+
+      // VALIDATION: Check for unreasonable error counts
+      // During backpropagation, each neuron's record() is called once per sample per output.
+      // Maximum errors per neuron = sampleCount * outputCount * pathMultiplier
+      // - Each sample records 1 error value per call to record()
+      // - A neuron is called at most once per output neuron that depends on it
+      // - A multiplier of 3 accounts for complex/recurrent paths
+      // - Additionally cap at 50 for very small sample sizes (e.g., 10 samples)
+      const outputCount = outputLength ?? 1;
+      const maxReasonableErrorsPerNeuron = Math.max(
+        50,
+        sampleCount * outputCount * 3,
+      );
+
+      if (errorCount > maxReasonableErrorsPerNeuron) {
+        console.error(
+          `❌ CRITICAL: Neuron ${uuid} has ${errorCount} errors, which exceeds reasonable maximum (${maxReasonableErrorsPerNeuron})!`,
+        );
+        console.error(
+          `This indicates data corruption in the TypeScript logic.`,
+        );
+        console.error(
+          `Samples: ${sampleCount}, Outputs: ${outputCount}, Max per neuron: ${maxReasonableErrorsPerNeuron}`,
+        );
+        console.error(`Errors array sample (first 10):`, errors.slice(0, 10));
+        throw new Error(
+          `Data corruption detected: neuron ${uuid} has ${errorCount} errors, ` +
+            `which far exceeds reasonable maximum (${maxReasonableErrorsPerNeuron}). ` +
+            `With ${sampleCount} samples and ${outputCount} outputs, this is impossible and indicates a bug in error recording.`,
+        );
+      }
+
+      // LOG WARNING: If a neuron has more errors than samples * outputs * 1.5, log it
+      // This catches cases where record() is being called too many times per sample
+      const warningThreshold = Math.max(
+        20,
+        Math.ceil(sampleCount * outputCount * 1.5),
+      );
+      if (errorCount > warningThreshold) {
+        console.warn(
+          `⚠️  Neuron ${uuid} has ${errorCount} errors (expected ≤${warningThreshold} for ${sampleCount} samples × ${outputCount} outputs). ` +
+            `During backprop, record() should be called once per sample per output. Multiple calls suggest a logic error.`,
+        );
       }
     }
+  }
+
+  // VALIDATION: Total error values sanity check
+  // Maximum possible: each neuron record could have up to max(50, sampleCount * outputCount * 3) errors
+  // This is consistent with the per-neuron validation above.
+  const outputCount = outputLength ?? 1;
+  const maxReasonableErrorsPerRecord = Math.max(
+    50,
+    sampleCount * outputCount * 3,
+  );
+  const maxReasonableErrors = totalNeuronRecords * maxReasonableErrorsPerRecord;
+  if (totalErrorValues > maxReasonableErrors) {
+    console.error(
+      `❌ CRITICAL: Total error values (${totalErrorValues}) exceeds reasonable maximum (${maxReasonableErrors})!`,
+    );
+    console.error(
+      `With ${sampleCount} samples and ${expectedNeuronCount} neurons (${totalNeuronRecords} neuron records), this is impossible.`,
+    );
+    console.error(
+      `Average errors per neuron record: ${
+        (totalErrorValues / totalNeuronRecords).toFixed(2)
+      }`,
+    );
+    console.error(
+      `Max reasonable per record: ${maxReasonableErrorsPerRecord}`,
+    );
+    throw new Error(
+      `Data corruption detected: ${totalErrorValues} total error values for ${totalNeuronRecords} neuron records ` +
+        `(max ${maxReasonableErrors}). This suggests a critical bug in the error accumulation logic.`,
+    );
   }
 
   return {
