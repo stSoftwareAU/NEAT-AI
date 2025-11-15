@@ -55,7 +55,7 @@ Call 2 → visits 646 neurons again → ...
 
 **File**: `src/architecture/Neuron.ts`, lines 743-783
 
-**Solution**: Track visited neurons using the `errors` array length
+**Solution**: Track visited neurons and only process on first visit
 
 ```typescript
 // BEFORE: Always pushed error and recursed
@@ -67,10 +67,10 @@ if (listLength) {
   }
 }
 
-// AFTER: Only process on first visit
+// AFTER: Only process and record on first visit
 const isFirstVisit = discoverRecord.errors.length === 0;
 if (isFirstVisit) {
-  discoverRecord.errors.push(error);  // Push error once
+  discoverRecord.errors.push(error);  // Push error once per sample
   
   if (listLength) {
     // Only recurse on first visit
@@ -79,7 +79,7 @@ if (isFirstVisit) {
     }
   }
 }
-// Subsequent visits: skip everything
+// Subsequent visits: skip entirely
 ```
 
 ### How It Works

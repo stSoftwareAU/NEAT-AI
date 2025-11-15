@@ -752,7 +752,9 @@ Deno.test({
     );
 
     assert(input22, "Should have added synapse from input-22");
-    assertAlmostEquals(input22?.weight, 0.2, 0.075);
+    // Weight changed after v0.195.8 fix: errors now recorded once per sample (was multiple times)
+    // Old: ~0.2, New: ~0.099 (correct with proper error recording)
+    assertAlmostEquals(input22?.weight, 0.099, 0.02);
     const input33 = betterCreatureJSON.synapses.find((synapse) =>
       synapse.fromUUID === "input-33"
     );

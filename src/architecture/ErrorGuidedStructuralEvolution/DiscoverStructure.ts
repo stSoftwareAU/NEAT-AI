@@ -958,14 +958,14 @@ export class DiscoverStructure {
 
       // VALIDATION: Check for unreasonable error counts
       // This is per-record (per-sample) validation.
-      // During backpropagation for ONE sample, errors accumulate from all paths:
-      // - A neuron can be reached via multiple paths from each output
-      // - Each path contributes one error value
-      // - Multiplier of 10 accounts for complex/recurrent architectures
+      // During backpropagation for ONE sample, each neuron records ONE error
+      // - Expected: 1 error per neuron per sample
+      // - Multiplier of 2 provides buffer for edge cases
+      // - Minimum threshold of 10 for safety
       const outputCount = aggregation.expectedOutputLength;
       const maxReasonableErrorsPerNeuronPerRecord = Math.max(
-        100,
-        outputCount * 10,
+        10,
+        outputCount * 2,
       );
 
       if (errorCount > maxReasonableErrorsPerNeuronPerRecord) {
@@ -978,19 +978,19 @@ export class DiscoverStructure {
         );
         console.error(
           `Outputs: ${outputCount} (expected ≤${
-            outputCount * 3
+            outputCount * 2
           } errors per neuron per sample)`,
         );
         console.error(`Errors array sample (first 10):`, errors.slice(0, 10));
         throw new Error(
           `Data corruption detected: neuron ${uuid} has ${errorCount} errors in a single record, ` +
             `which far exceeds reasonable maximum (${maxReasonableErrorsPerNeuronPerRecord}). ` +
-            `During backprop, record() should be called once per output. This indicates record() is being called too many times.`,
+            `During backprop, each neuron should record ONE error per sample. This indicates record() is being called too many times.`,
         );
       }
 
       // LOG WARNING: Log if we're seeing unusually high error counts per sample
-      const warningThreshold = Math.max(50, Math.ceil(outputCount * 5));
+      const warningThreshold = Math.max(5, Math.ceil(outputCount * 1.5));
       if (errorCount > warningThreshold) {
         console.warn(
           `⚠️  Record ${globalSampleIndex}: Neuron ${uuid} has ${errorCount} errors ` +

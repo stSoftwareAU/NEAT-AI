@@ -30,7 +30,7 @@ Discovery was completely broken:
 const isFirstVisit = discoverRecord.errors.length === 0;
 if (isFirstVisit) {
   // Only process and recurse on first visit
-  discoverRecord.errors.push(error);
+  discoverRecord.errors.push(error); // ONE error per sample
   // ... recursive backpropagation ...
 }
 // Subsequent visits: skip entirely
@@ -49,33 +49,35 @@ To prevent similar issues and aid debugging:
 
 ### 1. Per-Neuron Validation
 
-Max errors per neuron = `max(50, samples × outputs × 3)`
+Max errors per neuron = `max(50, samples × outputs × 2)`
 
 Example with 20 samples, 1 output:
 
-- Max: 60 errors per neuron
-- Your neuron had 1,020,488 → **Would crash immediately with diagnostic info**
+- Expected: 20 errors (one per sample)
+- Max threshold: 40 errors
+- 1,020,488 errors → **Would crash immediately with diagnostic info**
 
 ### 2. Total Errors Validation
 
-Max total = `neuronRecords × max(50, samples × outputs × 3)`
+Max total = `neuronRecords × max(50, samples × outputs × 2)`
 
-Example with 8,980 neuron records:
+Example with 8,980 neuron records, 20 samples:
 
-- Max: 538,800 total errors
-- Your data had 247,030,102 → **Would crash immediately**
+- Expected: ~179,600 total errors
+- Max threshold: ~359,200 total errors
+- 247,030,102 errors → **Would crash immediately**
 
 ### 3. Diagnostic Logging
 
 **Warnings**:
 
-- At 50 errors: Shows which neuron and connection count
-- If total > expected: Shows top 5 neurons by error count
+- If errors exceed 1.5x expected: Shows neuron details
+- If total > expected: Shows top neurons by error count
 
 **Crashes**:
 
-- At 100 errors per neuron: Prevents infinite recursion
-- At 10x expected total: Shows which sample failed
+- At 2x expected per neuron: Prevents infinite recursion
+- If validation fails: Shows diagnostic information
 
 ## Files Changed
 

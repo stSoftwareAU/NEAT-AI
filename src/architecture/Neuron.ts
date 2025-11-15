@@ -738,40 +738,41 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
 
       // CRITICAL FIX: Track if this is the first visit to this neuron
-      // We should accumulate errors from all paths, but only recurse once
+      // Only process and record error on first visit to prevent exponential recursion
       const isFirstVisit = discoverRecord.errors.length === 0;
 
-      // Always push the error (accumulate from all paths - correct backpropagation)
-      discoverRecord.errors.push(error);
+      // Only process on first visit (prevents duplicate errors and exponential recursion)
+      if (isFirstVisit) {
+        discoverRecord.errors.push(error);
 
-      // But only propagate errors backward on the first visit (prevents exponential recursion)
-      if (isFirstVisit && listLength) {
-        const errorPerLink = error / listLength;
+        if (listLength) {
+          const errorPerLink = error / listLength;
 
-        for (let indx = 0; indx < listLength; indx++) {
-          const c = inwardList[indx];
-          const { from, to } = c;
+          for (let indx = 0; indx < listLength; indx++) {
+            const c = inwardList[indx];
+            const { from, to } = c;
 
-          if (from === to) continue;
+            if (from === to) continue;
 
-          const fromNeuron = this.creature.neurons[from];
+            const fromNeuron = this.creature.neurons[from];
 
-          const type = fromNeuron.type;
-          if (
-            c.weight &&
-            type !== "input" &&
-            type !== "constant"
-          ) {
-            const fromActivation = state.activations[from];
+            const type = fromNeuron.type;
+            if (
+              c.weight &&
+              type !== "input" &&
+              type !== "constant"
+            ) {
+              const fromActivation = state.activations[from];
 
-            const fromValue = c.weight * fromActivation;
+              const fromValue = c.weight * fromActivation;
 
-            const targetFromValue = fromValue + errorPerLink;
-            const targetFromActivation = targetFromValue / c.weight;
-            fromNeuron.record(
-              targetFromActivation,
-              discoverMap,
-            );
+              const targetFromValue = fromValue + errorPerLink;
+              const targetFromActivation = targetFromValue / c.weight;
+              fromNeuron.record(
+                targetFromActivation,
+                discoverMap,
+              );
+            }
           }
         }
       }
