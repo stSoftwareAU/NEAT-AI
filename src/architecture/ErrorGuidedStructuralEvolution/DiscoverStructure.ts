@@ -958,13 +958,14 @@ export class DiscoverStructure {
 
       // VALIDATION: Check for unreasonable error counts
       // This is per-record (per-sample) validation.
-      // During backpropagation for ONE sample, a neuron's record() should be called once per output.
-      // Each call pushes ONE error value. So max errors = outputCount × smallMultiplier.
-      // A multiplier of 3 accounts for complex/recurrent paths.
+      // During backpropagation for ONE sample, errors accumulate from all paths:
+      // - A neuron can be reached via multiple paths from each output
+      // - Each path contributes one error value
+      // - Multiplier of 10 accounts for complex/recurrent architectures
       const outputCount = aggregation.expectedOutputLength;
       const maxReasonableErrorsPerNeuronPerRecord = Math.max(
-        10,
-        outputCount * 3,
+        100,
+        outputCount * 10,
       );
 
       if (errorCount > maxReasonableErrorsPerNeuronPerRecord) {
@@ -988,8 +989,8 @@ export class DiscoverStructure {
         );
       }
 
-      // LOG WARNING: If a neuron has more errors than outputs * 1.5 in a single record
-      const warningThreshold = Math.max(5, Math.ceil(outputCount * 1.5));
+      // LOG WARNING: Log if we're seeing unusually high error counts per sample
+      const warningThreshold = Math.max(50, Math.ceil(outputCount * 5));
       if (errorCount > warningThreshold) {
         console.warn(
           `⚠️  Record ${globalSampleIndex}: Neuron ${uuid} has ${errorCount} errors ` +

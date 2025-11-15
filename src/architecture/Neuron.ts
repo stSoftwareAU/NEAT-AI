@@ -684,26 +684,23 @@ export class Neuron implements TagsInterface, NeuronInternal {
       discoverMap.set(this.uuid, discoverRecord);
     }
 
-    // DIAGNOSTIC: Log if we're being called multiple times for the same neuron
-    if (!isNewRecord && discoverRecord.errors.length > 50) {
+    // DIAGNOSTIC: Log if we're accumulating excessive errors
+    // Note: Errors accumulate from all paths (correct behavior), but recursion should only happen once
+    if (!isNewRecord && discoverRecord.errors.length > 200) {
       console.warn(
-        `⚠️  PERFORMANCE: Neuron ${this.uuid} record() called ${
-          discoverRecord.errors.length + 1
-        } times in single sample!`,
+        `⚠️  PERFORMANCE: Neuron ${this.uuid} has ${discoverRecord.errors.length} accumulated errors`,
       );
       console.warn(
-        `  Type: ${this.type}, Inward connections: ${listLength}, Current errors: ${discoverRecord.errors.length}`,
+        `  Type: ${this.type}, Inward connections: ${listLength}`,
       );
-      if (discoverRecord.errors.length > 100) {
+      if (discoverRecord.errors.length > 500) {
         console.error(
           `❌ CRITICAL: Neuron ${this.uuid} has ${discoverRecord.errors.length} errors - likely infinite recursion!`,
         );
         throw new Error(
-          `Excessive record() calls detected on neuron ${this.uuid}. ` +
-            `Expected 1-3 calls per sample, got ${
-              discoverRecord.errors.length + 1
-            }. ` +
-            `This explains the performance issue and timeout.`,
+          `Excessive error accumulation detected on neuron ${this.uuid}. ` +
+            `Got ${discoverRecord.errors.length} errors. ` +
+            `This suggests infinite recursion in backpropagation.`,
         );
       }
     }

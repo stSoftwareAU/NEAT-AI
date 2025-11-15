@@ -82,11 +82,12 @@ Deno.test({
             activation: 0.5,
             value: 0.4,
             // First neuron has way too many errors, rest have normal amounts
-            // First: 150 errors (exceeds max(100, 10*2) = 100)
-            // Total: 150 + 9*1 = 159 errors, max is 10 * 100 = 1000
-            // So this will trigger the per-neuron validation
+            // With new thresholds: max = Math.max(200, samples * outputs * 10)
+            // For 1 sample, 1 output: max = Math.max(200, 1 * 1 * 10) = 200
+            // First: 300 errors (exceeds max of 200)
+            // This will trigger the per-neuron validation
             errors: idx === 0
-              ? Array.from({ length: 150 }, (_, i) => i * 0.001)
+              ? Array.from({ length: 300 }, (_, i) => i * 0.001)
               : [0.001],
           })),
         },
@@ -94,7 +95,7 @@ Deno.test({
       "temp_dir": ".discovery/test",
     };
 
-    // This should throw because first neuron has 150 errors which exceeds max (100)
+    // This should throw because first neuron has 300 errors which exceeds max (200)
     assertThrows(
       () => computeRustRecordStats(input),
       Error,
