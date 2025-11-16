@@ -1455,6 +1455,12 @@ export class DiscoverStructure {
           JSON.stringify({ focusList, result }, (_key, value) => value, 2),
         );
       }
+      if (this.loggingEnabled && result.gpuUsed !== undefined) {
+        this.log(
+          "info",
+          `Rust neuron analysis ${result.gpuUsed ? "using GPU" : "using CPU fallback"} (${result.helpfulNeurons?.length ?? 0} candidates)`,
+        );
+      }
       return result;
     } catch (error) {
       this.log(
@@ -1508,6 +1514,12 @@ export class DiscoverStructure {
         console.log(
           "rust-analysis",
           JSON.stringify({ focusList, result }, (_key, value) => value, 2),
+        );
+      }
+      if (this.loggingEnabled && result.gpuUsed !== undefined) {
+        this.log(
+          "info",
+          `Rust synapse analysis ${result.gpuUsed ? "using GPU" : "using CPU fallback"} (${result.helpfulSynapses?.length ?? 0} helpful, ${result.harmfulSynapses?.length ?? 0} harmful candidates)`,
         );
       }
       return result;
