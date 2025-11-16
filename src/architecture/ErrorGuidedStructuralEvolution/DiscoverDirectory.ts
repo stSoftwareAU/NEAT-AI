@@ -313,6 +313,14 @@ class DataRecorder {
     if (Array.isArray(focusOverride) && focusOverride.length > 0) {
       discoverStructure.setForcedFocusNeurons(focusOverride);
     }
+    if (
+      typeof options.discoveryMinImprovementPercentage === "number" &&
+      Number.isFinite(options.discoveryMinImprovementPercentage)
+    ) {
+      discoverStructure.setImprovementThreshold(
+        options.discoveryMinImprovementPercentage,
+      );
+    }
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     const initializeStartTime = Date.now();
@@ -558,29 +566,6 @@ class DataRecorder {
           break;
         }
 
-        currentPhase = "analyze_helpful";
-        const analyzeStartTime = Date.now();
-
-        // deno-lint-ignore no-await-in-loop
-        const addHelpfulSynapse = await discoverStructure
-          .analyzeSelectedNeurons(
-            newFocusList,
-          );
-        if (shouldLogDiscovery(options)) {
-          const analyzeTime = Date.now() - analyzeStartTime;
-          console.log(
-            `Discovery ${blue(this.ID)} analyze time ${
-              yellow(format(analyzeTime, { ignoreZero: true }))
-            } found ${
-              addHelpfulSynapse ? addHelpfulSynapse.length : 0
-            } synapse candidates`,
-          );
-        }
-
-        if (addHelpfulSynapse) {
-          discoverResult.addHelpfulSynapses = addHelpfulSynapse;
-        }
-
         currentPhase = "analyze_neurons";
         const neuronAnalyzeStart = Date.now();
         // deno-lint-ignore no-await-in-loop
@@ -599,6 +584,31 @@ class DataRecorder {
         }
         if (addHelpfulNeurons && addHelpfulNeurons.length > 0) {
           discoverResult.addHelpfulNeurons = addHelpfulNeurons;
+        }
+
+        currentPhase = "analyze_helpful";
+        const analyzeStartTime = Date.now();
+
+        // deno-lint-ignore no-await-in-loop
+        const addHelpfulSynapse = await discoverStructure
+          .analyzeSelectedNeurons(
+            newFocusList,
+          );
+        if (shouldLogDiscovery(options)) {
+          const analyzeTime = Date.now() - analyzeStartTime;
+          console.log(
+            `Discovery ${blue(this.ID)} analyze synapses time ${
+              yellow(format(analyzeTime, { ignoreZero: true }))
+            } found ${
+              addHelpfulSynapse ? addHelpfulSynapse.length : 0
+            } candidate${
+              addHelpfulSynapse && addHelpfulSynapse.length === 1 ? "" : "s"
+            }`,
+          );
+        }
+
+        if (addHelpfulSynapse) {
+          discoverResult.addHelpfulSynapses = addHelpfulSynapse;
         }
 
         currentPhase = "analyze_harmful";

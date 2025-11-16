@@ -137,6 +137,12 @@ export interface NeatArguments {
   /** Discovery Sample rate */
   discoverySampleRate: number;
 
+  /**
+   * Minimum expected improvement (0..1) that a discovery candidate must
+   * achieve in order to be considered helpful. Defaults to 0.1 (10%).
+   */
+  discoveryMinImprovementPercentage?: number;
+
   /** The maximum number of minutes to record for */
   discoveryTimeOutMinutes: number;
 

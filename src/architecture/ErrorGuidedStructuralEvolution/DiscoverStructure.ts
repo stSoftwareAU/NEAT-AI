@@ -146,8 +146,8 @@ interface RustFlushAggregation {
   metrics: RustFlushMetrics;
 }
 
-const RUST_HELPFUL_THRESHOLD = 0.1;
-const RUST_HARMFUL_THRESHOLD = -0.1;
+const DEFAULT_RUST_HELPFUL_THRESHOLD = 0.1;
+const DEFAULT_RUST_HARMFUL_THRESHOLD = -0.1;
 
 /**
  * Implements Error-Driven Synapse Discovery, analyzing neuron activations
@@ -180,6 +180,9 @@ export class DiscoverStructure {
   private syntheticBinaryMode = false;
   private deps: DiscoverStructureDeps;
   private forcedFocusNeurons: string[] | null = null;
+  private forcedFocusIndex = 0;
+  private improvementThreshold = DEFAULT_RUST_HELPFUL_THRESHOLD;
+  private harmfulThreshold = DEFAULT_RUST_HARMFUL_THRESHOLD;
   constructor(
     creature: Creature,
     timeoutSeconds: number,
@@ -279,12 +282,36 @@ export class DiscoverStructure {
     }
 
     this.forcedFocusNeurons = Array.from(new Set(filtered));
+    this.forcedFocusIndex = 0;
     if (this.loggingEnabled) {
       this.log(
         "info",
         `Applying forced discovery focus neurons: ${
           this.forcedFocusNeurons.join(", ")
         }`,
+      );
+    }
+  }
+
+  public setImprovementThreshold(threshold: number): void {
+    const parsed = Number(threshold);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      if (this.loggingEnabled) {
+        this.log(
+          "warn",
+          `Ignored invalid discovery improvement threshold: ${threshold}`,
+        );
+      }
+      return;
+    }
+    this.improvementThreshold = parsed;
+    this.harmfulThreshold = -Math.abs(parsed);
+    if (this.loggingEnabled) {
+      this.log(
+        "info",
+        `Configured discovery improvement threshold to ${
+          (this.improvementThreshold * 100).toFixed(2)
+        }%.`,
       );
     }
   }
@@ -377,14 +404,14 @@ export class DiscoverStructure {
     if (timedOut) {
       this.log(
         "warn",
-        "Discovery recording timeout reached; preserving final batch before stopping.",
+        "Discovery recording timeout reached; skipping remaining samples.",
       );
     }
     this.recorded = true;
 
     // Rust module is required - if not available, discovery was already skipped in initialize()
-    if (!this.usingRustDualWrite) {
-      return false; // Discovery skipped - Rust not available
+    if (!this.usingRustDualWrite || timedOut) {
+      return false; // Discovery skipped - Rust not available or timed out
     }
 
     // Track selected indices if provided (from binary file processing)
@@ -623,11 +650,14 @@ export class DiscoverStructure {
         0,
         Math.floor((this.timeoutTS - Date.now()) / 1000),
       );
+      const flushRate = flushDuration > 0
+        ? (pendingSamples / (flushDuration / 1000)).toFixed(2)
+        : "∞";
       this.log(
         "info",
         `Flushed ${pendingSamples} samples to ${parquetPath} in ${
           this.formatMillis(flushDuration)
-        } (timeout remaining: ${remainingSeconds}s).`,
+        } (${flushRate} samples/sec, timeout remaining: ${remainingSeconds}s).`,
       );
 
       return parquetPath;
@@ -1224,7 +1254,7 @@ export class DiscoverStructure {
     const candidates = rustResult.helpfulNeurons
       .map((candidate) => this.mapRustNeuronCandidate(candidate))
       .filter((candidate) =>
-        candidate.expectedImprovementPercentage > RUST_HELPFUL_THRESHOLD
+        candidate.expectedImprovementPercentage > this.improvementThreshold
       );
 
     if (candidates.length === 0) {
@@ -1248,7 +1278,7 @@ export class DiscoverStructure {
     const candidates = rustResult.helpfulSynapses
       .map((candidate) => this.mapRustCandidate(candidate))
       .filter((candidate) =>
-        candidate.expectedImprovementPercentage > RUST_HELPFUL_THRESHOLD
+        candidate.expectedImprovementPercentage > this.improvementThreshold
       );
 
     if (candidates.length === 0) {
@@ -1272,7 +1302,7 @@ export class DiscoverStructure {
     const candidates = rustResult.harmfulSynapses
       .map((candidate) => this.mapRustCandidate(candidate))
       .filter((candidate) =>
-        candidate.expectedImprovementPercentage < RUST_HARMFUL_THRESHOLD
+        candidate.expectedImprovementPercentage < this.harmfulThreshold
       );
 
     if (candidates.length === 0) {
@@ -1401,7 +1431,7 @@ export class DiscoverStructure {
       parquetFile: this.parquetFilePath,
       creature: creatureToRustFormat(this.creature.exportJSON()),
       focusNeurons: focusList,
-      improvementThreshold: RUST_HELPFUL_THRESHOLD,
+      improvementThreshold: this.improvementThreshold,
       maxCandidates: Math.max(25, focusList.length * 5),
       requireGpu: Deno.build.os === "darwin",
     };
@@ -1456,7 +1486,7 @@ export class DiscoverStructure {
       parquetFile: this.parquetFilePath,
       creature: creatureToRustFormat(this.creature.exportJSON()),
       focusNeurons: focusList,
-      improvementThreshold: RUST_HELPFUL_THRESHOLD,
+      improvementThreshold: this.improvementThreshold,
       maxCandidates: Math.max(50, focusList.length * 10),
       requireGpu: Deno.build.os === "darwin",
     };
@@ -1906,23 +1936,37 @@ export class DiscoverStructure {
    */
   public async selectNeuronsWeightedByError(count: number): Promise<string[]> {
     assert(count > 0, "Count must be greater than 0");
-    if (this.forcedFocusNeurons && this.forcedFocusNeurons.length > 0) {
-      const trimmed = this.forcedFocusNeurons.slice(0, count);
-      if (
-        this.loggingEnabled && trimmed.length < this.forcedFocusNeurons.length
-      ) {
+    if (
+      this.forcedFocusNeurons && this.forcedFocusIndex <
+        this.forcedFocusNeurons.length
+    ) {
+      const nextIndex = Math.min(
+        this.forcedFocusIndex + count,
+        this.forcedFocusNeurons.length,
+      );
+      const trimmed = this.forcedFocusNeurons.slice(
+        this.forcedFocusIndex,
+        nextIndex,
+      );
+      this.forcedFocusIndex = nextIndex;
+      if (this.loggingEnabled) {
         this.log(
           "info",
-          `Trimming forced focus neurons from ${this.forcedFocusNeurons.length} to ${trimmed.length} to respect discoveryMaxNeurons=${count}`,
+          `Serving ${trimmed.length} forced focus neuron(s) (${this.forcedFocusIndex}/${this.forcedFocusNeurons.length} consumed).`,
         );
       }
-      if (this.loggingEnabled && trimmed.length < count) {
-        this.log(
-          "warn",
-          `Forced focus provided only ${trimmed.length} neuron(s) but ${count} requested; skipping weighted fallback.`,
-        );
+      if (this.forcedFocusIndex >= this.forcedFocusNeurons.length) {
+        if (this.loggingEnabled) {
+          this.log(
+            "info",
+            "All forced focus neurons evaluated; falling back to weighted selection.",
+          );
+        }
+        this.forcedFocusNeurons = null;
       }
-      return trimmed;
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
     }
     const neuronErrors = await this.listViableNeurons();
     if (neuronErrors.length === 0) return [];
