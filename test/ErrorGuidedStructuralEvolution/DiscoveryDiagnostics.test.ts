@@ -79,4 +79,3 @@ Deno.test("logs diagnostics when Rust finds no improvements", () => {
     "no aligned samples",
   );
 });
-

@@ -1639,7 +1639,9 @@ export class DiscoverStructure {
       totalWeight,
     };
     if (this.loggingEnabled && mode === "weighted") {
-      const preview = neurons.slice(0, Math.min(3, neurons.length)).map((entry) =>
+      const preview = neurons.slice(0, Math.min(3, neurons.length)).map((
+        entry,
+      ) =>
         entry.weight !== undefined
           ? `${entry.uuid} (weight ${entry.weight.toFixed(4)})`
           : entry.uuid
@@ -1662,7 +1664,9 @@ export class DiscoverStructure {
     if (!summary || summary.key !== focusKey) {
       this.log(
         "warn",
-        `Focus selection summary unavailable for ${scope} analysis (focus=${focusList.join(", ")})`,
+        `Focus selection summary unavailable for ${scope} analysis (focus=${
+          focusList.join(", ")
+        })`,
       );
       return;
     }
@@ -1674,9 +1678,7 @@ export class DiscoverStructure {
         ? `${entry.uuid} (weight ${entry.weight.toFixed(4)})`
         : entry.uuid
     );
-    const suffix = summary.neurons.length > displayEntries.length
-      ? ", …"
-      : "";
+    const suffix = summary.neurons.length > displayEntries.length ? ", …" : "";
     const totalInfo = summary.totalWeight !== undefined
       ? ` totalWeight=${summary.totalWeight.toFixed(4)}`
       : "";
@@ -1684,7 +1686,9 @@ export class DiscoverStructure {
       "warn",
       `Focus selection [${summary.mode}] ${
         summary.reason ? `(${summary.reason}) ` : ""
-      }for ${scope} analysis: ${displayEntries.join(", ")}${suffix}${totalInfo}`,
+      }for ${scope} analysis: ${
+        displayEntries.join(", ")
+      }${suffix}${totalInfo}`,
     );
   }
 
@@ -1700,9 +1704,7 @@ export class DiscoverStructure {
       : focusList.join(", ");
     this.log(
       "warn",
-      `Rust ${scope} analysis evaluated ${
-        focusList.length
-      } focus neuron(s) but found no improvements. Focus neurons: ${preview}`,
+      `Rust ${scope} analysis evaluated ${focusList.length} focus neuron(s) but found no improvements. Focus neurons: ${preview}`,
     );
     this.logFocusSelectionDetails(scope, focusList);
     this.logRustDiagnostics(scope, diagnostics);
@@ -1764,7 +1766,9 @@ export class DiscoverStructure {
       }
       if (detail.expectedImprovementPercentage !== undefined) {
         detailParts.push(
-          `expected=${(detail.expectedImprovementPercentage * 100).toFixed(2)}%`,
+          `expected=${
+            (detail.expectedImprovementPercentage * 100).toFixed(2)
+          }%`,
         );
       }
       if (detail.threshold !== undefined) {
@@ -1774,7 +1778,9 @@ export class DiscoverStructure {
         detailParts.push(`weight=${detail.suggestedWeight.toFixed(4)}`);
       }
     }
-    return `Rust synapse diagnostic for ${diagnostic.targetNeuronUuid}: ${reason} (${detailParts.join(", ")})`;
+    return `Rust synapse diagnostic for ${diagnostic.targetNeuronUuid}: ${reason} (${
+      detailParts.join(", ")
+    })`;
   }
 
   private formatNeuronDiagnostic(diagnostic: RustNeuronDiagnostic): string {
@@ -1807,7 +1813,9 @@ export class DiscoverStructure {
       }
       if (detail.expectedImprovementPercentage !== undefined) {
         detailParts.push(
-          `expected=${(detail.expectedImprovementPercentage * 100).toFixed(2)}%`,
+          `expected=${
+            (detail.expectedImprovementPercentage * 100).toFixed(2)
+          }%`,
         );
       }
       if (detail.threshold !== undefined) {
@@ -1817,7 +1825,9 @@ export class DiscoverStructure {
         detailParts.push(`outgoing=${detail.outgoingWeight.toFixed(4)}`);
       }
     }
-    return `Rust neuron diagnostic for ${diagnostic.targetNeuronUuid}: ${reason} (${detailParts.join(", ")})`;
+    return `Rust neuron diagnostic for ${diagnostic.targetNeuronUuid}: ${reason} (${
+      detailParts.join(", ")
+    })`;
   }
 
   private describeSynapseDiagnosticReason(
