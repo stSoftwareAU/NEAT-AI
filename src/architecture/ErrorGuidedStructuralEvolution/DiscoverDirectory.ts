@@ -284,14 +284,6 @@ class DataRecorder {
     } finally {
       file.close();
     }
-
-    if (shouldLogDiscovery(this.options)) {
-      console.log(
-        `Discovery ${blue(this.ID)} read time ${
-          yellow(format(readTime, { ignoreZero: true }))
-        } for ${filePath} with ${params.counter.count} records`,
-      );
-    }
   }
 
   private async recordFiles(binaryFiles: string[]): Promise<DiscoverResult> {
@@ -401,14 +393,6 @@ class DataRecorder {
           neuronPromisesMap.set(uuid, Promise.resolve());
         }
         drainCounter.count = 0; // Reset drain counter after file
-
-        if (shouldLogDiscovery(this.options)) {
-          console.log(
-            `Discovery ${
-              blue(this.ID)
-            } drained promises after file ${filePath}`,
-          );
-        }
 
         if (this.timeoutTS && Date.now() > this.timeoutTS) {
           if (shouldLogDiscovery(this.options)) {
