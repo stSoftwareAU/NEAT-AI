@@ -95,6 +95,7 @@
     "extern",
     "overfitting",
     "unscored",
-    "Millis"
+    "Millis",
+    "wgpu"
   ]
 }
