@@ -183,6 +183,7 @@ Deno.test({
       const options128 = {
         discoveryBatchSize: 128,
         discoveryTimeOutMinutes: 0.0167, // ~1 second
+        discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
         discoverySampleRate: 1.0, // 100% sample rate
         log: 0,
       };
@@ -197,6 +198,7 @@ Deno.test({
       const options512 = {
         discoveryBatchSize: 512,
         discoveryTimeOutMinutes: 0.0167, // ~1 second
+        discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
         discoverySampleRate: 1.0,
         log: 0,
       };
@@ -213,10 +215,12 @@ Deno.test({
 
       // Count results to verify both got some data processed
       const count128 = (result128.addHelpfulSynapses?.length || 0) +
+        (result128.addHelpfulNeurons?.length || 0) +
         (result128.candidateSquashes?.length || 0) +
         (result128.removeHarmfulSynapse ? 1 : 0);
 
       const count512 = (result512.addHelpfulSynapses?.length || 0) +
+        (result512.addHelpfulNeurons?.length || 0) +
         (result512.candidateSquashes?.length || 0) +
         (result512.removeHarmfulSynapse ? 1 : 0);
 
