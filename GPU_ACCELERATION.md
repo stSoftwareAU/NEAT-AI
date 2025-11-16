@@ -2,14 +2,19 @@
 
 ## Overview
 
-The NEAT-AI Discovery Rust library **already supports GPU acceleration** on macOS using Metal via the `wgpu` crate. GPU acceleration is automatically enabled for Mac systems (`darwin`) and uses Metal under the hood for high-performance compute operations.
+The NEAT-AI Discovery Rust library **already supports GPU acceleration** on
+macOS using Metal via the `wgpu` crate. GPU acceleration is automatically
+enabled for Mac systems (`darwin`) and uses Metal under the hood for
+high-performance compute operations.
 
 ## Current GPU Implementation
 
 ### What's Already GPU-Accelerated
 
-1. **Synapse Analysis** - Both helpful and harmful synapse evaluation use GPU compute shaders
-2. **Neuron Analysis** - The helpful statistics calculation uses GPU, though activation function evaluation still runs on CPU
+1. **Synapse Analysis** - Both helpful and harmful synapse evaluation use GPU
+   compute shaders
+2. **Neuron Analysis** - The helpful statistics calculation uses GPU, though
+   activation function evaluation still runs on CPU
 
 ### GPU Technology Stack
 
@@ -39,13 +44,15 @@ export NEAT_AI_DISCOVERY_GPU_DEBUG=1
 ```
 
 This will print:
+
 - GPU adapter information
 - Device initialisation status
 - Any fallback to CPU
 
 ### Method 3: Check Return Values
 
-The Rust analysis functions return a `gpuUsed` boolean field indicating whether GPU was actually used:
+The Rust analysis functions return a `gpuUsed` boolean field indicating whether
+GPU was actually used:
 
 ```typescript
 const result = analyzeSynapses(input);
@@ -62,22 +69,27 @@ if (result.gpuUsed) {
 
 The code now batches multiple GPU operations together to improve utilization:
 
-- **Batched Evaluation**: Multiple synapse evaluations are collected and submitted together in batches of 32
-- **Better GPU Saturation**: Instead of submitting one operation at a time and waiting, multiple operations are queued before waiting
-- **Reduced Idle Time**: GPU spends less time waiting for CPU to prepare the next operation
+- **Batched Evaluation**: Multiple synapse evaluations are collected and
+  submitted together in batches of 32
+- **Better GPU Saturation**: Instead of submitting one operation at a time and
+  waiting, multiple operations are queued before waiting
+- **Reduced Idle Time**: GPU spends less time waiting for CPU to prepare the
+  next operation
 
 ### Why It Might Still Be Slow
 
 Even with GPU acceleration, discovery can be CPU-bound due to:
 
 1. **Data I/O** - Reading Parquet files and preparing data for GPU
-2. **Neuron Analysis** - Activation function evaluation (GELU, ELU, SELU, etc.) still runs on CPU
+2. **Neuron Analysis** - Activation function evaluation (GELU, ELU, SELU, etc.)
+   still runs on CPU
 3. **Memory Transfers** - Copying data between CPU and GPU memory
 4. **Small Workloads** - GPU overhead may not be worth it for small datasets
 
 ### Current GPU Usage
 
 The implementation uses GPU for:
+
 - ✅ Helpful synapse statistics (batched parallel evaluation)
 - ✅ Harmful synapse statistics (parallel evaluation)
 - ❌ Neuron activation function evaluation (still CPU-bound)
@@ -109,7 +121,8 @@ If you see "using CPU fallback" in logs:
 If GPU is active but still slow:
 
 1. **Check Dataset Size**: GPU benefits increase with larger datasets
-2. **Monitor GPU Usage**: Use Activity Monitor or `gpuStats` to verify GPU is being utilised
+2. **Monitor GPU Usage**: Use Activity Monitor or `gpuStats` to verify GPU is
+   being utilised
 3. **Check Other Bottlenecks**: Parquet I/O, TypeScript processing, etc.
 
 ## Configuration
@@ -119,17 +132,18 @@ If GPU is active but still slow:
 On macOS, GPU is required by default:
 
 ```typescript
-requireGpu: Deno.build.os === "darwin"  // true on Mac
+requireGpu: Deno.build.os === "darwin"; // true on Mac
 ```
 
-If GPU initialisation fails and `requireGpu` is true, discovery will fail with an error. If false, it falls back to CPU.
+If GPU initialisation fails and `requireGpu` is true, discovery will fail with
+an error. If false, it falls back to CPU.
 
 ### Disabling GPU Requirement
 
 To allow CPU fallback even on Mac:
 
 ```typescript
-requireGpu: false  // Will use GPU if available, but fall back to CPU
+requireGpu: false; // Will use GPU if available, but fall back to CPU
 ```
 
 ## Technical Details
@@ -146,10 +160,10 @@ Both use workgroup size of 256 threads for parallel processing.
 ### Memory Layout
 
 Data is transferred to GPU as:
+
 - `GpuHelpfulSample` - Activation and error pairs
 - Results returned as `HelpfulContribution` or `HarmfulContribution`
 
 ## Date
 
 2 Jan 2025
-

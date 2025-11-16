@@ -1458,7 +1458,9 @@ export class DiscoverStructure {
       if (this.loggingEnabled && result.gpuUsed !== undefined) {
         this.log(
           "info",
-          `Rust neuron analysis ${result.gpuUsed ? "using GPU" : "using CPU fallback"} (${result.helpfulNeurons?.length ?? 0} candidates)`,
+          `Rust neuron analysis ${
+            result.gpuUsed ? "using GPU" : "using CPU fallback"
+          } (${result.helpfulNeurons?.length ?? 0} candidates)`,
         );
       }
       return result;
@@ -1519,7 +1521,11 @@ export class DiscoverStructure {
       if (this.loggingEnabled && result.gpuUsed !== undefined) {
         this.log(
           "info",
-          `Rust synapse analysis ${result.gpuUsed ? "using GPU" : "using CPU fallback"} (${result.helpfulSynapses?.length ?? 0} helpful, ${result.harmfulSynapses?.length ?? 0} harmful candidates)`,
+          `Rust synapse analysis ${
+            result.gpuUsed ? "using GPU" : "using CPU fallback"
+          } (${result.helpfulSynapses?.length ?? 0} helpful, ${
+            result.harmfulSynapses?.length ?? 0
+          } harmful candidates)`,
         );
       }
       return result;
