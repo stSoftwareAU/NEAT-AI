@@ -530,28 +530,6 @@ class DataRecorder {
         candidateSquashes: undefined,
       };
 
-      // Schedule cleanup to happen asynchronously without blocking the response
-      // This prevents slow filesystem operations from delaying the discovery result
-      // Must be scheduled before any return in the try block to prevent resource leaks
-      const cleanupPromise = (async () => {
-        if (shouldLogDiscovery(options)) {
-          console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
-        }
-        await discoverStructure.cleanUp();
-        if (shouldLogDiscovery(options)) {
-          console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
-        }
-      })();
-
-      // Don't await cleanup - let it happen in the background
-      // Catch any errors to prevent unhandled rejections and resource leaks
-      cleanupPromise.catch((error) => {
-        console.error(
-          `❌ CRITICAL: Discovery ${this.ID} cleanup failed - potential resource leak:`,
-          error,
-        );
-      });
-
       // Track attempted neurons to avoid re-analyzing the same ones
       const attemptedNeurons = new Set<string>();
       let retryAttempt = 0;
@@ -571,6 +549,26 @@ class DataRecorder {
             } all candidate types disabled via options, skipping analysis loop`,
           );
         }
+        // Schedule cleanup to happen asynchronously without blocking the response
+        // This prevents slow filesystem operations from delaying the discovery result
+        const cleanupPromise = (async () => {
+          if (shouldLogDiscovery(options)) {
+            console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
+          }
+          await discoverStructure.cleanUp();
+          if (shouldLogDiscovery(options)) {
+            console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
+          }
+        })();
+
+        // Don't await cleanup - let it happen in the background
+        // Catch any errors to prevent unhandled rejections and resource leaks
+        cleanupPromise.catch((error) => {
+          console.error(
+            `❌ CRITICAL: Discovery ${this.ID} cleanup failed - potential resource leak:`,
+            error,
+          );
+        });
         return discoverResult;
       }
 
@@ -796,9 +794,31 @@ class DataRecorder {
         console.log(
           `Discovery ${blue(this.ID)} analysis complete, total time ${
             yellow(format(totalTime, { ignoreZero: true }))
-          }, cleanup already scheduled`,
+          }, starting cleanup...`,
         );
       }
+
+      // Schedule cleanup to happen asynchronously without blocking the response
+      // This prevents slow filesystem operations from delaying the discovery result
+      // Must be scheduled after analysis loop completes to avoid race conditions
+      const cleanupPromise = (async () => {
+        if (shouldLogDiscovery(options)) {
+          console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
+        }
+        await discoverStructure.cleanUp();
+        if (shouldLogDiscovery(options)) {
+          console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
+        }
+      })();
+
+      // Don't await cleanup - let it happen in the background
+      // Catch any errors to prevent unhandled rejections and resource leaks
+      cleanupPromise.catch((error) => {
+        console.error(
+          `❌ CRITICAL: Discovery ${this.ID} cleanup failed - potential resource leak:`,
+          error,
+        );
+      });
 
       return discoverResult;
     } catch (error) {
