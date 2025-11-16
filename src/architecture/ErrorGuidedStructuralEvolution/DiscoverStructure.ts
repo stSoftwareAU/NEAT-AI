@@ -1624,8 +1624,8 @@ export class DiscoverStructure {
     mode: FocusSelectionMode,
     focusNeurons: readonly string[],
     weightMap?: Map<string, number>,
-    reason: string = "",
     totalWeight?: number,
+    reason = "",
   ): void {
     const neurons = focusNeurons.map((uuid) => ({
       uuid,
@@ -2380,6 +2380,7 @@ export class DiscoverStructure {
           "forced",
           trimmed,
           undefined,
+          undefined,
           "forced focus override",
         );
         return trimmed;
@@ -2398,6 +2399,7 @@ export class DiscoverStructure {
         "all",
         uuids,
         weightMap,
+        undefined,
         "all viable neurons selected",
       );
       return uuids;
@@ -2440,6 +2442,7 @@ export class DiscoverStructure {
         "random",
         fallback,
         undefined,
+        undefined,
         "random selection due to invalid total weight",
       );
       return fallback;
@@ -2456,6 +2459,7 @@ export class DiscoverStructure {
       this.updateFocusSelectionSummary(
         "random",
         fallback,
+        undefined,
         undefined,
         "random selection due to zero total weight",
       );
@@ -2526,8 +2530,8 @@ export class DiscoverStructure {
       "weighted",
       selection,
       weightMap,
-      "error x impact weighting",
       totalWeightedSum,
+      "error x impact weighting",
     );
     return selection;
   }
