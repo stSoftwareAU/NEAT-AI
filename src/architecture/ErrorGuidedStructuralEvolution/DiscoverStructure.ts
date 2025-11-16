@@ -1828,11 +1828,12 @@ export class DiscoverStructure {
   }
 
   /**
-   * Calculates the impact of a neuron on outputs by summing absolute weights along paths to output neurons.
-   * Uses backward propagation from output neurons, accumulating impact through incoming synapses.
+   * Calculates the impact of a neuron on outputs by finding the maximum impact path to output neurons.
+   * Uses backward propagation from output neurons, taking the maximum impact across all paths.
+   * This ensures neurons on the same path don't get double-counted and avoids contradictory suggestions.
    *
    * @param neuronUUID - The UUID of the neuron to calculate impact for
-   * @returns The impact value (sum of absolute weights along paths to outputs)
+   * @returns The impact value (maximum absolute weight path to outputs)
    */
   private calculateNeuronImpact(neuronUUID: string): number {
     // Build maps for efficient lookup
@@ -1857,10 +1858,10 @@ export class DiscoverStructure {
     }
 
     // Use dynamic programming to calculate impact
-    // Impact of a neuron = sum of (impact of neurons it connects to × abs(weight))
+    // Impact of a neuron = max of (impact of neurons it connects to × abs(weight))
+    // This ensures we take the maximum path impact rather than summing all paths
     // Handle cycles by using a path-based visited set (per path, not global)
     const impactCache = new Map<string, number>();
-    const calculating = new Set<string>(); // Track neurons currently being calculated (for cycle detection)
 
     const calculateImpactRecursive = (
       uuid: string,
@@ -1878,17 +1879,10 @@ export class DiscoverStructure {
         return 0;
       }
 
-      // If already calculating this neuron in another path, return 0 to break cycle
-      if (calculating.has(uuid)) {
-        return 0;
-      }
-
-      calculating.add(uuid);
       pathVisited.add(uuid);
 
       const index = neuronIndexMap.get(uuid);
       if (index === undefined) {
-        calculating.delete(uuid);
         pathVisited.delete(uuid);
         return 0;
       }
@@ -1896,7 +1890,6 @@ export class DiscoverStructure {
       // Output neurons have base impact of 1.0
       if (outputNeuronIndices.has(index)) {
         impactCache.set(uuid, 1.0);
-        calculating.delete(uuid);
         pathVisited.delete(uuid);
         return 1.0;
       }
@@ -1906,13 +1899,13 @@ export class DiscoverStructure {
       if (outgoingSynapses.length === 0) {
         // No outgoing connections means no impact
         impactCache.set(uuid, 0);
-        calculating.delete(uuid);
         pathVisited.delete(uuid);
         return 0;
       }
 
-      // Calculate impact by summing contributions from all connected neurons
-      let totalImpact = 0;
+      // Calculate impact by taking the maximum contribution from all connected neurons
+      // This ensures we don't double-count neurons on the same path
+      let maxImpact = 0;
       for (const synapse of outgoingSynapses) {
         const toIndex = synapse.to;
         const toNeuron = this.creature.neurons[toIndex];
@@ -1922,14 +1915,13 @@ export class DiscoverStructure {
           const branchPathVisited = new Set(pathVisited);
           const toImpact = calculateImpactRecursive(toUUID, branchPathVisited);
           const weightContribution = Math.abs(synapse.weight) * toImpact;
-          totalImpact += weightContribution;
+          maxImpact = Math.max(maxImpact, weightContribution);
         }
       }
 
-      calculating.delete(uuid);
       pathVisited.delete(uuid);
-      impactCache.set(uuid, totalImpact);
-      return totalImpact;
+      impactCache.set(uuid, maxImpact);
+      return maxImpact;
     };
 
     return calculateImpactRecursive(neuronUUID, new Set<string>());
