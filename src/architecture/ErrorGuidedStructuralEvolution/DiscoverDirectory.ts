@@ -535,6 +535,23 @@ class DataRecorder {
       let retryAttempt = 0;
       const maxRetries = 10; // Reasonable limit to prevent infinite loops
 
+      // Early exit if all candidate types are disabled - no point in retrying
+      const allCandidatesDisabled = !this.enableNeuronCandidates &&
+        !this.enableSynapseCandidates &&
+        !this.enableHarmfulCandidates &&
+        !this.enableSquashCandidates;
+
+      if (allCandidatesDisabled) {
+        if (shouldLogDiscovery(options)) {
+          console.log(
+            `Discovery ${
+              blue(this.ID)
+            } all candidate types disabled via options, skipping analysis loop`,
+          );
+        }
+        return discoverResult;
+      }
+
       // Retry loop: try different neurons if no candidates found and time remains
       // Sequential execution is intentional - we check results after each attempt
       while (retryAttempt <= maxRetries) {
