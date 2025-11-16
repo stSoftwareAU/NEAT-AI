@@ -111,10 +111,12 @@ export interface CandidateNeuron {
 
 /**
  * Represents a neuron and its total accumulated error for ranking neurons during discovery.
+ * Impact measures how much a neuron affects outputs through its outgoing synapse weights.
  */
 interface NeuronErrorInfo {
   uuid: string;
   totalError: number;
+  impact: number;
 }
 
 export interface RustFlushMetrics extends RustRecordBatchStats {
@@ -1826,7 +1828,116 @@ export class DiscoverStructure {
   }
 
   /**
+   * Calculates the impact of a neuron on outputs by summing absolute weights along paths to output neurons.
+   * Uses backward propagation from output neurons, accumulating impact through incoming synapses.
+   *
+   * @param neuronUUID - The UUID of the neuron to calculate impact for
+   * @returns The impact value (sum of absolute weights along paths to outputs)
+   */
+  private calculateNeuronImpact(neuronUUID: string): number {
+    // Build maps for efficient lookup
+    const neuronIndexMap = new Map<string, number>();
+    const outputNeuronIndices = new Set<number>();
+
+    // Build neuron index map and identify output neurons
+    this.creature.neurons.forEach((neuron, index) => {
+      neuronIndexMap.set(neuron.uuid, index);
+      if (neuron.type === "output") {
+        outputNeuronIndices.add(index);
+      }
+    });
+
+    // If this is an output neuron, it has direct impact
+    const neuronIndex = neuronIndexMap.get(neuronUUID);
+    if (neuronIndex === undefined) {
+      return 0;
+    }
+    if (outputNeuronIndices.has(neuronIndex)) {
+      return 1.0;
+    }
+
+    // Use dynamic programming to calculate impact
+    // Impact of a neuron = sum of (impact of neurons it connects to × abs(weight))
+    // Handle cycles by using a path-based visited set (per path, not global)
+    const impactCache = new Map<string, number>();
+    const calculating = new Set<string>(); // Track neurons currently being calculated (for cycle detection)
+
+    const calculateImpactRecursive = (
+      uuid: string,
+      pathVisited: Set<string>,
+    ): number => {
+      // Check cache first
+      if (impactCache.has(uuid)) {
+        return impactCache.get(uuid)!;
+      }
+
+      // Prevent infinite loops in current path (cycle detection)
+      if (pathVisited.has(uuid)) {
+        // Cycle detected - return 0 to avoid infinite recursion
+        // This means cycles don't contribute to impact
+        return 0;
+      }
+
+      // If already calculating this neuron in another path, return 0 to break cycle
+      if (calculating.has(uuid)) {
+        return 0;
+      }
+
+      calculating.add(uuid);
+      pathVisited.add(uuid);
+
+      const index = neuronIndexMap.get(uuid);
+      if (index === undefined) {
+        calculating.delete(uuid);
+        pathVisited.delete(uuid);
+        return 0;
+      }
+
+      // Output neurons have base impact of 1.0
+      if (outputNeuronIndices.has(index)) {
+        impactCache.set(uuid, 1.0);
+        calculating.delete(uuid);
+        pathVisited.delete(uuid);
+        return 1.0;
+      }
+
+      // Get outgoing synapses from this neuron
+      const outgoingSynapses = this.creature.outwardConnections(index);
+      if (outgoingSynapses.length === 0) {
+        // No outgoing connections means no impact
+        impactCache.set(uuid, 0);
+        calculating.delete(uuid);
+        pathVisited.delete(uuid);
+        return 0;
+      }
+
+      // Calculate impact by summing contributions from all connected neurons
+      let totalImpact = 0;
+      for (const synapse of outgoingSynapses) {
+        const toIndex = synapse.to;
+        const toNeuron = this.creature.neurons[toIndex];
+        if (toNeuron) {
+          const toUUID = toNeuron.uuid;
+          // Create a new path visited set for each branch to allow exploring all paths
+          const branchPathVisited = new Set(pathVisited);
+          const toImpact = calculateImpactRecursive(toUUID, branchPathVisited);
+          const weightContribution = Math.abs(synapse.weight) * toImpact;
+          totalImpact += weightContribution;
+        }
+      }
+
+      calculating.delete(uuid);
+      pathVisited.delete(uuid);
+      impactCache.set(uuid, totalImpact);
+      return totalImpact;
+    };
+
+    return calculateImpactRecursive(neuronUUID, new Set<string>());
+  }
+
+  /**
    * Lists neurons sorted by their total error, useful for error-driven selection processes.
+   * Now also includes impact calculation for weighted selection.
    */
   public async listViableNeurons(): Promise<NeuronErrorInfo[]> {
     if (!this.recorded) {
@@ -1894,13 +2005,21 @@ export class DiscoverStructure {
             console.error(
               `❌ ERROR: Neuron ${neuron.uuid} has invalid totalError (${totalError}). This should never happen!`,
             );
-            return { uuid: neuron.uuid, totalError: 0 };
+            return { uuid: neuron.uuid, totalError: 0, impact: 0 };
           }
 
-          return { uuid: neuron.uuid, totalError: totalError };
+          // Calculate impact on outputs
+          const impact = this.calculateNeuronImpact(neuron.uuid);
+          const validImpact = Number.isFinite(impact) ? impact : 0;
+
+          return {
+            uuid: neuron.uuid,
+            totalError: totalError,
+            impact: validImpact,
+          };
         } catch (e) {
           console.error(`Error processing neuron ${neuron.uuid}`, e);
-          return { uuid: neuron.uuid, totalError: 0 }; // Handle gracefully
+          return { uuid: neuron.uuid, totalError: 0, impact: 0 }; // Handle gracefully
         }
       });
 
@@ -1928,8 +2047,13 @@ export class DiscoverStructure {
   }
 
   /**
-   * Selects a neuron randomly, weighted by total error, favoring neurons with higher errors.
-   * Implements "roulette wheel" selection.
+   * Selects a neuron randomly, weighted by total error × impact, favoring neurons with higher
+   * error and greater influence on outputs. Implements "roulette wheel" selection.
+   *
+   * Impact measures how much a neuron affects outputs through its outgoing synapse weights.
+   * Neurons with high error but low impact (e.g., high error but very low weights) will have
+   * lower selection probability, while neurons with both high error and high impact will be
+   * prioritized. Neurons with zero impact can still be selected, just with much lower probability.
    *
    * Reference:
    * - Goldberg, D. E. (1989). Genetic Algorithms in Search, Optimization and Machine Learning.
@@ -1976,20 +2100,29 @@ export class DiscoverStructure {
     }
     const selectedUUIDs: Set<string> = new Set();
 
-    const totalErrorSum = neuronErrors.reduce(
-      (sum, n) => sum + n.totalError,
+    // Calculate weighted values: error × impact
+    // Add a small epsilon to impact to ensure neurons with zero impact can still be selected
+    // (just with much lower probability)
+    const EPSILON = 0.0001;
+    const weightedValues = neuronErrors.map((n) => ({
+      uuid: n.uuid,
+      weight: n.totalError * (n.impact + EPSILON),
+    }));
+
+    const totalWeightedSum = weightedValues.reduce(
+      (sum, n) => sum + n.weight,
       0,
     );
 
-    // Guard against NaN, Infinity, or zero total error
-    if (!Number.isFinite(totalErrorSum)) {
+    // Guard against NaN, Infinity, or zero total weighted sum
+    if (!Number.isFinite(totalWeightedSum)) {
       console.error(
-        `❌ CRITICAL ERROR: totalErrorSum is ${totalErrorSum} (NaN or Infinity). This indicates corrupt error calculations in the discovery process!`,
+        `❌ CRITICAL ERROR: totalWeightedSum is ${totalWeightedSum} (NaN or Infinity). This indicates corrupt error/impact calculations in the discovery process!`,
       );
       console.error(
-        `   Neuron error summary: ${
-          neuronErrors.slice(0, 5).map((n) =>
-            `${n.uuid.slice(-8)}: ${n.totalError}`
+        `   Neuron weighted summary: ${
+          weightedValues.slice(0, 5).map((n) =>
+            `${n.uuid.slice(-8)}: weight=${n.weight}`
           ).join(", ")
         }...`,
       );
@@ -2001,9 +2134,9 @@ export class DiscoverStructure {
       return shuffled.slice(0, count).map((n) => n.uuid);
     }
 
-    if (totalErrorSum <= 0) {
+    if (totalWeightedSum <= 0) {
       console.warn(
-        `⚠️  WARNING: totalErrorSum is ${totalErrorSum} (zero or negative). All neurons have zero error?`,
+        `⚠️  WARNING: totalWeightedSum is ${totalWeightedSum} (zero or negative). All neurons have zero error × impact?`,
       );
       console.warn(`   Falling back to random neuron selection`);
       // Fallback to random selection without weighting
@@ -2025,13 +2158,13 @@ export class DiscoverStructure {
 
     while (selectedUUIDs.size < count && iterations < maxIterations) {
       iterations++;
-      const randValue = Math.random() * totalErrorSum;
-      let cumulativeError = 0;
+      const randValue = Math.random() * totalWeightedSum;
+      let cumulativeWeight = 0;
 
-      for (const neuron of neuronErrors) {
-        cumulativeError += neuron.totalError;
-        if (randValue <= cumulativeError) {
-          selectedUUIDs.add(neuron.uuid);
+      for (const weighted of weightedValues) {
+        cumulativeWeight += weighted.weight;
+        if (randValue <= cumulativeWeight) {
+          selectedUUIDs.add(weighted.uuid);
           break;
         }
       }
@@ -2063,7 +2196,7 @@ export class DiscoverStructure {
         `   This should not happen with the hybrid approach. Please report this.`,
       );
       console.error(
-        `   totalErrorSum: ${totalErrorSum}, neuronErrors.length: ${neuronErrors.length}`,
+        `   totalWeightedSum: ${totalWeightedSum}, neuronErrors.length: ${neuronErrors.length}`,
       );
     }
 
