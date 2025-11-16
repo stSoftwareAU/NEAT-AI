@@ -90,6 +90,7 @@ export interface RustAnalyzeSynapsesResult {
   gpuUsed?: boolean;
   helpfulSynapses?: RustCandidateSynapse[];
   harmfulSynapses?: RustCandidateSynapse[];
+  diagnostics?: RustSynapseDiagnostic[];
   error?: string;
 }
 
@@ -106,7 +107,63 @@ export interface RustAnalyzeNeuronsResult {
   success: boolean;
   gpuUsed?: boolean;
   helpfulNeurons?: RustCandidateNeuron[];
+  diagnostics?: RustNeuronDiagnostic[];
   error?: string;
+}
+
+export type RustSynapseDiagnosticReason =
+  | "no_eligible_sources"
+  | "no_diagnostics"
+  | "no_samples"
+  | "zero_improvement"
+  | "below_threshold";
+
+export interface RustSynapseDiagnosticDetail {
+  sourceNeuronUuid?: string;
+  sampleCount?: number;
+  sourceRecordCount?: number;
+  improvedCount?: number;
+  worsenedCount?: number;
+  expectedImprovementPercentage?: number;
+  threshold?: number;
+  suggestedWeight?: number;
+}
+
+export interface RustSynapseDiagnostic {
+  targetNeuronUuid: string;
+  reason: RustSynapseDiagnosticReason;
+  evaluatedCandidates: number;
+  candidatesWithSamples: number;
+  targetRecordCount: number;
+  detail?: RustSynapseDiagnosticDetail;
+}
+
+export type RustNeuronDiagnosticReason =
+  | "no_eligible_sources"
+  | "no_diagnostics"
+  | "no_samples"
+  | "not_enough_activations"
+  | "weight_degenerate"
+  | "below_threshold";
+
+export interface RustNeuronDiagnosticDetail {
+  sourceNeuronUuid?: string;
+  orientation?: string;
+  sampleCount?: number;
+  improvedCount?: number;
+  worsenedCount?: number;
+  expectedImprovementPercentage?: number;
+  threshold?: number;
+  outgoingWeight?: number;
+}
+
+export interface RustNeuronDiagnostic {
+  targetNeuronUuid: string;
+  reason: RustNeuronDiagnosticReason;
+  evaluatedSources: number;
+  sourcesWithSamples: number;
+  targetRecordCount: number;
+  detail?: RustNeuronDiagnosticDetail;
 }
 
 /**
