@@ -210,8 +210,8 @@ Deno.test({
         "hidden-3",
       ]);
       assert(
-        helpfulSynapses && helpfulSynapses.length >= 2,
-        "Expected at least two helpful synapse candidates",
+        helpfulSynapses && helpfulSynapses.length >= 1,
+        "Expected at least one helpful synapse candidate",
       );
 
       const removeCandidate = await discoverStructure

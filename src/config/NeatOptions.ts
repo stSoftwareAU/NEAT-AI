@@ -138,6 +138,26 @@ export interface NeatArguments {
   discoverySampleRate: number;
 
   /**
+   * Disable helpful synapse discovery candidates. Defaults to false.
+   */
+  discoveryDisableSynapseCandidates?: boolean;
+
+  /**
+   * Disable helpful neuron discovery candidates. Defaults to false.
+   */
+  discoveryDisableNeuronCandidates?: boolean;
+
+  /**
+   * Disable harmful synapse discovery candidates. Defaults to false.
+   */
+  discoveryDisableHarmfulCandidates?: boolean;
+
+  /**
+   * Disable squash (activation) discovery candidates. Defaults to false.
+   */
+  discoveryDisableSquashCandidates?: boolean;
+
+  /**
    * Minimum expected improvement (0..1) that a discovery candidate must
    * achieve in order to be considered helpful. Defaults to 0.1 (10%).
    */
