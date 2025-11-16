@@ -96,6 +96,7 @@
     "overfitting",
     "unscored",
     "Millis",
-    "wgpu"
+    "wgpu",
+    "WGSL"
   ]
 }
