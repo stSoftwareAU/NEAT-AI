@@ -25,9 +25,11 @@ import {
   type RustCandidateNeuron,
   type RustCandidateSynapse,
   type RustNeuronDiagnostic,
+  type RustNeuronDiagnosticDetail,
   type RustRecordBatchStats,
   type RustRecordInput,
   type RustSynapseDiagnostic,
+  type RustSynapseDiagnosticDetail,
 } from "./RustDiscovery.ts";
 import { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 
@@ -52,6 +54,8 @@ const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
   analyzeSynapses,
   readDiscoveryRecords,
 };
+
+const OUTPUT_ERROR_CACHE_TTL_MS = 30_000;
 
 /**
  * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
@@ -126,11 +130,18 @@ interface FocusSelectionSummary {
   totalWeight?: number;
 }
 
+interface NeuronScanStats {
+  processed: number;
+  total: number;
+  timedOut: boolean;
+  durationMs: number;
+}
+
 /**
  * Represents a neuron and its total accumulated error for ranking neurons during discovery.
  * Impact measures how much a neuron affects outputs through its outgoing synapse weights.
  */
-interface NeuronErrorInfo {
+export interface NeuronErrorInfo {
   uuid: string;
   totalError: number;
   impact: number;
@@ -209,6 +220,9 @@ export class DiscoverStructure {
   private improvementThreshold = DEFAULT_RUST_HELPFUL_THRESHOLD;
   private harmfulThreshold = DEFAULT_RUST_HARMFUL_THRESHOLD;
   private lastFocusSelection?: FocusSelectionSummary;
+  private cachedMaxOutputError?: { value: number; computedAt: number } =
+    undefined;
+  private lastNeuronScanStats?: NeuronScanStats;
   constructor(
     creature: Creature,
     timeoutSeconds: number,
@@ -256,7 +270,7 @@ export class DiscoverStructure {
     return this.isSelectableNeuronType(neuron.type);
   }
 
-  private async computeMaxOutputError(): Promise<number> {
+  private async measureMaxOutputError(): Promise<number> {
     if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
       return 0;
     }
@@ -291,6 +305,19 @@ export class DiscoverStructure {
     });
     const results = await Promise.all(promises);
     return results.reduce((max, value) => Math.max(max, value), 0);
+  }
+
+  private async getMaxOutputError(): Promise<number> {
+    const now = Date.now();
+    if (
+      this.cachedMaxOutputError &&
+      now - this.cachedMaxOutputError.computedAt < OUTPUT_ERROR_CACHE_TTL_MS
+    ) {
+      return this.cachedMaxOutputError.value;
+    }
+    const measured = await this.measureMaxOutputError();
+    this.cachedMaxOutputError = { value: measured, computedAt: now };
+    return measured;
   }
 
   /**
@@ -431,6 +458,8 @@ export class DiscoverStructure {
     this.creature.dispose();
     this.discoveries = [];
     this.neuronDiscoveries = [];
+    this.cachedMaxOutputError = undefined;
+    this.lastNeuronScanStats = undefined;
 
     // Clear selectedIndices to help GC
     this.selectedIndices = {};
@@ -479,6 +508,7 @@ export class DiscoverStructure {
       );
     }
     this.recorded = true;
+    this.cachedMaxOutputError = undefined;
 
     // Rust module is required - if not available, discovery was already skipped in initialize()
     if (!this.usingRustDualWrite || timedOut) {
@@ -1215,6 +1245,7 @@ export class DiscoverStructure {
 
     if (Date.now() > this.timeoutTS) {
       this.log("warn", "Discovery timeout reached in analyzeSelectedNeurons");
+      this.logAnalysisSkipped("synapse");
       this.logFocusSelectionDetails("synapse", focusList);
       return Promise.resolve(undefined);
     }
@@ -1254,6 +1285,7 @@ export class DiscoverStructure {
 
     if (Date.now() > this.timeoutTS) {
       this.log("warn", "Discovery timeout reached in analyzeMissingNeurons");
+      this.logAnalysisSkipped("neuron");
       this.logFocusSelectionDetails("neuron", focusList);
       return Promise.resolve(undefined);
     }
@@ -1781,6 +1813,19 @@ export class DiscoverStructure {
     this.logFocusSelectionDetails(scope, focusList);
   }
 
+  private logAnalysisSkipped(scope: "synapse" | "neuron"): void {
+    const stats = this.lastNeuronScanStats;
+    if (!stats?.timedOut) {
+      return;
+    }
+    this.log(
+      "warn",
+      `Skipping Rust ${scope} analysis because neuron scanning consumed ${
+        this.formatMillis(stats.durationMs)
+      } (${stats.processed}/${stats.total} neurons processed).`,
+    );
+  }
+
   private isSynapseDiagnostic(
     diagnostic: RustSynapseDiagnostic | RustNeuronDiagnostic,
   ): diagnostic is RustSynapseDiagnostic {
@@ -1801,13 +1846,69 @@ export class DiscoverStructure {
       );
       return;
     }
+    let totalEvaluated = 0;
+    let bestImprovement = Number.NEGATIVE_INFINITY;
+    let bestDetail:
+      | {
+        improvement: number;
+        threshold?: number;
+        weight?: number;
+        target: string;
+      }
+      | undefined;
     diagnostics.forEach((diagnostic) => {
+      const evaluated = (diagnostic as RustSynapseDiagnostic)
+        .evaluatedCandidates ??
+        (diagnostic as RustNeuronDiagnostic).evaluatedSources ??
+        0;
+      totalEvaluated += evaluated;
+      const detail = diagnostic.detail;
+      if (detail) {
+        const improvement = typeof detail.expectedImprovementPercentage ===
+            "number"
+          ? detail.expectedImprovementPercentage
+          : undefined;
+        if (
+          improvement !== undefined &&
+          improvement > bestImprovement
+        ) {
+          bestImprovement = improvement;
+          bestDetail = {
+            improvement,
+            threshold: detail.threshold,
+            weight: (("suggestedWeight" in detail &&
+                typeof (detail as RustSynapseDiagnosticDetail)
+                    .suggestedWeight === "number")
+              ? (detail as RustSynapseDiagnosticDetail).suggestedWeight
+              : undefined) ??
+              (("outgoingWeight" in detail &&
+                  typeof (detail as RustNeuronDiagnosticDetail)
+                      .outgoingWeight === "number")
+                ? (detail as RustNeuronDiagnosticDetail).outgoingWeight
+                : undefined),
+            target: diagnostic.targetNeuronUuid,
+          };
+        }
+      }
       if (this.isSynapseDiagnostic(diagnostic)) {
         this.log("warn", this.formatSynapseDiagnostic(diagnostic));
       } else {
         this.log("warn", this.formatNeuronDiagnostic(diagnostic));
       }
     });
+    if (bestDetail && totalEvaluated > 0) {
+      const improvementPct = `${(bestDetail.improvement * 100).toFixed(4)}%`;
+      const thresholdPct = bestDetail.threshold !== undefined
+        ? `${(bestDetail.threshold * 100).toFixed(4)}%`
+        : "the configured threshold";
+      const weightInfo = bestDetail.weight !== undefined
+        ? ` (weight ${bestDetail.weight.toFixed(4)})`
+        : "";
+      this.log(
+        "warn",
+        `Rust ${scope} analysis evaluated ${totalEvaluated} candidate(s); best improvement ${improvementPct} for ${bestDetail.target}${weightInfo} but threshold was ${thresholdPct}.`,
+      );
+    }
   }
 
   private formatSynapseDiagnostic(diagnostic: RustSynapseDiagnostic): string {
@@ -2360,105 +2461,160 @@ export class DiscoverStructure {
    * Lists neurons sorted by their total error, useful for error-driven selection processes.
    * Now also includes impact calculation for weighted selection.
    */
-  public async listViableNeurons(): Promise<NeuronErrorInfo[]> {
+  public async listViableNeurons(
+    targetCount?: number,
+  ): Promise<NeuronErrorInfo[]> {
     if (!this.recorded) {
       console.warn("No recorded data to list neurons.");
       return [];
     }
 
+    const start = Date.now();
     const neurons = this.creature.neurons.filter((neuron) =>
       this.isSelectableNeuron(neuron)
     );
-
-    // Process neurons in batches to avoid overwhelming the file system
-    // with too many concurrent file operations (prevents "too many open files" errors)
-    const BATCH_SIZE = 50;
+    const totalNeurons = neurons.length;
     const results: NeuronErrorInfo[] = [];
     let totalInvalidErrorCount = 0;
     let neuronsWithInvalidErrors = 0;
+    let processedCount = 0;
+    let timedOut = false;
+    const maxOutputError = await this.getMaxOutputError();
+    const impactCache = new Map<string, number>();
 
-    for (let i = 0; i < neurons.length; i += BATCH_SIZE) {
-      const batch = neurons.slice(i, i + BATCH_SIZE);
+    const concurrency = Math.min(
+      Math.max(4, Math.min(32, totalNeurons || 1)),
+      totalNeurons || 1,
+    );
+    let index = 0;
+    let stopRequested = false;
+    const earlyLimit = targetCount
+      ? Math.max(targetCount * 4, 64)
+      : Number.POSITIVE_INFINITY;
 
-      // Check timeout before each batch
-      if (Date.now() > this.timeoutTS) {
-        console.warn(
-          `Discovery timeout reached while listing neurons (${i}/${neurons.length} processed)`,
-        );
-        break;
-      }
+    const processNext = async () => {
+      while (true) {
+        const currentIndex = index++;
+        if (currentIndex >= totalNeurons) {
+          break;
+        }
+        if (Date.now() > this.timeoutTS) {
+          timedOut = true;
+          break;
+        }
+        if (stopRequested) {
+          break;
+        }
 
-      const batchPromises = batch.map(async (neuron) => {
+        const neuron = neurons[currentIndex];
         try {
+          // deno-lint-ignore no-await-in-loop
           const records = await this.loadCSV(
             `${this.tempDir}/${neuron.uuid}.csv`,
           );
 
           let invalidErrorCount = 0;
-          const totalError = records.reduce((sum, record) => {
-            const errors = record.errors;
-            const recordError = errors.reduce((eSum, e) => {
-              if (!Number.isFinite(e)) {
+          let absoluteErrorSum = 0;
+          let errorValueCount = 0;
+          for (const record of records) {
+            for (const err of record.errors) {
+              if (!Number.isFinite(err)) {
                 invalidErrorCount++;
-                return eSum;
+                continue;
               }
-              return eSum + Math.abs(e);
-            }, 0);
-            return sum + recordError;
-          }, 0);
+              absoluteErrorSum += Math.abs(err);
+              errorValueCount++;
+            }
+          }
 
-          // Warn if invalid data was detected
           if (invalidErrorCount > 0) {
             totalInvalidErrorCount += invalidErrorCount;
             neuronsWithInvalidErrors++;
             console.warn(
               `⚠️  WARNING: Neuron ${neuron.uuid} has ${invalidErrorCount} invalid error values (NaN/Infinity) out of ${
-                records.reduce((count, r) => count + r.errors.length, 0)
+                errorValueCount + invalidErrorCount
               } total error values. This indicates a bug in error calculation or data corruption.`,
             );
           }
 
-          // Clear records array to help GC
+          const averageError = errorValueCount > 0
+            ? absoluteErrorSum / errorValueCount
+            : 0;
+          const clampedError = maxOutputError > 0
+            ? Math.min(averageError, maxOutputError)
+            : averageError;
+
           records.length = 0;
 
-          // Check if totalError is valid
-          if (!Number.isFinite(totalError)) {
-            console.error(
-              `❌ ERROR: Neuron ${neuron.uuid} has invalid totalError (${totalError}). This should never happen!`,
-            );
-            return { uuid: neuron.uuid, totalError: 0, impact: 0 };
+          let impact = impactCache.get(neuron.uuid);
+          if (impact === undefined) {
+            const computedImpact = this.calculateNeuronImpact(neuron.uuid);
+            impact = Number.isFinite(computedImpact) ? computedImpact : 0;
+            impactCache.set(neuron.uuid, impact);
           }
 
-          // Calculate impact on outputs
-          const impact = this.calculateNeuronImpact(neuron.uuid);
-          const validImpact = Number.isFinite(impact) ? impact : 0;
-
-          return {
+          results.push({
             uuid: neuron.uuid,
-            totalError: totalError,
-            impact: validImpact,
-          };
-        } catch (e) {
-          console.error(`Error processing neuron ${neuron.uuid}`, e);
-          return { uuid: neuron.uuid, totalError: 0, impact: 0 }; // Handle gracefully
+            totalError: clampedError,
+            impact,
+          });
+        } catch (error) {
+          console.error(`Error processing neuron ${neuron.uuid}`, error);
+        } finally {
+          processedCount++;
+          if (this.loggingEnabled && processedCount % 25 === 0) {
+            this.log(
+              "debug",
+              `Neuron scan progress: ${processedCount}/${totalNeurons} processed`,
+            );
+          }
+          if (!stopRequested && results.length >= earlyLimit) {
+            stopRequested = true;
+          }
         }
-      });
+      }
+    };
 
-      // deno-lint-ignore no-await-in-loop
-      const batchResults = await Promise.all(batchPromises);
-      results.push(...batchResults);
+    const workers = Array.from({ length: concurrency }, () => processNext());
+    await Promise.all(workers);
 
-      // Clear batch results to help GC
-      batchResults.length = 0;
-    }
+    const durationMs = Date.now() - start;
+    this.lastNeuronScanStats = {
+      processed: processedCount,
+      total: totalNeurons,
+      timedOut,
+      durationMs,
+    };
 
-    // Report summary of invalid data if any was found
     if (totalInvalidErrorCount > 0) {
       console.error(
         `❌ DISCOVERY DATA QUALITY ISSUE: Found ${totalInvalidErrorCount} invalid error values across ${neuronsWithInvalidErrors} neurons (out of ${neurons.length} total)`,
       );
       console.error(
         `   This suggests a bug in creature.record() or error calculation during discovery recording.`,
+      );
+    }
+
+    if (timedOut) {
+      this.log(
+        "warn",
+        `Neuron scan timed out after ${
+          this.formatMillis(durationMs)
+        } (${processedCount}/${totalNeurons} processed). Continuing with partial results.`,
+      );
+    } else if (stopRequested && this.loggingEnabled) {
+      this.log(
+        "debug",
+        `Neuron scan reached early target of ${earlyLimit} neurons in ${
+          this.formatMillis(durationMs)
+        }.`,
+      );
+    } else if (this.loggingEnabled) {
+      this.log(
+        "debug",
+        `Neuron scan completed in ${
+          this.formatMillis(durationMs)
+        } (${processedCount} neurons).`,
       );
     }
 
@@ -2521,10 +2677,10 @@ export class DiscoverStructure {
         return trimmed;
       }
     }
-    const neuronErrors = await this.listViableNeurons();
+    const neuronErrors = await this.listViableNeurons(count);
     if (neuronErrors.length === 0) return [];
 
-    const maxOutputError = await this.computeMaxOutputError();
+    const maxOutputError = await this.getMaxOutputError();
     const hasOutputCap = maxOutputError > 0;
     const EPSILON = 0.0001;
     const rawWeights = neuronErrors.map((n) => ({
@@ -2538,12 +2694,15 @@ export class DiscoverStructure {
     const scale = hasOutputCap && rawSum > capTotal && rawSum > EPSILON
       ? capTotal / rawSum
       : 1;
-    if (scale < 1 && this.loggingEnabled) {
+    if (scale < 0.9999) {
+      const scaleLabel = scale < 0.0001
+        ? scale.toExponential(2)
+        : scale.toFixed(4);
       this.log(
         "debug",
-        `Scaling weighted errors by ${
-          scale.toFixed(4)
-        } to respect output error cap ${maxOutputError.toFixed(4)}`,
+        `Scaling weighted errors by ${scaleLabel} to respect output error cap ${
+          maxOutputError.toFixed(4)
+        }`,
       );
     }
     const weightedValues = rawWeights.map((entry) => ({
@@ -2729,6 +2888,7 @@ export class DiscoverStructure {
         "warn",
         "Discovery timeout reached in analyzeSelectedNeuronsSquashes",
       );
+      this.logAnalysisSkipped("neuron");
       this.logFocusSelectionDetails("neuron", focusList);
       return undefined;
     }
@@ -3155,6 +3315,7 @@ export class DiscoverStructure {
         "warn",
         "Discovery timeout reached in analyzeSelectedNeuronsForRemoval",
       );
+      this.logAnalysisSkipped("synapse");
       this.logFocusSelectionDetails("synapse", focusList);
       return Promise.resolve(undefined);
     }
