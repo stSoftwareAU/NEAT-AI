@@ -226,6 +226,7 @@ export class DiscoverStructure {
   private cachedMaxOutputError?: { value: number; computedAt: number } =
     undefined;
   private lastNeuronScanStats?: NeuronScanStats;
+  private analysisDeadlineMs?: number;
   constructor(
     creature: Creature,
     timeoutSeconds: number,
@@ -334,6 +335,7 @@ export class DiscoverStructure {
       `Analysis time must be greater than 0, was: ${analysisTimeSeconds}`,
     );
     this.timeoutTS = Date.now() + analysisTimeSeconds * 1000;
+    this.analysisDeadlineMs = this.timeoutTS;
   }
 
   public setForcedFocusNeurons(neuronUUIDs: readonly string[]): void {
@@ -1554,6 +1556,7 @@ export class DiscoverStructure {
       improvementThreshold: this.improvementThreshold,
       maxCandidates: Math.max(25, focusList.length * 5),
       requireGpu: Deno.build.os === "darwin",
+      analysisDeadlineMs: this.analysisDeadlineMs,
     };
 
     try {
@@ -1617,6 +1620,7 @@ export class DiscoverStructure {
       improvementThreshold: this.improvementThreshold,
       maxCandidates: Math.max(50, focusList.length * 10),
       requireGpu: Deno.build.os === "darwin",
+      analysisDeadlineMs: this.analysisDeadlineMs,
     };
 
     try {
