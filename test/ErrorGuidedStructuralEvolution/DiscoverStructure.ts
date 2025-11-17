@@ -8,6 +8,7 @@ import {
   type DiscoverRecord,
   DiscoverStructure,
   type DiscoverStructureDeps,
+  type NeuronErrorInfo,
   type RustFlushMetrics,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
@@ -1030,6 +1031,166 @@ Deno.test({
 });
 
 Deno.test({
+  name: "listViableNeurons clamps errors to maximum output error",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 1,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.5 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      recorded: boolean;
+      tempDir: string;
+      loadCSV: (path: string) => Promise<DiscoverRecord[]>;
+      getMaxOutputError: () => Promise<number>;
+    };
+    dsAny.recorded = true;
+    dsAny.tempDir = ".";
+
+    const csvData = new Map<string, DiscoverRecord[]>([
+      ["output-0", [{
+        activation: 0,
+        errors: [0.5, -0.55],
+      }]],
+      ["hidden-0", [{
+        activation: 0,
+        errors: [1.2, -1.1],
+      }]],
+    ]);
+
+    dsAny.loadCSV = (path: string) => {
+      const file = path.split("/").pop() ?? "";
+      const uuid = file.replace(".csv", "");
+      const records = csvData.get(uuid) ?? [];
+      return Promise.resolve(records.map((record) => ({
+        activation: record.activation,
+        value: record.value,
+        errors: [...record.errors],
+      })));
+    };
+    dsAny.getMaxOutputError = () => Promise.resolve(0.55);
+
+    const neuronErrors = await discoverStructure.listViableNeurons();
+    const hidden = neuronErrors.find((entry) => entry.uuid === "hidden-0");
+    const output = neuronErrors.find((entry) => entry.uuid === "output-0");
+    assert(hidden);
+    assert(output);
+    assert(
+      hidden.totalError <= 0.55 + 1e-6,
+      `Hidden neuron error ${hidden.totalError} should not exceed output cap`,
+    );
+    assertAlmostEquals(output.totalError, 0.525, 0.001);
+  },
+});
+
+Deno.test({
+  name:
+    "selectNeuronsWeightedByError favours neurons with higher error-impact weight",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 1,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.3 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      recorded: boolean;
+      tempDir: string;
+      listViableNeurons: () => Promise<NeuronErrorInfo[]>;
+      getMaxOutputError: () => Promise<number>;
+    };
+    dsAny.recorded = true;
+    dsAny.tempDir = ".";
+    dsAny.listViableNeurons = () =>
+      Promise.resolve([
+        { uuid: "output-0", totalError: 0.55, impact: 1 },
+        { uuid: "hidden-0", totalError: 0.2, impact: 0.5 },
+      ]);
+    dsAny.getMaxOutputError = () => Promise.resolve(0.55);
+
+    const originalRandom = Math.random;
+    let seed = 42;
+    Math.random = () => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
+    };
+
+    const selectionCounts = new Map<string, number>();
+    try {
+      for (let i = 0; i < 100; i++) {
+        // deno-lint-ignore no-await-in-loop
+        const selection = await discoverStructure.selectNeuronsWeightedByError(
+          1,
+        );
+        const uuid = selection[0];
+        selectionCounts.set(uuid, (selectionCounts.get(uuid) ?? 0) + 1);
+      }
+    } finally {
+      Math.random = originalRandom;
+    }
+
+    assert(
+      (selectionCounts.get("output-0") ?? 0) >
+        (selectionCounts.get("hidden-0") ?? 0),
+      `Expected output neuron to be chosen more frequently. Counts: ${
+        JSON.stringify(
+          Object.fromEntries(selectionCounts.entries()),
+        )
+      }`,
+    );
+  },
+});
+
+Deno.test({
   name:
     "weighted focus selection caps combined weight to output error magnitude",
   fn: async () => {
@@ -1074,7 +1235,7 @@ Deno.test({
       listViableNeurons: () => Promise<
         Array<{ uuid: string; totalError: number; impact: number }>
       >;
-      computeMaxOutputError: () => Promise<number>;
+      getMaxOutputError: () => Promise<number>;
       lastFocusSelection?: { totalWeight?: number };
       recorded: boolean;
       tempDir: string;
@@ -1093,7 +1254,7 @@ Deno.test({
         { uuid: "hidden-large", totalError: 1_000_000, impact: 1 },
         { uuid: "hidden-small", totalError: 500_000, impact: 1 },
       ]);
-    dsAny.computeMaxOutputError = () => Promise.resolve(0.55);
+    dsAny.getMaxOutputError = () => Promise.resolve(0.55);
 
     try {
       await discoverStructure.selectNeuronsWeightedByError(2);
