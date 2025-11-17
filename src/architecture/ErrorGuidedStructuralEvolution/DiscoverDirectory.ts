@@ -98,6 +98,21 @@ class DataRecorder {
       .discoveryDisableSquashCandidates;
   }
 
+  private shouldAwaitCleanup(): boolean {
+    try {
+      const explicit = Deno.env.get("NEAT_DISCOVERY_AWAIT_CLEANUP");
+      if (explicit) {
+        const normalized = explicit.trim().toLowerCase();
+        return normalized === "1" || normalized === "true" ||
+          normalized === "yes";
+      }
+      const denoTest = Deno.env.get("DENO_TEST");
+      return denoTest?.toLowerCase() === "true";
+    } catch {
+      return false;
+    }
+  }
+
   private shuffleFiles(files: string[]): string[] {
     for (let i = files.length; i--;) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -795,14 +810,18 @@ class DataRecorder {
         }
       })();
 
-      // Don't await cleanup - let it happen in the background
-      // Catch any errors to prevent unhandled rejections and resource leaks
-      cleanupPromise.catch((error) => {
-        console.error(
-          `❌ CRITICAL: Discovery ${this.ID} cleanup failed - potential resource leak:`,
-          error,
-        );
-      });
+      if (this.shouldAwaitCleanup()) {
+        await cleanupPromise;
+      } else {
+        // Don't await cleanup - let it happen in the background
+        // Catch any errors to prevent unhandled rejections and resource leaks
+        cleanupPromise.catch((error) => {
+          console.error(
+            `❌ CRITICAL: Discovery ${this.ID} cleanup failed - potential resource leak:`,
+            error,
+          );
+        });
+      }
 
       return discoverResult;
     } catch (error) {

@@ -24,8 +24,10 @@ import {
   type RustAnalyzeSynapsesResult,
   type RustCandidateNeuron,
   type RustCandidateSynapse,
+  type RustNeuronDiagnostic,
   type RustRecordBatchStats,
   type RustRecordInput,
+  type RustSynapseDiagnostic,
 } from "./RustDiscovery.ts";
 import { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 
@@ -109,6 +111,21 @@ export interface CandidateNeuron {
   totalCount: number;
 }
 
+type FocusSelectionMode = "weighted" | "forced" | "all" | "random";
+
+interface FocusSelectionSummaryEntry {
+  uuid: string;
+  weight?: number;
+}
+
+interface FocusSelectionSummary {
+  key: string;
+  mode: FocusSelectionMode;
+  reason: string;
+  neurons: FocusSelectionSummaryEntry[];
+  totalWeight?: number;
+}
+
 /**
  * Represents a neuron and its total accumulated error for ranking neurons during discovery.
  * Impact measures how much a neuron affects outputs through its outgoing synapse weights.
@@ -185,6 +202,7 @@ export class DiscoverStructure {
   private forcedFocusIndex = 0;
   private improvementThreshold = DEFAULT_RUST_HELPFUL_THRESHOLD;
   private harmfulThreshold = DEFAULT_RUST_HARMFUL_THRESHOLD;
+  private lastFocusSelection?: FocusSelectionSummary;
   constructor(
     creature: Creature,
     timeoutSeconds: number,
@@ -1249,17 +1267,24 @@ export class DiscoverStructure {
     focusList: string[],
   ): CandidateNeuron[] | undefined {
     const rustResult = this.runRustNeuronAnalysis(focusList);
-    if (!rustResult || !rustResult.helpfulNeurons) {
+    if (!rustResult) {
       return undefined;
     }
 
-    const candidates = rustResult.helpfulNeurons
+    const helpfulNeurons = rustResult.helpfulNeurons ?? [];
+    if (helpfulNeurons.length === 0) {
+      this.logRustNoImprovement("neuron", focusList, rustResult.diagnostics);
+      return [];
+    }
+
+    const candidates = helpfulNeurons
       .map((candidate) => this.mapRustNeuronCandidate(candidate))
       .filter((candidate) =>
         candidate.expectedImprovementPercentage > this.improvementThreshold
       );
 
     if (candidates.length === 0) {
+      this.logRustNoImprovement("neuron", focusList, rustResult.diagnostics);
       return [];
     }
 
@@ -1273,17 +1298,24 @@ export class DiscoverStructure {
     focusList: string[],
   ): CandidateSynapse[] | undefined {
     const rustResult = this.runRustSynapseAnalysis(focusList);
-    if (!rustResult || !rustResult.helpfulSynapses) {
+    if (!rustResult) {
       return undefined;
     }
 
-    const candidates = rustResult.helpfulSynapses
+    const helpfulSynapses = rustResult.helpfulSynapses ?? [];
+    if (helpfulSynapses.length === 0) {
+      this.logRustNoImprovement("synapse", focusList, rustResult.diagnostics);
+      return [];
+    }
+
+    const candidates = helpfulSynapses
       .map((candidate) => this.mapRustCandidate(candidate))
       .filter((candidate) =>
         candidate.expectedImprovementPercentage > this.improvementThreshold
       );
 
     if (candidates.length === 0) {
+      this.logRustNoImprovement("synapse", focusList, rustResult.diagnostics);
       return [];
     }
 
@@ -1581,6 +1613,260 @@ export class DiscoverStructure {
       default:
         console.log(...args);
         break;
+    }
+  }
+
+  private focusSelectionKey(focusList: readonly string[]): string {
+    return focusList.join("|");
+  }
+
+  private updateFocusSelectionSummary(
+    mode: FocusSelectionMode,
+    focusNeurons: readonly string[],
+    weightMap?: Map<string, number>,
+    totalWeight?: number,
+    reason = "",
+  ): void {
+    const neurons = focusNeurons.map((uuid) => ({
+      uuid,
+      weight: weightMap?.get(uuid),
+    }));
+    this.lastFocusSelection = {
+      key: this.focusSelectionKey(focusNeurons),
+      mode,
+      reason,
+      neurons,
+      totalWeight,
+    };
+    if (this.loggingEnabled && mode === "weighted") {
+      const preview = neurons.slice(0, Math.min(3, neurons.length)).map((
+        entry,
+      ) =>
+        entry.weight !== undefined
+          ? `${entry.uuid} (weight ${entry.weight.toFixed(4)})`
+          : entry.uuid
+      ).join(", ");
+      this.log(
+        "info",
+        `Weighted error x impact selection prioritised: ${preview}${
+          neurons.length > 3 ? ", …" : ""
+        }`,
+      );
+    }
+  }
+
+  private logFocusSelectionDetails(
+    scope: "synapse" | "neuron",
+    focusList: string[],
+  ): void {
+    const summary = this.lastFocusSelection;
+    const focusKey = this.focusSelectionKey(focusList);
+    if (!summary || summary.key !== focusKey) {
+      this.log(
+        "warn",
+        `Focus selection summary unavailable for ${scope} analysis (focus=${
+          focusList.join(", ")
+        })`,
+      );
+      return;
+    }
+    const displayEntries = summary.neurons.slice(
+      0,
+      Math.min(5, summary.neurons.length),
+    ).map((entry) =>
+      entry.weight !== undefined
+        ? `${entry.uuid} (weight ${entry.weight.toFixed(4)})`
+        : entry.uuid
+    );
+    const suffix = summary.neurons.length > displayEntries.length ? ", …" : "";
+    const totalInfo = summary.totalWeight !== undefined
+      ? ` totalWeight=${summary.totalWeight.toFixed(4)}`
+      : "";
+    this.log(
+      "warn",
+      `Focus selection [${summary.mode}] ${
+        summary.reason ? `(${summary.reason}) ` : ""
+      }for ${scope} analysis: ${
+        displayEntries.join(", ")
+      }${suffix}${totalInfo}`,
+    );
+  }
+
+  private logRustNoImprovement(
+    scope: "synapse" | "neuron",
+    focusList: string[],
+    diagnostics?: RustSynapseDiagnostic[] | RustNeuronDiagnostic[],
+  ): void {
+    const preview = focusList.length > 10
+      ? `${focusList.slice(0, 10).join(", ")} … (+${
+        focusList.length - 10
+      } more)`
+      : focusList.join(", ");
+    this.log(
+      "warn",
+      `Rust ${scope} analysis evaluated ${focusList.length} focus neuron(s) but found no improvements. Focus neurons: ${preview}`,
+    );
+    this.logFocusSelectionDetails(scope, focusList);
+    this.logRustDiagnostics(scope, diagnostics);
+  }
+
+  private isSynapseDiagnostic(
+    diagnostic: RustSynapseDiagnostic | RustNeuronDiagnostic,
+  ): diagnostic is RustSynapseDiagnostic {
+    return Object.prototype.hasOwnProperty.call(
+      diagnostic,
+      "evaluatedCandidates",
+    );
+  }
+
+  private logRustDiagnostics(
+    scope: "synapse" | "neuron",
+    diagnostics?: RustSynapseDiagnostic[] | RustNeuronDiagnostic[],
+  ): void {
+    if (!diagnostics || diagnostics.length === 0) {
+      this.log(
+        "warn",
+        `Rust ${scope} analysis did not return diagnostic detail for the evaluated neurons.`,
+      );
+      return;
+    }
+    diagnostics.forEach((diagnostic) => {
+      if (this.isSynapseDiagnostic(diagnostic)) {
+        this.log("warn", this.formatSynapseDiagnostic(diagnostic));
+      } else {
+        this.log("warn", this.formatNeuronDiagnostic(diagnostic));
+      }
+    });
+  }
+
+  private formatSynapseDiagnostic(diagnostic: RustSynapseDiagnostic): string {
+    const reason = this.describeSynapseDiagnosticReason(diagnostic.reason);
+    const detailParts = [
+      `evaluated=${diagnostic.evaluatedCandidates}`,
+      `withSamples=${diagnostic.candidatesWithSamples}`,
+      `targetRecords=${diagnostic.targetRecordCount}`,
+    ];
+    if (diagnostic.detail) {
+      const detail = diagnostic.detail;
+      if (detail.sourceNeuronUuid) {
+        detailParts.push(`source=${detail.sourceNeuronUuid}`);
+      }
+      if (detail.sampleCount !== undefined) {
+        detailParts.push(`samples=${detail.sampleCount}`);
+      }
+      if (
+        detail.improvedCount !== undefined ||
+        detail.worsenedCount !== undefined
+      ) {
+        detailParts.push(
+          `improved=${detail.improvedCount ?? 0}/worsened=${
+            detail.worsenedCount ?? 0
+          }`,
+        );
+      }
+      if (detail.expectedImprovementPercentage !== undefined) {
+        detailParts.push(
+          `expected=${
+            (detail.expectedImprovementPercentage * 100).toFixed(2)
+          }%`,
+        );
+      }
+      if (detail.threshold !== undefined) {
+        detailParts.push(`threshold=${(detail.threshold * 100).toFixed(2)}%`);
+      }
+      if (detail.suggestedWeight !== undefined) {
+        detailParts.push(`weight=${detail.suggestedWeight.toFixed(4)}`);
+      }
+    }
+    return `Rust synapse diagnostic for ${diagnostic.targetNeuronUuid}: ${reason} (${
+      detailParts.join(", ")
+    })`;
+  }
+
+  private formatNeuronDiagnostic(diagnostic: RustNeuronDiagnostic): string {
+    const reason = this.describeNeuronDiagnosticReason(diagnostic.reason);
+    const detailParts = [
+      `evaluated=${diagnostic.evaluatedSources}`,
+      `withSamples=${diagnostic.sourcesWithSamples}`,
+      `targetRecords=${diagnostic.targetRecordCount}`,
+    ];
+    if (diagnostic.detail) {
+      const detail = diagnostic.detail;
+      if (detail.sourceNeuronUuid) {
+        detailParts.push(`source=${detail.sourceNeuronUuid}`);
+      }
+      if (detail.orientation) {
+        detailParts.push(`orientation=${detail.orientation}`);
+      }
+      if (detail.sampleCount !== undefined) {
+        detailParts.push(`samples=${detail.sampleCount}`);
+      }
+      if (
+        detail.improvedCount !== undefined ||
+        detail.worsenedCount !== undefined
+      ) {
+        detailParts.push(
+          `improved=${detail.improvedCount ?? 0}/worsened=${
+            detail.worsenedCount ?? 0
+          }`,
+        );
+      }
+      if (detail.expectedImprovementPercentage !== undefined) {
+        detailParts.push(
+          `expected=${
+            (detail.expectedImprovementPercentage * 100).toFixed(2)
+          }%`,
+        );
+      }
+      if (detail.threshold !== undefined) {
+        detailParts.push(`threshold=${(detail.threshold * 100).toFixed(2)}%`);
+      }
+      if (detail.outgoingWeight !== undefined) {
+        detailParts.push(`outgoing=${detail.outgoingWeight.toFixed(4)}`);
+      }
+    }
+    return `Rust neuron diagnostic for ${diagnostic.targetNeuronUuid}: ${reason} (${
+      detailParts.join(", ")
+    })`;
+  }
+
+  private describeSynapseDiagnosticReason(
+    reason: RustSynapseDiagnostic["reason"],
+  ): string {
+    switch (reason) {
+      case "no_eligible_sources":
+        return "No eligible upstream sources";
+      case "no_diagnostics":
+        return "No diagnostics recorded";
+      case "no_samples":
+        return "No aligned samples found";
+      case "zero_improvement":
+        return "Zero net improvement observed";
+      case "below_threshold":
+        return "Expected improvement below threshold";
+      default:
+        return reason;
+    }
+  }
+
+  private describeNeuronDiagnosticReason(
+    reason: RustNeuronDiagnostic["reason"],
+  ): string {
+    switch (reason) {
+      case "no_eligible_sources":
+        return "No eligible upstream sources";
+      case "no_diagnostics":
+        return "No diagnostics recorded";
+      case "no_samples":
+        return "No aligned samples detected";
+      case "not_enough_activations":
+        return "Not enough activations to evaluate";
+      case "weight_degenerate":
+        return "Degenerate outgoing weight";
+      case "below_threshold":
+        return "Expected improvement below threshold";
+      default:
+        return reason;
     }
   }
 
@@ -2070,6 +2356,7 @@ export class DiscoverStructure {
    */
   public async selectNeuronsWeightedByError(count: number): Promise<string[]> {
     assert(count > 0, "Count must be greater than 0");
+    this.lastFocusSelection = undefined;
     if (
       this.forcedFocusNeurons && this.forcedFocusIndex <
         this.forcedFocusNeurons.length
@@ -2099,6 +2386,13 @@ export class DiscoverStructure {
         this.forcedFocusNeurons = null;
       }
       if (trimmed.length > 0) {
+        this.updateFocusSelectionSummary(
+          "forced",
+          trimmed,
+          undefined,
+          undefined,
+          "forced focus override",
+        );
         return trimmed;
       }
     }
@@ -2106,7 +2400,19 @@ export class DiscoverStructure {
     if (neuronErrors.length === 0) return [];
 
     if (neuronErrors.length <= count) {
-      return neuronErrors.map((neuron) => neuron.uuid);
+      const uuids = neuronErrors.map((neuron) => neuron.uuid);
+      const EPSILON = 0.0001;
+      const weightMap = new Map(
+        neuronErrors.map((n) => [n.uuid, n.totalError * (n.impact + EPSILON)]),
+      );
+      this.updateFocusSelectionSummary(
+        "all",
+        uuids,
+        weightMap,
+        undefined,
+        "all viable neurons selected",
+      );
+      return uuids;
     }
     const selectedUUIDs: Set<string> = new Set();
 
@@ -2141,7 +2447,15 @@ export class DiscoverStructure {
         `   Falling back to random neuron selection to continue discovery`,
       );
       const shuffled = [...neuronErrors].sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, count).map((n) => n.uuid);
+      const fallback = shuffled.slice(0, count).map((n) => n.uuid);
+      this.updateFocusSelectionSummary(
+        "random",
+        fallback,
+        undefined,
+        undefined,
+        "random selection due to invalid total weight",
+      );
+      return fallback;
     }
 
     if (totalWeightedSum <= 0) {
@@ -2151,7 +2465,15 @@ export class DiscoverStructure {
       console.warn(`   Falling back to random neuron selection`);
       // Fallback to random selection without weighting
       const shuffled = [...neuronErrors].sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, count).map((n) => n.uuid);
+      const fallback = shuffled.slice(0, count).map((n) => n.uuid);
+      this.updateFocusSelectionSummary(
+        "random",
+        fallback,
+        undefined,
+        undefined,
+        "random selection due to zero total weight",
+      );
+      return fallback;
     }
 
     // Use while loop with max iterations to prevent infinite loops
@@ -2210,7 +2532,18 @@ export class DiscoverStructure {
       );
     }
 
-    return Array.from(selectedUUIDs);
+    const selection = Array.from(selectedUUIDs);
+    const weightMap = new Map(
+      weightedValues.map((n) => [n.uuid, n.weight]),
+    );
+    this.updateFocusSelectionSummary(
+      "weighted",
+      selection,
+      weightMap,
+      totalWeightedSum,
+      "error x impact weighting",
+    );
+    return selection;
   }
 
   /**

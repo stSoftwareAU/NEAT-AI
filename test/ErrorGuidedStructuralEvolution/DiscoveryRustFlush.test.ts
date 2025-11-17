@@ -16,6 +16,19 @@ import type {
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
+  const envKey = "NEAT_DISCOVERY_AWAIT_CLEANUP";
+  const previousValue = (() => {
+    try {
+      return Deno.env.get(envKey);
+    } catch {
+      return undefined;
+    }
+  })();
+  try {
+    Deno.env.set(envKey, "1");
+  } catch {
+    // ignore if env not accessible
+  }
   const tempDir = await Deno.makeTempDir({ prefix: "discovery-chunk-test-" });
   try {
     const dataFile = join(tempDir, "sample.bin");
@@ -109,6 +122,19 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
     assertEquals(mergedChunks.length, 1);
     assertEquals(mergedChunks[0].length, 2);
   } finally {
+    if (previousValue === undefined) {
+      try {
+        Deno.env.delete(envKey);
+      } catch {
+        // ignore
+      }
+    } else {
+      try {
+        Deno.env.set(envKey, previousValue);
+      } catch {
+        // ignore
+      }
+    }
     await Deno.remove(tempDir, { recursive: true });
   }
 });
