@@ -7,6 +7,7 @@ import {
   DEFAULT_RUST_FLUSH_RECORDS,
   type DiscoverRecord,
   DiscoverStructure,
+  type DiscoverStructureDeps,
   type RustFlushMetrics,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
@@ -678,6 +679,513 @@ Deno.test({
     } finally {
       await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
     }
+  },
+});
+
+Deno.test({
+  name:
+    "calculateNeuronImpact caps bounded downstream contributions during focus selection",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 1,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-upstream",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "hidden-linear",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "hidden-tanh",
+          squash: TANH.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "hidden-linear", toUUID: "output-0", weight: 0.5 },
+        { fromUUID: "hidden-upstream", toUUID: "hidden-tanh", weight: 1e6 },
+        { fromUUID: "hidden-tanh", toUUID: "output-0", weight: 0.02 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      calculateNeuronImpact: (uuid: string) => number;
+      tempDir: string;
+    };
+
+    try {
+      const tanhImpact = dsAny.calculateNeuronImpact("hidden-tanh");
+      assertAlmostEquals(tanhImpact, 0.02, 1e-6);
+
+      const upstreamImpact = dsAny.calculateNeuronImpact("hidden-upstream");
+      assertAlmostEquals(
+        upstreamImpact,
+        tanhImpact,
+        1e-6,
+        "Upstream impact should be capped by bounded TANH path",
+      );
+
+      const linearImpact = dsAny.calculateNeuronImpact("hidden-linear");
+      assertAlmostEquals(
+        linearImpact,
+        0.5,
+        1e-6,
+        "Linear neuron impact should equal its outgoing weight",
+      );
+    } finally {
+      await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "selectNeuronsWeightedByError records bounded impact weights for saturating paths",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 1,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-linear",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "hidden-upstream",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "hidden-tanh",
+          squash: TANH.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "hidden-linear", toUUID: "output-0", weight: 0.5 },
+        { fromUUID: "hidden-upstream", toUUID: "hidden-tanh", weight: 1e6 },
+        { fromUUID: "hidden-tanh", toUUID: "output-0", weight: 0.02 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      calculateNeuronImpact: (uuid: string) => number;
+      listViableNeurons: () => Promise<
+        Array<{ uuid: string; totalError: number; impact: number }>
+      >;
+      tempDir: string;
+    };
+
+    const tanhImpact = dsAny.calculateNeuronImpact("hidden-tanh");
+    const upstreamImpact = dsAny.calculateNeuronImpact("hidden-upstream");
+    const linearImpact = dsAny.calculateNeuronImpact("hidden-linear");
+
+    dsAny.listViableNeurons = () =>
+      Promise.resolve([
+        { uuid: "hidden-upstream", totalError: 10, impact: upstreamImpact },
+        { uuid: "hidden-linear", totalError: 10, impact: linearImpact },
+        { uuid: "hidden-tanh", totalError: 10, impact: tanhImpact },
+      ]);
+
+    try {
+      const selection = await discoverStructure.selectNeuronsWeightedByError(3);
+      assertEquals(
+        new Set(selection),
+        new Set(["hidden-upstream", "hidden-linear", "hidden-tanh"]),
+      );
+
+      const summary = (discoverStructure as unknown as {
+        lastFocusSelection?: {
+          neurons: Array<{ uuid: string; weight?: number }>;
+        };
+      }).lastFocusSelection;
+      assert(summary, "Focus summary should be recorded");
+      const weightEntries = new Map(
+        summary!.neurons.map((entry) => [entry.uuid, entry.weight ?? 0]),
+      );
+      const epsilon = 0.0001;
+      const expectedLinearWeight = 10 * (linearImpact + epsilon);
+      const expectedUpstreamWeight = 10 * (upstreamImpact + epsilon);
+
+      assertAlmostEquals(
+        weightEntries.get("hidden-linear") ?? 0,
+        expectedLinearWeight,
+        1e-6,
+      );
+      assertAlmostEquals(
+        weightEntries.get("hidden-upstream") ?? 0,
+        expectedUpstreamWeight,
+        1e-6,
+      );
+      assert(
+        expectedLinearWeight > expectedUpstreamWeight,
+        "Linear neuron should retain higher weighted error than bounded upstream path",
+      );
+    } finally {
+      await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
+    }
+  },
+});
+
+Deno.test({
+  name: "listNeuronsByImpact orders outputs before hidden neurons",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 2,
+      output: 2,
+      neurons: [
+        {
+          type: "constant",
+          uuid: "const-0",
+          bias: 1,
+        },
+        {
+          type: "hidden",
+          uuid: "hidden-a",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "hidden-b",
+          squash: TANH.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-1",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "hidden-a", toUUID: "output-0", weight: 0.8 },
+        { fromUUID: "hidden-b", toUUID: "output-1", weight: 0.4 },
+        { fromUUID: "hidden-a", toUUID: "hidden-b", weight: 0.6 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      listNeuronsByImpact: () => Array<{ uuid: string; neuronType: string }>;
+      tempDir: string;
+    };
+
+    try {
+      const ordered = dsAny.listNeuronsByImpact();
+      assert(
+        ordered.every((entry) => entry.uuid !== "const-0"),
+        "Constant neurons must be excluded from impact ordering",
+      );
+      const topTwo = ordered.slice(0, 2).map((entry) => entry.uuid);
+      assertEquals(new Set(topTwo), new Set(["output-0", "output-1"]));
+
+      const hiddenOrdering = ordered
+        .filter((entry) => entry.neuronType !== "output")
+        .map((entry) => entry.uuid);
+      assertEquals(hiddenOrdering[0], "hidden-a");
+    } finally {
+      await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
+    }
+  },
+});
+
+Deno.test({
+  name: "setForcedFocusNeurons filters constants from overrides",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 1,
+      output: 1,
+      neurons: [
+        { type: "constant", uuid: "const-0", bias: 1 },
+        {
+          type: "hidden",
+          uuid: "hidden-focus",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "const-0", toUUID: "output-0", weight: 0.7 },
+        { fromUUID: "hidden-focus", toUUID: "output-0", weight: 0.5 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      forcedFocusNeurons?: string[] | null;
+      tempDir: string;
+    };
+
+    try {
+      discoverStructure.setForcedFocusNeurons([
+        "const-0",
+        "hidden-focus",
+        "output-0",
+      ]);
+      assertEquals(dsAny.forcedFocusNeurons, ["hidden-focus", "output-0"]);
+    } finally {
+      await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
+    }
+  },
+});
+
+Deno.test({
+  name: "listNeuronsByImpact honors outputs for larger in-repo fixtures",
+  fn: async () => {
+    const fixtureUrl = new URL("../data/large.json", import.meta.url);
+    const jsonText = await Deno.readTextFile(fixtureUrl);
+    const creature = Creature.fromJSON(JSON.parse(jsonText));
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      listNeuronsByImpact: () => Array<{ uuid: string; neuronType: string }>;
+      tempDir: string;
+    };
+
+    try {
+      const ordered = dsAny.listNeuronsByImpact();
+      const outputUUIDs = creature.neurons
+        .filter((neuron) => neuron.type === "output")
+        .map((neuron) => neuron.uuid);
+      const leading = ordered.slice(0, outputUUIDs.length).map((entry) =>
+        entry.uuid
+      );
+      assertEquals(new Set(leading), new Set(outputUUIDs));
+    } finally {
+      await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "weighted focus selection caps combined weight to output error magnitude",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 1,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-large",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "hidden-small",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "hidden-large", toUUID: "output-0", weight: 2 },
+        { fromUUID: "hidden-small", toUUID: "output-0", weight: 1 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      listViableNeurons: () => Promise<
+        Array<{ uuid: string; totalError: number; impact: number }>
+      >;
+      computeMaxOutputError: () => Promise<number>;
+      lastFocusSelection?: { totalWeight?: number };
+      recorded: boolean;
+      tempDir: string;
+      parquetFilePath: string | null;
+      deps: DiscoverStructureDeps;
+    };
+
+    dsAny.recorded = true;
+    dsAny.parquetFilePath = "unused.parquet";
+    dsAny.deps = {
+      ...dsAny.deps,
+      isRustDiscoveryEnabled: () => true,
+    };
+    dsAny.listViableNeurons = () =>
+      Promise.resolve([
+        { uuid: "hidden-large", totalError: 1_000_000, impact: 1 },
+        { uuid: "hidden-small", totalError: 500_000, impact: 1 },
+      ]);
+    dsAny.computeMaxOutputError = () => Promise.resolve(0.55);
+
+    try {
+      await discoverStructure.selectNeuronsWeightedByError(2);
+      const summary = dsAny.lastFocusSelection;
+      assert(summary, "Focus selection summary should exist");
+      assert(
+        summary!.totalWeight !== undefined &&
+          summary!.totalWeight <= 0.55 + 1e-6,
+        `Total weight ${summary?.totalWeight} should respect output error cap`,
+      );
+    } finally {
+      await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "analyzeSelectedNeurons timeout logs focus selection summary for visibility",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 1,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-logger",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "hidden-logger", toUUID: "output-0", weight: 0.1 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      1,
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
+    const dsAny = discoverStructure as unknown as {
+      lastFocusSelection?: {
+        key: string;
+        mode: "weighted";
+        reason: string;
+        neurons: Array<{ uuid: string; weight: number }>;
+        totalWeight: number;
+      };
+      timeoutTS: number;
+      tempDir: string;
+    };
+
+    const focusList = ["hidden-logger"];
+    dsAny.lastFocusSelection = {
+      key: focusList.join("|"),
+      mode: "weighted",
+      reason: "unit-test",
+      neurons: [{ uuid: "hidden-logger", weight: 42 }],
+      totalWeight: 42,
+    };
+    dsAny.timeoutTS = Date.now() - 1; // Force timeout path
+
+    const warnMessages: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnMessages.push(args.map((part) => String(part)).join(" "));
+    };
+
+    try {
+      await discoverStructure.analyzeSelectedNeurons(focusList);
+    } finally {
+      console.warn = originalWarn;
+      await Deno.remove(dsAny.tempDir, { recursive: true }).catch(() => {});
+    }
+
+    const summaryLog = warnMessages.find((msg) =>
+      msg.includes("Focus selection [weighted]")
+    );
+    assert(
+      summaryLog,
+      "Expected timeout to emit focus selection summary for diagnostics",
+    );
   },
 });
 
