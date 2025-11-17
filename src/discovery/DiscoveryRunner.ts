@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { join } from "@std/path/join";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
@@ -7,7 +8,10 @@ import { calculate as calculateScore } from "../architecture/Score.ts";
 import type { Creature } from "../Creature.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
-import { buildDiscoveryCandidates } from "./DiscoveryCandidates.ts";
+import {
+  buildDiscoveryCandidates,
+  type DiscoveryChangeType,
+} from "./DiscoveryCandidates.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
@@ -60,6 +64,16 @@ export interface DiscoveryDirInput {
   options: NeatOptions;
 }
 
+export interface DiscoveryEvaluationSummary {
+  kind: "original" | "candidate";
+  changeType?: DiscoveryChangeType;
+  score: number;
+  error: number;
+  scoreDelta?: number;
+  improved: boolean;
+  archivePath?: string;
+}
+
 export interface DiscoveryDirResult {
   discovery: DiscoverResult;
   original: {
@@ -74,6 +88,8 @@ export interface DiscoveryDirResult {
     message: string;
     creature: CreatureExport;
   };
+  evaluations?: DiscoveryEvaluationSummary[];
+  candidateArchiveDir?: string;
 }
 
 export class DiscoveryRunner {
@@ -249,6 +265,19 @@ export class DiscoveryRunner {
         };
       }
 
+      const evaluationArtifacts = this.#recordEvaluationSummaries({
+        discoveryID: discoverResult.ID,
+        evaluationResults,
+        originalScore: original.score,
+        baseCreature: creature,
+      });
+      if (evaluationArtifacts.summaries.length > 0) {
+        outcome.evaluations = evaluationArtifacts.summaries;
+      }
+      if (evaluationArtifacts.archiveDir) {
+        outcome.candidateArchiveDir = evaluationArtifacts.archiveDir;
+      }
+
       markPhase("Total discoveryDir run", runStart);
       return outcome;
     } finally {
@@ -260,6 +289,133 @@ export class DiscoveryRunner {
         }
       }
     }
+  }
+
+  #recordEvaluationSummaries(
+    params: {
+      discoveryID: string;
+      evaluationResults: Array<{
+        kind: "original" | "candidate";
+        candidate?: DiscoveryCandidate;
+        error: number;
+        score: number;
+      }>;
+      originalScore: number;
+      baseCreature: Creature;
+    },
+  ): { summaries: DiscoveryEvaluationSummary[]; archiveDir?: string } {
+    const { discoveryID, evaluationResults, originalScore, baseCreature } =
+      params;
+    const summaries: DiscoveryEvaluationSummary[] = [];
+    const labelCounts = new Map<string, number>();
+
+    let archiveDir: string | undefined;
+    let resolvedArchiveDir: string | undefined;
+
+    const ensureArchiveDir = (): string | undefined => {
+      if (archiveDir) return archiveDir;
+
+      const safeDiscoveryID = sanitiseSegment(discoveryID || "discovery");
+      const timestamp = makeArchiveTimestamp();
+      const targetDir = join(
+        ".discovery",
+        "candidates",
+        safeDiscoveryID,
+        timestamp,
+      );
+      try {
+        Deno.mkdirSync(targetDir, { recursive: true });
+        archiveDir = targetDir;
+        resolvedArchiveDir = safeRealPath(targetDir);
+      } catch (error) {
+        console.warn(
+          "[DiscoveryRunner] Failed to create discovery candidate archive:",
+          error,
+        );
+        archiveDir = undefined;
+      }
+      return archiveDir;
+    };
+
+    const persistCreature = (
+      baseLabel: string,
+      payload: Record<string, unknown>,
+    ): string | undefined => {
+      const dir = ensureArchiveDir();
+      if (!dir) {
+        return undefined;
+      }
+      try {
+        const safeLabel = sanitiseSegment(baseLabel);
+        const index = (labelCounts.get(safeLabel) ?? 0) + 1;
+        labelCounts.set(safeLabel, index);
+        const suffix = index === 1 ? "" : `-${index}`;
+        const filePath = join(dir, `${safeLabel}${suffix}.json`);
+        Deno.writeTextFileSync(filePath, JSON.stringify(payload, null, 1));
+        return safeRealPath(filePath);
+      } catch (error) {
+        console.warn(
+          `[DiscoveryRunner] Failed to persist discovery candidate '${baseLabel}':`,
+          error,
+        );
+        return undefined;
+      }
+    };
+
+    const originalExport = baseCreature.exportJSON();
+
+    for (const evaluation of evaluationResults) {
+      const changeType = evaluation.candidate?.change.type;
+      const scoreDelta = evaluation.score - originalScore;
+      const improved = evaluation.kind === "candidate" && scoreDelta > 0;
+
+      let archivePath: string | undefined;
+      const exportPayload = evaluation.kind === "original"
+        ? originalExport
+        : evaluation.candidate?.creature.exportJSON();
+
+      if (exportPayload) {
+        const label = evaluation.kind === "original"
+          ? "original"
+          : `candidate-${changeType ?? "unknown"}`;
+        archivePath = persistCreature(label, {
+          kind: evaluation.kind,
+          changeType,
+          score: evaluation.score,
+          error: evaluation.error,
+          scoreDelta,
+          improved,
+          creature: exportPayload,
+        });
+      }
+
+      summaries.push({
+        kind: evaluation.kind,
+        changeType,
+        score: evaluation.score,
+        error: evaluation.error,
+        scoreDelta,
+        improved,
+        archivePath,
+      });
+    }
+
+    if (archiveDir) {
+      try {
+        const summaryPath = join(archiveDir, "summary.json");
+        Deno.writeTextFileSync(summaryPath, JSON.stringify(summaries, null, 1));
+      } catch (error) {
+        console.warn(
+          "[DiscoveryRunner] Failed to persist discovery evaluation summary:",
+          error,
+        );
+      }
+    }
+
+    return {
+      summaries,
+      archiveDir: resolvedArchiveDir ?? archiveDir,
+    };
   }
 
   async #evaluateAll(
@@ -320,5 +476,26 @@ export class DiscoveryRunner {
     await Promise.all(workers.map((worker) => processNext(worker)));
 
     return results;
+  }
+}
+
+function sanitiseSegment(value: string): string {
+  const lowered = value.toLowerCase();
+  const cleaned = lowered.replace(/[^a-z0-9._-]+/g, "-").replace(
+    /^-+|-+$/g,
+    "",
+  );
+  return cleaned.length > 0 ? cleaned : "entry";
+}
+
+function makeArchiveTimestamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+function safeRealPath(path: string): string {
+  try {
+    return Deno.realPathSync(path);
+  } catch {
+    return path;
   }
 }

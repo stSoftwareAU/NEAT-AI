@@ -274,6 +274,78 @@ Deno.test("DiscoveryRunner returns no improvement when candidates are not better
   }
 });
 
+Deno.test("DiscoveryRunner records evaluation summaries and archives candidates", async () => {
+  const discoveryResult: DiscoverResult = {
+    ID: "ARCHIVE_TEST",
+    addHelpfulSynapses: undefined,
+    addHelpfulNeurons: undefined,
+    removeHarmfulSynapse: undefined,
+    candidateSquashes: undefined,
+  };
+
+  const baseCreature = makeBaseCreature();
+  const candidateCreature = Creature.fromJSON(baseCreature.exportJSON());
+  CreatureUtil.makeUUID(candidateCreature);
+
+  const computeError = (creature: Creature) =>
+    creature === candidateCreature ? 0.25 : 0.5;
+
+  const tempDir = await Deno.makeTempDir();
+  const previousCwd = Deno.cwd();
+
+  const runner = new DiscoveryRunner({
+    rustDiscoveryEnabled: () => true,
+    workerFactory: () =>
+      new FakeWorker(
+        discoveryResult,
+        computeError,
+      ),
+    candidateBuilder: () => [{
+      creature: candidateCreature,
+      change: { type: "add-neurons", description: "test candidate" },
+    }],
+  });
+
+  try {
+    Deno.chdir(tempDir);
+
+    const result = await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options: makeOptions(),
+    });
+
+    assert(result.evaluations);
+    assertEquals(result.evaluations.length, 2);
+
+    const originalEval = result.evaluations.find((entry) =>
+      entry.kind === "original"
+    );
+    const candidateEval = result.evaluations.find((entry) =>
+      entry.kind === "candidate"
+    );
+
+    assert(originalEval);
+    assert(candidateEval);
+    assertEquals(candidateEval.improved, true);
+    assert(
+      (candidateEval.scoreDelta ?? 0) > 0,
+      "candidate should record positive score delta",
+    );
+
+    assert(result.candidateArchiveDir);
+    assert(candidateEval.archivePath);
+
+    const summaryPath = `${result.candidateArchiveDir}/summary.json`;
+    const summary = JSON.parse(await Deno.readTextFile(summaryPath));
+    assert(Array.isArray(summary));
+    assertEquals(summary.length, 2);
+  } finally {
+    Deno.chdir(previousCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("DiscoveryRunner passes discovery focus neurons to worker", async () => {
   const discoveryResult: DiscoverResult = {
     ID: "DISCOVER_FOCUS",
