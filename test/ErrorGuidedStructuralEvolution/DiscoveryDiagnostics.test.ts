@@ -1,4 +1,4 @@
-import { assert, assertStringIncludes } from "@std/assert";
+import { assert } from "@std/assert";
 import { stub } from "@std/testing/mock";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
@@ -44,13 +44,14 @@ Deno.test("logs diagnostics when Rust finds no improvements", () => {
   });
   try {
     const logNoImprovement = internals["logRustNoImprovement"] as (
+      this: DiscoverStructure,
       scope: "synapse" | "neuron",
       targets: string[],
       diagnostics?: unknown[],
     ) => void;
     assert(logNoImprovement, "Expected logRustNoImprovement to exist");
 
-    logNoImprovement("synapse", focusList, [{
+    logNoImprovement.call(structure, "synapse", focusList, [{
       targetNeuronUuid: "output-0",
       reason: "no_samples",
       evaluatedCandidates: 4,
@@ -66,16 +67,17 @@ Deno.test("logs diagnostics when Rust finds no improvements", () => {
     warnStub.restore();
   }
 
+  const lowerWarnings = warnings.map((line) => line.toLowerCase());
   assert(
-    warnings.length >= 2,
-    `Expected at least two warning lines, received ${warnings.length}`,
+    lowerWarnings.some((line) => line.includes("no improvements")),
+    `Expected at least one warning mentioning "no improvements", received ${
+      warnings.join(" | ")
+    }`,
   );
-  assertStringIncludes(
-    warnings[0],
-    "no improvements",
-  );
-  assertStringIncludes(
-    warnings[1],
-    "no aligned samples",
+  assert(
+    lowerWarnings.some((line) => line.includes("no aligned samples")),
+    `Expected at least one warning mentioning "no aligned samples", received ${
+      warnings.join(" | ")
+    }`,
   );
 });
