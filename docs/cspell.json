@@ -97,6 +97,7 @@
     "unscored",
     "Millis",
     "wgpu",
-    "WGSL"
+    "WGSL",
+    "honors"
   ]
 }

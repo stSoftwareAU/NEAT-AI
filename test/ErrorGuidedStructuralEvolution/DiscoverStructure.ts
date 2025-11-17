@@ -997,23 +997,10 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "listNeuronsByImpact honors outputs from complex creatures loaded from assets",
+  name: "listNeuronsByImpact honors outputs for larger in-repo fixtures",
   fn: async () => {
-    const fittestPath =
-      "/Users/nigelleck/src/NEAT-AI-Examples/assets/fittest_creature.json";
-    let jsonText: string;
-    try {
-      jsonText = await Deno.readTextFile(fittestPath);
-    } catch (error) {
-      console.warn(
-        `[ImpactTests] Skipping complex creature impact ordering test: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      return;
-    }
-
+    const fixtureUrl = new URL("../data/large.json", import.meta.url);
+    const jsonText = await Deno.readTextFile(fixtureUrl);
     const creature = Creature.fromJSON(JSON.parse(jsonText));
     CreatureUtil.makeUUID(creature);
 
