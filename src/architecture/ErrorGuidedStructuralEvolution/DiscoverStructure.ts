@@ -16,6 +16,7 @@ import {
   isRustDiscoveryEnabled,
   isRustLibraryAvailable,
   mergeDiscoveryParquet,
+  rankFocusNeurons,
   readDiscoveryRecords,
   recordDiscovery,
   type RustAnalyzeNeuronsInput,
@@ -43,6 +44,7 @@ export interface DiscoverStructureDeps {
   analyzeNeurons: typeof analyzeNeurons;
   analyzeSynapses: typeof analyzeSynapses;
   readDiscoveryRecords: typeof readDiscoveryRecords;
+  rankFocusNeurons?: typeof rankFocusNeurons;
 }
 
 const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
@@ -53,6 +55,7 @@ const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
   analyzeNeurons,
   analyzeSynapses,
   readDiscoveryRecords,
+  rankFocusNeurons,
 };
 
 const OUTPUT_ERROR_CACHE_TTL_MS = 30_000;
@@ -2469,6 +2472,88 @@ export class DiscoverStructure {
       return [];
     }
 
+    const rustResult = this.tryRustFocusRanking(targetCount);
+    if (rustResult) {
+      return rustResult;
+    }
+
+    return await this.listViableNeuronsFallback(targetCount);
+  }
+
+  private tryRustFocusRanking(
+    targetCount?: number,
+  ): NeuronErrorInfo[] | undefined {
+    if (
+      !this.parquetFilePath ||
+      !this.deps.rankFocusNeurons ||
+      !this.deps.isRustDiscoveryEnabled()
+    ) {
+      return undefined;
+    }
+
+    try {
+      const rustCreature = creatureToRustFormat(this.creature.exportJSON());
+      const maxResults = Math.max(
+        targetCount ?? this.creature.neurons.length,
+        64,
+      );
+      const result = this.deps.rankFocusNeurons({
+        parquetFile: this.parquetFilePath,
+        creature: rustCreature,
+        maxResults,
+      });
+
+      if (!result || !result.success || !result.neurons) {
+        if (this.loggingEnabled && result?.error) {
+          this.log(
+            "debug",
+            `Rust focus ranking failed: ${result.error}`,
+          );
+        }
+        return undefined;
+      }
+
+      if (result.maxOutputError !== undefined) {
+        this.cachedMaxOutputError = {
+          value: result.maxOutputError,
+          computedAt: Date.now(),
+        };
+      }
+
+      this.lastNeuronScanStats = {
+        processed: result.processedNeurons ?? result.neurons.length,
+        total: result.totalNeurons ?? this.creature.neurons.length,
+        durationMs: result.durationMs ?? 0,
+        timedOut: false,
+      };
+
+      if (this.loggingEnabled) {
+        const duration = result.durationMs !== undefined
+          ? this.formatMillis(result.durationMs)
+          : "unknown time";
+        this.log(
+          "debug",
+          `Rust focus ranking returned ${result.neurons.length} neuron(s) in ${duration}.`,
+        );
+      }
+
+      return result.neurons.map((entry) => ({
+        uuid: entry.neuronUuid,
+        totalError: entry.totalError,
+        impact: entry.impact,
+      }));
+    } catch (error) {
+      if (this.loggingEnabled) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.log("debug", `Rust focus ranking threw error: ${message}`);
+      }
+      return undefined;
+    }
+  }
+
+  private async listViableNeuronsFallback(
+    targetCount?: number,
+  ): Promise<NeuronErrorInfo[]> {
     const start = Date.now();
     const neurons = this.creature.neurons.filter((neuron) =>
       this.isSelectableNeuron(neuron)

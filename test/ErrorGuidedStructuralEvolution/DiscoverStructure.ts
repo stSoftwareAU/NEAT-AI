@@ -1191,6 +1191,78 @@ Deno.test({
 });
 
 Deno.test({
+  name: "listViableNeurons prefers rust focus ranking results when available",
+  fn: async () => {
+    const creatureJson: CreatureExport = {
+      input: 1,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.5 },
+      ],
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    CreatureUtil.makeUUID(creature);
+
+    const stubResult = {
+      success: true,
+      neurons: [
+        { neuronUuid: "output-0", totalError: 0.55, impact: 1 },
+        { neuronUuid: "hidden-0", totalError: 0.3, impact: 0.4 },
+      ],
+      maxOutputError: 0.55,
+      processedNeurons: 2,
+      totalNeurons: 2,
+      durationMs: 12,
+    };
+
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5,
+      DEFAULT_RUST_FLUSH_RECORDS,
+      {
+        isRustDiscoveryEnabled: () => true,
+        isRustLibraryAvailable: () => true,
+        rankFocusNeurons: () => stubResult,
+      },
+    );
+    const dsAny = discoverStructure as unknown as {
+      recorded: boolean;
+      parquetFilePath: string | null;
+      lastNeuronScanStats?: {
+        processed: number;
+        total: number;
+        timedOut: boolean;
+        durationMs: number;
+      };
+    };
+    dsAny.recorded = true;
+    dsAny.parquetFilePath = "stub.parquet";
+
+    const ranked = await discoverStructure.listViableNeurons(1);
+    assertEquals(ranked.length, 2);
+    assertEquals(ranked[0].uuid, "output-0");
+    assertEquals(ranked[1].uuid, "hidden-0");
+    assertEquals(dsAny.lastNeuronScanStats?.processed, 2);
+    assertEquals(dsAny.lastNeuronScanStats?.timedOut, false);
+  },
+});
+
+Deno.test({
   name:
     "weighted focus selection caps combined weight to output error magnitude",
   fn: async () => {

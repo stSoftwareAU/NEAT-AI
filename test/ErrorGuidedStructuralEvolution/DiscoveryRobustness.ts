@@ -263,15 +263,38 @@ Deno.test({
     // Should handle timeout gracefully and return partial results
     const viableNeurons = await discoverStructure.listViableNeurons();
 
+    const dsAny = discoverStructure as unknown as {
+      lastNeuronScanStats?: {
+        processed: number;
+        total: number;
+        timedOut: boolean;
+      };
+    };
+    const scanStats = dsAny.lastNeuronScanStats;
+
     assertExists(
       viableNeurons,
       "Should return neurons list even after timeout",
     );
-    // May have processed some neurons before timeout
-    assert(
-      viableNeurons.length < 200,
-      "Should have stopped early due to timeout",
-    );
+
+    if (scanStats?.timedOut) {
+      // TypeScript fallback path should stop early and return fewer entries
+      assert(
+        viableNeurons.length < 200,
+        "TypeScript fallback scan should have stopped early due to timeout",
+      );
+    } else {
+      // Rust focus ranking path completes even if the JS timeout elapsed earlier.
+      assert(
+        scanStats?.processed === scanStats?.total,
+        "Rust focus ranking should process all selectable neurons",
+      );
+      assertEquals(
+        viableNeurons.length,
+        scanStats?.processed ?? viableNeurons.length,
+        "Rust focus ranking should return every processed neuron",
+      );
+    }
 
     await discoverStructure.cleanUp();
   },
