@@ -111,6 +111,28 @@ export interface RustAnalyzeNeuronsResult {
   error?: string;
 }
 
+export interface RustRankFocusInput {
+  parquetFile: string;
+  creature: RustRecordInput["creature"];
+  maxResults?: number;
+}
+
+export interface RustFocusNeuronScore {
+  neuronUuid: string;
+  totalError: number;
+  impact: number;
+}
+
+export interface RustRankFocusResult {
+  success: boolean;
+  neurons?: RustFocusNeuronScore[];
+  maxOutputError?: number;
+  processedNeurons?: number;
+  totalNeurons?: number;
+  durationMs?: number;
+  error?: string;
+}
+
 export type RustSynapseDiagnosticReason =
   | "no_eligible_sources"
   | "no_diagnostics"
@@ -536,6 +558,11 @@ type RustDiscoverySymbols = {
     result: "pointer";
     nonblocking: false;
   };
+  "rank_focus_neurons": {
+    parameters: ["pointer"];
+    result: "pointer";
+    nonblocking: false;
+  };
   "free_discovery_result": {
     parameters: ["pointer"];
     result: "void";
@@ -612,6 +639,11 @@ export function loadRustLibrary(): boolean {
         nonblocking: false,
       },
       "merge_discovery_parquet": {
+        parameters: ["pointer"],
+        result: "pointer",
+        nonblocking: false,
+      },
+      "rank_focus_neurons": {
         parameters: ["pointer"],
         result: "pointer",
         nonblocking: false,
@@ -779,6 +811,45 @@ export function readDiscoveryRecords(
     // Parse the JSON result
     const result = JSON.parse(resultJson) as RustReadResult;
 
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export function rankFocusNeurons(
+  input: RustRankFocusInput,
+): RustRankFocusResult | null {
+  if (!isRustLibraryAvailable()) {
+    return null;
+  }
+
+  assert(rustLib !== null, "Rust library should be loaded");
+
+  try {
+    const inputJson = JSON.stringify(input);
+    const inputBytes = new TextEncoder().encode(inputJson);
+    const inputBuffer = new Uint8Array(inputBytes.length + 1);
+    inputBuffer.set(inputBytes);
+    inputBuffer[inputBytes.length] = 0;
+
+    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
+    const resultPtr = rustLib.symbols["rank_focus_neurons"](inputPtr);
+
+    if (resultPtr === null) {
+      return {
+        success: false,
+        error: "Rust function returned null pointer",
+      };
+    }
+
+    const resultJson = readCString(resultPtr);
+    rustLib.symbols["free_discovery_result"](resultPtr);
+
+    const result = JSON.parse(resultJson) as RustRankFocusResult;
     return result;
   } catch (error) {
     return {
