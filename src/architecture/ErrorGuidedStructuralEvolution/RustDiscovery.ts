@@ -83,6 +83,7 @@ export interface RustAnalyzeSynapsesInput {
   improvementThreshold?: number;
   maxCandidates?: number;
   requireGpu?: boolean;
+  analysisDeadlineMs?: number;
 }
 
 export interface RustAnalyzeSynapsesResult {
@@ -101,6 +102,7 @@ export interface RustAnalyzeNeuronsInput {
   improvementThreshold?: number;
   maxCandidates?: number;
   requireGpu?: boolean;
+  analysisDeadlineMs?: number;
 }
 
 export interface RustAnalyzeNeuronsResult {
