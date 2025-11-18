@@ -250,10 +250,10 @@ export class DiscoveryRunner {
           : "";
         const message =
           `${improved.candidate.change.type} for discovery ${discoverResult.ID} improved score by ${
-            scoreDelta >= 0 ? "+" : ""
-          }${scoreDelta.toFixed(4)} (from ${original.score.toFixed(4)} to ${
-            improved.score.toFixed(4)
-          }).${changeDescription ? changeDescription : ""}`;
+            scoreDelta.toPrecision(4)
+          } to ${improved.score.toPrecision(4)}.${
+            changeDescription ? changeDescription : ""
+          }`;
 
         outcome.improvement = {
           changeType: improved.candidate.change.type,

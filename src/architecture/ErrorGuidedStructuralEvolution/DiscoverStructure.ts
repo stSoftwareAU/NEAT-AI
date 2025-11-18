@@ -12,6 +12,7 @@ import type { DataRecordInterface } from "../DataSet.ts";
 import {
   analyzeAll,
   analyzeNeurons,
+  analyzeParallel,
   analyzeSynapses,
   creatureToRustFormat,
   isRustDiscoveryEnabled,
@@ -30,6 +31,8 @@ import {
   type RustCandidateSynapse,
   type RustNeuronDiagnostic,
   type RustNeuronDiagnosticDetail,
+  type RustParallelAnalysisInput,
+  type RustParallelAnalysisResult,
   type RustRecordBatchStats,
   type RustRecordInput,
   type RustSynapseDiagnostic,
@@ -46,6 +49,7 @@ export interface DiscoverStructureDeps {
   mergeDiscoveryParquet: typeof mergeDiscoveryParquet;
   analyzeNeurons: typeof analyzeNeurons;
   analyzeSynapses: typeof analyzeSynapses;
+  analyzeParallel?: typeof analyzeParallel;
   analyzeAll?: typeof analyzeAll;
   readDiscoveryRecords: typeof readDiscoveryRecords;
   rankFocusNeurons?: typeof rankFocusNeurons;
@@ -58,6 +62,7 @@ const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
   mergeDiscoveryParquet,
   analyzeNeurons,
   analyzeSynapses,
+  analyzeParallel,
   analyzeAll,
   readDiscoveryRecords,
   rankFocusNeurons,
@@ -121,6 +126,12 @@ export interface CandidateNeuron {
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
+}
+
+interface CandidateAnalysisBundle {
+  helpfulSynapses?: CandidateSynapse[];
+  harmfulSynapse?: CandidateSynapse;
+  helpfulNeurons?: CandidateNeuron[];
 }
 
 type FocusSelectionMode = "weighted" | "forced" | "all" | "random";
@@ -1433,10 +1444,16 @@ export class DiscoverStructure {
       return [];
     }
 
-    candidates.sort((a, b) =>
+    const topCandidates = this.filterTopSynapseCandidates(candidates);
+    if (topCandidates.length === 0) {
+      this.logRustNoImprovement("synapse", focusList, rustResult.diagnostics);
+      return [];
+    }
+
+    topCandidates.sort((a, b) =>
       b.expectedImprovementPercentage - a.expectedImprovementPercentage
     );
-    return candidates;
+    return topCandidates;
   }
 
   private tryRustHarmfulCandidates(
@@ -1466,6 +1483,54 @@ export class DiscoverStructure {
       a.expectedImprovementPercentage - b.expectedImprovementPercentage
     );
     return candidates;
+  }
+
+  public collectRustAnalysisCandidates(
+    focusList: string[],
+    options: {
+      helpfulSynapse: boolean;
+      harmfulSynapse: boolean;
+      helpfulNeuron: boolean;
+    },
+  ): CandidateAnalysisBundle | undefined {
+    const includeSynapse = options.helpfulSynapse || options.harmfulSynapse;
+    const includeNeuron = options.helpfulNeuron;
+    if (!includeSynapse && !includeNeuron) {
+      return {};
+    }
+
+    const combinedResult = this.ensureRustCombinedAnalysis(
+      focusList,
+      includeSynapse,
+      includeNeuron,
+    );
+    if (!combinedResult) {
+      return undefined;
+    }
+
+    const bundle: CandidateAnalysisBundle = {};
+    if (options.helpfulSynapse) {
+      const helpfulSynapses = this.tryRustHelpfulSynapses(focusList);
+      if (helpfulSynapses && helpfulSynapses.length > 0) {
+        bundle.helpfulSynapses = helpfulSynapses;
+      }
+    }
+
+    if (options.harmfulSynapse) {
+      const harmfulSynapses = this.tryRustHarmfulCandidates(focusList);
+      if (harmfulSynapses && harmfulSynapses.length > 0) {
+        bundle.harmfulSynapse = harmfulSynapses[0];
+      }
+    }
+
+    if (options.helpfulNeuron) {
+      const helpfulNeurons = this.tryRustHelpfulNeurons(focusList);
+      if (helpfulNeurons && helpfulNeurons.length > 0) {
+        bundle.helpfulNeurons = helpfulNeurons;
+      }
+    }
+
+    return bundle;
   }
 
   private candidateKey(candidate: CandidateSynapse): string {
@@ -1523,6 +1588,23 @@ export class DiscoverStructure {
     return Array.from(grouped.values()).sort((a, b) =>
       b.expectedImprovementPercentage - a.expectedImprovementPercentage
     );
+  }
+
+  private filterTopSynapseCandidates(
+    candidates: CandidateSynapse[],
+  ): CandidateSynapse[] {
+    const grouped = new Map<string, CandidateSynapse>();
+    candidates.forEach((candidate) => {
+      const existing = grouped.get(candidate.toNeuronUUID);
+      if (
+        !existing ||
+        candidate.expectedImprovementPercentage >
+          existing.expectedImprovementPercentage
+      ) {
+        grouped.set(candidate.toNeuronUUID, candidate);
+      }
+    });
+    return Array.from(grouped.values());
   }
 
   private logHarmfulSynapse(candidate: CandidateSynapse): void {
@@ -1885,6 +1967,51 @@ export class DiscoverStructure {
     }
 
     const rustCreature = creatureToRustFormat(this.creature.exportJSON());
+
+    if (this.deps.analyzeParallel) {
+      const parallelInput: RustParallelAnalysisInput = {
+        parquetFile: this.parquetFilePath,
+        creature: rustCreature,
+        focusNeurons: focusList,
+        improvementThreshold: this.improvementThreshold,
+        harmfulThreshold: this.harmfulThreshold,
+        maxSynapseCandidates: includeSynapse
+          ? Math.max(50, focusList.length * 10)
+          : undefined,
+        maxNeuronCandidates: includeNeuron
+          ? Math.max(25, focusList.length * 5)
+          : undefined,
+        requireGpu: Deno.build.os === "darwin",
+        analysisDeadlineMs: this.analysisDeadlineMs,
+      };
+
+      const parallelResult = this.deps.analyzeParallel(parallelInput);
+      if (!parallelResult || !parallelResult.success) {
+        const reason = parallelResult?.error ??
+          "analysis did not return a result";
+        if (includeSynapse) {
+          this.logRustAnalysisUnavailable("synapse", focusList, reason);
+        }
+        if (includeNeuron) {
+          this.logRustAnalysisUnavailable("neuron", focusList, reason);
+        }
+        this.combinedRustAnalysis = undefined;
+        return undefined;
+      }
+      const converted = this.convertParallelAnalysisResult(parallelResult);
+      this.combinedRustAnalysis = {
+        key: cacheKey,
+        includeSynapse,
+        includeNeuron,
+        result: converted,
+      };
+      return converted;
+    }
+
+    if (!this.deps.analyzeAll) {
+      return undefined;
+    }
+
     const rustInput: RustAnalyzeAllInput = {
       parquetFile: this.parquetFilePath,
       creature: rustCreature,
@@ -1944,6 +2071,46 @@ export class DiscoverStructure {
       return undefined;
     }
     return cached.result;
+  }
+
+  private convertParallelAnalysisResult(
+    parallel: RustParallelAnalysisResult,
+  ): RustAnalyzeAllResult {
+    const hasSynapsePayload = Boolean(
+      parallel.helpfulSynapses?.length ||
+        parallel.harmfulSynapses?.length ||
+        parallel.synapseDiagnostics?.length,
+    );
+    const hasNeuronPayload = Boolean(
+      parallel.helpfulNeurons?.length ||
+        parallel.neuronDiagnostics?.length,
+    );
+
+    const synapseResult: RustAnalyzeSynapsesResult | undefined =
+      hasSynapsePayload
+        ? {
+          success: true,
+          gpuUsed: parallel.synapseGpuUsed,
+          helpfulSynapses: parallel.helpfulSynapses,
+          harmfulSynapses: parallel.harmfulSynapses,
+          diagnostics: parallel.synapseDiagnostics,
+        }
+        : undefined;
+    const neuronResult: RustAnalyzeNeuronsResult | undefined = hasNeuronPayload
+      ? {
+        success: true,
+        gpuUsed: parallel.neuronGpuUsed,
+        helpfulNeurons: parallel.helpfulNeurons,
+        diagnostics: parallel.neuronDiagnostics,
+      }
+      : undefined;
+
+    return {
+      success: parallel.success,
+      synapse: synapseResult,
+      neuron: neuronResult,
+      error: parallel.error,
+    };
   }
 
   private logAnalysisSkipped(scope: "synapse" | "neuron"): void {

@@ -134,6 +134,30 @@ export interface RustAnalyzeAllResult {
   error?: string;
 }
 
+export interface RustParallelAnalysisInput {
+  parquetFile: string;
+  creature: RustRecordInput["creature"];
+  focusNeurons: string[];
+  improvementThreshold?: number;
+  harmfulThreshold?: number;
+  maxSynapseCandidates?: number;
+  maxNeuronCandidates?: number;
+  requireGpu?: boolean;
+  analysisDeadlineMs?: number;
+}
+
+export interface RustParallelAnalysisResult {
+  success: boolean;
+  helpfulSynapses?: RustCandidateSynapse[];
+  harmfulSynapses?: RustCandidateSynapse[];
+  synapseDiagnostics?: RustSynapseDiagnostic[];
+  synapseGpuUsed?: boolean;
+  helpfulNeurons?: RustCandidateNeuron[];
+  neuronDiagnostics?: RustNeuronDiagnostic[];
+  neuronGpuUsed?: boolean;
+  error?: string;
+}
+
 export interface RustRankFocusInput {
   parquetFile: string;
   creature: RustRecordInput["creature"];
@@ -566,6 +590,11 @@ type RustDiscoverySymbols = {
     result: "pointer";
     nonblocking: false;
   };
+  "analyze_parallel": {
+    parameters: ["pointer"];
+    result: "pointer";
+    nonblocking: false;
+  };
   "analyze_all": {
     parameters: ["pointer"];
     result: "pointer";
@@ -652,6 +681,11 @@ export function loadRustLibrary(): boolean {
         nonblocking: false,
       },
       "analyze_synapses": {
+        parameters: ["pointer"],
+        result: "pointer",
+        nonblocking: false,
+      },
+      "analyze_parallel": {
         parameters: ["pointer"],
         result: "pointer",
         nonblocking: false,
@@ -1210,6 +1244,43 @@ export function analyzeAll(
     rustLib.symbols["free_discovery_result"](resultPtr);
 
     const result = JSON.parse(resultJson) as RustAnalyzeAllResult;
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export function analyzeParallel(
+  input: RustParallelAnalysisInput,
+): RustParallelAnalysisResult | null {
+  if (!isRustLibraryAvailable()) {
+    return null;
+  }
+
+  assert(rustLib !== null, "Rust library should be loaded");
+
+  try {
+    const inputJson = JSON.stringify(input);
+    const inputBytes = new TextEncoder().encode(inputJson);
+    const inputBuffer = new Uint8Array(inputBytes.length + 1);
+    inputBuffer.set(inputBytes);
+    inputBuffer[inputBytes.length] = 0;
+    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
+    const resultPtr = rustLib.symbols["analyze_parallel"](inputPtr);
+
+    if (resultPtr === null) {
+      return {
+        success: false,
+        error: "Rust function returned null pointer",
+      };
+    }
+
+    const resultJson = readCString(resultPtr);
+    rustLib.symbols["free_discovery_result"](resultPtr);
+    const result = JSON.parse(resultJson) as RustParallelAnalysisResult;
     return result;
   } catch (error) {
     return {
