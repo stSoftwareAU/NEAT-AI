@@ -11,6 +11,11 @@ import {
   DiscoverStructure,
   type DiscoverStructureDeps,
 } from "./DiscoverStructure.ts";
+import type {
+  CandidateNeuron,
+  CandidateSquash,
+  CandidateSynapse,
+} from "./DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 
 const shouldLogDiscovery = (options: NeatOptions): boolean =>
@@ -35,6 +40,7 @@ class DataRecorder {
   private timeoutTS: number;
   private readonly timeoutSeconds: number;
   private readonly analysisTimeoutSeconds: number;
+  private analysisDeadlineAt?: number;
   private readonly discoveryMaxNeurons: number;
   private readonly drainEveryNBatches: number;
   private readonly rustFlushRecords: number;
@@ -520,8 +526,10 @@ class DataRecorder {
       // This ensures analysis isn't starved if recording takes a long time
       const analysisTimeoutSeconds = this.analysisTimeoutSeconds;
       const analysisTimeoutMinutes = analysisTimeoutSeconds / 60;
+      const analysisDeadlineAt = Date.now() + analysisTimeoutSeconds * 1000;
+      this.analysisDeadlineAt = analysisDeadlineAt;
       discoverStructure.extendTimeoutForAnalysis(analysisTimeoutSeconds);
-      this.timeoutTS = Date.now() + analysisTimeoutSeconds * 1000;
+      this.timeoutTS = analysisDeadlineAt;
 
       if (shouldLogDiscovery(options)) {
         console.log(
@@ -624,135 +632,183 @@ class DataRecorder {
           break;
         }
 
-        discoverStructure.ensureRustCombinedAnalysis(
+        const combinedResult = discoverStructure.ensureRustCombinedAnalysis(
           newFocusList,
           this.enableSynapseCandidates || this.enableHarmfulCandidates,
           this.enableNeuronCandidates,
         );
+        if (combinedResult) {
+          this.refreshAnalysisTimeout(discoverStructure);
+        }
 
-        if (this.enableNeuronCandidates) {
-          currentPhase = "analyze_neurons";
-          const neuronAnalyzeStart = Date.now();
-          // deno-lint-ignore no-await-in-loop
-          const addHelpfulNeurons = await discoverStructure
-            .analyzeMissingNeurons(
-              newFocusList,
-            );
-          if (shouldLogDiscovery(options)) {
-            const neuronAnalyzeTime = Date.now() - neuronAnalyzeStart;
-            console.log(
-              `Discovery ${blue(this.ID)} analyze neurons time ${
-                yellow(format(neuronAnalyzeTime, { ignoreZero: true }))
-              } found ${
-                addHelpfulNeurons ? addHelpfulNeurons.length : 0
-              } neuron candidates`,
-            );
-          }
-          if (addHelpfulNeurons && addHelpfulNeurons.length > 0) {
-            discoverResult.addHelpfulNeurons = addHelpfulNeurons;
-          }
-        } else if (shouldLogDiscovery(options)) {
+        if (!this.enableNeuronCandidates && shouldLogDiscovery(options)) {
           console.log(
             `Discovery ${blue(this.ID)} neuron analysis disabled via options`,
           );
         }
-
-        if (this.enableSynapseCandidates) {
-          currentPhase = "analyze_helpful";
-          const analyzeStartTime = Date.now();
-
-          // deno-lint-ignore no-await-in-loop
-          const addHelpfulSynapse = await discoverStructure
-            .analyzeSelectedNeurons(
-              newFocusList,
-            );
-          if (shouldLogDiscovery(options)) {
-            const analyzeTime = Date.now() - analyzeStartTime;
-            console.log(
-              `Discovery ${blue(this.ID)} analyze synapses time ${
-                yellow(format(analyzeTime, { ignoreZero: true }))
-              } found ${
-                addHelpfulSynapse ? addHelpfulSynapse.length : 0
-              } candidate${
-                addHelpfulSynapse && addHelpfulSynapse.length === 1 ? "" : "s"
-              }`,
-            );
-          }
-
-          if (addHelpfulSynapse) {
-            discoverResult.addHelpfulSynapses = addHelpfulSynapse;
-          }
-        } else if (shouldLogDiscovery(options)) {
+        if (!this.enableSynapseCandidates && shouldLogDiscovery(options)) {
           console.log(
             `Discovery ${
               blue(this.ID)
             } helpful synapse analysis disabled via options`,
           );
         }
-
-        if (this.enableHarmfulCandidates) {
-          currentPhase = "analyze_harmful";
-          const harmfulStartTime = Date.now();
-          // deno-lint-ignore no-await-in-loop
-          const removeHarmfulSynapse = await discoverStructure
-            .analyzeSelectedNeuronsForRemoval(newFocusList);
-          if (shouldLogDiscovery(options)) {
-            const harmfulTime = Date.now() - harmfulStartTime;
-            console.log(
-              `Discovery ${blue(this.ID)} analyze harmful time ${
-                yellow(format(harmfulTime, { ignoreZero: true }))
-              } found ${removeHarmfulSynapse ? 1 : 0} candidates`,
-            );
-          }
-          if (removeHarmfulSynapse) {
-            discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
-          }
-        } else if (shouldLogDiscovery(options)) {
+        if (!this.enableHarmfulCandidates && shouldLogDiscovery(options)) {
           console.log(
             `Discovery ${
               blue(this.ID)
             } harmful synapse analysis disabled via options`,
           );
         }
-
-        if (this.enableSquashCandidates) {
-          currentPhase = "analyze_squash";
-          const squashStartTime = Date.now();
-          // deno-lint-ignore no-await-in-loop
-          const candidateSquashes = await discoverStructure
-            .analyzeSelectedNeuronsSquashes(newFocusList);
-          if (shouldLogDiscovery(options)) {
-            const squashTime = Date.now() - squashStartTime;
-            const squashCount = candidateSquashes
-              ? candidateSquashes.length
-              : 0;
-            let squashSummaryText = "";
-            if (squashCount > 0) {
-              assert(candidateSquashes, "No candidate squashes");
-              const squashSummary = candidateSquashes.map((candidate) => {
-                return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash} improved: ${
-                  (candidate.expectedImprovementPercentage * 100).toFixed(1)
-                }% error: ${candidate.currentError.toFixed(4)} -> ${
-                  candidate.improvedError.toFixed(4)
-                }`;
-              });
-              squashSummaryText = `, Summary: ${squashSummary.join(",")}`;
-            }
-            console.log(
-              `Discovery ${blue(this.ID)} analyze squashes time ${
-                yellow(format(squashTime, { ignoreZero: true }))
-              } found ${squashCount} candidate${
-                squashCount === 1 ? "" : "s"
-              }${squashSummaryText}`,
-            );
-          }
-          if (candidateSquashes) {
-            discoverResult.candidateSquashes = candidateSquashes;
-          }
-        } else if (shouldLogDiscovery(options)) {
+        if (!this.enableSquashCandidates && shouldLogDiscovery(options)) {
           console.log(
             `Discovery ${blue(this.ID)} squash analysis disabled via options`,
           );
+        }
+
+        const neuronPromise = this.enableNeuronCandidates
+          ? (async () => {
+            currentPhase = "analyze_neurons";
+            const neuronAnalyzeStart = Date.now();
+            const addHelpfulNeurons = await discoverStructure
+              .analyzeMissingNeurons(
+                newFocusList,
+              );
+            this.refreshAnalysisTimeout(discoverStructure);
+            if (shouldLogDiscovery(options)) {
+              const neuronAnalyzeTime = Date.now() - neuronAnalyzeStart;
+              console.log(
+                `Discovery ${blue(this.ID)} analyze neurons time ${
+                  yellow(format(neuronAnalyzeTime, { ignoreZero: true }))
+                } found ${
+                  addHelpfulNeurons ? addHelpfulNeurons.length : 0
+                } neuron candidates`,
+              );
+            }
+            return addHelpfulNeurons;
+          })()
+          : Promise.resolve(undefined);
+
+        const synapsePromise = this.enableSynapseCandidates
+          ? (async () => {
+            currentPhase = "analyze_helpful";
+            const analyzeStartTime = Date.now();
+            const addHelpfulSynapse = await discoverStructure
+              .analyzeSelectedNeurons(
+                newFocusList,
+              );
+            this.refreshAnalysisTimeout(discoverStructure);
+            if (shouldLogDiscovery(options)) {
+              const analyzeTime = Date.now() - analyzeStartTime;
+              console.log(
+                `Discovery ${blue(this.ID)} analyze synapses time ${
+                  yellow(format(analyzeTime, { ignoreZero: true }))
+                } found ${
+                  addHelpfulSynapse ? addHelpfulSynapse.length : 0
+                } candidate${
+                  addHelpfulSynapse && addHelpfulSynapse.length === 1 ? "" : "s"
+                }`,
+              );
+            }
+            return addHelpfulSynapse;
+          })()
+          : Promise.resolve(undefined);
+
+        const harmfulPromise = this.enableHarmfulCandidates
+          ? (async () => {
+            currentPhase = "analyze_harmful";
+            const harmfulStartTime = Date.now();
+            const removeHarmfulSynapse = await discoverStructure
+              .analyzeSelectedNeuronsForRemoval(newFocusList);
+            this.refreshAnalysisTimeout(discoverStructure);
+            if (shouldLogDiscovery(options)) {
+              const harmfulTime = Date.now() - harmfulStartTime;
+              console.log(
+                `Discovery ${blue(this.ID)} analyze harmful time ${
+                  yellow(format(harmfulTime, { ignoreZero: true }))
+                } found ${removeHarmfulSynapse ? 1 : 0} candidates`,
+              );
+            }
+            return removeHarmfulSynapse;
+          })()
+          : Promise.resolve(undefined);
+
+        const squashPromise = this.enableSquashCandidates
+          ? (async () => {
+            currentPhase = "analyze_squash";
+            const squashStartTime = Date.now();
+            const candidateSquashes = await discoverStructure
+              .analyzeSelectedNeuronsSquashes(newFocusList);
+            this.refreshAnalysisTimeout(discoverStructure);
+            if (shouldLogDiscovery(options)) {
+              const squashTime = Date.now() - squashStartTime;
+              const squashCount = candidateSquashes
+                ? candidateSquashes.length
+                : 0;
+              let squashSummaryText = "";
+              if (squashCount > 0) {
+                assert(candidateSquashes, "No candidate squashes");
+                const squashSummary = candidateSquashes.map((candidate) => {
+                  return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash} improved: ${
+                    (candidate.expectedImprovementPercentage * 100).toFixed(1)
+                  }% error: ${candidate.currentError.toFixed(4)} -> ${
+                    candidate.improvedError.toFixed(4)
+                  }`;
+                });
+                squashSummaryText = `, Summary: ${squashSummary.join(",")}`;
+              }
+              console.log(
+                `Discovery ${blue(this.ID)} analyze squashes time ${
+                  yellow(format(squashTime, { ignoreZero: true }))
+                } found ${squashCount} candidate${
+                  squashCount === 1 ? "" : "s"
+                }${squashSummaryText}`,
+              );
+            }
+            return candidateSquashes;
+          })()
+          : Promise.resolve(undefined);
+
+        const analysisPromises: [
+          Promise<CandidateNeuron[] | undefined>,
+          Promise<CandidateSynapse[] | undefined>,
+          Promise<CandidateSynapse | undefined>,
+          Promise<CandidateSquash[] | undefined>,
+        ] = [
+          neuronPromise,
+          synapsePromise,
+          harmfulPromise,
+          squashPromise,
+        ];
+        // deno-lint-ignore no-await-in-loop
+        const analysisResults = await Promise.all(analysisPromises);
+        const [
+          addHelpfulNeurons,
+          addHelpfulSynapse,
+          removeHarmfulSynapse,
+          candidateSquashes,
+        ] = analysisResults;
+
+        if (addHelpfulNeurons && addHelpfulNeurons.length > 0) {
+          discoverResult.addHelpfulNeurons = [
+            ...(discoverResult.addHelpfulNeurons ?? []),
+            ...addHelpfulNeurons,
+          ];
+        }
+        if (addHelpfulSynapse && addHelpfulSynapse.length > 0) {
+          discoverResult.addHelpfulSynapses = [
+            ...(discoverResult.addHelpfulSynapses ?? []),
+            ...addHelpfulSynapse,
+          ];
+        }
+        if (removeHarmfulSynapse && !discoverResult.removeHarmfulSynapse) {
+          discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
+        }
+        if (candidateSquashes && candidateSquashes.length > 0) {
+          discoverResult.candidateSquashes = [
+            ...(discoverResult.candidateSquashes ?? []),
+            ...candidateSquashes,
+          ];
         }
 
         // Check if we found any candidates
@@ -762,43 +818,32 @@ class DataRecorder {
             discoverResult.removeHarmfulSynapse ||
             discoverResult.candidateSquashes,
         );
-
-        // If we found candidates, we're done
-        if (foundCandidates) {
-          if (shouldLogDiscovery(options) && retryAttempt > 0) {
-            console.log(
-              `Discovery ${
-                blue(this.ID)
-              } found candidates after ${retryAttempt} retry attempt${
-                retryAttempt === 1 ? "" : "s"
-              }`,
-            );
-          }
-          break;
+        if (foundCandidates && shouldLogDiscovery(options)) {
+          console.log(
+            `Discovery ${
+              blue(this.ID)
+            } accumulated candidate updates; continuing search while time remains.`,
+          );
         }
 
-        // Check if we still have time for another retry
         const timeRemaining = this.timeoutTS - Date.now();
         if (timeRemaining <= 0) {
           if (shouldLogDiscovery(options)) {
             console.log(
               `Discovery ${
                 blue(this.ID)
-              } no candidates found and analysis timeout reached`,
+              } analysis timeout reached after evaluating ${attemptedNeurons.size} neuron(s)`,
             );
           }
           break;
         }
 
-        // Log retry decision
         retryAttempt++;
         if (shouldLogDiscovery(options)) {
           console.log(
-            `Discovery ${
-              blue(this.ID)
-            } no candidates found, retrying with different neurons (${
+            `Discovery ${blue(this.ID)} retrying with different neurons (${
               yellow(format(timeRemaining, { ignoreZero: true }))
-            } remaining)`,
+            } remaining, retry ${retryAttempt})`,
           );
         }
       }
@@ -880,5 +925,20 @@ class DataRecorder {
       }
       throw error;
     }
+  }
+
+  private refreshAnalysisTimeout(
+    discoverStructure: DiscoverStructure,
+  ): void {
+    if (this.analysisDeadlineAt === undefined) {
+      return;
+    }
+    const remainingMs = this.analysisDeadlineAt - Date.now();
+    if (remainingMs <= 0) {
+      return;
+    }
+    const remainingSeconds = Math.max(1, Math.floor(remainingMs / 1000));
+    discoverStructure.extendTimeoutForAnalysis(remainingSeconds);
+    this.timeoutTS = this.analysisDeadlineAt;
   }
 }
