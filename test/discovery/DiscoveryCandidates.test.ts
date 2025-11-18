@@ -147,6 +147,13 @@ function findCandidate(
   return candidate;
 }
 
+function findCandidates(
+  candidates: DiscoveryCandidate[],
+  type: DiscoveryCandidate["change"]["type"],
+): DiscoveryCandidate[] {
+  return candidates.filter((entry) => entry.change.type === type);
+}
+
 function averageMSE(
   creature: Creature,
   trainingData: DataRecordInterface[],
@@ -179,6 +186,248 @@ Deno.test("buildDiscoveryCandidates returns empty list when there are no suggest
   const originalSynapseCount = base.exportJSON().synapses.length;
   assertEquals(originalSynapseCount, 5);
 });
+
+Deno.test(
+  "buildDiscoveryCandidates emits individual candidates for each helpful synapse",
+  () => {
+    const base = makeBaselineCreature();
+    const synapses: CandidateSynapse[] = [{
+      fromNeuronUUID: "input-2",
+      toNeuronUUID: "hidden-1",
+      weight: 0.99,
+      expectedImprovementPercentage: 0.25,
+      improvedCount: 5,
+      totalCount: 6,
+    }, {
+      fromNeuronUUID: "input-3",
+      toNeuronUUID: "hidden-2",
+      weight: -0.55,
+      expectedImprovementPercentage: 0.3,
+      improvedCount: 6,
+      totalCount: 7,
+    }];
+    const discovery: DiscoverResult = {
+      ID: "SYN-MULTI",
+      addHelpfulSynapses: synapses,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    const addSynapseCandidates = findCandidates(candidates, "add-synapses");
+
+    const findDedicatedCandidate = (target: CandidateSynapse) => {
+      return addSynapseCandidates.find((candidate) => {
+        const exported = candidate.creature.exportJSON();
+        const hasTarget = exported.synapses.some((synapse) =>
+          synapse.fromUUID === target.fromNeuronUUID &&
+          synapse.toUUID === target.toNeuronUUID &&
+          Math.abs(synapse.weight - target.weight) < 1e-9
+        );
+        if (!hasTarget) return false;
+        const hasOtherNew = synapses.some((other) => {
+          if (other === target) return false;
+          return exported.synapses.some((synapse) =>
+            synapse.fromUUID === other.fromNeuronUUID &&
+            synapse.toUUID === other.toNeuronUUID &&
+            Math.abs(synapse.weight - other.weight) < 1e-9
+          );
+        });
+        return !hasOtherNew;
+      });
+    };
+
+    assert(
+      findDedicatedCandidate(synapses[0]),
+      "Expected candidate dedicated to first helpful synapse",
+    );
+    assert(
+      findDedicatedCandidate(synapses[1]),
+      "Expected candidate dedicated to second helpful synapse",
+    );
+  },
+);
+
+Deno.test(
+  "buildDiscoveryCandidates emits individual candidates for each squash change",
+  () => {
+    const base = makeBaselineCreature();
+    const squashes: CandidateSquash[] = [{
+      neuronUUID: "hidden-1",
+      previousSquash: IDENTITY.NAME,
+      squash: TANH.NAME,
+      expectedImprovementPercentage: 0.4,
+      improvedError: 0.1,
+      currentError: 0.2,
+    }, {
+      neuronUUID: "hidden-2",
+      previousSquash: IDENTITY.NAME,
+      squash: Mish.NAME,
+      expectedImprovementPercentage: 0.3,
+      improvedError: 0.2,
+      currentError: 0.4,
+    }];
+    const discovery: DiscoverResult = {
+      ID: "SQUASH-MULTI",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      candidateSquashes: squashes,
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    const squashCandidates = findCandidates(candidates, "change-squash");
+    assert(
+      squashCandidates.length >= squashes.length,
+      "Expected at least one candidate per squash suggestion",
+    );
+
+    for (const suggestion of squashes) {
+      const dedicated = squashCandidates.find((candidate) => {
+        const exported = candidate.creature.exportJSON();
+        const targetNeuron = exported.neurons.find((neuron) =>
+          neuron.uuid === suggestion.neuronUUID
+        );
+        if (!targetNeuron) return false;
+        const hasDesiredSquash = targetNeuron.squash === suggestion.squash;
+        const otherSuggestion = squashes.find((entry) =>
+          entry.neuronUUID !== suggestion.neuronUUID
+        );
+        const otherNeuron = otherSuggestion
+          ? exported.neurons.find((neuron) =>
+            neuron.uuid === otherSuggestion.neuronUUID
+          )
+          : undefined;
+        const otherChanged = otherNeuron
+          ? otherNeuron.squash === otherSuggestion?.squash
+          : false;
+        return hasDesiredSquash && !otherChanged;
+      });
+      assert(
+        dedicated,
+        `Expected dedicated candidate for squash on ${suggestion.neuronUUID}`,
+      );
+    }
+  },
+);
+
+Deno.test(
+  "buildDiscoveryCandidates combines best candidate from each category",
+  () => {
+    const base = makeBaselineCreature();
+    const synapses: CandidateSynapse[] = [{
+      fromNeuronUUID: "input-2",
+      toNeuronUUID: "hidden-1",
+      weight: 0.91,
+      expectedImprovementPercentage: 0.05,
+      improvedCount: 3,
+      totalCount: 4,
+    }, {
+      fromNeuronUUID: "input-3",
+      toNeuronUUID: "hidden-2",
+      weight: -0.33,
+      expectedImprovementPercentage: 0.35,
+      improvedCount: 6,
+      totalCount: 7,
+    }];
+    const neurons: CandidateNeuron[] = [{
+      fromNeuronUUID: "input-2",
+      toNeuronUUID: "hidden-1",
+      incomingWeight: 0.45,
+      outgoingWeight: -0.12,
+      squash: TANH.NAME,
+      bias: 0.1,
+      expectedImprovementPercentage: 0.1,
+      improvedCount: 5,
+      totalCount: 6,
+    }, {
+      fromNeuronUUID: "input-3",
+      toNeuronUUID: "hidden-2",
+      incomingWeight: -0.38,
+      outgoingWeight: 0.22,
+      squash: Mish.NAME,
+      bias: -0.05,
+      expectedImprovementPercentage: 0.45,
+      improvedCount: 7,
+      totalCount: 8,
+    }];
+    const squashes: CandidateSquash[] = [{
+      neuronUUID: "hidden-1",
+      previousSquash: IDENTITY.NAME,
+      squash: Mish.NAME,
+      expectedImprovementPercentage: 0.05,
+      improvedError: 0.2,
+      currentError: 0.6,
+    }, {
+      neuronUUID: "hidden-2",
+      previousSquash: IDENTITY.NAME,
+      squash: TANH.NAME,
+      expectedImprovementPercentage: 0.34,
+      improvedError: 0.1,
+      currentError: 0.4,
+    }];
+    const removeCandidate: CandidateSynapse = {
+      fromNeuronUUID: "input-0",
+      toNeuronUUID: "hidden-1",
+      weight: -0.99,
+      expectedImprovementPercentage: 0.2,
+      improvedCount: 3,
+      totalCount: 5,
+    };
+
+    const discovery: DiscoverResult = {
+      ID: "BEST-COMBO",
+      addHelpfulSynapses: synapses,
+      addHelpfulNeurons: neurons,
+      removeHarmfulSynapse: removeCandidate,
+      candidateSquashes: squashes,
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    const comboBest = findCandidate(candidates, "combo-best-of-category");
+    const exported = comboBest.creature.exportJSON();
+
+    const hasBestSynapse = exported.synapses.some((synapse) =>
+      synapse.fromUUID === synapses[1].fromNeuronUUID &&
+      synapse.toUUID === synapses[1].toNeuronUUID
+    );
+    assert(
+      hasBestSynapse,
+      "Best-of-category combo should include the top synapse candidate",
+    );
+
+    const discoveryNeuron = exported.neurons.find((neuron) =>
+      neuron.uuid.startsWith("hidden-discovery-")
+    );
+    assert(discoveryNeuron, "Expected discovery neuron to be present.");
+    assertEquals(
+      discoveryNeuron?.squash,
+      neurons[1].squash,
+      "Best discovery neuron should dictate squash for injected neuron.",
+    );
+
+    const hidden2 = exported.neurons.find((neuron) =>
+      neuron.uuid === "hidden-2"
+    );
+    assert(hidden2, "Hidden neuron 2 should exist.");
+    assertEquals(
+      hidden2?.squash,
+      squashes[1].squash,
+      "Best-of-category combo should update squash with highest expected gain.",
+    );
+
+    const harmfulStillExists = exported.synapses.some((synapse) =>
+      synapse.fromUUID === removeCandidate.fromNeuronUUID &&
+      synapse.toUUID === removeCandidate.toNeuronUUID
+    );
+    assertEquals(
+      harmfulStillExists,
+      false,
+      "Best-of-category combo should remove the harmful synapse.",
+    );
+  },
+);
 
 Deno.test({
   name:
@@ -234,13 +483,30 @@ Deno.test({
         crippledCreature,
         discovery,
       );
-      const types = candidates.map((candidate) => candidate.change.type).sort();
-      assertEquals(types, [
+      const types = candidates.map((candidate) => candidate.change.type);
+      const uniqueTypes = new Set(types);
+      const requiredTypes: DiscoveryCandidate["change"]["type"][] = [
         "add-synapses",
         "combo-add-remove",
         "combo-all",
         "remove-synapse",
-      ]);
+      ];
+      for (const required of requiredTypes) {
+        assert(
+          uniqueTypes.has(required),
+          `Expected discovery candidates to include ${required}`,
+        );
+      }
+      assert(
+        uniqueTypes.has("combo-best-of-category"),
+        "Expected to synthesise best-of-category combination",
+      );
+      const addSynapseCount = types.filter((type) => type === "add-synapses")
+        .length;
+      assert(
+        addSynapseCount >= (helpfulSynapses?.length ?? 0),
+        "Expected at least one candidate per helpful synapse",
+      );
 
       const addCandidate = findCandidate(candidates, "add-synapses");
       const addSynapses = addCandidate.creature.exportJSON().synapses;
