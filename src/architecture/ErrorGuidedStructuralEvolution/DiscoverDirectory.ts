@@ -614,6 +614,12 @@ class DataRecorder {
           break;
         }
 
+        discoverStructure.ensureRustCombinedAnalysis(
+          newFocusList,
+          this.enableSynapseCandidates || this.enableHarmfulCandidates,
+          this.enableNeuronCandidates,
+        );
+
         if (this.enableNeuronCandidates) {
           currentPhase = "analyze_neurons";
           const neuronAnalyzeStart = Date.now();

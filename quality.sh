@@ -39,7 +39,7 @@ fi
 echo ""
 echo "Running discovery tests without FFI to verify graceful degradation..."
 
-NEAT_RUST_DISCOVERY_OPTIONAL=true deno test \
+NEAT_RUST_DISCOVERY_OPTIONAL=true NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
   --allow-read \
   --allow-write \
   --allow-net \
@@ -51,7 +51,7 @@ NEAT_RUST_DISCOVERY_OPTIONAL=true deno test \
   test/ErrorGuidedStructuralEvolution/*.ts
 
 echo "Running tests with FFI enabled (full functionality)..."
-deno test \
+NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
   --allow-read \
   --allow-write \
   --allow-net \
