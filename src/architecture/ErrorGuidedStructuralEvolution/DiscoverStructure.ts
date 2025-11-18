@@ -238,6 +238,7 @@ export class DiscoverStructure {
     includeNeuron: boolean;
     result: RustAnalyzeAllResult;
   };
+  private analysisTimeoutGuardEnabled = true;
   constructor(
     creature: Creature,
     timeoutSeconds: number,
@@ -347,6 +348,7 @@ export class DiscoverStructure {
     );
     this.timeoutTS = Date.now() + analysisTimeSeconds * 1000;
     this.analysisDeadlineMs = this.timeoutTS;
+    this.analysisTimeoutGuardEnabled = false;
   }
 
   public setForcedFocusNeurons(neuronUUIDs: readonly string[]): void {
@@ -1262,7 +1264,7 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
-    if (Date.now() > this.timeoutTS) {
+    if (this.analysisTimeoutGuardEnabled && Date.now() > this.timeoutTS) {
       this.log("warn", "Discovery timeout reached in analyzeSelectedNeurons");
       this.logAnalysisSkipped("synapse");
       this.logFocusSelectionDetails("synapse", focusList);
@@ -1302,7 +1304,7 @@ export class DiscoverStructure {
   ): Promise<CandidateNeuron[] | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
-    if (Date.now() > this.timeoutTS) {
+    if (this.analysisTimeoutGuardEnabled && Date.now() > this.timeoutTS) {
       this.log("warn", "Discovery timeout reached in analyzeMissingNeurons");
       this.logAnalysisSkipped("neuron");
       this.logFocusSelectionDetails("neuron", focusList);
@@ -2027,18 +2029,41 @@ export class DiscoverStructure {
         this.log("warn", this.formatNeuronDiagnostic(diagnostic));
       }
     });
-    if (bestDetail && totalEvaluated > 0) {
-      const improvementPct = `${(bestDetail.improvement * 100).toFixed(4)}%`;
-      const thresholdPct = bestDetail.threshold !== undefined
-        ? `${(bestDetail.threshold * 100).toFixed(4)}%`
-        : "the configured threshold";
-      const weightInfo = bestDetail.weight !== undefined
-        ? ` (weight ${bestDetail.weight.toFixed(4)})`
-        : "";
-      this.log(
-        "warn",
-        `Rust ${scope} analysis evaluated ${totalEvaluated} candidate(s); best improvement ${improvementPct} for ${bestDetail.target}${weightInfo} but threshold was ${thresholdPct}.`,
-      );
+    if (totalEvaluated > 0) {
+      if (bestDetail) {
+        const improvementPct = `${(bestDetail.improvement * 100).toFixed(4)}%`;
+        const thresholdPct = bestDetail.threshold !== undefined
+          ? `${(bestDetail.threshold * 100).toFixed(4)}%`
+          : "the configured threshold";
+        const weightInfo = bestDetail.weight !== undefined
+          ? ` (weight ${bestDetail.weight.toFixed(4)})`
+          : "";
+        this.log(
+          "warn",
+          `Rust ${scope} analysis evaluated ${totalEvaluated} candidate(s); best improvement ${improvementPct} for ${bestDetail.target}${weightInfo} but threshold was ${thresholdPct}.`,
+        );
+      } else {
+        this.log(
+          "warn",
+          `Rust ${scope} analysis evaluated ${totalEvaluated} candidate(s) but none produced usable improvement statistics.`,
+        );
+      }
+    } else {
+      const first = diagnostics[0];
+      if (first) {
+        const reason = this.isSynapseDiagnostic(first)
+          ? this.describeSynapseDiagnosticReason(first.reason)
+          : this.describeNeuronDiagnosticReason(first.reason);
+        this.log(
+          "warn",
+          `Rust ${scope} analysis reported zero evaluated candidates (${reason}).`,
+        );
+      } else {
+        this.log(
+          "warn",
+          `Rust ${scope} analysis reported zero evaluated candidates.`,
+        );
+      }
     }
   }
 
@@ -3096,7 +3121,7 @@ export class DiscoverStructure {
     if (focusList.length === 0) return undefined;
 
     // Check timeout before starting analysis
-    if (Date.now() > this.timeoutTS) {
+    if (this.analysisTimeoutGuardEnabled && Date.now() > this.timeoutTS) {
       this.log(
         "warn",
         "Discovery timeout reached in analyzeSelectedNeuronsSquashes",
@@ -3523,7 +3548,7 @@ export class DiscoverStructure {
   ): Promise<CandidateSynapse | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
-    if (Date.now() > this.timeoutTS) {
+    if (this.analysisTimeoutGuardEnabled && Date.now() > this.timeoutTS) {
       this.log(
         "warn",
         "Discovery timeout reached in analyzeSelectedNeuronsForRemoval",
