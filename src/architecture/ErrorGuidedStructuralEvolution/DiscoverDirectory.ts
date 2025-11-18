@@ -32,8 +32,9 @@ class DataRecorder {
   private readonly sampleRate: number;
   private readonly discoveryBatchSize: number;
   private readonly ID: string;
-  private readonly timeoutTS: number;
+  private timeoutTS: number;
   private readonly timeoutSeconds: number;
+  private readonly analysisTimeoutSeconds: number;
   private readonly discoveryMaxNeurons: number;
   private readonly drainEveryNBatches: number;
   private readonly rustFlushRecords: number;
@@ -73,6 +74,15 @@ class DataRecorder {
     );
     this.timeoutSeconds = discoveryTimeOutMinutes * 60;
     this.timeoutTS = Date.now() + this.timeoutSeconds * 1000;
+
+    const analysisMinutesRaw = options.discoveryAnalysisTimeoutMinutes ??
+      3;
+    const analysisTimeoutMinutes = Math.min(60, analysisMinutesRaw);
+    assert(
+      analysisTimeoutMinutes > 0,
+      "Discovery analysis timeout minutes must be greater than 0",
+    );
+    this.analysisTimeoutSeconds = analysisTimeoutMinutes * 60;
 
     this.discoveryMaxNeurons = Math.max(
       1,
@@ -508,10 +518,10 @@ class DataRecorder {
 
       // Extend timeout for analysis phase - give it dedicated time regardless of recording duration
       // This ensures analysis isn't starved if recording takes a long time
-      const analysisTimeoutMinutes = options.discoveryAnalysisTimeoutMinutes ??
-        3; // Default 3 minutes for analysis
-      const analysisTimeoutSeconds = analysisTimeoutMinutes * 60;
+      const analysisTimeoutSeconds = this.analysisTimeoutSeconds;
+      const analysisTimeoutMinutes = analysisTimeoutSeconds / 60;
       discoverStructure.extendTimeoutForAnalysis(analysisTimeoutSeconds);
+      this.timeoutTS = Date.now() + analysisTimeoutSeconds * 1000;
 
       if (shouldLogDiscovery(options)) {
         console.log(
