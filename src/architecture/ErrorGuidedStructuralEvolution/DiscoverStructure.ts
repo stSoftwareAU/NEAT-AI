@@ -10,6 +10,7 @@ import type { ActivationInterface } from "../../methods/activations/ActivationIn
 import { Activations } from "../../methods/activations/Activations.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import {
+  analyzeAll,
   analyzeNeurons,
   analyzeSynapses,
   creatureToRustFormat,
@@ -19,6 +20,8 @@ import {
   rankFocusNeurons,
   readDiscoveryRecords,
   recordDiscovery,
+  type RustAnalyzeAllInput,
+  type RustAnalyzeAllResult,
   type RustAnalyzeNeuronsInput,
   type RustAnalyzeNeuronsResult,
   type RustAnalyzeSynapsesInput,
@@ -43,6 +46,7 @@ export interface DiscoverStructureDeps {
   mergeDiscoveryParquet: typeof mergeDiscoveryParquet;
   analyzeNeurons: typeof analyzeNeurons;
   analyzeSynapses: typeof analyzeSynapses;
+  analyzeAll?: typeof analyzeAll;
   readDiscoveryRecords: typeof readDiscoveryRecords;
   rankFocusNeurons?: typeof rankFocusNeurons;
 }
@@ -54,6 +58,7 @@ const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
   mergeDiscoveryParquet,
   analyzeNeurons,
   analyzeSynapses,
+  analyzeAll,
   readDiscoveryRecords,
   rankFocusNeurons,
 };
@@ -227,6 +232,12 @@ export class DiscoverStructure {
     undefined;
   private lastNeuronScanStats?: NeuronScanStats;
   private analysisDeadlineMs?: number;
+  private combinedRustAnalysis?: {
+    key: string;
+    includeSynapse: boolean;
+    includeNeuron: boolean;
+    result: RustAnalyzeAllResult;
+  };
   constructor(
     creature: Creature,
     timeoutSeconds: number,
@@ -465,6 +476,7 @@ export class DiscoverStructure {
     this.neuronDiscoveries = [];
     this.cachedMaxOutputError = undefined;
     this.lastNeuronScanStats = undefined;
+    this.combinedRustAnalysis = undefined;
 
     // Clear selectedIndices to help GC
     this.selectedIndices = {};
@@ -843,6 +855,7 @@ export class DiscoverStructure {
 
     if (this.rustChunkFiles.length === 0) {
       this.parquetFilePath = null;
+      this.combinedRustAnalysis = undefined;
       return true;
     }
 
@@ -868,6 +881,7 @@ export class DiscoverStructure {
     }
 
     this.parquetFilePath = mergeResult.outputFile ?? outputFile;
+    this.combinedRustAnalysis = undefined;
     this.rustChunkFiles = [];
     return true;
   }
@@ -1354,7 +1368,12 @@ export class DiscoverStructure {
   private tryRustHelpfulNeurons(
     focusList: string[],
   ): CandidateNeuron[] | undefined {
-    const rustResult = this.runRustNeuronAnalysis(focusList);
+    const combinedResult = this.readRustCombinedAnalysis(
+      focusList,
+      false,
+      true,
+    )?.neuron;
+    const rustResult = combinedResult ?? this.runRustNeuronAnalysis(focusList);
     if (!rustResult) {
       return undefined;
     }
@@ -1385,7 +1404,12 @@ export class DiscoverStructure {
   private tryRustHelpfulSynapses(
     focusList: string[],
   ): CandidateSynapse[] | undefined {
-    const rustResult = this.runRustSynapseAnalysis(focusList);
+    const combinedResult = this.readRustCombinedAnalysis(
+      focusList,
+      true,
+      false,
+    )?.synapse;
+    const rustResult = combinedResult ?? this.runRustSynapseAnalysis(focusList);
     if (!rustResult) {
       return undefined;
     }
@@ -1416,7 +1440,12 @@ export class DiscoverStructure {
   private tryRustHarmfulCandidates(
     focusList: string[],
   ): CandidateSynapse[] | undefined {
-    const rustResult = this.runRustSynapseAnalysis(focusList);
+    const combinedResult = this.readRustCombinedAnalysis(
+      focusList,
+      true,
+      false,
+    )?.synapse;
+    const rustResult = combinedResult ?? this.runRustSynapseAnalysis(focusList);
     if (!rustResult || !rustResult.harmfulSynapses) {
       return undefined;
     }
@@ -1818,6 +1847,101 @@ export class DiscoverStructure {
       `Rust ${scope} analysis unavailable (${reason}) for focus neuron(s): ${preview}`,
     );
     this.logFocusSelectionDetails(scope, focusList);
+  }
+
+  private buildCombinedAnalysisKey(
+    focusList: readonly string[],
+  ): string {
+    const pathKey = this.parquetFilePath ?? "none";
+    return `${pathKey}|${JSON.stringify(focusList)}`;
+  }
+
+  public ensureRustCombinedAnalysis(
+    focusList: string[],
+    includeSynapse: boolean,
+    includeNeuron: boolean,
+  ): RustAnalyzeAllResult | undefined {
+    if (!this.deps.analyzeAll) {
+      return undefined;
+    }
+    if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
+      return undefined;
+    }
+
+    if (!includeSynapse && !includeNeuron) {
+      return undefined;
+    }
+
+    const cacheKey = this.buildCombinedAnalysisKey(focusList);
+    if (
+      this.combinedRustAnalysis &&
+      this.combinedRustAnalysis.key === cacheKey &&
+      (!includeSynapse || this.combinedRustAnalysis.includeSynapse) &&
+      (!includeNeuron || this.combinedRustAnalysis.includeNeuron)
+    ) {
+      return this.combinedRustAnalysis.result;
+    }
+
+    const rustCreature = creatureToRustFormat(this.creature.exportJSON());
+    const rustInput: RustAnalyzeAllInput = {
+      parquetFile: this.parquetFilePath,
+      creature: rustCreature,
+      focusNeurons: focusList,
+      improvementThreshold: this.improvementThreshold,
+      harmfulThreshold: this.harmfulThreshold,
+      maxSynapseCandidates: includeSynapse
+        ? Math.max(50, focusList.length * 10)
+        : undefined,
+      maxNeuronCandidates: includeNeuron
+        ? Math.max(25, focusList.length * 5)
+        : undefined,
+      requireGpu: Deno.build.os === "darwin",
+      analysisDeadlineMs: this.analysisDeadlineMs,
+      includeSynapseAnalysis: includeSynapse,
+      includeNeuronAnalysis: includeNeuron,
+    };
+
+    const rustResult = this.deps.analyzeAll(rustInput);
+    if (!rustResult || !rustResult.success) {
+      const reason = rustResult?.error ?? "analysis did not return a result";
+      if (includeSynapse) {
+        this.logRustAnalysisUnavailable("synapse", focusList, reason);
+      }
+      if (includeNeuron) {
+        this.logRustAnalysisUnavailable("neuron", focusList, reason);
+      }
+      this.combinedRustAnalysis = undefined;
+      return undefined;
+    }
+
+    this.combinedRustAnalysis = {
+      key: cacheKey,
+      includeSynapse,
+      includeNeuron,
+      result: rustResult,
+    };
+    return rustResult;
+  }
+
+  private readRustCombinedAnalysis(
+    focusList: string[],
+    needsSynapse: boolean,
+    needsNeuron: boolean,
+  ): RustAnalyzeAllResult | undefined {
+    const cached = this.combinedRustAnalysis;
+    if (!cached) {
+      return undefined;
+    }
+    if (cached.key !== this.buildCombinedAnalysisKey(focusList)) {
+      return undefined;
+    }
+    if (needsSynapse && !cached.includeSynapse) {
+      return undefined;
+    }
+    if (needsNeuron && !cached.includeNeuron) {
+      return undefined;
+    }
+    return cached.result;
   }
 
   private logAnalysisSkipped(scope: "synapse" | "neuron"): void {
