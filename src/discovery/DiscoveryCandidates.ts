@@ -9,7 +9,8 @@ export type DiscoveryChangeType =
   | "remove-synapse"
   | "change-squash"
   | "combo-add-remove"
-  | "combo-add-change";
+  | "combo-add-change"
+  | "combo-all";
 
 export interface DiscoveryCandidate {
   creature: Creature;
@@ -142,5 +143,121 @@ export function buildDiscoveryCandidates(
     }
   }
 
+  const combinedCandidate = buildCombinedCandidate({
+    baseCreature,
+    discovery,
+    includeAddNeurons: Boolean(addedNeuronCreature),
+    includeAddSynapses: Boolean(addedSynapseCreature),
+    includeRemoveSynapse: Boolean(removedSynapseCreature),
+    includeChangeSquash: Boolean(changedSquashCreature),
+  });
+  if (combinedCandidate) {
+    candidates.push(combinedCandidate);
+  }
+
   return candidates;
+}
+
+interface CombinedCandidateContext {
+  baseCreature: Creature;
+  discovery: DiscoverResult;
+  includeAddNeurons: boolean;
+  includeAddSynapses: boolean;
+  includeRemoveSynapse: boolean;
+  includeChangeSquash: boolean;
+}
+
+function buildCombinedCandidate(
+  context: CombinedCandidateContext,
+): DiscoveryCandidate | undefined {
+  const {
+    baseCreature,
+    discovery,
+    includeAddNeurons,
+    includeAddSynapses,
+    includeRemoveSynapse,
+    includeChangeSquash,
+  } = context;
+
+  const requestedCategories = [
+    includeAddNeurons,
+    includeAddSynapses,
+    includeRemoveSynapse,
+    includeChangeSquash,
+  ].filter(Boolean).length;
+  if (requestedCategories < 2) {
+    return undefined;
+  }
+
+  let combinedCreature = baseCreature;
+  const appliedLabels: DiscoveryChangeType[] = [];
+
+  const applyChange = (
+    enabled: boolean,
+    label: DiscoveryChangeType,
+    mutator: (creature: Creature) => Creature | undefined,
+  ) => {
+    if (!enabled) return;
+    const updated = mutator(combinedCreature);
+    if (updated && updated !== combinedCreature) {
+      combinedCreature = updated;
+      appliedLabels.push(label);
+    }
+  };
+
+  applyChange(
+    includeRemoveSynapse,
+    "remove-synapse",
+    (creature) =>
+      DiscoverStructure.removeSynapse(
+        discovery.ID,
+        creature,
+        discovery.removeHarmfulSynapse,
+      ) ?? undefined,
+  );
+
+  applyChange(
+    includeAddNeurons,
+    "add-neurons",
+    (creature) =>
+      DiscoverStructure.addHelpfulNeurons(
+        discovery.ID,
+        creature,
+        discovery.addHelpfulNeurons,
+      ),
+  );
+
+  applyChange(
+    includeAddSynapses,
+    "add-synapses",
+    (creature) =>
+      DiscoverStructure.addHelpfulSynapses(
+        discovery.ID,
+        creature,
+        discovery.addHelpfulSynapses,
+      ),
+  );
+
+  applyChange(
+    includeChangeSquash,
+    "change-squash",
+    (creature) =>
+      DiscoverStructure.changeSquash(
+        discovery.ID,
+        creature,
+        discovery.candidateSquashes,
+      ),
+  );
+
+  if (appliedLabels.length < 2 || combinedCreature === baseCreature) {
+    return undefined;
+  }
+
+  return {
+    creature: combinedCreature,
+    change: {
+      type: "combo-all",
+      description: `Combined discovery changes (${appliedLabels.join(", ")})`,
+    },
+  };
 }

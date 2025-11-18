@@ -4,6 +4,8 @@ import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import {
   type CandidateNeuron,
+  type CandidateSquash,
+  type CandidateSynapse,
   DEFAULT_RUST_FLUSH_RECORDS,
   DiscoverStructure,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -236,6 +238,7 @@ Deno.test({
       assertEquals(types, [
         "add-synapses",
         "combo-add-remove",
+        "combo-all",
         "remove-synapse",
       ]);
 
@@ -348,3 +351,114 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
     "Expected discovered neuron to include incoming and outgoing synapses.",
   );
 });
+
+Deno.test(
+  "buildDiscoveryCandidates synthesises combined candidate across categories",
+  () => {
+    const base = makeBaselineCreature();
+    const helpfulSynapses: CandidateSynapse[] = [{
+      fromNeuronUUID: "hidden-2",
+      toNeuronUUID: "output-0",
+      weight: 0.9,
+      expectedImprovementPercentage: 0.2,
+      improvedCount: 3,
+      totalCount: 5,
+    }];
+    const removeCandidate: CandidateSynapse = {
+      fromNeuronUUID: "input-0",
+      toNeuronUUID: "hidden-1",
+      weight: 0.1,
+      expectedImprovementPercentage: 0.15,
+      improvedCount: 4,
+      totalCount: 6,
+    };
+    const neuronCandidate: CandidateNeuron = {
+      fromNeuronUUID: "input-2",
+      toNeuronUUID: "hidden-2",
+      incomingWeight: 0.33,
+      outgoingWeight: -0.22,
+      squash: TANH.NAME,
+      bias: 0.07,
+      expectedImprovementPercentage: 0.18,
+      improvedCount: 6,
+      totalCount: 8,
+    };
+    const squashCandidate: CandidateSquash = {
+      neuronUUID: "hidden-1",
+      previousSquash: IDENTITY.NAME,
+      squash: Mish.NAME,
+      expectedImprovementPercentage: 0.21,
+      improvedError: 0.04,
+      currentError: 0.09,
+    };
+
+    const discovery: DiscoverResult = {
+      ID: "COMBO-ALL",
+      addHelpfulSynapses: helpfulSynapses,
+      addHelpfulNeurons: [neuronCandidate],
+      removeHarmfulSynapse: removeCandidate,
+      candidateSquashes: [squashCandidate],
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    const comboAll = findCandidate(candidates, "combo-all");
+    const exported = comboAll.creature.exportJSON();
+
+    const harmfulStillExists = exported.synapses.some((synapse) =>
+      synapse.fromUUID === removeCandidate.fromNeuronUUID &&
+      synapse.toUUID === removeCandidate.toNeuronUUID
+    );
+    assertEquals(
+      harmfulStillExists,
+      false,
+      "Combined candidate should remove the harmful synapse.",
+    );
+
+    const helpfulSynapseExists = exported.synapses.some((synapse) =>
+      synapse.fromUUID === helpfulSynapses[0].fromNeuronUUID &&
+      synapse.toUUID === helpfulSynapses[0].toNeuronUUID &&
+      Math.abs(synapse.weight - helpfulSynapses[0].weight) < 1e-6
+    );
+    assert(
+      helpfulSynapseExists,
+      "Combined candidate should include the beneficial synapse.",
+    );
+
+    const hidden1 = exported.neurons.find((neuron) =>
+      neuron.uuid === "hidden-1"
+    );
+    assert(hidden1, "Hidden neuron should exist after combination.");
+    assertEquals(
+      hidden1?.squash,
+      squashCandidate.squash,
+      "Combined candidate should update the squash function.",
+    );
+
+    const incomingDiscoverySynapse = exported.synapses.find((synapse) =>
+      synapse.fromUUID === neuronCandidate.fromNeuronUUID &&
+      Math.abs(synapse.weight - neuronCandidate.incomingWeight) < 1e-6
+    );
+    assert(
+      incomingDiscoverySynapse,
+      "Expected discovery neuron incoming synapse to exist.",
+    );
+    const discoveredNeuronUUID = incomingDiscoverySynapse!.toUUID;
+    const outgoingDiscoverySynapse = exported.synapses.find((synapse) =>
+      synapse.fromUUID === discoveredNeuronUUID &&
+      synapse.toUUID === neuronCandidate.toNeuronUUID &&
+      Math.abs(synapse.weight - neuronCandidate.outgoingWeight) < 1e-6
+    );
+    assert(
+      outgoingDiscoverySynapse,
+      "Expected discovery neuron outgoing synapse to exist.",
+    );
+
+    const discoveredNeuron = exported.neurons.find((neuron) =>
+      neuron.uuid === discoveredNeuronUUID
+    );
+    assert(
+      discoveredNeuron,
+      "Combined candidate should include discovered neuron.",
+    );
+  },
+);

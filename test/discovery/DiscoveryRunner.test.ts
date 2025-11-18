@@ -243,6 +243,144 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
   }
 });
 
+Deno.test(
+  "DiscoveryRunner considers combined multi-category candidate when selecting best result",
+  async () => {
+    const helpfulSynapse = {
+      fromNeuronUUID: "input-1",
+      toNeuronUUID: "hidden-1",
+      weight: 0.45,
+      expectedImprovementPercentage: 0.2,
+      improvedCount: 4,
+      totalCount: 6,
+    };
+    const harmfulSynapse = {
+      fromNeuronUUID: "input-1",
+      toNeuronUUID: "output-0",
+      weight: -0.25,
+      expectedImprovementPercentage: 0.1,
+      improvedCount: 3,
+      totalCount: 5,
+    };
+    const neuronCandidate = {
+      fromNeuronUUID: "input-0",
+      toNeuronUUID: "hidden-1",
+      incomingWeight: 0.4,
+      outgoingWeight: -0.3,
+      squash: "TANH",
+      bias: 0.05,
+      expectedImprovementPercentage: 0.22,
+      improvedCount: 5,
+      totalCount: 7,
+    };
+    const squashCandidate = {
+      neuronUUID: "hidden-1",
+      previousSquash: "IDENTITY",
+      squash: "ELU",
+      expectedImprovementPercentage: 0.18,
+      improvedError: 0.03,
+      currentError: 0.07,
+    };
+
+    const discoveryResult: DiscoverResult = {
+      ID: "DISCOVER_COMBINED",
+      addHelpfulSynapses: [helpfulSynapse],
+      addHelpfulNeurons: [neuronCandidate],
+      removeHarmfulSynapse: harmfulSynapse,
+      candidateSquashes: [squashCandidate],
+    };
+
+    const computeError = (creature: Creature) => {
+      const json = creature.exportJSON();
+      const synapses = json.synapses;
+      const neurons = json.neurons;
+
+      const hasHelpfulSynapse = synapses.some((synapse) =>
+        synapse.fromUUID === helpfulSynapse.fromNeuronUUID &&
+        synapse.toUUID === helpfulSynapse.toNeuronUUID &&
+        Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
+      );
+      const harmfulSynapsePresent = synapses.some((synapse) =>
+        synapse.fromUUID === harmfulSynapse.fromNeuronUUID &&
+        synapse.toUUID === harmfulSynapse.toNeuronUUID
+      );
+      const hidden1 = neurons.find((neuron) =>
+        neuron.uuid === squashCandidate.neuronUUID
+      );
+      const squashUpdated = hidden1?.squash === squashCandidate.squash;
+
+      const incomingDiscoverySynapse = synapses.find((synapse) =>
+        synapse.fromUUID === neuronCandidate.fromNeuronUUID &&
+        Math.abs(synapse.weight - neuronCandidate.incomingWeight) < 1e-6
+      );
+      const discoveredNeuronUUID = incomingDiscoverySynapse?.toUUID;
+      const outgoingDiscoverySynapse = synapses.find((synapse) =>
+        discoveredNeuronUUID &&
+        synapse.fromUUID === discoveredNeuronUUID &&
+        synapse.toUUID === neuronCandidate.toNeuronUUID &&
+        Math.abs(synapse.weight - neuronCandidate.outgoingWeight) < 1e-6
+      );
+      const hasDiscoveredNeuron = Boolean(
+        discoveredNeuronUUID &&
+          outgoingDiscoverySynapse &&
+          neurons.some((neuron) => neuron.uuid === discoveredNeuronUUID),
+      );
+
+      if (
+        hasHelpfulSynapse && !harmfulSynapsePresent && squashUpdated &&
+        hasDiscoveredNeuron
+      ) {
+        return 0.15;
+      }
+      if (hasHelpfulSynapse && !harmfulSynapsePresent && squashUpdated) {
+        return 0.2;
+      }
+      if (hasHelpfulSynapse && !harmfulSynapsePresent) {
+        return 0.25;
+      }
+      if (hasHelpfulSynapse && squashUpdated) {
+        return 0.28;
+      }
+      if (hasHelpfulSynapse) {
+        return 0.32;
+      }
+      if (!harmfulSynapsePresent) {
+        return 0.4;
+      }
+      if (squashUpdated) {
+        return 0.45;
+      }
+      return 0.5;
+    };
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () =>
+        new FakeWorker(
+          discoveryResult,
+          computeError,
+        ),
+    });
+
+    const result = await runner.discoverDir({
+      creature: makeBaseCreature(),
+      dataDir: "/tmp/data",
+      options: makeOptions(),
+    });
+
+    assert(result.improvement, "Expected an improvement to be recorded.");
+    assertEquals(
+      result.improvement?.changeType,
+      "combo-all",
+      "Combined candidate should be considered the best improvement.",
+    );
+    assert(
+      (result.improvement?.scoreDelta ?? 0) > 0,
+      "Combined candidate should improve the score.",
+    );
+  },
+);
+
 Deno.test("DiscoveryRunner returns no improvement when candidates are not better", async () => {
   const discoveryResult: DiscoverResult = {
     ID: "DISCOVER_NO_IMPROVEMENT",
