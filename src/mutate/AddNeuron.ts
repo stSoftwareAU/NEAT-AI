@@ -86,28 +86,53 @@ export class AddNeuron implements RadioactiveInterface {
     const nonConstantIndx = creature.neurons.findIndex((
       n,
     ) => (n.index >= toIndex && n.type !== "constant"));
-    creature.connect(
-      neuron.index,
-      nonConstantIndx,
-      Synapse.randomWeight(),
-    );
-    neuron.fix();
-    const connection = creature.getSynapse(neuron.index, nonConstantIndx);
-    if (!connection) {
-      /* If the self connection was removed */
-      const toIndex2 = Math.floor(
-        Math.random() * (creature.neurons.length - neuron.index - 1),
-      ) + neuron.index + 1;
 
-      const nonConstantIndx2 = creature.neurons.findIndex((
-        n,
-      ) => (n.index >= toIndex2 && n.type !== "constant"));
-
+    // Ensure we have a valid non-constant neuron to connect to
+    if (nonConstantIndx !== -1) {
       creature.connect(
         neuron.index,
-        nonConstantIndx2,
+        nonConstantIndx,
         Synapse.randomWeight(),
       );
+    }
+
+    // Fix the neuron to ensure it has valid connections
+    neuron.fix();
+
+    // Verify the neuron has an outward connection, create one if needed
+    const outwardConnections = creature.outwardConnections(neuron.index);
+    if (outwardConnections.length === 0) {
+      // Find any valid target neuron (non-constant, after this neuron)
+      let targetIndx = -1;
+      for (let i = neuron.index + 1; i < creature.neurons.length; i++) {
+        if (creature.neurons[i].type !== "constant") {
+          targetIndx = i;
+          break;
+        }
+      }
+
+      // If no valid target found after this neuron, try output neurons
+      if (targetIndx === -1) {
+        const firstOutputIndex = creature.neurons.length - creature.output;
+        if (firstOutputIndex < creature.neurons.length) {
+          targetIndx = firstOutputIndex;
+        }
+      }
+
+      if (targetIndx !== -1) {
+        creature.connect(
+          neuron.index,
+          targetIndx,
+          Synapse.randomWeight(),
+        );
+      } else {
+        // Last resort: connect to self if no other option
+        creature.connect(
+          neuron.index,
+          neuron.index,
+          Synapse.randomWeight(),
+        );
+      }
     }
 
     // delete this.creature.memetic;
