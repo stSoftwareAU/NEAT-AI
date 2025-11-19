@@ -128,5 +128,15 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
   });
 
   creature.synapses = tmpConnections;
+
+  // Maintain sorted order: by 'from' index, then by 'to' index
+  creature.synapses.sort((a, b) => {
+    if (a.from === b.from) {
+      return a.to - b.to;
+    } else {
+      return a.from - b.from;
+    }
+  });
+
   creature.clearCache();
 }

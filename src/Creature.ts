@@ -1363,10 +1363,35 @@ export class Creature implements CreatureInternal {
         if (
           this.outwardConnections(pos).length === 0
         ) {
+          if (this.DEBUG) {
+            console.debug(
+              `fix() removing disconnected neuron ${pos} ${
+                this.neurons[pos].uuid
+              }`,
+            );
+          }
           removeHiddenNeuron(this, pos);
           neuronRemoved = true;
           break;
         }
+      }
+    }
+
+    for (let i = 1; i < this.synapses.length; i++) {
+      if (this.synapses[i - 1].from > this.synapses[i].from) {
+        console.error(
+          "Synapses not sorted",
+          this.synapses[i - 1],
+          this.synapses[i],
+        );
+        this.synapses.sort((a, b) => {
+          if (a.from === b.from) {
+            return a.to - b.to;
+          } else {
+            return a.from - b.from;
+          }
+        });
+        break;
       }
     }
 
