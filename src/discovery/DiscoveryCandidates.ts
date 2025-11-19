@@ -59,9 +59,10 @@ export function buildDiscoveryCandidates(
       creature: addedNeuronCreature,
       change: {
         type: "add-neurons",
-        description: `Added ${helpfulNeuronCandidates.length} helpful neuron${
-          helpfulNeuronCandidates.length === 1 ? "" : "s"
-        }`,
+        description:
+          `💡 Added ${helpfulNeuronCandidates.length} helpful neuron${
+            helpfulNeuronCandidates.length === 1 ? "" : "s"
+          }`,
       },
     });
   }
@@ -84,9 +85,9 @@ export function buildDiscoveryCandidates(
       creature: addedSynapseCreature,
       change: {
         type: "add-synapses",
-        description: `Added ${addHelpfulSynapses?.length ?? 0} helpful synapse${
-          (addHelpfulSynapses?.length ?? 0) === 1 ? "" : "s"
-        }`,
+        description: `🔗 Added ${
+          addHelpfulSynapses?.length ?? 0
+        } helpful synapse${(addHelpfulSynapses?.length ?? 0) === 1 ? "" : "s"}`,
       },
     });
   }
@@ -109,7 +110,7 @@ export function buildDiscoveryCandidates(
       creature: removedSynapseCreature,
       change: {
         type: "remove-synapse",
-        description: "Removed harmful synapse",
+        description: "✂️ Removed harmful synapse",
       },
     });
 
@@ -120,12 +121,15 @@ export function buildDiscoveryCandidates(
         addHelpfulSynapses,
       );
       if (combinedAddRemove) {
+        const count = addHelpfulSynapses?.length ?? 0;
         candidates.push({
           creature: combinedAddRemove,
           change: {
             type: "combo-add-remove",
             description:
-              "Removed harmful synapse and added discovered helpful synapse(s)",
+              `🏗️ Removed harmful synapse and added ${count} discovered helpful synapse${
+                count === 1 ? "" : "s"
+              }`,
           },
         });
       }
@@ -138,11 +142,21 @@ export function buildDiscoveryCandidates(
     candidateSquashes,
   );
   if (changedSquashCreature) {
+    const changes = (candidateSquashes || []).map((c) => {
+      const neuron = baseCreature.neurons.find((n) => n.uuid === c.neuronUUID);
+      const oldSquash = neuron?.squash;
+      return `${shortID(c.neuronUUID)} (${oldSquash} -> ${c.squash})`;
+    });
+
+    const description = changes.length <= 3
+      ? `🔄 Changed squash for ${changes.join(", ")}`
+      : `🔄 Changed activation function on ${changes.length} high-error neurons`;
+
     candidates.push({
       creature: changedSquashCreature,
       change: {
         type: "change-squash",
-        description: "Changed activation function on high-error neurons",
+        description,
       },
     });
 
@@ -153,12 +167,17 @@ export function buildDiscoveryCandidates(
         candidateSquashes,
       );
       if (combinedAddChange) {
+        const synCount = addHelpfulSynapses?.length ?? 0;
+        const sqCount = candidateSquashes?.length ?? 0;
         candidates.push({
           creature: combinedAddChange,
           change: {
             type: "combo-add-change",
-            description:
-              "Added helpful synapse(s) and updated neuron activation(s)",
+            description: `🏗️ Added ${synCount} helpful synapse${
+              synCount === 1 ? "" : "s"
+            } and updated ${sqCount} neuron activation${
+              sqCount === 1 ? "" : "s"
+            }`,
           },
         });
       }
@@ -187,7 +206,7 @@ export function buildDiscoveryCandidates(
       candidateSquashes: changedSquashCreature ? candidateSquashes : undefined,
     },
     changeType: "combo-all",
-    description: "Combined discovery changes",
+    description: "🏗️ Combined discovery changes",
   });
   if (combinedCandidate) {
     candidates.push(combinedCandidate);
@@ -240,8 +259,9 @@ function buildSingleSynapseCandidates(
       creature,
       change: {
         type: "add-synapses",
-        description:
-          `Added helpful synapse ${synapse.fromNeuronUUID} -> ${synapse.toNeuronUUID}`,
+        description: `🔗 Added helpful synapse ${
+          shortID(synapse.fromNeuronUUID)
+        } -> ${shortID(synapse.toNeuronUUID)}`,
       },
     });
   }
@@ -266,8 +286,9 @@ function buildSingleNeuronCandidates(
       creature,
       change: {
         type: "add-neurons",
-        description:
-          `Added discovery neuron linking ${neuron.fromNeuronUUID} -> ${neuron.toNeuronUUID}`,
+        description: `💡 Added neuron ${
+          shortID(neuron.fromNeuronUUID)
+        } -> ${neuron.squash} -> ${shortID(neuron.toNeuronUUID)}`,
       },
     });
   }
@@ -288,16 +309,30 @@ function buildSingleSquashCandidates(
       [squash],
     );
     if (!creature) continue;
+
+    const neuron = baseCreature.neurons.find((n) =>
+      n.uuid === squash.neuronUUID
+    );
+    const oldSquash = neuron?.squash;
+
     entries.push({
       creature,
       change: {
         type: "change-squash",
-        description:
-          `Changed squash for ${squash.neuronUUID} -> ${squash.squash}`,
+        description: `🔄 Changed squash for ${
+          shortID(squash.neuronUUID)
+        } (${oldSquash} -> ${squash.squash})`,
       },
     });
   }
   return entries;
+}
+
+function shortID(id: string): string {
+  if (id.length > 15 && id.includes("-")) {
+    return id.slice(-8);
+  }
+  return id;
 }
 
 function enforceRemoval(
@@ -351,10 +386,10 @@ function buildCombinedCandidate(
   }
 
   let combinedCreature = baseCreature;
-  const appliedLabels: DiscoveryChangeType[] = [];
+  const appliedLabels: string[] = [];
 
   const applyChange = (
-    label: DiscoveryChangeType,
+    label: string,
     mutator: (() => Creature | undefined) | undefined,
   ) => {
     if (!mutator) return;
@@ -366,7 +401,7 @@ function buildCombinedCandidate(
   };
 
   applyChange(
-    "add-neurons",
+    `add-neurons: ${selection.addHelpfulNeurons?.length ?? 0}`,
     selection.addHelpfulNeurons && selection.addHelpfulNeurons.length > 0
       ? () =>
         DiscoverStructure.addHelpfulNeurons(
@@ -378,7 +413,7 @@ function buildCombinedCandidate(
   );
 
   applyChange(
-    "add-synapses",
+    `add-synapses: ${selection.addHelpfulSynapses?.length ?? 0}`,
     selection.addHelpfulSynapses && selection.addHelpfulSynapses.length > 0
       ? () =>
         DiscoverStructure.addHelpfulSynapses(
@@ -390,7 +425,7 @@ function buildCombinedCandidate(
   );
 
   applyChange(
-    "change-squash",
+    `change-squash: ${selection.candidateSquashes?.length ?? 0}`,
     selection.candidateSquashes && selection.candidateSquashes.length > 0
       ? () =>
         DiscoverStructure.changeSquash(
