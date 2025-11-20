@@ -67,6 +67,7 @@ export interface DiscoveryDirInput {
 export interface DiscoveryEvaluationSummary {
   kind: "original" | "candidate";
   changeType?: DiscoveryChangeType;
+  description?: string;
   score: number;
   error: number;
   scoreDelta?: number;
@@ -249,11 +250,16 @@ export class DiscoveryRunner {
           ? improved.candidate.change.description
           : improved.candidate.change.type;
         const changeType = improved.candidate.change.type;
+        // Include creature short ID (last 8 characters of UUID) in message for traceability
+        const creatureUUID = improved.candidate.creature.uuid;
+        const creatureShortID = creatureUUID && creatureUUID.length > 8
+          ? creatureUUID.slice(-8)
+          : creatureUUID ?? "unknown";
         // Ensure message includes changeType for test compatibility
         const message =
           `${description} (${changeType}) for ${discoverResult.ID}: Score +${
             scoreDelta.toPrecision(6)
-          } -> ${improved.score.toPrecision(6)}`;
+          } -> ${improved.score.toPrecision(6)} (${creatureShortID})`;
 
         outcome.improvement = {
           changeType,
@@ -392,6 +398,7 @@ export class DiscoveryRunner {
       summaries.push({
         kind: evaluation.kind,
         changeType,
+        description: evaluation.candidate?.change.description,
         score: evaluation.score,
         error: evaluation.error,
         scoreDelta,

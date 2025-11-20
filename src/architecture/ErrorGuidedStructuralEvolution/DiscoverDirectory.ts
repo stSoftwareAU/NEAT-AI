@@ -200,10 +200,6 @@ class DataRecorder {
       drainCounter: { count: number };
     },
   ) {
-    if (shouldLogDiscovery(this.options)) {
-      console.log(`Discovery ${blue(this.ID)} processing ${filePath}`);
-    }
-
     const { creature } = this;
     let readTime = 0;
     const file = await Deno.open(filePath, { read: true });

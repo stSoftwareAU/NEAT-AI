@@ -145,7 +145,12 @@ export function buildDiscoveryCandidates(
     const changes = (candidateSquashes || []).map((c) => {
       const neuron = baseCreature.neurons.find((n) => n.uuid === c.neuronUUID);
       const oldSquash = neuron?.squash;
-      return `${shortID(c.neuronUUID)} (${oldSquash} -> ${c.squash})`;
+      const improvement = c.expectedImprovementPercentage
+        ? ` expected: ${(c.expectedImprovementPercentage * 100).toFixed(1)}%`
+        : "";
+      return `${
+        shortID(c.neuronUUID)
+      } (${oldSquash} -> ${c.squash}${improvement})`;
     });
 
     const description = changes.length <= 3
@@ -315,13 +320,16 @@ function buildSingleSquashCandidates(
     );
     const oldSquash = neuron?.squash;
 
+    const improvement = squash.expectedImprovementPercentage
+      ? ` expected: ${(squash.expectedImprovementPercentage * 100).toFixed(1)}%`
+      : "";
     entries.push({
       creature,
       change: {
         type: "change-squash",
         description: `🔄 Changed squash for ${
           shortID(squash.neuronUUID)
-        } (${oldSquash} -> ${squash.squash})`,
+        } (${oldSquash} -> ${squash.squash}${improvement})`,
       },
     });
   }
