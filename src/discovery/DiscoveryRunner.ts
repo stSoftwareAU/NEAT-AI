@@ -248,13 +248,15 @@ export class DiscoveryRunner {
         const description = improved.candidate.change.description
           ? improved.candidate.change.description
           : improved.candidate.change.type;
+        const changeType = improved.candidate.change.type;
+        // Ensure message includes changeType for test compatibility
         const message =
-          `${description} for ${discoverResult.ID}: Score +${
+          `${description} (${changeType}) for ${discoverResult.ID}: Score +${
             scoreDelta.toPrecision(6)
           } -> ${improved.score.toPrecision(6)}`;
 
         outcome.improvement = {
-          changeType: improved.candidate.change.type,
+          changeType,
           error: improved.error,
           score: improved.score,
           scoreDelta,
