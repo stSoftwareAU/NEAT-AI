@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { bold, cyan, green, red, yellow } from "@std/fmt/colors";
 import { join } from "@std/path/join";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
@@ -57,6 +58,7 @@ const DEFAULT_WORKER_FACTORY: DiscoveryRunnerWorkerFactory = (args) =>
   );
 
 const DEFAULT_RUST_CHECK = () => isRustDiscoveryEnabled();
+const EXPECTATION_ALERT_THRESHOLD = 25; // percentage-point gap before warning
 
 export interface DiscoveryDirInput {
   creature: Creature;
@@ -73,6 +75,14 @@ export interface DiscoveryEvaluationSummary {
   scoreDelta?: number;
   improved: boolean;
   archivePath?: string;
+  expectedErrorReductionPct?: number;
+  errorDelta?: number;
+  errorDeltaPct?: number;
+  expectationMismatch?: {
+    expectedPct: number;
+    actualPct: number;
+    gapPct: number;
+  };
 }
 
 export interface DiscoveryDirResult {
@@ -275,6 +285,7 @@ export class DiscoveryRunner {
         discoveryID: discoverResult.ID,
         evaluationResults,
         originalScore: original.score,
+        originalError: original.error,
         baseCreature: creature,
       });
       if (evaluationArtifacts.summaries.length > 0) {
@@ -283,6 +294,10 @@ export class DiscoveryRunner {
       if (evaluationArtifacts.archiveDir) {
         outcome.candidateArchiveDir = evaluationArtifacts.archiveDir;
       }
+      this.#logEvaluationSummary({
+        discoveryID: discoverResult.ID,
+        summaries: evaluationArtifacts.summaries,
+      });
 
       markPhase("Total discoveryDir run", runStart);
       return outcome;
@@ -307,11 +322,17 @@ export class DiscoveryRunner {
         score: number;
       }>;
       originalScore: number;
+      originalError: number;
       baseCreature: Creature;
     },
   ): { summaries: DiscoveryEvaluationSummary[]; archiveDir?: string } {
-    const { discoveryID, evaluationResults, originalScore, baseCreature } =
-      params;
+    const {
+      discoveryID,
+      evaluationResults,
+      originalScore,
+      originalError,
+      baseCreature,
+    } = params;
     const summaries: DiscoveryEvaluationSummary[] = [];
     const labelCounts = new Map<string, number>();
 
@@ -374,6 +395,18 @@ export class DiscoveryRunner {
       const changeType = evaluation.candidate?.change.type;
       const scoreDelta = evaluation.score - originalScore;
       const improved = evaluation.kind === "candidate" && scoreDelta > 0;
+      const errorDelta = originalError - evaluation.error;
+      const errorDeltaPct = originalError === 0
+        ? evaluation.error === 0 ? 0 : -100
+        : (errorDelta / originalError) * 100;
+      const expectedErrorReductionPct = evaluation.candidate?.change
+          .expectedErrorReduction !== undefined
+        ? evaluation.candidate.change.expectedErrorReduction * 100
+        : undefined;
+      const expectationMismatch = this.#computeExpectationMismatch(
+        expectedErrorReductionPct,
+        evaluation.kind === "candidate" ? errorDeltaPct : undefined,
+      );
 
       let archivePath: string | undefined;
       const exportPayload = evaluation.kind === "original"
@@ -391,6 +424,10 @@ export class DiscoveryRunner {
           error: evaluation.error,
           scoreDelta,
           improved,
+          errorDelta,
+          errorDeltaPct,
+          expectedErrorReductionPct,
+          expectationMismatch,
           creature: exportPayload,
         });
       }
@@ -404,6 +441,10 @@ export class DiscoveryRunner {
         scoreDelta,
         improved,
         archivePath,
+        expectedErrorReductionPct,
+        errorDelta,
+        errorDeltaPct,
+        expectationMismatch,
       });
     }
 
@@ -423,6 +464,97 @@ export class DiscoveryRunner {
       summaries,
       archiveDir: resolvedArchiveDir ?? archiveDir,
     };
+  }
+
+  #logEvaluationSummary(
+    params: { discoveryID: string; summaries: DiscoveryEvaluationSummary[] },
+  ): void {
+    const { discoveryID, summaries } = params;
+    if (!summaries || summaries.length === 0) {
+      return;
+    }
+    console.info(
+      `[DiscoveryRunner] ${
+        bold(`Discovery ${discoveryID} evaluation summary:`)
+      }`,
+    );
+    for (const summary of summaries) {
+      const label = summary.kind === "original"
+        ? cyan("Original creature")
+        : `Candidate (${summary.changeType ?? "unknown"})`;
+      const description = summary.description ? ` ${summary.description}` : "";
+      const errorDeltaText = summary.kind === "original"
+        ? cyan("baseline")
+        : this.#formatErrorDelta(summary.errorDeltaPct ?? 0);
+      const expectedText = summary.expectedErrorReductionPct !== undefined
+        ? ` expected ${this.#formatExpected(summary.expectedErrorReductionPct)}`
+        : "";
+      const scoreDeltaText = summary.kind === "candidate" &&
+          summary.scoreDelta !== undefined
+        ? ` score Δ ${summary.scoreDelta >= 0 ? "+" : ""}${
+          summary.scoreDelta.toPrecision(4)
+        }`
+        : "";
+      const mismatchText = summary.expectationMismatch
+        ? ` ${
+          red(
+            `⚠ mismatch expected ${
+              this.#formatExpected(summary.expectationMismatch.expectedPct)
+            } vs actual ${
+              this.#formatErrorDelta(summary.expectationMismatch.actualPct)
+            }`,
+          )
+        }`
+        : "";
+      console.info(
+        `[DiscoveryRunner]   ${label}${description}: error=${
+          summary.error.toPrecision(6)
+        } ${errorDeltaText}${expectedText}${scoreDeltaText}${mismatchText}`,
+      );
+      if (summary.archivePath) {
+        console.info(
+          `[DiscoveryRunner]     Saved creature at ${summary.archivePath}`,
+        );
+      }
+    }
+  }
+
+  #computeExpectationMismatch(
+    expected?: number,
+    actual?: number,
+  ): { expectedPct: number; actualPct: number; gapPct: number } | undefined {
+    if (
+      expected === undefined || !Number.isFinite(expected) ||
+      actual === undefined || !Number.isFinite(actual)
+    ) {
+      return undefined;
+    }
+    const gap = expected - actual;
+    if (Math.abs(gap) < EXPECTATION_ALERT_THRESHOLD) {
+      return undefined;
+    }
+    return {
+      expectedPct: expected,
+      actualPct: actual,
+      gapPct: gap,
+    };
+  }
+
+  #formatErrorDelta(value: number): string {
+    if (!Number.isFinite(value)) {
+      return yellow("±0.000%");
+    }
+    const formatted = `${value >= 0 ? "+" : ""}${value.toFixed(3)}%`;
+    if (value > 0.05) return green(formatted);
+    if (value < -0.05) return red(formatted);
+    return yellow(formatted);
+  }
+
+  #formatExpected(value: number): string {
+    if (!Number.isFinite(value)) {
+      return cyan("n/a");
+    }
+    return cyan(`${value >= 0 ? "+" : ""}${value.toFixed(1)}%`);
   }
 
   async #evaluateAll(

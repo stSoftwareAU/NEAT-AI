@@ -3338,6 +3338,15 @@ export class DiscoverStructure {
     const currentActivations: number[] = [];
     const idealActivations: number[] = [];
 
+    const neuron = this.creature.neurons.find((neuron) =>
+      neuron.uuid === neuronUUID
+    )!;
+    const currentSquash = neuron.squash;
+    assert(currentSquash, "Squash function not found");
+    const currentSquashMethod = Activations.find(
+      currentSquash,
+    ) as ActivationInterface;
+
     records.forEach((record) => {
       const value = record.value;
       if (value === undefined) {
@@ -3350,21 +3359,20 @@ export class DiscoverStructure {
       }
       currentActivations.push(activation);
       const errors = record.errors;
-      const avgError = errors.length
-        ? errors.reduce((a, b) => a + b, 0) / errors.length
+      const finiteErrors = errors.filter(Number.isFinite);
+      const avgError = finiteErrors.length
+        ? finiteErrors.reduce((a, b) => a + b, 0) / finiteErrors.length
         : 0;
 
-      idealActivations.push(activation + avgError);
+      const idealValue = value + avgError;
+      const idealActivation = currentSquashMethod.squash(idealValue);
+      idealActivations.push(idealActivation);
     });
 
     const baselineError = this.calculateSquashError(
       idealActivations,
       currentActivations,
     );
-    const currentSquash =
-      this.creature.neurons.find((neuron) => neuron.uuid === neuronUUID)!
-        .squash;
-    assert(currentSquash, "Squash function not found");
     let lowestError = baselineError;
     let bestSquash = currentSquash;
 
