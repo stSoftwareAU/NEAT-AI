@@ -3445,6 +3445,8 @@ export class DiscoverStructure {
 
     const tmpCreature = Creature.fromJSON(exportJSON);
     tmpCreature.fix();
+    // Clear UUID to force recalculation - UUID may have been copied from JSON
+    delete tmpCreature.uuid;
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
