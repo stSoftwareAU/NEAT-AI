@@ -477,7 +477,7 @@ function buildBestOfCategoryCandidate(
     discoveryID: discovery.ID,
     selection: bestSelection,
     changeType: "combo-best-of-category",
-    description: "Combined best discovery changes",
+    description: "🏗️ Combined best discovery changes",
   });
 }
 

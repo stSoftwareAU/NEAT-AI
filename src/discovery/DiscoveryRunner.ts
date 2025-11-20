@@ -245,15 +245,13 @@ export class DiscoveryRunner {
 
       if (improved && improved.candidate) {
         const scoreDelta = improved.score - original.score;
-        const changeDescription = improved.candidate.change.description
-          ? ` ${improved.candidate.change.description}`
-          : "";
+        const description = improved.candidate.change.description
+          ? improved.candidate.change.description
+          : improved.candidate.change.type;
         const message =
-          `🕵🏻‍♂️ ${improved.candidate.change.type} for ${discoverResult.ID}: Score +${
-            scoreDelta.toPrecision(2)
-          } -> ${improved.score.toPrecision(4)}.${
-            changeDescription ? changeDescription : ""
-          }`;
+          `${description} for ${discoverResult.ID}: Score +${
+            scoreDelta.toPrecision(6)
+          } -> ${improved.score.toPrecision(6)}`;
 
         outcome.improvement = {
           changeType: improved.candidate.change.type,
