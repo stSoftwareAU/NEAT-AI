@@ -248,10 +248,9 @@ export class DiscoveryRunner {
         const description = improved.candidate.change.description
           ? improved.candidate.change.description
           : improved.candidate.change.type;
-        const message =
-          `${description} for ${discoverResult.ID}: Score +${
-            scoreDelta.toPrecision(6)
-          } -> ${improved.score.toPrecision(6)}`;
+        const message = `${description} for ${discoverResult.ID}: Score +${
+          scoreDelta.toPrecision(6)
+        } -> ${improved.score.toPrecision(6)}`;
 
         outcome.improvement = {
           changeType: improved.candidate.change.type,
