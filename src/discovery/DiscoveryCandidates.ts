@@ -320,17 +320,16 @@ function buildSingleSquashCandidates(
     );
     const oldSquash = neuron?.squash;
 
+    const improvement = squash.expectedImprovementPercentage
+      ? ` expected: ${(squash.expectedImprovementPercentage * 100).toFixed(1)}%`
+      : "";
     entries.push({
       creature,
       change: {
         type: "change-squash",
         description: `🔄 Changed squash for ${
           shortID(squash.neuronUUID)
-        } (${oldSquash} -> ${squash.squash}) expected: ${
-          (
-            (squash.expectedImprovementPercentage ?? 0) * 100
-          ).toFixed(1)
-        }%`,
+        } (${oldSquash} -> ${squash.squash}${improvement})`,
       },
     });
   }
