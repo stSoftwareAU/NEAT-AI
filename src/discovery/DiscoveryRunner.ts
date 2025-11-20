@@ -67,6 +67,7 @@ export interface DiscoveryDirInput {
 export interface DiscoveryEvaluationSummary {
   kind: "original" | "candidate";
   changeType?: DiscoveryChangeType;
+  description?: string;
   score: number;
   error: number;
   scoreDelta?: number;
@@ -392,6 +393,7 @@ export class DiscoveryRunner {
       summaries.push({
         kind: evaluation.kind,
         changeType,
+        description: evaluation.candidate?.change.description,
         score: evaluation.score,
         error: evaluation.error,
         scoreDelta,
