@@ -446,6 +446,7 @@ function buildCombinedCandidate(
 
   // Apply removal last to ensure it happens even after other changes
   if (selection.removeHarmfulSynapse) {
+    // Always attempt removal - the removal functions handle non-existent synapses gracefully
     const removed = DiscoverStructure.removeSynapse(
       discoveryID,
       combinedCreature,
@@ -465,14 +466,15 @@ function buildCombinedCandidate(
         combinedCreature = enforced;
         appliedLabels.push("remove-synapse");
       } else {
-        // Even if enforceRemoval returns undefined, try direct removal
-        // to ensure the synapse is removed if it exists
+        // Verify synapse still exists and remove directly if needed
+        // This ensures removal happens even if previous methods returned null/undefined
         const exportJSON = combinedCreature.exportJSON();
         const synapseExists = exportJSON.synapses.some((synapse) =>
           synapse.fromUUID === selection.removeHarmfulSynapse!.fromNeuronUUID &&
           synapse.toUUID === selection.removeHarmfulSynapse!.toNeuronUUID
         );
         if (synapseExists) {
+          // Direct removal as final fallback to ensure synapse is removed
           exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
             !(synapse.fromUUID ===
                 selection.removeHarmfulSynapse!.fromNeuronUUID &&
