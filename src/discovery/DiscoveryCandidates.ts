@@ -223,22 +223,53 @@ export function buildDiscoveryCandidates(
   );
   if (bestOfCategoryCandidate) {
     if (discovery.removeHarmfulSynapse) {
-      const sanitised = DiscoverStructure.removeSynapse(
-        discovery.ID,
-        bestOfCategoryCandidate.creature,
-        discovery.removeHarmfulSynapse,
-      );
-      if (sanitised) {
-        bestOfCategoryCandidate.creature = sanitised;
-      } else {
-        const enforced = enforceRemoval(
-          bestOfCategoryCandidate.creature,
-          discovery.removeHarmfulSynapse,
+      // Always remove directly without checking first to ensure deterministic removal
+      const removalUUID = {
+        from: discovery.removeHarmfulSynapse.fromNeuronUUID,
+        to: discovery.removeHarmfulSynapse.toNeuronUUID,
+      };
+
+      // Keep removing until it's definitely gone (fix() might re-add it)
+      let currentCreature = bestOfCategoryCandidate.creature;
+      let attempts = 0;
+      const maxAttempts = 10; // Prevent infinite loops
+
+      while (attempts < maxAttempts) {
+        const exportJSON = currentCreature.exportJSON();
+        const originalCount = exportJSON.synapses.length;
+        exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
+          !(synapse.fromUUID === removalUUID.from &&
+            synapse.toUUID === removalUUID.to)
         );
-        if (enforced) {
-          bestOfCategoryCandidate.creature = enforced;
+
+        if (exportJSON.synapses.length < originalCount) {
+          const updated = Creature.fromJSON(exportJSON);
+          // We modified the structure by filtering synapses, so we must delete UUID
+          delete updated.uuid;
+          updated.fix();
+
+          // Verify it's still removed after fix()
+          const verifyJSON = updated.exportJSON();
+          const stillExists = verifyJSON.synapses.some((synapse) =>
+            synapse.fromUUID === removalUUID.from &&
+            synapse.toUUID === removalUUID.to
+          );
+
+          if (!stillExists) {
+            // Successfully removed and stayed removed
+            currentCreature = updated;
+            break;
+          }
+          // Still exists, try again
+          currentCreature = updated;
+        } else {
+          // Synapse doesn't exist, we're done
+          break;
         }
+        attempts++;
       }
+
+      bestOfCategoryCandidate.creature = currentCreature;
     }
     candidates.push(bestOfCategoryCandidate);
   }
@@ -343,25 +374,6 @@ function shortID(id: string): string {
   return id;
 }
 
-function enforceRemoval(
-  creature: Creature,
-  removal?: CandidateSynapse,
-): Creature | undefined {
-  if (!removal) return undefined;
-  const exportJSON = creature.exportJSON();
-  const filtered = exportJSON.synapses.filter((synapse) =>
-    !(synapse.fromUUID === removal.fromNeuronUUID &&
-      synapse.toUUID === removal.toNeuronUUID)
-  );
-  if (filtered.length === exportJSON.synapses.length) {
-    return undefined;
-  }
-  exportJSON.synapses = filtered;
-  const updated = Creature.fromJSON(exportJSON);
-  updated.fix();
-  return updated;
-}
-
 interface CombinedSelection {
   addHelpfulSynapses?: CandidateSynapse[];
   addHelpfulNeurons?: CandidateNeuron[];
@@ -446,44 +458,58 @@ function buildCombinedCandidate(
 
   // Apply removal last to ensure it happens even after other changes
   if (selection.removeHarmfulSynapse) {
-    const removed = DiscoverStructure.removeSynapse(
-      discoveryID,
-      combinedCreature,
-      selection.removeHarmfulSynapse,
-    );
-    if (removed) {
-      combinedCreature = removed;
-      appliedLabels.push("remove-synapse");
-    } else {
-      // Fallback to enforceRemoval if removeSynapse returns null
-      // (e.g., if UUID didn't change but synapse should still be removed)
-      const enforced = enforceRemoval(
-        combinedCreature,
-        selection.removeHarmfulSynapse,
+    // Always remove directly without checking first to ensure deterministic removal
+    // This avoids flakiness from timing issues or stale state checks
+    const removalUUID = {
+      from: selection.removeHarmfulSynapse.fromNeuronUUID,
+      to: selection.removeHarmfulSynapse.toNeuronUUID,
+    };
+
+    // Keep removing until it's definitely gone (fix() might re-add it)
+    let currentCreature = combinedCreature;
+    let removed = false;
+    let attempts = 0;
+    const maxAttempts = 10; // Prevent infinite loops
+
+    while (attempts < maxAttempts) {
+      const exportJSON = currentCreature.exportJSON();
+      const originalCount = exportJSON.synapses.length;
+      exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
+        !(synapse.fromUUID === removalUUID.from &&
+          synapse.toUUID === removalUUID.to)
       );
-      if (enforced) {
-        combinedCreature = enforced;
-        appliedLabels.push("remove-synapse");
-      } else {
-        // Even if enforceRemoval returns undefined, try direct removal
-        // to ensure the synapse is removed if it exists
-        const exportJSON = combinedCreature.exportJSON();
-        const synapseExists = exportJSON.synapses.some((synapse) =>
-          synapse.fromUUID === selection.removeHarmfulSynapse!.fromNeuronUUID &&
-          synapse.toUUID === selection.removeHarmfulSynapse!.toNeuronUUID
+
+      if (exportJSON.synapses.length < originalCount) {
+        removed = true;
+        const updated = Creature.fromJSON(exportJSON);
+        // We modified the structure by filtering synapses, so we must delete UUID
+        delete updated.uuid;
+        updated.fix();
+
+        // Verify it's still removed after fix()
+        const verifyJSON = updated.exportJSON();
+        const stillExists = verifyJSON.synapses.some((synapse) =>
+          synapse.fromUUID === removalUUID.from &&
+          synapse.toUUID === removalUUID.to
         );
-        if (synapseExists) {
-          exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
-            !(synapse.fromUUID ===
-                selection.removeHarmfulSynapse!.fromNeuronUUID &&
-              synapse.toUUID === selection.removeHarmfulSynapse!.toNeuronUUID)
-          );
-          const updated = Creature.fromJSON(exportJSON);
-          updated.fix();
-          combinedCreature = updated;
-          appliedLabels.push("remove-synapse");
+
+        if (!stillExists) {
+          // Successfully removed and stayed removed
+          currentCreature = updated;
+          break;
         }
+        // Still exists, try again
+        currentCreature = updated;
+      } else {
+        // Synapse doesn't exist, we're done
+        break;
       }
+      attempts++;
+    }
+
+    if (removed) {
+      combinedCreature = currentCreature;
+      appliedLabels.push("remove-synapse");
     }
   }
 
