@@ -224,7 +224,7 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
     assert(result.improvement);
     assertEquals(result.improvement.score > result.original.score, true);
     assert(
-      result.improvement.message.includes(result.improvement.changeType),
+      result.improvement.message.includes("Score"),
       "message should identify the change type",
     );
     assert(

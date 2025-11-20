@@ -436,17 +436,48 @@ function buildCombinedCandidate(
       : undefined,
   );
 
-  applyChange(
-    "remove-synapse",
-    selection.removeHarmfulSynapse
-      ? () =>
-        DiscoverStructure.removeSynapse(
-          discoveryID,
-          combinedCreature,
-          selection.removeHarmfulSynapse,
-        ) ?? undefined
-      : undefined,
-  );
+  // Apply removal last to ensure it happens even after other changes
+  if (selection.removeHarmfulSynapse) {
+    const removed = DiscoverStructure.removeSynapse(
+      discoveryID,
+      combinedCreature,
+      selection.removeHarmfulSynapse,
+    );
+    if (removed) {
+      combinedCreature = removed;
+      appliedLabels.push("remove-synapse");
+    } else {
+      // Fallback to enforceRemoval if removeSynapse returns null
+      // (e.g., if UUID didn't change but synapse should still be removed)
+      const enforced = enforceRemoval(
+        combinedCreature,
+        selection.removeHarmfulSynapse,
+      );
+      if (enforced) {
+        combinedCreature = enforced;
+        appliedLabels.push("remove-synapse");
+      } else {
+        // Even if enforceRemoval returns undefined, try direct removal
+        // to ensure the synapse is removed if it exists
+        const exportJSON = combinedCreature.exportJSON();
+        const synapseExists = exportJSON.synapses.some((synapse) =>
+          synapse.fromUUID === selection.removeHarmfulSynapse!.fromNeuronUUID &&
+          synapse.toUUID === selection.removeHarmfulSynapse!.toNeuronUUID
+        );
+        if (synapseExists) {
+          exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
+            !(synapse.fromUUID ===
+                selection.removeHarmfulSynapse!.fromNeuronUUID &&
+              synapse.toUUID === selection.removeHarmfulSynapse!.toNeuronUUID)
+          );
+          const updated = Creature.fromJSON(exportJSON);
+          updated.fix();
+          combinedCreature = updated;
+          appliedLabels.push("remove-synapse");
+        }
+      }
+    }
+  }
 
   if (appliedLabels.length < 2 || combinedCreature === baseCreature) {
     return undefined;
@@ -477,7 +508,7 @@ function buildBestOfCategoryCandidate(
     discoveryID: discovery.ID,
     selection: bestSelection,
     changeType: "combo-best-of-category",
-    description: "Combined best discovery changes",
+    description: "🏗️ Combined best discovery changes",
   });
 }
 
