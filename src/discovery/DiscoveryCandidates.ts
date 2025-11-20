@@ -18,12 +18,16 @@ export type DiscoveryChangeType =
   | "combo-all"
   | "combo-best-of-category";
 
+interface DiscoveryCandidateChange {
+  type: DiscoveryChangeType;
+  description?: string;
+  expectedErrorReduction?: number;
+  sampleSize?: number;
+}
+
 export interface DiscoveryCandidate {
   creature: Creature;
-  change: {
-    type: DiscoveryChangeType;
-    description?: string;
-  };
+  change: DiscoveryCandidateChange;
 }
 
 /**
@@ -55,6 +59,7 @@ export function buildDiscoveryCandidates(
     )
     : undefined;
   if (addedNeuronCreature && helpfulNeuronCandidates) {
+    const neuronSummary = summariseExpectedImprovement(helpfulNeuronCandidates);
     candidates.push({
       creature: addedNeuronCreature,
       change: {
@@ -63,6 +68,8 @@ export function buildDiscoveryCandidates(
           `💡 Added ${helpfulNeuronCandidates.length} helpful neuron${
             helpfulNeuronCandidates.length === 1 ? "" : "s"
           }`,
+        expectedErrorReduction: neuronSummary.average,
+        sampleSize: neuronSummary.sampleSize,
       },
     });
   }
@@ -81,6 +88,7 @@ export function buildDiscoveryCandidates(
     addHelpfulSynapses,
   );
   if (addedSynapseCreature) {
+    const synapseSummary = summariseExpectedImprovement(addHelpfulSynapses);
     candidates.push({
       creature: addedSynapseCreature,
       change: {
@@ -88,6 +96,8 @@ export function buildDiscoveryCandidates(
         description: `🔗 Added ${
           addHelpfulSynapses?.length ?? 0
         } helpful synapse${(addHelpfulSynapses?.length ?? 0) === 1 ? "" : "s"}`,
+        expectedErrorReduction: synapseSummary.average,
+        sampleSize: synapseSummary.sampleSize,
       },
     });
   }
@@ -111,6 +121,11 @@ export function buildDiscoveryCandidates(
       change: {
         type: "remove-synapse",
         description: "✂️ Removed harmful synapse",
+        expectedErrorReduction: removeHarmfulSynapse &&
+            Number.isFinite(removeHarmfulSynapse.expectedImprovementPercentage)
+          ? Math.abs(removeHarmfulSynapse.expectedImprovementPercentage)
+          : undefined,
+        sampleSize: removeHarmfulSynapse?.totalCount,
       },
     });
 
@@ -156,12 +171,15 @@ export function buildDiscoveryCandidates(
     const description = changes.length <= 3
       ? `🔄 Changed squash for ${changes.join(", ")}`
       : `🔄 Changed activation function on ${changes.length} high-error neurons`;
+    const squashSummary = summariseExpectedImprovement(candidateSquashes);
 
     candidates.push({
       creature: changedSquashCreature,
       change: {
         type: "change-squash",
         description,
+        expectedErrorReduction: squashSummary.average,
+        sampleSize: squashSummary.sampleSize,
       },
     });
 
@@ -298,6 +316,8 @@ function buildSingleSynapseCandidates(
         description: `🔗 Added helpful synapse ${
           shortID(synapse.fromNeuronUUID)
         } -> ${shortID(synapse.toNeuronUUID)}`,
+        expectedErrorReduction: synapse.expectedImprovementPercentage,
+        sampleSize: synapse.totalCount,
       },
     });
   }
@@ -325,6 +345,8 @@ function buildSingleNeuronCandidates(
         description: `💡 Added neuron ${
           shortID(neuron.fromNeuronUUID)
         } -> ${neuron.squash} -> ${shortID(neuron.toNeuronUUID)}`,
+        expectedErrorReduction: neuron.expectedImprovementPercentage,
+        sampleSize: neuron.totalCount,
       },
     });
   }
@@ -361,10 +383,45 @@ function buildSingleSquashCandidates(
         description: `🔄 Changed squash for ${
           shortID(squash.neuronUUID)
         } (${oldSquash} -> ${squash.squash}${improvement})`,
+        expectedErrorReduction: squash.expectedImprovementPercentage,
       },
     });
   }
   return entries;
+}
+
+function summariseExpectedImprovement<
+  T extends { expectedImprovementPercentage: number; totalCount?: number },
+>(
+  entries?: readonly T[],
+): { average?: number; sampleSize?: number } {
+  if (!entries || entries.length === 0) return {};
+  let weightedTotal = 0;
+  let weightSum = 0;
+  let sampleSize = 0;
+
+  for (const entry of entries) {
+    const value = entry.expectedImprovementPercentage;
+    if (Number.isFinite(value) === false) {
+      continue;
+    }
+    const samples = Number.isFinite(entry.totalCount)
+      ? Math.max(1, entry.totalCount ?? 1)
+      : 1;
+    weightedTotal += value * samples;
+    weightSum += samples;
+    if (Number.isFinite(entry.totalCount)) {
+      sampleSize += entry.totalCount ?? 0;
+    }
+  }
+
+  if (weightSum === 0) {
+    return sampleSize > 0 ? { sampleSize } : {};
+  }
+  return {
+    average: weightedTotal / weightSum,
+    sampleSize: sampleSize > 0 ? sampleSize : undefined,
+  };
 }
 
 function shortID(id: string): string {
