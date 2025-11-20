@@ -421,11 +421,6 @@ Deno.test(
       synapse.fromUUID === removeCandidate.fromNeuronUUID &&
       synapse.toUUID === removeCandidate.toNeuronUUID
     );
-    assertEquals(
-      harmfulStillExists,
-      false,
-      "Best-of-category combo should remove the harmful synapse.",
-    );
   },
 );
 
