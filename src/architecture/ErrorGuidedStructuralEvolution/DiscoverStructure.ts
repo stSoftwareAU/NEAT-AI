@@ -3444,9 +3444,9 @@ export class DiscoverStructure {
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
-    tmpCreature.fix();
-    // Clear UUID to force recalculation - UUID may have been copied from JSON
+    // We modified the structure by filtering synapses, so we must delete UUID
     delete tmpCreature.uuid;
+    tmpCreature.fix();
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
@@ -3518,6 +3518,8 @@ export class DiscoverStructure {
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
+    // We modified the structure by filtering synapses, so we must delete UUID
+    delete tmpCreature.uuid;
     tmpCreature.fix();
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
@@ -3616,6 +3618,8 @@ export class DiscoverStructure {
     }
 
     const tmpCreature = Creature.fromJSON(exportJSON);
+    // We modified the structure by filtering synapses, so we must delete UUID
+    delete tmpCreature.uuid;
     tmpCreature.fix();
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
@@ -3677,6 +3681,8 @@ export class DiscoverStructure {
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
+    // We modified the structure by filtering synapses, so we must delete UUID
+    delete tmpCreature.uuid;
     tmpCreature.fix();
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);

@@ -244,6 +244,8 @@ export function buildDiscoveryCandidates(
 
         if (exportJSON.synapses.length < originalCount) {
           const updated = Creature.fromJSON(exportJSON);
+          // We modified the structure by filtering synapses, so we must delete UUID
+          delete updated.uuid;
           updated.fix();
 
           // Verify it's still removed after fix()
@@ -480,6 +482,8 @@ function buildCombinedCandidate(
       if (exportJSON.synapses.length < originalCount) {
         removed = true;
         const updated = Creature.fromJSON(exportJSON);
+        // We modified the structure by filtering synapses, so we must delete UUID
+        delete updated.uuid;
         updated.fix();
 
         // Verify it's still removed after fix()
