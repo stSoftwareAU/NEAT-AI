@@ -104,11 +104,11 @@ All connections predetermined, fixed architecture
 
 ```
 CNN Architecture:
-┌─────────────┐     ┌──────────────┐     ┌──────────┐     ┌─────────────┐
-│ Input Image │────▶│ Conv Layers  │────▶│ Pooling  │────▶│ FC Layers   │
+┌─────────────┐     ┌──────────────┐     ┌───────--───┐     ┌─────────────┐
+│ Input Image │────▶│ Conv Layers  │────▶│ Pooling    │────▶│ FC Layers   │
 │   (Grid)    │     │  (Filters)   │     │(Downsample)│     │(Classification)
-└─────────────┘     └──────────────┘     └──────────┘     └─────────────┘
-     │                   │                    │                  │
+└─────────────┘     └──────────────┘     └──────────--┘     └─────────────┘
+     │                   │                    │                    │
    Fixed              Spatial              Downsample        Classification
    Grid              Filters               Features
 
@@ -130,15 +130,15 @@ RNN Architecture:
     ┌────▼────┐           ┌────▼────┐          ┌────▼────┐
     │ Input   │           │ Input   │          │ Input   │
     └────┬────┘           └────┬────┘          └────┬────┘
-         │                     │                     │
-    ┌────▼─────────────────────▼─────────────────────▼────┐
-    │              Hidden State (Memory)                    │
-    │         (Maintains information across time)             │
+         │                     │                    │
+    ┌────▼─────────────────────▼────────────────────▼───-─┐
+    │              Hidden State (Memory)                  │
+    │         (Maintains information across time)         │
     └────┬─────────────────────┬─────────────────────┬────┘
          │                     │                     │
-    ┌────▼────┐           ┌────▼────┐          ┌────▼────┐
-    │ Output  │           │ Output  │          │ Output  │
-    └─────────┘           └─────────┘          └─────────┘
+    ┌────▼────┐           ┌────▼────┐           ┌────▼────┐
+    │ Output  │           │ Output  │           │ Output  │
+    └─────────┘           └─────────┘           └─────────┘
 
 - Processes sequences
 - Maintains hidden state
@@ -154,8 +154,8 @@ RNN Architecture:
 ```
 Transformer Architecture:
 ┌──────────────┐     ┌──────────────────────┐     ┌──────────┐     ┌──────────────┐
-│ Input Tokens│────▶│ Multi-Head Attention │────▶│   FFN     │────▶│ Output Tokens│
-│  (Sequence) │     │   (Self-Attention)    │     │(Dense)    │     │  (Sequence)  │
+│ Input Tokens │────▶│ Multi-Head Attention │────▶│   FFN    │────▶│ Output Tokens│
+│  (Sequence)  │     │   (Self-Attention)   │     │(Dense)   │     │  (Sequence)  │
 └──────────────┘     └──────────────────────┘     └──────────┘     └──────────────┘
      │                        │                         │                  │
   Fixed                  All-to-All                 Dense              Fixed
@@ -176,10 +176,10 @@ Key Features:
 
 ```
 NEAT Architecture:
-┌──────────────┐     ┌──────────────────────────────┐     ┌──────────────┐
+┌──────────────┐     ┌──────────────────────────────┐     ┌───────────-───┐
 │ Input Neurons│────▶│   Evolving Topology          │────▶│Output Neurons │
 │ (UUID-based) │     │  (Dynamic Structure)         │     │ (UUID-based)  │
-└──────────────┘     └──────────────────────────────┘     └──────────────┘
+└──────────────┘     └──────────────────────────────┘     └────────────-──┘
      │                        │                                │
  Extensible            Grows/Shrinks                    Extensible
  (Can add new          During Training                  (Can add new
