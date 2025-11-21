@@ -73,6 +73,20 @@ This project is a unique implementation of a neural network based on the NEAT (N
     discovery via `Creature.discoveryDir()` are available in the
     [DiscoveryDir guide](./docs/DiscoveryDir.md).
 
+## Comparison with Other AI Approaches
+
+Want to understand how NEAT compares to traditional neural networks, CNNs, RNNs,
+and modern LLMs? See our comprehensive [COMPARISON.md](./COMPARISON.md) document
+which explains:
+
+- What we've implemented and how it works
+- Pros and cons of our NEAT approach vs traditional methods
+- Our unique innovations (memetic evolution, error-guided discovery, etc.)
+- Shortcomings and future work opportunities with references
+
+This comparison helps you understand when to use NEAT vs other approaches and
+identifies areas for future development.
+
 ## Usage
 
 This project is designed to be used in a DenoJS environment. Please refer to the
