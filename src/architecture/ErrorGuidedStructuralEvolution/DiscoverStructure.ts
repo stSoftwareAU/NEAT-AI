@@ -3712,6 +3712,7 @@ export class DiscoverStructure {
         rawValues.length = 0;
         currentActivations.length = 0;
         idealActivations.length = 0;
+        neuronErrors.length = 0;
 
         return {
           neuronUUID,
@@ -3728,6 +3729,7 @@ export class DiscoverStructure {
     rawValues.length = 0;
     currentActivations.length = 0;
     idealActivations.length = 0;
+    neuronErrors.length = 0;
 
     return undefined;
   }
