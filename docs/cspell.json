@@ -99,6 +99,7 @@
     "wgpu",
     "WGSL",
     "honors",
-    "recs"
+    "recs",
+    "deriv"
   ]
 }

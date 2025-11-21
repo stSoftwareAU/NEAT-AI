@@ -96,3 +96,73 @@ Deno.test("squash estimates are computed in activation domain", () => {
     }
   }
 });
+
+function makeDilutedImpactCreature(): Creature {
+  const creature = Creature.fromJSON({
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-chain", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
+      { fromUUID: "input-0", toUUID: "hidden-chain", weight: 1 },
+      { fromUUID: "hidden-chain", toUUID: "output-0", weight: 1e-6 },
+    ],
+  });
+  creature.validate();
+  CreatureUtil.makeUUID(creature);
+  return creature;
+}
+
+Deno.test("squash estimates scale by neuron impact to avoid inflated expectations", () => {
+  const creature = makeDilutedImpactCreature();
+  const discover = new DiscoverStructure(creature, 30);
+
+  const activations = Activations as unknown as {
+    list: () => ActivationInterface[];
+  };
+  const originalList = activations.list;
+  const hugeError = 1_000_000;
+
+  activations.list = () => [
+    new LookupActivation([
+      { input: 0, output: hugeError },
+      { input: 0.1, output: hugeError + 0.1 },
+    ]),
+    new STEP(),
+  ];
+
+  const records: DiscoverRecord[] = [
+    { activation: 0, value: 0, errors: [hugeError] },
+    { activation: 0.1, value: 0.1, errors: [hugeError] },
+  ];
+
+  const internal = discover as unknown as {
+    findCandidateSquash: (
+      neuronUUID: string,
+      recs: DiscoverRecord[],
+    ) => CandidateSquash | undefined;
+    tempDir: string;
+  };
+
+  try {
+    const candidate = internal.findCandidateSquash("hidden-chain", records);
+    assert(
+      candidate,
+      "Expected diluted chain neuron to return a squash candidate.",
+    );
+    assert(
+      candidate.expectedImprovementPercentage < 1e-4,
+      "Expected improvement should be scaled down by the neuron's tiny impact.",
+    );
+  } finally {
+    activations.list = originalList;
+    try {
+      Deno.removeSync(internal.tempDir, { recursive: true });
+    } catch {
+      // Ignore cleanup errors to keep the test resilient on CI.
+    }
+  }
+});
