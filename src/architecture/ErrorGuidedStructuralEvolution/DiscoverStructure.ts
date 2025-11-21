@@ -3499,6 +3499,7 @@ export class DiscoverStructure {
     const rawValues: number[] = [];
     const currentActivations: number[] = [];
     const idealActivations: number[] = [];
+    const neuronErrors: number[] = [];
 
     const neuron = this.creature.neurons.find((neuron) =>
       neuron.uuid === neuronUUID
@@ -3525,16 +3526,27 @@ export class DiscoverStructure {
       const avgError = finiteErrors.length
         ? finiteErrors.reduce((a, b) => a + b, 0) / finiteErrors.length
         : 0;
+      neuronErrors.push(avgError);
 
       const idealValue = value + avgError;
       const idealActivation = currentSquashMethod.squash(idealValue);
       idealActivations.push(idealActivation);
     });
 
-    const baselineError = this.calculateSquashError(
+    // Calculate baseline activation error (for comparison)
+    const baselineActivationError = this.calculateSquashError(
       idealActivations,
       currentActivations,
     );
+    // Calculate baseline error magnitude (squared error sum) - this is more aligned with network error
+    const baselineErrorSq = neuronErrors.reduce((sum, err) => {
+      return sum + err * err;
+    }, 0) / neuronErrors.length;
+
+    // Use activation error for finding best squash, but we'll scale the improvement estimate
+    // based on error magnitude to get a more realistic network-level estimate
+    const baselineError = baselineActivationError;
+
     let lowestError = baselineError;
     let bestSquash = currentSquash;
 
@@ -3568,13 +3580,65 @@ export class DiscoverStructure {
       }
     }
 
-    // Clear large arrays to help GC
-    rawValues.length = 0;
-    currentActivations.length = 0;
-    idealActivations.length = 0;
-
     if (bestSquash !== currentSquash) {
-      const rawImprovement = (baselineError - lowestError) / baselineError;
+      // Calculate activation-based improvement
+      const rawActivationImprovement = baselineError > 0
+        ? (baselineError - lowestError) / baselineError
+        : 0;
+
+      // Estimate network-level improvement using error-based approach
+      // Calculate how much the activation change would reduce neuron-level errors
+      const bestSquashMethod = Activations.find(
+        bestSquash,
+      ) as ActivationInterface;
+      let errorImprovementSum = 0;
+      let errorImprovementCount = 0;
+
+      for (let i = 0; i < records.length; i++) {
+        const value = rawValues[i];
+        const currentActivation = currentActivations[i];
+        const newActivation = bestSquashMethod.squash(value);
+        const idealActivation = idealActivations[i];
+        const error = neuronErrors[i];
+
+        // Calculate how much closer the new activation is to ideal
+        const currentDist = Math.abs(currentActivation - idealActivation);
+        const newDist = Math.abs(newActivation - idealActivation);
+
+        if (currentDist > 1e-10 && Number.isFinite(error) && error !== 0) {
+          // Improvement ratio: how much closer we got to ideal
+          const improvementRatio = (currentDist - newDist) / currentDist;
+          // Scale by error magnitude to estimate network-level impact
+          // Use absolute error to get magnitude
+          const errorMagnitude = Math.abs(error);
+          const estimatedImprovement = improvementRatio * errorMagnitude;
+          errorImprovementSum += estimatedImprovement;
+          errorImprovementCount++;
+        }
+      }
+
+      // Calculate error-based improvement percentage
+      const avgErrorImprovement = errorImprovementCount > 0
+        ? errorImprovementSum / errorImprovementCount
+        : 0;
+      const errorBasedImprovement = baselineErrorSq > 0
+        ? avgErrorImprovement / baselineErrorSq
+        : 0;
+
+      // Use the more conservative estimate: take minimum of activation-based
+      // and error-based, with a cap to avoid overestimation
+      // Apply a conservative scaling factor that increases with sample count
+      // With more samples, we can be more confident in the estimate
+      const sampleCount = records.length;
+      // Scale factor: 0.1 for < 1000 samples, up to 0.5 for >= 40000 samples
+      const conservativeScale = Math.min(
+        0.5,
+        Math.max(0.1, 0.1 + (sampleCount / 40000) * 0.4),
+      );
+      const rawImprovement = Math.min(
+        rawActivationImprovement * conservativeScale,
+        errorBasedImprovement * conservativeScale,
+      );
 
       // Compute average derivative from records to account for saturation
       let derivativeSum = 0;
@@ -3618,6 +3682,11 @@ export class DiscoverStructure {
 
       // Return candidate even if improvement is small, but only if raw improvement was significant
       if (rawImprovement > 0.01) {
+        // Clear large arrays to help GC (after we've used them for improvement calculation)
+        rawValues.length = 0;
+        currentActivations.length = 0;
+        idealActivations.length = 0;
+
         return {
           neuronUUID,
           previousSquash: currentSquash,
@@ -3628,6 +3697,11 @@ export class DiscoverStructure {
         };
       }
     }
+
+    // Clear large arrays to help GC
+    rawValues.length = 0;
+    currentActivations.length = 0;
+    idealActivations.length = 0;
 
     return undefined;
   }
