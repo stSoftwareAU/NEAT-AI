@@ -298,7 +298,10 @@ export class DiscoverStructure {
   }
 
   private async measureMaxOutputError(): Promise<number> {
-    if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
+    if (
+      !this.recorded &&
+      (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled())
+    ) {
       return 0;
     }
 
@@ -1270,7 +1273,8 @@ export class DiscoverStructure {
   private discoveries: CandidateSynapse[] = [];
   private neuronDiscoveries: CandidateNeuron[] = [];
 
-  public analyzeSelectedNeurons(
+  // deno-lint-ignore require-await
+  public async analyzeSelectedNeurons(
     focusList: string[],
   ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
@@ -1310,7 +1314,8 @@ export class DiscoverStructure {
     return Promise.resolve(this.discoveries);
   }
 
-  public analyzeMissingNeurons(
+  // deno-lint-ignore require-await
+  public async analyzeMissingNeurons(
     focusList: string[],
   ): Promise<CandidateNeuron[] | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
@@ -2674,14 +2679,18 @@ export class DiscoverStructure {
   }
 
   /**
-   * Calculates the impact of a neuron on outputs by finding the maximum impact path to output neurons.
-   * Uses backward propagation from output neurons, taking the maximum impact across all paths.
-   * This ensures neurons on the same path don't get double-counted and avoids contradictory suggestions.
+   * Calculates the impact of a neuron on the network outputs.
+   * Impact is defined as the maximum weight path to any output neuron.
+   * The value is between 0 and 1 (or potentially higher if weights > 1, but typically scaled).
    *
    * @param neuronUUID - The UUID of the neuron to calculate impact for
+   * @param derivativeMap - Optional map of average derivatives to account for saturation
    * @returns The impact value (maximum absolute weight path to outputs)
    */
-  private calculateNeuronImpact(neuronUUID: string): number {
+  private calculateNeuronImpact(
+    neuronUUID: string,
+    derivativeMap?: Map<string, number>,
+  ): number {
     // Build maps for efficient lookup
     const neuronIndexMap = new Map<string, number>();
     const outputNeuronIndices = new Set<number>();
@@ -2700,7 +2709,7 @@ export class DiscoverStructure {
       return 0;
     }
     if (outputNeuronIndices.has(neuronIndex)) {
-      return 1.0;
+      return derivativeMap?.get(neuronUUID) ?? 1.0;
     }
 
     // Use dynamic programming to calculate impact
@@ -2733,11 +2742,12 @@ export class DiscoverStructure {
         return 0;
       }
 
-      // Output neurons have base impact of 1.0
+      // Output neurons have base impact of 1.0 * derivative
       if (outputNeuronIndices.has(index)) {
-        impactCache.set(uuid, 1.0);
+        const impact = derivativeMap?.get(uuid) ?? 1.0;
+        impactCache.set(uuid, impact);
         pathVisited.delete(uuid);
-        return 1.0;
+        return impact;
       }
 
       // Get outgoing synapses from this neuron
@@ -2764,13 +2774,23 @@ export class DiscoverStructure {
             continue;
           }
           const absWeight = Math.abs(synapse.weight);
-          let weightContribution = absWeight * toImpact;
-          if (weightContribution > toImpact) {
-            weightContribution = toImpact;
-          }
+          const weightContribution = absWeight * toImpact;
+          // if (weightContribution > toImpact) {
+          //   weightContribution = toImpact;
+          // }
           maxImpact = Math.max(maxImpact, weightContribution);
         }
       }
+
+      // Apply THIS neuron's derivative
+      let myDerivative: number;
+      if (derivativeMap) {
+        myDerivative = derivativeMap.get(uuid) ?? 1.0;
+      } else {
+        // Compute derivative on-the-fly using current activation state
+        myDerivative = this.computeSquashDerivative(uuid);
+      }
+      maxImpact *= myDerivative;
 
       pathVisited.delete(uuid);
       impactCache.set(uuid, maxImpact);
@@ -2778,6 +2798,56 @@ export class DiscoverStructure {
     };
 
     return calculateImpactRecursive(neuronUUID, new Set<string>());
+  }
+
+  /**
+   * Computes the squash function derivative for a neuron at its current activation.
+   * Uses the most recent activation from creature.state if available, otherwise returns 1.0.
+   *
+   * This accounts for saturation effects where neurons operating in saturated regions
+   * (e.g., TANH at large inputs) have very small derivatives and thus limited impact
+   * on output error regardless of their local error magnitude.
+   *
+   * For squash functions where we can compute the derivative from the output (like TANH, SIGMOID),
+   * we use the analytical formula. For others, we return 1.0 as a conservative estimate.
+   */
+  private computeSquashDerivative(neuronUUID: string): number {
+    const neuron = this.creature.neurons.find((n) => n.uuid === neuronUUID);
+    if (!neuron || neuron.type === "input" || neuron.type === "constant") {
+      return 1.0;
+    }
+
+    const squashName = neuron.squash ?? "IDENTITY";
+    const activation = this.creature.state.activations[neuron.index];
+
+    if (!Number.isFinite(activation)) {
+      return 1.0;
+    }
+
+    // Use analytical derivative formulas where possible
+    // For TANH: d/dx tanh(x) = 1 - tanh²(x) = 1 - activation²
+    // For SIGMOID: d/dx σ(x) = σ(x)(1 - σ(x)) = activation * (1 - activation)
+    switch (squashName) {
+      case "IDENTITY":
+        return 1.0;
+      case "TANH": {
+        const derivative = 1 - activation * activation;
+        return Number.isFinite(derivative) && derivative >= 0 ? derivative : 0;
+      }
+      case "LOGISTIC":
+      case "SIGMOID": {
+        const derivative = activation * (1 - activation);
+        return Number.isFinite(derivative) && derivative >= 0 ? derivative : 0;
+      }
+      case "RELU":
+        return activation > 0 ? 1.0 : 0.0;
+      case "LEAKY_RELU":
+        return activation > 0 ? 1.0 : 0.01;
+      default:
+        // For other activation functions, we can't easily compute the derivative
+        // from just the output, so return 1.0 as a conservative estimate
+        return 1.0;
+    }
   }
 
   /**
@@ -2897,6 +2967,53 @@ export class DiscoverStructure {
       ? Math.max(targetCount * 4, 64)
       : Number.POSITIVE_INFINITY;
 
+    // Pre-calculate average derivatives for all neurons to account for saturation
+    // This map will be used by calculateNeuronImpact
+    const derivativeMap = new Map<string, number>();
+
+    // Iterate all neurons in creature for derivatives
+    const allNeurons = this.creature.neurons;
+    const derivConcurrency = 16;
+    for (let i = 0; i < allNeurons.length; i += derivConcurrency) {
+      const chunk = allNeurons.slice(i, i + derivConcurrency);
+      // deno-lint-ignore no-await-in-loop
+      await Promise.all(chunk.map(async (n) => {
+        try {
+          const neuronSquashName = n.squash ?? "IDENTITY";
+          const neuronSquash = Activations.find(
+            neuronSquashName,
+          ) as ActivationInterface;
+          // Use same sampling logic
+          const records = await this.loadCSV(`${this.tempDir}/${n.uuid}.csv`);
+          let derivativeSum = 0;
+          let derivativeCount = 0;
+          const sampleSize = Math.min(records.length, 50);
+          const step = Math.max(1, Math.floor(records.length / sampleSize));
+
+          for (let j = 0; j < records.length; j += step) {
+            const val = records[j].value;
+            if (Number.isFinite(val)) {
+              const eps = 1e-4;
+              const y1 = neuronSquash.squash(val as number);
+              const y2 = neuronSquash.squash((val as number) + eps);
+              const derivative = (y2 - y1) / eps;
+              if (Number.isFinite(derivative)) {
+                derivativeSum += Math.abs(derivative);
+                derivativeCount++;
+              }
+            }
+            if (derivativeCount >= sampleSize) break;
+          }
+          const avg = derivativeCount > 0
+            ? derivativeSum / derivativeCount
+            : 1.0;
+          derivativeMap.set(n.uuid, avg);
+        } catch (_e) {
+          derivativeMap.set(n.uuid, 1.0);
+        }
+      }));
+    }
+
     const processNext = async () => {
       while (true) {
         const currentIndex = index++;
@@ -2913,6 +3030,10 @@ export class DiscoverStructure {
 
         const neuron = neurons[currentIndex];
         try {
+          const neuronSquashName = neuron.squash ?? "IDENTITY";
+          const neuronSquash = Activations.find(
+            neuronSquashName,
+          ) as ActivationInterface;
           // deno-lint-ignore no-await-in-loop
           const records = await this.loadCSV(
             `${this.tempDir}/${neuron.uuid}.csv`,
@@ -2921,7 +3042,15 @@ export class DiscoverStructure {
           let invalidErrorCount = 0;
           let absoluteErrorSum = 0;
           let errorValueCount = 0;
+          let activationDeltaSum = 0;
+          let activationDeltaCount = 0;
           for (const record of records) {
+            const baseValue = record.value;
+            const baseActivation = Number.isFinite(record.activation)
+              ? record.activation
+              : (Number.isFinite(baseValue)
+                ? neuronSquash.squash(baseValue as number)
+                : undefined);
             for (const err of record.errors) {
               if (!Number.isFinite(err)) {
                 invalidErrorCount++;
@@ -2929,6 +3058,25 @@ export class DiscoverStructure {
               }
               absoluteErrorSum += Math.abs(err);
               errorValueCount++;
+
+              if (
+                Number.isFinite(baseValue) && baseActivation !== undefined &&
+                Number.isFinite(baseActivation)
+              ) {
+                const targetValue = (baseValue as number) + err;
+                if (Number.isFinite(targetValue)) {
+                  const targetActivation = neuronSquash.squash(targetValue);
+                  if (Number.isFinite(targetActivation)) {
+                    const delta = Math.abs(
+                      targetActivation - (baseActivation as number),
+                    );
+                    if (Number.isFinite(delta)) {
+                      activationDeltaSum += delta;
+                      activationDeltaCount++;
+                    }
+                  }
+                }
+              }
             }
           }
 
@@ -2942,18 +3090,24 @@ export class DiscoverStructure {
             );
           }
 
-          const averageError = errorValueCount > 0
+          const averageRawError = errorValueCount > 0
             ? absoluteErrorSum / errorValueCount
             : 0;
+          const activationAverage = activationDeltaCount > 0
+            ? activationDeltaSum / activationDeltaCount
+            : averageRawError;
           const clampedError = maxOutputError > 0
-            ? Math.min(averageError, maxOutputError)
-            : averageError;
+            ? Math.min(activationAverage, maxOutputError)
+            : activationAverage;
 
           records.length = 0;
 
           let impact = impactCache.get(neuron.uuid);
           if (impact === undefined) {
-            const computedImpact = this.calculateNeuronImpact(neuron.uuid);
+            const computedImpact = this.calculateNeuronImpact(
+              neuron.uuid,
+              derivativeMap,
+            );
             impact = Number.isFinite(computedImpact) ? computedImpact : 0;
             impactCache.set(neuron.uuid, impact);
           }
@@ -3412,10 +3566,18 @@ export class DiscoverStructure {
     idealActivations.length = 0;
 
     if (bestSquash !== currentSquash) {
-      const expectedImprovementPercentage = (baselineError - lowestError) /
-        baselineError;
+      const rawImprovement = (baselineError - lowestError) / baselineError;
 
-      if (expectedImprovementPercentage > 0.01) {
+      // Scale by neuron's impact on output to avoid inflated expectations
+      const neuronImpact = this.calculateNeuronImpact(neuronUUID);
+      const impactScale = Number.isFinite(neuronImpact)
+        ? Math.min(Math.max(neuronImpact, 0), 1)
+        : 1.0; // Default to 1.0 if impact can't be calculated
+
+      const expectedImprovementPercentage = rawImprovement * impactScale;
+
+      // Return candidate even if improvement is small, but only if raw improvement was significant
+      if (rawImprovement > 0.01) {
         return {
           neuronUUID,
           previousSquash: currentSquash,
