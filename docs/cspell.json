@@ -124,7 +124,14 @@
     "Sutskever",
     "Szegedy",
     "Vaswani",
-    "labeled","Conv","Keras","scikit","autoencoders","Yosinski",
-    "unlabeled","Autoencoder","autoencoders"
+    "labeled",
+    "Conv",
+    "Keras",
+    "scikit",
+    "autoencoders",
+    "Yosinski",
+    "unlabeled",
+    "Autoencoder",
+    "autoencoders"
   ]
 }
