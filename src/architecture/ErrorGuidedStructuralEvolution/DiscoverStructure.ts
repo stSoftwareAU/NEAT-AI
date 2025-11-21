@@ -2785,9 +2785,13 @@ export class DiscoverStructure {
       // Apply THIS neuron's derivative
       let myDerivative: number;
       if (derivativeMap) {
+        // When derivativeMap is provided, use it or default to 1.0
+        // Never fall back to computeSquashDerivative here because we're in
+        // offline analysis context where creature.state may be stale/uninitialized
         myDerivative = derivativeMap.get(uuid) ?? 1.0;
       } else {
-        // Compute derivative on-the-fly using current activation state
+        // Only use computeSquashDerivative when no derivativeMap is provided
+        // (e.g., during online analysis when state is current)
         myDerivative = this.computeSquashDerivative(uuid);
       }
       maxImpact *= myDerivative;
@@ -2803,6 +2807,10 @@ export class DiscoverStructure {
   /**
    * Computes the squash function derivative for a neuron at its current activation.
    * Uses the most recent activation from creature.state if available, otherwise returns 1.0.
+   *
+   * WARNING: This method relies on creature.state which may be stale or uninitialized
+   * during offline analysis (e.g., in findCandidateSquash). When a derivativeMap is
+   * provided to calculateNeuronImpact, this method should NOT be used as a fallback.
    *
    * This accounts for saturation effects where neurons operating in saturated regions
    * (e.g., TANH at large inputs) have very small derivatives and thus limited impact
@@ -3568,8 +3576,40 @@ export class DiscoverStructure {
     if (bestSquash !== currentSquash) {
       const rawImprovement = (baselineError - lowestError) / baselineError;
 
+      // Compute average derivative from records to account for saturation
+      let derivativeSum = 0;
+      let derivativeCount = 0;
+      const sampleSize = Math.min(records.length, 50);
+      const step = Math.max(1, Math.floor(records.length / sampleSize));
+
+      for (let i = 0; i < records.length; i += step) {
+        const val = records[i].value;
+        if (Number.isFinite(val)) {
+          const eps = 1e-4;
+          const y1 = currentSquashMethod.squash(val as number);
+          const y2 = currentSquashMethod.squash((val as number) + eps);
+          const derivative = (y2 - y1) / eps;
+          if (Number.isFinite(derivative)) {
+            derivativeSum += Math.abs(derivative);
+            derivativeCount++;
+          }
+        }
+        if (derivativeCount >= sampleSize) break;
+      }
+
+      const avgDerivative = derivativeCount > 0
+        ? derivativeSum / derivativeCount
+        : 1.0;
+
+      // Create derivativeMap with this neuron's average derivative
+      const derivativeMap = new Map<string, number>();
+      derivativeMap.set(neuronUUID, avgDerivative);
+
       // Scale by neuron's impact on output to avoid inflated expectations
-      const neuronImpact = this.calculateNeuronImpact(neuronUUID);
+      const neuronImpact = this.calculateNeuronImpact(
+        neuronUUID,
+        derivativeMap,
+      );
       const impactScale = Number.isFinite(neuronImpact)
         ? Math.min(Math.max(neuronImpact, 0), 1)
         : 1.0; // Default to 1.0 if impact can't be calculated
