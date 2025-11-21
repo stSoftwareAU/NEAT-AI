@@ -123,6 +123,8 @@
     "Srivastava",
     "Sutskever",
     "Szegedy",
-    "Vaswani"
+    "Vaswani",
+    "labeled","Conv","Keras","scikit","autoencoders","Yosinski",
+    "unlabeled","Autoencoder","autoencoders"
   ]
 }
