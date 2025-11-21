@@ -3611,6 +3611,7 @@ export class DiscoverStructure {
         } else {
           let errorImprovementSum = 0;
           let errorImprovementCount = 0;
+          let absoluteErrorSum = 0;
 
           for (let i = 0; i < records.length; i++) {
             const value = rawValues[i];
@@ -3631,6 +3632,7 @@ export class DiscoverStructure {
               const errorMagnitude = Math.abs(error);
               const estimatedImprovement = improvementRatio * errorMagnitude;
               errorImprovementSum += estimatedImprovement;
+              absoluteErrorSum += errorMagnitude;
               errorImprovementCount++;
             }
           }
@@ -3640,9 +3642,10 @@ export class DiscoverStructure {
             ? errorImprovementSum / errorImprovementCount
             : 0;
           // Calculate mean absolute error for percentage calculation
-          const meanAbsoluteError = neuronErrors.reduce((sum, err) => {
-            return sum + Math.abs(err);
-          }, 0) / neuronErrors.length;
+          // Only use errors from records that passed the condition to match the numerator
+          const meanAbsoluteError = errorImprovementCount > 0
+            ? absoluteErrorSum / errorImprovementCount
+            : 0;
           const errorBasedImprovement = meanAbsoluteError > 0
             ? avgErrorImprovement / meanAbsoluteError
             : 0;
