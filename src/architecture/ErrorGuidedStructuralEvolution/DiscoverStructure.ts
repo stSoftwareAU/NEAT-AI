@@ -8,6 +8,7 @@ import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
 import { MSE } from "../../costs/MSE.ts";
 import type { ActivationInterface } from "../../methods/activations/ActivationInterface.ts";
 import { Activations } from "../../methods/activations/Activations.ts";
+import { CreatureErrorImpactEstimator } from "../../discovery/NeuronErrorImpactEstimator.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import {
   analyzeAll,
@@ -98,6 +99,17 @@ export interface BinaryRecordIndices {
 /**
  * Represents a potential new synapse and the associated metrics calculated during discovery.
  */
+export interface NeuronStats {
+  meanError: number;
+  errorVariance: number;
+  meanActivation: number;
+  activationVariance: number;
+  errorSpikeCount: number;
+  activationSpikeCount: number;
+  activationMin: number;
+  activationMax: number;
+}
+
 export interface CandidateSynapse {
   fromNeuronUUID: string;
   toNeuronUUID: string;
@@ -105,6 +117,7 @@ export interface CandidateSynapse {
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
+  targetNeuronStats?: NeuronStats;
 }
 
 export interface CandidateSquash {
@@ -126,6 +139,7 @@ export interface CandidateNeuron {
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
+  targetNeuronStats?: NeuronStats;
 }
 
 interface CandidateAnalysisBundle {
@@ -237,6 +251,8 @@ export class DiscoverStructure {
   private forcedFocusNeurons: string[] | null = null;
   private forcedFocusIndex = 0;
   private improvementThreshold = DEFAULT_RUST_HELPFUL_THRESHOLD;
+  private neuronImpactEstimator?: CreatureErrorImpactEstimator;
+  private neuronIndexMap?: Map<string, number>;
   private harmfulThreshold = DEFAULT_RUST_HARMFUL_THRESHOLD;
   private lastFocusSelection?: FocusSelectionSummary;
   private cachedMaxOutputError?: { value: number; computedAt: number } =
@@ -1632,6 +1648,7 @@ export class DiscoverStructure {
       expectedImprovementPercentage: candidate.expectedImprovementPercentage,
       improvedCount: candidate.improvedCount,
       totalCount: candidate.totalCount,
+      targetNeuronStats: candidate.targetNeuronStats,
     };
   }
 
@@ -1648,6 +1665,7 @@ export class DiscoverStructure {
       expectedImprovementPercentage: candidate.expectedImprovementPercentage,
       improvedCount: candidate.improvedCount,
       totalCount: candidate.totalCount,
+      targetNeuronStats: candidate.targetNeuronStats,
     };
   }
 
@@ -2691,117 +2709,78 @@ export class DiscoverStructure {
     neuronUUID: string,
     derivativeMap?: Map<string, number>,
   ): number {
-    // Build maps for efficient lookup
-    const neuronIndexMap = new Map<string, number>();
-    const outputNeuronIndices = new Set<number>();
-
-    // Build neuron index map and identify output neurons
-    this.creature.neurons.forEach((neuron, index) => {
-      neuronIndexMap.set(neuron.uuid, index);
-      if (neuron.type === "output") {
-        outputNeuronIndices.add(index);
-      }
-    });
-
-    // If this is an output neuron, it has direct impact
-    const neuronIndex = neuronIndexMap.get(neuronUUID);
-    if (neuronIndex === undefined) {
+    if (!this.neuronImpactEstimator) {
+      this.neuronImpactEstimator = new CreatureErrorImpactEstimator(
+        this.creature,
+      );
+    }
+    if (!this.neuronIndexMap) {
+      this.neuronIndexMap = new Map<string, number>();
+      this.creature.neurons.forEach((neuron, index) => {
+        this.neuronIndexMap!.set(neuron.uuid, index);
+      });
+    }
+    const share = this.neuronImpactEstimator.getNeuronShare(neuronUUID);
+    if (!Number.isFinite(share) || share <= 0) {
       return 0;
     }
-    if (outputNeuronIndices.has(neuronIndex)) {
-      return derivativeMap?.get(neuronUUID) ?? 1.0;
+    let derivative = derivativeMap?.get(neuronUUID);
+    if (derivative === undefined) {
+      derivative = this.computeSquashDerivative(neuronUUID);
     }
-
-    // Use dynamic programming to calculate impact
-    // Impact of a neuron = max of (impact of neurons it connects to × abs(weight))
-    // This ensures we take the maximum path impact rather than summing all paths
-    // Handle cycles by using a path-based visited set (per path, not global)
-    const impactCache = new Map<string, number>();
-
-    const calculateImpactRecursive = (
+    const derivativeFactor = Number.isFinite(derivative)
+      ? Math.max(derivative, 0)
+      : 1;
+    const downstreamCache = new Map<string, number>();
+    const computeDownstreamFactor = (
       uuid: string,
-      pathVisited: Set<string>,
+      path: Set<string>,
     ): number => {
-      // Check cache first
-      if (impactCache.has(uuid)) {
-        return impactCache.get(uuid)!;
+      if (downstreamCache.has(uuid)) {
+        return downstreamCache.get(uuid)!;
       }
-
-      // Prevent infinite loops in current path (cycle detection)
-      if (pathVisited.has(uuid)) {
-        // Cycle detected - return 0 to avoid infinite recursion
-        // This means cycles don't contribute to impact
-        return 0;
-      }
-
-      pathVisited.add(uuid);
-
-      const index = neuronIndexMap.get(uuid);
+      const index = this.neuronIndexMap!.get(uuid);
       if (index === undefined) {
-        pathVisited.delete(uuid);
-        return 0;
+        return 1;
       }
-
-      // Output neurons have base impact of 1.0 * derivative
-      if (outputNeuronIndices.has(index)) {
-        const impact = derivativeMap?.get(uuid) ?? 1.0;
-        impactCache.set(uuid, impact);
-        pathVisited.delete(uuid);
-        return impact;
+      const neuron = this.creature.neurons[index];
+      if (neuron.type === "output") {
+        downstreamCache.set(uuid, 1);
+        return 1;
       }
-
-      // Get outgoing synapses from this neuron
-      const outgoingSynapses = this.creature.outwardConnections(index);
-      if (outgoingSynapses.length === 0) {
-        // No outgoing connections means no impact
-        impactCache.set(uuid, 0);
-        pathVisited.delete(uuid);
-        return 0;
+      const outward = this.creature.outwardConnections(index);
+      if (!outward || outward.length === 0) {
+        downstreamCache.set(uuid, 1);
+        return 1;
       }
-
-      // Calculate impact by taking the maximum contribution from all connected neurons
-      // This ensures we don't double-count neurons on the same path
-      let maxImpact = 0;
-      for (const synapse of outgoingSynapses) {
-        const toIndex = synapse.to;
-        const toNeuron = this.creature.neurons[toIndex];
-        if (toNeuron) {
-          const toUUID = toNeuron.uuid;
-          // Create a new path visited set for each branch to allow exploring all paths
-          const branchPathVisited = new Set(pathVisited);
-          const toImpact = calculateImpactRecursive(toUUID, branchPathVisited);
-          if (!Number.isFinite(toImpact) || toImpact <= 0) {
-            continue;
-          }
-          const absWeight = Math.abs(synapse.weight);
-          const weightContribution = absWeight * toImpact;
-          // if (weightContribution > toImpact) {
-          //   weightContribution = toImpact;
-          // }
-          maxImpact = Math.max(maxImpact, weightContribution);
+      let maxProduct = 0;
+      for (const synapse of outward) {
+        const toNeuron = this.creature.neurons[synapse.to];
+        if (!toNeuron) continue;
+        if (path.has(toNeuron.uuid)) {
+          continue;
+        }
+        path.add(toNeuron.uuid);
+        const downstreamDerivative = derivativeMap?.get(toNeuron.uuid) ??
+          this.computeSquashDerivative(toNeuron.uuid);
+        const childFactor = computeDownstreamFactor(toNeuron.uuid, path);
+        path.delete(toNeuron.uuid);
+        const product = Math.max(0, downstreamDerivative) * childFactor;
+        if (product > maxProduct) {
+          maxProduct = product;
         }
       }
-
-      // Apply THIS neuron's derivative
-      let myDerivative: number;
-      if (derivativeMap) {
-        // When derivativeMap is provided, use it or default to 1.0
-        // Never fall back to computeSquashDerivative here because we're in
-        // offline analysis context where creature.state may be stale/uninitialized
-        myDerivative = derivativeMap.get(uuid) ?? 1.0;
-      } else {
-        // Only use computeSquashDerivative when no derivativeMap is provided
-        // (e.g., during online analysis when state is current)
-        myDerivative = this.computeSquashDerivative(uuid);
-      }
-      maxImpact *= myDerivative;
-
-      pathVisited.delete(uuid);
-      impactCache.set(uuid, maxImpact);
-      return maxImpact;
+      const factor = maxProduct > 0 ? Math.min(1, maxProduct) : 0;
+      downstreamCache.set(uuid, factor);
+      return factor;
     };
 
-    return calculateImpactRecursive(neuronUUID, new Set<string>());
+    const downstreamFactor = computeDownstreamFactor(
+      neuronUUID,
+      new Set<string>([neuronUUID]),
+    );
+
+    return Math.min(1, share * derivativeFactor * downstreamFactor);
   }
 
   /**

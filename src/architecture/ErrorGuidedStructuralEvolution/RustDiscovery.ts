@@ -55,6 +55,17 @@ export interface RustRecordResult {
   errorDetails?: RustRecordErrorDetails;
 }
 
+export interface NeuronStatsJson {
+  meanError: number;
+  errorVariance: number;
+  meanActivation: number;
+  activationVariance: number;
+  errorSpikeCount: number;
+  activationSpikeCount: number;
+  activationMin: number;
+  activationMax: number;
+}
+
 export interface RustCandidateSynapse {
   fromNeuronUuid: string;
   toNeuronUuid: string;
@@ -62,6 +73,7 @@ export interface RustCandidateSynapse {
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
+  targetNeuronStats?: NeuronStatsJson;
 }
 
 export interface RustCandidateNeuron {
@@ -74,6 +86,7 @@ export interface RustCandidateNeuron {
   expectedImprovementPercentage: number;
   improvedCount: number;
   totalCount: number;
+  targetNeuronStats?: NeuronStatsJson;
 }
 
 export interface RustAnalyzeSynapsesInput {

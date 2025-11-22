@@ -178,6 +178,31 @@ When the library cannot be resolved, set `NEAT_RUST_DISCOVERY_OPTIONAL=true` in
 environments where skipping discovery should not abort the worker. Otherwise,
 treat a missing module as a deployment error and halt the job.
 
+## Deployment Checklist
+
+Before committing code changes, ensure you complete the following steps:
+
+1. **Run quality checks in both repositories:**
+   ```bash
+   # In NEAT-AI-Discovery
+   cd ../NEAT-AI-Discovery
+   ./quality.sh
+
+   # In NEAT-AI
+   cd ../NEAT-AI
+   ./quality.sh
+   ```
+
+2. **Increment version numbers:**
+   - **NEAT-AI**: Update `deno.json` version field (e.g., `0.204.1` → `0.204.2`)
+   - **NEAT-AI-Discovery**: Update `Cargo.toml` version field (e.g., `0.1.41` →
+     `0.1.42`)
+
+3. **Verify all tests pass** in both repositories before committing.
+
+These steps ensure code quality, proper versioning, and that all tests pass
+before deployment.
+
 ## Contributions
 
 Contributions are welcome. Please submit a pull request or open an issue to
