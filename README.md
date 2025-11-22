@@ -150,6 +150,17 @@ directory (ignored by git) and logs extended diagnostics whenever the Rust
 recorder flushes or hits the time-out path. Use it as the starting point for
 debugging “Invalid string length” failures without touching live workloads.
 
+### Discovery Cost-of-Growth Gate
+
+Discovery candidates are now triaged using the configured `costOfGrowth` setting
+before they reach the evaluator. Each new synapse consumes `1 x
+costOfGrowth`,
+while every new neuron consumes roughly `3 x costOfGrowth` (two synapses plus
+the neuron). Candidates whose expected error reduction is smaller than their
+structural cost are skipped entirely. This keeps discovery focused on proposals
+that can actually repay the growth penalty and prevents logs from being flooded
+with meaningless `+0.000%` deltas.
+
 ## Enabling the Rust Discovery Module
 
 The Rust FFI extension shipped via

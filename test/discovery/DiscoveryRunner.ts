@@ -10,6 +10,7 @@ import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.ts";
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
+import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 
 function makeBaseCreature() {
   const creature = Creature.fromJSON({
@@ -60,6 +61,14 @@ function makeDenseOutputCreature(extraFanIn: number) {
   creature.validate();
   CreatureUtil.makeUUID(creature);
   return creature;
+}
+
+function cloneCreatureJSON(
+  creature: Creature,
+): ReturnType<Creature["exportJSON"]> {
+  return JSON.parse(
+    JSON.stringify(creature.exportJSON()),
+  ) as ReturnType<Creature["exportJSON"]>;
 }
 
 class FakeWorker implements DiscoveryRunnerWorker {
@@ -760,3 +769,248 @@ Deno.test("DiscoveryRunner passes discovery focus neurons to worker", async () =
     // nothing
   }
 });
+
+Deno.test(
+  "DiscoveryRunner skips synapse candidates whose expected gain is below growth cost",
+  async () => {
+    const discoveryResult: DiscoverResult = {
+      ID: "COST_FILTER_SYN",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const baseCreature = makeBaseCreature();
+    const extraSynapse = {
+      fromUUID: "input-0",
+      toUUID: "output-0",
+      weight: 0.05,
+    };
+
+    const cloneExport = () => cloneCreatureJSON(baseCreature);
+
+    const candidateBuilder = (
+      _creature: Creature,
+      _discovery: DiscoverResult,
+    ): DiscoveryCandidate[] => {
+      const json = cloneExport();
+      json.synapses.push({
+        fromUUID: extraSynapse.fromUUID,
+        toUUID: extraSynapse.toUUID,
+        weight: extraSynapse.weight,
+      });
+      const candidate = Creature.fromJSON(json);
+      candidate.validate();
+      CreatureUtil.makeUUID(candidate);
+      return [{
+        creature: candidate,
+        change: {
+          type: "add-synapses",
+          description: "extra synapse",
+          expectedErrorReduction: 0.01,
+        },
+      }];
+    };
+
+    const computeError = (creature: Creature) => {
+      const json = creature.exportJSON();
+      const hasExtraSynapse = json.synapses.some((synapse) =>
+        synapse.fromUUID === extraSynapse.fromUUID &&
+        synapse.toUUID === extraSynapse.toUUID &&
+        Math.abs(synapse.weight - extraSynapse.weight) < 1e-9
+      );
+      return hasExtraSynapse ? 0.4 : 0.5;
+    };
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () =>
+        new FakeWorker(
+          discoveryResult,
+          computeError,
+        ),
+      candidateBuilder,
+    });
+
+    const result = await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options: makeOptions({ costOfGrowth: 0.02 }),
+    });
+
+    assert(
+      !result.evaluations?.some((entry) => entry.kind === "candidate"),
+      "candidates with expected improvement below growth cost should be skipped",
+    );
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner skips neuron candidates whose expected gain is below aggregated growth cost",
+  async () => {
+    const discoveryResult: DiscoverResult = {
+      ID: "COST_FILTER_NEURON",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const baseCreature = makeBaseCreature();
+    const newNeuronUUID = "growth-test-hidden";
+
+    const candidateBuilder = (
+      _creature: Creature,
+      _discovery: DiscoverResult,
+    ): DiscoveryCandidate[] => {
+      const json = cloneCreatureJSON(baseCreature);
+      const outputCount = json.output ?? 1;
+      const outputOffset = json.neurons.length - outputCount;
+      json.neurons.splice(outputOffset, 0, {
+        type: "hidden",
+        uuid: newNeuronUUID,
+        squash: "IDENTITY",
+        bias: 0,
+      });
+      json.synapses.push({
+        fromUUID: "input-0",
+        toUUID: newNeuronUUID,
+        weight: 0.2,
+      });
+      json.synapses.push({
+        fromUUID: newNeuronUUID,
+        toUUID: "output-0",
+        weight: -0.2,
+      });
+      const candidate = Creature.fromJSON(json);
+      candidate.validate();
+      CreatureUtil.makeUUID(candidate);
+      return [{
+        creature: candidate,
+        change: {
+          type: "add-neurons",
+          description: "extra neuron",
+          expectedErrorReduction: 0.02,
+        },
+      }];
+    };
+
+    const computeError = (creature: Creature) => {
+      const json = creature.exportJSON();
+      const hasNewNeuron = json.neurons.some((neuron) =>
+        neuron.uuid === newNeuronUUID
+      );
+      return hasNewNeuron ? 0.3 : 0.5;
+    };
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () =>
+        new FakeWorker(
+          discoveryResult,
+          computeError,
+        ),
+      candidateBuilder,
+    });
+
+    const result = await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options: makeOptions({ costOfGrowth: 0.01 }),
+    });
+
+    assert(
+      !result.evaluations?.some((entry) => entry.kind === "candidate"),
+      "neuron additions with expected gain below 3x cost should be skipped",
+    );
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner logs sub-basis deltas with at least three significant digits",
+  async () => {
+    const discoveryResult: DiscoverResult = {
+      ID: "DELTA_PRECISION",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const baseCreature = makeBaseCreature();
+    const tinyDelta = 1e-8;
+
+    const candidateBuilder = (
+      _creature: Creature,
+      _discovery: DiscoverResult,
+    ): DiscoveryCandidate[] => {
+      const json = cloneCreatureJSON(baseCreature);
+      json.synapses = json.synapses.map((synapse) =>
+        synapse.fromUUID === "hidden-1" && synapse.toUUID === "output-0"
+          ? { ...synapse, weight: synapse.weight + tinyDelta }
+          : synapse
+      );
+      const candidate = Creature.fromJSON(json);
+      candidate.validate();
+      CreatureUtil.makeUUID(candidate);
+      return [{
+        creature: candidate,
+        change: {
+          type: "add-synapses",
+          description: "tiny delta",
+          expectedErrorReduction: tinyDelta,
+        },
+      }];
+    };
+
+    const baselineError = 0.5;
+    const computeError = (creature: Creature) => {
+      const json = creature.exportJSON();
+      const hasTinyUpdate = json.synapses.some((synapse) =>
+        synapse.fromUUID === "hidden-1" && synapse.toUUID === "output-0" &&
+        Math.abs(synapse.weight - (0.5 + tinyDelta)) < 1e-10
+      );
+      return hasTinyUpdate ? baselineError - tinyDelta : baselineError;
+    };
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () =>
+        new FakeWorker(
+          discoveryResult,
+          computeError,
+        ),
+      candidateBuilder,
+    });
+
+    const captured: string[] = [];
+    const originalInfo = console.info.bind(console);
+    console.info = (...args: unknown[]) => {
+      captured.push(args.map((arg) => String(arg)).join(" "));
+      originalInfo(...args);
+    };
+
+    try {
+      await runner.discoverDir({
+        creature: baseCreature,
+        dataDir: "/tmp/data",
+        options: makeOptions({ costOfGrowth: 0 }),
+      });
+    } finally {
+      console.info = originalInfo;
+    }
+
+    const candidateLine = captured.find((line) =>
+      line.includes("[DiscoveryRunner]   Candidate")
+    );
+    assert(candidateLine, "expected candidate log line to be recorded");
+    assert(
+      !candidateLine.includes("+0.000%"),
+      `non-zero deltas must show significant digits, got: ${candidateLine}`,
+    );
+  },
+);
