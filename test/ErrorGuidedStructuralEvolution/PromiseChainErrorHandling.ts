@@ -146,7 +146,7 @@ Deno.test({
     const timeout = new Promise<void>((_, reject) => {
       timeoutId = setTimeout(
         () => reject(new Error("Timeout waiting for promises")),
-        5000,
+        2000, // 2 seconds - sufficient for CI
       );
     });
 
@@ -195,7 +195,7 @@ Deno.test("Discovery Promise.all() completes within timeout", async () => {
   }
 
   // Create a timeout to ensure Promise.all doesn't hang
-  const TIMEOUT_MS = 10000; // 10 seconds should be plenty
+  const TIMEOUT_MS = 5000; // 5 seconds - sufficient for CI
   let timeoutId: number | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {

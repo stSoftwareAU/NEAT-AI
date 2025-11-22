@@ -183,7 +183,7 @@ Deno.test({
       const options128 = {
         discoveryBatchSize: 128,
         discoveryTimeOutMinutes: 0.0167, // ~1 second
-        discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
+        discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
         discoverySampleRate: 1.0, // 100% sample rate
         log: 0,
       };
@@ -198,7 +198,7 @@ Deno.test({
       const options512 = {
         discoveryBatchSize: 512,
         discoveryTimeOutMinutes: 0.0167, // ~1 second
-        discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
+        discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
         discoverySampleRate: 1.0,
         log: 0,
       };
@@ -335,7 +335,7 @@ Deno.test({
 
       const options = {
         discoveryBatchSize: 128,
-        discoveryTimeOutMinutes: 0.1, // 6 seconds - plenty of time
+        discoveryTimeOutMinutes: 0.05, // 3 seconds - plenty of time for small dataset
         discoverySampleRate: 1.0,
         log: 1,
       };
