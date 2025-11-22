@@ -54,7 +54,11 @@ export interface NeatArguments {
   /** Focus rate, defining how much attention to give to the focus list (optional). */
   focusRate: number;
 
-  /** Cost of growth (optional). */
+  /**
+   * Cost of growth (optional). Penalises complex networks and filters discovery
+   * candidates: each new synapse consumes 1 x costOfGrowth, while each new
+   * neuron consumes ~3 x costOfGrowth (two synapses plus the neuron body).
+   */
   costOfGrowth: number;
 
   /** Percentage of the top-performing individuals to retain for the next generation. */
