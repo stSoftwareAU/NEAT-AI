@@ -1153,8 +1153,6 @@ class DataRecorder {
         }
       })();
 
-      perfStats.totalTime = Date.now() - startTime;
-
       if (this.shouldAwaitCleanup()) {
         await cleanupPromise;
       } else {
@@ -1170,6 +1168,9 @@ class DataRecorder {
         // The actual cleanup time will be logged when it completes
         perfStats.cleanupTime = 0;
       }
+
+      // Calculate total time after conditional await to include cleanup when awaited
+      perfStats.totalTime = Date.now() - startTime;
 
       perfStats.logSummary(this.ID, options);
 
