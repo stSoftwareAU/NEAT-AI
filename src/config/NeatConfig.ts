@@ -291,7 +291,7 @@ function validate(config: NeatArguments) {
     );
   }
   if (
-    Number.isInteger(config.discoveryAnalysisTimeoutMinutes) === false ||
+    Number.isFinite(config.discoveryAnalysisTimeoutMinutes) === false ||
     config.discoveryAnalysisTimeoutMinutes <= 0
   ) {
     throw new Error(

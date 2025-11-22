@@ -63,8 +63,8 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
       costOfGrowth: 0,
       discoverySampleRate: 1,
       discoveryBatchSize: 1,
-      discoveryTimeOutMinutes: 1,
-      discoveryAnalysisTimeoutMinutes: 1,
+      discoveryTimeOutMinutes: 0.05, // 3 seconds - sufficient for CI
+      discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds - sufficient for CI
       discoveryDrainEveryNBatches: 1,
       discoveryRustFlushRecords: 2,
       discoveryMaxNeurons: 1,
