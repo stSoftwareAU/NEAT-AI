@@ -560,6 +560,7 @@ class DataRecorder {
       const allCandidatesDisabled = !this.enableNeuronCandidates &&
         !this.enableSynapseCandidates &&
         !this.enableHarmfulCandidates &&
+        !this.enableHarmfulNeuronCandidates &&
         !this.enableSquashCandidates;
 
       if (allCandidatesDisabled) {

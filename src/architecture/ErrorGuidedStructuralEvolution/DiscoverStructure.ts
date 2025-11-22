@@ -4300,19 +4300,28 @@ export class DiscoverStructure {
     );
 
     // Adjust downstream neurons' biases using average activation * synapse weight
+    // Accumulate all synapse weights for each target neuron before applying adjustment
     const averageActivation = harmfulNeuron.averageActivation;
-    const adjustedNeurons = new Set<string>();
+    const biasAdjustments = new Map<string, number>();
 
+    // First pass: accumulate all synapse weights for each target neuron
     outgoingSynapses.forEach((synapse) => {
-      const downstreamNeuron = simplifiedExport.neurons.find(
-        (n) => n.uuid === synapse.toUUID,
+      const currentAdjustment = biasAdjustments.get(synapse.toUUID) || 0;
+      // Sum up (average activation * synapse weight) for all synapses to the same target
+      biasAdjustments.set(
+        synapse.toUUID,
+        currentAdjustment + (averageActivation * synapse.weight),
       );
-      if (downstreamNeuron && !adjustedNeurons.has(synapse.toUUID)) {
-        // Adjust bias: add (average activation * synapse weight)
-        // This compensates for removing the harmful neuron's contribution
-        const biasAdjustment = averageActivation * synapse.weight;
-        downstreamNeuron.bias = (downstreamNeuron.bias || 0) + biasAdjustment;
-        adjustedNeurons.add(synapse.toUUID);
+    });
+
+    // Second pass: apply the total bias adjustment to each downstream neuron
+    biasAdjustments.forEach((totalAdjustment, neuronUUID) => {
+      const downstreamNeuron = simplifiedExport.neurons.find(
+        (n) => n.uuid === neuronUUID,
+      );
+      if (downstreamNeuron) {
+        // Apply the accumulated adjustment from all synapses to this neuron
+        downstreamNeuron.bias = (downstreamNeuron.bias || 0) + totalAdjustment;
       }
     });
 

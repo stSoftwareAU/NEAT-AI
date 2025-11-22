@@ -214,13 +214,61 @@ export function buildDiscoveryCandidates(
       },
     });
 
-    if (addedSynapseCreature) {
-      const combinedAddRemove = DiscoverStructure.addHelpfulSynapses(
+    if (addedSynapseCreature && removeHarmfulSynapse) {
+      let combinedAddRemove = DiscoverStructure.addHelpfulSynapses(
         discovery.ID,
         removedSynapseCreature,
         addHelpfulSynapses,
       );
       if (combinedAddRemove) {
+        // Ensure harmful synapse stays removed after adding synapses
+        // (fix() might re-add it during addHelpfulSynapses)
+        const removalUUID = {
+          from: removeHarmfulSynapse.fromNeuronUUID,
+          to: removeHarmfulSynapse.toNeuronUUID,
+        };
+
+        // Keep removing until it's definitely gone (fix() might re-add it)
+        let currentCreature = combinedAddRemove;
+        let attempts = 0;
+        const maxAttempts = 10; // Prevent infinite loops
+
+        while (attempts < maxAttempts) {
+          const exportJSON = currentCreature.exportJSON();
+          const originalCount = exportJSON.synapses.length;
+          exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
+            !(synapse.fromUUID === removalUUID.from &&
+              synapse.toUUID === removalUUID.to)
+          );
+
+          if (exportJSON.synapses.length < originalCount) {
+            const updated = Creature.fromJSON(exportJSON);
+            // We modified the structure by filtering synapses, so we must delete UUID
+            delete updated.uuid;
+            updated.fix();
+
+            // Verify it's still removed after fix()
+            const verifyJSON = updated.exportJSON();
+            const stillExists = verifyJSON.synapses.some((synapse) =>
+              synapse.fromUUID === removalUUID.from &&
+              synapse.toUUID === removalUUID.to
+            );
+
+            if (!stillExists) {
+              // Successfully removed and stayed removed
+              currentCreature = updated;
+              break;
+            }
+            // Still exists, try again
+            currentCreature = updated;
+          } else {
+            // Synapse doesn't exist, we're done
+            break;
+          }
+          attempts++;
+        }
+
+        combinedAddRemove = currentCreature;
         const count = addHelpfulSynapses?.length ?? 0;
         candidates.push({
           creature: combinedAddRemove,
