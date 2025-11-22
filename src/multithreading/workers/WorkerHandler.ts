@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../Creature.ts";
 import type {
+  CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
@@ -115,6 +116,8 @@ export interface ResponseData {
     addHelpfulNeurons?: CandidateNeuron[];
     /** Optional harmful synapse to remove */
     removeHarmfulSynapse?: CandidateSynapse;
+    /** Optional harmful neurons to remove */
+    removeHarmfulNeurons?: CandidateHarmfulNeuron[];
     /** Optional candidate activation functions */
     candidateSquashes?: CandidateSquash[];
   };

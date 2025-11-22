@@ -1,4 +1,5 @@
 import type {
+  CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
@@ -9,6 +10,7 @@ export interface DiscoverResult {
   addHelpfulSynapses: CandidateSynapse[] | undefined;
   addHelpfulNeurons: CandidateNeuron[] | undefined;
   removeHarmfulSynapse: CandidateSynapse | undefined;
+  removeHarmfulNeurons: CandidateHarmfulNeuron[] | undefined;
 
   candidateSquashes: CandidateSquash[] | undefined;
 }

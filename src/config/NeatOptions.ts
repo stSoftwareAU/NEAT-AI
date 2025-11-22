@@ -153,6 +153,11 @@ export interface NeatArguments {
   discoveryDisableHarmfulCandidates?: boolean;
 
   /**
+   * Disable harmful neuron discovery candidates. Defaults to false.
+   */
+  discoveryDisableHarmfulNeuronCandidates?: boolean;
+
+  /**
    * Disable squash (activation) discovery candidates. Defaults to false.
    */
   discoveryDisableSquashCandidates?: boolean;
