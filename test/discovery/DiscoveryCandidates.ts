@@ -320,6 +320,74 @@ Deno.test(
   },
 );
 
+Deno.test(
+  "buildDiscoveryCandidates includes removeHarmfulNeurons in best-of-category candidate",
+  () => {
+    const base = makeBaselineCreature();
+    const harmfulNeurons: CandidateHarmfulNeuron[] = [{
+      neuronUUID: "hidden-1",
+      errorMagnitude: 1.5e11, // Above 1e10 threshold
+      expectedImprovementPercentage: 0.85,
+      sampleCount: 100,
+      averageActivation: 0.75,
+    }, {
+      neuronUUID: "hidden-2",
+      errorMagnitude: 1.2e11, // Second most harmful
+      expectedImprovementPercentage: 0.80,
+      sampleCount: 90,
+      averageActivation: 0.70,
+    }];
+    const synapses: CandidateSynapse[] = [{
+      fromNeuronUUID: "input-1",
+      toNeuronUUID: "hidden-2",
+      weight: 0.5,
+      expectedImprovementPercentage: 0.2,
+      improvedCount: 4,
+      totalCount: 5,
+    }, {
+      fromNeuronUUID: "input-2",
+      toNeuronUUID: "hidden-2",
+      weight: 0.6,
+      expectedImprovementPercentage: 0.3,
+      improvedCount: 5,
+      totalCount: 6,
+    }];
+
+    const discovery: DiscoverResult = {
+      ID: "BEST-WITH-REMOVE-NEURON",
+      addHelpfulSynapses: synapses,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: harmfulNeurons,
+      candidateSquashes: undefined,
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    const comboBest = findCandidate(candidates, "combo-best-of-category");
+    const exported = comboBest.creature.exportJSON();
+
+    // Verify the most harmful neuron (first in sorted array) is removed
+    const harmfulNeuronStillExists = exported.neurons.some((neuron) =>
+      neuron.uuid === harmfulNeurons[0].neuronUUID
+    );
+    assertEquals(
+      harmfulNeuronStillExists,
+      false,
+      "Best-of-category combo should remove the most harmful neuron",
+    );
+
+    // Verify the best synapse is included
+    const hasBestSynapse = exported.synapses.some((synapse) =>
+      synapse.fromUUID === synapses[1].fromNeuronUUID &&
+      synapse.toUUID === synapses[1].toNeuronUUID
+    );
+    assert(
+      hasBestSynapse,
+      "Best-of-category combo should include the top synapse candidate",
+    );
+  },
+);
+
 Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => {
   const base = makeBaselineCreature();
   const neuronCandidate: CandidateNeuron = {

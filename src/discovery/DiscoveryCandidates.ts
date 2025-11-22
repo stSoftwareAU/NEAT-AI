@@ -784,6 +784,9 @@ function buildBestOfCategoryCandidate(
       scaleFns.squash,
     ),
     removeHarmfulSynapse: discovery.removeHarmfulSynapse,
+    removeHarmfulNeurons: discovery.removeHarmfulNeurons?.[0]
+      ? [discovery.removeHarmfulNeurons[0]]
+      : undefined,
   };
 
   return buildCombinedCandidate({
