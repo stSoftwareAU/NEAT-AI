@@ -7,14 +7,24 @@ This project is a unique implementation of a neural network based on the NEAT (N
 
 ## Terminology
 
-We keep the tone playful, but every nickname maps to a mainstream machine-learning idea:
+We keep the tone playful, but every nickname maps to a mainstream
+machine-learning idea:
 
-- **Creatures** are simply individual neural networks/genomes inside a NEAT population, as described in the original NEAT paper by [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
-- **Memetic evolution** refers to the well-studied combination of evolutionary search plus local gradient descent, also called a [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm).
-- **CRISPR injections** describe targeted gene edits inspired by the real-world [CRISPR gene editing technique](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/); in practice we add hand-crafted synapses/neurons.
-- **Grafting** is crossover between incompatibly shaped genomes, similar to the [island-model speciation strategies](https://en.wikipedia.org/wiki/Island_model) used in evolutionary algorithms.
+- **Creatures** are simply individual neural networks/genomes inside a NEAT
+  population, as described in the original NEAT paper by
+  [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
+- **Memetic evolution** refers to the well-studied combination of evolutionary
+  search plus local gradient descent, also called a
+  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm).
+- **CRISPR injections** describe targeted gene edits inspired by the real-world
+  [CRISPR gene editing technique](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/);
+  in practice we add hand-crafted synapses/neurons.
+- **Grafting** is crossover between incompatibly shaped genomes, similar to the
+  [island-model speciation strategies](https://en.wikipedia.org/wiki/Island_model)
+  used in evolutionary algorithms.
 
-If you spot another fun label, expect it to be backed by a reference to the standard term the first time it appears.
+If you spot another fun label, expect it to be backed by a reference to the
+standard term the first time it appears.
 
 ## Feature Highlights
 
@@ -26,7 +36,11 @@ If you spot another fun label, expect it to be backed by a reference to the stan
 
 2. **Distributed Training**: Training and evolution can be run on multiple
    independent nodes. The best-of-breed creatures can later be combined on a
-   centralized controller node, mirroring the [island model](https://en.wikipedia.org/wiki/Island_model) used in evolutionary algorithms. This feature allows for distributed computing and potentially faster training times, enhancing the efficiency of the learning process.
+   centralized controller node, mirroring the
+   [island model](https://en.wikipedia.org/wiki/Island_model) used in
+   evolutionary algorithms. This feature allows for distributed computing and
+   potentially faster training times, enhancing the efficiency of the learning
+   process.
 
 3. **Life Long Learning**: Unlike many pre-trained neural networks, this project
    is designed for continuous learning, making it adaptable and potentially more
@@ -57,8 +71,9 @@ If you spot another fun label, expect it to be backed by a reference to the stan
 
 8. **Grafting**: If parents aren't "genetically compatible", then the "grafting"
    algorithm from one parent to another parent onto the child will be used. This
-   allows for species from islands to interbreed, preserving diversity in the same
-   spirit as cross-island migration in [island-model evolution](https://en.wikipedia.org/wiki/Island_model).
+   allows for species from islands to interbreed, preserving diversity in the
+   same spirit as cross-island migration in
+   [island-model evolution](https://en.wikipedia.org/wiki/Island_model).
 
 9. **Memetic Evolution**: The algorithm can now record and utilize the biases
    and weights of the fittest creatures to fine-tune future generations. This
