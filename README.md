@@ -160,7 +160,7 @@ Before committing code changes, ensure you complete the following steps:
    # In NEAT-AI-Discovery
    cd ../NEAT-AI-Discovery
    ./quality.sh
-   
+
    # In NEAT-AI
    cd ../NEAT-AI
    ./quality.sh
@@ -168,11 +168,13 @@ Before committing code changes, ensure you complete the following steps:
 
 2. **Increment version numbers:**
    - **NEAT-AI**: Update `deno.json` version field (e.g., `0.204.1` → `0.204.2`)
-   - **NEAT-AI-Discovery**: Update `Cargo.toml` version field (e.g., `0.1.41` → `0.1.42`)
+   - **NEAT-AI-Discovery**: Update `Cargo.toml` version field (e.g., `0.1.41` →
+     `0.1.42`)
 
 3. **Verify all tests pass** in both repositories before committing.
 
-These steps ensure code quality, proper versioning, and that all tests pass before deployment.
+These steps ensure code quality, proper versioning, and that all tests pass
+before deployment.
 
 ## Contributions
 

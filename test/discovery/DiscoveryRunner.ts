@@ -596,7 +596,7 @@ Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures w
   // Create a creature similar to production: many synapses pointing to output
   // This tests that error estimates are reasonable and not wildly wrong
   const creature = makeDenseOutputCreature(100); // 100+ synapses to output
-  
+
   // Set a baseline error for the creature
   const baseError = 0.584263; // Similar to production error
   const { addTag } = await import("@stsoftware/tags/mod");
