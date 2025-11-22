@@ -1116,8 +1116,8 @@ class DataRecorder {
           break;
         }
 
-        retryAttempt++;
         perfStats.retryAttempts = retryAttempt;
+        retryAttempt++;
         if (shouldLogDiscovery(options)) {
           console.log(
             `Discovery ${blue(this.ID)} retrying with different neurons (${
