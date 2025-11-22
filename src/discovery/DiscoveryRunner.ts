@@ -399,10 +399,12 @@ export class DiscoveryRunner {
       const errorDeltaPct = originalError === 0
         ? evaluation.error === 0 ? 0 : -100
         : (errorDelta / originalError) * 100;
+
       const expectedErrorReductionPct = evaluation.candidate?.change
           .expectedErrorReduction !== undefined
         ? evaluation.candidate.change.expectedErrorReduction * 100
         : undefined;
+
       const expectationMismatch = this.#computeExpectationMismatch(
         expectedErrorReductionPct,
         evaluation.kind === "candidate" ? errorDeltaPct : undefined,

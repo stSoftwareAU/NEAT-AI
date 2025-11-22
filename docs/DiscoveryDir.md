@@ -145,6 +145,23 @@ When `result.improvement` is `undefined`, discovery exhausted the search space
 for the allotted window. Record the run duration and retry later with a
 refreshed sample or extended timeout.
 
+### Error impact estimation
+
+Discovery candidates report an `expectedErrorReduction` field which is now
+normalized to the creature’s total error before being logged or ranked. The
+estimator walks backwards from each output neuron, distributing error share
+across inbound synapses proportional to their absolute weights (falling back to
+equal splits when weights sum to ~0). A neuron that feeds an output via 100
+equally weighted synapses therefore receives at most `1 / 100` of that output’s
+error share, and upstream neurons inherit the product of shares along the path.
+
+This normalization prevents large hidden layers from exaggerating their impact
+and keeps the “expected vs actual” comparison realistic even for huge
+creatures—particularly those similar to the `GRQ-3-1` sample with hundreds of
+synapses terminating at each output. Consumers of `expectedErrorReduction`
+should rely on the normalized value; no additional scaling is required in
+controllers or dashboards.
+
 ## Troubleshooting Checklist
 
 - **Rust module not found** – rebuild `NEAT-AI-Discovery` and confirm

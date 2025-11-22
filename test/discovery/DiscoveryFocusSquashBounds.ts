@@ -60,13 +60,13 @@ Deno.test("Focus selection accounts for squashing function bounds on downstream 
     "hidden-chain-3",
   );
 
-  // hidden-direct has unbounded path to output (all IDENTITY)
-  // Its impact should be close to 1.0 (weight 1.0 * 1.0)
+  // hidden-direct has unbounded path to output (all IDENTITY) but shares the
+  // output fan-in with the chain path, so it inherits ~50% of the output error.
   assertAlmostEquals(
     directImpact,
-    1.0,
+    0.5,
     0.01,
-    "Direct path impact should be ~1.0",
+    "Direct path impact should inherit roughly half the output error share",
   );
 
   // hidden-chain-1 feeds into TANH at hidden-chain-2
@@ -86,12 +86,12 @@ Deno.test("Focus selection accounts for squashing function bounds on downstream 
   );
 
   // hidden-chain-3 is after TANH, so it receives bounded input
-  // Its impact should be close to 1.0 (weight 1.0 to output)
+  // and shares the same fan-in weight as the direct path.
   assertAlmostEquals(
     chain3Impact,
-    1.0,
+    0.5,
     0.01,
-    "Post-TANH impact should be ~1.0",
+    "Post-TANH impact should match the structural share (≈50%)",
   );
 
   // The key assertion: neurons before a squashing bottleneck should have

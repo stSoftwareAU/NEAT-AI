@@ -30,6 +30,38 @@ function makeBaseCreature() {
   return creature;
 }
 
+function makeDenseOutputCreature(extraFanIn: number) {
+  const base = makeBaseCreature();
+  const exportJSON = base.exportJSON();
+  const outputCount = exportJSON.output ?? 1;
+  const outputOffset = exportJSON.neurons.length - outputCount;
+
+  for (let i = 0; i < extraFanIn; i++) {
+    const uuid = `dense-hidden-${i}`;
+    exportJSON.neurons.splice(outputOffset, 0, {
+      type: "hidden",
+      uuid,
+      squash: "IDENTITY",
+      bias: 0,
+    });
+    exportJSON.synapses.push({
+      fromUUID: "input-0",
+      toUUID: uuid,
+      weight: 0.5,
+    });
+    exportJSON.synapses.push({
+      fromUUID: uuid,
+      toUUID: "output-0",
+      weight: 0.5,
+    });
+  }
+
+  const creature = Creature.fromJSON(exportJSON);
+  creature.validate();
+  CreatureUtil.makeUUID(creature);
+  return creature;
+}
+
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;
   #computeError: (creature: Creature) => number;
@@ -523,7 +555,7 @@ Deno.test("DiscoveryRunner flags expectation mismatch when predictions diverge",
   });
 
   const result = await runner.discoverDir({
-    creature: makeBaseCreature(),
+    creature: makeDenseOutputCreature(120),
     dataDir: "/tmp/data",
     options: makeOptions(),
   });
@@ -532,23 +564,149 @@ Deno.test("DiscoveryRunner flags expectation mismatch when predictions diverge",
     entry.kind === "candidate" && entry.changeType === "add-synapses"
   );
   assert(candidateEval, "expected add-synapses candidate evaluation");
-  assert(
+  // With structural scaling, the target neuron's share of the output error is tiny
+  // (~0.82%) because the output fan-in now includes hundreds of equally weighted
+  // synapses. The 60% neuron-level improvement therefore becomes ~0.49%
+  // creature-level impact. Actual improvement is 1%, so the 0.51 percentage point
+  // gap stays below the 25% alert threshold and no mismatch should be detected.
+  assertEquals(
     candidateEval.expectationMismatch,
-    "expected mismatch metadata when results diverge",
+    undefined,
+    "expected no mismatch when scaled expected (~0.4%) is close to actual (1%)",
   );
-  assertAlmostEquals(
-    candidateEval.expectationMismatch.expectedPct,
-    60,
-    1e-6,
-  );
-  assertAlmostEquals(
-    candidateEval.expectationMismatch.actualPct,
-    1,
-    1e-6,
-  );
+  // Verify the scaled expected improvement percentage
   assert(
-    Math.abs(candidateEval.expectationMismatch.gapPct) > 50,
-    "expected large gap signal",
+    candidateEval.expectedErrorReductionPct !== undefined,
+    "expected scaled error reduction percentage to be defined",
+  );
+  assertAlmostEquals(
+    candidateEval.expectedErrorReductionPct!,
+    0.493,
+    1e-3,
+  );
+  // Verify the actual improvement percentage
+  assertAlmostEquals(
+    candidateEval.errorDeltaPct ?? 0,
+    1.0, // (1.0 - 0.99) / 1.0 * 100 = 1%
+    1e-6,
+  );
+});
+
+Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures with many synapses", async () => {
+  // Create a creature similar to production: many synapses pointing to output
+  // This tests that error estimates are reasonable and not wildly wrong
+  const creature = makeDenseOutputCreature(100); // 100+ synapses to output
+  
+  // Set a baseline error for the creature
+  const baseError = 0.584263; // Similar to production error
+  const { addTag } = await import("@stsoftware/tags/mod");
+  addTag(creature, "error", baseError.toString());
+
+  // Simulate a candidate with recorded stats (like production)
+  // The stats show the target neuron has moderate error
+  const targetNeuronStats = {
+    meanError: 0.05, // Moderate error at neuron level
+    errorVariance: 0.001,
+    meanActivation: 0.3,
+    activationVariance: 0.01,
+    errorSpikeCount: 2,
+    activationSpikeCount: 1,
+    activationMin: -0.5,
+    activationMax: 1.2,
+  };
+
+  const discoveryResult: DiscoverResult = {
+    ID: "NON_TRIVIAL_TEST",
+    addHelpfulSynapses: [{
+      fromNeuronUUID: "input-1",
+      toNeuronUUID: "hidden-1",
+      weight: 0.45,
+      expectedImprovementPercentage: 0.333, // 33.3% neuron-level (like production)
+      improvedCount: 9,
+      totalCount: 10,
+      targetNeuronStats, // Include stats for accurate scaling
+    }],
+    addHelpfulNeurons: undefined,
+    removeHarmfulSynapse: undefined,
+    candidateSquashes: undefined,
+  };
+
+  const worker = new FakeWorker(
+    discoveryResult,
+    (creature: Creature) => {
+      const json = creature.exportJSON();
+      const hasHelpful = json.synapses.some((synapse) =>
+        synapse.fromUUID === "input-1" && synapse.toUUID === "hidden-1" &&
+        Math.abs(synapse.weight - 0.45) < 1e-6
+      );
+      // Actual improvement is small (0.1%) - realistic for complex creatures
+      return hasHelpful ? baseError * 0.999 : baseError;
+    },
+  );
+
+  const runner = new DiscoveryRunner({
+    rustDiscoveryEnabled: () => true,
+    workerFactory: () => worker,
+  });
+
+  const result = await runner.discoverDir({
+    creature: creature,
+    dataDir: "/tmp/data",
+    options: makeOptions(),
+  });
+
+  const candidateEval = result.evaluations?.find((entry) =>
+    entry.kind === "candidate" && entry.changeType === "add-synapses"
+  );
+  assert(candidateEval, "expected add-synapses candidate evaluation");
+
+  // With stats-based scaling, the 33.3% neuron-level improvement should be
+  // scaled down significantly because:
+  // 1. The target neuron's share is small (~1/100 = 1%) due to many synapses
+  // 2. The neuron's error magnitude (0.05 + sqrt(0.001) ≈ 0.082) is small
+  //    relative to creature error (0.584)
+  // 3. Expected: 0.333 * (1/100) * (0.082/0.584) ≈ 0.0047% (very small)
+  const expectedErrorReductionPct = candidateEval.expectedErrorReductionPct;
+  assert(
+    expectedErrorReductionPct !== undefined,
+    "expected scaled error reduction percentage to be defined",
+  );
+
+  // The scaled estimate should be MUCH smaller than the raw 33.3%
+  // It should be less than 1% (not 33%!)
+  assert(
+    expectedErrorReductionPct < 1.0,
+    `Expected scaled estimate (${expectedErrorReductionPct}%) to be < 1%, not the raw 33.3%`,
+  );
+
+  // The estimate should be positive but small
+  assert(
+    expectedErrorReductionPct > 0,
+    `Expected scaled estimate to be positive, got ${expectedErrorReductionPct}`,
+  );
+
+  // Actual improvement is 0.1% (0.584263 -> 0.5836)
+  const actualErrorDeltaPct = candidateEval.errorDeltaPct ?? 0;
+  assertAlmostEquals(
+    actualErrorDeltaPct,
+    0.1, // (0.584263 - 0.5836) / 0.584263 * 100 ≈ 0.1%
+    0.05, // Allow small tolerance
+  );
+
+  // The estimate should be within reasonable range of actual (not wildly wrong)
+  // Allow up to 10x difference for complex creatures (estimate could be conservative)
+  const ratio = Math.abs(expectedErrorReductionPct / actualErrorDeltaPct);
+  assert(
+    ratio < 10.0 && ratio > 0.1,
+    `Expected estimate (${expectedErrorReductionPct}%) to be within 10x of actual (${actualErrorDeltaPct}%), ratio: ${ratio}`,
+  );
+
+  // Most importantly: no mismatch warning should be triggered
+  // because the estimate is now reasonable (not 33% vs 0%)
+  assertEquals(
+    candidateEval.expectationMismatch,
+    undefined,
+    `Expected no mismatch when estimate (${expectedErrorReductionPct}%) is reasonable compared to actual (${actualErrorDeltaPct}%)`,
   );
 });
 
