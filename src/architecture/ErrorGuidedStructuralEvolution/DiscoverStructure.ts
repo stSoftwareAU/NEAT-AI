@@ -954,22 +954,9 @@ export class DiscoverStructure {
 
   private emitRustFlushDiagnostics(
     diagnostics: RustFlushDiagnostics,
-    timedOut: boolean,
+    _timedOut: boolean,
   ): void {
-    const hasErrors = diagnostics.errors.length > 0;
-    const hasWarnings = diagnostics.warnings.length > 0;
-    const shouldLogSummary = timedOut || hasWarnings || hasErrors ||
-      this.loggingEnabled;
-
-    if (shouldLogSummary) {
-      const level = hasErrors
-        ? "error"
-        : timedOut || hasWarnings
-        ? "warn"
-        : "debug";
-      this.log(level, diagnostics.summary);
-    }
-
+    // Log warnings and errors only - summary is no longer needed
     diagnostics.warnings.forEach((warning) => this.log("warn", warning));
     diagnostics.errors.forEach((error) => this.log("error", error));
   }
