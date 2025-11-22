@@ -1,5 +1,6 @@
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import {
+  type CandidateHarmfulNeuron,
   type CandidateNeuron,
   type CandidateSquash,
   type CandidateSynapse,
@@ -16,6 +17,7 @@ export type DiscoveryChangeType =
   | "add-synapses"
   | "add-neurons"
   | "remove-synapse"
+  | "remove-neuron"
   | "change-squash"
   | "combo-add-remove"
   | "combo-add-change"
@@ -114,8 +116,12 @@ export function buildDiscoveryCandidates(
 
   const candidates: DiscoveryCandidate[] = [];
 
-  const { addHelpfulSynapses, removeHarmfulSynapse, candidateSquashes } =
-    discovery;
+  const {
+    addHelpfulSynapses,
+    removeHarmfulSynapse,
+    removeHarmfulNeurons,
+    candidateSquashes,
+  } = discovery;
 
   const helpfulNeuronCandidates = discovery.addHelpfulNeurons;
   const addedNeuronCreature = helpfulNeuronCandidates &&
@@ -221,7 +227,7 @@ export function buildDiscoveryCandidates(
           change: {
             type: "combo-add-remove",
             description:
-              `🏗️ Removed harmful synapse and added ${count} discovered helpful synapse${
+              `🔧 Removed harmful synapse and added ${count} discovered helpful synapse${
                 count === 1 ? "" : "s"
               }`,
           },
@@ -249,8 +255,8 @@ export function buildDiscoveryCandidates(
     });
 
     const description = changes.length <= 3
-      ? `🔄 Changed squash for ${changes.join(", ")}`
-      : `🔄 Changed activation function on ${changes.length} high-error neurons`;
+      ? `🎨 Changed activation function for ${changes.join(", ")}`
+      : `🎨 Changed activation function on ${changes.length} high-error neurons`;
     const squashSummary = summariseExpectedImprovement(
       mapScaledSummaryEntries(candidateSquashes, scaledSquashExpected),
     );
@@ -278,7 +284,7 @@ export function buildDiscoveryCandidates(
           creature: combinedAddChange,
           change: {
             type: "combo-add-change",
-            description: `🏗️ Added ${synCount} helpful synapse${
+            description: `⚡ Added ${synCount} helpful synapse${
               synCount === 1 ? "" : "s"
             } and updated ${sqCount} neuron activation${
               sqCount === 1 ? "" : "s"
@@ -298,6 +304,30 @@ export function buildDiscoveryCandidates(
     ),
   );
 
+  const removedNeuronCreature = removeHarmfulNeurons &&
+      removeHarmfulNeurons.length > 0
+    ? DiscoverStructure.removeHarmfulNeuron(
+      discovery.ID,
+      baseCreature,
+      removeHarmfulNeurons[0],
+    )
+    : undefined;
+  if (removedNeuronCreature) {
+    const mostHarmful = removeHarmfulNeurons![0];
+    candidates.push({
+      creature: removedNeuronCreature,
+      change: {
+        type: "remove-neuron",
+        description:
+          `💀 Removed harmful neuron ${mostHarmful.neuronUUID} (error: ${
+            mostHarmful.errorMagnitude.toExponential(2)
+          })`,
+        expectedErrorReduction: mostHarmful.expectedImprovementPercentage,
+        sampleSize: mostHarmful.sampleCount,
+      },
+    });
+  }
+
   const combinedCandidate = buildCombinedCandidate({
     baseCreature,
     discoveryID: discovery.ID,
@@ -309,10 +339,13 @@ export function buildDiscoveryCandidates(
       removeHarmfulSynapse: removedSynapseCreature
         ? removeHarmfulSynapse
         : undefined,
+      removeHarmfulNeurons: removedNeuronCreature
+        ? removeHarmfulNeurons
+        : undefined,
       candidateSquashes: changedSquashCreature ? candidateSquashes : undefined,
     },
     changeType: "combo-all",
-    description: "🏗️ Combined discovery changes",
+    description: "🏗️ Combined all discovery changes",
   });
   if (combinedCandidate) {
     candidates.push(combinedCandidate);
@@ -472,7 +505,7 @@ function buildSingleSquashCandidates(
       creature,
       change: {
         type: "change-squash",
-        description: `🔄 Changed squash for ${
+        description: `🎨 Changed activation function for ${
           shortID(squash.neuronUUID)
         } (${oldSquash} -> ${squash.squash}${improvement})`,
         expectedErrorReduction: scaledExpected,
@@ -562,6 +595,7 @@ interface CombinedSelection {
   addHelpfulSynapses?: CandidateSynapse[];
   addHelpfulNeurons?: CandidateNeuron[];
   removeHarmfulSynapse?: CandidateSynapse;
+  removeHarmfulNeurons?: CandidateHarmfulNeuron[];
   candidateSquashes?: CandidateSquash[];
 }
 
@@ -589,6 +623,7 @@ function buildCombinedCandidate(
     Boolean(selection.addHelpfulNeurons?.length),
     Boolean(selection.addHelpfulSynapses?.length),
     Boolean(selection.removeHarmfulSynapse),
+    Boolean(selection.removeHarmfulNeurons?.length),
     Boolean(selection.candidateSquashes?.length),
   ].filter(Boolean).length;
   if (requestedCategories < 2) {
@@ -646,7 +681,21 @@ function buildCombinedCandidate(
       : undefined,
   );
 
-  // Apply removal last to ensure it happens even after other changes
+  // Apply neuron removal before synapse removal
+  applyChange(
+    `remove-neuron: ${selection.removeHarmfulNeurons?.length ?? 0}`,
+    selection.removeHarmfulNeurons &&
+      selection.removeHarmfulNeurons.length > 0
+      ? () =>
+        DiscoverStructure.removeHarmfulNeuron(
+          discoveryID,
+          combinedCreature,
+          selection.removeHarmfulNeurons![0],
+        )
+      : undefined,
+  );
+
+  // Apply synapse removal last to ensure it happens even after other changes
   if (selection.removeHarmfulSynapse) {
     // Always remove directly without checking first to ensure deterministic removal
     // This avoids flakiness from timing issues or stale state checks
@@ -742,7 +791,7 @@ function buildBestOfCategoryCandidate(
     discoveryID: discovery.ID,
     selection: bestSelection,
     changeType: "combo-best-of-category",
-    description: "🏗️ Combined best discovery changes",
+    description: "⭐ Combined best discovery changes",
   });
 }
 

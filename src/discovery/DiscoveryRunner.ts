@@ -192,6 +192,7 @@ export class DiscoveryRunner {
         addHelpfulSynapses: rawDiscover.addHelpfulSynapses ?? undefined,
         addHelpfulNeurons: rawDiscover.addHelpfulNeurons ?? undefined,
         removeHarmfulSynapse: rawDiscover.removeHarmfulSynapse ?? undefined,
+        removeHarmfulNeurons: rawDiscover.removeHarmfulNeurons ?? undefined,
         candidateSquashes: rawDiscover.candidateSquashes ?? undefined,
       };
 
@@ -556,7 +557,7 @@ export class DiscoveryRunner {
     if (!Number.isFinite(value)) {
       return cyan("n/a");
     }
-    return cyan(`${value >= 0 ? "+" : ""}${value.toFixed(1)}%`);
+    return cyan(`${value >= 0 ? "+" : ""}${value.toFixed(3)}%`);
   }
 
   async #evaluateAll(

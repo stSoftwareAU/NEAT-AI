@@ -124,19 +124,22 @@ Deno.test("squash estimates scale by neuron impact to avoid inflated expectation
     list: () => ActivationInterface[];
   };
   const originalList = activations.list;
-  const hugeError = 1_000_000;
+  // Use large but not astronomically high errors to test scaling
+  // Errors of 1000 will produce baseline errors around 1e6 (below 1e10 threshold)
+  // but still large enough to test that improvement estimates are scaled down
+  const largeError = 1000;
 
   activations.list = () => [
     new LookupActivation([
-      { input: 0, output: hugeError },
-      { input: 0.1, output: hugeError + 0.1 },
+      { input: 0, output: largeError },
+      { input: 0.1, output: largeError + 0.1 },
     ]),
     new STEP(),
   ];
 
   const records: DiscoverRecord[] = [
-    { activation: 0, value: 0, errors: [hugeError] },
-    { activation: 0.1, value: 0.1, errors: [hugeError] },
+    { activation: 0, value: 0, errors: [largeError] },
+    { activation: 0.1, value: 0.1, errors: [largeError] },
   ];
 
   const internal = discover as unknown as {

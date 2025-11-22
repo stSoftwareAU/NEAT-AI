@@ -12,6 +12,7 @@ import {
   type DiscoverStructureDeps,
 } from "./DiscoverStructure.ts";
 import type {
+  CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
@@ -176,6 +177,7 @@ class DataRecorder {
         addHelpfulSynapses: undefined,
         addHelpfulNeurons: undefined,
         removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
         candidateSquashes: undefined,
       };
     }
@@ -506,6 +508,7 @@ class DataRecorder {
           addHelpfulSynapses: undefined,
           addHelpfulNeurons: undefined,
           removeHarmfulSynapse: undefined,
+          removeHarmfulNeurons: undefined,
           candidateSquashes: undefined,
         };
       }
@@ -541,6 +544,7 @@ class DataRecorder {
         addHelpfulSynapses: undefined,
         addHelpfulNeurons: undefined,
         removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
         candidateSquashes: undefined,
       };
 
@@ -667,6 +671,7 @@ class DataRecorder {
         let addHelpfulNeurons: CandidateNeuron[] | undefined;
         let addHelpfulSynapse: CandidateSynapse[] | undefined;
         let removeHarmfulSynapse: CandidateSynapse | undefined;
+        let removeHarmfulNeurons: CandidateHarmfulNeuron[] | undefined;
         let candidateSquashes: CandidateSquash[] | undefined;
 
         const parallelStartTime = Date.now();
@@ -855,16 +860,43 @@ class DataRecorder {
             },
           );
 
+          const harmfulNeuronPromise = runAnalysisPhase(
+            this.enableSquashCandidates, // Analyze harmful neurons when squash analysis is enabled
+            "analyze_harmful_neurons",
+            async () => {
+              const harmfulNeuronStartTime = Date.now();
+              const harmfulNeurons = await discoverStructure
+                .analyzeSelectedNeuronsForHarmfulRemoval(newFocusList);
+              this.refreshAnalysisTimeout(discoverStructure);
+              if (shouldLogDiscovery(options)) {
+                const harmfulNeuronTime = Date.now() - harmfulNeuronStartTime;
+                const harmfulNeuronCount = harmfulNeurons
+                  ? harmfulNeurons.length
+                  : 0;
+                console.log(
+                  `Discovery ${blue(this.ID)} analyze harmful neurons time ${
+                    yellow(format(harmfulNeuronTime, { ignoreZero: true }))
+                  } found ${harmfulNeuronCount} candidate${
+                    harmfulNeuronCount === 1 ? "" : "s"
+                  }`,
+                );
+              }
+              return harmfulNeurons;
+            },
+          );
+
           const analysisPromises: [
             Promise<CandidateNeuron[] | undefined>,
             Promise<CandidateSynapse[] | undefined>,
             Promise<CandidateSynapse | undefined>,
             Promise<CandidateSquash[] | undefined>,
+            Promise<CandidateHarmfulNeuron[] | undefined>,
           ] = [
             neuronPromise,
             synapsePromise,
             harmfulPromise,
             squashPromise,
+            harmfulNeuronPromise,
           ];
           // deno-lint-ignore no-await-in-loop
           const analysisResults = await Promise.all(analysisPromises);
@@ -874,6 +906,7 @@ class DataRecorder {
             addHelpfulSynapse,
             removeHarmfulSynapse,
             candidateSquashes,
+            removeHarmfulNeurons,
           ] = analysisResults;
         }
 
@@ -898,12 +931,19 @@ class DataRecorder {
             ...candidateSquashes,
           ];
         }
+        if (removeHarmfulNeurons && removeHarmfulNeurons.length > 0) {
+          discoverResult.removeHarmfulNeurons = [
+            ...(discoverResult.removeHarmfulNeurons ?? []),
+            ...removeHarmfulNeurons,
+          ];
+        }
 
         // Check if we found any candidates
         const foundCandidates = Boolean(
           discoverResult.addHelpfulSynapses ||
             discoverResult.addHelpfulNeurons ||
             discoverResult.removeHarmfulSynapse ||
+            discoverResult.removeHarmfulNeurons ||
             discoverResult.candidateSquashes,
         );
         if (foundCandidates && shouldLogDiscovery(options)) {

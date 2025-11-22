@@ -41,6 +41,7 @@ Deno.test("Creature.discoveryDir delegates to DiscoveryRunner and returns result
       addHelpfulSynapses: undefined,
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
       candidateSquashes: undefined,
     },
     original: {

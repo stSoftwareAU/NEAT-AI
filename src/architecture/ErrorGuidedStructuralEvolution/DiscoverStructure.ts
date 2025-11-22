@@ -142,6 +142,14 @@ export interface CandidateNeuron {
   targetNeuronStats?: NeuronStats;
 }
 
+export interface CandidateHarmfulNeuron {
+  neuronUUID: string;
+  errorMagnitude: number;
+  expectedImprovementPercentage: number;
+  sampleCount: number;
+  averageActivation: number; // Average activation across all samples for efficient bias adjustment
+}
+
 interface CandidateAnalysisBundle {
   helpfulSynapses?: CandidateSynapse[];
   harmfulSynapse?: CandidateSynapse;
@@ -3522,6 +3530,35 @@ export class DiscoverStructure {
     // based on error magnitude to get a more realistic network-level estimate
     const baselineError = baselineActivationError;
 
+    // SANITY CHECK: Filter out neurons with astronomically high errors
+    // If a neuron has errors of 1E+10 or higher, changing its activation function
+    // won't help - the neuron is fundamentally broken and should be removed instead.
+    // Such errors typically indicate:
+    // 1. Accumulated errors from multiple paths that have grown unbounded
+    // 2. A neuron that is disconnected or has incorrect connections
+    // 3. Numerical instability in the error calculation
+    const MAX_REASONABLE_SQUASH_ERROR = 1e10; // Threshold for reasonable error magnitude
+    if (baselineError > MAX_REASONABLE_SQUASH_ERROR) {
+      if (this.loggingEnabled) {
+        this.log(
+          "warn",
+          `Skipping squash analysis for neuron ${neuronUUID}: error magnitude (${
+            baselineError.toExponential(2)
+          }) exceeds reasonable threshold (${
+            MAX_REASONABLE_SQUASH_ERROR.toExponential(2)
+          }). ` +
+            `This neuron should be removed rather than having its activation function changed.`,
+        );
+      }
+      // Clear arrays to help GC
+      rawValues.length = 0;
+      currentActivations.length = 0;
+      idealActivations.length = 0;
+      neuronErrors.length = 0;
+      // Return undefined for squash candidate, but the caller should check for harmful neurons separately
+      return undefined;
+    }
+
     let lowestError = baselineError;
     let bestSquash = currentSquash;
     let bestSquashFunction: ActivationInterface | undefined = undefined;
@@ -4052,5 +4089,265 @@ export class DiscoverStructure {
     const worstCandidate = rustCandidates[0];
     this.logHarmfulSynapse(worstCandidate);
     return Promise.resolve(worstCandidate);
+  }
+
+  /**
+   * Analyzes selected neurons to identify those with extremely high errors that should be removed.
+   * Neurons with errors exceeding MAX_REASONABLE_SQUASH_ERROR (1e10) are considered harmful
+   * and should be removed rather than having their activation functions changed.
+   *
+   * @param focusList - List of neuron UUIDs to analyze
+   * @returns Array of harmful neuron candidates, or undefined if none found
+   */
+  public async analyzeSelectedNeuronsForHarmfulRemoval(
+    focusList: string[],
+  ): Promise<CandidateHarmfulNeuron[] | undefined> {
+    if (focusList.length === 0) return undefined;
+
+    // Check timeout before starting analysis
+    if (this.analysisTimeoutGuardEnabled && Date.now() > this.timeoutTS) {
+      this.log(
+        "warn",
+        "Discovery timeout reached in analyzeSelectedNeuronsForHarmfulRemoval",
+      );
+      this.logAnalysisSkipped("neuron");
+      this.logFocusSelectionDetails("neuron", focusList);
+      return undefined;
+    }
+
+    const MAX_REASONABLE_SQUASH_ERROR = 1e10; // Threshold for reasonable error magnitude
+
+    const candidatePromises = focusList.map(async (neuronUUID) => {
+      try {
+        const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
+        if (!records || records.length === 0) return undefined;
+
+        // Calculate baseline error similar to findCandidateSquash
+        const rawValues: number[] = [];
+        const currentActivations: number[] = [];
+        const idealActivations: number[] = [];
+
+        const neuron = this.creature.neurons.find((neuron) =>
+          neuron.uuid === neuronUUID
+        );
+        if (!neuron) return undefined;
+
+        const currentSquash = neuron.squash;
+        if (!currentSquash) return undefined;
+
+        const currentSquashMethod = Activations.find(
+          currentSquash,
+        ) as ActivationInterface;
+        if (!currentSquashMethod) return undefined;
+
+        let activationSum = 0;
+        let activationCount = 0;
+
+        records.forEach((record) => {
+          const value = record.value;
+          if (value === undefined) return;
+          rawValues.push(value);
+          const activation = record.activation;
+          if (activation === undefined) return;
+          currentActivations.push(activation);
+
+          // Calculate average activation for efficient bias adjustment
+          if (Number.isFinite(activation)) {
+            activationSum += activation;
+            activationCount++;
+          }
+
+          const errors = record.errors;
+          const finiteErrors = errors.filter(Number.isFinite);
+          const avgError = finiteErrors.length
+            ? finiteErrors.reduce((a, b) => a + b, 0) / finiteErrors.length
+            : 0;
+
+          const idealValue = value + avgError;
+          const idealActivation = currentSquashMethod.squash(idealValue);
+          idealActivations.push(idealActivation);
+        });
+
+        if (idealActivations.length === 0) return undefined;
+
+        // Calculate average activation across all samples
+        const averageActivation = activationCount > 0
+          ? activationSum / activationCount
+          : 0;
+
+        // Calculate baseline activation error
+        const baselineActivationError = this.calculateSquashError(
+          idealActivations,
+          currentActivations,
+        );
+
+        // Check if error exceeds threshold
+        if (baselineActivationError > MAX_REASONABLE_SQUASH_ERROR) {
+          // Calculate expected improvement from removal
+          // Removing a neuron with extremely high errors should provide significant improvement
+          // Estimate improvement as a percentage based on error magnitude
+          // Higher errors = higher expected improvement (capped at reasonable values)
+          const errorLog = Math.log10(baselineActivationError);
+          const thresholdLog = Math.log10(MAX_REASONABLE_SQUASH_ERROR);
+          const excessMagnitude = errorLog - thresholdLog;
+          // Scale improvement estimate: 0.1 (10%) for just over threshold, up to 0.5 (50%) for very high errors
+          const expectedImprovement = Math.min(
+            0.5,
+            Math.max(0.1, 0.1 + (excessMagnitude / 10) * 0.4),
+          );
+
+          return {
+            neuronUUID,
+            errorMagnitude: baselineActivationError,
+            expectedImprovementPercentage: expectedImprovement,
+            sampleCount: records.length,
+            averageActivation,
+          };
+        }
+
+        return undefined;
+      } catch (error) {
+        if (this.loggingEnabled) {
+          this.log(
+            "error",
+            `Error analyzing neuron ${neuronUUID} for harmful removal: ${error}`,
+          );
+        }
+        return undefined;
+      }
+    });
+
+    const results = await Promise.all(candidatePromises);
+    const candidates = results.filter(
+      (candidate) => candidate !== undefined,
+    ) as CandidateHarmfulNeuron[];
+
+    if (candidates.length === 0) return undefined;
+
+    // Sort by error magnitude (highest first) and expected improvement
+    candidates.sort((a, b) => {
+      // Primary sort: by error magnitude (descending)
+      if (Math.abs(b.errorMagnitude - a.errorMagnitude) > 1e-6) {
+        return b.errorMagnitude - a.errorMagnitude;
+      }
+      // Secondary sort: by expected improvement (descending)
+      return b.expectedImprovementPercentage - a.expectedImprovementPercentage;
+    });
+
+    if (this.loggingEnabled && candidates.length > 0) {
+      this.log(
+        "info",
+        `Found ${candidates.length} harmful neuron candidate(s) with extremely high errors`,
+      );
+      candidates.slice(0, 5).forEach((candidate) => {
+        this.log(
+          "info",
+          `  - ${candidate.neuronUUID}: error=${
+            candidate.errorMagnitude.toExponential(2)
+          }, expected improvement=${
+            (candidate.expectedImprovementPercentage * 100).toFixed(1)
+          }%`,
+        );
+      });
+    }
+
+    return candidates;
+  }
+
+  /**
+   * Removes a harmful neuron from the creature efficiently.
+   * This method uses the average activation from discovery records to adjust
+   * downstream neurons' biases, then removes all synapses and the neuron itself.
+   * This is more efficient than the generic removeNeuron as it uses actual
+   * activation data rather than just the bias.
+   *
+   * @param ID - Unique identifier for the discovery process.
+   * @param creature - The Creature instance to modify.
+   * @param harmfulNeuron - The harmful neuron candidate to remove.
+   * @returns A modified Creature with the neuron removed, or null if no change was made.
+   */
+  public static removeHarmfulNeuron(
+    ID: string,
+    creature: Creature,
+    harmfulNeuron?: CandidateHarmfulNeuron,
+  ): Creature | undefined {
+    if (!harmfulNeuron) return undefined;
+
+    const creatureUUID = CreatureUtil.makeUUID(creature);
+    const exportJSON = creature.exportJSON();
+
+    // Check if neuron exists
+    const neuronToRemove = exportJSON.neurons.find(
+      (neuron) => neuron.uuid === harmfulNeuron.neuronUUID,
+    );
+    if (!neuronToRemove) {
+      return undefined; // Neuron doesn't exist, nothing to remove
+    }
+
+    // Don't remove output neurons (input neurons don't exist in this type system)
+    if (neuronToRemove.type === "output") {
+      return undefined;
+    }
+
+    // Create a deep copy to modify
+    const simplifiedExport: typeof exportJSON = JSON.parse(
+      JSON.stringify(exportJSON),
+    );
+
+    // Find all downstream neurons (neurons that receive input from this neuron)
+    const outgoingSynapses = simplifiedExport.synapses.filter(
+      (synapse) => synapse.fromUUID === harmfulNeuron.neuronUUID,
+    );
+
+    // Adjust downstream neurons' biases using average activation * synapse weight
+    const averageActivation = harmfulNeuron.averageActivation;
+    const adjustedNeurons = new Set<string>();
+
+    outgoingSynapses.forEach((synapse) => {
+      const downstreamNeuron = simplifiedExport.neurons.find(
+        (n) => n.uuid === synapse.toUUID,
+      );
+      if (downstreamNeuron && !adjustedNeurons.has(synapse.toUUID)) {
+        // Adjust bias: add (average activation * synapse weight)
+        // This compensates for removing the harmful neuron's contribution
+        const biasAdjustment = averageActivation * synapse.weight;
+        downstreamNeuron.bias = (downstreamNeuron.bias || 0) + biasAdjustment;
+        adjustedNeurons.add(synapse.toUUID);
+      }
+    });
+
+    // Remove all synapses to/from this neuron
+    simplifiedExport.synapses = simplifiedExport.synapses.filter(
+      (synapse) =>
+        synapse.fromUUID !== harmfulNeuron.neuronUUID &&
+        synapse.toUUID !== harmfulNeuron.neuronUUID,
+    );
+
+    // Remove the neuron itself
+    simplifiedExport.neurons = simplifiedExport.neurons.filter(
+      (neuron) => neuron.uuid !== harmfulNeuron.neuronUUID,
+    );
+
+    const tmpCreature = Creature.fromJSON(simplifiedExport);
+    // We modified the structure, so we must delete UUID
+    delete tmpCreature.uuid;
+    tmpCreature.fix();
+
+    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
+    if (tmpUUID !== creatureUUID) {
+      addTag(tmpCreature, "approach", "discovery" as Approach);
+      addTag(tmpCreature, "discoveryID", ID);
+      const summary =
+        `🗑️ Removed harmful neuron ${harmfulNeuron.neuronUUID} (error: ${
+          harmfulNeuron.errorMagnitude.toExponential(2)
+        }, avg activation: ${averageActivation.toFixed(4)})`;
+      addTag(tmpCreature, "Discovery", summary);
+      delete tmpCreature.memetic;
+      removeTag(tmpCreature, "approach-logged");
+      tmpCreature.validate();
+
+      return tmpCreature;
+    }
+    return undefined;
   }
 }

@@ -3,6 +3,7 @@ import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
+  CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
@@ -61,6 +62,7 @@ Deno.test("buildDiscoveryCandidates returns empty list when there are no suggest
     addHelpfulSynapses: undefined,
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
+    removeHarmfulNeurons: undefined,
     candidateSquashes: undefined,
   };
 
@@ -97,6 +99,7 @@ Deno.test(
       addHelpfulSynapses: synapses,
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
       candidateSquashes: undefined,
     };
 
@@ -157,6 +160,7 @@ Deno.test(
     const discovery: DiscoverResult = {
       ID: "SQUASH-MULTI",
       addHelpfulSynapses: undefined,
+      removeHarmfulNeurons: undefined,
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       candidateSquashes: squashes,
@@ -265,6 +269,7 @@ Deno.test(
     const discovery: DiscoverResult = {
       ID: "BEST-COMBO",
       addHelpfulSynapses: synapses,
+      removeHarmfulNeurons: undefined,
       addHelpfulNeurons: neurons,
       removeHarmfulSynapse: removeCandidate,
       candidateSquashes: squashes,
@@ -334,6 +339,7 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
     addHelpfulSynapses: undefined,
     addHelpfulNeurons: [neuronCandidate],
     removeHarmfulSynapse: undefined,
+    removeHarmfulNeurons: undefined,
     candidateSquashes: undefined,
   };
 
@@ -405,6 +411,7 @@ Deno.test(
     const discovery: DiscoverResult = {
       ID: "COMBO-ALL",
       addHelpfulSynapses: helpfulSynapses,
+      removeHarmfulNeurons: undefined,
       addHelpfulNeurons: [neuronCandidate],
       removeHarmfulSynapse: removeCandidate,
       candidateSquashes: [squashCandidate],
@@ -469,6 +476,248 @@ Deno.test(
     assert(
       discoveredNeuron,
       "Combined candidate should include discovered neuron.",
+    );
+  },
+);
+
+Deno.test(
+  "buildDiscoveryCandidates removes harmful neuron and adjusts downstream biases",
+  () => {
+    const base = makeBaselineCreature();
+    const harmfulNeuron: CandidateHarmfulNeuron = {
+      neuronUUID: "hidden-1",
+      errorMagnitude: 1.5e11, // Above 1e10 threshold
+      expectedImprovementPercentage: 0.85,
+      sampleCount: 100,
+      averageActivation: 0.75, // Average activation for bias adjustment
+    };
+
+    const discovery: DiscoverResult = {
+      ID: "REMOVE-NEURON",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: [harmfulNeuron],
+      candidateSquashes: undefined,
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    const removeNeuronCandidate = findCandidate(candidates, "remove-neuron");
+    const exported = removeNeuronCandidate.creature.exportJSON();
+
+    // Verify the harmful neuron is removed
+    const harmfulNeuronStillExists = exported.neurons.some((neuron) =>
+      neuron.uuid === harmfulNeuron.neuronUUID
+    );
+    assertEquals(
+      harmfulNeuronStillExists,
+      false,
+      "Harmful neuron should be removed from the creature",
+    );
+
+    // Verify all synapses connected to the removed neuron are gone
+    const synapsesToRemovedNeuron = exported.synapses.filter((synapse) =>
+      synapse.toUUID === harmfulNeuron.neuronUUID ||
+      synapse.fromUUID === harmfulNeuron.neuronUUID
+    );
+    assertEquals(
+      synapsesToRemovedNeuron.length,
+      0,
+      "All synapses connected to removed neuron should be removed",
+    );
+
+    // Verify downstream neuron (output-0) bias is adjusted
+    // The original base creature has hidden-1 -> output-0 with weight 0.2
+    // Expected bias adjustment: weight * averageActivation = 0.2 * 0.75 = 0.15
+    // Original output-0 bias: 0.1, so new bias should be approximately 0.1 + 0.15 = 0.25
+    const output0 = exported.neurons.find((neuron) =>
+      neuron.uuid === "output-0"
+    );
+    assert(output0, "Output neuron 0 should still exist");
+    assert(
+      Math.abs(output0.bias - 0.25) < 0.01,
+      `Output-0 bias should be adjusted. Expected ~0.25, got ${output0.bias}`,
+    );
+
+    // Verify the candidate has correct metadata
+    assertEquals(
+      removeNeuronCandidate.change.type,
+      "remove-neuron",
+      "Candidate type should be remove-neuron",
+    );
+    assertEquals(
+      removeNeuronCandidate.change.expectedErrorReduction,
+      harmfulNeuron.expectedImprovementPercentage,
+      "Expected error reduction should match harmful neuron's expected improvement",
+    );
+    assertEquals(
+      removeNeuronCandidate.change.sampleSize,
+      harmfulNeuron.sampleCount,
+      "Sample size should match harmful neuron's sample count",
+    );
+    assert(
+      removeNeuronCandidate.change.description?.includes("💀"),
+      "Description should include the skull emoji",
+    );
+    assert(
+      removeNeuronCandidate.change.description?.includes(
+        harmfulNeuron.neuronUUID,
+      ),
+      "Description should include the neuron UUID",
+    );
+  },
+);
+
+Deno.test(
+  "buildDiscoveryCandidates creates combo-add-remove candidate when both remove synapse and add synapses exist",
+  () => {
+    const base = makeBaselineCreature();
+    const helpfulSynapses: CandidateSynapse[] = [{
+      fromNeuronUUID: "input-2",
+      toNeuronUUID: "hidden-2",
+      weight: 0.88,
+      expectedImprovementPercentage: 0.3,
+      improvedCount: 7,
+      totalCount: 8,
+    }];
+    const removeSynapse: CandidateSynapse = {
+      fromNeuronUUID: "input-0",
+      toNeuronUUID: "hidden-1",
+      weight: -0.5,
+      expectedImprovementPercentage: 0.2,
+      improvedCount: 4,
+      totalCount: 6,
+    };
+
+    const discovery: DiscoverResult = {
+      ID: "COMBO-ADD-REMOVE",
+      addHelpfulSynapses: helpfulSynapses,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: removeSynapse,
+      removeHarmfulNeurons: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    const comboAddRemove = findCandidate(candidates, "combo-add-remove");
+    const exported = comboAddRemove.creature.exportJSON();
+
+    // Verify harmful synapse is removed
+    const harmfulSynapseStillExists = exported.synapses.some((synapse) =>
+      synapse.fromUUID === removeSynapse.fromNeuronUUID &&
+      synapse.toUUID === removeSynapse.toNeuronUUID
+    );
+    assertEquals(
+      harmfulSynapseStillExists,
+      false,
+      "Harmful synapse should be removed in combo candidate",
+    );
+
+    // Verify helpful synapse is added
+    const helpfulSynapseExists = exported.synapses.some((synapse) =>
+      synapse.fromUUID === helpfulSynapses[0].fromNeuronUUID &&
+      synapse.toUUID === helpfulSynapses[0].toNeuronUUID &&
+      Math.abs(synapse.weight - helpfulSynapses[0].weight) < 1e-6
+    );
+    assert(
+      helpfulSynapseExists,
+      "Helpful synapse should be added in combo candidate",
+    );
+
+    // Verify candidate type and description
+    assertEquals(
+      comboAddRemove.change.type,
+      "combo-add-remove",
+      "Candidate type should be combo-add-remove",
+    );
+    assert(
+      comboAddRemove.change.description?.includes("🔧"),
+      "Description should include the wrench emoji",
+    );
+    assert(
+      comboAddRemove.change.description?.includes("Removed harmful synapse"),
+      "Description should mention removing harmful synapse",
+    );
+    assert(
+      comboAddRemove.change.description?.includes("added"),
+      "Description should mention adding synapses",
+    );
+  },
+);
+
+Deno.test(
+  "buildDiscoveryCandidates creates combo-add-change candidate when both add synapses and change squash exist",
+  () => {
+    const base = makeBaselineCreature();
+    const helpfulSynapses: CandidateSynapse[] = [{
+      fromNeuronUUID: "input-3",
+      toNeuronUUID: "hidden-2",
+      weight: 0.77,
+      expectedImprovementPercentage: 0.28,
+      improvedCount: 6,
+      totalCount: 7,
+    }];
+    const squashChanges: CandidateSquash[] = [{
+      neuronUUID: "hidden-1",
+      previousSquash: IDENTITY.NAME,
+      squash: TANH.NAME,
+      expectedImprovementPercentage: 0.35,
+      improvedError: 0.05,
+      currentError: 0.15,
+    }];
+
+    const discovery: DiscoverResult = {
+      ID: "COMBO-ADD-CHANGE",
+      addHelpfulSynapses: helpfulSynapses,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      candidateSquashes: squashChanges,
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    const comboAddChange = findCandidate(candidates, "combo-add-change");
+    const exported = comboAddChange.creature.exportJSON();
+
+    // Verify helpful synapse is added
+    const helpfulSynapseExists = exported.synapses.some((synapse) =>
+      synapse.fromUUID === helpfulSynapses[0].fromNeuronUUID &&
+      synapse.toUUID === helpfulSynapses[0].toNeuronUUID &&
+      Math.abs(synapse.weight - helpfulSynapses[0].weight) < 1e-6
+    );
+    assert(
+      helpfulSynapseExists,
+      "Helpful synapse should be added in combo candidate",
+    );
+
+    // Verify squash function is changed
+    const hidden1 = exported.neurons.find((neuron) =>
+      neuron.uuid === "hidden-1"
+    );
+    assert(hidden1, "Hidden neuron 1 should still exist");
+    assertEquals(
+      hidden1.squash,
+      squashChanges[0].squash,
+      "Squash function should be changed in combo candidate",
+    );
+
+    // Verify candidate type and description
+    assertEquals(
+      comboAddChange.change.type,
+      "combo-add-change",
+      "Candidate type should be combo-add-change",
+    );
+    assert(
+      comboAddChange.change.description?.includes("⚡"),
+      "Description should include the lightning emoji",
+    );
+    assert(
+      comboAddChange.change.description?.includes("Added"),
+      "Description should mention adding synapses",
+    );
+    assert(
+      comboAddChange.change.description?.includes("updated"),
+      "Description should mention updating neuron activation",
     );
   },
 );
