@@ -733,6 +733,8 @@ class DataRecorder {
         // deno-lint-ignore no-await-in-loop
         const focusList = await discoverStructure.selectNeuronsWeightedByError(
           this.discoveryMaxNeurons,
+          retryAttempt > 0 ? retryAttempt : undefined,
+          this.options.costOfGrowth,
         );
         perfStats.focusSelectionTime += Date.now() - focusSelectStart;
 

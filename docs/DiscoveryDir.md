@@ -174,3 +174,144 @@ controllers or dashboards.
 - **No improvements recorded** – inspect the discovery dataset size and sample
   rate. Increasing `discoverySampleRate` or refreshing the sampled data often
   uncovers new mutations for consideration.
+
+## Focus Selection Analysis
+
+Discovery automatically generates JSON analysis files documenting which neurons
+were considered for focus during each selection phase. These files are written
+to `.discovery/focus-analysis/{discoveryID}/` and provide detailed insight into
+the weighted random selection process.
+
+### File Format
+
+Each focus selection produces a JSON file with the following structure:
+
+```json
+{
+  "discoveryID": "a1b2c3d4",
+  "timestamp": "2025-11-22T10:30:45.123Z",
+  "costOfGrowth": 0.05,
+  "selectionMethod": "weighted",
+  "totalCandidates": 6,
+  "selectedCount": 2,
+  "totalWeightedSum": 1.234,
+  "candidates": [
+    {
+      "neuronUuid": "neuron-high-high",
+      "totalError": 1.0,
+      "impact": 0.95,
+      "potentialErrorReduction": 0.95,
+      "activationAffectPct": 95.0,
+      "weightedScore": 0.950095,
+      "selected": true
+    },
+    ...
+  ],
+  "lowImpactNeurons": [
+    {
+      "neuronUuid": "neuron-low-low",
+      "impact": 0.001,
+      "activationAffectPct": 0.1,
+      "totalError": 0.1,
+      "reason": "Impact 0.001000 < cost of growth 0.05"
+    }
+  ],
+  "retryNumber": 2
+}
+```
+
+### Field Descriptions
+
+#### Analysis Metadata
+
+- **discoveryID** – Short identifier for this discovery run (typically last 8
+  chars of creature UUID)
+- **timestamp** – ISO 8601 timestamp when neurons were selected
+- **costOfGrowth** – Structural penalty threshold used for growth decisions
+- **selectionMethod** – Selection strategy: `"weighted"`, `"all"`,
+  `"random-fallback-nan"`, or `"random-fallback-zero"`
+- **totalCandidates** – Total number of neurons evaluated (hidden + output
+  neurons)
+- **selectedCount** – Number of neurons chosen for analysis this round
+- **totalWeightedSum** – Sum of weighted scores (may be scaled to respect output
+  error caps)
+- **retryNumber** – Present only on retry attempts (1, 2, 3, etc.)
+
+#### Candidate Neuron Metrics
+
+- **neuronUuid** – Unique identifier for the neuron
+- **totalError** – Average absolute error for this neuron (capped by max output
+  error)
+- **impact** – Measure of how much the neuron affects outputs through outgoing
+  synapse weights (0.0 to 1.0)
+- **potentialErrorReduction** – `totalError × impact` – the creature-level error
+  reduction if this neuron's error dropped to zero
+- **activationAffectPct** – `impact × 100` – percentage of outputs affected by
+  this neuron
+- **weightedScore** – `totalError × (impact + ε)` – actual weight used in
+  roulette-wheel selection
+- **selected** – `true` if this neuron was chosen for analysis, `false`
+  otherwise
+
+**Candidates are sorted by `potentialErrorReduction` (descending)**, placing
+neurons with the highest potential for creature-level improvement at the top of
+the list.
+
+#### Low-Impact Neurons
+
+Neurons where `impact < costOfGrowth` are flagged as low-impact candidates. In
+production these neurons contribute little to outputs and may be candidates for
+removal if spare re-score workers are available. Each entry includes:
+
+- **neuronUuid** – The neuron identifier
+- **impact** / **activationAffectPct** – The neuron's influence metrics
+- **totalError** – Average error magnitude
+- **reason** – Human-readable explanation of why it's flagged
+
+### Interpreting the Analysis
+
+1. **Verify weighted selection is working** – Compare the `weightedScore` values
+   to the `selected` flags. Neurons with higher weighted scores should be
+   selected more frequently across multiple runs.
+
+2. **Identify high-potential neurons** – Look at the top candidates sorted by
+   `potentialErrorReduction`. These represent the best opportunities for error
+   reduction from the creature's perspective.
+
+3. **Check for selection bias** – If the same neurons are always selected,
+   verify that error values are being updated correctly and that different
+   neurons have varying error levels.
+
+4. **Monitor low-impact neurons** – If many neurons have
+   `impact < costOfGrowth`, the network might benefit from pruning. These
+   neurons consume growth budget but contribute minimally to outputs.
+
+5. **Analyse retry patterns** – When `retryNumber` is present, compare across
+   retries to see if the selection is exploring different neurons or repeatedly
+   choosing the same ones (indicating exhausted options).
+
+### File Naming Convention
+
+- **First selection**: `{timestamp}-focus-selection.json`
+- **Retry selections**: `{timestamp}-focus-selection-retry-{N}.json`
+
+Multiple retry files in the same discovery run indicate that initial analysis
+attempts did not yield viable candidates, triggering re-selection of different
+focus neurons.
+
+### Using the Analysis
+
+**Debugging no-discovery situations**: When discovery runs for hours without
+finding improvements, examine the focus selection JSON to verify:
+
+- Are neurons with high `potentialErrorReduction` being selected?
+- Is the `selectionMethod` falling back to random (indicating data quality
+  issues)?
+- Are most neurons showing very low error values (suggesting the creature is
+  already well-optimised)?
+- Do all candidates have similar weighted scores (reducing selection diversity)?
+
+**Validating selection logic**: The JSON proves whether weighted random
+selection is functioning correctly. Higher `weightedScore` values should
+correlate with higher selection frequency when sampling the same creature
+multiple times.
