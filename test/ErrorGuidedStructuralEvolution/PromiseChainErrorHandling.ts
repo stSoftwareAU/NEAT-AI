@@ -209,15 +209,18 @@ Deno.test("Discovery Promise.all() completes within timeout", async () => {
       Promise.all([...neuronPromisesMap.values()]),
       timeoutPromise,
     ]);
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
     console.log("✓ Promise.all() completed successfully");
   } catch (error) {
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
     if (error instanceof Error && error.message.includes("deadlock")) {
       throw error; // This is the bad case
     }
     // Other errors are acceptable (file I/O failures)
     console.log("✓ Promise.all() failed but didn't deadlock:", error);
+  } finally {
+    // Always clear timeout to prevent resource leak
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
   }
 
   await discoverStructure.cleanUp();
