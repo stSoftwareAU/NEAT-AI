@@ -118,6 +118,8 @@ export function createNeatConfig(options: NeatOptions) {
       options.discoveryDisableNeuronCandidates ?? false,
     discoveryDisableHarmfulCandidates:
       options.discoveryDisableHarmfulCandidates ?? false,
+    discoveryDisableHarmfulNeuronCandidates:
+      options.discoveryDisableHarmfulNeuronCandidates ?? false,
     discoveryDisableSquashCandidates:
       options.discoveryDisableSquashCandidates ?? false,
 

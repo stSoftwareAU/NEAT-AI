@@ -50,6 +50,7 @@ class DataRecorder {
   private readonly enableNeuronCandidates: boolean;
   private readonly enableSynapseCandidates: boolean;
   private readonly enableHarmfulCandidates: boolean;
+  private readonly enableHarmfulNeuronCandidates: boolean;
   private readonly enableSquashCandidates: boolean;
 
   constructor(
@@ -112,6 +113,8 @@ class DataRecorder {
       .discoveryDisableSynapseCandidates;
     this.enableHarmfulCandidates = !this.options
       .discoveryDisableHarmfulCandidates;
+    this.enableHarmfulNeuronCandidates = !this.options
+      .discoveryDisableHarmfulNeuronCandidates;
     this.enableSquashCandidates = !this.options
       .discoveryDisableSquashCandidates;
   }
@@ -861,7 +864,7 @@ class DataRecorder {
           );
 
           const harmfulNeuronPromise = runAnalysisPhase(
-            this.enableSquashCandidates, // Analyze harmful neurons when squash analysis is enabled
+            this.enableHarmfulNeuronCandidates,
             "analyze_harmful_neurons",
             async () => {
               const harmfulNeuronStartTime = Date.now();
