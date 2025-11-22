@@ -12,6 +12,24 @@ represent future work opportunities.
 understands NEAT deeply but is learning about other ML approaches. We've
 fact-checked against authoritative sources to ensure accuracy.
 
+## Terminology Cheat Sheet
+
+- **Creatures** → individual neural networks/genomes inside a NEAT population,
+  as formalised in the
+  [original NEAT paper](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
+- **Memetic evolution** → our implementation of a
+  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm), i.e.,
+  evolution plus local gradient-based fine-tuning.
+- **CRISPR injections** → targeted gene edits inspired by
+  [CRISPR-Cas9 gene editing](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/);
+  practically, we add curated synapses or neurons.
+- **Grafting** → cross-island crossover when parent genomes are incompatible,
+  similar to the
+  [island model in evolutionary computation](https://en.wikipedia.org/wiki/Island_model).
+
+These nicknames keep the tone fun, but every entry maps back to a standard
+machine-learning concept.
+
 ## Table of Contents
 
 1. [What We've Implemented](#what-weve-implemented)
@@ -47,7 +65,10 @@ fact-checked against authoritative sources to ensure accuracy.
   - Weight and bias adjustment with configurable limits
   - Sparse training with intelligent neuron selection
 - ✅ **Memetic Evolution**: Records successful weight patterns and reuses them
-  (found to be more effective than pure backpropagation in practice)
+  in later generations, following the
+  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm) approach;
+  we've observed this hybrid step improve convergence on our internal
+  benchmarks.
 - ✅ **Error-Guided Structural Evolution**: GPU-accelerated discovery of
   beneficial structural changes
 - ✅ **Sparse Training**: Configurable neuron selection strategies (random,
@@ -60,21 +81,33 @@ fact-checked against authoritative sources to ensure accuracy.
 ### Unique Features
 
 - ✅ **UUID-Based Indexing**: Extensible observations without restarting
-  evolution - new input features can be added dynamically
+  evolution—new input features can be added dynamically by extending NEAT's
+  historical-marking idea from
+  [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
 - ✅ **Distributed Evolution**: Multi-node training with centralized combination
-  of best-of-breed creatures
+  of best-of-breed creatures, similar to the
+  [island model](https://en.wikipedia.org/wiki/Island_model).
 - ✅ **Lifelong Learning**: Continuous adaptation without catastrophic
-  forgetting - creatures can evolve continuously
+  forgetting, borrowing tactics from
+  [continual learning](https://en.wikipedia.org/wiki/Continual_learning) so
+  creatures can evolve continuously.
 - ✅ **CRISPR Gene Injection**: Targeted gene insertion during evolution to
-  introduce specific traits
+  introduce specific traits, inspired by
+  [CRISPR-Cas9 gene editing](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/).
 - ✅ **Grafting**: Cross-species breeding algorithm for genetically incompatible
-  parents
+  parents that preserves diversity like cross-island migration in the
+  [island model](https://en.wikipedia.org/wiki/Island_model).
 - ✅ **Neuron Pruning**: Automatic removal of neurons whose activations don't
-  vary during training
+  vary during training, echoing established
+  [network pruning](https://en.wikipedia.org/wiki/Pruning_(neural_networks))
+  practice.
 - ✅ **GPU-Accelerated Discovery**: Metal (macOS) GPU support for structural
-  analysis using compute shaders
+  analysis using compute shaders, aligning with Apple's
+  [Metal Performance Shaders](https://developer.apple.com/metal/Metal-Performance-Shaders-Framework/)
+  guidance.
 - ✅ **Unique Activation Functions**: IF, MAX, MIN, and other non-standard
-  squashes that enable different network behaviours
+  squashes that enable different network behaviours, akin to the broader family
+  of [activation functions](https://en.wikipedia.org/wiki/Activation_function).
 
 ## Architectural Comparison
 
