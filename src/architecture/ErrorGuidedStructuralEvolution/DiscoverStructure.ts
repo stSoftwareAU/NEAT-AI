@@ -179,6 +179,49 @@ interface NeuronScanStats {
 }
 
 /**
+ * Detailed neuron focus candidate for JSON analysis output.
+ * Includes all metrics needed to understand neuron selection and potential.
+ */
+export interface FocusNeuronCandidate {
+  neuronUuid: string;
+  totalError: number;
+  impact: number;
+  potentialErrorReduction: number;
+  activationAffectPct: number;
+  weightedScore: number;
+  selected: boolean;
+}
+
+/**
+ * Low-impact neuron candidate for potential removal.
+ * These neurons contribute little to outputs and might be pruned.
+ */
+export interface LowImpactNeuron {
+  neuronUuid: string;
+  impact: number;
+  activationAffectPct: number;
+  totalError: number;
+  reason: string;
+}
+
+/**
+ * Complete focus selection analysis for JSON output.
+ * Documents all candidates, selection method, and low-impact neurons.
+ */
+export interface FocusSelectionAnalysis {
+  discoveryID: string;
+  timestamp: string;
+  costOfGrowth: number;
+  selectionMethod: string;
+  totalCandidates: number;
+  selectedCount: number;
+  totalWeightedSum: number;
+  candidates: FocusNeuronCandidate[];
+  lowImpactNeurons: LowImpactNeuron[];
+  retryNumber?: number;
+}
+
+/**
  * Represents a neuron and its total accumulated error for ranking neurons during discovery.
  * Impact measures how much a neuron affects outputs through its outgoing synapse weights.
  */
@@ -1876,6 +1919,103 @@ export class DiscoverStructure {
     }
   }
 
+  /**
+   * Writes focus selection analysis to a JSON file for debugging and validation.
+   * Documents all candidate neurons, their metrics, and which were selected.
+   * Ordered by potential error reduction to show best candidates first.
+   */
+  private writeFocusSelectionAnalysis(
+    neuronErrors: NeuronErrorInfo[],
+    selectedUUIDs: Set<string>,
+    totalWeightedSum: number,
+    selectionMethod: string,
+    costOfGrowth: number,
+    retryNumber?: number,
+  ): void {
+    try {
+      const EPSILON = 0.0001;
+      const selectedSet = new Set(selectedUUIDs);
+
+      // Calculate all metrics for each candidate neuron
+      const candidates: FocusNeuronCandidate[] = neuronErrors.map((neuron) => {
+        const potentialErrorReduction = neuron.totalError * neuron.impact;
+        const activationAffectPct = neuron.impact * 100;
+        const weightedScore = neuron.totalError * (neuron.impact + EPSILON);
+
+        return {
+          neuronUuid: neuron.uuid,
+          totalError: neuron.totalError,
+          impact: neuron.impact,
+          potentialErrorReduction,
+          activationAffectPct,
+          weightedScore,
+          selected: selectedSet.has(neuron.uuid),
+        };
+      });
+
+      // Sort by potential error reduction (descending)
+      candidates.sort((a, b) =>
+        b.potentialErrorReduction - a.potentialErrorReduction
+      );
+
+      // Identify low-impact neurons (activation affect < costOfGrowth)
+      const lowImpactThreshold = costOfGrowth;
+      const lowImpactNeurons: LowImpactNeuron[] = neuronErrors
+        .filter((n) => n.impact < lowImpactThreshold)
+        .map((n) => ({
+          neuronUuid: n.uuid,
+          impact: n.impact,
+          activationAffectPct: n.impact * 100,
+          totalError: n.totalError,
+          reason: `Impact ${
+            n.impact.toFixed(6)
+          } < cost of growth ${lowImpactThreshold}`,
+        }))
+        .sort((a, b) => a.impact - b.impact); // Sort by impact ascending (lowest first)
+
+      const analysis: FocusSelectionAnalysis = {
+        discoveryID: this.discoveryID,
+        timestamp: new Date().toISOString(),
+        costOfGrowth,
+        selectionMethod,
+        totalCandidates: candidates.length,
+        selectedCount: selectedUUIDs.size,
+        totalWeightedSum,
+        candidates,
+        lowImpactNeurons,
+        retryNumber,
+      };
+
+      // Write to .discovery/focus-analysis/{discoveryID}/
+      const sanitizedID = this.discoveryID.replace(/[^a-z0-9._-]/gi, "-");
+      const dir = `.discovery/focus-analysis/${sanitizedID}`;
+      Deno.mkdirSync(dir, { recursive: true });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const retryPart = retryNumber !== undefined
+        ? `-retry-${retryNumber}`
+        : "";
+      const filename = `${timestamp}-focus-selection${retryPart}.json`;
+      const filepath = `${dir}/${filename}`;
+
+      Deno.writeTextFileSync(filepath, JSON.stringify(analysis, null, 2));
+
+      if (this.loggingEnabled) {
+        this.log(
+          "info",
+          `Wrote focus selection analysis to ${filepath} (${candidates.length} candidates, ${selectedUUIDs.size} selected, ${lowImpactNeurons.length} low-impact)`,
+        );
+      }
+    } catch (error) {
+      // Don't fail discovery if we can't write the analysis file
+      console.warn(
+        `Failed to write focus selection analysis: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
   private logFocusSelectionDetails(
     scope: "synapse" | "neuron",
     focusList: string[],
@@ -3175,8 +3315,16 @@ export class DiscoverStructure {
    *
    * Reference:
    * - Goldberg, D. E. (1989). Genetic Algorithms in Search, Optimization and Machine Learning.
+   *
+   * @param count Number of neurons to select
+   * @param retryNumber Optional retry number for file naming (used in retry loops)
+   * @param costOfGrowth Cost threshold for low-impact neuron identification (defaults to 0.01)
    */
-  public async selectNeuronsWeightedByError(count: number): Promise<string[]> {
+  public async selectNeuronsWeightedByError(
+    count: number,
+    retryNumber?: number,
+    costOfGrowth: number = 0.01,
+  ): Promise<string[]> {
     assert(count > 0, "Count must be greater than 0");
     this.lastFocusSelection = undefined;
     if (
@@ -3215,6 +3363,7 @@ export class DiscoverStructure {
           undefined,
           "forced focus override",
         );
+        // Note: For forced focus, we don't have neuronErrors yet, so skip JSON write
         return trimmed;
       }
     }
@@ -3267,6 +3416,15 @@ export class DiscoverStructure {
         totalWeightedSum,
         "all viable neurons selected",
       );
+      const selectedSet = new Set(uuids);
+      this.writeFocusSelectionAnalysis(
+        neuronErrors,
+        selectedSet,
+        totalWeightedSum,
+        "all",
+        costOfGrowth,
+        retryNumber,
+      );
       return uuids;
     }
     const selectedUUIDs: Set<string> = new Set();
@@ -3296,6 +3454,15 @@ export class DiscoverStructure {
         undefined,
         "random selection due to invalid total weight",
       );
+      const fallbackSet = new Set(fallback);
+      this.writeFocusSelectionAnalysis(
+        neuronErrors,
+        fallbackSet,
+        0,
+        "random-fallback-nan",
+        costOfGrowth,
+        retryNumber,
+      );
       return fallback;
     }
 
@@ -3313,6 +3480,15 @@ export class DiscoverStructure {
         undefined,
         undefined,
         "random selection due to zero total weight",
+      );
+      const fallbackSet = new Set(fallback);
+      this.writeFocusSelectionAnalysis(
+        neuronErrors,
+        fallbackSet,
+        0,
+        "random-fallback-zero",
+        costOfGrowth,
+        retryNumber,
       );
       return fallback;
     }
@@ -3383,6 +3559,14 @@ export class DiscoverStructure {
       weightMap,
       totalWeightedSum,
       "error x impact weighting",
+    );
+    this.writeFocusSelectionAnalysis(
+      neuronErrors,
+      selectedUUIDs,
+      totalWeightedSum,
+      "weighted",
+      costOfGrowth,
+      retryNumber,
     );
     return selection;
   }
