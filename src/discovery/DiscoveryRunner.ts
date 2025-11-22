@@ -212,6 +212,26 @@ export class DiscoveryRunner {
           candidates.length === 1 ? "" : "s"
         }: ${candidates.map((c) => c.change.type).join(", ") || "none"}.`,
       );
+
+      const { filtered: filteredCandidates, skipped } = this
+        .#filterCandidatesByGrowthCost(
+          creature,
+          candidates,
+          config.costOfGrowth,
+        );
+      if (skipped.length > 0) {
+        verboseLog(
+          `Skipped ${skipped.length} candidate${
+            skipped.length === 1 ? "" : "s"
+          } below cost-of-growth threshold: ${
+            skipped.map((entry) =>
+              `${entry.changeType ?? "unknown"} (expected ${
+                entry.expected?.toPrecision(3) ?? "n/a"
+              } vs ${entry.threshold.toPrecision(3)})`
+            ).join(", ")
+          }.`,
+        );
+      }
       markPhase("Candidate synthesis", candidateBuildStart);
 
       const evaluationTasks: Array<{
@@ -220,7 +240,7 @@ export class DiscoveryRunner {
         candidate?: DiscoveryCandidate;
       }> = [
         { kind: "original", creature },
-        ...candidates.map((candidate) => ({
+        ...filteredCandidates.map((candidate) => ({
           kind: "candidate" as const,
           creature: candidate.creature,
           candidate,
@@ -547,7 +567,7 @@ export class DiscoveryRunner {
     if (!Number.isFinite(value)) {
       return yellow("±0.000%");
     }
-    const formatted = `${value >= 0 ? "+" : ""}${value.toFixed(3)}%`;
+    const formatted = formatPercentWithSignificantDigits(value);
     if (value > 0.05) return green(formatted);
     if (value < -0.05) return red(formatted);
     return yellow(formatted);
@@ -557,7 +577,7 @@ export class DiscoveryRunner {
     if (!Number.isFinite(value)) {
       return cyan("n/a");
     }
-    return cyan(`${value >= 0 ? "+" : ""}${value.toFixed(3)}%`);
+    return cyan(formatPercentWithSignificantDigits(value));
   }
 
   async #evaluateAll(
@@ -619,6 +639,76 @@ export class DiscoveryRunner {
 
     return results;
   }
+
+  #filterCandidatesByGrowthCost(
+    baseCreature: Creature,
+    candidates: DiscoveryCandidate[],
+    costOfGrowth: number,
+  ): {
+    filtered: DiscoveryCandidate[];
+    skipped: Array<{
+      changeType?: DiscoveryChangeType;
+      expected?: number;
+      threshold: number;
+    }>;
+  } {
+    if (!Number.isFinite(costOfGrowth) || costOfGrowth <= 0) {
+      return { filtered: candidates, skipped: [] };
+    }
+    const baseExport = baseCreature.exportJSON();
+    const baseHiddenUUIDs = new Set(
+      baseExport.neurons
+        .filter((neuron) => neuron.type === "hidden")
+        .map((neuron) => neuron.uuid),
+    );
+    const baseSynapseKeys = new Set(
+      baseExport.synapses.map((synapse) =>
+        `${synapse.fromUUID}->${synapse.toUUID}`
+      ),
+    );
+
+    const filtered: DiscoveryCandidate[] = [];
+    const skipped: Array<{
+      changeType?: DiscoveryChangeType;
+      expected?: number;
+      threshold: number;
+    }> = [];
+
+    for (const candidate of candidates) {
+      CreatureUtil.makeUUID(candidate.creature);
+      const candidateExport = candidate.creature.exportJSON();
+      const additions = countStructuralAdditions(
+        candidateExport,
+        baseHiddenUUIDs,
+        baseSynapseKeys,
+      );
+      const addedUnits = additions.addedHidden + additions.addedSynapses;
+      if (addedUnits <= 0) {
+        filtered.push(candidate);
+        continue;
+      }
+      const expected = candidate.change.expectedErrorReduction;
+      if (
+        expected === undefined || !Number.isFinite(expected) ||
+        expected <= 0
+      ) {
+        filtered.push(candidate);
+        continue;
+      }
+      const threshold = addedUnits * costOfGrowth;
+      if (expected < threshold) {
+        skipped.push({
+          changeType: candidate.change.type,
+          expected,
+          threshold,
+        });
+        continue;
+      }
+      filtered.push(candidate);
+    }
+
+    return { filtered, skipped };
+  }
 }
 
 function sanitiseSegment(value: string): string {
@@ -640,4 +730,61 @@ function safeRealPath(path: string): string {
   } catch {
     return path;
   }
+}
+
+function countStructuralAdditions(
+  candidate: CreatureExport,
+  baseHiddenUUIDs: Set<string>,
+  baseSynapseKeys: Set<string>,
+): { addedHidden: number; addedSynapses: number } {
+  let addedHidden = 0;
+  for (const neuron of candidate.neurons) {
+    if (neuron.type !== "hidden") continue;
+    if (!baseHiddenUUIDs.has(neuron.uuid)) {
+      addedHidden++;
+    }
+  }
+
+  let addedSynapses = 0;
+  for (const synapse of candidate.synapses) {
+    const key = `${synapse.fromUUID}->${synapse.toUUID}`;
+    if (!baseSynapseKeys.has(key)) {
+      addedSynapses++;
+    }
+  }
+
+  return { addedHidden, addedSynapses };
+}
+
+const MIN_PERCENT_FRACTION_DIGITS = 3;
+const SIGNIFICANT_PERCENT_DIGITS = 3;
+const MAX_PERCENT_FRACTION_DIGITS = 100;
+const ZERO_PERCENT = `+0.${"0".repeat(MIN_PERCENT_FRACTION_DIGITS)}%`;
+
+function formatPercentWithSignificantDigits(value: number): string {
+  if (value === 0) {
+    return ZERO_PERCENT;
+  }
+  const sign = value >= 0 ? "+" : "-";
+  const absValue = Math.abs(value);
+  const exponent = Math.floor(Math.log10(absValue));
+  let fractionDigits: number;
+  if (Number.isFinite(exponent) && exponent >= 0) {
+    const digitsBeforeDecimal = exponent + 1;
+    fractionDigits = Math.max(
+      MIN_PERCENT_FRACTION_DIGITS,
+      SIGNIFICANT_PERCENT_DIGITS - digitsBeforeDecimal,
+    );
+  } else {
+    const leadingZeros = Number.isFinite(exponent)
+      ? Math.abs(exponent) - 1
+      : SIGNIFICANT_PERCENT_DIGITS;
+    fractionDigits = Math.max(
+      MIN_PERCENT_FRACTION_DIGITS,
+      leadingZeros + SIGNIFICANT_PERCENT_DIGITS,
+    );
+  }
+  fractionDigits = Math.min(fractionDigits, MAX_PERCENT_FRACTION_DIGITS);
+  const magnitude = absValue.toFixed(fractionDigits);
+  return `${sign}${magnitude}%`;
 }
