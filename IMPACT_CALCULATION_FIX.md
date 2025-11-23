@@ -86,12 +86,10 @@ All tests pass (68 unit tests + 5 integration tests).
 
 ## Files Changed
 
-1. `../NEAT-AI-Discovery/src/focus.rs` - Fixed impact
-   calculation
-2. `../Develop/NEAT-AI-Discovery/src/lib.rs` - Added `Serialize`
-   trait to `CreatureJson`, `NeuronJson`, `SynapseJson`
-3. `../NEAT-AI-Discovery/tests/integration.rs` - Added
-   test case
+1. `../NEAT-AI-Discovery/src/focus.rs` - Fixed impact calculation
+2. `../Develop/NEAT-AI-Discovery/src/lib.rs` - Added `Serialize` trait to
+   `CreatureJson`, `NeuronJson`, `SynapseJson`
+3. `../NEAT-AI-Discovery/tests/integration.rs` - Added test case
 
 ## Next Steps
 
