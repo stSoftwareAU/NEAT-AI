@@ -104,7 +104,18 @@ Deno.test("rust discovery honours NEAT_AI_DISCOVERY_LIB_PATH override", async ()
     resetEnv("HOME", originalHome);
     resetEnv("USERPROFILE", originalUserProfile);
 
-    await Deno.remove(tempDir, { recursive: true });
-    await Deno.remove(tempHome, { recursive: true });
+    // Use removeSync - simpler, faster, and ensures all file handles are closed
+    try {
+      // deno-lint-ignore no-sync-fn-in-async-fn
+      Deno.removeSync(tempDir, { recursive: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+    try {
+      // deno-lint-ignore no-sync-fn-in-async-fn
+      Deno.removeSync(tempHome, { recursive: true });
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 });

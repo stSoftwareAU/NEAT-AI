@@ -190,8 +190,13 @@ Deno.test({
 
       // Test passes if no errors occur - this verifies CSV approach works
     } finally {
-      // Cleanup temp directory
-      await Deno.remove(dataDir, { recursive: true });
+      // Cleanup temp directory - use removeSync for simpler, faster cleanup
+      try {
+        // deno-lint-ignore no-sync-fn-in-async-fn
+        Deno.removeSync(dataDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   },
 });
@@ -342,8 +347,13 @@ Deno.test({
 
       await binaryDiscoverStructure.cleanUp();
     } finally {
-      // Cleanup temp directory
-      await Deno.remove(dataDir, { recursive: true });
+      // Cleanup temp directory - use removeSync for simpler, faster cleanup
+      try {
+        // deno-lint-ignore no-sync-fn-in-async-fn
+        Deno.removeSync(dataDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   },
 });

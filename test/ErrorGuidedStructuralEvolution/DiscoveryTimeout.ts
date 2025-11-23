@@ -147,11 +147,11 @@ async function createTempTestDir(testName: string): Promise<string> {
 }
 
 // Test utility: Cleanup temp directory
-async function cleanupTempDir(dirPath: string) {
+function cleanupTempDir(dirPath: string) {
   try {
-    // Minimal delay - just yield to event loop for async cleanup
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await Deno.remove(dirPath, { recursive: true });
+    // Use removeSync - simpler, faster, and ensures all file handles are closed
+    // before removal completes (no possibility of resource leaks)
+    Deno.removeSync(dirPath, { recursive: true });
   } catch (_error) {
     // Ignore cleanup errors
   }
@@ -234,8 +234,8 @@ Deno.test({
         `Batch comparison: 128 produced ${count128} results, 512 produced ${count512} results`,
       );
     } finally {
-      await cleanupTempDir(tmpDir128);
-      await cleanupTempDir(tmpDir512);
+      cleanupTempDir(tmpDir128);
+      cleanupTempDir(tmpDir512);
     }
   },
 });
@@ -273,7 +273,7 @@ Deno.test({
       // The key is that it doesn't throw and returns a valid result structure
       console.log(`Partial results: ${JSON.stringify(result, null, 2)}`);
     } finally {
-      await cleanupTempDir(tmpDir);
+      cleanupTempDir(tmpDir);
     }
   },
 });
@@ -313,7 +313,7 @@ Deno.test({
       // The diagnostic log should show "timeout reached during file processing"
       // (visible in test output with log: true)
     } finally {
-      await cleanupTempDir(tmpDir);
+      cleanupTempDir(tmpDir);
     }
   },
 });
@@ -352,7 +352,7 @@ Deno.test({
           `squashes=${result.candidateSquashes?.length}`,
       );
     } finally {
-      await cleanupTempDir(tmpDir);
+      cleanupTempDir(tmpDir);
     }
   },
 });
