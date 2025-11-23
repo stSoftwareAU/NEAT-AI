@@ -134,6 +134,9 @@
     "Autoencoder",
     "autoencoders",
     "speedup",
-    "tradeoff"
+    "tradeoff",
+    "totaling",
+    "segfaulting",
+    "segfault"
   ]
 }

@@ -31,7 +31,7 @@ if ! deno run \
   --allow-env \
   --allow-ffi \
   --config ./deno.json \
-  scripts/check_discovery.ts; then
+  scripts/check_discovery_safe.ts; then
   echo "❌ Discovery checks failed"
   exit 1
 fi
