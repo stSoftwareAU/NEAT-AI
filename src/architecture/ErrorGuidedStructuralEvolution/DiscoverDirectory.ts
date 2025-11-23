@@ -704,6 +704,13 @@ class DataRecorder {
         }
         // Schedule cleanup to happen asynchronously without blocking the response
         // This prevents slow filesystem operations from delaying the discovery result
+        if (shouldLogDiscovery(options)) {
+          console.log(
+            `Discovery ${
+              blue(this.ID)
+            } no candidates to analyze, scheduling async cleanup...`,
+          );
+        }
         const cleanupPromise = (async () => {
           if (shouldLogDiscovery(options)) {
             console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
@@ -773,11 +780,14 @@ class DataRecorder {
           break;
         }
 
+        const rustAnalysisStart = Date.now();
         const combinedResult = discoverStructure.ensureRustCombinedAnalysis(
           newFocusList,
           this.enableSynapseCandidates || this.enableHarmfulCandidates,
           this.enableNeuronCandidates,
         );
+        const rustAnalysisTime = Date.now() - rustAnalysisStart;
+        perfStats.rustCombinedAnalysisTime += rustAnalysisTime;
         if (combinedResult) {
           this.refreshAnalysisTimeout(discoverStructure);
         }
@@ -823,8 +833,8 @@ class DataRecorder {
             helpfulNeuron: this.enableNeuronCandidates,
           },
         );
-        const rustAnalysisTime = Date.now() - parallelStartTime;
-        perfStats.rustCombinedAnalysisTime += rustAnalysisTime;
+        const candidateCollectionTime = Date.now() - parallelStartTime;
+        // Note: candidateCollectionTime is just data collection, actual analysis was timed earlier
 
         if (candidateBundle) {
           phaseDiagnostics.enterPhase("analysis_loop");
@@ -844,8 +854,8 @@ class DataRecorder {
             const helpfulNeuronCount = addHelpfulNeurons?.length ?? 0;
             const harmfulCount = removeHarmfulSynapse ? 1 : 0;
             console.log(
-              `Discovery ${blue(this.ID)} rust combined analysis ${
-                yellow(format(rustAnalysisTime, {
+              `Discovery ${blue(this.ID)} candidate collection ${
+                yellow(format(candidateCollectionTime, {
                   ignoreZero: true,
                 }))
               } synapse candidates: ${helpfulSynapseCount}, neuron candidates: ${helpfulNeuronCount}, harmful removals: ${harmfulCount}`,
@@ -1157,6 +1167,13 @@ class DataRecorder {
 
       if (this.shouldAwaitCleanup()) {
         await cleanupPromise;
+        if (shouldLogDiscovery(options)) {
+          console.log(
+            `Discovery ${blue(this.ID)} cleanup awaited and complete (${
+              format(perfStats.cleanupTime, { ignoreZero: true })
+            }).`,
+          );
+        }
       } else {
         // Don't await cleanup - let it happen in the background
         // Catch any errors to prevent unhandled rejections and resource leaks
@@ -1166,6 +1183,13 @@ class DataRecorder {
             error,
           );
         });
+        if (shouldLogDiscovery(options)) {
+          console.log(
+            `Discovery ${
+              blue(this.ID)
+            } cleanup scheduled (async, non-blocking - results will be returned immediately).`,
+          );
+        }
         // If cleanup is async, we can't measure it accurately, so set to 0
         // The actual cleanup time will be logged when it completes
         perfStats.cleanupTime = 0;
