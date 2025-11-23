@@ -4,21 +4,27 @@
 
 ## Purpose
 
-`rankFocusNeurons` identifies which neurons have the highest potential for error reduction based on their error magnitude and influence on outputs. It should be a **fast calculation** (< 1 second for typical networks).
+`rankFocusNeurons` identifies which neurons have the highest potential for error
+reduction based on their error magnitude and influence on outputs. It should be
+a **fast calculation** (< 1 second for typical networks).
 
 ## Current Problem
 
-Taking **173 seconds** for 463 neurons with 41,000 records. Expected time: **< 1 second**.
+Taking **173 seconds** for 463 neurons with 41,000 records. Expected time: **< 1
+second**.
 
 ## Algorithm
 
 ### Input
+
 - `parquetFile`: Path to Parquet file containing ~41,000 records
 - `creature`: Network topology (neurons and synapses)
 - `maxResults`: Number of top neurons to return (e.g., 64)
 
 ### Output
+
 For each non-input neuron:
+
 - `neuronUuid`: The neuron identifier
 - `totalError`: Average absolute error across all records
 - `impact`: Share of creature-level error this neuron can influence (0.0 to 1.0)
@@ -28,15 +34,18 @@ Sorted by `totalError × impact` (descending).
 ## Step-by-Step Calculation
 
 ### Step 1: Read Parquet File **ONCE**
+
 ```
 Read ALL records from parquetFile into memory
 - Records: 41,000 samples
 - Each record has neuron_data array with errors for each non-input neuron
 ```
-**Complexity:** O(records) = 41,000 operations  
+
+**Complexity:** O(records) = 41,000 operations\
 **Time:** ~10-50ms
 
 ### Step 2: Calculate totalError for Each Neuron
+
 ```
 For each non-input neuron:
   totalError = 0
@@ -49,8 +58,9 @@ For each non-input neuron:
   
   totalError = totalError / count
 ```
-**Complexity:** O(neurons × records × errors_per_neuron)  
-= 463 × 41,000 × ~1 = ~19M simple operations  
+
+**Complexity:** O(neurons × records × errors_per_neuron)\
+= 463 × 41,000 × ~1 = ~19M simple operations\
 **Time:** ~100-200ms
 
 **Optimization:** Use vectorized operations (Polars/Arrow) instead of loops.
@@ -104,11 +114,12 @@ This is a **single backward pass** through the network topology:
      neuron_shares[neuron] = min(1.0, neuron_shares[neuron])
 ```
 
-**Complexity:** O(neurons + connections) = single graph traversal  
-= 463 neurons + ~few thousand connections = ~5,000 operations  
+**Complexity:** O(neurons + connections) = single graph traversal\
+= 463 neurons + ~few thousand connections = ~5,000 operations\
 **Time:** ~1-5ms
 
 ### Step 4: Combine and Sort
+
 ```
 For each non-input neuron:
   score = totalError × impact
@@ -116,24 +127,26 @@ For each non-input neuron:
 Sort neurons by score (descending)
 Return top maxResults neurons
 ```
-**Complexity:** O(neurons × log neurons) = 463 × log(463) ≈ 4,000  
+
+**Complexity:** O(neurons × log neurons) = 463 × log(463) ≈ 4,000\
 **Time:** < 1ms
 
 ## Total Expected Performance
 
-| Step | Complexity | Expected Time |
-|------|-----------|---------------|
-| 1. Read Parquet | O(records) | 10-50ms |
-| 2. Calculate totalError | O(neurons × records) | 100-200ms |
-| 3. Calculate impact | O(neurons + connections) | 1-5ms |
-| 4. Sort | O(neurons × log neurons) | < 1ms |
-| **TOTAL** | | **< 300ms** |
+| Step                    | Complexity               | Expected Time |
+| ----------------------- | ------------------------ | ------------- |
+| 1. Read Parquet         | O(records)               | 10-50ms       |
+| 2. Calculate totalError | O(neurons × records)     | 100-200ms     |
+| 3. Calculate impact     | O(neurons + connections) | 1-5ms         |
+| 4. Sort                 | O(neurons × log neurons) | < 1ms         |
+| **TOTAL**               |                          | **< 300ms**   |
 
 **Current:** 173 seconds = **578x slower than expected!**
 
 ## Common Performance Pitfalls
 
 ### ❌ DON'T: Read Parquet Multiple Times
+
 ```rust
 // BAD: Reading file for each neuron
 for neuron in neurons {
@@ -143,6 +156,7 @@ for neuron in neurons {
 ```
 
 ### ✅ DO: Read Once, Process All
+
 ```rust
 // GOOD: Single file read
 let records = read_parquet(path)?;
@@ -152,6 +166,7 @@ for neuron in neurons {
 ```
 
 ### ❌ DON'T: Recalculate Impact for Each Neuron
+
 ```rust
 // BAD: 463 graph traversals
 for neuron in neurons {
@@ -160,6 +175,7 @@ for neuron in neurons {
 ```
 
 ### ✅ DO: Single Backward Pass
+
 ```rust
 // GOOD: One traversal for all neurons
 let all_impacts = calculate_all_impacts_once(&topology);
@@ -169,6 +185,7 @@ for neuron in neurons {
 ```
 
 ### ❌ DON'T: Allocate Inside Loops
+
 ```rust
 // BAD: Creating new vectors in hot loop
 for record in records {
@@ -180,6 +197,7 @@ for record in records {
 ```
 
 ### ✅ DO: Reuse Allocations
+
 ```rust
 // GOOD: Allocate once, reuse
 let mut error_accumulator = vec![0.0; num_neurons];
@@ -207,8 +225,10 @@ If `rankFocusNeurons` is slow, check:
 ## Reference Implementation
 
 See TypeScript version:
-- `CreatureErrorImpactEstimator.getNeuronShare()` - calculates impact via backward propagation
+
+- `CreatureErrorImpactEstimator.getNeuronShare()` - calculates impact via
+  backward propagation
 - File: `src/discovery/NeuronErrorImpactEstimator.ts:62-121`
 
-The TypeScript version calculates impact for **all neurons in a single pass** using backward propagation from outputs.
-
+The TypeScript version calculates impact for **all neurons in a single pass**
+using backward propagation from outputs.

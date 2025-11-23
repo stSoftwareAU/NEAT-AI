@@ -4,7 +4,8 @@
 
 ## The Problem
 
-Current timeout strategy is **horizontal** - tries to analyze all focus neurons but may timeout before completing upstream analysis for any of them.
+Current timeout strategy is **horizontal** - tries to analyze all focus neurons
+but may timeout before completing upstream analysis for any of them.
 
 ## Current (Horizontal) Timeout ❌
 
@@ -24,7 +25,8 @@ F:   [scan errors].......................[TIMEOUT - no upstream analysis]
 Result: 0 useful candidates because no upstream analysis completed
 ```
 
-**Message:** "Target insider-volume-check-14 had no upstream neurons to analyse."
+**Message:** "Target insider-volume-check-14 had no upstream neurons to
+analyse."
 
 ## Proposed (Vertical) Timeout ✅
 
@@ -44,7 +46,8 @@ F:   [not started]                          │ TIMEOUT (skipped)
 Result: 4 complete analyses with full upstream candidates
 ```
 
-**Benefit:** Get useful candidates for neurons A, B, C, D even if E and F timeout.
+**Benefit:** Get useful candidates for neurons A, B, C, D even if E and F
+timeout.
 
 ## Implementation Strategy
 
@@ -130,7 +133,8 @@ fn analyze_all(focus_neurons: Vec<String>, total_deadline: Instant) {
 }
 ```
 
-**Benefit:** Most impactful neurons get analyzed first, maximizing value even with timeout.
+**Benefit:** Most impactful neurons get analyzed first, maximizing value even
+with timeout.
 
 ## Current Code Structure
 
@@ -155,7 +159,8 @@ fn analyze_neurons(focus_list: Vec<String>, deadline_ms: u64) {
 }
 ```
 
-**Problem:** Deadline check happens BEFORE completing analysis for current neuron.
+**Problem:** Deadline check happens BEFORE completing analysis for current
+neuron.
 
 ```rust
 // BETTER (GOOD): Vertical timeout
@@ -210,14 +215,17 @@ fn analyze_neuron_complete(neuron: String, deadline: Instant) -> Result<Analysis
 ## What This Fixes
 
 **Before (Horizontal):**
+
 ```
 [NEAT-AI-Discovery][verbose] analyse_neurons reached analysis deadline; returning partial results.
 [NEAT-AI-Discovery][verbose] Target insider-volume-check-14 had no upstream neurons to analyse.
 [NEAT-AI-Discovery][verbose] Target proximity-check-near-zero-SP500-inclusion-v3 had no upstream neurons to analyse.
 ```
+
 Result: 0 useful candidates
 
 **After (Vertical):**
+
 ```
 [NEAT-AI-Discovery][verbose] ✓ Completed analysis for output-0 (23 candidates)
 [NEAT-AI-Discovery][verbose] ✓ Completed analysis for 57882a2a-fbb1-44fd-8807-865cec35a49a (15 candidates)
@@ -225,6 +233,7 @@ Result: 0 useful candidates
 [NEAT-AI-Discovery][verbose] ✓ Completed analysis for proximity-check-near-zero-SP500-inclusion-v3 (12 candidates)
 [NEAT-AI-Discovery][verbose] ⏱️  Timeout during analysis of next-neuron-uuid. Returning 4/6 complete analyses.
 ```
+
 Result: 68 useful candidates from 4 complete analyses!
 
 ## Recommendation
@@ -238,4 +247,3 @@ Implement **Option 3 (Priority Queue)** with **vertical timeout**:
 5. Return whatever completed analyses we have
 
 This ensures we get maximum value even with timeout constraints.
-
