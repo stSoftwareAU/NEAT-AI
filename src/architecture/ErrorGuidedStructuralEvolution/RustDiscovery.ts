@@ -664,6 +664,7 @@ export function closeRustLibrary(): void {
   if (rustLib !== null) {
     rustLib.close();
     rustLib = null;
+    rustGpuWarningEmitted = false;
   }
 }
 
