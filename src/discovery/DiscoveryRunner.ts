@@ -315,10 +315,12 @@ export class DiscoveryRunner {
       if (evaluationArtifacts.archiveDir) {
         outcome.candidateArchiveDir = evaluationArtifacts.archiveDir;
       }
-      this.#logEvaluationSummary({
-        discoveryID: discoverResult.ID,
-        summaries: evaluationArtifacts.summaries,
-      });
+      if (verboseLogging) {
+        this.#logEvaluationSummary({
+          discoveryID: discoverResult.ID,
+          summaries: evaluationArtifacts.summaries,
+        });
+      }
 
       markPhase("Total discoveryDir run", runStart);
       return outcome;
@@ -512,11 +514,15 @@ export class DiscoveryRunner {
       const expectedText = summary.expectedErrorReductionPct !== undefined
         ? ` expected ${this.#formatExpected(summary.expectedErrorReductionPct)}`
         : "";
+      const scoreText = `, score=${summary.score.toPrecision(4)}`;
       const scoreDeltaText = summary.kind === "candidate" &&
           summary.scoreDelta !== undefined
-        ? ` score Δ ${summary.scoreDelta >= 0 ? "+" : ""}${
+        ? `, delta=${summary.scoreDelta >= 0 ? "+" : ""}${
           summary.scoreDelta.toPrecision(4)
         }`
+        : "";
+      const improvedText = summary.kind === "candidate"
+        ? `, improved=${summary.improved ? "yes" : "no"}`
         : "";
       const mismatchText = summary.expectationMismatch
         ? ` ${
@@ -529,10 +535,13 @@ export class DiscoveryRunner {
           )
         }`
         : "";
-      console.info(
-        `[DiscoveryRunner]   ${label}${description}: error=${
+      const mainInfo = summary.kind === "original"
+        ? `error=${summary.error.toPrecision(6)}${scoreText} ${errorDeltaText}`
+        : `error=${
           summary.error.toPrecision(6)
-        } ${errorDeltaText}${expectedText}${scoreDeltaText}${mismatchText}`,
+        }${scoreText}${scoreDeltaText}${improvedText} ${errorDeltaText}${expectedText}`;
+      console.info(
+        `[DiscoveryRunner]   ${label}${description}: ${mainInfo}${mismatchText}`,
       );
       if (summary.archivePath) {
         console.info(
