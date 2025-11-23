@@ -69,6 +69,7 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
       discoveryRustFlushRecords: 2,
       discoveryMaxNeurons: 1,
       threads: 1,
+      log: 0,
     };
 
     const recordCallSizes: number[] = [];
