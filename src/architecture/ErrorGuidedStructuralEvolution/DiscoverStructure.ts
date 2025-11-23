@@ -2022,17 +2022,11 @@ export class DiscoverStructure {
         retryNumber,
       };
 
-      // Write to .discovery/focus-analysis/{discoveryID}/
-      const sanitizedID = this.discoveryID.replace(/[^a-z0-9._-]/gi, "-");
-      const dir = `.discovery/focus-analysis/${sanitizedID}`;
-      Deno.mkdirSync(dir, { recursive: true });
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const retryPart = retryNumber !== undefined
         ? `-retry-${retryNumber}`
         : "";
-      const filename = `${timestamp}-focus-selection${retryPart}.json`;
-      const filepath = `${dir}/${filename}`;
+      const filename = `focus-selection${retryPart}.json`;
+      const filepath = `${this.tempDir}/${filename}`;
 
       Deno.writeTextFileSync(filepath, JSON.stringify(analysis, null, 2));
 
