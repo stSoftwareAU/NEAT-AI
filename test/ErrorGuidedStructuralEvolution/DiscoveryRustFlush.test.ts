@@ -69,6 +69,7 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
       discoveryRustFlushRecords: 2,
       discoveryMaxNeurons: 1,
       threads: 1,
+      log: 0,
     };
 
     const recordCallSizes: number[] = [];
@@ -115,8 +116,7 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
     };
 
     await recordDirectory(creature, tempDir, options, deps);
-    // Allow asynchronous cleanup triggered by recordDirectory to complete.
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Cleanup is already awaited when NEAT_DISCOVERY_AWAIT_CLEANUP is set
 
     assertEquals(recordCallSizes, [2, 2]);
     assertEquals(mergedChunks.length, 1);
@@ -135,6 +135,12 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
         // ignore
       }
     }
-    await Deno.remove(tempDir, { recursive: true });
+    // Use removeSync - simpler, faster, and ensures all file handles are closed
+    try {
+      // deno-lint-ignore no-sync-fn-in-async-fn
+      Deno.removeSync(tempDir, { recursive: true });
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 });

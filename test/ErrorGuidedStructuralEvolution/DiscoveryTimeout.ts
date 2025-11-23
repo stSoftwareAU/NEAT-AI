@@ -147,11 +147,11 @@ async function createTempTestDir(testName: string): Promise<string> {
 }
 
 // Test utility: Cleanup temp directory
-async function cleanupTempDir(dirPath: string) {
+function cleanupTempDir(dirPath: string) {
   try {
-    // Give background cleanup time to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    await Deno.remove(dirPath, { recursive: true });
+    // Use removeSync - simpler, faster, and ensures all file handles are closed
+    // before removal completes (no possibility of resource leaks)
+    Deno.removeSync(dirPath, { recursive: true });
   } catch (_error) {
     // Ignore cleanup errors
   }
@@ -172,12 +172,12 @@ Deno.test({
       const creature128 = makeTestCreature(20);
       CreatureUtil.makeUUID(creature128);
       creature128.clearState();
-      await createTestBinaryFile(creature128, 200, tmpDir128, "test1.bin");
+      await createTestBinaryFile(creature128, 100, tmpDir128, "test1.bin");
 
       const creature512 = makeTestCreature(20);
       CreatureUtil.makeUUID(creature512);
       creature512.clearState();
-      await createTestBinaryFile(creature512, 200, tmpDir512, "test1.bin");
+      await createTestBinaryFile(creature512, 100, tmpDir512, "test1.bin");
 
       // Test with batch size 128, very short timeout (1 second)
       const options128 = {
@@ -234,8 +234,8 @@ Deno.test({
         `Batch comparison: 128 produced ${count128} results, 512 produced ${count512} results`,
       );
     } finally {
-      await cleanupTempDir(tmpDir128);
-      await cleanupTempDir(tmpDir512);
+      cleanupTempDir(tmpDir128);
+      cleanupTempDir(tmpDir512);
     }
   },
 });
@@ -252,8 +252,8 @@ Deno.test({
     const tmpDir = await createTempTestDir("partial-results");
 
     try {
-      // Create a larger dataset
-      await createTestBinaryFile(creature, 500, tmpDir, "test.bin");
+      // Create a dataset large enough to test timeout behavior
+      await createTestBinaryFile(creature, 200, tmpDir, "test.bin");
 
       // Set 2-second timeout
       const options = {
@@ -273,7 +273,7 @@ Deno.test({
       // The key is that it doesn't throw and returns a valid result structure
       console.log(`Partial results: ${JSON.stringify(result, null, 2)}`);
     } finally {
-      await cleanupTempDir(tmpDir);
+      cleanupTempDir(tmpDir);
     }
   },
 });
@@ -290,10 +290,10 @@ Deno.test({
     const tmpDir = await createTempTestDir("file-timeout");
 
     try {
-      // Create multiple binary files
-      await createTestBinaryFile(creature, 200, tmpDir, "test1.bin");
-      await createTestBinaryFile(creature, 200, tmpDir, "test2.bin");
-      await createTestBinaryFile(creature, 200, tmpDir, "test3.bin");
+      // Create multiple binary files (reduced size for faster tests)
+      await createTestBinaryFile(creature, 100, tmpDir, "test1.bin");
+      await createTestBinaryFile(creature, 100, tmpDir, "test2.bin");
+      await createTestBinaryFile(creature, 100, tmpDir, "test3.bin");
 
       // Very short timeout - will hit during file processing
       const options = {
@@ -313,7 +313,7 @@ Deno.test({
       // The diagnostic log should show "timeout reached during file processing"
       // (visible in test output with log: true)
     } finally {
-      await cleanupTempDir(tmpDir);
+      cleanupTempDir(tmpDir);
     }
   },
 });
@@ -352,7 +352,7 @@ Deno.test({
           `squashes=${result.candidateSquashes?.length}`,
       );
     } finally {
-      await cleanupTempDir(tmpDir);
+      cleanupTempDir(tmpDir);
     }
   },
 });

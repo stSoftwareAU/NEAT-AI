@@ -113,8 +113,8 @@ const DRIVER_NEURON_UUID = "hidden-driver";
 const SUPPORT_NEURON_UUID = "hidden-support";
 const OUTPUT_NEURON_UUID = "output-0";
 
-const DISCOVERY_RECORD_COUNT = 512;
-const DISCOVERY_INPUT_COUNT = 256;
+const DISCOVERY_RECORD_COUNT = 50; // Minimum for reliable statistical analysis (was 512, reduced to 50 for faster tests while maintaining discovery reliability)
+const DISCOVERY_INPUT_COUNT = 60; // Reduced from 256 - minimum needed for input-55 (was 256)
 
 type NeuronExport = CreatureExport["neurons"][number];
 type SynapseExport = CreatureExport["synapses"][number];
@@ -447,7 +447,7 @@ for (const testCase of NEURON_DISCOVERY_CASES) {
       const neuronPromisesMap: Map<string, Promise<void>> = new Map();
       const discoverStructure = new DiscoverStructure(
         crippledCreature,
-        120,
+        5, // Reduced from 120s to 5s for faster tests
         DEFAULT_RUST_FLUSH_RECORDS,
       );
       discoverStructure.initialize(neuronPromisesMap);

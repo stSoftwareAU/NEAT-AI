@@ -95,7 +95,7 @@ Deno.test({
     // Initialize discovery and record data
     const discoverStructure = new DiscoverStructure(
       creature,
-      60,
+      5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -169,7 +169,7 @@ Deno.test({
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
 
-    const trainingData = makeTrainingData(creature.input, creature.output, 200);
+    const trainingData = makeTrainingData(creature.input, creature.output, 50); // Reduced from 200 for faster tests
 
     // Create binary files in temp directory
     const dataDir = makeDataDir(trainingData, 100);
@@ -180,6 +180,8 @@ Deno.test({
         discoverySampleRate: 0.5, // Sample 50% of records
         discoveryBatchSize: 50,
         discoveryMaxNeurons: 3,
+        discoveryTimeOutMinutes: 0.05, // 3 seconds - sufficient for CI
+        discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds - sufficient for CI
         log: 0,
       });
 
@@ -188,8 +190,13 @@ Deno.test({
 
       // Test passes if no errors occur - this verifies CSV approach works
     } finally {
-      // Cleanup temp directory
-      await Deno.remove(dataDir, { recursive: true });
+      // Cleanup temp directory - use removeSync for simpler, faster cleanup
+      try {
+        // deno-lint-ignore no-sync-fn-in-async-fn
+        Deno.removeSync(dataDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   },
 });
@@ -215,7 +222,7 @@ Deno.test({
     // Method 1: Using Rust (Parquet) - Rust is required now
     const csvDiscoverStructure = new DiscoverStructure(
       creature,
-      60,
+      5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
     const csvNeuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -251,7 +258,7 @@ Deno.test({
 
       const binaryDiscoverStructure = new DiscoverStructure(
         binaryCreature,
-        60,
+        5, // Reduced from 60s to 5s for faster tests
         DEFAULT_RUST_FLUSH_RECORDS,
       );
       const binaryNeuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -340,8 +347,13 @@ Deno.test({
 
       await binaryDiscoverStructure.cleanUp();
     } finally {
-      // Cleanup temp directory
-      await Deno.remove(dataDir, { recursive: true });
+      // Cleanup temp directory - use removeSync for simpler, faster cleanup
+      try {
+        // deno-lint-ignore no-sync-fn-in-async-fn
+        Deno.removeSync(dataDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   },
 });

@@ -52,7 +52,7 @@ Deno.test("Discovery promise chains have error handlers", async () => {
   CreatureUtil.makeUUID(creature);
   const discoverStructure = new DiscoverStructure(
     creature,
-    60,
+    5, // Reduced from 60s to 5s for faster tests
     DEFAULT_RUST_FLUSH_RECORDS,
   );
 
@@ -116,7 +116,7 @@ Deno.test({
     // Use an invalid temp directory path to force file write errors
     const discoverStructure = new DiscoverStructure(
       creature,
-      60,
+      5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
 
@@ -176,7 +176,7 @@ Deno.test("Discovery Promise.all() completes within timeout", async () => {
   CreatureUtil.makeUUID(creature);
   const discoverStructure = new DiscoverStructure(
     creature,
-    60,
+    5, // Reduced from 60s to 5s for faster tests
     DEFAULT_RUST_FLUSH_RECORDS,
   );
 
