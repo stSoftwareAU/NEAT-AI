@@ -860,6 +860,10 @@ export function isRustLibraryAvailable(): boolean {
  * Checks if the Rust discovery module is enabled and available.
  * This is the main function to use before attempting discovery operations.
  *
+ * By default, GPU checking is DISABLED to prevent crashes on systems without GPU
+ * or where WGPU initialization fails. Set NEAT_RUST_DISCOVERY_REQUIRE_GPU=1 to
+ * enable GPU checking (only if you need to verify GPU availability).
+ *
  * @returns true if Rust module is enabled and available, false otherwise.
  */
 export function isRustDiscoveryEnabled(): boolean {
@@ -867,10 +871,17 @@ export function isRustDiscoveryEnabled(): boolean {
     if (!isRustLibraryAvailable()) {
       return false;
     }
-    // Require a usable GPU as well as a loadable Rust library. When the GPU
-    // probe fails, discovery is treated as unavailable so controllers can fall
-    // back cleanly to the TypeScript-only behaviour.
-    return isRustGpuAvailable();
+
+    // GPU checking is DISABLED by default to prevent crashes
+    // Only check GPU if explicitly requested via environment variable
+    const requireGpu = Deno.env.get(RUST_DISCOVERY_REQUIRE_GPU_ENV);
+    if (requireGpu === "1" || requireGpu === "true") {
+      // User explicitly wants GPU verification - check it
+      return isRustGpuAvailable();
+    }
+
+    // Default: Library is available, skip GPU check (safe mode)
+    return true;
   } catch {
     // FFI not allowed or library not available
     return false;
@@ -878,6 +889,7 @@ export function isRustDiscoveryEnabled(): boolean {
 }
 
 const RUST_DISCOVERY_OPTIONAL_ENV = "NEAT_RUST_DISCOVERY_OPTIONAL";
+const RUST_DISCOVERY_REQUIRE_GPU_ENV = "NEAT_RUST_DISCOVERY_REQUIRE_GPU";
 
 /**
  * Returns true when discovery tests should be skipped (Rust library absent and
@@ -906,15 +918,55 @@ export function shouldSkipRustDiscoveryTests(): boolean {
 
 /**
  * Throws an explicit error when discovery is required but unavailable.
+ * Provides specific guidance based on the failure mode:
+ * - Library file not found
+ * - FFI permission denied
+ * - Library loading failed
  */
 export function assertRustDiscoveryAvailable(): void {
-  if (!isRustDiscoveryEnabled()) {
-    const exists = rustLibraryExists();
-    const hint = exists
-      ? "The discovery library was found but could not be loaded. Rebuild it via the NEAT-AI-Discovery project."
-      : "The discovery library was not found. Install it into ~/.cargo/lib or set NEAT_AI_DISCOVERY_LIB_PATH.";
-    throw new Error(`Rust discovery library not available. ${hint}`);
+  if (isRustDiscoveryEnabled()) {
+    return; // All good
   }
+
+  // Determine the specific failure reason
+  const exists = rustLibraryExists();
+
+  if (!exists) {
+    throw new Error(
+      "Rust discovery library not available: Library file not found. " +
+        "Install it into ~/.cargo/lib or set NEAT_AI_DISCOVERY_LIB_PATH environment variable.",
+    );
+  }
+
+  // Library exists but couldn't be loaded - check FFI permissions
+  const libPath = findRustLibrary();
+  if (libPath) {
+    try {
+      if (typeof Deno.permissions?.querySync === "function") {
+        const permission = Deno.permissions.querySync({
+          name: "ffi",
+          path: libPath,
+        });
+        if (permission.state !== "granted") {
+          throw new Error(
+            "Rust discovery library not available: FFI permission denied. " +
+              "Run with --allow-ffi flag to enable discovery.",
+          );
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("FFI permission")) {
+        throw error;
+      }
+      // Permission check failed, but might be for other reasons
+    }
+  }
+
+  // Library exists and FFI is allowed, but still not enabled
+  throw new Error(
+    "Rust discovery library not available: Library found but could not be loaded. " +
+      "Rebuild the library via the NEAT-AI-Discovery project.",
+  );
 }
 
 /**
