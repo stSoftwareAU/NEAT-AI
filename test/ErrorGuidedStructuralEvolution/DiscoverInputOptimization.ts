@@ -18,7 +18,7 @@ import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStruct
  * Helper interface to access private methods for testing purposes
  */
 interface DiscoverStructureTestAccess {
-  loadCSV(file: string): Promise<DiscoverRecord[]>;
+  loadNeuronRecords(file: string): Promise<DiscoverRecord[]>;
   tempDir: string;
 }
 
@@ -112,13 +112,15 @@ Deno.test({
     // Access the private loadCSV method to verify input neurons are recorded
     const testAccess =
       discoverStructure as unknown as DiscoverStructureTestAccess;
-    const loadCSV = testAccess.loadCSV.bind(discoverStructure);
+    const loadNeuronRecords = testAccess.loadNeuronRecords.bind(
+      discoverStructure,
+    );
     const tempDir = testAccess.tempDir;
 
     // Load input neuron records
-    const input0Records = await loadCSV(`${tempDir}/input-0.csv`);
-    const input1Records = await loadCSV(`${tempDir}/input-1.csv`);
-    const input2Records = await loadCSV(`${tempDir}/input-2.csv`);
+    const input0Records = await loadNeuronRecords(`${tempDir}/input-0`);
+    const input1Records = await loadNeuronRecords(`${tempDir}/input-1`);
+    const input2Records = await loadNeuronRecords(`${tempDir}/input-2`);
 
     // Verify we got the right number of records
     assertEquals(
@@ -241,11 +243,13 @@ Deno.test({
     // Load CSV records
     const csvTestAccess =
       csvDiscoverStructure as unknown as DiscoverStructureTestAccess;
-    const loadCSV = csvTestAccess.loadCSV.bind(csvDiscoverStructure);
+    const loadNeuronRecords = csvTestAccess.loadNeuronRecords.bind(
+      csvDiscoverStructure,
+    );
     const csvTempDir = csvTestAccess.tempDir;
-    const csvInput0 = await loadCSV(`${csvTempDir}/input-0.csv`);
-    const csvInput1 = await loadCSV(`${csvTempDir}/input-1.csv`);
-    const csvInput2 = await loadCSV(`${csvTempDir}/input-2.csv`);
+    const csvInput0 = await loadNeuronRecords(`${csvTempDir}/input-0`);
+    const csvInput1 = await loadNeuronRecords(`${csvTempDir}/input-1`);
+    const csvInput2 = await loadNeuronRecords(`${csvTempDir}/input-2`);
 
     await csvDiscoverStructure.cleanUp();
 
@@ -296,17 +300,17 @@ Deno.test({
       // Load binary records
       const binaryTestAccess =
         binaryDiscoverStructure as unknown as DiscoverStructureTestAccess;
-      const loadBinaryCSV = binaryTestAccess.loadCSV.bind(
+      const loadBinaryNeuronRecords = binaryTestAccess.loadNeuronRecords.bind(
         binaryDiscoverStructure,
       );
-      const binaryInput0 = await loadBinaryCSV(
-        `${binaryTestAccess.tempDir}/input-0.csv`,
+      const binaryInput0 = await loadBinaryNeuronRecords(
+        `${binaryTestAccess.tempDir}/input-0`,
       );
-      const binaryInput1 = await loadBinaryCSV(
-        `${binaryTestAccess.tempDir}/input-1.csv`,
+      const binaryInput1 = await loadBinaryNeuronRecords(
+        `${binaryTestAccess.tempDir}/input-1`,
       );
-      const binaryInput2 = await loadBinaryCSV(
-        `${binaryTestAccess.tempDir}/input-2.csv`,
+      const binaryInput2 = await loadBinaryNeuronRecords(
+        `${binaryTestAccess.tempDir}/input-2`,
       );
 
       // Verify binary reads match CSV reads

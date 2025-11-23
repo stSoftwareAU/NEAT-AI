@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import { parse as parseCsv } from "@std/csv";
 import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "../../../mod.ts";
 import { Creature } from "../../Creature.ts";
@@ -266,12 +265,50 @@ interface RustFlushAggregation {
   metrics: RustFlushMetrics;
 }
 
-const DEFAULT_RUST_HELPFUL_THRESHOLD = 0.1;
-const DEFAULT_RUST_HARMFUL_THRESHOLD = -0.1;
+/**
+ * Discovery thresholds tuned for continuous incremental improvement (23-Nov-2025)
+ *
+ * Discovery is designed for SMALL, INCREMENTAL improvements (0.5-3% per iteration)
+ * that accumulate over time through repeated runs across multiple machines.
+ *
+ * DO NOT expect 10%+ improvements in a single iteration - that's unrealistic!
+ *
+ * Example real-world results:
+ * - 100 iterations × 1.5% average = ~16% total improvement
+ * - With 5 machines running continuously = 5× faster progress
+ *
+ * A 1% threshold accepts meaningful improvements while filtering random noise.
+ * Previous 10% threshold rejected valid 1.58% improvements.
+ *
+ * @see docs/DISCOVERY_GUIDE.md for details on the distributed discovery model
+ */
+const DEFAULT_RUST_HELPFUL_THRESHOLD = 0.01; // 1% improvement threshold (was 0.1 / 10%)
+const DEFAULT_RUST_HARMFUL_THRESHOLD = -0.01; // -1% degradation threshold (was -0.1 / -10%)
 
 /**
- * Implements Error-Driven Synapse Discovery, analyzing neuron activations
- * and errors to identify beneficial new synapses that explicitly reduce neuron-level errors.
+ * Implements Error-Driven Structural Discovery, analyzing neuron activations and errors
+ * to identify beneficial structural changes (new synapses, neuron removal, activation changes).
+ *
+ * **Design Philosophy: Continuous Incremental Improvement**
+ *
+ * Discovery is NOT about finding large one-shot improvements. Instead, it's designed for:
+ * - Small improvements: 0.5-3% per iteration (typical)
+ * - Continuous operation: Run repeatedly on current best creature
+ * - Distributed swarm: Multiple machines working in parallel
+ * - Compound growth: 100 iterations × 1.5% avg = ~16% total improvement
+ *
+ * **Typical Workflow:**
+ * ```typescript
+ * while (true) {
+ *   const best = await fetchBestFromPool();
+ *   const result = await best.discoveryDir(data, options);
+ *   if (result.improvement) {
+ *     await checkInToPool(result.improvement.creature);
+ *   }
+ * }
+ * ```
+ *
+ * @see docs/DISCOVERY_GUIDE.md for complete workflow documentation
  */
 export class DiscoverStructure {
   private creature: Creature;
@@ -378,8 +415,8 @@ export class DiscoverStructure {
     const promises = outputs.map(async (outputNeuron) => {
       let neuronMax = 0;
       try {
-        const records = await this.loadCSV(
-          `${this.tempDir}/${outputNeuron.uuid}.csv`,
+        const records = await this.loadNeuronRecords(
+          `${this.tempDir}/${outputNeuron.uuid}`,
         );
         records.forEach((record) => {
           record.errors.forEach((err) => {
@@ -2532,81 +2569,6 @@ export class DiscoverStructure {
     return `${seconds}s ${milliseconds.toString().padStart(3, "0")}ms`;
   }
 
-  private processCSVRecord(
-    headers: string[],
-    values: string[],
-  ): DiscoverRecord | null {
-    // Handle case where we have more values than headers
-    if (values.length > headers.length) {
-      // Truncate values to match headers length without warning for performance
-      values = values.slice(0, headers.length);
-    }
-
-    // Handle case where we have fewer values than headers
-    if (values.length < headers.length) {
-      // Pad values with empty strings to match headers length without warning for performance
-      while (values.length < headers.length) {
-        values.push("");
-      }
-    }
-
-    const record: Record<string, string> = {};
-    headers.forEach((header, index) => {
-      record[header] = values[index];
-    });
-
-    const activation = Number.parseFloat(record.activation);
-    if (!Number.isFinite(activation)) {
-      return null;
-    }
-
-    let value = Number.parseFloat(record.value);
-    if (!Number.isFinite(value)) {
-      value = activation;
-    }
-
-    const rawErrors = record.errors ?? "";
-    const errors = rawErrors.length === 0
-      ? []
-      : rawErrors.split("|").map(Number).filter(Number.isFinite);
-
-    return { value, activation, errors };
-  }
-
-  private processCSVChunk(
-    chunk: string,
-    partialLine: string,
-    headers: string[],
-    isFirstLine: boolean,
-    records: DiscoverRecord[],
-  ): string {
-    const lines = (partialLine + chunk).split("\n");
-    const newPartialLine = lines.pop() || ""; // Keep the last partial line for next iteration
-
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (trimmedLine.length === 0) continue;
-
-      if (isFirstLine) {
-        const headerValues = parseCsv(trimmedLine, { skipFirstRow: false })[0];
-        headers.push(...headerValues);
-        isFirstLine = false;
-        continue;
-      }
-
-      const values = parseCsv(trimmedLine, { skipFirstRow: false })[0];
-      const record = this.processCSVRecord(headers, values);
-      if (record) {
-        records.push(record);
-      }
-    }
-
-    // Clear lines array to help GC
-    lines.length = 0;
-
-    return newPartialLine;
-  }
-
   public listNeuronsByImpact(): NeuronImpactInfo[] {
     const entries: NeuronImpactInfo[] = this.creature.neurons
       .filter((neuron) => this.isSelectableNeuron(neuron))
@@ -2689,7 +2651,7 @@ export class DiscoverStructure {
 
   /**
    * Loads input neuron activation data directly from binary files using stored indices.
-   * This avoids writing and reading CSV files for input neurons.
+   * Input neurons are stored in binary format as they're not written to Parquet.
    */
   private async loadInputNeuronFromBinary(
     neuronIndex: number,
@@ -2754,12 +2716,18 @@ export class DiscoverStructure {
     return records;
   }
 
-  private async loadCSV(file: string): Promise<DiscoverRecord[]> {
+  /**
+   * Loads discovery records for a neuron from Parquet storage via Rust.
+   * Note: Input neurons are read from binary files as they're never written to Parquet.
+   */
+  private async loadNeuronRecords(
+    neuronIdentifier: string,
+  ): Promise<DiscoverRecord[]> {
     // Check if this is an input neuron - always read from binary files
-    const fileName = file.split("/").pop();
+    const fileName = neuronIdentifier.split("/").pop();
     if (fileName && fileName.startsWith("input-")) {
-      // Extract neuron index from filename like "input-5.csv"
-      const match = fileName.match(/^input-(\d+)\.csv$/);
+      // Extract neuron index from filename like "input-5.csv" (legacy naming)
+      const match = fileName.match(/^input-(\d+)(?:\.csv)?$/);
       if (match) {
         const neuronIndex = parseInt(match[1], 10);
 
@@ -2786,10 +2754,10 @@ export class DiscoverStructure {
       );
     }
 
-    // Extract neuron UUID from filename like "hidden-3.csv"
-    const match = fileName?.match(/^(.+)\.csv$/);
+    // Extract neuron UUID from identifier (strip .csv extension if present)
+    const match = fileName?.match(/^(.+?)(?:\.csv)?$/);
     if (!match) {
-      throw new Error(`Invalid neuron file name: ${fileName}`);
+      throw new Error(`Invalid neuron identifier: ${fileName}`);
     }
     const neuronUUID = match[1];
 
@@ -2802,7 +2770,7 @@ export class DiscoverStructure {
       );
     }
 
-    // Read from Parquet via Rust FFI (simple approach - optimize later)
+    // Read from Parquet via Rust FFI
     const readResult = this.deps.readDiscoveryRecords({
       parquet_file: this.parquetFilePath,
       neuron_uuid: neuronUUID,
@@ -2976,9 +2944,9 @@ export class DiscoverStructure {
    * Lists neurons sorted by their total error, useful for error-driven selection processes.
    * Now also includes impact calculation for weighted selection.
    */
-  public async listViableNeurons(
+  public listViableNeurons(
     targetCount?: number,
-  ): Promise<NeuronErrorInfo[]> {
+  ): NeuronErrorInfo[] {
     if (!this.recorded) {
       console.warn("No recorded data to list neurons.");
       return [];
@@ -2989,7 +2957,14 @@ export class DiscoverStructure {
       return rustResult;
     }
 
-    return await this.listViableNeuronsFallback(targetCount);
+    // Rust discovery is required - no fallback
+    console.error(
+      `❌ CRITICAL: Rust focus ranking failed. Discovery cannot proceed without Rust analysis.`,
+    );
+    console.error(
+      `   Ensure NEAT-AI-Discovery Rust library is properly built and available.`,
+    );
+    return [];
   }
 
   private tryRustFocusRanking(
@@ -3009,20 +2984,34 @@ export class DiscoverStructure {
         targetCount ?? this.creature.neurons.length,
         64,
       );
+      const rustRankStart = Date.now();
       const result = this.deps.rankFocusNeurons({
         parquetFile: this.parquetFilePath,
         creature: rustCreature,
         maxResults,
       });
+      const rustRankDuration = Date.now() - rustRankStart;
 
       if (!result || !result.success || !result.neurons) {
         if (this.loggingEnabled && result?.error) {
           this.log(
             "debug",
-            `Rust focus ranking failed: ${result.error}`,
+            `Rust focus ranking failed after ${
+              this.formatMillis(rustRankDuration)
+            }: ${result.error}`,
           );
         }
         return undefined;
+      }
+
+      // Warn if Rust ranking is unexpectedly slow (> 1 second)
+      if (this.loggingEnabled && rustRankDuration > 1000) {
+        this.log(
+          "warn",
+          `Rust rankFocusNeurons took ${
+            this.formatMillis(rustRankDuration)
+          } - this is unexpectedly slow!`,
+        );
       }
 
       if (result.maxOutputError !== undefined) {
@@ -3061,247 +3050,6 @@ export class DiscoverStructure {
       }
       return undefined;
     }
-  }
-
-  private async listViableNeuronsFallback(
-    targetCount?: number,
-  ): Promise<NeuronErrorInfo[]> {
-    const start = Date.now();
-    const neurons = this.creature.neurons.filter((neuron) =>
-      this.isSelectableNeuron(neuron)
-    );
-    const totalNeurons = neurons.length;
-    const results: NeuronErrorInfo[] = [];
-    let totalInvalidErrorCount = 0;
-    let neuronsWithInvalidErrors = 0;
-    let processedCount = 0;
-    let timedOut = false;
-    const maxOutputError = await this.getMaxOutputError();
-    const impactCache = new Map<string, number>();
-
-    const concurrency = Math.min(
-      Math.max(4, Math.min(32, totalNeurons || 1)),
-      totalNeurons || 1,
-    );
-    let index = 0;
-    let stopRequested = false;
-    const earlyLimit = targetCount
-      ? Math.max(targetCount * 4, 64)
-      : Number.POSITIVE_INFINITY;
-
-    // Pre-calculate average derivatives for all neurons to account for saturation
-    // This map will be used by calculateNeuronImpact
-    const derivativeMap = new Map<string, number>();
-
-    // Iterate all neurons in creature for derivatives
-    const allNeurons = this.creature.neurons;
-    const derivConcurrency = 16;
-    for (let i = 0; i < allNeurons.length; i += derivConcurrency) {
-      const chunk = allNeurons.slice(i, i + derivConcurrency);
-      // deno-lint-ignore no-await-in-loop
-      await Promise.all(chunk.map(async (n) => {
-        try {
-          const neuronSquashName = n.squash ?? "IDENTITY";
-          const neuronSquash = Activations.find(
-            neuronSquashName,
-          ) as ActivationInterface;
-          // Use same sampling logic
-          const records = await this.loadCSV(`${this.tempDir}/${n.uuid}.csv`);
-          let derivativeSum = 0;
-          let derivativeCount = 0;
-          const sampleSize = Math.min(records.length, 50);
-          const step = Math.max(1, Math.floor(records.length / sampleSize));
-
-          for (let j = 0; j < records.length; j += step) {
-            const val = records[j].value;
-            if (Number.isFinite(val)) {
-              const eps = 1e-4;
-              const y1 = neuronSquash.squash(val as number);
-              const y2 = neuronSquash.squash((val as number) + eps);
-              const derivative = (y2 - y1) / eps;
-              if (Number.isFinite(derivative)) {
-                derivativeSum += Math.abs(derivative);
-                derivativeCount++;
-              }
-            }
-            if (derivativeCount >= sampleSize) break;
-          }
-          const avg = derivativeCount > 0
-            ? derivativeSum / derivativeCount
-            : 1.0;
-          derivativeMap.set(n.uuid, avg);
-        } catch (_e) {
-          derivativeMap.set(n.uuid, 1.0);
-        }
-      }));
-    }
-
-    const processNext = async () => {
-      while (true) {
-        const currentIndex = index++;
-        if (currentIndex >= totalNeurons) {
-          break;
-        }
-        if (Date.now() > this.timeoutTS) {
-          timedOut = true;
-          break;
-        }
-        if (stopRequested) {
-          break;
-        }
-
-        const neuron = neurons[currentIndex];
-        try {
-          const neuronSquashName = neuron.squash ?? "IDENTITY";
-          const neuronSquash = Activations.find(
-            neuronSquashName,
-          ) as ActivationInterface;
-          // deno-lint-ignore no-await-in-loop
-          const records = await this.loadCSV(
-            `${this.tempDir}/${neuron.uuid}.csv`,
-          );
-
-          let invalidErrorCount = 0;
-          let absoluteErrorSum = 0;
-          let errorValueCount = 0;
-          let activationDeltaSum = 0;
-          let activationDeltaCount = 0;
-          for (const record of records) {
-            const baseValue = record.value;
-            const baseActivation = Number.isFinite(record.activation)
-              ? record.activation
-              : (Number.isFinite(baseValue)
-                ? neuronSquash.squash(baseValue as number)
-                : undefined);
-            for (const err of record.errors) {
-              if (!Number.isFinite(err)) {
-                invalidErrorCount++;
-                continue;
-              }
-              absoluteErrorSum += Math.abs(err);
-              errorValueCount++;
-
-              if (
-                Number.isFinite(baseValue) && baseActivation !== undefined &&
-                Number.isFinite(baseActivation)
-              ) {
-                const targetValue = (baseValue as number) + err;
-                if (Number.isFinite(targetValue)) {
-                  const targetActivation = neuronSquash.squash(targetValue);
-                  if (Number.isFinite(targetActivation)) {
-                    const delta = Math.abs(
-                      targetActivation - (baseActivation as number),
-                    );
-                    if (Number.isFinite(delta)) {
-                      activationDeltaSum += delta;
-                      activationDeltaCount++;
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          if (invalidErrorCount > 0) {
-            totalInvalidErrorCount += invalidErrorCount;
-            neuronsWithInvalidErrors++;
-            console.warn(
-              `⚠️  WARNING: Neuron ${neuron.uuid} has ${invalidErrorCount} invalid error values (NaN/Infinity) out of ${
-                errorValueCount + invalidErrorCount
-              } total error values. This indicates a bug in error calculation or data corruption.`,
-            );
-          }
-
-          const averageRawError = errorValueCount > 0
-            ? absoluteErrorSum / errorValueCount
-            : 0;
-          const activationAverage = activationDeltaCount > 0
-            ? activationDeltaSum / activationDeltaCount
-            : averageRawError;
-          const clampedError = maxOutputError > 0
-            ? Math.min(activationAverage, maxOutputError)
-            : activationAverage;
-
-          records.length = 0;
-
-          let impact = impactCache.get(neuron.uuid);
-          if (impact === undefined) {
-            const computedImpact = this.calculateNeuronImpact(
-              neuron.uuid,
-              derivativeMap,
-            );
-            impact = Number.isFinite(computedImpact) ? computedImpact : 0;
-            impactCache.set(neuron.uuid, impact);
-          }
-
-          results.push({
-            uuid: neuron.uuid,
-            totalError: clampedError,
-            impact,
-          });
-        } catch (error) {
-          console.error(`Error processing neuron ${neuron.uuid}`, error);
-        } finally {
-          processedCount++;
-          if (this.loggingEnabled && processedCount % 25 === 0) {
-            this.log(
-              "debug",
-              `Neuron scan progress: ${processedCount}/${totalNeurons} processed`,
-            );
-          }
-          if (!stopRequested && results.length >= earlyLimit) {
-            stopRequested = true;
-          }
-        }
-      }
-    };
-
-    const workers = Array.from({ length: concurrency }, () => processNext());
-    await Promise.all(workers);
-
-    const durationMs = Date.now() - start;
-    this.lastNeuronScanStats = {
-      processed: processedCount,
-      total: totalNeurons,
-      timedOut,
-      durationMs,
-    };
-
-    if (totalInvalidErrorCount > 0) {
-      console.error(
-        `❌ DISCOVERY DATA QUALITY ISSUE: Found ${totalInvalidErrorCount} invalid error values across ${neuronsWithInvalidErrors} neurons (out of ${neurons.length} total)`,
-      );
-      console.error(
-        `   This suggests a bug in creature.record() or error calculation during discovery recording.`,
-      );
-    }
-
-    if (timedOut) {
-      this.log(
-        "warn",
-        `Neuron scan timed out after ${
-          this.formatMillis(durationMs)
-        } (${processedCount}/${totalNeurons} processed). Continuing with partial results.`,
-      );
-    } else if (stopRequested && this.loggingEnabled) {
-      this.log(
-        "debug",
-        `Neuron scan reached early target of ${earlyLimit} neurons in ${
-          this.formatMillis(durationMs)
-        }.`,
-      );
-    } else if (this.loggingEnabled) {
-      this.log(
-        "debug",
-        `Neuron scan completed in ${
-          this.formatMillis(durationMs)
-        } (${processedCount} neurons).`,
-      );
-    }
-
-    return results
-      .filter((neuron) => neuron.totalError > 0)
-      .sort((a, b) => b.totalError - a.totalError);
   }
 
   /**
@@ -3367,10 +3115,14 @@ export class DiscoverStructure {
         return trimmed;
       }
     }
-    const neuronErrors = await this.listViableNeurons(count);
+    const listViableStart = Date.now();
+    const neuronErrors = this.listViableNeurons(count);
+    const listViableTime = Date.now() - listViableStart;
     if (neuronErrors.length === 0) return [];
 
+    const maxErrorStart = Date.now();
     const maxOutputError = await this.getMaxOutputError();
+    const maxErrorTime = Date.now() - maxErrorStart;
     const hasOutputCap = maxOutputError > 0;
     const EPSILON = 0.0001;
     const rawWeights = neuronErrors.map((n) => ({
@@ -3568,6 +3320,17 @@ export class DiscoverStructure {
       costOfGrowth,
       retryNumber,
     );
+
+    // Log timing breakdown if either phase took significant time
+    if (this.loggingEnabled && (listViableTime > 100 || maxErrorTime > 100)) {
+      this.log(
+        "debug",
+        `Focus selection breakdown: listViableNeurons=${
+          this.formatMillis(listViableTime)
+        }, maxOutputError=${this.formatMillis(maxErrorTime)}`,
+      );
+    }
+
     return selection;
   }
 
@@ -3619,7 +3382,9 @@ export class DiscoverStructure {
     }
 
     const candidatePromises = focusList.map(async (neuronUUID) => {
-      const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
+      const records = await this.loadNeuronRecords(
+        `${this.tempDir}/${neuronUUID}`,
+      );
       return this.findCandidateSquash(neuronUUID, records);
     });
 
@@ -4290,7 +4055,9 @@ export class DiscoverStructure {
 
     const candidatePromises = focusList.map(async (neuronUUID) => {
       try {
-        const records = await this.loadCSV(`${this.tempDir}/${neuronUUID}.csv`);
+        const records = await this.loadNeuronRecords(
+          `${this.tempDir}/${neuronUUID}`,
+        );
         if (!records || records.length === 0) return undefined;
 
         // Calculate baseline error similar to findCandidateSquash
