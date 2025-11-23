@@ -791,6 +791,20 @@ export class DiscoverStructure {
       };
     });
 
+    // Verbose logging: report neuron coverage in this batch
+    if (this.loggingEnabled && pendingSamples > 0) {
+      const uniqueNeuronUUIDs = new Set<string>();
+      rustTrainingData.forEach((record) => {
+        record.neuron_data.forEach((neuron) => {
+          uniqueNeuronUUIDs.add(neuron.neuron_uuid);
+        });
+      });
+      this.log(
+        "debug",
+        `Parquet batch includes ${uniqueNeuronUUIDs.size} unique neurons across ${pendingSamples} samples (${nonInputNeurons.length} non-input neurons in creature).`,
+      );
+    }
+
     const diagnostics = this.inspectRustFlushBatch(
       rustTrainingData,
       this.creature.input,
@@ -3025,9 +3039,13 @@ export class DiscoverStructure {
         const duration = result.durationMs !== undefined
           ? this.formatMillis(result.durationMs)
           : "unknown time";
+        const scannedInfo = result.processedNeurons !== undefined &&
+            result.totalNeurons !== undefined
+          ? ` Scanned ${result.processedNeurons}/${result.totalNeurons} neurons.`
+          : "";
         this.log(
           "debug",
-          `Rust focus ranking returned ${result.neurons.length} neuron(s) in ${duration}.`,
+          `Rust focus ranking returned ${result.neurons.length} neuron(s) in ${duration}.${scannedInfo}`,
         );
       }
 
