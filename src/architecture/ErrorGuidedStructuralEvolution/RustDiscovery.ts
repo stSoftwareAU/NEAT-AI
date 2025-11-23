@@ -193,6 +193,12 @@ export interface RustRankFocusResult {
   error?: string;
 }
 
+export interface RustCheckGpuResult {
+  success: boolean;
+  gpuAvailable: boolean;
+  error?: string;
+}
+
 export type RustSynapseDiagnosticReason =
   | "no_eligible_sources"
   | "no_diagnostics"
@@ -633,6 +639,11 @@ type RustDiscoverySymbols = {
     result: "pointer";
     nonblocking: false;
   };
+  "check_gpu_available": {
+    parameters: [];
+    result: "pointer";
+    nonblocking: false;
+  };
   "free_discovery_result": {
     parameters: ["pointer"];
     result: "void";
@@ -653,6 +664,7 @@ export function closeRustLibrary(): void {
   if (rustLib !== null) {
     rustLib.close();
     rustLib = null;
+    rustGpuWarningEmitted = false;
   }
 }
 
@@ -728,6 +740,11 @@ export function loadRustLibrary(): boolean {
         result: "pointer",
         nonblocking: false,
       },
+      "check_gpu_available": {
+        parameters: [],
+        result: "pointer",
+        nonblocking: false,
+      },
       "free_discovery_result": {
         parameters: ["pointer"],
         result: "void",
@@ -755,6 +772,78 @@ export function rustLibraryExists(): boolean {
   return findRustLibrary() !== null;
 }
 
+let rustGpuWarningEmitted = false;
+
+/**
+ * Checks whether the loaded Rust discovery library reports a usable GPU.
+ *
+ * Returns false (and logs a warning once) when the probe fails or reports
+ * that no GPU is available on this worker.
+ */
+export function isRustGpuAvailable(): boolean {
+  if (!isRustLibraryAvailable()) {
+    return false;
+  }
+
+  assert(rustLib !== null, "Rust library should be loaded");
+
+  try {
+    const resultPtr = rustLib.symbols["check_gpu_available"]();
+    if (resultPtr === null) {
+      if (!rustGpuWarningEmitted) {
+        rustGpuWarningEmitted = true;
+        console.warn(
+          "⚠️  Discovery GPU probe returned a null pointer. " +
+            "Discovery will be disabled on this worker.",
+        );
+      }
+      return false;
+    }
+
+    const resultJson = readCString(resultPtr);
+    rustLib.symbols["free_discovery_result"](resultPtr);
+
+    let parsed: RustCheckGpuResult;
+    try {
+      parsed = JSON.parse(resultJson) as RustCheckGpuResult;
+    } catch {
+      if (!rustGpuWarningEmitted) {
+        rustGpuWarningEmitted = true;
+        console.warn(
+          "⚠️  Discovery GPU probe returned invalid JSON. " +
+            "Discovery will be disabled on this worker.",
+          resultJson,
+        );
+      }
+      return false;
+    }
+
+    if (!parsed.success || !parsed.gpuAvailable) {
+      if (!rustGpuWarningEmitted) {
+        rustGpuWarningEmitted = true;
+        const detail = parsed.error ?? "no usable GPU detected";
+        console.warn(
+          "⚠️  Discovery disabled: Rust discovery library is loaded but no usable GPU " +
+            `was reported for this worker (${detail}).`,
+        );
+      }
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    if (!rustGpuWarningEmitted) {
+      rustGpuWarningEmitted = true;
+      console.warn(
+        "⚠️  Discovery GPU probe threw an error. Discovery will be disabled " +
+          "on this worker.",
+        error,
+      );
+    }
+    return false;
+  }
+}
+
 /**
  * Checks if the Rust library is available (loaded or can be loaded).
  *
@@ -775,7 +864,13 @@ export function isRustLibraryAvailable(): boolean {
  */
 export function isRustDiscoveryEnabled(): boolean {
   try {
-    return isRustLibraryAvailable();
+    if (!isRustLibraryAvailable()) {
+      return false;
+    }
+    // Require a usable GPU as well as a loadable Rust library. When the GPU
+    // probe fails, discovery is treated as unavailable so controllers can fall
+    // back cleanly to the TypeScript-only behaviour.
+    return isRustGpuAvailable();
   } catch {
     // FFI not allowed or library not available
     return false;
