@@ -39,6 +39,7 @@ import {
   type RustSynapseDiagnosticDetail,
 } from "./RustDiscovery.ts";
 import { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
+import { emptyDirSync } from "@std/fs";
 
 export { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 
@@ -362,9 +363,7 @@ export class DiscoverStructure {
   ) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
-    this.tempDir = `.discovery/${creature.uuid}_${
-      Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
-    }`;
+    this.tempDir = `.discovery/${creature.uuid}`;
     this.indicesFilePath = `${this.tempDir}/selected_indices.json`;
     this.textDecoder = new TextDecoder();
     this.discoveryID = creature.uuid;
@@ -380,7 +379,7 @@ export class DiscoverStructure {
     this.rustFlushRecords = Math.max(1, rustFlushRecords);
     this.deps = { ...DEFAULT_DISCOVER_STRUCTURE_DEPS, ...deps };
 
-    Deno.mkdirSync(this.tempDir, { recursive: true });
+    emptyDirSync(this.tempDir);
   }
 
   public configureLogging(options: {
