@@ -132,6 +132,8 @@
     "Yosinski",
     "unlabeled",
     "Autoencoder",
-    "autoencoders"
+    "autoencoders",
+    "speedup",
+    "tradeoff"
   ]
 }
