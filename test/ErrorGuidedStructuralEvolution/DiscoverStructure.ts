@@ -113,7 +113,7 @@ const DRIVER_NEURON_UUID = "hidden-driver";
 const SUPPORT_NEURON_UUID = "hidden-support";
 const OUTPUT_NEURON_UUID = "output-0";
 
-const DISCOVERY_RECORD_COUNT = 10; // Reduced for faster tests (was 512, then 50)
+const DISCOVERY_RECORD_COUNT = 50; // Minimum for reliable statistical analysis (was 512, reduced to 50 for faster tests while maintaining discovery reliability)
 const DISCOVERY_INPUT_COUNT = 60; // Reduced from 256 - minimum needed for input-55 (was 256)
 
 type NeuronExport = CreatureExport["neurons"][number];
