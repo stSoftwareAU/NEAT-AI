@@ -2,11 +2,15 @@
 
 ## Problem
 
-The discovery library check in `quality.sh` was crashing with SIGKILL (exit code 137) when attempting to verify GPU availability. This prevented the quality checks from passing.
+The discovery library check in `quality.sh` was crashing with SIGKILL (exit
+code 137) when attempting to verify GPU availability. This prevented the quality
+checks from passing.
 
 ## Root Cause
 
-The crash occurs in the Rust library's `gpu_is_available()` function (in `../NEAT-AI-Discovery/src/analysis.rs` line 1760) when it tries to initialize WGPU/Metal:
+The crash occurs in the Rust library's `gpu_is_available()` function (in
+`../NEAT-AI-Discovery/src/analysis.rs` line 1760) when it tries to initialize
+WGPU/Metal:
 
 ```rust
 pub fn gpu_is_available() -> bool {
@@ -20,28 +24,34 @@ pub fn gpu_is_available() -> bool {
 }
 ```
 
-The `pollster::block_on(instance.request_adapter(...))` call is segfaulting during Metal/GPU initialization. This is likely due to:
+The `pollster::block_on(instance.request_adapter(...))` call is segfaulting
+during Metal/GPU initialization. This is likely due to:
 
 1. A WGPU framework issue with the current version
 2. Metal API compatibility issues on this macOS version
 3. GPU driver or hardware incompatibility
 
-Since this happens at the FFI boundary when loading the Rust library, the entire Deno process is killed with SIGKILL.
+Since this happens at the FFI boundary when loading the Rust library, the entire
+Deno process is killed with SIGKILL.
 
 ## Solution
 
 ### 1. GPU Check Disabled by Default
 
-**Changed the default behavior** - GPU checking is now **disabled by default** to prevent crashes. The library works out of the box without any configuration.
+**Changed the default behavior** - GPU checking is now **disabled by default**
+to prevent crashes. The library works out of the box without any configuration.
 
 - **Default**: GPU check is skipped (safe, never crashes)
-- **Optional**: Set `NEAT_RUST_DISCOVERY_REQUIRE_GPU=1` to enable GPU verification (only if needed)
+- **Optional**: Set `NEAT_RUST_DISCOVERY_REQUIRE_GPU=1` to enable GPU
+  verification (only if needed)
 
-This means the library is **safe by default** and works on all systems without configuration.
+This means the library is **safe by default** and works on all systems without
+configuration.
 
 ### 2. Improved Error Handling
 
-Enhanced `assertRustDiscoveryAvailable()` to provide specific error messages for different failure modes:
+Enhanced `assertRustDiscoveryAvailable()` to provide specific error messages for
+different failure modes:
 
 - **Library file not found**: Suggests installing to ~/.cargo/lib
 - **FFI permission denied**: Instructs to run with --allow-ffi
@@ -52,7 +62,8 @@ Enhanced `assertRustDiscoveryAvailable()` to provide specific error messages for
 Created `scripts/check_discovery_safe.ts` that:
 
 1. **Checks file existence** - Verifies library file is present
-2. **Loads library (with FFI)** - Tests actual library loading when FFI is available
+2. **Loads library (with FFI)** - Tests actual library loading when FFI is
+   available
 3. **Graceful degradation** - Works with or without FFI permissions
 4. **No crashes** - Safe by default (GPU check disabled)
 
@@ -97,16 +108,20 @@ deno run --allow-read --allow-env --config ./deno.json scripts/check_discovery_s
 - ✅ Discovery library file presence is verified
 - ✅ Library loading is tested (when FFI is available)
 - ✅ Clear error messages for different failure modes
-- ℹ️  GPU availability is not checked by default (can be enabled if needed)
+- ℹ️ GPU availability is not checked by default (can be enabled if needed)
 
 ## Next Steps
 
 The GPU initialization crash needs to be fixed in the Rust codebase:
 
-1. **Add crash protection** - Wrap GPU initialization in a separate process or with panic handlers
-2. **Improve error handling** - Catch and gracefully handle Metal/WGPU initialization failures
-3. **Update WGPU** - Check if a newer version of the wgpu crate fixes the Metal issue
-4. **Add fallback** - Allow discovery to work without GPU if initialization fails
+1. **Add crash protection** - Wrap GPU initialization in a separate process or
+   with panic handlers
+2. **Improve error handling** - Catch and gracefully handle Metal/WGPU
+   initialization failures
+3. **Update WGPU** - Check if a newer version of the wgpu crate fixes the Metal
+   issue
+4. **Add fallback** - Allow discovery to work without GPU if initialization
+   fails
 
 ## Testing
 
@@ -144,7 +159,9 @@ $ NEAT_RUST_DISCOVERY_REQUIRE_GPU=1 deno run --allow-read --allow-env --allow-ff
 
 ## Notes
 
-- The discovery library (15MB dylib) was successfully built and installed at `~/.cargo/lib/libneat_ai_discovery.dylib`
-- The crash is **not** caused by the recent impact calculation fix - it's a pre-existing WGPU/Metal issue
-- Discovery features that don't require GPU checks (file-based checks, library existence) still work correctly
-
+- The discovery library (15MB dylib) was successfully built and installed at
+  `~/.cargo/lib/libneat_ai_discovery.dylib`
+- The crash is **not** caused by the recent impact calculation fix - it's a
+  pre-existing WGPU/Metal issue
+- Discovery features that don't require GPU checks (file-based checks, library
+  existence) still work correctly

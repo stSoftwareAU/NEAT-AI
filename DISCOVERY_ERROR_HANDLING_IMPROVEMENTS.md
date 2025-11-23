@@ -2,7 +2,9 @@
 
 ## Overview
 
-Improved error handling for the Rust discovery library to gracefully handle three scenarios:
+Improved error handling for the Rust discovery library to gracefully handle
+three scenarios:
+
 1. **No FFI permissions** - Library file exists but FFI is not allowed
 2. **No GPU available** - Library loads but GPU initialization crashes
 3. **Library not found** - Library file doesn't exist
@@ -11,7 +13,8 @@ Improved error handling for the Rust discovery library to gracefully handle thre
 
 ### 1. GPU Check Disabled by Default
 
-**Default Behavior**: GPU checking is now **disabled by default** - the library works out of the box without any configuration.
+**Default Behavior**: GPU checking is now **disabled by default** - the library
+works out of the box without any configuration.
 
 **Optional Environment Variable**: `NEAT_RUST_DISCOVERY_REQUIRE_GPU`
 
@@ -22,6 +25,7 @@ export NEAT_RUST_DISCOVERY_REQUIRE_GPU=1  # Only if GPU check is required
 ```
 
 **Key Benefits**:
+
 - **Works everywhere** - No crashes on systems without GPU
 - **No configuration needed** - Safe by default
 - **Graceful degradation** - Works with or without FFI permissions
@@ -43,6 +47,7 @@ throw new Error("Rust discovery library not available. ${hint}");
 ### 3. Improved Safe Check Script
 
 **scripts/check_discovery_safe.ts** now:
+
 - Works with or without FFI permissions
 - Tests actual library loading when FFI is available
 - Provides clear status messages
@@ -51,6 +56,7 @@ throw new Error("Rust discovery library not available. ${hint}");
 ### 4. Updated Quality Script
 
 **quality.sh** now:
+
 - Uses `check_discovery_safe.ts` instead of `check_discovery.ts`
 - Includes `--allow-ffi` flag to test library loading
 - Never triggers GPU initialization crash
@@ -129,7 +135,8 @@ $ NEAT_RUST_DISCOVERY_REQUIRE_GPU=1 deno run --allow-read --allow-env --allow-ff
 
 1. **src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts**
    - **GPU check disabled by default** - Safe on all systems
-   - Added `NEAT_RUST_DISCOVERY_REQUIRE_GPU` environment variable (opt-in for GPU check)
+   - Added `NEAT_RUST_DISCOVERY_REQUIRE_GPU` environment variable (opt-in for
+     GPU check)
    - Enhanced `isRustDiscoveryEnabled()` to skip GPU check by default
    - Improved `assertRustDiscoveryAvailable()` with specific error messages
 
@@ -149,18 +156,21 @@ $ NEAT_RUST_DISCOVERY_REQUIRE_GPU=1 deno run --allow-read --allow-env --allow-ff
 ## Benefits
 
 ### For Development
+
 - ✅ **Works out of the box** - No configuration needed
 - ✅ **Never crashes** - Safe on all systems
 - ✅ Quality checks pass without crashes
 - ✅ Clear error messages guide developers to solutions
 
 ### For CI/CD
+
 - ✅ **No special setup required** - Works everywhere
 - ✅ Works in environments without GPU
 - ✅ Works with or without FFI permissions
 - ✅ No more mysterious SIGKILL failures
 
 ### For Production
+
 - ✅ **Safe by default** - No environment variables needed
 - ✅ Works on all systems (with or without GPU)
 - ✅ Graceful degradation when GPU is unavailable
@@ -195,9 +205,12 @@ export NEAT_RUST_DISCOVERY_REQUIRE_GPU=1
 
 ## Known Limitations
 
-- GPU availability is not verified by default (can be enabled with `NEAT_RUST_DISCOVERY_REQUIRE_GPU=1`)
-- If GPU check is enabled, it may still crash on systems with GPU initialization issues
-- The underlying WGPU/Metal segfault still exists in the Rust library (but is bypassed by default)
+- GPU availability is not verified by default (can be enabled with
+  `NEAT_RUST_DISCOVERY_REQUIRE_GPU=1`)
+- If GPU check is enabled, it may still crash on systems with GPU initialization
+  issues
+- The underlying WGPU/Metal segfault still exists in the Rust library (but is
+  bypassed by default)
 
 ## Future Work
 
@@ -214,4 +227,3 @@ To fully resolve the GPU crash issue, the Rust library needs:
 - `IMPACT_CALCULATION_FIX.md` - Recent impact calculation bug fix
 - `scripts/check_discovery.ts` - Original check (still available)
 - `scripts/check_discovery_safe.ts` - New safe check (recommended)
-

@@ -2,15 +2,18 @@
 
 ## The Problem
 
-The discovery library was crashing with SIGKILL when GPU initialization failed, requiring users to set environment variables to work around the issue.
+The discovery library was crashing with SIGKILL when GPU initialization failed,
+requiring users to set environment variables to work around the issue.
 
 ## The Solution
 
-**GPU check is now DISABLED by default** - the library works out of the box on all systems.
+**GPU check is now DISABLED by default** - the library works out of the box on
+all systems.
 
 ## Key Changes
 
 ### Before (v0.211.0 and earlier)
+
 ```typescript
 // GPU check was ALWAYS attempted
 isRustDiscoveryEnabled() {
@@ -23,6 +26,7 @@ Deno.env.set("NEAT_RUST_DISCOVERY_SKIP_GPU_CHECK", "1");
 ```
 
 ### After (v0.212.0)
+
 ```typescript
 // GPU check is DISABLED by default
 isRustDiscoveryEnabled() {
@@ -43,6 +47,7 @@ isRustDiscoveryEnabled() {
 ## Test Results
 
 ### ✅ Without FFI permissions:
+
 ```bash
 $ deno run --allow-read --allow-env scripts/check_discovery_safe.ts
 ✅ Discovery library file found
@@ -50,6 +55,7 @@ $ deno run --allow-read --allow-env scripts/check_discovery_safe.ts
 ```
 
 ### ✅ With FFI, no GPU (never crashes):
+
 ```bash
 $ deno run --allow-read --allow-env --allow-ffi scripts/check_discovery_safe.ts
 ✅ Discovery library file found
@@ -58,6 +64,7 @@ $ deno run --allow-read --allow-env --allow-ffi scripts/check_discovery_safe.ts
 ```
 
 ### ✅ Original check (also safe):
+
 ```bash
 $ deno run --allow-read --allow-env --allow-ffi scripts/check_discovery.ts
 ✅ Original check passed (no crash)
@@ -85,12 +92,12 @@ export NEAT_RUST_DISCOVERY_REQUIRE_GPU=1
 
 ## Comparison
 
-| Scenario | v0.211.0 | v0.212.0 |
-|----------|----------|----------|
-| No FFI permissions | ✅ Works | ✅ Works |
-| FFI but no GPU | ❌ Crashes | ✅ Works |
-| FFI with GPU | ✅ Works* | ✅ Works |
-| Requires config? | ❌ Yes | ✅ No |
+| Scenario           | v0.211.0   | v0.212.0 |
+| ------------------ | ---------- | -------- |
+| No FFI permissions | ✅ Works   | ✅ Works |
+| FFI but no GPU     | ❌ Crashes | ✅ Works |
+| FFI with GPU       | ✅ Works*  | ✅ Works |
+| Requires config?   | ❌ Yes     | ✅ No    |
 
 \* Only if GPU check succeeds
 
@@ -104,11 +111,12 @@ export NEAT_RUST_DISCOVERY_REQUIRE_GPU=1
 
 ## Philosophy
 
-**Libraries should be safe by default.** Users shouldn't need to set flags to prevent crashes. The GPU check is now opt-in rather than requiring an opt-out flag to avoid crashes.
+**Libraries should be safe by default.** Users shouldn't need to set flags to
+prevent crashes. The GPU check is now opt-in rather than requiring an opt-out
+flag to avoid crashes.
 
 ## Related Documents
 
 - `GPU_CHECK_CRASH_FIX.md` - Technical details on the GPU crash
 - `DISCOVERY_ERROR_HANDLING_IMPROVEMENTS.md` - Complete implementation guide
 - `SUMMARY_v0.212.0.md` - Release notes
-
