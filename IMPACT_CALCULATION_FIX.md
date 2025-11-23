@@ -10,7 +10,7 @@ causing the wrong neurons to be selected for discovery analysis.
 ## Root Cause
 
 The bug was in the Rust implementation of `compute_impact_recursive` in
-`/Users/nigelleck/Develop/NEAT-AI-Discovery/src/focus.rs` (line 117).
+`../NEAT-AI-Discovery/src/focus.rs` (line 117).
 
 ### Original (Buggy) Code
 
@@ -86,11 +86,11 @@ All tests pass (68 unit tests + 5 integration tests).
 
 ## Files Changed
 
-1. `/Users/nigelleck/Develop/NEAT-AI-Discovery/src/focus.rs` - Fixed impact
+1. `../NEAT-AI-Discovery/src/focus.rs` - Fixed impact
    calculation
-2. `/Users/nigelleck/Develop/NEAT-AI-Discovery/src/lib.rs` - Added `Serialize`
+2. `../Develop/NEAT-AI-Discovery/src/lib.rs` - Added `Serialize`
    trait to `CreatureJson`, `NeuronJson`, `SynapseJson`
-3. `/Users/nigelleck/Develop/NEAT-AI-Discovery/tests/integration.rs` - Added
+3. `../NEAT-AI-Discovery/tests/integration.rs` - Added
    test case
 
 ## Next Steps
