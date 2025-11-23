@@ -99,6 +99,9 @@ standard term the first time it appears.
 12. **Discovery Integration Guide**: Step-by-step instructions for running
     discovery via `Creature.discoveryDir()` are available in the
     [DiscoveryDir guide](./docs/DiscoveryDir.md).
+13. **Continuous Incremental Discovery**: For distributed, multi-machine
+    discovery workflows that accumulate small improvements over time, see the
+    [Discovery Guide](./docs/DISCOVERY_GUIDE.md).
 
 ## Comparison with Other AI Approaches
 
@@ -122,10 +125,37 @@ instructions.
 
 ## Discovery Integration
 
-Discovery is now documented in detail in
-[`docs/DiscoveryDir.md`](./docs/DiscoveryDir.md). The guide covers data
-preparation, orchestration patterns, and safe-write practices for
-`Creature.discoveryDir()`.
+Discovery enables **continuous incremental improvement** of neural networks
+through automated structural analysis. Each discovery run finds small
+improvements (0.5-3%), which accumulate over time through repeated iterations.
+
+### Quick Start
+
+```typescript
+// Single discovery iteration
+const result = await creature.discoveryDir(dataDir, {
+  discoveryTimeOutMinutes: 1,
+  discoveryAnalysisTimeoutMinutes: 10,
+  discoveryMinImprovementPercentage: 0.01, // Accept 1%+ improvements
+});
+
+if (result.improvement) {
+  console.log(`Found ${result.improvement.changeType} improvement!`);
+  // Use improved creature for next iteration
+}
+```
+
+### Documentation
+
+- **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
+  distributed, multi-machine discovery workflows
+- **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference and
+  data preparation
+
+Discovery is designed for **continuous operation** across multiple machines,
+accumulating improvements over hundreds of iterations. See the
+[Discovery Guide](./docs/DISCOVERY_GUIDE.md) for real-world workflows and
+production-tuned configurations.
 
 ### Forced Focus Overrides
 

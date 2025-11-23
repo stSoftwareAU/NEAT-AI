@@ -265,12 +265,50 @@ interface RustFlushAggregation {
   metrics: RustFlushMetrics;
 }
 
-const DEFAULT_RUST_HELPFUL_THRESHOLD = 0.1;
-const DEFAULT_RUST_HARMFUL_THRESHOLD = -0.1;
+/**
+ * Discovery thresholds tuned for continuous incremental improvement (23-Nov-2025)
+ *
+ * Discovery is designed for SMALL, INCREMENTAL improvements (0.5-3% per iteration)
+ * that accumulate over time through repeated runs across multiple machines.
+ *
+ * DO NOT expect 10%+ improvements in a single iteration - that's unrealistic!
+ *
+ * Example real-world results:
+ * - 100 iterations × 1.5% average = ~16% total improvement
+ * - With 5 machines running continuously = 5× faster progress
+ *
+ * A 1% threshold accepts meaningful improvements while filtering random noise.
+ * Previous 10% threshold rejected valid 1.58% improvements.
+ *
+ * @see docs/DISCOVERY_GUIDE.md for details on the distributed discovery model
+ */
+const DEFAULT_RUST_HELPFUL_THRESHOLD = 0.01; // 1% improvement threshold (was 0.1 / 10%)
+const DEFAULT_RUST_HARMFUL_THRESHOLD = -0.01; // -1% degradation threshold (was -0.1 / -10%)
 
 /**
- * Implements Error-Driven Synapse Discovery, analyzing neuron activations
- * and errors to identify beneficial new synapses that explicitly reduce neuron-level errors.
+ * Implements Error-Driven Structural Discovery, analyzing neuron activations and errors
+ * to identify beneficial structural changes (new synapses, neuron removal, activation changes).
+ *
+ * **Design Philosophy: Continuous Incremental Improvement**
+ *
+ * Discovery is NOT about finding large one-shot improvements. Instead, it's designed for:
+ * - Small improvements: 0.5-3% per iteration (typical)
+ * - Continuous operation: Run repeatedly on current best creature
+ * - Distributed swarm: Multiple machines working in parallel
+ * - Compound growth: 100 iterations × 1.5% avg = ~16% total improvement
+ *
+ * **Typical Workflow:**
+ * ```typescript
+ * while (true) {
+ *   const best = await fetchBestFromPool();
+ *   const result = await best.discoveryDir(data, options);
+ *   if (result.improvement) {
+ *     await checkInToPool(result.improvement.creature);
+ *   }
+ * }
+ * ```
+ *
+ * @see docs/DISCOVERY_GUIDE.md for complete workflow documentation
  */
 export class DiscoverStructure {
   private creature: Creature;

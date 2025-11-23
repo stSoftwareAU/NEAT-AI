@@ -123,14 +123,14 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryDisableSquashCandidates:
       options.discoveryDisableSquashCandidates ?? false,
 
-    discoveryTimeOutMinutes: options.discoveryTimeOutMinutes || 0,
+    discoveryTimeOutMinutes: options.discoveryTimeOutMinutes ?? 1, // Default 1 min for recording (was 0)
     discoveryAnalysisTimeoutMinutes: options.discoveryAnalysisTimeoutMinutes ??
-      3,
+      10, // Default 10 min for analysis (was 3 - production-tuned)
     discoveryBatchSize: options.discoveryBatchSize || 128,
     discoveryBufferSize: options.discoveryBufferSize || 0,
     discoveryRustFlushRecords: options.discoveryRustFlushRecords ??
       DEFAULT_RUST_FLUSH_RECORDS,
-    discoveryMaxNeurons: options.discoveryMaxNeurons || 0,
+    discoveryMaxNeurons: options.discoveryMaxNeurons ?? 6, // Default 6 neurons (was 0 - production-tuned)
     discoveryDrainEveryNBatches: options.discoveryDrainEveryNBatches ?? 10,
     discoveryFocusNeuronUUIDs: options.discoveryFocusNeuronUUIDs
       ? [...options.discoveryFocusNeuronUUIDs]

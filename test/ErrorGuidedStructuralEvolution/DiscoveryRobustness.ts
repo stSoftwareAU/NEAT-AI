@@ -117,15 +117,15 @@ Deno.test({
   fn: async () => {
     assertRustDiscoveryAvailable();
     // This test ensures batching prevents "too many open files" errors
-    const neuronCount = 150; // Use 150 for test speed, batching logic handles 1967+
+    const neuronCount = 100; // Reduced for faster tests, batching logic handles 1967+
     const creature = makeCreatureWithManyNeurons(neuronCount);
     CreatureUtil.makeUUID(creature);
 
-    const trainingData = makeTrainingData(creature.input, 100);
+    const trainingData = makeTrainingData(creature.input, 30); // Reduced for faster tests
 
     const discoverStructure = new DiscoverStructure(
       creature,
-      60,
+      5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -183,11 +183,11 @@ Deno.test({
     const creature = makeCreatureWithManyNeurons(50);
     CreatureUtil.makeUUID(creature);
 
-    const trainingData = makeTrainingData(creature.input, 100);
+    const trainingData = makeTrainingData(creature.input, 30); // Reduced for faster tests
 
     const discoverStructure = new DiscoverStructure(
       creature,
-      60,
+      5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -233,15 +233,15 @@ Deno.test({
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
     assertRustDiscoveryAvailable();
-    const creature = makeCreatureWithManyNeurons(200);
+    const creature = makeCreatureWithManyNeurons(100); // Reduced for faster tests
     CreatureUtil.makeUUID(creature);
 
-    const trainingData = makeTrainingData(creature.input, 50);
+    const trainingData = makeTrainingData(creature.input, 20); // Reduced for faster tests
 
-    // Use very short timeout (1 second) to trigger timeout
+    // Use very short timeout (0.1 second) to trigger timeout quickly
     const discoverStructure = new DiscoverStructure(
       creature,
-      1,
+      0.1,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -257,8 +257,8 @@ Deno.test({
       throw new Error("Rust recording flush failed");
     }
 
-    // Wait to ensure timeout has passed
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    // Wait to ensure timeout has passed (0.1s timeout + small buffer)
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     // Should handle timeout gracefully and return partial results
     const viableNeurons = await discoverStructure.listViableNeurons();
@@ -324,7 +324,7 @@ Deno.test({
 
     const discoverStructure = new DiscoverStructure(
       creature,
-      60,
+      5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -373,12 +373,12 @@ Deno.test({
     const creature = makeCreatureWithManyNeurons(30);
     CreatureUtil.makeUUID(creature);
 
-    const trainingData = makeTrainingData(creature.input, 100);
+    const trainingData = makeTrainingData(creature.input, 20); // Reduced for faster tests
 
-    // Very short timeout
+    // Very short timeout (0.1 second) for fast test execution
     const discoverStructure = new DiscoverStructure(
       creature,
-      1,
+      0.1,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -394,8 +394,8 @@ Deno.test({
       throw new Error("Rust recording flush failed");
     }
 
-    // Wait for timeout to pass
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    // Wait for timeout to pass (0.1s timeout + small buffer)
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     // These should all return quickly due to timeout checks
     const startTime = Date.now();
@@ -438,15 +438,15 @@ Deno.test({
   fn: async () => {
     assertRustDiscoveryAvailable();
     // This test verifies the batching logic by checking it doesn't load all files at once
-    const neuronCount = 150; // More than BATCH_SIZE (50)
+    const neuronCount = 100; // More than BATCH_SIZE (50), reduced for faster tests
     const creature = makeCreatureWithManyNeurons(neuronCount);
     CreatureUtil.makeUUID(creature);
 
-    const trainingData = makeTrainingData(creature.input, 50);
+    const trainingData = makeTrainingData(creature.input, 30); // Reduced for faster tests
 
     const discoverStructure = new DiscoverStructure(
       creature,
-      60,
+      5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();

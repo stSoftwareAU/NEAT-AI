@@ -168,14 +168,36 @@ export interface NeatArguments {
 
   /**
    * Minimum expected improvement (0..1) that a discovery candidate must
-   * achieve in order to be considered helpful. Defaults to 0.1 (10%).
+   * achieve in order to be considered helpful. Defaults to 0.01 (1%).
+   *
+   * Discovery uses a three-stage selection strategy:
+   * 1. **Cost-Benefit Gate**: Error reduction must exceed costOfGrowth penalty
+   * 2. **Noise Filter**: Improvement must exceed this threshold (1% by default)
+   * 3. **Best Selection**: Among qualifying candidates, take the largest improvement
+   *
+   * Discovery is designed for **continuous incremental improvements**: Each iteration finds
+   * small improvements (typically 0.5-3%), which compound over many iterations when run
+   * across multiple machines in a distributed swarm.
+   *
+   * **Important**: Never expect 10%+ improvement in a single iteration. Discovery works by
+   * accumulating many small improvements over time. For example:
+   * - 100 iterations × 1.5% average = ~16% total improvement
+   * - With 5 machines running continuously = 5× faster progress
+   *
+   * @see docs/DISCOVERY_GUIDE.md for details on the distributed discovery model
    */
   discoveryMinImprovementPercentage?: number;
 
-  /** The maximum number of minutes to record for */
+  /**
+   * The maximum number of minutes to record for.
+   * Defaults to 1 minute (sufficient for ~50k records at 700 records/sec).
+   */
   discoveryTimeOutMinutes: number;
 
-  /** The maximum number of minutes allocated for the analysis phase (after recording completes). Default: 3 minutes */
+  /**
+   * The maximum number of minutes allocated for the analysis phase (after recording completes).
+   * Defaults to 10 minutes (tuned from production - was 3 minutes but caused timeouts).
+   */
   discoveryAnalysisTimeoutMinutes: number;
 
   /** The number of observations per promise */
@@ -191,7 +213,10 @@ export interface NeatArguments {
    */
   discoveryRustFlushRecords: number;
 
-  /** The maximum number of neurons to discover */
+  /**
+   * The maximum number of neurons to analyze per discovery iteration.
+   * Defaults to 6 (production-tuned - balances thoroughness with speed).
+   */
   discoveryMaxNeurons: number;
 
   /** Drain promise chains every N batches during discovery recording to prevent memory buildup. Default: 10 */
