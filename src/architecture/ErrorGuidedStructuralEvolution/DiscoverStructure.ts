@@ -792,16 +792,11 @@ export class DiscoverStructure {
     });
 
     // Verbose logging: report neuron coverage in this batch
+    // Note: All records contain the same set of neurons (nonInputNeurons), so no need to iterate
     if (this.loggingEnabled && pendingSamples > 0) {
-      const uniqueNeuronUUIDs = new Set<string>();
-      rustTrainingData.forEach((record) => {
-        record.neuron_data.forEach((neuron) => {
-          uniqueNeuronUUIDs.add(neuron.neuron_uuid);
-        });
-      });
       this.log(
         "debug",
-        `Parquet batch includes ${uniqueNeuronUUIDs.size} unique neurons across ${pendingSamples} samples (${nonInputNeurons.length} non-input neurons in creature).`,
+        `Parquet batch includes ${nonInputNeurons.length} neurons across ${pendingSamples} samples.`,
       );
     }
 
