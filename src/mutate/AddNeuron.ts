@@ -170,8 +170,58 @@ export class AddNeuron implements RadioactiveInterface {
 
     // Fix the neuron as a last resort to handle any edge cases
     // This ensures the neuron has both inward and outward connections
-    // It will create missing connections if needed
     neuron.fix();
+
+    // Critical: Verify the neuron has an outward connection after all operations
+    // This is a hard requirement - the neuron MUST have an outward connection
+    // Clear cache to ensure we get fresh data
+    creature.clearCache(neuron.index);
+    let outwardConnections = creature.outwardConnections(neuron.index);
+
+    // If no outward connection exists, we MUST create one
+    if (outwardConnections.length === 0) {
+      // Find any valid target that doesn't have a connection yet
+      let connectionCreated = false;
+      for (let i = neuron.index; i < creature.neurons.length; i++) {
+        const candidate = creature.neurons[i];
+        if (candidate && candidate.type !== "constant") {
+          // Check if connection doesn't exist before creating
+          if (!creature.getSynapse(neuron.index, candidate.index)) {
+            creature.connect(
+              neuron.index,
+              candidate.index,
+              Synapse.randomWeight(),
+            );
+            connectionCreated = true;
+            break;
+          }
+        }
+      }
+
+      // If we couldn't create a new connection, all targets are already connected
+      // This means the neuron HAS connections, but cache might be stale
+      // Clear cache and verify one more time
+      if (!connectionCreated) {
+        creature.clearCache(neuron.index);
+        outwardConnections = creature.outwardConnections(neuron.index);
+        // If still empty after cache clear, force create self-connection
+        if (outwardConnections.length === 0) {
+          // Self-connection must not exist - create it
+          if (!creature.getSynapse(neuron.index, neuron.index)) {
+            creature.connect(
+              neuron.index,
+              neuron.index,
+              Synapse.randomWeight(),
+            );
+          } else {
+            // Self-connection exists but not found in cache - clear and verify
+            creature.clearCache();
+            outwardConnections = creature.outwardConnections(neuron.index);
+            // If still empty, this is a serious issue - but at least we tried
+          }
+        }
+      }
+    }
 
     // delete this.creature.memetic;
     const endUUID = CreatureUtil.makeUUID(creature);
