@@ -152,7 +152,9 @@ export class DiscoveryRunner {
       const duration = performance.now() - startedAt;
       verboseLog(`${label} completed in ${duration.toFixed(1)} ms.`);
     };
-    const workerCount = Math.max(1, config.threads);
+    // Use config.threads which defaults to navigator.hardwareConcurrency (number of CPU cores)
+    // This is validated to be >= 1 in createNeatConfig, so no need for Math.max here
+    const workerCount = config.threads;
     const workers: DiscoveryRunnerWorker[] = [];
     try {
       const workersStart = performance.now();
@@ -216,7 +218,7 @@ export class DiscoveryRunner {
       const { filtered: filteredCandidates, skipped } = this
         .#filterCandidatesForEvaluation(
           candidates,
-          config.threads,
+          workerCount,
         );
       if (skipped.length > 0) {
         verboseLog(
