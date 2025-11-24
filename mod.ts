@@ -129,3 +129,25 @@ export { type SynapseExport } from "./src/architecture/SynapseInterfaces.ts";
  * Upgrade to version 2.0.0
  */
 export { upgradeTwo } from "./src/upgrade/UpgradeTwo.ts";
+
+/**
+ * Discovery formatting utilities
+ *
+ * These utilities format discovery evaluation summaries consistently.
+ * Use them when logging evaluation results yourself after disabling
+ * the library's internal logging with `discoveryDisableEvaluationSummaryLogging: true`.
+ *
+ * @see {@link module:src/discovery/DiscoveryRunner}
+ */
+export {
+  formatErrorDelta,
+  formatExpected,
+  formatPercentWithSignificantDigits,
+} from "./src/discovery/DiscoveryRunner.ts";
+
+/**
+ * Discovery evaluation summary type
+ *
+ * @see {@link module:src/discovery/DiscoveryRunner}
+ */
+export type { DiscoveryEvaluationSummary } from "./src/discovery/DiscoveryRunner.ts";

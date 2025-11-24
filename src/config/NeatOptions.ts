@@ -228,6 +228,13 @@ export interface NeatArguments {
    */
   discoveryFocusNeuronUUIDs: string[];
 
+  /**
+   * Disable the internal evaluation summary logging. When set to true, the library
+   * will not log the evaluation summary, allowing external code to handle logging
+   * using the exported formatting utilities. Defaults to false (library logs by default).
+   */
+  discoveryDisableEvaluationSummaryLogging: boolean;
+
   /** When enabled with creatureStore, saves population after each generation for crash recovery */
   checkpointEveryGeneration: boolean;
 }
