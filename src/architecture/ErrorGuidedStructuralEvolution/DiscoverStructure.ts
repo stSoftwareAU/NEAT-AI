@@ -2950,6 +2950,33 @@ export class DiscoverStructure {
         targetCount ?? this.creature.neurons.length,
         64,
       );
+
+      // Get parquet file size for diagnostics
+      let parquetFileSize = 0;
+      let parquetFileSizeStr = "unknown";
+      try {
+        const fileInfo = Deno.statSync(this.parquetFilePath);
+        parquetFileSize = fileInfo.size;
+        const mb = (parquetFileSize / (1024 * 1024)).toFixed(2);
+        parquetFileSizeStr =
+          `${mb} MB (${parquetFileSize.toLocaleString()} bytes)`;
+      } catch {
+        // File might not exist or be accessible, ignore
+      }
+
+      const nonInputNeurons = this.creature.neurons.filter(
+        (n) => n.type !== "input",
+      ).length;
+      const totalNeurons = this.creature.neurons.length;
+      const totalSynapses = this.creature.synapses.length;
+
+      if (this.loggingEnabled) {
+        this.log(
+          "debug",
+          `Rust focus ranking: ${nonInputNeurons} non-input neurons, ${totalNeurons} total neurons, ${totalSynapses} synapses, parquet file: ${parquetFileSizeStr}`,
+        );
+      }
+
       const rustRankStart = Date.now();
       const result = this.deps.rankFocusNeurons({
         parquetFile: this.parquetFilePath,
@@ -2972,11 +2999,28 @@ export class DiscoverStructure {
 
       // Warn if Rust ranking is unexpectedly slow (> 1 second)
       if (this.loggingEnabled && rustRankDuration > 1000) {
+        const rustReportedTime = result.durationMs !== undefined
+          ? ` (Rust reported: ${this.formatMillis(result.durationMs)})`
+          : "";
+        const processedNeurons = result.processedNeurons ?? nonInputNeurons;
+        const perNeuronTime = processedNeurons > 0
+          ? ` (~${
+            (rustRankDuration / processedNeurons).toFixed(0)
+          }ms per neuron)`
+          : "";
+        const neuronCountInfo = result.processedNeurons !== undefined &&
+            result.processedNeurons !== nonInputNeurons
+          ? `${result.processedNeurons}/${nonInputNeurons}`
+          : `${nonInputNeurons}`;
         this.log(
           "warn",
           `Rust rankFocusNeurons took ${
             this.formatMillis(rustRankDuration)
-          } - this is unexpectedly slow!`,
+          } - this is unexpectedly slow!${rustReportedTime}${perNeuronTime} Processing ${neuronCountInfo} neurons from parquet file (${parquetFileSizeStr}). Expected time: < 1s.`,
+        );
+        this.log(
+          "warn",
+          `Performance diagnostic: This suggests the Rust implementation may be reading the parquet file multiple times, recalculating impact per-neuron, or allocating inside loops. See RANK_FOCUS_NEURONS_SPEC.md for optimization guidelines.`,
         );
       }
 

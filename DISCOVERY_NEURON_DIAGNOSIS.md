@@ -19,32 +19,66 @@ DiscoveryRunner.
 
 ---
 
-### B) Focus Selection Performance (3m 17s)
+### B) Focus Selection Performance (2m 35s)
 
-**Issue**: Focus selection takes 3m 17s, with Rust `rankFocusNeurons` taking
-197s (3m 17s).
+**Issue**: Focus selection takes 2m 35s, with Rust `rankFocusNeurons` taking
+155s. The `listViableNeurons` function accounts for the entire 155s delay.
 
-**Root Cause**: The Rust `rankFocusNeurons` function is already in Rust but is
-slow:
+**Root Cause**: The Rust `rankFocusNeurons` function is taking 155 seconds when
+it should take < 1 second (expected: ~300ms for 460 neurons with 45,000
+records).
 
-- Processing 461 neurons
-- Taking ~197 seconds (0.43 seconds per neuron)
-- This is unexpectedly slow according to the logs
+- Processing 460 neurons with ~45,000 records
+- Taking ~155 seconds (0.34 seconds per neuron)
+- Expected time: < 1 second total
+- **578x slower than expected**
+
+**Most Likely Causes** (based on RANK_FOCUS_NEURONS_SPEC.md):
+
+1. **Reading Parquet File Multiple Times** - The Rust code may be reading the
+   parquet file once per neuron (460 file reads!) instead of reading it once and
+   processing all neurons. This would explain the ~0.34s per neuron timing.
+
+2. **Recalculating Impact Per Neuron** - The Rust code may be doing a full graph
+   traversal for each neuron (460 traversals) instead of a single backward pass
+   that calculates impact for all neurons at once.
+
+3. **Allocating Inside Loops** - The Rust code may be creating new
+   vectors/arrays inside hot loops, causing millions of unnecessary allocations.
+
+4. **Not Using Vectorized Operations** - The Rust code may be using loops
+   instead of Polars/Arrow vectorized operations for aggregations.
+
+**Diagnostics Added**:
+
+Enhanced logging now includes:
+
+- Parquet file size
+- Number of neurons and synapses
+- Per-neuron timing breakdown
+- Reference to optimization guidelines
 
 **Recommendations**:
 
-1. **Profile the Rust code** - The Rust ranking is already implemented, but
-   needs optimization
-2. **Check if GPU acceleration is available** - Logs show "using CPU fallback"
-   might be an issue
-3. **Consider batching or parallelization** - If ranking neurons sequentially,
-   parallelize
-4. **Review the ranking algorithm** - May be doing unnecessary work per neuron
+1. **Profile the Rust code** - Use `cargo flamegraph` or `perf` to identify the
+   exact bottleneck
+2. **Check RANK_FOCUS_NEURONS_SPEC.md** - Follow the optimization guidelines
+   (read parquet once, single backward pass, vectorized operations)
+3. **Verify release build** - Ensure the Rust library is built in release mode
+   (`cargo build --release`)
+4. **Review Rust implementation** - Check the NEAT-AI-Discovery Rust library for
+   the common performance pitfalls listed in the spec
 
 **Note**: The focus selection is already in Rust, so migration isn't needed -
-optimization is.
+optimization is. The TypeScript code correctly calls the Rust function after
+merging parquet files.
 
-**Location**: Rust discovery library (`rankFocusNeurons` function)
+**Location**:
+
+- TypeScript:
+  `src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts:2936-3023`
+- Rust: NEAT-AI-Discovery library (`rank_focus_neurons` function)
+- Spec: `RANK_FOCUS_NEURONS_SPEC.md`
 
 ---
 
