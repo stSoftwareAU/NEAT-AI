@@ -31,8 +31,28 @@ if ! deno run \
   --allow-env \
   --allow-ffi \
   --config ./deno.json \
-  scripts/check_discovery_safe.ts; then
-  echo "❌ Discovery checks failed"
+  scripts/check_discovery_safe.ts 2>&1; then
+  exit_code=$?
+  if [ $exit_code -eq 137 ] || [ $exit_code -eq 9 ]; then
+    echo ""
+    echo "❌ Discovery library crashed on load (Killed: 9 or exit code 137)"
+    echo "   This indicates a fatal crash (segmentation fault) in the Rust library."
+    echo "   Common causes:"
+    echo "   - Architecture mismatch (x86_64 vs arm64)"
+    echo "   - Missing dependencies"
+    echo "   - Library built for different macOS version"
+    echo "   - Bug in library initialization"
+    echo ""
+    echo "   Diagnostic steps:"
+    echo "   1. Check library architecture:"
+    echo "      file ~/.cargo/lib/libneat_ai_discovery.dylib"
+    echo "   2. Check dependencies:"
+    echo "      otool -L ~/.cargo/lib/libneat_ai_discovery.dylib"
+    echo "   3. Rebuild the library:"
+    echo "      cd ../NEAT-AI-Discovery && ./scripts/runlib.sh"
+  else
+    echo "❌ Discovery checks failed (exit code: $exit_code)"
+  fi
   exit 1
 fi
 
