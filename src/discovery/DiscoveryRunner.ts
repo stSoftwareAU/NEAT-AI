@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { blue, bold, cyan, green, red, yellow } from "@std/fmt/colors";
+import { bold, cyan, green, red, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { join } from "@std/path/join";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
@@ -332,20 +332,11 @@ export class DiscoveryRunner {
       }
 
       if (verboseLogging && reScoringTime > 0) {
+        const formattedTime = format(reScoringTime, { ignoreZero: true });
         verboseLog(
-          `Re-scoring phase: ${(reScoringTime / 1000).toFixed(1)}s (${
+          `Re-scoring phase: ${formattedTime} (${
             evaluationTasks.length - 1
           } candidate${evaluationTasks.length - 1 === 1 ? "" : "s"} evaluated)`,
-        );
-        // Log re-scoring time as part of performance summary
-        // Note: This is logged after the main performance summary from recordDirectory
-        // because re-scoring happens in DiscoveryRunner after the worker returns
-        // This updates the "Overall" section to include re-scoring time
-        const formattedTime = format(reScoringTime, { ignoreZero: true });
-        console.log(
-          `\n⏱️  ${yellow("Overall")} (updated with re-scoring):\n` +
-            `  Re-scoring: ${formattedTime}\n` +
-            `${blue("=".repeat(60))}\n`,
         );
       }
 
