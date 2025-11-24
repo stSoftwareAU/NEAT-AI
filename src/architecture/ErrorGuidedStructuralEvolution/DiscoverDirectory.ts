@@ -472,14 +472,6 @@ class DataRecorder {
     if (Array.isArray(focusOverride) && focusOverride.length > 0) {
       discoverStructure.setForcedFocusNeurons(focusOverride);
     }
-    if (
-      typeof options.discoveryMinImprovementPercentage === "number" &&
-      Number.isFinite(options.discoveryMinImprovementPercentage)
-    ) {
-      discoverStructure.setImprovementThreshold(
-        options.discoveryMinImprovementPercentage,
-      );
-    }
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
     const initializeStartTime = Date.now();
