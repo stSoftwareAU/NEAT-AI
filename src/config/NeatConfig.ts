@@ -97,7 +97,8 @@ export function createNeatConfig(options: NeatOptions) {
     enableRepetitiveTraining: options.enableRepetitiveTraining || false,
 
     trainingBatchSize: options.trainingBatchSize || 100,
-    threads: options.threads || navigator.hardwareConcurrency,
+    threads: options.threads ??
+      Math.max(1, navigator.hardwareConcurrency ?? 1),
 
     maximumBiasAdjustmentScale: options.maximumBiasAdjustmentScale ?? 1,
 

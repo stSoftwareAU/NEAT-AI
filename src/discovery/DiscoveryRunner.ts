@@ -152,7 +152,9 @@ export class DiscoveryRunner {
       const duration = performance.now() - startedAt;
       verboseLog(`${label} completed in ${duration.toFixed(1)} ms.`);
     };
-    const workerCount = Math.max(1, config.threads);
+    // Use config.threads which defaults to navigator.hardwareConcurrency (number of CPU cores)
+    // This is validated to be >= 1 in createNeatConfig, so no need for Math.max here
+    const workerCount = config.threads;
     const workers: DiscoveryRunnerWorker[] = [];
     try {
       const workersStart = performance.now();
@@ -214,20 +216,19 @@ export class DiscoveryRunner {
       );
 
       const { filtered: filteredCandidates, skipped } = this
-        .#filterCandidatesByGrowthCost(
-          creature,
+        .#filterCandidatesForEvaluation(
           candidates,
-          config.costOfGrowth,
+          workerCount,
         );
       if (skipped.length > 0) {
         verboseLog(
           `Skipped ${skipped.length} candidate${
             skipped.length === 1 ? "" : "s"
-          } below cost-of-growth threshold: ${
+          } with non-positive expected impact or below selection threshold: ${
             skipped.map((entry) =>
               `${entry.changeType ?? "unknown"} (expected ${
                 entry.expected?.toPrecision(3) ?? "n/a"
-              } vs ${entry.threshold.toPrecision(3)})`
+              })`
             ).join(", ")
           }.`,
         );
@@ -512,11 +513,15 @@ export class DiscoveryRunner {
       const expectedText = summary.expectedErrorReductionPct !== undefined
         ? ` expected ${this.#formatExpected(summary.expectedErrorReductionPct)}`
         : "";
+      const scoreText = `, score=${summary.score.toPrecision(4)}`;
       const scoreDeltaText = summary.kind === "candidate" &&
           summary.scoreDelta !== undefined
-        ? ` score Δ ${summary.scoreDelta >= 0 ? "+" : ""}${
+        ? `, delta=${summary.scoreDelta >= 0 ? "+" : ""}${
           summary.scoreDelta.toPrecision(4)
         }`
+        : "";
+      const improvedText = summary.kind === "candidate"
+        ? `, improved=${summary.improved ? "yes" : "no"}`
         : "";
       const mismatchText = summary.expectationMismatch
         ? ` ${
@@ -529,10 +534,13 @@ export class DiscoveryRunner {
           )
         }`
         : "";
-      console.info(
-        `[DiscoveryRunner]   ${label}${description}: error=${
+      const mainInfo = summary.kind === "original"
+        ? `error=${summary.error.toPrecision(6)}${scoreText} ${errorDeltaText}`
+        : `error=${
           summary.error.toPrecision(6)
-        } ${errorDeltaText}${expectedText}${scoreDeltaText}${mismatchText}`,
+        }${scoreText}${scoreDeltaText}${improvedText} ${errorDeltaText}${expectedText}`;
+      console.info(
+        `[DiscoveryRunner]   ${label}${description}: ${mainInfo}${mismatchText}`,
       );
       if (summary.archivePath) {
         console.info(
@@ -640,74 +648,97 @@ export class DiscoveryRunner {
     return results;
   }
 
-  #filterCandidatesByGrowthCost(
-    baseCreature: Creature,
+  /**
+   * Filters discovery candidates for evaluation.
+   *
+   * Strategy:
+   * 1. Include all candidates with positive expected error reduction (or undefined, which we'll re-score)
+   * 2. If there are more than 2x CPU cores candidates, select the best estimated ones
+   * 3. Cost-of-growth is not used for filtering - we re-score all positive candidates
+   *
+   * @param candidates - All discovery candidates
+   * @param threadCount - Number of CPU threads available
+   * @returns Filtered candidates ready for evaluation and list of skipped candidates
+   */
+  #filterCandidatesForEvaluation(
     candidates: DiscoveryCandidate[],
-    costOfGrowth: number,
+    threadCount: number,
   ): {
     filtered: DiscoveryCandidate[];
     skipped: Array<{
       changeType?: DiscoveryChangeType;
       expected?: number;
-      threshold: number;
     }>;
   } {
-    if (!Number.isFinite(costOfGrowth) || costOfGrowth <= 0) {
-      return { filtered: candidates, skipped: [] };
-    }
-    const baseExport = baseCreature.exportJSON();
-    const baseHiddenUUIDs = new Set(
-      baseExport.neurons
-        .filter((neuron) => neuron.type === "hidden")
-        .map((neuron) => neuron.uuid),
-    );
-    const baseSynapseKeys = new Set(
-      baseExport.synapses.map((synapse) =>
-        `${synapse.fromUUID}->${synapse.toUUID}`
-      ),
-    );
+    const maxCandidates = 2 * threadCount;
 
-    const filtered: DiscoveryCandidate[] = [];
+    // Filter to candidates with positive expected impact (or undefined, which we'll re-score)
+    const positiveCandidates: DiscoveryCandidate[] = [];
     const skipped: Array<{
       changeType?: DiscoveryChangeType;
       expected?: number;
-      threshold: number;
     }> = [];
 
     for (const candidate of candidates) {
       CreatureUtil.makeUUID(candidate.creature);
-      const candidateExport = candidate.creature.exportJSON();
-      const additions = countStructuralAdditions(
-        candidateExport,
-        baseHiddenUUIDs,
-        baseSynapseKeys,
-      );
-      const addedUnits = additions.addedHidden + additions.addedSynapses;
-      if (addedUnits <= 0) {
-        filtered.push(candidate);
-        continue;
-      }
       const expected = candidate.change.expectedErrorReduction;
-      if (
-        expected === undefined || !Number.isFinite(expected) ||
-        expected <= 0
-      ) {
-        filtered.push(candidate);
-        continue;
-      }
-      const threshold = addedUnits * costOfGrowth;
-      if (expected < threshold) {
+
+      // Include candidates with positive expected impact or undefined (will be re-scored)
+      if (expected === undefined) {
+        // No expected value - include it for re-scoring
+        positiveCandidates.push(candidate);
+      } else if (Number.isFinite(expected) && expected > 0) {
+        // Positive expected impact - include it
+        positiveCandidates.push(candidate);
+      } else {
+        // Non-positive expected impact - skip it
         skipped.push({
           changeType: candidate.change.type,
           expected,
-          threshold,
         });
-        continue;
       }
-      filtered.push(candidate);
     }
 
-    return { filtered, skipped };
+    // If we have too many candidates, select the best estimated ones
+    if (positiveCandidates.length > maxCandidates) {
+      // Sort by expected error reduction (descending)
+      // Candidates with undefined expectedErrorReduction are included but sorted to the end
+      // so they're only included if there's room after all candidates with known estimates
+      positiveCandidates.sort((a, b) => {
+        const aExpected = a.change.expectedErrorReduction;
+        const bExpected = b.change.expectedErrorReduction;
+
+        // Both have values - sort by value (descending)
+        if (aExpected !== undefined && bExpected !== undefined) {
+          return bExpected - aExpected;
+        }
+        // Only a has value - a comes first
+        if (aExpected !== undefined) {
+          return -1;
+        }
+        // Only b has value - b comes first
+        if (bExpected !== undefined) {
+          return 1;
+        }
+        // Both undefined - maintain order
+        return 0;
+      });
+
+      // Take the top candidates and mark the rest as skipped
+      const topCandidates = positiveCandidates.slice(0, maxCandidates);
+      const remaining = positiveCandidates.slice(maxCandidates);
+
+      for (const candidate of remaining) {
+        skipped.push({
+          changeType: candidate.change.type,
+          expected: candidate.change.expectedErrorReduction,
+        });
+      }
+
+      return { filtered: topCandidates, skipped };
+    }
+
+    return { filtered: positiveCandidates, skipped };
   }
 }
 
@@ -730,30 +761,6 @@ function safeRealPath(path: string): string {
   } catch {
     return path;
   }
-}
-
-function countStructuralAdditions(
-  candidate: CreatureExport,
-  baseHiddenUUIDs: Set<string>,
-  baseSynapseKeys: Set<string>,
-): { addedHidden: number; addedSynapses: number } {
-  let addedHidden = 0;
-  for (const neuron of candidate.neurons) {
-    if (neuron.type !== "hidden") continue;
-    if (!baseHiddenUUIDs.has(neuron.uuid)) {
-      addedHidden++;
-    }
-  }
-
-  let addedSynapses = 0;
-  for (const synapse of candidate.synapses) {
-    const key = `${synapse.fromUUID}->${synapse.toUUID}`;
-    if (!baseSynapseKeys.has(key)) {
-      addedSynapses++;
-    }
-  }
-
-  return { addedHidden, addedSynapses };
 }
 
 const MIN_PERCENT_FRACTION_DIGITS = 3;
