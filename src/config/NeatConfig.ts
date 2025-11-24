@@ -136,6 +136,8 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryFocusNeuronUUIDs: options.discoveryFocusNeuronUUIDs
       ? [...options.discoveryFocusNeuronUUIDs]
       : [],
+    discoveryDisableEvaluationSummaryLogging:
+      options.discoveryDisableEvaluationSummaryLogging ?? false,
     customCost: options.customCost,
     checkpointEveryGeneration: options.checkpointEveryGeneration ?? false,
   };

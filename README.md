@@ -152,6 +152,38 @@ if (result.improvement) {
 - **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference and
   data preparation
 
+### Evaluation Summary Logging
+
+By default, the library logs evaluation summaries with the `[DiscoveryRunner]`
+prefix. To avoid duplicate logging when your application also logs evaluation
+results:
+
+1. **Disable library logging**: Set
+   `discoveryDisableEvaluationSummaryLogging: true` in your options
+2. **Use exported formatting utilities**: Import `formatErrorDelta`,
+   `formatExpected`, and `formatPercentWithSignificantDigits` from the discovery
+   module to format summaries consistently
+
+```typescript
+import { formatErrorDelta, formatExpected } from "./mod.ts";
+
+const result = await creature.discoveryDir(dataDir, {
+  discoveryDisableEvaluationSummaryLogging: true, // Disable library logging
+  // ... other options
+});
+
+// Log summaries yourself using the exported formatters
+if (result.evaluations) {
+  for (const summary of result.evaluations) {
+    console.log(
+      `Candidate: ${summary.changeType}, improvement: ${
+        formatErrorDelta(summary.errorDeltaPct ?? 0)
+      }`,
+    );
+  }
+}
+```
+
 Discovery is designed for **continuous operation** across multiple machines,
 accumulating improvements over hundreds of iterations. See the
 [Discovery Guide](./docs/DISCOVERY_GUIDE.md) for real-world workflows and

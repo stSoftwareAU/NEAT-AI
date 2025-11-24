@@ -13,4 +13,5 @@ export interface DiscoverResult {
   removeHarmfulNeurons: CandidateHarmfulNeuron[] | undefined;
 
   candidateSquashes: CandidateSquash[] | undefined;
+  reScoringTime?: number; // Time spent re-scoring candidates (ms)
 }

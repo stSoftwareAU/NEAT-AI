@@ -120,6 +120,8 @@ export interface ResponseData {
     removeHarmfulNeurons?: CandidateHarmfulNeuron[];
     /** Optional candidate activation functions */
     candidateSquashes?: CandidateSquash[];
+    /** Time spent re-scoring candidates (ms) - set by DiscoveryRunner after evaluation */
+    reScoringTime?: number;
   };
 }
 

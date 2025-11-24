@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import { bold, cyan, green, red, yellow } from "@std/fmt/colors";
+import { format } from "@std/fmt/duration";
 import { join } from "@std/path/join";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
@@ -197,6 +198,7 @@ export class DiscoveryRunner {
         removeHarmfulSynapse: rawDiscover.removeHarmfulSynapse ?? undefined,
         removeHarmfulNeurons: rawDiscover.removeHarmfulNeurons ?? undefined,
         candidateSquashes: rawDiscover.candidateSquashes ?? undefined,
+        reScoringTime: undefined, // Will be set after re-scoring completes
       };
 
       const addCount = discoverResult.addHelpfulSynapses?.length ?? 0;
@@ -270,6 +272,9 @@ export class DiscoveryRunner {
         .filter((result) => result.score > original.score)
         .sort((a, b) => b.score - a.score)[0];
 
+      // Update discoverResult with re-scoring time for potential use in summary
+      discoverResult.reScoringTime = reScoringTime;
+
       const outcome: DiscoveryDirResult = {
         discovery: discoverResult,
         original: {
@@ -319,14 +324,17 @@ export class DiscoveryRunner {
       if (evaluationArtifacts.archiveDir) {
         outcome.candidateArchiveDir = evaluationArtifacts.archiveDir;
       }
-      this.#logEvaluationSummary({
-        discoveryID: discoverResult.ID,
-        summaries: evaluationArtifacts.summaries,
-      });
+      if (!config.discoveryDisableEvaluationSummaryLogging) {
+        this.#logEvaluationSummary({
+          discoveryID: discoverResult.ID,
+          summaries: evaluationArtifacts.summaries,
+        });
+      }
 
       if (verboseLogging && reScoringTime > 0) {
+        const formattedTime = format(reScoringTime, { ignoreZero: true });
         verboseLog(
-          `Re-scoring phase: ${(reScoringTime / 1000).toFixed(1)}s (${
+          `Re-scoring phase: ${formattedTime} (${
             evaluationTasks.length - 1
           } candidate${evaluationTasks.length - 1 === 1 ? "" : "s"} evaluated)`,
         );
@@ -583,20 +591,11 @@ export class DiscoveryRunner {
   }
 
   #formatErrorDelta(value: number): string {
-    if (!Number.isFinite(value)) {
-      return yellow("±0.000%");
-    }
-    const formatted = formatPercentWithSignificantDigits(value);
-    if (value > 0.05) return green(formatted);
-    if (value < -0.05) return red(formatted);
-    return yellow(formatted);
+    return formatErrorDelta(value);
   }
 
   #formatExpected(value: number): string {
-    if (!Number.isFinite(value)) {
-      return cyan("n/a");
-    }
-    return cyan(formatPercentWithSignificantDigits(value));
+    return formatExpected(value);
   }
 
   async #evaluateAll(
@@ -779,7 +778,14 @@ const SIGNIFICANT_PERCENT_DIGITS = 3;
 const MAX_PERCENT_FRACTION_DIGITS = 100;
 const ZERO_PERCENT = `+0.${"0".repeat(MIN_PERCENT_FRACTION_DIGITS)}%`;
 
-function formatPercentWithSignificantDigits(value: number): string {
+/**
+ * Formats a percentage value with appropriate significant digits.
+ * Used for displaying error deltas and expected improvements in discovery evaluation summaries.
+ *
+ * @param value - The percentage value to format (e.g., 0.5 for 0.5%)
+ * @returns Formatted string like "+0.500%" or "-1.23%"
+ */
+export function formatPercentWithSignificantDigits(value: number): string {
   if (value === 0) {
     return ZERO_PERCENT;
   }
@@ -805,4 +811,34 @@ function formatPercentWithSignificantDigits(value: number): string {
   fractionDigits = Math.min(fractionDigits, MAX_PERCENT_FRACTION_DIGITS);
   const magnitude = absValue.toFixed(fractionDigits);
   return `${sign}${magnitude}%`;
+}
+
+/**
+ * Formats an error delta percentage with colour coding.
+ * Green for improvements > 0.05%, red for declines < -0.05%, yellow otherwise.
+ *
+ * @param value - The error delta percentage (e.g., 0.5 for 0.5% improvement)
+ * @returns Formatted and colour-coded string
+ */
+export function formatErrorDelta(value: number): string {
+  if (!Number.isFinite(value)) {
+    return yellow("±0.000%");
+  }
+  const formatted = formatPercentWithSignificantDigits(value);
+  if (value > 0.05) return green(formatted);
+  if (value < -0.05) return red(formatted);
+  return yellow(formatted);
+}
+
+/**
+ * Formats an expected improvement percentage.
+ *
+ * @param value - The expected improvement percentage (e.g., 0.5 for 0.5%)
+ * @returns Formatted string in cyan colour
+ */
+export function formatExpected(value: number): string {
+  if (!Number.isFinite(value)) {
+    return cyan("n/a");
+  }
+  return cyan(formatPercentWithSignificantDigits(value));
 }

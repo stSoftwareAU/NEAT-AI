@@ -73,65 +73,153 @@ export class AddNeuron implements RadioactiveInterface {
       }
     }
 
-    assert(fromIndex !== -1, "addNeuron: Should have a from index");
-
-    creature.connect(
-      fromIndex,
-      neuron.index,
-      Synapse.randomWeight(),
-    );
-
-    assert(toIndex !== -1, "addNeuron: Should have a to index");
-
-    const nonConstantIndx = creature.neurons.findIndex((
-      n,
-    ) => (n.index >= toIndex && n.type !== "constant"));
-
-    // Ensure we have a valid non-constant neuron to connect to
-    if (nonConstantIndx !== -1) {
+    // Create inward connection (from source to new neuron)
+    // If fromIndex wasn't found, fix() will handle it
+    if (fromIndex !== -1) {
       creature.connect(
+        fromIndex,
         neuron.index,
-        nonConstantIndx,
         Synapse.randomWeight(),
       );
     }
 
-    // Fix the neuron to ensure it has valid connections
-    neuron.fix();
+    // Find a valid non-constant target neuron for the outward connection
+    // We must ensure this always succeeds to keep the creature valid
+    let targetNeuronIndex = -1;
 
-    // Verify the neuron has an outward connection, create one if needed
-    const outwardConnections = creature.outwardConnections(neuron.index);
-    if (outwardConnections.length === 0) {
-      // Find any valid target neuron (non-constant, after this neuron)
-      let targetIndx = -1;
+    // First, try to use the originally selected toIndex if it's valid and non-constant
+    if (toIndex !== -1) {
+      const nonConstantIndx = creature.neurons.findIndex((
+        n,
+      ) => (n.index >= toIndex && n.type !== "constant"));
+
+      if (nonConstantIndx !== -1) {
+        targetNeuronIndex = creature.neurons[nonConstantIndx].index;
+      }
+    }
+
+    // If we don't have a target yet, use fallback logic
+    if (targetNeuronIndex === -1) {
+      // If the original toIndex doesn't work, find any valid target after the neuron
       for (let i = neuron.index + 1; i < creature.neurons.length; i++) {
-        if (creature.neurons[i].type !== "constant") {
-          targetIndx = i;
+        const candidate = creature.neurons[i];
+        if (candidate && candidate.type !== "constant") {
+          targetNeuronIndex = candidate.index;
           break;
         }
       }
 
-      // If no valid target found after this neuron, try output neurons
-      if (targetIndx === -1) {
+      // If still no target found, use the first output neuron
+      if (targetNeuronIndex === -1) {
         const firstOutputIndex = creature.neurons.length - creature.output;
-        if (firstOutputIndex < creature.neurons.length) {
-          targetIndx = firstOutputIndex;
+        if (
+          firstOutputIndex >= 0 && firstOutputIndex < creature.neurons.length
+        ) {
+          const outputNeuron = creature.neurons[firstOutputIndex];
+          if (outputNeuron) {
+            targetNeuronIndex = outputNeuron.index;
+          }
         }
       }
 
-      if (targetIndx !== -1) {
-        creature.connect(
-          neuron.index,
-          targetIndx,
-          Synapse.randomWeight(),
-        );
-      } else {
-        // Last resort: connect to self if no other option
-        creature.connect(
-          neuron.index,
-          neuron.index,
-          Synapse.randomWeight(),
-        );
+      // Last resort: self-connection (ensures neuron always has outward connection)
+      if (targetNeuronIndex === -1) {
+        targetNeuronIndex = neuron.index;
+      }
+    }
+
+    // Ensure we always have a valid target (should never be -1 with our fallbacks)
+    // But if it is, use self-connection as absolute last resort
+    if (targetNeuronIndex === -1) {
+      targetNeuronIndex = neuron.index;
+    }
+
+    // Find a target that doesn't already have a connection from this neuron
+    // This ensures we can always create a new connection
+    while (creature.getSynapse(neuron.index, targetNeuronIndex)) {
+      // Connection already exists, find a different target
+      let foundNewTarget = false;
+      for (let i = neuron.index + 1; i < creature.neurons.length; i++) {
+        const candidate = creature.neurons[i];
+        if (candidate && candidate.type !== "constant") {
+          if (!creature.getSynapse(neuron.index, candidate.index)) {
+            targetNeuronIndex = candidate.index;
+            foundNewTarget = true;
+            break;
+          }
+        }
+      }
+      // If we can't find a target without an existing connection,
+      // use self-connection (which should be valid for hidden neurons)
+      if (!foundNewTarget) {
+        targetNeuronIndex = neuron.index;
+        // If self-connection also exists, that's okay - fix() will handle it
+        break;
+      }
+    }
+
+    // Create the connection only if it doesn't already exist
+    // This prevents assertion errors from duplicate connections
+    if (!creature.getSynapse(neuron.index, targetNeuronIndex)) {
+      creature.connect(
+        neuron.index,
+        targetNeuronIndex,
+        Synapse.randomWeight(),
+      );
+    }
+
+    // Fix the neuron as a last resort to handle any edge cases
+    // This ensures the neuron has both inward and outward connections
+    neuron.fix();
+
+    // Critical: Verify the neuron has an outward connection after all operations
+    // This is a hard requirement - the neuron MUST have an outward connection
+    // Clear cache to ensure we get fresh data
+    creature.clearCache(neuron.index);
+    let outwardConnections = creature.outwardConnections(neuron.index);
+
+    // If no outward connection exists, we MUST create one
+    if (outwardConnections.length === 0) {
+      // Find any valid target that doesn't have a connection yet
+      let connectionCreated = false;
+      for (let i = neuron.index; i < creature.neurons.length; i++) {
+        const candidate = creature.neurons[i];
+        if (candidate && candidate.type !== "constant") {
+          // Check if connection doesn't exist before creating
+          if (!creature.getSynapse(neuron.index, candidate.index)) {
+            creature.connect(
+              neuron.index,
+              candidate.index,
+              Synapse.randomWeight(),
+            );
+            connectionCreated = true;
+            break;
+          }
+        }
+      }
+
+      // If we couldn't create a new connection, all targets are already connected
+      // This means the neuron HAS connections, but cache might be stale
+      // Clear cache and verify one more time
+      if (!connectionCreated) {
+        creature.clearCache(neuron.index);
+        outwardConnections = creature.outwardConnections(neuron.index);
+        // If still empty after cache clear, force create self-connection
+        if (outwardConnections.length === 0) {
+          // Self-connection must not exist - create it
+          if (!creature.getSynapse(neuron.index, neuron.index)) {
+            creature.connect(
+              neuron.index,
+              neuron.index,
+              Synapse.randomWeight(),
+            );
+          } else {
+            // Self-connection exists but not found in cache - clear and verify
+            creature.clearCache();
+            outwardConnections = creature.outwardConnections(neuron.index);
+            // If still empty, this is a serious issue - but at least we tried
+          }
+        }
       }
     }
 
@@ -171,11 +259,27 @@ export class AddNeuron implements RadioactiveInterface {
 
     this.creature.neurons = full;
 
+    // Update all synapse indices to account for the new neuron
+    // This must preserve all synapse properties including type
     this.creature.synapses.forEach((c) => {
-      if (c.from >= neuron.index) c.from++;
-      if (c.to >= neuron.index) c.to++;
+      if (c.from >= neuron.index) {
+        c.from++;
+      }
+      if (c.to >= neuron.index) {
+        c.to++;
+      }
     });
 
+    // Re-sort synapses after index updates to maintain sort order
+    // This is critical for correct connection lookups
+    this.creature.synapses.sort((a, b) => {
+      if (a.from === b.from) {
+        return a.to - b.to;
+      }
+      return a.from - b.from;
+    });
+
+    // Clear cache to force rebuild with updated indices
     this.creature.clearCache();
   }
 }

@@ -135,6 +135,8 @@ class DiscoveryPerformanceStats {
     );
 
     // Overall summary
+    // Note: Re-scoring time is not included here as it happens after recordDirectory returns
+    // It is logged separately in DiscoveryRunner after re-scoring completes
     console.log(
       `\n⏱️  ${yellow("Overall")}:\n` +
         `  Cleanup: ${formatTime(this.cleanupTime)}\n` +
@@ -1190,6 +1192,9 @@ class DataRecorder {
       // Calculate total time after conditional await to include cleanup when awaited
       perfStats.totalTime = Date.now() - startTime;
 
+      // Note: reScoringTime is not included in the performance summary as it happens
+      // after recordDirectory returns. It is logged separately in DiscoveryRunner
+      // after re-scoring completes.
       perfStats.logSummary(this.ID, options);
 
       return discoverResult;
