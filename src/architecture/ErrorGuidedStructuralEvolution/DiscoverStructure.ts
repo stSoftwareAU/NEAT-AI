@@ -267,24 +267,19 @@ interface RustFlushAggregation {
 }
 
 /**
- * Discovery thresholds tuned for continuous incremental improvement (23-Nov-2025)
- *
- * Discovery is designed for SMALL, INCREMENTAL improvements (0.5-3% per iteration)
- * that accumulate over time through repeated runs across multiple machines.
- *
- * DO NOT expect 10%+ improvements in a single iteration - that's unrealistic!
+ * Discovery accepts ANY positive improvement, no matter how small. This allows
+ * continuous incremental improvements that accumulate over time through repeated
+ * runs across multiple machines.
  *
  * Example real-world results:
  * - 100 iterations × 1.5% average = ~16% total improvement
  * - With 5 machines running continuously = 5× faster progress
  *
- * A 1% threshold accepts meaningful improvements while filtering random noise.
- * Previous 10% threshold rejected valid 1.58% improvements.
+ * All candidates with positive expected improvement are evaluated, and the
+ * re-scoring phase determines which actually improve the creature's score.
  *
  * @see docs/DISCOVERY_GUIDE.md for details on the distributed discovery model
  */
-const DEFAULT_RUST_HELPFUL_THRESHOLD = 0.01; // 1% improvement threshold (was 0.1 / 10%)
-const DEFAULT_RUST_HARMFUL_THRESHOLD = -0.01; // -1% degradation threshold (was -0.1 / -10%)
 
 /**
  * Implements Error-Driven Structural Discovery, analyzing neuron activations and errors
@@ -339,10 +334,8 @@ export class DiscoverStructure {
   private deps: DiscoverStructureDeps;
   private forcedFocusNeurons: string[] | null = null;
   private forcedFocusIndex = 0;
-  private improvementThreshold = DEFAULT_RUST_HELPFUL_THRESHOLD;
   private neuronImpactEstimator?: CreatureErrorImpactEstimator;
   private neuronIndexMap?: Map<string, number>;
-  private harmfulThreshold = DEFAULT_RUST_HARMFUL_THRESHOLD;
   private lastFocusSelection?: FocusSelectionSummary;
   private cachedMaxOutputError?: { value: number; computedAt: number } =
     undefined;
@@ -522,29 +515,6 @@ export class DiscoverStructure {
         `Applying forced discovery focus neurons: ${
           this.forcedFocusNeurons.join(", ")
         }`,
-      );
-    }
-  }
-
-  public setImprovementThreshold(threshold: number): void {
-    const parsed = Number(threshold);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      if (this.loggingEnabled) {
-        this.log(
-          "warn",
-          `Ignored invalid discovery improvement threshold: ${threshold}`,
-        );
-      }
-      return;
-    }
-    this.improvementThreshold = parsed;
-    this.harmfulThreshold = -Math.abs(parsed);
-    if (this.loggingEnabled) {
-      this.log(
-        "info",
-        `Configured discovery improvement threshold to ${
-          (this.improvementThreshold * 100).toFixed(2)
-        }%.`,
       );
     }
   }
@@ -1503,9 +1473,7 @@ export class DiscoverStructure {
 
     const candidates = helpfulNeurons
       .map((candidate) => this.mapRustNeuronCandidate(candidate))
-      .filter((candidate) =>
-        candidate.expectedImprovementPercentage > this.improvementThreshold
-      );
+      .filter((candidate) => candidate.expectedImprovementPercentage > 0);
 
     if (candidates.length === 0) {
       this.logRustNoImprovement("neuron", focusList, rustResult.diagnostics);
@@ -1539,9 +1507,7 @@ export class DiscoverStructure {
 
     const candidates = helpfulSynapses
       .map((candidate) => this.mapRustCandidate(candidate))
-      .filter((candidate) =>
-        candidate.expectedImprovementPercentage > this.improvementThreshold
-      );
+      .filter((candidate) => candidate.expectedImprovementPercentage > 0);
 
     if (candidates.length === 0) {
       this.logRustNoImprovement("synapse", focusList, rustResult.diagnostics);
@@ -1575,9 +1541,7 @@ export class DiscoverStructure {
 
     const candidates = rustResult.harmfulSynapses
       .map((candidate) => this.mapRustCandidate(candidate))
-      .filter((candidate) =>
-        candidate.expectedImprovementPercentage < this.harmfulThreshold
-      );
+      .filter((candidate) => candidate.expectedImprovementPercentage < 0);
 
     if (candidates.length === 0) {
       return [];
@@ -1772,7 +1736,6 @@ export class DiscoverStructure {
       parquetFile: this.parquetFilePath,
       creature: creatureToRustFormat(this.creature.exportJSON()),
       focusNeurons: focusList,
-      improvementThreshold: this.improvementThreshold,
       maxCandidates: Math.max(25, focusList.length * 5),
       requireGpu: Deno.build.os === "darwin",
       analysisDeadlineMs: this.analysisDeadlineMs,
@@ -1836,7 +1799,6 @@ export class DiscoverStructure {
       parquetFile: this.parquetFilePath,
       creature: creatureToRustFormat(this.creature.exportJSON()),
       focusNeurons: focusList,
-      improvementThreshold: this.improvementThreshold,
       maxCandidates: Math.max(50, focusList.length * 10),
       requireGpu: Deno.build.os === "darwin",
       analysisDeadlineMs: this.analysisDeadlineMs,
@@ -2170,8 +2132,6 @@ export class DiscoverStructure {
         parquetFile: this.parquetFilePath,
         creature: rustCreature,
         focusNeurons: focusList,
-        improvementThreshold: this.improvementThreshold,
-        harmfulThreshold: this.harmfulThreshold,
         maxSynapseCandidates: includeSynapse
           ? Math.max(50, focusList.length * 10)
           : undefined,
@@ -2213,8 +2173,6 @@ export class DiscoverStructure {
       parquetFile: this.parquetFilePath,
       creature: rustCreature,
       focusNeurons: focusList,
-      improvementThreshold: this.improvementThreshold,
-      harmfulThreshold: this.harmfulThreshold,
       maxSynapseCandidates: includeSynapse
         ? Math.max(50, focusList.length * 10)
         : undefined,
@@ -2527,6 +2485,9 @@ export class DiscoverStructure {
   ): string {
     switch (reason) {
       case "no_eligible_sources":
+        // Note: This may indicate a Rust library issue - all non-input neurons should have
+        // inward synapses. If this appears for valid neurons, it may be a filtering issue
+        // in the Rust library (e.g., all potential sources are already connected or filtered out).
         return "No eligible upstream sources";
       case "no_diagnostics":
         return "No diagnostics recorded";
@@ -2546,6 +2507,9 @@ export class DiscoverStructure {
   ): string {
     switch (reason) {
       case "no_eligible_sources":
+        // Note: This may indicate a Rust library issue - all non-input neurons should have
+        // inward synapses. If this appears for valid neurons, it may be a filtering issue
+        // in the Rust library (e.g., all potential sources are already connected or filtered out).
         return "No eligible upstream sources";
       case "no_diagnostics":
         return "No diagnostics recorded";
@@ -3664,11 +3628,8 @@ export class DiscoverStructure {
 
       const expectedImprovementPercentage = scaledImprovement * impactScale;
 
-      // Return candidate even if improvement is small, but only if raw improvement was significant
-      // Use a lower threshold for small sample counts to allow test cases to pass
-      // With more samples, we can be more strict
-      const improvementThreshold = sampleCount < 10 ? 0.001 : 0.01;
-      if (rawImprovement > improvementThreshold) {
+      // Accept any positive improvement (no threshold filtering)
+      if (rawImprovement > 0) {
         // Clear large arrays to help GC (after we've used them for improvement calculation)
         rawValues.length = 0;
         currentActivations.length = 0;
