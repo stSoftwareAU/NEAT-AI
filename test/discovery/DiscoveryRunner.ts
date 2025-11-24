@@ -789,7 +789,7 @@ Deno.test("DiscoveryRunner passes discovery focus neurons to worker", async () =
 });
 
 Deno.test(
-  "DiscoveryRunner includes synapse candidates with positive expected impact regardless of cost-of-growth",
+  "DiscoveryRunner includes synapse candidates with positive expected impact",
   async () => {
     const discoveryResult: DiscoverResult = {
       ID: "POSITIVE_FILTER_SYN",
@@ -855,18 +855,18 @@ Deno.test(
     const result = await runner.discoverDir({
       creature: baseCreature,
       dataDir: "/tmp/data",
-      options: makeOptions({ costOfGrowth: 0.02 }), // Even with high cost-of-growth, positive candidates are included
+      options: makeOptions({ costOfGrowth: 0.02 }), // Positive candidates are included
     });
 
     assert(
       result.evaluations?.some((entry) => entry.kind === "candidate"),
-      "candidates with positive expected impact should be included regardless of cost-of-growth",
+      "candidates with positive expected impact should be included",
     );
   },
 );
 
 Deno.test(
-  "DiscoveryRunner includes neuron candidates with positive expected impact regardless of cost-of-growth",
+  "DiscoveryRunner includes neuron candidates with positive expected impact",
   async () => {
     const discoveryResult: DiscoverResult = {
       ID: "POSITIVE_FILTER_NEURON",
@@ -937,12 +937,12 @@ Deno.test(
     const result = await runner.discoverDir({
       creature: baseCreature,
       dataDir: "/tmp/data",
-      options: makeOptions({ costOfGrowth: 0.01 }), // Even with cost-of-growth, positive candidates are included
+      options: makeOptions({ costOfGrowth: 0.01 }), // Positive candidates are included
     });
 
     assert(
       result.evaluations?.some((entry) => entry.kind === "candidate"),
-      "neuron additions with positive expected impact should be included regardless of cost-of-growth",
+      "neuron additions with positive expected impact should be included",
     );
   },
 );

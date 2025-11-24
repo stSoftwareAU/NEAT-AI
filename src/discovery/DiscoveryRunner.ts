@@ -534,15 +534,6 @@ export class DiscoveryRunner {
       const improvedText = summary.kind === "candidate"
         ? `, improved=${summary.improved ? "yes" : "no"}`
         : "";
-      // Show cost-of-growth impact for failed candidates
-      const costOfGrowthText = summary.kind === "candidate" &&
-          summary.scoreDelta !== undefined &&
-          summary.scoreDelta < 0 &&
-          !summary.improved &&
-          summary.errorDeltaPct !== undefined &&
-          Math.abs(summary.errorDeltaPct) < 0.0001
-        ? ` (cost-of-growth penalty: ${summary.scoreDelta.toPrecision(4)})`
-        : "";
       const mismatchText = summary.expectationMismatch
         ? ` ${
           red(
@@ -558,7 +549,7 @@ export class DiscoveryRunner {
         ? `error=${summary.error.toPrecision(6)}${scoreText} ${errorDeltaText}`
         : `error=${
           summary.error.toPrecision(6)
-        }${scoreText}${scoreDeltaText}${improvedText}${costOfGrowthText} ${errorDeltaText}${expectedText}`;
+        }${scoreText}${scoreDeltaText}${improvedText} ${errorDeltaText}${expectedText}`;
       console.info(
         `[DiscoveryRunner]   ${label}${description}: ${mainInfo}${mismatchText}`,
       );
@@ -674,7 +665,7 @@ export class DiscoveryRunner {
    * Strategy:
    * 1. Include all candidates with positive expected error reduction (or undefined, which we'll re-score)
    * 2. If there are more than 2x CPU cores candidates, select the best estimated ones
-   * 3. Cost-of-growth is not used for filtering - we re-score all positive candidates
+   * 3. We re-score all candidates with positive expected improvement
    *
    * @param candidates - All discovery candidates
    * @param threadCount - Number of CPU threads available
