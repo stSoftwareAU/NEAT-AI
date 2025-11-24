@@ -10,7 +10,7 @@ Looking at the code flow:
 
 1. **Rust Analysis** (`analyze_neurons` in Rust):
    - Rust calculates optimal `incomingWeight` and `outgoingWeight`
-   - Rust calculates `expectedImprovementPercentage` 
+   - Rust calculates `expectedImprovementPercentage`
    - **But Rust always returns `bias: 0.0`** (not calculated)
 
 2. **TypeScript Receives**:
@@ -19,7 +19,8 @@ Looking at the code flow:
    - Then used to create the new neuron with `bias: 0`
 
 3. **Normal Neuron Initialization** (for comparison):
-   - New neurons in normal evolution: `Math.random() * 0.2 - 0.1` (range -0.1 to +0.1)
+   - New neurons in normal evolution: `Math.random() * 0.2 - 0.1` (range -0.1 to
+     +0.1)
    - This gives neurons a chance to contribute from the start
 
 ## Why Bias=0 Prevents Neuron Contribution
@@ -27,18 +28,21 @@ Looking at the code flow:
 ### Mathematical Explanation
 
 A neuron's activation is calculated as:
+
 ```
 pre_activation = bias + sum(input_activation * weight)
 activation = squash_function(pre_activation)
 ```
 
 **With bias=0:**
+
 ```
 pre_activation = 0 + sum(input_activation * weight)
 activation = squash_function(sum(input_activation * weight))
 ```
 
 **With non-zero bias (e.g., -0.05):**
+
 ```
 pre_activation = -0.05 + sum(input_activation * weight)
 activation = squash_function(-0.05 + sum(input_activation * weight))
@@ -49,7 +53,7 @@ activation = squash_function(-0.05 + sum(input_activation * weight))
 Different activation functions have different ranges and behaviors:
 
 1. **TANH** (range -1 to +1):
-   - With bias=0: `tanh(weighted_sum)` 
+   - With bias=0: `tanh(weighted_sum)`
    - The weighted sum might be in the "flat" region of tanh (near 0)
    - A small bias can shift the input into the "active" region
    - **Example**: If weighted_sum = 0.02, tanh(0.02) ≈ 0.02 (barely active)
@@ -59,23 +63,28 @@ Different activation functions have different ranges and behaviors:
    - With bias=0: `logistic(weighted_sum)`
    - If weighted_sum is near 0, logistic(0) = 0.5 (neutral)
    - A negative bias shifts toward 0, positive bias shifts toward 1
-   - **Example**: logistic(0) = 0.5, but logistic(-0.1) ≈ 0.475 (more useful range)
+   - **Example**: logistic(0) = 0.5, but logistic(-0.1) ≈ 0.475 (more useful
+     range)
 
 3. **COMPLEMENT/INVERSE** (used in your example):
    - These functions are sensitive to input range
-   - Bias=0 means the neuron can only contribute if weighted inputs are already in the right range
-   - A bias offset can shift the operating point to where the function is more effective
+   - Bias=0 means the neuron can only contribute if weighted inputs are already
+     in the right range
+   - A bias offset can shift the operating point to where the function is more
+     effective
 
 4. **ReLU** (range 0 to +∞):
    - With bias=0: `max(0, weighted_sum)`
    - If weighted_sum is negative, ReLU outputs 0 (neuron is "dead")
-   - A positive bias ensures the neuron can activate: `max(0, bias + weighted_sum)`
+   - A positive bias ensures the neuron can activate:
+     `max(0, bias + weighted_sum)`
    - **Example**: weighted_sum = -0.05, ReLU(-0.05) = 0 (dead neuron)
    - With bias = 0.1, ReLU(0.05) = 0.05 (active neuron)
 
 ### Real-World Impact from Your Diff
 
 Looking at your actual candidate:
+
 ```
 Neuron:
 - bias: 0
@@ -87,13 +96,16 @@ Neuron:
 ```
 
 **What's happening:**
+
 1. Rust calculated that weights `1.5` and `-0.1817` should help
 2. But Rust didn't calculate an optimal bias (returned 0)
-3. With bias=0, the neuron's activation is: `COMPLEMENT(1.5 * input_activation + 0)`
+3. With bias=0, the neuron's activation is:
+   `COMPLEMENT(1.5 * input_activation + 0)`
 4. The COMPLEMENT function may not be operating in its effective range
 5. Result: Neuron doesn't contribute → error unchanged → discovery fails
 
 **What should happen:**
+
 1. Rust should calculate optimal bias (e.g., -0.1 to +0.1 range)
 2. Neuron activation: `COMPLEMENT(1.5 * input_activation + optimal_bias)`
 3. With proper bias, neuron operates in effective range
@@ -112,6 +124,7 @@ Neuron:
 ### The Cost-of-Growth Penalty
 
 Even if error improves slightly, cost-of-growth can make score negative:
+
 ```
 score = error_improvement - cost_of_growth
 score = tiny_improvement - (neuron_cost + synapse_cost)
@@ -119,11 +132,13 @@ score = negative → discovery fails
 ```
 
 With bias=0:
+
 - Error improvement = 0 (neuron doesn't contribute)
 - Score = 0 - cost = negative
 - **Discovery always fails**
 
 With proper bias:
+
 - Error improvement = actual reduction (neuron contributes)
 - Score = improvement - cost
 - If improvement > cost, discovery succeeds ✅
@@ -132,7 +147,9 @@ With proper bias:
 
 ### TypeScript Behavior
 
-TypeScript now uses whatever bias Rust provides directly - no fallback. This means:
+TypeScript now uses whatever bias Rust provides directly - no fallback. This
+means:
+
 - **Rust MUST provide proper bias values** (not 0.0)
 - If Rust returns bias=0, the neuron will have bias=0 and likely fail
 - The fix must be in Rust to calculate optimal bias during analysis
@@ -140,11 +157,13 @@ TypeScript now uses whatever bias Rust provides directly - no fallback. This mea
 ### Rust Fix (Needed)
 
 Rust should calculate optimal bias during analysis:
+
 1. When testing weight combinations, also test bias values
 2. Choose the bias that maximizes error reduction
 3. Return the calculated bias in `RustCandidateNeuron`
 
 This ensures:
+
 - Bias is optimized for the specific neuron and weights
 - Expected improvement accounts for the bias
 - Neuron actually contributes when added
@@ -156,7 +175,8 @@ This ensures:
 1. ✅ **Root cause**: Rust always returns bias=0 (not calculated)
 2. ✅ **Impact**: Neurons can't contribute effectively with bias=0
 3. ✅ **Result**: Discovery always fails (error unchanged, score negative)
-4. ✅ **Fix**: Rust should calculate optimal bias (see `RUST_BIAS_FIX_PROMPT.md`)
+4. ✅ **Fix**: Rust should calculate optimal bias (see
+   `RUST_BIAS_FIX_PROMPT.md`)
 
-The TypeScript fallback helps, but Rust needs to fix the root cause for optimal results.
-
+The TypeScript fallback helps, but Rust needs to fix the root cause for optimal
+results.

@@ -2,20 +2,28 @@
 
 ## Problem Statement
 
-Currently, `analyze_neurons` always returns `bias: 0.0` for all neuron candidates. This causes **all discovered neuron candidates to fail** because:
+Currently, `analyze_neurons` always returns `bias: 0.0` for all neuron
+candidates. This causes **all discovered neuron candidates to fail** because:
 
-1. **Neurons with bias=0 cannot contribute effectively** - Many activation functions (TANH, LOGISTIC, COMPLEMENT, ReLU) require a bias offset to operate in their effective range
-2. **Discovery always fails** - With bias=0, neurons don't reduce error, so score goes negative (cost-of-growth penalty), and neurons never enter the population
-3. **Expected vs Actual mismatch** - Rust predicts 0.6% error reduction, but actual is 0% because neurons can't contribute
+1. **Neurons with bias=0 cannot contribute effectively** - Many activation
+   functions (TANH, LOGISTIC, COMPLEMENT, ReLU) require a bias offset to operate
+   in their effective range
+2. **Discovery always fails** - With bias=0, neurons don't reduce error, so
+   score goes negative (cost-of-growth penalty), and neurons never enter the
+   population
+3. **Expected vs Actual mismatch** - Rust predicts 0.6% error reduction, but
+   actual is 0% because neurons can't contribute
 
 **Evidence from production:**
+
 - All 30 neuron candidates failed with bias=0
 - Expected improvement: 0.6%, Actual: 0%
 - Error unchanged, score negative → discovery fails
 
 ## Current Behavior
 
-In the Rust code, when creating `RustCandidateNeuron` structs, the `bias` field is always set to `0.0`:
+In the Rust code, when creating `RustCandidateNeuron` structs, the `bias` field
+is always set to `0.0`:
 
 ```rust
 // Current (WRONG):
@@ -35,7 +43,8 @@ RustCandidateNeuron {
 
 ### Goal
 
-Calculate an **optimal bias value** for each neuron candidate that, combined with the optimal weights, maximizes error reduction.
+Calculate an **optimal bias value** for each neuron candidate that, combined
+with the optimal weights, maximizes error reduction.
 
 ### Implementation Approach
 
@@ -98,7 +107,8 @@ If performance is critical:
 3. Use gradient descent or similar to find optimal bias
 4. This requires implementing the derivative of error reduction w.r.t. bias
 
-**Recommendation**: Start with Option 1 (grid search), optimize to Option 2 if needed.
+**Recommendation**: Start with Option 1 (grid search), optimize to Option 2 if
+needed.
 
 ### Code Changes Required
 
@@ -203,7 +213,8 @@ fn calculate_error_reduction_for_bias(
 
 #### 3. Ensure Bias is Used in Error Calculation
 
-When calculating `expected_improvement_percentage`, make sure you use the calculated bias, not 0.0:
+When calculating `expected_improvement_percentage`, make sure you use the
+calculated bias, not 0.0:
 
 ```rust
 // When testing the candidate neuron:
@@ -228,7 +239,7 @@ let error_reduction = calculate_error_reduction(new_target_activation, target_er
        assert!(bias >= -0.3 && bias <= 0.3);
        assert_ne!(bias, 0.0);  // Should not be zero
    }
-   
+
    #[test]
    fn test_bias_calculation_relu() {
        let bias = calculate_optimal_bias(1.0, 0.5, "ReLU", ...);
@@ -311,7 +322,8 @@ let error_reduction = calculate_error_reduction(new_target_activation, target_er
 
 1. **Test backward compatibility**:
    - Ensure existing code that expects bias field still works
-   - **Important**: TypeScript no longer has a fallback - Rust MUST provide proper bias values (not 0.0)
+   - **Important**: TypeScript no longer has a fallback - Rust MUST provide
+     proper bias values (not 0.0)
 
 2. **Test with existing test data**:
    - Run existing neuron analysis tests
@@ -322,10 +334,14 @@ let error_reduction = calculate_error_reduction(new_target_activation, target_er
 
 ### Success Criteria
 
-1. ✅ **Non-zero bias values**: At least 80% of neuron candidates should have non-zero bias
-2. ✅ **Improved error reduction**: Neurons with calculated bias should show better expected improvement than bias=0
-3. ✅ **Reasonable bias range**: All biases should be in range -1.0 to +1.0 (or activation-function-specific range)
-4. ✅ **Performance**: Bias calculation should not increase analysis time by more than 20%
+1. ✅ **Non-zero bias values**: At least 80% of neuron candidates should have
+   non-zero bias
+2. ✅ **Improved error reduction**: Neurons with calculated bias should show
+   better expected improvement than bias=0
+3. ✅ **Reasonable bias range**: All biases should be in range -1.0 to +1.0 (or
+   activation-function-specific range)
+4. ✅ **Performance**: Bias calculation should not increase analysis time by
+   more than 20%
 5. ✅ **Tests pass**: All new and existing tests pass
 
 ### Validation
@@ -347,29 +363,36 @@ After implementation, validate with real data:
 
 ## Implementation Notes
 
-1. **Reuse existing code**: If you already calculate error reduction for weights, extend that to include bias
+1. **Reuse existing code**: If you already calculate error reduction for
+   weights, extend that to include bias
 2. **Performance**: Start with simple grid search, optimize later if needed
-3. **Activation functions**: Consider activation-function-specific bias ranges for better results
-4. **Edge cases**: Some neurons might legitimately have bias=0 (e.g., if all tested biases perform equally), but this should be rare
-5. **Consistency**: Use the same bias when calculating expected improvement as when creating the candidate
+3. **Activation functions**: Consider activation-function-specific bias ranges
+   for better results
+4. **Edge cases**: Some neurons might legitimately have bias=0 (e.g., if all
+   tested biases perform equally), but this should be rare
+5. **Consistency**: Use the same bias when calculating expected improvement as
+   when creating the candidate
 
 ## Related Files
 
-- **TypeScript Interface**: `src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts`
+- **TypeScript Interface**:
+  `src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts`
   - `RustCandidateNeuron` struct (line 79-90)
   - `analyzeNeurons` function (line 1336-1374)
 
-- **TypeScript Usage**: `src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts`
+- **TypeScript Usage**:
+  `src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts`
   - `mapRustNeuronCandidate` (line 1738-1753)
   - `addHelpfulNeurons` (line 3819-3919) - uses `candidate.bias`
 
 ## Questions?
 
 If anything is unclear, please ask. The key requirement is:
+
 - **Calculate optimal bias during neuron analysis**
 - **Return calculated bias in RustCandidateNeuron**
 - **Ensure bias is used in expected improvement calculations**
 - **Add comprehensive tests**
 
-This fix is critical for discovery to work - currently all neuron candidates fail because bias=0 prevents them from contributing.
-
+This fix is critical for discovery to work - currently all neuron candidates
+fail because bias=0 prevents them from contributing.
