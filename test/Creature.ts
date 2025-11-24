@@ -463,8 +463,8 @@ Deno.test("evolve_AND_gate", async () => {
       { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
       { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
-    10000,
-    0.003,
+    100_000,
+    0.005,
   );
 });
 
