@@ -139,6 +139,7 @@
     "segfaulting",
     "segfault",
     "otool",
-    "flamegraph"
+    "flamegraph",
+    "fallbacks"
   ]
 }
