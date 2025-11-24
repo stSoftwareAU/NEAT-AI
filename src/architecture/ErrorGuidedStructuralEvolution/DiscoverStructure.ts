@@ -3002,16 +3002,21 @@ export class DiscoverStructure {
         const rustReportedTime = result.durationMs !== undefined
           ? ` (Rust reported: ${this.formatMillis(result.durationMs)})`
           : "";
-        const perNeuronTime = nonInputNeurons > 0
+        const processedNeurons = result.processedNeurons ?? nonInputNeurons;
+        const perNeuronTime = processedNeurons > 0
           ? ` (~${
-            (rustRankDuration / nonInputNeurons).toFixed(0)
+            (rustRankDuration / processedNeurons).toFixed(0)
           }ms per neuron)`
           : "";
+        const neuronCountInfo = result.processedNeurons !== undefined &&
+            result.processedNeurons !== nonInputNeurons
+          ? `${result.processedNeurons}/${nonInputNeurons}`
+          : `${nonInputNeurons}`;
         this.log(
           "warn",
           `Rust rankFocusNeurons took ${
             this.formatMillis(rustRankDuration)
-          } - this is unexpectedly slow!${rustReportedTime}${perNeuronTime} Processing ${nonInputNeurons} neurons from parquet file (${parquetFileSizeStr}). Expected time: < 1s.`,
+          } - this is unexpectedly slow!${rustReportedTime}${perNeuronTime} Processing ${neuronCountInfo} neurons from parquet file (${parquetFileSizeStr}). Expected time: < 1s.`,
         );
         this.log(
           "warn",

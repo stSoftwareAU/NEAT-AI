@@ -138,6 +138,7 @@
     "totaling",
     "segfaulting",
     "segfault",
-    "otool"
+    "otool",
+    "flamegraph"
   ]
 }
