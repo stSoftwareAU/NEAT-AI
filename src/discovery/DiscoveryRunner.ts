@@ -101,6 +101,7 @@ export interface DiscoveryDirResult {
   };
   evaluations?: DiscoveryEvaluationSummary[];
   candidateArchiveDir?: string;
+  reScoringTime?: number; // Time spent re-scoring candidates (ms)
 }
 
 export class DiscoveryRunner {
@@ -256,6 +257,7 @@ export class DiscoveryRunner {
         config.costOfGrowth,
         verboseLogging,
       );
+      const reScoringTime = performance.now() - evaluationStart;
       markPhase("Candidate evaluation", evaluationStart);
 
       const original = evaluationResults.find((result) =>
@@ -274,6 +276,7 @@ export class DiscoveryRunner {
           error: original.error,
           score: original.score,
         },
+        reScoringTime,
       };
 
       if (improved && improved.candidate) {
@@ -320,6 +323,14 @@ export class DiscoveryRunner {
         discoveryID: discoverResult.ID,
         summaries: evaluationArtifacts.summaries,
       });
+
+      if (verboseLogging && reScoringTime > 0) {
+        verboseLog(
+          `Re-scoring phase: ${(reScoringTime / 1000).toFixed(1)}s (${
+            evaluationTasks.length - 1
+          } candidate${evaluationTasks.length - 1 === 1 ? "" : "s"} evaluated)`,
+        );
+      }
 
       markPhase("Total discoveryDir run", runStart);
       return outcome;
@@ -654,7 +665,7 @@ export class DiscoveryRunner {
    * Strategy:
    * 1. Include all candidates with positive expected error reduction (or undefined, which we'll re-score)
    * 2. If there are more than 2x CPU cores candidates, select the best estimated ones
-   * 3. Cost-of-growth is not used for filtering - we re-score all positive candidates
+   * 3. We re-score all candidates with positive expected improvement
    *
    * @param candidates - All discovery candidates
    * @param threadCount - Number of CPU threads available

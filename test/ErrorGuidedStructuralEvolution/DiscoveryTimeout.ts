@@ -140,8 +140,10 @@ async function createTestBinaryFile(
 }
 
 // Test utility: Create temp directory for test files
+// Uses crypto.randomUUID() to ensure uniqueness when tests run in parallel
 async function createTempTestDir(testName: string): Promise<string> {
-  const tmpDir = `.tmp/test-discovery-timeout-${testName}-${Date.now()}`;
+  const uniqueId = crypto.randomUUID();
+  const tmpDir = `.tmp/test-discovery-timeout-${testName}-${uniqueId}`;
   await Deno.mkdir(tmpDir, { recursive: true });
   return tmpDir;
 }
@@ -179,60 +181,72 @@ Deno.test({
       creature512.clearState();
       await createTestBinaryFile(creature512, 100, tmpDir512, "test1.bin");
 
-      // Test with batch size 128, very short timeout (1 second)
-      const options128 = {
-        discoveryBatchSize: 128,
-        discoveryTimeOutMinutes: 0.0167, // ~1 second
-        discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
-        discoverySampleRate: 1.0, // 100% sample rate
-        log: 0,
-      };
+      // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
+      const originalDenoTest = Deno.env.get("DENO_TEST");
+      Deno.env.set("DENO_TEST", "true");
+      try {
+        // Test with batch size 128, very short timeout (1 second)
+        const options128 = {
+          discoveryBatchSize: 128,
+          discoveryTimeOutMinutes: 0.0167, // ~1 second
+          discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
+          discoverySampleRate: 1.0, // 100% sample rate
+          log: 0,
+        };
 
-      const result128 = await recordDirectory(
-        creature128,
-        tmpDir128,
-        options128,
-      );
+        const result128 = await recordDirectory(
+          creature128,
+          tmpDir128,
+          options128,
+        );
 
-      // Test with batch size 512, same timeout
-      const options512 = {
-        discoveryBatchSize: 512,
-        discoveryTimeOutMinutes: 0.0167, // ~1 second
-        discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
-        discoverySampleRate: 1.0,
-        log: 0,
-      };
+        // Test with batch size 512, same timeout
+        const options512 = {
+          discoveryBatchSize: 512,
+          discoveryTimeOutMinutes: 0.0167, // ~1 second
+          discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
+          discoverySampleRate: 1.0,
+          log: 0,
+        };
 
-      const result512 = await recordDirectory(
-        creature512,
-        tmpDir512,
-        options512,
-      );
+        const result512 = await recordDirectory(
+          creature512,
+          tmpDir512,
+          options512,
+        );
 
-      // Both should return results (not throw) - this tests that partial results work
-      assertExists(result128, "Batch 128 should return result");
-      assertExists(result512, "Batch 512 should return result");
+        // Both should return results (not throw) - this tests that partial results work
+        assertExists(result128, "Batch 128 should return result");
+        assertExists(result512, "Batch 512 should return result");
 
-      // Count results to verify both got some data processed
-      const count128 = (result128.addHelpfulSynapses?.length || 0) +
-        (result128.addHelpfulNeurons?.length || 0) +
-        (result128.candidateSquashes?.length || 0) +
-        (result128.removeHarmfulSynapse ? 1 : 0);
+        // Count results to verify both got some data processed
+        const count128 = (result128.addHelpfulSynapses?.length || 0) +
+          (result128.addHelpfulNeurons?.length || 0) +
+          (result128.candidateSquashes?.length || 0) +
+          (result128.removeHarmfulSynapse ? 1 : 0);
 
-      const count512 = (result512.addHelpfulSynapses?.length || 0) +
-        (result512.addHelpfulNeurons?.length || 0) +
-        (result512.candidateSquashes?.length || 0) +
-        (result512.removeHarmfulSynapse ? 1 : 0);
+        const count512 = (result512.addHelpfulSynapses?.length || 0) +
+          (result512.addHelpfulNeurons?.length || 0) +
+          (result512.candidateSquashes?.length || 0) +
+          (result512.removeHarmfulSynapse ? 1 : 0);
 
-      // Both should produce some results (the key is they complete without throwing)
-      assert(
-        count128 > 0 || count512 > 0,
-        `At least one batch size should produce results: 128=${count128}, 512=${count512}`,
-      );
+        // Both should produce some results (the key is they complete without throwing)
+        assert(
+          count128 > 0 || count512 > 0,
+          `At least one batch size should produce results: 128=${count128}, 512=${count512}`,
+        );
 
-      console.log(
-        `Batch comparison: 128 produced ${count128} results, 512 produced ${count512} results`,
-      );
+        console.log(
+          `Batch comparison: 128 produced ${count128} results, 512 produced ${count512} results`,
+        );
+      } finally {
+        // Restore original DENO_TEST value
+        if (originalDenoTest !== undefined) {
+          Deno.env.set("DENO_TEST", originalDenoTest);
+        } else {
+          Deno.env.delete("DENO_TEST");
+        }
+      }
     } finally {
       cleanupTempDir(tmpDir128);
       cleanupTempDir(tmpDir512);
@@ -263,15 +277,27 @@ Deno.test({
         log: 1, // Enable logging to verify diagnostics appear
       };
 
-      const result = await recordDirectory(creature, tmpDir, options);
+      // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
+      const originalDenoTest = Deno.env.get("DENO_TEST");
+      Deno.env.set("DENO_TEST", "true");
+      try {
+        const result = await recordDirectory(creature, tmpDir, options);
 
-      // Should return result (not throw)
-      assertExists(result, "Should return result even with timeout");
-      assertExists(result.ID, "Result should have ID");
+        // Should return result (not throw)
+        assertExists(result, "Should return result even with timeout");
+        assertExists(result.ID, "Result should have ID");
 
-      // Note: with short timeout, might not complete analysis, which is acceptable
-      // The key is that it doesn't throw and returns a valid result structure
-      console.log(`Partial results: ${JSON.stringify(result, null, 2)}`);
+        // Note: with short timeout, might not complete analysis, which is acceptable
+        // The key is that it doesn't throw and returns a valid result structure
+        console.log(`Partial results: ${JSON.stringify(result, null, 2)}`);
+      } finally {
+        // Restore original DENO_TEST value
+        if (originalDenoTest !== undefined) {
+          Deno.env.set("DENO_TEST", originalDenoTest);
+        } else {
+          Deno.env.delete("DENO_TEST");
+        }
+      }
     } finally {
       cleanupTempDir(tmpDir);
     }
@@ -303,11 +329,23 @@ Deno.test({
         log: 1, // Enable to see diagnostic logs
       };
 
-      const result = await recordDirectory(creature, tmpDir, options);
+      // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
+      const originalDenoTest = Deno.env.get("DENO_TEST");
+      Deno.env.set("DENO_TEST", "true");
+      try {
+        const result = await recordDirectory(creature, tmpDir, options);
 
-      // Should complete without throwing
-      assertExists(result, "Should return result despite timeout");
-      assertExists(result.ID, "Result should have ID");
+        // Should complete without throwing
+        assertExists(result, "Should return result despite timeout");
+        assertExists(result.ID, "Result should have ID");
+      } finally {
+        // Restore original DENO_TEST value
+        if (originalDenoTest !== undefined) {
+          Deno.env.set("DENO_TEST", originalDenoTest);
+        } else {
+          Deno.env.delete("DENO_TEST");
+        }
+      }
 
       // Should have processed at least some files
       // The diagnostic log should show "timeout reached during file processing"
@@ -340,17 +378,29 @@ Deno.test({
         log: 1,
       };
 
-      const result = await recordDirectory(creature, tmpDir, options);
+      // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
+      const originalDenoTest = Deno.env.get("DENO_TEST");
+      Deno.env.set("DENO_TEST", "true");
+      try {
+        const result = await recordDirectory(creature, tmpDir, options);
 
-      // Should complete successfully
-      assertExists(result, "Should return result");
-      assertExists(result.ID, "Result should have ID");
+        // Should complete successfully
+        assertExists(result, "Should return result");
+        assertExists(result.ID, "Result should have ID");
 
-      console.log(
-        `Complete results: helpful=${result.addHelpfulSynapses?.length}, ` +
-          `harmful=${result.removeHarmfulSynapse ? 1 : 0}, ` +
-          `squashes=${result.candidateSquashes?.length}`,
-      );
+        console.log(
+          `Complete results: helpful=${result.addHelpfulSynapses?.length}, ` +
+            `harmful=${result.removeHarmfulSynapse ? 1 : 0}, ` +
+            `squashes=${result.candidateSquashes?.length}`,
+        );
+      } finally {
+        // Restore original DENO_TEST value
+        if (originalDenoTest !== undefined) {
+          Deno.env.set("DENO_TEST", originalDenoTest);
+        } else {
+          Deno.env.delete("DENO_TEST");
+        }
+      }
     } finally {
       cleanupTempDir(tmpDir);
     }

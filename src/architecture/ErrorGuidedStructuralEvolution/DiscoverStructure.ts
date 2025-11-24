@@ -3857,6 +3857,22 @@ export class DiscoverStructure {
         bias: candidate.bias,
       };
       addTag(newNeuron as TagsInterface, "discovered", candidate.squash);
+      // Diagnostic tags for troubleshooting
+      addTag(
+        newNeuron as TagsInterface,
+        "discovery-bias",
+        candidate.bias.toString(),
+      );
+      addTag(
+        newNeuron as TagsInterface,
+        "discovery-incoming-weight",
+        candidate.incomingWeight.toString(),
+      );
+      addTag(
+        newNeuron as TagsInterface,
+        "discovery-outgoing-weight",
+        candidate.outgoingWeight.toString(),
+      );
       const firstOutputIndex = exportJSON.neurons.findIndex((neuron) =>
         neuron.type === "output"
       );
