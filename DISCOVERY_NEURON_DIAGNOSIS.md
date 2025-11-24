@@ -96,7 +96,7 @@ evaluated, they don't improve.
 
 1. **Check actual weight/bias values** in the candidate files:
    - Location:
-     `/Users/nigelleck/src/GRQ/.discovery/candidates/ae2f0467/2025-11-24T01-50-26-671Z/`
+     `~/src/GRQ/.discovery/candidates/ae2f0467/2025-11-24T01-50-26-671Z/`
    - Files: `candidate-add-neurons.json`, `candidate-add-neurons-2.json`, etc.
    - Look for `synapses` array and check `weight` values
    - Look for `neurons` array and check `bias` values
