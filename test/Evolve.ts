@@ -67,7 +67,8 @@ Deno.test("XOR-evolve", async () => {
     const creature = new Creature(2, 1);
     // deno-lint-ignore no-await-in-loop
     results = await creature.evolveDataSet(trainingSet, {
-      iterations: 1_000,
+      iterations: 10_000,
+      targetError: 0.03,
     });
 
     if (results.error < bestError) {
