@@ -420,19 +420,18 @@ Deno.test(
     // The combined candidate should be created and evaluated
     // It may or may not be the best depending on actual scores
     // But we should have evaluated candidates including the combined one
-    const evaluatedCandidates = result.evaluations?.filter((e) =>
-      e.kind === "candidate"
-    ) ?? [];
+    const evaluatedCandidates =
+      result.evaluations?.filter((e) => e.kind === "candidate") ?? [];
     assert(
       evaluatedCandidates.length > 0,
       "Expected at least one candidate to be evaluated",
     );
-    
+
     // Check if combo-all candidate was evaluated (it may not be the best)
     const comboAllEvaluated = evaluatedCandidates.some((e) =>
       e.changeType === "combo-all"
     );
-    
+
     // If we have an improvement, verify it improves the score
     if (result.improvement) {
       assert(

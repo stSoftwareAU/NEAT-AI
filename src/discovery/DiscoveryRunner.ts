@@ -648,12 +648,12 @@ export class DiscoveryRunner {
 
   /**
    * Filters discovery candidates for evaluation.
-   * 
+   *
    * Strategy:
    * 1. Include all candidates with positive expected error reduction (or undefined, which we'll re-score)
    * 2. If there are more than 2x CPU cores candidates, select the best estimated ones
    * 3. Cost-of-growth is not used for filtering - we re-score all positive candidates
-   * 
+   *
    * @param candidates - All discovery candidates
    * @param threadCount - Number of CPU threads available
    * @returns Filtered candidates ready for evaluation and list of skipped candidates
@@ -669,7 +669,7 @@ export class DiscoveryRunner {
     }>;
   } {
     const maxCandidates = 2 * threadCount;
-    
+
     // Filter to candidates with positive expected impact (or undefined, which we'll re-score)
     const positiveCandidates: DiscoveryCandidate[] = [];
     const skipped: Array<{
@@ -680,7 +680,7 @@ export class DiscoveryRunner {
     for (const candidate of candidates) {
       CreatureUtil.makeUUID(candidate.creature);
       const expected = candidate.change.expectedErrorReduction;
-      
+
       // Include candidates with positive expected impact or undefined (will be re-scored)
       if (expected === undefined) {
         // No expected value - include it for re-scoring
@@ -705,7 +705,7 @@ export class DiscoveryRunner {
       positiveCandidates.sort((a, b) => {
         const aExpected = a.change.expectedErrorReduction;
         const bExpected = b.change.expectedErrorReduction;
-        
+
         // Both have values - sort by value (descending)
         if (aExpected !== undefined && bExpected !== undefined) {
           return bExpected - aExpected;
@@ -721,18 +721,18 @@ export class DiscoveryRunner {
         // Both undefined - maintain order
         return 0;
       });
-      
+
       // Take the top candidates and mark the rest as skipped
       const topCandidates = positiveCandidates.slice(0, maxCandidates);
       const remaining = positiveCandidates.slice(maxCandidates);
-      
+
       for (const candidate of remaining) {
         skipped.push({
           changeType: candidate.change.type,
           expected: candidate.change.expectedErrorReduction,
         });
       }
-      
+
       return { filtered: topCandidates, skipped };
     }
 
@@ -760,7 +760,6 @@ function safeRealPath(path: string): string {
     return path;
   }
 }
-
 
 const MIN_PERCENT_FRACTION_DIGITS = 3;
 const SIGNIFICANT_PERCENT_DIGITS = 3;
