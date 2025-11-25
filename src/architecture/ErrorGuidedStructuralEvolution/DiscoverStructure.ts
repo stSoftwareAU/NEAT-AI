@@ -1352,6 +1352,9 @@ export class DiscoverStructure {
       return Promise.resolve(undefined);
     }
 
+    // Populate the cache before reading from it
+    this.ensureRustCombinedAnalysis(focusList, true, false);
+
     const rustCandidates = this.tryRustHelpfulSynapses(focusList);
     if (!rustCandidates) {
       this.logRustAnalysisUnavailable(
@@ -1392,6 +1395,9 @@ export class DiscoverStructure {
       );
       return Promise.resolve(undefined);
     }
+
+    // Populate the cache before reading from it
+    this.ensureRustCombinedAnalysis(focusList, false, true);
 
     const rustCandidates = this.tryRustHelpfulNeurons(focusList);
     if (!rustCandidates) {
@@ -3819,6 +3825,9 @@ export class DiscoverStructure {
       );
       return Promise.resolve(undefined);
     }
+
+    // Populate the cache before reading from it
+    this.ensureRustCombinedAnalysis(focusList, true, false);
 
     const rustCandidates = this.tryRustHarmfulCandidates(focusList);
     if (!rustCandidates) {
