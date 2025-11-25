@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 
-import { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
+import { PhaseDiagnostics } from "../../src/architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
 
 Deno.test("phase diagnostics tracks sequential and parallel phases", () => {
   const diag = new PhaseDiagnostics("initialisation");

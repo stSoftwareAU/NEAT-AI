@@ -5,26 +5,19 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import {
   type CandidateNeuron,
   DEFAULT_RUST_FLUSH_RECORDS,
-  type DiscoverRecord as _DiscoverRecord,
   DiscoverStructure,
-  type DiscoverStructureDeps as _DiscoverStructureDeps,
-  type NeuronErrorInfo as _NeuronErrorInfo,
-  type RustFlushMetrics as _RustFlushMetrics,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   assertRustDiscoveryAvailable,
   isRustDiscoveryEnabled,
   type RustAnalyzeNeuronsResult,
   type RustCandidateNeuron,
-  type RustRecordBatchStats as _RustRecordBatchStats,
-  type RustRecordInput as _RustRecordInput,
   shouldSkipRustDiscoveryTests,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { ELU } from "../../src/methods/activations/types/ELU.ts";
 import { GELU } from "../../src/methods/activations/types/GELU.ts";
-import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
@@ -35,78 +28,6 @@ import { BIPOLAR } from "../../src/methods/activations/types/BIPOLAR.ts";
 import { HARD_TANH } from "../../src/methods/activations/types/HARD_TANH.ts";
 import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
 import { COMPLEMENT } from "../../src/methods/activations/types/COMPLEMENT.ts";
-
-function _makeCreature() {
-  const json: CreatureExport = {
-    neurons: [
-      {
-        type: "hidden",
-        uuid: "hidden-3",
-        squash: IDENTITY.NAME,
-        bias: Math.PI,
-      },
-      {
-        type: "hidden",
-        uuid: "hidden-4",
-        squash: TANH.NAME,
-        bias: Math.SQRT1_2,
-      },
-
-      {
-        type: "output",
-        squash: IDENTITY.NAME,
-        uuid: "output-0",
-        bias: -0.123,
-      },
-      {
-        type: "output",
-        squash: LeakyReLU.NAME,
-        uuid: "output-1",
-        bias: 0.456,
-      },
-      {
-        type: "output",
-        squash: Mish.NAME,
-        uuid: "output-2",
-        bias: 0.345,
-      },
-    ],
-    synapses: [
-      { fromUUID: "input-33", toUUID: "hidden-3", weight: -0.3 },
-      { fromUUID: "input-50", toUUID: "hidden-4", weight: 0.3 },
-
-      { fromUUID: "input-11", toUUID: "hidden-3", weight: -0.1 },
-      { fromUUID: "input-22", toUUID: "hidden-4", weight: 0.2 },
-
-      { fromUUID: "hidden-3", toUUID: "output-0", weight: 0.6 },
-
-      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
-      { fromUUID: "input-10", toUUID: "output-2", weight: -0.4 },
-      { fromUUID: "hidden-4", toUUID: "output-2", weight: 0.13 },
-    ],
-    input: 100,
-    output: 3,
-  };
-  const creature = Creature.fromJSON(json);
-  creature.validate();
-
-  return creature;
-}
-
-function _makeData(input: number) {
-  const inputs: number[][] = [];
-
-  for (let i = 1024; i--;) {
-    const observations: number[] = [];
-    for (let j = input; j--;) {
-      observations.push(
-        Math.random() * 2 - 1,
-      );
-    }
-    inputs.push(observations);
-  }
-  return inputs;
-}
 
 const TARGET_NEURON_UUID = "hidden-target";
 const DRIVER_NEURON_UUID = "hidden-driver";

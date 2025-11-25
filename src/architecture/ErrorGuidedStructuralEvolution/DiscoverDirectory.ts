@@ -287,14 +287,15 @@ class DataRecorder {
   }
 
   async recordDirectory(dataDir: string): Promise<DiscoverResult> {
-    // Check if Rust discovery module is available
+    // Check if Rust discovery module is available (library + GPU required)
+    // Use dependency injection if provided, otherwise use the public function
     const rustEnabled = this.discoverDeps.isRustDiscoveryEnabled
       ? this.discoverDeps.isRustDiscoveryEnabled()
       : isRustDiscoveryEnabled();
     if (!rustEnabled) {
       if (shouldLogDiscovery(this.options)) {
         console.warn(
-          `⚠️  Discovery skipped: Rust module not available. Discovery requires the NEAT-AI-Discovery Rust library to be built and available.`,
+          `⚠️  Discovery skipped: Rust module or GPU not available. Discovery requires the NEAT-AI-Discovery Rust library to be built and available, and a GPU to be present.`,
         );
       }
       // Return empty result - discovery is skipped

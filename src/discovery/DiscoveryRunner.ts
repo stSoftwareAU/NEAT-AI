@@ -121,9 +121,11 @@ export class DiscoveryRunner {
   }
 
   async discoverDir(input: DiscoveryDirInput): Promise<DiscoveryDirResult> {
+    // Discovery requires both library and GPU - skip if not available
     if (!this.#rustDiscoveryEnabled()) {
       throw new Error(
-        "Discovery requires the NEAT-AI-Discovery Rust library to be available.",
+        "Discovery requires the NEAT-AI-Discovery Rust library to be available and a GPU to be present. " +
+          "Discovery is disabled when either the library or GPU is unavailable.",
       );
     }
 
