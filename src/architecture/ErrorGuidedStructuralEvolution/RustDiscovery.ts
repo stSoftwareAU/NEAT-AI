@@ -666,6 +666,8 @@ export function closeRustLibrary(): void {
     rustLib = null;
     rustGpuWarningEmitted = false;
   }
+  // Reset cached discovery state so it will be re-checked on next call
+  rustDiscoveryEnabledState = "unknown";
 }
 
 /**
