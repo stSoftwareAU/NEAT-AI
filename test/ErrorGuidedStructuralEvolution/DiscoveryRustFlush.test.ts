@@ -6,10 +6,9 @@ import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import type { DiscoverStructureDeps } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type {
-  RustAnalyzeNeuronsResult,
-  RustAnalyzeSynapsesResult,
   RustMergeParquetInput,
   RustMergeParquetResult,
+  RustParallelAnalysisResult,
   RustReadResult,
   RustRecordInput,
   RustRecordResult,
@@ -103,9 +102,9 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
           outputFile: input.outputFile,
         };
       },
-      analyzeNeurons: (): RustAnalyzeNeuronsResult => ({ success: true }),
-      analyzeSynapses: (): RustAnalyzeSynapsesResult => ({
+      analyzeParallel: (): RustParallelAnalysisResult => ({
         success: true,
+        helpfulNeurons: [],
         helpfulSynapses: [],
         harmfulSynapses: [],
       }),
