@@ -244,8 +244,10 @@ export class Mutator {
     if (changed) {
       delete creature.uuid;
       creature.state.preparedNeurons = false;
-      creature.fix();
     }
+    // Always ensure creature is valid before validation
+    // fix() removes disconnected neurons and cleans up invalid structures
+    creature.fix();
     if (creature.DEBUG) {
       creatureValidate(creature);
     }
