@@ -45,9 +45,9 @@ import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "./utils/CreatureExportBuilder.ts";
 import {
-  type DiscoveryDirInput,
   type DiscoveryDirResult,
   DiscoveryRunner,
+  type DiscoveryRunnerLike,
 } from "./discovery/DiscoveryRunner.ts";
 
 interface CreatureOptions {
@@ -58,10 +58,6 @@ interface CreatureOptions {
     squash?: string;
   };
 }
-
-type DiscoveryRunnerLike = {
-  discoverDir(input: DiscoveryDirInput): Promise<DiscoveryDirResult>;
-};
 
 /**
  * Creature Class

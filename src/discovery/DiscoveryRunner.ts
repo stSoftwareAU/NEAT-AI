@@ -105,6 +105,15 @@ export interface DiscoveryDirResult {
   reScoringTime?: number; // Time spent re-scoring candidates (ms)
 }
 
+/**
+ * Minimal interface for dependency injection in `Creature.discoveryDir()`.
+ * Allows substituting the runner in tests without coupling to the full
+ * DiscoveryRunner implementation.
+ */
+export type DiscoveryRunnerLike = {
+  discoverDir(input: DiscoveryDirInput): Promise<DiscoveryDirResult>;
+};
+
 export class DiscoveryRunner {
   #workerFactory: DiscoveryRunnerWorkerFactory;
   #candidateBuilder: (

@@ -89,16 +89,6 @@ export interface RustCandidateNeuron {
   targetNeuronStats?: NeuronStatsJson;
 }
 
-export interface RustAnalyzeSynapsesInput {
-  parquetFile: string;
-  creature: RustRecordInput["creature"];
-  focusNeurons: string[];
-  improvementThreshold?: number;
-  maxCandidates?: number;
-  requireGpu?: boolean;
-  analysisDeadlineMs?: number;
-}
-
 export interface RustAnalyzeSynapsesResult {
   success: boolean;
   gpuUsed?: boolean;
@@ -108,36 +98,12 @@ export interface RustAnalyzeSynapsesResult {
   error?: string;
 }
 
-export interface RustAnalyzeNeuronsInput {
-  parquetFile: string;
-  creature: RustRecordInput["creature"];
-  focusNeurons: string[];
-  improvementThreshold?: number;
-  maxCandidates?: number;
-  requireGpu?: boolean;
-  analysisDeadlineMs?: number;
-}
-
 export interface RustAnalyzeNeuronsResult {
   success: boolean;
   gpuUsed?: boolean;
   helpfulNeurons?: RustCandidateNeuron[];
   diagnostics?: RustNeuronDiagnostic[];
   error?: string;
-}
-
-export interface RustAnalyzeAllInput {
-  parquetFile: string;
-  creature: RustRecordInput["creature"];
-  focusNeurons: string[];
-  improvementThreshold?: number;
-  harmfulThreshold?: number;
-  maxSynapseCandidates?: number;
-  maxNeuronCandidates?: number;
-  requireGpu?: boolean;
-  analysisDeadlineMs?: number;
-  includeSynapseAnalysis?: boolean;
-  includeNeuronAnalysis?: boolean;
 }
 
 export interface RustAnalyzeAllResult {
@@ -604,22 +570,7 @@ type RustDiscoverySymbols = {
     result: "pointer";
     nonblocking: false;
   };
-  "analyze_synapses": {
-    parameters: ["pointer"];
-    result: "pointer";
-    nonblocking: false;
-  };
   "analyze_parallel": {
-    parameters: ["pointer"];
-    result: "pointer";
-    nonblocking: false;
-  };
-  "analyze_all": {
-    parameters: ["pointer"];
-    result: "pointer";
-    nonblocking: false;
-  };
-  "analyze_neurons": {
     parameters: ["pointer"];
     result: "pointer";
     nonblocking: false;
@@ -707,22 +658,7 @@ export function loadRustLibrary(): boolean {
         result: "pointer",
         nonblocking: false,
       },
-      "analyze_synapses": {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: false,
-      },
       "analyze_parallel": {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "analyze_all": {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "analyze_neurons": {
         parameters: ["pointer"],
         result: "pointer",
         nonblocking: false,
@@ -1301,126 +1237,6 @@ export function recordDiscovery(
     return buildFailure(currentStage, message);
   } finally {
     rustLib.symbols["free_discovery_result"](resultPtr);
-  }
-}
-
-export function analyzeSynapses(
-  input: RustAnalyzeSynapsesInput,
-): RustAnalyzeSynapsesResult | null {
-  if (!isRustLibraryAvailable()) {
-    return null;
-  }
-
-  assert(rustLib !== null, "Rust library should be loaded");
-
-  try {
-    const inputJson = JSON.stringify(input);
-    const inputBytes = new TextEncoder().encode(inputJson);
-
-    const inputBuffer = new Uint8Array(inputBytes.length + 1);
-    inputBuffer.set(inputBytes);
-    inputBuffer[inputBytes.length] = 0;
-
-    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
-    const resultPtr = rustLib.symbols["analyze_synapses"](inputPtr);
-
-    if (resultPtr === null) {
-      return {
-        success: false,
-        error: "Rust function returned null pointer",
-      };
-    }
-
-    const resultJson = readCString(resultPtr);
-    rustLib.symbols["free_discovery_result"](resultPtr);
-
-    const result = JSON.parse(resultJson) as RustAnalyzeSynapsesResult;
-    return result;
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-export function analyzeNeurons(
-  input: RustAnalyzeNeuronsInput,
-): RustAnalyzeNeuronsResult | null {
-  if (!isRustLibraryAvailable()) {
-    return null;
-  }
-
-  assert(rustLib !== null, "Rust library should be loaded");
-
-  try {
-    const inputJson = JSON.stringify(input);
-    const inputBytes = new TextEncoder().encode(inputJson);
-
-    const inputBuffer = new Uint8Array(inputBytes.length + 1);
-    inputBuffer.set(inputBytes);
-    inputBuffer[inputBytes.length] = 0;
-
-    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
-    const resultPtr = rustLib.symbols["analyze_neurons"](inputPtr);
-
-    if (resultPtr === null) {
-      return {
-        success: false,
-        error: "Rust function returned null pointer",
-      };
-    }
-
-    const resultJson = readCString(resultPtr);
-    rustLib.symbols["free_discovery_result"](resultPtr);
-
-    const result = JSON.parse(resultJson) as RustAnalyzeNeuronsResult;
-    return result;
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-export function analyzeAll(
-  input: RustAnalyzeAllInput,
-): RustAnalyzeAllResult | null {
-  if (!isRustLibraryAvailable()) {
-    return null;
-  }
-
-  assert(rustLib !== null, "Rust library should be loaded");
-
-  try {
-    const inputJson = JSON.stringify(input);
-    const inputBytes = new TextEncoder().encode(inputJson);
-
-    const inputBuffer = new Uint8Array(inputBytes.length + 1);
-    inputBuffer.set(inputBytes);
-    inputBuffer[inputBytes.length] = 0;
-
-    const inputPtr = Deno.UnsafePointer.of(inputBuffer);
-    const resultPtr = rustLib.symbols["analyze_all"](inputPtr);
-
-    if (resultPtr === null) {
-      return {
-        success: false,
-        error: "Rust function returned null pointer",
-      };
-    }
-
-    const resultJson = readCString(resultPtr);
-    rustLib.symbols["free_discovery_result"](resultPtr);
-
-    const result = JSON.parse(resultJson) as RustAnalyzeAllResult;
-    return result;
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
   }
 }
 
