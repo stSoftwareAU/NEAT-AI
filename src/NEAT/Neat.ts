@@ -31,6 +31,7 @@ import { Mutator } from "./Mutator.ts";
 import { CRISPR, type CrisprInterface } from "../reconstruct/CRISPR.ts";
 import { simplify } from "../optimize/Simplify.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -296,6 +297,11 @@ export class Neat {
 
     // Skip discovery if timeout is 0 or negative (discovery disabled)
     if (timeOutMinutes <= 0 || this.config.discoveryTimeOutMinutes <= 0) {
+      return;
+    }
+
+    // Skip discovery if Rust library or GPU is not available
+    if (!isRustDiscoveryEnabled()) {
       return;
     }
 

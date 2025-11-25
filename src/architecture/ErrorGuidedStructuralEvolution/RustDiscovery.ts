@@ -857,39 +857,47 @@ export function isRustLibraryAvailable(): boolean {
 }
 
 /**
+ * Tristate for rust discovery availability.
+ * - "unknown": Not yet checked
+ * - true: Library is available AND GPU is available
+ * - false: Library is not available OR GPU is not available
+ */
+type RustDiscoveryEnabledState = "unknown" | true | false;
+
+let rustDiscoveryEnabledState: RustDiscoveryEnabledState = "unknown";
+
+/**
  * Checks if the Rust discovery module is enabled and available.
- * This is the main function to use before attempting discovery operations.
+ * Discovery is an extension that requires both the Rust library AND a GPU.
+ * This function caches the result after the first check for low overhead.
  *
- * By default, GPU checking is DISABLED to prevent crashes on systems without GPU
- * or where WGPU initialization fails. Set NEAT_RUST_DISCOVERY_REQUIRE_GPU=1 to
- * enable GPU checking (only if you need to verify GPU availability).
- *
- * @returns true if Rust module is enabled and available, false otherwise.
+ * @returns true if both library and GPU are available, false otherwise.
  */
 export function isRustDiscoveryEnabled(): boolean {
+  // Return cached result if already checked
+  if (rustDiscoveryEnabledState !== "unknown") {
+    return rustDiscoveryEnabledState === true;
+  }
+
   try {
+    // First check: Library must be available
     if (!isRustLibraryAvailable()) {
+      rustDiscoveryEnabledState = false;
       return false;
     }
 
-    // GPU checking is DISABLED by default to prevent crashes
-    // Only check GPU if explicitly requested via environment variable
-    const requireGpu = Deno.env.get(RUST_DISCOVERY_REQUIRE_GPU_ENV);
-    if (requireGpu === "1" || requireGpu === "true") {
-      // User explicitly wants GPU verification - check it
-      return isRustGpuAvailable();
-    }
-
-    // Default: Library is available, skip GPU check (safe mode)
-    return true;
+    // Second check: GPU must be available (discovery requires GPU)
+    const gpuAvailable = isRustGpuAvailable();
+    rustDiscoveryEnabledState = gpuAvailable;
+    return gpuAvailable;
   } catch {
     // FFI not allowed or library not available
+    rustDiscoveryEnabledState = false;
     return false;
   }
 }
 
 const RUST_DISCOVERY_OPTIONAL_ENV = "NEAT_RUST_DISCOVERY_OPTIONAL";
-const RUST_DISCOVERY_REQUIRE_GPU_ENV = "NEAT_RUST_DISCOVERY_REQUIRE_GPU";
 
 /**
  * Returns true when discovery tests should be skipped (Rust library absent and
@@ -913,6 +921,7 @@ export function shouldSkipRustDiscoveryTests(): boolean {
   if (!optional) {
     return false;
   }
+  // Check for availability (library + GPU) for discovery tests
   return !isRustDiscoveryEnabled();
 }
 
