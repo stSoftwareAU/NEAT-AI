@@ -18,9 +18,9 @@ const STUB_DEPS: Partial<DiscoverStructureDeps> = {
     success: true,
     outputFile: "output.parquet",
   }),
-  analyzeNeurons: () => ({ success: true, helpfulNeurons: [] }),
-  analyzeSynapses: () => ({
+  analyzeParallel: () => ({
     success: true,
+    helpfulNeurons: [],
     helpfulSynapses: [],
     harmfulSynapses: [],
   }),

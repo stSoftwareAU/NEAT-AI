@@ -46,12 +46,9 @@ Deno.test("DiscoverStructure preserves record indices for single binary chunk", 
         success: true,
         outputFile: "merged.parquet",
       }),
-      analyzeNeurons: () => ({
+      analyzeParallel: () => ({
         success: true,
         helpfulNeurons: [],
-      }),
-      analyzeSynapses: () => ({
-        success: true,
         helpfulSynapses: [],
         harmfulSynapses: [],
       }),
@@ -149,12 +146,9 @@ Deno.test("DiscoverStructure keeps slice offsets across multiple chunk flushes",
         success: true,
         outputFile: "merged.parquet",
       }),
-      analyzeNeurons: () => ({
+      analyzeParallel: () => ({
         success: true,
         helpfulNeurons: [],
-      }),
-      analyzeSynapses: () => ({
-        success: true,
         helpfulSynapses: [],
         harmfulSynapses: [],
       }),

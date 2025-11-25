@@ -10,10 +10,7 @@ import { Activations } from "../../methods/activations/Activations.ts";
 import { CreatureErrorImpactEstimator } from "../../discovery/NeuronErrorImpactEstimator.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import {
-  analyzeAll,
-  analyzeNeurons,
   analyzeParallel,
-  analyzeSynapses,
   creatureToRustFormat,
   isRustDiscoveryEnabled,
   isRustLibraryAvailable,
@@ -21,11 +18,8 @@ import {
   rankFocusNeurons,
   readDiscoveryRecords,
   recordDiscovery,
-  type RustAnalyzeAllInput,
   type RustAnalyzeAllResult,
-  type RustAnalyzeNeuronsInput,
   type RustAnalyzeNeuronsResult,
-  type RustAnalyzeSynapsesInput,
   type RustAnalyzeSynapsesResult,
   type RustCandidateNeuron,
   type RustCandidateSynapse,
@@ -48,10 +42,7 @@ export interface DiscoverStructureDeps {
   isRustLibraryAvailable: typeof isRustLibraryAvailable;
   recordDiscovery: typeof recordDiscovery;
   mergeDiscoveryParquet: typeof mergeDiscoveryParquet;
-  analyzeNeurons: typeof analyzeNeurons;
-  analyzeSynapses: typeof analyzeSynapses;
-  analyzeParallel?: typeof analyzeParallel;
-  analyzeAll?: typeof analyzeAll;
+  analyzeParallel: typeof analyzeParallel;
   readDiscoveryRecords: typeof readDiscoveryRecords;
   rankFocusNeurons?: typeof rankFocusNeurons;
 }
@@ -61,10 +52,7 @@ const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
   isRustLibraryAvailable,
   recordDiscovery,
   mergeDiscoveryParquet,
-  analyzeNeurons,
-  analyzeSynapses,
   analyzeParallel,
-  analyzeAll,
   readDiscoveryRecords,
   rankFocusNeurons,
 };
@@ -1364,6 +1352,9 @@ export class DiscoverStructure {
       return Promise.resolve(undefined);
     }
 
+    // Populate the cache before reading from it
+    this.ensureRustCombinedAnalysis(focusList, true, false);
+
     const rustCandidates = this.tryRustHelpfulSynapses(focusList);
     if (!rustCandidates) {
       this.logRustAnalysisUnavailable(
@@ -1404,6 +1395,9 @@ export class DiscoverStructure {
       );
       return Promise.resolve(undefined);
     }
+
+    // Populate the cache before reading from it
+    this.ensureRustCombinedAnalysis(focusList, false, true);
 
     const rustCandidates = this.tryRustHelpfulNeurons(focusList);
     if (!rustCandidates) {
@@ -1455,12 +1449,11 @@ export class DiscoverStructure {
   private tryRustHelpfulNeurons(
     focusList: string[],
   ): CandidateNeuron[] | undefined {
-    const combinedResult = this.readRustCombinedAnalysis(
+    const rustResult = this.readRustCombinedAnalysis(
       focusList,
       false,
       true,
     )?.neuron;
-    const rustResult = combinedResult ?? this.runRustNeuronAnalysis(focusList);
     if (!rustResult) {
       return undefined;
     }
@@ -1489,12 +1482,11 @@ export class DiscoverStructure {
   private tryRustHelpfulSynapses(
     focusList: string[],
   ): CandidateSynapse[] | undefined {
-    const combinedResult = this.readRustCombinedAnalysis(
+    const rustResult = this.readRustCombinedAnalysis(
       focusList,
       true,
       false,
     )?.synapse;
-    const rustResult = combinedResult ?? this.runRustSynapseAnalysis(focusList);
     if (!rustResult) {
       return undefined;
     }
@@ -1529,12 +1521,11 @@ export class DiscoverStructure {
   private tryRustHarmfulCandidates(
     focusList: string[],
   ): CandidateSynapse[] | undefined {
-    const combinedResult = this.readRustCombinedAnalysis(
+    const rustResult = this.readRustCombinedAnalysis(
       focusList,
       true,
       false,
     )?.synapse;
-    const rustResult = combinedResult ?? this.runRustSynapseAnalysis(focusList);
     if (!rustResult || !rustResult.harmfulSynapses) {
       return undefined;
     }
@@ -1714,134 +1705,6 @@ export class DiscoverStructure {
       totalCount: candidate.totalCount,
       targetNeuronStats: candidate.targetNeuronStats,
     };
-  }
-
-  private runRustNeuronAnalysis(
-    focusList: string[],
-  ): RustAnalyzeNeuronsResult | undefined {
-    if (!this.parquetFilePath) {
-      return undefined;
-    }
-
-    if (
-      !this.deps.isRustDiscoveryEnabled() ||
-      !this.deps.isRustLibraryAvailable()
-    ) {
-      return undefined;
-    }
-
-    this.creature.validate();
-
-    const rustInput: RustAnalyzeNeuronsInput = {
-      parquetFile: this.parquetFilePath,
-      creature: creatureToRustFormat(this.creature.exportJSON()),
-      focusNeurons: focusList,
-      maxCandidates: Math.max(25, focusList.length * 5),
-      requireGpu: Deno.build.os === "darwin",
-      analysisDeadlineMs: this.analysisDeadlineMs,
-    };
-
-    try {
-      const result = this.deps.analyzeNeurons(rustInput);
-      if (!result || !result.success) {
-        if (this.loggingEnabled) {
-          this.log(
-            "debug",
-            `Rust neuron analysis failed: ${result?.error ?? "Unknown error"}`,
-          );
-        }
-        return undefined;
-      }
-      if (Deno.env.get("DEBUG_RUST_ANALYSIS") === "1") {
-        console.log(
-          "rust-neuron-analysis",
-          JSON.stringify({ focusList, result }, (_key, value) => value, 2),
-        );
-      }
-      if (this.loggingEnabled && result.gpuUsed !== undefined) {
-        this.log(
-          "info",
-          `Rust neuron analysis ${
-            result.gpuUsed ? "using GPU" : "using CPU fallback"
-          } (${result.helpfulNeurons?.length ?? 0} candidates)`,
-        );
-      }
-      return result;
-    } catch (error) {
-      this.log(
-        "warn",
-        `Rust neuron analysis threw error: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error,
-      );
-      return undefined;
-    }
-  }
-
-  private runRustSynapseAnalysis(
-    focusList: string[],
-  ): RustAnalyzeSynapsesResult | undefined {
-    if (!this.parquetFilePath) {
-      return undefined;
-    }
-
-    if (
-      !this.deps.isRustDiscoveryEnabled() ||
-      !this.deps.isRustLibraryAvailable()
-    ) {
-      return undefined;
-    }
-
-    this.creature.validate();
-
-    const rustInput: RustAnalyzeSynapsesInput = {
-      parquetFile: this.parquetFilePath,
-      creature: creatureToRustFormat(this.creature.exportJSON()),
-      focusNeurons: focusList,
-      maxCandidates: Math.max(50, focusList.length * 10),
-      requireGpu: Deno.build.os === "darwin",
-      analysisDeadlineMs: this.analysisDeadlineMs,
-    };
-
-    try {
-      const result = this.deps.analyzeSynapses(rustInput);
-      if (!result || !result.success) {
-        if (this.loggingEnabled) {
-          this.log(
-            "debug",
-            `Rust synapse analysis failed: ${result?.error ?? "Unknown error"}`,
-          );
-        }
-        return undefined;
-      }
-      if (Deno.env.get("DEBUG_RUST_ANALYSIS") === "1") {
-        console.log(
-          "rust-analysis",
-          JSON.stringify({ focusList, result }, (_key, value) => value, 2),
-        );
-      }
-      if (this.loggingEnabled && result.gpuUsed !== undefined) {
-        this.log(
-          "info",
-          `Rust synapse analysis ${
-            result.gpuUsed ? "using GPU" : "using CPU fallback"
-          } (${result.helpfulSynapses?.length ?? 0} helpful, ${
-            result.harmfulSynapses?.length ?? 0
-          } harmful candidates)`,
-        );
-      }
-      return result;
-    } catch (error) {
-      this.log(
-        "warn",
-        `Rust synapse analysis threw error: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error,
-      );
-      return undefined;
-    }
   }
 
   /**
@@ -2104,9 +1967,6 @@ export class DiscoverStructure {
     includeSynapse: boolean,
     includeNeuron: boolean,
   ): RustAnalyzeAllResult | undefined {
-    if (!this.deps.analyzeAll) {
-      return undefined;
-    }
     if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
       return undefined;
     }
@@ -2127,49 +1987,7 @@ export class DiscoverStructure {
 
     const rustCreature = creatureToRustFormat(this.creature.exportJSON());
 
-    if (this.deps.analyzeParallel) {
-      const parallelInput: RustParallelAnalysisInput = {
-        parquetFile: this.parquetFilePath,
-        creature: rustCreature,
-        focusNeurons: focusList,
-        maxSynapseCandidates: includeSynapse
-          ? Math.max(50, focusList.length * 10)
-          : undefined,
-        maxNeuronCandidates: includeNeuron
-          ? Math.max(25, focusList.length * 5)
-          : undefined,
-        requireGpu: Deno.build.os === "darwin",
-        analysisDeadlineMs: this.analysisDeadlineMs,
-      };
-
-      const parallelResult = this.deps.analyzeParallel(parallelInput);
-      if (!parallelResult || !parallelResult.success) {
-        const reason = parallelResult?.error ??
-          "analysis did not return a result";
-        if (includeSynapse) {
-          this.logRustAnalysisUnavailable("synapse", focusList, reason);
-        }
-        if (includeNeuron) {
-          this.logRustAnalysisUnavailable("neuron", focusList, reason);
-        }
-        this.combinedRustAnalysis = undefined;
-        return undefined;
-      }
-      const converted = this.convertParallelAnalysisResult(parallelResult);
-      this.combinedRustAnalysis = {
-        key: cacheKey,
-        includeSynapse,
-        includeNeuron,
-        result: converted,
-      };
-      return converted;
-    }
-
-    if (!this.deps.analyzeAll) {
-      return undefined;
-    }
-
-    const rustInput: RustAnalyzeAllInput = {
+    const parallelInput: RustParallelAnalysisInput = {
       parquetFile: this.parquetFilePath,
       creature: rustCreature,
       focusNeurons: focusList,
@@ -2181,13 +1999,12 @@ export class DiscoverStructure {
         : undefined,
       requireGpu: Deno.build.os === "darwin",
       analysisDeadlineMs: this.analysisDeadlineMs,
-      includeSynapseAnalysis: includeSynapse,
-      includeNeuronAnalysis: includeNeuron,
     };
 
-    const rustResult = this.deps.analyzeAll(rustInput);
-    if (!rustResult || !rustResult.success) {
-      const reason = rustResult?.error ?? "analysis did not return a result";
+    const parallelResult = this.deps.analyzeParallel(parallelInput);
+    if (!parallelResult || !parallelResult.success) {
+      const reason = parallelResult?.error ??
+        "analysis did not return a result";
       if (includeSynapse) {
         this.logRustAnalysisUnavailable("synapse", focusList, reason);
       }
@@ -2197,14 +2014,14 @@ export class DiscoverStructure {
       this.combinedRustAnalysis = undefined;
       return undefined;
     }
-
+    const converted = this.convertParallelAnalysisResult(parallelResult);
     this.combinedRustAnalysis = {
       key: cacheKey,
       includeSynapse,
       includeNeuron,
-      result: rustResult,
+      result: converted,
     };
-    return rustResult;
+    return converted;
   }
 
   private readRustCombinedAnalysis(
@@ -4008,6 +3825,9 @@ export class DiscoverStructure {
       );
       return Promise.resolve(undefined);
     }
+
+    // Populate the cache before reading from it
+    this.ensureRustCombinedAnalysis(focusList, true, false);
 
     const rustCandidates = this.tryRustHarmfulCandidates(focusList);
     if (!rustCandidates) {
