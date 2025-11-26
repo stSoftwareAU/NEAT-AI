@@ -539,8 +539,11 @@ export class DiscoveryRunner {
 
     // Sort candidates by expected improvement (descending), undefined values last
     candidates.sort((a, b) => {
-      const aExp = a.expectedErrorReductionPct ?? Number.NEGATIVE_INFINITY;
-      const bExp = b.expectedErrorReductionPct ?? Number.NEGATIVE_INFINITY;
+      const aExp = a.expectedErrorReductionPct;
+      const bExp = b.expectedErrorReductionPct;
+      if (aExp === undefined && bExp === undefined) return 0;
+      if (aExp === undefined) return 1;
+      if (bExp === undefined) return -1;
       return bExp - aExp;
     });
 
