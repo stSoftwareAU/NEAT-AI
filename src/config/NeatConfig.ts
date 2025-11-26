@@ -113,15 +113,6 @@ export function createNeatConfig(options: NeatOptions) {
     discoverySampleRate: options.discoverySampleRate === undefined
       ? 0.05
       : options.discoverySampleRate,
-    discoveryDisableSynapseCandidates:
-      options.discoveryDisableSynapseCandidates ?? false,
-    discoveryDisableHarmfulCandidates:
-      options.discoveryDisableHarmfulCandidates ?? false,
-    discoveryDisableHarmfulNeuronCandidates:
-      options.discoveryDisableHarmfulNeuronCandidates ?? false,
-    discoveryDisableSquashCandidates:
-      options.discoveryDisableSquashCandidates ?? false,
-
     discoveryTimeOutMinutes: options.discoveryTimeOutMinutes ?? 1, // Default 1 min for recording (was 0)
     discoveryAnalysisTimeoutMinutes: options.discoveryAnalysisTimeoutMinutes ??
       10, // Default 10 min for analysis (was 3 - production-tuned)

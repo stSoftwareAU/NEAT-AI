@@ -445,7 +445,7 @@ There's a bug in weight initialization (as of 23-Nov-2025):
 
 - Synapse candidates show -7.5% degradation
 - This is a known issue being investigated
-- Workaround: Use `discoveryDisableSynapseCandidates: true`
+- The re-scoring phase should filter out degrading candidates automatically
 
 ### "Analysis timing out"
 

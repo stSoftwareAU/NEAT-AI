@@ -240,11 +240,6 @@ Deno.test({
       const bundleStart = Date.now();
       const bundle = discoverStructure.collectRustAnalysisCandidates(
         focusList,
-        {
-          helpfulSynapse: true,
-          harmfulSynapse: true,
-          helpfulNeuron: true,
-        },
       );
       console.log(`  Collection time: ${Date.now() - bundleStart}ms`);
 

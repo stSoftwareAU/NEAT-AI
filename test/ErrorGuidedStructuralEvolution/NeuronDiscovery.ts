@@ -506,11 +506,6 @@ Deno.test({
       // This is what DiscoverDirectory uses in production
       const bundle = discoverStructure.collectRustAnalysisCandidates(
         ["output-0", "output-1"],
-        {
-          helpfulSynapse: true,
-          harmfulSynapse: true,
-          helpfulNeuron: true,
-        },
       );
 
       if (bundle) {
