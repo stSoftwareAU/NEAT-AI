@@ -24,11 +24,31 @@ export type DiscoveryChangeType =
   | "combo-all"
   | "combo-best-of-category";
 
+/** Details of a discovered neuron for logging/debugging. */
+export interface DiscoveredNeuronDetails {
+  /** Short ID of the newly added hidden neuron (from creature after adding). */
+  addedNeuronShortID?: string;
+  /** Source neuron UUID. */
+  fromNeuronUUID: string;
+  /** Target neuron UUID. */
+  toNeuronUUID: string;
+  /** Incoming weight (source -> new neuron). */
+  incomingWeight: number;
+  /** Outgoing weight (new neuron -> target). */
+  outgoingWeight: number;
+  /** Bias of the new neuron. */
+  bias: number;
+  /** Activation function (squash) of the new neuron. */
+  squash: string;
+}
+
 interface DiscoveryCandidateChange {
   type: DiscoveryChangeType;
   description?: string;
   expectedErrorReduction?: number;
   sampleSize?: number;
+  /** Details of discovered neurons (for single neuron candidates). */
+  neuronDetails?: DiscoveredNeuronDetails;
 }
 
 export interface DiscoveryCandidate {
@@ -501,6 +521,7 @@ function buildSingleNeuronCandidates(
   getExpected?: (neuron: CandidateNeuron) => number | undefined,
 ): DiscoveryCandidate[] {
   if (!neurons || neurons.length === 0) return [];
+  const baseNeuronUUIDs = new Set(baseCreature.neurons.map((n) => n.uuid));
   const entries: DiscoveryCandidate[] = [];
   for (const neuron of neurons) {
     const creature = DiscoverStructure.addHelpfulNeurons(
@@ -509,6 +530,15 @@ function buildSingleNeuronCandidates(
       [neuron],
     );
     if (!creature) continue;
+
+    // Find the newly added neuron by comparing with base creature
+    const addedNeuron = creature.neurons.find(
+      (n) => n.uuid && !baseNeuronUUIDs.has(n.uuid),
+    );
+    const addedNeuronShortID = addedNeuron?.uuid
+      ? shortID(addedNeuron.uuid)
+      : undefined;
+
     entries.push({
       creature,
       change: {
@@ -518,6 +548,15 @@ function buildSingleNeuronCandidates(
         } -> ${neuron.squash} -> ${shortID(neuron.toNeuronUUID)}`,
         expectedErrorReduction: getExpected?.(neuron),
         sampleSize: neuron.totalCount,
+        neuronDetails: {
+          addedNeuronShortID,
+          fromNeuronUUID: neuron.fromNeuronUUID,
+          toNeuronUUID: neuron.toNeuronUUID,
+          incomingWeight: neuron.incomingWeight,
+          outgoingWeight: neuron.outgoingWeight,
+          bias: neuron.bias,
+          squash: neuron.squash,
+        },
       },
     });
   }
@@ -632,7 +671,8 @@ function scaleExpectedImprovement(
   return raw * safeShare;
 }
 
-function shortID(id: string): string {
+/** Returns the last 8 characters of a UUID or the full ID if short. */
+export function shortID(id: string): string {
   if (id.length > 15 && id.includes("-")) {
     return id.slice(-8);
   }
