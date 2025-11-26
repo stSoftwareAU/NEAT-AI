@@ -1546,47 +1546,31 @@ export class DiscoverStructure {
 
   public collectRustAnalysisCandidates(
     focusList: string[],
-    options: {
-      helpfulSynapse: boolean;
-      harmfulSynapse: boolean;
-      helpfulNeuron: boolean;
-    },
   ): CandidateAnalysisBundle | undefined {
-    const includeSynapse = options.helpfulSynapse || options.harmfulSynapse;
-    const includeNeuron = options.helpfulNeuron;
-    if (!includeSynapse && !includeNeuron) {
-      return {};
-    }
-
     const combinedResult = this.ensureRustCombinedAnalysis(
       focusList,
-      includeSynapse,
-      includeNeuron,
+      true, // includeSynapse
+      true, // includeNeuron
     );
     if (!combinedResult) {
       return undefined;
     }
 
     const bundle: CandidateAnalysisBundle = {};
-    if (options.helpfulSynapse) {
-      const helpfulSynapses = this.tryRustHelpfulSynapses(focusList);
-      if (helpfulSynapses && helpfulSynapses.length > 0) {
-        bundle.helpfulSynapses = helpfulSynapses;
-      }
+
+    const helpfulSynapses = this.tryRustHelpfulSynapses(focusList);
+    if (helpfulSynapses && helpfulSynapses.length > 0) {
+      bundle.helpfulSynapses = helpfulSynapses;
     }
 
-    if (options.harmfulSynapse) {
-      const harmfulSynapses = this.tryRustHarmfulCandidates(focusList);
-      if (harmfulSynapses && harmfulSynapses.length > 0) {
-        bundle.harmfulSynapse = harmfulSynapses[0];
-      }
+    const harmfulSynapses = this.tryRustHarmfulCandidates(focusList);
+    if (harmfulSynapses && harmfulSynapses.length > 0) {
+      bundle.harmfulSynapse = harmfulSynapses[0];
     }
 
-    if (options.helpfulNeuron) {
-      const helpfulNeurons = this.tryRustHelpfulNeurons(focusList);
-      if (helpfulNeurons && helpfulNeurons.length > 0) {
-        bundle.helpfulNeurons = helpfulNeurons;
-      }
+    const helpfulNeurons = this.tryRustHelpfulNeurons(focusList);
+    if (helpfulNeurons && helpfulNeurons.length > 0) {
+      bundle.helpfulNeurons = helpfulNeurons;
     }
 
     return bundle;
