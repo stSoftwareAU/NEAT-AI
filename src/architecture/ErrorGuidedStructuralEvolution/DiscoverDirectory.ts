@@ -230,8 +230,7 @@ class DataRecorder {
       options.discoveryRustFlushRecords ?? DEFAULT_RUST_FLUSH_RECORDS,
     );
     this.discoverDeps = deps;
-    this.enableNeuronCandidates = !this.options
-      .discoveryDisableNeuronCandidates;
+    this.enableNeuronCandidates = true; // Always enabled - neuron discovery is core functionality
     this.enableSynapseCandidates = !this.options
       .discoveryDisableSynapseCandidates;
     this.enableHarmfulCandidates = !this.options

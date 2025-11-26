@@ -115,8 +115,6 @@ export function createNeatConfig(options: NeatOptions) {
       : options.discoverySampleRate,
     discoveryDisableSynapseCandidates:
       options.discoveryDisableSynapseCandidates ?? false,
-    discoveryDisableNeuronCandidates:
-      options.discoveryDisableNeuronCandidates ?? false,
     discoveryDisableHarmfulCandidates:
       options.discoveryDisableHarmfulCandidates ?? false,
     discoveryDisableHarmfulNeuronCandidates:

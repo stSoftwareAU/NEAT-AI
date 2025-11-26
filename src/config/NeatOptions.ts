@@ -147,11 +147,6 @@ export interface NeatArguments {
   discoveryDisableSynapseCandidates?: boolean;
 
   /**
-   * Disable helpful neuron discovery candidates. Defaults to false.
-   */
-  discoveryDisableNeuronCandidates?: boolean;
-
-  /**
    * Disable harmful synapse discovery candidates. Defaults to false.
    */
   discoveryDisableHarmfulCandidates?: boolean;
