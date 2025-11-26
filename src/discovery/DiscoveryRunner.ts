@@ -12,7 +12,9 @@ import type { NeatOptions } from "../config/NeatOptions.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
 import {
   buildDiscoveryCandidates,
+  type DiscoveredNeuronDetails,
   type DiscoveryChangeType,
+  shortID,
 } from "./DiscoveryCandidates.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 
@@ -84,6 +86,8 @@ export interface DiscoveryEvaluationSummary {
     actualPct: number;
     gapPct: number;
   };
+  /** Details of discovered neuron (for single neuron candidates). */
+  neuronDetails?: DiscoveredNeuronDetails;
 }
 
 export interface DiscoveryDirResult {
@@ -499,6 +503,7 @@ export class DiscoveryRunner {
         errorDelta,
         errorDeltaPct,
         expectationMismatch,
+        neuronDetails: evaluation.candidate?.change.neuronDetails,
       });
     }
 
@@ -527,56 +532,129 @@ export class DiscoveryRunner {
     if (!summaries || summaries.length === 0) {
       return;
     }
+
+    // Separate original from candidates
+    const original = summaries.find((s) => s.kind === "original");
+    const candidates = summaries.filter((s) => s.kind === "candidate");
+
+    // Sort candidates by expected improvement (descending), undefined values last
+    candidates.sort((a, b) => {
+      const aExp = a.expectedErrorReductionPct ?? Number.NEGATIVE_INFINITY;
+      const bExp = b.expectedErrorReductionPct ?? Number.NEGATIVE_INFINITY;
+      return bExp - aExp;
+    });
+
+    // Identify the best candidate (first in sorted list)
+    const bestCandidate = candidates.length > 0 ? candidates[0] : undefined;
+
     console.info(
       `[DiscoveryRunner] ${
         bold(`Discovery ${discoveryID} evaluation summary:`)
       }`,
     );
-    for (const summary of summaries) {
-      const label = summary.kind === "original"
-        ? cyan("Original creature")
-        : `Candidate (${summary.changeType ?? "unknown"})`;
-      const description = summary.description ? ` ${summary.description}` : "";
-      const errorDeltaText = summary.kind === "original"
-        ? cyan("baseline")
-        : this.#formatErrorDelta(summary.errorDeltaPct ?? 0);
-      const expectedText = summary.expectedErrorReductionPct !== undefined
-        ? ` expected ${this.#formatExpected(summary.expectedErrorReductionPct)}`
-        : "";
-      const scoreText = `, score=${summary.score.toPrecision(4)}`;
-      const scoreDeltaText = summary.kind === "candidate" &&
-          summary.scoreDelta !== undefined
-        ? `, delta=${summary.scoreDelta >= 0 ? "+" : ""}${
-          summary.scoreDelta.toPrecision(4)
-        }`
-        : "";
-      const improvedText = summary.kind === "candidate"
-        ? `, improved=${summary.improved ? "yes" : "no"}`
-        : "";
-      const mismatchText = summary.expectationMismatch
-        ? ` ${
-          red(
-            `⚠ mismatch expected ${
-              this.#formatExpected(summary.expectationMismatch.expectedPct)
-            } vs actual ${
-              this.#formatErrorDelta(summary.expectationMismatch.actualPct)
-            }`,
-          )
-        }`
-        : "";
-      const mainInfo = summary.kind === "original"
-        ? `error=${summary.error.toPrecision(6)}${scoreText} ${errorDeltaText}`
-        : `error=${
-          summary.error.toPrecision(6)
-        }${scoreText}${scoreDeltaText}${improvedText} ${errorDeltaText}${expectedText}`;
-      console.info(
-        `[DiscoveryRunner]   ${label}${description}: ${mainInfo}${mismatchText}`,
-      );
-      if (summary.archivePath) {
-        console.info(
-          `[DiscoveryRunner]     Saved creature at ${summary.archivePath}`,
-        );
+
+    // Log original first
+    if (original) {
+      this.#logSingleSummary(original, false);
+    }
+
+    // Log candidates (sorted by expected improvement)
+    for (const summary of candidates) {
+      const isBest = summary === bestCandidate;
+      this.#logSingleSummary(summary, isBest);
+    }
+  }
+
+  #logSingleSummary(
+    summary: DiscoveryEvaluationSummary,
+    isBest: boolean,
+  ): void {
+    const label = summary.kind === "original"
+      ? cyan("Original creature")
+      : `Candidate (${summary.changeType ?? "unknown"})`;
+
+    // Build description, including added neuron short ID if available
+    let description = summary.description ? ` ${summary.description}` : "";
+    if (summary.neuronDetails?.addedNeuronShortID) {
+      description += ` [${summary.neuronDetails.addedNeuronShortID}]`;
+    }
+
+    // Format error delta with both absolute value and percentage
+    let errorDeltaText: string;
+    if (summary.kind === "original") {
+      errorDeltaText = cyan("baseline");
+    } else {
+      const pctText = this.#formatErrorDelta(summary.errorDeltaPct ?? 0);
+      // Show absolute error delta as well
+      if (summary.errorDelta !== undefined && summary.errorDelta !== 0) {
+        const sign = summary.errorDelta >= 0 ? "+" : "";
+        errorDeltaText = `Δerr=${sign}${
+          summary.errorDelta.toPrecision(3)
+        } (${pctText})`;
+      } else {
+        errorDeltaText = pctText;
       }
+    }
+
+    const expectedText = summary.expectedErrorReductionPct !== undefined
+      ? ` expected ${this.#formatExpected(summary.expectedErrorReductionPct)}`
+      : "";
+
+    const scoreText = `score=${summary.score.toPrecision(4)}`;
+    const scoreDeltaText = summary.kind === "candidate" &&
+        summary.scoreDelta !== undefined
+      ? ` Δscore=${summary.scoreDelta >= 0 ? "+" : ""}${
+        summary.scoreDelta.toPrecision(3)
+      }`
+      : "";
+    const improvedText = summary.kind === "candidate"
+      ? ` ${summary.improved ? green("✓improved") : yellow("no-improvement")}`
+      : "";
+
+    const mismatchText = summary.expectationMismatch
+      ? ` ${
+        red(
+          `⚠ mismatch expected ${
+            this.#formatExpected(summary.expectationMismatch.expectedPct)
+          } vs actual ${
+            this.#formatErrorDelta(summary.expectationMismatch.actualPct)
+          }`,
+        )
+      }`
+      : "";
+
+    const bestMarker = isBest ? bold(cyan(" ★BEST")) : "";
+
+    const mainInfo = summary.kind === "original"
+      ? `error=${summary.error.toPrecision(6)} ${scoreText} ${errorDeltaText}`
+      : `error=${
+        summary.error.toPrecision(6)
+      } ${scoreText}${scoreDeltaText}${improvedText} ${errorDeltaText}${expectedText}${bestMarker}`;
+
+    console.info(
+      `[DiscoveryRunner]   ${label}${description}: ${mainInfo}${mismatchText}`,
+    );
+
+    // Log full neuron details for ALL candidates with neuron details
+    // This helps identify patterns in why discoveries aren't improving
+    if (summary.neuronDetails) {
+      const nd = summary.neuronDetails;
+      const prefix = isBest ? "★ " : "  ";
+      console.info(
+        `[DiscoveryRunner]     ${prefix}neuron: ` +
+          `from=${shortID(nd.fromNeuronUUID)} to=${shortID(nd.toNeuronUUID)} ` +
+          `squash=${nd.squash} ` +
+          `inW=${nd.incomingWeight.toFixed(3)} outW=${
+            nd.outgoingWeight.toFixed(3)
+          } ` +
+          `bias=${nd.bias.toFixed(3)}`,
+      );
+    }
+
+    if (summary.archivePath) {
+      console.info(
+        `[DiscoveryRunner]     Saved creature at ${summary.archivePath}`,
+      );
     }
   }
 
