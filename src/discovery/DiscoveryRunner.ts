@@ -212,6 +212,7 @@ export class DiscoveryRunner {
         addHelpfulNeurons: rawDiscover.addHelpfulNeurons ?? undefined,
         removeHarmfulSynapse: rawDiscover.removeHarmfulSynapse ?? undefined,
         removeHarmfulNeurons: rawDiscover.removeHarmfulNeurons ?? undefined,
+        removalCandidates: rawDiscover.removalCandidates ?? undefined,
         candidateSquashes: rawDiscover.candidateSquashes ?? undefined,
         reScoringTime: undefined, // Will be set after re-scoring completes
       };

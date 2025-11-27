@@ -224,6 +224,12 @@ export class WorkerProcessor {
               ? [...result.addHelpfulNeurons]
               : undefined,
             removeHarmfulSynapse: result.removeHarmfulSynapse,
+            removeHarmfulNeurons: result.removeHarmfulNeurons
+              ? [...result.removeHarmfulNeurons]
+              : undefined,
+            removalCandidates: result.removalCandidates
+              ? [...result.removalCandidates]
+              : undefined,
             candidateSquashes: result.candidateSquashes
               ? [...result.candidateSquashes]
               : undefined,
@@ -238,6 +244,14 @@ export class WorkerProcessor {
         if (result.addHelpfulNeurons) {
           // @ts-ignore - clearing to help GC
           result.addHelpfulNeurons = null;
+        }
+        if (result.removeHarmfulNeurons) {
+          // @ts-ignore - clearing to help GC
+          result.removeHarmfulNeurons = null;
+        }
+        if (result.removalCandidates) {
+          // @ts-ignore - clearing to help GC
+          result.removalCandidates = null;
         }
         if (result.candidateSquashes) {
           // @ts-ignore - clearing to help GC

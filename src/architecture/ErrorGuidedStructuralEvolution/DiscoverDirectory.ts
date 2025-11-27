@@ -291,6 +291,7 @@ class DataRecorder {
         addHelpfulNeurons: undefined,
         removeHarmfulSynapse: undefined,
         removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
         candidateSquashes: undefined,
       };
     }
@@ -622,6 +623,7 @@ class DataRecorder {
           addHelpfulNeurons: undefined,
           removeHarmfulSynapse: undefined,
           removeHarmfulNeurons: undefined,
+          removalCandidates: undefined,
           candidateSquashes: undefined,
         };
       }
@@ -660,6 +662,7 @@ class DataRecorder {
         addHelpfulNeurons: undefined,
         removeHarmfulSynapse: undefined,
         removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
         candidateSquashes: undefined,
       };
 
@@ -1030,6 +1033,21 @@ class DataRecorder {
         }
       }
       perfStats.analysisPhaseTime = Date.now() - analysisPhaseStartTime;
+
+      // Collect low-impact removal candidates from Rust focus ranking
+      const removalCandidates = discoverStructure.getRemovalCandidates();
+      if (removalCandidates && removalCandidates.length > 0) {
+        discoverResult.removalCandidates = removalCandidates;
+        if (shouldLogDiscovery(options)) {
+          console.log(
+            `Discovery ${blue(this.ID)} found ${
+              yellow(removalCandidates.length.toString())
+            } low-impact removal candidate${
+              removalCandidates.length === 1 ? "" : "s"
+            }`,
+          );
+        }
+      }
 
       phaseDiagnostics.enterPhase("complete");
       if (shouldLogDiscovery(options)) {

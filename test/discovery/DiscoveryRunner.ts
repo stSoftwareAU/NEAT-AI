@@ -157,6 +157,7 @@ Deno.test("DiscoveryRunner enables verbose discovery logging when verbose option
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
     candidateSquashes: undefined,
   };
 
@@ -214,6 +215,7 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
     }],
     addHelpfulNeurons: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
   };
 
   const computeError = (creature: Creature) => {
@@ -336,6 +338,7 @@ Deno.test(
       addHelpfulNeurons: [neuronCandidate],
       removeHarmfulSynapse: harmfulSynapse,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       candidateSquashes: [squashCandidate],
     };
 
@@ -455,6 +458,7 @@ Deno.test("DiscoveryRunner returns no improvement when candidates are not better
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
     candidateSquashes: undefined,
   };
 
@@ -487,6 +491,7 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
     candidateSquashes: undefined,
   };
 
@@ -567,6 +572,7 @@ Deno.test("DiscoveryRunner flags expectation mismatch when predictions diverge",
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
     candidateSquashes: undefined,
   };
 
@@ -662,6 +668,7 @@ Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures w
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
     candidateSquashes: undefined,
   };
 
@@ -751,6 +758,7 @@ Deno.test("DiscoveryRunner passes discovery focus neurons to worker", async () =
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
     candidateSquashes: undefined,
   };
 
@@ -797,6 +805,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       candidateSquashes: undefined,
     };
 
@@ -874,6 +883,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       candidateSquashes: undefined,
     };
 
@@ -956,6 +966,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       candidateSquashes: undefined,
     };
 
@@ -1011,6 +1022,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       candidateSquashes: undefined,
     };
 

@@ -64,6 +64,7 @@ Deno.test("buildDiscoveryCandidates returns empty list when there are no suggest
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
     candidateSquashes: undefined,
   };
 
@@ -101,6 +102,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       candidateSquashes: undefined,
     };
 
@@ -162,6 +164,7 @@ Deno.test(
       ID: "SQUASH-MULTI",
       addHelpfulSynapses: undefined,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       candidateSquashes: squashes,
@@ -271,6 +274,7 @@ Deno.test(
       ID: "BEST-COMBO",
       addHelpfulSynapses: synapses,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       addHelpfulNeurons: neurons,
       removeHarmfulSynapse: removeCandidate,
       candidateSquashes: squashes,
@@ -360,6 +364,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: harmfulNeurons,
+      removalCandidates: undefined,
       candidateSquashes: undefined,
     };
 
@@ -409,6 +414,7 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
     addHelpfulNeurons: [neuronCandidate],
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
     candidateSquashes: undefined,
   };
 
@@ -481,6 +487,7 @@ Deno.test(
       ID: "COMBO-ALL",
       addHelpfulSynapses: helpfulSynapses,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       addHelpfulNeurons: [neuronCandidate],
       removeHarmfulSynapse: removeCandidate,
       candidateSquashes: [squashCandidate],
@@ -567,6 +574,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: [harmfulNeuron],
+      removalCandidates: undefined,
       candidateSquashes: undefined,
     };
 
@@ -756,6 +764,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: removeSynapse,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       candidateSquashes: undefined,
     };
 
@@ -833,6 +842,7 @@ Deno.test(
       addHelpfulNeurons: undefined,
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
       candidateSquashes: squashChanges,
     };
 
