@@ -18,6 +18,7 @@ export type DiscoveryChangeType =
   | "add-neurons"
   | "remove-synapse"
   | "remove-neuron"
+  | "remove-low-impact"
   | "change-squash"
   | "combo-add-remove"
   | "combo-add-change"
@@ -394,6 +395,32 @@ export function buildDiscoveryCandidates(
         sampleSize: mostHarmful.sampleCount,
       },
     });
+  }
+
+  // Low-impact removal candidates (high error, low impact < 1%)
+  const { removalCandidates } = discovery;
+  if (removalCandidates && removalCandidates.length > 0) {
+    for (const candidate of removalCandidates) {
+      const removedLowImpactCreature = DiscoverStructure.removeLowImpactNeuron(
+        discovery.ID,
+        baseCreature,
+        candidate,
+      );
+      if (removedLowImpactCreature) {
+        candidates.push({
+          creature: removedLowImpactCreature,
+          change: {
+            type: "remove-low-impact",
+            description:
+              `🪶 Removed low-impact neuron ${candidate.neuronUUID} (error: ${
+                candidate.totalError.toFixed(4)
+              }, impact: ${(candidate.impact * 100).toFixed(2)}%)`,
+            // Low-impact neurons don't have expectedImprovementPercentage from Rust
+            // The improvement comes from reduced compute, not reduced error
+          },
+        });
+      }
+    }
   }
 
   const combinedCandidate = buildCombinedCandidate({

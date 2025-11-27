@@ -9,6 +9,7 @@ import type { ActivationInterface } from "../../methods/activations/ActivationIn
 import { Activations } from "../../methods/activations/Activations.ts";
 import { CreatureErrorImpactEstimator } from "../../discovery/NeuronErrorImpactEstimator.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
+import { fromRustRemovalCandidate } from "./DiscoverResult.ts";
 import {
   analyzeParallel,
   creatureToRustFormat,
@@ -329,6 +330,9 @@ export class DiscoverStructure {
     undefined;
   private lastNeuronScanStats?: NeuronScanStats;
   private analysisDeadlineMs?: number;
+  /** Low-impact neurons flagged for removal by Rust focus ranking. */
+  private cachedRemovalCandidates?:
+    import("./DiscoverResult.ts").RemovalCandidate[];
   private combinedRustAnalysis?: {
     key: string;
     includeSynapse: boolean;
@@ -2826,6 +2830,21 @@ export class DiscoverStructure {
         );
       }
 
+      // Capture low-impact removal candidates from Rust
+      if (result.removalCandidates && result.removalCandidates.length > 0) {
+        this.cachedRemovalCandidates = result.removalCandidates.map(
+          fromRustRemovalCandidate,
+        );
+        if (this.loggingEnabled) {
+          this.log(
+            "info",
+            `Found ${result.removalCandidates.length} removal candidate${
+              result.removalCandidates.length === 1 ? "" : "s"
+            } (high error, low impact)`,
+          );
+        }
+      }
+
       return result.neurons.map((entry) => ({
         uuid: entry.neuronUuid,
         totalError: entry.totalError,
@@ -4101,5 +4120,89 @@ export class DiscoverStructure {
       return tmpCreature;
     }
     return undefined;
+  }
+
+  /**
+   * Removes a low-impact neuron from the creature.
+   * Unlike removeHarmfulNeuron, this doesn't require averageActivation for bias adjustment
+   * since low-impact neurons (by definition) have negligible effect on downstream neurons.
+   *
+   * @param ID - Unique identifier for the discovery process.
+   * @param creature - The Creature instance to modify.
+   * @param removalCandidate - The low-impact neuron candidate to remove.
+   * @returns A modified Creature with the neuron removed, or undefined if no change was made.
+   */
+  public static removeLowImpactNeuron(
+    ID: string,
+    creature: Creature,
+    removalCandidate?: import("./DiscoverResult.ts").RemovalCandidate,
+  ): Creature | undefined {
+    if (!removalCandidate) return undefined;
+
+    const creatureUUID = CreatureUtil.makeUUID(creature);
+    const exportJSON = creature.exportJSON();
+
+    // Check if neuron exists
+    const neuronToRemove = exportJSON.neurons.find(
+      (neuron) => neuron.uuid === removalCandidate.neuronUUID,
+    );
+    if (!neuronToRemove) {
+      return undefined; // Neuron doesn't exist, nothing to remove
+    }
+
+    // Don't remove output neurons
+    if (neuronToRemove.type === "output") {
+      return undefined;
+    }
+
+    // Create a deep copy to modify
+    const simplifiedExport: typeof exportJSON = JSON.parse(
+      JSON.stringify(exportJSON),
+    );
+
+    // Low-impact neurons have negligible effect on outputs, so we skip bias adjustment.
+    // Just remove all synapses to/from this neuron.
+    simplifiedExport.synapses = simplifiedExport.synapses.filter(
+      (synapse) =>
+        synapse.fromUUID !== removalCandidate.neuronUUID &&
+        synapse.toUUID !== removalCandidate.neuronUUID,
+    );
+
+    // Remove the neuron itself
+    simplifiedExport.neurons = simplifiedExport.neurons.filter(
+      (neuron) => neuron.uuid !== removalCandidate.neuronUUID,
+    );
+
+    const tmpCreature = Creature.fromJSON(simplifiedExport);
+    // We modified the structure, so we must delete UUID
+    delete tmpCreature.uuid;
+    tmpCreature.fix();
+
+    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
+    if (tmpUUID !== creatureUUID) {
+      addTag(tmpCreature, "approach", "discovery" as Approach);
+      addTag(tmpCreature, "discoveryID", ID);
+      const summary =
+        `🪶 Removed low-impact neuron ${removalCandidate.neuronUUID} (error: ${
+          removalCandidate.totalError.toFixed(4)
+        }, impact: ${(removalCandidate.impact * 100).toFixed(2)}%)`;
+      addTag(tmpCreature, "Discovery", summary);
+      delete tmpCreature.memetic;
+      removeTag(tmpCreature, "approach-logged");
+      tmpCreature.validate();
+
+      return tmpCreature;
+    }
+    return undefined;
+  }
+
+  /**
+   * Returns low-impact neurons flagged for removal by Rust focus ranking.
+   * These neurons have high error but very low impact (< 1% contribution to outputs).
+   */
+  public getRemovalCandidates():
+    | import("./DiscoverResult.ts").RemovalCandidate[]
+    | undefined {
+    return this.cachedRemovalCandidates;
   }
 }

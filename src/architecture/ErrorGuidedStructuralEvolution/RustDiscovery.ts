@@ -149,9 +149,25 @@ export interface RustFocusNeuronScore {
   impact: number;
 }
 
+/**
+ * A neuron flagged for potential removal due to high error but very low impact.
+ * These neurons consume compute but don't meaningfully contribute to outputs.
+ *
+ * Criteria:
+ * - Impact < 0.01 (less than 1% contribution to outputs)
+ * - Error > average error across all neurons
+ */
+export interface RustRemovalCandidate {
+  neuronUuid: string;
+  totalError: number;
+  impact: number;
+  reason: string; // e.g., "High error (5.0000) but very low impact (0.000100) - far from outputs"
+}
+
 export interface RustRankFocusResult {
   success: boolean;
   neurons?: RustFocusNeuronScore[];
+  removalCandidates?: RustRemovalCandidate[];
   maxOutputError?: number;
   processedNeurons?: number;
   totalNeurons?: number;
