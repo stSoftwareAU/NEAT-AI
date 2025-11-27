@@ -10,6 +10,7 @@ import {
   shouldSkipRustDiscoveryTests,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
+import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
 /**
@@ -80,7 +81,10 @@ Deno.test({
     );
 
     // Selection should handle requesting more neurons than exist
-    const selected = await discoverStructure.selectNeuronsWeightedByError(6);
+    const selected = await discoverStructure.selectNeuronsWeightedByError(
+      6,
+      DEFAULT_COST_OF_GROWTH,
+    );
     assertExists(selected, "Should return selection");
     assert(
       selected.length <= 1,
@@ -162,7 +166,10 @@ Deno.test({
     );
 
     // Request more neurons than exist (6 > 2)
-    const selected = await discoverStructure.selectNeuronsWeightedByError(6);
+    const selected = await discoverStructure.selectNeuronsWeightedByError(
+      6,
+      DEFAULT_COST_OF_GROWTH,
+    );
     assertExists(selected, "Should return selection");
     assert(
       selected.length <= 2,
@@ -170,7 +177,10 @@ Deno.test({
     );
 
     // Analyze should handle small creatures
-    const analysisResult = await discoverStructure.analyze(6);
+    const analysisResult = await discoverStructure.analyze(
+      6,
+      DEFAULT_COST_OF_GROWTH,
+    );
     // May return undefined or array depending on if it finds candidates
     assert(
       analysisResult === undefined || Array.isArray(analysisResult),
@@ -254,7 +264,10 @@ Deno.test({
     }
 
     // Request 10 neurons when only 3 exist
-    const selected = await discoverStructure.selectNeuronsWeightedByError(10);
+    const selected = await discoverStructure.selectNeuronsWeightedByError(
+      10,
+      DEFAULT_COST_OF_GROWTH,
+    );
     assertExists(selected, "Should return selection");
     assert(
       selected.length === 3,

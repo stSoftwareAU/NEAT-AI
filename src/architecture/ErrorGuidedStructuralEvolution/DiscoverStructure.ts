@@ -1697,9 +1697,14 @@ export class DiscoverStructure {
 
   /**
    * Analyzes recorded neuron data to identify and evaluate potential synapse additions.
+   *
+   * @param discoveryMaxNeurons - Number of neurons to consider, weighted by error magnitude
+   * @param costOfGrowth - Cost threshold from NEAT options for filtering viable neurons
+   * @returns Candidate synapses ordered by benefit estimate, or undefined if none were found
    */
   public async analyze(
     discoveryMaxNeurons: number,
+    costOfGrowth: number,
   ): Promise<CandidateSynapse[] | undefined> {
     if (this.recorded === false) {
       this.log("warn", "No recorded data to analyze.");
@@ -1707,6 +1712,7 @@ export class DiscoverStructure {
     }
     const focusList = await this.selectNeuronsWeightedByError(
       discoveryMaxNeurons,
+      costOfGrowth,
     );
     return this.analyzeSelectedNeurons(focusList);
   }
@@ -1791,14 +1797,14 @@ export class DiscoverStructure {
     retryNumber?: number,
   ): void {
     try {
-      const EPSILON = 0.0001;
       const selectedSet = new Set(selectedUUIDs);
 
       // Calculate all metrics for each candidate neuron
       const candidates: FocusNeuronCandidate[] = neuronErrors.map((neuron) => {
         const potentialErrorReduction = neuron.totalError * neuron.impact;
         const activationAffectPct = neuron.impact * 100;
-        const weightedScore = neuron.totalError * (neuron.impact + EPSILON);
+        // Use squared weighting to match selection logic - strongly favours high-potential neurons
+        const weightedScore = potentialErrorReduction * potentialErrorReduction;
 
         return {
           neuronUuid: neuron.uuid,
@@ -2864,21 +2870,30 @@ export class DiscoverStructure {
    * error and greater influence on outputs. Implements "roulette wheel" selection.
    *
    * Impact measures how much a neuron affects outputs through its outgoing synapse weights.
-   * Neurons with high error but low impact (e.g., high error but very low weights) will have
-   * lower selection probability, while neurons with both high error and high impact will be
-   * prioritized. Neurons with zero impact can still be selected, just with much lower probability.
+   *
+   * **Two selection modes:**
+   * - **"add"** (default): Selects neurons with high `potentialErrorReduction - costOfGrowth`
+   *   for adding synapses/neurons or changing squash functions. Only considers neurons where
+   *   potentialErrorReduction >= costOfGrowth (can actually improve score).
+   * - **"remove"**: Selects neurons with low impact (impact < costOfGrowth) where removing
+   *   the neuron/synapse would improve score by saving the cost of growth.
+   *
+   * Uses squared weighting: if neuron A has 10x the potential of neuron B, it gets 100x the weight.
+   * Weighting is always relative to costOfGrowth to ensure only viable improvements are selected.
    *
    * Reference:
    * - Goldberg, D. E. (1989). Genetic Algorithms in Search, Optimization and Machine Learning.
    *
    * @param count Number of neurons to select
+   * @param costOfGrowth Cost threshold for filtering and weighting (from NEAT options, REQUIRED)
    * @param retryNumber Optional retry number for file naming (used in retry loops)
-   * @param costOfGrowth Cost threshold for low-impact neuron identification (defaults to 0.01)
+   * @param mode Selection mode: "add" for adding structures, "remove" for removing structures
    */
   public async selectNeuronsWeightedByError(
     count: number,
+    costOfGrowth: number,
     retryNumber?: number,
-    costOfGrowth: number = 0.01,
+    mode: "add" | "remove" = "add",
   ): Promise<string[]> {
     assert(count > 0, "Count must be greater than 0");
     this.lastFocusSelection = undefined;
@@ -2923,19 +2938,78 @@ export class DiscoverStructure {
       }
     }
     const listViableStart = Date.now();
-    const neuronErrors = this.listViableNeurons(count);
+    const allNeuronErrors = this.listViableNeurons(count);
     const listViableTime = Date.now() - listViableStart;
-    if (neuronErrors.length === 0) return [];
+    if (allNeuronErrors.length === 0) return [];
+
+    // Filter neurons based on mode:
+    // - "add" mode: Only neurons where potentialErrorReduction >= costOfGrowth (can improve score by adding)
+    // - "remove" mode: Only neurons where impact < costOfGrowth (can improve score by removing)
+    const neuronErrors = mode === "add"
+      ? allNeuronErrors.filter((n) => {
+        const potentialErrorReduction = n.totalError * n.impact;
+        return potentialErrorReduction >= costOfGrowth;
+      })
+      : allNeuronErrors.filter((n) => n.impact < costOfGrowth);
+
+    if (this.loggingEnabled && neuronErrors.length < allNeuronErrors.length) {
+      const filtered = allNeuronErrors.length - neuronErrors.length;
+      const criteria = mode === "add"
+        ? `potentialErrorReduction < costOfGrowth`
+        : `impact >= costOfGrowth`;
+      this.log(
+        "debug",
+        `Filtered ${filtered} neurons (${criteria}) for ${mode} mode, costOfGrowth=${costOfGrowth}`,
+      );
+    }
+
+    if (neuronErrors.length === 0) {
+      const reason = mode === "add"
+        ? `potentialErrorReduction below costOfGrowth`
+        : `impact >= costOfGrowth`;
+      this.log(
+        "warn",
+        `All ${allNeuronErrors.length} neurons have ${reason} (${costOfGrowth}). No viable neurons for ${mode} mode.`,
+      );
+      return [];
+    }
 
     const maxErrorStart = Date.now();
     const maxOutputError = await this.getMaxOutputError();
     const maxErrorTime = Date.now() - maxErrorStart;
     const hasOutputCap = maxOutputError > 0;
-    const EPSILON = 0.0001;
-    const rawWeights = neuronErrors.map((n) => ({
-      uuid: n.uuid,
-      raw: n.totalError * (n.impact + EPSILON),
-    }));
+
+    // EPSILON is set to costOfGrowth - the minimum meaningful improvement
+    // This represents the cost of adding a single synapse
+    const EPSILON = costOfGrowth;
+
+    // Use squared weighting relative to costOfGrowth to strongly favour viable improvements
+    //
+    // For "add" mode:
+    //   netImprovement = potentialErrorReduction - costOfGrowth
+    //   weight = max(netImprovement, EPSILON)^2
+    //   This ensures only neurons that can actually improve score get selected
+    //
+    // For "remove" mode:
+    //   netImprovement = costOfGrowth - impact
+    //   weight = max(netImprovement, EPSILON)^2
+    //   This favours removing neurons with minimal impact to save the cost of growth
+    //
+    // Example: if neuron A has 10x the net improvement of neuron B, it gets 100x the weight
+    const rawWeights = neuronErrors.map((n) => {
+      const potentialErrorReduction = n.totalError * n.impact;
+      const netImprovement = mode === "add"
+        ? potentialErrorReduction - costOfGrowth
+        : costOfGrowth - n.impact;
+
+      // Clamp to EPSILON to prevent zero/negative weights (should not happen due to filtering)
+      const clampedImprovement = Math.max(netImprovement, EPSILON);
+
+      return {
+        uuid: n.uuid,
+        raw: clampedImprovement * clampedImprovement, // Square for strong weighting
+      };
+    });
     const rawSum = rawWeights.reduce((sum, entry) => sum + entry.raw, 0);
     const capTotal = hasOutputCap
       ? Math.max(maxOutputError, EPSILON)
@@ -3143,16 +3217,21 @@ export class DiscoverStructure {
 
   /**
    * Entry point for automatic synapse pruning using error-driven analysis.
-   * Selects high-error neurons and evaluates their incoming synapses for removal.
+   * Selects low-impact neurons and evaluates their incoming synapses for removal.
    *
    * @param discoveryMaxNeurons - Number of neurons to consider, weighted by error magnitude.
+   * @param costOfGrowth - Cost threshold from NEAT options (neurons with impact < costOfGrowth are candidates for removal)
    * @returns A modified Creature with harmful synapse(s) removed, or null if no change was needed.
    */
   async analyzeSynapsesForRemoval(
     discoveryMaxNeurons: number,
+    costOfGrowth: number,
   ): Promise<CandidateSynapse | undefined> {
     const focusList = await this.selectNeuronsWeightedByError(
       discoveryMaxNeurons,
+      costOfGrowth,
+      undefined, // retryNumber
+      "remove", // Select neurons with low impact for removal
     );
     return this.analyzeSelectedNeuronsForRemoval(focusList);
   }
@@ -3161,13 +3240,16 @@ export class DiscoverStructure {
    * Randomly selects a neuron and evaluates its activation function to identify squash function modifications.
    *
    * @param discoveryMaxNeurons - Number of neurons to consider, weighted by error magnitude.
+   * @param costOfGrowth - Cost threshold from NEAT options for filtering viable neurons
    * @returns CandidateNeurons with the most promising squash functions modifications.
    */
   async analyzeNeuronsSquashes(
     discoveryMaxNeurons: number,
+    costOfGrowth: number,
   ): Promise<CandidateSquash[] | undefined> {
     const focusList = await this.selectNeuronsWeightedByError(
       discoveryMaxNeurons,
+      costOfGrowth,
     );
     return this.analyzeSelectedNeuronsSquashes(focusList);
   }

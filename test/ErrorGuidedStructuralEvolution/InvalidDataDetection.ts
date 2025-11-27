@@ -10,6 +10,7 @@ import {
   shouldSkipRustDiscoveryTests,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
+import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
@@ -118,6 +119,7 @@ Deno.test({
     if (viableNeurons.length > 0) {
       const selected = await discoverStructure.selectNeuronsWeightedByError(
         Math.min(3, viableNeurons.length),
+        DEFAULT_COST_OF_GROWTH,
       );
       assertExists(selected, "Should select neurons");
       assert(selected.length > 0, "Should select at least one neuron");
@@ -177,7 +179,10 @@ Deno.test({
 
     // Selection should work without warnings on valid data
     const startTime = Date.now();
-    const selected = await discoverStructure.selectNeuronsWeightedByError(2);
+    const selected = await discoverStructure.selectNeuronsWeightedByError(
+      2,
+      DEFAULT_COST_OF_GROWTH,
+    );
     const elapsed = Date.now() - startTime;
 
     assertExists(selected, "Should return selection");
