@@ -7,6 +7,7 @@ import type {
   CandidateSquash,
   CandidateSynapse,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RemovalCandidate } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
@@ -118,6 +119,8 @@ export interface ResponseData {
     removeHarmfulSynapse?: CandidateSynapse;
     /** Optional harmful neurons to remove */
     removeHarmfulNeurons?: CandidateHarmfulNeuron[];
+    /** Optional low-impact neurons to remove (from Rust focus ranking) */
+    removalCandidates?: RemovalCandidate[];
     /** Optional candidate activation functions */
     candidateSquashes?: CandidateSquash[];
     /** Time spent re-scoring candidates (ms) - set by DiscoveryRunner after evaluation */
