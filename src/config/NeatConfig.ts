@@ -5,6 +5,17 @@ import type { NeatArguments } from "./NeatOptions.ts";
 import { DEFAULT_RUST_FLUSH_RECORDS } from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
 
 /**
+ * Default cost of growth value used when not specified in options.
+ * This is the single source of truth for the default costOfGrowth.
+ */
+export const DEFAULT_COST_OF_GROWTH = 0.000_000_1;
+
+/**
+ * Minimum allowed cost of growth value.
+ */
+export const MIN_COST_OF_GROWTH = 0.000_000_000_1;
+
+/**
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
  * Provides a read-only configuration object for the NEAT algorithm.
  */
@@ -69,8 +80,8 @@ export function createNeatConfig(options: NeatOptions) {
     targetError: options.targetError ?? 0.05,
 
     costOfGrowth: Math.max(
-      options.costOfGrowth ?? 0.000_000_1,
-      0.000_000_000_1,
+      options.costOfGrowth ?? DEFAULT_COST_OF_GROWTH,
+      MIN_COST_OF_GROWTH,
     ),
 
     iterations: options.iterations ?? Number.MAX_SAFE_INTEGER,

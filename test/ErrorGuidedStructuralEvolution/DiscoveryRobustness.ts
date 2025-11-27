@@ -12,6 +12,7 @@ import {
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
 /**
@@ -208,6 +209,7 @@ Deno.test({
     const selectedNeurons = await discoverStructure
       .selectNeuronsWeightedByError(
         10,
+        DEFAULT_COST_OF_GROWTH,
       );
     const elapsed = Date.now() - startTime;
 
@@ -350,6 +352,7 @@ Deno.test({
     const selectedNeurons = await discoverStructure
       .selectNeuronsWeightedByError(
         5,
+        DEFAULT_COST_OF_GROWTH,
       );
     const elapsed = Date.now() - startTime;
 
@@ -400,9 +403,18 @@ Deno.test({
     // These should all return quickly due to timeout checks
     const startTime = Date.now();
 
-    const analysisResult = await discoverStructure.analyze(5);
-    const removalResult = await discoverStructure.analyzeSynapsesForRemoval(5);
-    const squashResult = await discoverStructure.analyzeNeuronsSquashes(5);
+    const analysisResult = await discoverStructure.analyze(
+      5,
+      DEFAULT_COST_OF_GROWTH,
+    );
+    const removalResult = await discoverStructure.analyzeSynapsesForRemoval(
+      5,
+      DEFAULT_COST_OF_GROWTH,
+    );
+    const squashResult = await discoverStructure.analyzeNeuronsSquashes(
+      5,
+      DEFAULT_COST_OF_GROWTH,
+    );
 
     const elapsed = Date.now() - startTime;
 

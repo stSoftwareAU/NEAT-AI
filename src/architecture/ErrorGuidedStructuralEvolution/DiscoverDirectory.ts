@@ -3,6 +3,7 @@ import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import type { Creature } from "../../Creature.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
+import { DEFAULT_COST_OF_GROWTH } from "../../config/NeatConfig.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
@@ -675,8 +676,8 @@ class DataRecorder {
         // deno-lint-ignore no-await-in-loop
         const focusList = await discoverStructure.selectNeuronsWeightedByError(
           this.discoveryMaxNeurons,
+          this.options.costOfGrowth ?? DEFAULT_COST_OF_GROWTH, // Single source of truth for default
           retryAttempt > 0 ? retryAttempt : undefined,
-          this.options.costOfGrowth,
         );
         perfStats.focusSelectionTime += Date.now() - focusSelectStart;
 
