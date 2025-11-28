@@ -164,6 +164,21 @@ export interface NeatArguments {
   discoveryMinImprovementPercentage?: number;
 
   /**
+   * Minimum multiplier of costOfGrowth that a discovery candidate's expected
+   * improvement must exceed before evaluation. Defaults to 2.0.
+   *
+   * This filter is applied early in the discovery pipeline to exclude candidates
+   * where expectedErrorReduction < (multiplier × costOfGrowth).
+   *
+   * For example, with costOfGrowth=0.0000001 and multiplier=2.0:
+   * - Candidates with expected improvement < 0.0000002 are excluded
+   * - This filters out candidates unlikely to provide meaningful benefit
+   *
+   * Set to 0 to disable this filter (only the positive-impact check will apply).
+   */
+  discoveryMinImprovementVsCostOfGrowthMultiplier: number;
+
+  /**
    * The maximum number of minutes to record for.
    * Defaults to 1 minute (sufficient for ~50k records at 700 records/sec).
    */

@@ -514,7 +514,11 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
       ),
     candidateBuilder: () => [{
       creature: candidateCreature,
-      change: { type: "add-neurons", description: "test candidate" },
+      change: {
+        type: "add-neurons",
+        description: "test candidate",
+        expectedErrorReduction: 0.1, // Must exceed 2x costOfGrowth
+      },
     }],
   });
 
@@ -836,7 +840,7 @@ Deno.test(
         change: {
           type: "add-synapses",
           description: "extra synapse",
-          expectedErrorReduction: 0.01, // Positive expected impact
+          expectedErrorReduction: 0.05, // Must exceed 2x costOfGrowth (0.02 * 2 = 0.04)
         },
       }];
     };
@@ -1009,6 +1013,166 @@ Deno.test(
     assert(
       !result.evaluations?.some((entry) => entry.kind === "candidate"),
       "candidates with non-positive expected impact should be skipped",
+    );
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner includes candidates with undefined expectedErrorReduction for evaluation",
+  async () => {
+    const discoveryResult: DiscoverResult = {
+      ID: "UNDEFINED_EXPECTED",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const baseCreature = makeBaseCreature();
+
+    const candidateBuilder = (
+      _creature: Creature,
+      _discovery: DiscoverResult,
+    ): DiscoveryCandidate[] => {
+      const json = cloneCreatureJSON(baseCreature);
+      const candidate = Creature.fromJSON(json);
+      candidate.validate();
+      CreatureUtil.makeUUID(candidate);
+      return [{
+        creature: candidate,
+        change: {
+          type: "combo-all",
+          description: "combo candidate without expected impact",
+          // expectedErrorReduction is undefined - typical for combo candidates
+        },
+      }];
+    };
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () =>
+        new FakeWorker(
+          discoveryResult,
+          () => 0.5,
+        ),
+      candidateBuilder,
+    });
+
+    const result = await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options: makeOptions(),
+    });
+
+    assert(
+      result.evaluations?.some((entry) => entry.kind === "candidate"),
+      "candidates with undefined expectedErrorReduction should be included for evaluation",
+    );
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner excludes zero-impact candidates when multiplier is 0",
+  async () => {
+    const discoveryResult: DiscoverResult = {
+      ID: "ZERO_MULTIPLIER",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const baseCreature = makeBaseCreature();
+
+    const candidateBuilder = (
+      _creature: Creature,
+      _discovery: DiscoverResult,
+    ): DiscoveryCandidate[] => {
+      // Create three candidates: one with zero impact, one with positive, one with negative
+      const candidates: DiscoveryCandidate[] = [];
+
+      // Candidate 1: Zero impact (should be excluded)
+      const zeroCandidate = Creature.fromJSON(cloneCreatureJSON(baseCreature));
+      zeroCandidate.validate();
+      CreatureUtil.makeUUID(zeroCandidate);
+      candidates.push({
+        creature: zeroCandidate,
+        change: {
+          type: "add-neurons",
+          description: "zero-impact candidate",
+          expectedErrorReduction: 0, // Zero impact - should be excluded
+        },
+      });
+
+      // Candidate 2: Positive impact (should be included)
+      const positiveCandidate = Creature.fromJSON(
+        cloneCreatureJSON(baseCreature),
+      );
+      positiveCandidate.validate();
+      CreatureUtil.makeUUID(positiveCandidate);
+      candidates.push({
+        creature: positiveCandidate,
+        change: {
+          type: "add-synapses",
+          description: "positive-impact candidate",
+          expectedErrorReduction: 0.001, // Positive impact - should be included
+        },
+      });
+
+      // Candidate 3: Negative impact (should be excluded)
+      const negativeCandidate = Creature.fromJSON(
+        cloneCreatureJSON(baseCreature),
+      );
+      negativeCandidate.validate();
+      CreatureUtil.makeUUID(negativeCandidate);
+      candidates.push({
+        creature: negativeCandidate,
+        change: {
+          type: "add-neurons",
+          description: "negative-impact candidate",
+          expectedErrorReduction: -0.001, // Negative impact - should be excluded
+        },
+      });
+
+      return candidates;
+    };
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () =>
+        new FakeWorker(
+          discoveryResult,
+          () => 0.5,
+        ),
+      candidateBuilder,
+    });
+
+    const options = makeOptions();
+    options.discoveryMinImprovementVsCostOfGrowthMultiplier = 0; // Set multiplier to 0
+
+    const result = await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options,
+    });
+
+    // Only the positive-impact candidate should be evaluated
+    const candidateEvaluations =
+      result.evaluations?.filter((entry) => entry.kind === "candidate") ?? [];
+
+    assertEquals(
+      candidateEvaluations.length,
+      1,
+      "only one candidate with positive impact should be evaluated",
+    );
+
+    assert(
+      candidateEvaluations[0].description?.includes("positive-impact"),
+      "the evaluated candidate should be the positive-impact one",
     );
   },
 );

@@ -9,7 +9,7 @@ import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvo
 import { calculate as calculateScore } from "../architecture/Score.ts";
 import type { Creature } from "../Creature.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
-import { createNeatConfig } from "../config/NeatConfig.ts";
+import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import {
   buildDiscoveryCandidates,
   type DiscoveredNeuronDetails,
@@ -238,12 +238,17 @@ export class DiscoveryRunner {
         .#filterCandidatesForEvaluation(
           candidates,
           workerCount,
+          config,
         );
       if (skipped.length > 0) {
+        const minThreshold = config.costOfGrowth *
+          (config.discoveryMinImprovementVsCostOfGrowthMultiplier ?? 2.0);
         verboseLog(
           `Skipped ${skipped.length} candidate${
             skipped.length === 1 ? "" : "s"
-          } with non-positive expected impact or below selection threshold: ${
+          } with expected improvement below ${minThreshold.toPrecision(3)} (${
+            config.discoveryMinImprovementVsCostOfGrowthMultiplier ?? 2.0
+          }× costOfGrowth): ${
             skipped.map((entry) =>
               `${entry.changeType ?? "unknown"} (expected ${
                 entry.expected?.toPrecision(3) ?? "n/a"
@@ -755,9 +760,9 @@ export class DiscoveryRunner {
    * Filters discovery candidates for evaluation.
    *
    * Strategy:
-   * 1. Include all candidates with positive expected error reduction (or undefined, which we'll re-score)
+   * 1. Include all candidates with expected error reduction >= threshold (or undefined, which we'll evaluate)
    * 2. If there are more than 2x CPU cores candidates, select the best estimated ones
-   * 3. We re-score all candidates with positive expected improvement
+   * 3. We evaluate all candidates with sufficient expected improvement or undefined expected improvement
    *
    * @param candidates - All discovery candidates
    * @param threadCount - Number of CPU threads available
@@ -766,6 +771,7 @@ export class DiscoveryRunner {
   #filterCandidatesForEvaluation(
     candidates: DiscoveryCandidate[],
     threadCount: number,
+    config: NeatConfig,
   ): {
     filtered: DiscoveryCandidate[];
     skipped: Array<{
@@ -775,7 +781,12 @@ export class DiscoveryRunner {
   } {
     const maxCandidates = 2 * threadCount;
 
-    // Filter to candidates with positive expected impact (or undefined, which we'll re-score)
+    // Calculate the minimum expected improvement threshold
+    const multiplier = config.discoveryMinImprovementVsCostOfGrowthMultiplier ??
+      2.0;
+    const minExpectedImprovement = config.costOfGrowth * multiplier;
+
+    // Filter to candidates that meet the minimum expected improvement threshold or have undefined expected improvement
     const positiveCandidates: DiscoveryCandidate[] = [];
     const skipped: Array<{
       changeType?: DiscoveryChangeType;
@@ -786,15 +797,29 @@ export class DiscoveryRunner {
       CreatureUtil.makeUUID(candidate.creature);
       const expected = candidate.change.expectedErrorReduction;
 
-      // Include candidates with positive expected impact or undefined (will be re-scored)
+      // Include candidates with: undefined expected improvement, or expected improvement meeting threshold
       if (expected === undefined) {
-        // No expected value - include it for re-scoring
+        // No expected value - include it for evaluation (combo candidates, remove-low-impact, etc.)
         positiveCandidates.push(candidate);
-      } else if (Number.isFinite(expected) && expected > 0) {
-        // Positive expected impact - include it
-        positiveCandidates.push(candidate);
+      } else if (Number.isFinite(expected)) {
+        // When multiplier is 0, use strict positive check (expected > 0)
+        // Otherwise, check against threshold (expected >= minExpectedImprovement)
+        const meetsThreshold = multiplier === 0
+          ? expected > 0
+          : expected >= minExpectedImprovement;
+
+        if (meetsThreshold) {
+          // Expected impact meets or exceeds threshold - include it
+          positiveCandidates.push(candidate);
+        } else {
+          // Expected impact below threshold - skip it
+          skipped.push({
+            changeType: candidate.change.type,
+            expected,
+          });
+        }
       } else {
-        // Non-positive expected impact - skip it
+        // Non-finite expected value - skip it
         skipped.push({
           changeType: candidate.change.type,
           expected,
