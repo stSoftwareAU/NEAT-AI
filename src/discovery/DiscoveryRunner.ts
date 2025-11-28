@@ -782,8 +782,9 @@ export class DiscoveryRunner {
     const maxCandidates = 2 * threadCount;
 
     // Calculate the minimum expected improvement threshold
-    const minExpectedImprovement = config.costOfGrowth *
-      (config.discoveryMinImprovementVsCostOfGrowthMultiplier ?? 2.0);
+    const multiplier = config.discoveryMinImprovementVsCostOfGrowthMultiplier ??
+      2.0;
+    const minExpectedImprovement = config.costOfGrowth * multiplier;
 
     // Filter to candidates that meet the minimum expected improvement threshold or have undefined expected improvement
     const positiveCandidates: DiscoveryCandidate[] = [];
@@ -796,17 +797,29 @@ export class DiscoveryRunner {
       CreatureUtil.makeUUID(candidate.creature);
       const expected = candidate.change.expectedErrorReduction;
 
-      // Include candidates with: undefined expected improvement, or expected improvement >= threshold
+      // Include candidates with: undefined expected improvement, or expected improvement meeting threshold
       if (expected === undefined) {
         // No expected value - include it for evaluation (combo candidates, remove-low-impact, etc.)
         positiveCandidates.push(candidate);
-      } else if (
-        Number.isFinite(expected) && expected >= minExpectedImprovement
-      ) {
-        // Expected impact meets or exceeds threshold - include it
-        positiveCandidates.push(candidate);
+      } else if (Number.isFinite(expected)) {
+        // When multiplier is 0, use strict positive check (expected > 0)
+        // Otherwise, check against threshold (expected >= minExpectedImprovement)
+        const meetsThreshold = multiplier === 0
+          ? expected > 0
+          : expected >= minExpectedImprovement;
+
+        if (meetsThreshold) {
+          // Expected impact meets or exceeds threshold - include it
+          positiveCandidates.push(candidate);
+        } else {
+          // Expected impact below threshold - skip it
+          skipped.push({
+            changeType: candidate.change.type,
+            expected,
+          });
+        }
       } else {
-        // Expected impact below threshold - skip it
+        // Non-finite expected value - skip it
         skipped.push({
           changeType: candidate.change.type,
           expected,
