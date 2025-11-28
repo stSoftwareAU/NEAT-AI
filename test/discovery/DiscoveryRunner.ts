@@ -1018,6 +1018,62 @@ Deno.test(
 );
 
 Deno.test(
+  "DiscoveryRunner includes candidates with undefined expectedErrorReduction for evaluation",
+  async () => {
+    const discoveryResult: DiscoverResult = {
+      ID: "UNDEFINED_EXPECTED",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const baseCreature = makeBaseCreature();
+
+    const candidateBuilder = (
+      _creature: Creature,
+      _discovery: DiscoverResult,
+    ): DiscoveryCandidate[] => {
+      const json = cloneCreatureJSON(baseCreature);
+      const candidate = Creature.fromJSON(json);
+      candidate.validate();
+      CreatureUtil.makeUUID(candidate);
+      return [{
+        creature: candidate,
+        change: {
+          type: "combo-all",
+          description: "combo candidate without expected impact",
+          // expectedErrorReduction is undefined - typical for combo candidates
+        },
+      }];
+    };
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () =>
+        new FakeWorker(
+          discoveryResult,
+          () => 0.5,
+        ),
+      candidateBuilder,
+    });
+
+    const result = await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options: makeOptions(),
+    });
+
+    assert(
+      result.evaluations?.some((entry) => entry.kind === "candidate"),
+      "candidates with undefined expectedErrorReduction should be included for evaluation",
+    );
+  },
+);
+
+Deno.test(
   "DiscoveryRunner logs sub-basis deltas with at least three significant digits",
   async () => {
     const discoveryResult: DiscoverResult = {

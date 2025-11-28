@@ -760,9 +760,9 @@ export class DiscoveryRunner {
    * Filters discovery candidates for evaluation.
    *
    * Strategy:
-   * 1. Include all candidates with positive expected error reduction (or undefined, which we'll re-score)
+   * 1. Include all candidates with expected error reduction >= threshold (or undefined, which we'll evaluate)
    * 2. If there are more than 2x CPU cores candidates, select the best estimated ones
-   * 3. We re-score all candidates with positive expected improvement
+   * 3. We evaluate all candidates with sufficient expected improvement or undefined expected improvement
    *
    * @param candidates - All discovery candidates
    * @param threadCount - Number of CPU threads available
@@ -785,7 +785,7 @@ export class DiscoveryRunner {
     const minExpectedImprovement = config.costOfGrowth *
       (config.discoveryMinImprovementVsCostOfGrowthMultiplier ?? 2.0);
 
-    // Filter to candidates that meet the minimum expected improvement threshold
+    // Filter to candidates that meet the minimum expected improvement threshold or have undefined expected improvement
     const positiveCandidates: DiscoveryCandidate[] = [];
     const skipped: Array<{
       changeType?: DiscoveryChangeType;
@@ -796,16 +796,17 @@ export class DiscoveryRunner {
       CreatureUtil.makeUUID(candidate.creature);
       const expected = candidate.change.expectedErrorReduction;
 
-      // Only include candidates with expected improvement >= threshold
-      if (
-        expected !== undefined &&
-        Number.isFinite(expected) &&
-        expected >= minExpectedImprovement
+      // Include candidates with: undefined expected improvement, or expected improvement >= threshold
+      if (expected === undefined) {
+        // No expected value - include it for evaluation (combo candidates, remove-low-impact, etc.)
+        positiveCandidates.push(candidate);
+      } else if (
+        Number.isFinite(expected) && expected >= minExpectedImprovement
       ) {
         // Expected impact meets or exceeds threshold - include it
         positiveCandidates.push(candidate);
       } else {
-        // Expected impact below threshold or undefined - skip it
+        // Expected impact below threshold - skip it
         skipped.push({
           changeType: candidate.change.type,
           expected,
