@@ -523,7 +523,7 @@ export class DiscoverStructure {
     // Check if Rust discovery is enabled (requires both library file AND FFI permissions)
     if (!this.deps.isRustDiscoveryEnabled()) {
       console.warn(
-        `⚠️  Discovery requires the NEAT-AI-Discovery Rust library and FFI permissions. Discovery will be skipped.`,
+        `ℹ️  Discovery requires the NEAT-AI-Discovery Rust library and FFI permissions. Discovery will be skipped.`,
       );
       // Set up empty promises - discovery will fail gracefully
       this.creature.neurons.forEach((neuron) => {

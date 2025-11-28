@@ -514,7 +514,11 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
       ),
     candidateBuilder: () => [{
       creature: candidateCreature,
-      change: { type: "add-neurons", description: "test candidate" },
+      change: {
+        type: "add-neurons",
+        description: "test candidate",
+        expectedErrorReduction: 0.1, // Must exceed 2x costOfGrowth
+      },
     }],
   });
 
@@ -836,7 +840,7 @@ Deno.test(
         change: {
           type: "add-synapses",
           description: "extra synapse",
-          expectedErrorReduction: 0.01, // Positive expected impact
+          expectedErrorReduction: 0.05, // Must exceed 2x costOfGrowth (0.02 * 2 = 0.04)
         },
       }];
     };
