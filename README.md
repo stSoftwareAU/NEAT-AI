@@ -103,6 +103,17 @@ standard term the first time it appears.
     discovery workflows that accumulate small improvements over time, see the
     [Discovery Guide](./docs/DISCOVERY_GUIDE.md).
 
+## Documentation
+
+For detailed documentation, see the [docs/](./docs/) directory:
+
+- **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
+  distributed, multi-machine discovery workflows
+- **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference for
+  `Creature.discoveryDir()` and data preparation
+- **[GPU Acceleration](./docs/GPU_ACCELERATION.md)**: GPU acceleration for
+  discovery on macOS using Metal
+
 ## Comparison with Other AI Approaches
 
 Want to understand how NEAT compares to traditional neural networks, CNNs, RNNs,
@@ -134,7 +145,7 @@ improvements (0.5-3%), which accumulate over time through repeated iterations.
 ```typescript
 // Single discovery iteration
 const result = await creature.discoveryDir(dataDir, {
-  discoveryTimeOutMinutes: 1,
+  discoveryRecordTimeOutMinutes: 1,
   discoveryAnalysisTimeoutMinutes: 10,
   discoveryMinImprovementPercentage: 0.01, // Accept 1%+ improvements
 });

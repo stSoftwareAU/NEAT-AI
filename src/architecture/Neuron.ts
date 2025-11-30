@@ -279,32 +279,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
 
     if (this.type === "hidden") {
-      const fromList = this.creature.outwardConnections(this.index);
-      if (fromList.length === 0) {
-        // Connect to this neuron or any neuron after it (including self-connections for memory/counters)
-        const remainingNeurons = this.creature.nodeCount() - this.index;
-
-        // Try all possible targets in random order
-        const possibleTargets: number[] = [];
-        for (let offset = 0; offset < remainingNeurons; offset++) {
-          const targetIndx = this.index + offset;
-          // Check if connection doesn't already exist
-          if (!this.creature.getSynapse(this.index, targetIndx)) {
-            possibleTargets.push(targetIndx);
-          }
-        }
-
-        if (possibleTargets.length > 0) {
-          // Pick a random valid target
-          const targetIndx =
-            possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
-          this.creature.connect(
-            this.index,
-            targetIndx,
-            Synapse.randomWeight(),
-          );
-        }
-      }
+      this.ensureHiddenOutwardConnection(true);
       const toList = this.creature.inwardConnections(this.index);
       if (toList.length === 0) {
         // Try all possible sources in random order
@@ -349,6 +324,56 @@ export class Neuron implements TagsInterface, NeuronInternal {
         squashFunction.fix(this);
       }
     }
+
+    if (
+      this.type === "hidden" &&
+      this.creature.outwardConnections(this.index).length === 0
+    ) {
+      this.ensureHiddenOutwardConnection(false);
+    }
+  }
+
+  private ensureHiddenOutwardConnection(allowSelfTargets: boolean): boolean {
+    if (this.creature.outwardConnections(this.index).length > 0) {
+      return true;
+    }
+
+    const candidates: number[] = [];
+    const nodeCount = this.creature.nodeCount();
+
+    for (let targetIdx = this.index + 1; targetIdx < nodeCount; targetIdx++) {
+      const candidate = this.creature.neurons[targetIdx];
+      if (!candidate || candidate.type === "constant") {
+        continue;
+      }
+      if (!this.creature.getSynapse(this.index, candidate.index)) {
+        candidates.push(candidate.index);
+      }
+    }
+
+    if (
+      allowSelfTargets &&
+      !this.creature.getSynapse(this.index, this.index)
+    ) {
+      candidates.push(this.index);
+    }
+
+    if (candidates.length === 0) {
+      if (!allowSelfTargets) {
+        return this.ensureHiddenOutwardConnection(true);
+      }
+      return false;
+    }
+
+    const targetIndex =
+      candidates[Math.floor(Math.random() * candidates.length)];
+    this.creature.connect(
+      this.index,
+      targetIndex,
+      Synapse.randomWeight(),
+    );
+
+    return true;
   }
 
   private isNodeActivation(

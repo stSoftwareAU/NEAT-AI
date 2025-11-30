@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert, assertExists } from "@std/assert";
 import { bold, cyan, green, red, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { join } from "@std/path/join";
@@ -154,9 +154,9 @@ export class DiscoveryRunner {
         "Discovery requires a positive discoverySampleRate.",
       );
     }
-    if (config.discoveryTimeOutMinutes <= 0) {
+    if (config.discoveryRecordTimeOutMinutes <= 0) {
       throw new Error(
-        "Discovery requires a positive discoveryTimeOutMinutes setting.",
+        "Discovery requires a positive discoveryRecordTimeOutMinutes setting.",
       );
     }
 
@@ -185,10 +185,11 @@ export class DiscoveryRunner {
       }
       markPhase("Worker initialisation", workersStart);
 
-      const workerOptions: NeatOptions = (config.log && config.log > 0) ||
-          !config.verbose
+      // Use the config directly - it's already frozen and concrete
+      // If verbose is enabled but log is 0, enable logging for discovery
+      const workerConfig: NeatConfig = (config.log > 0 || !config.verbose)
         ? config
-        : { ...config, log: 1 };
+        : createNeatConfig({ ...config, log: 1 });
 
       verboseLog(
         `Starting discovery for creature ${creature.uuid ?? "unknown"} using ${
@@ -199,13 +200,15 @@ export class DiscoveryRunner {
       const discoveryStart = performance.now();
       const discoveryResponse = await workers[0].discover(
         creature,
-        workerOptions,
+        workerConfig,
       );
-      assert(
-        discoveryResponse.discover,
+      const rawDiscover = discoveryResponse.discover as
+        | DiscoverResult
+        | undefined;
+      assertExists(
+        rawDiscover,
         "Worker did not return discovery results.",
       );
-      const rawDiscover = discoveryResponse.discover;
       const discoverResult: DiscoverResult = {
         ID: rawDiscover.ID,
         addHelpfulSynapses: rawDiscover.addHelpfulSynapses ?? undefined,
@@ -242,13 +245,13 @@ export class DiscoveryRunner {
         );
       if (skipped.length > 0) {
         const minThreshold = config.costOfGrowth *
-          (config.discoveryMinImprovementVsCostOfGrowthMultiplier ?? 2.0);
+          config.discoveryMinImprovementVsCostOfGrowthMultiplier;
         verboseLog(
           `Skipped ${skipped.length} candidate${
             skipped.length === 1 ? "" : "s"
-          } with expected improvement below ${minThreshold.toPrecision(3)} (${
-            config.discoveryMinImprovementVsCostOfGrowthMultiplier ?? 2.0
-          }× costOfGrowth): ${
+          } with expected improvement below ${
+            minThreshold.toPrecision(3)
+          } (${config.discoveryMinImprovementVsCostOfGrowthMultiplier}× costOfGrowth): ${
             skipped.map((entry) =>
               `${entry.changeType ?? "unknown"} (expected ${
                 entry.expected?.toPrecision(3) ?? "n/a"
@@ -404,7 +407,7 @@ export class DiscoveryRunner {
     const ensureArchiveDir = (): string | undefined => {
       if (archiveDir) return archiveDir;
 
-      const safeDiscoveryID = sanitiseSegment(discoveryID || "discovery");
+      const safeDiscoveryID = sanitizeSegment(discoveryID || "discovery");
       const timestamp = makeArchiveTimestamp();
       const targetDir = join(
         ".discovery",
@@ -435,7 +438,7 @@ export class DiscoveryRunner {
         return undefined;
       }
       try {
-        const safeLabel = sanitiseSegment(baseLabel);
+        const safeLabel = sanitizeSegment(baseLabel);
         const index = (labelCounts.get(safeLabel) ?? 0) + 1;
         labelCounts.set(safeLabel, index);
         const suffix = index === 1 ? "" : `-${index}`;
@@ -782,8 +785,7 @@ export class DiscoveryRunner {
     const maxCandidates = 2 * threadCount;
 
     // Calculate the minimum expected improvement threshold
-    const multiplier = config.discoveryMinImprovementVsCostOfGrowthMultiplier ??
-      2.0;
+    const multiplier = config.discoveryMinImprovementVsCostOfGrowthMultiplier;
     const minExpectedImprovement = config.costOfGrowth * multiplier;
 
     // Filter to candidates that meet the minimum expected improvement threshold or have undefined expected improvement
@@ -870,7 +872,7 @@ export class DiscoveryRunner {
   }
 }
 
-function sanitiseSegment(value: string): string {
+function sanitizeSegment(value: string): string {
   const lowered = value.toLowerCase();
   const cleaned = lowered.replace(/[^a-z0-9._-]+/g, "-").replace(
     /^-+|-+$/g,

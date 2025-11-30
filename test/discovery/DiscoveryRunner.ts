@@ -117,7 +117,7 @@ class FakeWorker implements DiscoveryRunnerWorker {
 
 function makeOptions(overrides: NeatOptions = {}): NeatOptions {
   return {
-    discoveryTimeOutMinutes: 0.05, // 3 seconds - sufficient for CI
+    discoveryRecordTimeOutMinutes: 0.05, // 3 seconds - sufficient for CI
     discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds - sufficient for CI
     threads: 1,
     costOfGrowth: 0,

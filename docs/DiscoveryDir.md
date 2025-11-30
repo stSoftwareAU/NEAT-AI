@@ -96,7 +96,7 @@ discovery window is open:
      --directory="/srv/example.com/samples" \
      --dataDir="/srv/example.com/discovery-data" \
      --targetFile="/srv/example.com/outbox/${HOSTNAME}-${USER}.json" \
-     --discoveryTimeOutMinutes=15 \
+    --discoveryRecordTimeOutMinutes=15 \
      --discoveryBatchSize=25 \
      --discoverySampleRate=0.01
    ```

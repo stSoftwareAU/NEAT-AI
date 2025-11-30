@@ -8,7 +8,7 @@ import type {
   CandidateSynapse,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { RemovalCandidate } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type { NeatOptions } from "../../config/NeatOptions.ts";
+import type { NeatConfig } from "../../config/NeatConfig.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
 
@@ -57,8 +57,8 @@ export interface RequestData {
   discover?: {
     /** JSON string representation of the creature */
     creature: string;
-    /** NEAT configuration options */
-    options: NeatOptions;
+    /** NEAT configuration (frozen, concrete values) */
+    config: NeatConfig;
   };
 }
 
@@ -387,14 +387,14 @@ export class WorkerHandler {
     return this.makePromise(data);
   }
 
-  discover(creature: Creature, options: NeatOptions) {
+  discover(creature: Creature, config: NeatConfig) {
     const json = creature.exportJSON();
 
     const data: RequestData = {
       taskID: this.taskID++,
       discover: {
         creature: JSON.stringify(json),
-        options: options,
+        config: config,
       },
     };
 

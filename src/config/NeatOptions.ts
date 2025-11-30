@@ -55,7 +55,7 @@ export interface NeatArguments {
   focusRate: number;
 
   /**
-   * Cost of growth (optional). Penalises complex networks and filters discovery
+   * Cost of growth (optional). Penalizes complex networks and filters discovery
    * candidates: each new synapse consumes 1 x costOfGrowth, while each new
    * neuron consumes ~3 x costOfGrowth (two synapses plus the neuron body).
    */
@@ -145,21 +145,7 @@ export interface NeatArguments {
    * Minimum expected improvement (0..1) that a discovery candidate must
    * achieve in order to be considered helpful. Defaults to 0.01 (1%).
    *
-   * Discovery uses a three-stage selection strategy:
-   * 1. **Cost-Benefit Gate**: Error reduction must exceed costOfGrowth penalty
-   * 2. **Noise Filter**: Improvement must exceed this threshold (1% by default)
-   * 3. **Best Selection**: Among qualifying candidates, take the largest improvement
-   *
-   * Discovery is designed for **continuous incremental improvements**: Each iteration finds
-   * small improvements (typically 0.5-3%), which compound over many iterations when run
-   * across multiple machines in a distributed swarm.
-   *
-   * **Important**: Never expect 10%+ improvement in a single iteration. Discovery works by
-   * accumulating many small improvements over time. For example:
-   * - 100 iterations × 1.5% average = ~16% total improvement
-   * - With 5 machines running continuously = 5× faster progress
-   *
-   * @see docs/DISCOVERY_GUIDE.md for details on the distributed discovery model
+   * @see docs/DISCOVERY_GUIDE.md for the distributed discovery model
    */
   discoveryMinImprovementPercentage?: number;
 
@@ -179,10 +165,10 @@ export interface NeatArguments {
   discoveryMinImprovementVsCostOfGrowthMultiplier: number;
 
   /**
-   * The maximum number of minutes to record for.
+   * Maximum minutes allocated to the recording phase before discovery advances to analysis.
    * Defaults to 1 minute (sufficient for ~50k records at 700 records/sec).
    */
-  discoveryTimeOutMinutes: number;
+  discoveryRecordTimeOutMinutes: number;
 
   /**
    * The maximum number of minutes allocated for the analysis phase (after recording completes).
@@ -213,7 +199,7 @@ export interface NeatArguments {
   discoveryDrainEveryNBatches: number;
 
   /**
-   * Optional ordered list of neuron UUIDs to prioritise during discovery analysis.
+   * Optional ordered list of neuron UUIDs to prioritize during discovery analysis.
    * When provided, discovery focuses on these neurons before performing weighted selection.
    */
   discoveryFocusNeuronUUIDs: string[];
@@ -227,6 +213,27 @@ export interface NeatArguments {
 
   /** When enabled with creatureStore, saves population after each generation for crash recovery */
   checkpointEveryGeneration: boolean;
+
+  /**
+   * When true, disables cleanup of discovery temporary files (parquet files) after discovery completes.
+   * Useful for debugging to examine the intermediate discovery data.
+   * Defaults to false (cleanup enabled).
+   */
+  discoveryDisableCleanup: boolean;
+
+  /**
+   * Custom base directory for discovery temporary files.
+   * By default, discovery uses `.discovery` in the current working directory.
+   * Set this to redirect discovery files to a different location for testing/debugging.
+   */
+  discoveryBaseDirectory?: string;
+
+  /**
+   * When true, skips the record phase if parquet files already exist in the discovery directory.
+   * Useful for debugging to re-run analysis on previously recorded data.
+   * Defaults to false (always record).
+   */
+  discoverySkipRecordPhase: boolean;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

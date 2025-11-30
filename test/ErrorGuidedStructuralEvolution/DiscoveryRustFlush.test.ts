@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { join } from "@std/path/join";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
+import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import type { DiscoverStructureDeps } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type {
@@ -57,19 +57,19 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
     creature.validate();
     CreatureUtil.makeUUID(creature);
 
-    const options: NeatOptions = {
+    const config = createNeatConfig({
       costName: "MSE",
       costOfGrowth: 0,
       discoverySampleRate: 1,
       discoveryBatchSize: 1,
-      discoveryTimeOutMinutes: 0.05, // 3 seconds - sufficient for CI
+      discoveryRecordTimeOutMinutes: 0.05, // 3 seconds - sufficient for CI
       discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds - sufficient for CI
       discoveryDrainEveryNBatches: 1,
       discoveryRustFlushRecords: 2,
       discoveryMaxNeurons: 1,
       threads: 1,
       log: 0,
-    };
+    });
 
     const recordCallSizes: number[] = [];
     const mergedChunks: string[][] = [];
@@ -114,7 +114,7 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
       }),
     };
 
-    await recordDirectory(creature, tempDir, options, deps);
+    await recordDirectory(creature, tempDir, config, deps);
     // Cleanup is already awaited when NEAT_DISCOVERY_AWAIT_CLEANUP is set
 
     assertEquals(recordCallSizes, [2, 2]);
