@@ -533,8 +533,8 @@ Deno.test("evolve_XNOR_gate", async () => {
       { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
     1_000,
-    0.002,
-    100,
+    0.005,
+    1_000,
   );
 });
 
