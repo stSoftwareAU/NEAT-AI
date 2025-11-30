@@ -63,10 +63,17 @@ export interface DiscoveryCandidate {
  * This function mirrors the logic that previously lived in `Neat.ts`, but the
  * resulting creatures are now returned for external evaluation instead of being
  * applied directly to the population.
+ *
+ * @param baseCreature The creature to apply discovery changes to
+ * @param discovery The discovery result containing candidate changes
+ * @param costOfGrowth Optional cost of growth for scoring removal candidates.
+ *                     When provided, removal candidates will have expectedErrorReduction
+ *                     set to costOfGrowth since removing them improves score by that amount.
  */
 export function buildDiscoveryCandidates(
   baseCreature: Creature,
   discovery: DiscoverResult,
+  costOfGrowth?: number,
 ): DiscoveryCandidate[] {
   // Ensure the base creature has a UUID so discovery helpers function correctly.
   CreatureUtil.makeUUID(baseCreature);
@@ -397,7 +404,9 @@ export function buildDiscoveryCandidates(
     });
   }
 
-  // Low-impact removal candidates (high error, low impact < 1%)
+  // Low-impact removal candidates (impact below costOfGrowth)
+  // These neurons contribute essentially nothing to outputs - removing them improves
+  // the creature's score because the complexity reduction benefit exceeds their contribution.
   const { removalCandidates } = discovery;
   if (removalCandidates && removalCandidates.length > 0) {
     for (const candidate of removalCandidates) {
@@ -412,11 +421,12 @@ export function buildDiscoveryCandidates(
           change: {
             type: "remove-low-impact",
             description:
-              `🪶 Removed low-impact neuron ${candidate.neuronUUID} (error: ${
-                candidate.totalError.toFixed(4)
-              }, impact: ${(candidate.impact * 100).toFixed(2)}%)`,
-            // Low-impact neurons don't have expectedImprovementPercentage from Rust
-            // The improvement comes from reduced compute, not reduced error
+              `🪶 Removed low-impact neuron ${candidate.neuronUUID} (impact: ${
+                candidate.impact.toExponential(2)
+              })`,
+            // Expected improvement = costOfGrowth (the score penalty being removed)
+            // No further analysis needed - the neuron's impact is already below costOfGrowth
+            expectedErrorReduction: costOfGrowth,
           },
         });
       }

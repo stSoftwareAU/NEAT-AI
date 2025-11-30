@@ -48,6 +48,7 @@ export interface DiscoveryRunnerDeps {
   candidateBuilder?: (
     creature: Creature,
     discovery: DiscoverResult,
+    costOfGrowth?: number,
   ) => DiscoveryCandidate[];
   rustDiscoveryEnabled?: () => boolean;
 }
@@ -123,6 +124,7 @@ export class DiscoveryRunner {
   #candidateBuilder: (
     creature: Creature,
     discovery: DiscoverResult,
+    costOfGrowth?: number,
   ) => DiscoveryCandidate[];
   #rustDiscoveryEnabled: () => boolean;
 
@@ -230,7 +232,11 @@ export class DiscoveryRunner {
       markPhase("Discovery phase", discoveryStart);
 
       const candidateBuildStart = performance.now();
-      const candidates = this.#candidateBuilder(creature, discoverResult);
+      const candidates = this.#candidateBuilder(
+        creature,
+        discoverResult,
+        config.costOfGrowth,
+      );
       verboseLog(
         `Built ${candidates.length} candidate creature${
           candidates.length === 1 ? "" : "s"
