@@ -66,14 +66,10 @@ export interface DiscoveryCandidate {
  *
  * @param baseCreature The creature to apply discovery changes to
  * @param discovery The discovery result containing candidate changes
- * @param costOfGrowth Optional cost of growth for scoring removal candidates.
- *                     When provided, removal candidates will have expectedErrorReduction
- *                     set to costOfGrowth since removing them improves score by that amount.
  */
 export function buildDiscoveryCandidates(
   baseCreature: Creature,
   discovery: DiscoverResult,
-  costOfGrowth?: number,
 ): DiscoveryCandidate[] {
   // Ensure the base creature has a UUID so discovery helpers function correctly.
   CreatureUtil.makeUUID(baseCreature);
@@ -407,6 +403,10 @@ export function buildDiscoveryCandidates(
   // Low-impact removal candidates (impact below costOfGrowth)
   // These neurons contribute essentially nothing to outputs - removing them improves
   // the creature's score because the complexity reduction benefit exceeds their contribution.
+  // NOTE: expectedErrorReduction is left undefined because:
+  // 1. Removal doesn't reduce error - it may slightly increase it
+  // 2. The improvement comes from score (complexity reduction), not error reduction
+  // 3. The filter explicitly passes undefined through for evaluation
   const { removalCandidates } = discovery;
   if (removalCandidates && removalCandidates.length > 0) {
     for (const candidate of removalCandidates) {
@@ -424,9 +424,7 @@ export function buildDiscoveryCandidates(
               `🪶 Removed low-impact neuron ${candidate.neuronUUID} (impact: ${
                 candidate.impact.toExponential(2)
               })`,
-            // Expected improvement = costOfGrowth (the score penalty being removed)
-            // No further analysis needed - the neuron's impact is already below costOfGrowth
-            expectedErrorReduction: costOfGrowth,
+            // No expectedErrorReduction - removal improves score via complexity reduction, not error
           },
         });
       }

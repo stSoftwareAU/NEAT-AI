@@ -181,7 +181,7 @@ Deno.test("buildDiscoveryCandidates creates removal candidates for low-impact ne
   );
 });
 
-Deno.test("buildDiscoveryCandidates sets expectedErrorReduction to costOfGrowth for removal candidates", () => {
+Deno.test("buildDiscoveryCandidates creates removal candidate with undefined expectedErrorReduction", () => {
   const baseCreature = Creature.fromJSON({
     input: 2,
     output: 1,
@@ -195,8 +195,6 @@ Deno.test("buildDiscoveryCandidates sets expectedErrorReduction to costOfGrowth 
       { fromUUID: "input-1", toUUID: "output-0", weight: 1.0 },
     ],
   });
-
-  const costOfGrowth = 1e-7;
 
   const discovery: DiscoverResult = {
     ID: "test-removal-expected",
@@ -215,12 +213,7 @@ Deno.test("buildDiscoveryCandidates sets expectedErrorReduction to costOfGrowth 
     candidateSquashes: undefined,
   };
 
-  // Pass costOfGrowth to buildDiscoveryCandidates
-  const candidates = buildDiscoveryCandidates(
-    baseCreature,
-    discovery,
-    costOfGrowth,
-  );
+  const candidates = buildDiscoveryCandidates(baseCreature, discovery);
 
   const lowImpactCandidates = candidates.filter(
     (c) => c.change.type === "remove-low-impact",
@@ -234,11 +227,80 @@ Deno.test("buildDiscoveryCandidates sets expectedErrorReduction to costOfGrowth 
 
   const candidate = lowImpactCandidates[0];
 
-  // Verify expectedErrorReduction is set to costOfGrowth
+  // Verify expectedErrorReduction is undefined (not costOfGrowth)
+  // Removal candidates improve score via complexity reduction, not error reduction
+  // Setting it to costOfGrowth would cause them to be filtered out since
+  // costOfGrowth < costOfGrowth * multiplier (default multiplier = 2.0)
   assertEquals(
     candidate.change.expectedErrorReduction,
-    costOfGrowth,
-    "Expected error reduction should equal costOfGrowth",
+    undefined,
+    "Expected error reduction should be undefined for removal candidates",
+  );
+});
+
+/**
+ * This test verifies that removal candidates with expectedErrorReduction set to costOfGrowth
+ * would be filtered out during evaluation. The fix is to leave expectedErrorReduction as undefined.
+ *
+ * The filter logic in DiscoveryRunner.#filterCandidatesForEvaluation uses:
+ * - minExpectedImprovement = costOfGrowth * multiplier (default multiplier = 2.0)
+ * - Candidates pass if: expected === undefined OR expected >= minExpectedImprovement
+ *
+ * So if expectedErrorReduction = costOfGrowth, the check becomes:
+ * costOfGrowth >= costOfGrowth * 2.0 = FALSE (gets filtered out!)
+ *
+ * Removal candidates should have undefined expectedErrorReduction because:
+ * 1. They don't reduce error - they may slightly increase it
+ * 2. They improve SCORE (not error) by reducing complexity
+ * 3. The filter explicitly allows undefined through for cases like this
+ */
+Deno.test("removal candidates should have undefined expectedErrorReduction to pass filter", () => {
+  const baseCreature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", squash: "RELU", bias: 0.5, uuid: "hidden-low-impact" },
+      { type: "output", squash: "IDENTITY", bias: 0, uuid: "output-0" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-low-impact", weight: 1e-12 },
+      { fromUUID: "hidden-low-impact", toUUID: "output-0", weight: 1e-12 },
+      { fromUUID: "input-1", toUUID: "output-0", weight: 1.0 },
+    ],
+  });
+
+  const discovery: DiscoverResult = {
+    ID: "filter-test",
+    addHelpfulSynapses: undefined,
+    addHelpfulNeurons: undefined,
+    removeHarmfulSynapse: undefined,
+    removeHarmfulNeurons: undefined,
+    removalCandidates: [
+      {
+        neuronUUID: "hidden-low-impact",
+        totalError: 1.0,
+        impact: 1e-10,
+        reason: "Impact below costOfGrowth",
+      },
+    ],
+    candidateSquashes: undefined,
+  };
+
+  const candidates = buildDiscoveryCandidates(baseCreature, discovery);
+
+  const lowImpactCandidate = candidates.find(
+    (c) => c.change.type === "remove-low-impact",
+  );
+
+  assertExists(lowImpactCandidate, "Should create removal candidate");
+
+  // CRITICAL: expectedErrorReduction should be undefined for removal candidates
+  // If it were set to costOfGrowth, it would fail the filter check:
+  // costOfGrowth >= costOfGrowth * 2.0 = false (filtered out!)
+  assertEquals(
+    lowImpactCandidate.change.expectedErrorReduction,
+    undefined,
+    "Removal candidates should have undefined expectedErrorReduction to pass through filter",
   );
 });
 
@@ -248,8 +310,6 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
   const jsonText = await Deno.readTextFile(jsonPath);
   const creatureJSON = JSON.parse(jsonText);
   const baseCreature = Creature.fromJSON(creatureJSON);
-
-  const costOfGrowth = 1e-7;
 
   // Simulate what Rust would return - neuron with near-zero weight synapses
   // has impact below costOfGrowth
@@ -270,11 +330,7 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
     candidateSquashes: undefined,
   };
 
-  const candidates = buildDiscoveryCandidates(
-    baseCreature,
-    discovery,
-    costOfGrowth,
-  );
+  const candidates = buildDiscoveryCandidates(baseCreature, discovery);
 
   const removalCandidates = candidates.filter(
     (c) => c.change.type === "remove-low-impact",
@@ -298,11 +354,12 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
     "candidate-for-removal neuron should be removed",
   );
 
-  // Verify expectedErrorReduction is set to costOfGrowth
+  // Verify expectedErrorReduction is undefined (not costOfGrowth)
+  // Removal improves score via complexity reduction, not error reduction
   assertEquals(
     candidate.change.expectedErrorReduction,
-    costOfGrowth,
-    "Removal should improve score by costOfGrowth",
+    undefined,
+    "Removal candidates should have undefined expectedErrorReduction",
   );
 
   // Verify the description mentions impact, not error

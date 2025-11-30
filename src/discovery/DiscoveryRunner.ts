@@ -48,7 +48,6 @@ export interface DiscoveryRunnerDeps {
   candidateBuilder?: (
     creature: Creature,
     discovery: DiscoverResult,
-    costOfGrowth?: number,
   ) => DiscoveryCandidate[];
   rustDiscoveryEnabled?: () => boolean;
 }
@@ -124,7 +123,6 @@ export class DiscoveryRunner {
   #candidateBuilder: (
     creature: Creature,
     discovery: DiscoverResult,
-    costOfGrowth?: number,
   ) => DiscoveryCandidate[];
   #rustDiscoveryEnabled: () => boolean;
 
@@ -235,7 +233,6 @@ export class DiscoveryRunner {
       const candidates = this.#candidateBuilder(
         creature,
         discoverResult,
-        config.costOfGrowth,
       );
       verboseLog(
         `Built ${candidates.length} candidate creature${
