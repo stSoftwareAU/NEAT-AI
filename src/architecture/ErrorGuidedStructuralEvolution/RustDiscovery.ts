@@ -40,6 +40,11 @@ export type RustRecordFailureStage =
   | "parse"
   | "rust";
 
+/**
+ * Captures the failure stage and payload sizing information when a Rust
+ * recording attempt does not succeed, allowing downstream callers to triage the
+ * issue without repeating discovery.
+ */
 export interface RustRecordErrorDetails {
   stage: RustRecordFailureStage;
   inputJsonLength?: number;
@@ -47,6 +52,10 @@ export interface RustRecordErrorDetails {
   stats: RustRecordBatchStats;
 }
 
+/**
+ * Mirrors the Rust FFI response emitted by `record_discovery`, including the
+ * success flag, any produced artefact paths, and enriched error metadata.
+ */
 export interface RustRecordResult {
   success: boolean;
   "temp_dir"?: string;
@@ -55,6 +64,10 @@ export interface RustRecordResult {
   errorDetails?: RustRecordErrorDetails;
 }
 
+/**
+ * Aggregated neuron statistics emitted by the Rust analyser describing error
+ * and activation behaviour across the sampled training set.
+ */
 export interface NeuronStatsJson {
   meanError: number;
   errorVariance: number;
@@ -66,6 +79,10 @@ export interface NeuronStatsJson {
   activationMax: number;
 }
 
+/**
+ * Represents a synapse candidate proposed by the Rust analyser, including
+ * improvement statistics gathered from sampled observations.
+ */
 export interface RustCandidateSynapse {
   fromNeuronUuid: string;
   toNeuronUuid: string;
@@ -76,6 +93,10 @@ export interface RustCandidateSynapse {
   targetNeuronStats?: NeuronStatsJson;
 }
 
+/**
+ * Represents a neuron candidate flagged by the Rust analyser together with the
+ * statistics that justify its expected impact.
+ */
 export interface RustCandidateNeuron {
   sourceNeuronUuid: string;
   targetNeuronUuid: string;
@@ -89,6 +110,10 @@ export interface RustCandidateNeuron {
   targetNeuronStats?: NeuronStatsJson;
 }
 
+/**
+ * Encapsulates the synapse-centric branch of a parallel analysis run, including
+ * whether the GPU path was used and any helpful or harmful synapse candidates.
+ */
 export interface RustAnalyzeSynapsesResult {
   success: boolean;
   gpuUsed?: boolean;
@@ -98,6 +123,10 @@ export interface RustAnalyzeSynapsesResult {
   error?: string;
 }
 
+/**
+ * Encapsulates the neuron-centric branch of a parallel analysis run, reporting
+ * candidate improvements and any diagnostic warnings.
+ */
 export interface RustAnalyzeNeuronsResult {
   success: boolean;
   gpuUsed?: boolean;
@@ -106,6 +135,10 @@ export interface RustAnalyzeNeuronsResult {
   error?: string;
 }
 
+/**
+ * Combined response for a parallel analysis invocation, returning whichever of
+ * the synapse or neuron branches executed successfully.
+ */
 export interface RustAnalyzeAllResult {
   success: boolean;
   synapse?: RustAnalyzeSynapsesResult;
@@ -113,6 +146,10 @@ export interface RustAnalyzeAllResult {
   error?: string;
 }
 
+/**
+ * Payload forwarded to the Rust `analyze_parallel` entry point describing the
+ * artefacts, focus neurons, thresholds, and GPU requirements for the run.
+ */
 export interface RustParallelAnalysisInput {
   parquetFile: string;
   creature: RustRecordInput["creature"];
@@ -132,6 +169,10 @@ export interface RustParallelAnalysisInput {
   focusNeuronErrorShares?: Record<string, number>;
 }
 
+/**
+ * Response emitted from `analyze_parallel`, containing modality-specific
+ * candidate lists, diagnostics, and GPU usage indicators.
+ */
 export interface RustParallelAnalysisResult {
   success: boolean;
   helpfulSynapses?: RustCandidateSynapse[];
@@ -144,12 +185,20 @@ export interface RustParallelAnalysisResult {
   error?: string;
 }
 
+/**
+ * Input specification for `rank_focus_neurons`, nominating the relevant
+ * discovery dataset and optional ranking limits.
+ */
 export interface RustRankFocusInput {
   parquetFile: string;
   creature: RustRecordInput["creature"];
   maxResults?: number;
 }
 
+/**
+ * Summarises a ranked neuron, pairing the UUID with total error and estimated
+ * impact on the creature’s behaviour.
+ */
 export interface RustFocusNeuronScore {
   neuronUuid: string;
   totalError: number;
@@ -171,6 +220,10 @@ export interface RustRemovalCandidate {
   reason: string; // e.g., "High error (5.0000) but very low impact (0.000100) - far from outputs"
 }
 
+/**
+ * Response structure for focus neuron ranking runs, including winning scores,
+ * removal candidates, and execution diagnostics.
+ */
 export interface RustRankFocusResult {
   success: boolean;
   neurons?: RustFocusNeuronScore[];
@@ -182,6 +235,10 @@ export interface RustRankFocusResult {
   error?: string;
 }
 
+/**
+ * Reports the outcome of the Rust GPU availability probe invoked during
+ * discovery setup.
+ */
 export interface RustCheckGpuResult {
   success: boolean;
   gpuAvailable: boolean;
@@ -195,6 +252,10 @@ export type RustSynapseDiagnosticReason =
   | "zero_improvement"
   | "below_threshold";
 
+/**
+ * Optional supporting context for a synapse diagnostic, offering counts and
+ * thresholds that explain why a candidate did not pass eligibility checks.
+ */
 export interface RustSynapseDiagnosticDetail {
   sourceNeuronUuid?: string;
   sampleCount?: number;
@@ -206,6 +267,10 @@ export interface RustSynapseDiagnosticDetail {
   suggestedWeight?: number;
 }
 
+/**
+ * Summarises diagnostic outcomes for a target neuron when analysing synapse
+ * candidates, clarifying why no proposal was returned.
+ */
 export interface RustSynapseDiagnostic {
   targetNeuronUuid: string;
   reason: RustSynapseDiagnosticReason;
@@ -223,6 +288,10 @@ export type RustNeuronDiagnosticReason =
   | "weight_degenerate"
   | "below_threshold";
 
+/**
+ * Optional supporting context for neuron diagnostics, including orientation,
+ * sample counts, and improvement metrics that informed the outcome.
+ */
 export interface RustNeuronDiagnosticDetail {
   sourceNeuronUuid?: string;
   orientation?: string;
@@ -234,6 +303,10 @@ export interface RustNeuronDiagnosticDetail {
   outgoingWeight?: number;
 }
 
+/**
+ * Summarises diagnostic outcomes for neuron-level analysis, indicating why the
+ * Rust engine could not supply a candidate neuron.
+ */
 export interface RustNeuronDiagnostic {
   targetNeuronUuid: string;
   reason: RustNeuronDiagnosticReason;
@@ -1056,11 +1129,19 @@ export function rankFocusNeurons(
   }
 }
 
+/**
+ * Defines the output artefact and source shards that should be merged into a
+ * consolidated discovery Parquet file.
+ */
 export interface RustMergeParquetInput {
   outputFile: string;
   inputFiles: string[];
 }
 
+/**
+ * Reports whether the Parquet merge succeeded and where the merged file was
+ * written, or describes any error returned by Rust.
+ */
 export interface RustMergeParquetResult {
   success: boolean;
   outputFile?: string;

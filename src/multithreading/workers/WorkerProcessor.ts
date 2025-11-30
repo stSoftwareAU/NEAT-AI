@@ -194,7 +194,7 @@ export class WorkerProcessor {
 
         creatureValidate(creature);
 
-        if (data.discover.options.log) {
+        if (data.discover.config.log) {
           console.log(
             `[Worker] Starting discovery for creature (taskID: ${data.taskID})...`,
           );
@@ -203,10 +203,10 @@ export class WorkerProcessor {
         const result = await recordDirectory(
           creature,
           this.dataSetDir,
-          data.discover.options,
+          data.discover.config,
         );
 
-        if (data.discover.options.log) {
+        if (data.discover.config.log) {
           console.log(
             `[Worker] Discovery complete for creature (taskID: ${data.taskID}), preparing response...`,
           );
@@ -258,7 +258,7 @@ export class WorkerProcessor {
           result.candidateSquashes = null;
         }
 
-        if (data.discover!.options.log) {
+        if (data.discover!.config.log) {
           console.log(
             `[Worker] Returning discovery response (taskID: ${data.taskID})...`,
           );

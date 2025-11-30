@@ -124,7 +124,15 @@ export function createNeatConfig(options: NeatOptions) {
     discoverySampleRate: options.discoverySampleRate === undefined
       ? 0.05
       : options.discoverySampleRate,
-    discoveryTimeOutMinutes: options.discoveryTimeOutMinutes ?? 1, // Default 1 min for recording (was 0)
+    discoveryRecordTimeOutMinutes: (() => {
+      const legacyRecordTimeout = (options as {
+        discoveryTimeOutMinutes?: number;
+      }).discoveryTimeOutMinutes;
+      const recordTimeout = options.discoveryRecordTimeOutMinutes ??
+        legacyRecordTimeout ??
+        1;
+      return recordTimeout;
+    })(), // Default 1 min for recording (was 0). Legacy discoveryTimeOutMinutes is still accepted.
     discoveryAnalysisTimeoutMinutes: options.discoveryAnalysisTimeoutMinutes ??
       10, // Default 10 min for analysis (was 3 - production-tuned)
     discoveryBatchSize: options.discoveryBatchSize || 128,
@@ -142,6 +150,9 @@ export function createNeatConfig(options: NeatOptions) {
       options.discoveryMinImprovementVsCostOfGrowthMultiplier ?? 2.0,
     customCost: options.customCost,
     checkpointEveryGeneration: options.checkpointEveryGeneration ?? false,
+    discoveryDisableCleanup: options.discoveryDisableCleanup ?? false,
+    discoveryBaseDirectory: options.discoveryBaseDirectory,
+    discoverySkipRecordPhase: options.discoverySkipRecordPhase ?? false,
   };
   validate(config);
   return Object.freeze(config);

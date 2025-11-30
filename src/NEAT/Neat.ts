@@ -296,7 +296,9 @@ export class Neat {
     }
 
     // Skip discovery if timeout is 0 or negative (discovery disabled)
-    if (timeOutMinutes <= 0 || this.config.discoveryTimeOutMinutes <= 0) {
+    if (
+      timeOutMinutes <= 0 || this.config.discoveryRecordTimeOutMinutes <= 0
+    ) {
       return;
     }
 
@@ -333,8 +335,11 @@ export class Neat {
       );
     }
 
-    const options = { ...this.config };
-    options.discoveryTimeOutMinutes = timeOutMinutes;
+    // Create a new frozen config with the dynamic timeout override
+    const discoveryConfig = createNeatConfig({
+      ...this.config,
+      discoveryRecordTimeOutMinutes: timeOutMinutes,
+    });
 
     const taskStartTime = Date.now();
     if (this.config.verbose) {
@@ -347,7 +352,7 @@ export class Neat {
 
     // Use internal timeout handling in DiscoverDirectory.ts instead of external wrapper
     // This allows internal diagnostics to run and partial results to be returned
-    const discoveryPromise = w.discover(creature, options);
+    const discoveryPromise = w.discover(creature, discoveryConfig);
 
     const p = discoveryPromise.then((r) => {
       assert(r.discover, "No discovery found");

@@ -77,7 +77,7 @@ Deno.test("Creature.discoveryDir delegates to DiscoveryRunner and returns result
   const result = await creature.discoveryDir(
     "/tmp/discovery-data",
     {
-      discoveryTimeOutMinutes: 1,
+      discoveryRecordTimeOutMinutes: 1,
       costName: "MSE",
     },
     { runner: stubRunner },
@@ -86,5 +86,5 @@ Deno.test("Creature.discoveryDir delegates to DiscoveryRunner and returns result
   assertEquals(result, expectedResult);
   assertStrictEquals(stubRunner.lastInput?.creature, creature);
   assertEquals(stubRunner.lastInput?.dataDir, "/tmp/discovery-data");
-  assertEquals(stubRunner.lastInput?.options.discoveryTimeOutMinutes, 1);
+  assertEquals(stubRunner.lastInput?.options.discoveryRecordTimeOutMinutes, 1);
 });

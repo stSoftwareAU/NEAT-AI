@@ -94,7 +94,7 @@ These defaults are tuned for continuous incremental discovery:
 ```typescript
 const options: NeatOptions = {
   // Recording phase (1 minute = ~50k records at 700 records/sec)
-  discoveryTimeOutMinutes: 1,
+  discoveryRecordTimeOutMinutes: 1,
 
   // Analysis phase (10 minutes for thorough analysis)
   discoveryAnalysisTimeoutMinutes: 10,
@@ -298,7 +298,7 @@ if (import.meta.main) {
   const dataDir = "/path/to/training/data";
 
   const options: NeatOptions = {
-    discoveryTimeOutMinutes: 1,
+    discoveryRecordTimeOutMinutes: 1,
     discoveryAnalysisTimeoutMinutes: 10,
     discoveryMinImprovementPercentage: 0.01, // Accept 1%+ improvements
     discoveryMaxNeurons: 6,
@@ -336,7 +336,7 @@ while [[ $(date +%s) -lt ${end_time} ]]; do
     discovery-worker.ts \\
     --repoPath="${REPO_PATH}" \\
     --dataDir="${DATA_DIR}" \\
-    --discoveryTimeOutMinutes=1 \\
+    --discoveryRecordTimeOutMinutes=1 \\
     --discoveryAnalysisTimeoutMinutes=10
   
   # Brief pause
@@ -462,7 +462,7 @@ Reduce thoroughness for speed:
 ```typescript
 options.discoveryMaxNeurons = 3; // Analyze fewer neurons
 options.discoverySampleRate = 0.02; // Sample less data (2%)
-options.discoveryTimeOutMinutes = 0.5; // Shorter recording (30 sec)
+options.discoveryRecordTimeOutMinutes = 0.5; // Shorter recording (30 sec)
 ```
 
 ## Advanced: Focus Neurons

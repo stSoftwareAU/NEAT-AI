@@ -40,7 +40,7 @@ Deno.test("discovery promise cleanup - simulated with evolveDataSet", async () =
     checkpointEveryGeneration: true, // Test checkpoint too
     targetError: 0.01, // Low enough that it won't reach it quickly
     log: 0, // Disable logging for cleaner output
-    discoveryTimeOutMinutes: 0, // Disable discovery for this test
+    discoveryRecordTimeOutMinutes: 0, // Disable discovery for this test
   };
 
   const startTime = Date.now();

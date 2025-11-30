@@ -34,7 +34,7 @@ import {
   type RustSynapseDiagnosticDetail,
 } from "./RustDiscovery.ts";
 import { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
-import { emptyDirSync } from "@std/fs";
+import { emptyDirSync, ensureDirSync } from "@std/fs";
 
 export { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 
@@ -57,6 +57,29 @@ const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
   readDiscoveryRecords,
   rankFocusNeurons,
 };
+
+/**
+ * Options for configuring DiscoverStructure behaviour (primarily for debugging/testing).
+ */
+export interface DiscoverStructureOptions {
+  /**
+   * Base directory for discovery temporary files.
+   * Defaults to `.discovery` in the current working directory.
+   */
+  baseDirectory?: string;
+
+  /**
+   * When true, skips cleanup of temporary files after discovery.
+   * Useful for debugging to examine parquet files.
+   */
+  disableCleanup?: boolean;
+
+  /**
+   * When true, skips the record phase if parquet files already exist.
+   * Useful for debugging to re-run analysis on existing data.
+   */
+  skipRecordPhase?: boolean;
+}
 
 const OUTPUT_ERROR_CACHE_TTL_MS = 30_000;
 
@@ -256,42 +279,11 @@ interface RustFlushAggregation {
 }
 
 /**
- * Discovery accepts ANY positive improvement, no matter how small. This allows
- * continuous incremental improvements that accumulate over time through repeated
- * runs across multiple machines.
- *
- * Example real-world results:
- * - 100 iterations × 1.5% average = ~16% total improvement
- * - With 5 machines running continuously = 5× faster progress
- *
- * All candidates with positive expected improvement are evaluated, and the
- * re-scoring phase determines which actually improve the creature's score.
- *
- * @see docs/DISCOVERY_GUIDE.md for details on the distributed discovery model
- */
-
-/**
- * Implements Error-Driven Structural Discovery, analyzing neuron activations and errors
+ * Implements Error-Driven Structural Discovery, analysing neuron activations and errors
  * to identify beneficial structural changes (new synapses, neuron removal, activation changes).
  *
- * **Design Philosophy: Continuous Incremental Improvement**
- *
- * Discovery is NOT about finding large one-shot improvements. Instead, it's designed for:
- * - Small improvements: 0.5-3% per iteration (typical)
- * - Continuous operation: Run repeatedly on current best creature
- * - Distributed swarm: Multiple machines working in parallel
- * - Compound growth: 100 iterations × 1.5% avg = ~16% total improvement
- *
- * **Typical Workflow:**
- * ```typescript
- * while (true) {
- *   const best = await fetchBestFromPool();
- *   const result = await best.discoveryDir(data, options);
- *   if (result.improvement) {
- *     await checkInToPool(result.improvement.creature);
- *   }
- * }
- * ```
+ * Designed for continuous incremental improvement through repeated runs across multiple machines.
+ * Typical improvements are 0.5-3% per iteration, compounding over time.
  *
  * @see docs/DISCOVERY_GUIDE.md for complete workflow documentation
  */
@@ -340,15 +332,19 @@ export class DiscoverStructure {
     result: RustAnalyzeAllResult;
   };
   private analysisTimeoutGuardEnabled = true;
+  private disableCleanup = false;
+  private skipRecordPhase = false;
   constructor(
     creature: Creature,
     timeoutSeconds: number,
     rustFlushRecords: number = DEFAULT_RUST_FLUSH_RECORDS,
     deps: Partial<DiscoverStructureDeps> = {},
+    options: DiscoverStructureOptions = {},
   ) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
-    this.tempDir = `.discovery/${creature.uuid}`;
+    const baseDir = options.baseDirectory ?? ".discovery";
+    this.tempDir = `${baseDir}/${creature.uuid}`;
     this.indicesFilePath = `${this.tempDir}/selected_indices.json`;
     this.textDecoder = new TextDecoder();
     this.discoveryID = creature.uuid;
@@ -363,8 +359,16 @@ export class DiscoverStructure {
     this.timeoutTS = Date.now() + timeoutSeconds * 1000;
     this.rustFlushRecords = Math.max(1, rustFlushRecords);
     this.deps = { ...DEFAULT_DISCOVER_STRUCTURE_DEPS, ...deps };
+    this.disableCleanup = options.disableCleanup ?? false;
+    this.skipRecordPhase = options.skipRecordPhase ?? false;
 
-    emptyDirSync(this.tempDir);
+    // Only clear the directory if we're not skipping the record phase
+    // When skipping, just ensure it exists (for tests that don't use existing data)
+    if (this.skipRecordPhase) {
+      ensureDirSync(this.tempDir);
+    } else {
+      emptyDirSync(this.tempDir);
+    }
   }
 
   public configureLogging(options: {
@@ -375,6 +379,74 @@ export class DiscoverStructure {
     if (options?.discoveryID) {
       this.discoveryID = options.discoveryID;
     }
+  }
+
+  /**
+   * Returns the path to the temporary discovery directory.
+   * Useful for debugging when examining discovery files.
+   */
+  public getTempDir(): string {
+    return this.tempDir;
+  }
+
+  /**
+   * Checks if the record phase should be skipped because parquet files already exist.
+   * Returns true if skipRecordPhase is enabled and valid parquet data exists.
+   */
+  public shouldSkipRecording(): boolean {
+    if (!this.skipRecordPhase) {
+      return false;
+    }
+
+    // Check if the merged parquet file exists
+    const mergedParquetPath = `${this.tempDir}/discovery_data.parquet`;
+    try {
+      const stat = Deno.statSync(mergedParquetPath);
+      if (stat.isFile && stat.size > 0) {
+        if (this.loggingEnabled) {
+          console.log(
+            `[Discovery ${this.discoveryID}] Skipping record phase - using existing parquet file: ${mergedParquetPath}`,
+          );
+        }
+        this.parquetFilePath = mergedParquetPath;
+        return true;
+      }
+    } catch {
+      // File doesn't exist, proceed with recording
+    }
+
+    // Check if chunk files exist (unmerged data)
+    const chunksDir = `${this.tempDir}/chunks`;
+    try {
+      const stat = Deno.statSync(chunksDir);
+      if (stat.isDirectory) {
+        const entries = Array.from(Deno.readDirSync(chunksDir));
+        const parquetChunks = entries.filter((e) =>
+          e.isFile && e.name.endsWith(".parquet")
+        );
+        if (parquetChunks.length > 0) {
+          if (this.loggingEnabled) {
+            console.log(
+              `[Discovery ${this.discoveryID}] Skipping record phase - found ${parquetChunks.length} existing chunk files in: ${chunksDir}`,
+            );
+          }
+          // Populate rustChunkFiles for later merging
+          this.rustChunkFiles = parquetChunks.map((e) =>
+            `${chunksDir}/${e.name}`
+          );
+          return true;
+        }
+      }
+    } catch {
+      // Chunks directory doesn't exist, proceed with recording
+    }
+
+    if (this.loggingEnabled) {
+      console.log(
+        `[Discovery ${this.discoveryID}] No existing parquet files found - proceeding with recording`,
+      );
+    }
+    return false;
   }
 
   private isSelectableNeuronType(neuronType: string | undefined): boolean {
@@ -576,6 +648,16 @@ export class DiscoverStructure {
       closeRustLibrary();
     } catch {
       // Ignore errors during cleanup
+    }
+
+    // Skip directory removal if cleanup is disabled (for debugging)
+    if (this.disableCleanup) {
+      if (this.loggingEnabled) {
+        console.log(
+          `[Discovery ${this.discoveryID}] Cleanup disabled - preserving temporary files at: ${this.tempDir}`,
+        );
+      }
+      return;
     }
 
     try {

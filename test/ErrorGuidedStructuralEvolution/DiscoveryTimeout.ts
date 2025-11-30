@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import {
   assertRustDiscoveryAvailable,
   shouldSkipRustDiscoveryTests,
@@ -186,33 +187,33 @@ Deno.test({
       Deno.env.set("DENO_TEST", "true");
       try {
         // Test with batch size 128, very short timeout (1 second)
-        const options128 = {
+        const config128 = createNeatConfig({
           discoveryBatchSize: 128,
-          discoveryTimeOutMinutes: 0.0167, // ~1 second
+          discoveryRecordTimeOutMinutes: 0.0167, // ~1 second
           discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
           discoverySampleRate: 1.0, // 100% sample rate
           log: 0,
-        };
+        });
 
         const result128 = await recordDirectory(
           creature128,
           tmpDir128,
-          options128,
+          config128,
         );
 
         // Test with batch size 512, same timeout
-        const options512 = {
+        const config512 = createNeatConfig({
           discoveryBatchSize: 512,
-          discoveryTimeOutMinutes: 0.0167, // ~1 second
+          discoveryRecordTimeOutMinutes: 0.0167, // ~1 second
           discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
           discoverySampleRate: 1.0,
           log: 0,
-        };
+        });
 
         const result512 = await recordDirectory(
           creature512,
           tmpDir512,
-          options512,
+          config512,
         );
 
         // Both should return results (not throw) - this tests that partial results work
@@ -270,18 +271,18 @@ Deno.test({
       await createTestBinaryFile(creature, 200, tmpDir, "test.bin");
 
       // Set 2-second timeout
-      const options = {
+      const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryTimeOutMinutes: 0.033, // 2 seconds
+        discoveryRecordTimeOutMinutes: 0.033, // 2 seconds
         discoverySampleRate: 1.0,
         log: 1, // Enable logging to verify diagnostics appear
-      };
+      });
 
       // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        const result = await recordDirectory(creature, tmpDir, options);
+        const result = await recordDirectory(creature, tmpDir, config);
 
         // Should return result (not throw)
         assertExists(result, "Should return result even with timeout");
@@ -322,18 +323,18 @@ Deno.test({
       await createTestBinaryFile(creature, 100, tmpDir, "test3.bin");
 
       // Very short timeout - will hit during file processing
-      const options = {
+      const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryTimeOutMinutes: 0.02, // ~1.2 seconds
+        discoveryRecordTimeOutMinutes: 0.02, // ~1.2 seconds
         discoverySampleRate: 1.0,
         log: 1, // Enable to see diagnostic logs
-      };
+      });
 
       // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        const result = await recordDirectory(creature, tmpDir, options);
+        const result = await recordDirectory(creature, tmpDir, config);
 
         // Should complete without throwing
         assertExists(result, "Should return result despite timeout");
@@ -371,18 +372,18 @@ Deno.test({
       // Create small dataset that should complete
       await createTestBinaryFile(creature, 50, tmpDir, "test.bin");
 
-      const options = {
+      const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryTimeOutMinutes: 0.05, // 3 seconds - plenty of time for small dataset
+        discoveryRecordTimeOutMinutes: 0.05, // 3 seconds - plenty of time for small dataset
         discoverySampleRate: 1.0,
         log: 1,
-      };
+      });
 
       // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        const result = await recordDirectory(creature, tmpDir, options);
+        const result = await recordDirectory(creature, tmpDir, config);
 
         // Should complete successfully
         assertExists(result, "Should return result");

@@ -907,7 +907,7 @@ export class Creature implements CreatureInternal {
     workers.length = 0; // Release the memory.
 
     if (bestCreature) {
-      this.loadFrom(bestCreature, config.debug ?? false);
+      this.loadFrom(bestCreature, config.debug);
     }
 
     if (config.creatureStore) {

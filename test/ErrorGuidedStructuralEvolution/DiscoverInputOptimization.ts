@@ -4,6 +4,7 @@ import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { makeDataDir } from "../../src/architecture/DataSet.ts";
 import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import {
   DEFAULT_RUST_FLUSH_RECORDS,
   type DiscoverRecord,
@@ -178,14 +179,18 @@ Deno.test({
 
     try {
       // Run discovery on binary files
-      const result = await recordDirectory(creature, dataDir, {
-        discoverySampleRate: 0.5, // Sample 50% of records
-        discoveryBatchSize: 50,
-        discoveryMaxNeurons: 3,
-        discoveryTimeOutMinutes: 0.05, // 3 seconds - sufficient for CI
-        discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds - sufficient for CI
-        log: 0,
-      });
+      const result = await recordDirectory(
+        creature,
+        dataDir,
+        createNeatConfig({
+          discoverySampleRate: 0.5, // Sample 50% of records
+          discoveryBatchSize: 50,
+          discoveryMaxNeurons: 3,
+          discoveryRecordTimeOutMinutes: 0.05, // 3 seconds - sufficient for CI
+          discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds - sufficient for CI
+          log: 0,
+        }),
+      );
 
       assert(result, "Should return discovery result");
       assert(result.ID, "Should have ID");
