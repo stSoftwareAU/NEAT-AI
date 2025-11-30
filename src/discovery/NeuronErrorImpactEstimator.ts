@@ -117,17 +117,6 @@ export class CreatureErrorImpactEstimator {
       const share = Math.min(1, rawShares[index]);
       shareMap.set(neuron.uuid, share);
     });
-
-    // DEBUG: Log output neuron shares
-    const outputNeurons = neurons.filter((n) => n.type === "output");
-    for (const neuron of outputNeurons) {
-      console.info(
-        `[DEBUG-SHARE] Output ${neuron.uuid}: share=${
-          shareMap.get(neuron.uuid)?.toFixed(6)
-        }`,
-      );
-    }
-
     return shareMap;
   }
 

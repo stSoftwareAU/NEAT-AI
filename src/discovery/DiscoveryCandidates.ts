@@ -74,16 +74,6 @@ export function buildDiscoveryCandidates(
 
   const scaledNeuronExpected = (candidate: CandidateNeuron) => {
     const share = impactEstimator.getNeuronShare(candidate.toNeuronUUID);
-
-    // DEBUG: Log raw vs scaled improvement for HARD_TANH debugging
-    console.info(
-      `[DEBUG-SCALING] Neuron ${candidate.toNeuronUUID}: raw=${
-        (candidate.expectedImprovementPercentage * 100).toFixed(4)
-      }%, share=${share.toFixed(6)}, scaled=${
-        ((candidate.expectedImprovementPercentage * share) * 100).toFixed(6)
-      }%`,
-    );
-
     // If we have recorded stats, use the actual error magnitude to scale more accurately
     if (candidate.targetNeuronStats) {
       const stats = candidate.targetNeuronStats;
