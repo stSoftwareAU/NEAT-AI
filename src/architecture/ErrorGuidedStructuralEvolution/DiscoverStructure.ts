@@ -2938,7 +2938,7 @@ export class DiscoverStructure {
             "info",
             `Found ${result.removalCandidates.length} removal candidate${
               result.removalCandidates.length === 1 ? "" : "s"
-            } (high error, low impact)`,
+            } (impact below costOfGrowth)`,
           );
         }
       }

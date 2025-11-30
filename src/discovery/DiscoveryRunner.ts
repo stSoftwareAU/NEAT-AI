@@ -230,7 +230,10 @@ export class DiscoveryRunner {
       markPhase("Discovery phase", discoveryStart);
 
       const candidateBuildStart = performance.now();
-      const candidates = this.#candidateBuilder(creature, discoverResult);
+      const candidates = this.#candidateBuilder(
+        creature,
+        discoverResult,
+      );
       verboseLog(
         `Built ${candidates.length} candidate creature${
           candidates.length === 1 ? "" : "s"

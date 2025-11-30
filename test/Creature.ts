@@ -395,6 +395,7 @@ Deno.test("Feed-forward", () => {
   const child = Offspring.breed(creature1, creature2);
 
   if (child) {
+    child.validate();
     // Check if the creature is feed-forward correctly
     for (i = 0; i < child.synapses.length; i++) {
       const from = child.synapses[i].from;

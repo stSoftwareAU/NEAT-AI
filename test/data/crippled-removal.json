@@ -1,0 +1,26 @@
+{
+  "input": 2,
+  "output": 1,
+  "neurons": [
+    {
+      "type": "hidden",
+      "squash": "RELU",
+      "bias": 0.5,
+      "uuid": "candidate-for-removal"
+    },
+    { "type": "output", "squash": "IDENTITY", "bias": 0, "uuid": "output-0" }
+  ],
+  "synapses": [
+    {
+      "fromUUID": "input-0",
+      "toUUID": "candidate-for-removal",
+      "weight": 1e-12
+    },
+    {
+      "fromUUID": "candidate-for-removal",
+      "toUUID": "output-0",
+      "weight": 1e-12
+    },
+    { "fromUUID": "input-1", "toUUID": "output-0", "weight": 1.0 }
+  ]
+}
