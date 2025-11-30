@@ -123,6 +123,13 @@ export interface RustParallelAnalysisInput {
   maxNeuronCandidates?: number;
   requireGpu?: boolean;
   analysisDeadlineMs?: number;
+  /**
+   * Maps each focus neuron UUID to its share of the creature's total error.
+   * Used to scale neuron-level improvements to creature-level improvements
+   * before sorting/truncating candidates. Output neurons typically have
+   * share ~1.0, while hidden neurons have smaller shares.
+   */
+  focusNeuronErrorShares?: Record<string, number>;
 }
 
 export interface RustParallelAnalysisResult {

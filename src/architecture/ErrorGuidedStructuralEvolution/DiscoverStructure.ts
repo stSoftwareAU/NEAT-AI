@@ -1981,6 +1981,15 @@ export class DiscoverStructure {
 
     const rustCreature = creatureToRustFormat(this.creature.exportJSON());
 
+    // Calculate each focus neuron's share of the creature's total error.
+    // This allows Rust to estimate creature-level improvement (not just neuron-level)
+    // so it can properly rank candidates before truncating.
+    const impactEstimator = new CreatureErrorImpactEstimator(this.creature);
+    const focusNeuronErrorShares: Record<string, number> = {};
+    for (const uuid of focusList) {
+      focusNeuronErrorShares[uuid] = impactEstimator.getNeuronShare(uuid);
+    }
+
     const parallelInput: RustParallelAnalysisInput = {
       parquetFile: this.parquetFilePath,
       creature: rustCreature,
@@ -1993,6 +2002,7 @@ export class DiscoverStructure {
         : undefined,
       requireGpu: Deno.build.os === "darwin",
       analysisDeadlineMs: this.analysisDeadlineMs,
+      focusNeuronErrorShares,
     };
 
     const parallelResult = this.deps.analyzeParallel(parallelInput);
