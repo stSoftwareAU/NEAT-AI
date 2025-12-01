@@ -10,7 +10,7 @@
  * - New neurons incorrectly identified as "removed" because they're not in candidate
  */
 
-import { assertEquals, assertExists } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { Creature } from "../../src/Creature.ts";
 import {
@@ -112,7 +112,7 @@ Deno.test(
     );
 
     // Should have at least one combined candidate
-    assertExists(combined.length > 0, "Should produce combined candidates");
+    assert(combined.length > 0, "Should produce combined candidates");
 
     // Find the combo-successful candidate
     const combo = combined.find((c) => c.change.type === "combo-successful");
@@ -221,7 +221,7 @@ Deno.test(
     );
 
     // Should have at least one combined candidate
-    assertExists(combined.length > 0, "Should produce combined candidates");
+    assert(combined.length > 0, "Should produce combined candidates");
 
     // Find the combo-successful candidate
     const combo = combined.find((c) => c.change.type === "combo-successful");
