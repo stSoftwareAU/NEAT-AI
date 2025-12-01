@@ -53,6 +53,7 @@ class DiscoveryPerformanceStats {
   harmfulSynapseCandidates = 0;
   harmfulNeuronCandidates = 0;
   squashCandidates = 0;
+  removalCandidates = 0;
 
   // Other phases
   cleanupTime = 0;
@@ -131,7 +132,8 @@ class DiscoveryPerformanceStats {
         `  Helpful neurons: ${formatCount(this.helpfulNeuronCandidates)}\n` +
         `  Harmful synapses: ${formatCount(this.harmfulSynapseCandidates)}\n` +
         `  Harmful neurons: ${formatCount(this.harmfulNeuronCandidates)}\n` +
-        `  Squash changes: ${formatCount(this.squashCandidates)}`,
+        `  Squash changes: ${formatCount(this.squashCandidates)}\n` +
+        `  Removal candidates: ${formatCount(this.removalCandidates)}`,
     );
 
     // Overall summary
@@ -1051,6 +1053,7 @@ class DataRecorder {
       const removalCandidates = discoverStructure.getRemovalCandidates();
       if (removalCandidates && removalCandidates.length > 0) {
         discoverResult.removalCandidates = removalCandidates;
+        perfStats.removalCandidates = removalCandidates.length;
         if (shouldLogDiscovery(config)) {
           console.log(
             `Discovery ${blue(this.ID)} found ${
