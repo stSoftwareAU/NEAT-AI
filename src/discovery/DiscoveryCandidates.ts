@@ -1110,7 +1110,7 @@ function wrapBestCandidate<
  */
 export function buildCombinedFromSuccessful(
   baseCreature: Creature,
-  discoveryID: string,
+  _discoveryID: string,
   successfulCandidates: DiscoveryCandidate[],
 ): DiscoveryCandidate[] {
   if (successfulCandidates.length < 2) {
@@ -1145,7 +1145,7 @@ export function buildCombinedFromSuccessful(
     const applied = applyChangeToCreature(
       combinedCreature,
       best,
-      discoveryID,
+      baseCreature,
     );
 
     if (applied && applied !== combinedCreature) {
@@ -1184,24 +1184,25 @@ export function buildCombinedFromSuccessful(
         // Skip if same type (already handled above)
         if (candidateA.change.type === candidateB.change.type) continue;
 
-        let pairCreature = applyChangeToCreature(
+        const afterA = applyChangeToCreature(
           baseCreature,
           candidateA,
-          discoveryID,
+          baseCreature,
         );
-        if (pairCreature && pairCreature !== baseCreature) {
-          pairCreature = applyChangeToCreature(
-            pairCreature,
+        if (afterA && afterA !== baseCreature) {
+          const afterBoth = applyChangeToCreature(
+            afterA,
             candidateB,
-            discoveryID,
+            baseCreature,
           );
-          if (pairCreature) {
+          // Verify candidateB actually changed something (not just returned afterA unchanged)
+          if (afterBoth && afterBoth !== afterA) {
             const emoji = selectCombinationEmoji([
               candidateA.change.type,
               candidateB.change.type,
             ]);
             combinedCandidates.push({
-              creature: pairCreature,
+              creature: afterBoth,
               change: {
                 type: "combo-successful",
                 description:
@@ -1219,15 +1220,20 @@ export function buildCombinedFromSuccessful(
 
 /**
  * Apply a candidate's change to a creature, returning the modified creature.
+ *
+ * @param creature The creature to apply the change to (may have prior modifications)
+ * @param candidate The candidate containing the change to apply
+ * @param baseCreature The original creature before any changes (used for removal detection)
  */
 function applyChangeToCreature(
   creature: Creature,
   candidate: DiscoveryCandidate,
-  _discoveryID: string,
+  baseCreature: Creature,
 ): Creature | undefined {
   const changeType = candidate.change.type;
   const candidateJSON = candidate.creature.exportJSON();
   const creatureJSON = creature.exportJSON();
+  const baseJSON = baseCreature.exportJSON();
 
   try {
     switch (changeType) {
@@ -1301,18 +1307,39 @@ function applyChangeToCreature(
       }
 
       case "remove-synapse": {
-        // Find synapses removed in candidate
+        // Find synapses that were in base but removed in candidate
+        // This ensures we only remove what the candidate intended to remove,
+        // not synapses added by previous operations in the combination
+        const baseSynapses = new Set(
+          baseJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
+        );
         const candidateSynapses = new Set(
           candidateJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
         );
-        const removedSynapses = creatureJSON.synapses.filter(
-          (s) => !candidateSynapses.has(`${s.fromUUID}->${s.toUUID}`),
+        const creatureSynapses = new Set(
+          creatureJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
         );
-        if (removedSynapses.length === 0) return creature;
 
-        creatureJSON.synapses = creatureJSON.synapses.filter((s) =>
-          candidateSynapses.has(`${s.fromUUID}->${s.toUUID}`)
+        // Synapses to remove: existed in base but not in candidate
+        const toRemove = new Set(
+          [...baseSynapses].filter((key) => !candidateSynapses.has(key)),
         );
+
+        // Also add reconnection synapses: new in candidate but not in creature
+        // These maintain connectivity after removal
+        const toAdd = candidateJSON.synapses.filter(
+          (s) =>
+            !baseSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
+            !creatureSynapses.has(`${s.fromUUID}->${s.toUUID}`),
+        );
+
+        if (toRemove.size === 0 && toAdd.length === 0) return creature;
+
+        creatureJSON.synapses = creatureJSON.synapses.filter(
+          (s) => !toRemove.has(`${s.fromUUID}->${s.toUUID}`),
+        );
+        creatureJSON.synapses.push(...toAdd);
+
         const result = Creature.fromJSON(creatureJSON);
         delete result.uuid;
         result.fix();
@@ -1322,22 +1349,46 @@ function applyChangeToCreature(
 
       case "remove-neuron":
       case "remove-low-impact": {
-        // Find neurons removed in candidate
+        // Find neurons that were in base but removed in candidate
+        // This ensures we only remove what the candidate intended to remove,
+        // not neurons added by previous operations in the combination
+        const baseNeurons = new Set(
+          baseJSON.neurons.filter((n) => n.type === "hidden").map((n) =>
+            n.uuid
+          ),
+        );
         const candidateNeurons = new Set(
           candidateJSON.neurons.map((n) => n.uuid),
         );
-        const removedNeurons = creatureJSON.neurons.filter(
-          (n) => n.type === "hidden" && !candidateNeurons.has(n.uuid),
+        const baseSynapses = new Set(
+          baseJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
         );
-        if (removedNeurons.length === 0) return creature;
+        const creatureSynapses = new Set(
+          creatureJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
+        );
 
-        const removedUUIDs = new Set(removedNeurons.map((n) => n.uuid));
+        // Neurons to remove: existed in base (as hidden) but not in candidate
+        const toRemove = new Set(
+          [...baseNeurons].filter((uuid) => !candidateNeurons.has(uuid)),
+        );
+
+        // Also add reconnection synapses: new in candidate but not in creature
+        // These maintain connectivity after neuron removal
+        const toAdd = candidateJSON.synapses.filter(
+          (s) =>
+            !baseSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
+            !creatureSynapses.has(`${s.fromUUID}->${s.toUUID}`),
+        );
+
+        if (toRemove.size === 0 && toAdd.length === 0) return creature;
+
         creatureJSON.neurons = creatureJSON.neurons.filter(
-          (n) => !removedUUIDs.has(n.uuid),
+          (n) => !toRemove.has(n.uuid),
         );
         creatureJSON.synapses = creatureJSON.synapses.filter(
-          (s) => !removedUUIDs.has(s.fromUUID) && !removedUUIDs.has(s.toUUID),
+          (s) => !toRemove.has(s.fromUUID) && !toRemove.has(s.toUUID),
         );
+        creatureJSON.synapses.push(...toAdd);
 
         const result = Creature.fromJSON(creatureJSON);
         delete result.uuid;
