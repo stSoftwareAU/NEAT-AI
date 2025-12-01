@@ -1178,34 +1178,34 @@ export function buildCombinedFromSuccessful(
   if (successfulCandidates.length > 2 && successfulCandidates.length <= 6) {
     for (let i = 0; i < successfulCandidates.length; i++) {
       for (let j = i + 1; j < successfulCandidates.length; j++) {
-        const candA = successfulCandidates[i];
-        const candB = successfulCandidates[j];
+        const candidateA = successfulCandidates[i];
+        const candidateB = successfulCandidates[j];
 
         // Skip if same type (already handled above)
-        if (candA.change.type === candB.change.type) continue;
+        if (candidateA.change.type === candidateB.change.type) continue;
 
         let pairCreature = applyChangeToCreature(
           baseCreature,
-          candA,
+          candidateA,
           discoveryID,
         );
         if (pairCreature && pairCreature !== baseCreature) {
           pairCreature = applyChangeToCreature(
             pairCreature,
-            candB,
+            candidateB,
             discoveryID,
           );
           if (pairCreature) {
             const emoji = selectCombinationEmoji([
-              candA.change.type,
-              candB.change.type,
+              candidateA.change.type,
+              candidateB.change.type,
             ]);
             combinedCandidates.push({
               creature: pairCreature,
               change: {
                 type: "combo-successful",
                 description:
-                  `${emoji} Combined ${candA.change.type} + ${candB.change.type}`,
+                  `${emoji} Combined ${candidateA.change.type} + ${candidateB.change.type}`,
               },
             });
           }
