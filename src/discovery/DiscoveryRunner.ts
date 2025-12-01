@@ -766,9 +766,13 @@ export class DiscoveryRunner {
    * Filters discovery candidates for evaluation.
    *
    * Strategy:
-   * 1. Include all candidates with expected error reduction >= threshold (or undefined, which we'll evaluate)
-   * 2. If there are more than 2x CPU cores candidates, select the best estimated ones
-   * 3. We evaluate all candidates with sufficient expected improvement or undefined expected improvement
+   * 1. ALWAYS include a few random removal candidates (they improve score, not error)
+   * 2. Include candidates with expected error reduction >= threshold
+   * 3. If there are more than 2x CPU cores candidates, select the best estimated ones
+   *
+   * Removal candidates are treated separately because they don't reduce error -
+   * they improve SCORE by reducing complexity. So they shouldn't compete with
+   * add-neuron candidates that have expected error reduction.
    *
    * @param candidates - All discovery candidates
    * @param threadCount - Number of CPU threads available
@@ -791,8 +795,9 @@ export class DiscoveryRunner {
     const multiplier = config.discoveryMinImprovementVsCostOfGrowthMultiplier;
     const minExpectedImprovement = config.costOfGrowth * multiplier;
 
-    // Filter to candidates that meet the minimum expected improvement threshold or have undefined expected improvement
-    const positiveCandidates: DiscoveryCandidate[] = [];
+    // Separate candidates into categories
+    const removalCandidates: DiscoveryCandidate[] = [];
+    const otherCandidates: DiscoveryCandidate[] = [];
     const skipped: Array<{
       changeType?: DiscoveryChangeType;
       expected?: number;
@@ -801,11 +806,17 @@ export class DiscoveryRunner {
     for (const candidate of candidates) {
       CreatureUtil.makeUUID(candidate.creature);
       const expected = candidate.change.expectedErrorReduction;
+      const isRemovalCandidate = candidate.change.type === "remove-low-impact";
 
-      // Include candidates with: undefined expected improvement, or expected improvement meeting threshold
+      // Removal candidates are handled separately - they improve score, not error
+      if (isRemovalCandidate) {
+        removalCandidates.push(candidate);
+        continue;
+      }
+
       if (expected === undefined) {
-        // No expected value - include it for evaluation (combo candidates, remove-low-impact, etc.)
-        positiveCandidates.push(candidate);
+        // No expected value - include for evaluation (combo candidates, etc.)
+        otherCandidates.push(candidate);
       } else if (Number.isFinite(expected)) {
         // When multiplier is 0, use strict positive check (expected > 0)
         // Otherwise, check against threshold (expected >= minExpectedImprovement)
@@ -814,10 +825,8 @@ export class DiscoveryRunner {
           : expected >= minExpectedImprovement;
 
         if (meetsThreshold) {
-          // Expected impact meets or exceeds threshold - include it
-          positiveCandidates.push(candidate);
+          otherCandidates.push(candidate);
         } else {
-          // Expected impact below threshold - skip it
           skipped.push({
             changeType: candidate.change.type,
             expected,
@@ -832,46 +841,67 @@ export class DiscoveryRunner {
       }
     }
 
-    // If we have too many candidates, select the best estimated ones
-    if (positiveCandidates.length > maxCandidates) {
-      // Sort by expected error reduction (descending)
-      // Candidates with undefined expectedErrorReduction are included but sorted to the end
-      // so they're only included if there's room after all candidates with known estimates
-      positiveCandidates.sort((a, b) => {
-        const aExpected = a.change.expectedErrorReduction;
-        const bExpected = b.change.expectedErrorReduction;
+    // Sort other candidates by expected error reduction (descending)
+    // Candidates with undefined expectedErrorReduction are sorted to the end
+    otherCandidates.sort((a, b) => {
+      const aExpected = a.change.expectedErrorReduction;
+      const bExpected = b.change.expectedErrorReduction;
+      if (aExpected !== undefined && bExpected !== undefined) {
+        return bExpected - aExpected;
+      }
+      if (aExpected !== undefined) return -1;
+      if (bExpected !== undefined) return 1;
+      return 0;
+    });
 
-        // Both have values - sort by value (descending)
-        if (aExpected !== undefined && bExpected !== undefined) {
-          return bExpected - aExpected;
-        }
-        // Only a has value - a comes first
-        if (aExpected !== undefined) {
-          return -1;
-        }
-        // Only b has value - b comes first
-        if (bExpected !== undefined) {
-          return 1;
-        }
-        // Both undefined - maintain order
-        return 0;
-      });
+    // ALWAYS include a few random removal candidates (minimum 3, or all if fewer)
+    // These are added ON TOP of the regular selection, not competing for the same slots
+    const removalSampleSize = Math.min(removalCandidates.length, 3);
+    let selectedRemovalCandidates: DiscoveryCandidate[];
 
-      // Take the top candidates and mark the rest as skipped
-      const topCandidates = positiveCandidates.slice(0, maxCandidates);
-      const remaining = positiveCandidates.slice(maxCandidates);
+    if (removalCandidates.length <= removalSampleSize) {
+      selectedRemovalCandidates = removalCandidates;
+    } else {
+      // Fisher-Yates shuffle and take first N
+      const shuffled = [...removalCandidates];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      selectedRemovalCandidates = shuffled.slice(0, removalSampleSize);
 
-      for (const candidate of remaining) {
+      console.info(
+        `[DiscoveryRunner] Randomly selected ${removalSampleSize} of ${removalCandidates.length} removal candidates for evaluation`,
+      );
+
+      // Mark remaining removal candidates as skipped
+      for (const candidate of shuffled.slice(removalSampleSize)) {
         skipped.push({
           changeType: candidate.change.type,
           expected: candidate.change.expectedErrorReduction,
         });
       }
-
-      return { filtered: topCandidates, skipped };
     }
 
-    return { filtered: positiveCandidates, skipped };
+    // Select other candidates up to the max limit
+    let selectedOtherCandidates: DiscoveryCandidate[];
+    if (otherCandidates.length <= maxCandidates) {
+      selectedOtherCandidates = otherCandidates;
+    } else {
+      selectedOtherCandidates = otherCandidates.slice(0, maxCandidates);
+
+      for (const candidate of otherCandidates.slice(maxCandidates)) {
+        skipped.push({
+          changeType: candidate.change.type,
+          expected: candidate.change.expectedErrorReduction,
+        });
+      }
+    }
+
+    // Combine: other candidates first, then removal candidates (added on top)
+    const filtered = [...selectedOtherCandidates, ...selectedRemovalCandidates];
+
+    return { filtered, skipped };
   }
 }
 

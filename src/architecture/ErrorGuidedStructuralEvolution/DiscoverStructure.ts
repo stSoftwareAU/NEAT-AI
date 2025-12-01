@@ -4306,6 +4306,12 @@ export class DiscoverStructure {
    * @param removalCandidate - The low-impact neuron candidate to remove.
    * @returns A modified Creature with the neuron removed, or undefined if no change was made.
    */
+  // Track removal diagnostics across calls (static to aggregate across multiple removals)
+  private static removalDiagnostics = {
+    sameUUIDCount: 0,
+    firstSameUUIDLogged: false,
+  };
+
   public static removeLowImpactNeuron(
     ID: string,
     creature: Creature,
@@ -4334,6 +4340,9 @@ export class DiscoverStructure {
       JSON.stringify(exportJSON),
     );
 
+    const originalSynapseCount = simplifiedExport.synapses.length;
+    const originalNeuronCount = simplifiedExport.neurons.length;
+
     // Low-impact neurons have negligible effect on outputs, so we skip bias adjustment.
     // Just remove all synapses to/from this neuron.
     simplifiedExport.synapses = simplifiedExport.synapses.filter(
@@ -4347,13 +4356,30 @@ export class DiscoverStructure {
       (neuron) => neuron.uuid !== removalCandidate.neuronUUID,
     );
 
+    const removedSynapseCount = originalSynapseCount -
+      simplifiedExport.synapses.length;
+    const removedNeuronCount = originalNeuronCount -
+      simplifiedExport.neurons.length;
+
     const tmpCreature = Creature.fromJSON(simplifiedExport);
     // We modified the structure, so we must delete UUID
     delete tmpCreature.uuid;
     tmpCreature.fix();
 
+    // Check if fix() re-added any structure
+    const afterFixSynapseCount = tmpCreature.synapses.length;
+    const afterFixNeuronCount = tmpCreature.neurons.length;
+    const fixReaddedSynapses = afterFixSynapseCount -
+      simplifiedExport.synapses.length;
+    const fixReaddedNeurons = afterFixNeuronCount -
+      simplifiedExport.neurons.length;
+
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
+      // Reset diagnostics on successful removal
+      this.removalDiagnostics.sameUUIDCount = 0;
+      this.removalDiagnostics.firstSameUUIDLogged = false;
+
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
       const summary =
@@ -4367,7 +4393,37 @@ export class DiscoverStructure {
 
       return tmpCreature;
     }
+
+    // UUID didn't change - track this case
+    this.removalDiagnostics.sameUUIDCount++;
+
+    // Log detailed diagnostics for first occurrence only
+    if (!this.removalDiagnostics.firstSameUUIDLogged) {
+      this.removalDiagnostics.firstSameUUIDLogged = true;
+      console.warn(
+        `[DiscoverStructure] removeLowImpactNeuron UUID unchanged after removal:`,
+        `\n  neuronUUID: ${removalCandidate.neuronUUID}`,
+        `\n  removedSynapses: ${removedSynapseCount}, removedNeurons: ${removedNeuronCount}`,
+        `\n  fix() re-added: synapses=${fixReaddedSynapses}, neurons=${fixReaddedNeurons}`,
+        `\n  originalUUID: ${creatureUUID}`,
+        `\n  newUUID: ${tmpUUID}`,
+      );
+    }
+
     return undefined;
+  }
+
+  /** Reset removal diagnostics (call at start of discovery to get fresh stats). */
+  public static resetRemovalDiagnostics(): void {
+    this.removalDiagnostics = {
+      sameUUIDCount: 0,
+      firstSameUUIDLogged: false,
+    };
+  }
+
+  /** Get count of removals that failed due to same UUID. */
+  public static getRemovalSameUUIDCount(): number {
+    return this.removalDiagnostics.sameUUIDCount;
   }
 
   /**

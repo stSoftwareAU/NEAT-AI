@@ -409,13 +409,29 @@ export function buildDiscoveryCandidates(
   // 3. The filter explicitly passes undefined through for evaluation
   const { removalCandidates } = discovery;
   if (removalCandidates && removalCandidates.length > 0) {
+    let removalSuccessCount = 0;
+    let removalFailureCount = 0;
+    const failureReasons: Map<string, number> = new Map();
+
     for (const candidate of removalCandidates) {
+      // Check if neuron exists in base creature
+      const neuronExists = baseCreature.neurons.some(
+        (n) => n.uuid === candidate.neuronUUID,
+      );
+      if (!neuronExists) {
+        const reason = "neuron_not_found";
+        failureReasons.set(reason, (failureReasons.get(reason) ?? 0) + 1);
+        removalFailureCount++;
+        continue;
+      }
+
       const removedLowImpactCreature = DiscoverStructure.removeLowImpactNeuron(
         discovery.ID,
         baseCreature,
         candidate,
       );
       if (removedLowImpactCreature) {
+        removalSuccessCount++;
         candidates.push({
           creature: removedLowImpactCreature,
           change: {
@@ -427,7 +443,23 @@ export function buildDiscoveryCandidates(
             // No expectedErrorReduction - removal improves score via complexity reduction, not error
           },
         });
+      } else {
+        const reason = "removal_returned_undefined";
+        failureReasons.set(reason, (failureReasons.get(reason) ?? 0) + 1);
+        removalFailureCount++;
       }
+    }
+
+    // Log diagnostic summary for removal candidates
+    if (removalCandidates.length > 0) {
+      const failureDetails = Array.from(failureReasons.entries())
+        .map(([reason, count]) => `${reason}: ${count}`)
+        .join(", ");
+      console.info(
+        `[DiscoveryCandidates] Removal candidates: ${removalCandidates.length} total, ` +
+          `${removalSuccessCount} succeeded, ${removalFailureCount} failed` +
+          (failureDetails ? ` (${failureDetails})` : ""),
+      );
     }
   }
 
