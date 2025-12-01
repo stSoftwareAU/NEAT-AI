@@ -11,6 +11,7 @@ import type { Creature } from "../Creature.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import {
+  buildCombinedFromSuccessful,
   buildDiscoveryCandidates,
   type DiscoveredNeuronDetails,
   type DiscoveryChangeType,
@@ -48,6 +49,7 @@ export interface DiscoveryRunnerDeps {
   candidateBuilder?: (
     creature: Creature,
     discovery: DiscoverResult,
+    options?: { skipCombinedCandidates?: boolean },
   ) => DiscoveryCandidate[];
   rustDiscoveryEnabled?: () => boolean;
 }
@@ -123,6 +125,7 @@ export class DiscoveryRunner {
   #candidateBuilder: (
     creature: Creature,
     discovery: DiscoverResult,
+    options?: { skipCombinedCandidates?: boolean },
   ) => DiscoveryCandidate[];
   #rustDiscoveryEnabled: () => boolean;
 
@@ -229,20 +232,30 @@ export class DiscoveryRunner {
       );
       markPhase("Discovery phase", discoveryStart);
 
+      // ======================================================================
+      // TWO-PHASE DISCOVERY SCORING
+      // ======================================================================
+      // Phase 1: Build and evaluate SINGLE candidates (no combos)
+      // Phase 2: Combine only successful candidates and evaluate combos
+      // ======================================================================
+
       const candidateBuildStart = performance.now();
-      const candidates = this.#candidateBuilder(
+
+      // Phase 1: Build single candidates only (skip combined candidates)
+      const singleCandidates = this.#candidateBuilder(
         creature,
         discoverResult,
+        { skipCombinedCandidates: true },
       );
       verboseLog(
-        `Built ${candidates.length} candidate creature${
-          candidates.length === 1 ? "" : "s"
-        }: ${candidates.map((c) => c.change.type).join(", ") || "none"}.`,
+        `[Phase 1] Built ${singleCandidates.length} single candidate creature${
+          singleCandidates.length === 1 ? "" : "s"
+        }: ${singleCandidates.map((c) => c.change.type).join(", ") || "none"}.`,
       );
 
-      const { filtered: filteredCandidates, skipped } = this
+      const { filtered: filteredSingleCandidates, skipped } = this
         .#filterCandidatesForEvaluation(
-          candidates,
+          singleCandidates,
           workerCount,
           config,
         );
@@ -263,37 +276,113 @@ export class DiscoveryRunner {
           }.`,
         );
       }
-      markPhase("Candidate synthesis", candidateBuildStart);
+      markPhase("Candidate synthesis (Phase 1)", candidateBuildStart);
 
-      const evaluationTasks: Array<{
+      // Phase 1 evaluation: Score single candidates + original
+      const phase1Tasks: Array<{
         kind: "original" | "candidate";
         creature: Creature;
         candidate?: DiscoveryCandidate;
       }> = [
         { kind: "original", creature },
-        ...filteredCandidates.map((candidate) => ({
+        ...filteredSingleCandidates.map((candidate) => ({
           kind: "candidate" as const,
           creature: candidate.creature,
           candidate,
         })),
       ];
 
-      const evaluationStart = performance.now();
-      const evaluationResults = await this.#evaluateAll(
+      const phase1Start = performance.now();
+      const phase1Results = await this.#evaluateAll(
         workers,
-        evaluationTasks,
+        phase1Tasks,
         config.feedbackLoop,
         config.costOfGrowth,
         verboseLogging,
       );
-      const reScoringTime = performance.now() - evaluationStart;
-      markPhase("Candidate evaluation", evaluationStart);
+      const phase1Time = performance.now() - phase1Start;
+      markPhase("Phase 1 evaluation (singles)", phase1Start);
 
-      const original = evaluationResults.find((result) =>
+      const original = phase1Results.find((result) =>
         result.kind === "original"
       );
       assert(original, "Original creature was not evaluated");
 
+      // Find successful single candidates (improved score)
+      const successfulSingles = phase1Results
+        .filter((result) => result.kind === "candidate")
+        .filter((result) => result.score > original.score);
+
+      verboseLog(
+        `[Phase 1] Found ${successfulSingles.length} successful single candidate${
+          successfulSingles.length === 1 ? "" : "s"
+        } out of ${phase1Tasks.length - 1} evaluated.`,
+      );
+
+      // Phase 2: Build and evaluate combined candidates from successful singles
+      let phase2Results: typeof phase1Results = [];
+      let phase2Time = 0;
+
+      if (successfulSingles.length >= 2) {
+        const phase2Start = performance.now();
+
+        // Extract successful candidates for combination
+        const successfulCandidates = successfulSingles
+          .map((result) => result.candidate)
+          .filter((c): c is DiscoveryCandidate => c !== undefined);
+
+        // Build combined candidates from successful singles only
+        const combinedCandidates = buildCombinedFromSuccessful(
+          creature,
+          discoverResult.ID,
+          successfulCandidates,
+        );
+
+        if (combinedCandidates.length > 0) {
+          verboseLog(
+            `[Phase 2] Built ${combinedCandidates.length} combined candidate${
+              combinedCandidates.length === 1 ? "" : "s"
+            } from ${successfulSingles.length} successful singles.`,
+          );
+
+          // Filter combined candidates (apply same thresholds)
+          const { filtered: filteredCombos } = this
+            .#filterCandidatesForEvaluation(
+              combinedCandidates,
+              workerCount,
+              config,
+            );
+
+          if (filteredCombos.length > 0) {
+            const phase2Tasks = filteredCombos.map((candidate) => ({
+              kind: "candidate" as const,
+              creature: candidate.creature,
+              candidate,
+            }));
+
+            phase2Results = await this.#evaluateAll(
+              workers,
+              phase2Tasks,
+              config.feedbackLoop,
+              config.costOfGrowth,
+              verboseLogging,
+            );
+          }
+        }
+
+        phase2Time = performance.now() - phase2Start;
+        markPhase("Phase 2 evaluation (combos)", phase2Start);
+      } else {
+        verboseLog(
+          `[Phase 2] Skipped - need 2+ successful singles for combination (found ${successfulSingles.length}).`,
+        );
+      }
+
+      // Combine all evaluation results
+      const evaluationResults = [...phase1Results, ...phase2Results];
+      const reScoringTime = phase1Time + phase2Time;
+
+      // Find the best improvement across all candidates (single and combined)
       const improved = evaluationResults
         .filter((result) => result.kind === "candidate")
         .filter((result) => result.score > original.score)
@@ -360,10 +449,15 @@ export class DiscoveryRunner {
 
       if (verboseLogging && reScoringTime > 0) {
         const formattedTime = format(reScoringTime, { ignoreZero: true });
+        const totalCandidates = evaluationResults.length - 1; // Exclude original
+        const phase1Count = phase1Tasks.length - 1;
+        const phase2Count = phase2Results.length;
         verboseLog(
-          `Re-scoring phase: ${formattedTime} (${
-            evaluationTasks.length - 1
-          } candidate${evaluationTasks.length - 1 === 1 ? "" : "s"} evaluated)`,
+          `Re-scoring complete: ${formattedTime} total (${totalCandidates} candidate${
+            totalCandidates === 1 ? "" : "s"
+          } evaluated: ${phase1Count} single${
+            phase2Count > 0 ? ` + ${phase2Count} combo` : ""
+          })`,
         );
       }
 

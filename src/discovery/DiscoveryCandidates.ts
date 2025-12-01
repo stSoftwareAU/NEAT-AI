@@ -23,7 +23,8 @@ export type DiscoveryChangeType =
   | "combo-add-remove"
   | "combo-add-change"
   | "combo-all"
-  | "combo-best-of-category";
+  | "combo-best-of-category"
+  | "combo-successful";
 
 /** Details of a discovered neuron for logging/debugging. */
 export interface DiscoveredNeuronDetails {
@@ -57,6 +58,15 @@ export interface DiscoveryCandidate {
   change: DiscoveryCandidateChange;
 }
 
+export interface BuildDiscoveryCandidatesOptions {
+  /**
+   * If true, skip building combined candidates.
+   * Used for two-phase scoring where combos are built after evaluating singles.
+   * @default false
+   */
+  skipCombinedCandidates?: boolean;
+}
+
 /**
  * Build a list of possible improved creatures based on discovery suggestions.
  *
@@ -66,11 +76,14 @@ export interface DiscoveryCandidate {
  *
  * @param baseCreature The creature to apply discovery changes to
  * @param discovery The discovery result containing candidate changes
+ * @param options Options controlling candidate building
  */
 export function buildDiscoveryCandidates(
   baseCreature: Creature,
   discovery: DiscoverResult,
+  options?: BuildDiscoveryCandidatesOptions,
 ): DiscoveryCandidate[] {
+  const skipCombos = options?.skipCombinedCandidates ?? false;
   // Ensure the base creature has a UUID so discovery helpers function correctly.
   CreatureUtil.makeUUID(baseCreature);
   const impactEstimator = new CreatureErrorImpactEstimator(baseCreature);
@@ -238,7 +251,8 @@ export function buildDiscoveryCandidates(
       },
     });
 
-    if (addedSynapseCreature && removeHarmfulSynapse) {
+    // Only build combined candidates if not skipped (for two-phase scoring)
+    if (!skipCombos && addedSynapseCreature && removeHarmfulSynapse) {
       let combinedAddRemove = DiscoverStructure.addHelpfulSynapses(
         discovery.ID,
         removedSynapseCreature,
@@ -343,7 +357,8 @@ export function buildDiscoveryCandidates(
       },
     });
 
-    if (addedSynapseCreature) {
+    // Only build combined candidates if not skipped (for two-phase scoring)
+    if (!skipCombos && addedSynapseCreature) {
       const combinedAddChange = DiscoverStructure.changeSquash(
         discovery.ID,
         addedSynapseCreature,
@@ -556,89 +571,96 @@ export function buildDiscoveryCandidates(
     }
   }
 
-  const combinedCandidate = buildCombinedCandidate({
-    baseCreature,
-    discoveryID: discovery.ID,
-    selection: {
-      addHelpfulNeurons: addedNeuronCreature
-        ? helpfulNeuronCandidates
-        : undefined,
-      addHelpfulSynapses: addedSynapseCreature ? addHelpfulSynapses : undefined,
-      removeHarmfulSynapse: removedSynapseCreature
-        ? removeHarmfulSynapse
-        : undefined,
-      removeHarmfulNeurons: removedNeuronCreature
-        ? removeHarmfulNeurons
-        : undefined,
-      candidateSquashes: changedSquashCreature ? candidateSquashes : undefined,
-    },
-    changeType: "combo-all",
-    description: "🏗️ Combined all discovery changes",
-  });
-  if (combinedCandidate) {
-    candidates.push(combinedCandidate);
-  }
+  // Only build combined candidates if not skipped (for two-phase scoring)
+  if (!skipCombos) {
+    const combinedCandidate = buildCombinedCandidate({
+      baseCreature,
+      discoveryID: discovery.ID,
+      selection: {
+        addHelpfulNeurons: addedNeuronCreature
+          ? helpfulNeuronCandidates
+          : undefined,
+        addHelpfulSynapses: addedSynapseCreature
+          ? addHelpfulSynapses
+          : undefined,
+        removeHarmfulSynapse: removedSynapseCreature
+          ? removeHarmfulSynapse
+          : undefined,
+        removeHarmfulNeurons: removedNeuronCreature
+          ? removeHarmfulNeurons
+          : undefined,
+        candidateSquashes: changedSquashCreature
+          ? candidateSquashes
+          : undefined,
+      },
+      changeType: "combo-all",
+      description: "🏗️ Combined all discovery changes",
+    });
+    if (combinedCandidate) {
+      candidates.push(combinedCandidate);
+    }
 
-  const bestOfCategoryCandidate = buildBestOfCategoryCandidate(
-    baseCreature,
-    discovery,
-    {
-      synapse: scaledSynapseExpected,
-      neuron: scaledNeuronExpected,
-      squash: scaledSquashExpected,
-    },
-  );
-  if (bestOfCategoryCandidate) {
-    if (discovery.removeHarmfulSynapse) {
-      // Always remove directly without checking first to ensure deterministic removal
-      const removalUUID = {
-        from: discovery.removeHarmfulSynapse.fromNeuronUUID,
-        to: discovery.removeHarmfulSynapse.toNeuronUUID,
-      };
+    const bestOfCategoryCandidate = buildBestOfCategoryCandidate(
+      baseCreature,
+      discovery,
+      {
+        synapse: scaledSynapseExpected,
+        neuron: scaledNeuronExpected,
+        squash: scaledSquashExpected,
+      },
+    );
+    if (bestOfCategoryCandidate) {
+      if (discovery.removeHarmfulSynapse) {
+        // Always remove directly without checking first to ensure deterministic removal
+        const removalUUID = {
+          from: discovery.removeHarmfulSynapse.fromNeuronUUID,
+          to: discovery.removeHarmfulSynapse.toNeuronUUID,
+        };
 
-      // Keep removing until it's definitely gone (fix() might re-add it)
-      let currentCreature = bestOfCategoryCandidate.creature;
-      let attempts = 0;
-      const maxAttempts = 10; // Prevent infinite loops
+        // Keep removing until it's definitely gone (fix() might re-add it)
+        let currentCreature = bestOfCategoryCandidate.creature;
+        let attempts = 0;
+        const maxAttempts = 10; // Prevent infinite loops
 
-      while (attempts < maxAttempts) {
-        const exportJSON = currentCreature.exportJSON();
-        const originalCount = exportJSON.synapses.length;
-        exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
-          !(synapse.fromUUID === removalUUID.from &&
-            synapse.toUUID === removalUUID.to)
-        );
-
-        if (exportJSON.synapses.length < originalCount) {
-          const updated = Creature.fromJSON(exportJSON);
-          // We modified the structure by filtering synapses, so we must delete UUID
-          delete updated.uuid;
-          updated.fix();
-
-          // Verify it's still removed after fix()
-          const verifyJSON = updated.exportJSON();
-          const stillExists = verifyJSON.synapses.some((synapse) =>
-            synapse.fromUUID === removalUUID.from &&
-            synapse.toUUID === removalUUID.to
+        while (attempts < maxAttempts) {
+          const exportJSON = currentCreature.exportJSON();
+          const originalCount = exportJSON.synapses.length;
+          exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
+            !(synapse.fromUUID === removalUUID.from &&
+              synapse.toUUID === removalUUID.to)
           );
 
-          if (!stillExists) {
-            // Successfully removed and stayed removed
+          if (exportJSON.synapses.length < originalCount) {
+            const updated = Creature.fromJSON(exportJSON);
+            // We modified the structure by filtering synapses, so we must delete UUID
+            delete updated.uuid;
+            updated.fix();
+
+            // Verify it's still removed after fix()
+            const verifyJSON = updated.exportJSON();
+            const stillExists = verifyJSON.synapses.some((synapse) =>
+              synapse.fromUUID === removalUUID.from &&
+              synapse.toUUID === removalUUID.to
+            );
+
+            if (!stillExists) {
+              // Successfully removed and stayed removed
+              currentCreature = updated;
+              break;
+            }
+            // Still exists, try again
             currentCreature = updated;
+          } else {
+            // Synapse doesn't exist, we're done
             break;
           }
-          // Still exists, try again
-          currentCreature = updated;
-        } else {
-          // Synapse doesn't exist, we're done
-          break;
+          attempts++;
         }
-        attempts++;
-      }
 
-      bestOfCategoryCandidate.creature = currentCreature;
+        bestOfCategoryCandidate.creature = currentCreature;
+      }
+      candidates.push(bestOfCategoryCandidate);
     }
-    candidates.push(bestOfCategoryCandidate);
   }
 
   return candidates;
@@ -1069,4 +1091,305 @@ function wrapBestCandidate<
     return currentBest;
   }, undefined);
   return best ? [best] : undefined;
+}
+
+/**
+ * Build combined creatures from successful single candidates.
+ *
+ * This function is used in two-phase discovery scoring:
+ * 1. Phase 1: Evaluate single candidates
+ * 2. Phase 2: Call this function with successful candidates to create combinations
+ *
+ * Only combines candidates that have proven to improve score individually.
+ * Creates pairwise combinations and an all-successful combination.
+ *
+ * @param baseCreature The original creature before any changes
+ * @param discoveryID The discovery session identifier
+ * @param successfulCandidates Candidates that improved score in Phase 1
+ * @returns Combined candidates to evaluate in Phase 2
+ */
+export function buildCombinedFromSuccessful(
+  baseCreature: Creature,
+  discoveryID: string,
+  successfulCandidates: DiscoveryCandidate[],
+): DiscoveryCandidate[] {
+  if (successfulCandidates.length < 2) {
+    return [];
+  }
+
+  const combinedCandidates: DiscoveryCandidate[] = [];
+
+  // Group successful candidates by their change type for targeted combination
+  const byType = new Map<string, DiscoveryCandidate[]>();
+  for (const candidate of successfulCandidates) {
+    const type = candidate.change.type;
+    if (!byType.has(type)) {
+      byType.set(type, []);
+    }
+    byType.get(type)!.push(candidate);
+  }
+
+  // Build all-successful combination by applying changes sequentially
+  let combinedCreature = baseCreature;
+  const appliedTypes: string[] = [];
+  const appliedDescriptions: string[] = [];
+
+  // Apply changes in a deterministic order (sorted by type name)
+  const sortedTypes = [...byType.keys()].sort();
+  for (const type of sortedTypes) {
+    const candidates = byType.get(type)!;
+    // Use the first (or best) candidate of each type
+    const best = candidates[0];
+
+    // Try to apply this change to the combined creature
+    const applied = applyChangeToCreature(
+      combinedCreature,
+      best,
+      discoveryID,
+    );
+
+    if (applied && applied !== combinedCreature) {
+      combinedCreature = applied;
+      appliedTypes.push(type);
+      const shortDesc = best.change.description?.split(" ")[0] || type;
+      appliedDescriptions.push(shortDesc);
+    }
+  }
+
+  if (appliedTypes.length >= 2 && combinedCreature !== baseCreature) {
+    // Select emoji based on the combination
+    const emoji = selectCombinationEmoji(appliedTypes);
+    const description =
+      `${emoji} Combined ${appliedTypes.length} successful changes: ${
+        appliedTypes.join(", ")
+      }`;
+
+    combinedCandidates.push({
+      creature: combinedCreature,
+      change: {
+        type: "combo-successful",
+        description,
+      },
+    });
+  }
+
+  // If we have more than 2 successful candidates, also try pairwise combinations
+  // to see if any pair performs better than the full combination
+  if (successfulCandidates.length > 2 && successfulCandidates.length <= 6) {
+    for (let i = 0; i < successfulCandidates.length; i++) {
+      for (let j = i + 1; j < successfulCandidates.length; j++) {
+        const candA = successfulCandidates[i];
+        const candB = successfulCandidates[j];
+
+        // Skip if same type (already handled above)
+        if (candA.change.type === candB.change.type) continue;
+
+        let pairCreature = applyChangeToCreature(
+          baseCreature,
+          candA,
+          discoveryID,
+        );
+        if (pairCreature && pairCreature !== baseCreature) {
+          pairCreature = applyChangeToCreature(
+            pairCreature,
+            candB,
+            discoveryID,
+          );
+          if (pairCreature) {
+            const emoji = selectCombinationEmoji([
+              candA.change.type,
+              candB.change.type,
+            ]);
+            combinedCandidates.push({
+              creature: pairCreature,
+              change: {
+                type: "combo-successful",
+                description:
+                  `${emoji} Combined ${candA.change.type} + ${candB.change.type}`,
+              },
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return combinedCandidates;
+}
+
+/**
+ * Apply a candidate's change to a creature, returning the modified creature.
+ */
+function applyChangeToCreature(
+  creature: Creature,
+  candidate: DiscoveryCandidate,
+  _discoveryID: string,
+): Creature | undefined {
+  const changeType = candidate.change.type;
+  const candidateJSON = candidate.creature.exportJSON();
+  const creatureJSON = creature.exportJSON();
+
+  try {
+    switch (changeType) {
+      case "add-synapses": {
+        // Find synapses in candidate that don't exist in creature
+        const existingSynapses = new Set(
+          creatureJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
+        );
+        const newSynapses = candidateJSON.synapses.filter(
+          (s) => !existingSynapses.has(`${s.fromUUID}->${s.toUUID}`),
+        );
+        if (newSynapses.length === 0) return creature;
+
+        creatureJSON.synapses.push(...newSynapses);
+        const result = Creature.fromJSON(creatureJSON);
+        delete result.uuid;
+        result.fix();
+        CreatureUtil.makeUUID(result);
+        return result;
+      }
+
+      case "add-neurons": {
+        // Find neurons in candidate that don't exist in creature
+        const existingNeurons = new Set(
+          creatureJSON.neurons.map((n) => n.uuid),
+        );
+        const candidateNeurons = candidateJSON.neurons.filter(
+          (n) => n.type === "hidden" && !existingNeurons.has(n.uuid),
+        );
+        if (candidateNeurons.length === 0) return creature;
+
+        // Find synapses connected to these new neurons
+        const newNeuronUUIDs = new Set(candidateNeurons.map((n) => n.uuid));
+        const newSynapses = candidateJSON.synapses.filter(
+          (s) => newNeuronUUIDs.has(s.fromUUID) || newNeuronUUIDs.has(s.toUUID),
+        );
+
+        // Insert neurons before outputs
+        const outputCount = creatureJSON.output ?? 1;
+        const outputOffset = creatureJSON.neurons.length - outputCount;
+        creatureJSON.neurons.splice(outputOffset, 0, ...candidateNeurons);
+        creatureJSON.synapses.push(...newSynapses);
+
+        const result = Creature.fromJSON(creatureJSON);
+        delete result.uuid;
+        result.fix();
+        CreatureUtil.makeUUID(result);
+        return result;
+      }
+
+      case "change-squash": {
+        // Copy squash changes from candidate
+        const candidateNeuronMap = new Map(
+          candidateJSON.neurons.map((n) => [n.uuid, n]),
+        );
+        let changed = false;
+        for (const neuron of creatureJSON.neurons) {
+          const candidateNeuron = candidateNeuronMap.get(neuron.uuid);
+          if (candidateNeuron && candidateNeuron.squash !== neuron.squash) {
+            neuron.squash = candidateNeuron.squash;
+            changed = true;
+          }
+        }
+        if (!changed) return creature;
+
+        const result = Creature.fromJSON(creatureJSON);
+        delete result.uuid;
+        result.fix();
+        CreatureUtil.makeUUID(result);
+        return result;
+      }
+
+      case "remove-synapse": {
+        // Find synapses removed in candidate
+        const candidateSynapses = new Set(
+          candidateJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
+        );
+        const removedSynapses = creatureJSON.synapses.filter(
+          (s) => !candidateSynapses.has(`${s.fromUUID}->${s.toUUID}`),
+        );
+        if (removedSynapses.length === 0) return creature;
+
+        creatureJSON.synapses = creatureJSON.synapses.filter((s) =>
+          candidateSynapses.has(`${s.fromUUID}->${s.toUUID}`)
+        );
+        const result = Creature.fromJSON(creatureJSON);
+        delete result.uuid;
+        result.fix();
+        CreatureUtil.makeUUID(result);
+        return result;
+      }
+
+      case "remove-neuron":
+      case "remove-low-impact": {
+        // Find neurons removed in candidate
+        const candidateNeurons = new Set(
+          candidateJSON.neurons.map((n) => n.uuid),
+        );
+        const removedNeurons = creatureJSON.neurons.filter(
+          (n) => n.type === "hidden" && !candidateNeurons.has(n.uuid),
+        );
+        if (removedNeurons.length === 0) return creature;
+
+        const removedUUIDs = new Set(removedNeurons.map((n) => n.uuid));
+        creatureJSON.neurons = creatureJSON.neurons.filter(
+          (n) => !removedUUIDs.has(n.uuid),
+        );
+        creatureJSON.synapses = creatureJSON.synapses.filter(
+          (s) => !removedUUIDs.has(s.fromUUID) && !removedUUIDs.has(s.toUUID),
+        );
+
+        const result = Creature.fromJSON(creatureJSON);
+        delete result.uuid;
+        result.fix();
+        CreatureUtil.makeUUID(result);
+        return result;
+      }
+
+      default:
+        // For combo types or unknown, just return the candidate's creature
+        // This shouldn't happen in two-phase scoring but provides a fallback
+        console.warn(
+          `[DiscoveryCandidates] Unknown change type for combination: ${changeType}`,
+        );
+        return undefined;
+    }
+  } catch (error) {
+    console.warn(
+      `[DiscoveryCandidates] Failed to apply ${changeType} change during combination:`,
+      error,
+    );
+    return undefined;
+  }
+}
+
+/**
+ * Select an appropriate emoji for the combination based on change types.
+ */
+function selectCombinationEmoji(types: string[]): string {
+  const typeSet = new Set(types);
+
+  // Fun, informative emoji selections based on what's being combined
+  if (typeSet.has("remove-low-impact") && typeSet.has("add-neurons")) {
+    return "🦋"; // Metamorphosis - shedding old, gaining new
+  }
+  if (typeSet.has("remove-low-impact") || typeSet.has("remove-neuron")) {
+    return "✂️"; // Pruning/trimming
+  }
+  if (typeSet.has("add-neurons") && typeSet.has("add-synapses")) {
+    return "🌱"; // Growing - adding structure
+  }
+  if (typeSet.has("change-squash")) {
+    return "🎭"; // Transformation - changing behaviour
+  }
+  if (typeSet.has("add-neurons")) {
+    return "🧠"; // Neural growth
+  }
+  if (typeSet.has("add-synapses")) {
+    return "🔗"; // Connecting
+  }
+  if (types.length >= 3) {
+    return "🏆"; // Triple or more combination - achievement!
+  }
+  return "🔬"; // Generic scientific discovery
 }
