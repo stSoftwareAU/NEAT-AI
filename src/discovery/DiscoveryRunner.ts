@@ -854,32 +854,67 @@ export class DiscoveryRunner {
       return 0;
     });
 
-    // ALWAYS include a few random removal candidates (minimum 3, or all if fewer)
+    // ALWAYS include a few removal candidates (minimum 3, or all if fewer)
     // These are added ON TOP of the regular selection, not competing for the same slots
+    // Strategy: Pick randomly from the TOP 10 lowest-impact candidates (safest to remove)
     const removalSampleSize = Math.min(removalCandidates.length, 3);
     let selectedRemovalCandidates: DiscoveryCandidate[];
 
     if (removalCandidates.length <= removalSampleSize) {
       selectedRemovalCandidates = removalCandidates;
     } else {
-      // Fisher-Yates shuffle and take first N
-      const shuffled = [...removalCandidates];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      selectedRemovalCandidates = shuffled.slice(0, removalSampleSize);
+      // Extract impact values from candidate descriptions (format: "impact: X.XXe-XX")
+      const candidatesWithImpact = removalCandidates.map((candidate) => {
+        const impactMatch = candidate.change.description?.match(
+          /impact:\s*([\d.e+-]+)/i,
+        );
+        const impact = impactMatch ? parseFloat(impactMatch[1]) : 1e-10;
+        return { candidate, impact };
+      });
 
+      // Sort by impact ascending (lowest = safest to remove)
+      candidatesWithImpact.sort((a, b) => a.impact - b.impact);
+
+      // Take the top 10 lowest-impact candidates as the pool to select from
+      const TOP_N = 10;
+      const topCandidates = candidatesWithImpact.slice(0, TOP_N);
+
+      // Log the top 10 pool before selection
+      const topPoolDetails = topCandidates
+        .map((c) => `${c.impact.toExponential(2)}`)
+        .join(", ");
       console.info(
-        `[DiscoveryRunner] Randomly selected ${removalSampleSize} of ${removalCandidates.length} removal candidates for evaluation`,
+        `[DiscoveryRunner] Top ${topCandidates.length} lowest-impact removal candidates pool: [${topPoolDetails}]`,
       );
 
-      // Mark remaining removal candidates as skipped
-      for (const candidate of shuffled.slice(removalSampleSize)) {
-        skipped.push({
-          changeType: candidate.change.type,
-          expected: candidate.change.expectedErrorReduction,
-        });
+      // Fisher-Yates shuffle on the top candidates and take first N
+      for (let i = topCandidates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [topCandidates[i], topCandidates[j]] = [
+          topCandidates[j],
+          topCandidates[i],
+        ];
+      }
+      const selected = topCandidates.slice(0, removalSampleSize);
+      selectedRemovalCandidates = selected.map((s) => s.candidate);
+
+      // Log which ones were chosen with their impact values
+      const selectedDetails = selected
+        .map((s) => `${s.impact.toExponential(2)}`)
+        .join(", ");
+      console.info(
+        `[DiscoveryRunner] ✓ Selected ${removalSampleSize} from top ${topCandidates.length}: [${selectedDetails}]`,
+      );
+
+      // Mark remaining candidates as skipped (both unselected from top pool and those outside top 10)
+      const selectedSet = new Set(selectedRemovalCandidates);
+      for (const item of candidatesWithImpact) {
+        if (!selectedSet.has(item.candidate)) {
+          skipped.push({
+            changeType: item.candidate.change.type,
+            expected: item.candidate.change.expectedErrorReduction,
+          });
+        }
       }
     }
 

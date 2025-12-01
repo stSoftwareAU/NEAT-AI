@@ -403,10 +403,23 @@ export function buildDiscoveryCandidates(
   // Low-impact removal candidates (impact below costOfGrowth)
   // These neurons contribute essentially nothing to outputs - removing them improves
   // the creature's score because the complexity reduction benefit exceeds their contribution.
+  //
   // NOTE: expectedErrorReduction is left undefined because:
   // 1. Removal doesn't reduce error - it may slightly increase it
   // 2. The improvement comes from score (complexity reduction), not error reduction
   // 3. The filter explicitly passes undefined through for evaluation
+  //
+  // INVESTIGATION NOTE (Dec 2025): Why might removing low-impact neurons INCREASE error?
+  // Observed behaviour: neurons with impact < 1e-10 sometimes increase error when removed.
+  // Potential causes:
+  //   a) Structural impact calculation may not reflect runtime activation patterns accurately
+  //   b) Neurons receiving signals that cancel out (net zero impact on path, but still contributing)
+  //   c) The neuron's bias adjustment during removal may not perfectly compensate
+  //   d) Non-linear interactions through downstream neurons may amplify small contributions
+  // Potential mitigations:
+  //   - Use stricter impact threshold (e.g., < 1e-12 instead of < 1e-10)
+  //   - Verify with actual activation data before removal
+  //   - Consider average activation magnitude in addition to structural impact
   const { removalCandidates } = discovery;
   if (removalCandidates && removalCandidates.length > 0) {
     let removalSuccessCount = 0;
@@ -460,6 +473,35 @@ export function buildDiscoveryCandidates(
           `${removalSuccessCount} succeeded, ${removalFailureCount} failed` +
           (failureDetails ? ` (${failureDetails})` : ""),
       );
+
+      // Log detailed list of removal candidates sorted by impact (lowest first)
+      // This helps identify if specific test neurons like "candidate-for-removal" are included
+      const sortedByImpact = [...removalCandidates].sort((a, b) =>
+        a.impact - b.impact
+      );
+      const topCandidates = sortedByImpact.slice(0, 10);
+      const candidateDetails = topCandidates.map((c) =>
+        `${shortID(c.neuronUUID)}:${c.impact.toExponential(2)}`
+      ).join(", ");
+      console.info(
+        `[DiscoveryCandidates] Top ${topCandidates.length} lowest-impact removal candidates: ${candidateDetails}`,
+      );
+
+      // Check for specific test neuron patterns (e.g., containing "candidate-for-removal")
+      // This helps verify test neurons are being properly identified
+      const testNeuronMatches = removalCandidates.filter((c) =>
+        c.neuronUUID.toLowerCase().includes("candidate") ||
+        c.neuronUUID.toLowerCase().includes("test") ||
+        c.neuronUUID.toLowerCase().includes("removal")
+      );
+      if (testNeuronMatches.length > 0) {
+        console.info(
+          `[DiscoveryCandidates] Found ${testNeuronMatches.length} potential test neuron(s) in removal list: ` +
+            testNeuronMatches.map((c) =>
+              `${c.neuronUUID}:${c.impact.toExponential(2)}`
+            ).join(", "),
+        );
+      }
     }
   }
 
