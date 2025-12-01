@@ -421,6 +421,9 @@ export function buildDiscoveryCandidates(
   //   - Verify with actual activation data before removal
   //   - Consider average activation magnitude in addition to structural impact
   const { removalCandidates } = discovery;
+  // Track successfully removed candidates for combined removal
+  const successfulRemovals: typeof removalCandidates = [];
+
   if (removalCandidates && removalCandidates.length > 0) {
     let removalSuccessCount = 0;
     let removalFailureCount = 0;
@@ -445,6 +448,7 @@ export function buildDiscoveryCandidates(
       );
       if (removedLowImpactCreature) {
         removalSuccessCount++;
+        successfulRemovals.push(candidate);
         candidates.push({
           creature: removedLowImpactCreature,
           change: {
@@ -500,6 +504,53 @@ export function buildDiscoveryCandidates(
             testNeuronMatches.map((c) =>
               `${c.neuronUUID}:${c.impact.toExponential(2)}`
             ).join(", "),
+        );
+      }
+    }
+
+    // Build a COMBINED removal candidate that removes ALL successful candidates at once
+    // This allows cleaning up multiple low-impact neurons in a single operation
+    // The combined version competes with individual removals - best score wins
+    if (successfulRemovals.length >= 2) {
+      let combinedRemovalCreature: Creature | undefined = baseCreature;
+
+      // Apply each removal sequentially to the same creature
+      for (const candidate of successfulRemovals) {
+        if (!combinedRemovalCreature) break;
+
+        combinedRemovalCreature = DiscoverStructure.removeLowImpactNeuron(
+          discovery.ID,
+          combinedRemovalCreature,
+          candidate,
+        );
+      }
+
+      if (combinedRemovalCreature && combinedRemovalCreature !== baseCreature) {
+        // Format neuron IDs for git log message
+        const neuronIDs = successfulRemovals
+          .map((c) => shortID(c.neuronUUID))
+          .join(", ");
+
+        // Git-friendly message: clear, concise, good English
+        const description = successfulRemovals.length === 2
+          ? `🧹 Pruned 2 low-impact neurons in combined cleanup (${neuronIDs})`
+          : `🧹 Pruned ${successfulRemovals.length} low-impact neurons in combined cleanup`;
+
+        candidates.push({
+          creature: combinedRemovalCreature,
+          change: {
+            type: "remove-low-impact",
+            description,
+            // No expectedErrorReduction - removal improves score via complexity reduction, not error
+          },
+        });
+
+        // Detailed logging for diagnostics (not in git)
+        const impactDetails = successfulRemovals
+          .map((c) => `${shortID(c.neuronUUID)}:${c.impact.toExponential(2)}`)
+          .join(", ");
+        console.info(
+          `[DiscoveryCandidates] Created combined removal candidate: ${successfulRemovals.length} neurons [${impactDetails}]`,
         );
       }
     }
