@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "../../../mod.ts";
+import { removeHiddenNeuron } from "../../compact/CompactUtils.ts";
 import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
 import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
@@ -3681,17 +3682,134 @@ export class DiscoverStructure {
     worseCandidate?: CandidateSynapse,
   ): Creature | null {
     if (!worseCandidate) return null;
+
+    // Find the synapse indices in the creature
+    const fromNeuron = creature.neurons.find(
+      (n) => n.uuid === worseCandidate.fromNeuronUUID,
+    );
+    const toNeuron = creature.neurons.find(
+      (n) => n.uuid === worseCandidate.toNeuronUUID,
+    );
+
+    if (!fromNeuron || !toNeuron) {
+      console.warn(
+        `[DiscoverStructure] removeSynapse: neuron(s) not found for synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}`,
+      );
+      return null;
+    }
+
+    const fromIndx = fromNeuron.index;
+    const toIndx = toNeuron.index;
+
+    // Check if the synapse actually exists
+    const synapse = creature.getSynapse(fromIndx, toIndx);
+    if (!synapse) {
+      console.warn(
+        `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID} does not exist in creature`,
+      );
+      return null;
+    }
+
     const creatureUUID = CreatureUtil.makeUUID(creature);
     const exportJSON = creature.exportJSON();
-    exportJSON.synapses = exportJSON.synapses.filter((synapse) => {
-      return synapse.fromUUID !== worseCandidate.fromNeuronUUID ||
-        synapse.toUUID !== worseCandidate.toNeuronUUID;
+    exportJSON.synapses = exportJSON.synapses.filter((s) => {
+      return s.fromUUID !== worseCandidate.fromNeuronUUID ||
+        s.toUUID !== worseCandidate.toNeuronUUID;
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
     // We modified the structure by filtering synapses, so we must delete UUID
     delete tmpCreature.uuid;
-    tmpCreature.fix();
+    delete tmpCreature.memetic;
+
+    // Handle cascading effects like SubConnection.ts does (instead of calling fix())
+    // Check if the "to" neuron has 0 inward connections
+    const toNeuronInTmp = tmpCreature.neurons.find(
+      (n) => n.uuid === worseCandidate.toNeuronUUID,
+    );
+    let toNeuronRemoved = false;
+
+    if (toNeuronInTmp) {
+      const toIndxInTmp = toNeuronInTmp.index;
+      const inwardList = tmpCreature.inwardConnections(toIndxInTmp);
+
+      if (inwardList.length === 0 && toNeuronInTmp.type === "hidden") {
+        const outwardList = tmpCreature.outwardConnections(toIndxInTmp);
+        if (outwardList.length === 0) {
+          // No inward or outward connections - remove entirely
+          console.info(
+            `[DiscoverStructure] removeSynapse: removing completely disconnected neuron ${toNeuronInTmp.uuid}`,
+          );
+          removeHiddenNeuron(tmpCreature, toIndxInTmp);
+          toNeuronRemoved = true;
+        } else {
+          // Has outward connections - convert to constant
+          console.info(
+            `[DiscoverStructure] removeSynapse: converting neuron ${toNeuronInTmp.uuid} to constant`,
+          );
+          const squash = toNeuronInTmp.findSquash();
+          const activation = squash as ActivationInterface;
+          if (activation.squash) {
+            const constantBias = activation.squash(toNeuronInTmp.bias);
+            console.info(
+              `[DiscoverStructure] removeSynapse: adjusting neuron ${toNeuronInTmp.uuid} bias ${toNeuronInTmp.bias} to ${constantBias}`,
+            );
+            toNeuronInTmp.bias = constantBias;
+          }
+          toNeuronInTmp.type = "constant";
+          toNeuronInTmp.setSquash(undefined);
+        }
+      }
+    }
+
+    // Check if the "from" neuron now has 0 outward connections
+    const fromNeuronInTmp = tmpCreature.neurons.find(
+      (n) => n.uuid === worseCandidate.fromNeuronUUID,
+    );
+
+    if (fromNeuronInTmp) {
+      // Adjust index if the "to" neuron was removed and came before "from"
+      let fromIndxInTmp = fromNeuronInTmp.index;
+      if (toNeuronRemoved && toIndx < fromIndxInTmp) {
+        // Index already adjusted by removeHiddenNeuron, find by UUID again
+        const fromNeuronUpdated = tmpCreature.neurons.find(
+          (n) => n.uuid === worseCandidate.fromNeuronUUID,
+        );
+        if (fromNeuronUpdated) {
+          fromIndxInTmp = fromNeuronUpdated.index;
+        }
+      }
+
+      const fromOutwardList = tmpCreature.outwardConnections(fromIndxInTmp);
+      if (fromOutwardList.length === 0) {
+        const fromNeuronType = tmpCreature.neurons[fromIndxInTmp]?.type;
+        if (fromNeuronType === "hidden" || fromNeuronType === "constant") {
+          console.info(
+            `[DiscoverStructure] removeSynapse: removing neuron ${worseCandidate.fromNeuronUUID} as no longer connected`,
+          );
+          removeHiddenNeuron(tmpCreature, fromIndxInTmp);
+        }
+      }
+    }
+
+    // Validate the creature - only call fix() as a last resort
+    try {
+      tmpCreature.validate();
+    } catch (validationError) {
+      console.warn(
+        `[DiscoverStructure] removeSynapse: creature became invalid after removing synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}. ` +
+          `This is a bug that should be investigated. Error: ${validationError}. Attempting fix() as last resort.`,
+      );
+      tmpCreature.fix();
+      try {
+        tmpCreature.validate();
+      } catch (fixError) {
+        console.error(
+          `[DiscoverStructure] removeSynapse: fix() failed to repair creature. Error: ${fixError}`,
+        );
+        return null;
+      }
+    }
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
@@ -3700,12 +3818,15 @@ export class DiscoverStructure {
       const summary =
         `☣️ Removed harmful synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}`;
       addTag(tmpCreature, "Discovery", summary);
-      delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
-      tmpCreature.validate();
 
       return tmpCreature;
     }
+
+    // Synapse existed but removal didn't change UUID
+    console.warn(
+      `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID} existed but removal had no structural effect`,
+    );
     return null;
   }
 
