@@ -3734,13 +3734,21 @@ export class DiscoverStructure {
           synapse.toUUID === bestCandidate.toNeuronUUID;
       });
 
-      if (foundSynapse) return;
+      if (foundSynapse) {
+        console.warn(
+          `[Discovery ${ID}] Synapse ${bestCandidate.fromNeuronUUID} -> ${bestCandidate.toNeuronUUID} already exists, skipping`,
+        );
+        return;
+      }
 
       const foundFromNeuron = exportJSON.neurons.find((neuron) => {
         return neuron.uuid === bestCandidate.fromNeuronUUID;
       });
       if (!foundFromNeuron) {
         if (!bestCandidate.fromNeuronUUID.startsWith("input-")) {
+          console.warn(
+            `[Discovery ${ID}] Source neuron ${bestCandidate.fromNeuronUUID} not found, skipping synapse`,
+          );
           return;
         }
       }
@@ -3749,7 +3757,12 @@ export class DiscoverStructure {
         if (neuron.type !== "hidden" && neuron.type !== "output") return false;
         return neuron.uuid === bestCandidate.toNeuronUUID;
       });
-      if (!foundToNeuron) return;
+      if (!foundToNeuron) {
+        console.warn(
+          `[Discovery ${ID}] Target neuron ${bestCandidate.toNeuronUUID} not found or is not hidden/output, skipping synapse`,
+        );
+        return;
+      }
 
       const addSynapse = {
         fromUUID: bestCandidate.fromNeuronUUID,
@@ -3763,9 +3776,35 @@ export class DiscoverStructure {
     });
 
     const tmpCreature = Creature.fromJSON(exportJSON);
-    // We modified the structure by filtering synapses, so we must delete UUID
+    // We added synapses to the structure, so we must delete UUID to get a new one
     delete tmpCreature.uuid;
-    tmpCreature.fix();
+
+    // Try validation first - only call fix() if truly needed
+    const beforeFixSynapseCount = tmpCreature.synapses.length;
+    const beforeFixNeuronCount = tmpCreature.neurons.length;
+    let fixWasCalled = false;
+    try {
+      tmpCreature.validate();
+    } catch (validationError) {
+      const error = validationError as Error;
+      console.warn(
+        `[Discovery ${ID}] Creature became invalid after adding synapses: ${error.name} - ${error.message}. Calling fix().`,
+      );
+      fixWasCalled = true;
+      tmpCreature.fix();
+
+      // Log what fix() changed
+      const afterFixSynapseCount = tmpCreature.synapses.length;
+      const afterFixNeuronCount = tmpCreature.neurons.length;
+      if (
+        afterFixSynapseCount !== beforeFixSynapseCount ||
+        afterFixNeuronCount !== beforeFixNeuronCount
+      ) {
+        console.warn(
+          `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
+        );
+      }
+    }
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID && appliedSynapses.length > 0) {
@@ -3776,6 +3815,9 @@ export class DiscoverStructure {
       addTag(tmpCreature, "approach", "discovery" as Approach);
       addTag(tmpCreature, "discoveryID", ID);
       addTag(tmpCreature, "Discovery", summary);
+      if (fixWasCalled) {
+        addTag(tmpCreature, "discovery-fix-required", "true");
+      }
       if (tmpCreature.memetic) {
         tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
       }
@@ -3875,13 +3917,42 @@ export class DiscoverStructure {
     });
 
     if (addedNeuronUUIDs.length === 0) {
+      console.warn(
+        `[Discovery ${ID}] No neurons could be added from ${helpfulNeurons.length} candidates`,
+      );
       return;
     }
 
     const tmpCreature = Creature.fromJSON(exportJSON);
-    // We modified the structure by filtering synapses, so we must delete UUID
+    // We added neurons and synapses to the structure, so we must delete UUID to get a new one
     delete tmpCreature.uuid;
-    tmpCreature.fix();
+
+    // Try validation first - only call fix() if truly needed
+    const beforeFixSynapseCount = tmpCreature.synapses.length;
+    const beforeFixNeuronCount = tmpCreature.neurons.length;
+    let fixWasCalled = false;
+    try {
+      tmpCreature.validate();
+    } catch (validationError) {
+      const error = validationError as Error;
+      console.warn(
+        `[Discovery ${ID}] Creature became invalid after adding neurons: ${error.name} - ${error.message}. Calling fix().`,
+      );
+      fixWasCalled = true;
+      tmpCreature.fix();
+
+      // Log what fix() changed
+      const afterFixSynapseCount = tmpCreature.synapses.length;
+      const afterFixNeuronCount = tmpCreature.neurons.length;
+      if (
+        afterFixSynapseCount !== beforeFixSynapseCount ||
+        afterFixNeuronCount !== beforeFixNeuronCount
+      ) {
+        console.warn(
+          `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
+        );
+      }
+    }
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
@@ -3893,6 +3964,9 @@ export class DiscoverStructure {
           ? `🕵🏻‍♂️ Added discovery neuron linking ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID}`
           : `🕵🏻‍♂️ Added ${appliedCandidates.length} discovery neurons (eg ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID})`;
         addTag(tmpCreature, "Discovery", summary);
+      }
+      if (fixWasCalled) {
+        addTag(tmpCreature, "discovery-fix-required", "true");
       }
       if (tmpCreature.memetic) {
         tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
@@ -3941,10 +4015,44 @@ export class DiscoverStructure {
       appliedSquashes.push(bestCandidate);
     });
 
+    if (appliedSquashes.length === 0) {
+      console.warn(
+        `[Discovery ${ID}] No squash changes could be applied from ${helpfulSquashes.length} candidates`,
+      );
+      return;
+    }
+
     const tmpCreature = Creature.fromJSON(exportJSON);
-    // We modified the structure by filtering synapses, so we must delete UUID
+    // We changed squash functions, so we must delete UUID to get a new one
     delete tmpCreature.uuid;
-    tmpCreature.fix();
+
+    // Try validation first - only call fix() if truly needed
+    // Squash changes should rarely (if ever) require fix(), but handle edge cases
+    const beforeFixSynapseCount = tmpCreature.synapses.length;
+    const beforeFixNeuronCount = tmpCreature.neurons.length;
+    let fixWasCalled = false;
+    try {
+      tmpCreature.validate();
+    } catch (validationError) {
+      const error = validationError as Error;
+      console.warn(
+        `[Discovery ${ID}] Creature became invalid after changing squash: ${error.name} - ${error.message}. Calling fix().`,
+      );
+      fixWasCalled = true;
+      tmpCreature.fix();
+
+      // Log what fix() changed
+      const afterFixSynapseCount = tmpCreature.synapses.length;
+      const afterFixNeuronCount = tmpCreature.neurons.length;
+      if (
+        afterFixSynapseCount !== beforeFixSynapseCount ||
+        afterFixNeuronCount !== beforeFixNeuronCount
+      ) {
+        console.warn(
+          `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
+        );
+      }
+    }
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
@@ -3956,6 +4064,9 @@ export class DiscoverStructure {
           ? `🕵🏻‍♂️ Swapped ${exemplar.neuronUUID} squash to ${exemplar.squash}`
           : `🕵🏻‍♂️ Updated squash on ${appliedSquashes.length} neurons (eg ${exemplar.neuronUUID} -> ${exemplar.squash})`;
         addTag(tmpCreature, "Discovery", summary);
+      }
+      if (fixWasCalled) {
+        addTag(tmpCreature, "discovery-fix-required", "true");
       }
       if (tmpCreature.memetic) {
         tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
