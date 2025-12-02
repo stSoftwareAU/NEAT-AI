@@ -7,18 +7,16 @@
  * "fix()" to correct the problem. This leads to random connections being made
  * to "fix" the creature, but then the score of the creature will be worse
  * after applying the candidate.
- *
- * @see https://github.com/stSoftwareAU/NEAT-AI/issues/XXX
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
+import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type { CandidateSynapse } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { buildDiscoveryCandidates } from "../../src/discovery/DiscoveryCandidates.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
 /**
  * Creates a valid creature with a specific structure where we can test
