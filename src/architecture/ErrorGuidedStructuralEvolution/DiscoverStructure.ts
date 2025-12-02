@@ -3775,6 +3775,13 @@ export class DiscoverStructure {
       appliedSynapses.push(bestCandidate);
     });
 
+    if (appliedSynapses.length === 0) {
+      console.warn(
+        `[Discovery ${ID}] No synapses could be added from ${helpfulSynapses.length} candidates`,
+      );
+      return;
+    }
+
     const tmpCreature = Creature.fromJSON(exportJSON);
     // We added synapses to the structure, so we must delete UUID to get a new one
     delete tmpCreature.uuid;
