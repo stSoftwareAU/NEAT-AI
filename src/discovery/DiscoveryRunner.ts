@@ -984,13 +984,19 @@ export class DiscoveryRunner {
       // Removal candidates are handled separately - they improve score, not error
       if (isRemovalCandidate) {
         cacheStats.totalRemoval++;
-        if (isCached) cacheStats.cachedRemoval++;
+        if (isCached) {
+          cacheStats.cachedRemoval++;
+          continue; // Skip cached candidates - don't let them consume slots
+        }
         removalCandidates.push(candidate);
         continue;
       }
 
       cacheStats.totalOther++;
-      if (isCached) cacheStats.cachedOther++;
+      if (isCached) {
+        cacheStats.cachedOther++;
+        continue; // Skip cached candidates - don't let them consume slots
+      }
 
       // Check threshold for non-removal candidates
       let meetsThreshold = true;
