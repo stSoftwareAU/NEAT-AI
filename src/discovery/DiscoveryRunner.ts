@@ -20,11 +20,7 @@ import {
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import {
-  filterCachedCandidates,
-  isCandidateCachedSync,
-  recordFailureSync,
-} from "./FailureCache.ts";
+import { isCandidateCachedSync, recordFailureSync } from "./FailureCache.ts";
 
 export interface DiscoveryRunnerWorker {
   discover(
@@ -286,27 +282,17 @@ export class DiscoveryRunner {
         );
       }
 
-      // Filter out cached failures if failure cache is enabled
-      const { filtered: uncachedCandidates, cachedCount } =
-        filterCachedCandidates(failureCacheDir, filteredSingleCandidates);
-      if (cachedCount > 0) {
-        verboseLog(
-          `Skipped ${cachedCount} candidate${
-            cachedCount === 1 ? "" : "s"
-          } from failure cache (previously failed to improve).`,
-        );
-      }
-
       markPhase("Candidate synthesis (Phase 1)", candidateBuildStart);
 
       // Phase 1 evaluation: Score single candidates + original
+      // Note: Cached candidates are already filtered out in #filterCandidatesForEvaluation
       const phase1Tasks: Array<{
         kind: "original" | "candidate";
         creature: Creature;
         candidate?: DiscoveryCandidate;
       }> = [
         { kind: "original", creature },
-        ...uncachedCandidates.map((candidate) => ({
+        ...filteredSingleCandidates.map((candidate) => ({
           kind: "candidate" as const,
           creature: candidate.creature,
           candidate,
@@ -375,19 +361,9 @@ export class DiscoveryRunner {
               failureCacheDir,
             );
 
-          // Filter out cached failures for combined candidates too
-          const { filtered: filteredCombos, cachedCount: comboCachedCount } =
-            filterCachedCandidates(failureCacheDir, thresholdFilteredCombos);
-          if (comboCachedCount > 0) {
-            verboseLog(
-              `[Phase 2] Skipped ${comboCachedCount} combined candidate${
-                comboCachedCount === 1 ? "" : "s"
-              } from failure cache.`,
-            );
-          }
-
-          if (filteredCombos.length > 0) {
-            const phase2Tasks = filteredCombos.map((candidate) => ({
+          // Note: Cached candidates are already filtered out in #filterCandidatesForEvaluation
+          if (thresholdFilteredCombos.length > 0) {
+            const phase2Tasks = thresholdFilteredCombos.map((candidate) => ({
               kind: "candidate" as const,
               creature: candidate.creature,
               candidate,
