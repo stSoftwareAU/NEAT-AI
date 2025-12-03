@@ -363,3 +363,103 @@ Deno.test("buildCacheKey handles edge case of empty synapses", () => {
   assert(typeof key === "string", "Key should be a string");
   assert(key.length > 0, "Key should not be empty");
 });
+
+Deno.test("buildCacheKey creates different keys for different output squash functions", () => {
+  // Issue: Output neurons were excluded from structural signature, so candidates
+  // differing only in output neuron squash functions would have identical keys.
+  const creature1 = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature1.validate();
+  CreatureUtil.makeUUID(creature1);
+
+  const creature2 = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "TANH", bias: 0.1 }, // Different squash
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature2.validate();
+  CreatureUtil.makeUUID(creature2);
+
+  const candidate1 = makeCandidate("change-squash", "test", creature1);
+  const candidate2 = makeCandidate("change-squash", "test", creature2);
+
+  const key1 = buildCacheKey(candidate1);
+  const key2 = buildCacheKey(candidate2);
+
+  assert(
+    key1 !== key2,
+    "Cache keys should differ when output neuron squash functions differ",
+  );
+});
+
+Deno.test("buildCacheKey produces deterministic keys regardless of neuron order", () => {
+  // Issue: Hidden neurons weren't sorted, so the same structure with neurons
+  // in different order could produce different signatures.
+
+  // Creature with hidden neurons in one order
+  const creature1 = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-a", squash: "TANH", bias: 0.5 },
+      { type: "hidden", uuid: "hidden-b", squash: "RELU", bias: 0.3 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-a", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-b", weight: 0.5 },
+      { fromUUID: "hidden-a", toUUID: "output-0", weight: 0.5 },
+      { fromUUID: "hidden-b", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature1.validate();
+  CreatureUtil.makeUUID(creature1);
+
+  // Same creature with hidden neurons declared in reverse order
+  const creature2 = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-b", squash: "RELU", bias: 0.3 },
+      { type: "hidden", uuid: "hidden-a", squash: "TANH", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-a", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-b", weight: 0.5 },
+      { fromUUID: "hidden-a", toUUID: "output-0", weight: 0.5 },
+      { fromUUID: "hidden-b", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature2.validate();
+  CreatureUtil.makeUUID(creature2);
+
+  const candidate1 = makeCandidate("add-synapses", "test", creature1);
+  const candidate2 = makeCandidate("add-synapses", "test", creature2);
+
+  const key1 = buildCacheKey(candidate1);
+  const key2 = buildCacheKey(candidate2);
+
+  assertEquals(
+    key1,
+    key2,
+    "Cache keys should be identical for structurally identical creatures regardless of neuron declaration order",
+  );
+});

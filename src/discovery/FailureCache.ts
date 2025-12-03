@@ -123,18 +123,24 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
 /**
  * Builds a structural signature from the creature's neurons and synapses.
  * Uses exponents for weights/biases to group similar structures together.
+ *
+ * Includes both hidden and output neurons (sorted by UUID for determinism).
+ * Input neurons are excluded as they have no squash/bias.
  */
 function buildStructuralSignature(candidate: DiscoveryCandidate): string {
   const exported = candidate.creature.exportJSON();
   const sigParts: string[] = [];
 
   // Include neuron signatures (UUID, squash, bias exponent)
-  for (const neuron of exported.neurons) {
-    if (neuron.type === "hidden") {
-      sigParts.push(
-        `n:${neuron.uuid}:${neuron.squash}:${formatWeight(neuron.bias)}`,
-      );
-    }
+  // Filter to hidden and output neurons, then sort by UUID for determinism
+  const relevantNeurons = exported.neurons
+    .filter((n) => n.type === "hidden" || n.type === "output")
+    .sort((a, b) => a.uuid.localeCompare(b.uuid));
+
+  for (const neuron of relevantNeurons) {
+    sigParts.push(
+      `n:${neuron.uuid}:${neuron.squash}:${formatWeight(neuron.bias)}`,
+    );
   }
 
   // Include synapse signatures (from→to, weight exponent)
