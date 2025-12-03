@@ -1457,3 +1457,252 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "DiscoveryRunner caches failed candidates when discoveryFailureCacheDir is set",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const cacheDir = `${tempDir}/failure-cache`;
+
+    try {
+      const discoveryResult: DiscoverResult = {
+        ID: "CACHE_FAILURES_TEST",
+        addHelpfulSynapses: [{
+          fromNeuronUUID: "input-1",
+          toNeuronUUID: "hidden-1",
+          weight: 0.45,
+          expectedImprovementPercentage: 0.2,
+          improvedCount: 5,
+          totalCount: 6,
+        }],
+        addHelpfulNeurons: undefined,
+        removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
+        candidateSquashes: undefined,
+      };
+
+      // All candidates will fail (worse than original)
+      const computeError = (_creature: Creature) => 0.6; // All worse
+
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            computeError,
+          ),
+      });
+
+      await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options: makeOptions({ discoveryFailureCacheDir: cacheDir }),
+      });
+
+      // Verify cache directory was created and has content
+      const typeDir = `${cacheDir}/add-synapses`;
+      const entries: Deno.DirEntry[] = [];
+      for await (const entry of Deno.readDir(typeDir)) {
+        entries.push(entry);
+      }
+
+      assert(
+        entries.length > 0,
+        "Cache directory should contain at least one entry for failed candidate",
+      );
+
+      // Verify the cache file contains expected metadata
+      const cacheFile = entries[0];
+      const cacheContent = JSON.parse(
+        await Deno.readTextFile(`${typeDir}/${cacheFile.name}`),
+      );
+      assertEquals(
+        cacheContent.changeType,
+        "add-synapses",
+        "Cache entry should have correct change type",
+      );
+      assert(
+        cacheContent.timestamp,
+        "Cache entry should have timestamp",
+      );
+      assert(
+        cacheContent.scoreDelta < 0 || cacheContent.scoreDelta === 0,
+        "Cache entry should show non-positive score delta (failure)",
+      );
+    } finally {
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner skips cached candidates on subsequent runs",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const cacheDir = `${tempDir}/failure-cache`;
+
+    try {
+      const discoveryResult: DiscoverResult = {
+        ID: "SKIP_CACHED_TEST",
+        addHelpfulSynapses: [{
+          fromNeuronUUID: "input-1",
+          toNeuronUUID: "hidden-1",
+          weight: 0.45,
+          expectedImprovementPercentage: 0.2,
+          improvedCount: 5,
+          totalCount: 6,
+        }],
+        addHelpfulNeurons: undefined,
+        removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
+        candidateSquashes: undefined,
+      };
+
+      let evaluationCount = 0;
+      const computeError = (creature: Creature) => {
+        // Count evaluations (excluding original which has no candidate)
+        const json = creature.exportJSON();
+        const hasTestSynapse = json.synapses.some((s) =>
+          s.fromUUID === "input-1" && s.toUUID === "hidden-1" &&
+          Math.abs(s.weight - 0.45) < 1e-6
+        );
+        if (hasTestSynapse) {
+          evaluationCount++;
+        }
+        return 0.6; // All worse
+      };
+
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            computeError,
+          ),
+      });
+
+      const options = makeOptions({ discoveryFailureCacheDir: cacheDir });
+
+      // First run - should evaluate the candidate
+      await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options,
+      });
+
+      const firstRunEvaluations = evaluationCount;
+      assert(
+        firstRunEvaluations >= 1,
+        `First run should evaluate at least one synapse candidate, got ${firstRunEvaluations}`,
+      );
+
+      // Reset counter
+      evaluationCount = 0;
+
+      // Second run - should skip cached candidates
+      const result2 = await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options,
+      });
+
+      // The synapse candidate should not be evaluated again (cached)
+      assertEquals(
+        evaluationCount,
+        0,
+        "Second run should not evaluate cached candidates",
+      );
+
+      // Verify no improvement (since we skipped all candidates)
+      assertEquals(
+        result2.improvement,
+        undefined,
+        "Should have no improvement when all candidates are cached",
+      );
+    } finally {
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner does not cache successful candidates",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const cacheDir = `${tempDir}/failure-cache`;
+
+    try {
+      const discoveryResult: DiscoverResult = {
+        ID: "NO_CACHE_SUCCESS_TEST",
+        addHelpfulSynapses: [{
+          fromNeuronUUID: "input-1",
+          toNeuronUUID: "hidden-1",
+          weight: 0.45,
+          expectedImprovementPercentage: 0.5,
+          improvedCount: 9,
+          totalCount: 10,
+        }],
+        addHelpfulNeurons: undefined,
+        removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
+        candidateSquashes: undefined,
+      };
+
+      // The candidate will improve things
+      const computeError = (creature: Creature) => {
+        const json = creature.exportJSON();
+        const hasTestSynapse = json.synapses.some((s) =>
+          s.fromUUID === "input-1" && s.toUUID === "hidden-1" &&
+          Math.abs(s.weight - 0.45) < 1e-6
+        );
+        return hasTestSynapse ? 0.3 : 0.5; // Synapse improves things
+      };
+
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            computeError,
+          ),
+      });
+
+      const result = await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options: makeOptions({ discoveryFailureCacheDir: cacheDir }),
+      });
+
+      // Verify we got an improvement
+      assert(
+        result.improvement,
+        "Should have found an improvement",
+      );
+
+      // Verify cache directory either doesn't exist or has no add-synapses entries
+      // (successful candidates should not be cached)
+      try {
+        const typeDir = `${cacheDir}/add-synapses`;
+        const entries: Deno.DirEntry[] = [];
+        for await (const entry of Deno.readDir(typeDir)) {
+          entries.push(entry);
+        }
+        assertEquals(
+          entries.length,
+          0,
+          "Successful candidates should not be cached",
+        );
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+        // Directory doesn't exist, which is fine (no failures to cache)
+      }
+    } finally {
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);

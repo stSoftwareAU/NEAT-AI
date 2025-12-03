@@ -234,6 +234,18 @@ export interface NeatArguments {
    * Defaults to false (always record).
    */
   discoverySkipRecordPhase: boolean;
+
+  /**
+   * Directory path to cache discovery failures.
+   * When provided, discovery candidates that fail to improve the score are cached.
+   * Subsequent discovery runs will skip candidates that match cached failures.
+   *
+   * Delete this directory when the training dataset changes to allow re-evaluation.
+   *
+   * Cache keys use the exponential component of weights/biases (formatted in scientific notation)
+   * so only significant weight changes will trigger re-evaluation.
+   */
+  discoveryFailureCacheDir?: string;
 }
 
 export type NeatOptions = Partial<NeatArguments>;

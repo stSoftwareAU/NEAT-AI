@@ -20,6 +20,7 @@ import {
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import { filterCachedCandidates, recordFailureSync } from "./FailureCache.ts";
 
 export interface DiscoveryRunnerWorker {
   discover(
@@ -276,6 +277,19 @@ export class DiscoveryRunner {
           }.`,
         );
       }
+
+      // Filter out cached failures if failure cache is enabled
+      const failureCacheDir = config.discoveryFailureCacheDir;
+      const { filtered: uncachedCandidates, cachedCount } =
+        filterCachedCandidates(failureCacheDir, filteredSingleCandidates);
+      if (cachedCount > 0) {
+        verboseLog(
+          `Skipped ${cachedCount} candidate${
+            cachedCount === 1 ? "" : "s"
+          } from failure cache (previously failed to improve).`,
+        );
+      }
+
       markPhase("Candidate synthesis (Phase 1)", candidateBuildStart);
 
       // Phase 1 evaluation: Score single candidates + original
@@ -285,7 +299,7 @@ export class DiscoveryRunner {
         candidate?: DiscoveryCandidate;
       }> = [
         { kind: "original", creature },
-        ...filteredSingleCandidates.map((candidate) => ({
+        ...uncachedCandidates.map((candidate) => ({
           kind: "candidate" as const,
           creature: candidate.creature,
           candidate,
@@ -387,6 +401,35 @@ export class DiscoveryRunner {
         .filter((result) => result.kind === "candidate")
         .filter((result) => result.score > original.score)
         .sort((a, b) => b.score - a.score)[0];
+
+      // Cache failed candidates if failure cache is enabled
+      if (failureCacheDir) {
+        const failedCandidates = evaluationResults
+          .filter((result) => result.kind === "candidate")
+          .filter((result) => result.score <= original.score)
+          .filter((result) => result.candidate !== undefined);
+
+        let cachedFailuresCount = 0;
+        for (const failed of failedCandidates) {
+          if (failed.candidate) {
+            recordFailureSync(failureCacheDir, failed.candidate, {
+              originalScore: original.score,
+              candidateScore: failed.score,
+              scoreDelta: failed.score - original.score,
+              error: failed.error,
+            });
+            cachedFailuresCount++;
+          }
+        }
+
+        if (cachedFailuresCount > 0 && verboseLogging) {
+          verboseLog(
+            `Cached ${cachedFailuresCount} failed candidate${
+              cachedFailuresCount === 1 ? "" : "s"
+            } to failure cache.`,
+          );
+        }
+      }
 
       // Update discoverResult with re-scoring time for potential use in summary
       discoverResult.reScoringTime = reScoringTime;

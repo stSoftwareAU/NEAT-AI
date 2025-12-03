@@ -1,0 +1,365 @@
+import { assert, assertEquals } from "@std/assert";
+import {
+  buildCacheKey,
+  extractExponent,
+  formatWeight,
+  isCandidateCached,
+  recordFailure,
+} from "../../src/discovery/FailureCache.ts";
+import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+
+function makeSimpleCreature(): Creature {
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature.validate();
+  CreatureUtil.makeUUID(creature);
+  return creature;
+}
+
+function makeCandidate(
+  changeType: string,
+  description: string,
+  creature?: Creature,
+): DiscoveryCandidate {
+  return {
+    creature: creature ?? makeSimpleCreature(),
+    change: {
+      type: changeType as DiscoveryCandidate["change"]["type"],
+      description,
+    },
+  };
+}
+
+Deno.test("extractExponent returns correct exponent for various numbers", () => {
+  // Large positive number
+  assertEquals(extractExponent(123456.789), 5);
+
+  // Small positive number
+  assertEquals(extractExponent(0.000123), -4);
+
+  // Negative number
+  assertEquals(extractExponent(-456.78), 2);
+
+  // Very small number (scientific notation)
+  assertEquals(extractExponent(1.23e-10), -10);
+
+  // Very large number
+  assertEquals(extractExponent(9.87e15), 15);
+
+  // Number close to 1
+  assertEquals(extractExponent(1.5), 0);
+
+  // Zero returns a sentinel value
+  assertEquals(extractExponent(0), -999);
+
+  // Very small number close to zero
+  assertEquals(extractExponent(1e-300), -300);
+});
+
+Deno.test("formatWeight formats weight using exponent only", () => {
+  // Tests that similar weights map to the same string
+  assertEquals(formatWeight(0.123), "e-1");
+  assertEquals(formatWeight(0.234), "e-1"); // Same exponent, same key
+  assertEquals(formatWeight(0.0123), "e-2");
+  assertEquals(formatWeight(-0.123), "e-1"); // Sign doesn't affect exponent
+
+  // Large weights
+  assertEquals(formatWeight(1234.5), "e3");
+  assertEquals(formatWeight(9999.9), "e3");
+
+  // Zero
+  assertEquals(formatWeight(0), "e-999");
+});
+
+Deno.test("buildCacheKey creates reproducible keys for add-synapses candidates", () => {
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.123 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.456 },
+    ],
+  });
+  creature.validate();
+  CreatureUtil.makeUUID(creature);
+
+  const candidate = makeCandidate("add-synapses", "test synapse", creature);
+  const key = buildCacheKey(candidate);
+
+  // Key should be deterministic
+  const key2 = buildCacheKey(candidate);
+  assertEquals(key, key2, "Cache key should be reproducible");
+
+  // Key should contain the change type
+  assert(key.includes("add-synapses"), "Key should include change type");
+});
+
+Deno.test("buildCacheKey creates different keys for significantly different weights", () => {
+  const creature1 = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.001 }, // e-3
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature1.validate();
+  CreatureUtil.makeUUID(creature1);
+
+  const creature2 = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 10.0 }, // e1 (different order of magnitude)
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature2.validate();
+  CreatureUtil.makeUUID(creature2);
+
+  const candidate1 = makeCandidate("add-synapses", "test", creature1);
+  const candidate2 = makeCandidate("add-synapses", "test", creature2);
+
+  const key1 = buildCacheKey(candidate1);
+  const key2 = buildCacheKey(candidate2);
+
+  assert(
+    key1 !== key2,
+    "Cache keys should differ for significantly different weights",
+  );
+});
+
+Deno.test("buildCacheKey creates same keys for similar weights", () => {
+  const creature1 = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.123 }, // e-1
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature1.validate();
+  CreatureUtil.makeUUID(creature1);
+
+  const creature2 = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.234 }, // e-1 (same order of magnitude)
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature2.validate();
+  CreatureUtil.makeUUID(creature2);
+
+  const candidate1 = makeCandidate("add-synapses", "test", creature1);
+  const candidate2 = makeCandidate("add-synapses", "test", creature2);
+
+  const key1 = buildCacheKey(candidate1);
+  const key2 = buildCacheKey(candidate2);
+
+  assertEquals(
+    key1,
+    key2,
+    "Cache keys should be same for weights with same order of magnitude",
+  );
+});
+
+Deno.test("buildCacheKey includes neuron details for add-neurons candidates", () => {
+  const creature = makeSimpleCreature();
+  const candidate: DiscoveryCandidate = {
+    creature,
+    change: {
+      type: "add-neurons",
+      description: "Add neuron",
+      neuronDetails: {
+        fromNeuronUUID: "input-0",
+        toNeuronUUID: "output-0",
+        incomingWeight: 0.5,
+        outgoingWeight: -0.3,
+        bias: 0.1,
+        squash: "TANH",
+      },
+    },
+  };
+
+  const key = buildCacheKey(candidate);
+  assert(key.includes("add-neurons"), "Key should include change type");
+  assert(key.includes("input-0"), "Key should include from neuron UUID");
+  assert(key.includes("output-0"), "Key should include to neuron UUID");
+  assert(key.includes("TANH"), "Key should include squash function");
+});
+
+Deno.test("buildCacheKey handles remove-low-impact candidates", () => {
+  const creature = makeSimpleCreature();
+  const candidate: DiscoveryCandidate = {
+    creature,
+    change: {
+      type: "remove-low-impact",
+      description: "Remove low-impact neuron hidden-1 (impact: 1.23e-10)",
+    },
+  };
+
+  const key = buildCacheKey(candidate);
+  assert(key.includes("remove-low-impact"), "Key should include change type");
+  // The key should extract the neuron UUID from description
+  assert(
+    key.includes("hidden-1"),
+    "Key should include neuron UUID from description",
+  );
+});
+
+Deno.test("recordFailure and isCandidateCached work together", async () => {
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate = makeCandidate("add-synapses", "test synapse", creature);
+
+    // Initially should not be cached
+    const cachedBefore = await isCandidateCached(tempDir, candidate);
+    assertEquals(
+      cachedBefore,
+      false,
+      "Candidate should not be cached initially",
+    );
+
+    // Record the failure
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.4,
+      scoreDelta: -0.1,
+      error: 0.6,
+    });
+
+    // Now should be cached
+    const cachedAfter = await isCandidateCached(tempDir, candidate);
+    assertEquals(
+      cachedAfter,
+      true,
+      "Candidate should be cached after recording failure",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("isCandidateCached returns false when cache dir doesn't exist", async () => {
+  const nonExistentDir = "/tmp/non-existent-discovery-cache-" + Date.now();
+  const candidate = makeCandidate("add-synapses", "test", makeSimpleCreature());
+
+  const cached = await isCandidateCached(nonExistentDir, candidate);
+  assertEquals(
+    cached,
+    false,
+    "Should return false for non-existent cache directory",
+  );
+});
+
+Deno.test("recordFailure creates directory structure if needed", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const nestedDir = `${tempDir}/nested/cache/dir`;
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate = makeCandidate("change-squash", "test squash", creature);
+
+    // Record failure in nested directory that doesn't exist
+    await recordFailure(nestedDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.45,
+      scoreDelta: -0.05,
+      error: 0.55,
+    });
+
+    // Verify the cache file was created
+    const cached = await isCandidateCached(nestedDir, candidate);
+    assertEquals(
+      cached,
+      true,
+      "Candidate should be cached in newly created directory",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("different change types create different cache keys", () => {
+  const creature = makeSimpleCreature();
+
+  const synapsesCandidate = makeCandidate("add-synapses", "test", creature);
+  const neuronsCandidate = makeCandidate("add-neurons", "test", creature);
+  const squashCandidate = makeCandidate("change-squash", "test", creature);
+
+  const key1 = buildCacheKey(synapsesCandidate);
+  const key2 = buildCacheKey(neuronsCandidate);
+  const key3 = buildCacheKey(squashCandidate);
+
+  assert(
+    key1 !== key2,
+    "add-synapses and add-neurons should have different keys",
+  );
+  assert(
+    key2 !== key3,
+    "add-neurons and change-squash should have different keys",
+  );
+  assert(
+    key1 !== key3,
+    "add-synapses and change-squash should have different keys",
+  );
+});
+
+Deno.test("buildCacheKey handles edge case of empty synapses", () => {
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 1.0 },
+      { fromUUID: "input-1", toUUID: "output-0", weight: 1.0 },
+    ],
+  });
+  creature.validate();
+  CreatureUtil.makeUUID(creature);
+
+  const candidate = makeCandidate("add-synapses", "test", creature);
+  const key = buildCacheKey(candidate);
+
+  // Should not throw and should produce a valid key
+  assert(typeof key === "string", "Key should be a string");
+  assert(key.length > 0, "Key should not be empty");
+});

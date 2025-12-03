@@ -200,6 +200,42 @@ accumulating improvements over hundreds of iterations. See the
 [Discovery Guide](./docs/DISCOVERY_GUIDE.md) for real-world workflows and
 production-tuned configurations.
 
+### Discovery Failure Cache
+
+When running discovery iteratively with a stable training dataset, you can
+enable failure caching to avoid re-evaluating candidates that previously failed
+to improve the creature's score. This significantly speeds up discovery runs by
+skipping known-failing candidates.
+
+```typescript
+const result = await creature.discoveryDir(dataDir, {
+  discoveryFailureCacheDir: ".discovery/failure-cache",
+  // ... other options
+});
+```
+
+**How it works:**
+
+1. After evaluating candidates, those that fail to improve the score are cached
+2. On subsequent runs, cached candidates are skipped before evaluation
+3. Cache keys use weight/bias magnitude (exponent only), so only significant
+   changes trigger re-evaluation
+4. Delete the cache directory when your training dataset changes
+
+**When to use:**
+
+- Training dataset changes infrequently (e.g., once a day)
+- Running discovery repeatedly on the same creature
+- Want to reduce wasted computation on known-failing candidates
+
+**Cache key design:**
+
+- Uses the exponential component of weights/biases in scientific notation
+- Weights like `0.123` and `0.234` (both `e-1`) map to the same key
+- Weights like `0.001` (`e-3`) and `0.1` (`e-1`) map to different keys
+- This allows similar candidates to be cached together while still re-trying
+  when weights change significantly
+
 ### Forced Focus Overrides
 
 The discovery recorder now honours an optional `discoveryFocusNeuronUUIDs`

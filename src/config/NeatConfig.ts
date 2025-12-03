@@ -153,6 +153,7 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryDisableCleanup: options.discoveryDisableCleanup ?? false,
     discoveryBaseDirectory: options.discoveryBaseDirectory,
     discoverySkipRecordPhase: options.discoverySkipRecordPhase ?? false,
+    discoveryFailureCacheDir: options.discoveryFailureCacheDir,
   };
   validate(config);
   return Object.freeze(config);
