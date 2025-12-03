@@ -1628,6 +1628,116 @@ Deno.test(
 );
 
 Deno.test(
+  "DiscoveryRunner skips cached Phase 2 combined candidates on subsequent runs",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const cacheDir = `${tempDir}/failure-cache`;
+
+    try {
+      // Use 2 SQUASH changes - these create single candidates with stable cache keys
+      // (no generated UUIDs). Both improve individually but their combined fails.
+      // Base creature has hidden-1 with IDENTITY squash.
+      const discoveryResult: DiscoverResult = {
+        ID: "PHASE2_CACHE_TEST",
+        addHelpfulSynapses: undefined,
+        addHelpfulNeurons: undefined,
+        removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
+        candidateSquashes: [
+          {
+            neuronUUID: "hidden-1",
+            previousSquash: "IDENTITY",
+            squash: "TANH", // Change hidden-1's squash to TANH
+            expectedImprovementPercentage: 0.3,
+            improvedError: 0.4,
+            currentError: 0.5,
+          },
+          {
+            neuronUUID: "output-0",
+            previousSquash: "IDENTITY",
+            squash: "LOGISTIC", // Change output's squash to LOGISTIC
+            expectedImprovementPercentage: 0.3,
+            improvedError: 0.4,
+            currentError: 0.5,
+          },
+        ],
+      };
+
+      let phase2EvaluationCount = 0;
+
+      const computeError = (creature: Creature) => {
+        const json = creature.exportJSON();
+
+        // Check for TANH on hidden-1
+        const hasTanh = json.neurons.some((n) =>
+          n.uuid === "hidden-1" && n.squash === "TANH"
+        );
+        // Check for LOGISTIC on output-0
+        const hasLogistic = json.neurons.some((n) =>
+          n.uuid === "output-0" && n.squash === "LOGISTIC"
+        );
+
+        // Track combined candidate evaluations (both squash changes present)
+        if (hasTanh && hasLogistic) {
+          phase2EvaluationCount++;
+          return 0.6; // Combined candidate is worse
+        }
+
+        // Individual squash changes improve
+        if (hasTanh || hasLogistic) {
+          return 0.4; // Individual candidates improve
+        }
+
+        return 0.5; // Original
+      };
+
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            computeError,
+          ),
+      });
+
+      const options = makeOptions({ discoveryFailureCacheDir: cacheDir });
+
+      // First run - Phase 2 combined candidate should be evaluated and cached
+      await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options,
+      });
+
+      const firstRunPhase2Evaluations = phase2EvaluationCount;
+      assert(
+        firstRunPhase2Evaluations >= 1,
+        `First run should evaluate combined candidate, got ${firstRunPhase2Evaluations}`,
+      );
+
+      // Reset counter
+      phase2EvaluationCount = 0;
+
+      // Second run - Phase 2 combined candidate should be skipped (cached failure)
+      await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options,
+      });
+
+      assertEquals(
+        phase2EvaluationCount,
+        0,
+        "Second run should skip cached combined candidates",
+      );
+    } finally {
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
   "DiscoveryRunner does not cache successful candidates",
   async () => {
     const tempDir = await Deno.makeTempDir();

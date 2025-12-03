@@ -360,12 +360,23 @@ export class DiscoveryRunner {
           );
 
           // Filter combined candidates (apply same thresholds)
-          const { filtered: filteredCombos } = this
+          const { filtered: thresholdFilteredCombos } = this
             .#filterCandidatesForEvaluation(
               combinedCandidates,
               workerCount,
               config,
             );
+
+          // Filter out cached failures for combined candidates too
+          const { filtered: filteredCombos, cachedCount: comboCachedCount } =
+            filterCachedCandidates(failureCacheDir, thresholdFilteredCombos);
+          if (comboCachedCount > 0) {
+            verboseLog(
+              `[Phase 2] Skipped ${comboCachedCount} combined candidate${
+                comboCachedCount === 1 ? "" : "s"
+              } from failure cache.`,
+            );
+          }
 
           if (filteredCombos.length > 0) {
             const phase2Tasks = filteredCombos.map((candidate) => ({

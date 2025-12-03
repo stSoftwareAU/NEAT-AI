@@ -13,6 +13,7 @@
  * @module FailureCache
  */
 
+import { dirname } from "@std/path/dirname";
 import { join } from "@std/path/join";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 
@@ -248,7 +249,7 @@ export async function recordFailure(
 ): Promise<void> {
   try {
     const filePath = getCacheFilePath(cacheDir, candidate);
-    const dir = filePath.substring(0, filePath.lastIndexOf("/"));
+    const dir = dirname(filePath);
 
     // Ensure directory exists
     await Deno.mkdir(dir, { recursive: true });
@@ -285,7 +286,7 @@ export function recordFailureSync(
 ): void {
   try {
     const filePath = getCacheFilePath(cacheDir, candidate);
-    const dir = filePath.substring(0, filePath.lastIndexOf("/"));
+    const dir = dirname(filePath);
 
     // Ensure directory exists
     Deno.mkdirSync(dir, { recursive: true });
