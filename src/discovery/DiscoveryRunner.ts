@@ -20,7 +20,7 @@ import {
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import { filterCachedCandidates, recordFailureSync } from "./FailureCache.ts";
+import { isCandidateCachedSync, recordFailureSync } from "./FailureCache.ts";
 
 export interface DiscoveryRunnerWorker {
   discover(
@@ -254,11 +254,15 @@ export class DiscoveryRunner {
         }: ${singleCandidates.map((c) => c.change.type).join(", ") || "none"}.`,
       );
 
+      // Get failure cache directory for statistics and filtering
+      const failureCacheDir = config.discoveryFailureCacheDir;
+
       const { filtered: filteredSingleCandidates, skipped } = this
         .#filterCandidatesForEvaluation(
           singleCandidates,
           workerCount,
           config,
+          failureCacheDir,
         );
       if (skipped.length > 0) {
         const minThreshold = config.costOfGrowth *
@@ -278,28 +282,17 @@ export class DiscoveryRunner {
         );
       }
 
-      // Filter out cached failures if failure cache is enabled
-      const failureCacheDir = config.discoveryFailureCacheDir;
-      const { filtered: uncachedCandidates, cachedCount } =
-        filterCachedCandidates(failureCacheDir, filteredSingleCandidates);
-      if (cachedCount > 0) {
-        verboseLog(
-          `Skipped ${cachedCount} candidate${
-            cachedCount === 1 ? "" : "s"
-          } from failure cache (previously failed to improve).`,
-        );
-      }
-
       markPhase("Candidate synthesis (Phase 1)", candidateBuildStart);
 
       // Phase 1 evaluation: Score single candidates + original
+      // Note: Cached candidates are already filtered out in #filterCandidatesForEvaluation
       const phase1Tasks: Array<{
         kind: "original" | "candidate";
         creature: Creature;
         candidate?: DiscoveryCandidate;
       }> = [
         { kind: "original", creature },
-        ...uncachedCandidates.map((candidate) => ({
+        ...filteredSingleCandidates.map((candidate) => ({
           kind: "candidate" as const,
           creature: candidate.creature,
           candidate,
@@ -365,21 +358,12 @@ export class DiscoveryRunner {
               combinedCandidates,
               workerCount,
               config,
+              failureCacheDir,
             );
 
-          // Filter out cached failures for combined candidates too
-          const { filtered: filteredCombos, cachedCount: comboCachedCount } =
-            filterCachedCandidates(failureCacheDir, thresholdFilteredCombos);
-          if (comboCachedCount > 0) {
-            verboseLog(
-              `[Phase 2] Skipped ${comboCachedCount} combined candidate${
-                comboCachedCount === 1 ? "" : "s"
-              } from failure cache.`,
-            );
-          }
-
-          if (filteredCombos.length > 0) {
-            const phase2Tasks = filteredCombos.map((candidate) => ({
+          // Note: Cached candidates are already filtered out in #filterCandidatesForEvaluation
+          if (thresholdFilteredCombos.length > 0) {
+            const phase2Tasks = thresholdFilteredCombos.map((candidate) => ({
               kind: "candidate" as const,
               creature: candidate.creature,
               candidate,
@@ -914,22 +898,25 @@ export class DiscoveryRunner {
    * Filters discovery candidates for evaluation.
    *
    * Strategy:
-   * 1. ALWAYS include a few random removal candidates (they improve score, not error)
-   * 2. Include candidates with expected error reduction >= threshold
-   * 3. If there are more than 2x CPU cores candidates, select the best estimated ones
+   * 1. Group candidates by category (add-neurons, add-synapses, change-squash, remove-low-impact)
+   * 2. Select at least one from each category (ensuring diversity)
+   * 3. Fill remaining slots with best expected improvements across categories
+   * 4. Count failure cache statistics during selection (single pass)
    *
    * Removal candidates are treated separately because they don't reduce error -
-   * they improve SCORE by reducing complexity. So they shouldn't compete with
-   * add-neuron candidates that have expected error reduction.
+   * they improve SCORE by reducing complexity.
    *
    * @param candidates - All discovery candidates
    * @param threadCount - Number of CPU threads available
+   * @param config - NEAT configuration
+   * @param failureCacheDir - Optional failure cache directory for statistics
    * @returns Filtered candidates ready for evaluation and list of skipped candidates
    */
   #filterCandidatesForEvaluation(
     candidates: DiscoveryCandidate[],
     threadCount: number,
     config: NeatConfig,
+    failureCacheDir?: string,
   ): {
     filtered: DiscoveryCandidate[];
     skipped: Array<{
@@ -937,74 +924,188 @@ export class DiscoveryRunner {
       expected?: number;
     }>;
   } {
-    const maxCandidates = 2 * threadCount;
-
     // Calculate the minimum expected improvement threshold
     const multiplier = config.discoveryMinImprovementVsCostOfGrowthMultiplier;
     const minExpectedImprovement = config.costOfGrowth * multiplier;
 
-    // Separate candidates into categories
+    // Group candidates by category for diversity selection
+    const byCategory = new Map<string, DiscoveryCandidate[]>();
     const removalCandidates: DiscoveryCandidate[] = [];
-    const otherCandidates: DiscoveryCandidate[] = [];
     const skipped: Array<{
       changeType?: DiscoveryChangeType;
       expected?: number;
     }> = [];
 
+    // Track failure cache statistics (single pass)
+    const cacheStats = {
+      totalRemoval: 0,
+      cachedRemoval: 0,
+      totalOther: 0,
+      cachedOther: 0,
+    };
+
     for (const candidate of candidates) {
       CreatureUtil.makeUUID(candidate.creature);
       const expected = candidate.change.expectedErrorReduction;
-      const isRemovalCandidate = candidate.change.type === "remove-low-impact";
+      const changeType = candidate.change.type;
+      const isRemovalCandidate = changeType === "remove-low-impact";
+
+      // Check failure cache (single pass for all candidates)
+      const isCached = failureCacheDir
+        ? isCandidateCachedSync(failureCacheDir, candidate)
+        : false;
 
       // Removal candidates are handled separately - they improve score, not error
       if (isRemovalCandidate) {
+        cacheStats.totalRemoval++;
+        if (isCached) {
+          cacheStats.cachedRemoval++;
+          continue; // Skip cached candidates - don't let them consume slots
+        }
         removalCandidates.push(candidate);
         continue;
       }
 
-      if (expected === undefined) {
-        // No expected value - include for evaluation (combo candidates, etc.)
-        otherCandidates.push(candidate);
-      } else if (Number.isFinite(expected)) {
-        // When multiplier is 0, use strict positive check (expected > 0)
-        // Otherwise, check against threshold (expected >= minExpectedImprovement)
-        const meetsThreshold = multiplier === 0
-          ? expected > 0
-          : expected >= minExpectedImprovement;
+      cacheStats.totalOther++;
+      if (isCached) {
+        cacheStats.cachedOther++;
+        continue; // Skip cached candidates - don't let them consume slots
+      }
 
-        if (meetsThreshold) {
-          otherCandidates.push(candidate);
+      // Check threshold for non-removal candidates
+      let meetsThreshold = true;
+      if (expected !== undefined) {
+        if (!Number.isFinite(expected)) {
+          meetsThreshold = false;
         } else {
-          skipped.push({
-            changeType: candidate.change.type,
-            expected,
-          });
+          meetsThreshold = multiplier === 0
+            ? expected > 0
+            : expected >= minExpectedImprovement;
         }
-      } else {
-        // Non-finite expected value - skip it
-        skipped.push({
-          changeType: candidate.change.type,
-          expected,
+      }
+
+      if (!meetsThreshold) {
+        skipped.push({ changeType, expected });
+        continue;
+      }
+
+      // Group by category for diversity selection
+      if (!byCategory.has(changeType)) {
+        byCategory.set(changeType, []);
+      }
+      byCategory.get(changeType)!.push(candidate);
+    }
+
+    // Log failure cache statistics (single pass complete)
+    if (failureCacheDir) {
+      if (cacheStats.cachedRemoval > 0 || cacheStats.cachedOther > 0) {
+        const parts: string[] = [];
+        if (cacheStats.totalRemoval > 0) {
+          parts.push(
+            `removal: ${cacheStats.cachedRemoval}/${cacheStats.totalRemoval} cached`,
+          );
+        }
+        if (cacheStats.totalOther > 0) {
+          parts.push(
+            `other: ${cacheStats.cachedOther}/${cacheStats.totalOther} cached`,
+          );
+        }
+        console.info(
+          `[DiscoveryRunner] Failure cache stats: ${parts.join(", ")}`,
+        );
+      }
+    }
+
+    // Sort each category by expected improvement (descending)
+    for (const [_type, categoryCandidates] of byCategory) {
+      categoryCandidates.sort((a, b) => {
+        const aExpected = a.change.expectedErrorReduction;
+        const bExpected = b.change.expectedErrorReduction;
+        if (aExpected !== undefined && bExpected !== undefined) {
+          return bExpected - aExpected;
+        }
+        if (aExpected !== undefined) return -1;
+        if (bExpected !== undefined) return 1;
+        return 0;
+      });
+    }
+
+    // Calculate maxCandidates: ensure we have enough slots for diversity (one per category)
+    // while also scaling with CPU count on larger machines
+    const maxCandidates = Math.max(2 * threadCount, byCategory.size);
+
+    // PHASE 1: Select at least one from each category (ensuring diversity)
+    const selected: DiscoveryCandidate[] = [];
+    const usedFromCategory = new Map<string, number>();
+
+    // Take the best from each non-removal category first
+    for (const [type, categoryCandidates] of byCategory) {
+      if (categoryCandidates.length > 0) {
+        selected.push(categoryCandidates[0]);
+        usedFromCategory.set(type, 1);
+      }
+    }
+
+    // PHASE 2: Fill remaining slots with best overall candidates
+    // Always collect remaining candidates to ensure complete skipped tracking
+    const remaining: Array<{
+      candidate: DiscoveryCandidate;
+      expected: number | undefined;
+    }> = [];
+
+    for (const [type, categoryCandidates] of byCategory) {
+      const usedCount = usedFromCategory.get(type) ?? 0;
+      for (let i = usedCount; i < categoryCandidates.length; i++) {
+        remaining.push({
+          candidate: categoryCandidates[i],
+          expected: categoryCandidates[i].change.expectedErrorReduction,
         });
       }
     }
 
-    // Sort other candidates by expected error reduction (descending)
-    // Candidates with undefined expectedErrorReduction are sorted to the end
-    otherCandidates.sort((a, b) => {
-      const aExpected = a.change.expectedErrorReduction;
-      const bExpected = b.change.expectedErrorReduction;
-      if (aExpected !== undefined && bExpected !== undefined) {
-        return bExpected - aExpected;
+    // Sort by expected improvement (descending)
+    remaining.sort((a, b) => {
+      if (a.expected !== undefined && b.expected !== undefined) {
+        return b.expected - a.expected;
       }
-      if (aExpected !== undefined) return -1;
-      if (bExpected !== undefined) return 1;
+      if (a.expected !== undefined) return -1;
+      if (b.expected !== undefined) return 1;
       return 0;
     });
 
-    // ALWAYS include a few removal candidates (minimum 3, or all if fewer)
-    // These are added ON TOP of the regular selection, not competing for the same slots
-    // Strategy: Pick randomly from the TOP 10 lowest-impact candidates (safest to remove)
+    // Calculate available slots (may be 0 or negative if categories exceed maxCandidates)
+    const remainingSlots = Math.max(0, maxCandidates - selected.length);
+
+    // Take the best remaining candidates up to available slots
+    const additionalCount = Math.min(remainingSlots, remaining.length);
+    for (let i = 0; i < additionalCount; i++) {
+      selected.push(remaining[i].candidate);
+    }
+
+    // Mark the rest as skipped (always executed, even when remainingSlots <= 0)
+    for (let i = additionalCount; i < remaining.length; i++) {
+      skipped.push({
+        changeType: remaining[i].candidate.change.type,
+        expected: remaining[i].expected,
+      });
+    }
+
+    // Log diversity selection summary
+    const diversitySummary = Array.from(byCategory.keys())
+      .map((type) => {
+        const total = byCategory.get(type)!.length;
+        const selectedCount = selected.filter((c) => c.change.type === type)
+          .length;
+        return `${type}: ${selectedCount}/${total}`;
+      })
+      .join(", ");
+    if (byCategory.size > 0) {
+      console.info(
+        `[DiscoveryRunner] Category diversity: ${diversitySummary}`,
+      );
+    }
+
+    // PHASE 3: Select removal candidates (separately, added on top)
     const removalSampleSize = Math.min(removalCandidates.length, 3);
     let selectedRemovalCandidates: DiscoveryCandidate[];
 
@@ -1043,18 +1144,18 @@ export class DiscoveryRunner {
           topCandidates[i],
         ];
       }
-      const selected = topCandidates.slice(0, removalSampleSize);
-      selectedRemovalCandidates = selected.map((s) => s.candidate);
+      const selectedTop = topCandidates.slice(0, removalSampleSize);
+      selectedRemovalCandidates = selectedTop.map((s) => s.candidate);
 
       // Log which ones were chosen with their impact values
-      const selectedDetails = selected
+      const selectedDetails = selectedTop
         .map((s) => `${s.impact.toExponential(2)}`)
         .join(", ");
       console.info(
-        `[DiscoveryRunner] ✓ Selected ${removalSampleSize} from top ${topCandidates.length}: [${selectedDetails}]`,
+        `[DiscoveryRunner] ✓ Selected ${removalSampleSize} removal from top ${topCandidates.length}: [${selectedDetails}]`,
       );
 
-      // Mark remaining candidates as skipped (both unselected from top pool and those outside top 10)
+      // Mark remaining candidates as skipped
       const selectedSet = new Set(selectedRemovalCandidates);
       for (const item of candidatesWithImpact) {
         if (!selectedSet.has(item.candidate)) {
@@ -1066,23 +1167,8 @@ export class DiscoveryRunner {
       }
     }
 
-    // Select other candidates up to the max limit
-    let selectedOtherCandidates: DiscoveryCandidate[];
-    if (otherCandidates.length <= maxCandidates) {
-      selectedOtherCandidates = otherCandidates;
-    } else {
-      selectedOtherCandidates = otherCandidates.slice(0, maxCandidates);
-
-      for (const candidate of otherCandidates.slice(maxCandidates)) {
-        skipped.push({
-          changeType: candidate.change.type,
-          expected: candidate.change.expectedErrorReduction,
-        });
-      }
-    }
-
     // Combine: other candidates first, then removal candidates (added on top)
-    const filtered = [...selectedOtherCandidates, ...selectedRemovalCandidates];
+    const filtered = [...selected, ...selectedRemovalCandidates];
 
     return { filtered, skipped };
   }
