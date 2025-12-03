@@ -924,8 +924,6 @@ export class DiscoveryRunner {
       expected?: number;
     }>;
   } {
-    const maxCandidates = 2 * threadCount;
-
     // Calculate the minimum expected improvement threshold
     const multiplier = config.discoveryMinImprovementVsCostOfGrowthMultiplier;
     const minExpectedImprovement = config.costOfGrowth * multiplier;
@@ -1032,6 +1030,10 @@ export class DiscoveryRunner {
       });
     }
 
+    // Calculate maxCandidates: ensure we have enough slots for diversity (one per category)
+    // while also scaling with CPU count on larger machines
+    const maxCandidates = Math.max(2 * threadCount, byCategory.size);
+
     // PHASE 1: Select at least one from each category (ensuring diversity)
     const selected: DiscoveryCandidate[] = [];
     const usedFromCategory = new Map<string, number>();
@@ -1045,47 +1047,47 @@ export class DiscoveryRunner {
     }
 
     // PHASE 2: Fill remaining slots with best overall candidates
-    const remainingSlots = maxCandidates - selected.length;
-    if (remainingSlots > 0) {
-      // Collect all remaining candidates (not yet selected) with their expected values
-      const remaining: Array<{
-        candidate: DiscoveryCandidate;
-        expected: number | undefined;
-      }> = [];
+    // Always collect remaining candidates to ensure complete skipped tracking
+    const remaining: Array<{
+      candidate: DiscoveryCandidate;
+      expected: number | undefined;
+    }> = [];
 
-      for (const [type, categoryCandidates] of byCategory) {
-        const usedCount = usedFromCategory.get(type) ?? 0;
-        for (let i = usedCount; i < categoryCandidates.length; i++) {
-          remaining.push({
-            candidate: categoryCandidates[i],
-            expected: categoryCandidates[i].change.expectedErrorReduction,
-          });
-        }
-      }
-
-      // Sort by expected improvement (descending)
-      remaining.sort((a, b) => {
-        if (a.expected !== undefined && b.expected !== undefined) {
-          return b.expected - a.expected;
-        }
-        if (a.expected !== undefined) return -1;
-        if (b.expected !== undefined) return 1;
-        return 0;
-      });
-
-      // Take the best remaining candidates
-      const additionalCount = Math.min(remainingSlots, remaining.length);
-      for (let i = 0; i < additionalCount; i++) {
-        selected.push(remaining[i].candidate);
-      }
-
-      // Mark the rest as skipped
-      for (let i = additionalCount; i < remaining.length; i++) {
-        skipped.push({
-          changeType: remaining[i].candidate.change.type,
-          expected: remaining[i].expected,
+    for (const [type, categoryCandidates] of byCategory) {
+      const usedCount = usedFromCategory.get(type) ?? 0;
+      for (let i = usedCount; i < categoryCandidates.length; i++) {
+        remaining.push({
+          candidate: categoryCandidates[i],
+          expected: categoryCandidates[i].change.expectedErrorReduction,
         });
       }
+    }
+
+    // Sort by expected improvement (descending)
+    remaining.sort((a, b) => {
+      if (a.expected !== undefined && b.expected !== undefined) {
+        return b.expected - a.expected;
+      }
+      if (a.expected !== undefined) return -1;
+      if (b.expected !== undefined) return 1;
+      return 0;
+    });
+
+    // Calculate available slots (may be 0 or negative if categories exceed maxCandidates)
+    const remainingSlots = Math.max(0, maxCandidates - selected.length);
+
+    // Take the best remaining candidates up to available slots
+    const additionalCount = Math.min(remainingSlots, remaining.length);
+    for (let i = 0; i < additionalCount; i++) {
+      selected.push(remaining[i].candidate);
+    }
+
+    // Mark the rest as skipped (always executed, even when remainingSlots <= 0)
+    for (let i = additionalCount; i < remaining.length; i++) {
+      skipped.push({
+        changeType: remaining[i].candidate.change.type,
+        expected: remaining[i].expected,
+      });
     }
 
     // Log diversity selection summary
