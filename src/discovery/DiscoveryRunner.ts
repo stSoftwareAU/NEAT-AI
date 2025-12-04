@@ -998,20 +998,27 @@ export class DiscoveryRunner {
 
     // Log failure cache statistics (single pass complete)
     if (failureCacheDir) {
-      if (cacheStats.cachedRemoval > 0 || cacheStats.cachedOther > 0) {
+      const totalCached = cacheStats.cachedRemoval + cacheStats.cachedOther;
+      if (totalCached > 0) {
         const parts: string[] = [];
-        if (cacheStats.totalRemoval > 0) {
+        if (cacheStats.cachedRemoval > 0) {
           parts.push(
-            `removal: ${cacheStats.cachedRemoval}/${cacheStats.totalRemoval} cached`,
+            `${cacheStats.cachedRemoval} removal candidate${
+              cacheStats.cachedRemoval === 1 ? "" : "s"
+            }`,
           );
         }
-        if (cacheStats.totalOther > 0) {
+        if (cacheStats.cachedOther > 0) {
           parts.push(
-            `other: ${cacheStats.cachedOther}/${cacheStats.totalOther} cached`,
+            `${cacheStats.cachedOther} other candidate${
+              cacheStats.cachedOther === 1 ? "" : "s"
+            }`,
           );
         }
         console.info(
-          `[DiscoveryRunner] Failure cache stats: ${parts.join(", ")}`,
+          `[DiscoveryRunner] ⏭️ Skipped ${totalCached} candidate${
+            totalCached === 1 ? "" : "s"
+          } due to previous failure: ${parts.join(", ")}`,
         );
       }
     }

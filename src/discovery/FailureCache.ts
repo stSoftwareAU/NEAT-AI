@@ -56,8 +56,9 @@ export function formatWeight(weight: number): string {
  *
  * The key incorporates:
  * - Change type
- * - Structural information (neuron UUIDs for connections)
- * - Weight/bias magnitudes (exponents only)
+ * - For neuron removal: just the neuron UUID (simple, fast lookup)
+ * - For synapse removal: just the from/to UUIDs
+ * - For other types: structural information and weight magnitudes
  *
  * @param candidate - The discovery candidate to generate a key for
  * @returns A string suitable for use as a cache filename
@@ -88,15 +89,26 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
 
     case "remove-low-impact":
     case "remove-neuron": {
-      // Extract neuron UUID from description (format: "... neuron UUID ...")
+      // For neuron removal, just use the neuron UUID - no structural signature needed.
+      // If removal failed once, it won't succeed until the creature structure changes
+      // significantly (at which point the cache should be cleared anyway).
       const uuidMatch = candidate.change.description?.match(
         /neuron\s+([a-zA-Z0-9_-]+)/i,
       );
       if (uuidMatch) {
         parts.push(uuidMatch[1]);
       }
-      // Also include a structural hash for uniqueness
-      parts.push(buildStructuralSignature(candidate));
+      // No structural signature - just the neuron UUID is sufficient
+      break;
+    }
+
+    case "remove-synapse": {
+      // For synapse removal, use from/to UUIDs from synapseDetails
+      const synapseDetails = candidate.change.synapseDetails;
+      if (synapseDetails) {
+        parts.push(synapseDetails.fromNeuronUUID, synapseDetails.toNeuronUUID);
+      }
+      // No structural signature - just the synapse endpoints are sufficient
       break;
     }
 
@@ -108,7 +120,6 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
     }
 
     case "add-synapses":
-    case "remove-synapse":
     default: {
       // For synapses and other types, use structural signature
       parts.push(buildStructuralSignature(candidate));

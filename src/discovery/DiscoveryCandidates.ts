@@ -44,6 +44,14 @@ export interface DiscoveredNeuronDetails {
   squash: string;
 }
 
+/** Details of a synapse removal for caching/logging. */
+export interface SynapseRemovalDetails {
+  /** Source neuron UUID. */
+  fromNeuronUUID: string;
+  /** Target neuron UUID. */
+  toNeuronUUID: string;
+}
+
 interface DiscoveryCandidateChange {
   type: DiscoveryChangeType;
   description?: string;
@@ -51,6 +59,8 @@ interface DiscoveryCandidateChange {
   sampleSize?: number;
   /** Details of discovered neurons (for single neuron candidates). */
   neuronDetails?: DiscoveredNeuronDetails;
+  /** Details of synapse removal (for synapse removal candidates). */
+  synapseDetails?: SynapseRemovalDetails;
 }
 
 export interface DiscoveryCandidate {
@@ -240,14 +250,20 @@ export function buildDiscoveryCandidates(
     baseCreature,
     removeHarmfulSynapse,
   );
-  if (removedSynapseCreature) {
+  if (removedSynapseCreature && removeHarmfulSynapse) {
     candidates.push({
       creature: removedSynapseCreature,
       change: {
         type: "remove-synapse",
-        description: "✂️ Removed harmful synapse",
+        description: `✂️ Removed harmful synapse ${
+          shortID(removeHarmfulSynapse.fromNeuronUUID)
+        } -> ${shortID(removeHarmfulSynapse.toNeuronUUID)}`,
         expectedErrorReduction: scaledRemovalExpected(removeHarmfulSynapse),
-        sampleSize: removeHarmfulSynapse?.totalCount,
+        sampleSize: removeHarmfulSynapse.totalCount,
+        synapseDetails: {
+          fromNeuronUUID: removeHarmfulSynapse.fromNeuronUUID,
+          toNeuronUUID: removeHarmfulSynapse.toNeuronUUID,
+        },
       },
     });
 
