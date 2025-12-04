@@ -230,11 +230,13 @@ const result = await creature.discoveryDir(dataDir, {
 
 **Cache key design:**
 
-- Uses the exponential component of weights/biases in scientific notation
-- Weights like `0.123` and `0.234` (both `e-1`) map to the same key
-- Weights like `0.001` (`e-3`) and `0.1` (`e-1`) map to different keys
-- This allows similar candidates to be cached together while still re-trying
-  when weights change significantly
+- **Neuron removal** (`remove-neuron`, `remove-low-impact`): Uses just the
+  neuron UUID - if removal failed once, it won't succeed until the creature
+  structure changes significantly
+- **Synapse removal** (`remove-synapse`): Uses just the from/to neuron UUIDs
+- **Other candidates**: Uses the exponential component of weights/biases in
+  scientific notation - weights like `0.123` and `0.234` (both `e-1`) map to the
+  same key, while `0.001` (`e-3`) and `0.1` (`e-1`) map to different keys
 
 ### Forced Focus Overrides
 

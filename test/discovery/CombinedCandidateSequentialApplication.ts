@@ -210,6 +210,10 @@ Deno.test(
       change: {
         type: "remove-synapse",
         description: "Removed hidden-A -> hidden-C synapse",
+        synapseDetails: {
+          fromNeuronUUID: "hidden-A",
+          toNeuronUUID: "hidden-C",
+        },
       },
     };
 
