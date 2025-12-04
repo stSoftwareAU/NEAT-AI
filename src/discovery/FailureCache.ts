@@ -16,6 +16,7 @@
 import { dirname } from "@std/path/dirname";
 import { join } from "@std/path/join";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import type { Creature } from "../Creature.ts";
 
 /** Metadata stored alongside cached failures for debugging/analysis */
 export interface FailureMetadata {
@@ -24,6 +25,32 @@ export interface FailureMetadata {
   scoreDelta: number;
   error: number;
   timestamp?: string;
+}
+
+/** Represents the actual neuron state in the creature after changes were applied */
+export interface ActualNeuronState {
+  uuid: string;
+  squash: string;
+  bias: number;
+}
+
+/** Represents the actual synapse state in the creature after changes were applied */
+export interface ActualSynapseState {
+  fromUUID: string;
+  toUUID: string;
+  weight: number;
+}
+
+/** Records what actually changed in the creature (for verification against Rust request) */
+export interface ActualCreatureChange {
+  /** Neurons that were added (with their actual values after fix()) */
+  addedNeurons?: ActualNeuronState[];
+  /** Synapses connected to added neurons (with actual weights after fix()) */
+  addedSynapses?: ActualSynapseState[];
+  /** Neurons that were removed */
+  removedNeuronUUIDs?: string[];
+  /** Synapses that were removed */
+  removedSynapseKeys?: string[];
 }
 
 /**
@@ -205,6 +232,102 @@ function getCacheFilePath(
 }
 
 /**
+ * Extracts the actual changes made to a creature by comparing with the base creature.
+ * This allows verification that the TypeScript side correctly implemented what Rust requested.
+ *
+ * @param baseCreature - The original creature before changes
+ * @param candidateCreature - The creature after changes were applied
+ * @returns The actual changes made, or undefined if creatures are identical
+ */
+export function extractActualCreatureChanges(
+  baseCreature: Creature,
+  candidateCreature: Creature,
+): ActualCreatureChange | undefined {
+  const baseJSON = baseCreature.exportJSON();
+  const candidateJSON = candidateCreature.exportJSON();
+
+  // Build sets for comparison
+  const baseNeuronUUIDs = new Set(baseJSON.neurons.map((n) => n.uuid));
+  const candidateNeuronUUIDs = new Set(
+    candidateJSON.neurons.map((n) => n.uuid),
+  );
+
+  const baseSynapseKeys = new Set(
+    baseJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
+  );
+  const candidateSynapseKeys = new Set(
+    candidateJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
+  );
+
+  // Find added neurons (in candidate but not in base)
+  const addedNeurons: ActualNeuronState[] = [];
+  for (const neuron of candidateJSON.neurons) {
+    if (
+      !baseNeuronUUIDs.has(neuron.uuid) &&
+      neuron.type === "hidden" &&
+      neuron.squash // Skip neurons without squash (shouldn't happen for hidden)
+    ) {
+      addedNeurons.push({
+        uuid: neuron.uuid,
+        squash: neuron.squash,
+        bias: neuron.bias,
+      });
+    }
+  }
+
+  // Find added synapses (in candidate but not in base)
+  const addedSynapses: ActualSynapseState[] = [];
+  for (const synapse of candidateJSON.synapses) {
+    const key = `${synapse.fromUUID}->${synapse.toUUID}`;
+    if (!baseSynapseKeys.has(key)) {
+      addedSynapses.push({
+        fromUUID: synapse.fromUUID,
+        toUUID: synapse.toUUID,
+        weight: synapse.weight,
+      });
+    }
+  }
+
+  // Find removed neurons (in base but not in candidate)
+  const removedNeuronUUIDs: string[] = [];
+  for (const neuron of baseJSON.neurons) {
+    if (!candidateNeuronUUIDs.has(neuron.uuid) && neuron.type === "hidden") {
+      removedNeuronUUIDs.push(neuron.uuid);
+    }
+  }
+
+  // Find removed synapses (in base but not in candidate)
+  const removedSynapseKeys: string[] = [];
+  for (const synapse of baseJSON.synapses) {
+    const key = `${synapse.fromUUID}->${synapse.toUUID}`;
+    if (!candidateSynapseKeys.has(key)) {
+      removedSynapseKeys.push(key);
+    }
+  }
+
+  // Return undefined if nothing changed
+  if (
+    addedNeurons.length === 0 &&
+    addedSynapses.length === 0 &&
+    removedNeuronUUIDs.length === 0 &&
+    removedSynapseKeys.length === 0
+  ) {
+    return undefined;
+  }
+
+  return {
+    addedNeurons: addedNeurons.length > 0 ? addedNeurons : undefined,
+    addedSynapses: addedSynapses.length > 0 ? addedSynapses : undefined,
+    removedNeuronUUIDs: removedNeuronUUIDs.length > 0
+      ? removedNeuronUUIDs
+      : undefined,
+    removedSynapseKeys: removedSynapseKeys.length > 0
+      ? removedSynapseKeys
+      : undefined,
+  };
+}
+
+/**
  * Checks if a discovery candidate is already cached as a failure.
  *
  * @param cacheDir - The cache directory path
@@ -264,11 +387,13 @@ export function isCandidateCachedSync(
  * @param cacheDir - The cache directory path
  * @param candidate - The candidate that failed to improve
  * @param metadata - Additional metadata about the failure
+ * @param baseCreature - Optional base creature to compare against for extracting actual changes
  */
 export async function recordFailure(
   cacheDir: string,
   candidate: DiscoveryCandidate,
   metadata: FailureMetadata,
+  baseCreature?: Creature,
 ): Promise<void> {
   try {
     const filePath = getCacheFilePath(cacheDir, candidate);
@@ -277,14 +402,50 @@ export async function recordFailure(
     // Ensure directory exists
     await Deno.mkdir(dir, { recursive: true });
 
-    // Write cache entry with metadata
-    const cacheEntry = {
+    // Write cache entry with metadata and candidate details
+    const cacheEntry: Record<string, unknown> = {
       key: buildCacheKey(candidate),
       changeType: candidate.change.type,
       description: candidate.change.description,
       ...metadata,
       timestamp: new Date().toISOString(),
     };
+
+    // Include neuronDetails if available (for add-neurons candidates)
+    // This is what Rust requested
+    if (candidate.change.neuronDetails) {
+      cacheEntry.rustRequest = {
+        neuronDetails: candidate.change.neuronDetails,
+      };
+    }
+
+    // Include synapseDetails if available (for remove-synapse candidates)
+    if (candidate.change.synapseDetails) {
+      cacheEntry.synapseDetails = candidate.change.synapseDetails;
+    }
+
+    // Include expected error reduction if available
+    if (candidate.change.expectedErrorReduction !== undefined) {
+      cacheEntry.expectedErrorReduction =
+        candidate.change.expectedErrorReduction;
+    }
+
+    // Include sample size if available
+    if (candidate.change.sampleSize !== undefined) {
+      cacheEntry.sampleSize = candidate.change.sampleSize;
+    }
+
+    // Extract and include actual creature changes for verification
+    // This is what TypeScript actually created (after fix() etc.)
+    if (baseCreature) {
+      const actualChanges = extractActualCreatureChanges(
+        baseCreature,
+        candidate.creature,
+      );
+      if (actualChanges) {
+        cacheEntry.actualCreatureChange = actualChanges;
+      }
+    }
 
     await Deno.writeTextFile(filePath, JSON.stringify(cacheEntry, null, 2));
   } catch (error) {
@@ -301,11 +462,13 @@ export async function recordFailure(
  * @param cacheDir - The cache directory path
  * @param candidate - The candidate that failed to improve
  * @param metadata - Additional metadata about the failure
+ * @param baseCreature - Optional base creature to compare against for extracting actual changes
  */
 export function recordFailureSync(
   cacheDir: string,
   candidate: DiscoveryCandidate,
   metadata: FailureMetadata,
+  baseCreature?: Creature,
 ): void {
   try {
     const filePath = getCacheFilePath(cacheDir, candidate);
@@ -314,14 +477,50 @@ export function recordFailureSync(
     // Ensure directory exists
     Deno.mkdirSync(dir, { recursive: true });
 
-    // Write cache entry with metadata
-    const cacheEntry = {
+    // Write cache entry with metadata and candidate details
+    const cacheEntry: Record<string, unknown> = {
       key: buildCacheKey(candidate),
       changeType: candidate.change.type,
       description: candidate.change.description,
       ...metadata,
       timestamp: new Date().toISOString(),
     };
+
+    // Include neuronDetails if available (for add-neurons candidates)
+    // This is what Rust requested
+    if (candidate.change.neuronDetails) {
+      cacheEntry.rustRequest = {
+        neuronDetails: candidate.change.neuronDetails,
+      };
+    }
+
+    // Include synapseDetails if available (for remove-synapse candidates)
+    if (candidate.change.synapseDetails) {
+      cacheEntry.synapseDetails = candidate.change.synapseDetails;
+    }
+
+    // Include expected error reduction if available
+    if (candidate.change.expectedErrorReduction !== undefined) {
+      cacheEntry.expectedErrorReduction =
+        candidate.change.expectedErrorReduction;
+    }
+
+    // Include sample size if available
+    if (candidate.change.sampleSize !== undefined) {
+      cacheEntry.sampleSize = candidate.change.sampleSize;
+    }
+
+    // Extract and include actual creature changes for verification
+    // This is what TypeScript actually created (after fix() etc.)
+    if (baseCreature) {
+      const actualChanges = extractActualCreatureChanges(
+        baseCreature,
+        candidate.creature,
+      );
+      if (actualChanges) {
+        cacheEntry.actualCreatureChange = actualChanges;
+      }
+    }
 
     Deno.writeTextFileSync(filePath, JSON.stringify(cacheEntry, null, 2));
   } catch (error) {
