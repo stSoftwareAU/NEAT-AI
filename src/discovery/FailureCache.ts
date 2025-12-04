@@ -89,7 +89,7 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
 
     case "remove-low-impact":
     case "remove-neuron": {
-      // For neuron removal, just use the neuron UUID - no structural signature needed.
+      // For neuron removal, prefer the neuron UUID from description.
       // If removal failed once, it won't succeed until the creature structure changes
       // significantly (at which point the cache should be cleared anyway).
       const uuidMatch = candidate.change.description?.match(
@@ -97,18 +97,24 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
       );
       if (uuidMatch) {
         parts.push(uuidMatch[1]);
+      } else {
+        // Fallback: use structural signature to avoid cache collisions
+        parts.push(buildStructuralSignature(candidate));
       }
-      // No structural signature - just the neuron UUID is sufficient
       break;
     }
 
     case "remove-synapse": {
-      // For synapse removal, use from/to UUIDs from synapseDetails
+      // For synapse removal, use from/to UUIDs from synapseDetails.
+      // synapseDetails is always set for remove-synapse candidates created by
+      // buildDiscoveryCandidates - assert to catch any future code changes.
       const synapseDetails = candidate.change.synapseDetails;
-      if (synapseDetails) {
-        parts.push(synapseDetails.fromNeuronUUID, synapseDetails.toNeuronUUID);
+      if (!synapseDetails) {
+        throw new Error(
+          "remove-synapse candidate missing synapseDetails - this indicates a bug",
+        );
       }
-      // No structural signature - just the synapse endpoints are sufficient
+      parts.push(synapseDetails.fromNeuronUUID, synapseDetails.toNeuronUUID);
       break;
     }
 
