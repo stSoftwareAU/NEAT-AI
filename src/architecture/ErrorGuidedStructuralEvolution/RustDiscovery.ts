@@ -857,7 +857,7 @@ export function isRustGpuAvailable(): boolean {
         rustGpuWarningEmitted = true;
         const detail = parsed.error ?? "no usable GPU detected";
         console.warn(
-          "⚠️  Discovery disabled: Rust discovery library is loaded but no usable GPU " +
+          "🚧 Discovery disabled: Rust discovery library is loaded but no usable GPU " +
             `was reported for this worker (${detail}).`,
         );
       }
