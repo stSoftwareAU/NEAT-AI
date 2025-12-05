@@ -1891,7 +1891,7 @@ Deno.test(
           if (json.neurons.length < baseNeuronCount) {
             removalEvaluated++;
           }
-          return originalEvaluate(creature, feedbackLoop);
+          return await originalEvaluate(creature, feedbackLoop);
         };
         return worker;
       },
@@ -1963,7 +1963,7 @@ Deno.test(
           if (json.neurons.length > baseNeuronCount) {
             addNeuronsEvaluated++;
           }
-          return originalEvaluate(creature, feedbackLoop);
+          return await originalEvaluate(creature, feedbackLoop);
         };
         return worker;
       },
@@ -2063,7 +2063,7 @@ Deno.test(
           if (json.neurons.length < baseNeuronCount) {
             removalEvaluated++;
           }
-          return originalEvaluate(creature, feedbackLoop);
+          return await originalEvaluate(creature, feedbackLoop);
         };
         return worker;
       },
