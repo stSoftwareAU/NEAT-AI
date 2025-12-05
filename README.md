@@ -278,21 +278,31 @@ The Rust FFI extension shipped via
 [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) provides
 the accelerated structural hints used by `discoveryDir()`. To enable it:
 
-1. Clone the repository alongside this project and build the library:
+1. Clone the repository alongside this project and build/install the library:
+
    ```bash
    git clone https://github.com/stSoftwareAU/NEAT-AI-Discovery.git
-   cd NEAT-AI-Discovery
-   cargo build --release
+   ../NEAT-AI-Discovery/scripts/runlib.sh
    ```
-2. Expose the compiled artefact to Deno by either copying it into `~/.cargo/lib`
-   or exporting an explicit path:
+
+   The `runlib.sh` script automatically:
+   - Installs Rust and Cargo if missing (no sudo required)
+   - Builds the library in release mode
+   - Installs it to `~/.cargo/lib/` with version tracking
+   - Signs it on macOS for FFI compatibility
+
+2. Alternatively, export an explicit path to the library:
+
    ```bash
-   export NEAT_AI_DISCOVERY_LIB_PATH="/absolute/path/to/NEAT-AI-Discovery/target/release/libneat_ai_discovery.$(uname | tr '[:upper:]' '[:lower:]' | sed 's/darwin/dylib/;s/linux/so/;s/windows/dll/')"
+   export NEAT_AI_DISCOVERY_LIB_PATH="/absolute/path/to/libneat_ai_discovery.dylib"
    ```
+
 3. Grant FFI permissions and validate the installation:
+
    ```bash
    deno run --allow-env --allow-ffi --allow-read scripts/check_discovery.ts
    ```
+
 4. In your application, guard discovery calls with `isRustDiscoveryEnabled()` so
    that controllers fail fast when the module is unavailable.
 
