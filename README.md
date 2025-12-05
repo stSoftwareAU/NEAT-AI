@@ -238,6 +238,35 @@ const result = await creature.discoveryDir(dataDir, {
   scientific notation - weights like `0.123` and `0.234` (both `e-1`) map to the
   same key, while `0.001` (`e-3`) and `0.1` (`e-1`) map to different keys
 
+### Discovery Candidate Category Limits
+
+You can control the minimum number of candidates evaluated per category. This is
+useful when certain mutation types are more successful for your use case. For
+example, if neuron removal is working well but adding neurons isn't, you can
+increase the removal candidates and reduce add-neurons candidates.
+
+```typescript
+const result = await creature.discoveryDir(dataDir, {
+  discoveryMinCandidatesPerCategory: {
+    addNeurons: 0, // Skip add-neurons candidates
+    addSynapses: 1, // Minimum 1 add-synapses candidate
+    changeSquash: 1, // Minimum 1 change-squash candidate
+    removeLowImpact: 10, // Evaluate 10 removal candidates
+  },
+  // ... other options
+});
+```
+
+**Default values:**
+
+- `addNeurons`: 1
+- `addSynapses`: 1
+- `changeSquash`: 1
+- `removeLowImpact`: 3
+
+Higher values mean more candidates of that type will be evaluated. Set to 0 to
+skip a category entirely.
+
 ### Forced Focus Overrides
 
 The discovery recorder now honours an optional `discoveryFocusNeuronUUIDs`

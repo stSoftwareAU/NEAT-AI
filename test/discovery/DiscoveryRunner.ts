@@ -1816,3 +1816,273 @@ Deno.test(
     }
   },
 );
+
+Deno.test(
+  "DiscoveryRunner respects discoveryMinCandidatesPerCategory for removal candidates",
+  async () => {
+    // Create a creature with 10 hidden neurons that can be removed
+    const neurons: Array<{
+      type: "hidden" | "output";
+      uuid: string;
+      squash: string;
+      bias: number;
+    }> = Array.from({ length: 10 }, (_, i) => ({
+      type: "hidden" as const,
+      uuid: `hidden-${i}`,
+      squash: "RELU",
+      bias: 0.1,
+    }));
+    neurons.push({
+      type: "output",
+      uuid: "output-0",
+      squash: "IDENTITY",
+      bias: 0,
+    });
+
+    const synapses = [
+      ...Array.from({ length: 10 }, (_, i) => [
+        { fromUUID: "input-0", toUUID: `hidden-${i}`, weight: 1e-12 },
+        { fromUUID: `hidden-${i}`, toUUID: "output-0", weight: 1e-12 },
+      ]).flat(),
+      { fromUUID: "input-1", toUUID: "output-0", weight: 1.0 },
+    ];
+
+    const baseCreature = Creature.fromJSON({
+      input: 2,
+      output: 1,
+      neurons,
+      synapses,
+    });
+    baseCreature.validate();
+    CreatureUtil.makeUUID(baseCreature);
+
+    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+
+    // Track which candidates are evaluated
+    let removalEvaluated = 0;
+
+    const discoveryResult: DiscoverResult = {
+      ID: "MIN_REMOVAL_CANDIDATES_TEST",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      // Create 10 removal candidates (matching our creature's hidden neurons)
+      removalCandidates: Array.from({ length: 10 }, (_, i) => ({
+        neuronUUID: `hidden-${i}`,
+        totalError: 0.1,
+        impact: 1e-15 * (i + 1), // Different impacts for sorting
+        reason: "low-impact",
+      })),
+      candidateSquashes: undefined,
+    };
+
+    const computeError = (_creature: Creature) => 0.5;
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () => {
+        const worker = new FakeWorker(discoveryResult, computeError);
+        // Wrap evaluate to track removal candidates
+        const originalEvaluate = worker.evaluate.bind(worker);
+        worker.evaluate = async (creature, feedbackLoop) => {
+          const json = creature.exportJSON();
+          // Check if it's a removal candidate (fewer neurons than base)
+          if (json.neurons.length < baseNeuronCount) {
+            removalEvaluated++;
+          }
+          return await originalEvaluate(creature, feedbackLoop);
+        };
+        return worker;
+      },
+    });
+
+    // Test with custom minimum of 5 removal candidates instead of default 3
+    const options = makeOptions({
+      discoveryMinCandidatesPerCategory: {
+        removeLowImpact: 5,
+      },
+    });
+
+    await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options,
+    });
+
+    assertEquals(
+      removalEvaluated,
+      5,
+      `Expected 5 removal candidates to be evaluated (configured minimum), got ${removalEvaluated}`,
+    );
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner respects discoveryMinCandidatesPerCategory for add-neurons",
+  async () => {
+    // Track how many add-neurons candidates are evaluated
+    let addNeuronsEvaluated = 0;
+
+    // Create discovery result with many add-neurons candidates
+    const addHelpfulNeurons = Array.from({ length: 10 }, (_, i) => ({
+      fromNeuronUUID: `input-${i % 2}`,
+      toNeuronUUID: "output-0",
+      squash: "RELU" as const,
+      incomingWeight: 0.5 + i * 0.01,
+      outgoingWeight: 0.5 + i * 0.01,
+      bias: 0.1 + i * 0.001,
+      expectedImprovementPercentage: 0.01 - i * 0.0001, // Decreasing improvement
+      improvedCount: 8 - i,
+      totalCount: 10,
+    }));
+
+    const discoveryResult: DiscoverResult = {
+      ID: "MIN_ADD_NEURONS_TEST",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const baseCreature = makeBaseCreature();
+    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+
+    const computeError = (_creature: Creature) => 0.5;
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () => {
+        const worker = new FakeWorker(discoveryResult, computeError);
+        const originalEvaluate = worker.evaluate.bind(worker);
+        worker.evaluate = async (creature, feedbackLoop) => {
+          const json = creature.exportJSON();
+          // Check if it's an add-neurons candidate (more neurons than base)
+          if (json.neurons.length > baseNeuronCount) {
+            addNeuronsEvaluated++;
+          }
+          return await originalEvaluate(creature, feedbackLoop);
+        };
+        return worker;
+      },
+    });
+
+    // Test with custom minimum of 5 add-neurons candidates instead of default 1
+    const options = makeOptions({
+      discoveryMinCandidatesPerCategory: {
+        addNeurons: 5,
+      },
+    });
+
+    await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options,
+    });
+
+    // Should evaluate at least 5 (the configured minimum) from add-neurons category
+    // May evaluate more if there are available slots
+    assert(
+      addNeuronsEvaluated >= 5,
+      `Expected at least 5 add-neurons candidates to be evaluated (configured minimum), got ${addNeuronsEvaluated}`,
+    );
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner uses default values when discoveryMinCandidatesPerCategory is not set",
+  async () => {
+    // Create a creature with 10 hidden neurons that can be removed
+    const neurons: Array<{
+      type: "hidden" | "output";
+      uuid: string;
+      squash: string;
+      bias: number;
+    }> = Array.from({ length: 10 }, (_, i) => ({
+      type: "hidden" as const,
+      uuid: `hidden-${i}`,
+      squash: "RELU",
+      bias: 0.1,
+    }));
+    neurons.push({
+      type: "output",
+      uuid: "output-0",
+      squash: "IDENTITY",
+      bias: 0,
+    });
+
+    const synapses = [
+      ...Array.from({ length: 10 }, (_, i) => [
+        { fromUUID: "input-0", toUUID: `hidden-${i}`, weight: 1e-12 },
+        { fromUUID: `hidden-${i}`, toUUID: "output-0", weight: 1e-12 },
+      ]).flat(),
+      { fromUUID: "input-1", toUUID: "output-0", weight: 1.0 },
+    ];
+
+    const baseCreature = Creature.fromJSON({
+      input: 2,
+      output: 1,
+      neurons,
+      synapses,
+    });
+    baseCreature.validate();
+    CreatureUtil.makeUUID(baseCreature);
+
+    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+
+    // Track removal candidates evaluated
+    let removalEvaluated = 0;
+
+    const discoveryResult: DiscoverResult = {
+      ID: "DEFAULT_MIN_CANDIDATES_TEST",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      // Create 10 removal candidates (matching our creature's hidden neurons)
+      removalCandidates: Array.from({ length: 10 }, (_, i) => ({
+        neuronUUID: `hidden-${i}`,
+        totalError: 0.1,
+        impact: 1e-15 * (i + 1),
+        reason: "low-impact",
+      })),
+      candidateSquashes: undefined,
+    };
+
+    const computeError = (_creature: Creature) => 0.5;
+
+    const runner = new DiscoveryRunner({
+      rustDiscoveryEnabled: () => true,
+      workerFactory: () => {
+        const worker = new FakeWorker(discoveryResult, computeError);
+        const originalEvaluate = worker.evaluate.bind(worker);
+        worker.evaluate = async (creature, feedbackLoop) => {
+          const json = creature.exportJSON();
+          if (json.neurons.length < baseNeuronCount) {
+            removalEvaluated++;
+          }
+          return await originalEvaluate(creature, feedbackLoop);
+        };
+        return worker;
+      },
+    });
+
+    // Use default options (no discoveryMinCandidatesPerCategory override)
+    const options = makeOptions({});
+
+    await runner.discoverDir({
+      creature: baseCreature,
+      dataDir: "/tmp/data",
+      options,
+    });
+
+    // Default for removeLowImpact is 3
+    assertEquals(
+      removalEvaluated,
+      3,
+      `Expected 3 removal candidates with default config, got ${removalEvaluated}`,
+    );
+  },
+);

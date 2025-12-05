@@ -1042,16 +1042,33 @@ export class DiscoveryRunner {
     // while also scaling with CPU count on larger machines
     const maxCandidates = Math.max(2 * threadCount, byCategory.size);
 
-    // PHASE 1: Select at least one from each category (ensuring diversity)
+    // PHASE 1: Select minimum from each category (ensuring diversity)
     const selected: DiscoveryCandidate[] = [];
     const usedFromCategory = new Map<string, number>();
 
-    // Take the best from each non-removal category first
-    for (const [type, categoryCandidates] of byCategory) {
-      if (categoryCandidates.length > 0) {
-        selected.push(categoryCandidates[0]);
-        usedFromCategory.set(type, 1);
+    // Get configured minimums per category
+    const minPerCategory = config.discoveryMinCandidatesPerCategory;
+    const getCategoryMin = (type: string): number => {
+      switch (type) {
+        case "add-neurons":
+          return minPerCategory.addNeurons;
+        case "add-synapses":
+          return minPerCategory.addSynapses;
+        case "change-squash":
+          return minPerCategory.changeSquash;
+        default:
+          return 1; // Default for unknown categories
       }
+    };
+
+    // Take the configured minimum from each non-removal category first
+    for (const [type, categoryCandidates] of byCategory) {
+      const minRequired = getCategoryMin(type);
+      const toTake = Math.min(minRequired, categoryCandidates.length);
+      for (let i = 0; i < toTake; i++) {
+        selected.push(categoryCandidates[i]);
+      }
+      usedFromCategory.set(type, toTake);
     }
 
     // PHASE 2: Fill remaining slots with best overall candidates
@@ -1114,7 +1131,10 @@ export class DiscoveryRunner {
     }
 
     // PHASE 3: Select removal candidates (separately, added on top)
-    const removalSampleSize = Math.min(removalCandidates.length, 3);
+    const removalSampleSize = Math.min(
+      removalCandidates.length,
+      minPerCategory.removeLowImpact,
+    );
     let selectedRemovalCandidates: DiscoveryCandidate[];
 
     if (removalCandidates.length <= removalSampleSize) {
@@ -1132,8 +1152,9 @@ export class DiscoveryRunner {
       // Sort by impact ascending (lowest = safest to remove)
       candidatesWithImpact.sort((a, b) => a.impact - b.impact);
 
-      // Take the top 10 lowest-impact candidates as the pool to select from
-      const TOP_N = 10;
+      // Take the top N lowest-impact candidates as the pool to select from
+      // Scale the pool size based on the configured removal sample size
+      const TOP_N = Math.max(10, removalSampleSize * 3);
       const topCandidates = candidatesWithImpact.slice(0, TOP_N);
 
       // Log the top 10 pool before selection
