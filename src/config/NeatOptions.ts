@@ -8,6 +8,21 @@ import type { SelectionInterface } from "../methods/Selection.ts";
 import type { CrisprInterface } from "../../mod.ts";
 
 /**
+ * Configuration for minimum candidates per discovery category.
+ * This allows fine-tuning how many candidates from each category are evaluated.
+ */
+export interface DiscoveryMinCandidatesPerCategory {
+  /** Minimum candidates for add-neurons category. Default: 1 */
+  addNeurons?: number;
+  /** Minimum candidates for add-synapses category. Default: 1 */
+  addSynapses?: number;
+  /** Minimum candidates for change-squash category. Default: 1 */
+  changeSquash?: number;
+  /** Minimum candidates for remove-low-impact category. Default: 3 */
+  removeLowImpact?: number;
+}
+
+/**
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
  */
 export interface NeatArguments {
@@ -246,6 +261,34 @@ export interface NeatArguments {
    * so only significant weight changes will trigger re-evaluation.
    */
   discoveryFailureCacheDir?: string;
+
+  /**
+   * Minimum candidates to evaluate per discovery category.
+   * Allows fine-tuning the balance between different mutation types.
+   *
+   * Categories:
+   * - addNeurons: For "add-neurons" candidates (default: 1)
+   * - addSynapses: For "add-synapses" candidates (default: 1)
+   * - changeSquash: For "change-squash" candidates (default: 1)
+   * - removeLowImpact: For "remove-low-impact" candidates (default: 3)
+   *
+   * Higher values mean more candidates of that type will be evaluated.
+   * Useful when certain mutation types are more successful for your use case.
+   */
+  discoveryMinCandidatesPerCategory: Required<
+    DiscoveryMinCandidatesPerCategory
+  >;
 }
 
-export type NeatOptions = Partial<NeatArguments>;
+/**
+ * Options for NEAT configuration.
+ * All properties are optional; defaults are applied in createNeatConfig().
+ * For discoveryMinCandidatesPerCategory, you can specify partial overrides
+ * and defaults will be merged in.
+ */
+export type NeatOptions =
+  & Omit<Partial<NeatArguments>, "discoveryMinCandidatesPerCategory">
+  & {
+    /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
+    discoveryMinCandidatesPerCategory?: DiscoveryMinCandidatesPerCategory;
+  };

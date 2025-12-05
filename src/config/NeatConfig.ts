@@ -1,7 +1,10 @@
 import type { NeatOptions } from "../../mod.ts";
 import { Selection, type SelectionInterface } from "../methods/Selection.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
-import type { NeatArguments } from "./NeatOptions.ts";
+import type {
+  DiscoveryMinCandidatesPerCategory,
+  NeatArguments,
+} from "./NeatOptions.ts";
 import { DEFAULT_RUST_FLUSH_RECORDS } from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
 
 /**
@@ -14,6 +17,20 @@ export const DEFAULT_COST_OF_GROWTH = 0.000_000_1;
  * Minimum allowed cost of growth value.
  */
 export const MIN_COST_OF_GROWTH = 0.000_000_000_1;
+
+/**
+ * Default minimum candidates per discovery category.
+ * These values reflect the current behaviour where diversity selection
+ * picks at least 1 from each category, and removal candidates sample 3.
+ */
+export const DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY: Required<
+  DiscoveryMinCandidatesPerCategory
+> = {
+  addNeurons: 1,
+  addSynapses: 1,
+  changeSquash: 1,
+  removeLowImpact: 3,
+};
 
 /**
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
@@ -154,6 +171,10 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryBaseDirectory: options.discoveryBaseDirectory,
     discoverySkipRecordPhase: options.discoverySkipRecordPhase ?? false,
     discoveryFailureCacheDir: options.discoveryFailureCacheDir,
+    discoveryMinCandidatesPerCategory: {
+      ...DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
+      ...options.discoveryMinCandidatesPerCategory,
+    } as Required<DiscoveryMinCandidatesPerCategory>,
   };
   validate(config);
   return Object.freeze(config);
@@ -345,5 +366,42 @@ function validate(config: NeatArguments) {
     throw new Error(
       `Discovery Min Improvement vs Cost of Growth Multiplier must be zero or more was: ${config.discoveryMinImprovementVsCostOfGrowthMultiplier}`,
     );
+  }
+
+  // Validate discoveryMinCandidatesPerCategory
+  const minCandidates = config.discoveryMinCandidatesPerCategory;
+  if (minCandidates) {
+    if (
+      !Number.isInteger(minCandidates.addNeurons) ||
+      minCandidates.addNeurons < 0
+    ) {
+      throw new Error(
+        `Discovery min candidates for addNeurons must be a non-negative integer, was: ${minCandidates.addNeurons}`,
+      );
+    }
+    if (
+      !Number.isInteger(minCandidates.addSynapses) ||
+      minCandidates.addSynapses < 0
+    ) {
+      throw new Error(
+        `Discovery min candidates for addSynapses must be a non-negative integer, was: ${minCandidates.addSynapses}`,
+      );
+    }
+    if (
+      !Number.isInteger(minCandidates.changeSquash) ||
+      minCandidates.changeSquash < 0
+    ) {
+      throw new Error(
+        `Discovery min candidates for changeSquash must be a non-negative integer, was: ${minCandidates.changeSquash}`,
+      );
+    }
+    if (
+      !Number.isInteger(minCandidates.removeLowImpact) ||
+      minCandidates.removeLowImpact < 0
+    ) {
+      throw new Error(
+        `Discovery min candidates for removeLowImpact must be a non-negative integer, was: ${minCandidates.removeLowImpact}`,
+      );
+    }
   }
 }

@@ -52,7 +52,10 @@ export { CreatureUtil } from "./src/architecture/CreatureUtils.ts";
  *
  * @see {@link module:src/config/NeatOptions}
  */
-export type { NeatOptions } from "./src/config/NeatOptions.ts";
+export type {
+  DiscoveryMinCandidatesPerCategory,
+  NeatOptions,
+} from "./src/config/NeatOptions.ts";
 
 /**
  * Cost Interface
