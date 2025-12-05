@@ -766,3 +766,56 @@ Deno.test("recordFailure handles negative actualErrorReduction (error increased)
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+Deno.test("recordFailure omits actualErrorReduction when candidateError is Infinity", async () => {
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate: DiscoveryCandidate = {
+      creature,
+      change: {
+        type: "add-neurons",
+        description: "Add neuron that caused evaluation failure",
+        expectedErrorReduction: 0.02,
+      },
+    };
+
+    // Record failure where candidate error is Infinity (worker evaluation failed)
+    // This happens when workers return Number.POSITIVE_INFINITY on failure
+    // Without proper validation, this would store -Infinity in the cache
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: -1, // Score is also bad when error is Infinity
+      scoreDelta: -1.5,
+      error: Number.POSITIVE_INFINITY, // Worker evaluation failure
+      originalError: 0.5, // Original was finite
+    });
+
+    // Read the cache file to verify actualErrorReduction was NOT stored
+    const key = buildCacheKey(candidate);
+    const filePath = `${tempDir}/add-neurons/${key}.json`;
+    const content = await Deno.readTextFile(filePath);
+    const parsed = JSON.parse(content);
+
+    // actualErrorReduction should NOT be stored (it would be -Infinity otherwise)
+    assertEquals(
+      parsed.actualErrorReduction,
+      undefined,
+      "actualErrorReduction should NOT be stored when candidateError is Infinity",
+    );
+    // But error and originalError should still be recorded in metadata
+    assertEquals(
+      parsed.error,
+      null, // JSON serialises Infinity as null
+      "error should be recorded (as null in JSON for Infinity)",
+    );
+    assertEquals(
+      parsed.originalError,
+      0.5,
+      "originalError should be recorded",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});

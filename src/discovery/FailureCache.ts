@@ -437,11 +437,13 @@ export async function recordFailure(
       cacheEntry.sampleSize = candidate.change.sampleSize;
     }
 
-    // Compute and include actual error reduction if originalError is available
+    // Compute and include actual error reduction if both errors are finite
     // actualErrorReduction = originalError - candidateError (positive means improvement)
+    // Skip if either error is non-finite (NaN, Infinity) as this indicates evaluation issues
     if (
       metadata.originalError !== undefined &&
-      Number.isFinite(metadata.originalError)
+      Number.isFinite(metadata.originalError) &&
+      Number.isFinite(metadata.error)
     ) {
       const actualErrorReduction = metadata.originalError - metadata.error;
       cacheEntry.actualErrorReduction = actualErrorReduction;
@@ -522,11 +524,13 @@ export function recordFailureSync(
       cacheEntry.sampleSize = candidate.change.sampleSize;
     }
 
-    // Compute and include actual error reduction if originalError is available
+    // Compute and include actual error reduction if both errors are finite
     // actualErrorReduction = originalError - candidateError (positive means improvement)
+    // Skip if either error is non-finite (NaN, Infinity) as this indicates evaluation issues
     if (
       metadata.originalError !== undefined &&
-      Number.isFinite(metadata.originalError)
+      Number.isFinite(metadata.originalError) &&
+      Number.isFinite(metadata.error)
     ) {
       const actualErrorReduction = metadata.originalError - metadata.error;
       cacheEntry.actualErrorReduction = actualErrorReduction;
