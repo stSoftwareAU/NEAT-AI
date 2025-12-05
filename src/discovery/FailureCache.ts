@@ -24,6 +24,8 @@ export interface FailureMetadata {
   candidateScore: number;
   scoreDelta: number;
   error: number;
+  /** Original error before the candidate change was applied */
+  originalError?: number;
   timestamp?: string;
 }
 
@@ -435,6 +437,16 @@ export async function recordFailure(
       cacheEntry.sampleSize = candidate.change.sampleSize;
     }
 
+    // Compute and include actual error reduction if originalError is available
+    // actualErrorReduction = originalError - candidateError (positive means improvement)
+    if (
+      metadata.originalError !== undefined &&
+      Number.isFinite(metadata.originalError)
+    ) {
+      const actualErrorReduction = metadata.originalError - metadata.error;
+      cacheEntry.actualErrorReduction = actualErrorReduction;
+    }
+
     // Extract and include actual creature changes for verification
     // This is what TypeScript actually created (after fix() etc.)
     if (baseCreature) {
@@ -508,6 +520,16 @@ export function recordFailureSync(
     // Include sample size if available
     if (candidate.change.sampleSize !== undefined) {
       cacheEntry.sampleSize = candidate.change.sampleSize;
+    }
+
+    // Compute and include actual error reduction if originalError is available
+    // actualErrorReduction = originalError - candidateError (positive means improvement)
+    if (
+      metadata.originalError !== undefined &&
+      Number.isFinite(metadata.originalError)
+    ) {
+      const actualErrorReduction = metadata.originalError - metadata.error;
+      cacheEntry.actualErrorReduction = actualErrorReduction;
     }
 
     // Extract and include actual creature changes for verification
