@@ -24,7 +24,7 @@ export interface FailureMetadata {
   candidateScore: number;
   scoreDelta: number;
   error: number;
-  /** Original error before the candidate change was applied */
+  /** Re-scored error of the original creature (without candidate changes applied) */
   originalError?: number;
   timestamp?: string;
 }
