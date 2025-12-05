@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import {
   buildCacheKey,
   extractExponent,
@@ -617,4 +617,205 @@ Deno.test("buildCacheKey produces deterministic keys regardless of neuron order"
     key2,
     "Cache keys should be identical for structurally identical creatures regardless of neuron declaration order",
   );
+});
+
+Deno.test("recordFailure computes actualErrorReduction when originalError is provided", async () => {
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate: DiscoveryCandidate = {
+      creature,
+      change: {
+        type: "add-neurons",
+        description: "Add neuron test",
+        expectedErrorReduction: 0.05, // Expected 5% reduction
+        neuronDetails: {
+          fromNeuronUUID: "input-0",
+          toNeuronUUID: "output-0",
+          incomingWeight: 0.5,
+          outgoingWeight: -0.3,
+          bias: 0.1,
+          squash: "TANH",
+        },
+      },
+    };
+
+    // Record failure with originalError provided
+    // originalError = 0.6, candidateError = 0.58
+    // actualErrorReduction = 0.6 - 0.58 = 0.02 (positive means improvement)
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.48,
+      scoreDelta: -0.02,
+      error: 0.58,
+      originalError: 0.6,
+    });
+
+    // Read the cache file to verify actualErrorReduction was stored
+    const key = buildCacheKey(candidate);
+    const filePath = `${tempDir}/add-neurons/${key}.json`;
+    const content = await Deno.readTextFile(filePath);
+    const parsed = JSON.parse(content);
+
+    // Verify both expected and actual error reduction are present
+    assertEquals(
+      parsed.expectedErrorReduction,
+      0.05,
+      "Expected error reduction should be stored",
+    );
+    assertAlmostEquals(
+      parsed.actualErrorReduction,
+      0.02,
+      1e-9,
+      "Actual error reduction should be computed and stored (0.6 - 0.58 = 0.02)",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("recordFailure omits actualErrorReduction when originalError is not provided", async () => {
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate: DiscoveryCandidate = {
+      creature,
+      change: {
+        type: "add-synapses",
+        description: "Add synapse test",
+        expectedErrorReduction: 0.03,
+      },
+    };
+
+    // Record failure WITHOUT originalError
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.48,
+      scoreDelta: -0.02,
+      error: 0.58,
+      // originalError not provided
+    });
+
+    // Read the cache file to verify actualErrorReduction was NOT stored
+    const key = buildCacheKey(candidate);
+    const filePath = `${tempDir}/add-synapses/${key}.json`;
+    const content = await Deno.readTextFile(filePath);
+    const parsed = JSON.parse(content);
+
+    // Verify expected error reduction is present but actual is not
+    assertEquals(
+      parsed.expectedErrorReduction,
+      0.03,
+      "Expected error reduction should be stored",
+    );
+    assertEquals(
+      parsed.actualErrorReduction,
+      undefined,
+      "Actual error reduction should NOT be stored when originalError is missing",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("recordFailure handles negative actualErrorReduction (error increased)", async () => {
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate: DiscoveryCandidate = {
+      creature,
+      change: {
+        type: "add-neurons",
+        description: "Add neuron that made things worse",
+        expectedErrorReduction: 0.02, // Expected 2% reduction
+      },
+    };
+
+    // Record failure where error actually increased
+    // originalError = 0.5, candidateError = 0.55
+    // actualErrorReduction = 0.5 - 0.55 = -0.05 (negative means error increased)
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.45,
+      scoreDelta: -0.05,
+      error: 0.55,
+      originalError: 0.5,
+    });
+
+    // Read the cache file to verify actualErrorReduction captures the negative value
+    const key = buildCacheKey(candidate);
+    const filePath = `${tempDir}/add-neurons/${key}.json`;
+    const content = await Deno.readTextFile(filePath);
+    const parsed = JSON.parse(content);
+
+    assertAlmostEquals(
+      parsed.actualErrorReduction,
+      -0.05,
+      1e-9,
+      "Actual error reduction should be negative when error increased",
+    );
+    assertEquals(
+      parsed.expectedErrorReduction,
+      0.02,
+      "Expected error reduction should still be the predicted value",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("recordFailure omits actualErrorReduction when candidateError is Infinity", async () => {
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate: DiscoveryCandidate = {
+      creature,
+      change: {
+        type: "add-neurons",
+        description: "Add neuron that caused evaluation failure",
+        expectedErrorReduction: 0.02,
+      },
+    };
+
+    // Record failure where candidate error is Infinity (worker evaluation failed)
+    // This happens when workers return Number.POSITIVE_INFINITY on failure
+    // Without proper validation, this would store -Infinity in the cache
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: -1, // Score is also bad when error is Infinity
+      scoreDelta: -1.5,
+      error: Number.POSITIVE_INFINITY, // Worker evaluation failure
+      originalError: 0.5, // Original was finite
+    });
+
+    // Read the cache file to verify actualErrorReduction was NOT stored
+    const key = buildCacheKey(candidate);
+    const filePath = `${tempDir}/add-neurons/${key}.json`;
+    const content = await Deno.readTextFile(filePath);
+    const parsed = JSON.parse(content);
+
+    // actualErrorReduction should NOT be stored (it would be -Infinity otherwise)
+    assertEquals(
+      parsed.actualErrorReduction,
+      undefined,
+      "actualErrorReduction should NOT be stored when candidateError is Infinity",
+    );
+    // But error and originalError should still be recorded in metadata
+    assertEquals(
+      parsed.error,
+      null, // JSON serialises Infinity as null
+      "error should be recorded (as null in JSON for Infinity)",
+    );
+    assertEquals(
+      parsed.originalError,
+      0.5,
+      "originalError should be recorded",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
 });

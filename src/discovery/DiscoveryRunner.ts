@@ -412,6 +412,7 @@ export class DiscoveryRunner {
               candidateScore: failed.score,
               scoreDelta: failed.score - original.score,
               error: failed.error,
+              originalError: original.error,
             }, creature); // Pass base creature for actual changes extraction
             cachedFailuresCount++;
           }

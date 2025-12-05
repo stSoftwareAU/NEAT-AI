@@ -24,6 +24,8 @@ export interface FailureMetadata {
   candidateScore: number;
   scoreDelta: number;
   error: number;
+  /** Re-scored error of the original creature (without candidate changes applied) */
+  originalError?: number;
   timestamp?: string;
 }
 
@@ -435,6 +437,18 @@ export async function recordFailure(
       cacheEntry.sampleSize = candidate.change.sampleSize;
     }
 
+    // Compute and include actual error reduction if both errors are finite
+    // actualErrorReduction = originalError - candidateError (positive means improvement)
+    // Skip if either error is non-finite (NaN, Infinity) as this indicates evaluation issues
+    if (
+      metadata.originalError !== undefined &&
+      Number.isFinite(metadata.originalError) &&
+      Number.isFinite(metadata.error)
+    ) {
+      const actualErrorReduction = metadata.originalError - metadata.error;
+      cacheEntry.actualErrorReduction = actualErrorReduction;
+    }
+
     // Extract and include actual creature changes for verification
     // This is what TypeScript actually created (after fix() etc.)
     if (baseCreature) {
@@ -508,6 +522,18 @@ export function recordFailureSync(
     // Include sample size if available
     if (candidate.change.sampleSize !== undefined) {
       cacheEntry.sampleSize = candidate.change.sampleSize;
+    }
+
+    // Compute and include actual error reduction if both errors are finite
+    // actualErrorReduction = originalError - candidateError (positive means improvement)
+    // Skip if either error is non-finite (NaN, Infinity) as this indicates evaluation issues
+    if (
+      metadata.originalError !== undefined &&
+      Number.isFinite(metadata.originalError) &&
+      Number.isFinite(metadata.error)
+    ) {
+      const actualErrorReduction = metadata.originalError - metadata.error;
+      cacheEntry.actualErrorReduction = actualErrorReduction;
     }
 
     // Extract and include actual creature changes for verification
