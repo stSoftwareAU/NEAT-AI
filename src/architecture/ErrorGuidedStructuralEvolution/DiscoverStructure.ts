@@ -836,15 +836,6 @@ export class DiscoverStructure {
       };
     });
 
-    // Verbose logging: report neuron coverage in this batch
-    // Note: All records contain the same set of neurons (nonInputNeurons), so no need to iterate
-    if (this.loggingEnabled && pendingSamples > 0) {
-      this.log(
-        "debug",
-        `Parquet batch includes ${nonInputNeurons.length} neurons across ${pendingSamples} samples.`,
-      );
-    }
-
     const diagnostics = this.inspectRustFlushBatch(
       rustTrainingData,
       this.creature.input,
@@ -936,20 +927,6 @@ export class DiscoverStructure {
 
       this.rustAccumulatedData = [];
       this.rustAccumulatedNeuronData = [];
-      const flushDuration = Date.now() - now;
-      const remainingSeconds = Math.max(
-        0,
-        Math.floor((this.timeoutTS - Date.now()) / 1000),
-      );
-      const flushRate = flushDuration > 0
-        ? (pendingSamples / (flushDuration / 1000)).toFixed(2)
-        : "∞";
-      this.log(
-        "info",
-        `Flushed ${pendingSamples} samples to ${parquetPath} in ${
-          this.formatMillis(flushDuration)
-        } (${flushRate} samples/sec, timeout remaining: ${remainingSeconds}s).`,
-      );
 
       return parquetPath;
     }
