@@ -421,10 +421,9 @@ export function buildDiscoveryCandidates(
       creature: removedNeuronCreature,
       change: {
         type: "remove-neuron",
-        description:
-          `💀 Removed harmful neuron ${mostHarmful.neuronUUID} (error: ${
-            mostHarmful.errorMagnitude.toExponential(2)
-          })`,
+        description: `💀 Removed harmful neuron ${
+          shortID(mostHarmful.neuronUUID)
+        } (error: ${mostHarmful.errorMagnitude.toExponential(2)})`,
         expectedErrorReduction: mostHarmful.expectedImprovementPercentage,
         sampleSize: mostHarmful.sampleCount,
       },
@@ -484,10 +483,9 @@ export function buildDiscoveryCandidates(
           creature: removedLowImpactCreature,
           change: {
             type: "remove-low-impact",
-            description:
-              `🪶 Removed low-impact neuron ${candidate.neuronUUID} (impact: ${
-                candidate.impact.toExponential(2)
-              })`,
+            description: `🪶 Removed neuron ${
+              shortID(candidate.neuronUUID)
+            } (impact: ${candidate.impact.toExponential(2)})`,
             // No expectedErrorReduction - removal improves score via complexity reduction, not error
           },
         });

@@ -1356,8 +1356,9 @@ Deno.test(
     // Verify the removal candidate has the expected description
     const removalCandidate = removalCandidates[0];
     assert(
-      removalCandidate.description?.includes("low-impact"),
-      `Expected description to mention 'low-impact', got: ${removalCandidate.description}`,
+      removalCandidate.description?.includes("Removed neuron") &&
+        removalCandidate.description?.includes("impact:"),
+      `Expected description to mention 'Removed neuron' and 'impact:', got: ${removalCandidate.description}`,
     );
   },
 );
