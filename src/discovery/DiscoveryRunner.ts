@@ -445,16 +445,11 @@ export class DiscoveryRunner {
           ? improved.candidate.change.description
           : improved.candidate.change.type;
         const changeType = improved.candidate.change.type;
-        // Include creature short ID (last 8 characters of UUID) in message for traceability
-        const creatureUUID = improved.candidate.creature.uuid;
-        const creatureShortID = creatureUUID && creatureUUID.length > 8
-          ? creatureUUID.slice(-8)
-          : creatureUUID ?? "unknown";
-        // Ensure message includes changeType for test compatibility
-        const message =
-          `${description} (${changeType}) for ${discoverResult.ID}: Score +${
-            scoreDelta.toPrecision(6)
-          } -> ${improved.score.toPrecision(6)} (${creatureShortID})`;
+        // Concise message format: description already conveys the change type via emoji and text
+        // Score delta uses toPrecision(6) for consistency with other metrics
+        const message = `${description} for ${discoverResult.ID}: Score +${
+          scoreDelta.toPrecision(6)
+        } -> ${improved.score.toPrecision(6)}`;
 
         outcome.improvement = {
           changeType,
