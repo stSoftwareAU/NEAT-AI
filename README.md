@@ -308,10 +308,10 @@ threshold check:
   synapses or neurons). They only modify the activation function of existing
   neurons, so there is no growth cost to penalise.
 
-- **Removal candidates (`remove-neuron`, `remove-synapse`, `remove-low-impact`)**:
-  Don't add structural complexity - they remove it. They improve score by reducing
-  complexity, not by reducing error. Removing elements that return a similar score
-  will improve the creature's score.
+- **Removal candidates (`remove-neuron`, `remove-synapse`,
+  `remove-low-impact`)**: Don't add structural complexity - they remove it. They
+  improve score by reducing complexity, not by reducing error. Removing elements
+  that return a similar score will improve the creature's score.
 
 ## Enabling the Rust Discovery Module
 
