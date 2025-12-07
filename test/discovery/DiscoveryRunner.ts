@@ -2263,3 +2263,104 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "DiscoveryRunner does not filter squash changes by cost-of-growth threshold",
+  async () => {
+    const creature = makeBaseCreature();
+    const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-1");
+    assert(hiddenNeuron, "Should have hidden-1 neuron");
+
+    // Create discovery result with:
+    // 1. A squash change with very low expected improvement (below threshold)
+    // 2. An add-synapses candidate with similarly low expected improvement (should be filtered)
+    const discoveryResult: DiscoverResult = {
+      ID: "SQUASH_THRESHOLD_TEST",
+      addHelpfulSynapses: [{
+        fromNeuronUUID: "input-0",
+        toNeuronUUID: "output-0",
+        weight: 0.1,
+        expectedImprovementPercentage: 0.0001, // Very small - below threshold
+        improvedCount: 1,
+        totalCount: 10,
+      }],
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
+      candidateSquashes: [{
+        neuronUUID: "hidden-1",
+        previousSquash: "IDENTITY",
+        squash: "TANH",
+        expectedImprovementPercentage: 0.0001, // Very small - below threshold
+        improvedError: 0.49,
+        currentError: 0.5,
+      }],
+    };
+
+    const captured: string[] = [];
+    const originalInfo = console.info.bind(console);
+    console.info = (...args: unknown[]) => {
+      captured.push(args.map((arg) => String(arg)).join(" "));
+      originalInfo(...args);
+    };
+
+    try {
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            () => 0.5,
+          ),
+      });
+
+      // Set high costOfGrowth and multiplier so threshold is high
+      // costOfGrowth = 0.01, multiplier = 2.0 → threshold = 0.02
+      // Both candidates have expected = 0.0001, which is < 0.02
+      await runner.discoverDir({
+        creature,
+        dataDir: "/tmp/data",
+        options: makeOptions({
+          costOfGrowth: 0.01,
+          discoveryMinImprovementVsCostOfGrowthMultiplier: 2.0,
+        }),
+      });
+    } finally {
+      console.info = originalInfo;
+    }
+
+    // Find log lines about skipped candidates
+    const skipLines = captured.filter((line) =>
+      line.includes("[DiscoveryRunner]") &&
+      line.includes("Skipped") &&
+      line.includes("cost-of-growth")
+    );
+
+    // Verify that add-synapses was filtered (should appear in skip log)
+    const addSynapsesFiltered = skipLines.some((line) =>
+      line.includes("add-synapses")
+    );
+
+    // Verify that change-squash was NOT filtered (should NOT appear in skip log)
+    const squashFiltered = skipLines.some((line) =>
+      line.includes("change-squash")
+    );
+
+    assertEquals(
+      addSynapsesFiltered,
+      true,
+      `Expected add-synapses candidate to be filtered by cost-of-growth threshold. Skip logs: ${
+        skipLines.join("\n")
+      }`,
+    );
+
+    assertEquals(
+      squashFiltered,
+      false,
+      `Expected change-squash candidate NOT to be filtered by cost-of-growth threshold (squash changes don't add structural complexity). Skip logs: ${
+        skipLines.join("\n")
+      }`,
+    );
+  },
+);

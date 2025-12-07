@@ -301,6 +301,11 @@ structural cost are skipped entirely. This keeps discovery focused on proposals
 that can actually repay the growth penalty and prevents logs from being flooded
 with meaningless `+0.000%` deltas.
 
+**Note:** Squash changes (`change-squash`) are excluded from the cost-of-growth
+threshold check because they don't add structural complexity (no new synapses or
+neurons). They only modify the activation function of existing neurons, so there
+is no growth cost to penalise.
+
 ## Enabling the Rust Discovery Module
 
 The Rust FFI extension shipped via
