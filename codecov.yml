@@ -1,0 +1,21 @@
+# Codecov Configuration
+# See: https://docs.codecov.com/docs/codecovyml-reference
+
+coverage:
+  status:
+    project:
+      default:
+        # Target 90% overall coverage
+        target: 90%
+        # Allow up to 1% drop before failing
+        threshold: 1%
+    patch:
+      default:
+        # Require 90% coverage on new/changed code
+        target: 90%
+
+comment:
+  # Show coverage diff in PR comments
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: true
