@@ -248,6 +248,22 @@ export class DiscoveryRunner {
         discoverResult,
         { skipCombinedCandidates: true },
       );
+
+      // Log candidate counts by type (always, not just verbose)
+      const candidateCountsByType = new Map<string, number>();
+      for (const candidate of singleCandidates) {
+        const type = candidate.change.type;
+        candidateCountsByType.set(type, (candidateCountsByType.get(type) ?? 0) + 1);
+      }
+      const countBreakdown = Array.from(candidateCountsByType.entries())
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(", ");
+      console.info(
+        `[DiscoveryRunner] Built ${singleCandidates.length} candidate${
+          singleCandidates.length === 1 ? "" : "s"
+        }${countBreakdown ? ` (${countBreakdown})` : ""}`,
+      );
+
       verboseLog(
         `[Phase 1] Built ${singleCandidates.length} single candidate creature${
           singleCandidates.length === 1 ? "" : "s"
@@ -938,6 +954,8 @@ export class DiscoveryRunner {
       cachedRemoval: 0,
       totalOther: 0,
       cachedOther: 0,
+      /** Track cached candidate types for better diagnostics */
+      cachedTypes: new Map<string, number>(),
     };
 
     for (const candidate of candidates) {
@@ -965,6 +983,10 @@ export class DiscoveryRunner {
       cacheStats.totalOther++;
       if (isCached) {
         cacheStats.cachedOther++;
+        cacheStats.cachedTypes.set(
+          changeType,
+          (cacheStats.cachedTypes.get(changeType) ?? 0) + 1,
+        );
         continue; // Skip cached candidates - don't let them consume slots
       }
 
@@ -999,17 +1021,15 @@ export class DiscoveryRunner {
         const parts: string[] = [];
         if (cacheStats.cachedRemoval > 0) {
           parts.push(
-            `${cacheStats.cachedRemoval} removal candidate${
-              cacheStats.cachedRemoval === 1 ? "" : "s"
-            }`,
+            `${cacheStats.cachedRemoval} removal`,
           );
         }
+        // Include cached types breakdown for non-removal candidates
         if (cacheStats.cachedOther > 0) {
-          parts.push(
-            `${cacheStats.cachedOther} other candidate${
-              cacheStats.cachedOther === 1 ? "" : "s"
-            }`,
-          );
+          const typeBreakdown = Array.from(cacheStats.cachedTypes.entries())
+            .map(([type, count]) => `${count} ${type}`)
+            .join(", ");
+          parts.push(typeBreakdown || `${cacheStats.cachedOther} other`);
         }
         console.info(
           `[DiscoveryRunner] ⏭️ Skipped ${totalCached} candidate${
