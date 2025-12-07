@@ -918,8 +918,9 @@ export class DiscoveryRunner {
    * 3. Fill remaining slots with best expected improvements across categories
    * 4. Count failure cache statistics during selection (single pass)
    *
-   * Removal candidates are treated separately because they don't reduce error -
-   * they improve SCORE by reducing complexity.
+   * Removal candidates (remove-low-impact, remove-neuron, remove-synapse) are treated
+   * separately because they don't reduce error - they improve SCORE by reducing complexity.
+   * Removing elements that return a similar score will improve the creature's score.
    *
    * Squash changes (change-squash) are excluded from cost-of-growth threshold checks
    * because they don't add structural complexity (no new synapses or neurons).
@@ -971,7 +972,14 @@ export class DiscoveryRunner {
       CreatureUtil.makeUUID(candidate.creature);
       const expected = candidate.change.expectedErrorReduction;
       const changeType = candidate.change.type;
-      const isRemovalCandidate = changeType === "remove-low-impact";
+
+      // All removal types are excluded from cost-of-growth filtering because:
+      // 1. They don't add structural complexity (they remove it)
+      // 2. They improve score by reducing complexity, not by reducing error
+      // 3. Removing elements that return a similar score will improve the creature's score
+      const isRemovalCandidate = changeType === "remove-low-impact" ||
+        changeType === "remove-neuron" ||
+        changeType === "remove-synapse";
 
       // Check failure cache (single pass for all candidates)
       const isCached = failureCacheDir
