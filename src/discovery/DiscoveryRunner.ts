@@ -921,6 +921,9 @@ export class DiscoveryRunner {
    * Removal candidates are treated separately because they don't reduce error -
    * they improve SCORE by reducing complexity.
    *
+   * Squash changes (change-squash) are excluded from cost-of-growth threshold checks
+   * because they don't add structural complexity (no new synapses or neurons).
+   *
    * @param candidates - All discovery candidates
    * @param threadCount - Number of CPU threads available
    * @param config - NEAT configuration
@@ -996,25 +999,31 @@ export class DiscoveryRunner {
         continue; // Skip cached candidates - don't let them consume slots
       }
 
-      // Check threshold for non-removal candidates
-      let meetsThreshold = true;
-      if (expected !== undefined) {
-        if (!Number.isFinite(expected)) {
-          meetsThreshold = false;
-        } else {
-          meetsThreshold = multiplier === 0
-            ? expected > 0
-            : expected >= minExpectedImprovement;
-        }
-      }
+      // Squash changes don't add structural complexity (no new synapses/neurons),
+      // so they shouldn't be filtered by cost-of-growth threshold
+      const isSquashChange = changeType === "change-squash";
 
-      if (!meetsThreshold) {
-        skipped.push({ changeType, expected });
-        thresholdSkipped.set(
-          changeType,
-          (thresholdSkipped.get(changeType) ?? 0) + 1,
-        );
-        continue;
+      // Check threshold for non-removal, non-squash candidates
+      let meetsThreshold = true;
+      if (!isSquashChange) {
+        if (expected !== undefined) {
+          if (!Number.isFinite(expected)) {
+            meetsThreshold = false;
+          } else {
+            meetsThreshold = multiplier === 0
+              ? expected > 0
+              : expected >= minExpectedImprovement;
+          }
+        }
+
+        if (!meetsThreshold) {
+          skipped.push({ changeType, expected });
+          thresholdSkipped.set(
+            changeType,
+            (thresholdSkipped.get(changeType) ?? 0) + 1,
+          );
+          continue;
+        }
       }
 
       // Group by category for diversity selection

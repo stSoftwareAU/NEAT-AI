@@ -119,11 +119,15 @@ Discovery uses a two-stage filter:
 
 **Stage 1: Cost of Growth Gate**
 
-Each candidate must satisfy: `Error Reduction > Cost of Growth`
+Each candidate that adds structural complexity must satisfy:
+`Error Reduction > Cost of Growth`
 
 - New synapse: costs `1 × costOfGrowth`
 - New neuron: costs `~3 × costOfGrowth` (neuron + 2 synapses)
 - If error reduction < structural cost → **rejected** (unprofitable)
+- **Squash changes (`change-squash`) are excluded** from this check because they
+  don't add synapses or neurons - they only modify activation functions of
+  existing neurons, so there is no growth cost to penalise
 
 **Stage 2: Minimum Improvement Threshold**
 
@@ -150,6 +154,9 @@ Example:
 
 // Candidate C: Add 1 neuron, 0.5% improvement, cost = 0.003
 // Error reduction: 0.005, Cost: 0.003 → Profit: 0.002 ✅
+
+// Candidate D: Change squash, 0.1% improvement, cost = 0 (no structural growth)
+// Error reduction: 0.001, Cost: 0 → Profit: 0.001 ✅ (not filtered by cost-of-growth)
 
 // Result: Choose Candidate A (largest improvement at 1.2%)
 ```
