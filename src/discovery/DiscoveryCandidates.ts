@@ -199,6 +199,12 @@ export function buildDiscoveryCandidates(
         sampleSize: neuronSummary.sampleSize,
       },
     });
+  } else if (helpfulNeuronCandidates && helpfulNeuronCandidates.length > 0) {
+    console.info(
+      `[DiscoveryCandidates] Combined add-neurons candidate not created (${helpfulNeuronCandidates.length} neuron${
+        helpfulNeuronCandidates.length === 1 ? "" : "s"
+      } suggested but structure change returned undefined)`,
+    );
   }
 
   candidates.push(
@@ -234,6 +240,12 @@ export function buildDiscoveryCandidates(
         sampleSize: synapseSummary.sampleSize,
       },
     });
+  } else if (addHelpfulSynapses && addHelpfulSynapses.length > 0) {
+    console.info(
+      `[DiscoveryCandidates] Combined add-synapses candidate not created (${addHelpfulSynapses.length} synapse${
+        addHelpfulSynapses.length === 1 ? "" : "s"
+      } suggested but structure change returned undefined)`,
+    );
   }
 
   candidates.push(
@@ -396,6 +408,12 @@ export function buildDiscoveryCandidates(
         });
       }
     }
+  } else if (candidateSquashes && candidateSquashes.length > 0) {
+    console.info(
+      `[DiscoveryCandidates] Combined change-squash candidate not created (${candidateSquashes.length} squash${
+        candidateSquashes.length === 1 ? "" : "es"
+      } suggested but structure change returned undefined)`,
+    );
   }
 
   candidates.push(
@@ -688,13 +706,17 @@ function buildSingleSynapseCandidates(
 ): DiscoveryCandidate[] {
   if (!synapses || synapses.length === 0) return [];
   const entries: DiscoveryCandidate[] = [];
+  let skippedCount = 0;
   for (const synapse of synapses) {
     const creature = DiscoverStructure.addHelpfulSynapses(
       discoveryID,
       baseCreature,
       [synapse],
     );
-    if (!creature) continue;
+    if (!creature) {
+      skippedCount++;
+      continue;
+    }
     entries.push({
       creature,
       change: {
@@ -706,6 +728,13 @@ function buildSingleSynapseCandidates(
         sampleSize: synapse.totalCount,
       },
     });
+  }
+  if (skippedCount > 0) {
+    console.info(
+      `[DiscoveryCandidates] Skipped ${skippedCount}/${synapses.length} individual synapse candidate${
+        skippedCount === 1 ? "" : "s"
+      } (structure change returned undefined)`,
+    );
   }
   return entries;
 }
@@ -719,13 +748,17 @@ function buildSingleNeuronCandidates(
   if (!neurons || neurons.length === 0) return [];
   const baseNeuronUUIDs = new Set(baseCreature.neurons.map((n) => n.uuid));
   const entries: DiscoveryCandidate[] = [];
+  let skippedCount = 0;
   for (const neuron of neurons) {
     const creature = DiscoverStructure.addHelpfulNeurons(
       discoveryID,
       baseCreature,
       [neuron],
     );
-    if (!creature) continue;
+    if (!creature) {
+      skippedCount++;
+      continue;
+    }
 
     // Find the newly added neuron by comparing with base creature
     const addedNeuron = creature.neurons.find(
@@ -756,6 +789,13 @@ function buildSingleNeuronCandidates(
       },
     });
   }
+  if (skippedCount > 0) {
+    console.info(
+      `[DiscoveryCandidates] Skipped ${skippedCount}/${neurons.length} individual neuron candidate${
+        skippedCount === 1 ? "" : "s"
+      } (structure change returned undefined)`,
+    );
+  }
   return entries;
 }
 
@@ -767,13 +807,17 @@ function buildSingleSquashCandidates(
 ): DiscoveryCandidate[] {
   if (!squashes || squashes.length === 0) return [];
   const entries: DiscoveryCandidate[] = [];
+  let skippedCount = 0;
   for (const squash of squashes) {
     const creature = DiscoverStructure.changeSquash(
       discoveryID,
       baseCreature,
       [squash],
     );
-    if (!creature) continue;
+    if (!creature) {
+      skippedCount++;
+      continue;
+    }
 
     const neuron = baseCreature.neurons.find((n) =>
       n.uuid === squash.neuronUUID
@@ -794,6 +838,13 @@ function buildSingleSquashCandidates(
         expectedErrorReduction: scaledExpected,
       },
     });
+  }
+  if (skippedCount > 0) {
+    console.info(
+      `[DiscoveryCandidates] Skipped ${skippedCount}/${squashes.length} individual squash candidate${
+        skippedCount === 1 ? "" : "s"
+      } (structure change returned undefined)`,
+    );
   }
   return entries;
 }

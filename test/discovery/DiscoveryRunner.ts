@@ -2087,3 +2087,179 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "DiscoveryRunner logs specific candidate types when skipped due to cache",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const cacheDir = `${tempDir}/failure-cache`;
+
+    try {
+      // Create discovery result with both synapse and squash candidates
+      const discoveryResult: DiscoverResult = {
+        ID: "CACHE_TYPE_LOGGING_TEST",
+        addHelpfulSynapses: [{
+          fromNeuronUUID: "input-1",
+          toNeuronUUID: "hidden-1",
+          weight: 0.45,
+          expectedImprovementPercentage: 0.2,
+          improvedCount: 5,
+          totalCount: 6,
+        }],
+        addHelpfulNeurons: undefined,
+        removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
+        candidateSquashes: [{
+          neuronUUID: "hidden-1",
+          previousSquash: "IDENTITY",
+          squash: "TANH",
+          expectedImprovementPercentage: 0.3,
+          improvedError: 0.03,
+          currentError: 0.1,
+        }],
+      };
+
+      // All candidates will fail (worse than original)
+      const computeError = (_creature: Creature) => 0.6;
+
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            computeError,
+          ),
+      });
+
+      // First run - cache failures
+      await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options: makeOptions({ discoveryFailureCacheDir: cacheDir }),
+      });
+
+      // Capture console output for second run
+      const captured: string[] = [];
+      const originalInfo = console.info.bind(console);
+      console.info = (...args: unknown[]) => {
+        captured.push(args.map((arg) => String(arg)).join(" "));
+        originalInfo(...args);
+      };
+
+      try {
+        // Second run - should log specific types being skipped
+        await runner.discoverDir({
+          creature: makeBaseCreature(),
+          dataDir: "/tmp/data",
+          options: makeOptions({ discoveryFailureCacheDir: cacheDir }),
+        });
+      } finally {
+        console.info = originalInfo;
+      }
+
+      // Find the skip log line
+      const skipLine = captured.find((line) =>
+        line.includes("[DiscoveryRunner]") && line.includes("Skipped") &&
+        line.includes("previous failure")
+      );
+
+      assert(
+        skipLine,
+        "Expected a log line about skipped candidates due to previous failure",
+      );
+
+      // Verify the log includes specific types, not just "other candidates"
+      assert(
+        skipLine.includes("add-synapses") || skipLine.includes("change-squash"),
+        `Expected skip log to include specific candidate types, got: ${skipLine}`,
+      );
+
+      // Verify it does NOT just say "other candidates" without breakdown
+      const hasTypeBreakdown = skipLine.includes("add-synapses") ||
+        skipLine.includes("change-squash");
+      assert(
+        hasTypeBreakdown,
+        `Expected type breakdown in skip log, got: ${skipLine}`,
+      );
+    } finally {
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "DiscoveryRunner logs when candidates are skipped due to threshold",
+  async () => {
+    const discoveryResult: DiscoverResult = {
+      ID: "BELOW_MIN_EXPECTED_TEST", // Avoid "threshold" in the ID
+      addHelpfulSynapses: [{
+        fromNeuronUUID: "input-1",
+        toNeuronUUID: "hidden-1",
+        weight: 0.45,
+        expectedImprovementPercentage: 0.001, // Very small improvement
+        improvedCount: 5,
+        totalCount: 6,
+      }],
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
+      candidateSquashes: undefined,
+    };
+
+    const captured: string[] = [];
+    const originalInfo = console.info.bind(console);
+    console.info = (...args: unknown[]) => {
+      captured.push(args.map((arg) => String(arg)).join(" "));
+      originalInfo(...args);
+    };
+
+    try {
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            () => 0.5,
+          ),
+      });
+
+      // Set high costOfGrowth so candidate is below threshold
+      await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options: makeOptions({
+          costOfGrowth: 0.1, // High cost - candidate expected improvement won't meet threshold
+        }),
+      });
+    } finally {
+      console.info = originalInfo;
+    }
+
+    // Debug: print all captured lines that include DiscoveryRunner
+    const discoveryLines = captured.filter((l) =>
+      l.includes("[DiscoveryRunner]")
+    );
+
+    // Find the threshold skip log line - look for specific phrasing like
+    // "skipped due to threshold" or "below minimum improvement"
+    // Must NOT match file paths that happen to contain these words
+    const thresholdLine = captured.find((line) =>
+      line.includes("[DiscoveryRunner]") &&
+      !line.includes("Saved creature") && // Exclude file path lines
+      (line.includes("cost-of-growth") ||
+        line.includes("below minimum") ||
+        (line.includes("skipped") &&
+          (line.includes("threshold") || line.includes("improvement"))))
+    );
+
+    assertEquals(
+      thresholdLine !== undefined,
+      true,
+      `Expected a log line about candidates filtered below minimum expected improvement. Captured ${discoveryLines.length} DiscoveryRunner logs:\n${
+        discoveryLines.join("\n")
+      }`,
+    );
+  },
+);
