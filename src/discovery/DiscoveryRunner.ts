@@ -253,7 +253,10 @@ export class DiscoveryRunner {
       const candidateCountsByType = new Map<string, number>();
       for (const candidate of singleCandidates) {
         const type = candidate.change.type;
-        candidateCountsByType.set(type, (candidateCountsByType.get(type) ?? 0) + 1);
+        candidateCountsByType.set(
+          type,
+          (candidateCountsByType.get(type) ?? 0) + 1,
+        );
       }
       const countBreakdown = Array.from(candidateCountsByType.entries())
         .map(([type, count]) => `${type}: ${count}`)
@@ -958,6 +961,9 @@ export class DiscoveryRunner {
       cachedTypes: new Map<string, number>(),
     };
 
+    // Track candidates skipped due to cost-of-growth threshold
+    const thresholdSkipped = new Map<string, number>();
+
     for (const candidate of candidates) {
       CreatureUtil.makeUUID(candidate.creature);
       const expected = candidate.change.expectedErrorReduction;
@@ -1004,6 +1010,10 @@ export class DiscoveryRunner {
 
       if (!meetsThreshold) {
         skipped.push({ changeType, expected });
+        thresholdSkipped.set(
+          changeType,
+          (thresholdSkipped.get(changeType) ?? 0) + 1,
+        );
         continue;
       }
 
@@ -1037,6 +1047,22 @@ export class DiscoveryRunner {
           } due to previous failure: ${parts.join(", ")}`,
         );
       }
+    }
+
+    // Log candidates skipped due to cost-of-growth threshold
+    if (thresholdSkipped.size > 0) {
+      const totalThresholdSkipped = Array.from(thresholdSkipped.values())
+        .reduce((a, b) => a + b, 0);
+      const typeBreakdown = Array.from(thresholdSkipped.entries())
+        .map(([type, count]) => `${count} ${type}`)
+        .join(", ");
+      console.info(
+        `[DiscoveryRunner] ⏭️ Skipped ${totalThresholdSkipped} candidate${
+          totalThresholdSkipped === 1 ? "" : "s"
+        } below cost-of-growth threshold (${
+          minExpectedImprovement.toExponential(2)
+        }): ${typeBreakdown}`,
+      );
     }
 
     // Sort each category by expected improvement (descending)
