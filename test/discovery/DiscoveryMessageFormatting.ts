@@ -7,6 +7,9 @@
  * @module test/discovery/DiscoveryMessageFormatting
  */
 
+/* cspell:disable-next-line */
+// cspell:ignore ghij klmnopqrstuv ghijklmnopqr
+
 import { assert, assertEquals } from "@std/assert";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
