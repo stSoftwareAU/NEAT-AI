@@ -1,3 +1,36 @@
+/**
+ * Discovery Candidates Module
+ *
+ * This module builds discovery candidates from discovery results and applies changes
+ * to creatures during two-phase scoring.
+ *
+ * **Validation Strategy:**
+ *
+ * We follow a strict validation-first approach to avoid creating broken creatures:
+ *
+ * 1. **Always validate first**: Every creature modification should call `validate()` before
+ *    considering `fix()`. If validation passes, no fix is needed - this is the preferred path.
+ *
+ * 2. **Reuse battle-hardened logic**: The `src/mutate` classes contain well-tested logic
+ *    for modifying creatures without breaking them. Where possible, we should reuse this
+ *    logic (DRY principle) rather than reimplementing modification logic here.
+ *
+ * 3. **Fix() is a bug indicator**: If `validate()` fails and we must call `fix()`, this
+ *    indicates a bug in our modification logic that should be addressed. Each `fix()` call
+ *    should be treated as a bug report.
+ *
+ * 4. **Debug invalid creatures**: When validation fails, we log details and write the
+ *    invalid creature to `.discovery/invalid-creatures/` for debugging. This helps identify
+ *    patterns in modification logic that need improvement.
+ *
+ * 5. **Synchronous function**: The `validateAndFixCreatureSync()` function is used in
+ *    synchronous contexts (like `applyChangeToCreature`). If async debug file writing
+ *    is needed in the future, an async version can be added.
+ *
+ * **Goal**: Minimize `fix()` calls by improving modification logic to create valid
+ * creatures from the start, following patterns from `src/mutate` classes.
+ */
+
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import {
   type CandidateHarmfulNeuron,
@@ -10,6 +43,7 @@ import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolut
 import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 import { CreatureErrorImpactEstimator } from "./NeuronErrorImpactEstimator.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 
 const EPSILON = 1e-9;
 
@@ -311,7 +345,7 @@ export function buildDiscoveryCandidates(
             const updated = Creature.fromJSON(exportJSON);
             // We modified the structure by filtering synapses, so we must delete UUID
             delete updated.uuid;
-            updated.fix();
+            validateAndFixCreatureSync(updated, "remove-synapse");
 
             // Verify it's still removed after fix()
             const verifyJSON = updated.exportJSON();
@@ -666,7 +700,7 @@ export function buildDiscoveryCandidates(
             const updated = Creature.fromJSON(exportJSON);
             // We modified the structure by filtering synapses, so we must delete UUID
             delete updated.uuid;
-            updated.fix();
+            validateAndFixCreatureSync(updated, "remove-synapse");
 
             // Verify it's still removed after fix()
             const verifyJSON = updated.exportJSON();
@@ -1058,7 +1092,7 @@ function buildCombinedCandidate(
         const updated = Creature.fromJSON(exportJSON);
         // We modified the structure by filtering synapses, so we must delete UUID
         delete updated.uuid;
-        updated.fix();
+        validateAndFixCreatureSync(updated, "remove-synapse");
 
         // Verify it's still removed after fix()
         const verifyJSON = updated.exportJSON();
@@ -1284,6 +1318,71 @@ export function buildCombinedFromSuccessful(
 }
 
 /**
+ * Safely validates a creature and handles validation errors.
+ *
+ * Strategy:
+ * 1. Always call validate() first - this is the preferred path (no structural issues)
+ * 2. If validate() fails, log details
+ * 3. Only call fix() as a last resort - each fix() call indicates a bug that should be addressed
+ *
+ * The goal is to reuse battle-hardened logic from src/mutate classes (DRY principle) to avoid
+ * creating broken creatures in the first place. If we're calling fix(), it means our modification
+ * logic needs improvement.
+ *
+ * Note: This is a synchronous function for use in synchronous contexts. If async debug file
+ * writing is needed in the future, an async version can be added.
+ *
+ * @param creature The creature to validate
+ * @param changeType The type of change being applied (for logging)
+ * @returns The validated (and potentially fixed) creature
+ */
+function validateAndFixCreatureSync(
+  creature: Creature,
+  changeType: DiscoveryChangeType,
+): Creature {
+  try {
+    // Preferred path: validate first - if this passes, no fix() needed
+    creature.validate();
+    return creature;
+  } catch (error) {
+    // Validation failed - this indicates our modification logic created an invalid creature
+    const validationError = error instanceof ValidationError
+      ? error
+      : new ValidationError(
+        `Unexpected error during validation: ${error}`,
+        "OTHER",
+      );
+
+    // Log the validation failure with details
+    console.warn(
+      `[DiscoveryCandidates] Validation failed for ${changeType} change: ${validationError.message}`,
+    );
+    console.warn(
+      `[DiscoveryCandidates] Cannot write debug file in synchronous context`,
+    );
+
+    // Last resort: call fix() to repair the creature
+    // This should be treated as a bug - the modification logic should be improved
+    console.warn(
+      `[DiscoveryCandidates] Calling fix() on ${changeType} change - this indicates a bug in modification logic that should be addressed`,
+    );
+    creature.fix();
+
+    // Validate again after fix() to ensure it's now valid
+    try {
+      creature.validate();
+    } catch (fixError) {
+      console.error(
+        `[DiscoveryCandidates] Creature still invalid after fix() for ${changeType}: ${fixError}`,
+      );
+      throw fixError;
+    }
+
+    return creature;
+  }
+}
+
+/**
  * Apply a candidate's change to a creature, returning the modified creature.
  *
  * @param creature The creature to apply the change to (may have prior modifications)
@@ -1315,7 +1414,7 @@ function applyChangeToCreature(
         creatureJSON.synapses.push(...newSynapses);
         const result = Creature.fromJSON(creatureJSON);
         delete result.uuid;
-        result.fix();
+        validateAndFixCreatureSync(result, "add-synapses");
         CreatureUtil.makeUUID(result);
         return result;
       }
@@ -1344,7 +1443,7 @@ function applyChangeToCreature(
 
         const result = Creature.fromJSON(creatureJSON);
         delete result.uuid;
-        result.fix();
+        validateAndFixCreatureSync(result, "add-neurons");
         CreatureUtil.makeUUID(result);
         return result;
       }
@@ -1366,7 +1465,7 @@ function applyChangeToCreature(
 
         const result = Creature.fromJSON(creatureJSON);
         delete result.uuid;
-        result.fix();
+        validateAndFixCreatureSync(result, "change-squash");
         CreatureUtil.makeUUID(result);
         return result;
       }
@@ -1407,7 +1506,7 @@ function applyChangeToCreature(
 
         const result = Creature.fromJSON(creatureJSON);
         delete result.uuid;
-        result.fix();
+        validateAndFixCreatureSync(result, "remove-synapse");
         CreatureUtil.makeUUID(result);
         return result;
       }
@@ -1457,7 +1556,7 @@ function applyChangeToCreature(
 
         const result = Creature.fromJSON(creatureJSON);
         delete result.uuid;
-        result.fix();
+        validateAndFixCreatureSync(result, changeType);
         CreatureUtil.makeUUID(result);
         return result;
       }

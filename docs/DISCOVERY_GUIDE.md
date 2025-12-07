@@ -128,6 +128,10 @@ Each candidate that adds structural complexity must satisfy:
 - **Squash changes (`change-squash`) are excluded** from this check because they
   don't add synapses or neurons - they only modify activation functions of
   existing neurons, so there is no growth cost to penalise
+- **Removal candidates (`remove-neuron`, `remove-synapse`, `remove-low-impact`)
+  are excluded** because they don't add structural complexity - they remove it.
+  They improve score by reducing complexity, not by reducing error. Removing
+  elements that return a similar score will improve the creature's score
 
 **Stage 2: Minimum Improvement Threshold**
 

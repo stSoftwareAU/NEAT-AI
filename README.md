@@ -301,10 +301,17 @@ structural cost are skipped entirely. This keeps discovery focused on proposals
 that can actually repay the growth penalty and prevents logs from being flooded
 with meaningless `+0.000%` deltas.
 
-**Note:** Squash changes (`change-squash`) are excluded from the cost-of-growth
-threshold check because they don't add structural complexity (no new synapses or
-neurons). They only modify the activation function of existing neurons, so there
-is no growth cost to penalise.
+**Note:** The following candidate types are excluded from the cost-of-growth
+threshold check:
+
+- **Squash changes (`change-squash`)**: Don't add structural complexity (no new
+  synapses or neurons). They only modify the activation function of existing
+  neurons, so there is no growth cost to penalise.
+
+- **Removal candidates (`remove-neuron`, `remove-synapse`, `remove-low-impact`)**:
+  Don't add structural complexity - they remove it. They improve score by reducing
+  complexity, not by reducing error. Removing elements that return a similar score
+  will improve the creature's score.
 
 ## Enabling the Rust Discovery Module
 

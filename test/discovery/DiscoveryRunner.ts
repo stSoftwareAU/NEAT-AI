@@ -2364,3 +2364,133 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "DiscoveryRunner does not filter removal candidates by cost-of-growth threshold",
+  async () => {
+    const creature = makeBaseCreature();
+
+    // Create discovery result with removal candidates that have very low expected improvement
+    const discoveryResult: DiscoverResult = {
+      ID: "REMOVAL_THRESHOLD_TEST",
+      addHelpfulSynapses: [{
+        fromNeuronUUID: "input-0",
+        toNeuronUUID: "output-0",
+        weight: 0.1,
+        expectedImprovementPercentage: 0.0001, // Very small - below threshold
+        improvedCount: 1,
+        totalCount: 10,
+      }],
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: {
+        fromNeuronUUID: "input-0",
+        toNeuronUUID: "hidden-1",
+        weight: -0.5,
+        expectedImprovementPercentage: 0.0001, // Very small - below threshold
+        improvedCount: 1,
+        totalCount: 10,
+      },
+      removeHarmfulNeurons: [{
+        neuronUUID: "hidden-1",
+        errorMagnitude: 0.0001, // Very small - below threshold
+        sampleCount: 10,
+        averageActivation: 0.0,
+        expectedImprovementPercentage: 0.0001,
+      }],
+      removalCandidates: [{
+        neuronUUID: "hidden-1",
+        totalError: 1.0,
+        impact: 0.0001, // Very small - below threshold
+        reason: "Impact below costOfGrowth",
+      }],
+      candidateSquashes: undefined,
+    };
+
+    const captured: string[] = [];
+    const originalInfo = console.info.bind(console);
+    console.info = (...args: unknown[]) => {
+      captured.push(args.map((arg) => String(arg)).join(" "));
+      originalInfo(...args);
+    };
+
+    try {
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            () => 0.5,
+          ),
+      });
+
+      // Set high costOfGrowth and multiplier so threshold is high
+      // costOfGrowth = 0.01, multiplier = 2.0 → threshold = 0.02
+      // All candidates have expected = 0.0001, which is < 0.02
+      await runner.discoverDir({
+        creature,
+        dataDir: "/tmp/data",
+        options: makeOptions({
+          costOfGrowth: 0.01,
+          discoveryMinImprovementVsCostOfGrowthMultiplier: 2.0,
+        }),
+      });
+    } finally {
+      console.info = originalInfo;
+    }
+
+    // Find log lines about skipped candidates
+    const skipLines = captured.filter((line) =>
+      line.includes("[DiscoveryRunner]") &&
+      line.includes("Skipped") &&
+      line.includes("cost-of-growth")
+    );
+
+    // Verify that add-synapses was filtered (should appear in skip log)
+    const addSynapsesFiltered = skipLines.some((line) =>
+      line.includes("add-synapses")
+    );
+
+    // Verify that removal candidates were NOT filtered
+    const removeSynapseFiltered = skipLines.some((line) =>
+      line.includes("remove-synapse")
+    );
+    const removeNeuronFiltered = skipLines.some((line) =>
+      line.includes("remove-neuron")
+    );
+    const removeLowImpactFiltered = skipLines.some((line) =>
+      line.includes("remove-low-impact")
+    );
+
+    assertEquals(
+      addSynapsesFiltered,
+      true,
+      `Expected add-synapses candidate to be filtered by cost-of-growth threshold. Skip logs: ${
+        skipLines.join("\n")
+      }`,
+    );
+
+    assertEquals(
+      removeSynapseFiltered,
+      false,
+      `Expected remove-synapse candidate NOT to be filtered (removal doesn't add structural complexity). Skip logs: ${
+        skipLines.join("\n")
+      }`,
+    );
+
+    assertEquals(
+      removeNeuronFiltered,
+      false,
+      `Expected remove-neuron candidate NOT to be filtered (removal doesn't add structural complexity). Skip logs: ${
+        skipLines.join("\n")
+      }`,
+    );
+
+    assertEquals(
+      removeLowImpactFiltered,
+      false,
+      `Expected remove-low-impact candidate NOT to be filtered (removal improves score by reducing complexity). Skip logs: ${
+        skipLines.join("\n")
+      }`,
+    );
+  },
+);
