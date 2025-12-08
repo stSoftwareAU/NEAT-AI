@@ -652,3 +652,229 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "buildCombinedFromSuccessful: reconnection synapses from input neurons are preserved",
+  () => {
+    // This test verifies that reconnection synapses originating from input neurons
+    // (e.g., input-0 -> hidden-X) are correctly preserved when combining removal candidates.
+    // Bug: remainingNeurons set was missing input neurons, causing these synapses to be dropped.
+
+    const base = makeRemovalTestCreature();
+    const baseJSON = base.exportJSON();
+
+    // Verify base structure: input-1 -> hidden-B -> hidden-D -> output-0
+    const baseSynapses = baseJSON.synapses.map((s) =>
+      `${s.fromUUID}->${s.toUUID}`
+    );
+    assert(
+      baseSynapses.includes("input-1->hidden-B"),
+      "Base should have input-1->hidden-B synapse",
+    );
+
+    // Create removal candidate that removes hidden-B
+    // The reconnection synapse goes FROM input-1 (an input neuron) TO hidden-D
+    const removeBJson = structuredClone(baseJSON);
+    removeBJson.neurons = removeBJson.neurons.filter(
+      (n) => n.uuid !== "hidden-B",
+    );
+    removeBJson.synapses = removeBJson.synapses.filter(
+      (s) => s.fromUUID !== "hidden-B" && s.toUUID !== "hidden-B",
+    );
+    // Critical reconnection synapse: input-1 -> hidden-D (bypasses removed hidden-B)
+    removeBJson.synapses.push({
+      fromUUID: "input-1",
+      toUUID: "hidden-D",
+      weight: 0.5,
+    });
+    const removeBCreature = Creature.fromJSON(removeBJson);
+    delete removeBCreature.uuid;
+    removeBCreature.fix();
+    CreatureUtil.makeUUID(removeBCreature);
+
+    const removeBCandidate: DiscoveryCandidate = {
+      creature: removeBCreature,
+      change: {
+        type: "remove-low-impact",
+        description: "🪶 Removed neuron hidden-B (impact: 1.14e-7)",
+      },
+    };
+
+    // Create another removal candidate that removes hidden-C
+    // The reconnection synapse goes FROM hidden-A TO output-0
+    const removeCJson = structuredClone(baseJSON);
+    removeCJson.neurons = removeCJson.neurons.filter(
+      (n) => n.uuid !== "hidden-C",
+    );
+    removeCJson.synapses = removeCJson.synapses.filter(
+      (s) => s.fromUUID !== "hidden-C" && s.toUUID !== "hidden-C",
+    );
+    removeCJson.synapses.push({
+      fromUUID: "hidden-A",
+      toUUID: "output-0",
+      weight: 0.3,
+    });
+    const removeCCreature = Creature.fromJSON(removeCJson);
+    delete removeCCreature.uuid;
+    removeCCreature.fix();
+    CreatureUtil.makeUUID(removeCCreature);
+
+    const removeCCandidate: DiscoveryCandidate = {
+      creature: removeCCreature,
+      change: {
+        type: "remove-low-impact",
+        description: "🪶 Removed neuron hidden-C (impact: 3.46e-7)",
+      },
+    };
+
+    // Build combined candidates
+    const combined = buildCombinedFromSuccessful(
+      base,
+      "TEST_DISCOVERY",
+      [removeBCandidate, removeCCandidate],
+    );
+
+    assert(combined.length > 0, "Should produce combined candidates");
+
+    // Find the combo that combines both removals
+    const combo = combined.find((c) => c.change.type === "combo-successful");
+    assertExists(combo, "Should have a combo-successful candidate");
+
+    const comboJSON = combo.creature.exportJSON();
+    const comboSynapses = comboJSON.synapses.map((s) =>
+      `${s.fromUUID}->${s.toUUID}`
+    );
+
+    // The critical assertion: reconnection synapse from input-1 should exist
+    assert(
+      comboSynapses.includes("input-1->hidden-D"),
+      `Reconnection synapse from input neuron (input-1->hidden-D) should be preserved. ` +
+        `Found synapses: ${comboSynapses.join(", ")}`,
+    );
+
+    // Also verify hidden-A->output-0 reconnection is preserved
+    assert(
+      comboSynapses.includes("hidden-A->output-0"),
+      `Reconnection synapse (hidden-A->output-0) should be preserved. ` +
+        `Found synapses: ${comboSynapses.join(", ")}`,
+    );
+
+    // Verify both neurons were removed
+    const hiddenNeurons = comboJSON.neurons.filter((n) => n.type === "hidden");
+    const hiddenUUIDs = hiddenNeurons.map((n) => n.uuid);
+    assertEquals(
+      hiddenUUIDs.includes("hidden-B"),
+      false,
+      "hidden-B should be removed",
+    );
+    assertEquals(
+      hiddenUUIDs.includes("hidden-C"),
+      false,
+      "hidden-C should be removed",
+    );
+  },
+);
+
+/**
+ * Creates a test creature with multiple synapses suitable for removal testing.
+ */
+function makeSynapseRemovalTestCreature() {
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-A", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "hidden-B", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-A", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-A", weight: 0.3 },
+      { fromUUID: "input-0", toUUID: "hidden-B", weight: 0.4 },
+      { fromUUID: "input-1", toUUID: "hidden-B", weight: 0.2 },
+      { fromUUID: "hidden-A", toUUID: "output-0", weight: 0.6 },
+      { fromUUID: "hidden-B", toUUID: "output-0", weight: 0.5 },
+      // Extra synapses to remove (low-impact connections)
+      { fromUUID: "hidden-A", toUUID: "hidden-B", weight: 0.01 },
+      { fromUUID: "hidden-B", toUUID: "hidden-A", weight: 0.02 },
+    ],
+  });
+  creature.validate();
+  CreatureUtil.makeUUID(creature);
+  return creature;
+}
+
+Deno.test(
+  "buildCombinedFromSuccessful: remove-synapse combinations describe synapses not neurons",
+  () => {
+    // Bug: When appliedTypes contains only "remove-synapse", isRemovalOnly is true
+    // and the function returns "Pruned N low-impact neurons" instead of "Removed N synapses"
+    const base = makeSynapseRemovalTestCreature();
+    const baseJSON = base.exportJSON();
+
+    // Create remove-synapse candidate 1: Remove hidden-A -> hidden-B synapse
+    const removeSynapse1Json = structuredClone(baseJSON);
+    removeSynapse1Json.synapses = removeSynapse1Json.synapses.filter(
+      (s) => !(s.fromUUID === "hidden-A" && s.toUUID === "hidden-B"),
+    );
+    const removeSynapse1Creature = Creature.fromJSON(removeSynapse1Json);
+    delete removeSynapse1Creature.uuid;
+    removeSynapse1Creature.fix();
+    CreatureUtil.makeUUID(removeSynapse1Creature);
+
+    const removeSynapse1Candidate: DiscoveryCandidate = {
+      creature: removeSynapse1Creature,
+      change: {
+        type: "remove-synapse",
+        description: "✂️ Removed synapse hidden-A -> hidden-B (impact: 1.5e-8)",
+      },
+    };
+
+    // Create remove-synapse candidate 2: Remove hidden-B -> hidden-A synapse
+    const removeSynapse2Json = structuredClone(baseJSON);
+    removeSynapse2Json.synapses = removeSynapse2Json.synapses.filter(
+      (s) => !(s.fromUUID === "hidden-B" && s.toUUID === "hidden-A"),
+    );
+    const removeSynapse2Creature = Creature.fromJSON(removeSynapse2Json);
+    delete removeSynapse2Creature.uuid;
+    removeSynapse2Creature.fix();
+    CreatureUtil.makeUUID(removeSynapse2Creature);
+
+    const removeSynapse2Candidate: DiscoveryCandidate = {
+      creature: removeSynapse2Creature,
+      change: {
+        type: "remove-synapse",
+        description: "✂️ Removed synapse hidden-B -> hidden-A (impact: 2.3e-8)",
+      },
+    };
+
+    // Build combined candidates from both remove-synapse candidates
+    const combined = buildCombinedFromSuccessful(
+      base,
+      "TEST_DISCOVERY",
+      [removeSynapse1Candidate, removeSynapse2Candidate],
+    );
+
+    assert(combined.length > 0, "Should produce combined candidates");
+
+    // Find the combo-successful candidate
+    const combo = combined.find((c) => c.change.type === "combo-successful");
+    assertExists(combo, "Should have a combo-successful candidate");
+
+    const desc = combo.change.description ?? "";
+
+    // The description should mention synapses, NOT neurons
+    // Bug: Currently returns "Pruned N low-impact neurons" due to isRemovalOnly short-circuit
+    assert(
+      desc.toLowerCase().includes("synapse"),
+      `remove-synapse combinations should mention "synapses" in description, got: "${desc}"`,
+    );
+
+    // Should NOT say "neurons" when only synapses were removed
+    assertEquals(
+      desc.toLowerCase().includes("neuron"),
+      false,
+      `remove-synapse combinations should NOT mention "neurons", got: "${desc}"`,
+    );
+  },
+);

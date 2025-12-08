@@ -1579,9 +1579,14 @@ function applyChangeToCreature(
         );
 
         // Build set of remaining neuron UUIDs for synapse validation
+        // Include input neurons (not in neurons array but referenced as input-N)
         const remainingNeurons = new Set(
           creatureJSON.neurons.map((n) => n.uuid),
         );
+        const inputCount = creatureJSON.input ?? 0;
+        for (let i = 0; i < inputCount; i++) {
+          remainingNeurons.add(`input-${i}`);
+        }
 
         // Add reconnection synapses: new in candidate but not in creature
         // These maintain connectivity after neuron removal
@@ -1706,12 +1711,8 @@ function buildCombinationDescription(
 ): string {
   const emoji = selectCombinationEmoji(appliedTypes);
 
-  // Pure removal combinations - use "Pruned" verb
-  if (isRemovalOnly) {
-    return `${emoji} Pruned ${appliedCount} low-impact neurons`;
-  }
-
-  // Single type combinations
+  // Single type combinations - use specific descriptions
+  // IMPORTANT: Check this BEFORE isRemovalOnly to handle remove-synapse correctly
   if (appliedTypes.length === 1) {
     const type = appliedTypes[0];
     switch (type) {
@@ -1729,6 +1730,19 @@ function buildCombinationDescription(
       default:
         return `${emoji} Applied ${appliedCount} ${type} changes`;
     }
+  }
+
+  // Multi-type pure removal combinations (neuron removals) - use "Pruned" verb
+  // Note: This is for combinations of remove-low-impact, remove-neuron types
+  // but NOT for pure remove-synapse combinations (handled above as single-type)
+  if (isRemovalOnly) {
+    // Check if this is synapse-only removal combination
+    const isSynapseOnly = appliedTypes.every((t) => t === "remove-synapse");
+    if (isSynapseOnly) {
+      return `${emoji} Removed ${appliedCount} synapses`;
+    }
+    // Mixed removal types or neuron-only removals
+    return `${emoji} Pruned ${appliedCount} low-impact neurons`;
   }
 
   // Multi-type combinations - describe the overall effect
