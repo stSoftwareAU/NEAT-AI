@@ -47,13 +47,13 @@ class DiscoveryPerformanceStats {
   harmfulNeuronAnalysisTime = 0;
   squashAnalysisTime = 0;
 
-  // Candidate counts
-  helpfulSynapseCandidates = 0;
-  helpfulNeuronCandidates = 0;
+  // Raw discovery result counts (what Rust found)
+  helpfulSynapseRawCount = 0;
+  helpfulNeuronRawCount = 0;
   harmfulSynapseCandidates = 0;
   harmfulNeuronCandidates = 0;
-  squashCandidates = 0;
-  removalCandidates = 0;
+  squashRawCount = 0;
+  removalRawCount = 0;
 
   // Other phases
   cleanupTime = 0;
@@ -126,14 +126,31 @@ class DiscoveryPerformanceStats {
     );
 
     // Candidate summary
+    // Calculate expected candidate counts that will be built:
+    // - Neurons: 1 combined + N individual = 1 + N (if any neurons exist)
+    // - Synapses: 1 combined + N individual = 1 + N (if any synapses exist)
+    // - Squashes: 1 combined + N individual = 1 + N (if any squashes exist)
+    // - Removals: N individual + 1 combined (if N >= 2) = N + (N >= 2 ? 1 : 0)
+    const expectedNeuronCandidates = this.helpfulNeuronRawCount > 0
+      ? 1 + this.helpfulNeuronRawCount
+      : 0;
+    const expectedSynapseCandidates = this.helpfulSynapseRawCount > 0
+      ? 1 + this.helpfulSynapseRawCount
+      : 0;
+    const expectedSquashCandidates = this.squashRawCount > 0
+      ? 1 + this.squashRawCount
+      : 0;
+    const expectedRemovalCandidates = this.removalRawCount +
+      (this.removalRawCount >= 2 ? 1 : 0);
+
     console.log(
       `\n🎯 ${yellow("Candidates Found")}:\n` +
-        `  Helpful synapses: ${formatCount(this.helpfulSynapseCandidates)}\n` +
-        `  Helpful neurons: ${formatCount(this.helpfulNeuronCandidates)}\n` +
+        `  Helpful synapses: ${formatCount(expectedSynapseCandidates)}\n` +
+        `  Helpful neurons: ${formatCount(expectedNeuronCandidates)}\n` +
         `  Harmful synapses: ${formatCount(this.harmfulSynapseCandidates)}\n` +
         `  Harmful neurons: ${formatCount(this.harmfulNeuronCandidates)}\n` +
-        `  Squash changes: ${formatCount(this.squashCandidates)}\n` +
-        `  Removal candidates: ${formatCount(this.removalCandidates)}`,
+        `  Squash changes: ${formatCount(expectedSquashCandidates)}\n` +
+        `  Removal candidates: ${formatCount(expectedRemovalCandidates)}`,
     );
 
     // Overall summary
@@ -981,14 +998,14 @@ class DataRecorder {
             ...(discoverResult.addHelpfulNeurons ?? []),
             ...addHelpfulNeurons,
           ];
-          perfStats.helpfulNeuronCandidates += addHelpfulNeurons.length;
+          perfStats.helpfulNeuronRawCount += addHelpfulNeurons.length;
         }
         if (addHelpfulSynapse && addHelpfulSynapse.length > 0) {
           discoverResult.addHelpfulSynapses = [
             ...(discoverResult.addHelpfulSynapses ?? []),
             ...addHelpfulSynapse,
           ];
-          perfStats.helpfulSynapseCandidates += addHelpfulSynapse.length;
+          perfStats.helpfulSynapseRawCount += addHelpfulSynapse.length;
         }
         if (removeHarmfulSynapse && !discoverResult.removeHarmfulSynapse) {
           discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
@@ -999,7 +1016,7 @@ class DataRecorder {
             ...(discoverResult.candidateSquashes ?? []),
             ...candidateSquashes,
           ];
-          perfStats.squashCandidates += candidateSquashes.length;
+          perfStats.squashRawCount += candidateSquashes.length;
         }
         if (removeHarmfulNeurons && removeHarmfulNeurons.length > 0) {
           discoverResult.removeHarmfulNeurons = [
@@ -1053,7 +1070,7 @@ class DataRecorder {
       const removalCandidates = discoverStructure.getRemovalCandidates();
       if (removalCandidates && removalCandidates.length > 0) {
         discoverResult.removalCandidates = removalCandidates;
-        perfStats.removalCandidates = removalCandidates.length;
+        perfStats.removalRawCount = removalCandidates.length;
         if (shouldLogDiscovery(config)) {
           console.log(
             `Discovery ${blue(this.ID)} found ${
