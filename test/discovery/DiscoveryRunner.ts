@@ -562,14 +562,17 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
   }
 });
 
-Deno.test("DiscoveryRunner flags expectation mismatch when predictions diverge", async () => {
+Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for synapses", async () => {
+  // Since Rust v0.1.133, expectedImprovementPercentage is already creature-level
+  // (Rust applies impact discounting internally). TypeScript should use it directly.
+  const rustProvidedImprovement = 0.6; // 60% creature-level improvement from Rust
   const discoveryResult: DiscoverResult = {
-    ID: "EXPECT_MISMATCH",
+    ID: "RUST_DIRECT_SYNAPSE",
     addHelpfulSynapses: [{
       fromNeuronUUID: "input-1",
       toNeuronUUID: "hidden-1",
       weight: 0.45,
-      expectedImprovementPercentage: 0.6,
+      expectedImprovementPercentage: rustProvidedImprovement,
       improvedCount: 9,
       totalCount: 10,
     }],
@@ -607,26 +610,20 @@ Deno.test("DiscoveryRunner flags expectation mismatch when predictions diverge",
     entry.kind === "candidate" && entry.changeType === "add-synapses"
   );
   assert(candidateEval, "expected add-synapses candidate evaluation");
-  // With structural scaling, the target neuron's share of the output error is tiny
-  // (~0.82%) because the output fan-in now includes hundreds of equally weighted
-  // synapses. The 60% neuron-level improvement therefore becomes ~0.49%
-  // creature-level impact. Actual improvement is 1%, so the 0.51 percentage point
-  // gap stays below the 25% alert threshold and no mismatch should be detected.
-  assertEquals(
-    candidateEval.expectationMismatch,
-    undefined,
-    "expected no mismatch when scaled expected (~0.4%) is close to actual (1%)",
-  );
-  // Verify the scaled expected improvement percentage
+
+  // Verify TypeScript uses Rust's creature-level value directly (no re-scaling)
+  // The expectedErrorReductionPct should equal Rust's expectedImprovementPercentage * 100
   assert(
     candidateEval.expectedErrorReductionPct !== undefined,
-    "expected scaled error reduction percentage to be defined",
+    "expected error reduction percentage to be defined",
   );
   assertAlmostEquals(
     candidateEval.expectedErrorReductionPct!,
-    0.493,
-    1e-3,
+    rustProvidedImprovement * 100, // 60% as percentage
+    1e-6,
+    "TypeScript should use Rust's creature-level value directly without re-scaling",
   );
+
   // Verify the actual improvement percentage
   assertAlmostEquals(
     candidateEval.errorDeltaPct ?? 0,
@@ -635,9 +632,9 @@ Deno.test("DiscoveryRunner flags expectation mismatch when predictions diverge",
   );
 });
 
-Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures with many synapses", async () => {
-  // Create a creature similar to production: many synapses pointing to output
-  // This tests that error estimates are reasonable and not wildly wrong
+Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for neurons", async () => {
+  // Since Rust v0.1.123 (neurons) and v0.1.133 (synapses), expectedImprovementPercentage
+  // is already creature-level. TypeScript should use it directly without re-scaling.
   const creature = makeDenseOutputCreature(100); // 100+ synapses to output
 
   // Set a baseline error for the creature
@@ -645,10 +642,10 @@ Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures w
   const { addTag } = await import("@stsoftware/tags/mod");
   addTag(creature, "error", baseError.toString());
 
-  // Simulate a candidate with recorded stats (like production)
-  // The stats show the target neuron has moderate error
+  // targetNeuronStats is still passed for backwards compatibility but TypeScript
+  // should NOT use it for scaling - Rust has already applied the impact discount
   const targetNeuronStats = {
-    meanError: 0.05, // Moderate error at neuron level
+    meanError: 0.05,
     errorVariance: 0.001,
     meanActivation: 0.3,
     activationVariance: 0.01,
@@ -658,16 +655,20 @@ Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures w
     activationMax: 1.2,
   };
 
+  // Rust provides creature-level improvement directly (0.1% expected)
+  // This is already discounted by impact - TypeScript should NOT re-scale
+  const rustCreatureLevelImprovement = 0.001; // 0.1% creature-level from Rust
+
   const discoveryResult: DiscoverResult = {
-    ID: "NON_TRIVIAL_TEST",
+    ID: "RUST_DIRECT_NEURON",
     addHelpfulSynapses: [{
       fromNeuronUUID: "input-1",
       toNeuronUUID: "hidden-1",
       weight: 0.45,
-      expectedImprovementPercentage: 0.333, // 33.3% neuron-level (like production)
+      expectedImprovementPercentage: rustCreatureLevelImprovement,
       improvedCount: 9,
       totalCount: 10,
-      targetNeuronStats, // Include stats for accurate scaling
+      targetNeuronStats, // Passed for backwards compatibility, but NOT used for scaling
     }],
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
@@ -684,7 +685,7 @@ Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures w
         synapse.fromUUID === "input-1" && synapse.toUUID === "hidden-1" &&
         Math.abs(synapse.weight - 0.45) < 1e-6
       );
-      // Actual improvement is small (0.1%) - realistic for complex creatures
+      // Actual improvement matches Rust's creature-level estimate
       return hasHelpful ? baseError * 0.999 : baseError;
     },
   );
@@ -705,29 +706,19 @@ Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures w
   );
   assert(candidateEval, "expected add-synapses candidate evaluation");
 
-  // With stats-based scaling, the 33.3% neuron-level improvement should be
-  // scaled down significantly because:
-  // 1. The target neuron's share is small (~1/100 = 1%) due to many synapses
-  // 2. The neuron's error magnitude (0.05 + sqrt(0.001) ≈ 0.082) is small
-  //    relative to creature error (0.584)
-  // 3. Expected: 0.333 * (1/100) * (0.082/0.584) ≈ 0.0047% (very small)
+  // Verify TypeScript uses Rust's creature-level value directly (no re-scaling)
   const expectedErrorReductionPct = candidateEval.expectedErrorReductionPct;
   assert(
     expectedErrorReductionPct !== undefined,
-    "expected scaled error reduction percentage to be defined",
+    "expected error reduction percentage to be defined",
   );
 
-  // The scaled estimate should be MUCH smaller than the raw 33.3%
-  // It should be less than 1% (not 33%!)
-  assert(
-    expectedErrorReductionPct < 1.0,
-    `Expected scaled estimate (${expectedErrorReductionPct}%) to be < 1%, not the raw 33.3%`,
-  );
-
-  // The estimate should be positive but small
-  assert(
-    expectedErrorReductionPct > 0,
-    `Expected scaled estimate to be positive, got ${expectedErrorReductionPct}`,
+  // TypeScript should use Rust's value directly: 0.1% (as percentage)
+  assertAlmostEquals(
+    expectedErrorReductionPct,
+    rustCreatureLevelImprovement * 100, // 0.1%
+    1e-6,
+    "TypeScript should use Rust's creature-level value directly without re-scaling",
   );
 
   // Actual improvement is 0.1% (0.584263 -> 0.5836)
@@ -738,20 +729,11 @@ Deno.test("DiscoveryRunner validates error estimates for non-trivial creatures w
     0.05, // Allow small tolerance
   );
 
-  // The estimate should be within reasonable range of actual (not wildly wrong)
-  // Allow up to 10x difference for complex creatures (estimate could be conservative)
-  const ratio = Math.abs(expectedErrorReductionPct / actualErrorDeltaPct);
-  assert(
-    ratio < 10.0 && ratio > 0.1,
-    `Expected estimate (${expectedErrorReductionPct}%) to be within 10x of actual (${actualErrorDeltaPct}%), ratio: ${ratio}`,
-  );
-
-  // Most importantly: no mismatch warning should be triggered
-  // because the estimate is now reasonable (not 33% vs 0%)
+  // Since Rust provides accurate creature-level values, expect close match
   assertEquals(
     candidateEval.expectationMismatch,
     undefined,
-    `Expected no mismatch when estimate (${expectedErrorReductionPct}%) is reasonable compared to actual (${actualErrorDeltaPct}%)`,
+    `Expected no mismatch when Rust's creature-level estimate (${expectedErrorReductionPct}%) matches actual (${actualErrorDeltaPct}%)`,
   );
 });
 
@@ -961,61 +943,8 @@ Deno.test(
   },
 );
 
-Deno.test(
-  "DiscoveryRunner skips candidates with non-positive expected impact",
-  async () => {
-    const discoveryResult: DiscoverResult = {
-      ID: "NON_POSITIVE_FILTER",
-      addHelpfulSynapses: undefined,
-      addHelpfulNeurons: undefined,
-      removeHarmfulSynapse: undefined,
-      removeHarmfulNeurons: undefined,
-      removalCandidates: undefined,
-      candidateSquashes: undefined,
-    };
-
-    const baseCreature = makeBaseCreature();
-
-    const candidateBuilder = (
-      _creature: Creature,
-      _discovery: DiscoverResult,
-    ): DiscoveryCandidate[] => {
-      const json = cloneCreatureJSON(baseCreature);
-      const candidate = Creature.fromJSON(json);
-      candidate.validate();
-      CreatureUtil.makeUUID(candidate);
-      return [{
-        creature: candidate,
-        change: {
-          type: "add-synapses",
-          description: "non-positive candidate",
-          expectedErrorReduction: 0, // Non-positive expected impact
-        },
-      }];
-    };
-
-    const runner = new DiscoveryRunner({
-      rustDiscoveryEnabled: () => true,
-      workerFactory: () =>
-        new FakeWorker(
-          discoveryResult,
-          () => 0.5,
-        ),
-      candidateBuilder,
-    });
-
-    const result = await runner.discoverDir({
-      creature: baseCreature,
-      dataDir: "/tmp/data",
-      options: makeOptions(),
-    });
-
-    assert(
-      !result.evaluations?.some((entry) => entry.kind === "candidate"),
-      "candidates with non-positive expected impact should be skipped",
-    );
-  },
-);
+// NOTE: Test "DiscoveryRunner skips candidates with non-positive expected impact" removed.
+// Rust is the single source of truth for candidate filtering (DRY principle).
 
 Deno.test(
   "DiscoveryRunner includes candidates with undefined expectedErrorReduction for evaluation",
@@ -1073,109 +1002,8 @@ Deno.test(
   },
 );
 
-Deno.test(
-  "DiscoveryRunner excludes zero-impact candidates when multiplier is 0",
-  async () => {
-    const discoveryResult: DiscoverResult = {
-      ID: "ZERO_MULTIPLIER",
-      addHelpfulSynapses: undefined,
-      addHelpfulNeurons: undefined,
-      removeHarmfulSynapse: undefined,
-      removeHarmfulNeurons: undefined,
-      removalCandidates: undefined,
-      candidateSquashes: undefined,
-    };
-
-    const baseCreature = makeBaseCreature();
-
-    const candidateBuilder = (
-      _creature: Creature,
-      _discovery: DiscoverResult,
-    ): DiscoveryCandidate[] => {
-      // Create three candidates: one with zero impact, one with positive, one with negative
-      const candidates: DiscoveryCandidate[] = [];
-
-      // Candidate 1: Zero impact (should be excluded)
-      const zeroCandidate = Creature.fromJSON(cloneCreatureJSON(baseCreature));
-      zeroCandidate.validate();
-      CreatureUtil.makeUUID(zeroCandidate);
-      candidates.push({
-        creature: zeroCandidate,
-        change: {
-          type: "add-neurons",
-          description: "zero-impact candidate",
-          expectedErrorReduction: 0, // Zero impact - should be excluded
-        },
-      });
-
-      // Candidate 2: Positive impact (should be included)
-      const positiveCandidate = Creature.fromJSON(
-        cloneCreatureJSON(baseCreature),
-      );
-      positiveCandidate.validate();
-      CreatureUtil.makeUUID(positiveCandidate);
-      candidates.push({
-        creature: positiveCandidate,
-        change: {
-          type: "add-synapses",
-          description: "positive-impact candidate",
-          expectedErrorReduction: 0.001, // Positive impact - should be included
-        },
-      });
-
-      // Candidate 3: Negative impact (should be excluded)
-      const negativeCandidate = Creature.fromJSON(
-        cloneCreatureJSON(baseCreature),
-      );
-      negativeCandidate.validate();
-      CreatureUtil.makeUUID(negativeCandidate);
-      candidates.push({
-        creature: negativeCandidate,
-        change: {
-          type: "add-neurons",
-          description: "negative-impact candidate",
-          expectedErrorReduction: -0.001, // Negative impact - should be excluded
-        },
-      });
-
-      return candidates;
-    };
-
-    const runner = new DiscoveryRunner({
-      rustDiscoveryEnabled: () => true,
-      workerFactory: () =>
-        new FakeWorker(
-          discoveryResult,
-          () => 0.5,
-        ),
-      candidateBuilder,
-    });
-
-    const options = makeOptions();
-    options.discoveryMinImprovementVsCostOfGrowthMultiplier = 0; // Set multiplier to 0
-
-    const result = await runner.discoverDir({
-      creature: baseCreature,
-      dataDir: "/tmp/data",
-      options,
-    });
-
-    // Only the positive-impact candidate should be evaluated
-    const candidateEvaluations =
-      result.evaluations?.filter((entry) => entry.kind === "candidate") ?? [];
-
-    assertEquals(
-      candidateEvaluations.length,
-      1,
-      "only one candidate with positive impact should be evaluated",
-    );
-
-    assert(
-      candidateEvaluations[0].description?.includes("positive-impact"),
-      "the evaluated candidate should be the positive-impact one",
-    );
-  },
-);
+// NOTE: Test "DiscoveryRunner excludes zero-impact candidates when multiplier is 0" removed.
+// Rust is the single source of truth for candidate filtering (DRY principle).
 
 Deno.test(
   "DiscoveryRunner logs sub-basis deltas with at least three significant digits",
@@ -2188,309 +2016,6 @@ Deno.test(
   },
 );
 
-Deno.test(
-  "DiscoveryRunner logs when candidates are skipped due to threshold",
-  async () => {
-    const discoveryResult: DiscoverResult = {
-      ID: "BELOW_MIN_EXPECTED_TEST", // Avoid "threshold" in the ID
-      addHelpfulSynapses: [{
-        fromNeuronUUID: "input-1",
-        toNeuronUUID: "hidden-1",
-        weight: 0.45,
-        expectedImprovementPercentage: 0.001, // Very small improvement
-        improvedCount: 5,
-        totalCount: 6,
-      }],
-      addHelpfulNeurons: undefined,
-      removeHarmfulSynapse: undefined,
-      removeHarmfulNeurons: undefined,
-      removalCandidates: undefined,
-      candidateSquashes: undefined,
-    };
-
-    const captured: string[] = [];
-    const originalInfo = console.info.bind(console);
-    console.info = (...args: unknown[]) => {
-      captured.push(args.map((arg) => String(arg)).join(" "));
-      originalInfo(...args);
-    };
-
-    try {
-      const runner = new DiscoveryRunner({
-        rustDiscoveryEnabled: () => true,
-        workerFactory: () =>
-          new FakeWorker(
-            discoveryResult,
-            () => 0.5,
-          ),
-      });
-
-      // Set high costOfGrowth so candidate is below threshold
-      await runner.discoverDir({
-        creature: makeBaseCreature(),
-        dataDir: "/tmp/data",
-        options: makeOptions({
-          costOfGrowth: 0.1, // High cost - candidate expected improvement won't meet threshold
-        }),
-      });
-    } finally {
-      console.info = originalInfo;
-    }
-
-    // Debug: print all captured lines that include DiscoveryRunner
-    const discoveryLines = captured.filter((l) =>
-      l.includes("[DiscoveryRunner]")
-    );
-
-    // Find the threshold skip log line - look for specific phrasing like
-    // "skipped due to threshold" or "below minimum improvement"
-    // Must NOT match file paths that happen to contain these words
-    const thresholdLine = captured.find((line) =>
-      line.includes("[DiscoveryRunner]") &&
-      !line.includes("Saved creature") && // Exclude file path lines
-      (line.includes("cost-of-growth") ||
-        line.includes("below minimum") ||
-        (line.includes("skipped") &&
-          (line.includes("threshold") || line.includes("improvement"))))
-    );
-
-    assertEquals(
-      thresholdLine !== undefined,
-      true,
-      `Expected a log line about candidates filtered below minimum expected improvement. Captured ${discoveryLines.length} DiscoveryRunner logs:\n${
-        discoveryLines.join("\n")
-      }`,
-    );
-  },
-);
-
-Deno.test(
-  "DiscoveryRunner does not filter squash changes by cost-of-growth threshold",
-  async () => {
-    const creature = makeBaseCreature();
-    const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-1");
-    assert(hiddenNeuron, "Should have hidden-1 neuron");
-
-    // Create discovery result with:
-    // 1. A squash change with very low expected improvement (below threshold)
-    // 2. An add-synapses candidate with similarly low expected improvement (should be filtered)
-    const discoveryResult: DiscoverResult = {
-      ID: "SQUASH_THRESHOLD_TEST",
-      addHelpfulSynapses: [{
-        fromNeuronUUID: "input-0",
-        toNeuronUUID: "output-0",
-        weight: 0.1,
-        expectedImprovementPercentage: 0.0001, // Very small - below threshold
-        improvedCount: 1,
-        totalCount: 10,
-      }],
-      addHelpfulNeurons: undefined,
-      removeHarmfulSynapse: undefined,
-      removeHarmfulNeurons: undefined,
-      removalCandidates: undefined,
-      candidateSquashes: [{
-        neuronUUID: "hidden-1",
-        previousSquash: "IDENTITY",
-        squash: "TANH",
-        expectedImprovementPercentage: 0.0001, // Very small - below threshold
-        improvedError: 0.49,
-        currentError: 0.5,
-      }],
-    };
-
-    const captured: string[] = [];
-    const originalInfo = console.info.bind(console);
-    console.info = (...args: unknown[]) => {
-      captured.push(args.map((arg) => String(arg)).join(" "));
-      originalInfo(...args);
-    };
-
-    try {
-      const runner = new DiscoveryRunner({
-        rustDiscoveryEnabled: () => true,
-        workerFactory: () =>
-          new FakeWorker(
-            discoveryResult,
-            () => 0.5,
-          ),
-      });
-
-      // Set high costOfGrowth and multiplier so threshold is high
-      // costOfGrowth = 0.01, multiplier = 2.0 → threshold = 0.02
-      // Both candidates have expected = 0.0001, which is < 0.02
-      await runner.discoverDir({
-        creature,
-        dataDir: "/tmp/data",
-        options: makeOptions({
-          costOfGrowth: 0.01,
-          discoveryMinImprovementVsCostOfGrowthMultiplier: 2.0,
-        }),
-      });
-    } finally {
-      console.info = originalInfo;
-    }
-
-    // Find log lines about skipped candidates
-    const skipLines = captured.filter((line) =>
-      line.includes("[DiscoveryRunner]") &&
-      line.includes("Skipped") &&
-      line.includes("cost-of-growth")
-    );
-
-    // Verify that add-synapses was filtered (should appear in skip log)
-    const addSynapsesFiltered = skipLines.some((line) =>
-      line.includes("add-synapses")
-    );
-
-    // Verify that change-squash was NOT filtered (should NOT appear in skip log)
-    const squashFiltered = skipLines.some((line) =>
-      line.includes("change-squash")
-    );
-
-    assertEquals(
-      addSynapsesFiltered,
-      true,
-      `Expected add-synapses candidate to be filtered by cost-of-growth threshold. Skip logs: ${
-        skipLines.join("\n")
-      }`,
-    );
-
-    assertEquals(
-      squashFiltered,
-      false,
-      `Expected change-squash candidate NOT to be filtered by cost-of-growth threshold (squash changes don't add structural complexity). Skip logs: ${
-        skipLines.join("\n")
-      }`,
-    );
-  },
-);
-
-Deno.test(
-  "DiscoveryRunner does not filter removal candidates by cost-of-growth threshold",
-  async () => {
-    const creature = makeBaseCreature();
-
-    // Create discovery result with removal candidates that have very low expected improvement
-    const discoveryResult: DiscoverResult = {
-      ID: "REMOVAL_THRESHOLD_TEST",
-      addHelpfulSynapses: [{
-        fromNeuronUUID: "input-0",
-        toNeuronUUID: "output-0",
-        weight: 0.1,
-        expectedImprovementPercentage: 0.0001, // Very small - below threshold
-        improvedCount: 1,
-        totalCount: 10,
-      }],
-      addHelpfulNeurons: undefined,
-      removeHarmfulSynapse: {
-        fromNeuronUUID: "input-0",
-        toNeuronUUID: "hidden-1",
-        weight: -0.5,
-        expectedImprovementPercentage: 0.0001, // Very small - below threshold
-        improvedCount: 1,
-        totalCount: 10,
-      },
-      removeHarmfulNeurons: [{
-        neuronUUID: "hidden-1",
-        errorMagnitude: 0.0001, // Very small - below threshold
-        sampleCount: 10,
-        averageActivation: 0.0,
-        expectedImprovementPercentage: 0.0001,
-      }],
-      removalCandidates: [{
-        neuronUUID: "hidden-1",
-        totalError: 1.0,
-        impact: 0.0001, // Very small - below threshold
-        reason: "Impact below costOfGrowth",
-      }],
-      candidateSquashes: undefined,
-    };
-
-    const captured: string[] = [];
-    const originalInfo = console.info.bind(console);
-    console.info = (...args: unknown[]) => {
-      captured.push(args.map((arg) => String(arg)).join(" "));
-      originalInfo(...args);
-    };
-
-    try {
-      const runner = new DiscoveryRunner({
-        rustDiscoveryEnabled: () => true,
-        workerFactory: () =>
-          new FakeWorker(
-            discoveryResult,
-            () => 0.5,
-          ),
-      });
-
-      // Set high costOfGrowth and multiplier so threshold is high
-      // costOfGrowth = 0.01, multiplier = 2.0 → threshold = 0.02
-      // All candidates have expected = 0.0001, which is < 0.02
-      await runner.discoverDir({
-        creature,
-        dataDir: "/tmp/data",
-        options: makeOptions({
-          costOfGrowth: 0.01,
-          discoveryMinImprovementVsCostOfGrowthMultiplier: 2.0,
-        }),
-      });
-    } finally {
-      console.info = originalInfo;
-    }
-
-    // Find log lines about skipped candidates
-    const skipLines = captured.filter((line) =>
-      line.includes("[DiscoveryRunner]") &&
-      line.includes("Skipped") &&
-      line.includes("cost-of-growth")
-    );
-
-    // Verify that add-synapses was filtered (should appear in skip log)
-    const addSynapsesFiltered = skipLines.some((line) =>
-      line.includes("add-synapses")
-    );
-
-    // Verify that removal candidates were NOT filtered
-    const removeSynapseFiltered = skipLines.some((line) =>
-      line.includes("remove-synapse")
-    );
-    const removeNeuronFiltered = skipLines.some((line) =>
-      line.includes("remove-neuron")
-    );
-    const removeLowImpactFiltered = skipLines.some((line) =>
-      line.includes("remove-low-impact")
-    );
-
-    assertEquals(
-      addSynapsesFiltered,
-      true,
-      `Expected add-synapses candidate to be filtered by cost-of-growth threshold. Skip logs: ${
-        skipLines.join("\n")
-      }`,
-    );
-
-    assertEquals(
-      removeSynapseFiltered,
-      false,
-      `Expected remove-synapse candidate NOT to be filtered (removal doesn't add structural complexity). Skip logs: ${
-        skipLines.join("\n")
-      }`,
-    );
-
-    assertEquals(
-      removeNeuronFiltered,
-      false,
-      `Expected remove-neuron candidate NOT to be filtered (removal doesn't add structural complexity). Skip logs: ${
-        skipLines.join("\n")
-      }`,
-    );
-
-    assertEquals(
-      removeLowImpactFiltered,
-      false,
-      `Expected remove-low-impact candidate NOT to be filtered (removal improves score by reducing complexity). Skip logs: ${
-        skipLines.join("\n")
-      }`,
-    );
-  },
-);
+// NOTE: Tests for TypeScript cost-of-growth filtering have been removed.
+// Rust is the single source of truth for candidate filtering (DRY principle).
+// See NEAT-AI-Discovery v0.1.133 for filtering logic.

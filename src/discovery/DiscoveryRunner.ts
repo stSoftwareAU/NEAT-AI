@@ -918,14 +918,19 @@ export class DiscoveryRunner {
    * 3. Fill remaining slots with best expected improvements across categories
    * 4. Count failure cache statistics during selection (single pass)
    *
+   * NOTE: Rust is the single source of truth for candidate filtering based on
+   * expected improvement and cost-of-growth. TypeScript does NOT re-filter
+   * candidates based on these criteria (DRY principle).
+   *
+   * TypeScript filtering is limited to:
+   * - Failure cache: Skip candidates that previously failed to improve
+   * - Diversity selection: Ensure a mix of candidate types are evaluated
+   * - Slot allocation: Limit total candidates based on available CPU threads
+   *
    * Removal candidates (remove-low-impact, remove-neuron, remove-synapse) are treated
    * separately because they don't reduce error - they improve SCORE by reducing complexity.
-   * Removing elements that return a similar score will improve the creature's score.
    *
-   * Squash changes (change-squash) are excluded from cost-of-growth threshold checks
-   * because they don't add structural complexity (no new synapses or neurons).
-   *
-   * @param candidates - All discovery candidates
+   * @param candidates - All discovery candidates (pre-filtered by Rust)
    * @param threadCount - Number of CPU threads available
    * @param config - NEAT configuration
    * @param failureCacheDir - Optional failure cache directory for statistics
@@ -943,10 +948,6 @@ export class DiscoveryRunner {
       expected?: number;
     }>;
   } {
-    // Calculate the minimum expected improvement threshold
-    const multiplier = config.discoveryMinImprovementVsCostOfGrowthMultiplier;
-    const minExpectedImprovement = config.costOfGrowth * multiplier;
-
     // Group candidates by category for diversity selection
     const byCategory = new Map<string, DiscoveryCandidate[]>();
     const removalCandidates: DiscoveryCandidate[] = [];
@@ -965,18 +966,11 @@ export class DiscoveryRunner {
       cachedTypes: new Map<string, number>(),
     };
 
-    // Track candidates skipped due to cost-of-growth threshold
-    const thresholdSkipped = new Map<string, number>();
-
     for (const candidate of candidates) {
       CreatureUtil.makeUUID(candidate.creature);
-      const expected = candidate.change.expectedErrorReduction;
       const changeType = candidate.change.type;
 
-      // All removal types are excluded from cost-of-growth filtering because:
-      // 1. They don't add structural complexity (they remove it)
-      // 2. They improve score by reducing complexity, not by reducing error
-      // 3. Removing elements that return a similar score will improve the creature's score
+      // Identify removal candidates (handled separately for slot allocation)
       const isRemovalCandidate = changeType === "remove-low-impact" ||
         changeType === "remove-neuron" ||
         changeType === "remove-synapse";
@@ -1007,34 +1001,8 @@ export class DiscoveryRunner {
         continue; // Skip cached candidates - don't let them consume slots
       }
 
-      // Squash changes don't add structural complexity (no new synapses/neurons),
-      // so they shouldn't be filtered by cost-of-growth threshold
-      const isSquashChange = changeType === "change-squash";
-
-      // Check threshold for non-removal, non-squash candidates
-      let meetsThreshold = true;
-      if (!isSquashChange) {
-        if (expected !== undefined) {
-          if (!Number.isFinite(expected)) {
-            meetsThreshold = false;
-          } else {
-            meetsThreshold = multiplier === 0
-              ? expected > 0
-              : expected >= minExpectedImprovement;
-          }
-        }
-
-        if (!meetsThreshold) {
-          skipped.push({ changeType, expected });
-          thresholdSkipped.set(
-            changeType,
-            (thresholdSkipped.get(changeType) ?? 0) + 1,
-          );
-          continue;
-        }
-      }
-
       // Group by category for diversity selection
+      // NOTE: No threshold filtering - Rust is single source of truth
       if (!byCategory.has(changeType)) {
         byCategory.set(changeType, []);
       }
@@ -1064,22 +1032,6 @@ export class DiscoveryRunner {
           } due to previous failure: ${parts.join(", ")}`,
         );
       }
-    }
-
-    // Log candidates skipped due to cost-of-growth threshold
-    if (thresholdSkipped.size > 0) {
-      const totalThresholdSkipped = Array.from(thresholdSkipped.values())
-        .reduce((a, b) => a + b, 0);
-      const typeBreakdown = Array.from(thresholdSkipped.entries())
-        .map(([type, count]) => `${count} ${type}`)
-        .join(", ");
-      console.info(
-        `[DiscoveryRunner] ⏭️ Skipped ${totalThresholdSkipped} candidate${
-          totalThresholdSkipped === 1 ? "" : "s"
-        } below cost-of-growth threshold (${
-          minExpectedImprovement.toExponential(2)
-        }): ${typeBreakdown}`,
-      );
     }
 
     // Sort each category by expected improvement (descending)

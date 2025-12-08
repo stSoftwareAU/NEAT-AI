@@ -40,12 +40,8 @@ import {
   DiscoverStructure,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
-import { CreatureErrorImpactEstimator } from "./NeuronErrorImpactEstimator.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
-
-const EPSILON = 1e-9;
 
 export type DiscoveryChangeType =
   | "add-synapses"
@@ -130,69 +126,24 @@ export function buildDiscoveryCandidates(
   const skipCombos = options?.skipCombinedCandidates ?? false;
   // Ensure the base creature has a UUID so discovery helpers function correctly.
   CreatureUtil.makeUUID(baseCreature);
-  const impactEstimator = new CreatureErrorImpactEstimator(baseCreature);
 
-  const scaledNeuronExpected = (candidate: CandidateNeuron) => {
-    const share = impactEstimator.getNeuronShare(candidate.toNeuronUUID);
-    // If we have recorded stats, use the actual error magnitude to scale more accurately
-    if (candidate.targetNeuronStats) {
-      const stats = candidate.targetNeuronStats;
-      // Use mean error magnitude to estimate the actual error contribution
-      // The neuron-level improvement percentage is relative to the neuron's error
-      // We scale it by the share and the relative error magnitude
-      const neuronErrorMagnitude = Math.abs(stats.meanError) +
-        Math.sqrt(stats.errorVariance);
-      const creatureTotalErrorStr = getTag(baseCreature, "error");
-      if (creatureTotalErrorStr) {
-        const creatureTotalError = Number.parseFloat(creatureTotalErrorStr);
-        if (creatureTotalError > EPSILON && neuronErrorMagnitude > EPSILON) {
-          // Scale by: (neuron error / creature error) * share
-          const errorRatio = neuronErrorMagnitude / creatureTotalError;
-          return scaleExpectedImprovement(
-            candidate.expectedImprovementPercentage,
-            share * Math.min(1.0, errorRatio),
-          );
-        }
-      }
-    }
-    return scaleExpectedImprovement(
-      candidate.expectedImprovementPercentage,
-      share,
-    );
-  };
-  const scaledSynapseExpected = (candidate: CandidateSynapse) => {
-    const share = impactEstimator.getNeuronShare(candidate.toNeuronUUID);
-    // If we have recorded stats, use the actual error magnitude to scale more accurately
-    if (candidate.targetNeuronStats) {
-      const stats = candidate.targetNeuronStats;
-      const neuronErrorMagnitude = Math.abs(stats.meanError) +
-        Math.sqrt(stats.errorVariance);
-      const creatureTotalErrorStr = getTag(baseCreature, "error");
-      if (creatureTotalErrorStr) {
-        const creatureTotalError = Number.parseFloat(creatureTotalErrorStr);
-        if (creatureTotalError > EPSILON && neuronErrorMagnitude > EPSILON) {
-          const errorRatio = neuronErrorMagnitude / creatureTotalError;
-          return scaleExpectedImprovement(
-            candidate.expectedImprovementPercentage,
-            share * Math.min(1.0, errorRatio),
-          );
-        }
-      }
-    }
-    return scaleExpectedImprovement(
-      candidate.expectedImprovementPercentage,
-      share,
-    );
-  };
-  const scaledSquashExpected = (candidate: CandidateSquash) =>
-    scaleExpectedImprovement(
-      candidate.expectedImprovementPercentage,
-      impactEstimator.getNeuronShare(candidate.neuronUUID),
-    );
-  const scaledRemovalExpected = (candidate?: CandidateSynapse) => {
+  // Since Rust v0.1.123 (neurons) and v0.1.133 (synapses), the expectedImprovementPercentage
+  // returned by Rust is already creature-level (impact discounted). TypeScript should use
+  // these values directly without re-scaling. These helper functions are kept for API
+  // compatibility but simply return the Rust-provided value.
+  const getExpectedNeuron = (candidate: CandidateNeuron) =>
+    candidate.expectedImprovementPercentage;
+
+  const getExpectedSynapse = (candidate: CandidateSynapse) =>
+    candidate.expectedImprovementPercentage;
+
+  const getExpectedSquash = (candidate: CandidateSquash) =>
+    candidate.expectedImprovementPercentage;
+
+  const getExpectedRemoval = (candidate?: CandidateSynapse) => {
     if (!candidate) return undefined;
-    const scaled = scaledSynapseExpected(candidate);
-    return scaled !== undefined ? Math.abs(scaled) : undefined;
+    const value = candidate.expectedImprovementPercentage;
+    return value !== undefined ? Math.abs(value) : undefined;
   };
 
   const candidates: DiscoveryCandidate[] = [];
@@ -217,7 +168,7 @@ export function buildDiscoveryCandidates(
     const neuronSummary = summariseExpectedImprovement(
       mapScaledSummaryEntries(
         helpfulNeuronCandidates,
-        scaledNeuronExpected,
+        getExpectedNeuron,
         (candidate) => candidate.totalCount,
       ),
     );
@@ -246,7 +197,7 @@ export function buildDiscoveryCandidates(
       discovery.ID,
       baseCreature,
       helpfulNeuronCandidates,
-      scaledNeuronExpected,
+      getExpectedNeuron,
     ),
   );
 
@@ -259,7 +210,7 @@ export function buildDiscoveryCandidates(
     const synapseSummary = summariseExpectedImprovement(
       mapScaledSummaryEntries(
         addHelpfulSynapses,
-        scaledSynapseExpected,
+        getExpectedSynapse,
         (candidate) => candidate.totalCount,
       ),
     );
@@ -287,7 +238,7 @@ export function buildDiscoveryCandidates(
       discovery.ID,
       baseCreature,
       addHelpfulSynapses,
-      scaledSynapseExpected,
+      getExpectedSynapse,
     ),
   );
 
@@ -304,7 +255,7 @@ export function buildDiscoveryCandidates(
         description: `✂️ Removed harmful synapse ${
           shortID(removeHarmfulSynapse.fromNeuronUUID)
         } -> ${shortID(removeHarmfulSynapse.toNeuronUUID)}`,
-        expectedErrorReduction: scaledRemovalExpected(removeHarmfulSynapse),
+        expectedErrorReduction: getExpectedRemoval(removeHarmfulSynapse),
         sampleSize: removeHarmfulSynapse.totalCount,
         synapseDetails: {
           fromNeuronUUID: removeHarmfulSynapse.fromNeuronUUID,
@@ -393,7 +344,7 @@ export function buildDiscoveryCandidates(
     const changes = (candidateSquashes || []).map((c) => {
       const neuron = baseCreature.neurons.find((n) => n.uuid === c.neuronUUID);
       const oldSquash = neuron?.squash;
-      const improvementValue = scaledSquashExpected(c);
+      const improvementValue = getExpectedSquash(c);
       const improvement = improvementValue !== undefined
         ? ` expected: ${(improvementValue * 100).toFixed(1)}%`
         : "";
@@ -406,7 +357,7 @@ export function buildDiscoveryCandidates(
       ? `🎨 Changed activation function for ${changes.join(", ")}`
       : `🎨 Changed activation function on ${changes.length} high-error neurons`;
     const squashSummary = summariseExpectedImprovement(
-      mapScaledSummaryEntries(candidateSquashes, scaledSquashExpected),
+      mapScaledSummaryEntries(candidateSquashes, getExpectedSquash),
     );
 
     candidates.push({
@@ -455,7 +406,7 @@ export function buildDiscoveryCandidates(
       discovery.ID,
       baseCreature,
       candidateSquashes,
-      scaledSquashExpected,
+      getExpectedSquash,
     ),
   );
 
@@ -670,9 +621,9 @@ export function buildDiscoveryCandidates(
       baseCreature,
       discovery,
       {
-        synapse: scaledSynapseExpected,
-        neuron: scaledNeuronExpected,
-        squash: scaledSquashExpected,
+        synapse: getExpectedSynapse,
+        neuron: getExpectedNeuron,
+        squash: getExpectedSquash,
       },
     );
     if (bestOfCategoryCandidate) {
@@ -937,19 +888,6 @@ function mapScaledSummaryEntries<T>(
     });
   }
   return mapped;
-}
-
-function scaleExpectedImprovement(
-  raw?: number,
-  share?: number,
-): number | undefined {
-  if (raw === undefined || Number.isFinite(raw) === false) {
-    return undefined;
-  }
-  const safeShare = Number.isFinite(share)
-    ? Math.min(Math.max(share ?? 0, 0), 1)
-    : 0;
-  return raw * safeShare;
 }
 
 /** Returns the last 8 characters of a UUID or the full ID if short. */
