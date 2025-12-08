@@ -617,6 +617,7 @@ Deno.test(
     // "Pruned N low-impact neurons" is a pure removal, "Restructured" is mixed
     const removalOnlyCombos = combined.filter((c) => {
       const desc = c.change.description?.toLowerCase() ?? "";
+      // cspell:disable-next-line
       return desc.includes("pruned") && !desc.includes("restructur");
     });
     for (const combo of removalOnlyCombos) {
@@ -632,6 +633,7 @@ Deno.test(
 
     // Mixed combinations (removal + add) should use metamorphosis emoji (🦋)
     const mixedCombos = combined.filter((c) =>
+      // cspell:disable-next-line
       c.change.description?.toLowerCase().includes("restructur")
     );
     for (const combo of mixedCombos) {
