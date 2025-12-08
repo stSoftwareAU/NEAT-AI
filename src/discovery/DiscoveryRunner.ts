@@ -284,20 +284,19 @@ export class DiscoveryRunner {
           failureCacheDir,
         );
       if (skipped.length > 0) {
-        const minThreshold = config.costOfGrowth *
-          config.discoveryMinImprovementVsCostOfGrowthMultiplier;
+        // Group skipped candidates by type for a cleaner summary
+        const skippedByType = new Map<string, number>();
+        for (const entry of skipped) {
+          const type = entry.changeType ?? "unknown";
+          skippedByType.set(type, (skippedByType.get(type) ?? 0) + 1);
+        }
+        const typeBreakdown = Array.from(skippedByType.entries())
+          .map(([type, count]) => `${count} ${type}`)
+          .join(", ");
         verboseLog(
           `Skipped ${skipped.length} candidate${
             skipped.length === 1 ? "" : "s"
-          } with expected improvement below ${
-            minThreshold.toPrecision(3)
-          } (${config.discoveryMinImprovementVsCostOfGrowthMultiplier}× costOfGrowth): ${
-            skipped.map((entry) =>
-              `${entry.changeType ?? "unknown"} (expected ${
-                entry.expected?.toPrecision(3) ?? "n/a"
-              })`
-            ).join(", ")
-          }.`,
+          } due to slot limits: ${typeBreakdown}.`,
         );
       }
 
