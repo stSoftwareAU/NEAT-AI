@@ -127,9 +127,13 @@ class DiscoveryPerformanceStats {
 
     // Candidate summary
     // Calculate expected candidate counts that will be built:
+    // - Neurons: 1 combined + N individual = 1 + N (if any neurons exist)
     // - Synapses: 1 combined + N individual = 1 + N (if any synapses exist)
     // - Squashes: 1 combined + N individual = 1 + N (if any squashes exist)
     // - Removals: N individual + 1 combined (if N >= 2) = N + (N >= 2 ? 1 : 0)
+    const expectedNeuronCandidates = this.helpfulNeuronRawCount > 0
+      ? 1 + this.helpfulNeuronRawCount
+      : 0;
     const expectedSynapseCandidates = this.helpfulSynapseRawCount > 0
       ? 1 + this.helpfulSynapseRawCount
       : 0;
@@ -142,7 +146,7 @@ class DiscoveryPerformanceStats {
     console.log(
       `\n🎯 ${yellow("Candidates Found")}:\n` +
         `  Helpful synapses: ${formatCount(expectedSynapseCandidates)}\n` +
-        `  Helpful neurons: ${formatCount(this.helpfulNeuronRawCount)}\n` +
+        `  Helpful neurons: ${formatCount(expectedNeuronCandidates)}\n` +
         `  Harmful synapses: ${formatCount(this.harmfulSynapseCandidates)}\n` +
         `  Harmful neurons: ${formatCount(this.harmfulNeuronCandidates)}\n` +
         `  Squash changes: ${formatCount(expectedSquashCandidates)}\n` +

@@ -659,18 +659,24 @@ Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for neu
   // This is already discounted by impact - TypeScript should NOT re-scale
   const rustCreatureLevelImprovement = 0.001; // 0.1% creature-level from Rust
 
+  // Neuron candidate structure with incoming/outgoing weights, bias, and squash
+  const neuronCandidate = {
+    fromNeuronUUID: "input-1",
+    toNeuronUUID: "hidden-1",
+    incomingWeight: 0.45,
+    outgoingWeight: -0.3,
+    squash: "TANH",
+    bias: 0.05,
+    expectedImprovementPercentage: rustCreatureLevelImprovement,
+    improvedCount: 9,
+    totalCount: 10,
+    targetNeuronStats, // Passed for backwards compatibility, but NOT used for scaling
+  };
+
   const discoveryResult: DiscoverResult = {
     ID: "RUST_DIRECT_NEURON",
-    addHelpfulSynapses: [{
-      fromNeuronUUID: "input-1",
-      toNeuronUUID: "hidden-1",
-      weight: 0.45,
-      expectedImprovementPercentage: rustCreatureLevelImprovement,
-      improvedCount: 9,
-      totalCount: 10,
-      targetNeuronStats, // Passed for backwards compatibility, but NOT used for scaling
-    }],
-    addHelpfulNeurons: undefined,
+    addHelpfulSynapses: undefined,
+    addHelpfulNeurons: [neuronCandidate],
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
     removalCandidates: undefined,
@@ -681,12 +687,26 @@ Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for neu
     discoveryResult,
     (creature: Creature) => {
       const json = creature.exportJSON();
-      const hasHelpful = json.synapses.some((synapse) =>
-        synapse.fromUUID === "input-1" && synapse.toUUID === "hidden-1" &&
-        Math.abs(synapse.weight - 0.45) < 1e-6
+      // Check for the added neuron by finding its incoming and outgoing synapses
+      const incomingSynapse = json.synapses.find((synapse) =>
+        synapse.fromUUID === neuronCandidate.fromNeuronUUID &&
+        Math.abs(synapse.weight - neuronCandidate.incomingWeight) < 1e-6
+      );
+      const discoveredNeuronUUID = incomingSynapse?.toUUID;
+      const outgoingSynapse = discoveredNeuronUUID
+        ? json.synapses.find((synapse) =>
+          synapse.fromUUID === discoveredNeuronUUID &&
+          synapse.toUUID === neuronCandidate.toNeuronUUID &&
+          Math.abs(synapse.weight - neuronCandidate.outgoingWeight) < 1e-6
+        )
+        : undefined;
+      const hasDiscoveredNeuron = Boolean(
+        discoveredNeuronUUID &&
+          outgoingSynapse &&
+          json.neurons.some((neuron) => neuron.uuid === discoveredNeuronUUID),
       );
       // Actual improvement matches Rust's creature-level estimate
-      return hasHelpful ? baseError * 0.999 : baseError;
+      return hasDiscoveredNeuron ? baseError * 0.999 : baseError;
     },
   );
 
@@ -702,9 +722,9 @@ Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for neu
   });
 
   const candidateEval = result.evaluations?.find((entry) =>
-    entry.kind === "candidate" && entry.changeType === "add-synapses"
+    entry.kind === "candidate" && entry.changeType === "add-neurons"
   );
-  assert(candidateEval, "expected add-synapses candidate evaluation");
+  assert(candidateEval, "expected add-neurons candidate evaluation");
 
   // Verify TypeScript uses Rust's creature-level value directly (no re-scaling)
   const expectedErrorReductionPct = candidateEval.expectedErrorReductionPct;
