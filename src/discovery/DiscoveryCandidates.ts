@@ -1138,7 +1138,14 @@ function wrapBestCandidate<
  * 2. Phase 2: Call this function with successful candidates to create combinations
  *
  * Only combines candidates that have proven to improve score individually.
- * Creates pairwise combinations and an all-successful combination.
+ * Generates multiple combination strategies to be evaluated in parallel:
+ * - All successful candidates combined
+ * - All removal candidates combined (if multiple exist)
+ * - Pairwise combinations
+ * - Triple combinations (for larger candidate sets)
+ *
+ * Since creature modifications can have unexpected results, we generate multiple
+ * combinations and let parallel scoring determine the best one.
  *
  * @param baseCreature The original creature before any changes
  * @param discoveryID The discovery session identifier
@@ -1155,101 +1162,163 @@ export function buildCombinedFromSuccessful(
   }
 
   const combinedCandidates: DiscoveryCandidate[] = [];
+  // Track unique combinations to avoid duplicates
+  const seenCombinations = new Set<string>();
 
-  // Group successful candidates by their change type for targeted combination
-  const byType = new Map<string, DiscoveryCandidate[]>();
-  for (const candidate of successfulCandidates) {
-    const type = candidate.change.type;
-    if (!byType.has(type)) {
-      byType.set(type, []);
+  // Helper to create a combination key from candidate indices
+  const makeCombinationKey = (indices: number[]): string =>
+    [...indices].sort((a, b) => a - b).join(",");
+
+  // Helper to build a combined creature from a subset of candidates
+  const buildCombination = (
+    candidates: DiscoveryCandidate[],
+  ): DiscoveryCandidate | undefined => {
+    let combinedCreature = baseCreature;
+    let appliedCount = 0;
+    const appliedTypes: string[] = [];
+
+    for (const candidate of candidates) {
+      const applied = applyChangeToCreature(
+        combinedCreature,
+        candidate,
+        baseCreature,
+      );
+      if (applied && applied !== combinedCreature) {
+        combinedCreature = applied;
+        appliedCount++;
+        if (!appliedTypes.includes(candidate.change.type)) {
+          appliedTypes.push(candidate.change.type);
+        }
+      }
     }
-    byType.get(type)!.push(candidate);
+
+    if (appliedCount >= 2 && combinedCreature !== baseCreature) {
+      // Check if this is a removal-only combination
+      const isRemovalOnly = appliedTypes.every((t) =>
+        t === "remove-low-impact" || t === "remove-neuron" ||
+        t === "remove-synapse"
+      );
+      const description = buildCombinationDescription(
+        appliedTypes,
+        appliedCount,
+        isRemovalOnly,
+      );
+      return {
+        creature: combinedCreature,
+        change: {
+          type: "combo-successful",
+          description,
+        },
+      };
+    }
+    return undefined;
+  };
+
+  // Strategy 1: All successful candidates combined
+  const allKey = makeCombinationKey(
+    successfulCandidates.map((_, i) => i),
+  );
+  seenCombinations.add(allKey);
+  const allCombined = buildCombination(successfulCandidates);
+  if (allCombined) {
+    combinedCandidates.push(allCombined);
   }
 
-  // Build all-successful combination by applying changes sequentially
-  let combinedCreature = baseCreature;
-  const appliedTypes: string[] = [];
-  const appliedDescriptions: string[] = [];
-
-  // Apply changes in a deterministic order (sorted by type name)
-  const sortedTypes = [...byType.keys()].sort();
-  for (const type of sortedTypes) {
-    const candidates = byType.get(type)!;
-    // Use the first (or best) candidate of each type
-    const best = candidates[0];
-
-    // Try to apply this change to the combined creature
-    const applied = applyChangeToCreature(
-      combinedCreature,
-      best,
-      baseCreature,
+  // Strategy 2: All removal candidates combined (if there are multiple)
+  // This is a key combination for cleaning up low-impact neurons
+  const removalCandidates = successfulCandidates.filter(
+    (c) =>
+      c.change.type === "remove-low-impact" ||
+      c.change.type === "remove-neuron" ||
+      c.change.type === "remove-synapse",
+  );
+  if (removalCandidates.length >= 2) {
+    const removalIndices = removalCandidates.map((c) =>
+      successfulCandidates.indexOf(c)
     );
-
-    if (applied && applied !== combinedCreature) {
-      combinedCreature = applied;
-      appliedTypes.push(type);
-      const shortDesc = best.change.description?.split(" ")[0] || type;
-      appliedDescriptions.push(shortDesc);
+    const removalKey = makeCombinationKey(removalIndices);
+    if (!seenCombinations.has(removalKey)) {
+      seenCombinations.add(removalKey);
+      const removalCombined = buildCombination(removalCandidates);
+      if (removalCombined) {
+        combinedCandidates.push(removalCombined);
+      }
     }
   }
 
-  if (appliedTypes.length >= 2 && combinedCreature !== baseCreature) {
-    // Select emoji based on the combination
-    const emoji = selectCombinationEmoji(appliedTypes);
-    const description =
-      `${emoji} Combined ${appliedTypes.length} successful changes: ${
-        appliedTypes.join(", ")
-      }`;
-
-    combinedCandidates.push({
-      creature: combinedCreature,
-      change: {
-        type: "combo-successful",
-        description,
-      },
-    });
+  // Strategy 3: All non-removal candidates combined (if there are multiple)
+  const nonRemovalCandidates = successfulCandidates.filter(
+    (c) =>
+      c.change.type !== "remove-low-impact" &&
+      c.change.type !== "remove-neuron" &&
+      c.change.type !== "remove-synapse",
+  );
+  if (nonRemovalCandidates.length >= 2) {
+    const nonRemovalIndices = nonRemovalCandidates.map((c) =>
+      successfulCandidates.indexOf(c)
+    );
+    const nonRemovalKey = makeCombinationKey(nonRemovalIndices);
+    if (!seenCombinations.has(nonRemovalKey)) {
+      seenCombinations.add(nonRemovalKey);
+      const nonRemovalCombined = buildCombination(nonRemovalCandidates);
+      if (nonRemovalCombined) {
+        combinedCandidates.push(nonRemovalCombined);
+      }
+    }
   }
 
-  // If we have more than 2 successful candidates, also try pairwise combinations
-  // to see if any pair performs better than the full combination
-  if (successfulCandidates.length > 2 && successfulCandidates.length <= 6) {
+  // Strategy 4: Pairwise combinations
+  // Try all pairs to find which 2 changes work best together
+  if (successfulCandidates.length >= 2 && successfulCandidates.length <= 10) {
     for (let i = 0; i < successfulCandidates.length; i++) {
       for (let j = i + 1; j < successfulCandidates.length; j++) {
+        const pairKey = makeCombinationKey([i, j]);
+        if (seenCombinations.has(pairKey)) continue;
+        seenCombinations.add(pairKey);
+
         const candidateA = successfulCandidates[i];
         const candidateB = successfulCandidates[j];
 
-        // Skip if same type (already handled above)
-        if (candidateA.change.type === candidateB.change.type) continue;
+        const pairCombined = buildCombination([candidateA, candidateB]);
+        if (pairCombined) {
+          combinedCandidates.push(pairCombined);
+        }
+      }
+    }
+  }
 
-        const afterA = applyChangeToCreature(
-          baseCreature,
-          candidateA,
-          baseCreature,
-        );
-        if (afterA && afterA !== baseCreature) {
-          const afterBoth = applyChangeToCreature(
-            afterA,
-            candidateB,
-            baseCreature,
-          );
-          // Verify candidateB actually changed something (not just returned afterA unchanged)
-          if (afterBoth && afterBoth !== afterA) {
-            const emoji = selectCombinationEmoji([
-              candidateA.change.type,
-              candidateB.change.type,
-            ]);
-            combinedCandidates.push({
-              creature: afterBoth,
-              change: {
-                type: "combo-successful",
-                description:
-                  `${emoji} Combined ${candidateA.change.type} + ${candidateB.change.type}`,
-              },
-            });
+  // Strategy 5: Triple combinations (for medium-sized candidate sets)
+  // Try all triples to find optimal 3-way combinations
+  if (successfulCandidates.length >= 4 && successfulCandidates.length <= 8) {
+    for (let i = 0; i < successfulCandidates.length; i++) {
+      for (let j = i + 1; j < successfulCandidates.length; j++) {
+        for (let k = j + 1; k < successfulCandidates.length; k++) {
+          const tripleKey = makeCombinationKey([i, j, k]);
+          if (seenCombinations.has(tripleKey)) continue;
+          seenCombinations.add(tripleKey);
+
+          const tripleCandidates = [
+            successfulCandidates[i],
+            successfulCandidates[j],
+            successfulCandidates[k],
+          ];
+
+          const tripleCombined = buildCombination(tripleCandidates);
+          if (tripleCombined) {
+            combinedCandidates.push(tripleCombined);
           }
         }
       }
     }
+  }
+
+  // Log summary of generated combinations
+  if (combinedCandidates.length > 0) {
+    console.info(
+      `[DiscoveryCandidates] Generated ${combinedCandidates.length} combination candidate${
+        combinedCandidates.length === 1 ? "" : "s"
+      } from ${successfulCandidates.length} successful singles`,
+    );
   }
 
   return combinedCandidates;
@@ -1344,8 +1413,22 @@ function applyChangeToCreature(
         const existingSynapses = new Set(
           creatureJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
         );
+        // Build set of existing neuron UUIDs to validate synapse endpoints
+        // Include input neurons (not in neurons array but referenced as input-N)
+        const existingNeurons = new Set(
+          creatureJSON.neurons.map((n) => n.uuid),
+        );
+        const inputCount = creatureJSON.input ?? 0;
+        for (let i = 0; i < inputCount; i++) {
+          existingNeurons.add(`input-${i}`);
+        }
+        // Only add synapses where BOTH endpoints exist in current creature
+        // (handles combinations where neurons were removed by prior steps)
         const newSynapses = candidateJSON.synapses.filter(
-          (s) => !existingSynapses.has(`${s.fromUUID}->${s.toUUID}`),
+          (s) =>
+            !existingSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
+            existingNeurons.has(s.fromUUID) &&
+            existingNeurons.has(s.toUUID),
         );
         if (newSynapses.length === 0) return creature;
 
@@ -1367,16 +1450,29 @@ function applyChangeToCreature(
         );
         if (candidateNeurons.length === 0) return creature;
 
-        // Find synapses connected to these new neurons
-        const newNeuronUUIDs = new Set(candidateNeurons.map((n) => n.uuid));
-        const newSynapses = candidateJSON.synapses.filter(
-          (s) => newNeuronUUIDs.has(s.fromUUID) || newNeuronUUIDs.has(s.toUUID),
-        );
-
         // Insert neurons before outputs
         const outputCount = creatureJSON.output ?? 1;
         const outputOffset = creatureJSON.neurons.length - outputCount;
         creatureJSON.neurons.splice(outputOffset, 0, ...candidateNeurons);
+
+        // Update existing neurons set to include newly added neurons and input neurons
+        const updatedNeurons = new Set(
+          creatureJSON.neurons.map((n) => n.uuid),
+        );
+        const inputCount = creatureJSON.input ?? 0;
+        for (let i = 0; i < inputCount; i++) {
+          updatedNeurons.add(`input-${i}`);
+        }
+
+        // Find synapses connected to these new neurons
+        // Only include synapses where BOTH endpoints exist in current creature
+        const newNeuronUUIDs = new Set(candidateNeurons.map((n) => n.uuid));
+        const newSynapses = candidateJSON.synapses.filter(
+          (s) =>
+            (newNeuronUUIDs.has(s.fromUUID) || newNeuronUUIDs.has(s.toUUID)) &&
+            updatedNeurons.has(s.fromUUID) &&
+            updatedNeurons.has(s.toUUID),
+        );
         creatureJSON.synapses.push(...newSynapses);
 
         const result = Creature.fromJSON(creatureJSON);
@@ -1474,22 +1570,38 @@ function applyChangeToCreature(
           [...baseNeurons].filter((uuid) => !candidateNeurons.has(uuid)),
         );
 
-        // Also add reconnection synapses: new in candidate but not in creature
-        // These maintain connectivity after neuron removal
-        const toAdd = candidateJSON.synapses.filter(
-          (s) =>
-            !baseSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
-            !creatureSynapses.has(`${s.fromUUID}->${s.toUUID}`),
-        );
-
-        if (toRemove.size === 0 && toAdd.length === 0) return creature;
-
+        // First, apply the removals
         creatureJSON.neurons = creatureJSON.neurons.filter(
           (n) => !toRemove.has(n.uuid),
         );
         creatureJSON.synapses = creatureJSON.synapses.filter(
           (s) => !toRemove.has(s.fromUUID) && !toRemove.has(s.toUUID),
         );
+
+        // Build set of remaining neuron UUIDs for synapse validation
+        // Include input neurons (not in neurons array but referenced as input-N)
+        const remainingNeurons = new Set(
+          creatureJSON.neurons.map((n) => n.uuid),
+        );
+        const inputCount = creatureJSON.input ?? 0;
+        for (let i = 0; i < inputCount; i++) {
+          remainingNeurons.add(`input-${i}`);
+        }
+
+        // Add reconnection synapses: new in candidate but not in creature
+        // These maintain connectivity after neuron removal
+        // IMPORTANT: Only add synapses where BOTH endpoints exist in the current creature
+        // (handles sequential removals where later candidates may reference already-removed neurons)
+        const toAdd = candidateJSON.synapses.filter(
+          (s) =>
+            !baseSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
+            !creatureSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
+            remainingNeurons.has(s.fromUUID) &&
+            remainingNeurons.has(s.toUUID),
+        );
+
+        if (toRemove.size === 0 && toAdd.length === 0) return creature;
+
         creatureJSON.synapses.push(...toAdd);
 
         const result = Creature.fromJSON(creatureJSON);
@@ -1517,32 +1629,140 @@ function applyChangeToCreature(
 }
 
 /**
+ * Emoji legend for discovery candidates (unique emoji per category):
+ *
+ * **Single Candidates:**
+ * - 💡 Add neuron(s)
+ * - 🔗 Add synapse(s)
+ * - 🎨 Change activation function
+ * - 🪶 Remove low-impact neuron
+ * - 💀 Remove harmful neuron
+ * - ✂️ Remove harmful synapse
+ *
+ * **Combination Candidates:**
+ * - ✂️ Pruning only (multiple removals)
+ * - 🌱 Growth only (add neurons + synapses)
+ * - 🧬 Structural changes only (add without removal)
+ * - 🦋 Metamorphosis (removal + addition)
+ * - ⚡ Optimisation (change squash + other)
+ * - 🏆 Multi-category combination (3+ types)
+ */
+
+/**
  * Select an appropriate emoji for the combination based on change types.
+ * Each combination category has a unique emoji to distinguish at a glance.
  */
 function selectCombinationEmoji(types: string[]): string {
   const typeSet = new Set(types);
+  const hasRemoval = typeSet.has("remove-low-impact") ||
+    typeSet.has("remove-neuron") ||
+    typeSet.has("remove-synapse");
+  const hasAddition = typeSet.has("add-neurons") || typeSet.has("add-synapses");
+  const hasSquashChange = typeSet.has("change-squash");
 
-  // Fun, informative emoji selections based on what's being combined
-  if (typeSet.has("remove-low-impact") && typeSet.has("add-neurons")) {
+  // Multi-category combinations (3+ distinct types)
+  if (typeSet.size >= 3) {
+    return "🏆"; // Achievement - comprehensive improvement
+  }
+
+  // Metamorphosis: removal + addition (structural transformation)
+  if (hasRemoval && hasAddition) {
     return "🦋"; // Metamorphosis - shedding old, gaining new
   }
-  if (typeSet.has("remove-low-impact") || typeSet.has("remove-neuron")) {
-    return "✂️"; // Pruning/trimming
+
+  // Optimisation: squash change + other changes
+  if (hasSquashChange && (hasRemoval || hasAddition)) {
+    return "⚡"; // Optimisation - performance tuning
   }
-  if (typeSet.has("add-neurons") && typeSet.has("add-synapses")) {
-    return "🌱"; // Growing - adding structure
+
+  // Pure removal combinations (pruning)
+  if (hasRemoval && !hasAddition && !hasSquashChange) {
+    return "✂️"; // Pruning - trimming excess
   }
-  if (typeSet.has("change-squash")) {
+
+  // Pure addition combinations (growth)
+  if (hasAddition && !hasRemoval && !hasSquashChange) {
+    if (typeSet.has("add-neurons") && typeSet.has("add-synapses")) {
+      return "🌱"; // Growing - adding neurons and connections
+    }
+    return "🧬"; // Structural - adding structure
+  }
+
+  // Squash-only combinations
+  if (hasSquashChange && !hasRemoval && !hasAddition) {
     return "🎭"; // Transformation - changing behaviour
   }
-  if (typeSet.has("add-neurons")) {
-    return "🧠"; // Neural growth
-  }
-  if (typeSet.has("add-synapses")) {
-    return "🔗"; // Connecting
-  }
-  if (types.length >= 3) {
-    return "🏆"; // Triple or more combination - achievement!
-  }
+
   return "🔬"; // Generic scientific discovery
+}
+
+/**
+ * Build a human-readable description for a combination of changes.
+ * Uses proper grammar suitable for git commit messages.
+ *
+ * @param appliedTypes The types of changes that were applied
+ * @param appliedCount The number of changes applied
+ * @param isRemovalOnly Whether all changes are removal operations
+ */
+function buildCombinationDescription(
+  appliedTypes: string[],
+  appliedCount: number,
+  isRemovalOnly: boolean,
+): string {
+  const emoji = selectCombinationEmoji(appliedTypes);
+
+  // Single type combinations - use specific descriptions
+  // IMPORTANT: Check this BEFORE isRemovalOnly to handle remove-synapse correctly
+  if (appliedTypes.length === 1) {
+    const type = appliedTypes[0];
+    switch (type) {
+      case "add-neurons":
+        return `${emoji} Added ${appliedCount} neurons`;
+      case "add-synapses":
+        return `${emoji} Added ${appliedCount} synapses`;
+      case "change-squash":
+        return `${emoji} Changed ${appliedCount} activation functions`;
+      case "remove-low-impact":
+      case "remove-neuron":
+        return `${emoji} Pruned ${appliedCount} low-impact neurons`;
+      case "remove-synapse":
+        return `${emoji} Removed ${appliedCount} synapses`;
+      default:
+        return `${emoji} Applied ${appliedCount} ${type} changes`;
+    }
+  }
+
+  // Multi-type pure removal combinations (neuron removals) - use "Pruned" verb
+  // Note: This is for combinations of remove-low-impact, remove-neuron types
+  // but NOT for pure remove-synapse combinations (handled above as single-type)
+  if (isRemovalOnly) {
+    // Check if this is synapse-only removal combination
+    const isSynapseOnly = appliedTypes.every((t) => t === "remove-synapse");
+    if (isSynapseOnly) {
+      return `${emoji} Removed ${appliedCount} synapses`;
+    }
+    // Mixed removal types or neuron-only removals
+    return `${emoji} Pruned ${appliedCount} low-impact neurons`;
+  }
+
+  // Multi-type combinations - describe the overall effect
+  const hasRemoval = appliedTypes.some((t) =>
+    t.includes("remove") || t === "remove-low-impact"
+  );
+  const hasAddition = appliedTypes.some((t) =>
+    t === "add-neurons" || t === "add-synapses"
+  );
+  const hasSquash = appliedTypes.includes("change-squash");
+
+  if (hasRemoval && hasAddition) {
+    return `${emoji} Restructured network: pruned and expanded`;
+  }
+  if (hasSquash && (hasRemoval || hasAddition)) {
+    return `${emoji} Optimised network structure and activations`;
+  }
+  if (hasAddition) {
+    return `${emoji} Expanded network with new structure`;
+  }
+
+  return `${emoji} Applied ${appliedCount} structural improvements`;
 }
