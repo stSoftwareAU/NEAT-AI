@@ -1759,10 +1759,13 @@ Deno.test(
       options,
     });
 
+    // Phase 1 evaluates 5 single removal candidates (configured minimum)
+    // Phase 2 generates combination candidates from successful singles (up to maxCandidates = 2)
+    // Total: 5 single + 2 combinations = 7
     assertEquals(
       removalEvaluated,
-      5,
-      `Expected 5 removal candidates to be evaluated (configured minimum), got ${removalEvaluated}`,
+      7,
+      `Expected 7 removal evaluations (5 single + 2 combos), got ${removalEvaluated}`,
     );
   },
 );
@@ -1927,11 +1930,13 @@ Deno.test(
       options,
     });
 
-    // Default for removeLowImpact is 3
+    // Default for removeLowImpact is 3 single candidates
+    // Phase 2 generates combination candidates from successful singles (up to maxCandidates = 2)
+    // Total: 3 single + 2 combinations = 5
     assertEquals(
       removalEvaluated,
-      3,
-      `Expected 3 removal candidates with default config, got ${removalEvaluated}`,
+      5,
+      `Expected 5 removal evaluations (3 single + 2 combos), got ${removalEvaluated}`,
     );
   },
 );
