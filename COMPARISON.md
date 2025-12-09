@@ -8,9 +8,10 @@ network architectures (feedforward, CNN, RNN) and modern Large Language Models
 our approaches, our unique innovations, and identifies shortcomings that
 represent future work opportunities.
 
-**Note**: This comparison is written from the perspective of someone who
-understands NEAT deeply but is learning about other ML approaches. It aims to
-stay accurate and links to authoritative sources whenever new ideas are
+**Note**: You don't need to be an expert in neural networks or the NEAT
+algorithm to get value from this comparison. We start with a high-level
+introduction to NEAT and only assume basic familiarity with ML concepts. It
+aims to stay accurate and links to authoritative sources whenever new ideas are
 introduced.
 
 ## Terminology Cheat Sheet
