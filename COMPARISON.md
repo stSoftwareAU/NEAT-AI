@@ -93,9 +93,9 @@ machine-learning concept.
   training data each day from many years of financial, market, or company
   reporting data), the same population can keep training and adapting as new
   samples and new features arrive. This supports continual learning in the
-  spirit of [continual learning](https://en.wikipedia.org/wiki/Continual_learning)
-  while still relying on your training data mix to keep past behaviour
-  represented.
+  spirit of
+  [continual learning](https://en.wikipedia.org/wiki/Continual_learning) while
+  still relying on your training data mix to keep past behaviour represented.
 - ✅ **CRISPR Gene Injection**: Targeted gene insertion during evolution to
   introduce specific traits, inspired by
   [CRISPR-Cas9 gene editing](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/).
@@ -290,9 +290,9 @@ Key differences:
 - Adaptive complexity (grows/shrinks as needed)
 - Works with non-differentiable objectives
 - Extensible inputs/outputs via UUID indexing
-- Lifelong learning support for long-running deployments (continuous training
-  as new data arrives), with the degree of catastrophic forgetting depending
-  on how you construct and refresh your training data
+- Lifelong learning support for long-running deployments (continuous training as
+  new data arrives), with the degree of catastrophic forgetting depending on how
+  you construct and refresh your training data
 - Can trace evolutionary history
 
 **Weaknesses**:
@@ -636,11 +636,11 @@ you need labelled data to compute fitness scores. True unsupervised learning
 (learning patterns from unlabelled data) is not yet implemented.
 
 **Clarification**: Evolution is "unsupervised" in the sense that the algorithm
-doesn't need gradients or labelled examples to guide weight updates. However, you
-still typically need labelled data to compute fitness scores (e.g., "how well did
-this creature predict the target?"). True unsupervised learning in ML means
-learning patterns, representations, or structures from unlabelled data without
-any target labels.
+doesn't need gradients or labelled examples to guide weight updates. However,
+you still typically need labelled data to compute fitness scores (e.g., "how
+well did this creature predict the target?"). True unsupervised learning in ML
+means learning patterns, representations, or structures from unlabelled data
+without any target labels.
 
 **What's Missing**:
 
