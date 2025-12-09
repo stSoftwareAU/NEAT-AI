@@ -10,6 +10,10 @@
  * - Structural signature (neuron UUIDs, synapse connections)
  * - Weight/bias magnitude (using exponent only, so similar weights map to same key)
  *
+ * Enhanced Diagnostics:
+ * Set NEAT_AI_TRACE_PREDICTION=1 to enable detailed prediction tracing during evaluation.
+ * This logs sample-level contribution calculations to help debug prediction inversions.
+ *
  * @module FailureCache
  */
 
@@ -17,6 +21,96 @@ import { dirname } from "@std/path/dirname";
 import { join } from "@std/path/join";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { Creature } from "../Creature.ts";
+
+/** Check if prediction tracing is enabled */
+export function isPredictionTracingEnabled(): boolean {
+  try {
+    return Deno.env.get("NEAT_AI_TRACE_PREDICTION") === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Sample diagnostic information for understanding prediction vs actual results */
+export interface SampleDiagnostic {
+  /** Index of this sample in the dataset */
+  sampleIndex?: number;
+  /** Activation of the source neuron for this sample */
+  sourceActivation: number;
+  /** Average error at the target neuron for this sample */
+  avgError: number;
+  /** Expected target value (from training data) */
+  targetValue?: number;
+  /** Actual activation at the target neuron before change */
+  targetActivation?: number;
+  /** Computed contribution of new neuron/synapse for this sample */
+  computedContribution?: number;
+}
+
+/** Prediction details from the Rust candidate analysis */
+export interface PredictionDetails {
+  /** Incoming weight (source -> new neuron, for add-neurons) */
+  incomingWeight?: number;
+  /** Outgoing weight (new neuron -> target, for add-neurons) */
+  outgoingWeight?: number;
+  /** Weight for synapse candidates */
+  weight?: number;
+  /** Bias of the new neuron */
+  bias?: number;
+  /** Squash function used */
+  squash?: string;
+  /** Expected improvement percentage from Rust */
+  expectedImprovementPct?: number;
+  /** Number of samples where improvement was predicted */
+  improvedCount?: number;
+  /** Total samples analysed */
+  totalCount?: number;
+  /** Example contribution calculation for a typical sample */
+  exampleContribution?: {
+    sourceActivation: number;
+    preActivation: number;
+    postActivation: number;
+    contribution: number;
+  };
+}
+
+/** Error comparison details for debugging prediction inversions */
+export interface ErrorComparison {
+  /** Original MSE before candidate was applied */
+  originalMSE: number;
+  /** MSE after candidate was applied */
+  candidateMSE: number;
+  /** Actual error reduction (originalMSE - candidateMSE, positive = improvement) */
+  actualErrorReduction: number;
+  /** Actual error reduction as percentage */
+  actualErrorReductionPct: number;
+  /** Expected error reduction from Rust prediction */
+  expectedErrorReduction?: number;
+  /** Expected error reduction as percentage from Rust */
+  expectedErrorReductionPct?: number;
+  /** Formula used for error calculation */
+  errorFormula: string;
+  /** Whether prediction direction was correct */
+  predictionDirectionCorrect?: boolean;
+}
+
+/** Information about the target neuron */
+export interface TargetNeuronInfo {
+  /** UUID of the target neuron */
+  uuid: string;
+  /** Squash function of the target neuron */
+  squash: string;
+  /** Whether the neuron is at saturation (|activation| > 0.95 for bounded activations) */
+  isSaturated?: boolean;
+  /** Mean activation across samples */
+  meanActivation?: number;
+  /** Activation variance */
+  activationVariance?: number;
+  /** Mean error at this neuron */
+  meanError?: number;
+  /** Error variance */
+  errorVariance?: number;
+}
 
 /** Metadata stored alongside cached failures for debugging/analysis */
 export interface FailureMetadata {
@@ -27,6 +121,17 @@ export interface FailureMetadata {
   /** Re-scored error of the original creature (without candidate changes applied) */
   originalError?: number;
   timestamp?: string;
+
+  // Enhanced diagnostic fields for debugging prediction inversions
+
+  /** Diagnostics for first few samples used in prediction */
+  sampleDiagnostics?: SampleDiagnostic[];
+  /** Prediction details from Rust candidate */
+  predictionDetails?: PredictionDetails;
+  /** Error comparison showing expected vs actual */
+  errorComparison?: ErrorComparison;
+  /** Information about the target neuron */
+  targetNeuronInfo?: TargetNeuronInfo;
 }
 
 /** Represents the actual neuron state in the creature after changes were applied */
@@ -330,6 +435,220 @@ export function extractActualCreatureChanges(
 }
 
 /**
+ * Extracts prediction details from a discovery candidate for debugging.
+ * This provides the Rust-side prediction data that can be compared against actual results.
+ *
+ * @param candidate - The discovery candidate to extract details from
+ * @returns PredictionDetails if relevant data is available
+ */
+export function extractPredictionDetails(
+  candidate: DiscoveryCandidate,
+): PredictionDetails | undefined {
+  const change = candidate.change;
+
+  // For add-neurons candidates, extract from neuronDetails
+  if (change.type === "add-neurons" && change.neuronDetails) {
+    const details = change.neuronDetails;
+    return {
+      incomingWeight: details.incomingWeight,
+      outgoingWeight: details.outgoingWeight,
+      bias: details.bias,
+      squash: details.squash,
+      expectedImprovementPct: change.expectedErrorReduction !== undefined
+        ? change.expectedErrorReduction * 100
+        : undefined,
+    };
+  }
+
+  // For add-synapses candidates, we need to look at the creature's synapses
+  if (change.type === "add-synapses") {
+    return {
+      expectedImprovementPct: change.expectedErrorReduction !== undefined
+        ? change.expectedErrorReduction * 100
+        : undefined,
+      totalCount: change.sampleSize,
+    };
+  }
+
+  // For change-squash candidates
+  if (change.type === "change-squash") {
+    return {
+      expectedImprovementPct: change.expectedErrorReduction !== undefined
+        ? change.expectedErrorReduction * 100
+        : undefined,
+    };
+  }
+
+  return undefined;
+}
+
+/**
+ * Extracts target neuron information from a candidate creature.
+ *
+ * @param candidate - The discovery candidate
+ * @param baseCreature - The base creature before modifications
+ * @returns TargetNeuronInfo if a target neuron can be identified
+ */
+export function extractTargetNeuronInfo(
+  candidate: DiscoveryCandidate,
+  baseCreature: Creature,
+): TargetNeuronInfo | undefined {
+  const change = candidate.change;
+  let targetUUID: string | undefined;
+
+  // Identify target neuron based on change type
+  if (change.type === "add-neurons" && change.neuronDetails) {
+    targetUUID = change.neuronDetails.toNeuronUUID;
+  } else if (change.type === "add-synapses") {
+    // For synapses, extract from description if possible
+    const toMatch = change.description?.match(/-> ([a-zA-Z0-9_-]+)/);
+    if (toMatch) {
+      targetUUID = toMatch[1];
+    }
+  }
+
+  if (!targetUUID) return undefined;
+
+  // Find the neuron in the base creature
+  const neuron = baseCreature.neurons.find((n) => n.uuid === targetUUID);
+  if (!neuron) return undefined;
+
+  const squashName = neuron.squash ?? "IDENTITY";
+
+  return {
+    uuid: targetUUID,
+    squash: squashName,
+    // Note: Saturation and stats would need runtime activation data
+    // which we don't have access to in this context
+  };
+}
+
+/**
+ * Builds error comparison details from metadata.
+ *
+ * @param metadata - The failure metadata
+ * @param expectedErrorReduction - Expected error reduction from candidate
+ * @returns ErrorComparison details
+ */
+export function buildErrorComparison(
+  metadata: FailureMetadata,
+  expectedErrorReduction?: number,
+): ErrorComparison | undefined {
+  if (metadata.originalError === undefined) return undefined;
+
+  const originalMSE = metadata.originalError;
+  const candidateMSE = metadata.error;
+  const actualErrorReduction = originalMSE - candidateMSE;
+  const actualErrorReductionPct = originalMSE === 0
+    ? (candidateMSE === 0 ? 0 : -100)
+    : (actualErrorReduction / originalMSE) * 100;
+
+  // Determine if prediction direction was correct
+  let predictionDirectionCorrect: boolean | undefined;
+  if (expectedErrorReduction !== undefined) {
+    const predictedImprovement = expectedErrorReduction > 0;
+    const actualImprovement = actualErrorReduction > 0;
+    predictionDirectionCorrect = predictedImprovement === actualImprovement;
+  }
+
+  return {
+    originalMSE,
+    candidateMSE,
+    actualErrorReduction,
+    actualErrorReductionPct,
+    expectedErrorReduction,
+    expectedErrorReductionPct: expectedErrorReduction !== undefined
+      ? expectedErrorReduction * 100
+      : undefined,
+    errorFormula: "MSE = (1/n) * Σ(predicted - actual)²",
+    predictionDirectionCorrect,
+  };
+}
+
+/**
+ * Logs detailed prediction trace when NEAT_AI_TRACE_PREDICTION=1 is set.
+ *
+ * @param candidate - The candidate being traced
+ * @param metadata - The failure metadata
+ * @param cacheEntry - The cache entry being written
+ */
+export function logPredictionTrace(
+  candidate: DiscoveryCandidate,
+  metadata: FailureMetadata,
+  // deno-lint-ignore no-explicit-any
+  cacheEntry: Record<string, any>,
+): void {
+  if (!isPredictionTracingEnabled()) return;
+
+  console.info("=".repeat(80));
+  console.info("[PREDICTION TRACE] Candidate evaluation details");
+  console.info("=".repeat(80));
+  console.info(`Change Type: ${candidate.change.type}`);
+  console.info(`Description: ${candidate.change.description}`);
+  console.info("");
+
+  // Log score comparison from metadata
+  console.info("--- Score Comparison ---");
+  console.info(`Original Score:    ${metadata.originalScore.toPrecision(8)}`);
+  console.info(`Candidate Score:   ${metadata.candidateScore.toPrecision(8)}`);
+  console.info(
+    `Score Delta:       ${metadata.scoreDelta.toPrecision(8)} (${
+      metadata.scoreDelta > 0 ? "IMPROVED" : "DEGRADED"
+    })`,
+  );
+  console.info("");
+
+  // Log prediction details
+  if (cacheEntry.predictionDetails) {
+    console.info("--- Rust Prediction Details ---");
+    console.info(JSON.stringify(cacheEntry.predictionDetails, null, 2));
+    console.info("");
+  }
+
+  // Log error comparison
+  if (cacheEntry.errorComparison) {
+    console.info("--- Error Comparison ---");
+    const ec = cacheEntry.errorComparison as ErrorComparison;
+    console.info(`Original MSE:          ${ec.originalMSE.toExponential(6)}`);
+    console.info(`Candidate MSE:         ${ec.candidateMSE.toExponential(6)}`);
+    console.info(
+      `Actual Error Delta:    ${ec.actualErrorReduction.toExponential(6)} (${
+        ec.actualErrorReductionPct.toFixed(4)
+      }%)`,
+    );
+    if (ec.expectedErrorReductionPct !== undefined) {
+      console.info(
+        `Expected Error Delta:  ${
+          (ec.expectedErrorReduction ?? 0).toExponential(6)
+        } (${ec.expectedErrorReductionPct.toFixed(4)}%)`,
+      );
+      console.info(
+        `Prediction Direction:  ${
+          ec.predictionDirectionCorrect ? "✓ CORRECT" : "✗ INVERTED"
+        }`,
+      );
+    }
+    console.info("");
+  }
+
+  // Log target neuron info
+  if (cacheEntry.targetNeuronInfo) {
+    console.info("--- Target Neuron Info ---");
+    console.info(JSON.stringify(cacheEntry.targetNeuronInfo, null, 2));
+    console.info("");
+  }
+
+  // Log actual changes
+  if (cacheEntry.actualCreatureChange) {
+    console.info("--- Actual Creature Changes ---");
+    console.info(JSON.stringify(cacheEntry.actualCreatureChange, null, 2));
+    console.info("");
+  }
+
+  console.info("=".repeat(80));
+}
+
+/**
  * Checks if a discovery candidate is already cached as a failure.
  *
  * @param cacheDir - The cache directory path
@@ -385,6 +704,11 @@ export function isCandidateCachedSync(
 
 /**
  * Records a discovery candidate as a failure in the cache.
+ *
+ * Enhanced with diagnostic fields to help debug prediction inversions:
+ * - predictionDetails: Rust prediction parameters
+ * - errorComparison: Expected vs actual error with direction analysis
+ * - targetNeuronInfo: Information about the target neuron
  *
  * @param cacheDir - The cache directory path
  * @param candidate - The candidate that failed to improve
@@ -459,7 +783,36 @@ export async function recordFailure(
       if (actualChanges) {
         cacheEntry.actualCreatureChange = actualChanges;
       }
+
+      // Enhanced diagnostics for debugging prediction inversions
+
+      // Extract prediction details from the candidate
+      const predictionDetails = extractPredictionDetails(candidate);
+      if (predictionDetails) {
+        cacheEntry.predictionDetails = predictionDetails;
+      }
+
+      // Build error comparison details
+      const errorComparison = buildErrorComparison(
+        metadata,
+        candidate.change.expectedErrorReduction,
+      );
+      if (errorComparison) {
+        cacheEntry.errorComparison = errorComparison;
+      }
+
+      // Extract target neuron info
+      const targetNeuronInfo = extractTargetNeuronInfo(
+        candidate,
+        baseCreature,
+      );
+      if (targetNeuronInfo) {
+        cacheEntry.targetNeuronInfo = targetNeuronInfo;
+      }
     }
+
+    // Log prediction trace if enabled
+    logPredictionTrace(candidate, metadata, cacheEntry);
 
     await Deno.writeTextFile(filePath, JSON.stringify(cacheEntry, null, 2));
   } catch (error) {
@@ -472,6 +825,11 @@ export async function recordFailure(
 
 /**
  * Synchronously records a discovery candidate as a failure in the cache.
+ *
+ * Enhanced with diagnostic fields to help debug prediction inversions:
+ * - predictionDetails: Rust prediction parameters
+ * - errorComparison: Expected vs actual error with direction analysis
+ * - targetNeuronInfo: Information about the target neuron
  *
  * @param cacheDir - The cache directory path
  * @param candidate - The candidate that failed to improve
@@ -546,7 +904,36 @@ export function recordFailureSync(
       if (actualChanges) {
         cacheEntry.actualCreatureChange = actualChanges;
       }
+
+      // Enhanced diagnostics for debugging prediction inversions
+
+      // Extract prediction details from the candidate
+      const predictionDetails = extractPredictionDetails(candidate);
+      if (predictionDetails) {
+        cacheEntry.predictionDetails = predictionDetails;
+      }
+
+      // Build error comparison details
+      const errorComparison = buildErrorComparison(
+        metadata,
+        candidate.change.expectedErrorReduction,
+      );
+      if (errorComparison) {
+        cacheEntry.errorComparison = errorComparison;
+      }
+
+      // Extract target neuron info
+      const targetNeuronInfo = extractTargetNeuronInfo(
+        candidate,
+        baseCreature,
+      );
+      if (targetNeuronInfo) {
+        cacheEntry.targetNeuronInfo = targetNeuronInfo;
+      }
     }
+
+    // Log prediction trace if enabled
+    logPredictionTrace(candidate, metadata, cacheEntry);
 
     Deno.writeTextFileSync(filePath, JSON.stringify(cacheEntry, null, 2));
   } catch (error) {
