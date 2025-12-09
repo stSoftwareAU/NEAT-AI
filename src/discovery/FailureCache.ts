@@ -509,14 +509,18 @@ export function extractTargetNeuronInfo(
 
   if (!targetUUID) return undefined;
 
-  // Find the neuron in the base creature
-  const neuron = baseCreature.neurons.find((n) => n.uuid === targetUUID);
+  // Find the neuron in the base creature.
+  // Note: For add-synapses candidates, targetUUID may be a shortID (last 8 chars)
+  // extracted from the description, so we use endsWith() for matching.
+  const neuron = baseCreature.neurons.find((n) =>
+    n.uuid === targetUUID || n.uuid?.endsWith(targetUUID)
+  );
   if (!neuron) return undefined;
 
   const squashName = neuron.squash ?? "IDENTITY";
 
   return {
-    uuid: targetUUID,
+    uuid: neuron.uuid ?? targetUUID, // Return full UUID from found neuron
     squash: squashName,
     // Note: Saturation and stats would need runtime activation data
     // which we don't have access to in this context

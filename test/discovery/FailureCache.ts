@@ -2,10 +2,12 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import {
   buildCacheKey,
   extractExponent,
+  extractTargetNeuronInfo,
   formatWeight,
   isCandidateCached,
   recordFailure,
 } from "../../src/discovery/FailureCache.ts";
+import { shortID } from "../../src/discovery/DiscoveryCandidates.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
@@ -818,4 +820,53 @@ Deno.test("recordFailure omits actualErrorReduction when candidateError is Infin
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }
+});
+
+Deno.test("extractTargetNeuronInfo finds neuron using shortID for add-synapses", () => {
+  // Bug: extractTargetNeuronInfo extracts shortID from description but compares
+  // using exact match (===) against full UUIDs. This test verifies the fix
+  // uses endsWith() to match short IDs against full UUIDs.
+
+  const fullTargetUUID = "3e979317-989f-4c5c-8272-02fd85be94a8";
+  const fullSourceUUID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+  const targetShortID = shortID(fullTargetUUID); // "85be94a8"
+  const sourceShortID = shortID(fullSourceUUID);
+
+  // Create creature with full UUIDs
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: fullTargetUUID, squash: "TANH", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: fullTargetUUID, weight: 0.5 },
+      { fromUUID: fullTargetUUID, toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  creature.validate();
+  CreatureUtil.makeUUID(creature);
+
+  // Create add-synapses candidate with shortID in description (as buildDiscoveryCandidates does)
+  const candidate: DiscoveryCandidate = {
+    creature,
+    change: {
+      type: "add-synapses",
+      description: `🔗 Added helpful synapse ${sourceShortID} -> ${targetShortID}`,
+    },
+  };
+
+  // Extract target neuron info - this should find the neuron despite using shortID
+  const result = extractTargetNeuronInfo(candidate, creature);
+
+  // Before fix: result would be undefined because shortID !== fullUUID
+  // After fix: result should contain the target neuron info
+  assert(result !== undefined, "Should find target neuron using shortID");
+  assertEquals(
+    result!.uuid,
+    fullTargetUUID,
+    "Should return full UUID, not shortID",
+  );
+  assertEquals(result!.squash, "TANH", "Should return correct squash function");
 });
