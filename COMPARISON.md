@@ -10,8 +10,8 @@ represent future work opportunities.
 
 **Note**: You don't need to be an expert in neural networks or the NEAT
 algorithm to get value from this comparison. We start with a high-level
-introduction to NEAT and only assume basic familiarity with ML concepts. It
-aims to stay accurate and links to authoritative sources whenever new ideas are
+introduction to NEAT and only assume basic familiarity with ML concepts. It aims
+to stay accurate and links to authoritative sources whenever new ideas are
 introduced.
 
 ## Terminology Cheat Sheet
