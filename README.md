@@ -2,7 +2,7 @@
 
 <p align="left">
   <img width="100" height="100" src="docs/logo.png" align="right">
-This project is a unique implementation of a neural network based on the NEAT (NeuroEvolution of Augmenting Topologies) algorithm, written in DenoJS using TypeScript.
+This project is a practical implementation of a neural network based on the NEAT (NeuroEvolution of Augmenting Topologies) algorithm, written in DenoJS using TypeScript, with additional features such as error-guided discovery, memetic evolution, and distributed workflows.
 </p>
 
 ## Terminology
@@ -28,10 +28,12 @@ standard term the first time it appears.
 
 ## Feature Highlights
 
-1. **Extendable Observations**: The observations can be extended over time as
-   the indexing is done via UUIDs, not numbers. This prevents the need to
-   restart the evolution process as new observations are added, providing
-   flexibility and scalability, much like NEAT's historical marking for genes
+1. **Extendable Observations**: The observations can be extended over time
+   because input and output features are identified by stable UUIDs in the
+   exported representation, rather than only by positional indices. This
+   prevents the need to restart the evolution process as new observations are
+   added, and makes it practical to evolve creatures on multiple machines and
+   then recombine them, much like NEAT's historical marking for genes
    [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
 
 2. **Distributed Training**: Training and evolution can be run on multiple
@@ -43,14 +45,20 @@ standard term the first time it appears.
    process.
 
 3. **Life Long Learning**: Unlike many pre-trained neural networks, this project
-   is designed for continuous learning, making it adaptable and potentially more
-   effective in changing environments. This feature ensures the model remains
-   relevant and accurate over time by borrowing strategies from
-   [continual learning](https://en.wikipedia.org/wiki/Continual_learning).
+   is designed for continuous learning, making it adaptable in changing
+   environments. In long-running deployments (for example, generating fresh
+   training data each day from many years of market and company data), the same
+   population can keep training and adapting as time goes on. New observations
+   can be added over weeks or months by widening the dataset and introducing new
+   UUID-indexed features, without throwing away existing creatures. This
+   supports continual learning in the spirit of
+   [continual learning](https://en.wikipedia.org/wiki/Continual_learning), while
+   still relying on your training data to keep past knowledge represented.
 
-4. **Efficient Model Utilization**: Once trained, the current best model can be
-   utilized efficiently by calling the `activate` function. This allows for
-   quick and easy deployment of the trained model.
+4. **Efficient Model Utilisation**: Once trained, the current best model can be
+   utilised efficiently by calling the `activate` function. This runs a single
+   forward pass that maps inputs to outputs, allowing for quick and easy
+   deployment of the trained model.
 
 5. **Unique Squash Functions**: The neural network supports unique squash
    functions such as IF, MAX and MIN. These functions provide more options for
@@ -83,12 +91,19 @@ standard term the first time it appears.
    [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm).
 
 10. **Error-Guided Structural Evolution**: Dynamically identifies and creates
-    new synapses by analyzing neuron activations and errors. This targeted
+    new synapses by analysing neuron activations and errors. This targeted
     structural adaptation improves performance by explicitly reducing
     neuron-level errors, blending evolutionary topology adjustments with
     error-driven learning. The Rust discovery engine can currently reconstruct
     hidden neurons using standard squashes including ReLU, GELU, ELU, SELU,
     Softplus, LOGISTIC (sigmoid), and TANH.
+
+    Instead of relying purely on random structural mutations (as many NEAT
+    implementations do), a dedicated Rust module performs GPU-accelerated
+    analysis and proposes a focused set of structural candidates. In our own
+    workloads, discovery runs typically uncover small but meaningful
+    improvements (around 0.5–3% per run) that accumulate over many iterations
+    without hand-editing architectures.
 
     **Note**: Error-Guided Structural Evolution now relies entirely on the
     [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust

@@ -105,6 +105,12 @@ export interface BuildDiscoveryCandidatesOptions {
    * @default false
    */
   skipCombinedCandidates?: boolean;
+
+  /**
+   * Directory path to cache discovery failures and log validation issues.
+   * When provided, validation issues are recorded to an "issues" subdirectory.
+   */
+  discoveryFailureCacheDir?: string;
 }
 
 /**
@@ -124,6 +130,7 @@ export function buildDiscoveryCandidates(
   options?: BuildDiscoveryCandidatesOptions,
 ): DiscoveryCandidate[] {
   const skipCombos = options?.skipCombinedCandidates ?? false;
+  const discoveryFailureCacheDir = options?.discoveryFailureCacheDir;
   // Ensure the base creature has a UUID so discovery helpers function correctly.
   CreatureUtil.makeUUID(baseCreature);
 
@@ -162,6 +169,7 @@ export function buildDiscoveryCandidates(
       discovery.ID,
       baseCreature,
       helpfulNeuronCandidates,
+      discoveryFailureCacheDir,
     )
     : undefined;
   if (addedNeuronCreature && helpfulNeuronCandidates) {
@@ -198,6 +206,7 @@ export function buildDiscoveryCandidates(
       baseCreature,
       helpfulNeuronCandidates,
       getExpectedNeuron,
+      discoveryFailureCacheDir,
     ),
   );
 
@@ -205,6 +214,7 @@ export function buildDiscoveryCandidates(
     discovery.ID,
     baseCreature,
     addHelpfulSynapses,
+    discoveryFailureCacheDir,
   );
   if (addedSynapseCreature) {
     const synapseSummary = summariseExpectedImprovement(
@@ -239,6 +249,7 @@ export function buildDiscoveryCandidates(
       baseCreature,
       addHelpfulSynapses,
       getExpectedSynapse,
+      discoveryFailureCacheDir,
     ),
   );
 
@@ -246,6 +257,7 @@ export function buildDiscoveryCandidates(
     discovery.ID,
     baseCreature,
     removeHarmfulSynapse,
+    discoveryFailureCacheDir,
   );
   if (removedSynapseCreature && removeHarmfulSynapse) {
     candidates.push({
@@ -270,6 +282,7 @@ export function buildDiscoveryCandidates(
         discovery.ID,
         removedSynapseCreature,
         addHelpfulSynapses,
+        discoveryFailureCacheDir,
       );
       if (combinedAddRemove) {
         // Ensure harmful synapse stays removed after adding synapses
@@ -339,6 +352,7 @@ export function buildDiscoveryCandidates(
     discovery.ID,
     baseCreature,
     candidateSquashes,
+    discoveryFailureCacheDir,
   );
   if (changedSquashCreature) {
     const changes = (candidateSquashes || []).map((c) => {
@@ -376,6 +390,7 @@ export function buildDiscoveryCandidates(
         discovery.ID,
         addedSynapseCreature,
         candidateSquashes,
+        discoveryFailureCacheDir,
       );
       if (combinedAddChange) {
         const synCount = addHelpfulSynapses?.length ?? 0;
@@ -407,6 +422,7 @@ export function buildDiscoveryCandidates(
       baseCreature,
       candidateSquashes,
       getExpectedSquash,
+      discoveryFailureCacheDir,
     ),
   );
 
@@ -416,6 +432,7 @@ export function buildDiscoveryCandidates(
       discovery.ID,
       baseCreature,
       removeHarmfulNeurons[0],
+      discoveryFailureCacheDir,
     )
     : undefined;
   if (removedNeuronCreature) {
@@ -478,6 +495,7 @@ export function buildDiscoveryCandidates(
         discovery.ID,
         baseCreature,
         candidate,
+        discoveryFailureCacheDir,
       );
       if (removedLowImpactCreature) {
         removalSuccessCount++;
@@ -554,6 +572,7 @@ export function buildDiscoveryCandidates(
           discovery.ID,
           combinedRemovalCreature,
           candidate,
+          discoveryFailureCacheDir,
         );
       }
 
@@ -612,6 +631,7 @@ export function buildDiscoveryCandidates(
       },
       changeType: "combo-all",
       description: "🏗️ Combined all discovery changes",
+      discoveryFailureCacheDir,
     });
     if (combinedCandidate) {
       candidates.push(combinedCandidate);
@@ -625,6 +645,7 @@ export function buildDiscoveryCandidates(
         neuron: getExpectedNeuron,
         squash: getExpectedSquash,
       },
+      discoveryFailureCacheDir,
     );
     if (bestOfCategoryCandidate) {
       if (discovery.removeHarmfulSynapse) {
@@ -688,6 +709,7 @@ function buildSingleSynapseCandidates(
   baseCreature: Creature,
   synapses: CandidateSynapse[] | undefined,
   getExpected?: (synapse: CandidateSynapse) => number | undefined,
+  discoveryFailureCacheDir?: string,
 ): DiscoveryCandidate[] {
   if (!synapses || synapses.length === 0) return [];
   const entries: DiscoveryCandidate[] = [];
@@ -697,6 +719,7 @@ function buildSingleSynapseCandidates(
       discoveryID,
       baseCreature,
       [synapse],
+      discoveryFailureCacheDir,
     );
     if (!creature) {
       skippedCount++;
@@ -729,6 +752,7 @@ function buildSingleNeuronCandidates(
   baseCreature: Creature,
   neurons: CandidateNeuron[] | undefined,
   getExpected?: (neuron: CandidateNeuron) => number | undefined,
+  discoveryFailureCacheDir?: string,
 ): DiscoveryCandidate[] {
   if (!neurons || neurons.length === 0) return [];
   const baseNeuronUUIDs = new Set(baseCreature.neurons.map((n) => n.uuid));
@@ -739,6 +763,7 @@ function buildSingleNeuronCandidates(
       discoveryID,
       baseCreature,
       [neuron],
+      discoveryFailureCacheDir,
     );
     if (!creature) {
       skippedCount++;
@@ -789,6 +814,7 @@ function buildSingleSquashCandidates(
   baseCreature: Creature,
   squashes: CandidateSquash[] | undefined,
   getExpected?: (squash: CandidateSquash) => number | undefined,
+  discoveryFailureCacheDir?: string,
 ): DiscoveryCandidate[] {
   if (!squashes || squashes.length === 0) return [];
   const entries: DiscoveryCandidate[] = [];
@@ -798,6 +824,7 @@ function buildSingleSquashCandidates(
       discoveryID,
       baseCreature,
       [squash],
+      discoveryFailureCacheDir,
     );
     if (!creature) {
       skippedCount++;
@@ -912,6 +939,7 @@ interface CombinedCandidateArgs {
   selection: CombinedSelection;
   changeType: DiscoveryChangeType;
   description: string;
+  discoveryFailureCacheDir?: string;
 }
 
 interface ScalingFunctions {
@@ -923,8 +951,14 @@ interface ScalingFunctions {
 function buildCombinedCandidate(
   args: CombinedCandidateArgs,
 ): DiscoveryCandidate | undefined {
-  const { baseCreature, discoveryID, selection, changeType, description } =
-    args;
+  const {
+    baseCreature,
+    discoveryID,
+    selection,
+    changeType,
+    description,
+    discoveryFailureCacheDir,
+  } = args;
 
   const requestedCategories = [
     Boolean(selection.addHelpfulNeurons?.length),
@@ -960,6 +994,7 @@ function buildCombinedCandidate(
           discoveryID,
           combinedCreature,
           selection.addHelpfulNeurons,
+          discoveryFailureCacheDir,
         )
       : undefined,
   );
@@ -972,6 +1007,7 @@ function buildCombinedCandidate(
           discoveryID,
           combinedCreature,
           selection.addHelpfulSynapses,
+          discoveryFailureCacheDir,
         )
       : undefined,
   );
@@ -984,6 +1020,7 @@ function buildCombinedCandidate(
           discoveryID,
           combinedCreature,
           selection.candidateSquashes,
+          discoveryFailureCacheDir,
         )
       : undefined,
   );
@@ -998,6 +1035,7 @@ function buildCombinedCandidate(
           discoveryID,
           combinedCreature,
           selection.removeHarmfulNeurons![0],
+          discoveryFailureCacheDir,
         )
       : undefined,
   );
@@ -1076,6 +1114,7 @@ function buildBestOfCategoryCandidate(
   baseCreature: Creature,
   discovery: DiscoverResult,
   scaleFns: ScalingFunctions,
+  discoveryFailureCacheDir?: string,
 ): DiscoveryCandidate | undefined {
   const bestSelection: CombinedSelection = {
     addHelpfulSynapses: wrapBestCandidate(
@@ -1102,6 +1141,7 @@ function buildBestOfCategoryCandidate(
     selection: bestSelection,
     changeType: "combo-best-of-category",
     description: "⭐ Combined best discovery changes",
+    discoveryFailureCacheDir,
   });
 }
 
