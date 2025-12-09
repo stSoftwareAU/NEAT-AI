@@ -36,6 +36,7 @@ import {
 } from "./RustDiscovery.ts";
 import { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
+import { join } from "@std/path";
 
 export { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 
@@ -3646,17 +3647,168 @@ export class DiscoverStructure {
   }
 
   /**
+   * Validates a creature and attempts to fix it if validation fails.
+   * If validation fails and discoveryFailureCacheDir is specified, records the issue
+   * to an "issues" subdirectory for later debugging.
+   *
+   * @param creature - The creature to validate (modified in place if fix is needed).
+   * @param originalCreature - The original creature before modifications.
+   * @param discoveryID - Unique identifier for the discovery process.
+   * @param operationType - Type of operation (e.g., "add-synapses", "remove-neuron").
+   * @param candidate - The discovery candidate that caused the modification.
+   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
+   * @returns Result indicating success/failure and whether fix was called.
+   */
+  private static validateAndFixIfNeeded(
+    creature: Creature,
+    originalCreature: Creature,
+    discoveryID: string,
+    operationType: string,
+    candidate: unknown,
+    discoveryFailureCacheDir?: string,
+  ): { success: boolean; fixWasCalled: boolean; validationError?: Error } {
+    // First attempt validation
+    try {
+      creature.validate();
+      return { success: true, fixWasCalled: false };
+    } catch (validationError) {
+      const error = validationError as Error;
+
+      // Log the validation issue if discoveryFailureCacheDir is specified
+      if (discoveryFailureCacheDir) {
+        this.recordValidationIssue(
+          creature,
+          originalCreature,
+          discoveryID,
+          operationType,
+          candidate,
+          error,
+          discoveryFailureCacheDir,
+        );
+      }
+
+      console.warn(
+        `[Discovery ${discoveryID}] Creature became invalid after ${operationType}: ${error.name} - ${error.message}. ` +
+          `This is a bug that should be investigated. Attempting fix() as last resort.`,
+      );
+
+      // Attempt to fix the creature
+      creature.fix();
+
+      // Re-validate after fix
+      try {
+        creature.validate();
+        return { success: true, fixWasCalled: true, validationError: error };
+      } catch (fixError) {
+        console.error(
+          `[Discovery ${discoveryID}] fix() failed to repair creature after ${operationType}. Error: ${fixError}`,
+        );
+        return { success: false, fixWasCalled: true, validationError: error };
+      }
+    }
+  }
+
+  /**
+   * Records a validation issue to the issues subdirectory for debugging.
+   * Creates a unique directory containing all information needed to reproduce the issue.
+   *
+   * @param invalidCreature - The creature that failed validation.
+   * @param originalCreature - The original creature before modifications.
+   * @param discoveryID - Unique identifier for the discovery process.
+   * @param operationType - Type of operation that caused the issue.
+   * @param candidate - The discovery candidate that was applied.
+   * @param error - The validation error.
+   * @param discoveryFailureCacheDir - Base directory for the failure cache.
+   */
+  private static recordValidationIssue(
+    invalidCreature: Creature,
+    originalCreature: Creature,
+    discoveryID: string,
+    operationType: string,
+    candidate: unknown,
+    error: Error,
+    discoveryFailureCacheDir: string,
+  ): void {
+    try {
+      // Create timestamp in Australian format (yyyymmdd-HHmmss)
+      const now = new Date();
+      const timestamp = now.toISOString()
+        .replace(/[-:]/g, "")
+        .replace("T", "-")
+        .slice(0, 15);
+
+      // Create unique directory for this issue
+      const issueDir = join(
+        discoveryFailureCacheDir,
+        "issues",
+        `${timestamp}-${discoveryID}-${operationType}`,
+      );
+      ensureDirSync(issueDir);
+
+      // Save the candidate
+      const candidatePath = join(issueDir, "candidate.json");
+      Deno.writeTextFileSync(
+        candidatePath,
+        JSON.stringify(candidate, null, 2),
+      );
+
+      // Save the original creature
+      const originalPath = join(issueDir, "original-creature.json");
+      Deno.writeTextFileSync(
+        originalPath,
+        JSON.stringify(originalCreature.exportJSON(), null, 2),
+      );
+
+      // Save the invalid creature (before fix)
+      const invalidPath = join(issueDir, "invalid-creature.json");
+      Deno.writeTextFileSync(
+        invalidPath,
+        JSON.stringify(invalidCreature.exportJSON(), null, 2),
+      );
+
+      // Save the error details
+      const errorPath = join(issueDir, "error.txt");
+      const errorContent = [
+        `Validation Error Report`,
+        `=======================`,
+        ``,
+        `Timestamp: ${now.toISOString()}`,
+        `Discovery ID: ${discoveryID}`,
+        `Operation Type: ${operationType}`,
+        ``,
+        `Error Name: ${error.name}`,
+        `Error Message: ${error.message}`,
+        ``,
+        `Stack Trace:`,
+        error.stack ?? "No stack trace available",
+      ].join("\n");
+      Deno.writeTextFileSync(errorPath, errorContent);
+
+      console.warn(
+        `[Discovery ${discoveryID}] Validation issue recorded to: ${issueDir}`,
+      );
+    } catch (recordError) {
+      // Don't let recording failure prevent the main flow
+      console.error(
+        `[Discovery ${discoveryID}] Failed to record validation issue: ${recordError}`,
+      );
+    }
+  }
+
+  /**
    * Removes a synapse from the creature if it is determined to be harmful.
    * This method is used to prune synapses that consistently worsen prediction error.
    * @param ID - Unique identifier for the discovery process.
    * @param creature the Creature instance to modify.
    * @param worseCandidate the candidate synapse to remove.
+   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
    * @returns returns a modified Creature with the synapse removed, or null if no change was made.
    */
   public static removeSynapse(
     ID: string,
     creature: Creature,
     worseCandidate?: CandidateSynapse,
+    discoveryFailureCacheDir?: string,
   ): Creature | null {
     if (!worseCandidate) return null;
 
@@ -3770,22 +3922,16 @@ export class DiscoverStructure {
     }
 
     // Validate the creature - only call fix() as a last resort
-    try {
-      tmpCreature.validate();
-    } catch (validationError) {
-      console.warn(
-        `[DiscoverStructure] removeSynapse: creature became invalid after removing synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}. ` +
-          `This is a bug that should be investigated. Error: ${validationError}. Attempting fix() as last resort.`,
-      );
-      tmpCreature.fix();
-      try {
-        tmpCreature.validate();
-      } catch (fixError) {
-        console.error(
-          `[DiscoverStructure] removeSynapse: fix() failed to repair creature. Error: ${fixError}`,
-        );
-        return null;
-      }
+    const validationResult = this.validateAndFixIfNeeded(
+      tmpCreature,
+      creature,
+      ID,
+      "remove-synapse",
+      worseCandidate,
+      discoveryFailureCacheDir,
+    );
+    if (!validationResult.success) {
+      return null;
     }
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
@@ -3812,13 +3958,15 @@ export class DiscoverStructure {
    *
    * @param ID - Unique identifier for the discovery process.
    * @param creature - The Creature instance to modify.
-   * @param bestCandidate - The candidate synapse to add.
+   * @param helpfulSynapses - The candidate synapses to add.
+   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
    * @returns A modified Creature with the new synapse added, or null if no change was made.
    */
   public static addHelpfulSynapses(
     ID: string,
     creature: Creature,
     helpfulSynapses?: CandidateSynapse[],
+    discoveryFailureCacheDir?: string,
   ): Creature | undefined {
     if (!helpfulSynapses || helpfulSynapses.length === 0) return;
     const creatureUUID = CreatureUtil.makeUUID(creature);
@@ -3884,21 +4032,24 @@ export class DiscoverStructure {
     // We added synapses to the structure, so we must delete UUID to get a new one
     delete tmpCreature.uuid;
 
-    // Try validation first - only call fix() if truly needed
+    // Validate and fix if needed
     const beforeFixSynapseCount = tmpCreature.synapses.length;
     const beforeFixNeuronCount = tmpCreature.neurons.length;
-    let fixWasCalled = false;
-    try {
-      tmpCreature.validate();
-    } catch (validationError) {
-      const error = validationError as Error;
-      console.warn(
-        `[Discovery ${ID}] Creature became invalid after adding synapses: ${error.name} - ${error.message}. Calling fix().`,
-      );
-      fixWasCalled = true;
-      tmpCreature.fix();
+    const validationResult = this.validateAndFixIfNeeded(
+      tmpCreature,
+      creature,
+      ID,
+      "add-synapses",
+      appliedSynapses,
+      discoveryFailureCacheDir,
+    );
+    if (!validationResult.success) {
+      return;
+    }
+    const fixWasCalled = validationResult.fixWasCalled;
 
-      // Log what fix() changed
+    // Log what fix() changed if it was called
+    if (fixWasCalled) {
       const afterFixSynapseCount = tmpCreature.synapses.length;
       const afterFixNeuronCount = tmpCreature.neurons.length;
       if (
@@ -3928,17 +4079,26 @@ export class DiscoverStructure {
       }
 
       removeTag(tmpCreature, "approach-logged");
-      tmpCreature.validate();
 
       return tmpCreature;
     }
     return;
   }
 
+  /**
+   * Adds new neurons to the creature if they improve performance.
+   *
+   * @param ID - Unique identifier for the discovery process.
+   * @param creature - The Creature instance to modify.
+   * @param helpfulNeurons - The candidate neurons to add.
+   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
+   * @returns A modified Creature with the new neurons added, or undefined if no change was made.
+   */
   public static addHelpfulNeurons(
     ID: string,
     creature: Creature,
     helpfulNeurons?: CandidateNeuron[],
+    discoveryFailureCacheDir?: string,
   ): Creature | undefined {
     if (!helpfulNeurons || helpfulNeurons.length === 0) return;
     const creatureUUID = CreatureUtil.makeUUID(creature);
@@ -4032,21 +4192,24 @@ export class DiscoverStructure {
     // We added neurons and synapses to the structure, so we must delete UUID to get a new one
     delete tmpCreature.uuid;
 
-    // Try validation first - only call fix() if truly needed
+    // Validate and fix if needed
     const beforeFixSynapseCount = tmpCreature.synapses.length;
     const beforeFixNeuronCount = tmpCreature.neurons.length;
-    let fixWasCalled = false;
-    try {
-      tmpCreature.validate();
-    } catch (validationError) {
-      const error = validationError as Error;
-      console.warn(
-        `[Discovery ${ID}] Creature became invalid after adding neurons: ${error.name} - ${error.message}. Calling fix().`,
-      );
-      fixWasCalled = true;
-      tmpCreature.fix();
+    const validationResult = this.validateAndFixIfNeeded(
+      tmpCreature,
+      creature,
+      ID,
+      "add-neurons",
+      appliedCandidates,
+      discoveryFailureCacheDir,
+    );
+    if (!validationResult.success) {
+      return;
+    }
+    const fixWasCalled = validationResult.fixWasCalled;
 
-      // Log what fix() changed
+    // Log what fix() changed if it was called
+    if (fixWasCalled) {
       const afterFixSynapseCount = tmpCreature.synapses.length;
       const afterFixNeuronCount = tmpCreature.neurons.length;
       if (
@@ -4078,7 +4241,6 @@ export class DiscoverStructure {
       }
 
       removeTag(tmpCreature, "approach-logged");
-      tmpCreature.validate();
 
       return tmpCreature;
     }
@@ -4090,13 +4252,15 @@ export class DiscoverStructure {
    *
    * @param ID - Unique identifier for the discovery process.
    * @param creature - The Creature instance to modify.
-   * @param bestCandidate - The candidate squash function to apply.
+   * @param helpfulSquashes - The candidate squash functions to apply.
+   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
    * @returns A modified Creature with the new modified squash, or null if no change was made.
    */
   public static changeSquash(
     ID: string,
     creature: Creature,
     helpfulSquashes?: CandidateSquash[],
+    discoveryFailureCacheDir?: string,
   ): Creature | undefined {
     if (!helpfulSquashes || helpfulSquashes.length === 0) return;
     const creatureUUID = CreatureUtil.makeUUID(creature);
@@ -4131,22 +4295,25 @@ export class DiscoverStructure {
     // We changed squash functions, so we must delete UUID to get a new one
     delete tmpCreature.uuid;
 
-    // Try validation first - only call fix() if truly needed
+    // Validate and fix if needed
     // Squash changes should rarely (if ever) require fix(), but handle edge cases
     const beforeFixSynapseCount = tmpCreature.synapses.length;
     const beforeFixNeuronCount = tmpCreature.neurons.length;
-    let fixWasCalled = false;
-    try {
-      tmpCreature.validate();
-    } catch (validationError) {
-      const error = validationError as Error;
-      console.warn(
-        `[Discovery ${ID}] Creature became invalid after changing squash: ${error.name} - ${error.message}. Calling fix().`,
-      );
-      fixWasCalled = true;
-      tmpCreature.fix();
+    const validationResult = this.validateAndFixIfNeeded(
+      tmpCreature,
+      creature,
+      ID,
+      "change-squash",
+      appliedSquashes,
+      discoveryFailureCacheDir,
+    );
+    if (!validationResult.success) {
+      return;
+    }
+    const fixWasCalled = validationResult.fixWasCalled;
 
-      // Log what fix() changed
+    // Log what fix() changed if it was called
+    if (fixWasCalled) {
       const afterFixSynapseCount = tmpCreature.synapses.length;
       const afterFixNeuronCount = tmpCreature.neurons.length;
       if (
@@ -4178,7 +4345,6 @@ export class DiscoverStructure {
       }
 
       removeTag(tmpCreature, "approach-logged");
-      tmpCreature.validate();
 
       return tmpCreature;
     }
@@ -4415,12 +4581,14 @@ export class DiscoverStructure {
    * @param ID - Unique identifier for the discovery process.
    * @param creature - The Creature instance to modify.
    * @param harmfulNeuron - The harmful neuron candidate to remove.
-   * @returns A modified Creature with the neuron removed, or null if no change was made.
+   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
+   * @returns A modified Creature with the neuron removed, or undefined if no change was made.
    */
   public static removeHarmfulNeuron(
     ID: string,
     creature: Creature,
     harmfulNeuron?: CandidateHarmfulNeuron,
+    discoveryFailureCacheDir?: string,
   ): Creature | undefined {
     if (!harmfulNeuron) return undefined;
 
@@ -4492,7 +4660,19 @@ export class DiscoverStructure {
     const tmpCreature = Creature.fromJSON(simplifiedExport);
     // We modified the structure, so we must delete UUID
     delete tmpCreature.uuid;
-    tmpCreature.fix();
+
+    // Validate and fix if needed
+    const validationResult = this.validateAndFixIfNeeded(
+      tmpCreature,
+      creature,
+      ID,
+      "remove-neuron",
+      harmfulNeuron,
+      discoveryFailureCacheDir,
+    );
+    if (!validationResult.success) {
+      return undefined;
+    }
 
     const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
     if (tmpUUID !== creatureUUID) {
@@ -4505,7 +4685,6 @@ export class DiscoverStructure {
       addTag(tmpCreature, "Discovery", summary);
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
-      tmpCreature.validate();
 
       return tmpCreature;
     }
@@ -4520,6 +4699,7 @@ export class DiscoverStructure {
    * @param ID - Unique identifier for the discovery process.
    * @param creature - The Creature instance to modify.
    * @param removalCandidate - The low-impact neuron candidate to remove.
+   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
    * @returns A modified Creature with the neuron removed, or undefined if no change was made.
    */
   // Track removal diagnostics across calls (static to aggregate across multiple removals)
@@ -4532,6 +4712,7 @@ export class DiscoverStructure {
     ID: string,
     creature: Creature,
     removalCandidate?: import("./DiscoverResult.ts").RemovalCandidate,
+    discoveryFailureCacheDir?: string,
   ): Creature | undefined {
     if (!removalCandidate) return undefined;
 
@@ -4580,7 +4761,19 @@ export class DiscoverStructure {
     const tmpCreature = Creature.fromJSON(simplifiedExport);
     // We modified the structure, so we must delete UUID
     delete tmpCreature.uuid;
-    tmpCreature.fix();
+
+    // Validate and fix if needed
+    const validationResult = this.validateAndFixIfNeeded(
+      tmpCreature,
+      creature,
+      ID,
+      "remove-low-impact",
+      removalCandidate,
+      discoveryFailureCacheDir,
+    );
+    if (!validationResult.success) {
+      return undefined;
+    }
 
     // Check if fix() re-added any structure
     const afterFixSynapseCount = tmpCreature.synapses.length;
@@ -4605,7 +4798,6 @@ export class DiscoverStructure {
       addTag(tmpCreature, "Discovery", summary);
       delete tmpCreature.memetic;
       removeTag(tmpCreature, "approach-logged");
-      tmpCreature.validate();
 
       return tmpCreature;
     }

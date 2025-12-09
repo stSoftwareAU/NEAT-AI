@@ -9,8 +9,9 @@ our approaches, our unique innovations, and identifies shortcomings that
 represent future work opportunities.
 
 **Note**: This comparison is written from the perspective of someone who
-understands NEAT deeply but is learning about other ML approaches. We've
-fact-checked against authoritative sources to ensure accuracy.
+understands NEAT deeply but is learning about other ML approaches. It aims to
+stay accurate and links to authoritative sources whenever new ideas are
+introduced.
 
 ## Terminology Cheat Sheet
 
@@ -58,7 +59,7 @@ machine-learning concept.
 
 ### Training Methods
 
-- ✅ **Backpropagation**: Full gradient-based weight optimization implemented
+- ✅ **Backpropagation**: Full gradient-based weight optimisation implemented
   with:
   - Mini-batch gradient descent (configurable batch sizes)
   - Adaptive learning rate strategies (fixed, decay, adaptive)
@@ -84,13 +85,17 @@ machine-learning concept.
   evolution—new input features can be added dynamically by extending NEAT's
   historical-marking idea from
   [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
-- ✅ **Distributed Evolution**: Multi-node training with centralized combination
+- ✅ **Distributed Evolution**: Multi-node training with centralised combination
   of best-of-breed creatures, similar to the
   [island model](https://en.wikipedia.org/wiki/Island_model).
-- ✅ **Lifelong Learning**: Continuous adaptation without catastrophic
-  forgetting, borrowing tactics from
-  [continual learning](https://en.wikipedia.org/wiki/Continual_learning) so
-  creatures can evolve continuously.
+- ✅ **Lifelong Learning**: Continuous adaptation via ongoing evolution and
+  backpropagation. In long-running deployments (for example, generating fresh
+  training data each day from many years of financial, market, or company
+  reporting data), the same population can keep training and adapting as new
+  samples and new features arrive. This supports continual learning in the
+  spirit of [continual learning](https://en.wikipedia.org/wiki/Continual_learning)
+  while still relying on your training data mix to keep past behaviour
+  represented.
 - ✅ **CRISPR Gene Injection**: Targeted gene insertion during evolution to
   introduce specific traits, inspired by
   [CRISPR-Cas9 gene editing](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/).
@@ -114,18 +119,18 @@ machine-learning concept.
 ### Traditional Feedforward Neural Networks
 
 ```
-Traditional Feedforward:
-┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
-│ Input   │────▶│ Layer 1 │────▶│ Layer 2 │────▶│ Output  │
-│ Neurons │     │         │     │         │     │ Neurons │
-└─────────┘     └─────────┘     └─────────┘     └─────────┘
-    │              │                │                │
-  Fixed          Fixed            Fixed            Fixed
-  Size           Size             Size             Size
+Traditional feedforward (simplified):
 
-All connections predetermined, fixed architecture
-- Structure defined before training
-- All-to-all connections between layers
+    +--------+     +---------+     +---------+     +--------+
+    | Input  | --> | Layer 1 | --> | Layer 2 | --> | Output |
+    +--------+     +---------+     +---------+     +--------+
+       |              |               |               |
+     fixed           fixed           fixed          fixed
+      size           size           size           size
+
+All connections are predetermined; the architecture is fixed:
+- Structure is defined before training
+- Typically all-to-all connections between layers
 - No feedback loops
 - Static topology
 ```
@@ -136,18 +141,19 @@ All connections predetermined, fixed architecture
 ### Convolutional Neural Networks (CNNs)
 
 ```
-CNN Architecture:
-┌─────────────┐     ┌──────────────┐     ┌───────--───┐     ┌─────────────┐
-│ Input Image │────▶│ Conv Layers  │────▶│ Pooling    │────▶│ FC Layers   │
-│   (Grid)    │     │  (Filters)   │     │(Downsample)│     │(Classification)
-└─────────────┘     └──────────────┘     └──────────--┘     └─────────────┘
-     │                   │                    │                    │
-   Fixed              Spatial              Downsample        Classification
-   Grid              Filters               Features
+CNN architecture (simplified):
+
+    +-------------+     +----------------+     +-------------+     +-------------+
+    | Input image | --> | Conv layers    | --> | Pooling     | --> | FC layers   |
+    |   (grid)    |     |  (filters)     |     | (downsample)|     |(classification)
+    +-------------+     +----------------+     +-------------+     +-------------+
+          |                     |                    |                    |
+        fixed                spatial             downsample         classification
+         grid                filters              features
 
 - Designed for spatial data (images)
 - Shared weights via convolution
-- Translation invariant
+- Approximate translation invariance
 - Fixed architecture per layer type
 ```
 
@@ -157,26 +163,27 @@ CNN Architecture:
 ### Recurrent Neural Networks (RNNs/LSTMs)
 
 ```
-RNN Architecture:
-     Time Step t-1          Time Step t          Time Step t+1
-         │                     │                     │
-    ┌────▼────┐           ┌────▼────┐          ┌────▼────┐
-    │ Input   │           │ Input   │          │ Input   │
-    └────┬────┘           └────┬────┘          └────┬────┘
-         │                     │                    │
-    ┌────▼─────────────────────▼────────────────────▼───-─┐
-    │              Hidden State (Memory)                  │
-    │         (Maintains information across time)         │
-    └────┬─────────────────────┬─────────────────────┬────┘
-         │                     │                     │
-    ┌────▼────┐           ┌────▼────┐           ┌────▼────┐
-    │ Output  │           │ Output  │           │ Output  │
-    └─────────┘           └─────────┘           └─────────┘
+RNN architecture (unrolled over time):
+
+   time t-1           time t             time t+1
+
+   +-------+         +-------+          +-------+
+   | Input |         | Input |          | Input |
+   +---+---+         +---+---+          +---+---+
+       |                 |                  |
+       v                 v                  v
+   +---------------- Hidden state ----------------+
+   |      (maintains information over time)      |
+   +-------------------+-------------------------+
+                       |
+                 +-----v-----+        (per time step)
+                 |  Output   |
+                 +-----------+
 
 - Processes sequences
-- Maintains hidden state
+- Maintains a hidden state (memory)
 - Fixed recurrent structure
-- Can suffer from vanishing gradients
+- Can suffer from vanishing or exploding gradients
 ```
 
 **Image Reference**:
@@ -185,20 +192,21 @@ RNN Architecture:
 ### Transformer/LLM Architecture
 
 ```
-Transformer Architecture:
-┌──────────────┐     ┌──────────────────────┐     ┌──────────┐     ┌──────────────┐
-│ Input Tokens │────▶│ Multi-Head Attention │────▶│   FFN    │────▶│ Output Tokens│
-│  (Sequence)  │     │   (Self-Attention)   │     │(Dense)   │     │  (Sequence)  │
-└──────────────┘     └──────────────────────┘     └──────────┘     └──────────────┘
-     │                        │                         │                  │
-  Fixed                  All-to-All                 Dense              Fixed
-  Sequence              Connections                Layers             Sequence
+Transformer architecture (simplified encoder block):
 
-Key Features:
+    +-------------+     +-----------------------+     +-------------+
+    | Input tokens| --> | Multi-head attention  | --> |  FFN (MLP)  |
+    | (sequence)  |     |   (self-attention)    |     |  per token  |
+    +-------------+     +-----------------------+     +-------------+
+          |                        |                         |
+       fixed                 all-to-all                   dense
+      sequence              token interactions           layers
+
+Key features:
 - Self-attention mechanism (all tokens attend to all tokens)
-- Position encoding
+- Positional encoding for order
 - Multi-head attention
-- Fixed architecture, massive scale (billions of parameters)
+- Fixed architecture, often at massive scale (billions of parameters)
 - Pre-trained on large corpora, then fine-tuned
 ```
 
@@ -208,19 +216,20 @@ Key Features:
 ### NEAT Architecture (Our Implementation)
 
 ```
-NEAT Architecture:
-┌──────────────┐     ┌──────────────────────────────┐     ┌───────────-───┐
-│ Input Neurons│────▶│   Evolving Topology          │────▶│Output Neurons │
-│ (UUID-based) │     │  (Dynamic Structure)         │     │ (UUID-based)  │
-└──────────────┘     └──────────────────────────────┘     └────────────-──┘
-     │                        │                                │
- Extensible            Grows/Shrinks                    Extensible
- (Can add new          During Training                  (Can add new
-  features)            - Connections added/removed        outputs)
-                       - Neurons added/pruned
-                       - Structure adapts to problem
+NEAT architecture (our implementation, simplified):
 
-Key Differences:
+    +----------------+     +----------------------+     +----------------+
+    | Input neurons  | --> | Evolving topology    | --> | Output neurons |
+    | (UUID-based)   |     | (dynamic structure)  |     | (UUID-based)   |
+    +----------------+     +----------------------+     +----------------+
+            |                          |                          |
+       extensible                grows/shrinks                extensible
+      (can add new             during training              (can add new
+       features)           - connections added/removed        outputs)
+                           - neurons added/pruned
+                           - structure adapts to problem
+
+Key differences:
 ✓ Topology evolves during training
 ✓ Connections can be added/removed dynamically
 ✓ Neurons can be added/pruned automatically
@@ -243,7 +252,7 @@ Key Differences:
 - **Batch Training**: Process multiple samples simultaneously for efficiency
 - **Static Learning**: Architecture doesn't change during training
 - **Transfer Learning**: Pre-trained models can be fine-tuned for new tasks
-- **Supervised Learning**: Requires labeled datasets
+- **Supervised Learning**: Requires labelled datasets
 
 **Strengths**:
 
@@ -267,9 +276,10 @@ Key Differences:
 - **Hybrid Approach**: Combines evolutionary search with backpropagation
 - **Dynamic Architecture**: Structure evolves during training
 - **Genetic Operations**: Mutation, crossover, speciation
-- **Backpropagation**: Gradient-based weight optimization (fully implemented)
-- **Memetic Learning**: Records and reuses successful weight patterns (more
-  effective than pure backprop in practice)
+- **Backpropagation**: Gradient-based weight optimisation (fully implemented)
+- **Memetic Learning**: Records and reuses successful weight patterns; on our
+  internal workloads this hybrid step has often converged faster than pure
+  backpropagation in practice
 - **Error-Guided Discovery**: GPU-accelerated structural hints based on error
   analysis
 - **Population-Based**: Evolves multiple networks simultaneously
@@ -280,7 +290,9 @@ Key Differences:
 - Adaptive complexity (grows/shrinks as needed)
 - Works with non-differentiable objectives
 - Extensible inputs/outputs via UUID indexing
-- Lifelong learning without catastrophic forgetting
+- Lifelong learning support for long-running deployments (continuous training
+  as new data arrives), with the degree of catastrophic forgetting depending
+  on how you construct and refresh your training data
 - Can trace evolutionary history
 
 **Weaknesses**:
@@ -293,7 +305,7 @@ Key Differences:
 
 ## Our Unique Approaches
 
-### 1. Memetic Evolution (More Effective Than Pure Backprop)
+### 1. Memetic Evolution (Hybrid Evolution + Backpropagation)
 
 **What It Is**: A hybrid approach that records successful weight patterns from
 the fittest creatures and reuses them in future generations.
@@ -307,8 +319,8 @@ the fittest creatures and reuses them in future generations.
 4. Future creatures with similar topologies can inherit these successful
    patterns
 
-**Why It's Better**: In practice, we've found memetic evolution more effective
-than pure backpropagation because:
+**Why It Helps**: In our own workloads, memetic evolution has often converged
+faster than pure backpropagation because:
 
 - It preserves successful weight patterns across generations
 - It combines the exploration of evolution with the exploitation of gradient
@@ -336,8 +348,19 @@ errors to suggest beneficial structural changes.
 4. These suggestions are used to create candidate creatures for evolution
 
 **Why It's Unique**: Unlike traditional NEAT which uses random structural
-mutations, we use error-driven hints to guide evolution, significantly reducing
-the search space.
+mutations, we use error-driven hints to guide evolution. This is designed to
+reduce the search space by prioritising candidates suggested by measured error
+patterns rather than exploring structures uniformly at random. To our knowledge,
+this combination of NEAT-style evolution with a separate, GPU-accelerated Rust
+discovery engine and a cost-of-growth gate is uncommon in open-source NEAT
+implementations, which usually mutate structure only inside the main training
+loop.
+
+**Real-World Impact**: In our own deployments, this discovery step has been
+particularly effective at making steady, incremental gains—typically finding
+small improvements (around 0.5–3% per discovery run) that add up over many
+iterations. It allows long-lived creatures to keep improving structurally
+without manual architecture tweaking.
 
 **Reference**: See Feature #10 in [README.md](./README.md) and
 [GPU_ACCELERATION.md](./GPU_ACCELERATION.md)
@@ -454,8 +477,8 @@ algorithm instead of standard crossover.
   and training
 - **Standard Libraries**: Fixed architectures, transfer learning from
   pre-trained models
-- **Our Library**: Dynamic architectures, each problem starts fresh (though
-  we're working on transfer learning)
+- **Our Library**: Dynamic architectures, each problem starts fresh (see
+  [Transfer Learning](#transfer-learning-support) in the future work section)
 
 **When to Use Each**:
 
@@ -484,7 +507,10 @@ algorithm instead of standard crossover.
    gradients
 4. **Extensible Inputs**: UUID-based indexing allows adding features without
    restart
-5. **Lifelong Learning**: Can continuously adapt without catastrophic forgetting
+5. **Lifelong Learning**: Can continuously adapt over time when you keep older
+   and newer data in the training mix, though catastrophic forgetting is still
+   possible if the data distribution shifts and older patterns are no longer
+   represented
 6. **Interpretable Evolution**: Can trace how structure evolved over generations
 7. **Hybrid Training**: Combines evolution (exploration) with backprop
    (exploitation)
@@ -504,8 +530,8 @@ algorithm instead of standard crossover.
 5. **Sequential Processing**: Less efficient for pure parallel computation than
    fixed architectures
 6. **Limited Unsupervised Learning**: While evolution itself doesn't require
-   labeled data for the algorithm, NEAT is typically used for supervised
-   learning tasks where you need labeled data to compute fitness. True
+   labelled data for the algorithm, NEAT is typically used for supervised
+   learning tasks where you need labelled data to compute fitness. True
    unsupervised learning (clustering, autoencoders, generative models) is not
    yet implemented. See [Unsupervised Learning](#unsupervised-learning) section
    for clarification.
@@ -515,10 +541,11 @@ algorithm instead of standard crossover.
 8. **GPU Support Limited**: Currently only Metal (macOS), not CUDA/OpenCL
 
 **Note on Hyperparameters**: Our implementation actually handles hyperparameter
-sensitivity well by randomizing values each evolution run. In production, 20+
-machines constantly loop with random hyperparameters, and the fittest creatures
-are checked into a shared population pool at the end of each run. This approach
-works effectively without manual tuning.
+sensitivity well by randomising values each evolution run. In one of our
+production deployments, 20+ machines constantly loop with random
+hyperparameters, and the fittest creatures are checked into a shared population
+pool at the end of each run. This approach has worked effectively for that
+workload without manual tuning, but it is not a universal guarantee.
 
 ### Traditional Neural Networks - Pros
 
@@ -540,7 +567,7 @@ works effectively without manual tuning.
 2. **Gradient Dependency**: Requires differentiable loss functions
 3. **Catastrophic Forgetting**: Struggles with continuous learning
 4. **Black Box**: Limited interpretability
-5. **Data Requirements**: Needs large labeled datasets
+5. **Data Requirements**: Needs large labelled datasets
 6. **Rigid Inputs**: Adding features requires retraining from scratch
 7. **Architecture Search**: Manual or separate NAS (Neural Architecture Search)
    needed
@@ -603,16 +630,16 @@ work, ability to build on top of successful creatures
 
 #### 2. Unsupervised Learning
 
-**Current State**: While evolution itself doesn't require labeled data for the
+**Current State**: While evolution itself doesn't require labelled data for the
 algorithm to work, NEAT is typically used for supervised learning tasks where
-you need labeled data to compute fitness scores. True unsupervised learning
-(learning patterns from unlabeled data) is not yet implemented.
+you need labelled data to compute fitness scores. True unsupervised learning
+(learning patterns from unlabelled data) is not yet implemented.
 
 **Clarification**: Evolution is "unsupervised" in the sense that the algorithm
-doesn't need gradients or labeled examples to guide weight updates. However, you
-still typically need labeled data to compute fitness scores (e.g., "how well did
+doesn't need gradients or labelled examples to guide weight updates. However, you
+still typically need labelled data to compute fitness scores (e.g., "how well did
 this creature predict the target?"). True unsupervised learning in ML means
-learning patterns, representations, or structures from unlabeled data without
+learning patterns, representations, or structures from unlabelled data without
 any target labels.
 
 **What's Missing**:
@@ -624,7 +651,7 @@ any target labels.
 - Unsupervised fitness functions (e.g., reconstruction error, clustering
   quality)
 
-**Impact**: Broader applicability, ability to learn from unlabeled data
+**Impact**: Broader applicability, ability to learn from unlabelled data
 
 **References**:
 
@@ -670,7 +697,7 @@ descent for backprop, creature activation is still largely sequential.
 - GPU-accelerated forward passes
 - Batch inference optimization
 
-**Impact**: Faster training on large datasets, better GPU utilization
+**Impact**: Faster training on large datasets, better GPU utilisation
 
 **References**:
 
