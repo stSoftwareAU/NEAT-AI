@@ -853,7 +853,8 @@ Deno.test("extractTargetNeuronInfo finds neuron using shortID for add-synapses",
     creature,
     change: {
       type: "add-synapses",
-      description: `🔗 Added helpful synapse ${sourceShortID} -> ${targetShortID}`,
+      description:
+        `🔗 Added helpful synapse ${sourceShortID} -> ${targetShortID}`,
     },
   };
 
