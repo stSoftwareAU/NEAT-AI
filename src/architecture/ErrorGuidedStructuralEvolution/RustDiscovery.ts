@@ -245,6 +245,15 @@ export interface RustCheckGpuResult {
   error?: string;
 }
 
+/**
+ * Reports the NEAT-AI-Discovery library version compiled into the binary.
+ */
+export interface RustGetVersionResult {
+  success: boolean;
+  version: string;
+  error?: string;
+}
+
 export type RustSynapseDiagnosticReason =
   | "no_eligible_sources"
   | "no_diagnostics"
@@ -691,6 +700,11 @@ type RustDiscoverySymbols = {
     result: "pointer";
     nonblocking: false;
   };
+  "get_library_version": {
+    parameters: [];
+    result: "pointer";
+    nonblocking: false;
+  };
   "free_discovery_result": {
     parameters: ["pointer"];
     result: "void";
@@ -712,6 +726,7 @@ export function closeRustLibrary(): void {
     rustLib.close();
     rustLib = null;
     rustGpuWarningEmitted = false;
+    cachedDiscoveryVersion = null;
   }
   // Reset cached discovery state so it will be re-checked on next call
   rustDiscoveryEnabledState = "unknown";
@@ -779,6 +794,11 @@ export function loadRustLibrary(): boolean {
         result: "pointer",
         nonblocking: false,
       },
+      "get_library_version": {
+        parameters: [],
+        result: "pointer",
+        nonblocking: false,
+      },
       "free_discovery_result": {
         parameters: ["pointer"],
         result: "void",
@@ -807,6 +827,60 @@ export function rustLibraryExists(): boolean {
 }
 
 let rustGpuWarningEmitted = false;
+
+/** Cached NEAT-AI-Discovery library version (null = not yet fetched, undefined = fetch failed) */
+let cachedDiscoveryVersion: string | null | undefined = null;
+
+/**
+ * Returns the NEAT-AI-Discovery library version.
+ * The version is fetched once and cached for the lifetime of the library.
+ *
+ * @returns The version string (e.g., "0.1.151"), or undefined if unavailable.
+ */
+export function getDiscoveryVersion(): string | undefined {
+  // Return cached result if already fetched
+  if (cachedDiscoveryVersion !== null) {
+    return cachedDiscoveryVersion ?? undefined;
+  }
+
+  if (!isRustLibraryAvailable()) {
+    cachedDiscoveryVersion = undefined;
+    return undefined;
+  }
+
+  assert(rustLib !== null, "Rust library should be loaded");
+
+  try {
+    const resultPtr = rustLib.symbols["get_library_version"]();
+    if (resultPtr === null) {
+      console.warn(
+        "[RustDiscovery] get_library_version returned null pointer.",
+      );
+      cachedDiscoveryVersion = undefined;
+      return undefined;
+    }
+
+    const resultJson = readCString(resultPtr);
+    rustLib.symbols["free_discovery_result"](resultPtr);
+
+    const parsed = JSON.parse(resultJson) as RustGetVersionResult;
+    if (parsed.success && parsed.version) {
+      cachedDiscoveryVersion = parsed.version;
+      return parsed.version;
+    }
+
+    console.warn(
+      "[RustDiscovery] get_library_version failed:",
+      parsed.error ?? "unknown error",
+    );
+    cachedDiscoveryVersion = undefined;
+    return undefined;
+  } catch (error) {
+    console.warn("[RustDiscovery] get_library_version threw:", error);
+    cachedDiscoveryVersion = undefined;
+    return undefined;
+  }
+}
 
 /**
  * Checks whether the loaded Rust discovery library reports a usable GPU.

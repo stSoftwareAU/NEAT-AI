@@ -11,6 +11,11 @@ import { shortID } from "../../src/discovery/DiscoveryCandidates.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import {
+  closeRustLibrary,
+  getDiscoveryVersion,
+  shouldSkipRustDiscoveryTests,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 function makeSimpleCreature(): Creature {
   const creature = Creature.fromJSON({
@@ -413,7 +418,7 @@ Deno.test("recordFailure and isCandidateCached work together", async () => {
       "Candidate should not be cached initially",
     );
 
-    // Record the failure
+    // Record the failure (this may load the Rust library to get version)
     await recordFailure(tempDir, candidate, {
       originalScore: 0.5,
       candidateScore: 0.4,
@@ -430,6 +435,7 @@ Deno.test("recordFailure and isCandidateCached work together", async () => {
     );
   } finally {
     await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
   }
 });
 
@@ -470,6 +476,7 @@ Deno.test("recordFailure creates directory structure if needed", async () => {
     );
   } finally {
     await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
   }
 });
 
@@ -674,6 +681,7 @@ Deno.test("recordFailure computes actualErrorReduction when originalError is pro
     );
   } finally {
     await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
   }
 });
 
@@ -719,6 +727,7 @@ Deno.test("recordFailure omits actualErrorReduction when originalError is not pr
     );
   } finally {
     await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
   }
 });
 
@@ -766,6 +775,7 @@ Deno.test("recordFailure handles negative actualErrorReduction (error increased)
     );
   } finally {
     await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
   }
 });
 
@@ -819,6 +829,7 @@ Deno.test("recordFailure omits actualErrorReduction when candidateError is Infin
     );
   } finally {
     await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
   }
 });
 
@@ -870,4 +881,80 @@ Deno.test("extractTargetNeuronInfo finds neuron using shortID for add-synapses",
     "Should return full UUID, not shortID",
   );
   assertEquals(result!.squash, "TANH", "Should return correct squash function");
+});
+
+Deno.test({
+  name: "getDiscoveryVersion returns version string when library is available",
+  ignore: shouldSkipRustDiscoveryTests(),
+  fn: () => {
+    try {
+      const version = getDiscoveryVersion();
+
+      // Version should be a non-empty string in semver format (e.g., "0.1.151")
+      assert(
+        typeof version === "string",
+        "Version should be a string when library is available",
+      );
+      assert(version!.length > 0, "Version string should not be empty");
+
+      // Check it looks like a semver version (x.y.z format)
+      const semverPattern = /^\d+\.\d+\.\d+$/;
+      assert(
+        semverPattern.test(version!),
+        `Version should be in semver format (x.y.z), got: ${version}`,
+      );
+
+      // Verify caching - second call should return same value
+      const version2 = getDiscoveryVersion();
+      assertEquals(
+        version,
+        version2,
+        "Version should be cached and return same value on subsequent calls",
+      );
+    } finally {
+      closeRustLibrary();
+    }
+  },
+});
+
+Deno.test({
+  name: "recordFailure includes discoveryVersion in cache entry",
+  ignore: shouldSkipRustDiscoveryTests(),
+  fn: async () => {
+    const tempDir = await Deno.makeTempDir();
+
+    try {
+      const creature = makeSimpleCreature();
+      const candidate = makeCandidate("add-synapses", "test synapse", creature);
+
+      // Record the failure
+      await recordFailure(tempDir, candidate, {
+        originalScore: 0.5,
+        candidateScore: 0.4,
+        scoreDelta: -0.1,
+        error: 0.6,
+      });
+
+      // Read the cache file to verify discoveryVersion was stored
+      const key = buildCacheKey(candidate);
+      const filePath = `${tempDir}/add-synapses/${key}.json`;
+      const content = await Deno.readTextFile(filePath);
+      const parsed = JSON.parse(content);
+
+      // Verify discoveryVersion is present and matches the library version
+      const expectedVersion = getDiscoveryVersion();
+      assert(
+        parsed.discoveryVersion !== undefined,
+        "discoveryVersion should be stored in cache entry",
+      );
+      assertEquals(
+        parsed.discoveryVersion,
+        expectedVersion,
+        "discoveryVersion should match library version",
+      );
+    } finally {
+      await Deno.remove(tempDir, { recursive: true });
+      closeRustLibrary();
+    }
+  },
 });

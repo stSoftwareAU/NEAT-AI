@@ -19,6 +19,7 @@
 
 import { dirname } from "@std/path/dirname";
 import { join } from "@std/path/join";
+import { getDiscoveryVersion } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { Creature } from "../Creature.ts";
 
@@ -121,6 +122,8 @@ export interface FailureMetadata {
   /** Re-scored error of the original creature (without candidate changes applied) */
   originalError?: number;
   timestamp?: string;
+  /** NEAT-AI-Discovery library version that generated the candidate */
+  discoveryVersion?: string;
 
   // Enhanced diagnostic fields for debugging prediction inversions
 
@@ -732,6 +735,9 @@ export async function recordFailure(
     // Ensure directory exists
     await Deno.mkdir(dir, { recursive: true });
 
+    // Get discovery version (cached, fetched only once)
+    const discoveryVersion = getDiscoveryVersion();
+
     // Write cache entry with metadata and candidate details
     const cacheEntry: Record<string, unknown> = {
       key: buildCacheKey(candidate),
@@ -739,6 +745,7 @@ export async function recordFailure(
       description: candidate.change.description,
       ...metadata,
       timestamp: new Date().toISOString(),
+      ...(discoveryVersion ? { discoveryVersion } : {}),
     };
 
     // Include neuronDetails if available (for add-neurons candidates)
@@ -853,6 +860,9 @@ export function recordFailureSync(
     // Ensure directory exists
     Deno.mkdirSync(dir, { recursive: true });
 
+    // Get discovery version (cached, fetched only once)
+    const discoveryVersion = getDiscoveryVersion();
+
     // Write cache entry with metadata and candidate details
     const cacheEntry: Record<string, unknown> = {
       key: buildCacheKey(candidate),
@@ -860,6 +870,7 @@ export function recordFailureSync(
       description: candidate.change.description,
       ...metadata,
       timestamp: new Date().toISOString(),
+      ...(discoveryVersion ? { discoveryVersion } : {}),
     };
 
     // Include neuronDetails if available (for add-neurons candidates)
