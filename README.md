@@ -253,6 +253,13 @@ const result = await creature.discoveryDir(dataDir, {
   scientific notation - weights like `0.123` and `0.234` (both `e-1`) map to the
   same key, while `0.001` (`e-3`) and `0.1` (`e-1`) map to different keys
 
+**Cache entry metadata:**
+
+Each cached failure includes diagnostic metadata such as scores, error values,
+and the `discoveryVersion` field indicating which NEAT-AI-Discovery library
+version generated the candidate. This helps identify when cache entries may be
+stale due to library upgrades that improve candidate generation.
+
 ### Discovery Candidate Category Limits
 
 You can control the minimum number of candidates evaluated per category. This is
