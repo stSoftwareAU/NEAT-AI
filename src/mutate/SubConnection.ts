@@ -44,10 +44,11 @@ export class SubConnection implements RadioactiveInterface {
 
       // Only consider forward connections (to > from)
       if (fromIdx !== undefined && toIdx !== undefined && toIdx > fromIdx) {
-        // Check focus list
-        const inFocus = !focusList ||
-          focusList.includes(fromIdx) ||
-          focusList.includes(toIdx);
+        // Check focus list using transitive focus checking
+        // A neuron is in focus if it's directly in the focus list OR if any of
+        // its upstream connected neurons are in focus
+        const inFocus = this.creature.inFocus(fromIdx, focusList) ||
+          this.creature.inFocus(toIdx, focusList);
 
         if (inFocus) {
           possible.push({ fromUUID: synapse.fromUUID, toUUID: synapse.toUUID });

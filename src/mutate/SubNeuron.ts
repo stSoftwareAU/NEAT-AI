@@ -53,9 +53,11 @@ export class SubNeuron implements RadioactiveInterface {
         removableNeurons[Math.floor(Math.random() * removableNeurons.length)];
       const neuronIdx = neuronIndexMap.get(randomNeuron.uuid);
 
-      // Check focus list (relax after 12 attempts)
+      // Check focus list using transitive focus checking (relax after 12 attempts)
+      // A neuron is in focus if it's directly in the focus list OR if any of
+      // its upstream connected neurons are in focus
       if (attempts < 12 && focusList && neuronIdx !== undefined) {
-        if (!focusList.includes(neuronIdx)) {
+        if (!this.creature.inFocus(neuronIdx, focusList)) {
           continue;
         }
       }
