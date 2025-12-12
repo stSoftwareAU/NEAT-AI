@@ -2041,6 +2041,86 @@ Deno.test(
   },
 );
 
+Deno.test({
+  name: "DiscoveryRunner passes discoveryFailureCacheDir to candidate builder",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tempDir = await Deno.makeTempDir();
+    const cacheDir = `${tempDir}/failure-cache`;
+
+    try {
+      const discoveryResult: DiscoverResult = {
+        ID: "CACHE_DIR_PASSTHROUGH_TEST",
+        addHelpfulSynapses: [{
+          fromNeuronUUID: "input-1",
+          toNeuronUUID: "hidden-1",
+          weight: 0.45,
+          expectedImprovementPercentage: 0.2,
+          improvedCount: 5,
+          totalCount: 6,
+        }],
+        addHelpfulNeurons: undefined,
+        removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
+        candidateSquashes: undefined,
+      };
+
+      // Track what options were passed to the candidate builder
+      let capturedOptions: { discoveryFailureCacheDir?: string } | undefined;
+
+      const mockCandidateBuilder = (
+        creature: Creature,
+        _discovery: DiscoverResult,
+        options?: {
+          skipCombinedCandidates?: boolean;
+          discoveryFailureCacheDir?: string;
+        },
+      ): DiscoveryCandidate[] => {
+        // Capture the options for assertion
+        capturedOptions = options;
+
+        // Return a simple candidate
+        const cloned = Creature.fromJSON(creature.exportJSON());
+        CreatureUtil.makeUUID(cloned);
+        return [{
+          creature: cloned,
+          change: {
+            type: "add-synapses",
+            description: "Test candidate",
+          },
+        }];
+      };
+
+      const runner = new DiscoveryRunner({
+        rustDiscoveryEnabled: () => true,
+        workerFactory: () =>
+          new FakeWorker(
+            discoveryResult,
+            () => 0.5, // Fixed error
+          ),
+        candidateBuilder: mockCandidateBuilder,
+      });
+
+      await runner.discoverDir({
+        creature: makeBaseCreature(),
+        dataDir: "/tmp/data",
+        options: makeOptions({ discoveryFailureCacheDir: cacheDir }),
+      });
+
+      // Verify discoveryFailureCacheDir was passed to the candidate builder
+      assertEquals(
+        capturedOptions?.discoveryFailureCacheDir,
+        cacheDir,
+        "discoveryFailureCacheDir should be passed to candidate builder to enable issue recording",
+      );
+    } finally {
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+});
+
 // NOTE: Tests for TypeScript cost-of-growth filtering have been removed.
 // Rust is the single source of truth for candidate filtering (DRY principle).
 // See NEAT-AI-Discovery v0.1.133 for filtering logic.

@@ -13,6 +13,7 @@ import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import {
   buildCombinedFromSuccessful,
   buildDiscoveryCandidates,
+  type BuildDiscoveryCandidatesOptions,
   type DiscoveredNeuronDetails,
   type DiscoveryChangeType,
   shortID,
@@ -126,7 +127,7 @@ export class DiscoveryRunner {
   #candidateBuilder: (
     creature: Creature,
     discovery: DiscoverResult,
-    options?: { skipCombinedCandidates?: boolean },
+    options?: BuildDiscoveryCandidatesOptions,
   ) => DiscoveryCandidate[];
   #rustDiscoveryEnabled: () => boolean;
 
@@ -246,7 +247,10 @@ export class DiscoveryRunner {
       const singleCandidates = this.#candidateBuilder(
         creature,
         discoverResult,
-        { skipCombinedCandidates: true },
+        {
+          skipCombinedCandidates: true,
+          discoveryFailureCacheDir: config.discoveryFailureCacheDir,
+        },
       );
 
       // Log candidate counts by type (always, not just verbose)
