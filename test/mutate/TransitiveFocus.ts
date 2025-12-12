@@ -8,7 +8,7 @@
  * SubConnection and SubNeuron should use this transitive check, not just
  * direct membership in the focus list.
  */
-import { assertEquals, assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { SubConnection } from "../../src/mutate/SubConnection.ts";
@@ -49,8 +49,16 @@ Deno.test("SubConnection should use transitive focus - synapse not directly invo
   // Verify transitive focus via the creature's inFocus method:
   // - hidden1(1) should be in focus because it has inward connection from input(0) which is focused
   // - hidden2(2) should be in focus because it has inward connection from hidden1(1) which is in focus
-  assertEquals(creature.inFocus(1, focusList), true, "hidden1 should be transitively in focus");
-  assertEquals(creature.inFocus(2, focusList), true, "hidden2 should be transitively in focus");
+  assertEquals(
+    creature.inFocus(1, focusList),
+    true,
+    "hidden1 should be transitively in focus",
+  );
+  assertEquals(
+    creature.inFocus(2, focusList),
+    true,
+    "hidden2 should be transitively in focus",
+  );
 
   // The synapse hidden1(1) -> hidden2(2) does NOT directly involve the focused input(0)
   // With simple focusList.includes(): would NOT be considered in focus
@@ -92,7 +100,11 @@ Deno.test("SubNeuron should use transitive focus - strict check within first 12 
 
   // Verify transitive focus via the creature's inFocus method:
   // - hidden2(2) should be in focus because of the chain: input(0) -> hidden1(1) -> hidden2(2)
-  assertEquals(creature.inFocus(2, focusList), true, "hidden2 should be transitively in focus");
+  assertEquals(
+    creature.inFocus(2, focusList),
+    true,
+    "hidden2 should be transitively in focus",
+  );
 
   // hidden2(2) is NOT directly in the focus list
   // The SubNeuron code has a "relax" behaviour after 12 attempts, so we need to ensure
