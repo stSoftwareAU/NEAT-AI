@@ -1,6 +1,9 @@
-import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
+import {
+  cleanupMemeticForRemovedSynapse,
+  cleanupOrphanedNeurons,
+} from "../compact/CompactUtils.ts";
 import type { Creature } from "../Creature.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
 export class SubConnection implements RadioactiveInterface {
@@ -15,21 +18,39 @@ export class SubConnection implements RadioactiveInterface {
    * @param {number[]} [focusList] - The list of focus indices.
    */
   public mutate(focusList?: number[]): boolean {
-    // List of possible connections that can be removed
-    const possible = [];
+    // Export the creature to JSON for clean manipulation
+    // Use the builder directly to avoid validation (creature may be in an intermediate state)
+    const builder = new CreatureExportBuilder(this.creature);
+    const exportJSON = builder.build();
 
-    for (let i = 0; i < this.creature.synapses.length; i++) {
-      const conn = this.creature.synapses[i];
-      // Check if it is not disabling a node (forward connections only)
-      if (conn.to > conn.from) {
-        if (
-          this.creature.inFocus(conn.to, focusList) ||
-          this.creature.inFocus(conn.from, focusList)
-        ) {
-          // Post-removal logic handles neurons left with 0 connections:
-          // - Hidden neurons with 0 inward connections become constants
-          // - Hidden neurons with 0 outward connections are removed
-          possible.push(conn);
+    // List of possible connections that can be removed (forward connections only)
+    const possible: { fromUUID: string; toUUID: string }[] = [];
+
+    // Build neuron index map for focus checking
+    const neuronIndexMap = new Map<string, number>();
+    let idx = 0;
+    // Input neurons first (implicit, not in export)
+    for (let i = 0; i < this.creature.input; i++) {
+      neuronIndexMap.set(`input-${i}`, idx++);
+    }
+    // Then exported neurons
+    for (const neuron of exportJSON.neurons) {
+      neuronIndexMap.set(neuron.uuid, idx++);
+    }
+
+    for (const synapse of exportJSON.synapses) {
+      const fromIdx = neuronIndexMap.get(synapse.fromUUID);
+      const toIdx = neuronIndexMap.get(synapse.toUUID);
+
+      // Only consider forward connections (to > from)
+      if (fromIdx !== undefined && toIdx !== undefined && toIdx > fromIdx) {
+        // Check focus list
+        const inFocus = !focusList ||
+          focusList.includes(fromIdx) ||
+          focusList.includes(toIdx);
+
+        if (inFocus) {
+          possible.push({ fromUUID: synapse.fromUUID, toUUID: synapse.toUUID });
         }
       }
     }
@@ -38,59 +59,33 @@ export class SubConnection implements RadioactiveInterface {
       return false;
     }
 
+    // Select a random connection to remove
     const randomConn = possible[Math.floor(Math.random() * possible.length)];
-    this.creature.disconnect(randomConn.from, randomConn.to);
 
-    delete this.creature.memetic;
-    const inwardList = this.creature.inwardConnections(randomConn.to);
+    // Remove the selected synapse
+    exportJSON.synapses = exportJSON.synapses.filter(
+      (s) =>
+        s.fromUUID !== randomConn.fromUUID || s.toUUID !== randomConn.toUUID,
+    );
 
-    let toNeuronRemoved = false;
-    if (inwardList.length === 0) {
-      const neuron = this.creature.neurons[randomConn.to];
-      if (neuron.type === "hidden") {
-        // Check if this neuron also has no outward connections
-        const outwardList = this.creature.outwardConnections(randomConn.to);
-        if (outwardList.length === 0) {
-          // No inward or outward connections - remove entirely
-          console.info(
-            `Remove neuron ${neuron.uuid} as completely disconnected`,
-          );
-          removeHiddenNeuron(this.creature, randomConn.to);
-          toNeuronRemoved = true;
-        } else {
-          // Has outward connections - convert to constant
-          console.info(
-            `Constant neuron ${neuron.uuid} convert ${neuron.type} to constant`,
-          );
+    // Clean up memetic data for the removed synapse
+    cleanupMemeticForRemovedSynapse(
+      exportJSON,
+      randomConn.fromUUID,
+      randomConn.toUUID,
+    );
 
-          const squash = neuron.findSquash();
-          const activation = squash as ActivationInterface;
-          if (activation.squash) {
-            const constantBias = activation.squash(neuron.bias);
-            console.info(
-              `Adjust neuron ${neuron.uuid} bias ${neuron.bias} to ${constantBias}`,
-            );
-            neuron.bias = constantBias;
-          }
-          neuron.type = "constant";
-          neuron.setSquash(undefined);
-        }
-      }
-    }
+    // Clean up any neurons that have become orphaned after synapse removal.
+    // This handles both:
+    // - Converting hidden neurons with no inward connections to constants
+    // - Removing hidden/constant neurons with no outward connections
+    cleanupOrphanedNeurons(exportJSON);
 
-    // Adjust the 'from' index if the 'to' neuron was removed and it came before the 'from' neuron
-    let fromIndex = randomConn.from;
-    if (toNeuronRemoved && randomConn.to < randomConn.from) {
-      fromIndex--;
-    }
-    const fromOutwardList = this.creature.outwardConnections(fromIndex);
-    if (fromOutwardList.length === 0) {
-      const fromNeuron = this.creature.neurons[fromIndex];
-      if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
-        console.info(`Remove neuron ${fromNeuron.uuid} as no longer connected`);
-        removeHiddenNeuron(this.creature, fromIndex);
-      }
-    }
+    // Reload the creature from the modified export
+    // Note: We pass false for validation to match the old in-place mutation behavior.
+    // Validation is handled elsewhere (e.g., by the caller or by fix() if needed).
+    this.creature.loadFrom(exportJSON, false);
+
     return true;
   }
 }
