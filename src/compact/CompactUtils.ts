@@ -145,12 +145,15 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
 /**
  * Cleans up orphaned neurons from a CreatureExport.
  *
- * Orphaned neurons are hidden or constant neurons that have no outward
- * connections. This can occur when a neuron is removed and other neurons
- * that only connected to it are left dangling.
+ * This function handles two types of orphaned neurons:
+ * 1. Hidden/constant neurons with no outward connections - these are removed
+ * 2. Hidden neurons with no inward connections but with outward connections -
+ *    these are converted to constants
  *
- * This function modifies the CreatureExport in place, removing orphaned
- * neurons and their associated synapses. The cleanup is performed
+ * This can occur when a neuron is removed and other neurons that only
+ * connected to/from it are left dangling.
+ *
+ * This function modifies the CreatureExport in place. The cleanup is performed
  * iteratively until no more orphaned neurons are found (cascade removal).
  *
  * @param creatureExport - The CreatureExport to clean up (modified in place).
@@ -158,18 +161,40 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
  */
 export function cleanupOrphanedNeurons(creatureExport: CreatureExport): number {
   let totalRemoved = 0;
-  let removedThisPass: number;
+  let changedThisPass: boolean;
 
   do {
-    removedThisPass = 0;
+    changedThisPass = false;
 
-    // Build a set of all source UUIDs (neurons that have outward connections)
+    // Build sets for connection analysis
     const neuronsWithOutwardConnections = new Set<string>();
+    const neuronsWithInwardConnections = new Set<string>();
     for (const synapse of creatureExport.synapses) {
       neuronsWithOutwardConnections.add(synapse.fromUUID);
+      neuronsWithInwardConnections.add(synapse.toUUID);
     }
 
-    // Find neurons that are orphaned (hidden/constant with no outward connections)
+    // First pass: Convert hidden neurons with no inward connections (but have outward) to constants
+    for (let i = 0; i < creatureExport.neurons.length; i++) {
+      const neuron = creatureExport.neurons[i];
+      if (neuron.type === "hidden") {
+        if (
+          !neuronsWithInwardConnections.has(neuron.uuid) &&
+          neuronsWithOutwardConnections.has(neuron.uuid)
+        ) {
+          // Has outward connections but no inward - convert to constant
+          // The bias becomes the constant value (already "squashed" by having no input)
+          creatureExport.neurons[i] = {
+            type: "constant",
+            uuid: neuron.uuid,
+            bias: neuron.bias,
+          };
+          changedThisPass = true;
+        }
+      }
+    }
+
+    // Second pass: Find and remove neurons with no outward connections
     const orphanedUUIDs: string[] = [];
     for (const neuron of creatureExport.neurons) {
       if (neuron.type === "hidden" || neuron.type === "constant") {
@@ -192,10 +217,10 @@ export function cleanupOrphanedNeurons(creatureExport: CreatureExport): number {
         (s) => !orphanSet.has(s.toUUID),
       );
 
-      removedThisPass = orphanedUUIDs.length;
-      totalRemoved += removedThisPass;
+      totalRemoved += orphanedUUIDs.length;
+      changedThisPass = true;
     }
-  } while (removedThisPass > 0);
+  } while (changedThisPass);
 
   return totalRemoved;
 }
@@ -203,38 +228,19 @@ export function cleanupOrphanedNeurons(creatureExport: CreatureExport): number {
 /**
  * Cleans up orphaned neurons from a live Creature instance.
  *
- * Orphaned neurons are hidden or constant neurons that have no outward
- * connections. This can occur when a synapse/neuron is removed and other
- * neurons that only connected to it are left dangling.
- *
- * This function modifies the Creature in place, removing orphaned neurons
- * and their associated synapses. The cleanup is performed iteratively
- * until no more orphaned neurons are found (cascade removal).
+ * This is a convenience wrapper that exports the creature to JSON,
+ * calls cleanupOrphanedNeurons, and reloads the creature.
  *
  * @param creature - The Creature to clean up (modified in place).
  * @returns The number of neurons removed.
  */
 export function cleanupOrphanedNeuronsInCreature(creature: Creature): number {
-  let totalRemoved = 0;
-  let removedThisPass: number;
+  const exportJSON = creature.exportJSON();
+  const removed = cleanupOrphanedNeurons(exportJSON);
 
-  do {
-    removedThisPass = 0;
+  if (removed > 0) {
+    creature.loadFrom(exportJSON, true);
+  }
 
-    // Find orphaned neurons (hidden/constant with no outward connections)
-    // Process from highest index to lowest to avoid index shifts during removal
-    for (let i = creature.neurons.length - 1; i >= creature.input; i--) {
-      const neuron = creature.neurons[i];
-      if (neuron.type === "hidden" || neuron.type === "constant") {
-        const outwardList = creature.outwardConnections(i);
-        if (outwardList.length === 0) {
-          removeHiddenNeuron(creature, i);
-          removedThisPass++;
-          totalRemoved++;
-        }
-      }
-    }
-  } while (removedThisPass > 0);
-
-  return totalRemoved;
+  return removed;
 }
