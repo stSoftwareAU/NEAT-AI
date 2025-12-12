@@ -3,6 +3,19 @@ import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { Activations } from "../methods/activations/Activations.ts";
+import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+
+/**
+ * Result of cleaning up orphaned neurons.
+ */
+export interface CleanupOrphanedResult {
+  /** Number of neurons removed. */
+  removed: number;
+  /** Number of hidden neurons converted to constants. */
+  converted: number;
+}
 
 export function createConstantOne(creature: Creature, count: number) {
   let uuid;
@@ -159,10 +172,13 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
  * Also cleans up memetic data references to removed neurons.
  *
  * @param creatureExport - The CreatureExport to clean up (modified in place).
- * @returns The number of neurons removed.
+ * @returns The cleanup result with counts of removed and converted neurons.
  */
-export function cleanupOrphanedNeurons(creatureExport: CreatureExport): number {
+export function cleanupOrphanedNeurons(
+  creatureExport: CreatureExport,
+): CleanupOrphanedResult {
   let totalRemoved = 0;
+  let totalConverted = 0;
   let changedThisPass: boolean;
   const allRemovedUUIDs = new Set<string>();
 
@@ -186,12 +202,23 @@ export function cleanupOrphanedNeurons(creatureExport: CreatureExport): number {
           neuronsWithOutwardConnections.has(neuron.uuid)
         ) {
           // Has outward connections but no inward - convert to constant
-          // The bias becomes the constant value (already "squashed" by having no input)
+          // A hidden neuron with bias X and squash function outputs squash(0 + X)
+          // when receiving no input, so we must apply the squash function to get
+          // the correct constant value.
+          let constantBias = neuron.bias;
+          if (neuron.squash) {
+            const squashFn = Activations.find(neuron.squash);
+            const activation = squashFn as ActivationInterface;
+            if (activation?.squash) {
+              constantBias = activation.squash(neuron.bias);
+            }
+          }
           creatureExport.neurons[i] = {
             type: "constant",
             uuid: neuron.uuid,
-            bias: neuron.bias,
+            bias: constantBias,
           };
+          totalConverted++;
           changedThisPass = true;
         }
       }
@@ -235,7 +262,7 @@ export function cleanupOrphanedNeurons(creatureExport: CreatureExport): number {
     delete creatureExport.memetic;
   }
 
-  return totalRemoved;
+  return { removed: totalRemoved, converted: totalConverted };
 }
 
 /**
@@ -294,19 +321,29 @@ export function cleanupMemeticForRemovedNeuron(
 /**
  * Cleans up orphaned neurons from a live Creature instance.
  *
- * This is a convenience wrapper that exports the creature to JSON,
- * calls cleanupOrphanedNeurons, and reloads the creature.
+ * This is a convenience wrapper that exports the creature to JSON (without
+ * validation, to allow intermediate invalid states), calls cleanupOrphanedNeurons,
+ * and reloads the creature if any modifications were made.
+ *
+ * This function handles:
+ * 1. Converting hidden neurons with no inward connections to constants
+ * 2. Removing hidden/constant neurons with no outward connections
  *
  * @param creature - The Creature to clean up (modified in place).
- * @returns The number of neurons removed.
+ * @returns The cleanup result with counts of removed and converted neurons.
  */
-export function cleanupOrphanedNeuronsInCreature(creature: Creature): number {
-  const exportJSON = creature.exportJSON();
-  const removed = cleanupOrphanedNeurons(exportJSON);
+export function cleanupOrphanedNeuronsInCreature(
+  creature: Creature,
+): CleanupOrphanedResult {
+  // Use the builder directly to bypass validation (creature may be in an intermediate state)
+  const builder = new CreatureExportBuilder(creature);
+  const exportJSON = builder.build();
 
-  if (removed > 0) {
+  const result = cleanupOrphanedNeurons(exportJSON);
+
+  if (result.removed > 0 || result.converted > 0) {
     creature.loadFrom(exportJSON, true);
   }
 
-  return removed;
+  return result;
 }

@@ -3,8 +3,6 @@ import {
   cleanupOrphanedNeurons,
 } from "../compact/CompactUtils.ts";
 import type { Creature } from "../Creature.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
@@ -24,11 +22,6 @@ export class SubConnection implements RadioactiveInterface {
     // Use the builder directly to avoid validation (creature may be in an intermediate state)
     const builder = new CreatureExportBuilder(this.creature);
     const exportJSON = builder.build();
-
-    // Build a map of neuron UUIDs to their export data for quick lookup
-    const neuronMap = new Map(
-      exportJSON.neurons.map((n) => [n.uuid, n]),
-    );
 
     // List of possible connections that can be removed (forward connections only)
     const possible: { fromUUID: string; toUUID: string }[] = [];
@@ -82,48 +75,10 @@ export class SubConnection implements RadioactiveInterface {
       randomConn.toUUID,
     );
 
-    // Check if the 'to' neuron has lost all inward connections
-    const toNeuron = neuronMap.get(randomConn.toUUID);
-    if (toNeuron && toNeuron.type === "hidden") {
-      const hasInward = exportJSON.synapses.some(
-        (s) => s.toUUID === randomConn.toUUID,
-      );
-
-      if (!hasInward) {
-        const hasOutward = exportJSON.synapses.some(
-          (s) => s.fromUUID === randomConn.toUUID,
-        );
-
-        if (hasOutward) {
-          // Has outward connections but no inward - convert to constant
-          // Calculate the constant bias using the squash function
-          let constantBias = toNeuron.bias;
-          if (toNeuron.squash) {
-            const squashFn = Activations.find(toNeuron.squash);
-            const activation = squashFn as ActivationInterface;
-            if (activation?.squash) {
-              constantBias = activation.squash(toNeuron.bias);
-            }
-          }
-
-          // Replace the hidden neuron with a constant neuron
-          const neuronIndex = exportJSON.neurons.findIndex(
-            (n) => n.uuid === randomConn.toUUID,
-          );
-          if (neuronIndex !== -1) {
-            exportJSON.neurons[neuronIndex] = {
-              type: "constant",
-              uuid: toNeuron.uuid,
-              bias: constantBias,
-            };
-          }
-        }
-        // If no outward connections either, cleanupOrphanedNeurons will remove it
-      }
-    }
-
-    // Clean up any neurons that have become orphaned (no outward connections)
-    // This handles cascade removal when removing a synapse leaves neurons dangling
+    // Clean up any neurons that have become orphaned after synapse removal.
+    // This handles both:
+    // - Converting hidden neurons with no inward connections to constants
+    // - Removing hidden/constant neurons with no outward connections
     cleanupOrphanedNeurons(exportJSON);
 
     // Reload the creature from the modified export

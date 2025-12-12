@@ -1,10 +1,7 @@
 import { assert } from "@std/assert";
 import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "../../../mod.ts";
-import {
-  cleanupOrphanedNeurons,
-  cleanupOrphanedNeuronsInCreature,
-} from "../../compact/CompactUtils.ts";
+import { cleanupOrphanedNeurons } from "../../compact/CompactUtils.ts";
 import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
 import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
@@ -3849,40 +3846,16 @@ export class DiscoverStructure {
         s.toUUID !== worseCandidate.toNeuronUUID;
     });
 
+    // Clean up any neurons that have become orphaned after synapse removal.
+    // This handles both:
+    // - Converting hidden neurons with no inward connections to constants
+    // - Removing hidden/constant neurons with no outward connections
+    cleanupOrphanedNeurons(exportJSON);
+
     const tmpCreature = Creature.fromJSON(exportJSON);
     // We modified the structure by filtering synapses, so we must delete UUID
     delete tmpCreature.uuid;
     delete tmpCreature.memetic;
-
-    // Handle cascading effects like SubConnection.ts does (instead of calling fix())
-    // Check if the "to" neuron has 0 inward connections and convert to constant if needed
-    const toNeuronInTmp = tmpCreature.neurons.find(
-      (n) => n.uuid === worseCandidate.toNeuronUUID,
-    );
-
-    if (toNeuronInTmp) {
-      const toIndxInTmp = toNeuronInTmp.index;
-      const inwardList = tmpCreature.inwardConnections(toIndxInTmp);
-
-      if (inwardList.length === 0 && toNeuronInTmp.type === "hidden") {
-        const outwardList = tmpCreature.outwardConnections(toIndxInTmp);
-        if (outwardList.length > 0) {
-          // Has outward connections but no inward - convert to constant
-          const squash = toNeuronInTmp.findSquash();
-          const activation = squash as ActivationInterface;
-          if (activation.squash) {
-            const constantBias = activation.squash(toNeuronInTmp.bias);
-            toNeuronInTmp.bias = constantBias;
-          }
-          toNeuronInTmp.type = "constant";
-          toNeuronInTmp.setSquash(undefined);
-        }
-      }
-    }
-
-    // Clean up any neurons that have become orphaned (no outward connections)
-    // This handles cascade removal when removing a synapse leaves neurons dangling
-    cleanupOrphanedNeuronsInCreature(tmpCreature);
 
     // Validate the creature - only call fix() as a last resort
     const validationResult = this.validateAndFixIfNeeded(
