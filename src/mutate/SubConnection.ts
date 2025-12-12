@@ -1,4 +1,7 @@
-import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
+import {
+  cleanupOrphanedNeuronsInCreature,
+  removeHiddenNeuron,
+} from "../compact/CompactUtils.ts";
 import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
@@ -42,9 +45,9 @@ export class SubConnection implements RadioactiveInterface {
     this.creature.disconnect(randomConn.from, randomConn.to);
 
     delete this.creature.memetic;
-    const inwardList = this.creature.inwardConnections(randomConn.to);
 
-    let toNeuronRemoved = false;
+    // Check if the 'to' neuron has lost all inward connections
+    const inwardList = this.creature.inwardConnections(randomConn.to);
     if (inwardList.length === 0) {
       const neuron = this.creature.neurons[randomConn.to];
       if (neuron.type === "hidden") {
@@ -52,24 +55,13 @@ export class SubConnection implements RadioactiveInterface {
         const outwardList = this.creature.outwardConnections(randomConn.to);
         if (outwardList.length === 0) {
           // No inward or outward connections - remove entirely
-          console.info(
-            `Remove neuron ${neuron.uuid} as completely disconnected`,
-          );
           removeHiddenNeuron(this.creature, randomConn.to);
-          toNeuronRemoved = true;
         } else {
           // Has outward connections - convert to constant
-          console.info(
-            `Constant neuron ${neuron.uuid} convert ${neuron.type} to constant`,
-          );
-
           const squash = neuron.findSquash();
           const activation = squash as ActivationInterface;
           if (activation.squash) {
             const constantBias = activation.squash(neuron.bias);
-            console.info(
-              `Adjust neuron ${neuron.uuid} bias ${neuron.bias} to ${constantBias}`,
-            );
             neuron.bias = constantBias;
           }
           neuron.type = "constant";
@@ -78,19 +70,10 @@ export class SubConnection implements RadioactiveInterface {
       }
     }
 
-    // Adjust the 'from' index if the 'to' neuron was removed and it came before the 'from' neuron
-    let fromIndex = randomConn.from;
-    if (toNeuronRemoved && randomConn.to < randomConn.from) {
-      fromIndex--;
-    }
-    const fromOutwardList = this.creature.outwardConnections(fromIndex);
-    if (fromOutwardList.length === 0) {
-      const fromNeuron = this.creature.neurons[fromIndex];
-      if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
-        console.info(`Remove neuron ${fromNeuron.uuid} as no longer connected`);
-        removeHiddenNeuron(this.creature, fromIndex);
-      }
-    }
+    // Clean up any neurons that have become orphaned (no outward connections)
+    // This handles cascade removal when removing a synapse leaves neurons dangling
+    cleanupOrphanedNeuronsInCreature(this.creature);
+
     return true;
   }
 }

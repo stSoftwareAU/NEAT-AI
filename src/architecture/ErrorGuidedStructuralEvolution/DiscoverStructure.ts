@@ -1,7 +1,10 @@
 import { assert } from "@std/assert";
 import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "../../../mod.ts";
-import { removeHiddenNeuron } from "../../compact/CompactUtils.ts";
+import {
+  cleanupOrphanedNeurons,
+  cleanupOrphanedNeuronsInCreature,
+} from "../../compact/CompactUtils.ts";
 import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
 import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
@@ -3852,11 +3855,10 @@ export class DiscoverStructure {
     delete tmpCreature.memetic;
 
     // Handle cascading effects like SubConnection.ts does (instead of calling fix())
-    // Check if the "to" neuron has 0 inward connections
+    // Check if the "to" neuron has 0 inward connections and convert to constant if needed
     const toNeuronInTmp = tmpCreature.neurons.find(
       (n) => n.uuid === worseCandidate.toNeuronUUID,
     );
-    let toNeuronRemoved = false;
 
     if (toNeuronInTmp) {
       const toIndxInTmp = toNeuronInTmp.index;
@@ -3864,25 +3866,12 @@ export class DiscoverStructure {
 
       if (inwardList.length === 0 && toNeuronInTmp.type === "hidden") {
         const outwardList = tmpCreature.outwardConnections(toIndxInTmp);
-        if (outwardList.length === 0) {
-          // No inward or outward connections - remove entirely
-          console.info(
-            `[DiscoverStructure] removeSynapse: removing completely disconnected neuron ${toNeuronInTmp.uuid}`,
-          );
-          removeHiddenNeuron(tmpCreature, toIndxInTmp);
-          toNeuronRemoved = true;
-        } else {
-          // Has outward connections - convert to constant
-          console.info(
-            `[DiscoverStructure] removeSynapse: converting neuron ${toNeuronInTmp.uuid} to constant`,
-          );
+        if (outwardList.length > 0) {
+          // Has outward connections but no inward - convert to constant
           const squash = toNeuronInTmp.findSquash();
           const activation = squash as ActivationInterface;
           if (activation.squash) {
             const constantBias = activation.squash(toNeuronInTmp.bias);
-            console.info(
-              `[DiscoverStructure] removeSynapse: adjusting neuron ${toNeuronInTmp.uuid} bias ${toNeuronInTmp.bias} to ${constantBias}`,
-            );
             toNeuronInTmp.bias = constantBias;
           }
           toNeuronInTmp.type = "constant";
@@ -3891,35 +3880,9 @@ export class DiscoverStructure {
       }
     }
 
-    // Check if the "from" neuron now has 0 outward connections
-    const fromNeuronInTmp = tmpCreature.neurons.find(
-      (n) => n.uuid === worseCandidate.fromNeuronUUID,
-    );
-
-    if (fromNeuronInTmp) {
-      // Adjust index if the "to" neuron was removed and came before "from"
-      let fromIndxInTmp = fromNeuronInTmp.index;
-      if (toNeuronRemoved && toIndx < fromIndxInTmp) {
-        // Index already adjusted by removeHiddenNeuron, find by UUID again
-        const fromNeuronUpdated = tmpCreature.neurons.find(
-          (n) => n.uuid === worseCandidate.fromNeuronUUID,
-        );
-        if (fromNeuronUpdated) {
-          fromIndxInTmp = fromNeuronUpdated.index;
-        }
-      }
-
-      const fromOutwardList = tmpCreature.outwardConnections(fromIndxInTmp);
-      if (fromOutwardList.length === 0) {
-        const fromNeuronType = tmpCreature.neurons[fromIndxInTmp]?.type;
-        if (fromNeuronType === "hidden" || fromNeuronType === "constant") {
-          console.info(
-            `[DiscoverStructure] removeSynapse: removing neuron ${worseCandidate.fromNeuronUUID} as no longer connected`,
-          );
-          removeHiddenNeuron(tmpCreature, fromIndxInTmp);
-        }
-      }
-    }
+    // Clean up any neurons that have become orphaned (no outward connections)
+    // This handles cascade removal when removing a synapse leaves neurons dangling
+    cleanupOrphanedNeuronsInCreature(tmpCreature);
 
     // Validate the creature - only call fix() as a last resort
     const validationResult = this.validateAndFixIfNeeded(
@@ -4657,6 +4620,11 @@ export class DiscoverStructure {
       (neuron) => neuron.uuid !== harmfulNeuron.neuronUUID,
     );
 
+    // Clean up any neurons that have become orphaned (no outward connections)
+    // This prevents validation failures when neurons that only connected to
+    // the removed neuron are left dangling
+    cleanupOrphanedNeurons(simplifiedExport);
+
     const tmpCreature = Creature.fromJSON(simplifiedExport);
     // We modified the structure, so we must delete UUID
     delete tmpCreature.uuid;
@@ -4752,6 +4720,11 @@ export class DiscoverStructure {
     simplifiedExport.neurons = simplifiedExport.neurons.filter(
       (neuron) => neuron.uuid !== removalCandidate.neuronUUID,
     );
+
+    // Clean up any neurons that have become orphaned (no outward connections)
+    // This prevents validation failures when neurons that only connected to
+    // the removed neuron are left dangling
+    cleanupOrphanedNeurons(simplifiedExport);
 
     const removedSynapseCount = originalSynapseCount -
       simplifiedExport.synapses.length;
