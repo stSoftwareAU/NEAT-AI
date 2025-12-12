@@ -487,8 +487,10 @@ Deno.test("cleanupOrphanedNeurons - should apply TANH squash function when conve
     output: 1,
   };
 
-  // Run cleanup
-  cleanupOrphanedNeurons(creatureExport);
+  // Run cleanup and verify the result counts
+  const result = cleanupOrphanedNeurons(creatureExport);
+  assertEquals(result.converted, 1, "Should have converted 1 neuron");
+  assertEquals(result.removed, 0, "Should have removed 0 neurons");
 
   // Verify the constant neuron has the TANH-squashed bias
   const convertedNeuron = creatureExport.neurons.find(
