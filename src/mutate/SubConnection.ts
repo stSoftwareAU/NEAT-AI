@@ -1,8 +1,11 @@
-import { cleanupOrphanedNeurons } from "../compact/CompactUtils.ts";
+import {
+  cleanupMemeticForRemovedSynapse,
+  cleanupOrphanedNeurons,
+} from "../compact/CompactUtils.ts";
 import type { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
+import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
 export class SubConnection implements RadioactiveInterface {
@@ -18,7 +21,9 @@ export class SubConnection implements RadioactiveInterface {
    */
   public mutate(focusList?: number[]): boolean {
     // Export the creature to JSON for clean manipulation
-    const exportJSON = this.creature.exportJSON();
+    // Use the builder directly to avoid validation (creature may be in an intermediate state)
+    const builder = new CreatureExportBuilder(this.creature);
+    const exportJSON = builder.build();
 
     // Build a map of neuron UUIDs to their export data for quick lookup
     const neuronMap = new Map(
@@ -70,6 +75,13 @@ export class SubConnection implements RadioactiveInterface {
         s.fromUUID !== randomConn.fromUUID || s.toUUID !== randomConn.toUUID,
     );
 
+    // Clean up memetic data for the removed synapse
+    cleanupMemeticForRemovedSynapse(
+      exportJSON,
+      randomConn.fromUUID,
+      randomConn.toUUID,
+    );
+
     // Check if the 'to' neuron has lost all inward connections
     const toNeuron = neuronMap.get(randomConn.toUUID);
     if (toNeuron && toNeuron.type === "hidden") {
@@ -115,8 +127,9 @@ export class SubConnection implements RadioactiveInterface {
     cleanupOrphanedNeurons(exportJSON);
 
     // Reload the creature from the modified export
-    delete (exportJSON as CreatureExport & { memetic?: unknown }).memetic;
-    this.creature.loadFrom(exportJSON, true);
+    // Note: We pass false for validation to match the old in-place mutation behavior.
+    // Validation is handled elsewhere (e.g., by the caller or by fix() if needed).
+    this.creature.loadFrom(exportJSON, false);
 
     return true;
   }

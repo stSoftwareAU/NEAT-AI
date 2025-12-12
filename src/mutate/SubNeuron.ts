@@ -1,7 +1,10 @@
 import type { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
-import { cleanupOrphanedNeurons } from "../compact/CompactUtils.ts";
+import {
+  cleanupMemeticForRemovedNeuron,
+  cleanupOrphanedNeurons,
+} from "../compact/CompactUtils.ts";
+import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
 export class SubNeuron implements RadioactiveInterface {
   private creature: Creature;
@@ -16,7 +19,9 @@ export class SubNeuron implements RadioactiveInterface {
    */
   mutate(focusList?: number[]): boolean {
     // Export the creature to JSON for clean manipulation
-    const exportJSON = this.creature.exportJSON();
+    // Use the builder directly to avoid validation (creature may be in an intermediate state)
+    const builder = new CreatureExportBuilder(this.creature);
+    const exportJSON = builder.build();
 
     // Filter to only hidden and constant neurons (removable)
     const removableNeurons = exportJSON.neurons.filter(
@@ -74,13 +79,17 @@ export class SubNeuron implements RadioactiveInterface {
       (n) => n.uuid !== selectedNeuronUUID,
     );
 
+    // Clean up memetic data for the removed neuron
+    cleanupMemeticForRemovedNeuron(exportJSON, selectedNeuronUUID);
+
     // Clean up any neurons that have become orphaned (no outward connections)
     // This handles cascade removal when removing a neuron leaves others dangling
     cleanupOrphanedNeurons(exportJSON);
 
     // Reload the creature from the modified export
-    delete (exportJSON as CreatureExport & { memetic?: unknown }).memetic;
-    this.creature.loadFrom(exportJSON, true);
+    // Note: We pass false for validation to match the old in-place mutation behavior.
+    // Validation is handled elsewhere (e.g., by the caller or by fix() if needed).
+    this.creature.loadFrom(exportJSON, false);
 
     return true;
   }
