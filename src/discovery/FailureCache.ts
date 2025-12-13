@@ -641,6 +641,15 @@ export async function recordFailure(
       };
     }
 
+    // Include full Rust neuron candidate (for add-neurons candidates)
+    // This includes expectedImprovementPercentage, improvedCount, totalCount, targetNeuronStats
+    if (candidate.change.neuronCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        neuronCandidate: candidate.change.neuronCandidate,
+      };
+    }
+
     // Include original Rust synapse candidate (for add-synapses candidates)
     if (candidate.change.synapseCandidate) {
       cacheEntry.rustRequest = {
@@ -791,6 +800,15 @@ export function recordFailureSync(
     if (candidate.change.neuronDetails) {
       cacheEntry.rustRequest = {
         neuronDetails: candidate.change.neuronDetails,
+      };
+    }
+
+    // Include full Rust neuron candidate (for add-neurons candidates)
+    // This includes expectedImprovementPercentage, improvedCount, totalCount, targetNeuronStats
+    if (candidate.change.neuronCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        neuronCandidate: candidate.change.neuronCandidate,
       };
     }
 
