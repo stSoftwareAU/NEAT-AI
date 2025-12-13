@@ -70,7 +70,9 @@ Deno.test({
       fromNeuronUUID: "hidden-0",
       toNeuronUUID: "output-0",
       weight: 0.5,
-      expectedImprovementPercentage: 1,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 1,
       improvedCount: 1,
       totalCount: 1,
     }];
@@ -81,7 +83,9 @@ Deno.test({
       outgoingWeight: 0.75,
       squash: IDENTITY.NAME,
       bias: 0,
-      expectedImprovementPercentage: 1,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 1,
       improvedCount: 1,
       totalCount: 1,
     }];

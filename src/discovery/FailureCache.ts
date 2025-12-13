@@ -642,7 +642,7 @@ export async function recordFailure(
     }
 
     // Include full Rust neuron candidate (for add-neurons candidates)
-    // This includes expectedImprovementPercentage, improvedCount, totalCount, targetNeuronStats
+    // This includes expectedCreatureScoreGain, improvedCount, totalCount, targetNeuronStats
     if (candidate.change.neuronCandidate) {
       cacheEntry.rustRequest = {
         ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
@@ -804,7 +804,7 @@ export function recordFailureSync(
     }
 
     // Include full Rust neuron candidate (for add-neurons candidates)
-    // This includes expectedImprovementPercentage, improvedCount, totalCount, targetNeuronStats
+    // This includes expectedCreatureScoreGain, improvedCount, totalCount, targetNeuronStats
     if (candidate.change.neuronCandidate) {
       cacheEntry.rustRequest = {
         ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),

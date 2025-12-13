@@ -153,22 +153,22 @@ export function buildDiscoveryCandidates(
   // Ensure the base creature has a UUID so discovery helpers function correctly.
   CreatureUtil.makeUUID(baseCreature);
 
-  // Since Rust v0.1.123 (neurons) and v0.1.133 (synapses), the expectedImprovementPercentage
-  // returned by Rust is already creature-level (impact discounted). TypeScript should use
-  // these values directly without re-scaling. These helper functions are kept for API
+  // As of Rust v0.2.0, the expectedCreatureScoreGain returned by Rust is already
+  // creature-level (impact already applied). TypeScript should use these values
+  // directly without re-scaling. These helper functions are kept for API
   // compatibility but simply return the Rust-provided value.
   const getExpectedNeuron = (candidate: CandidateNeuron) =>
-    candidate.expectedImprovementPercentage;
+    candidate.expectedCreatureScoreGain;
 
   const getExpectedSynapse = (candidate: CandidateSynapse) =>
-    candidate.expectedImprovementPercentage;
+    candidate.expectedCreatureScoreGain;
 
   const getExpectedSquash = (candidate: CandidateSquash) =>
-    candidate.expectedImprovementPercentage;
+    candidate.expectedCreatureScoreGain;
 
   const getExpectedRemoval = (candidate?: CandidateSynapse) => {
     if (!candidate) return undefined;
-    const value = candidate.expectedImprovementPercentage;
+    const value = candidate.expectedCreatureScoreGain;
     return value !== undefined ? Math.abs(value) : undefined;
   };
 
@@ -472,7 +472,7 @@ export function buildDiscoveryCandidates(
         description: `💀 Removed harmful neuron ${
           shortID(mostHarmful.neuronUUID)
         } (error: ${mostHarmful.errorMagnitude.toExponential(2)})`,
-        expectedErrorReduction: mostHarmful.expectedImprovementPercentage,
+        expectedErrorReduction: mostHarmful.expectedCreatureScoreGain,
         sampleSize: mostHarmful.sampleCount,
         // Store the original harmful neuron candidate for failure cache debugging
         harmfulNeuronCandidate: mostHarmful,
@@ -931,7 +931,7 @@ function buildSingleSquashCandidates(
 }
 
 function summariseExpectedImprovement<
-  T extends { expectedImprovementPercentage: number; totalCount?: number },
+  T extends { expectedCreatureScoreGain: number; totalCount?: number },
 >(
   entries?: readonly T[],
 ): { average?: number; sampleSize?: number } {
@@ -941,7 +941,7 @@ function summariseExpectedImprovement<
   let sampleSize = 0;
 
   for (const entry of entries) {
-    const value = entry.expectedImprovementPercentage;
+    const value = entry.expectedCreatureScoreGain;
     if (Number.isFinite(value) === false) {
       continue;
     }
@@ -968,10 +968,10 @@ function mapScaledSummaryEntries<T>(
   entries: readonly T[] | undefined,
   scale: (entry: T) => number | undefined,
   countSelector?: (entry: T) => number | undefined,
-): Array<{ expectedImprovementPercentage: number; totalCount?: number }> {
+): Array<{ expectedCreatureScoreGain: number; totalCount?: number }> {
   if (!entries || entries.length === 0) return [];
   const mapped: Array<
-    { expectedImprovementPercentage: number; totalCount?: number }
+    { expectedCreatureScoreGain: number; totalCount?: number }
   > = [];
   for (const entry of entries) {
     const scaled = scale(entry);
@@ -979,7 +979,7 @@ function mapScaledSummaryEntries<T>(
       continue;
     }
     mapped.push({
-      expectedImprovementPercentage: scaled,
+      expectedCreatureScoreGain: scaled,
       totalCount: countSelector ? countSelector(entry) : undefined,
     });
   }
@@ -1222,7 +1222,7 @@ function buildBestOfCategoryCandidate(
 }
 
 function wrapBestCandidate<
-  T extends { expectedImprovementPercentage?: number },
+  T extends { expectedCreatureScoreGain?: number },
 >(
   entries: T[] | undefined,
   scoreSelector?: (entry: T) => number | undefined,
@@ -1234,10 +1234,10 @@ function wrapBestCandidate<
     if (!currentBest) return candidate;
     const bestScore = scoreSelector
       ? scoreSelector(currentBest) ?? Number.NEGATIVE_INFINITY
-      : currentBest.expectedImprovementPercentage ?? Number.NEGATIVE_INFINITY;
+      : currentBest.expectedCreatureScoreGain ?? Number.NEGATIVE_INFINITY;
     const candidateScore = scoreSelector
       ? scoreSelector(candidate) ?? Number.NEGATIVE_INFINITY
-      : candidate.expectedImprovementPercentage ?? Number.NEGATIVE_INFINITY;
+      : candidate.expectedCreatureScoreGain ?? Number.NEGATIVE_INFINITY;
     if (candidateScore > bestScore) {
       return candidate;
     }

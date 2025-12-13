@@ -43,7 +43,9 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
     fromNeuronUuid: "input-1",
     toNeuronUuid: "hidden-1",
     weight: 0.3,
-    expectedImprovementPercentage: 0.5,
+    targetNeuronImpact: 1.0,
+    expectedCreatureErrorReduction: 0,
+    expectedCreatureScoreGain: 0.5,
     improvedCount: 5,
     totalCount: 10,
   };
@@ -118,7 +120,9 @@ Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async
     bias: 0,
     incomingWeight: 0.5,
     outgoingWeight: 0.3,
-    expectedImprovementPercentage: 0.8,
+    targetNeuronImpact: 1.0,
+    expectedCreatureErrorReduction: 0,
+    expectedCreatureScoreGain: 0.8,
     improvedCount: 8,
     totalCount: 10,
   };
@@ -190,7 +194,9 @@ Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate ca
     fromNeuronUuid: "input-1",
     toNeuronUuid: "output-0",
     weight: -0.25,
-    expectedImprovementPercentage: -0.2,
+    targetNeuronImpact: 1.0,
+    expectedCreatureErrorReduction: 0,
+    expectedCreatureScoreGain: -0.2,
     improvedCount: -2,
     totalCount: 10,
   };
