@@ -60,39 +60,10 @@ export interface PredictionDetails {
   bias?: number;
   /** Squash function used */
   squash?: string;
-  /** Expected improvement percentage from Rust */
-  expectedImprovementPct?: number;
   /** Number of samples where improvement was predicted */
   improvedCount?: number;
   /** Total samples analysed */
   totalCount?: number;
-  /** Example contribution calculation for a typical sample */
-  exampleContribution?: {
-    sourceActivation: number;
-    preActivation: number;
-    postActivation: number;
-    contribution: number;
-  };
-}
-
-/** Error comparison details for debugging prediction inversions */
-export interface ErrorComparison {
-  /** Original MSE before candidate was applied */
-  originalMSE: number;
-  /** MSE after candidate was applied */
-  candidateMSE: number;
-  /** Actual error reduction (originalMSE - candidateMSE, positive = improvement) */
-  actualErrorReduction: number;
-  /** Actual error reduction as percentage */
-  actualErrorReductionPct: number;
-  /** Expected error reduction from Rust prediction */
-  expectedErrorReduction?: number;
-  /** Expected error reduction as percentage from Rust */
-  expectedErrorReductionPct?: number;
-  /** Formula used for error calculation */
-  errorFormula: string;
-  /** Whether prediction direction was correct */
-  predictionDirectionCorrect?: boolean;
 }
 
 /** Information about the target neuron */
@@ -125,14 +96,12 @@ export interface FailureMetadata {
   /** NEAT-AI-Discovery library version that generated the candidate */
   discoveryVersion?: string;
 
-  // Enhanced diagnostic fields for debugging prediction inversions
+  // Diagnostic fields for debugging
 
   /** Diagnostics for first few samples used in prediction */
   sampleDiagnostics?: SampleDiagnostic[];
   /** Prediction details from Rust candidate */
   predictionDetails?: PredictionDetails;
-  /** Error comparison showing expected vs actual */
-  errorComparison?: ErrorComparison;
   /** Information about the target neuron */
   targetNeuronInfo?: TargetNeuronInfo;
 }
@@ -457,28 +426,13 @@ export function extractPredictionDetails(
       outgoingWeight: details.outgoingWeight,
       bias: details.bias,
       squash: details.squash,
-      expectedImprovementPct: change.expectedErrorReduction !== undefined
-        ? change.expectedErrorReduction * 100
-        : undefined,
     };
   }
 
-  // For add-synapses candidates, we need to look at the creature's synapses
+  // For add-synapses candidates
   if (change.type === "add-synapses") {
     return {
-      expectedImprovementPct: change.expectedErrorReduction !== undefined
-        ? change.expectedErrorReduction * 100
-        : undefined,
       totalCount: change.sampleSize,
-    };
-  }
-
-  // For change-squash candidates
-  if (change.type === "change-squash") {
-    return {
-      expectedImprovementPct: change.expectedErrorReduction !== undefined
-        ? change.expectedErrorReduction * 100
-        : undefined,
     };
   }
 
@@ -531,48 +485,6 @@ export function extractTargetNeuronInfo(
 }
 
 /**
- * Builds error comparison details from metadata.
- *
- * @param metadata - The failure metadata
- * @param expectedErrorReduction - Expected error reduction from candidate
- * @returns ErrorComparison details
- */
-export function buildErrorComparison(
-  metadata: FailureMetadata,
-  expectedErrorReduction?: number,
-): ErrorComparison | undefined {
-  if (metadata.originalError === undefined) return undefined;
-
-  const originalMSE = metadata.originalError;
-  const candidateMSE = metadata.error;
-  const actualErrorReduction = originalMSE - candidateMSE;
-  const actualErrorReductionPct = originalMSE === 0
-    ? (candidateMSE === 0 ? 0 : -100)
-    : (actualErrorReduction / originalMSE) * 100;
-
-  // Determine if prediction direction was correct
-  let predictionDirectionCorrect: boolean | undefined;
-  if (expectedErrorReduction !== undefined) {
-    const predictedImprovement = expectedErrorReduction > 0;
-    const actualImprovement = actualErrorReduction > 0;
-    predictionDirectionCorrect = predictedImprovement === actualImprovement;
-  }
-
-  return {
-    originalMSE,
-    candidateMSE,
-    actualErrorReduction,
-    actualErrorReductionPct,
-    expectedErrorReduction,
-    expectedErrorReductionPct: expectedErrorReduction !== undefined
-      ? expectedErrorReduction * 100
-      : undefined,
-    errorFormula: "MSE = (1/n) * Σ(predicted - actual)²",
-    predictionDirectionCorrect,
-  };
-}
-
-/**
  * Logs detailed prediction trace when NEAT_AI_TRACE_PREDICTION=1 is set.
  *
  * @param candidate - The candidate being traced
@@ -609,32 +521,6 @@ export function logPredictionTrace(
   if (cacheEntry.predictionDetails) {
     console.info("--- Rust Prediction Details ---");
     console.info(JSON.stringify(cacheEntry.predictionDetails, null, 2));
-    console.info("");
-  }
-
-  // Log error comparison
-  if (cacheEntry.errorComparison) {
-    console.info("--- Error Comparison ---");
-    const ec = cacheEntry.errorComparison as ErrorComparison;
-    console.info(`Original MSE:          ${ec.originalMSE.toExponential(6)}`);
-    console.info(`Candidate MSE:         ${ec.candidateMSE.toExponential(6)}`);
-    console.info(
-      `Actual Error Delta:    ${ec.actualErrorReduction.toExponential(6)} (${
-        ec.actualErrorReductionPct.toFixed(4)
-      }%)`,
-    );
-    if (ec.expectedErrorReductionPct !== undefined) {
-      console.info(
-        `Expected Error Delta:  ${
-          (ec.expectedErrorReduction ?? 0).toExponential(6)
-        } (${ec.expectedErrorReductionPct.toFixed(4)}%)`,
-      );
-      console.info(
-        `Prediction Direction:  ${
-          ec.predictionDirectionCorrect ? "✓ CORRECT" : "✗ INVERTED"
-        }`,
-      );
-    }
     console.info("");
   }
 
@@ -712,9 +598,8 @@ export function isCandidateCachedSync(
 /**
  * Records a discovery candidate as a failure in the cache.
  *
- * Enhanced with diagnostic fields to help debug prediction inversions:
+ * Includes diagnostic fields:
  * - predictionDetails: Rust prediction parameters
- * - errorComparison: Expected vs actual error with direction analysis
  * - targetNeuronInfo: Information about the target neuron
  *
  * @param cacheDir - The cache directory path
@@ -811,21 +696,10 @@ export async function recordFailure(
         cacheEntry.actualCreatureChange = actualChanges;
       }
 
-      // Enhanced diagnostics for debugging prediction inversions
-
       // Extract prediction details from the candidate
       const predictionDetails = extractPredictionDetails(candidate);
       if (predictionDetails) {
         cacheEntry.predictionDetails = predictionDetails;
-      }
-
-      // Build error comparison details
-      const errorComparison = buildErrorComparison(
-        metadata,
-        candidate.change.expectedErrorReduction,
-      );
-      if (errorComparison) {
-        cacheEntry.errorComparison = errorComparison;
       }
 
       // Extract target neuron info
@@ -853,9 +727,8 @@ export async function recordFailure(
 /**
  * Synchronously records a discovery candidate as a failure in the cache.
  *
- * Enhanced with diagnostic fields to help debug prediction inversions:
+ * Includes diagnostic fields:
  * - predictionDetails: Rust prediction parameters
- * - errorComparison: Expected vs actual error with direction analysis
  * - targetNeuronInfo: Information about the target neuron
  *
  * @param cacheDir - The cache directory path
@@ -952,21 +825,10 @@ export function recordFailureSync(
         cacheEntry.actualCreatureChange = actualChanges;
       }
 
-      // Enhanced diagnostics for debugging prediction inversions
-
       // Extract prediction details from the candidate
       const predictionDetails = extractPredictionDetails(candidate);
       if (predictionDetails) {
         cacheEntry.predictionDetails = predictionDetails;
-      }
-
-      // Build error comparison details
-      const errorComparison = buildErrorComparison(
-        metadata,
-        candidate.change.expectedErrorReduction,
-      );
-      if (errorComparison) {
-        cacheEntry.errorComparison = errorComparison;
       }
 
       // Extract target neuron info

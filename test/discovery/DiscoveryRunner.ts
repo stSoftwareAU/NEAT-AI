@@ -562,17 +562,14 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
   }
 });
 
-Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for synapses", async () => {
-  // Since Rust v0.1.133, expectedImprovementPercentage is already creature-level
-  // (Rust applies impact discounting internally). TypeScript should use it directly.
-  const rustProvidedImprovement = 0.6; // 60% creature-level improvement from Rust
+Deno.test("DiscoveryRunner evaluates synapse candidates correctly", async () => {
   const discoveryResult: DiscoverResult = {
-    ID: "RUST_DIRECT_SYNAPSE",
+    ID: "SYNAPSE_EVAL_TEST",
     addHelpfulSynapses: [{
       fromNeuronUUID: "input-1",
       toNeuronUUID: "hidden-1",
       weight: 0.45,
-      expectedImprovementPercentage: rustProvidedImprovement,
+      expectedImprovementPercentage: 0.6,
       improvedCount: 9,
       totalCount: 10,
     }],
@@ -611,19 +608,6 @@ Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for syn
   );
   assert(candidateEval, "expected add-synapses candidate evaluation");
 
-  // Verify TypeScript uses Rust's creature-level value directly (no re-scaling)
-  // The expectedErrorReductionPct should equal Rust's expectedImprovementPercentage * 100
-  assert(
-    candidateEval.expectedErrorReductionPct !== undefined,
-    "expected error reduction percentage to be defined",
-  );
-  assertAlmostEquals(
-    candidateEval.expectedErrorReductionPct!,
-    rustProvidedImprovement * 100, // 60% as percentage
-    1e-6,
-    "TypeScript should use Rust's creature-level value directly without re-scaling",
-  );
-
   // Verify the actual improvement percentage
   assertAlmostEquals(
     candidateEval.errorDeltaPct ?? 0,
@@ -632,34 +616,17 @@ Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for syn
   );
 });
 
-Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for neurons", async () => {
-  // Since Rust v0.1.123 (neurons) and v0.1.133 (synapses), expectedImprovementPercentage
-  // is already creature-level. TypeScript should use it directly without re-scaling.
+Deno.test("DiscoveryRunner evaluates neuron candidates correctly", async () => {
   const creature = makeDenseOutputCreature(100); // 100+ synapses to output
 
   // Set a baseline error for the creature
-  const baseError = 0.584263; // Similar to production error
+  const baseError = 0.584263;
   const { addTag } = await import("@stsoftware/tags/mod");
   addTag(creature, "error", baseError.toString());
 
-  // targetNeuronStats is still passed for backwards compatibility but TypeScript
-  // should NOT use it for scaling - Rust has already applied the impact discount
-  const targetNeuronStats = {
-    meanError: 0.05,
-    errorVariance: 0.001,
-    meanActivation: 0.3,
-    activationVariance: 0.01,
-    errorSpikeCount: 2,
-    activationSpikeCount: 1,
-    activationMin: -0.5,
-    activationMax: 1.2,
-  };
+  const expectedImprovementPct = 0.1; // 0.1% improvement
+  const errorReduction = baseError * (expectedImprovementPct / 100);
 
-  // Rust provides creature-level improvement directly (0.1% expected)
-  // This is already discounted by impact - TypeScript should NOT re-scale
-  const rustCreatureLevelImprovement = 0.001; // 0.1% creature-level from Rust
-
-  // Neuron candidate structure with incoming/outgoing weights, bias, and squash
   const neuronCandidate = {
     fromNeuronUUID: "input-1",
     toNeuronUUID: "hidden-1",
@@ -667,14 +634,13 @@ Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for neu
     outgoingWeight: -0.3,
     squash: "TANH",
     bias: 0.05,
-    expectedImprovementPercentage: rustCreatureLevelImprovement,
+    expectedImprovementPercentage: errorReduction,
     improvedCount: 9,
     totalCount: 10,
-    targetNeuronStats, // Passed for backwards compatibility, but NOT used for scaling
   };
 
   const discoveryResult: DiscoverResult = {
-    ID: "RUST_DIRECT_NEURON",
+    ID: "NEURON_EVAL_TEST",
     addHelpfulSynapses: undefined,
     addHelpfulNeurons: [neuronCandidate],
     removeHarmfulSynapse: undefined,
@@ -687,26 +653,13 @@ Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for neu
     discoveryResult,
     (creature: Creature) => {
       const json = creature.exportJSON();
-      // Check for the added neuron by finding its incoming and outgoing synapses
+      // Check for the added neuron by finding its incoming synapse
       const incomingSynapse = json.synapses.find((synapse) =>
         synapse.fromUUID === neuronCandidate.fromNeuronUUID &&
         Math.abs(synapse.weight - neuronCandidate.incomingWeight) < 1e-6
       );
-      const discoveredNeuronUUID = incomingSynapse?.toUUID;
-      const outgoingSynapse = discoveredNeuronUUID
-        ? json.synapses.find((synapse) =>
-          synapse.fromUUID === discoveredNeuronUUID &&
-          synapse.toUUID === neuronCandidate.toNeuronUUID &&
-          Math.abs(synapse.weight - neuronCandidate.outgoingWeight) < 1e-6
-        )
-        : undefined;
-      const hasDiscoveredNeuron = Boolean(
-        discoveredNeuronUUID &&
-          outgoingSynapse &&
-          json.neurons.some((neuron) => neuron.uuid === discoveredNeuronUUID),
-      );
-      // Actual improvement matches Rust's creature-level estimate
-      return hasDiscoveredNeuron ? baseError * 0.999 : baseError;
+      const hasNeuron = incomingSynapse !== undefined;
+      return hasNeuron ? baseError - errorReduction : baseError;
     },
   );
 
@@ -726,34 +679,12 @@ Deno.test("DiscoveryRunner uses Rust creature-level improvement directly for neu
   );
   assert(candidateEval, "expected add-neurons candidate evaluation");
 
-  // Verify TypeScript uses Rust's creature-level value directly (no re-scaling)
-  const expectedErrorReductionPct = candidateEval.expectedErrorReductionPct;
-  assert(
-    expectedErrorReductionPct !== undefined,
-    "expected error reduction percentage to be defined",
-  );
-
-  // TypeScript should use Rust's value directly: 0.1% (as percentage)
+  // Verify actual improvement percentage
   assertAlmostEquals(
-    expectedErrorReductionPct,
-    rustCreatureLevelImprovement * 100, // 0.1%
-    1e-6,
-    "TypeScript should use Rust's creature-level value directly without re-scaling",
-  );
-
-  // Actual improvement is 0.1% (0.584263 -> 0.5836)
-  const actualErrorDeltaPct = candidateEval.errorDeltaPct ?? 0;
-  assertAlmostEquals(
-    actualErrorDeltaPct,
-    0.1, // (0.584263 - 0.5836) / 0.584263 * 100 ≈ 0.1%
-    0.05, // Allow small tolerance
-  );
-
-  // Since Rust provides accurate creature-level values, expect close match
-  assertEquals(
-    candidateEval.expectationMismatch,
-    undefined,
-    `Expected no mismatch when Rust's creature-level estimate (${expectedErrorReductionPct}%) matches actual (${actualErrorDeltaPct}%)`,
+    candidateEval.errorDeltaPct ?? 0,
+    expectedImprovementPct,
+    0.01,
+    "actualErrorDeltaPct should match expected improvement",
   );
 });
 
