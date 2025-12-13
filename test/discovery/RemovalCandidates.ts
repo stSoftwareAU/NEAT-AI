@@ -373,3 +373,79 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
     "Description should mention impact",
   );
 });
+
+/**
+ * Test for issue #912: removeLowImpactNeuron should clean up memetic data
+ * when removing a neuron that is referenced in the memetic weights/biases.
+ *
+ * Without the fix, this test would fail with:
+ * "Memetic from UUID {uuid} has no valid neuron."
+ */
+Deno.test("removeLowImpactNeuron cleans up memetic data for removed neuron", () => {
+  // Create a creature with memetic data that references the neuron we'll remove
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      {
+        type: "hidden",
+        squash: "RELU",
+        bias: 0.5,
+        uuid: "hidden-with-memetic",
+      },
+      { type: "output", squash: "IDENTITY", bias: 0, uuid: "output-0" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-with-memetic", weight: 0.1 },
+      { fromUUID: "hidden-with-memetic", toUUID: "output-0", weight: 0.2 },
+      { fromUUID: "input-1", toUUID: "output-0", weight: 1.0 },
+    ],
+    memetic: {
+      generation: 1,
+      score: 0.5,
+      biases: {
+        "hidden-with-memetic": 0.5,
+        "output-0": 0.1,
+      },
+      weights: {
+        "input-0": [
+          { toUUID: "hidden-with-memetic", weight: 0.15 },
+        ],
+        "hidden-with-memetic": [
+          { toUUID: "output-0", weight: 0.25 },
+        ],
+        "input-1": [
+          { toUUID: "output-0", weight: 0.95 },
+        ],
+      },
+    },
+  });
+
+  const candidate: RemovalCandidate = {
+    neuronUUID: "hidden-with-memetic",
+    totalError: 5.0,
+    impact: 0.001, // Very low impact (0.1%)
+    reason: "High error but very low impact - far from outputs",
+  };
+
+  // This should NOT throw a MEMETIC validation error
+  const result = DiscoverStructure.removeLowImpactNeuron(
+    "test-memetic-cleanup",
+    creature,
+    candidate,
+  );
+
+  assertExists(result, "Should return a modified creature");
+
+  // Verify the neuron was removed
+  const hiddenNeurons = result.neurons.filter((n) => n.type === "hidden");
+  assertEquals(hiddenNeurons.length, 0, "Hidden neuron should be removed");
+
+  // Memetic data should be cleaned up (either deleted entirely or have references removed)
+  // The cleanupMemeticForRemovedNeuron function deletes the entire memetic object
+  assertEquals(
+    result.memetic,
+    undefined,
+    "Memetic data should be deleted when referencing neuron is removed",
+  );
+});

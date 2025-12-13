@@ -40,6 +40,10 @@ import {
   DiscoverStructure,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import {
+  cleanupMemeticForRemovedNeuron,
+  cleanupMemeticForRemovedSynapse,
+} from "../compact/CompactUtils.ts";
 import { Creature } from "../Creature.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 
@@ -306,6 +310,13 @@ export function buildDiscoveryCandidates(
           );
 
           if (exportJSON.synapses.length < originalCount) {
+            // Clean up memetic data for the removed synapse
+            cleanupMemeticForRemovedSynapse(
+              exportJSON,
+              removalUUID.from,
+              removalUUID.to,
+            );
+
             const updated = Creature.fromJSON(exportJSON);
             // We modified the structure by filtering synapses, so we must delete UUID
             delete updated.uuid;
@@ -669,6 +680,13 @@ export function buildDiscoveryCandidates(
           );
 
           if (exportJSON.synapses.length < originalCount) {
+            // Clean up memetic data for the removed synapse
+            cleanupMemeticForRemovedSynapse(
+              exportJSON,
+              removalUUID.from,
+              removalUUID.to,
+            );
+
             const updated = Creature.fromJSON(exportJSON);
             // We modified the structure by filtering synapses, so we must delete UUID
             delete updated.uuid;
@@ -1065,6 +1083,13 @@ function buildCombinedCandidate(
 
       if (exportJSON.synapses.length < originalCount) {
         removed = true;
+        // Clean up memetic data for the removed synapse
+        cleanupMemeticForRemovedSynapse(
+          exportJSON,
+          removalUUID.from,
+          removalUUID.to,
+        );
+
         const updated = Creature.fromJSON(exportJSON);
         // We modified the structure by filtering synapses, so we must delete UUID
         delete updated.uuid;
@@ -1576,6 +1601,13 @@ function applyChangeToCreature(
         creatureJSON.synapses = creatureJSON.synapses.filter(
           (s) => !toRemove.has(`${s.fromUUID}->${s.toUUID}`),
         );
+
+        // Clean up memetic data for removed synapses
+        for (const synapseKey of toRemove) {
+          const [fromUUID, toUUID] = synapseKey.split("->");
+          cleanupMemeticForRemovedSynapse(creatureJSON, fromUUID, toUUID);
+        }
+
         creatureJSON.synapses.push(...toAdd);
 
         const result = Creature.fromJSON(creatureJSON);
@@ -1617,6 +1649,11 @@ function applyChangeToCreature(
         creatureJSON.synapses = creatureJSON.synapses.filter(
           (s) => !toRemove.has(s.fromUUID) && !toRemove.has(s.toUUID),
         );
+
+        // Clean up memetic data for removed neurons
+        for (const neuronUUID of toRemove) {
+          cleanupMemeticForRemovedNeuron(creatureJSON, neuronUUID);
+        }
 
         // Build set of remaining neuron UUIDs for synapse validation
         // Include input neurons (not in neurons array but referenced as input-N)

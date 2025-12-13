@@ -1,7 +1,10 @@
 import { assert } from "@std/assert";
 import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "../../../mod.ts";
-import { cleanupOrphanedNeurons } from "../../compact/CompactUtils.ts";
+import {
+  cleanupMemeticForRemovedNeuron,
+  cleanupOrphanedNeurons,
+} from "../../compact/CompactUtils.ts";
 import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
 import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
@@ -4692,6 +4695,13 @@ export class DiscoverStructure {
     // Remove the neuron itself
     simplifiedExport.neurons = simplifiedExport.neurons.filter(
       (neuron) => neuron.uuid !== removalCandidate.neuronUUID,
+    );
+
+    // Clean up memetic data for the removed neuron (fixes issue #912)
+    // This must be called before validation to prevent MEMETIC errors
+    cleanupMemeticForRemovedNeuron(
+      simplifiedExport,
+      removalCandidate.neuronUUID,
     );
 
     // Clean up any neurons that have become orphaned (no outward connections)
