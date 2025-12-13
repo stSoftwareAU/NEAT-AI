@@ -748,11 +748,27 @@ export async function recordFailure(
       ...(discoveryVersion ? { discoveryVersion } : {}),
     };
 
-    // Include neuronDetails if available (for add-neurons candidates)
-    // This is what Rust requested
+    // Include the original Rust candidate response for debugging
+    // This allows comparison between what Rust suggested and what happened
     if (candidate.change.neuronDetails) {
       cacheEntry.rustRequest = {
         neuronDetails: candidate.change.neuronDetails,
+      };
+    }
+
+    // Include original Rust synapse candidate (for add-synapses candidates)
+    if (candidate.change.synapseCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        synapseCandidate: candidate.change.synapseCandidate,
+      };
+    }
+
+    // Include original Rust squash candidate (for change-squash candidates)
+    if (candidate.change.squashCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        squashCandidate: candidate.change.squashCandidate,
       };
     }
 
@@ -873,11 +889,27 @@ export function recordFailureSync(
       ...(discoveryVersion ? { discoveryVersion } : {}),
     };
 
-    // Include neuronDetails if available (for add-neurons candidates)
-    // This is what Rust requested
+    // Include the original Rust candidate response for debugging
+    // This allows comparison between what Rust suggested and what happened
     if (candidate.change.neuronDetails) {
       cacheEntry.rustRequest = {
         neuronDetails: candidate.change.neuronDetails,
+      };
+    }
+
+    // Include original Rust synapse candidate (for add-synapses candidates)
+    if (candidate.change.synapseCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        synapseCandidate: candidate.change.synapseCandidate,
+      };
+    }
+
+    // Include original Rust squash candidate (for change-squash candidates)
+    if (candidate.change.squashCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        squashCandidate: candidate.change.squashCandidate,
       };
     }
 

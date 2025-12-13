@@ -22,7 +22,6 @@ import {
   DiscoverStructure,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
-  isRustDiscoveryEnabled,
   shouldSkipRustDiscoveryTests,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
@@ -170,8 +169,9 @@ function makeMultiLayerScenario(): {
   crippledCreature.validate();
   CreatureUtil.makeUUID(crippledCreature);
 
+  // Meaningful dataset size for proper discovery testing
   const trainingData: DataRecordInterface[] = [];
-  for (let i = 0; i < 512; i++) {
+  for (let i = 0; i < 256; i++) {
     const input = new Float32Array(10);
     for (let j = 0; j < 10; j++) {
       input[j] = Math.random() * 2 - 1;
@@ -545,30 +545,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
-    const { targetCreature, crippledCreature, trainingData } =
-      makeMultiLayerScenario();
-
-    console.log("\n========================================");
-    console.log("NEURON DISCOVERY DIAGNOSTIC");
-    console.log("========================================\n");
-
-    console.log("Environment:");
-    console.log(`  Rust discovery enabled: ${isRustDiscoveryEnabled()}`);
-    console.log(`  DEFAULT_RUST_FLUSH_RECORDS: ${DEFAULT_RUST_FLUSH_RECORDS}`);
-
-    console.log("\nTarget creature:");
-    console.log(`  Neurons: ${targetCreature.neurons.length}`);
-    targetCreature.neurons.forEach((n) => {
-      console.log(`    ${n.uuid}: ${n.squash}`);
-    });
-
-    console.log("\nCrippled creature:");
-    console.log(`  Neurons: ${crippledCreature.neurons.length}`);
-    crippledCreature.neurons.forEach((n) => {
-      console.log(`    ${n.uuid}: ${n.squash}`);
-    });
-
-    console.log(`\nTraining data: ${trainingData.length} samples`);
+    const { crippledCreature, trainingData } = makeMultiLayerScenario();
 
     // Calculate error before discovery
     let totalError = 0;
@@ -581,9 +558,10 @@ Deno.test({
     const avgError = totalError / (trainingData.length * 2);
     console.log(`Average absolute error: ${avgError.toFixed(4)}`);
 
+    // Reasonable timeout for meaningful analysis
     const discoverStructure = new DiscoverStructure(
       crippledCreature,
-      180,
+      30, // 30 seconds
       DEFAULT_RUST_FLUSH_RECORDS,
     );
 

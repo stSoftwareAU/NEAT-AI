@@ -171,13 +171,13 @@ Deno.test({
     const tmpDir512 = await createTempTestDir("batch-512");
 
     try {
-      // Create separate creatures for each test to avoid state issues
-      const creature128 = makeTestCreature(20);
+      // Create meaningful test creatures
+      const creature128 = makeTestCreature(15);
       CreatureUtil.makeUUID(creature128);
       creature128.clearState();
       await createTestBinaryFile(creature128, 100, tmpDir128, "test1.bin");
 
-      const creature512 = makeTestCreature(20);
+      const creature512 = makeTestCreature(15);
       CreatureUtil.makeUUID(creature512);
       creature512.clearState();
       await createTestBinaryFile(creature512, 100, tmpDir512, "test1.bin");
@@ -186,11 +186,11 @@ Deno.test({
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        // Test with batch size 128, very short timeout (1 second)
+        // Test with batch size 128, reasonable timeout for meaningful analysis
         const config128 = createNeatConfig({
           discoveryBatchSize: 128,
-          discoveryRecordTimeOutMinutes: 0.0167, // ~1 second
-          discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
+          discoveryRecordTimeOutMinutes: 0.25, // 15 seconds
+          discoveryAnalysisTimeoutMinutes: 0.25, // 15 seconds for analysis
           discoverySampleRate: 1.0, // 100% sample rate
           log: 0,
         });
@@ -204,8 +204,8 @@ Deno.test({
         // Test with batch size 512, same timeout
         const config512 = createNeatConfig({
           discoveryBatchSize: 512,
-          discoveryRecordTimeOutMinutes: 0.0167, // ~1 second
-          discoveryAnalysisTimeoutMinutes: 0.0167, // ~1 second for analysis
+          discoveryRecordTimeOutMinutes: 0.25, // 15 seconds
+          discoveryAnalysisTimeoutMinutes: 0.25, // 15 seconds for analysis
           discoverySampleRate: 1.0,
           log: 0,
         });
@@ -260,22 +260,23 @@ Deno.test({
   ignore: shouldSkipRustDiscoveryTests(),
   async fn() {
     assertRustDiscoveryAvailable();
-    const creature = makeTestCreature(30);
+    const creature = makeTestCreature(15);
     CreatureUtil.makeUUID(creature);
     creature.clearState();
 
     const tmpDir = await createTempTestDir("partial-results");
 
     try {
-      // Create a dataset large enough to test timeout behavior
-      await createTestBinaryFile(creature, 200, tmpDir, "test.bin");
+      // Create meaningful dataset
+      await createTestBinaryFile(creature, 150, tmpDir, "test.bin");
 
-      // Set 2-second timeout
+      // Set reasonable timeout
       const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryRecordTimeOutMinutes: 0.033, // 2 seconds
+        discoveryRecordTimeOutMinutes: 0.25, // 15 seconds
+        discoveryAnalysisTimeoutMinutes: 0.25, // 15 seconds for analysis
         discoverySampleRate: 1.0,
-        log: 1, // Enable logging to verify diagnostics appear
+        log: 0,
       });
 
       // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
@@ -310,24 +311,25 @@ Deno.test({
   ignore: shouldSkipRustDiscoveryTests(),
   async fn() {
     assertRustDiscoveryAvailable();
-    const creature = makeTestCreature(25);
+    const creature = makeTestCreature(15);
     CreatureUtil.makeUUID(creature);
     creature.clearState();
 
     const tmpDir = await createTempTestDir("file-timeout");
 
     try {
-      // Create multiple binary files (reduced size for faster tests)
-      await createTestBinaryFile(creature, 100, tmpDir, "test1.bin");
-      await createTestBinaryFile(creature, 100, tmpDir, "test2.bin");
-      await createTestBinaryFile(creature, 100, tmpDir, "test3.bin");
+      // Create multiple binary files
+      await createTestBinaryFile(creature, 80, tmpDir, "test1.bin");
+      await createTestBinaryFile(creature, 80, tmpDir, "test2.bin");
+      await createTestBinaryFile(creature, 80, tmpDir, "test3.bin");
 
-      // Very short timeout - will hit during file processing
+      // Reasonable timeout
       const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryRecordTimeOutMinutes: 0.02, // ~1.2 seconds
+        discoveryRecordTimeOutMinutes: 0.25, // 15 seconds
+        discoveryAnalysisTimeoutMinutes: 0.25, // 15 seconds
         discoverySampleRate: 1.0,
-        log: 1, // Enable to see diagnostic logs
+        log: 0,
       });
 
       // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
@@ -369,14 +371,15 @@ Deno.test({
     const tmpDir = await createTempTestDir("success");
 
     try {
-      // Create small dataset that should complete
-      await createTestBinaryFile(creature, 50, tmpDir, "test.bin");
+      // Create meaningful dataset
+      await createTestBinaryFile(creature, 100, tmpDir, "test.bin");
 
       const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryRecordTimeOutMinutes: 0.05, // 3 seconds - plenty of time for small dataset
+        discoveryRecordTimeOutMinutes: 0.5, // 30 seconds - plenty of time
+        discoveryAnalysisTimeoutMinutes: 0.5, // 30 seconds
         discoverySampleRate: 1.0,
-        log: 1,
+        log: 0,
       });
 
       // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)

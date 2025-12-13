@@ -95,6 +95,10 @@ interface DiscoveryCandidateChange {
   neuronDetails?: DiscoveredNeuronDetails;
   /** Details of synapse removal (for synapse removal candidates). */
   synapseDetails?: SynapseRemovalDetails;
+  /** Original Rust synapse candidate response (for add-synapses candidates). */
+  synapseCandidate?: CandidateSynapse;
+  /** Original Rust squash candidate response (for change-squash candidates). */
+  squashCandidate?: CandidateSquash;
 }
 
 export interface DiscoveryCandidate {
@@ -752,6 +756,7 @@ function buildSingleSynapseCandidates(
         } -> ${shortID(synapse.toNeuronUUID)}`,
         expectedErrorReduction: getExpected?.(synapse),
         sampleSize: synapse.totalCount,
+        synapseCandidate: synapse, // Store original Rust response for debugging
       },
     });
   }
@@ -866,6 +871,7 @@ function buildSingleSquashCandidates(
           shortID(squash.neuronUUID)
         } (${oldSquash} -> ${squash.squash}${improvement})`,
         expectedErrorReduction: scaledExpected,
+        squashCandidate: squash, // Store original Rust response for debugging
       },
     });
   }
