@@ -65,7 +65,6 @@ const DEFAULT_WORKER_FACTORY: DiscoveryRunnerWorkerFactory = (args) =>
   );
 
 const DEFAULT_RUST_CHECK = () => isRustDiscoveryEnabled();
-const EXPECTATION_ALERT_THRESHOLD = 25; // percentage-point gap before warning
 
 export interface DiscoveryDirInput {
   creature: Creature;
@@ -82,14 +81,8 @@ export interface DiscoveryEvaluationSummary {
   scoreDelta?: number;
   improved: boolean;
   archivePath?: string;
-  expectedErrorReductionPct?: number;
   errorDelta?: number;
   errorDeltaPct?: number;
-  expectationMismatch?: {
-    expectedPct: number;
-    actualPct: number;
-    gapPct: number;
-  };
   /** Details of discovered neuron (for single neuron candidates). */
   neuronDetails?: DiscoveredNeuronDetails;
 }
@@ -618,16 +611,6 @@ export class DiscoveryRunner {
         ? evaluation.error === 0 ? 0 : -100
         : (errorDelta / originalError) * 100;
 
-      const expectedErrorReductionPct = evaluation.candidate?.change
-          .expectedErrorReduction !== undefined
-        ? evaluation.candidate.change.expectedErrorReduction * 100
-        : undefined;
-
-      const expectationMismatch = this.#computeExpectationMismatch(
-        expectedErrorReductionPct,
-        evaluation.kind === "candidate" ? errorDeltaPct : undefined,
-      );
-
       let archivePath: string | undefined;
       const exportPayload = evaluation.kind === "original"
         ? originalExport
@@ -646,8 +629,6 @@ export class DiscoveryRunner {
           improved,
           errorDelta,
           errorDeltaPct,
-          expectedErrorReductionPct,
-          expectationMismatch,
           creature: exportPayload,
         });
       }
@@ -661,10 +642,8 @@ export class DiscoveryRunner {
         scoreDelta,
         improved,
         archivePath,
-        expectedErrorReductionPct,
         errorDelta,
         errorDeltaPct,
-        expectationMismatch,
         neuronDetails: evaluation.candidate?.change.neuronDetails,
       });
     }
@@ -699,17 +678,10 @@ export class DiscoveryRunner {
     const original = summaries.find((s) => s.kind === "original");
     const candidates = summaries.filter((s) => s.kind === "candidate");
 
-    // Sort candidates by expected improvement (descending), undefined values last
-    candidates.sort((a, b) => {
-      const aExp = a.expectedErrorReductionPct;
-      const bExp = b.expectedErrorReductionPct;
-      if (aExp === undefined && bExp === undefined) return 0;
-      if (aExp === undefined) return 1;
-      if (bExp === undefined) return -1;
-      return bExp - aExp;
-    });
+    // Sort candidates by actual improvement (scoreDelta descending)
+    candidates.sort((a, b) => (b.scoreDelta ?? 0) - (a.scoreDelta ?? 0));
 
-    // Identify the best candidate (first in sorted list)
+    // Identify the best candidate (highest score delta)
     const bestCandidate = candidates.length > 0 ? candidates[0] : undefined;
 
     console.info(
@@ -761,10 +733,6 @@ export class DiscoveryRunner {
       }
     }
 
-    const expectedText = summary.expectedErrorReductionPct !== undefined
-      ? ` expected ${this.#formatExpected(summary.expectedErrorReductionPct)}`
-      : "";
-
     const scoreText = `score=${summary.score.toPrecision(4)}`;
     const scoreDeltaText = summary.kind === "candidate" &&
         summary.scoreDelta !== undefined
@@ -776,28 +744,16 @@ export class DiscoveryRunner {
       ? ` ${summary.improved ? green("✓improved") : yellow("no-improvement")}`
       : "";
 
-    const mismatchText = summary.expectationMismatch
-      ? ` ${
-        red(
-          `⚠ mismatch expected ${
-            this.#formatExpected(summary.expectationMismatch.expectedPct)
-          } vs actual ${
-            this.#formatErrorDelta(summary.expectationMismatch.actualPct)
-          }`,
-        )
-      }`
-      : "";
-
     const bestMarker = isBest ? bold(cyan(" ★BEST")) : "";
 
     const mainInfo = summary.kind === "original"
       ? `error=${summary.error.toPrecision(6)} ${scoreText} ${errorDeltaText}`
       : `error=${
         summary.error.toPrecision(6)
-      } ${scoreText}${scoreDeltaText}${improvedText} ${errorDeltaText}${expectedText}${bestMarker}`;
+      } ${scoreText}${scoreDeltaText}${improvedText} ${errorDeltaText}${bestMarker}`;
 
     console.info(
-      `[DiscoveryRunner]   ${label}${description}: ${mainInfo}${mismatchText}`,
+      `[DiscoveryRunner]   ${label}${description}: ${mainInfo}`,
     );
 
     // Log full neuron details for ALL candidates with neuron details
@@ -823,33 +779,8 @@ export class DiscoveryRunner {
     }
   }
 
-  #computeExpectationMismatch(
-    expected?: number,
-    actual?: number,
-  ): { expectedPct: number; actualPct: number; gapPct: number } | undefined {
-    if (
-      expected === undefined || !Number.isFinite(expected) ||
-      actual === undefined || !Number.isFinite(actual)
-    ) {
-      return undefined;
-    }
-    const gap = expected - actual;
-    if (Math.abs(gap) < EXPECTATION_ALERT_THRESHOLD) {
-      return undefined;
-    }
-    return {
-      expectedPct: expected,
-      actualPct: actual,
-      gapPct: gap,
-    };
-  }
-
   #formatErrorDelta(value: number): string {
     return formatErrorDelta(value);
-  }
-
-  #formatExpected(value: number): string {
-    return formatExpected(value);
   }
 
   async #evaluateAll(
@@ -1292,17 +1223,4 @@ export function formatErrorDelta(value: number): string {
   if (value > 0.05) return green(formatted);
   if (value < -0.05) return red(formatted);
   return yellow(formatted);
-}
-
-/**
- * Formats an expected improvement percentage.
- *
- * @param value - The expected improvement percentage (e.g., 0.5 for 0.5%)
- * @returns Formatted string in cyan colour
- */
-export function formatExpected(value: number): string {
-  if (!Number.isFinite(value)) {
-    return cyan("n/a");
-  }
-  return cyan(formatPercentWithSignificantDigits(value));
 }

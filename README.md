@@ -186,12 +186,12 @@ results:
 
 1. **Disable library logging**: Set
    `discoveryDisableEvaluationSummaryLogging: true` in your options
-2. **Use exported formatting utilities**: Import `formatErrorDelta`,
-   `formatExpected`, and `formatPercentWithSignificantDigits` from the discovery
-   module to format summaries consistently
+2. **Use exported formatting utilities**: Import `formatErrorDelta` and
+   `formatPercentWithSignificantDigits` from the discovery module to format
+   summaries consistently
 
 ```typescript
-import { formatErrorDelta, formatExpected } from "./mod.ts";
+import { formatErrorDelta } from "./mod.ts";
 
 const result = await creature.discoveryDir(dataDir, {
   discoveryDisableEvaluationSummaryLogging: true, // Disable library logging

@@ -144,7 +144,6 @@ export { upgradeTwo } from "./src/upgrade/UpgradeTwo.ts";
  */
 export {
   formatErrorDelta,
-  formatExpected,
   formatPercentWithSignificantDigits,
 } from "./src/discovery/DiscoveryRunner.ts";
 
