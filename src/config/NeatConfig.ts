@@ -19,6 +19,18 @@ export const DEFAULT_COST_OF_GROWTH = 0.000_000_1;
 export const MIN_COST_OF_GROWTH = 0.000_000_000_1;
 
 /**
+ * Minimum allowed discovery analysis timeout in minutes.
+ * The Rust library requires at least 3 seconds (0.05 minutes).
+ */
+export const MIN_ANALYSIS_TIMEOUT_MINUTES = 0.05; // 3 seconds
+
+/**
+ * Maximum allowed discovery analysis timeout in minutes.
+ * The Rust library allows up to 1 hour (60 minutes).
+ */
+export const MAX_ANALYSIS_TIMEOUT_MINUTES = 60; // 1 hour
+
+/**
  * Default minimum candidates per discovery category.
  * These values reflect the current behaviour where diversity selection
  * picks at least 1 from each category, and removal candidates sample 3.
@@ -328,12 +340,14 @@ function validate(config: NeatArguments) {
       `Genetic Compatibility Threshold must be between 0 and 1 was: ${config.geneticCompatibilityThreshold}`,
     );
   }
+  // Rust library requires timeout between 3 seconds (0.05 min) and 1 hour (60 min)
   if (
     Number.isFinite(config.discoveryAnalysisTimeoutMinutes) === false ||
-    config.discoveryAnalysisTimeoutMinutes <= 0
+    config.discoveryAnalysisTimeoutMinutes < MIN_ANALYSIS_TIMEOUT_MINUTES ||
+    config.discoveryAnalysisTimeoutMinutes > MAX_ANALYSIS_TIMEOUT_MINUTES
   ) {
     throw new Error(
-      `Discovery Analysis Timeout Minutes must be greater than 0 was: ${config.discoveryAnalysisTimeoutMinutes}`,
+      `Discovery Analysis Timeout Minutes must be between ${MIN_ANALYSIS_TIMEOUT_MINUTES} (3 seconds) and ${MAX_ANALYSIS_TIMEOUT_MINUTES} (1 hour), was: ${config.discoveryAnalysisTimeoutMinutes}`,
     );
   }
   if (
