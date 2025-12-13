@@ -100,6 +100,8 @@ interface DiscoveryCandidateChange {
   synapseDetails?: SynapseRemovalDetails;
   /** Original Rust synapse candidate response (for add-synapses candidates). */
   synapseCandidate?: CandidateSynapse;
+  /** Original Rust neuron candidate response (for add-neurons candidates). */
+  neuronCandidate?: CandidateNeuron;
   /** Original Rust squash candidate response (for change-squash candidates). */
   squashCandidate?: CandidateSquash;
   /** Original Rust removal candidate response (for remove-low-impact candidates). */
@@ -860,6 +862,8 @@ function buildSingleNeuronCandidates(
           bias: neuron.bias,
           squash: neuron.squash,
         },
+        // Store the full Rust neuron candidate for failure cache debugging
+        neuronCandidate: neuron,
       },
     });
   }
