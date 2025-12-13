@@ -375,6 +375,129 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
 });
 
 /**
+ * Test for issue #920: Combined removal candidate should be created even if
+ * one removal fails during sequential application.
+ *
+ * When building a combined removal candidate, if one neuron was already removed
+ * as part of orphan cleanup from a previous removal, the loop should continue
+ * with remaining removals rather than aborting entirely.
+ *
+ * Expected: 42 individual + 1 combined = 43 total removal candidates
+ * Bug: Only 42 created because combined candidate loop breaks on first failure
+ */
+Deno.test("combined removal candidate should be created when some removals fail", () => {
+  // Create a creature where neuron A connects only to neuron B.
+  // The order in removalCandidates is [B, A, C]:
+  // - When B is removed first in the combined loop, A becomes orphaned and is cleaned up
+  // - When we try to remove A second, it fails (already removed by orphan cleanup)
+  // - The bug causes the loop to break, missing C
+  // - The fix should skip A and continue with C
+  const baseCreature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      {
+        type: "hidden",
+        squash: "RELU",
+        bias: 0.1,
+        uuid: "neuron-A-connects-only-to-B",
+      },
+      {
+        type: "hidden",
+        squash: "RELU",
+        bias: 0.2,
+        uuid: "neuron-B-target-of-A",
+      },
+      {
+        type: "hidden",
+        squash: "RELU",
+        bias: 0.3,
+        uuid: "neuron-C-independent",
+      },
+      { type: "output", squash: "IDENTITY", bias: 0, uuid: "output-0" },
+    ],
+    synapses: [
+      // A connects only to B (so A becomes orphaned when B is removed)
+      {
+        fromUUID: "input-0",
+        toUUID: "neuron-A-connects-only-to-B",
+        weight: 0.1,
+      },
+      {
+        fromUUID: "neuron-A-connects-only-to-B",
+        toUUID: "neuron-B-target-of-A",
+        weight: 0.1,
+      },
+      // B connects to output
+      { fromUUID: "neuron-B-target-of-A", toUUID: "output-0", weight: 0.1 },
+      // C is independent - connects input to output
+      { fromUUID: "input-1", toUUID: "neuron-C-independent", weight: 0.1 },
+      { fromUUID: "neuron-C-independent", toUUID: "output-0", weight: 0.1 },
+    ],
+  });
+
+  // Order matters: B first (which orphans A), then A (which fails), then C
+  const discovery: DiscoverResult = {
+    ID: "issue-920-test",
+    addHelpfulSynapses: undefined,
+    addHelpfulNeurons: undefined,
+    removeHarmfulSynapse: undefined,
+    removeHarmfulNeurons: undefined,
+    removalCandidates: [
+      // B is removed first - this orphans A
+      {
+        neuronUUID: "neuron-B-target-of-A",
+        totalError: 0.001,
+        impact: 1e-10,
+        reason: "Low impact",
+      },
+      // A is removed second - should fail because it was already removed by orphan cleanup
+      {
+        neuronUUID: "neuron-A-connects-only-to-B",
+        totalError: 0.001,
+        impact: 1e-10,
+        reason: "Low impact",
+      },
+      // C is independent and should still be removed
+      {
+        neuronUUID: "neuron-C-independent",
+        totalError: 0.001,
+        impact: 1e-10,
+        reason: "Low impact",
+      },
+    ],
+    candidateSquashes: undefined,
+  };
+
+  const candidates = buildDiscoveryCandidates(baseCreature, discovery);
+
+  const removalCandidates = candidates.filter(
+    (c) => c.change.type === "remove-low-impact",
+  );
+
+  // Should have 3 individual + 1 combined = 4 candidates
+  // The bug was: only 3 created because the combined candidate wasn't built
+  // when removing A fails (A was already removed during B's orphan cleanup)
+  assertEquals(
+    removalCandidates.length >= 4,
+    true,
+    `Should create at least 4 removal candidates (3 individual + 1 combined), got ${removalCandidates.length}`,
+  );
+
+  // Find the combined candidate (description contains "combined" or "Pruned")
+  const combinedCandidate = removalCandidates.find(
+    (c) =>
+      c.change.description?.includes("combined") ||
+      c.change.description?.includes("Pruned"),
+  );
+
+  assertExists(
+    combinedCandidate,
+    "Should create a combined removal candidate even if some removals fail",
+  );
+});
+
+/**
  * Test for issue #912: removeLowImpactNeuron should clean up memetic data
  * when removing a neuron that is referenced in the memetic weights/biases.
  *
