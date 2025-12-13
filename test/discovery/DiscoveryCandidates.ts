@@ -85,14 +85,18 @@ Deno.test(
       fromNeuronUUID: "input-2",
       toNeuronUUID: "hidden-1",
       weight: 0.99,
-      expectedImprovementPercentage: 0.25,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.25,
       improvedCount: 5,
       totalCount: 6,
     }, {
       fromNeuronUUID: "input-3",
       toNeuronUUID: "hidden-2",
       weight: -0.55,
-      expectedImprovementPercentage: 0.3,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.3,
       improvedCount: 6,
       totalCount: 7,
     }];
@@ -149,14 +153,14 @@ Deno.test(
       neuronUUID: "hidden-1",
       previousSquash: IDENTITY.NAME,
       squash: TANH.NAME,
-      expectedImprovementPercentage: 0.4,
+      expectedCreatureScoreGain: 0.4,
       improvedError: 0.1,
       currentError: 0.2,
     }, {
       neuronUUID: "hidden-2",
       previousSquash: IDENTITY.NAME,
       squash: Mish.NAME,
-      expectedImprovementPercentage: 0.3,
+      expectedCreatureScoreGain: 0.3,
       improvedError: 0.2,
       currentError: 0.4,
     }];
@@ -214,14 +218,18 @@ Deno.test(
       fromNeuronUUID: "input-2",
       toNeuronUUID: "hidden-1",
       weight: 0.91,
-      expectedImprovementPercentage: 0.05,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.05,
       improvedCount: 3,
       totalCount: 4,
     }, {
       fromNeuronUUID: "input-3",
       toNeuronUUID: "hidden-2",
       weight: -0.33,
-      expectedImprovementPercentage: 0.35,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.35,
       improvedCount: 6,
       totalCount: 7,
     }];
@@ -232,7 +240,9 @@ Deno.test(
       outgoingWeight: -0.12,
       squash: TANH.NAME,
       bias: 0.1,
-      expectedImprovementPercentage: 0.1,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.1,
       improvedCount: 5,
       totalCount: 6,
     }, {
@@ -242,7 +252,9 @@ Deno.test(
       outgoingWeight: 0.22,
       squash: Mish.NAME,
       bias: -0.05,
-      expectedImprovementPercentage: 0.45,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.45,
       improvedCount: 7,
       totalCount: 8,
     }];
@@ -250,14 +262,14 @@ Deno.test(
       neuronUUID: "hidden-1",
       previousSquash: IDENTITY.NAME,
       squash: Mish.NAME,
-      expectedImprovementPercentage: 0.05,
+      expectedCreatureScoreGain: 0.05,
       improvedError: 0.2,
       currentError: 0.6,
     }, {
       neuronUUID: "hidden-2",
       previousSquash: IDENTITY.NAME,
       squash: TANH.NAME,
-      expectedImprovementPercentage: 0.34,
+      expectedCreatureScoreGain: 0.34,
       improvedError: 0.1,
       currentError: 0.4,
     }];
@@ -265,7 +277,9 @@ Deno.test(
       fromNeuronUUID: "input-0",
       toNeuronUUID: "hidden-1",
       weight: -0.99,
-      expectedImprovementPercentage: 0.2,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.2,
       improvedCount: 3,
       totalCount: 5,
     };
@@ -332,13 +346,13 @@ Deno.test(
     const harmfulNeurons: CandidateHarmfulNeuron[] = [{
       neuronUUID: "hidden-1",
       errorMagnitude: 1.5e11, // Above 1e10 threshold
-      expectedImprovementPercentage: 0.85,
+      expectedCreatureScoreGain: 0.85,
       sampleCount: 100,
       averageActivation: 0.75,
     }, {
       neuronUUID: "hidden-2",
       errorMagnitude: 1.2e11, // Second most harmful
-      expectedImprovementPercentage: 0.80,
+      expectedCreatureScoreGain: 0.80,
       sampleCount: 90,
       averageActivation: 0.70,
     }];
@@ -346,14 +360,18 @@ Deno.test(
       fromNeuronUUID: "input-1",
       toNeuronUUID: "hidden-2",
       weight: 0.5,
-      expectedImprovementPercentage: 0.2,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.2,
       improvedCount: 4,
       totalCount: 5,
     }, {
       fromNeuronUUID: "input-2",
       toNeuronUUID: "hidden-2",
       weight: 0.6,
-      expectedImprovementPercentage: 0.3,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.3,
       improvedCount: 5,
       totalCount: 6,
     }];
@@ -403,7 +421,9 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
     outgoingWeight: -0.27,
     squash: TANH.NAME,
     bias: 0.11,
-    expectedImprovementPercentage: 0.25,
+    targetNeuronImpact: 1.0,
+    expectedCreatureErrorReduction: 0,
+    expectedCreatureScoreGain: 0.25,
     improvedCount: 8,
     totalCount: 10,
   };
@@ -451,7 +471,9 @@ Deno.test(
       fromNeuronUUID: "hidden-2",
       toNeuronUUID: "output-0",
       weight: 0.9,
-      expectedImprovementPercentage: 0.2,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.2,
       improvedCount: 3,
       totalCount: 5,
     }];
@@ -459,7 +481,9 @@ Deno.test(
       fromNeuronUUID: "input-0",
       toNeuronUUID: "hidden-1",
       weight: 0.1,
-      expectedImprovementPercentage: 0.15,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.15,
       improvedCount: 4,
       totalCount: 6,
     };
@@ -470,7 +494,9 @@ Deno.test(
       outgoingWeight: -0.22,
       squash: TANH.NAME,
       bias: 0.07,
-      expectedImprovementPercentage: 0.18,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.18,
       improvedCount: 6,
       totalCount: 8,
     };
@@ -478,7 +504,7 @@ Deno.test(
       neuronUUID: "hidden-1",
       previousSquash: IDENTITY.NAME,
       squash: Mish.NAME,
-      expectedImprovementPercentage: 0.21,
+      expectedCreatureScoreGain: 0.21,
       improvedError: 0.04,
       currentError: 0.09,
     };
@@ -563,7 +589,7 @@ Deno.test(
     const harmfulNeuron: CandidateHarmfulNeuron = {
       neuronUUID: "hidden-1",
       errorMagnitude: 1.5e11, // Above 1e10 threshold
-      expectedImprovementPercentage: 0.85,
+      expectedCreatureScoreGain: 0.85,
       sampleCount: 100,
       averageActivation: 0.75, // Average activation for bias adjustment
     };
@@ -624,8 +650,8 @@ Deno.test(
     );
     assertEquals(
       removeNeuronCandidate.change.expectedErrorReduction,
-      harmfulNeuron.expectedImprovementPercentage,
-      "Expected error reduction should match harmful neuron's expected improvement",
+      harmfulNeuron.expectedCreatureScoreGain,
+      "Expected error reduction should match harmful neuron's expected creature score gain",
     );
     assertEquals(
       removeNeuronCandidate.change.sampleSize,
@@ -674,7 +700,7 @@ Deno.test(
     const harmfulNeuron: CandidateHarmfulNeuron = {
       neuronUUID: "hidden-1",
       errorMagnitude: 1.5e11,
-      expectedImprovementPercentage: 0.85,
+      expectedCreatureScoreGain: 0.85,
       sampleCount: 100,
       averageActivation: 0.75,
     };
@@ -745,7 +771,9 @@ Deno.test(
       fromNeuronUUID: "input-2",
       toNeuronUUID: "hidden-2",
       weight: 0.88,
-      expectedImprovementPercentage: 0.3,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.3,
       improvedCount: 7,
       totalCount: 8,
     }];
@@ -753,7 +781,9 @@ Deno.test(
       fromNeuronUUID: "input-0",
       toNeuronUUID: "hidden-1",
       weight: -0.5,
-      expectedImprovementPercentage: 0.2,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.2,
       improvedCount: 4,
       totalCount: 6,
     };
@@ -823,7 +853,9 @@ Deno.test(
       fromNeuronUUID: "input-3",
       toNeuronUUID: "hidden-2",
       weight: 0.77,
-      expectedImprovementPercentage: 0.28,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.28,
       improvedCount: 6,
       totalCount: 7,
     }];
@@ -831,7 +863,7 @@ Deno.test(
       neuronUUID: "hidden-1",
       previousSquash: IDENTITY.NAME,
       squash: TANH.NAME,
-      expectedImprovementPercentage: 0.35,
+      expectedCreatureScoreGain: 0.35,
       improvedError: 0.05,
       currentError: 0.15,
     }];
@@ -902,7 +934,9 @@ Deno.test(
       fromNeuronUUID: "input-0",
       toNeuronUUID: "hidden-1",
       weight: -50.0, // Large negative weight simulating harmful synapse
-      expectedImprovementPercentage: 0.35,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.35,
       improvedCount: 8,
       totalCount: 10,
     };
@@ -971,7 +1005,9 @@ Deno.test(
       fromNeuronUUID: "input-0",
       toNeuronUUID: "hidden-1",
       weight: 0.1, // Match existing weight
-      expectedImprovementPercentage: 0.2,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.2,
       improvedCount: 5,
       totalCount: 10,
     };
@@ -1013,7 +1049,9 @@ Deno.test(
       fromNeuronUUID: "input-3",
       toNeuronUUID: "output-1",
       weight: 0.5,
-      expectedImprovementPercentage: 0.15,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.15,
       improvedCount: 3,
       totalCount: 8,
     };
@@ -1050,7 +1088,9 @@ Deno.test(
       fromNeuronUUID: "input-3",
       toNeuronUUID: "output-1",
       weight: -10.0,
-      expectedImprovementPercentage: 0.4,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.4,
       improvedCount: 8,
       totalCount: 10,
     };

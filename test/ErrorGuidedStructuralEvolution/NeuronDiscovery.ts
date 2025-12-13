@@ -333,7 +333,7 @@ Deno.test({
           );
           console.log(
             `    improvement: ${
-              (c.expectedImprovementPercentage * 100).toFixed(2)
+              (c.expectedCreatureScoreGain * 100).toFixed(2)
             }%`,
           );
         });
@@ -394,7 +394,7 @@ Deno.test({
           const best = candidates[0];
           console.log(
             `  Best: ${best.squash} ${best.fromNeuronUUID}->${best.toNeuronUUID} (${
-              (best.expectedImprovementPercentage * 100).toFixed(2)
+              (best.expectedCreatureScoreGain * 100).toFixed(2)
             }%)`,
           );
         }
@@ -466,7 +466,7 @@ Deno.test({
         candidates.slice(0, 5).forEach((c) => {
           console.log(
             `  ${c.squash}: ${c.fromNeuronUUID} -> ${c.toNeuronUUID} (${
-              (c.expectedImprovementPercentage * 100).toFixed(2)
+              (c.expectedCreatureScoreGain * 100).toFixed(2)
             }%)`,
           );
         });
@@ -520,7 +520,7 @@ Deno.test({
           bundle.helpfulNeurons.slice(0, 3).forEach((n) => {
             console.log(
               `  ${n.squash}: ${n.fromNeuronUUID} -> ${n.toNeuronUUID} (${
-                (n.expectedImprovementPercentage * 100).toFixed(2)
+                (n.expectedCreatureScoreGain * 100).toFixed(2)
               }%)`,
             );
           });
@@ -597,7 +597,7 @@ Deno.test({
             console.log(`      bias: ${c.bias.toFixed(4)}`);
             console.log(
               `      improvement: ${
-                (c.expectedImprovementPercentage * 100).toFixed(4)
+                (c.expectedCreatureScoreGain * 100).toFixed(4)
               }%`,
             );
             console.log(`      improved: ${c.improvedCount}/${c.totalCount}`);
@@ -686,7 +686,9 @@ Deno.test({
       bias: 0.1,
       incomingWeight: 0.5,
       outgoingWeight: 0.3,
-      expectedImprovementPercentage: 0.01, // 1% - realistic small improvement
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0.01,
+      expectedCreatureScoreGain: 0.01, // 1% - realistic small improvement
       improvedCount: 51,
       totalCount: 100,
     }];

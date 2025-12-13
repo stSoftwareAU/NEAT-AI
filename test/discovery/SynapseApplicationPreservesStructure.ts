@@ -74,7 +74,9 @@ function makeValidCreatureWithGap(): {
     fromNeuronUUID: "input-0",
     toNeuronUUID: "hidden-B",
     weight: 0.75,
-    expectedImprovementPercentage: 0.15,
+    targetNeuronImpact: 1.0,
+    expectedCreatureErrorReduction: 0,
+    expectedCreatureScoreGain: 0.15,
     improvedCount: 10,
     totalCount: 12,
   };
@@ -241,7 +243,9 @@ Deno.test({
       fromNeuronUUID: "input-0",
       toNeuronUUID: "hidden-A", // This connection already exists
       weight: 0.99,
-      expectedImprovementPercentage: 0.1,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.1,
       improvedCount: 5,
       totalCount: 6,
     };
@@ -286,7 +290,9 @@ Deno.test({
         fromNeuronUUID: "input-0",
         toNeuronUUID: "hidden-A", // Duplicate - should be skipped
         weight: 0.99,
-        expectedImprovementPercentage: 0.1,
+        targetNeuronImpact: 1.0,
+        expectedCreatureErrorReduction: 0,
+        expectedCreatureScoreGain: 0.1,
         improvedCount: 5,
         totalCount: 6,
       },
@@ -294,7 +300,9 @@ Deno.test({
         fromNeuronUUID: "input-1",
         toNeuronUUID: "non-existent-neuron", // Invalid target - should be skipped
         weight: 0.5,
-        expectedImprovementPercentage: 0.2,
+        targetNeuronImpact: 1.0,
+        expectedCreatureErrorReduction: 0,
+        expectedCreatureScoreGain: 0.2,
         improvedCount: 3,
         totalCount: 4,
       },

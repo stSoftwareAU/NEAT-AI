@@ -157,7 +157,7 @@ Deno.test("squash estimates scale by neuron impact to avoid inflated expectation
       "Expected diluted chain neuron to return a squash candidate.",
     );
     assert(
-      candidate.expectedImprovementPercentage < 1e-4,
+      candidate.expectedCreatureScoreGain < 1e-4,
       "Expected improvement should be scaled down by the neuron's tiny impact.",
     );
   } finally {

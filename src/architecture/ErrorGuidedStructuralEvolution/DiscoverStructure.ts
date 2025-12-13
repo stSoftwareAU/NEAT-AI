@@ -127,25 +127,58 @@ export interface NeuronStats {
   activationMax: number;
 }
 
+/**
+ * Represents a synapse candidate proposed during discovery.
+ *
+ * As of Rust v0.2.0, this interface uses creature-level metrics:
+ * - targetNeuronImpact: 0.0-1.0, where output neurons = 1.0
+ * - expectedCreatureErrorReduction: creature-level error reduction
+ * - expectedCreatureScoreGain: creature-level score improvement
+ *
+ * These values are already scaled by the neuron's impact on creature output,
+ * so TypeScript should NOT apply additional scaling.
+ */
 export interface CandidateSynapse {
   fromNeuronUUID: string;
   toNeuronUUID: string;
   weight: number;
-  expectedImprovementPercentage: number;
+  targetNeuronImpact: number;
+  expectedCreatureErrorReduction: number;
+  expectedCreatureScoreGain: number;
   improvedCount: number;
   totalCount: number;
   targetNeuronStats?: NeuronStats;
 }
 
+/**
+ * Represents a squash (activation function) change candidate.
+ *
+ * As of Rust v0.2.0, this interface uses creature-level metrics:
+ * - expectedCreatureScoreGain: creature-level score improvement
+ *
+ * Note: Squash changes don't have targetNeuronImpact as they modify
+ * existing neurons rather than adding new connections.
+ */
 export interface CandidateSquash {
   neuronUUID: string;
   previousSquash: string;
   squash: string;
-  expectedImprovementPercentage: number;
+  expectedCreatureScoreGain: number;
   improvedError: number;
   currentError: number;
 }
 
+/**
+ * Represents a neuron candidate proposed during discovery.
+ *
+ * As of Rust v0.2.0, this interface uses creature-level metrics:
+ * - targetNeuronImpact: 0.0-1.0, where output neurons = 1.0
+ * - expectedCreatureErrorReduction: creature-level error reduction
+ * - expectedCreatureScoreGain: creature-level score improvement
+ *
+ * These values are already scaled by the neuron's impact on creature output,
+ * so TypeScript should NOT apply additional scaling.
+ */
 export interface CandidateNeuron {
   fromNeuronUUID: string;
   toNeuronUUID: string;
@@ -153,16 +186,24 @@ export interface CandidateNeuron {
   outgoingWeight: number;
   squash: string;
   bias: number;
-  expectedImprovementPercentage: number;
+  targetNeuronImpact: number;
+  expectedCreatureErrorReduction: number;
+  expectedCreatureScoreGain: number;
   improvedCount: number;
   totalCount: number;
   targetNeuronStats?: NeuronStats;
 }
 
+/**
+ * Represents a neuron identified as harmful (high error contribution).
+ *
+ * As of Rust v0.2.0, uses creature-level metrics:
+ * - expectedCreatureScoreGain: expected score improvement from removal
+ */
 export interface CandidateHarmfulNeuron {
   neuronUUID: string;
   errorMagnitude: number;
-  expectedImprovementPercentage: number;
+  expectedCreatureScoreGain: number;
   sampleCount: number;
   averageActivation: number; // Average activation across all samples for efficient bias adjustment
 }
@@ -1495,9 +1536,9 @@ export class DiscoverStructure {
       "info",
       `Rust discovered beneficial synapse from ${candidate.fromNeuronUUID} to ${candidate.toNeuronUUID} with weight ${
         candidate.weight.toFixed(4)
-      }, helping ${
-        (candidate.expectedImprovementPercentage * 100).toFixed(1)
-      }% more records than it harms (${candidate.improvedCount}/${candidate.totalCount})`,
+      }, expected creature score gain ${
+        (candidate.expectedCreatureScoreGain * 100).toFixed(1)
+      }% (${candidate.improvedCount}/${candidate.totalCount} samples)`,
     );
   }
 
@@ -1508,9 +1549,11 @@ export class DiscoverStructure {
       "info",
       `Rust discovered beneficial ${candidate.squash} neuron linking ${candidate.fromNeuronUUID} -> ${candidate.toNeuronUUID} with incoming ${
         candidate.incomingWeight.toFixed(4)
-      } and outgoing ${candidate.outgoingWeight.toFixed(4)}, improving ${
-        (candidate.expectedImprovementPercentage * 100).toFixed(1)
-      }% of records (${candidate.improvedCount}/${candidate.totalCount})`,
+      } and outgoing ${
+        candidate.outgoingWeight.toFixed(4)
+      }, expected creature score gain ${
+        (candidate.expectedCreatureScoreGain * 100).toFixed(1)
+      }% (${candidate.improvedCount}/${candidate.totalCount} samples)`,
     );
   }
 
@@ -1534,15 +1577,16 @@ export class DiscoverStructure {
 
     const candidates = helpfulNeurons
       .map((candidate) => this.mapRustNeuronCandidate(candidate))
-      .filter((candidate) => candidate.expectedImprovementPercentage > 0);
+      .filter((candidate) => candidate.expectedCreatureScoreGain > 0);
 
     if (candidates.length === 0) {
       this.logRustNoImprovement("neuron", focusList, rustResult.diagnostics);
       return [];
     }
 
+    // Candidates are already sorted by expectedCreatureScoreGain from Rust
     candidates.sort((a, b) =>
-      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+      b.expectedCreatureScoreGain - a.expectedCreatureScoreGain
     );
     return candidates;
   }
@@ -1567,7 +1611,7 @@ export class DiscoverStructure {
 
     const candidates = helpfulSynapses
       .map((candidate) => this.mapRustCandidate(candidate))
-      .filter((candidate) => candidate.expectedImprovementPercentage > 0);
+      .filter((candidate) => candidate.expectedCreatureScoreGain > 0);
 
     if (candidates.length === 0) {
       this.logRustNoImprovement("synapse", focusList, rustResult.diagnostics);
@@ -1580,8 +1624,9 @@ export class DiscoverStructure {
       return [];
     }
 
+    // Candidates are already sorted by expectedCreatureScoreGain from Rust
     topCandidates.sort((a, b) =>
-      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+      b.expectedCreatureScoreGain - a.expectedCreatureScoreGain
     );
     return topCandidates;
   }
@@ -1600,14 +1645,15 @@ export class DiscoverStructure {
 
     const candidates = rustResult.harmfulSynapses
       .map((candidate) => this.mapRustCandidate(candidate))
-      .filter((candidate) => candidate.expectedImprovementPercentage < 0);
+      .filter((candidate) => candidate.expectedCreatureScoreGain < 0);
 
     if (candidates.length === 0) {
       return [];
     }
 
+    // For harmful synapses, sort by most negative (most harmful) first
     candidates.sort((a, b) =>
-      a.expectedImprovementPercentage - b.expectedImprovementPercentage
+      a.expectedCreatureScoreGain - b.expectedCreatureScoreGain
     );
     return candidates;
   }
@@ -1663,7 +1709,7 @@ export class DiscoverStructure {
       this.discoveries.push(candidate);
     }
     this.discoveries.sort((a, b) =>
-      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+      b.expectedCreatureScoreGain - a.expectedCreatureScoreGain
     );
   }
 
@@ -1678,7 +1724,7 @@ export class DiscoverStructure {
       this.neuronDiscoveries.push(candidate);
     }
     this.neuronDiscoveries.sort((a, b) =>
-      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+      b.expectedCreatureScoreGain - a.expectedCreatureScoreGain
     );
   }
 
@@ -1690,14 +1736,14 @@ export class DiscoverStructure {
       const existing = grouped.get(candidate.toNeuronUUID);
       if (
         !existing ||
-        candidate.expectedImprovementPercentage >
-          existing.expectedImprovementPercentage
+        candidate.expectedCreatureScoreGain >
+          existing.expectedCreatureScoreGain
       ) {
         grouped.set(candidate.toNeuronUUID, candidate);
       }
     });
     return Array.from(grouped.values()).sort((a, b) =>
-      b.expectedImprovementPercentage - a.expectedImprovementPercentage
+      b.expectedCreatureScoreGain - a.expectedCreatureScoreGain
     );
   }
 
@@ -1709,8 +1755,8 @@ export class DiscoverStructure {
       const existing = grouped.get(candidate.toNeuronUUID);
       if (
         !existing ||
-        candidate.expectedImprovementPercentage >
-          existing.expectedImprovementPercentage
+        candidate.expectedCreatureScoreGain >
+          existing.expectedCreatureScoreGain
       ) {
         grouped.set(candidate.toNeuronUUID, candidate);
       }
@@ -1719,12 +1765,12 @@ export class DiscoverStructure {
   }
 
   private logHarmfulSynapse(candidate: CandidateSynapse): void {
-    const harmPercent = Math.abs(candidate.expectedImprovementPercentage * 100);
+    const harmPercent = Math.abs(candidate.expectedCreatureScoreGain * 100);
     this.log(
       "info",
-      `Rust discovered harmful synapse from ${candidate.fromNeuronUUID} to ${candidate.toNeuronUUID}, harming ${
+      `Rust discovered harmful synapse from ${candidate.fromNeuronUUID} to ${candidate.toNeuronUUID}, expected creature score loss ${
         harmPercent.toFixed(1)
-      }% more records than it helps (${candidate.improvedCount}/${candidate.totalCount})`,
+      }% (${candidate.improvedCount}/${candidate.totalCount} samples)`,
     );
   }
 
@@ -1735,7 +1781,9 @@ export class DiscoverStructure {
       fromNeuronUUID: candidate.fromNeuronUuid,
       toNeuronUUID: candidate.toNeuronUuid,
       weight: candidate.weight,
-      expectedImprovementPercentage: candidate.expectedImprovementPercentage,
+      targetNeuronImpact: candidate.targetNeuronImpact,
+      expectedCreatureErrorReduction: candidate.expectedCreatureErrorReduction,
+      expectedCreatureScoreGain: candidate.expectedCreatureScoreGain,
       improvedCount: candidate.improvedCount,
       totalCount: candidate.totalCount,
       targetNeuronStats: candidate.targetNeuronStats,
@@ -1752,7 +1800,9 @@ export class DiscoverStructure {
       outgoingWeight: candidate.outgoingWeight,
       squash: candidate.squash,
       bias: candidate.bias,
-      expectedImprovementPercentage: candidate.expectedImprovementPercentage,
+      targetNeuronImpact: candidate.targetNeuronImpact,
+      expectedCreatureErrorReduction: candidate.expectedCreatureErrorReduction,
+      expectedCreatureScoreGain: candidate.expectedCreatureScoreGain,
       improvedCount: candidate.improvedCount,
       totalCount: candidate.totalCount,
       targetNeuronStats: candidate.targetNeuronStats,
@@ -2204,9 +2254,9 @@ export class DiscoverStructure {
       totalEvaluated += evaluated;
       const detail = diagnostic.detail;
       if (detail) {
-        const improvement = typeof detail.expectedImprovementPercentage ===
+        const improvement = typeof detail.expectedCreatureScoreGain ===
             "number"
-          ? detail.expectedImprovementPercentage
+          ? detail.expectedCreatureScoreGain
           : undefined;
         if (
           improvement !== undefined &&
@@ -2299,11 +2349,9 @@ export class DiscoverStructure {
           }`,
         );
       }
-      if (detail.expectedImprovementPercentage !== undefined) {
+      if (detail.expectedCreatureScoreGain !== undefined) {
         detailParts.push(
-          `expected=${
-            (detail.expectedImprovementPercentage * 100).toFixed(2)
-          }%`,
+          `expected=${(detail.expectedCreatureScoreGain * 100).toFixed(2)}%`,
         );
       }
       if (detail.threshold !== undefined) {
@@ -2346,11 +2394,9 @@ export class DiscoverStructure {
           }`,
         );
       }
-      if (detail.expectedImprovementPercentage !== undefined) {
+      if (detail.expectedCreatureScoreGain !== undefined) {
         detailParts.push(
-          `expected=${
-            (detail.expectedImprovementPercentage * 100).toFixed(2)
-          }%`,
+          `expected=${(detail.expectedCreatureScoreGain * 100).toFixed(2)}%`,
         );
       }
       if (detail.threshold !== undefined) {
@@ -3619,7 +3665,7 @@ export class DiscoverStructure {
         ? Math.min(Math.max(neuronImpact, 0), 1)
         : 1.0; // Default to 1.0 if impact can't be calculated
 
-      const expectedImprovementPercentage = scaledImprovement * impactScale;
+      const expectedCreatureScoreGain = scaledImprovement * impactScale;
 
       // Accept any positive improvement (no threshold filtering)
       if (rawImprovement > 0) {
@@ -3633,7 +3679,7 @@ export class DiscoverStructure {
           neuronUUID,
           previousSquash: currentSquash,
           squash: bestSquash,
-          expectedImprovementPercentage: expectedImprovementPercentage,
+          expectedCreatureScoreGain: expectedCreatureScoreGain,
           improvedError: lowestError,
           currentError: baselineError,
         };
@@ -4447,7 +4493,7 @@ export class DiscoverStructure {
           const thresholdLog = Math.log10(MAX_REASONABLE_SQUASH_ERROR);
           const excessMagnitude = errorLog - thresholdLog;
           // Scale improvement estimate: 0.1 (10%) for just over threshold, up to 0.5 (50%) for very high errors
-          const expectedImprovement = Math.min(
+          const expectedCreatureScoreGain = Math.min(
             0.5,
             Math.max(0.1, 0.1 + (excessMagnitude / 10) * 0.4),
           );
@@ -4455,7 +4501,7 @@ export class DiscoverStructure {
           return {
             neuronUUID,
             errorMagnitude: baselineActivationError,
-            expectedImprovementPercentage: expectedImprovement,
+            expectedCreatureScoreGain: expectedCreatureScoreGain,
             sampleCount: records.length,
             averageActivation,
           };
@@ -4486,8 +4532,8 @@ export class DiscoverStructure {
       if (Math.abs(b.errorMagnitude - a.errorMagnitude) > 1e-6) {
         return b.errorMagnitude - a.errorMagnitude;
       }
-      // Secondary sort: by expected improvement (descending)
-      return b.expectedImprovementPercentage - a.expectedImprovementPercentage;
+      // Secondary sort: by expected creature score gain (descending)
+      return b.expectedCreatureScoreGain - a.expectedCreatureScoreGain;
     });
 
     if (this.loggingEnabled && candidates.length > 0) {
@@ -4500,8 +4546,8 @@ export class DiscoverStructure {
           "info",
           `  - ${candidate.neuronUUID}: error=${
             candidate.errorMagnitude.toExponential(2)
-          }, expected improvement=${
-            (candidate.expectedImprovementPercentage * 100).toFixed(1)
+          }, expected creature score gain=${
+            (candidate.expectedCreatureScoreGain * 100).toFixed(1)
           }%`,
         );
       });

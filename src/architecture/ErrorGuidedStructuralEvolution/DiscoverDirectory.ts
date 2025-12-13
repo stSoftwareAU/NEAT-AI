@@ -809,8 +809,8 @@ class DataRecorder {
             let squashSummaryText = "";
             if (squashCount > 0 && candidateSquashes) {
               const squashSummary = candidateSquashes.map((candidate) => {
-                return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash} improved: ${
-                  (candidate.expectedImprovementPercentage * 100).toFixed(1)
+                return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash} expected: ${
+                  (candidate.expectedCreatureScoreGain * 100).toFixed(1)
                 }% error: ${candidate.currentError.toFixed(4)} -> ${
                   candidate.improvedError.toFixed(4)
                 }`;
@@ -921,8 +921,8 @@ class DataRecorder {
                 let squashSummaryText = "";
                 if (squashCount > 0 && squashes) {
                   const squashSummary = squashes.map((candidate) => {
-                    return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash} improved: ${
-                      (candidate.expectedImprovementPercentage * 100).toFixed(
+                    return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash} expected: ${
+                      (candidate.expectedCreatureScoreGain * 100).toFixed(
                         1,
                       )
                     }% error: ${candidate.currentError.toFixed(4)} -> ${

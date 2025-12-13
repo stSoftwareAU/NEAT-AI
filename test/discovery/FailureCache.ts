@@ -1062,7 +1062,7 @@ Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remo
     const harmfulNeuronCandidate: CandidateHarmfulNeuron = {
       neuronUUID: "hidden-1",
       errorMagnitude: 1.5e11,
-      expectedImprovementPercentage: 0.05,
+      expectedCreatureScoreGain: 0.05,
       sampleCount: 100,
       averageActivation: 0.75,
     };
@@ -1075,7 +1075,7 @@ Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remo
           harmfulNeuronCandidate.errorMagnitude.toExponential(2)
         })`,
         expectedErrorReduction:
-          harmfulNeuronCandidate.expectedImprovementPercentage,
+          harmfulNeuronCandidate.expectedCreatureScoreGain,
         sampleSize: harmfulNeuronCandidate.sampleCount,
         harmfulNeuronCandidate,
       },
@@ -1115,9 +1115,9 @@ Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remo
       "harmfulNeuronCandidate.errorMagnitude should match",
     );
     assertEquals(
-      parsed.rustRequest.harmfulNeuronCandidate.expectedImprovementPercentage,
+      parsed.rustRequest.harmfulNeuronCandidate.expectedCreatureScoreGain,
       0.05,
-      "harmfulNeuronCandidate.expectedImprovementPercentage should match",
+      "harmfulNeuronCandidate.expectedCreatureScoreGain should match",
     );
     assertEquals(
       parsed.rustRequest.harmfulNeuronCandidate.sampleCount,
@@ -1150,7 +1150,9 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
       fromNeuronUUID: "input-0",
       toNeuronUUID: "hidden-1",
       weight: -0.5,
-      expectedImprovementPercentage: 0.03,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0,
+      expectedCreatureScoreGain: 0.03,
       improvedCount: 80,
       totalCount: 100,
     };
@@ -1161,7 +1163,7 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
         type: "remove-synapse",
         description: `✂️ Removed harmful synapse input-0 -> hidden-1`,
         expectedErrorReduction:
-          harmfulSynapseCandidate.expectedImprovementPercentage,
+          harmfulSynapseCandidate.expectedCreatureScoreGain,
         sampleSize: harmfulSynapseCandidate.totalCount,
         synapseDetails: {
           fromNeuronUUID: harmfulSynapseCandidate.fromNeuronUUID,
@@ -1210,9 +1212,9 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
       "harmfulSynapseCandidate.weight should match",
     );
     assertEquals(
-      parsed.rustRequest.harmfulSynapseCandidate.expectedImprovementPercentage,
+      parsed.rustRequest.harmfulSynapseCandidate.expectedCreatureScoreGain,
       0.03,
-      "harmfulSynapseCandidate.expectedImprovementPercentage should match",
+      "harmfulSynapseCandidate.expectedCreatureScoreGain should match",
     );
     assertEquals(
       parsed.rustRequest.harmfulSynapseCandidate.improvedCount,

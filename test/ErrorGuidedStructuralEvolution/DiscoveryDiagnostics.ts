@@ -60,7 +60,9 @@ Deno.test("logs diagnostics when Rust finds no improvements", () => {
       detail: {
         sourceNeuronUuid: "hidden-1",
         sampleCount: 0,
-        expectedImprovementPercentage: 0,
+        targetNeuronImpact: 1.0,
+        expectedCreatureErrorReduction: 0,
+        expectedCreatureScoreGain: 0,
       },
     }]);
   } finally {

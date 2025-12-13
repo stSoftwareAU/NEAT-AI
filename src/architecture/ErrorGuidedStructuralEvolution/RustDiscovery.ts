@@ -82,12 +82,22 @@ export interface NeuronStatsJson {
 /**
  * Represents a synapse candidate proposed by the Rust analyser, including
  * improvement statistics gathered from sampled observations.
+ *
+ * As of Rust v0.2.0, this interface uses creature-level metrics:
+ * - targetNeuronImpact: 0.0-1.0, where output neurons = 1.0
+ * - expectedCreatureErrorReduction: creature-level error reduction
+ * - expectedCreatureScoreGain: creature-level score improvement
+ *
+ * These values are already scaled by the neuron's impact on creature output,
+ * so TypeScript should NOT apply additional scaling (e.g., getNeuronShare()).
  */
 export interface RustCandidateSynapse {
   fromNeuronUuid: string;
   toNeuronUuid: string;
   weight: number;
-  expectedImprovementPercentage: number;
+  targetNeuronImpact: number;
+  expectedCreatureErrorReduction: number;
+  expectedCreatureScoreGain: number;
   improvedCount: number;
   totalCount: number;
   targetNeuronStats?: NeuronStatsJson;
@@ -96,6 +106,14 @@ export interface RustCandidateSynapse {
 /**
  * Represents a neuron candidate flagged by the Rust analyser together with the
  * statistics that justify its expected impact.
+ *
+ * As of Rust v0.2.0, this interface uses creature-level metrics:
+ * - targetNeuronImpact: 0.0-1.0, where output neurons = 1.0
+ * - expectedCreatureErrorReduction: creature-level error reduction
+ * - expectedCreatureScoreGain: creature-level score improvement
+ *
+ * These values are already scaled by the neuron's impact on creature output,
+ * so TypeScript should NOT apply additional scaling (e.g., getNeuronShare()).
  */
 export interface RustCandidateNeuron {
   sourceNeuronUuid: string;
@@ -104,7 +122,9 @@ export interface RustCandidateNeuron {
   outgoingWeight: number;
   squash: string;
   bias: number;
-  expectedImprovementPercentage: number;
+  targetNeuronImpact: number;
+  expectedCreatureErrorReduction: number;
+  expectedCreatureScoreGain: number;
   improvedCount: number;
   totalCount: number;
   targetNeuronStats?: NeuronStatsJson;
@@ -161,10 +181,14 @@ export interface RustParallelAnalysisInput {
   requireGpu?: boolean;
   analysisDeadlineMs?: number;
   /**
-   * Maps each focus neuron UUID to its share of the creature's total error.
-   * Used to scale neuron-level improvements to creature-level improvements
-   * before sorting/truncating candidates. Output neurons typically have
-   * share ~1.0, while hidden neurons have smaller shares.
+   * Maps each focus neuron UUID to its impact on the creature's output.
+   * As of Rust v0.2.0, the Rust library calculates creature-level metrics
+   * internally using this data. Output neurons have impact = 1.0,
+   * while hidden neurons have smaller impacts based on their distance
+   * from outputs.
+   *
+   * @deprecated This field is now primarily for logging/debugging.
+   * The Rust library v0.2.0 handles impact scaling internally.
    */
   focusNeuronErrorShares?: Record<string, number>;
 }
@@ -271,7 +295,7 @@ export interface RustSynapseDiagnosticDetail {
   sourceRecordCount?: number;
   improvedCount?: number;
   worsenedCount?: number;
-  expectedImprovementPercentage?: number;
+  expectedCreatureScoreGain?: number;
   threshold?: number;
   suggestedWeight?: number;
 }
@@ -307,7 +331,7 @@ export interface RustNeuronDiagnosticDetail {
   sampleCount?: number;
   improvedCount?: number;
   worsenedCount?: number;
-  expectedImprovementPercentage?: number;
+  expectedCreatureScoreGain?: number;
   threshold?: number;
   outgoingWeight?: number;
 }
