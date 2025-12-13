@@ -39,7 +39,10 @@ import {
   type CandidateSynapse,
   DiscoverStructure,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type {
+  DiscoverResult,
+  RemovalCandidate,
+} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
@@ -99,6 +102,12 @@ interface DiscoveryCandidateChange {
   synapseCandidate?: CandidateSynapse;
   /** Original Rust squash candidate response (for change-squash candidates). */
   squashCandidate?: CandidateSquash;
+  /** Original Rust removal candidate response (for remove-low-impact candidates). */
+  removalCandidate?: RemovalCandidate;
+  /** Original harmful neuron candidate response (for remove-neuron candidates). */
+  harmfulNeuronCandidate?: CandidateHarmfulNeuron;
+  /** Original harmful synapse candidate response (for remove-synapse candidates). */
+  harmfulSynapseCandidate?: CandidateSynapse;
 }
 
 export interface DiscoveryCandidate {
@@ -281,6 +290,8 @@ export function buildDiscoveryCandidates(
           fromNeuronUUID: removeHarmfulSynapse.fromNeuronUUID,
           toNeuronUUID: removeHarmfulSynapse.toNeuronUUID,
         },
+        // Store the original harmful synapse candidate for failure cache debugging
+        harmfulSynapseCandidate: removeHarmfulSynapse,
       },
     });
 
@@ -461,6 +472,8 @@ export function buildDiscoveryCandidates(
         } (error: ${mostHarmful.errorMagnitude.toExponential(2)})`,
         expectedErrorReduction: mostHarmful.expectedImprovementPercentage,
         sampleSize: mostHarmful.sampleCount,
+        // Store the original harmful neuron candidate for failure cache debugging
+        harmfulNeuronCandidate: mostHarmful,
       },
     });
   }
@@ -523,6 +536,8 @@ export function buildDiscoveryCandidates(
               shortID(candidate.neuronUUID)
             } (impact: ${candidate.impact.toExponential(2)})`,
             // No expectedErrorReduction - removal improves score via complexity reduction, not error
+            // Store the original Rust removal candidate for failure cache debugging
+            removalCandidate: candidate,
           },
         });
       } else {

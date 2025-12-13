@@ -657,6 +657,30 @@ export async function recordFailure(
       };
     }
 
+    // Include original Rust removal candidate (for remove-low-impact candidates)
+    if (candidate.change.removalCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        removalCandidate: candidate.change.removalCandidate,
+      };
+    }
+
+    // Include original harmful neuron candidate (for remove-neuron candidates)
+    if (candidate.change.harmfulNeuronCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        harmfulNeuronCandidate: candidate.change.harmfulNeuronCandidate,
+      };
+    }
+
+    // Include original harmful synapse candidate (for remove-synapse candidates)
+    if (candidate.change.harmfulSynapseCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        harmfulSynapseCandidate: candidate.change.harmfulSynapseCandidate,
+      };
+    }
+
     // Include synapseDetails if available (for remove-synapse candidates)
     if (candidate.change.synapseDetails) {
       cacheEntry.synapseDetails = candidate.change.synapseDetails;
@@ -783,6 +807,30 @@ export function recordFailureSync(
       cacheEntry.rustRequest = {
         ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
         squashCandidate: candidate.change.squashCandidate,
+      };
+    }
+
+    // Include original Rust removal candidate (for remove-low-impact candidates)
+    if (candidate.change.removalCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        removalCandidate: candidate.change.removalCandidate,
+      };
+    }
+
+    // Include original harmful neuron candidate (for remove-neuron candidates)
+    if (candidate.change.harmfulNeuronCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        harmfulNeuronCandidate: candidate.change.harmfulNeuronCandidate,
+      };
+    }
+
+    // Include original harmful synapse candidate (for remove-synapse candidates)
+    if (candidate.change.harmfulSynapseCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        harmfulSynapseCandidate: candidate.change.harmfulSynapseCandidate,
       };
     }
 

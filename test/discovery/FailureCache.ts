@@ -16,6 +16,11 @@ import {
   getDiscoveryVersion,
   shouldSkipRustDiscoveryTests,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type { RemovalCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type {
+  CandidateHarmfulNeuron,
+  CandidateSynapse,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
 function makeSimpleCreature(): Creature {
   const creature = Creature.fromJSON({
@@ -957,4 +962,277 @@ Deno.test({
       closeRustLibrary();
     }
   },
+});
+
+Deno.test("recordFailure includes removalCandidate in rustRequest for remove-low-impact", async () => {
+  // Issue #922: Failure cache should include the Rust removal candidate in full
+  // for debugging purposes when a remove-low-impact candidate fails to improve score
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+
+    // Create a RemovalCandidate as Rust would return it
+    const removalCandidate: RemovalCandidate = {
+      neuronUUID: "hidden-1",
+      totalError: 5.0,
+      impact: 0.00861,
+      reason:
+        "High error (5.0000) but very low impact (0.008610) - far from outputs",
+    };
+
+    const candidate: DiscoveryCandidate = {
+      creature,
+      change: {
+        type: "remove-low-impact",
+        description: `🪶 Removed neuron hidden-1 (impact: ${
+          removalCandidate.impact.toExponential(2)
+        })`,
+        removalCandidate, // This is the new field added for issue #922
+      },
+    };
+
+    // Record the failure with metadata similar to what DiscoveryRunner provides
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.41707403281995525,
+      candidateScore: 0.4170737892294639,
+      scoreDelta: -2.435904913333786e-7,
+      error: 0.5827146017775101,
+      originalError: 0.58271423818702,
+    }, creature); // Pass base creature for actual changes extraction
+
+    // Read the cache file to verify rustRequest.removalCandidate was stored
+    const key = buildCacheKey(candidate);
+    const filePath = `${tempDir}/remove-low-impact/${key}.json`;
+    const content = await Deno.readTextFile(filePath);
+    const parsed = JSON.parse(content);
+
+    // Verify rustRequest contains the removalCandidate
+    assert(
+      parsed.rustRequest !== undefined,
+      "rustRequest should be present in cache entry",
+    );
+    assert(
+      parsed.rustRequest.removalCandidate !== undefined,
+      "rustRequest.removalCandidate should be present",
+    );
+    assertEquals(
+      parsed.rustRequest.removalCandidate.neuronUUID,
+      "hidden-1",
+      "removalCandidate.neuronUUID should match",
+    );
+    assertEquals(
+      parsed.rustRequest.removalCandidate.totalError,
+      5.0,
+      "removalCandidate.totalError should match",
+    );
+    assertEquals(
+      parsed.rustRequest.removalCandidate.impact,
+      0.00861,
+      "removalCandidate.impact should match",
+    );
+    assertEquals(
+      parsed.rustRequest.removalCandidate.reason,
+      "High error (5.0000) but very low impact (0.008610) - far from outputs",
+      "removalCandidate.reason should match",
+    );
+
+    // Also verify other standard fields are present
+    assertEquals(parsed.changeType, "remove-low-impact");
+    assert(parsed.timestamp !== undefined, "timestamp should be present");
+    assert(
+      parsed.actualErrorReduction !== undefined,
+      "actualErrorReduction should be computed",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
+  }
+});
+
+Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remove-neuron", async () => {
+  // Issue #922: Failure cache should include the harmful neuron candidate in full
+  // for debugging purposes when a remove-neuron candidate fails to improve score
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+
+    // Create a CandidateHarmfulNeuron as would be produced during analysis
+    const harmfulNeuronCandidate: CandidateHarmfulNeuron = {
+      neuronUUID: "hidden-1",
+      errorMagnitude: 1.5e11,
+      expectedImprovementPercentage: 0.05,
+      sampleCount: 100,
+      averageActivation: 0.75,
+    };
+
+    const candidate: DiscoveryCandidate = {
+      creature,
+      change: {
+        type: "remove-neuron",
+        description: `💀 Removed harmful neuron hidden-1 (error: ${
+          harmfulNeuronCandidate.errorMagnitude.toExponential(2)
+        })`,
+        expectedErrorReduction:
+          harmfulNeuronCandidate.expectedImprovementPercentage,
+        sampleSize: harmfulNeuronCandidate.sampleCount,
+        harmfulNeuronCandidate,
+      },
+    };
+
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.48,
+      scoreDelta: -0.02,
+      error: 0.55,
+      originalError: 0.52,
+    }, creature);
+
+    // Read and verify the cache file
+    const key = buildCacheKey(candidate);
+    const filePath = `${tempDir}/remove-neuron/${key}.json`;
+    const content = await Deno.readTextFile(filePath);
+    const parsed = JSON.parse(content);
+
+    // Verify rustRequest contains the harmfulNeuronCandidate
+    assert(
+      parsed.rustRequest !== undefined,
+      "rustRequest should be present in cache entry",
+    );
+    assert(
+      parsed.rustRequest.harmfulNeuronCandidate !== undefined,
+      "rustRequest.harmfulNeuronCandidate should be present",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulNeuronCandidate.neuronUUID,
+      "hidden-1",
+      "harmfulNeuronCandidate.neuronUUID should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulNeuronCandidate.errorMagnitude,
+      1.5e11,
+      "harmfulNeuronCandidate.errorMagnitude should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulNeuronCandidate.expectedImprovementPercentage,
+      0.05,
+      "harmfulNeuronCandidate.expectedImprovementPercentage should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulNeuronCandidate.sampleCount,
+      100,
+      "harmfulNeuronCandidate.sampleCount should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulNeuronCandidate.averageActivation,
+      0.75,
+      "harmfulNeuronCandidate.averageActivation should match",
+    );
+
+    assertEquals(parsed.changeType, "remove-neuron");
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
+  }
+});
+
+Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for remove-synapse", async () => {
+  // Issue #922: Failure cache should include the harmful synapse candidate in full
+  // for debugging purposes when a remove-synapse candidate fails to improve score
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+
+    // Create a CandidateSynapse as would be produced during harmful synapse analysis
+    const harmfulSynapseCandidate: CandidateSynapse = {
+      fromNeuronUUID: "input-0",
+      toNeuronUUID: "hidden-1",
+      weight: -0.5,
+      expectedImprovementPercentage: 0.03,
+      improvedCount: 80,
+      totalCount: 100,
+    };
+
+    const candidate: DiscoveryCandidate = {
+      creature,
+      change: {
+        type: "remove-synapse",
+        description: `✂️ Removed harmful synapse input-0 -> hidden-1`,
+        expectedErrorReduction:
+          harmfulSynapseCandidate.expectedImprovementPercentage,
+        sampleSize: harmfulSynapseCandidate.totalCount,
+        synapseDetails: {
+          fromNeuronUUID: harmfulSynapseCandidate.fromNeuronUUID,
+          toNeuronUUID: harmfulSynapseCandidate.toNeuronUUID,
+        },
+        harmfulSynapseCandidate,
+      },
+    };
+
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.49,
+      scoreDelta: -0.01,
+      error: 0.53,
+      originalError: 0.51,
+    }, creature);
+
+    // Read and verify the cache file
+    const key = buildCacheKey(candidate);
+    const filePath = `${tempDir}/remove-synapse/${key}.json`;
+    const content = await Deno.readTextFile(filePath);
+    const parsed = JSON.parse(content);
+
+    // Verify rustRequest contains the harmfulSynapseCandidate
+    assert(
+      parsed.rustRequest !== undefined,
+      "rustRequest should be present in cache entry",
+    );
+    assert(
+      parsed.rustRequest.harmfulSynapseCandidate !== undefined,
+      "rustRequest.harmfulSynapseCandidate should be present",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulSynapseCandidate.fromNeuronUUID,
+      "input-0",
+      "harmfulSynapseCandidate.fromNeuronUUID should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulSynapseCandidate.toNeuronUUID,
+      "hidden-1",
+      "harmfulSynapseCandidate.toNeuronUUID should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulSynapseCandidate.weight,
+      -0.5,
+      "harmfulSynapseCandidate.weight should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulSynapseCandidate.expectedImprovementPercentage,
+      0.03,
+      "harmfulSynapseCandidate.expectedImprovementPercentage should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulSynapseCandidate.improvedCount,
+      80,
+      "harmfulSynapseCandidate.improvedCount should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulSynapseCandidate.totalCount,
+      100,
+      "harmfulSynapseCandidate.totalCount should match",
+    );
+
+    assertEquals(parsed.changeType, "remove-synapse");
+    // Also verify synapseDetails is still present (for cache key)
+    assert(
+      parsed.synapseDetails !== undefined,
+      "synapseDetails should still be present",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
+  }
 });
