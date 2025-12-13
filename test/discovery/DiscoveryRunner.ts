@@ -1308,7 +1308,8 @@ Deno.test(
 );
 
 Deno.test({
-  name: "DiscoveryRunner caches failed candidates when discoveryFailureCacheDir is set",
+  name:
+    "DiscoveryRunner caches failed candidates when discoveryFailureCacheDir is set",
   // Uses Rust FFI via recordFailure -> getDiscoveryVersion
   sanitizeOps: false,
   sanitizeResources: false,
@@ -1483,7 +1484,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "DiscoveryRunner skips cached Phase 2 combined candidates on subsequent runs",
+  name:
+    "DiscoveryRunner skips cached Phase 2 combined candidates on subsequent runs",
   // Uses Rust FFI via recordFailure -> getDiscoveryVersion
   sanitizeOps: false,
   sanitizeResources: false,
@@ -1954,7 +1956,8 @@ Deno.test(
 );
 
 Deno.test({
-  name: "DiscoveryRunner logs specific candidate types when skipped due to cache",
+  name:
+    "DiscoveryRunner logs specific candidate types when skipped due to cache",
   // Uses Rust FFI via recordFailure -> getDiscoveryVersion
   sanitizeOps: false,
   sanitizeResources: false,
