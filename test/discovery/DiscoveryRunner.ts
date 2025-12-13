@@ -1307,9 +1307,12 @@ Deno.test(
   },
 );
 
-Deno.test(
-  "DiscoveryRunner caches failed candidates when discoveryFailureCacheDir is set",
-  async () => {
+Deno.test({
+  name: "DiscoveryRunner caches failed candidates when discoveryFailureCacheDir is set",
+  // Uses Rust FFI via recordFailure -> getDiscoveryVersion
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
     const tempDir = await Deno.makeTempDir();
     const cacheDir = `${tempDir}/failure-cache`;
 
@@ -1383,11 +1386,14 @@ Deno.test(
       await Deno.remove(tempDir, { recursive: true });
     }
   },
-);
+});
 
-Deno.test(
-  "DiscoveryRunner skips cached candidates on subsequent runs",
-  async () => {
+Deno.test({
+  name: "DiscoveryRunner skips cached candidates on subsequent runs",
+  // Uses Rust FFI via recordFailure -> getDiscoveryVersion
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
     const tempDir = await Deno.makeTempDir();
     const cacheDir = `${tempDir}/failure-cache`;
 
@@ -1474,11 +1480,14 @@ Deno.test(
       await Deno.remove(tempDir, { recursive: true });
     }
   },
-);
+});
 
-Deno.test(
-  "DiscoveryRunner skips cached Phase 2 combined candidates on subsequent runs",
-  async () => {
+Deno.test({
+  name: "DiscoveryRunner skips cached Phase 2 combined candidates on subsequent runs",
+  // Uses Rust FFI via recordFailure -> getDiscoveryVersion
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
     const tempDir = await Deno.makeTempDir();
     const cacheDir = `${tempDir}/failure-cache`;
 
@@ -1584,11 +1593,14 @@ Deno.test(
       await Deno.remove(tempDir, { recursive: true });
     }
   },
-);
+});
 
-Deno.test(
-  "DiscoveryRunner does not cache successful candidates",
-  async () => {
+Deno.test({
+  name: "DiscoveryRunner does not cache successful candidates",
+  // Uses Rust FFI via recordFailure -> getDiscoveryVersion
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
     const tempDir = await Deno.makeTempDir();
     const cacheDir = `${tempDir}/failure-cache`;
 
@@ -1664,7 +1676,7 @@ Deno.test(
       await Deno.remove(tempDir, { recursive: true });
     }
   },
-);
+});
 
 Deno.test(
   "DiscoveryRunner respects discoveryMinCandidatesPerCategory for removal candidates",
@@ -1941,9 +1953,12 @@ Deno.test(
   },
 );
 
-Deno.test(
-  "DiscoveryRunner logs specific candidate types when skipped due to cache",
-  async () => {
+Deno.test({
+  name: "DiscoveryRunner logs specific candidate types when skipped due to cache",
+  // Uses Rust FFI via recordFailure -> getDiscoveryVersion
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
     const tempDir = await Deno.makeTempDir();
     const cacheDir = `${tempDir}/failure-cache`;
 
@@ -2039,7 +2054,7 @@ Deno.test(
       await Deno.remove(tempDir, { recursive: true });
     }
   },
-);
+});
 
 Deno.test({
   name: "DiscoveryRunner passes discoveryFailureCacheDir to candidate builder",

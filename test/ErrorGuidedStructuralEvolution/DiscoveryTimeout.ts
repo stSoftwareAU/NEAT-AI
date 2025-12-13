@@ -186,11 +186,12 @@ Deno.test({
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        // Test with batch size 128, reasonable timeout for meaningful analysis
+        // Test with batch size 128, short timeout to test timeout handling
+        // Note: Rust library requires > 3 second timeout, otherwise defaults to 10 minutes
         const config128 = createNeatConfig({
           discoveryBatchSize: 128,
-          discoveryRecordTimeOutMinutes: 0.25, // 15 seconds
-          discoveryAnalysisTimeoutMinutes: 0.25, // 15 seconds for analysis
+          discoveryRecordTimeOutMinutes: 0.1, // 6 seconds (must be > 3s for Rust)
+          discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
           discoverySampleRate: 1.0, // 100% sample rate
           log: 0,
         });
@@ -204,8 +205,8 @@ Deno.test({
         // Test with batch size 512, same timeout
         const config512 = createNeatConfig({
           discoveryBatchSize: 512,
-          discoveryRecordTimeOutMinutes: 0.25, // 15 seconds
-          discoveryAnalysisTimeoutMinutes: 0.25, // 15 seconds for analysis
+          discoveryRecordTimeOutMinutes: 0.1, // 6 seconds (must be > 3s for Rust)
+          discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
           discoverySampleRate: 1.0,
           log: 0,
         });
@@ -267,14 +268,15 @@ Deno.test({
     const tmpDir = await createTempTestDir("partial-results");
 
     try {
-      // Create meaningful dataset
-      await createTestBinaryFile(creature, 150, tmpDir, "test.bin");
+      // Create larger dataset to ensure timeout is triggered
+      await createTestBinaryFile(creature, 200, tmpDir, "test.bin");
 
-      // Set reasonable timeout
+      // Short timeout to test timeout handling - should trigger partial results
+      // Note: Rust library requires > 3 second timeout, otherwise defaults to 10 minutes
       const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryRecordTimeOutMinutes: 0.25, // 15 seconds
-        discoveryAnalysisTimeoutMinutes: 0.25, // 15 seconds for analysis
+        discoveryRecordTimeOutMinutes: 0.1, // 6 seconds (must be > 3s for Rust)
+        discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
         discoverySampleRate: 1.0,
         log: 0,
       });
@@ -318,16 +320,17 @@ Deno.test({
     const tmpDir = await createTempTestDir("file-timeout");
 
     try {
-      // Create multiple binary files
-      await createTestBinaryFile(creature, 80, tmpDir, "test1.bin");
-      await createTestBinaryFile(creature, 80, tmpDir, "test2.bin");
-      await createTestBinaryFile(creature, 80, tmpDir, "test3.bin");
+      // Create multiple binary files to ensure processing takes time
+      await createTestBinaryFile(creature, 100, tmpDir, "test1.bin");
+      await createTestBinaryFile(creature, 100, tmpDir, "test2.bin");
+      await createTestBinaryFile(creature, 100, tmpDir, "test3.bin");
 
-      // Reasonable timeout
+      // Short timeout to test timeout during file processing
+      // Note: Rust library requires > 3 second timeout, otherwise defaults to 10 minutes
       const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryRecordTimeOutMinutes: 0.25, // 15 seconds
-        discoveryAnalysisTimeoutMinutes: 0.25, // 15 seconds
+        discoveryRecordTimeOutMinutes: 0.1, // 6 seconds (must be > 3s for Rust)
+        discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds
         discoverySampleRate: 1.0,
         log: 0,
       });
