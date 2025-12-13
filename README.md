@@ -260,6 +260,12 @@ and the `discoveryVersion` field indicating which NEAT-AI-Discovery library
 version generated the candidate. This helps identify when cache entries may be
 stale due to library upgrades that improve candidate generation.
 
+For debugging purposes, each cache entry also includes a `rustRequest` field
+containing the original Rust candidate response (e.g., `neuronDetails` for
+add-neurons, `synapseCandidate` for add-synapses, `squashCandidate` for
+change-squash, `removalCandidate` for remove-low-impact). This allows comparison
+between what Rust suggested and what actually happened during evaluation.
+
 ### Discovery Candidate Category Limits
 
 You can control the minimum number of candidates evaluated per category. This is
