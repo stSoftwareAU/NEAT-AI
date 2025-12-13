@@ -2,6 +2,8 @@ import { assertEquals, fail } from "@std/assert";
 import {
   createNeatConfig,
   DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
+  MAX_ANALYSIS_TIMEOUT_MINUTES,
+  MIN_ANALYSIS_TIMEOUT_MINUTES,
 } from "../../src/config/NeatConfig.ts";
 import { Selection } from "../../mod.ts";
 
@@ -137,4 +139,101 @@ Deno.test("NeatConfig discoveryMinCandidatesPerCategory allows zero values", () 
   });
   assertEquals(config.discoveryMinCandidatesPerCategory.addNeurons, 0);
   assertEquals(config.discoveryMinCandidatesPerCategory.removeLowImpact, 0);
+});
+
+Deno.test("NeatConfig discoveryAnalysisTimeoutMinutes - valid at minimum bound", () => {
+  const config = createNeatConfig({
+    discoveryAnalysisTimeoutMinutes: MIN_ANALYSIS_TIMEOUT_MINUTES,
+  });
+  assertEquals(
+    config.discoveryAnalysisTimeoutMinutes,
+    MIN_ANALYSIS_TIMEOUT_MINUTES,
+  );
+});
+
+Deno.test("NeatConfig discoveryAnalysisTimeoutMinutes - valid at maximum bound", () => {
+  const config = createNeatConfig({
+    discoveryAnalysisTimeoutMinutes: MAX_ANALYSIS_TIMEOUT_MINUTES,
+  });
+  assertEquals(
+    config.discoveryAnalysisTimeoutMinutes,
+    MAX_ANALYSIS_TIMEOUT_MINUTES,
+  );
+});
+
+Deno.test("NeatConfig discoveryAnalysisTimeoutMinutes - valid within bounds", () => {
+  const config = createNeatConfig({
+    discoveryAnalysisTimeoutMinutes: 10,
+  });
+  assertEquals(config.discoveryAnalysisTimeoutMinutes, 10);
+});
+
+Deno.test("NeatConfig discoveryAnalysisTimeoutMinutes - below minimum throws", () => {
+  try {
+    createNeatConfig({
+      discoveryAnalysisTimeoutMinutes: 0.01, // Below 0.05 (3 seconds)
+    });
+    fail("Should throw for timeout below minimum");
+  } catch (e) {
+    assertEquals(
+      (e as Error).message.includes(String(MIN_ANALYSIS_TIMEOUT_MINUTES)),
+      true,
+      `Error should mention minimum bound: ${(e as Error).message}`,
+    );
+    assertEquals(
+      (e as Error).message.includes(String(MAX_ANALYSIS_TIMEOUT_MINUTES)),
+      true,
+      `Error should mention maximum bound: ${(e as Error).message}`,
+    );
+  }
+});
+
+Deno.test("NeatConfig discoveryAnalysisTimeoutMinutes - above maximum throws", () => {
+  try {
+    createNeatConfig({
+      discoveryAnalysisTimeoutMinutes: 61, // Above 60 (1 hour)
+    });
+    fail("Should throw for timeout above maximum");
+  } catch (e) {
+    assertEquals(
+      (e as Error).message.includes(String(MIN_ANALYSIS_TIMEOUT_MINUTES)),
+      true,
+      `Error should mention minimum bound: ${(e as Error).message}`,
+    );
+    assertEquals(
+      (e as Error).message.includes(String(MAX_ANALYSIS_TIMEOUT_MINUTES)),
+      true,
+      `Error should mention maximum bound: ${(e as Error).message}`,
+    );
+  }
+});
+
+Deno.test("NeatConfig discoveryAnalysisTimeoutMinutes - zero throws", () => {
+  try {
+    createNeatConfig({
+      discoveryAnalysisTimeoutMinutes: 0,
+    });
+    fail("Should throw for zero timeout");
+  } catch (e) {
+    assertEquals(
+      (e as Error).message.includes("Discovery Analysis Timeout Minutes"),
+      true,
+      `Error should mention the field name: ${(e as Error).message}`,
+    );
+  }
+});
+
+Deno.test("NeatConfig discoveryAnalysisTimeoutMinutes - negative throws", () => {
+  try {
+    createNeatConfig({
+      discoveryAnalysisTimeoutMinutes: -5,
+    });
+    fail("Should throw for negative timeout");
+  } catch (e) {
+    assertEquals(
+      (e as Error).message.includes("Discovery Analysis Timeout Minutes"),
+      true,
+      `Error should mention the field name: ${(e as Error).message}`,
+    );
+  }
 });
