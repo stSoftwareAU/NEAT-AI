@@ -147,6 +147,11 @@ export interface CandidateSynapse {
   expectedCreatureScoreGain: number;
   improvedCount: number;
   totalCount: number;
+  /**
+   * Optional diagnostic comment (primarily surfaced from Rust candidates).
+   * This must not affect ranking/selection logic.
+   */
+  comment?: string;
   targetNeuronStats?: NeuronStats;
 }
 
@@ -166,6 +171,11 @@ export interface CandidateSquash {
   expectedCreatureScoreGain: number;
   improvedError: number;
   currentError: number;
+  /**
+   * Optional diagnostic comment (primarily for Rust experiments/telemetry).
+   * This must not affect ranking/selection logic.
+   */
+  comment?: string;
 }
 
 /**
@@ -191,6 +201,11 @@ export interface CandidateNeuron {
   expectedCreatureScoreGain: number;
   improvedCount: number;
   totalCount: number;
+  /**
+   * Optional diagnostic comment (primarily surfaced from Rust candidates).
+   * This must not affect ranking/selection logic.
+   */
+  comment?: string;
   targetNeuronStats?: NeuronStats;
 }
 
@@ -206,6 +221,11 @@ export interface CandidateHarmfulNeuron {
   expectedCreatureScoreGain: number;
   sampleCount: number;
   averageActivation: number; // Average activation across all samples for efficient bias adjustment
+  /**
+   * Optional diagnostic comment (primarily for Rust experiments/telemetry).
+   * This must not affect ranking/selection logic.
+   */
+  comment?: string;
 }
 
 interface CandidateAnalysisBundle {
@@ -1786,6 +1806,7 @@ export class DiscoverStructure {
       expectedCreatureScoreGain: candidate.expectedCreatureScoreGain,
       improvedCount: candidate.improvedCount,
       totalCount: candidate.totalCount,
+      comment: candidate.comment,
       targetNeuronStats: candidate.targetNeuronStats,
     };
   }
@@ -1805,6 +1826,7 @@ export class DiscoverStructure {
       expectedCreatureScoreGain: candidate.expectedCreatureScoreGain,
       improvedCount: candidate.improvedCount,
       totalCount: candidate.totalCount,
+      comment: candidate.comment,
       targetNeuronStats: candidate.targetNeuronStats,
     };
   }

@@ -100,6 +100,11 @@ export interface RustCandidateSynapse {
   expectedCreatureScoreGain: number;
   improvedCount: number;
   totalCount: number;
+  /**
+   * Optional diagnostic comment emitted by the Rust discovery engine.
+   * This must not affect ranking/selection logic.
+   */
+  comment?: string;
   targetNeuronStats?: NeuronStatsJson;
 }
 
@@ -127,6 +132,11 @@ export interface RustCandidateNeuron {
   expectedCreatureScoreGain: number;
   improvedCount: number;
   totalCount: number;
+  /**
+   * Optional diagnostic comment emitted by the Rust discovery engine.
+   * This must not affect ranking/selection logic.
+   */
+  comment?: string;
   targetNeuronStats?: NeuronStatsJson;
 }
 
@@ -242,6 +252,11 @@ export interface RustRemovalCandidate {
   totalError: number;
   impact: number;
   reason: string; // e.g., "High error (5.0000) but very low impact (0.000100) - far from outputs"
+  /**
+   * Optional diagnostic comment emitted by the Rust discovery engine.
+   * This must not affect ranking/selection logic.
+   */
+  comment?: string;
 }
 
 /**
