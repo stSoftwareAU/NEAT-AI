@@ -4137,10 +4137,34 @@ export class DiscoverStructure {
         "discovery-outgoing-weight",
         candidate.outgoingWeight.toString(),
       );
+      // IMPORTANT: Insert location depends on target neuron type.
+      //
+      // - Hidden targets: insert BEFORE the target neuron. Otherwise the new → target
+      //   synapse becomes a backwards edge (later index → earlier index) and cannot
+      //   influence the forward pass. This shows up as pure cost-of-growth penalty
+      //   (eg, -1.2e-7) with ~zero error reduction.
+      //
+      // - Output targets: insert BEFORE the FIRST output neuron (not directly before
+      //   output-1 / output-2). Otherwise we'd place a hidden neuron between outputs,
+      //   violating the invariant that outputs are contiguous at the end of the list.
       const firstOutputIndex = exportJSON.neurons.findIndex((neuron) =>
         neuron.type === "output"
       );
-      if (firstOutputIndex >= 0) {
+      const targetIndex = exportJSON.neurons.findIndex((neuron) =>
+        neuron.uuid === candidate.toNeuronUUID
+      );
+
+      if (targetNeuron.type === "output") {
+        if (firstOutputIndex >= 0) {
+          exportJSON.neurons.splice(firstOutputIndex, 0, newNeuron);
+        } else {
+          // Shouldn't happen, but keep behaviour sane.
+          exportJSON.neurons.push(newNeuron);
+        }
+      } else if (targetIndex >= 0) {
+        exportJSON.neurons.splice(targetIndex, 0, newNeuron);
+      } else if (firstOutputIndex >= 0) {
+        // Fallback: keep hidden neurons before outputs.
         exportJSON.neurons.splice(firstOutputIndex, 0, newNeuron);
       } else {
         exportJSON.neurons.push(newNeuron);
