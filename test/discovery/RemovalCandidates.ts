@@ -10,7 +10,10 @@ import { assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { RemovalCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { buildDiscoveryCandidates } from "../../src/discovery/DiscoveryCandidates.ts";
+import {
+  buildCombinedFromSuccessful,
+  buildDiscoveryCandidates,
+} from "../../src/discovery/DiscoveryCandidates.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
 Deno.test("removeLowImpactNeuron removes neuron without bias adjustment", () => {
@@ -378,12 +381,12 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
  * Test for issue #920: Combined removal candidate should be created even if
  * one removal fails during sequential application.
  *
- * When building a combined removal candidate, if one neuron was already removed
- * as part of orphan cleanup from a previous removal, the loop should continue
- * with remaining removals rather than aborting entirely.
+ * When building a combined candidate (Phase 2), if one neuron is already removed
+ * as part of orphan cleanup from a previous removal, the combination loop should
+ * continue with remaining removals rather than aborting entirely.
  *
- * Expected: 42 individual + 1 combined = 43 total removal candidates
- * Bug: Only 42 created because combined candidate loop breaks on first failure
+ * Expected: We still produce a combined candidate that removes the remaining
+ * neurons (even if one step becomes a no-op because it was already removed).
  */
 Deno.test("combined removal candidate should be created when some removals fail", () => {
   // Create a creature where neuron A connects only to neuron B.
@@ -469,32 +472,56 @@ Deno.test("combined removal candidate should be created when some removals fail"
     candidateSquashes: undefined,
   };
 
-  const candidates = buildDiscoveryCandidates(baseCreature, discovery);
+  // Phase 1: build single removal candidates only.
+  const singleCandidates = buildDiscoveryCandidates(baseCreature, discovery, {
+    skipCombinedCandidates: true,
+  });
 
-  const removalCandidates = candidates.filter(
+  const removalCandidates = singleCandidates.filter(
     (c) => c.change.type === "remove-low-impact",
   );
 
-  // Should have 3 individual + 1 combined = 4 candidates
-  // The bug was: only 3 created because the combined candidate wasn't built
-  // when removing A fails (A was already removed during B's orphan cleanup)
+  // We should have 3 single removal candidates (no combined candidates in Phase 1).
   assertEquals(
-    removalCandidates.length >= 4,
-    true,
-    `Should create at least 4 removal candidates (3 individual + 1 combined), got ${removalCandidates.length}`,
+    removalCandidates.length,
+    3,
+    `Should create 3 single removal candidates, got ${removalCandidates.length}`,
   );
 
-  // Find the combined candidate (description contains "combined" or "Pruned")
-  const combinedCandidate = removalCandidates.find(
+  // Phase 2: pretend these were "successful" and build combinations.
+  const combinedCandidates = buildCombinedFromSuccessful(
+    baseCreature,
+    discovery.ID,
+    removalCandidates,
+  );
+
+  const combinedRemovalCandidate = combinedCandidates.find(
     (c) =>
-      c.change.description?.includes("combined") ||
-      c.change.description?.includes("Pruned"),
+      c.change.type === "combo-successful" &&
+      (c.change.description?.includes("Pruned") ?? false),
   );
 
   assertExists(
-    combinedCandidate,
-    "Should create a combined removal candidate even if some removals fail",
+    combinedRemovalCandidate,
+    "Should create a combined removal candidate even if one removal step becomes a no-op",
   );
+
+  // Verify the combined candidate removed B and C (A may also be removed as an orphan).
+  const combinedExport = combinedRemovalCandidate.creature.exportJSON();
+  for (
+    const removedUUID of [
+      "neuron-B-target-of-A",
+      "neuron-A-connects-only-to-B",
+      "neuron-C-independent",
+    ]
+  ) {
+    const exists = combinedExport.neurons.some((n) => n.uuid === removedUUID);
+    assertEquals(
+      exists,
+      false,
+      `${removedUUID} should be removed in combined candidate`,
+    );
+  }
 });
 
 /**
