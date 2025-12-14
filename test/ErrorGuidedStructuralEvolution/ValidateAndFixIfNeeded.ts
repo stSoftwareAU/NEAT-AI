@@ -7,7 +7,7 @@
  * 3. Validation issues are recorded to the issues subdirectory when discoveryFailureCacheDir is set
  */
 
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import {
@@ -210,6 +210,80 @@ Deno.test({
       // A full integration test would need to trigger an actual validation failure
     } finally {
       // Clean up temporary directory
+      try {
+        await Deno.remove(tempDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "addHelpfulNeurons records an issue when from neuron is after target neuron",
+  permissions: {
+    read: true,
+    write: true,
+    ffi: false,
+  },
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const tempDir = await Deno.makeTempDir({ prefix: "neat_test_ordering_" });
+    const issuesDir = join(tempDir, "issues");
+
+    try {
+      const creature = makeTestCreature();
+
+      const result = DiscoverStructure.addHelpfulNeurons(
+        "test-ordering-id",
+        creature,
+        [{
+          // This ordering is invalid for our forward-pass evaluation because
+          // hidden-1 appears after hidden-0 in the neuron list.
+          fromNeuronUUID: "hidden-1",
+          toNeuronUUID: "hidden-0",
+          incomingWeight: 0.5,
+          outgoingWeight: 0.5,
+          squash: IDENTITY.NAME,
+          bias: 0.1,
+          targetNeuronImpact: 1.0,
+          expectedCreatureErrorReduction: 0,
+          expectedCreatureScoreGain: 0.05,
+          improvedCount: 10,
+          totalCount: 20,
+        }],
+        tempDir,
+      );
+
+      assertEquals(
+        result,
+        undefined,
+        "Expected addHelpfulNeurons to skip invalid ordering candidate",
+      );
+
+      const issueDirs: string[] = [];
+      for await (const entry of Deno.readDir(issuesDir)) {
+        if (entry.isDirectory) issueDirs.push(entry.name);
+      }
+
+      assert(
+        issueDirs.length >= 1,
+        `Expected at least one issue directory under ${issuesDir}`,
+      );
+
+      // Validate the recorded issue has an error report for quick triage.
+      const issueDir = join(issuesDir, issueDirs.sort().at(-1)!);
+      const errorPath = join(issueDir, "error.txt");
+      const errorText = await Deno.readTextFile(errorPath);
+      assert(
+        errorText.includes("from neuron must be before target neuron") ||
+          errorText.includes("fromIndex") ||
+          errorText.includes("targetIndex"),
+        `Expected issue error.txt to contain ordering diagnostics. Got:\n${errorText}`,
+      );
+    } finally {
       try {
         await Deno.remove(tempDir, { recursive: true });
       } catch {

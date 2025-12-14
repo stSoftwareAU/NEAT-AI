@@ -1566,10 +1566,43 @@ function applyChangeToCreature(
         );
         if (candidateNeurons.length === 0) return creature;
 
-        // Insert neurons before outputs
-        const outputCount = creatureJSON.output ?? 1;
-        const outputOffset = creatureJSON.neurons.length - outputCount;
-        creatureJSON.neurons.splice(outputOffset, 0, ...candidateNeurons);
+        // Insert each neuron in a forward-pass-safe position.
+        //
+        // For add-neurons candidates, the new neuron typically connects to an
+        // existing target neuron (new -> target). If we insert the new neuron
+        // after that target, the target can't receive its activation in the same
+        // forward pass (effectively zero at that stage).
+        for (const neuron of candidateNeurons) {
+          const outgoing = candidateJSON.synapses.find((s) =>
+            s.fromUUID === neuron.uuid
+          );
+          const targetUUID = outgoing?.toUUID;
+          const targetIndex = targetUUID
+            ? creatureJSON.neurons.findIndex((n) => n.uuid === targetUUID)
+            : -1;
+          const firstOutputIndex = creatureJSON.neurons.findIndex((n) =>
+            n.type === "output"
+          );
+
+          if (targetIndex >= 0) {
+            const target = creatureJSON.neurons[targetIndex];
+            if (target.type === "output") {
+              // Keep outputs contiguous at the end of the list.
+              if (firstOutputIndex >= 0) {
+                creatureJSON.neurons.splice(firstOutputIndex, 0, neuron);
+              } else {
+                creatureJSON.neurons.push(neuron);
+              }
+            } else {
+              // Hidden target: must be before the target neuron.
+              creatureJSON.neurons.splice(targetIndex, 0, neuron);
+            }
+          } else if (firstOutputIndex >= 0) {
+            creatureJSON.neurons.splice(firstOutputIndex, 0, neuron);
+          } else {
+            creatureJSON.neurons.push(neuron);
+          }
+        }
 
         // Update existing neurons set to include newly added neurons and input neurons
         const updatedNeurons = new Set(
