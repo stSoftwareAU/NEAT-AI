@@ -1118,3 +1118,56 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "buildDiscoveryCandidates does not build combined removal candidates during Phase 1 (skipCombinedCandidates)",
+  () => {
+    const base = makeBaselineCreature();
+    const discovery: DiscoverResult = {
+      ID: "REMOVAL-SKIP-COMBOS",
+      addHelpfulSynapses: undefined,
+      addHelpfulNeurons: undefined,
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      candidateSquashes: undefined,
+      removalCandidates: [
+        {
+          neuronUUID: "hidden-1",
+          totalError: 0,
+          impact: 1e-11,
+          reason: "test-removal-1",
+        },
+        {
+          neuronUUID: "hidden-2",
+          totalError: 0,
+          impact: 1e-10,
+          reason: "test-removal-2",
+        },
+      ],
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery, {
+      skipCombinedCandidates: true,
+    });
+
+    // We expect exactly one candidate per removal suggestion (no combined "cleanup" candidate).
+    const removalCandidates = candidates.filter((c) =>
+      c.change.type === "remove-low-impact"
+    );
+    assertEquals(
+      removalCandidates.length,
+      2,
+      "Expected only dedicated remove-low-impact candidates when combos are skipped",
+    );
+
+    // Defensive: ensure none look like a combined cleanup description.
+    const hasCombinedCleanup = removalCandidates.some((c) =>
+      (c.change.description ?? "").toLowerCase().includes("combined")
+    );
+    assertEquals(
+      hasCombinedCleanup,
+      false,
+      "Expected no combined removal candidate when skipCombinedCandidates is true",
+    );
+  },
+);

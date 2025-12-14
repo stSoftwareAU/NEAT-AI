@@ -501,8 +501,6 @@ export function buildDiscoveryCandidates(
   //   - Verify with actual activation data before removal
   //   - Consider average activation magnitude in addition to structural impact
   const { removalCandidates } = discovery;
-  // Track successfully removed candidates for combined removal
-  const successfulRemovals: typeof removalCandidates = [];
 
   if (removalCandidates && removalCandidates.length > 0) {
     let removalSuccessCount = 0;
@@ -529,7 +527,6 @@ export function buildDiscoveryCandidates(
       );
       if (removedLowImpactCreature) {
         removalSuccessCount++;
-        successfulRemovals.push(candidate);
         candidates.push({
           creature: removedLowImpactCreature,
           change: {
@@ -586,80 +583,6 @@ export function buildDiscoveryCandidates(
             testNeuronMatches.map((c) =>
               `${c.neuronUUID}:${c.impact.toExponential(2)}`
             ).join(", "),
-        );
-      }
-    }
-
-    // Build a COMBINED removal candidate that removes ALL successful candidates at once
-    // This allows cleaning up multiple low-impact neurons in a single operation
-    // The combined version competes with individual removals - best score wins
-    if (successfulRemovals.length >= 2) {
-      let combinedRemovalCreature: Creature | undefined = baseCreature;
-
-      // Track which neurons were actually removed in the combined creature
-      // (some may fail because they were already removed by orphan cleanup)
-      const actuallyRemoved: typeof successfulRemovals = [];
-
-      // Apply each removal sequentially to the same creature
-      // Issue #920 fix: Continue with remaining removals if one fails
-      for (const candidate of successfulRemovals) {
-        if (!combinedRemovalCreature) {
-          // This should not happen, but guard against it
-          console.warn(
-            `[DiscoveryCandidates] Combined removal creature became undefined unexpectedly`,
-          );
-          break;
-        }
-
-        const result = DiscoverStructure.removeLowImpactNeuron(
-          discovery.ID,
-          combinedRemovalCreature,
-          candidate,
-          discoveryFailureCacheDir,
-        );
-
-        if (result) {
-          // Removal succeeded - update the creature and track the removal
-          combinedRemovalCreature = result;
-          actuallyRemoved.push(candidate);
-        }
-        // If result is undefined, skip this removal but continue with others
-        // This can happen when:
-        // - The neuron was already removed by orphan cleanup from a previous removal
-        // - The neuron no longer exists in the modified creature structure
-      }
-
-      // Only create combined candidate if at least 2 removals succeeded
-      if (
-        combinedRemovalCreature &&
-        combinedRemovalCreature !== baseCreature &&
-        actuallyRemoved.length >= 2
-      ) {
-        // Format neuron IDs for git log message
-        const neuronIDs = actuallyRemoved
-          .map((c) => shortID(c.neuronUUID))
-          .join(", ");
-
-        // Git-friendly message: clear, concise, good English
-        const description = actuallyRemoved.length === 2
-          ? `🧹 Pruned 2 low-impact neurons in combined cleanup (${neuronIDs})`
-          : `🧹 Pruned ${actuallyRemoved.length} low-impact neurons in combined cleanup`;
-
-        candidates.push({
-          creature: combinedRemovalCreature,
-          change: {
-            type: "remove-low-impact",
-            description,
-            // No expectedErrorReduction - removal improves score via complexity reduction, not error
-          },
-        });
-
-        // Detailed logging for diagnostics (not in git)
-        const impactDetails = actuallyRemoved
-          .map((c) => `${shortID(c.neuronUUID)}:${c.impact.toExponential(2)}`)
-          .join(", ");
-        console.info(
-          `[DiscoveryCandidates] Created combined removal candidate: ${actuallyRemoved.length} neurons [${impactDetails}]`,
         );
       }
     }
