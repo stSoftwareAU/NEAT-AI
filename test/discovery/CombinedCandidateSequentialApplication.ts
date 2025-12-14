@@ -164,6 +164,216 @@ Deno.test(
 );
 
 Deno.test(
+  "buildCombinedFromSuccessful: add-neurons targeting hidden neuron keeps new neuron before target",
+  () => {
+    const base = makeTestCreature();
+    const baseJSON = base.exportJSON();
+
+    // Create "add-neurons" candidate: adds hidden-D and targets hidden-A (a hidden neuron).
+    // The new neuron must be inserted BEFORE hidden-A; otherwise hidden-A can't receive
+    // hidden-D's activation during the forward pass.
+    const addNeuronsJSON = structuredClone(baseJSON);
+    const targetIndex = addNeuronsJSON.neurons.findIndex((n) =>
+      n.uuid === "hidden-A"
+    );
+    assert(targetIndex >= 0, "Expected hidden-A to exist in base creature");
+
+    addNeuronsJSON.neurons.splice(targetIndex, 0, {
+      type: "hidden",
+      uuid: "hidden-D",
+      squash: "TANH",
+      bias: 0.15,
+    });
+    addNeuronsJSON.synapses.push(
+      { fromUUID: "input-0", toUUID: "hidden-D", weight: 0.4 },
+      { fromUUID: "hidden-D", toUUID: "hidden-A", weight: 0.4 },
+    );
+    const addNeuronsCreature = Creature.fromJSON(addNeuronsJSON);
+    delete addNeuronsCreature.uuid;
+    addNeuronsCreature.fix();
+    CreatureUtil.makeUUID(addNeuronsCreature);
+
+    const addNeuronsCandidate: DiscoveryCandidate = {
+      creature: addNeuronsCreature,
+      change: {
+        type: "add-neurons",
+        description: "Added hidden-D neuron targeting hidden-A",
+      },
+    };
+
+    // Second candidate so buildCombinedFromSuccessful produces combinations.
+    // Use remove-synapse to keep the structure change simple.
+    const removeSynapseJSON = structuredClone(baseJSON);
+    removeSynapseJSON.synapses = removeSynapseJSON.synapses.filter(
+      (s) => !(s.fromUUID === "hidden-B" && s.toUUID === "hidden-C"),
+    );
+    // Reconnect hidden-B directly to output
+    removeSynapseJSON.synapses.push({
+      fromUUID: "hidden-B",
+      toUUID: "output-0",
+      weight: 0.25,
+    });
+    const removeSynapseCreature = Creature.fromJSON(removeSynapseJSON);
+    delete removeSynapseCreature.uuid;
+    removeSynapseCreature.fix();
+    CreatureUtil.makeUUID(removeSynapseCreature);
+
+    const removeSynapseCandidate: DiscoveryCandidate = {
+      creature: removeSynapseCreature,
+      change: {
+        type: "remove-synapse",
+        description: "Removed hidden-B -> hidden-C synapse",
+        synapseDetails: {
+          fromNeuronUUID: "hidden-B",
+          toNeuronUUID: "hidden-C",
+        },
+      },
+    };
+
+    const combined = buildCombinedFromSuccessful(
+      base,
+      "TEST_DISCOVERY",
+      [addNeuronsCandidate, removeSynapseCandidate],
+    );
+
+    assert(combined.length > 0, "Should produce combined candidates");
+    const combo = combined.find((c) => c.change.type === "combo-successful");
+    assertExists(combo, "Should have a combo-successful candidate");
+
+    const comboJSON = combo.creature.exportJSON();
+    const indexOf = (uuid: string) =>
+      comboJSON.neurons.findIndex((n) => n.uuid === uuid);
+
+    const newIndex = indexOf("hidden-D");
+    const targetHiddenIndex = indexOf("hidden-A");
+    assert(newIndex >= 0, "Expected hidden-D to exist in combined creature");
+    assert(
+      targetHiddenIndex >= 0,
+      "Expected hidden-A to exist in combined creature",
+    );
+
+    assert(
+      newIndex < targetHiddenIndex,
+      `Expected hidden-D (index ${newIndex}) to be before hidden-A (index ${targetHiddenIndex})`,
+    );
+  },
+);
+
+Deno.test(
+  "buildCombinedFromSuccessful: add-neurons chain keeps new neurons in candidate order (new -> new -> existing)",
+  () => {
+    const base = makeTestCreature();
+    const baseJSON = base.exportJSON();
+
+    // Create "add-neurons" candidate: adds hidden-D -> hidden-E -> hidden-A chain.
+    //
+    // Both hidden-D and hidden-E are new neurons. The merge logic must keep:
+    // hidden-D before hidden-E before hidden-A, otherwise hidden-D -> hidden-E
+    // becomes a backward edge and breaks forward-pass ordering.
+    const addNeuronsJSON = structuredClone(baseJSON);
+    const targetIndex = addNeuronsJSON.neurons.findIndex((n) =>
+      n.uuid === "hidden-A"
+    );
+    assert(targetIndex >= 0, "Expected hidden-A to exist in base creature");
+
+    // Insert the chain in the intended (candidate) order.
+    addNeuronsJSON.neurons.splice(
+      targetIndex,
+      0,
+      {
+        type: "hidden",
+        uuid: "hidden-D",
+        squash: "TANH",
+        bias: 0.11,
+      },
+      {
+        type: "hidden",
+        uuid: "hidden-E",
+        squash: "TANH",
+        bias: 0.12,
+      },
+    );
+
+    addNeuronsJSON.synapses.push(
+      { fromUUID: "input-0", toUUID: "hidden-D", weight: 0.4 },
+      { fromUUID: "hidden-D", toUUID: "hidden-E", weight: 0.35 },
+      { fromUUID: "hidden-E", toUUID: "hidden-A", weight: 0.3 },
+    );
+
+    const addNeuronsCreature = Creature.fromJSON(addNeuronsJSON);
+    delete addNeuronsCreature.uuid;
+    addNeuronsCreature.fix();
+    CreatureUtil.makeUUID(addNeuronsCreature);
+
+    const addNeuronsCandidate: DiscoveryCandidate = {
+      creature: addNeuronsCreature,
+      change: {
+        type: "add-neurons",
+        description: "Added hidden-D -> hidden-E -> hidden-A chain",
+      },
+    };
+
+    // Second candidate so buildCombinedFromSuccessful produces combinations.
+    const removeSynapseJSON = structuredClone(baseJSON);
+    removeSynapseJSON.synapses = removeSynapseJSON.synapses.filter(
+      (s) => !(s.fromUUID === "hidden-A" && s.toUUID === "hidden-C"),
+    );
+    removeSynapseJSON.synapses.push({
+      fromUUID: "hidden-A",
+      toUUID: "output-0",
+      weight: 0.25,
+    });
+    const removeSynapseCreature = Creature.fromJSON(removeSynapseJSON);
+    delete removeSynapseCreature.uuid;
+    removeSynapseCreature.fix();
+    CreatureUtil.makeUUID(removeSynapseCreature);
+
+    const removeSynapseCandidate: DiscoveryCandidate = {
+      creature: removeSynapseCreature,
+      change: {
+        type: "remove-synapse",
+        description: "Removed hidden-A -> hidden-C synapse",
+        synapseDetails: {
+          fromNeuronUUID: "hidden-A",
+          toNeuronUUID: "hidden-C",
+        },
+      },
+    };
+
+    const combined = buildCombinedFromSuccessful(
+      base,
+      "TEST_DISCOVERY",
+      [addNeuronsCandidate, removeSynapseCandidate],
+    );
+
+    assert(combined.length > 0, "Should produce combined candidates");
+    const combo = combined.find((c) => c.change.type === "combo-successful");
+    assertExists(combo, "Should have a combo-successful candidate");
+
+    const comboJSON = combo.creature.exportJSON();
+    const indexOf = (uuid: string) =>
+      comboJSON.neurons.findIndex((n) => n.uuid === uuid);
+
+    const dIndex = indexOf("hidden-D");
+    const eIndex = indexOf("hidden-E");
+    const aIndex = indexOf("hidden-A");
+
+    assert(dIndex >= 0, "Expected hidden-D to exist in combined creature");
+    assert(eIndex >= 0, "Expected hidden-E to exist in combined creature");
+    assert(aIndex >= 0, "Expected hidden-A to exist in combined creature");
+
+    assert(
+      dIndex < eIndex,
+      `Expected hidden-D (index ${dIndex}) to be before hidden-E (index ${eIndex})`,
+    );
+    assert(
+      eIndex < aIndex,
+      `Expected hidden-E (index ${eIndex}) to be before hidden-A (index ${aIndex})`,
+    );
+  },
+);
+
+Deno.test(
   "buildCombinedFromSuccessful: add-synapses + remove-synapse preserves added synapses",
   () => {
     const base = makeTestCreature();

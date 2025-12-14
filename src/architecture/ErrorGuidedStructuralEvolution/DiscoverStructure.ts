@@ -3845,6 +3845,95 @@ export class DiscoverStructure {
   }
 
   /**
+   * Records a discovery issue to the issues subdirectory for debugging.
+   *
+   * This is used for cases where the creature may still validate, but the discovery
+   * candidate is logically broken for our forward-pass evaluation ordering (eg,
+   * a candidate proposes a from → to link where the "from" neuron is after the
+   * target neuron in the evaluation order, making the new neuron's activation
+   * effectively zero at that stage).
+   *
+   * @param originalCreature - The original creature before modifications.
+   * @param discoveryID - Unique identifier for the discovery process.
+   * @param operationType - Type of operation (eg, "add-neurons").
+   * @param issueType - Short discriminator for the issue kind.
+   * @param details - JSON-serialisable diagnostic payload.
+   * @param discoveryFailureCacheDir - Base directory for the failure cache.
+   */
+  private static recordDiscoveryIssue(
+    originalCreature: Creature,
+    discoveryID: string,
+    operationType: string,
+    issueType: string,
+    details: unknown,
+    discoveryFailureCacheDir: string,
+  ): void {
+    try {
+      // Create timestamp in Australian format (yyyymmdd-HHmmss)
+      const now = new Date();
+      const timestamp = now.toISOString()
+        .replace(/[-:]/g, "")
+        .replace("T", "-")
+        .slice(0, 15);
+
+      const issueDir = join(
+        discoveryFailureCacheDir,
+        "issues",
+        `${timestamp}-${discoveryID}-${operationType}-${issueType}`,
+      );
+      ensureDirSync(issueDir);
+
+      const detailsPath = join(issueDir, "candidate.json");
+      Deno.writeTextFileSync(detailsPath, JSON.stringify(details, null, 2));
+
+      const originalPath = join(issueDir, "original-creature.json");
+      Deno.writeTextFileSync(
+        originalPath,
+        JSON.stringify(originalCreature.exportJSON(), null, 2),
+      );
+
+      const errorPath = join(issueDir, "error.txt");
+      const detailsRecord = details as Record<string, unknown> | null;
+      const message =
+        detailsRecord && typeof detailsRecord["message"] === "string"
+          ? detailsRecord["message"]
+          : undefined;
+      const fromIndex =
+        detailsRecord && typeof detailsRecord["fromIndex"] === "number"
+          ? detailsRecord["fromIndex"]
+          : undefined;
+      const targetIndex = detailsRecord &&
+          typeof detailsRecord["targetIndex"] === "number"
+        ? detailsRecord["targetIndex"]
+        : undefined;
+      const errorContent = [
+        `Discovery Issue Report`,
+        `======================`,
+        ``,
+        `Timestamp: ${now.toISOString()}`,
+        `Discovery ID: ${discoveryID}`,
+        `Operation Type: ${operationType}`,
+        `Issue Type: ${issueType}`,
+        ``,
+        `Summary: Candidate is incompatible with forward-pass evaluation ordering.`,
+        message ? `Message: ${message}` : undefined,
+        fromIndex !== undefined ? `fromIndex: ${fromIndex}` : undefined,
+        targetIndex !== undefined ? `targetIndex: ${targetIndex}` : undefined,
+      ].filter((line) => line !== undefined).join("\n");
+      Deno.writeTextFileSync(errorPath, errorContent);
+
+      console.warn(
+        `[Discovery ${discoveryID}] Discovery issue recorded to: ${issueDir}`,
+      );
+    } catch (recordError) {
+      // Don't let recording failure prevent the main flow
+      console.error(
+        `[Discovery ${discoveryID}] Failed to record discovery issue: ${recordError}`,
+      );
+    }
+  }
+
+  /**
    * Removes a synapse from the creature if it is determined to be harmful.
    * This method is used to prune synapses that consistently worsen prediction error.
    * @param ID - Unique identifier for the discovery process.
@@ -4110,6 +4199,52 @@ export class DiscoverStructure {
         return neuron.uuid === candidate.toNeuronUUID;
       });
       if (!targetNeuron) return;
+
+      // Guard: ensure the source neuron is evaluated before the target neuron.
+      //
+      // This should always be true for Rust-proposed add-neuron candidates in a
+      // feed-forward creature. If it isn't, the new neuron's activation will be
+      // computed before its inputs are available, making the mutation ineffective
+      // (activation looks like zero at that stage).
+      const fromIndex = candidate.fromNeuronUUID.startsWith("input-")
+        ? -1
+        : exportJSON.neurons.findIndex((n) =>
+          n.uuid === candidate.fromNeuronUUID
+        );
+      const toIndex = exportJSON.neurons.findIndex((n) =>
+        n.uuid === candidate.toNeuronUUID
+      );
+
+      if (fromIndex >= 0 && toIndex >= 0 && fromIndex >= toIndex) {
+        const summary =
+          `from neuron must be before target neuron (fromIndex=${fromIndex}, targetIndex=${toIndex})`;
+        console.warn(
+          `[Discovery ${ID}] addHelpfulNeurons: Skipping candidate ${candidate.fromNeuronUUID} -> ${candidate.toNeuronUUID}: ${summary}`,
+        );
+
+        if (discoveryFailureCacheDir) {
+          this.recordDiscoveryIssue(
+            creature,
+            ID,
+            "add-neurons",
+            "ordering",
+            {
+              message: summary,
+              fromNeuronUUID: candidate.fromNeuronUUID,
+              toNeuronUUID: candidate.toNeuronUUID,
+              fromIndex,
+              targetIndex: toIndex,
+              candidate,
+              neuronOrder: exportJSON.neurons.map((n) => ({
+                uuid: n.uuid,
+                type: n.type,
+              })),
+            },
+            discoveryFailureCacheDir,
+          );
+        }
+        return;
+      }
 
       const newNeuronUUID =
         `hidden-discovery-${(globalThis.crypto?.randomUUID?.() ??

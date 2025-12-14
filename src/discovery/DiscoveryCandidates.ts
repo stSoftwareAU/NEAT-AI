@@ -1566,10 +1566,77 @@ function applyChangeToCreature(
         );
         if (candidateNeurons.length === 0) return creature;
 
-        // Insert neurons before outputs
-        const outputCount = creatureJSON.output ?? 1;
-        const outputOffset = creatureJSON.neurons.length - outputCount;
-        creatureJSON.neurons.splice(outputOffset, 0, ...candidateNeurons);
+        // Insert new neurons in a forward-pass-safe position based on the *candidate*
+        // neurone ordering (not by guessing from a single outgoing synapse).
+        //
+        // Why: a new neuron may target another new neuron (new -> new), or it may
+        // have multiple outgoing targets. In those cases, inserting each neuron by
+        // looking up only one outgoing target in the current creature can create a
+        // backward edge (fromIndex > toIndex), breaking forward-pass ordering.
+        //
+        // Strategy: keep the existing neurone list intact and splice in the newly
+        // added neurons as ordered blocks before their next non-new "anchor" neurone
+        // in the candidate list. This preserves the candidate creature's ordering
+        // constraints while also retaining any neurons introduced by earlier steps
+        // in a combination.
+        const newNeuronUUIDs = new Set(candidateNeurons.map((n) => n.uuid));
+        const candidateNewNeuronMap = new Map(
+          candidateNeurons.map((n) => [n.uuid, n] as const),
+        );
+        const END_ANCHOR = "__END__";
+
+        const anchorToNewNeurons = new Map<string, typeof candidateNeurons>();
+        const candidateUUIDs = candidateJSON.neurons.map((n) => n.uuid);
+        for (let i = 0; i < candidateUUIDs.length; i++) {
+          const uuid = candidateUUIDs[i];
+          if (!newNeuronUUIDs.has(uuid)) continue;
+
+          let anchorUUID: string | undefined;
+          for (let j = i + 1; j < candidateUUIDs.length; j++) {
+            const nextUUID = candidateUUIDs[j];
+            if (!newNeuronUUIDs.has(nextUUID)) {
+              anchorUUID = nextUUID;
+              break;
+            }
+          }
+
+          const key = anchorUUID ?? END_ANCHOR;
+          const neuron = candidateNewNeuronMap.get(uuid);
+          if (!neuron) continue;
+          const list = anchorToNewNeurons.get(key) ?? [];
+          list.push(neuron);
+          anchorToNewNeurons.set(key, list);
+        }
+
+        const inserted = new Set<string>();
+        const mergedNeurons: typeof creatureJSON.neurons = [];
+        for (const neuron of creatureJSON.neurons) {
+          const toInsert = anchorToNewNeurons.get(neuron.uuid);
+          if (toInsert && toInsert.length > 0) {
+            for (const newNeuron of toInsert) {
+              if (inserted.has(newNeuron.uuid)) continue;
+              mergedNeurons.push(newNeuron);
+              inserted.add(newNeuron.uuid);
+            }
+          }
+          mergedNeurons.push(neuron);
+        }
+
+        // Any remaining new neurons (eg, anchor was removed by a prior combo step)
+        // are inserted before the first output to keep outputs contiguous.
+        const remaining = candidateNeurons.filter((n) => !inserted.has(n.uuid));
+        if (remaining.length > 0) {
+          const firstOutputIndex = mergedNeurons.findIndex((n) =>
+            n.type === "output"
+          );
+          const insertAt = firstOutputIndex >= 0
+            ? firstOutputIndex
+            : mergedNeurons.length;
+          mergedNeurons.splice(insertAt, 0, ...remaining);
+          for (const neuron of remaining) inserted.add(neuron.uuid);
+        }
+
+        creatureJSON.neurons = mergedNeurons;
 
         // Update existing neurons set to include newly added neurons and input neurons
         const updatedNeurons = new Set(
@@ -1582,7 +1649,6 @@ function applyChangeToCreature(
 
         // Find synapses connected to these new neurons
         // Only include synapses where BOTH endpoints exist in current creature
-        const newNeuronUUIDs = new Set(candidateNeurons.map((n) => n.uuid));
         const newSynapses = candidateJSON.synapses.filter(
           (s) =>
             (newNeuronUUIDs.has(s.fromUUID) || newNeuronUUIDs.has(s.toUUID)) &&
