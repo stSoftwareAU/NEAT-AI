@@ -4113,6 +4113,13 @@ export class DiscoverStructure {
       };
 
       addTag(addSynapse as TagsInterface, "discovery", "beneficial");
+      if (bestCandidate.comment) {
+        addTag(
+          addSynapse as TagsInterface,
+          "discovery-comment",
+          bestCandidate.comment,
+        );
+      }
       exportJSON.synapses.push(addSynapse);
       appliedSynapses.push(bestCandidate);
     });
@@ -4278,6 +4285,13 @@ export class DiscoverStructure {
         bias: candidate.bias,
       };
       addTag(newNeuron as TagsInterface, "discovered", candidate.squash);
+      if (candidate.comment) {
+        addTag(
+          newNeuron as TagsInterface,
+          "discovery-comment",
+          candidate.comment,
+        );
+      }
       // Diagnostic tags for troubleshooting
       addTag(
         newNeuron as TagsInterface,
@@ -4336,6 +4350,13 @@ export class DiscoverStructure {
         weight: candidate.incomingWeight,
       };
       addTag(incomingSynapse as TagsInterface, "discovery", "beneficial");
+      if (candidate.comment) {
+        addTag(
+          incomingSynapse as TagsInterface,
+          "discovery-comment",
+          candidate.comment,
+        );
+      }
       exportJSON.synapses.push(incomingSynapse);
 
       const outgoingSynapse = {
@@ -4344,6 +4365,13 @@ export class DiscoverStructure {
         weight: candidate.outgoingWeight,
       };
       addTag(outgoingSynapse as TagsInterface, "discovery", "beneficial");
+      if (candidate.comment) {
+        addTag(
+          outgoingSynapse as TagsInterface,
+          "discovery-comment",
+          candidate.comment,
+        );
+      }
       exportJSON.synapses.push(outgoingSynapse);
     });
 
