@@ -1,4 +1,5 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
+import { getTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
@@ -90,6 +91,7 @@ Deno.test(
       expectedCreatureScoreGain: 0.25,
       improvedCount: 5,
       totalCount: 6,
+      comment: "rust: diagnostic comment for first synapse",
     }, {
       fromNeuronUUID: "input-3",
       toNeuronUUID: "hidden-2",
@@ -99,6 +101,7 @@ Deno.test(
       expectedCreatureScoreGain: 0.3,
       improvedCount: 6,
       totalCount: 7,
+      comment: "rust: diagnostic comment for second synapse",
     }];
     const discovery: DiscoverResult = {
       ID: "SYN-MULTI",
@@ -134,13 +137,35 @@ Deno.test(
       });
     };
 
-    assert(
-      findDedicatedCandidate(synapses[0]),
-      "Expected candidate dedicated to first helpful synapse",
+    const first = findDedicatedCandidate(synapses[0]);
+    assert(first, "Expected candidate dedicated to first helpful synapse");
+    const firstExport = first.creature.exportJSON();
+    const firstSynapse = firstExport.synapses.find((synapse) =>
+      synapse.fromUUID === synapses[0].fromNeuronUUID &&
+      synapse.toUUID === synapses[0].toNeuronUUID &&
+      Math.abs(synapse.weight - synapses[0].weight) < 1e-9
+    );
+    assert(firstSynapse, "Expected first candidate to contain target synapse");
+    assertEquals(
+      getTag(firstSynapse as unknown as TagsInterface, "discovery-comment"),
+      synapses[0].comment,
+    );
+
+    const second = findDedicatedCandidate(synapses[1]);
+    assert(second, "Expected candidate dedicated to second helpful synapse");
+    const secondExport = second.creature.exportJSON();
+    const secondSynapse = secondExport.synapses.find((synapse) =>
+      synapse.fromUUID === synapses[1].fromNeuronUUID &&
+      synapse.toUUID === synapses[1].toNeuronUUID &&
+      Math.abs(synapse.weight - synapses[1].weight) < 1e-9
     );
     assert(
-      findDedicatedCandidate(synapses[1]),
-      "Expected candidate dedicated to second helpful synapse",
+      secondSynapse,
+      "Expected second candidate to contain target synapse",
+    );
+    assertEquals(
+      getTag(secondSynapse as unknown as TagsInterface, "discovery-comment"),
+      synapses[1].comment,
     );
   },
 );
@@ -426,6 +451,7 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
     expectedCreatureScoreGain: 0.25,
     improvedCount: 8,
     totalCount: 10,
+    comment: "rust: diagnostic comment for added neuron",
   };
 
   const discovery: DiscoverResult = {
@@ -447,6 +473,10 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
   );
   assert(discoveryNeuron, "Expected a discovered neuron to be added.");
   assertEquals(discoveryNeuron?.squash, neuronCandidate.squash);
+  assertEquals(
+    getTag(discoveryNeuron as unknown as TagsInterface, "discovery-comment"),
+    neuronCandidate.comment,
+  );
 
   const incomingSynapseExists = exported.synapses.some((synapse) =>
     synapse.toUUID === discoveryNeuron?.uuid &&
