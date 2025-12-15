@@ -37,7 +37,10 @@ import {
   type RustSynapseDiagnostic,
   type RustSynapseDiagnosticDetail,
 } from "./RustDiscovery.ts";
-import { DEFAULT_RUST_FLUSH_BYTES, DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
+import {
+  DEFAULT_RUST_FLUSH_BYTES,
+  DEFAULT_RUST_FLUSH_RECORDS,
+} from "./constants.ts";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
 import { dirname, join } from "@std/path";
 
@@ -446,8 +449,9 @@ export class DiscoverStructure {
     // Rough estimate per sample for JSON payload sizing:
     // - ~200 bytes per neuron record (uuid + activation + errors metadata)
     // - ~4 bytes per float for input/output values
-    const nonInputNeuronCount = creature.neurons.filter((n) => n.type !== "input")
-      .length;
+    const nonInputNeuronCount =
+      creature.neurons.filter((n) => n.type !== "input")
+        .length;
     this.rustEstimatedBytesPerSample = (200 * nonInputNeuronCount) +
       (4 * (creature.input + creature.output));
 
