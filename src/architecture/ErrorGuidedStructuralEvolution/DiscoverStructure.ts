@@ -37,11 +37,15 @@ import {
   type RustSynapseDiagnostic,
   type RustSynapseDiagnosticDetail,
 } from "./RustDiscovery.ts";
-import { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
+import {
+  DEFAULT_RUST_FLUSH_BYTES,
+  DEFAULT_RUST_FLUSH_RECORDS,
+} from "./constants.ts";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
-import { join } from "@std/path";
+import { dirname, join } from "@std/path";
 
 export { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
+export { DEFAULT_RUST_FLUSH_BYTES } from "./constants.ts";
 
 export interface DiscoverStructureDeps {
   isRustDiscoveryEnabled: typeof isRustDiscoveryEnabled;
@@ -84,6 +88,13 @@ export interface DiscoverStructureOptions {
    * Useful for debugging to re-run analysis on existing data.
    */
   skipRecordPhase?: boolean;
+
+  /**
+   * Estimated payload size threshold (in bytes) before forcing a Rust flush.
+   *
+   * Primarily for testing and production tuning; defaults to ~50 MiB.
+   */
+  rustFlushBytesThreshold?: number;
 }
 
 const OUTPUT_ERROR_CACHE_TTL_MS = 30_000;
@@ -370,11 +381,14 @@ export class DiscoverStructure {
   // Rust recording: accumulate data for Rust Parquet writing (Rust is required)
   private rustAccumulatedData: DataRecordInterface[] = [];
   private rustAccumulatedNeuronData: Array<Map<string, DiscoverRecord>> = [];
+  private rustAccumulatedEstimatedBytes = 0;
+  private rustEstimatedBytesPerSample = 0;
   private rustBinaryFilePath: string | null = null;
   private rustBinaryFilePaths: Set<string> = new Set(); // Track all binary file paths
   private usingRustDualWrite = false;
   private parquetFilePath: string | null = null;
   private rustFlushRecords: number;
+  private rustFlushBytesThreshold: number;
   private rustChunkFiles: string[] = [];
   private rustChunkCounter = 0;
   private syntheticBinaryMode = false;
@@ -424,9 +438,22 @@ export class DiscoverStructure {
     );
     this.timeoutTS = Date.now() + timeoutSeconds * 1000;
     this.rustFlushRecords = Math.max(1, rustFlushRecords);
+    this.rustFlushBytesThreshold = Math.max(
+      1,
+      options.rustFlushBytesThreshold ?? DEFAULT_RUST_FLUSH_BYTES,
+    );
     this.deps = { ...DEFAULT_DISCOVER_STRUCTURE_DEPS, ...deps };
     this.disableCleanup = options.disableCleanup ?? false;
     this.skipRecordPhase = options.skipRecordPhase ?? false;
+
+    // Rough estimate per sample for JSON payload sizing:
+    // - ~200 bytes per neuron record (uuid + activation + errors metadata)
+    // - ~4 bytes per float for input/output values
+    const nonInputNeuronCount =
+      creature.neurons.filter((n) => n.type !== "input")
+        .length;
+    this.rustEstimatedBytesPerSample = (200 * nonInputNeuronCount) +
+      (4 * (creature.input + creature.output));
 
     // Only clear the directory if we're not skipping the record phase
     // When skipping, just ensure it exists (for tests that don't use existing data)
@@ -794,6 +821,7 @@ export class DiscoverStructure {
         // Accumulate data for Rust (Parquet format)
         this.rustAccumulatedData.push(record);
         this.rustAccumulatedNeuronData.push(discoverMap);
+        this.rustAccumulatedEstimatedBytes += this.rustEstimatedBytesPerSample;
       } catch (error) {
         // If we hit the excessive record() calls error, add context about which sample
         if (
@@ -819,7 +847,8 @@ export class DiscoverStructure {
 
   public shouldFlushRustChunk(): boolean {
     if (!this.usingRustDualWrite) return false;
-    return this.rustAccumulatedData.length >= this.rustFlushRecords;
+    if (this.rustAccumulatedData.length >= this.rustFlushRecords) return true;
+    return this.rustAccumulatedEstimatedBytes >= this.rustFlushBytesThreshold;
   }
 
   /**
@@ -992,6 +1021,7 @@ export class DiscoverStructure {
 
       this.rustAccumulatedData = [];
       this.rustAccumulatedNeuronData = [];
+      this.rustAccumulatedEstimatedBytes = 0;
 
       return parquetPath;
     }
@@ -1082,6 +1112,7 @@ export class DiscoverStructure {
     }
 
     const outputFile = `${this.tempDir}/discovery_data.parquet`;
+    const chunkFilesToCleanup = [...this.rustChunkFiles];
     const mergeResult = this.deps.mergeDiscoveryParquet({
       outputFile,
       inputFiles: [...this.rustChunkFiles],
@@ -1098,6 +1129,22 @@ export class DiscoverStructure {
     this.parquetFilePath = mergeResult.outputFile ?? outputFile;
     this.combinedRustAnalysis = undefined;
     this.rustChunkFiles = [];
+
+    if (!this.disableCleanup) {
+      for (const file of chunkFilesToCleanup) {
+        try {
+          Deno.removeSync(file);
+        } catch {
+          // Ignore cleanup failures - discovery can still proceed with merged output.
+        }
+        try {
+          // Remove the chunk directory too (batch temp directory cleanup).
+          Deno.removeSync(dirname(file), { recursive: true });
+        } catch {
+          // Ignore directory cleanup failures.
+        }
+      }
+    }
     return true;
   }
 

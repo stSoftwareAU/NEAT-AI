@@ -5,7 +5,10 @@ import type {
   DiscoveryMinCandidatesPerCategory,
   NeatArguments,
 } from "./NeatOptions.ts";
-import { DEFAULT_RUST_FLUSH_RECORDS } from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
+import {
+  DEFAULT_RUST_FLUSH_BYTES,
+  DEFAULT_RUST_FLUSH_RECORDS,
+} from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
 
 /**
  * Default cost of growth value used when not specified in options.
@@ -168,6 +171,8 @@ export function createNeatConfig(options: NeatOptions) {
     discoveryBufferSize: options.discoveryBufferSize || 0,
     discoveryRustFlushRecords: options.discoveryRustFlushRecords ??
       DEFAULT_RUST_FLUSH_RECORDS,
+    discoveryRustFlushBytes: options.discoveryRustFlushBytes ??
+      DEFAULT_RUST_FLUSH_BYTES,
     discoveryMaxNeurons: options.discoveryMaxNeurons ?? 6, // Default 6 neurons (was 0 - production-tuned)
     discoveryDrainEveryNBatches: options.discoveryDrainEveryNBatches ?? 10,
     discoveryFocusNeuronUUIDs: options.discoveryFocusNeuronUUIDs
@@ -356,6 +361,14 @@ function validate(config: NeatArguments) {
   ) {
     throw new Error(
       `Discovery Rust Flush Records must be an integer greater than 0 was: ${config.discoveryRustFlushRecords}`,
+    );
+  }
+  if (
+    Number.isFinite(config.discoveryRustFlushBytes) === false ||
+    config.discoveryRustFlushBytes < 1
+  ) {
+    throw new Error(
+      `Discovery Rust Flush Bytes must be greater than 0 was: ${config.discoveryRustFlushBytes}`,
     );
   }
   if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {

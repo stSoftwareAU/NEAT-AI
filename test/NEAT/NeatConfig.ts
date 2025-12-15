@@ -5,6 +5,7 @@ import {
   MAX_ANALYSIS_TIMEOUT_MINUTES,
   MIN_ANALYSIS_TIMEOUT_MINUTES,
 } from "../../src/config/NeatConfig.ts";
+import { DEFAULT_RUST_FLUSH_BYTES } from "../../src/architecture/ErrorGuidedStructuralEvolution/constants.ts";
 import { Selection } from "../../mod.ts";
 
 Deno.test("NeatConfig debug", () => {
@@ -53,6 +54,24 @@ Deno.test("NeatConfig discoveryMinCandidatesPerCategory defaults", () => {
     config.discoveryMinCandidatesPerCategory.removeLowImpact,
     DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY.removeLowImpact,
   );
+});
+
+Deno.test("NeatConfig discoveryRustFlushBytes defaults", () => {
+  const config = createNeatConfig({});
+  assertEquals(config.discoveryRustFlushBytes, DEFAULT_RUST_FLUSH_BYTES);
+});
+
+Deno.test("NeatConfig discoveryRustFlushBytes validation - non-positive throws", () => {
+  try {
+    createNeatConfig({ discoveryRustFlushBytes: 0 });
+    fail("Should throw for non-positive discoveryRustFlushBytes");
+  } catch (e) {
+    assertEquals(
+      (e as Error).message.includes("Discovery Rust Flush Bytes"),
+      true,
+      `Error should mention the field name: ${(e as Error).message}`,
+    );
+  }
 });
 
 Deno.test("NeatConfig discoveryMinCandidatesPerCategory partial override", () => {

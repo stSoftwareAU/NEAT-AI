@@ -205,6 +205,15 @@ export interface NeatArguments {
   discoveryRustFlushRecords: number;
 
   /**
+   * Estimated payload size threshold (in bytes) before flushing a Rust discovery
+   * chunk.
+   *
+   * This prevents V8 hitting JSON.stringify() maximum string length limits when
+   * recording for long periods with large creatures. Defaults to ~50 MiB.
+   */
+  discoveryRustFlushBytes: number;
+
+  /**
    * The maximum number of neurons to analyze per discovery iteration.
    * Defaults to 6 (production-tuned - balances thoroughness with speed).
    */
