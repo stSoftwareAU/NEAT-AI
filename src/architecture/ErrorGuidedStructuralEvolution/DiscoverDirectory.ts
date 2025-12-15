@@ -234,6 +234,7 @@ class DataRecorder {
       baseDirectory: config.discoveryBaseDirectory,
       disableCleanup: config.discoveryDisableCleanup,
       skipRecordPhase: config.discoverySkipRecordPhase,
+      rustFlushBytesThreshold: config.discoveryRustFlushBytes,
     };
   }
 
