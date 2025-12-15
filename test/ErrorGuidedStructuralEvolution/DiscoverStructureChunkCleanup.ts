@@ -100,7 +100,10 @@ Deno.test({
         helpfulSynapses: [],
         harmfulSynapses: [],
       }),
-      readDiscoveryRecords: (): RustReadResult => ({ success: true, records: [] }),
+      readDiscoveryRecords: (): RustReadResult => ({
+        success: true,
+        records: [],
+      }),
     };
 
     const discovery = new DiscoverStructure(
@@ -188,7 +191,10 @@ Deno.test({
         helpfulSynapses: [],
         harmfulSynapses: [],
       }),
-      readDiscoveryRecords: (): RustReadResult => ({ success: true, records: [] }),
+      readDiscoveryRecords: (): RustReadResult => ({
+        success: true,
+        records: [],
+      }),
     };
 
     const discovery = new DiscoverStructure(
@@ -232,4 +238,3 @@ Deno.test({
     }
   },
 });
-
