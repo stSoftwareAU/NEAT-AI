@@ -18,6 +18,11 @@ export interface RemovalCandidate {
   reason: string;
   /** Average activation for bias adjustment during removal (computed lazily). */
   averageActivation?: number;
+  /**
+   * Optional diagnostic comment emitted by the Rust discovery engine.
+   * This must not affect ranking/selection logic.
+   */
+  comment?: string;
 }
 
 /**
@@ -31,6 +36,7 @@ export function fromRustRemovalCandidate(
     totalError: rust.totalError,
     impact: rust.impact,
     reason: rust.reason,
+    comment: rust.comment,
   };
 }
 
