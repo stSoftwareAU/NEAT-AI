@@ -106,7 +106,9 @@ Deno.test("forwardOnly creatures block memory mutations even when feedbackLoop i
       method.name === Mutation.SUB_SELF_CONN.name ||
       method.name === Mutation.ADD_BACK_CONN.name
     ) {
-      throw new Error(`Invalid mutation for forwardOnly creature: ${method.name}`);
+      throw new Error(
+        `Invalid mutation for forwardOnly creature: ${method.name}`,
+      );
     }
   }
 });
