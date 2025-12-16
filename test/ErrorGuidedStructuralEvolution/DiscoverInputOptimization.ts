@@ -83,7 +83,8 @@ function makeTrainingData(
 
 // Note: Leak detection disabled for this test - Rust library is intentionally loaded and kept in memory
 Deno.test({
-  name: "Baseline: Input neurons are correctly recorded and loaded from CSV",
+  name:
+    "Baseline: Input neurons are correctly loaded from binary when indices are provided",
   ignore: !isRustDiscoveryEnabled(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
@@ -92,74 +93,99 @@ Deno.test({
     CreatureUtil.makeUUID(creature);
 
     const trainingData = makeTrainingData(creature.input, creature.output, 100);
+    const dataDir = makeDataDir(trainingData, 100, {
+      input: creature.input,
+      output: creature.output,
+    });
 
-    // Initialize discovery and record data
-    const discoverStructure = new DiscoverStructure(
-      creature,
-      5, // Reduced from 60s to 5s for faster tests
-      DEFAULT_RUST_FLUSH_RECORDS,
-    );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    try {
+      // Initialize discovery and record data (inputs are read back from binary using indices)
+      const discoverStructure = new DiscoverStructure(
+        creature,
+        5, // Reduced from 60s to 5s for faster tests
+        DEFAULT_RUST_FLUSH_RECORDS,
+      );
+      const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
-    discoverStructure.initialize(neuronPromisesMap);
-    const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
-    assert(recorded, "Record should succeed");
-    await Promise.all([...neuronPromisesMap.values()]);
+      discoverStructure.initialize(neuronPromisesMap);
 
-    // Flush Rust recording (required for Parquet file creation)
-    const flushSuccess = discoverStructure.flushRustRecording();
-    assert(flushSuccess, "Rust flush should succeed");
+      const recordIndices = Array.from(
+        { length: trainingData.length },
+        (_, i) => i,
+      );
+      const binaryFilePath = `${dataDir}/0.bin`;
 
-    // Access the private loadCSV method to verify input neurons are recorded
-    const testAccess =
-      discoverStructure as unknown as DiscoverStructureTestAccess;
-    const loadNeuronRecords = testAccess.loadNeuronRecords.bind(
-      discoverStructure,
-    );
-    const tempDir = testAccess.tempDir;
+      const recorded = discoverStructure.record(
+        trainingData,
+        neuronPromisesMap,
+        binaryFilePath,
+        recordIndices,
+      );
+      assert(recorded, "Record should succeed");
+      await Promise.all([...neuronPromisesMap.values()]);
 
-    // Load input neuron records
-    const input0Records = await loadNeuronRecords(`${tempDir}/input-0`);
-    const input1Records = await loadNeuronRecords(`${tempDir}/input-1`);
-    const input2Records = await loadNeuronRecords(`${tempDir}/input-2`);
+      // Flush Rust recording (required for Parquet file creation)
+      const flushSuccess = discoverStructure.flushRustRecording();
+      assert(flushSuccess, "Rust flush should succeed");
 
-    // Verify we got the right number of records
-    assertEquals(
-      input0Records.length,
-      100,
-      "Should have 100 records for input-0",
-    );
-    assertEquals(
-      input1Records.length,
-      100,
-      "Should have 100 records for input-1",
-    );
-    assertEquals(
-      input2Records.length,
-      100,
-      "Should have 100 records for input-2",
-    );
+      // Access the private loadNeuronRecords method to verify input neurons are readable
+      const testAccess =
+        discoverStructure as unknown as DiscoverStructureTestAccess;
+      const loadNeuronRecords = testAccess.loadNeuronRecords.bind(
+        discoverStructure,
+      );
+      const tempDir = testAccess.tempDir;
 
-    // Verify the values match the training data
-    for (let i = 0; i < trainingData.length; i++) {
+      // Load input neuron records (input neurons are never stored in Parquet)
+      const input0Records = await loadNeuronRecords(`${tempDir}/input-0`);
+      const input1Records = await loadNeuronRecords(`${tempDir}/input-1`);
+      const input2Records = await loadNeuronRecords(`${tempDir}/input-2`);
+
+      // Verify we got the right number of records
       assertEquals(
-        input0Records[i].activation,
-        trainingData[i].input[0],
-        `Input-0 record ${i} should match training data`,
+        input0Records.length,
+        100,
+        "Should have 100 records for input-0",
       );
       assertEquals(
-        input1Records[i].activation,
-        trainingData[i].input[1],
-        `Input-1 record ${i} should match training data`,
+        input1Records.length,
+        100,
+        "Should have 100 records for input-1",
       );
       assertEquals(
-        input2Records[i].activation,
-        trainingData[i].input[2],
-        `Input-2 record ${i} should match training data`,
+        input2Records.length,
+        100,
+        "Should have 100 records for input-2",
       );
+
+      // Verify the values match the training data
+      for (let i = 0; i < trainingData.length; i++) {
+        assertEquals(
+          input0Records[i].activation,
+          trainingData[i].input[0],
+          `Input-0 record ${i} should match training data`,
+        );
+        assertEquals(
+          input1Records[i].activation,
+          trainingData[i].input[1],
+          `Input-1 record ${i} should match training data`,
+        );
+        assertEquals(
+          input2Records[i].activation,
+          trainingData[i].input[2],
+          `Input-2 record ${i} should match training data`,
+        );
+      }
+
+      await discoverStructure.cleanUp();
+    } finally {
+      // Cleanup temp directory
+      try {
+        await Deno.remove(dataDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
-
-    await discoverStructure.cleanUp();
   },
 });
 
@@ -209,7 +235,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "Binary optimization: Input values read from binary match CSV values",
+  name:
+    "Binary optimisation: Input values read from binary match expected values",
   ignore: !isRustDiscoveryEnabled(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
@@ -226,39 +253,7 @@ Deno.test({
       });
     }
 
-    // Method 1: Using Rust (Parquet) - Rust is required now
-    const csvDiscoverStructure = new DiscoverStructure(
-      creature,
-      5, // Reduced from 60s to 5s for faster tests
-      DEFAULT_RUST_FLUSH_RECORDS,
-    );
-    const csvNeuronPromisesMap: Map<string, Promise<void>> = new Map();
-    csvDiscoverStructure.initialize(csvNeuronPromisesMap);
-    const csvRecorded = csvDiscoverStructure.record(
-      trainingData,
-      csvNeuronPromisesMap,
-    );
-    assert(csvRecorded, "Record should succeed");
-    await Promise.all([...csvNeuronPromisesMap.values()]);
-
-    // Flush Rust recording (required for Parquet file creation)
-    const csvFlushSuccess = csvDiscoverStructure.flushRustRecording();
-    assert(csvFlushSuccess, "Rust flush should succeed");
-
-    // Load CSV records
-    const csvTestAccess =
-      csvDiscoverStructure as unknown as DiscoverStructureTestAccess;
-    const loadNeuronRecords = csvTestAccess.loadNeuronRecords.bind(
-      csvDiscoverStructure,
-    );
-    const csvTempDir = csvTestAccess.tempDir;
-    const csvInput0 = await loadNeuronRecords(`${csvTempDir}/input-0`);
-    const csvInput1 = await loadNeuronRecords(`${csvTempDir}/input-1`);
-    const csvInput2 = await loadNeuronRecords(`${csvTempDir}/input-2`);
-
-    await csvDiscoverStructure.cleanUp();
-
-    // Method 2: Using binary files (optimized path)
+    // Using binary files (optimised path)
     const dataDir = makeDataDir(trainingData, 50);
 
     try {
@@ -318,40 +313,15 @@ Deno.test({
         `${binaryTestAccess.tempDir}/input-2`,
       );
 
-      // Verify binary reads match CSV reads
-      assertEquals(
-        binaryInput0.length,
-        csvInput0.length,
-        "Input-0 should have same number of records",
-      );
-      assertEquals(
-        binaryInput1.length,
-        csvInput1.length,
-        "Input-1 should have same number of records",
-      );
-      assertEquals(
-        binaryInput2.length,
-        csvInput2.length,
-        "Input-2 should have same number of records",
-      );
+      assertEquals(binaryInput0.length, trainingData.length);
+      assertEquals(binaryInput1.length, trainingData.length);
+      assertEquals(binaryInput2.length, trainingData.length);
 
-      // Verify values match
-      for (let i = 0; i < csvInput0.length; i++) {
-        assertEquals(
-          binaryInput0[i].activation,
-          csvInput0[i].activation,
-          `Input-0 record ${i} should match`,
-        );
-        assertEquals(
-          binaryInput1[i].activation,
-          csvInput1[i].activation,
-          `Input-1 record ${i} should match`,
-        );
-        assertEquals(
-          binaryInput2[i].activation,
-          csvInput2[i].activation,
-          `Input-2 record ${i} should match`,
-        );
+      // Verify values match the deterministic dataset
+      for (let i = 0; i < trainingData.length; i++) {
+        assertEquals(binaryInput0[i].activation, trainingData[i].input[0]);
+        assertEquals(binaryInput1[i].activation, trainingData[i].input[1]);
+        assertEquals(binaryInput2[i].activation, trainingData[i].input[2]);
       }
 
       await binaryDiscoverStructure.cleanUp();

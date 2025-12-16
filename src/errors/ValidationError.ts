@@ -4,6 +4,7 @@ export type ValidationErrorName =
   | "NO_INWARD_CONNECTIONS"
   | "IF_CONDITIONS"
   | "RECURSIVE_SYNAPSE"
+  | "SELF_CONNECTION"
   | "MEMETIC";
 
 export class ValidationError extends Error {

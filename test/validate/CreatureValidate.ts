@@ -428,3 +428,61 @@ Deno.test("Recursive", () => {
     );
   }
 });
+
+Deno.test("Forward-only: default validate allows back + self connections", () => {
+  const creature = new Creature(10, 2, { layers: [{ count: 5 }] });
+  creature.DEBUG = true;
+
+  // Add one back connection and one self connection.
+  creature.synapses.push(new Synapse(12, 11, 0.5));
+  creature.synapses.push(new Synapse(11, 11, 0.25));
+  creature.synapses.sort((a, b) => {
+    if (a.from === b.from) return a.to - b.to;
+    return a.from - b.from;
+  });
+
+  // By default we allow back connections (memory) and self connections.
+  creature.validate();
+});
+
+Deno.test("Forward-only: validate() rejects back connections when enabled", () => {
+  const creature = new Creature(10, 2, { layers: [{ count: 5 }] });
+  creature.DEBUG = true;
+  creature.synapses.push(new Synapse(12, 11, 0.5));
+  creature.synapses.sort((a, b) => {
+    if (a.from === b.from) return a.to - b.to;
+    return a.from - b.from;
+  });
+
+  try {
+    creature.validate({ forwardOnly: true });
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "RECURSIVE_SYNAPSE",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+});
+
+Deno.test("Forward-only: validate() rejects self connections when enabled", () => {
+  const creature = new Creature(10, 2, { layers: [{ count: 5 }] });
+  creature.DEBUG = true;
+  creature.synapses.push(new Synapse(11, 11, 0.5));
+  creature.synapses.sort((a, b) => {
+    if (a.from === b.from) return a.to - b.to;
+    return a.from - b.from;
+  });
+
+  try {
+    creature.validate({ forwardOnly: true });
+    fail("Expected error");
+  } catch (e) {
+    const error = e as Error;
+    assert(
+      error.name === "SELF_CONNECTION",
+      `Unexpected name: ${error.name}`,
+    );
+  }
+});

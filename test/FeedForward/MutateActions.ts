@@ -87,3 +87,28 @@ Deno.test("memory enabled", () => {
   }
   assert(found, "No back connection methods found");
 });
+
+Deno.test("forwardOnly creatures block memory mutations even when feedbackLoop is enabled", () => {
+  const creature = makeCreature();
+  creature.forwardOnly = true;
+
+  const config = createNeatConfig({
+    feedbackLoop: true,
+    mutation: Mutation.ALL,
+  });
+  const mutator = new Mutator(config);
+
+  for (let i = 0; i < 100; i++) {
+    const method: MutationInterface = mutator.selectMutationMethod(creature);
+    if (
+      method.name === Mutation.ADD_SELF_CONN.name ||
+      method.name === Mutation.SUB_BACK_CONN.name ||
+      method.name === Mutation.SUB_SELF_CONN.name ||
+      method.name === Mutation.ADD_BACK_CONN.name
+    ) {
+      throw new Error(
+        `Invalid mutation for forwardOnly creature: ${method.name}`,
+      );
+    }
+  }
+});

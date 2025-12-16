@@ -11,8 +11,26 @@ const VALID_NEURON_UUID_PATTERN = /^[A-Za-z0-9-]+$/;
  */
 export function creatureValidate(
   creature: Creature,
-  options?: { neurons?: number; connections?: number; feedbackLoop?: boolean },
+  options?: {
+    neurons?: number;
+    connections?: number;
+    /**
+     * When false, recursive (back) synapses are rejected.
+     * When true/undefined, recursive synapses are allowed.
+     */
+    feedbackLoop?: boolean;
+    /**
+     * Convenience option for production feed-forward validation.
+     * When true, both recursive (back) synapses and self connections are rejected.
+     *
+     * Note: By default (undefined/false) we allow both, as this library supports
+     * memory connections.
+     */
+    forwardOnly?: boolean;
+  },
 ) {
+  const forwardOnly = options?.forwardOnly === true;
+  const feedbackLoop = forwardOnly ? false : options?.feedbackLoop;
   if (options && options.neurons) {
     if (creature.neurons.length !== options.neurons) {
       throw new ValidationError(
@@ -274,6 +292,16 @@ export function creatureValidate(
       throw new Error(indx + ") connection points to an input node");
     }
 
+    if (forwardOnly && c.from === c.to) {
+      debugWrite(creature);
+      throw new ValidationError(
+        `${indx}) Self connection synapse ${c.from} (${
+          creature.neurons[c.from].ID()
+        }) -> ${c.to} (${creature.neurons[c.to].ID()})`,
+        "SELF_CONNECTION",
+      );
+    }
+
     if (c.from < lastFrom) {
       throw new Error(indx + ") synapses not sorted");
     } else if (c.from > lastFrom) {
@@ -296,8 +324,8 @@ export function creatureValidate(
     if (c.from > c.to) {
       /** When feed back is enabled we allow recursive synapses */
       if (
-        options && options.feedbackLoop !== undefined &&
-        options.feedbackLoop === false
+        feedbackLoop !== undefined &&
+        feedbackLoop === false
       ) {
         debugWrite(creature);
         throw new ValidationError(
