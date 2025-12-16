@@ -74,3 +74,92 @@ Deno.test("Breeding honours forwardOnly flag (child becomes forward-only)", () =
     );
   });
 });
+
+Deno.test("Breeding inherits forwardOnly by default (when a parent is forward-only)", () => {
+  const mumJson: CreatureExport = {
+    input: 2,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0 },
+      { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-0", weight: -0.2 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1.0 },
+    ],
+  };
+  const dadJson: CreatureExport = {
+    input: 2,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0.1 },
+      { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.2 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.1 },
+      { fromUUID: "input-1", toUUID: "hidden-0", weight: 0.3 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
+      // Extra connection so crossover can create a non-clone child.
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
+    ],
+  };
+
+  const mum = Creature.fromJSON(mumJson);
+  const dad = Creature.fromJSON(dadJson);
+  let child: Creature | undefined;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    child = Offspring.breed(mum, dad);
+    if (child) break;
+  }
+  assert(child, "Expected child");
+  assertEquals(child.forwardOnly, true);
+  child.validate({ forwardOnly: true });
+});
+
+Deno.test("Breeding with forwardOnly=false clears child forwardOnly (keeps memory connections)", () => {
+  const mumJson: CreatureExport = {
+    input: 2,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0 },
+      { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-0", weight: -0.2 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1.0 },
+    ],
+  };
+  const dadJson: CreatureExport = {
+    input: 2,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0.1 },
+      { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.2 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.1 },
+      { fromUUID: "input-1", toUUID: "hidden-0", weight: 0.3 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
+      // Extra connection so crossover can create a non-clone child.
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
+    ],
+  };
+
+  const mum = Creature.fromJSON(mumJson);
+  const dad = Creature.fromJSON(dadJson);
+
+  let child: Creature | undefined;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    child = Offspring.breed(mum, dad, { forwardOnly: false });
+    if (child) break;
+  }
+  assert(child, "Expected child");
+  assertEquals(child.forwardOnly, undefined);
+  child.validate();
+});
