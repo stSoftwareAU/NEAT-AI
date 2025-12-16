@@ -117,6 +117,7 @@ export class Mutator {
       .mutation;
 
     const feedbackLoop = this.config.feedbackLoop;
+    const forwardOnly = creature.forwardOnly === true;
     for (let attempts = 0; true; attempts++) {
       const mutationMethod = mutationMethods[
         Math.floor(Math.random() * mutationMethods.length)
@@ -163,7 +164,7 @@ export class Mutator {
         case Mutation.SUB_BACK_CONN.name:
         case Mutation.ADD_SELF_CONN.name:
         case Mutation.SUB_SELF_CONN.name:
-          if (feedbackLoop === false) {
+          if (feedbackLoop === false || forwardOnly) {
             continue;
           }
           break;
@@ -244,7 +245,24 @@ export class Mutator {
     if (changed) {
       delete creature.uuid;
       creature.state.preparedNeurons = false;
+      // Always run the general fix first.
       creature.fix();
+
+      // Forward-only mode: if the creature is marked forward-only or the run is not using
+      // feedback loops, ensure mutations can't accidentally keep self/back connections.
+      if (this.config.feedbackLoop !== true || creature.forwardOnly === true) {
+        try {
+          creature.validate({ forwardOnly: true });
+        } catch (e) {
+          const error = e as Error;
+          if (
+            error.name === "SELF_CONNECTION" ||
+            error.name === "RECURSIVE_SYNAPSE"
+          ) {
+            creature.fix({ forwardOnly: true });
+          }
+        }
+      }
     }
     if (creature.DEBUG) {
       creatureValidate(creature);

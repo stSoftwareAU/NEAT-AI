@@ -21,6 +21,15 @@ interface CreatureCommon extends TagsInterface {
   /** Number of output neurons. */
   output: number;
 
+  /**
+   * Marks this creature as forward-only (no self connections or back connections).
+   *
+   * This flag survives export/import and lets production systems enforce that
+   * once a creature is confirmed forward-only it stays that way through
+   * breeding/mutation.
+   */
+  forwardOnly?: boolean;
+
   memetic?: MemeticInterface;
 
   /** Semantic version of the creature */

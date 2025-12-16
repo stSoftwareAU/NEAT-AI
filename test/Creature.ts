@@ -26,7 +26,14 @@ function checkMutation(method: { name: string }) {
     ],
   });
   creatureValidate(creature);
-  const mutator = new Mutator(createNeatConfig({}));
+  const memoryMutation = method.name === Mutation.ADD_BACK_CONN.name ||
+    method.name === Mutation.SUB_BACK_CONN.name ||
+    method.name === Mutation.ADD_SELF_CONN.name ||
+    method.name === Mutation.SUB_SELF_CONN.name;
+  const mutator = new Mutator(createNeatConfig({
+    // Forward-only is the default. Enable feedbackLoop only when testing memory mutations.
+    feedbackLoop: memoryMutation ? true : false,
+  }));
   for (let i = 12; i--;) {
     if (mutator.mutateCreature(creature, method)) break;
   }

@@ -60,6 +60,16 @@ export interface NeatArguments {
    * Enable feedback loop where the previous result feeds back into the next interaction.
    * Useful for time-series forecasting and recurrent neural networks.
    * More information: https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html
+   *
+   * ## Forward-only default
+   * If this is **unset** (or `false`), the NEAT engine treats the run as **forward-only**:
+   * - Self/back connections are **not selected** as mutation operations.
+   *
+   * Forward-only mode does **not** automatically strip legacy self/back connections on load.
+   * However, when a creature is mutated/bred in forward-only mode, any self/back connections
+   * are removed so we "evolve away" from legacy feedback structures over a few generations.
+   *
+   * To enable memory connections, set `feedbackLoop: true`.
    */
   feedbackLoop: boolean;
 

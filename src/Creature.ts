@@ -127,6 +127,12 @@ export class Creature implements CreatureInternal {
   public semanticVersion: string;
 
   /**
+   * When true, this creature is intended to remain forward-only (no self/back connections).
+   * This flag survives export/import.
+   */
+  public forwardOnly?: boolean;
+
+  /**
    * Debug mode flag.
    * @type {boolean}
    */
@@ -154,6 +160,7 @@ export class Creature implements CreatureInternal {
     this.tags = undefined;
     this.score = undefined;
     this.semanticVersion = options.semanticVersion ?? "0.0.1";
+    this.forwardOnly = undefined;
 
     if (!options.lazyInitialization) {
       this.initialize(options);
@@ -400,8 +407,13 @@ export class Creature implements CreatureInternal {
   /**
    * Validate the creature structure.
    */
-  validate() {
-    creatureValidate(this);
+  validate(options?: {
+    neurons?: number;
+    connections?: number;
+    feedbackLoop?: boolean;
+    forwardOnly?: boolean;
+  }) {
+    creatureValidate(this, options);
   }
 
   /**
@@ -1298,7 +1310,29 @@ export class Creature implements CreatureInternal {
   /**
    * Fix the structure of the creature.
    */
-  fix() {
+  fix(options?: {
+    /**
+     * When true, remove both back connections and self connections.
+     * Defaults to false (we allow them by default).
+     */
+    forwardOnly?: boolean;
+    /**
+     * Remove recursive (back) synapses (from > to).
+     * Defaults to false.
+     */
+    removeBackConnections?: boolean;
+    /**
+     * Remove self synapses (from === to).
+     * Defaults to false.
+     */
+    removeSelfConnections?: boolean;
+  }) {
+    const forwardOnly = options?.forwardOnly === true;
+    const removeBackConnections = forwardOnly ||
+      options?.removeBackConnections === true;
+    const removeSelfConnections = forwardOnly ||
+      options?.removeSelfConnections === true;
+
     const holdDebug = this.DEBUG;
     this.DEBUG = false;
     const startUUID = CreatureUtil.makeUUID(this);
@@ -1310,6 +1344,12 @@ export class Creature implements CreatureInternal {
     let lastFrom = -1;
     let lastTo = -1;
     this.synapses.forEach((synapse) => {
+      if (removeSelfConnections && synapse.from === synapse.to) {
+        return;
+      }
+      if (removeBackConnections && synapse.from > synapse.to) {
+        return;
+      }
       if (synapse.from === lastFrom && synapse.to === lastTo) {
         console.warn("duplicate synapse " + synapse.from + "->" + synapse.to);
       } else {
@@ -1394,6 +1434,10 @@ export class Creature implements CreatureInternal {
     this.neurons.forEach((neuron) => {
       neuron.fix();
     });
+
+    if (forwardOnly) {
+      this.forwardOnly = true;
+    }
 
     const tmpDebug = this.DEBUG;
     this.DEBUG = false;
@@ -1487,6 +1531,7 @@ export class Creature implements CreatureInternal {
     if (json.semanticVersion) {
       this.semanticVersion = json.semanticVersion;
     }
+    this.forwardOnly = (json as CreatureExport).forwardOnly;
 
     // Preallocate arrays
     const neuronCount = json.neurons.length;

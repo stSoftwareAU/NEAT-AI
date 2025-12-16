@@ -24,7 +24,10 @@ export class Offspring {
   static breed(
     mum: Creature,
     dad: Creature,
-    options: { geneticCompatibilityThreshold?: number } = {},
+    options: {
+      geneticCompatibilityThreshold?: number;
+      forwardOnly?: boolean;
+    } = {},
   ): Creature | undefined {
     const mother = upgrade(Creature.fromJSON(mum.exportJSON()));
     CreatureUtil.makeUUID(mother);
@@ -285,8 +288,28 @@ export class Offspring {
       offspring.memetic = memetic;
     }
 
+    const shouldBeForwardOnly = options.forwardOnly === true ||
+      mum.forwardOnly === true || dad.forwardOnly === true;
+
     try {
       creatureValidate(offspring);
+
+      if (shouldBeForwardOnly) {
+        offspring.forwardOnly = true;
+        try {
+          offspring.validate({ forwardOnly: true });
+        } catch (e) {
+          const error = e as Error;
+          if (
+            error.name === "SELF_CONNECTION" ||
+            error.name === "RECURSIVE_SYNAPSE"
+          ) {
+            offspring.fix({ forwardOnly: true });
+          } else {
+            throw e;
+          }
+        }
+      }
 
       return offspring;
     } catch (e) {

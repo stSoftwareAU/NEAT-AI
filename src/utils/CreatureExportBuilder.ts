@@ -20,6 +20,7 @@ export class CreatureExportBuilder {
     const synapsesLength = synapses.length;
     const json: CreatureExport = {
       semanticVersion: creature.semanticVersion,
+      forwardOnly: creature.forwardOnly ? true : undefined,
       neurons: new Array<NeuronExport>(
         neuronsLength - input,
       ),

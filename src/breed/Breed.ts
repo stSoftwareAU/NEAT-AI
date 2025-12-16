@@ -76,6 +76,7 @@ export class Breed {
       dad,
       {
         geneticCompatibilityThreshold: config.geneticCompatibilityThreshold,
+        forwardOnly: config.feedbackLoop !== true,
       },
     );
 
