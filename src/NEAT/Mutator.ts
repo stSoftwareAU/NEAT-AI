@@ -189,6 +189,16 @@ export class Mutator {
     assert(method.name, "Mutate name is required");
     const startUUID = CreatureUtil.makeUUID(creature);
     let mutator: RadioactiveInterface | undefined;
+
+    // If the caller enables feedback loops, forward-only constraints no longer apply.
+    // Clear the flag so subsequent mutation/breeding can introduce memory connections.
+    if (this.config.feedbackLoop === true && creature.forwardOnly === true) {
+      console.warn(
+        `[Mutator] feedbackLoop=true requested for forwardOnly creature (${startUUID}); clearing creature.forwardOnly flag`,
+      );
+      creature.forwardOnly = undefined;
+    }
+
     switch (method.name) {
       case Mutation.ADD_NODE.name:
         mutator = new AddNeuron(creature);
@@ -259,7 +269,28 @@ export class Mutator {
             error.name === "SELF_CONNECTION" ||
             error.name === "RECURSIVE_SYNAPSE"
           ) {
+            const violations = creature.synapses
+              .map((s, i) => ({ s, i }))
+              .filter(({ s }) => s.from === s.to || s.from > s.to)
+              .slice(0, 10)
+              .map(({ s, i }) =>
+                `${i}) ${s.from} (${
+                  creature.neurons[s.from]?.ID?.() ?? "?"
+                }) -> ${s.to} (${creature.neurons[s.to]?.ID?.() ?? "?"})`
+              );
+            console.error(
+              `[Mutator] Forward-only violation after '${method.name}'. This indicates a bug: ` +
+                `creature is marked forwardOnly=${
+                  creature.forwardOnly === true
+                } and/or feedbackLoop=${this.config.feedbackLoop}. ` +
+                `Error=${error.name}: ${error.message}. ` +
+                `Violations(sample up to 10): ${violations.join(" | ")}`,
+            );
             creature.fix({ forwardOnly: true });
+          } else {
+            // Keep behaviour consistent with Offspring.breed(): only forward-only
+            // violations are repaired here; all other validation failures must surface.
+            throw e;
           }
         }
       }

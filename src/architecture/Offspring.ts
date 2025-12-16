@@ -289,12 +289,20 @@ export class Offspring {
     }
 
     const shouldBeForwardOnly = options.forwardOnly === true ||
-      mum.forwardOnly === true || dad.forwardOnly === true;
+      (options.forwardOnly === undefined &&
+        (mum.forwardOnly === true || dad.forwardOnly === true));
 
     try {
       creatureValidate(offspring);
 
-      if (shouldBeForwardOnly) {
+      if (
+        options.forwardOnly === false && (mum.forwardOnly || dad.forwardOnly)
+      ) {
+        console.warn(
+          `[Offspring] feedbackLoop/memory mode requested; clearing forwardOnly on child (parents had forwardOnly)`,
+        );
+        offspring.forwardOnly = undefined;
+      } else if (shouldBeForwardOnly) {
         offspring.forwardOnly = true;
         try {
           offspring.validate({ forwardOnly: true });
@@ -304,6 +312,20 @@ export class Offspring {
             error.name === "SELF_CONNECTION" ||
             error.name === "RECURSIVE_SYNAPSE"
           ) {
+            const violations = offspring.synapses
+              .map((s, i) => ({ s, i }))
+              .filter(({ s }) => s.from === s.to || s.from > s.to)
+              .slice(0, 10)
+              .map(({ s, i }) =>
+                `${i}) ${s.from} (${
+                  offspring.neurons[s.from]?.ID?.() ?? "?"
+                }) -> ${s.to} (${offspring.neurons[s.to]?.ID?.() ?? "?"})`
+              );
+            console.error(
+              `[Offspring] Forward-only violation after breed(). This indicates a bug. ` +
+                `Error=${error.name}: ${error.message}. ` +
+                `Violations(sample up to 10): ${violations.join(" | ")}`,
+            );
             offspring.fix({ forwardOnly: true });
           } else {
             throw e;
