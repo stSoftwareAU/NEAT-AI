@@ -10,6 +10,17 @@ import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
+function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
+  // Issue #937: once forward-only is confirmed, bump 2.x.x → 3.0.0.
+  // Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
+  const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
+  if (!match) return;
+  const major = Number.parseInt(match[1], 10);
+  if (major === 2) {
+    creature.semanticVersion = "3.0.0";
+  }
+}
+
 class OffspringError extends Error {
   constructor(message: string) {
     super(message);
@@ -306,6 +317,7 @@ export class Offspring {
         offspring.forwardOnly = true;
         try {
           offspring.validate({ forwardOnly: true });
+          upgradeSemanticVersionIfForwardOnlyConfirmed(offspring);
         } catch (e) {
           const error = e as Error;
           if (

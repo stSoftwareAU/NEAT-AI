@@ -19,6 +19,17 @@ import { AddBackCon } from "../mutate/AddBackCon.ts";
 import { SubBackCon } from "../mutate/SubBackCon.ts";
 import { SwapNeurons } from "../mutate/SwapNeurons.ts";
 
+function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
+  // Issue #937: once forward-only is confirmed, bump 2.x.x → 3.0.0.
+  // Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
+  const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
+  if (!match) return;
+  const major = Number.parseInt(match[1], 10);
+  if (major === 2) {
+    creature.semanticVersion = "3.0.0";
+  }
+}
+
 export class Mutator {
   private config: NeatConfig;
   constructor(config: NeatConfig) {
@@ -263,6 +274,15 @@ export class Mutator {
       if (this.config.feedbackLoop !== true || creature.forwardOnly === true) {
         try {
           creature.validate({ forwardOnly: true });
+
+          // In forward-only runs, most creatures should already be valid. Once we
+          // confirm that (via validation), mark + upgrade without requiring a fix().
+          if (this.config.feedbackLoop !== true) {
+            creature.forwardOnly = true;
+          }
+          if (creature.forwardOnly === true) {
+            upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
+          }
         } catch (e) {
           const error = e as Error;
           if (
