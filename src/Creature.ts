@@ -1437,6 +1437,20 @@ export class Creature implements CreatureInternal {
 
     if (forwardOnly) {
       this.forwardOnly = true;
+
+      // Issue #937: Once a creature is confirmed forward-only, bump its semantic
+      // version from 2.x.x to 3.0.0. This lets downstream systems treat 3.x
+      // creatures as strictly feed-forward by default.
+      //
+      // Backwards compatibility: we never downgrade versions (e.g. 4.1.2 stays
+      // 4.1.2). We only bump when the major version is exactly 2.
+      const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(this.semanticVersion);
+      if (match) {
+        const major = Number.parseInt(match[1], 10);
+        if (major === 2) {
+          this.semanticVersion = "3.0.0";
+        }
+      }
     }
 
     const tmpDebug = this.DEBUG;
