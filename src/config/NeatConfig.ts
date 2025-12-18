@@ -57,6 +57,24 @@ export type NeatConfig<TCostName extends string = BuiltInCostName> = Readonly<
 >;
 
 /**
+ * The default cost name applied by `createNeatConfig()` when none is provided.
+ *
+ * Keep this in sync with the runtime default in `createNeatConfig()`.
+ */
+type DefaultCostName = "MSE";
+
+/**
+ * If a caller provides a custom `TCostName` that does not include the runtime
+ * default ("MSE"), they must supply `costName` explicitly.
+ *
+ * This prevents an unsound type assertion where the runtime value is "MSE" but
+ * the return type claims it is `TCostName` (eg. `"CustomCost"`).
+ */
+type RequireCostNameWhenDefaultNotAllowed<TCostName extends string> =
+  DefaultCostName extends TCostName ? Record<never, never>
+    : { costName: TCostName };
+
+/**
  * Creates a validated NEAT configuration from user options.
  *
  * This function takes partial user options and fills in default values
@@ -77,7 +95,15 @@ export type NeatConfig<TCostName extends string = BuiltInCostName> = Readonly<
  * });
  * ```
  */
-export function createNeatConfig<TCostName extends string = BuiltInCostName>(
+export function createNeatConfig(
+  options: NeatOptions<BuiltInCostName>,
+): NeatConfig<BuiltInCostName>;
+export function createNeatConfig<TCostName extends string>(
+  options:
+    & NeatOptions<TCostName>
+    & RequireCostNameWhenDefaultNotAllowed<TCostName>,
+): NeatConfig<TCostName>;
+export function createNeatConfig<TCostName extends string>(
   options: NeatOptions<TCostName>,
 ): NeatConfig<TCostName> {
   let selection: SelectionInterface = Selection.POWER;
@@ -92,13 +118,21 @@ export function createNeatConfig<TCostName extends string = BuiltInCostName>(
     }
   }
 
+  let costName: TCostName;
+  if (options.costName !== undefined) {
+    costName = options.costName;
+  } else {
+    // Safe by construction: if costName is omitted, `TCostName` must include "MSE".
+    costName = "MSE" as unknown as TCostName;
+  }
+
   const config: NeatArguments<TCostName> = {
     creativeThinkingConnectionCount: options.creativeThinkingConnectionCount ??
       1,
     creatureStore: options.creatureStore,
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
-    costName: (options.costName || "MSE") as TCostName,
+    costName,
     dataSetPartitionBreak: options.dataSetPartitionBreak ?? 2000,
     trainingSampleRate: options.trainingSampleRate ?? 1,
 
