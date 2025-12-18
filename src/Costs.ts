@@ -17,9 +17,6 @@ import { MSLE } from "./costs/MSLE.ts";
  * These are exposed as a `readonly` tuple so TypeScript can provide:
  * - IDE autocompletion for known values
  * - compile-time prevention of invalid values (eg. "XYZ")
- *
- * If you need to use custom cost names (eg. via `Costs.registerCostFactory()`),
- * you can widen the options type with `NeatOptions<YourUnion>` in your program.
  */
 export const BUILT_IN_COST_NAMES = [
   CrossEntropy.NAME,

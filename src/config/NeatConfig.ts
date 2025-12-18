@@ -5,7 +5,6 @@ import type {
   DiscoveryMinCandidatesPerCategory,
   NeatArguments,
 } from "./NeatOptions.ts";
-import type { BuiltInCostName } from "../Costs.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
@@ -52,27 +51,7 @@ export const DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY: Required<
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
  * Provides a read-only configuration object for the NEAT algorithm.
  */
-export type NeatConfig<TCostName extends string = BuiltInCostName> = Readonly<
-  NeatArguments<TCostName>
->;
-
-/**
- * The default cost name applied by `createNeatConfig()` when none is provided.
- *
- * Keep this in sync with the runtime default in `createNeatConfig()`.
- */
-type DefaultCostName = "MSE";
-
-/**
- * If a caller provides a custom `TCostName` that does not include the runtime
- * default ("MSE"), they must supply `costName` explicitly.
- *
- * This prevents an unsound type assertion where the runtime value is "MSE" but
- * the return type claims it is `TCostName` (eg. `"CustomCost"`).
- */
-type RequireCostNameWhenDefaultNotAllowed<TCostName extends string> =
-  DefaultCostName extends TCostName ? Record<never, never>
-    : { costName: TCostName };
+export type NeatConfig = Readonly<NeatArguments>;
 
 /**
  * Creates a validated NEAT configuration from user options.
@@ -95,17 +74,7 @@ type RequireCostNameWhenDefaultNotAllowed<TCostName extends string> =
  * });
  * ```
  */
-export function createNeatConfig(
-  options: NeatOptions<BuiltInCostName>,
-): NeatConfig<BuiltInCostName>;
-export function createNeatConfig<TCostName extends string>(
-  options:
-    & NeatOptions<TCostName>
-    & RequireCostNameWhenDefaultNotAllowed<TCostName>,
-): NeatConfig<TCostName>;
-export function createNeatConfig<TCostName extends string>(
-  options: NeatOptions<TCostName>,
-): NeatConfig<TCostName> {
+export function createNeatConfig(options: NeatOptions): NeatConfig {
   let selection: SelectionInterface = Selection.POWER;
   if (options.selection) {
     selection = options.selection;
@@ -118,21 +87,13 @@ export function createNeatConfig<TCostName extends string>(
     }
   }
 
-  let costName: TCostName;
-  if (options.costName !== undefined) {
-    costName = options.costName;
-  } else {
-    // Safe by construction: if costName is omitted, `TCostName` must include "MSE".
-    costName = "MSE" as unknown as TCostName;
-  }
-
-  const config: NeatArguments<TCostName> = {
+  const config: NeatArguments = {
     creativeThinkingConnectionCount: options.creativeThinkingConnectionCount ??
       1,
     creatureStore: options.creatureStore,
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
-    costName,
+    costName: options.costName ?? "MSE",
     dataSetPartitionBreak: options.dataSetPartitionBreak ?? 2000,
     trainingSampleRate: options.trainingSampleRate ?? 1,
 
@@ -236,7 +197,7 @@ export function createNeatConfig<TCostName extends string>(
   return Object.freeze(config);
 }
 
-function validate<TCostName extends string>(config: NeatArguments<TCostName>) {
+function validate(config: NeatArguments) {
   if (
     Number.isFinite(config.sparseRatio) === false || config.sparseRatio < 0 ||
     config.sparseRatio > 1

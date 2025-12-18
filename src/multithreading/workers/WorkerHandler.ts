@@ -217,7 +217,6 @@ export class WorkerHandler {
     customCost?: { filePath: string },
   ) {
     let customCostData: string | undefined;
-
     if (customCost) {
       // File path-based custom cost
       customCostData = JSON.stringify({

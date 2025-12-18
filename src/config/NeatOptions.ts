@@ -6,7 +6,6 @@ import type {
 import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { SelectionInterface } from "../methods/Selection.ts";
 import type { CrisprInterface } from "../../mod.ts";
-import type { BuiltInCostName } from "../Costs.ts";
 
 /**
  * Configuration for minimum candidates per discovery category.
@@ -32,9 +31,9 @@ export interface DiscoveryMinCandidatesPerCategory {
  *
  * @internal
  */
-export interface NeatArguments<TCostName extends string = BuiltInCostName> {
+export interface NeatArguments {
   /** The name of the cost function to use. */
-  costName: TCostName;
+  costName: string;
 
   /**
    * Number of new links to create during the creative thinking phase.
@@ -312,11 +311,8 @@ export interface NeatArguments<TCostName extends string = BuiltInCostName> {
  * For discoveryMinCandidatesPerCategory, you can specify partial overrides
  * and defaults will be merged in.
  */
-export type NeatOptions<TCostName extends string = BuiltInCostName> =
-  & Omit<
-    Partial<NeatArguments<TCostName>>,
-    "discoveryMinCandidatesPerCategory"
-  >
+export type NeatOptions =
+  & Omit<Partial<NeatArguments>, "discoveryMinCandidatesPerCategory">
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
     discoveryMinCandidatesPerCategory?: DiscoveryMinCandidatesPerCategory;
