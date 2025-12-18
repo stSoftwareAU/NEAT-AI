@@ -22,4 +22,3 @@ const _custom: NeatOptions<"MSE" | "XYZ"> = { costName: "XYZ" };
 Deno.test("type-only: NeatOptions.costName is restricted", () => {
   // Runtime is irrelevant; compilation is the test.
 });
-
