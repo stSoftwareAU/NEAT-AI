@@ -12,6 +12,28 @@ import { MSE } from "./costs/MSE.ts";
 import { MSLE } from "./costs/MSLE.ts";
 
 /**
+ * Built-in cost names supported by this library.
+ *
+ * These are exposed as a `readonly` tuple so TypeScript can provide:
+ * - IDE autocompletion for known values
+ * - compile-time prevention of invalid values (eg. "XYZ")
+ *
+ * If you need to use custom cost names (eg. via `Costs.registerCostFactory()`),
+ * you can widen the options type with `NeatOptions<YourUnion>` in your program.
+ */
+export const BUILT_IN_COST_NAMES = [
+  CrossEntropy.NAME,
+  MSE.NAME,
+  MAE.NAME,
+  MAPE.NAME,
+  MSLE.NAME,
+  HINGE.NAME,
+] as const;
+
+/** Union of built-in cost name string literals. */
+export type BuiltInCostName = typeof BUILT_IN_COST_NAMES[number];
+
+/**
  * Factory class for creating cost function instances.
  * Provides access to various loss functions used in neural network training.
  */

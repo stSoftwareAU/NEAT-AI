@@ -5,6 +5,7 @@ import type {
   DiscoveryMinCandidatesPerCategory,
   NeatArguments,
 } from "./NeatOptions.ts";
+import type { BuiltInCostName } from "../Costs.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
@@ -51,7 +52,9 @@ export const DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY: Required<
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
  * Provides a read-only configuration object for the NEAT algorithm.
  */
-export type NeatConfig = Readonly<NeatArguments>;
+export type NeatConfig<TCostName extends string = BuiltInCostName> = Readonly<
+  NeatArguments<TCostName>
+>;
 
 /**
  * Creates a validated NEAT configuration from user options.
@@ -74,7 +77,9 @@ export type NeatConfig = Readonly<NeatArguments>;
  * });
  * ```
  */
-export function createNeatConfig(options: NeatOptions) {
+export function createNeatConfig<TCostName extends string = BuiltInCostName>(
+  options: NeatOptions<TCostName>,
+): NeatConfig<TCostName> {
   let selection: SelectionInterface = Selection.POWER;
   if (options.selection) {
     selection = options.selection;
@@ -87,13 +92,13 @@ export function createNeatConfig(options: NeatOptions) {
     }
   }
 
-  const config: NeatArguments = {
+  const config: NeatArguments<TCostName> = {
     creativeThinkingConnectionCount: options.creativeThinkingConnectionCount ??
       1,
     creatureStore: options.creatureStore,
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
-    costName: options.costName || "MSE",
+    costName: (options.costName || "MSE") as TCostName,
     dataSetPartitionBreak: options.dataSetPartitionBreak ?? 2000,
     trainingSampleRate: options.trainingSampleRate ?? 1,
 
@@ -197,7 +202,7 @@ export function createNeatConfig(options: NeatOptions) {
   return Object.freeze(config);
 }
 
-function validate(config: NeatArguments) {
+function validate<TCostName extends string>(config: NeatArguments<TCostName>) {
   if (
     Number.isFinite(config.sparseRatio) === false || config.sparseRatio < 0 ||
     config.sparseRatio > 1

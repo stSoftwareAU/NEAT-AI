@@ -6,6 +6,7 @@ import type {
 import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { SelectionInterface } from "../methods/Selection.ts";
 import type { CrisprInterface } from "../../mod.ts";
+import type { BuiltInCostName } from "../Costs.ts";
 
 /**
  * Configuration for minimum candidates per discovery category.
@@ -25,9 +26,15 @@ export interface DiscoveryMinCandidatesPerCategory {
 /**
  * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
  */
-export interface NeatArguments {
-  /** The name of the cost function to use (optional). */
-  costName: string;
+/**
+ * Concrete, fully-populated configuration shape used internally after defaults
+ * are applied by `createNeatConfig()`.
+ *
+ * @internal
+ */
+export interface NeatArguments<TCostName extends string = BuiltInCostName> {
+  /** The name of the cost function to use. */
+  costName: TCostName;
 
   /**
    * Number of new links to create during the creative thinking phase.
@@ -305,8 +312,11 @@ export interface NeatArguments {
  * For discoveryMinCandidatesPerCategory, you can specify partial overrides
  * and defaults will be merged in.
  */
-export type NeatOptions =
-  & Omit<Partial<NeatArguments>, "discoveryMinCandidatesPerCategory">
+export type NeatOptions<TCostName extends string = BuiltInCostName> =
+  & Omit<
+    Partial<NeatArguments<TCostName>>,
+    "discoveryMinCandidatesPerCategory"
+  >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
     discoveryMinCandidatesPerCategory?: DiscoveryMinCandidatesPerCategory;
