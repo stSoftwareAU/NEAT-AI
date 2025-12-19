@@ -8,18 +8,26 @@ Deno.test("ELU: squash handles NaN input gracefully", () => {
   const result = fn.squash(NaN);
   assertEquals(result, 0, "squash(NaN) should return 0");
   assert(Number.isFinite(result), "squash(NaN) must return a finite value");
+});
 
-  // Also check positive and negative Infinity
+Deno.test("ELU: squash handles Infinity correctly via range.limit()", () => {
+  const fn = new ELU();
+
+  // For +Infinity: ELU formula gives x (since x > 0), then range.limit() caps to MAX_SAFE_INTEGER
   const posInf = fn.squash(Infinity);
-  assert(
-    Number.isFinite(posInf),
-    "squash(Infinity) must return a finite value",
+  assertEquals(
+    posInf,
+    Number.MAX_SAFE_INTEGER,
+    "squash(Infinity) should return MAX_SAFE_INTEGER (capped by range.limit)",
   );
 
+  // For -Infinity: ELU formula gives α * (exp(-Infinity) - 1) = 1 * (0 - 1) = -1
+  // This is within the valid range [-α, MAX_SAFE_INTEGER], so it returns -1
   const negInf = fn.squash(-Infinity);
-  assert(
-    Number.isFinite(negInf),
-    "squash(-Infinity) must return a finite value",
+  assertEquals(
+    negInf,
+    -1,
+    "squash(-Infinity) should return -1 (mathematically correct for ELU)",
   );
 });
 

@@ -33,7 +33,7 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   }
 
   squash(x: number): number {
-    if (!Number.isFinite(x)) return 0; // guard for NaN or Infinity
+    if (Number.isNaN(x)) return 0; // guard for NaN only; let range.limit() handle Infinity
     const value = x > 0 ? x : ELU.ALPHA * (Math.exp(x) - 1);
     return this.range.limit(value, x);
   }
