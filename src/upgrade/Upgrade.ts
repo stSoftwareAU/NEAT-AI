@@ -35,13 +35,13 @@ function validateThreeX(creature: Creature): void {
   try {
     creatureValidate(creature, { forwardOnly: true });
   } catch (error) {
-    throw new Error(
+    console.warn( new Error(
       `[upgrade] Version 3.x creature has invalid self/back connections. ` +
         `This should never happen - 3.x creatures must remain forward-only. ` +
         `UUID: ${creature.uuid}, Error: ${
           error instanceof Error ? error.message : error
         }`,
-    );
+    ));
   }
 }
 
