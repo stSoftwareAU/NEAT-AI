@@ -253,6 +253,12 @@ export interface RustRemovalCandidate {
   impact: number;
   reason: string; // e.g., "High error (5.0000) but very low impact (0.000100) - far from outputs"
   /**
+   * Mean activation of the removed neuron across the full discovery dataset.
+   * Used for bias compensation during ablation so downstream neurons preserve
+   * their average pre-activation value.
+   */
+  meanActivation?: number;
+  /**
    * Optional diagnostic comment emitted by the Rust discovery engine.
    * This must not affect ranking/selection logic.
    */

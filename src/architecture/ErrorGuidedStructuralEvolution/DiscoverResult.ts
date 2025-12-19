@@ -16,8 +16,12 @@ export interface RemovalCandidate {
   totalError: number;
   impact: number;
   reason: string;
-  /** Average activation for bias adjustment during removal (computed lazily). */
-  averageActivation?: number;
+  /**
+   * Mean activation of the removed neuron across the discovery dataset.
+   * Used for bias compensation during ablation so downstream neurons preserve
+   * their average pre-activation value.
+   */
+  meanActivation?: number;
   /**
    * Optional diagnostic comment emitted by the Rust discovery engine.
    * This must not affect ranking/selection logic.
@@ -36,6 +40,7 @@ export function fromRustRemovalCandidate(
     totalError: rust.totalError,
     impact: rust.impact,
     reason: rust.reason,
+    meanActivation: rust.meanActivation,
     comment: rust.comment,
   };
 }

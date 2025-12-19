@@ -4986,8 +4986,37 @@ export class DiscoverStructure {
     const originalSynapseCount = simplifiedExport.synapses.length;
     const originalNeuronCount = simplifiedExport.neurons.length;
 
-    // Low-impact neurons have negligible effect on outputs, so we skip bias adjustment.
-    // Just remove all synapses to/from this neuron.
+    // Bias compensation (average-preserving ablation):
+    // For each outgoing synapse X -> T with weight w, removing X deletes an average
+    // contribution of (w * meanActivation(X)) from T's pre-activation sum.
+    // Compensate by adjusting T.bias += w * meanActivation(X) for all targets T.
+    const meanActivation = removalCandidate.meanActivation;
+    if (typeof meanActivation === "number" && Number.isFinite(meanActivation)) {
+      const outgoing = simplifiedExport.synapses.filter(
+        (synapse) => synapse.fromUUID === removalCandidate.neuronUUID,
+      );
+
+      if (outgoing.length > 0) {
+        const weightSumsByTarget = new Map<string, number>();
+        for (const synapse of outgoing) {
+          if (synapse.toUUID === removalCandidate.neuronUUID) continue;
+          weightSumsByTarget.set(
+            synapse.toUUID,
+            (weightSumsByTarget.get(synapse.toUUID) ?? 0) + synapse.weight,
+          );
+        }
+
+        for (const [targetUUID, weightSum] of weightSumsByTarget) {
+          const target = simplifiedExport.neurons.find((n) =>
+            n.uuid === targetUUID
+          );
+          if (!target) continue;
+          target.bias = (target.bias ?? 0) + (weightSum * meanActivation);
+        }
+      }
+    }
+
+    // Remove all synapses to/from this neuron.
     simplifiedExport.synapses = simplifiedExport.synapses.filter(
       (synapse) =>
         synapse.fromUUID !== removalCandidate.neuronUUID &&
