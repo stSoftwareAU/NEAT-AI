@@ -26,19 +26,22 @@ function getMajorVersion(version: string | undefined): number {
 
 /**
  * Validates that a 3.x creature is still forward-only.
- * Throws an error if the creature has self/back connections.
+ * If the creature has self/back connections, logs a warning but does NOT modify
+ * the creature. Fixing should only happen on offspring, not on parents during
+ * breeding.
  *
  * @param creature - The 3.x creature to validate
- * @throws {Error} If the creature has self/back connections
  */
 function validateThreeX(creature: Creature): void {
   try {
     creatureValidate(creature, { forwardOnly: true });
   } catch (error) {
-    throw new Error(
+    // This should never happen - 3.x creatures should have been validated.
+    // Log the error but don't modify the creature - offspring validation will
+    // handle any issues during breeding.
+    console.error(
       `[upgrade] Version 3.x creature has invalid self/back connections. ` +
-        `This should never happen - 3.x creatures must remain forward-only. ` +
-        `UUID: ${creature.uuid}, Error: ${
+        `This indicates a data integrity issue. UUID: ${creature.uuid}, Error: ${
           error instanceof Error ? error.message : error
         }`,
     );
