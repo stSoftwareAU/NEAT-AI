@@ -1,5 +1,27 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { ELU } from "../../../src/methods/activations/types/ELU.ts";
+
+Deno.test("ELU: squash handles NaN input gracefully", () => {
+  const fn = new ELU();
+
+  // Should return 0 for NaN input (not throw or return NaN)
+  const result = fn.squash(NaN);
+  assertEquals(result, 0, "squash(NaN) should return 0");
+  assert(Number.isFinite(result), "squash(NaN) must return a finite value");
+
+  // Also check positive and negative Infinity
+  const posInf = fn.squash(Infinity);
+  assert(
+    Number.isFinite(posInf),
+    "squash(Infinity) must return a finite value",
+  );
+
+  const negInf = fn.squash(-Infinity);
+  assert(
+    Number.isFinite(negInf),
+    "squash(-Infinity) must return a finite value",
+  );
+});
 
 Deno.test("ELU: squash, unsquash, and derivative cross-check", () => {
   const fn = new ELU();
