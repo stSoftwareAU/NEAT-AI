@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
 
@@ -133,9 +133,9 @@ Deno.test("upgrade should validate and not modify 3.x.x creatures with patch ver
   );
 });
 
-// === 3.x creatures with self/back connections should throw an error ===
+// === 3.x creatures with self/back connections should log warning but not modify ===
 
-Deno.test("upgrade should throw error for 3.x creature with self-connection", () => {
+Deno.test("upgrade should log warning but not modify 3.x creature with self-connection", () => {
   // Create a creature and manually add a self-connection to simulate the error
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
@@ -146,11 +146,25 @@ Deno.test("upgrade should throw error for 3.x creature with self-connection", ()
   const hiddenNeuron = creature.neurons[creature.input]; // First hidden neuron
   creature.connect(hiddenNeuron.index, hiddenNeuron.index, 0.5);
 
-  assertThrows(
-    () => upgrade(creature),
-    Error,
-    "self/back connections",
-    "3.x creatures with self-connections should throw an error",
+  // Should not throw and should not modify - just log a warning
+  // (Fixing should only happen on offspring, not parents during breeding)
+  const upgraded = upgrade(creature);
+
+  assertEquals(
+    upgraded.semanticVersion,
+    "3.0.0",
+    "3.x creatures should not be modified by upgrade() - offspring validation handles fixing",
+  );
+
+  // Verify the self-connection was NOT removed (creature not modified)
+  const selfConnection = upgraded.getSynapse(
+    hiddenNeuron.index,
+    hiddenNeuron.index,
+  );
+  assertEquals(
+    selfConnection !== null,
+    true,
+    "Self-connection should NOT be removed - fixing happens on offspring only",
   );
 });
 

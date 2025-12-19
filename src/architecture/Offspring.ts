@@ -21,6 +21,17 @@ function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
   }
 }
 
+/**
+ * Extracts the major version number from a semantic version string.
+ * @param version - Semantic version string (e.g., "3.1.0", "2.0.0")
+ * @returns The major version number, or 0 if invalid/undefined
+ */
+function getMajorVersion(version: string | undefined): number {
+  if (!version) return 0;
+  const major = parseInt(version.split(".")[0], 10);
+  return Number.isNaN(major) ? 0 : major;
+}
+
 class OffspringError extends Error {
   constructor(message: string) {
     super(message);
@@ -61,10 +72,21 @@ export class Offspring {
       fixAliases = true;
     }
 
+    // Determine offspring semantic version based on BOTH parents.
+    // Only start at 3.x if BOTH parents are 3.x (validated forward-only).
+    // Otherwise start at the lower version - validation will upgrade if appropriate.
+    const motherMajor = getMajorVersion(mother.semanticVersion);
+    const fatherMajor = getMajorVersion(father.semanticVersion);
+    const offspringVersion = (motherMajor >= 3 && fatherMajor >= 3)
+      ? mother.semanticVersion
+      : (motherMajor < fatherMajor
+        ? mother.semanticVersion
+        : father.semanticVersion);
+
     // Initialize offspring
     const offspring = new Creature(mother.input, mother.output, {
       lazyInitialization: true,
-      semanticVersion: mother.semanticVersion,
+      semanticVersion: offspringVersion,
     });
     offspring.synapses = [];
     offspring.neurons = [];
@@ -303,6 +325,9 @@ export class Offspring {
       (options.forwardOnly === undefined &&
         (mum.forwardOnly === true || dad.forwardOnly === true));
 
+    // Check if both parents are 3.x (validated forward-only)
+    const bothParentsThreeX = motherMajor >= 3 && fatherMajor >= 3;
+
     try {
       creatureValidate(offspring);
 
@@ -333,12 +358,27 @@ export class Offspring {
                   offspring.neurons[s.from]?.ID?.() ?? "?"
                 }) -> ${s.to} (${offspring.neurons[s.to]?.ID?.() ?? "?"})`
               );
-            console.error(
-              `[Offspring] Forward-only violation after breed(). This indicates a bug. ` +
-                `Error=${error.name}: ${error.message}. ` +
+
+            // If BOTH parents are 3.x, this is a bug in the breeding logic
+            if (bothParentsThreeX) {
+              throw new Error(
+                `[Offspring] CRITICAL: Both parents are 3.x but offspring has self/back connections. ` +
+                  `This is a bug in the breeding logic that must be fixed. ` +
+                  `Mother: ${mother.uuid} (${mother.semanticVersion}), ` +
+                  `Father: ${father.uuid} (${father.semanticVersion}). ` +
+                  `Error=${error.name}: ${error.message}. ` +
+                  `Violations: ${violations.join(" | ")}`,
+              );
+            }
+
+            // If either parent is 2.x, fixing is expected and OK
+            console.warn(
+              `[Offspring] Forward-only violation after breed() with 2.x parent. ` +
+                `Fixing offspring. Error=${error.name}: ${error.message}. ` +
                 `Violations(sample up to 10): ${violations.join(" | ")}`,
             );
             offspring.fix({ forwardOnly: true });
+            upgradeSemanticVersionIfForwardOnlyConfirmed(offspring);
           } else {
             throw e;
           }
