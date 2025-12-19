@@ -26,7 +26,7 @@ export class WorkerProcessor {
     try {
       // Dynamic import of user-provided custom cost function file.
       // JSR Warning: This dynamic import is intentional and loads external user files at runtime.
-      // The import path cannot be analyzed at publish time as it's provided by the user.
+      // The import path cannot be analysed at publish time as it's provided by the user.
       const module = await import(filePath);
 
       // Try to get the default export first, then look for named exports
@@ -62,8 +62,6 @@ export class WorkerProcessor {
       // Handle custom cost function if provided
       if (data.initialize.customCostData) {
         const customCostInfo = JSON.parse(data.initialize.customCostData);
-
-        // Load custom cost function from file
         this.cost = await this.loadCustomCostFromFile(customCostInfo.filePath);
       } else {
         this.cost = Costs.find(data.initialize.costName);
