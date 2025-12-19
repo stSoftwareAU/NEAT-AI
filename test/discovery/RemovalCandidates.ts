@@ -16,7 +16,69 @@ import {
 } from "../../src/discovery/DiscoveryCandidates.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
-Deno.test("removeLowImpactNeuron removes neuron without bias adjustment", () => {
+Deno.test("removeLowImpactNeuron applies bias compensation for outgoing synapses", () => {
+  // X -> T removes average contribution of (w * meanActivation(X)) from T's pre-activation sum,
+  // so compensate by adjusting T.bias += w * meanActivation(X).
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", squash: "IDENTITY", bias: 0.25, uuid: "neuron-X" },
+      { type: "hidden", squash: "IDENTITY", bias: -0.1, uuid: "neuron-T" },
+      { type: "output", squash: "IDENTITY", bias: 0.05, uuid: "output-0" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "neuron-X", weight: 1.0 },
+      { fromUUID: "neuron-X", toUUID: "neuron-T", weight: -1.2 },
+      { fromUUID: "neuron-X", toUUID: "output-0", weight: 0.5 },
+      { fromUUID: "neuron-T", toUUID: "output-0", weight: 0.25 },
+      { fromUUID: "input-1", toUUID: "output-0", weight: -0.25 },
+    ],
+  });
+
+  const candidate: RemovalCandidate = {
+    neuronUUID: "neuron-X",
+    totalError: 5.0,
+    impact: 0.001,
+    reason: "Test",
+    meanActivation: 0.4,
+  };
+
+  const result = DiscoverStructure.removeLowImpactNeuron(
+    "test-discovery",
+    creature,
+    candidate,
+  );
+
+  assertExists(result, "Should return a modified creature");
+
+  // Verify the neuron was removed
+  assertEquals(
+    result.neurons.some((n) => n.uuid === "neuron-X"),
+    false,
+    "Removed neuron should not exist",
+  );
+  assertEquals(
+    result.exportJSON().synapses.some((s) =>
+      s.fromUUID === "neuron-X" || s.toUUID === "neuron-X"
+    ),
+    false,
+    "All synapses to/from removed neuron should be removed",
+  );
+
+  // Bias compensation checks:
+  // - neuron-T.bias += (-1.2 * 0.4) = -0.48
+  // - output-0.bias += (0.5 * 0.4) = +0.2
+  const neuronT = result.neurons.find((n) => n.uuid === "neuron-T");
+  assertExists(neuronT, "Target neuron should remain");
+  assertEquals(neuronT.bias, -0.1 + (-1.2 * 0.4));
+
+  const output0 = result.neurons.find((n) => n.uuid === "output-0");
+  assertExists(output0, "Output neuron should remain");
+  assertEquals(output0.bias, 0.05 + (0.5 * 0.4));
+});
+
+Deno.test("removeLowImpactNeuron makes no bias changes when removed neuron has no outgoing synapses", () => {
   // Create a simple creature with a hidden neuron
   const creature = Creature.fromJSON({
     input: 2,
@@ -37,6 +99,7 @@ Deno.test("removeLowImpactNeuron removes neuron without bias adjustment", () => 
     totalError: 5.0,
     impact: 0.001, // Very low impact (0.1%)
     reason: "High error but very low impact - far from outputs",
+    meanActivation: 123.456, // Should be ignored because there are no outgoing synapses
   };
 
   const result = DiscoverStructure.removeLowImpactNeuron(
@@ -59,6 +122,10 @@ Deno.test("removeLowImpactNeuron removes neuron without bias adjustment", () => 
     "Should have 1 non-input neuron remaining (the output)",
   );
   assertEquals(result.synapses.length, 1, "Should have 1 synapse remaining");
+
+  const output0 = result.neurons.find((n) => n.uuid === "output-0");
+  assertExists(output0, "Output neuron should remain");
+  assertEquals(output0.bias, 0, "Output bias should be unchanged");
 });
 
 Deno.test("removeLowImpactNeuron returns undefined for non-existent neuron", () => {
