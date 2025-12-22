@@ -1,14 +1,12 @@
 import type { NeatOptions } from "../../mod.ts";
-import { Selection, type SelectionInterface } from "../methods/Selection.ts";
-import { Mutation } from "../NEAT/Mutation.ts";
-import type {
-  DiscoveryMinCandidatesPerCategory,
-  NeatArguments,
-} from "./NeatOptions.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
 } from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
+import { Selection, type SelectionInterface } from "../methods/Selection.ts";
+import { Mutation } from "../NEAT/Mutation.ts";
+import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
+import type { NeatArguments } from "./NeatArguments.ts";
 
 /**
  * Default cost of growth value used when not specified in options.

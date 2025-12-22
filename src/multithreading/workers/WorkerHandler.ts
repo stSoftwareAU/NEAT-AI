@@ -1,13 +1,14 @@
 import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
+import type { CostName } from "../../Costs.ts";
 import type { Creature } from "../../Creature.ts";
+import type { RemovalCandidate } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
@@ -28,7 +29,7 @@ export interface RequestData {
     /** Directory containing the dataset */
     dataSetDir: string;
     /** Name of the cost function to use */
-    costName: string;
+    costName: CostName;
     /** Serialized custom cost function data (if using custom cost) */
     customCostData?: string;
   };
@@ -212,7 +213,7 @@ export class WorkerHandler {
    */
   constructor(
     dataSetDir: string,
-    costName: string,
+    costName: CostName,
     direct: boolean,
     customCost?: { filePath: string },
   ) {

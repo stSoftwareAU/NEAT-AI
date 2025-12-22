@@ -1,3 +1,4 @@
+import type { CostName } from "../Costs.ts";
 import type { BackPropagationArguments } from "../propagate/BackPropagation.ts";
 
 export interface TrainArguments extends BackPropagationArguments {
@@ -8,7 +9,7 @@ export interface TrainArguments extends BackPropagationArguments {
   targetError: number;
 
   /** The cost function to use. See cost methods. Default: methods.cost.MSE */
-  cost: string;
+  cost: CostName;
 
   /**
    * Sets the amount of iterations the process will maximally run,
