@@ -30,6 +30,7 @@ import {
   adjustedWeight,
   calculateWeight,
 } from "../propagate/Weight.ts";
+import { distributeElasticError } from "../propagate/ElasticDistribution.ts";
 import type { DiscoverRecord } from "./ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
@@ -565,7 +566,73 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const listLength = inwardList.length;
 
       if (listLength) {
-        const errorPerLink = error / listLength;
+        // Elastic distribution: allocate more of the value-space error to
+        // upstream links that can change the output with smaller weight changes.
+        // For a linear pre-activation, minimum L2 weight change yields
+        // contribution shares proportional to activation².
+        //
+        // We also incorporate each upstream squash's `safeZoneAdjustment` so we
+        // avoid pushing already-saturated parents further into saturation.
+        const linkMeta = new Array<
+          { activation: number; safeZoneFactor: number }
+        >(
+          listLength,
+        );
+        const fromActivationCache = new Array<number>(listLength);
+        const fromWeightCache = new Array<number>(listLength);
+        const fromValueCache = new Array<number>(listLength);
+        const provisionalErrorPerLink = error / listLength;
+
+        for (let indx = 0; indx < listLength; indx++) {
+          const c = inwardList[indx];
+          const { from, to } = c;
+
+          if (from === to) {
+            linkMeta[indx] = { activation: 0, safeZoneFactor: 0 };
+            fromActivationCache[indx] = 0;
+            fromWeightCache[indx] = 0;
+            fromValueCache[indx] = 0;
+            continue;
+          }
+
+          const fromNeuron = this.creature.neurons[from];
+
+          const fromActivation = fromNeuron.adjustedActivation(config);
+
+          const fromWeight = adjustedWeight(state, c, config);
+
+          fromActivationCache[indx] = fromActivation;
+          fromWeightCache[indx] = fromWeight;
+          fromValueCache[indx] = fromWeight * fromActivation;
+
+          let safeZoneAdj = 1;
+          const type = fromNeuron.type;
+          if (
+            type !== "input" &&
+            type !== "constant" &&
+            sparseConfig.propagateNeeded(fromNeuron.uuid)
+          ) {
+            const fromSquash = fromNeuron.findSquash();
+            if (fromSquash.safeZoneAdjustment) {
+              // Important: rawInput must be the from-neuron's *pre-squash* value,
+              // not a synapse contribution (w*a).
+              const fromNS = state.node(from);
+              safeZoneAdj = fromSquash.safeZoneAdjustment(
+                fromNS.hintValue,
+                provisionalErrorPerLink,
+                fromWeight,
+              );
+            }
+          }
+          linkMeta[indx] = {
+            activation: fromActivation,
+            safeZoneFactor: safeZoneAdj,
+          };
+        }
+
+        const perLinkError = distributeElasticError(error, linkMeta, {
+          plankConstant: config.plankConstant,
+        });
 
         for (let indx = 0; indx < listLength; indx++) {
           const c = inwardList[indx];
@@ -575,78 +642,47 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
           const fromNeuron = this.creature.neurons[from];
 
-          const fromActivation = fromNeuron.adjustedActivation(config);
+          const fromActivation = fromActivationCache[indx];
+          const fromWeight = fromWeightCache[indx];
+          if (Math.abs(fromWeight) <= config.plankConstant) continue;
 
-          const fromWeight = adjustedWeight(state, c, config);
-          if (Math.abs(fromWeight) > config.plankConstant) {
-            const fromValue = fromWeight * fromActivation;
+          const fromValue = fromValueCache[indx];
+          const thisLinkError = perLinkError[indx] ?? 0;
+          const targetFromValue = fromValue + thisLinkError;
 
-            let improvedFromActivation = fromActivation;
+          let improvedFromActivation = fromActivation;
 
-            const targetFromValue = fromValue + errorPerLink;
+          const type = fromNeuron.type;
+          if (
+            type !== "input" &&
+            type !== "constant" &&
+            sparseConfig.propagateNeeded(fromNeuron.uuid) &&
+            Math.abs(targetFromValue - fromValue) > config.plankConstant
+          ) {
+            const targetFromActivation = targetFromValue / fromWeight;
+            improvedFromActivation = fromNeuron.propagate(
+              targetFromActivation,
+              config,
+              sparseConfig,
+            );
+          }
 
-            const type = fromNeuron.type;
-            if (
-              type !== "input" &&
-              type !== "constant"
-            ) {
-              if (
-                sparseConfig.propagateNeeded(fromNeuron.uuid)
-              ) {
-                const fromSquash = fromNeuron.findSquash();
-                let safeZoneAdj = 1;
-                if (fromSquash.safeZoneAdjustment) {
-                  safeZoneAdj = fromSquash.safeZoneAdjustment(
-                    targetFromValue,
-                    errorPerLink,
-                    fromWeight,
-                  );
-                  if (
-                    fromSquash.verbose &&
-                    Math.abs(safeZoneAdj) < config.plankConstant
-                  ) {
-                    console.warn(
-                      `Out of safe zone for neuron ${fromNeuron.uuid}, squash ${fromSquash.getName()}, safeZoneAdj: ${safeZoneAdj}, targetFromValue: ${
-                        targetFromValue.toPrecision(3)
-                      }, errorPerLink: ${errorPerLink.toPrecision(3)}, `,
-                    );
-                  }
-                }
-                const safeTargetFromValue = fromValue +
-                  errorPerLink * safeZoneAdj;
-                if (
-                  Math.abs(safeTargetFromValue - fromValue) >
-                    config.plankConstant
-                ) {
-                  const targetFromActivation = safeTargetFromValue / fromWeight;
-                  improvedFromActivation = fromNeuron.propagate(
-                    targetFromActivation,
-                    config,
-                    sparseConfig,
-                  );
-                }
-              }
-            }
+          if (
+            updateNeeded &&
+            Math.abs(improvedFromActivation) > config.plankConstant
+          ) {
+            const cs = state.connection(from, to);
+            accumulateWeight(
+              c.weight,
+              cs,
+              targetFromValue,
+              improvedFromActivation,
+              config,
+            );
+            const aWeight = adjustedWeight(state, c, config);
 
-            if (
-              updateNeeded &&
-              Math.abs(improvedFromActivation) > config.plankConstant
-            ) {
-              const cs = state.connection(from, to);
-              accumulateWeight(
-                c.weight,
-                cs,
-                targetFromValue,
-                improvedFromActivation,
-                config,
-              );
-              const aWeight = adjustedWeight(state, c, config);
-
-              const improvedFromValue = improvedFromActivation *
-                aWeight;
-
-              improvedValue += improvedFromValue;
-            }
+            const improvedFromValue = improvedFromActivation * aWeight;
+            improvedValue += improvedFromValue;
           }
         }
       }
