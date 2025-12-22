@@ -7,9 +7,12 @@ import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { calculate as calculateScore } from "../architecture/Score.ts";
-import type { Creature } from "../Creature.ts";
-import type { NeatOptions } from "../config/NeatOptions.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
+import type { NeatOptions } from "../config/NeatOptions.ts";
+import type { CostName } from "../Costs.ts";
+import type { Creature } from "../Creature.ts";
+import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
+import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import {
   buildCombinedFromSuccessful,
   buildDiscoveryCandidates,
@@ -18,9 +21,6 @@ import {
   type DiscoveryChangeType,
   shortID,
 } from "./DiscoveryCandidates.ts";
-import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import { isCandidateCachedSync, recordFailureSync } from "./FailureCache.ts";
 
 export interface DiscoveryRunnerWorker {
@@ -37,7 +37,7 @@ export interface DiscoveryRunnerWorker {
 
 export interface DiscoveryRunnerWorkerFactoryArgs {
   dataDir: string;
-  costName: string;
+  costName: CostName;
   direct: boolean;
   customCost?: { filePath: string };
 }

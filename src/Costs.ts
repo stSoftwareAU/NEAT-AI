@@ -31,6 +31,17 @@ export const BUILT_IN_COST_NAMES = [
 export type BuiltInCostName = typeof BUILT_IN_COST_NAMES[number];
 
 /**
+ * Cost name used throughout configuration.
+ *
+ * This is intentionally restricted to built-in costs so configuration surfaces
+ * (eg. `NeatOptions.costName`) only offer known values like "MSE" and "MAE".
+ *
+ * For custom cost functions, use the file-path based `customCost` option or
+ * call `Costs.find()` directly with your registered custom name.
+ */
+export type CostName = BuiltInCostName;
+
+/**
  * Factory class for creating cost function instances.
  * Provides access to various loss functions used in neural network training.
  */
