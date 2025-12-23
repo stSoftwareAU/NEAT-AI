@@ -52,11 +52,12 @@ export interface NeatArguments {
    *
    * ## Forward-only default
    * If this is **unset** (or `false`), the NEAT engine treats the run as **forward-only**:
-   * - Self/back connections are **not selected** as mutation operations.
+   * - Recurrent connections (self-loops and feedback/backward connections) are **not selected**
+   *   as mutation operations.
    *
-   * Forward-only mode does **not** automatically strip legacy self/back connections on load.
-   * However, when a creature is mutated/bred in forward-only mode, any self/back connections
-   * are removed so we "evolve away" from legacy feedback structures over a few generations.
+   * Forward-only mode does **not** automatically strip legacy recurrent connections on load.
+   * However, when a creature is mutated/bred in forward-only mode, recurrent connections are
+   * removed so we "evolve away" from legacy recurrent structures over a few generations.
    *
    * To enable memory connections, set `feedbackLoop: true`.
    */

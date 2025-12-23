@@ -22,7 +22,11 @@ interface CreatureCommon extends TagsInterface {
   output: number;
 
   /**
-   * Marks this creature as forward-only (no self connections or back connections).
+   * Marks this creature as forward-only (no recurrent connections).
+   *
+   * Recurrent connections include:
+   * - self-loops (from === to)
+   * - feedback/backward connections (from > to)
    *
    * This flag survives export/import and lets production systems enforce that
    * once a creature is confirmed forward-only it stays that way through

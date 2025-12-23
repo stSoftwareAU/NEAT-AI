@@ -20,13 +20,13 @@ import { SubBackCon } from "../mutate/SubBackCon.ts";
 import { SwapNeurons } from "../mutate/SwapNeurons.ts";
 
 function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
-  // Issue #937: once forward-only is confirmed, bump 2.x.x → 3.0.0.
+  // Once forward-only is confirmed, bump 2.x.x/3.x.x → 4.0.0.
   // Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
   const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
   if (!match) return;
   const major = Number.parseInt(match[1], 10);
-  if (major === 2) {
-    creature.semanticVersion = "3.0.0";
+  if (major === 2 || major === 3) {
+    creature.semanticVersion = "4.0.0";
   }
 }
 
@@ -270,7 +270,7 @@ export class Mutator {
       creature.fix();
 
       // Forward-only mode: if the creature is marked forward-only or the run is not using
-      // feedback loops, ensure mutations can't accidentally keep self/back connections.
+      // feedback loops, ensure mutations can't accidentally keep recurrent connections.
       if (this.config.feedbackLoop !== true || creature.forwardOnly === true) {
         try {
           creature.validate({ forwardOnly: true });
@@ -289,6 +289,11 @@ export class Mutator {
             error.name === "SELF_CONNECTION" ||
             error.name === "RECURSIVE_SYNAPSE"
           ) {
+            const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(
+              creature.semanticVersion,
+            );
+            const major = match ? Number.parseInt(match[1], 10) : 0;
+
             const violations = creature.synapses
               .map((s, i) => ({ s, i }))
               .filter(({ s }) => s.from === s.to || s.from > s.to)
@@ -306,6 +311,16 @@ export class Mutator {
                 `Error=${error.name}: ${error.message}. ` +
                 `Violations(sample up to 10): ${violations.join(" | ")}`,
             );
+
+            // Forward-only 4.x is a hard guarantee: never repair by mutation.
+            if (creature.forwardOnly === true && major >= 4) {
+              throw new Error(
+                `[Mutator] CRITICAL: forward-only 4.x creature became invalid after '${method.name}': ` +
+                  `${error.name} - ${error.message}. ` +
+                  `This indicates a corruption bug (recurrent connections must never be introduced).`,
+              );
+            }
+
             creature.fix({ forwardOnly: true });
           } else {
             // Keep behaviour consistent with Offspring.breed(): only forward-only

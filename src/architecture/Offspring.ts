@@ -11,13 +11,13 @@ import { Neuron } from "./Neuron.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
-  // Issue #937: once forward-only is confirmed, bump 2.x.x → 3.0.0.
+  // Once forward-only is confirmed, bump 2.x.x/3.x.x → 4.0.0.
   // Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
   const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
   if (!match) return;
   const major = Number.parseInt(match[1], 10);
-  if (major === 2) {
-    creature.semanticVersion = "3.0.0";
+  if (major === 2 || major === 3) {
+    creature.semanticVersion = "4.0.0";
   }
 }
 
@@ -73,11 +73,11 @@ export class Offspring {
     }
 
     // Determine offspring semantic version based on BOTH parents.
-    // Only start at 3.x if BOTH parents are 3.x (validated forward-only).
+    // Only start at 4.x if BOTH parents are 4.x (forward-only guaranteed).
     // Otherwise start at the lower version - validation will upgrade if appropriate.
     const motherMajor = getMajorVersion(mother.semanticVersion);
     const fatherMajor = getMajorVersion(father.semanticVersion);
-    const offspringVersion = (motherMajor >= 3 && fatherMajor >= 3)
+    const offspringVersion = (motherMajor >= 4 && fatherMajor >= 4)
       ? mother.semanticVersion
       : (motherMajor < fatherMajor
         ? mother.semanticVersion
@@ -325,8 +325,8 @@ export class Offspring {
       (options.forwardOnly === undefined &&
         (mum.forwardOnly === true || dad.forwardOnly === true));
 
-    // Check if both parents are 3.x (validated forward-only)
-    const bothParentsThreeX = motherMajor >= 3 && fatherMajor >= 3;
+    // Check if both parents are 4.x (forward-only guaranteed)
+    const bothParentsFourX = motherMajor >= 4 && fatherMajor >= 4;
 
     try {
       creatureValidate(offspring);
@@ -359,10 +359,10 @@ export class Offspring {
                 }) -> ${s.to} (${offspring.neurons[s.to]?.ID?.() ?? "?"})`
               );
 
-            // If BOTH parents are 3.x, this is a bug in the breeding logic
-            if (bothParentsThreeX) {
+            // If BOTH parents are 4.x, this is a bug in the breeding logic
+            if (bothParentsFourX) {
               throw new Error(
-                `[Offspring] CRITICAL: Both parents are 3.x but offspring has self/back connections. ` +
+                `[Offspring] CRITICAL: Both parents are 4.x but offspring has recurrent connections. ` +
                   `This is a bug in the breeding logic that must be fixed. ` +
                   `Mother: ${mother.uuid} (${mother.semanticVersion}), ` +
                   `Father: ${father.uuid} (${father.semanticVersion}). ` +
