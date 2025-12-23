@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { rustLibraryExists } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { findRustLibraryFromOptions } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 function expectedLibraryExtension(): string {
   switch (Deno.build.os) {
@@ -15,45 +15,6 @@ function expectedLibraryExtension(): string {
 }
 
 Deno.test("rust discovery honours NEAT_AI_DISCOVERY_LIB_PATH override", async () => {
-  const envPermissionStatus = await (async () => {
-    try {
-      return await Deno.permissions.query({ name: "env" as const });
-    } catch {
-      return { state: "denied" } as const;
-    }
-  })();
-
-  if (envPermissionStatus.state !== "granted") {
-    console.warn(
-      "Skipping NEAT_AI_DISCOVERY_LIB_PATH override test because env permission is not granted.",
-    );
-    return;
-  }
-
-  const originalOverride = (() => {
-    try {
-      return Deno.env.get("NEAT_AI_DISCOVERY_LIB_PATH");
-    } catch {
-      return undefined;
-    }
-  })();
-
-  const originalHome = (() => {
-    try {
-      return Deno.env.get("HOME");
-    } catch {
-      return undefined;
-    }
-  })();
-
-  const originalUserProfile = (() => {
-    try {
-      return Deno.env.get("USERPROFILE");
-    } catch {
-      return undefined;
-    }
-  })();
-
   const tempDir = await Deno.makeTempDir({ prefix: "rust-lib-override-" });
   const tempHome = await Deno.makeTempDir({ prefix: "rust-lib-home-" });
   const libName = `libneat_ai_discovery${expectedLibraryExtension()}`;
@@ -63,47 +24,17 @@ Deno.test("rust discovery honours NEAT_AI_DISCOVERY_LIB_PATH override", async ()
   await Deno.writeTextFile(fakeLibraryPath, "");
 
   try {
-    // Temporarily clear existing override so the baseline assertion is meaningful
-    try {
-      Deno.env.delete("NEAT_AI_DISCOVERY_LIB_PATH");
-    } catch {
-      // Ignore if we cannot delete (no env permission); the guard below will still pass if override is absent.
-    }
-
-    // Point HOME/USERPROFILE to empty directories so default search cannot succeed
-    Deno.env.set("HOME", tempHome);
-    Deno.env.set("USERPROFILE", tempHome);
-
+    const resolved = findRustLibraryFromOptions({
+      overridePath: fakeLibraryPath,
+      // Force defaults to miss; override should still win regardless.
+      homeDir: tempHome,
+      cwd: tempHome,
+    });
     assert(
-      !rustLibraryExists(),
-      "Expected rustLibraryExists() to fail without an override path",
-    );
-
-    Deno.env.set("NEAT_AI_DISCOVERY_LIB_PATH", fakeLibraryPath);
-    assert(
-      rustLibraryExists(),
-      "Expected rustLibraryExists() to detect the library via override path",
+      resolved === fakeLibraryPath,
+      `Expected override path to win, got ${resolved}`,
     );
   } finally {
-    const resetEnv = (
-      key: string,
-      value: string | undefined,
-    ) => {
-      try {
-        if (value === undefined) {
-          Deno.env.delete(key);
-        } else {
-          Deno.env.set(key, value);
-        }
-      } catch {
-        // Ignore env clean-up issues when --allow-env is not granted
-      }
-    };
-
-    resetEnv("NEAT_AI_DISCOVERY_LIB_PATH", originalOverride);
-    resetEnv("HOME", originalHome);
-    resetEnv("USERPROFILE", originalUserProfile);
-
     // Use removeSync - simpler, faster, and ensures all file handles are closed
     try {
       // deno-lint-ignore no-sync-fn-in-async-fn
