@@ -44,17 +44,23 @@ export class ArcTan
     const lower = -Math.PI / 2 + ArcTan.EPSILON;
 
     if (activation >= upper) {
-      if (typeof hint === "number" && Number.isFinite(hint) && hint > 1e6) {
+      // ArcTan never truly reaches +π/2 for finite inputs.
+      // If we are asked to invert a saturated activation (often due to clamping),
+      // prefer the smallest-change solution by returning the current raw value.
+      // This prevents record/discovery paths from generating astronomical errors
+      // (eg. 1e12+) that dominate MSE and slow evolution dramatically.
+      if (typeof hint === "number" && Number.isFinite(hint)) {
         return hint;
       }
-      return Number.MAX_SAFE_INTEGER;
+      // Fallback to a large but *finite* value if no hint is available.
+      return 1e6;
     }
 
     if (activation <= lower) {
-      if (typeof hint === "number" && Number.isFinite(hint) && hint < -1e6) {
+      if (typeof hint === "number" && Number.isFinite(hint)) {
         return hint;
       }
-      return -Number.MAX_SAFE_INTEGER;
+      return -1e6;
     }
 
     const value = Math.tan(activation);

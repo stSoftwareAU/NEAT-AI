@@ -124,6 +124,9 @@ For detailed documentation, see the [docs/](./docs/) directory:
 
 - **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
   distributed, multi-machine discovery workflows
+- **[Elastic back propagation](./docs/BACKPROP_ELASTICITY.md)**: Why we prefer
+  minimum-change weight updates and avoid pushing saturated squashes (eg.
+  ArcTan) further into saturation
 - **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference for
   `Creature.discoveryDir()` and data preparation
 - **[GPU Acceleration](./docs/GPU_ACCELERATION.md)**: GPU acceleration for

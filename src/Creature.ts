@@ -359,10 +359,16 @@ export class Creature implements CreatureInternal {
 
     for (let i = this.input; i < len; i++) {
       const n = neurons[i];
-      if (sparseConfig.traceNeeded(n.uuid)) {
-        n.activateAndTraceNeuron();
-      } else {
-        n.activateNeuron();
+      const result = sparseConfig.traceNeeded(n.uuid)
+        ? n.activateAndTraceNeuron()
+        : n.activateNeuron();
+
+      // Back propagation uses `hintValue` as the best available estimate of the
+      // neuron's pre-squash value. We store it for any neuron that may be
+      // propagated through (selected neurons + their paths) to avoid unstable
+      // inverse/derivative calculations.
+      if (sparseConfig.propagateNeeded(n.uuid)) {
+        this.state.node(n.index).hintValue = result.value;
       }
     }
 

@@ -1,0 +1,88 @@
+/**
+ * Error distribution helpers for back propagation.
+ *
+ * We use a minimum-change heuristic for a linear pre-activation:
+ *   v = b + Σ(w_i * a_i)
+ *
+ * If we want to change v by Δv, the smallest L2 change in weights that achieves
+ * the same Δv (with bias handled separately) allocates contribution changes
+ * proportional to \(a_i^2\).
+ *
+ * This is an "elasticity" mechanism: links with larger activations can absorb
+ * more of the value-space error with smaller weight changes, and links that are
+ * near saturation can be down-weighted via `safeZoneFactor`.
+ *
+ * Notes:
+ * - `safeZoneFactor` is expected in [0, 1], but we clamp defensively.
+ * - If nothing is movable (all scores ~0), we fall back to an equal split so we
+ *   still break symmetry (eg. when activations are all zero early in training).
+ *
+ * Australian English: "normalise", "behaviour".
+ */
+export type ElasticLink = Readonly<{
+  activation: number;
+  safeZoneFactor: number;
+}>;
+
+export function distributeElasticError(
+  error: number,
+  links: ReadonlyArray<ElasticLink>,
+  options?: Readonly<{
+    plankConstant?: number;
+  }>,
+): number[] {
+  const plankConstant = options?.plankConstant ?? 1e-12;
+
+  if (!Number.isFinite(error) || links.length === 0) {
+    return new Array(links.length).fill(0);
+  }
+
+  const scores = new Array<number>(links.length);
+  let denom = 0;
+  for (let i = 0; i < links.length; i++) {
+    const { activation, safeZoneFactor } = links[i];
+    if (!Number.isFinite(activation) || !Number.isFinite(safeZoneFactor)) {
+      scores[i] = 0;
+      continue;
+    }
+
+    const safe = Math.max(0, Math.min(1, safeZoneFactor));
+    const a2 = activation * activation;
+    const score = a2 * safe;
+    scores[i] = score;
+    denom += score;
+  }
+
+  if (denom <= plankConstant) {
+    // Fallback: equal split. This keeps learning moving when activations are
+    // near zero and the minimum-change heuristic is underdetermined.
+    const per = error / links.length;
+    return new Array(links.length).fill(per);
+  }
+
+  const shares = new Array<number>(links.length);
+  let sum = 0;
+  for (let i = 0; i < links.length; i++) {
+    const share = error * (scores[i] / denom);
+    shares[i] = share;
+    sum += share;
+  }
+
+  // Keep Σ shares == error (floating point tidy-up).
+  const residue = error - sum;
+  if (Math.abs(residue) > plankConstant) {
+    let bestIndx = -1;
+    let bestScore = -Infinity;
+    for (let i = 0; i < scores.length; i++) {
+      if (scores[i] > bestScore) {
+        bestScore = scores[i];
+        bestIndx = i;
+      }
+    }
+    if (bestIndx >= 0) {
+      shares[bestIndx] += residue;
+    }
+  }
+
+  return shares;
+}
