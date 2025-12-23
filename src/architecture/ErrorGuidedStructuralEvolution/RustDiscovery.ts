@@ -642,6 +642,24 @@ function resolveOverridePath(libName: string): string | null {
   }
 }
 
+export type RustLibrarySearchOptions = Readonly<{
+  /**
+   * Optional override path (file or directory) that should win over all defaults.
+   * This mirrors the `NEAT_AI_DISCOVERY_LIB_PATH` environment variable.
+   */
+  overridePath?: string;
+  /**
+   * Home directory used for resolving `~/.cargo/lib`.
+   * When omitted, the HOME/USERPROFILE environment variables are used (if available).
+   */
+  homeDir?: string;
+  /**
+   * Current working directory used for resolving local `./target/release`.
+   * Defaults to `Deno.cwd()` when omitted.
+   */
+  cwd?: string;
+}>;
+
 /**
  * Resolves the path to the Rust library.
  *
@@ -656,21 +674,39 @@ function resolveOverridePath(libName: string): string | null {
 export function findRustLibrary(): string | null {
   const libName = `libneat_ai_discovery${getLibraryExtension()}`;
 
-  const overridePath = resolveOverridePath(libName);
-  if (overridePath) {
-    return overridePath;
-  }
+  // Read override/home from environment (best effort).
+  const overridePath = resolveOverridePath(libName) ?? undefined;
 
-  // Try to get home directory, but handle gracefully if --allow-env is not granted
   let homeDir: string | undefined;
   try {
-    homeDir = Deno.env.get("HOME") || Deno.env.get("USERPROFILE");
+    homeDir = Deno.env.get("HOME") || Deno.env.get("USERPROFILE") || undefined;
   } catch {
-    // --allow-env not granted, skip HOME directory check
     homeDir = undefined;
   }
 
-  // Check ~/.cargo/lib/ first (production installation)
+  return findRustLibraryFromOptions({ overridePath, homeDir });
+}
+
+/**
+ * Same resolution logic as `findRustLibrary()`, but driven by explicit inputs.
+ *
+ * This exists so tests can validate override precedence without mutating global
+ * process environment variables (which are shared across parallel tests).
+ */
+export function findRustLibraryFromOptions(
+  options: RustLibrarySearchOptions,
+): string | null {
+  const libName = `libneat_ai_discovery${getLibraryExtension()}`;
+
+  const overridePath = options.overridePath?.trim();
+  if (overridePath) {
+    const overrideResolved = resolveLibraryCandidate(overridePath, libName);
+    if (overrideResolved) {
+      return overrideResolved;
+    }
+  }
+
+  const homeDir = options.homeDir;
   if (homeDir) {
     const cargoLibPath = resolveLibraryCandidate(
       join(homeDir, ".cargo", "lib"),
@@ -681,16 +717,15 @@ export function findRustLibrary(): string | null {
     }
   }
 
-  // Check local build artifacts inside this repository
+  const cwd = options.cwd ?? Deno.cwd();
   const localTargetPath = resolveLibraryCandidate(
-    join(Deno.cwd(), "target", "release"),
+    join(cwd, "target", "release"),
     libName,
   );
   if (localTargetPath) {
     return localTargetPath;
   }
 
-  // Check sibling NEAT-AI-Discovery repository (development workflow)
   const siblingDir = fromFileUrl(
     new URL(
       "../../../NEAT-AI-Discovery/target/release",
