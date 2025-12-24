@@ -345,6 +345,16 @@ class DataRecorder {
       const recordBuffer = new Uint8Array(this.BYTES_PER_RECORD);
       const recordArray = new Float32Array(recordBuffer.buffer);
 
+      // Grace behaviour (24-Dec-2025): with very tight record deadlines (eg.
+      // 60ms) and heavy CI load, the timeout can expire before we manage to read
+      // even a single sample. That produces zero parquet artefacts and makes the
+      // timeout tests flaky.
+      //
+      // If we have not recorded anything at all yet, allow a single "grace read"
+      // of one record even when the timeout is already expired. The recorder
+      // layer applies a matching opt-in grace for persisting that final sample.
+      let usedGraceReadAfterTimeout = false;
+
       for (const recordIndex of selectedIndexes) {
         // If we're about to time out, flush any buffered samples as a partial
         // batch. This ensures we still persist useful work for large batch sizes
@@ -352,7 +362,10 @@ class DataRecorder {
         if (this.timeoutTS) {
           const now = Date.now();
           const timeLeftMs = this.timeoutTS - now;
-          if (timeLeftMs <= 0) break;
+          if (timeLeftMs <= 0) {
+            if (usedGraceReadAfterTimeout || params.counter.count > 0) break;
+            usedGraceReadAfterTimeout = true;
+          }
 
           // Keep this small: we just want to avoid crossing the deadline without
           // ever submitting a batch to the recorder.

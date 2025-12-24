@@ -864,6 +864,18 @@ export class Neuron implements TagsInterface, NeuronInternal {
                 continue;
               }
 
+              // Safe-zone hard guard: if a parent is fully blocked (eg. deeply
+              // saturated ArcTan), do not recurse into it. If all parents are
+              // blocked, we stop recursion rather than forcing an equal-split
+              // attribution that would generate huge, misleading errors.
+              if (
+                !Number.isFinite(link.safeZoneFactor) ||
+                link.safeZoneFactor <= 0
+              ) {
+                blockedError += share;
+                continue;
+              }
+
               const fromNeuron = link.fromNeuron;
               const weight = link.synapse.weight;
               if (!weight) continue;

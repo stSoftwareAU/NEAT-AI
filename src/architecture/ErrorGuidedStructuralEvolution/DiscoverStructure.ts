@@ -432,8 +432,15 @@ export class DiscoverStructure {
     // caller explicitly provides `options.baseDirectory`.
     let baseDir = options.baseDirectory ?? ".discovery";
     try {
-      const denoTest = Deno.env.get("DENO_TEST")?.toLowerCase() === "true";
-      if (options.baseDirectory === undefined && denoTest) {
+      const env = (key: string) => Deno.env.get(key)?.trim().toLowerCase();
+      const denoTest = env("DENO_TEST") === "1" || env("DENO_TEST") === "true";
+      const suiteDeterministic =
+        env("NEAT_AI_DISCOVERY_DETERMINISTIC") === "1" ||
+        env("NEAT_AI_DISCOVERY_DETERMINISTIC") === "true";
+
+      if (
+        options.baseDirectory === undefined && (denoTest || suiteDeterministic)
+      ) {
         baseDir = `.discovery/test-${Deno.pid}-${
           crypto.randomUUID().slice(0, 8)
         }`;
