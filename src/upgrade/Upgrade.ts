@@ -49,12 +49,12 @@ function validateThreeX(creature: Creature): void {
 }
 
 /**
- * Validates that a 4.x forward-only creature is still forward-only.
+ * Validates that a 4.x (or later) creature is still forward-only.
  *
- * For 4.x, forward-only is a hard invariant: any recurrent connection is an error.
+ * For 4.x, forward-only is a hard invariant: any recurrent connection is an error,
+ * regardless of whether the `forwardOnly` flag is set.
  */
 function validateFourX(creature: Creature): void {
-  if (creature.forwardOnly !== true) return;
   creatureValidate(creature, { forwardOnly: true });
 }
 
@@ -109,7 +109,7 @@ function tryUpgradeToFour(creature: Creature): Creature {
 export function upgrade(creature: Creature): Creature {
   const majorVersion = getMajorVersion(creature.semanticVersion);
 
-  // Already at version 4.x or higher - enforce forward-only for forwardOnly creatures
+  // Already at version 4.x or higher - enforce forward-only invariant.
   if (majorVersion >= 4) {
     validateFourX(creature);
     return creature;

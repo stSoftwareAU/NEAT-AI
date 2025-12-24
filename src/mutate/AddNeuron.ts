@@ -5,6 +5,35 @@ import { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
+/**
+ * Selects a suitable outward connection target for a newly inserted neuron.
+ *
+ * In **forward-only** mode we must not introduce recurrent connections, which
+ * includes both self-loops and feedback/backward connections.
+ *
+ * In **recurrent-capable** mode (creature is not marked forward-only), it is
+ * valid to select recurring connections (including self-loops).
+ */
+export function pickOutwardTargetNeuronIndex(
+  creature: Creature,
+  neuronIndex: number,
+  toIndex: number,
+): number {
+  if (toIndex === -1) return -1;
+
+  const forwardOnly = creature.forwardOnly === true;
+  const minTargetIndex = forwardOnly
+    ? Math.max(toIndex, neuronIndex + 1)
+    : toIndex;
+
+  const nonConstantIndx = creature.neurons.findIndex((
+    n,
+  ) => (n.index >= minTargetIndex && n.type !== "constant"));
+
+  if (nonConstantIndx === -1) return -1;
+  return creature.neurons[nonConstantIndx].index;
+}
+
 export class AddNeuron implements RadioactiveInterface {
   private creature: Creature;
   constructor(creature: Creature) {
@@ -89,16 +118,11 @@ export class AddNeuron implements RadioactiveInterface {
 
     // First, try to use the originally selected toIndex if it's valid and non-constant
     if (toIndex !== -1) {
-      // Guard: the outward target must be a *later* neuron to keep the graph feed-forward.
-      // `toIndex` can equal the newly inserted neuron's index, which would create a self-loop.
-      const minTargetIndex = Math.max(toIndex, neuron.index + 1);
-      const nonConstantIndx = creature.neurons.findIndex((
-        n,
-      ) => (n.index >= minTargetIndex && n.type !== "constant"));
-
-      if (nonConstantIndx !== -1) {
-        targetNeuronIndex = creature.neurons[nonConstantIndx].index;
-      }
+      targetNeuronIndex = pickOutwardTargetNeuronIndex(
+        creature,
+        neuron.index,
+        toIndex,
+      );
     }
 
     // If we don't have a target yet, use fallback logic.
