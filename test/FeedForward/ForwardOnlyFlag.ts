@@ -119,11 +119,11 @@ Deno.test("Breeding inherits forwardOnly by default (when a parent is forward-on
   child.validate({ forwardOnly: true });
 });
 
-Deno.test("Breeding with forwardOnly=false clears child forwardOnly (keeps memory connections)", () => {
+Deno.test("Breeding with forwardOnly=false sets child forwardOnly=false when parents are not 4.x", () => {
   const mumJson: CreatureExport = {
     input: 2,
     output: 1,
-    forwardOnly: true,
+    semanticVersion: "2.0.0",
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0 },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
@@ -137,7 +137,7 @@ Deno.test("Breeding with forwardOnly=false clears child forwardOnly (keeps memor
   const dadJson: CreatureExport = {
     input: 2,
     output: 1,
-    forwardOnly: true,
+    semanticVersion: "2.0.0",
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0.1 },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.2 },

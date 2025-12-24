@@ -8,12 +8,11 @@ import { upgrade } from "../../src/upgrade/Upgrade.ts";
 /**
  * Regression test for issue #952 (24-Dec-2025).
  *
- * When feedback/memory mode is explicitly requested during breeding, the child
- * must **not** be created as semanticVersion 4.x (forward-only invariant),
- * otherwise future structural changes that add feedback connections will
- * surface as `RECURSIVE_SYNAPSE` when the creature is later upgraded/cloned.
+ * Two 4.x parents are a hard forward-only invariant. Even if feedback/memory
+ * mode is explicitly requested, the offspring must remain a valid 4.x
+ * forward-only creature (and must not end up as "4.x but not forwardOnly").
  */
-Deno.test("Offspring: feedback mode must not create a 4.x child", () => {
+Deno.test("Offspring: two 4.x parents always produce a 4.x forward-only child", () => {
   const mumJson: CreatureExport = {
     input: 2,
     output: 1,
