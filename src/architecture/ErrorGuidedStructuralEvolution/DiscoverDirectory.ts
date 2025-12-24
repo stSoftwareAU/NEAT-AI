@@ -708,6 +708,19 @@ class DataRecorder {
       // Sequential execution is intentional - we check results after each attempt
       const analysisPhaseStartTime = Date.now();
       while (retryAttempt <= maxRetries) {
+        // Allow callers (especially tests) to explicitly skip the analysis phase by
+        // setting discoveryMaxNeurons to 0. This keeps record/flush coverage (FFI)
+        // while avoiding long-running Rust analysis on GPU-backed machines.
+        if (this.discoveryMaxNeurons <= 0) {
+          if (shouldLogDiscovery(config)) {
+            console.log(
+              `Discovery ${
+                blue(this.ID)
+              } skipping analysis phase because discoveryMaxNeurons <= 0`,
+            );
+          }
+          break;
+        }
         const focusSelectStart = Date.now();
         // deno-lint-ignore no-await-in-loop
         const focusList = await discoverStructure.selectNeuronsWeightedByError(

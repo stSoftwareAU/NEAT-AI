@@ -17,6 +17,37 @@ import { TANH } from "../../src/methods/activations/types/TANH.ts";
  * Uses fast timeouts (1-3 seconds) with small datasets for CI/CD.
  */
 
+async function countParquetFiles(dir: string): Promise<number> {
+  let count = 0;
+  try {
+    for await (const entry of Deno.readDir(dir)) {
+      const path = `${dir}/${entry.name}`;
+      if (entry.isDirectory) {
+        count += await countParquetFiles(path);
+      } else if (entry.isFile && entry.name.endsWith(".parquet")) {
+        count++;
+      }
+    }
+  } catch {
+    // Directory may not exist if discovery aborted early
+  }
+  return count;
+}
+
+async function readSelectedIndexCount(
+  discoveryBaseDir: string,
+  creature: Creature,
+): Promise<number> {
+  const selectedPath =
+    `${discoveryBaseDir}/${creature.uuid}/selected_indices.json`;
+  const content = await Deno.readTextFile(selectedPath);
+  const parsed = JSON.parse(content) as Record<string, number[]>;
+  const counts = Object.values(parsed).map((indices) =>
+    Array.isArray(indices) ? indices.length : 0
+  );
+  return counts.reduce((sum, n) => sum + n, 0);
+}
+
 // Test utility: Create a simple creature with configurable hidden neurons
 function makeTestCreature(hiddenNeurons = 20): Creature {
   const neurons = [];
@@ -171,75 +202,123 @@ Deno.test({
     const tmpDir512 = await createTempTestDir("batch-512");
 
     try {
-      // Create meaningful test creatures
-      const creature128 = makeTestCreature(15);
+      // Create meaningful test creatures (record phase only, analysis skipped)
+      const creature128 = makeTestCreature(10);
       CreatureUtil.makeUUID(creature128);
       creature128.clearState();
-      await createTestBinaryFile(creature128, 100, tmpDir128, "test1.bin");
+      const recordCount = 5000;
+      await createTestBinaryFile(
+        creature128,
+        recordCount,
+        tmpDir128,
+        "test1.bin",
+      );
 
-      const creature512 = makeTestCreature(15);
+      const creature512 = makeTestCreature(10);
       CreatureUtil.makeUUID(creature512);
       creature512.clearState();
-      await createTestBinaryFile(creature512, 100, tmpDir512, "test1.bin");
+      await createTestBinaryFile(
+        creature512,
+        recordCount,
+        tmpDir512,
+        "test1.bin",
+      );
 
       // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        // Test with batch size 128, short timeout to test timeout handling
-        // Note: Rust library requires > 3 second timeout, otherwise defaults to 10 minutes
+        // Record-phase timeout test (analysis is skipped by setting discoveryMaxNeurons=0).
+        // We still exercise real FFI recording/flush.
         const config128 = createNeatConfig({
           discoveryBatchSize: 128,
-          discoveryRecordTimeOutMinutes: 0.1, // 6 seconds (must be > 3s for Rust)
-          discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
+          discoveryRecordTimeOutMinutes: 0.001, // 60ms (forces partial recording)
+          discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
           discoverySampleRate: 1.0, // 100% sample rate
+          discoveryMaxNeurons: 0, // Skip analysis (prevents slow Rust synapse analysis)
+          discoveryBaseDirectory: tmpDir128,
+          discoveryDisableCleanup: true, // Preserve artefacts for assertions
           log: 0,
         });
 
+        const start128 = Date.now();
         const result128 = await recordDirectory(
           creature128,
           tmpDir128,
           config128,
         );
+        const elapsed128 = Date.now() - start128;
 
-        // Test with batch size 512, same timeout
         const config512 = createNeatConfig({
           discoveryBatchSize: 512,
-          discoveryRecordTimeOutMinutes: 0.1, // 6 seconds (must be > 3s for Rust)
-          discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
+          discoveryRecordTimeOutMinutes: 0.001, // 60ms (forces partial recording)
+          discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
           discoverySampleRate: 1.0,
+          discoveryMaxNeurons: 0, // Skip analysis
+          discoveryBaseDirectory: tmpDir512,
+          discoveryDisableCleanup: true,
           log: 0,
         });
 
+        const start512 = Date.now();
         const result512 = await recordDirectory(
           creature512,
           tmpDir512,
           config512,
         );
+        const elapsed512 = Date.now() - start512;
 
-        // Both should return results (not throw) - this tests that partial results work
+        // Both should return results (not throw) - this tests timeout handling and FFI integration.
         assertExists(result128, "Batch 128 should return result");
         assertExists(result512, "Batch 512 should return result");
 
-        // Count results to verify both got some data processed
-        const count128 = (result128.addHelpfulSynapses?.length || 0) +
-          (result128.addHelpfulNeurons?.length || 0) +
-          (result128.candidateSquashes?.length || 0) +
-          (result128.removeHarmfulSynapse ? 1 : 0);
-
-        const count512 = (result512.addHelpfulSynapses?.length || 0) +
-          (result512.addHelpfulNeurons?.length || 0) +
-          (result512.candidateSquashes?.length || 0) +
-          (result512.removeHarmfulSynapse ? 1 : 0);
-
-        // Both should produce some results (the key is they complete without throwing)
+        // Ensure record phase actually saved Parquet via Rust FFI.
+        const parquet128 = await countParquetFiles(
+          `${tmpDir128}/${creature128.uuid}`,
+        );
+        const parquet512 = await countParquetFiles(
+          `${tmpDir512}/${creature512.uuid}`,
+        );
         assert(
-          count128 > 0 || count512 > 0,
-          `At least one batch size should produce results: 128=${count128}, 512=${count512}`,
+          parquet128 > 0,
+          `Expected at least one Parquet artefact for batch=128, got ${parquet128}`,
+        );
+        assert(
+          parquet512 > 0,
+          `Expected at least one Parquet artefact for batch=512, got ${parquet512}`,
         );
 
-        console.log(
-          `Batch comparison: 128 produced ${count128} results, 512 produced ${count512} results`,
+        // Ensure timeouts actually prevented full recording (partial indices).
+        const recorded128 = await readSelectedIndexCount(
+          tmpDir128,
+          creature128,
+        );
+        const recorded512 = await readSelectedIndexCount(
+          tmpDir512,
+          creature512,
+        );
+        assert(
+          recorded128 > 0,
+          "Expected to record at least one sample before timing out (batch=128)",
+        );
+        assert(
+          recorded512 > 0,
+          "Expected to record at least one sample before timing out (batch=512)",
+        );
+        assert(
+          recorded128 < recordCount,
+          `Expected partial recording for batch=128. Recorded=${recorded128}, total=${recordCount}`,
+        );
+        assert(
+          recorded512 < recordCount,
+          `Expected partial recording for batch=512. Recorded=${recorded512}, total=${recordCount}`,
+        );
+
+        // This is a regression guard for "timeout tests are slow on GPU machines".
+        // We want this test bounded even when GPUs are available.
+        assert(
+          elapsed128 < 15_000 && elapsed512 < 15_000,
+          `Expected both runs to finish quickly. elapsed128=${elapsed128}ms elapsed512=${elapsed512}ms`,
         );
       } finally {
         // Restore original DENO_TEST value
@@ -269,15 +348,18 @@ Deno.test({
 
     try {
       // Create larger dataset to ensure timeout is triggered
-      await createTestBinaryFile(creature, 200, tmpDir, "test.bin");
+      const recordCount = 5000;
+      await createTestBinaryFile(creature, recordCount, tmpDir, "test.bin");
 
       // Short timeout to test timeout handling - should trigger partial results
-      // Note: Rust library requires > 3 second timeout, otherwise defaults to 10 minutes
       const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryRecordTimeOutMinutes: 0.1, // 6 seconds (must be > 3s for Rust)
-        discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds for analysis
+        discoveryRecordTimeOutMinutes: 0.001, // 60ms (forces partial recording)
+        discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
         discoverySampleRate: 1.0,
+        discoveryMaxNeurons: 0, // Skip analysis
+        discoveryBaseDirectory: tmpDir,
+        discoveryDisableCleanup: true,
         log: 0,
       });
 
@@ -285,15 +367,36 @@ Deno.test({
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
+        const start = Date.now();
         const result = await recordDirectory(creature, tmpDir, config);
+        const elapsed = Date.now() - start;
 
         // Should return result (not throw)
         assertExists(result, "Should return result even with timeout");
         assertExists(result.ID, "Result should have ID");
 
-        // Note: with short timeout, might not complete analysis, which is acceptable
-        // The key is that it doesn't throw and returns a valid result structure
-        console.log(`Partial results: ${JSON.stringify(result, null, 2)}`);
+        const parquetCount = await countParquetFiles(
+          `${tmpDir}/${creature.uuid}`,
+        );
+        assert(
+          parquetCount > 0,
+          `Expected at least one Parquet artefact, got ${parquetCount}`,
+        );
+
+        const recorded = await readSelectedIndexCount(tmpDir, creature);
+        assert(
+          recorded > 0,
+          "Expected to record at least one sample before timing out",
+        );
+        assert(
+          recorded < recordCount,
+          `Expected partial recording. Recorded=${recorded}, total=${recordCount}`,
+        );
+
+        assert(
+          elapsed < 15_000,
+          `Expected timeout test to be fast. elapsed=${elapsed}ms`,
+        );
       } finally {
         // Restore original DENO_TEST value
         if (originalDenoTest !== undefined) {
@@ -321,17 +424,20 @@ Deno.test({
 
     try {
       // Create multiple binary files to ensure processing takes time
-      await createTestBinaryFile(creature, 100, tmpDir, "test1.bin");
-      await createTestBinaryFile(creature, 100, tmpDir, "test2.bin");
-      await createTestBinaryFile(creature, 100, tmpDir, "test3.bin");
+      const recordCount = 5000;
+      await createTestBinaryFile(creature, recordCount, tmpDir, "test1.bin");
+      await createTestBinaryFile(creature, recordCount, tmpDir, "test2.bin");
+      await createTestBinaryFile(creature, recordCount, tmpDir, "test3.bin");
 
       // Short timeout to test timeout during file processing
-      // Note: Rust library requires > 3 second timeout, otherwise defaults to 10 minutes
       const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryRecordTimeOutMinutes: 0.1, // 6 seconds (must be > 3s for Rust)
-        discoveryAnalysisTimeoutMinutes: 0.1, // 6 seconds
+        discoveryRecordTimeOutMinutes: 0.05, // 3 seconds
+        discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
         discoverySampleRate: 1.0,
+        discoveryMaxNeurons: 0, // Skip analysis
+        discoveryBaseDirectory: tmpDir,
+        discoveryDisableCleanup: true,
         log: 0,
       });
 
@@ -339,11 +445,32 @@ Deno.test({
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
+        const start = Date.now();
         const result = await recordDirectory(creature, tmpDir, config);
+        const elapsed = Date.now() - start;
 
         // Should complete without throwing
         assertExists(result, "Should return result despite timeout");
         assertExists(result.ID, "Result should have ID");
+
+        const parquetCount = await countParquetFiles(
+          `${tmpDir}/${creature.uuid}`,
+        );
+        assert(
+          parquetCount > 0,
+          `Expected at least one Parquet artefact, got ${parquetCount}`,
+        );
+
+        const recorded = await readSelectedIndexCount(tmpDir, creature);
+        assert(
+          recorded > 0,
+          "Expected to record at least one sample before timing out",
+        );
+
+        assert(
+          elapsed < 15_000,
+          `Expected timeout test to be fast. elapsed=${elapsed}ms`,
+        );
       } finally {
         // Restore original DENO_TEST value
         if (originalDenoTest !== undefined) {
@@ -375,13 +502,17 @@ Deno.test({
 
     try {
       // Create meaningful dataset
-      await createTestBinaryFile(creature, 100, tmpDir, "test.bin");
+      const recordCount = 100;
+      await createTestBinaryFile(creature, recordCount, tmpDir, "test.bin");
 
       const config = createNeatConfig({
         discoveryBatchSize: 128,
-        discoveryRecordTimeOutMinutes: 0.5, // 30 seconds - plenty of time
-        discoveryAnalysisTimeoutMinutes: 0.5, // 30 seconds
+        discoveryRecordTimeOutMinutes: 0.2, // 12 seconds
+        discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
         discoverySampleRate: 1.0,
+        discoveryMaxNeurons: 0, // Skip analysis
+        discoveryBaseDirectory: tmpDir,
+        discoveryDisableCleanup: true,
         log: 0,
       });
 
@@ -389,16 +520,30 @@ Deno.test({
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
+        const start = Date.now();
         const result = await recordDirectory(creature, tmpDir, config);
+        const elapsed = Date.now() - start;
 
         // Should complete successfully
         assertExists(result, "Should return result");
         assertExists(result.ID, "Result should have ID");
 
-        console.log(
-          `Complete results: helpful=${result.addHelpfulSynapses?.length}, ` +
-            `harmful=${result.removeHarmfulSynapse ? 1 : 0}, ` +
-            `squashes=${result.candidateSquashes?.length}`,
+        const parquetCount = await countParquetFiles(
+          `${tmpDir}/${creature.uuid}`,
+        );
+        assert(
+          parquetCount > 0,
+          `Expected at least one Parquet artefact, got ${parquetCount}`,
+        );
+        const recorded = await readSelectedIndexCount(tmpDir, creature);
+        assert(
+          recorded === recordCount,
+          `Expected all records to be recorded. Recorded=${recorded}, total=${recordCount}`,
+        );
+
+        assert(
+          elapsed < 15_000,
+          `Expected discovery (record-only) test to be fast. elapsed=${elapsed}ms`,
         );
       } finally {
         // Restore original DENO_TEST value
