@@ -160,6 +160,7 @@ Deno.test("Breeding with forwardOnly=false clears child forwardOnly (keeps memor
     if (child) break;
   }
   assert(child, "Expected child");
-  assertEquals(child.forwardOnly, undefined);
+  assertEquals(child.forwardOnly, false);
+  assertEquals(child.semanticVersion, "2.0.0");
   child.validate();
 });
