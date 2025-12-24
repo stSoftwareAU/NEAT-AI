@@ -77,11 +77,19 @@ export class Offspring {
     // Otherwise start at the lower version - validation will upgrade if appropriate.
     const motherMajor = getMajorVersion(mother.semanticVersion);
     const fatherMajor = getMajorVersion(father.semanticVersion);
-    const offspringVersion = (motherMajor >= 4 && fatherMajor >= 4)
-      ? mother.semanticVersion
-      : (motherMajor < fatherMajor
+    const bothParentsFourX = motherMajor >= 4 && fatherMajor >= 4;
+    const shouldBeForwardOnly = bothParentsFourX ||
+      options.forwardOnly === true ||
+      (options.forwardOnly === undefined &&
+        (mother.forwardOnly === true || father.forwardOnly === true));
+
+    const offspringVersion = shouldBeForwardOnly
+      ? ((motherMajor >= 4 && fatherMajor >= 4)
         ? mother.semanticVersion
-        : father.semanticVersion);
+        : (motherMajor < fatherMajor
+          ? mother.semanticVersion
+          : father.semanticVersion))
+      : "2.0.0";
 
     // Initialize offspring
     const offspring = new Creature(mother.input, mother.output, {
@@ -321,24 +329,26 @@ export class Offspring {
       offspring.memetic = memetic;
     }
 
-    const shouldBeForwardOnly = options.forwardOnly === true ||
-      (options.forwardOnly === undefined &&
-        (mum.forwardOnly === true || dad.forwardOnly === true));
-
-    // Check if both parents are 4.x (forward-only guaranteed)
-    const bothParentsFourX = motherMajor >= 4 && fatherMajor >= 4;
-
     try {
       creatureValidate(offspring);
 
       if (
-        options.forwardOnly === false && (mum.forwardOnly || dad.forwardOnly)
+        options.forwardOnly === false && !bothParentsFourX
       ) {
-        console.warn(
-          `[Offspring] feedbackLoop/memory mode requested; clearing forwardOnly on child (parents had forwardOnly)`,
-        );
-        offspring.forwardOnly = undefined;
+        // Feedback/memory mode explicitly requested. Ensure we do not create a
+        // semanticVersion 4.x creature (4.x is a hard "forward-only" invariant).
+        offspring.forwardOnly = false;
+        offspring.semanticVersion = "2.0.0";
       } else if (shouldBeForwardOnly) {
+        if (options.forwardOnly === false && bothParentsFourX) {
+          // Two 4.x parents are a hard forward-only invariant. If a caller requests
+          // feedback/memory mode here, it's a misuse of the API. We override it to
+          // keep invariants stable and avoid producing a "4.x but not forwardOnly"
+          // creature that later fails upgrade/validation.
+          console.warn(
+            `[Offspring] feedbackLoop/memory mode requested but both parents are 4.x; forcing forwardOnly child`,
+          );
+        }
         offspring.forwardOnly = true;
         try {
           offspring.validate({ forwardOnly: true });
