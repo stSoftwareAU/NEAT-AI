@@ -28,6 +28,7 @@ import { distributeElasticError } from "../propagate/ElasticDistribution.ts";
 import {
   buildRecordElasticLinks,
   distributeRecordError,
+  recordTargetFeasibilityFactor,
 } from "../propagate/RecordElasticity.ts";
 import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import {
@@ -830,9 +831,62 @@ export class Neuron implements TagsInterface, NeuronInternal {
             },
           );
 
+          // Hard guard: do not request impossible (or strongly undesired) target
+          // activations from upstream squashes. If a share would push a parent
+          // outside its feasible range, skip that link and reallocate the share
+          // across the remaining feasible parents.
+          //
+          // This avoids "hidden" clamping in `Neuron.record()` turning an
+          // impossible target (eg. negative for ABSOLUTE/ReLU) into a large,
+          // misleading error that then pollutes discovery metrics.
+          const feasibleLinks: Array<(typeof chosenLinks)[number]> = [];
+          const feasibleShares: number[] = [];
+          let blockedError = 0;
+
           for (let i = 0; i < chosenLinks.length; i++) {
             const link = chosenLinks[i];
             const share = shares[i] ?? 0;
+            if (!Number.isFinite(share) || Math.abs(share) <= 1e-12) continue;
+
+            const fromNeuron = link.fromNeuron;
+            const weight = link.synapse.weight;
+            if (!weight) continue;
+
+            const targetFromValue = link.fromValue + share;
+            const targetFromActivation = targetFromValue / weight;
+
+            const feasibility = recordTargetFeasibilityFactor(
+              fromNeuron,
+              targetFromActivation,
+            );
+            if (feasibility <= 0) {
+              blockedError += share;
+              continue;
+            }
+
+            feasibleLinks.push(link);
+            feasibleShares.push(share);
+          }
+
+          if (Math.abs(blockedError) > 1e-12 && feasibleLinks.length > 0) {
+            // Reallocate the blocked value-space share across feasible links.
+            const { shares: redistributed } = distributeRecordError(
+              blockedError,
+              feasibleLinks,
+              {
+                plankConstant: 1e-12,
+                allowEqualFallback: true,
+              },
+            );
+            for (let i = 0; i < redistributed.length; i++) {
+              feasibleShares[i] = (feasibleShares[i] ?? 0) +
+                (redistributed[i] ?? 0);
+            }
+          }
+
+          for (let i = 0; i < feasibleLinks.length; i++) {
+            const link = feasibleLinks[i];
+            const share = feasibleShares[i] ?? 0;
             if (!Number.isFinite(share) || Math.abs(share) <= 1e-12) continue;
 
             const fromNeuron = link.fromNeuron;

@@ -346,7 +346,26 @@ class DataRecorder {
       const recordArray = new Float32Array(recordBuffer.buffer);
 
       for (const recordIndex of selectedIndexes) {
-        if (this.timeoutTS && Date.now() > this.timeoutTS) break;
+        // If we're about to time out, flush any buffered samples as a partial
+        // batch. This ensures we still persist useful work for large batch sizes
+        // under tight record deadlines (eg. batch=512 with ~60ms timeout).
+        if (this.timeoutTS) {
+          const now = Date.now();
+          const timeLeftMs = this.timeoutTS - now;
+          if (timeLeftMs <= 0) break;
+
+          // Keep this small: we just want to avoid crossing the deadline without
+          // ever submitting a batch to the recorder.
+          if (timeLeftMs <= 10 && params.dataSet.length > 0) {
+            const recorded = discoverStructure.record(
+              params.dataSet.splice(0),
+              params.neuronPromisesMap,
+              filePath,
+              params.selectedIndices.splice(0),
+            );
+            if (!recorded) break;
+          }
+        }
 
         // Calculate the target position
         const targetPosition = recordIndex * this.BYTES_PER_RECORD;
@@ -429,6 +448,49 @@ class DataRecorder {
           // Give GC a chance to run periodically
           // deno-lint-ignore no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+      }
+
+      // Flush any partial batch. This matters for short record timeouts and
+      // large batch sizes (eg. 512) where we may not reach a full batch before
+      // the deadline, but we still want to persist the data already buffered.
+      if (params.dataSet.length > 0) {
+        // Only submit the final partial batch when we're still within the record
+        // timeout window; `DiscoverStructure.record()` intentionally aborts if
+        // the timeout already expired.
+        const withinTimeout = !this.timeoutTS || Date.now() <= this.timeoutTS;
+        const recorded = withinTimeout
+          ? discoverStructure.record(
+            params.dataSet.splice(0),
+            params.neuronPromisesMap,
+            filePath,
+            params.selectedIndices.splice(0),
+          )
+          : false;
+
+        if (!withinTimeout) {
+          // Drop buffered samples to release memory; we intentionally do not
+          // record them once the timeout has expired.
+          params.dataSet.splice(0);
+          params.selectedIndices.splice(0);
+        }
+
+        // Best-effort flush of the Rust chunk after the final (partial) batch.
+        // This keeps artefacts consistent when timeouts force partial recording.
+        if (discoverStructure.shouldFlushRustChunk()) {
+          const flushed = discoverStructure.flushRustChunk();
+          if (!flushed) {
+            console.warn(
+              `⚠️  Discovery ${
+                blue(this.ID)
+              } failed to flush discovery chunk after partial batch.`,
+            );
+          }
+        }
+
+        // If the recorder indicates we should stop (timeout), honour it.
+        if (!recorded) {
+          // No-op: exit function naturally.
         }
       }
 

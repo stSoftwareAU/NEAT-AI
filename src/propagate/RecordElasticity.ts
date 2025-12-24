@@ -26,7 +26,76 @@ export type RecordElasticLink = Readonly<{
   fromActivation: number;
   fromValue: number;
   safeZoneFactor: number;
+  /**
+   * Record-time feasibility/comfort factor for the *implied* upstream target.
+   *
+   * This is intentionally separate from `safeZoneFactor`:
+   * - `safeZoneFactor` is about local plasticity / saturation in raw-input space
+   * - `feasibilityFactor` is about whether the requested *activation target* is
+   *   feasible (range-limited squashes) or strongly undesirable (ReLU-family
+   *   variants we prefer to keep non-negative during record attribution)
+   */
+  feasibilityFactor: number;
 }>;
+
+// Tiny epsilon to avoid flapping around exact boundaries.
+const RECORD_TARGET_EPSILON = 1e-9;
+
+// Squashes where out-of-range record targets are especially misleading during
+// attribution. For these, we treat out-of-range targets as blocked so we prefer
+// alternative synapses when available.
+const HARD_RANGE_SQUASHES = new Set<string>([
+  "ABSOLUTE",
+  "SQUARE",
+]);
+
+// During record-time attribution (Explorer/discovery analysis), we prefer to
+// avoid pushing these squashes negative when there is an alternative synapse.
+//
+// Rationale (Australian English): while some of these can technically output
+// negative values, pushing them negative during attribution can create large,
+// misleading neuron-level errors that then get redistributed elsewhere.
+const NEGATIVE_RESIST_SQUASHES = new Set<string>([
+  "Swish",
+  "SELU",
+  "GELU",
+  "LeakyReLU",
+  "ELU",
+]);
+
+export function recordTargetFeasibilityFactor(
+  fromNeuron: Neuron,
+  targetActivation: number,
+): number {
+  if (!Number.isFinite(targetActivation)) return 0;
+
+  const squash = fromNeuron.findSquash();
+  const range = squash.range;
+  const name = squash.getName();
+
+  // Hard feasibility: if the target activation is outside the squash output
+  // range, treat it as impossible for selected squashes where clamping hides
+  // impossibility and inflates discovery metrics.
+  if (HARD_RANGE_SQUASHES.has(name)) {
+    if (
+      targetActivation < range.low - RECORD_TARGET_EPSILON ||
+      targetActivation > range.high + RECORD_TARGET_EPSILON
+    ) {
+      return 0;
+    }
+  }
+
+  // Soft preference: for certain ReLU-family variants, prefer not to cross
+  // below zero during record attribution.
+  if (
+    NEGATIVE_RESIST_SQUASHES.has(name) &&
+    targetActivation < -RECORD_TARGET_EPSILON
+  ) {
+    return 0;
+  }
+
+  return 1;
+}
 
 export function getOrComputeRecordValue(
   neuron: Neuron,
@@ -114,12 +183,22 @@ export function buildRecordElasticLinks(
       }
     }
 
+    // Estimate the implied upstream activation target if this link absorbed a
+    // provisional equal share of error in value space.
+    const impliedTargetFromValue = fromValue + provisionalErrorPerLink;
+    const impliedTargetFromActivation = impliedTargetFromValue / c.weight;
+    const feasibilityFactor = (fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant")
+      ? recordTargetFeasibilityFactor(fromNeuron, impliedTargetFromActivation)
+      : 1;
+
     links.push({
       synapse: c,
       fromNeuron,
       fromActivation,
       fromValue,
       safeZoneFactor,
+      feasibilityFactor,
     });
   }
 
@@ -153,7 +232,7 @@ export function distributeRecordError(
 
   const meta = links.map((l) => ({
     activation: l.fromActivation,
-    safeZoneFactor: l.safeZoneFactor,
+    safeZoneFactor: l.safeZoneFactor * l.feasibilityFactor,
   }));
 
   // If everything is blocked, `distributeElasticError` will equal-split. That’s
