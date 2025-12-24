@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
 
@@ -185,7 +185,7 @@ Deno.test("upgrade should validate and not modify valid 4.x creatures", () => {
   );
 });
 
-Deno.test("upgrade should throw for forward-only 4.x creatures with recurrent connections", () => {
+Deno.test("upgrade should repair forward-only 4.x creatures with recurrent connections", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
     semanticVersion: "4.0.0",
@@ -195,7 +195,13 @@ Deno.test("upgrade should throw for forward-only 4.x creatures with recurrent co
   const hiddenNeuron = creature.neurons[creature.input]; // First hidden neuron
   creature.connect(hiddenNeuron.index, hiddenNeuron.index, 0.5);
 
-  assertThrows(() => upgrade(creature));
+  const upgraded = upgrade(creature);
+  upgraded.validate({ forwardOnly: true });
+  assertEquals(
+    upgraded.getSynapse(hiddenNeuron.index, hiddenNeuron.index),
+    null,
+    "upgrade() should remove recurrent self loops for forward-only 4.x creatures",
+  );
 });
 
 Deno.test("upgrade should validate and not modify future 10.x creatures", () => {

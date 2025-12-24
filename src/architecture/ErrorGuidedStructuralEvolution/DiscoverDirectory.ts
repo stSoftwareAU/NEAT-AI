@@ -19,6 +19,7 @@ import type {
 } from "./DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 import { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
+import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
 
 const shouldLogDiscovery = (config: NeatConfig): boolean =>
   config.verbose || config.log > 0;
@@ -374,11 +375,11 @@ class DataRecorder {
           // 10ms window can be missed between loop iterations, which leads to
           // zero recorded Parquet artefacts even when we already buffered data.
           if (timeLeftMs <= 25 && params.dataSet.length > 0) {
-            const recorded = discoverStructure.record(
-              params.dataSet.splice(0),
-              params.neuronPromisesMap,
+            const recorded = submitDiscoveryRecordBatch(
+              discoverStructure,
+              params,
               filePath,
-              params.selectedIndices.splice(0),
+              { allowGraceAfterTimeout: true },
             );
             if (!recorded) break;
           }
@@ -419,11 +420,11 @@ class DataRecorder {
         params.dataSet.push(data);
 
         if (params.dataSet.length >= this.discoveryBatchSize) {
-          const recorded = discoverStructure.record(
-            params.dataSet.splice(0),
-            params.neuronPromisesMap,
+          const recorded = submitDiscoveryRecordBatch(
+            discoverStructure,
+            params,
             filePath,
-            params.selectedIndices.splice(0), // Pass and clear indices
+            { allowGraceAfterTimeout: true },
           );
           if (!recorded) break;
           assert(params.dataSet.length === 0, "Data set not empty");
@@ -476,11 +477,10 @@ class DataRecorder {
         // expired a moment earlier, `DiscoverStructure.record()` may still accept
         // a small grace batch (to avoid losing all buffered work under tight
         // deadlines).
-        const recorded = discoverStructure.record(
-          params.dataSet.splice(0),
-          params.neuronPromisesMap,
+        const recorded = submitDiscoveryRecordBatch(
+          discoverStructure,
+          params,
           filePath,
-          params.selectedIndices.splice(0),
           { allowGraceAfterTimeout: true },
         );
 
@@ -601,13 +601,13 @@ class DataRecorder {
 
           // Flush any remaining data for this file to ensure indices are correctly associated
           if (dataSet.length > 0) {
-            discoverStructure.record(
-              dataSet.splice(0),
-              neuronPromisesMap,
+            const recorded = submitDiscoveryRecordBatch(
+              discoverStructure,
+              { dataSet, neuronPromisesMap, selectedIndices },
               filePath,
-              selectedIndices.splice(0),
               { allowGraceAfterTimeout: true },
             );
+            if (!recorded) break;
             assert(dataSet.length === 0, "Data set not empty after flush");
             assert(
               selectedIndices.length === 0,

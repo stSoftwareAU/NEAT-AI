@@ -124,7 +124,16 @@ function tryUpgradeToFour(creature: Creature): Creature {
       creatureValidate(creature, { forwardOnly: true });
       creature.semanticVersion = "4.0.0";
     } catch (_error) {
-      // Creature claims to be forward-only but isn't - clear the flag, stay at current version
+      // Creature claims to be forward-only but failed validation.
+      // Attempt repair first; if repair fails, clear the flag and stay at current version.
+      try {
+        creature.fix({ forwardOnly: true });
+        creatureValidate(creature, { forwardOnly: true });
+        creature.semanticVersion = "4.0.0";
+        return creature;
+      } catch (_fixError) {
+        // Fall through to clearing the flag below.
+      }
       console.warn(
         `[upgrade] Creature claims forwardOnly but failed validation; clearing flag`,
       );

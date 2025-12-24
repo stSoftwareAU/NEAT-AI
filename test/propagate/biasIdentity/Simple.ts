@@ -37,6 +37,10 @@ Deno.test("Simple", () => {
   let lastError = calculateError(modifiedCreature, td);
 
   for (let i = 0; i < 10; i++) {
+    // Defensive: ensure the output directory exists even under parallel test runs
+    // where other tests may clean up sibling `.test/propagate/*` directories.
+    Deno.mkdirSync(directory, { recursive: true });
+
     Deno.writeTextFileSync(
       `${directory}/C${i}--start.json`,
       JSON.stringify(modifiedCreature.exportJSON(), null, 1),
@@ -54,6 +58,7 @@ Deno.test("Simple", () => {
     modifiedCreature.validate();
     Creature.fromJSON(results.trace).validate();
 
+    Deno.mkdirSync(directory, { recursive: true });
     Deno.writeTextFileSync(
       `${directory}/C${i}--trace.json`,
       JSON.stringify(results.trace, null, 1),
