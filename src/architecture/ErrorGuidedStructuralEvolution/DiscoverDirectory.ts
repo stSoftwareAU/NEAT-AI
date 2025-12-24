@@ -356,7 +356,11 @@ class DataRecorder {
 
           // Keep this small: we just want to avoid crossing the deadline without
           // ever submitting a batch to the recorder.
-          if (timeLeftMs <= 10 && params.dataSet.length > 0) {
+          //
+          // Note: 25ms is intentionally conservative. Under heavy CI load, a
+          // 10ms window can be missed between loop iterations, which leads to
+          // zero recorded Parquet artefacts even when we already buffered data.
+          if (timeLeftMs <= 25 && params.dataSet.length > 0) {
             const recorded = discoverStructure.record(
               params.dataSet.splice(0),
               params.neuronPromisesMap,
@@ -455,25 +459,17 @@ class DataRecorder {
       // large batch sizes (eg. 512) where we may not reach a full batch before
       // the deadline, but we still want to persist the data already buffered.
       if (params.dataSet.length > 0) {
-        // Only submit the final partial batch when we're still within the record
-        // timeout window; `DiscoverStructure.record()` intentionally aborts if
-        // the timeout already expired.
-        const withinTimeout = !this.timeoutTS || Date.now() <= this.timeoutTS;
-        const recorded = withinTimeout
-          ? discoverStructure.record(
-            params.dataSet.splice(0),
-            params.neuronPromisesMap,
-            filePath,
-            params.selectedIndices.splice(0),
-          )
-          : false;
-
-        if (!withinTimeout) {
-          // Drop buffered samples to release memory; we intentionally do not
-          // record them once the timeout has expired.
-          params.dataSet.splice(0);
-          params.selectedIndices.splice(0);
-        }
+        // Always attempt to submit the final partial batch. If the record window
+        // expired a moment earlier, `DiscoverStructure.record()` may still accept
+        // a small grace batch (to avoid losing all buffered work under tight
+        // deadlines).
+        const recorded = discoverStructure.record(
+          params.dataSet.splice(0),
+          params.neuronPromisesMap,
+          filePath,
+          params.selectedIndices.splice(0),
+          { allowGraceAfterTimeout: true },
+        );
 
         // Best-effort flush of the Rust chunk after the final (partial) batch.
         // This keeps artefacts consistent when timeouts force partial recording.
@@ -597,6 +593,7 @@ class DataRecorder {
               neuronPromisesMap,
               filePath,
               selectedIndices.splice(0),
+              { allowGraceAfterTimeout: true },
             );
             assert(dataSet.length === 0, "Data set not empty after flush");
             assert(

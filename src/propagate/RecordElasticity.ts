@@ -46,6 +46,8 @@ const RECORD_TARGET_EPSILON = 1e-9;
 // alternative synapses when available.
 const HARD_RANGE_SQUASHES = new Set<string>([
   "ABSOLUTE",
+  "ReLU",
+  "ReLU6",
   "SQUARE",
 ]);
 
