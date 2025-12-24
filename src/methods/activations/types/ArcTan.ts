@@ -150,14 +150,17 @@ export class ArcTan
     // Ideal gradient zone: roughly x ∈ [−2, 2]
     if (abs <= 2) return 1;
 
+    // Out of bounds: too flat for meaningful updates.
+    // Even if the error direction would “recover”, the required raw change is
+    // too large to be a sensible optimisation step.
+    if (abs > 4) return 0;
+
     // Recovery zone: allow updates that move toward center
     if (rawInput > 2 && error < 0) return 0.3;
     if (rawInput < -2 && error > 0) return 0.3;
 
     // Fade zone: x ∈ [2, 4]
     if (abs <= 4) return 1 - (abs - 2) / 2;
-
-    // Out of bounds: too flat for meaningful updates
     return 0;
   }
 }

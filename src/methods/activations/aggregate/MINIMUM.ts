@@ -11,6 +11,7 @@ import {
   toValue,
 } from "../../../propagate/BackPropagation.ts";
 import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+import { getOrComputeRecordValue } from "../../../propagate/RecordElasticity.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 import type { SynapseState } from "../../../propagate/SynapseState.ts";
 import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
@@ -334,6 +335,7 @@ export class MINIMUM
     let mainValue = Number.MAX_SAFE_INTEGER;
     let mainNeuron;
     let mainWeight;
+    let mainSafeZone = 0;
     for (let indx = 0; indx < toList.length; indx++) {
       const c = toList[indx];
       if (c.from === c.to) continue;
@@ -348,15 +350,30 @@ export class MINIMUM
         const fromActivation = state.activations[fromNeuron.index];
 
         const fromValue = c.weight * fromActivation;
-        if (fromValue < mainValue) {
+        let safeZone = 1;
+        const squash = fromNeuron.findSquash();
+        if (squash.safeZoneAdjustment) {
+          const rawInput = getOrComputeRecordValue(fromNeuron, discoverMap);
+          safeZone = squash.safeZoneAdjustment(rawInput, error, c.weight);
+        }
+
+        if (
+          fromValue < mainValue ||
+          (fromValue === mainValue && safeZone > mainSafeZone)
+        ) {
           mainValue = fromValue;
           mainNeuron = fromNeuron;
           mainWeight = c.weight;
+          mainSafeZone = safeZone;
         }
       }
     }
     if (mainNeuron) {
       assert(mainWeight, "mainWeight not found");
+      if (mainSafeZone <= 1e-12) {
+        // Fully blocked: don't force recursion through an immovable min path.
+        return;
+      }
       const targetFromValue = mainValue + error;
 
       const targetFromActivation = targetFromValue / mainWeight;

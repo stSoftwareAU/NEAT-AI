@@ -49,6 +49,7 @@ export class AddNeuron implements RadioactiveInterface {
     const creature = this.creature;
     const startUUID = CreatureUtil.makeUUID(creature);
     delete creature.uuid;
+    const forwardOnly = creature.forwardOnly === true;
     const neuron = new Neuron(
       crypto.randomUUID(),
       "hidden",
@@ -145,6 +146,11 @@ export class AddNeuron implements RadioactiveInterface {
         assert(outputNeuron, "Expected at least one output neuron");
         targetNeuronIndex = outputNeuron.index;
       }
+
+      // Last resort: in recurrent-capable mode, a self-loop is valid.
+      if (targetNeuronIndex === -1 && !forwardOnly) {
+        targetNeuronIndex = neuron.index;
+      }
     }
 
     // Ensure we always have a valid target (should never be -1 with our fallbacks)
@@ -169,9 +175,13 @@ export class AddNeuron implements RadioactiveInterface {
           }
         }
       }
-      // If we can't find a target without an existing connection, keep the
-      // existing outward connection and stop searching.
+      // If we can't find a target without an existing connection:
+      // - in recurrent-capable mode, we may fall back to a self-loop
+      // - otherwise, keep the existing outward connection and stop searching.
       if (!foundNewTarget) {
+        if (!forwardOnly && !creature.getSynapse(neuron.index, neuron.index)) {
+          targetNeuronIndex = neuron.index;
+        }
         break;
       }
     }
@@ -224,6 +234,23 @@ export class AddNeuron implements RadioactiveInterface {
         outwardConnections = creature.outwardConnections(neuron.index);
         // If still empty after cache clear, fall back.
         if (outwardConnections.length === 0) {
+          // Last resort: in recurrent-capable mode, a self-loop is valid and
+          // guarantees the neuron has an outward connection.
+          if (
+            !forwardOnly && !creature.getSynapse(neuron.index, neuron.index)
+          ) {
+            creature.connect(
+              neuron.index,
+              neuron.index,
+              Synapse.randomWeight(),
+            );
+            creature.clearCache(neuron.index);
+            outwardConnections = creature.outwardConnections(neuron.index);
+            if (outwardConnections.length > 0) {
+              // Outward connection repaired.
+              return true;
+            }
+          }
           throw new Error(
             "AddNeuron: failed to create outward connection (unexpected: neuron is not connected to any later neuron)",
           );
