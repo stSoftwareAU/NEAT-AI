@@ -5,6 +5,35 @@ import { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
+/**
+ * Selects a suitable outward connection target for a newly inserted neuron.
+ *
+ * In **forward-only** mode we must not introduce recurrent connections, which
+ * includes both self-loops and feedback/backward connections.
+ *
+ * In **recurrent-capable** mode (creature is not marked forward-only), it is
+ * valid to select recurring connections (including self-loops).
+ */
+export function pickOutwardTargetNeuronIndex(
+  creature: Creature,
+  neuronIndex: number,
+  toIndex: number,
+): number {
+  if (toIndex === -1) return -1;
+
+  const forwardOnly = creature.forwardOnly === true;
+  const minTargetIndex = forwardOnly
+    ? Math.max(toIndex, neuronIndex + 1)
+    : toIndex;
+
+  const nonConstantIndx = creature.neurons.findIndex((
+    n,
+  ) => (n.index >= minTargetIndex && n.type !== "constant"));
+
+  if (nonConstantIndx === -1) return -1;
+  return creature.neurons[nonConstantIndx].index;
+}
+
 export class AddNeuron implements RadioactiveInterface {
   private creature: Creature;
   constructor(creature: Creature) {
@@ -20,6 +49,7 @@ export class AddNeuron implements RadioactiveInterface {
     const creature = this.creature;
     const startUUID = CreatureUtil.makeUUID(creature);
     delete creature.uuid;
+    const forwardOnly = creature.forwardOnly === true;
     const neuron = new Neuron(
       crypto.randomUUID(),
       "hidden",
@@ -89,16 +119,14 @@ export class AddNeuron implements RadioactiveInterface {
 
     // First, try to use the originally selected toIndex if it's valid and non-constant
     if (toIndex !== -1) {
-      const nonConstantIndx = creature.neurons.findIndex((
-        n,
-      ) => (n.index >= toIndex && n.type !== "constant"));
-
-      if (nonConstantIndx !== -1) {
-        targetNeuronIndex = creature.neurons[nonConstantIndx].index;
-      }
+      targetNeuronIndex = pickOutwardTargetNeuronIndex(
+        creature,
+        neuron.index,
+        toIndex,
+      );
     }
 
-    // If we don't have a target yet, use fallback logic
+    // If we don't have a target yet, use fallback logic.
     if (targetNeuronIndex === -1) {
       // If the original toIndex doesn't work, find any valid target after the neuron
       for (let i = neuron.index + 1; i < creature.neurons.length; i++) {
@@ -109,29 +137,27 @@ export class AddNeuron implements RadioactiveInterface {
         }
       }
 
-      // If still no target found, use the first output neuron
+      // If still no target found, use the first output neuron.
+      // This is always a forward connection because new neurons are only inserted
+      // before outputs.
       if (targetNeuronIndex === -1) {
         const firstOutputIndex = creature.neurons.length - creature.output;
-        if (
-          firstOutputIndex >= 0 && firstOutputIndex < creature.neurons.length
-        ) {
-          const outputNeuron = creature.neurons[firstOutputIndex];
-          if (outputNeuron) {
-            targetNeuronIndex = outputNeuron.index;
-          }
-        }
+        const outputNeuron = creature.neurons[firstOutputIndex];
+        assert(outputNeuron, "Expected at least one output neuron");
+        targetNeuronIndex = outputNeuron.index;
       }
 
-      // Last resort: self-connection (ensures neuron always has outward connection)
-      if (targetNeuronIndex === -1) {
+      // Last resort: in recurrent-capable mode, a self-loop is valid.
+      if (targetNeuronIndex === -1 && !forwardOnly) {
         targetNeuronIndex = neuron.index;
       }
     }
 
     // Ensure we always have a valid target (should never be -1 with our fallbacks)
-    // But if it is, use self-connection as absolute last resort
     if (targetNeuronIndex === -1) {
-      targetNeuronIndex = neuron.index;
+      throw new Error(
+        "AddNeuron: failed to find a valid outward connection target",
+      );
     }
 
     // Find a target that doesn't already have a connection from this neuron
@@ -149,11 +175,13 @@ export class AddNeuron implements RadioactiveInterface {
           }
         }
       }
-      // If we can't find a target without an existing connection,
-      // use self-connection (which should be valid for hidden neurons)
+      // If we can't find a target without an existing connection:
+      // - in recurrent-capable mode, we may fall back to a self-loop
+      // - otherwise, keep the existing outward connection and stop searching.
       if (!foundNewTarget) {
-        targetNeuronIndex = neuron.index;
-        // If self-connection also exists, that's okay - fix() will handle it
+        if (!forwardOnly && !creature.getSynapse(neuron.index, neuron.index)) {
+          targetNeuronIndex = neuron.index;
+        }
         break;
       }
     }
@@ -182,7 +210,7 @@ export class AddNeuron implements RadioactiveInterface {
     if (outwardConnections.length === 0) {
       // Find any valid target that doesn't have a connection yet
       let connectionCreated = false;
-      for (let i = neuron.index; i < creature.neurons.length; i++) {
+      for (let i = neuron.index + 1; i < creature.neurons.length; i++) {
         const candidate = creature.neurons[i];
         if (candidate && candidate.type !== "constant") {
           // Check if connection doesn't exist before creating
@@ -204,21 +232,28 @@ export class AddNeuron implements RadioactiveInterface {
       if (!connectionCreated) {
         creature.clearCache(neuron.index);
         outwardConnections = creature.outwardConnections(neuron.index);
-        // If still empty after cache clear, force create self-connection
+        // If still empty after cache clear, fall back.
         if (outwardConnections.length === 0) {
-          // Self-connection must not exist - create it
-          if (!creature.getSynapse(neuron.index, neuron.index)) {
+          // Last resort: in recurrent-capable mode, a self-loop is valid and
+          // guarantees the neuron has an outward connection.
+          if (
+            !forwardOnly && !creature.getSynapse(neuron.index, neuron.index)
+          ) {
             creature.connect(
               neuron.index,
               neuron.index,
               Synapse.randomWeight(),
             );
-          } else {
-            // Self-connection exists but not found in cache - clear and verify
-            creature.clearCache();
+            creature.clearCache(neuron.index);
             outwardConnections = creature.outwardConnections(neuron.index);
-            // If still empty, this is a serious issue - but at least we tried
+            if (outwardConnections.length > 0) {
+              // Outward connection repaired.
+              return true;
+            }
           }
+          throw new Error(
+            "AddNeuron: failed to create outward connection (unexpected: neuron is not connected to any later neuron)",
+          );
         }
       }
     }

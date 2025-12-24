@@ -60,6 +60,24 @@ standard term the first time it appears.
    forward pass that maps inputs to outputs, allowing for quick and easy
    deployment of the trained model.
 
+## Feed-forward vs recurrent connections
+
+NEAT-AI supports two broad topology styles:
+
+- **Feed-forward (forward-only)**: No **recurrent connections**. This means:
+  - No **self-loops** (\(from == to\))
+  - No **feedback/backward connections** (\(from > to\), ie an edge that points
+    to an earlier neuron index)
+  - Each activation depends only on the current input and upstream neuron
+    activations
+
+- **Recurrent (feedback-enabled)**: **Recurrent connections** are allowed
+  (self-loops and feedback/backward connections). These can make use of previous
+  activations and are useful for time-series style behaviours.
+
+In our production workloads, each record is treated as independent (no temporal
+dependence), so the default configuration is feed-forward/forward-only.
+
 5. **Unique Squash Functions**: The neural network supports unique squash
    functions such as IF, MAX and MIN. These functions provide more options for
    the activation function, which can lead to different network behaviours,

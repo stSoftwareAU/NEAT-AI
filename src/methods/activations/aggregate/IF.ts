@@ -13,6 +13,10 @@ import {
   toValue,
 } from "../../../propagate/BackPropagation.ts";
 import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+import {
+  buildRecordElasticLinks,
+  distributeRecordError,
+} from "../../../propagate/RecordElasticity.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
@@ -532,37 +536,39 @@ export class IF
       error = targetValue - currentValue;
     }
 
-    const listLength = inward.length;
-    const errorPerLink = error /
-      (condition > 0 ? positiveCount : negativeCount);
-    // Iterate over the shuffled indices
-    for (let indx = listLength; indx--;) {
-      const c = inward[indx];
+    const eligible = inward.filter((c) => {
+      if (c.from === c.to) return false;
+      if (c.type === "condition") return false;
+      if (c.type === "positive" && condition <= 0) return false;
+      if (c.type === "negative" && condition > 0) return false;
+      return true;
+    });
 
-      if (c.from === c.to) continue;
-      if (c.type === "condition") continue;
-      if (c.type === "positive" && condition <= 0) continue;
-      if (c.type === "negative" && condition > 0) continue;
+    if (eligible.length === 0) return;
 
-      const fromNeuron = neuron.creature.neurons[c.from];
+    const provisionalErrorPerLink = error / eligible.length;
+    const links = buildRecordElasticLinks(
+      neuron,
+      eligible,
+      discoverMap,
+      provisionalErrorPerLink,
+    );
+    const { links: chosenLinks, shares } = distributeRecordError(error, links, {
+      plankConstant: 1e-12,
+      allowEqualFallback: true,
+    });
 
-      const fromWeight = c.weight;
+    for (let i = 0; i < chosenLinks.length; i++) {
+      const link = chosenLinks[i];
+      const share = shares[i] ?? 0;
+      if (!Number.isFinite(share) || Math.abs(share) <= 1e-12) continue;
 
-      if (
-        fromWeight &&
-        fromNeuron.type !== "input" &&
-        fromNeuron.type !== "constant"
-      ) {
-        const fromActivation = state.activations[fromNeuron.index];
-        const fromValue = fromWeight * fromActivation;
-        const targetFromValue = fromValue + errorPerLink;
-        const targetFromActivation = targetFromValue / fromWeight;
+      const weight = link.synapse.weight;
+      if (!weight) continue;
 
-        fromNeuron.record(
-          targetFromActivation,
-          discoverMap,
-        );
-      }
+      const targetFromValue = link.fromValue + share;
+      const targetFromActivation = targetFromValue / weight;
+      link.fromNeuron.record(targetFromActivation, discoverMap);
     }
   }
 }

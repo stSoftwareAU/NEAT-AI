@@ -28,8 +28,8 @@ Deno.test("fix({ forwardOnly: true }) removes back + self connections", () => {
   creature.fix({ forwardOnly: true });
   creature.validate({ forwardOnly: true });
 
-  // Issue #937: once forward-only is confirmed, bump 2.x.x → 3.x.x.
-  assertEquals(creature.semanticVersion, "3.0.0");
+  // Once forward-only is confirmed, bump to 4.x.x.
+  assertEquals(creature.semanticVersion, "4.0.0");
 
   // Ensure structure is now strictly forward-only.
   creature.synapses.forEach((s) => {

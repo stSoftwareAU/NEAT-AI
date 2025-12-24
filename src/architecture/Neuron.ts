@@ -24,13 +24,17 @@ import {
   adjustedBias,
   calculateBias,
 } from "../propagate/Bias.ts";
+import { distributeElasticError } from "../propagate/ElasticDistribution.ts";
+import {
+  buildRecordElasticLinks,
+  distributeRecordError,
+} from "../propagate/RecordElasticity.ts";
 import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import {
   accumulateWeight,
   adjustedWeight,
   calculateWeight,
 } from "../propagate/Weight.ts";
-import { distributeElasticError } from "../propagate/ElasticDistribution.ts";
 import type { DiscoverRecord } from "./ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
@@ -807,33 +811,38 @@ export class Neuron implements TagsInterface, NeuronInternal {
         discoverRecord.errors.push(error);
 
         if (listLength) {
-          const errorPerLink = error / listLength;
+          // Elastic record attribution: prefer pushing error through upstream
+          // neurons that are in their safe zone (plastic), and avoid pushing
+          // saturated parents unless there is no alternative.
+          const provisionalErrorPerLink = error / listLength;
+          const links = buildRecordElasticLinks(
+            this,
+            inwardList,
+            discoverMap,
+            provisionalErrorPerLink,
+          );
+          const { links: chosenLinks, shares } = distributeRecordError(
+            error,
+            links,
+            {
+              plankConstant: 1e-12,
+              allowEqualFallback: true, // last resort if all are blocked
+            },
+          );
 
-          for (let indx = 0; indx < listLength; indx++) {
-            const c = inwardList[indx];
-            const { from, to } = c;
+          for (let i = 0; i < chosenLinks.length; i++) {
+            const link = chosenLinks[i];
+            const share = shares[i] ?? 0;
+            if (!Number.isFinite(share) || Math.abs(share) <= 1e-12) continue;
 
-            if (from === to) continue;
+            const fromNeuron = link.fromNeuron;
+            const weight = link.synapse.weight;
+            if (!weight) continue;
 
-            const fromNeuron = this.creature.neurons[from];
+            const targetFromValue = link.fromValue + share;
+            const targetFromActivation = targetFromValue / weight;
 
-            const type = fromNeuron.type;
-            if (
-              c.weight &&
-              type !== "input" &&
-              type !== "constant"
-            ) {
-              const fromActivation = state.activations[from];
-
-              const fromValue = c.weight * fromActivation;
-
-              const targetFromValue = fromValue + errorPerLink;
-              const targetFromActivation = targetFromValue / c.weight;
-              fromNeuron.record(
-                targetFromActivation,
-                discoverMap,
-              );
-            }
+            fromNeuron.record(targetFromActivation, discoverMap);
           }
         }
       }

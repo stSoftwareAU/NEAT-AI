@@ -5,13 +5,13 @@ import { upgradeTwo } from "./UpgradeTwo.ts";
 /**
  * The current major version.
  *
- * Version 3.x indicates the creature has been validated as strictly forward-only
- * (no self/back connections). Once at 3.x, the creature must remain forward-only
+ * Version 4.x indicates the creature has been validated as strictly forward-only
+ * (no recurrent connections). Once at 4.x, the creature must remain forward-only
  * and any violation is an error condition.
  *
  * Creatures with forwardOnly: false (explicitly allowing feedback loops) stay at 2.x.
  */
-export const SEMANTIC_MAJOR_VERSION = 3;
+export const SEMANTIC_MAJOR_VERSION = 4;
 
 /**
  * Extracts the major version number from a semantic version string.
@@ -26,7 +26,7 @@ function getMajorVersion(version: string | undefined): number {
 
 /**
  * Validates that a 3.x creature is still forward-only.
- * If the creature has self/back connections, logs a warning but does NOT modify
+ * If the creature has recurrent connections, logs a warning but does NOT modify
  * the creature. Fixing should only happen on offspring, not on parents during
  * breeding.
  *
@@ -40,7 +40,7 @@ function validateThreeX(creature: Creature): void {
     // Log the error but don't modify the creature - offspring validation will
     // handle any issues during breeding.
     console.error(
-      `[upgrade] Version 3.x creature has invalid self/back connections. ` +
+      `[upgrade] Version 3.x creature has invalid recurrent connections. ` +
         `This indicates a data integrity issue. UUID: ${creature.uuid}, Error: ${
           error instanceof Error ? error.message : error
         }`,
@@ -49,26 +49,36 @@ function validateThreeX(creature: Creature): void {
 }
 
 /**
- * Attempts to upgrade a 2.x creature to 3.x if it's validated as forward-only.
+ * Validates that a 4.x (or later) creature is still forward-only.
  *
- * Version 3.x is assigned when:
+ * For 4.x, forward-only is a hard invariant: any recurrent connection is an error,
+ * regardless of whether the `forwardOnly` flag is set.
+ */
+function validateFourX(creature: Creature): void {
+  creatureValidate(creature, { forwardOnly: true });
+}
+
+/**
+ * Attempts to upgrade a 2.x/3.x creature to 4.x if it's validated as forward-only.
+ *
+ * Version 4.x is assigned when:
  * - forwardOnly === true AND the creature passes forward-only validation
  *
- * Creatures with forwardOnly: false or undefined stay at 2.x:
+ * Creatures with forwardOnly: false or undefined stay at their current major:
  * - forwardOnly: false = explicitly allows feedback loops
  * - forwardOnly: undefined = status not yet determined
  *
  * @param creature - The creature to potentially upgrade
- * @returns The upgraded creature (at version 3.x) or unchanged creature (at 2.x)
+ * @returns The upgraded creature (at version 4.x) or unchanged creature
  */
-function tryUpgradeToThree(creature: Creature): Creature {
+function tryUpgradeToFour(creature: Creature): Creature {
   // forwardOnly === true - validate it's actually forward-only before upgrading
   if (creature.forwardOnly === true) {
     try {
       creatureValidate(creature, { forwardOnly: true });
-      creature.semanticVersion = "3.0.0";
+      creature.semanticVersion = "4.0.0";
     } catch (_error) {
-      // Creature claims to be forward-only but isn't - clear the flag, stay at 2.x
+      // Creature claims to be forward-only but isn't - clear the flag, stay at current version
       console.warn(
         `[upgrade] Creature claims forwardOnly but failed validation; clearing flag`,
       );
@@ -88,8 +98,9 @@ function tryUpgradeToThree(creature: Creature): Creature {
  *
  * Upgrade path:
  * - 0.x/1.x/undefined → 2.x (format migration via upgradeTwo)
- * - 2.x → 3.x (if forwardOnly: true and validated as forward-only)
- * - 3.x+ → validated to ensure still forward-only (throws if not)
+ * - 2.x/3.x → 4.x (if forwardOnly: true and validated as forward-only)
+ * - 3.x → validated to warn (legacy only; never thrown in production)
+ * - 4.x+ → validated to ensure still forward-only (throws if not)
  *
  * @param creature - The creature to upgrade
  * @returns The upgraded creature
@@ -98,32 +109,38 @@ function tryUpgradeToThree(creature: Creature): Creature {
 export function upgrade(creature: Creature): Creature {
   const majorVersion = getMajorVersion(creature.semanticVersion);
 
-  // Already at version 3.x or higher - validate it's still forward-only
-  if (majorVersion >= 3) {
+  // Already at version 4.x or higher - enforce forward-only invariant.
+  if (majorVersion >= 4) {
+    validateFourX(creature);
+    return creature;
+  }
+
+  // Version 3.x is legacy forward-only: warn-only if recurrent connections appear.
+  if (majorVersion === 3) {
     validateThreeX(creature);
     return creature;
   }
 
-  // At version 2.x - try to upgrade to 3.x if forwardOnly status is confirmed
+  // At version 2.x - try to upgrade to 4.x if forwardOnly status is confirmed
   if (majorVersion === 2) {
-    return tryUpgradeToThree(creature);
+    return tryUpgradeToFour(creature);
   }
 
-  // Upgrade from 1.x → 2.x, then try 3.x
+  // Upgrade from 1.x → 2.x, then try 4.x
   if (majorVersion === 1) {
     const v2 = upgradeTwo(creature.exportJSON());
     const upgraded = Creature.fromJSON(v2);
-    return tryUpgradeToThree(upgraded);
+    return tryUpgradeToFour(upgraded);
   }
 
-  // Version 0 or unknown - set to 1.0.0 first, then upgrade to 2.x, then try 3.x
+  // Version 0 or unknown - set to 1.0.0 first, then upgrade to 2.x, then try 4.x
   // This handles undefined versions, invalid formats, and "0.x" versions
   if (majorVersion === 0) {
     const json = creature.exportJSON();
     json.semanticVersion = "1.0.0"; // Set to 1.0.0 so upgradeTwo can process it
     const v2 = upgradeTwo(json);
     const upgraded = Creature.fromJSON(v2);
-    return tryUpgradeToThree(upgraded);
+    return tryUpgradeToFour(upgraded);
   }
 
   return creature;

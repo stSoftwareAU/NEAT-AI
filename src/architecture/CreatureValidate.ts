@@ -21,10 +21,10 @@ export function creatureValidate(
     feedbackLoop?: boolean;
     /**
      * Convenience option for production feed-forward validation.
-     * When true, both recursive (back) synapses and self connections are rejected.
+     * When true, all recurrent connections are rejected (both feedback/backward synapses and self-loops).
      *
-     * Note: By default (undefined/false) we allow both, as this library supports
-     * memory connections.
+     * Note: By default (undefined/false) we allow recurrent connections, as this library supports
+     * recurrent (memory) topologies.
      */
     forwardOnly?: boolean;
   },

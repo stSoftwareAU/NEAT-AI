@@ -706,7 +706,16 @@ export class DiscoverStructure {
     });
 
     // Initialize the indices file as an empty JSON object
-    Deno.writeTextFileSync(this.indicesFilePath, "{}", { createNew: true });
+    try {
+      Deno.writeTextFileSync(this.indicesFilePath, "{}", { createNew: true });
+    } catch (e) {
+      // Tests (and some discovery flows) can legitimately re-enter initialise for the same
+      // temp directory knowably. If the file already exists, keep it.
+      if (e instanceof Deno.errors.AlreadyExists) {
+        return;
+      }
+      throw e;
+    }
   }
 
   /**
@@ -3785,9 +3794,28 @@ export class DiscoverStructure {
     candidate: unknown,
     discoveryFailureCacheDir?: string,
   ): { success: boolean; fixWasCalled: boolean; validationError?: Error } {
+    const enforceForwardOnly = originalCreature.forwardOnly === true;
+
+    const bumpToFourIfForwardOnlyConfirmed = () => {
+      const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
+      if (!match) return;
+      const major = Number.parseInt(match[1], 10);
+      if (Number.isNaN(major)) return;
+      // Backwards compatibility: never downgrade.
+      if (major === 2 || major === 3) {
+        creature.semanticVersion = "4.0.0";
+      }
+    };
+
     // First attempt validation
     try {
-      creature.validate();
+      if (enforceForwardOnly) {
+        creature.validate({ forwardOnly: true });
+        creature.forwardOnly = true;
+        bumpToFourIfForwardOnlyConfirmed();
+      } else {
+        creature.validate();
+      }
       return { success: true, fixWasCalled: false };
     } catch (validationError) {
       const error = validationError as Error;
@@ -3810,12 +3838,23 @@ export class DiscoverStructure {
           `This is a bug that should be investigated. Attempting fix() as last resort.`,
       );
 
-      // Attempt to fix the creature
-      creature.fix();
+      // Attempt to fix the creature.
+      // If the original creature is forward-only, ensure we repair by removing recurrent connections.
+      if (enforceForwardOnly) {
+        creature.fix({ forwardOnly: true });
+      } else {
+        creature.fix();
+      }
 
       // Re-validate after fix
       try {
-        creature.validate();
+        if (enforceForwardOnly) {
+          creature.validate({ forwardOnly: true });
+          creature.forwardOnly = true;
+          bumpToFourIfForwardOnlyConfirmed();
+        } else {
+          creature.validate();
+        }
         return { success: true, fixWasCalled: true, validationError: error };
       } catch (fixError) {
         console.error(

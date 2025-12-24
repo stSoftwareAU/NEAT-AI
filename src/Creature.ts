@@ -127,7 +127,11 @@ export class Creature implements CreatureInternal {
   public semanticVersion: string;
 
   /**
-   * When true, this creature is intended to remain forward-only (no self/back connections).
+   * When true, this creature is intended to remain forward-only (no recurrent connections).
+   *
+   * Recurrent connections include:
+   * - self-loops (from === to)
+   * - feedback/backward connections (from > to)
    * This flag survives export/import.
    */
   public forwardOnly?: boolean;
@@ -1280,14 +1284,27 @@ export class Creature implements CreatureInternal {
    * @returns {Synapse | null} The created synapse or null if no connection was made.
    */
   public makeRandomConnection(indx: number): Synapse | null {
+    assert(
+      Number.isInteger(indx),
+      `Index must be an integer, got: ${String(indx)}`,
+    );
+    assert(
+      indx >= 0 && indx < this.neurons.length,
+      `Index out of range: ${indx} (neurons length: ${this.neurons.length})`,
+    );
+
     const toType = this.neurons[indx].type;
     assert(toType !== "input", "Can't connect to input");
     assert(toType !== "constant", "Can't connect to constant");
 
+    const forwardOnly = this.forwardOnly === true;
+
     for (let attempts = 0; attempts < 12; attempts++) {
       const from = Math.min(
         this.neurons.length - this.output - 1,
-        Math.floor(Math.random() * indx + 1),
+        forwardOnly
+          ? Math.floor(Math.random() * indx) // 0..(indx-1)
+          : Math.floor(Math.random() * indx + 1), // 0..indx (includes self)
       );
       const c = this.getSynapse(from, indx);
       if (c === null) {
@@ -1300,6 +1317,7 @@ export class Creature implements CreatureInternal {
     }
     const firstOutputIndex = this.neurons.length - this.output;
     for (let from = 0; from <= indx; from++) {
+      if (forwardOnly && from === indx) continue; // No self-loops in forward-only mode.
       if (from >= firstOutputIndex && from !== indx) continue;
       const c = this.getSynapse(from, indx);
       if (c === null) {
@@ -1318,7 +1336,7 @@ export class Creature implements CreatureInternal {
    */
   fix(options?: {
     /**
-     * When true, remove both back connections and self connections.
+     * When true, remove all recurrent connections (both feedback/backward connections and self-loops).
      * Defaults to false (we allow them by default).
      */
     forwardOnly?: boolean;
@@ -1444,17 +1462,15 @@ export class Creature implements CreatureInternal {
     if (forwardOnly) {
       this.forwardOnly = true;
 
-      // Issue #937: Once a creature is confirmed forward-only, bump its semantic
-      // version from 2.x.x to 3.0.0. This lets downstream systems treat 3.x
-      // creatures as strictly feed-forward by default.
+      // Once a creature is confirmed forward-only, bump its semantic version to 4.0.0.
       //
-      // Backwards compatibility: we never downgrade versions (e.g. 4.1.2 stays
-      // 4.1.2). We only bump when the major version is exactly 2.
+      // Backwards compatibility: we never downgrade versions (e.g. 4.1.2 stays 4.1.2).
+      // We only bump when the major version is 2.x.x or 3.x.x.
       const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(this.semanticVersion);
       if (match) {
         const major = Number.parseInt(match[1], 10);
-        if (major === 2) {
-          this.semanticVersion = "3.0.0";
+        if (major === 2 || major === 3) {
+          this.semanticVersion = "4.0.0";
         }
       }
     }

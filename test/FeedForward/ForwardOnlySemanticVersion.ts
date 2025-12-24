@@ -55,7 +55,7 @@ Deno.test("Forward-only: breeding upgrades semanticVersion 2.x.x → 3.0.0 when 
 
   // The child is confirmed forward-only via validate({ forwardOnly: true }) inside breed().
   assertEquals(child.forwardOnly, true);
-  assertEquals(child.semanticVersion, "3.0.0");
+  assertEquals(child.semanticVersion, "4.0.0");
 });
 
 Deno.test("Forward-only: mutation upgrades semanticVersion 2.x.x → 3.0.0 when validation passes", () => {
@@ -83,7 +83,7 @@ Deno.test("Forward-only: mutation upgrades semanticVersion 2.x.x → 3.0.0 when 
   }
   assert(mutated, "Expected creature to mutate");
   assertEquals(creature.forwardOnly, true);
-  assertEquals(creature.semanticVersion, "3.0.0");
+  assertEquals(creature.semanticVersion, "4.0.0");
 });
 
 Deno.test("Forward-only: semanticVersion is never downgraded (e.g. 4.1.2 stays 4.1.2)", () => {

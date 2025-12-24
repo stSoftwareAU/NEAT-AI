@@ -1,15 +1,15 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
 
 /**
  * Tests for the upgrade() function.
  *
- * Version 3.x indicates the creature has been validated as strictly forward-only
- * (no self/back connections). Once at 3.x, the creature must remain forward-only
+ * Version 4.x indicates the creature has been validated as strictly forward-only
+ * (no recurrent connections). Once at 4.x, the creature must remain forward-only
  * and any violation is an error condition.
  *
- * - forwardOnly: true + validated = upgrade to 3.x
+ * - forwardOnly: true + validated = upgrade to 4.x
  * - forwardOnly: false = stay at 2.x (explicitly allows feedback loops)
  * - forwardOnly: undefined = stay at 2.x (status not yet determined)
  */
@@ -17,8 +17,8 @@ import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
 Deno.test("SEMANTIC_MAJOR_VERSION should be 3", () => {
   assertEquals(
     SEMANTIC_MAJOR_VERSION,
-    3,
-    "Current semantic major version should be 3",
+    4,
+    "Current semantic major version should be 4",
   );
 });
 
@@ -57,7 +57,7 @@ Deno.test("upgrade should not modify 2.x.x creatures with patch versions and und
 
 // === 2.x creatures with forwardOnly: true upgrade to 3.x if valid ===
 
-Deno.test("upgrade should upgrade 2.x creatures with forwardOnly: true to 3.x", () => {
+Deno.test("upgrade should upgrade 2.x creatures with forwardOnly: true to 4.x", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
     semanticVersion: "2.0.0",
@@ -68,8 +68,8 @@ Deno.test("upgrade should upgrade 2.x creatures with forwardOnly: true to 3.x", 
 
   assertEquals(
     upgraded.semanticVersion,
-    "3.0.0",
-    "2.x creatures with forwardOnly: true should be upgraded to 3.x",
+    "4.0.0",
+    "2.x creatures with forwardOnly: true should be upgraded to 4.x",
   );
   assertEquals(
     upgraded.forwardOnly,
@@ -170,7 +170,7 @@ Deno.test("upgrade should log warning but not modify 3.x creature with self-conn
 
 // === Future versions should be validated ===
 
-Deno.test("upgrade should validate and not modify future 4.x creatures", () => {
+Deno.test("upgrade should validate and not modify valid 4.x creatures", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
     semanticVersion: "4.0.0",
@@ -181,8 +181,21 @@ Deno.test("upgrade should validate and not modify future 4.x creatures", () => {
   assertEquals(
     upgraded.semanticVersion,
     "4.0.0",
-    "Future version creatures should be validated and not downgraded",
+    "Valid 4.x creatures should be validated and not downgraded",
   );
+});
+
+Deno.test("upgrade should throw for forward-only 4.x creatures with recurrent connections", () => {
+  const creature = new Creature(2, 1, {
+    layers: [{ count: 2 }],
+    semanticVersion: "4.0.0",
+  });
+  creature.forwardOnly = true;
+
+  const hiddenNeuron = creature.neurons[creature.input]; // First hidden neuron
+  creature.connect(hiddenNeuron.index, hiddenNeuron.index, 0.5);
+
+  assertThrows(() => upgrade(creature));
 });
 
 Deno.test("upgrade should validate and not modify future 10.x creatures", () => {
@@ -217,7 +230,7 @@ Deno.test("upgrade should upgrade 1.x creatures to 2.x when forwardOnly undefine
   );
 });
 
-Deno.test("upgrade should upgrade 1.x creatures with forwardOnly: true to 3.x", () => {
+Deno.test("upgrade should upgrade 1.x creatures with forwardOnly: true to 4.x", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
     semanticVersion: "1.0.0",
@@ -228,8 +241,8 @@ Deno.test("upgrade should upgrade 1.x creatures with forwardOnly: true to 3.x", 
 
   assertEquals(
     upgraded.semanticVersion,
-    "3.0.0",
-    "1.x creatures with forwardOnly: true should be upgraded to 3.x",
+    "4.0.0",
+    "1.x creatures with forwardOnly: true should be upgraded to 4.x",
   );
 });
 

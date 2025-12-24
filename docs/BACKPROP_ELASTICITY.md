@@ -10,6 +10,20 @@ This works well for many squashes, but it can behave poorly near **saturation**
 (or near non-invertible regions) unless we actively avoid “forcing” already
 immovable neurons.
 
+### Training vs recording (Explorer / discovery)
+
+There are two related flows:
+
+- **Training back propagation** (`Neuron.propagate()`): decides how to adjust
+  weights/biases.
+- **Recording/backprop attribution** (`Creature.record()` / `Neuron.record()`):
+  records per-neuron error signals for Explorer visualisation and for discovery.
+
+Both flows now apply the same core idea:
+
+- Prefer “plastic” paths
+- Treat saturated paths as a last resort
+
 ### The core problem: saturation and inverse targets
 
 Some squashes have bounded activation ranges:
@@ -72,18 +86,20 @@ Scenario:
 ```text
 output-0 (error ≈ +0.1)
   ^
-  |   ArcTan is already near +π/2 (saturated)
+  |  w0
   |
-ArcTan(output-0)
+ArcTan_hidden (near +π/2, saturated)
   ^
+  |  w1
   |
-hidden-1
+ReLU_hidden
   ^
+  |  w3..wN
   |
-input-0
+observations
 
-Extra path (example):
-input-0 ------------------ w:0.5 -----------------> ArcTan(output-0)
+Alternative path (preferred when ArcTan_hidden is saturated):
+ReLU_hidden ------------------ w2 -----------------> output-0
 ```
 
 What we _do not_ want:
