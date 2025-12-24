@@ -37,6 +37,17 @@ export class Mutator {
   }
 
   /**
+   * Extracts the major version number from a semantic version string.
+   * @param version - Semantic version string (e.g. "4.0.0")
+   * @returns The major version number, or 0 if invalid/undefined
+   */
+  private getMajorVersion(version: string | undefined): number {
+    if (!version) return 0;
+    const major = parseInt(version.split(".")[0], 10);
+    return Number.isNaN(major) ? 0 : major;
+  }
+
+  /**
    * Mutates the given (or current) population
    */
   mutate(creatures: Creature[]): void {
@@ -128,10 +139,49 @@ export class Mutator {
       .mutation;
 
     const feedbackLoop = this.config.feedbackLoop;
-    const forwardOnly = creature.forwardOnly === true;
-    for (let attempts = 0; true; attempts++) {
-      const mutationMethod = mutationMethods[
-        Math.floor(Math.random() * mutationMethods.length)
+    const majorVersion = this.getMajorVersion(creature.semanticVersion);
+    const forwardOnly = majorVersion >= 4 || creature.forwardOnly === true;
+
+    // Avoid infinite loops: pre-filter for methods that can actually run under
+    // the current constraints.
+    const candidates = mutationMethods.filter((method) => {
+      switch (method.name) {
+        case Mutation.ADD_NODE.name:
+          return creature.neurons.length < this.config.maximumNumberOfNodes;
+        case Mutation.ADD_CONN.name:
+          return !(creature.synapses.length >= this.config.maxConns ||
+            creature.synapses.length >=
+              this.calculateMaxSynapses(
+                creature.input,
+                creature.neurons.length - creature.input - creature.output,
+                creature.output,
+              ));
+        case Mutation.SUB_NODE.name:
+          return creature.neurons.length > creature.input + creature.output;
+        case Mutation.SWAP_NODES.name:
+          return creature.neurons.length > creature.input + creature.output + 1;
+        case Mutation.ADD_BACK_CONN.name:
+        case Mutation.SUB_BACK_CONN.name:
+        case Mutation.ADD_SELF_CONN.name:
+        case Mutation.SUB_SELF_CONN.name:
+          // Self/back connections are only valid in feedback/memory mode and never
+          // for semanticVersion 4.x forward-only creatures.
+          return feedbackLoop !== false && forwardOnly === false;
+        default:
+          return true;
+      }
+    });
+
+    if (candidates.length === 0) {
+      throw new Error(
+        `No valid mutation methods available for creature (semanticVersion=${creature.semanticVersion}, forwardOnly=${forwardOnly}) ` +
+          `with config.feedbackLoop=${this.config.feedbackLoop}.`,
+      );
+    }
+
+    for (let attempts = 0; attempts < 10_000; attempts++) {
+      const mutationMethod = candidates[
+        Math.floor(Math.random() * candidates.length)
       ];
 
       if (Math.random() < 0.25) {
@@ -142,47 +192,12 @@ export class Mutator {
           continue;
         }
       }
-      switch (mutationMethod.name) {
-        case Mutation.ADD_NODE.name:
-          if (creature.neurons.length >= this.config.maximumNumberOfNodes) {
-            continue;
-          }
-          break;
-        case Mutation.ADD_CONN.name:
-          if (
-            creature.synapses.length >= this.config.maxConns ||
-            creature.synapses.length >=
-              this.calculateMaxSynapses(
-                creature.input,
-                creature.neurons.length - creature.input - creature.output,
-                creature.output,
-              )
-          ) {
-            continue;
-          }
-          break;
-        case Mutation.SUB_NODE.name:
-          if (creature.neurons.length <= creature.input + creature.output) {
-            continue;
-          }
-          break;
-        case Mutation.SWAP_NODES.name:
-          if (creature.neurons.length <= creature.input + creature.output + 1) {
-            continue;
-          }
-          break;
-        case Mutation.ADD_BACK_CONN.name:
-        case Mutation.SUB_BACK_CONN.name:
-        case Mutation.ADD_SELF_CONN.name:
-        case Mutation.SUB_SELF_CONN.name:
-          if (feedbackLoop === false || forwardOnly) {
-            continue;
-          }
-          break;
-      }
-
       return mutationMethod;
     }
+
+    // Extremely unlikely fallback: candidates exist but we keep skipping due to the
+    // 25% "bias/weight only" gate.
+    return candidates[0];
   }
 
   /**
@@ -203,7 +218,14 @@ export class Mutator {
 
     // If the caller enables feedback loops, forward-only constraints no longer apply.
     // Clear the flag so subsequent mutation/breeding can introduce memory connections.
-    if (this.config.feedbackLoop === true && creature.forwardOnly === true) {
+    // However, semanticVersion 4.x is a hard forward-only invariant and must never
+    // be cleared/relaxed.
+    const majorVersion = this.getMajorVersion(creature.semanticVersion);
+    if (
+      this.config.feedbackLoop === true &&
+      creature.forwardOnly === true &&
+      majorVersion < 4
+    ) {
       console.warn(
         `[Mutator] feedbackLoop=true requested for forwardOnly creature (${startUUID}); clearing creature.forwardOnly flag`,
       );

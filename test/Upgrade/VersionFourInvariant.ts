@@ -1,4 +1,4 @@
-import { assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { upgrade } from "../../src/upgrade/Upgrade.ts";
 
@@ -10,7 +10,7 @@ import { upgrade } from "../../src/upgrade/Upgrade.ts";
  * still contains recurrent connections (self-loops / feedback connections).
  */
 Deno.test(
-  "upgrade throws for 4.x creatures with recurrent connections even when forwardOnly is unset",
+  "upgrade repairs 4.x creatures with recurrent connections even when forwardOnly is unset",
   () => {
     const creature = new Creature(2, 1, {
       layers: [{ count: 2 }],
@@ -21,6 +21,13 @@ Deno.test(
     const hiddenNeuron = creature.neurons[creature.input]; // First hidden neuron
     creature.connect(hiddenNeuron.index, hiddenNeuron.index, 0.5); // self-loop (recurrent)
 
-    assertThrows(() => upgrade(creature));
+    const upgraded = upgrade(creature);
+    assertEquals(upgraded.semanticVersion, "4.0.0");
+    upgraded.validate({ forwardOnly: true });
+    assertEquals(
+      upgraded.getSynapse(hiddenNeuron.index, hiddenNeuron.index),
+      null,
+      "upgrade() should remove self loops when semanticVersion is 4.x",
+    );
   },
 );

@@ -321,6 +321,10 @@ Deno.test({
       const flushSuccess = discoverStructure.flushRustRecording();
       assert(flushSuccess, "Flush should succeed");
 
+      // Keep analysis bounded in tests. Rust logs the configured max timeout; we
+      // pass a short deadline so quality checks never hang here.
+      discoverStructure.extendTimeoutForAnalysis(5);
+
       const candidates = await discoverStructure.analyzeMissingNeurons([
         "output-0",
       ]);
@@ -385,6 +389,8 @@ Deno.test({
 
       // Test each output separately
       for (const outputUUID of ["output-0", "output-1"]) {
+        // Keep each Rust analysis call bounded.
+        discoverStructure.extendTimeoutForAnalysis(5);
         // deno-lint-ignore no-await-in-loop
         const candidates = await discoverStructure.analyzeMissingNeurons([
           outputUUID,
@@ -401,6 +407,7 @@ Deno.test({
       }
 
       // Test combined
+      discoverStructure.extendTimeoutForAnalysis(5);
       const allCandidates = await discoverStructure.analyzeMissingNeurons([
         "output-0",
         "output-1",
@@ -456,6 +463,9 @@ Deno.test({
       await Promise.all([...neuronPromises.values()]);
       discoverStructure.flushRustRecording();
 
+      // Hard cap analysis time so this test cannot stall `./quality.sh`.
+      discoverStructure.extendTimeoutForAnalysis(10);
+
       const focusNeurons = ["output-0", "output-1", "output-2"];
       const candidates = await discoverStructure.analyzeMissingNeurons(
         focusNeurons,
@@ -502,6 +512,9 @@ Deno.test({
       discoverStructure.record(trainingData, neuronPromises);
       await Promise.all([...neuronPromises.values()]);
       discoverStructure.flushRustRecording();
+
+      // Bound the combined analysis phase to keep the test suite responsive.
+      discoverStructure.extendTimeoutForAnalysis(10);
 
       // This is what DiscoverDirectory uses in production
       const bundle = discoverStructure.collectRustAnalysisCandidates(
@@ -583,6 +596,8 @@ Deno.test({
       console.log("\n--- Analysis (per output) ---");
       for (const outputUUID of ["output-0", "output-1"]) {
         console.log(`\nFocus: ${outputUUID}`);
+        // Keep each call bounded so diagnostics do not stall CI / quality checks.
+        discoverStructure.extendTimeoutForAnalysis(5);
         // deno-lint-ignore no-await-in-loop
         const candidates = await discoverStructure.analyzeMissingNeurons([
           outputUUID,
@@ -608,6 +623,7 @@ Deno.test({
       }
 
       console.log("\n--- Combined analysis ---");
+      discoverStructure.extendTimeoutForAnalysis(5);
       const allCandidates = await discoverStructure.analyzeMissingNeurons([
         "output-0",
         "output-1",

@@ -55,7 +55,53 @@ function validateThreeX(creature: Creature): void {
  * regardless of whether the `forwardOnly` flag is set.
  */
 function validateFourX(creature: Creature): void {
-  creatureValidate(creature, { forwardOnly: true });
+  try {
+    creatureValidate(creature, { forwardOnly: true });
+    creature.forwardOnly = true;
+    return;
+  } catch (e) {
+    const error = e as Error;
+
+    // Production safety net: although 4.x is a hard forward-only invariant, we
+    // occasionally encounter corrupted persisted creatures (e.g. a back-connection
+    // sneaking in). Instead of crashing the entire job, attempt to repair using
+    // `fix({ forwardOnly: true })`.
+    if (
+      error.name === "SELF_CONNECTION" ||
+      error.name === "RECURSIVE_SYNAPSE"
+    ) {
+      console.warn(
+        `[upgrade] Corrupted 4.x creature (UUID: ${
+          creature.uuid ?? "unknown"
+        }) failed forward-only validation: ` +
+          `${error.name} - ${error.message}. Attempting repair via fix({ forwardOnly: true }).`,
+      );
+      try {
+        creature.fix({ forwardOnly: true });
+        creatureValidate(creature, { forwardOnly: true });
+        creature.forwardOnly = true;
+        return;
+      } catch (fixError) {
+        const fixErr = fixError as Error;
+        console.error(
+          `[upgrade] Repair failed for corrupted 4.x creature (UUID: ${
+            creature.uuid ?? "unknown"
+          }). ` +
+            `Downgrading to 2.0.0 to avoid crashing. ` +
+            `Original=${error.name}: ${error.message}. ` +
+            `FixError=${fixErr.name}: ${fixErr.message}`,
+        );
+
+        // Last resort: clear the forward-only guarantee and downgrade the semantic
+        // version so callers won't treat this as a forward-only invariant.
+        creature.forwardOnly = undefined;
+        creature.semanticVersion = "2.0.0";
+        return;
+      }
+    }
+
+    throw e;
+  }
 }
 
 /**
@@ -78,7 +124,16 @@ function tryUpgradeToFour(creature: Creature): Creature {
       creatureValidate(creature, { forwardOnly: true });
       creature.semanticVersion = "4.0.0";
     } catch (_error) {
-      // Creature claims to be forward-only but isn't - clear the flag, stay at current version
+      // Creature claims to be forward-only but failed validation.
+      // Attempt repair first; if repair fails, clear the flag and stay at current version.
+      try {
+        creature.fix({ forwardOnly: true });
+        creatureValidate(creature, { forwardOnly: true });
+        creature.semanticVersion = "4.0.0";
+        return creature;
+      } catch (_fixError) {
+        // Fall through to clearing the flag below.
+      }
       console.warn(
         `[upgrade] Creature claims forwardOnly but failed validation; clearing flag`,
       );

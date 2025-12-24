@@ -423,7 +423,31 @@ export class DiscoverStructure {
   ) {
     this.creature = creature;
     assert(creature.uuid, "Creature must have a UUID to discover structure.");
-    const baseDir = options.baseDirectory ?? ".discovery";
+    // In `deno test`, creature UUIDs are often deterministic across tests.
+    // When tests run concurrently, using a shared `${baseDir}/${creature.uuid}`
+    // directory can cause cross-test interference (eg. one test clearing the
+    // directory while another is still recording/analysing).
+    //
+    // To keep tests reliable, default to an isolated base directory unless the
+    // caller explicitly provides `options.baseDirectory`.
+    let baseDir = options.baseDirectory ?? ".discovery";
+    try {
+      const env = (key: string) => Deno.env.get(key)?.trim().toLowerCase();
+      const denoTest = env("DENO_TEST") === "1" || env("DENO_TEST") === "true";
+      const suiteDeterministic =
+        env("NEAT_AI_DISCOVERY_DETERMINISTIC") === "1" ||
+        env("NEAT_AI_DISCOVERY_DETERMINISTIC") === "true";
+
+      if (
+        options.baseDirectory === undefined && (denoTest || suiteDeterministic)
+      ) {
+        baseDir = `.discovery/test-${Deno.pid}-${
+          crypto.randomUUID().slice(0, 8)
+        }`;
+      }
+    } catch {
+      // If env access is restricted, fall back to the default base directory.
+    }
     this.tempDir = `${baseDir}/${creature.uuid}`;
     this.indicesFilePath = `${this.tempDir}/selected_indices.json`;
     this.textDecoder = new TextDecoder();
@@ -780,29 +804,90 @@ export class DiscoverStructure {
     _neuronPromisesMap: Map<string, Promise<void>>,
     binaryFilePath?: string,
     recordIndices?: number[],
+    options?: Readonly<{
+      /**
+       * Allow a small "grace" batch after the timeout has technically expired.
+       *
+       * This is primarily used by the directory recorder, which may have
+       * buffered samples but miss the final submit window by a few milliseconds
+       * under heavy load. Keeping this opt-in preserves strict timeout semantics
+       * for callers that rely on record() being a hard cut-off.
+       */
+      allowGraceAfterTimeout?: boolean;
+    }>,
   ): boolean {
     assert(this.initialized, "Not initialized");
     const timedOut = Date.now() > this.timeoutTS;
-    if (timedOut) {
-      this.log(
-        "warn",
-        "Discovery recording timeout reached; skipping remaining samples.",
-      );
-    }
     this.recorded = true;
     this.cachedMaxOutputError = undefined;
 
     // Rust module is required - if not available, discovery was already skipped in initialize()
-    if (!this.usingRustDualWrite || timedOut) {
-      return false; // Discovery skipped - Rust not available or timed out
+    if (!this.usingRustDualWrite) {
+      return false; // Discovery skipped - Rust not available
+    }
+
+    // Under tight record deadlines (eg. 60ms timeout tests), we can end up with
+    // buffered samples in the caller, but miss the final submit window by a few
+    // milliseconds under load. If we refuse all record() calls after the timeout,
+    // we can produce *zero* Parquet artefacts, which makes discovery debugging
+    // and CI regressions very hard to reason about.
+    //
+    // So: if we have not recorded anything yet, accept a small grace batch even
+    // when the timeout is already expired.
+    let effectiveTrainingData = trainingData;
+    let effectiveRecordIndices = recordIndices;
+    if (timedOut) {
+      const hasAnyRecordedSoFar = this.rustChunkFiles.length > 0 ||
+        this.rustAccumulatedData.length > 0;
+      if (hasAnyRecordedSoFar) {
+        this.log(
+          "warn",
+          "Discovery recording timeout reached; skipping remaining samples.",
+        );
+        return false;
+      }
+
+      if (!options?.allowGraceAfterTimeout) {
+        this.log(
+          "warn",
+          "Discovery recording timeout reached; skipping remaining samples.",
+        );
+        return false;
+      }
+
+      // Grace capture: keep this small to avoid blowing the deadline further.
+      const MAX_GRACE_SAMPLES = 64;
+      const take = Math.min(effectiveTrainingData.length, MAX_GRACE_SAMPLES);
+      if (take <= 0) {
+        return false;
+      }
+      if (take < effectiveTrainingData.length) {
+        this.log(
+          "warn",
+          `Discovery recording timeout reached; capturing a small grace batch (${take}/${effectiveTrainingData.length}) to avoid empty artefacts.`,
+        );
+      } else {
+        this.log(
+          "warn",
+          `Discovery recording timeout reached; capturing ${take} grace sample(s) to avoid empty artefacts.`,
+        );
+      }
+
+      effectiveTrainingData = effectiveTrainingData.slice(0, take);
+      if (effectiveRecordIndices) {
+        effectiveRecordIndices = effectiveRecordIndices.slice(0, take);
+      }
     }
 
     // Track selected indices if provided (from binary file processing)
-    if (binaryFilePath && recordIndices && recordIndices.length > 0) {
+    if (
+      binaryFilePath && effectiveRecordIndices &&
+      effectiveRecordIndices.length > 0
+    ) {
       if (!this.selectedIndices[binaryFilePath]) {
         this.selectedIndices[binaryFilePath] = [];
       }
-      this.selectedIndices[binaryFilePath].push(...recordIndices);
+      this.selectedIndices[binaryFilePath].push(...effectiveRecordIndices);
 
       // Write indices to JSON file after accumulating them
       Deno.writeTextFileSync(
@@ -819,8 +904,8 @@ export class DiscoverStructure {
     }
 
     // Process each record and accumulate data for Rust batch processing
-    for (let i = 0; i < trainingData.length; i++) {
-      const record = trainingData[i];
+    for (let i = 0; i < effectiveTrainingData.length; i++) {
+      const record = effectiveTrainingData[i];
 
       try {
         // Activate creature with existing input

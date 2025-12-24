@@ -16,6 +16,7 @@ import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
 import {
   buildRecordElasticLinks,
   distributeRecordError,
+  recordTargetFeasibilityFactor,
 } from "../../../propagate/RecordElasticity.ts";
 import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
 import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
@@ -558,16 +559,90 @@ export class IF
       allowEqualFallback: true,
     });
 
-    for (let i = 0; i < chosenLinks.length; i++) {
-      const link = chosenLinks[i];
-      const share = shares[i] ?? 0;
-      if (!Number.isFinite(share) || Math.abs(share) <= 1e-12) continue;
+    const plankConstant = 1e-12;
+
+    let workingLinks: ReadonlyArray<(typeof chosenLinks)[number]> = chosenLinks;
+    let workingShares: number[] = shares.slice();
+
+    // Mirror `Neuron.record()` feasibility + safe-zone guards:
+    // - do not request impossible targets (range/negative constraints)
+    // - do not recurse into fully blocked parents (safeZoneFactor <= 0)
+    // - if blocked shares exist, redistribute and re-check until stable
+    for (let pass = 0; pass < chosenLinks.length + 1; pass++) {
+      const feasibleLinks: Array<(typeof chosenLinks)[number]> = [];
+      const feasibleShares: number[] = [];
+      let blockedError = 0;
+
+      for (let i = 0; i < workingLinks.length; i++) {
+        const link = workingLinks[i];
+        const share = workingShares[i] ?? 0;
+        if (!Number.isFinite(share) || Math.abs(share) <= plankConstant) {
+          continue;
+        }
+
+        if (!Number.isFinite(link.safeZoneFactor) || link.safeZoneFactor <= 0) {
+          blockedError += share;
+          continue;
+        }
+
+        const fromNeuron = link.fromNeuron;
+        const weight = link.synapse.weight;
+        if (!weight) continue;
+
+        const targetFromValue = link.fromValue + share;
+        const targetFromActivation = targetFromValue / weight;
+
+        const feasibility = recordTargetFeasibilityFactor(
+          fromNeuron,
+          targetFromActivation,
+        );
+        if (feasibility <= 0) {
+          blockedError += share;
+          continue;
+        }
+
+        feasibleLinks.push(link);
+        feasibleShares.push(share);
+      }
+
+      if (
+        Math.abs(blockedError) <= plankConstant || feasibleLinks.length === 0
+      ) {
+        workingLinks = feasibleLinks;
+        workingShares = feasibleShares;
+        break;
+      }
+
+      const { shares: redistributed } = distributeRecordError(
+        blockedError,
+        feasibleLinks,
+        { plankConstant, allowEqualFallback: true },
+      );
+      for (let i = 0; i < redistributed.length; i++) {
+        feasibleShares[i] = (feasibleShares[i] ?? 0) + (redistributed[i] ?? 0);
+      }
+
+      workingLinks = feasibleLinks;
+      workingShares = feasibleShares;
+    }
+
+    for (let i = 0; i < workingLinks.length; i++) {
+      const link = workingLinks[i];
+      const share = workingShares[i] ?? 0;
+      if (!Number.isFinite(share) || Math.abs(share) <= plankConstant) continue;
 
       const weight = link.synapse.weight;
       if (!weight) continue;
 
       const targetFromValue = link.fromValue + share;
       const targetFromActivation = targetFromValue / weight;
+      if (
+        recordTargetFeasibilityFactor(link.fromNeuron, targetFromActivation) <=
+          0
+      ) {
+        continue;
+      }
+
       link.fromNeuron.record(targetFromActivation, discoverMap);
     }
   }

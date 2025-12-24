@@ -19,6 +19,7 @@ import type {
 } from "./DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 import { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
+import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
 
 const shouldLogDiscovery = (config: NeatConfig): boolean =>
   config.verbose || config.log > 0;
@@ -345,8 +346,44 @@ class DataRecorder {
       const recordBuffer = new Uint8Array(this.BYTES_PER_RECORD);
       const recordArray = new Float32Array(recordBuffer.buffer);
 
+      // Grace behaviour (24-Dec-2025): with very tight record deadlines (eg.
+      // 60ms) and heavy CI load, the timeout can expire before we manage to read
+      // even a single sample. That produces zero parquet artefacts and makes the
+      // timeout tests flaky.
+      //
+      // If we have not recorded anything at all yet, allow a single "grace read"
+      // of one record even when the timeout is already expired. The recorder
+      // layer applies a matching opt-in grace for persisting that final sample.
+      let usedGraceReadAfterTimeout = false;
+
       for (const recordIndex of selectedIndexes) {
-        if (this.timeoutTS && Date.now() > this.timeoutTS) break;
+        // If we're about to time out, flush any buffered samples as a partial
+        // batch. This ensures we still persist useful work for large batch sizes
+        // under tight record deadlines (eg. batch=512 with ~60ms timeout).
+        if (this.timeoutTS) {
+          const now = Date.now();
+          const timeLeftMs = this.timeoutTS - now;
+          if (timeLeftMs <= 0) {
+            if (usedGraceReadAfterTimeout || params.counter.count > 0) break;
+            usedGraceReadAfterTimeout = true;
+          }
+
+          // Keep this small: we just want to avoid crossing the deadline without
+          // ever submitting a batch to the recorder.
+          //
+          // Note: 25ms is intentionally conservative. Under heavy CI load, a
+          // 10ms window can be missed between loop iterations, which leads to
+          // zero recorded Parquet artefacts even when we already buffered data.
+          if (timeLeftMs <= 25 && params.dataSet.length > 0) {
+            const recorded = submitDiscoveryRecordBatch(
+              discoverStructure,
+              params,
+              filePath,
+              { allowGraceAfterTimeout: true },
+            );
+            if (!recorded) break;
+          }
+        }
 
         // Calculate the target position
         const targetPosition = recordIndex * this.BYTES_PER_RECORD;
@@ -383,11 +420,11 @@ class DataRecorder {
         params.dataSet.push(data);
 
         if (params.dataSet.length >= this.discoveryBatchSize) {
-          const recorded = discoverStructure.record(
-            params.dataSet.splice(0),
-            params.neuronPromisesMap,
+          const recorded = submitDiscoveryRecordBatch(
+            discoverStructure,
+            params,
             filePath,
-            params.selectedIndices.splice(0), // Pass and clear indices
+            { allowGraceAfterTimeout: true },
           );
           if (!recorded) break;
           assert(params.dataSet.length === 0, "Data set not empty");
@@ -429,6 +466,40 @@ class DataRecorder {
           // Give GC a chance to run periodically
           // deno-lint-ignore no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+      }
+
+      // Flush any partial batch. This matters for short record timeouts and
+      // large batch sizes (eg. 512) where we may not reach a full batch before
+      // the deadline, but we still want to persist the data already buffered.
+      if (params.dataSet.length > 0) {
+        // Always attempt to submit the final partial batch. If the record window
+        // expired a moment earlier, `DiscoverStructure.record()` may still accept
+        // a small grace batch (to avoid losing all buffered work under tight
+        // deadlines).
+        const recorded = submitDiscoveryRecordBatch(
+          discoverStructure,
+          params,
+          filePath,
+          { allowGraceAfterTimeout: true },
+        );
+
+        // Best-effort flush of the Rust chunk after the final (partial) batch.
+        // This keeps artefacts consistent when timeouts force partial recording.
+        if (discoverStructure.shouldFlushRustChunk()) {
+          const flushed = discoverStructure.flushRustChunk();
+          if (!flushed) {
+            console.warn(
+              `⚠️  Discovery ${
+                blue(this.ID)
+              } failed to flush discovery chunk after partial batch.`,
+            );
+          }
+        }
+
+        // If the recorder indicates we should stop (timeout), honour it.
+        if (!recorded) {
+          // No-op: exit function naturally.
         }
       }
 
@@ -530,12 +601,13 @@ class DataRecorder {
 
           // Flush any remaining data for this file to ensure indices are correctly associated
           if (dataSet.length > 0) {
-            discoverStructure.record(
-              dataSet.splice(0),
-              neuronPromisesMap,
+            const recorded = submitDiscoveryRecordBatch(
+              discoverStructure,
+              { dataSet, neuronPromisesMap, selectedIndices },
               filePath,
-              selectedIndices.splice(0),
+              { allowGraceAfterTimeout: true },
             );
+            if (!recorded) break;
             assert(dataSet.length === 0, "Data set not empty after flush");
             assert(
               selectedIndices.length === 0,
