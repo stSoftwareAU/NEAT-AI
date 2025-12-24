@@ -706,7 +706,16 @@ export class DiscoverStructure {
     });
 
     // Initialize the indices file as an empty JSON object
-    Deno.writeTextFileSync(this.indicesFilePath, "{}", { createNew: true });
+    try {
+      Deno.writeTextFileSync(this.indicesFilePath, "{}", { createNew: true });
+    } catch (e) {
+      // Tests (and some discovery flows) can legitimately re-enter initialise for the same
+      // temp directory knowably. If the file already exists, keep it.
+      if (e instanceof Deno.errors.AlreadyExists) {
+        return;
+      }
+      throw e;
+    }
   }
 
   /**

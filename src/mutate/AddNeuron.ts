@@ -89,9 +89,12 @@ export class AddNeuron implements RadioactiveInterface {
 
     // First, try to use the originally selected toIndex if it's valid and non-constant
     if (toIndex !== -1) {
+      // Guard: the outward target must be a *later* neuron to keep the graph feed-forward.
+      // `toIndex` can equal the newly inserted neuron's index, which would create a self-loop.
+      const minTargetIndex = Math.max(toIndex, neuron.index + 1);
       const nonConstantIndx = creature.neurons.findIndex((
         n,
-      ) => (n.index >= toIndex && n.type !== "constant"));
+      ) => (n.index >= minTargetIndex && n.type !== "constant"));
 
       if (nonConstantIndx !== -1) {
         targetNeuronIndex = creature.neurons[nonConstantIndx].index;
