@@ -50,6 +50,51 @@ import {
 import { Creature } from "../Creature.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 
+/**
+ * Extract the major version from a semantic version string.
+ *
+ * Invalid/undefined versions are treated as 0.
+ */
+function getMajorVersion(version: string | undefined): number {
+  if (!version) return 0;
+  const major = Number.parseInt(version.split(".")[0], 10);
+  return Number.isNaN(major) ? 0 : major;
+}
+
+/**
+ * Determine whether forward-only must be enforced for this creature.
+ *
+ * - If `forwardOnly` is true, we must reject recurrent connections.
+ * - If the creature is 4.x+, forward-only is a hard invariant.
+ */
+function shouldEnforceForwardOnly(creature: Creature): boolean {
+  return creature.forwardOnly === true ||
+    getMajorVersion(creature.semanticVersion) >= 4;
+}
+
+/**
+ * Build a UUID → neuron index mapping from an exported creature JSON.
+ *
+ * Note: `CreatureExport.neurons` excludes input neurons. Its ordering matches the
+ * creature's internal indices, offset by `input`.
+ */
+function buildUuidToIndexMap(
+  creatureJSON: { input: number; neurons: Array<{ uuid: string }> },
+): Map<string, number> {
+  const uuidToIndex = new Map<string, number>();
+  const inputCount = creatureJSON.input ?? 0;
+
+  for (let i = 0; i < inputCount; i++) {
+    uuidToIndex.set(`input-${i}`, i);
+  }
+
+  for (let i = 0; i < creatureJSON.neurons.length; i++) {
+    uuidToIndex.set(creatureJSON.neurons[i].uuid, inputCount + i);
+  }
+
+  return uuidToIndex;
+}
+
 export type DiscoveryChangeType =
   | "add-synapses"
   | "add-neurons"
@@ -1386,9 +1431,15 @@ function validateAndFixCreatureSync(
   creature: Creature,
   changeType: DiscoveryChangeType,
 ): Creature {
+  const enforceForwardOnly = shouldEnforceForwardOnly(creature);
   try {
     // Preferred path: validate first - if this passes, no fix() needed
-    creature.validate();
+    if (enforceForwardOnly) {
+      creature.validate({ forwardOnly: true });
+      creature.forwardOnly = true;
+    } else {
+      creature.validate();
+    }
     return creature;
   } catch (error) {
     // Validation failed - this indicates our modification logic created an invalid creature
@@ -1412,11 +1463,21 @@ function validateAndFixCreatureSync(
     console.warn(
       `[DiscoveryCandidates] Calling fix() on ${changeType} change - this indicates a bug in modification logic that should be addressed`,
     );
-    creature.fix();
+    if (enforceForwardOnly) {
+      creature.fix({ forwardOnly: true });
+      creature.forwardOnly = true;
+    } else {
+      creature.fix();
+    }
 
     // Validate again after fix() to ensure it's now valid
     try {
-      creature.validate();
+      if (enforceForwardOnly) {
+        creature.validate({ forwardOnly: true });
+        creature.forwardOnly = true;
+      } else {
+        creature.validate();
+      }
     } catch (fixError) {
       console.error(
         `[DiscoveryCandidates] Creature still invalid after fix() for ${changeType}: ${fixError}`,
@@ -1444,6 +1505,10 @@ function applyChangeToCreature(
   const candidateJSON = candidate.creature.exportJSON();
   const creatureJSON = creature.exportJSON();
   const baseJSON = baseCreature.exportJSON();
+  const enforceForwardOnly = shouldEnforceForwardOnly(creature);
+  const uuidToIndex = enforceForwardOnly
+    ? buildUuidToIndexMap(creatureJSON)
+    : undefined;
 
   try {
     switch (changeType) {
@@ -1467,7 +1532,14 @@ function applyChangeToCreature(
           (s) =>
             !existingSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
             existingNeurons.has(s.fromUUID) &&
-            existingNeurons.has(s.toUUID),
+            existingNeurons.has(s.toUUID) &&
+            (!enforceForwardOnly ||
+              (() => {
+                const from = uuidToIndex?.get(s.fromUUID);
+                const to = uuidToIndex?.get(s.toUUID);
+                // Forward-only: reject self-loops and back connections.
+                return from !== undefined && to !== undefined && from < to;
+              })()),
         );
         if (newSynapses.length === 0) return creature;
 
@@ -1633,7 +1705,13 @@ function applyChangeToCreature(
         const toAdd = candidateJSON.synapses.filter(
           (s) =>
             !baseSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
-            !creatureSynapses.has(`${s.fromUUID}->${s.toUUID}`),
+            !creatureSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
+            (!enforceForwardOnly ||
+              (() => {
+                const from = uuidToIndex?.get(s.fromUUID);
+                const to = uuidToIndex?.get(s.toUUID);
+                return from !== undefined && to !== undefined && from < to;
+              })()),
         );
 
         if (toRemove.size === 0 && toAdd.length === 0) return creature;
@@ -1705,6 +1783,10 @@ function applyChangeToCreature(
           remainingNeurons.add(`input-${i}`);
         }
 
+        const uuidToIndexAfterRemovals = enforceForwardOnly
+          ? buildUuidToIndexMap(creatureJSON)
+          : undefined;
+
         // Add reconnection synapses: new in candidate but not in creature
         // These maintain connectivity after neuron removal
         // IMPORTANT: Only add synapses where BOTH endpoints exist in the current creature
@@ -1714,7 +1796,13 @@ function applyChangeToCreature(
             !baseSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
             !creatureSynapses.has(`${s.fromUUID}->${s.toUUID}`) &&
             remainingNeurons.has(s.fromUUID) &&
-            remainingNeurons.has(s.toUUID),
+            remainingNeurons.has(s.toUUID) &&
+            (!enforceForwardOnly ||
+              (() => {
+                const from = uuidToIndexAfterRemovals?.get(s.fromUUID);
+                const to = uuidToIndexAfterRemovals?.get(s.toUUID);
+                return from !== undefined && to !== undefined && from < to;
+              })()),
         );
 
         if (toRemove.size === 0 && toAdd.length === 0) return creature;

@@ -260,6 +260,79 @@ Deno.test(
 );
 
 Deno.test(
+  "buildCombinedFromSuccessful: forward-only (4.x) combinations must not introduce recurrent synapses",
+  () => {
+    // Arrange: a forward-only (feed-forward) base creature.
+    const base = makeTestCreature();
+    base.forwardOnly = true;
+    base.semanticVersion = "4.0.0";
+    base.validate({ forwardOnly: true });
+
+    const baseJSON = base.exportJSON();
+
+    // Candidate A: adds a *back* connection (hidden-C -> hidden-A). This is illegal in forward-only mode.
+    // This simulates a Rust hint that is fine in recurrent mode, but must be rejected/filtered in 4.x.
+    const addBackSynapseJSON = structuredClone(baseJSON);
+    addBackSynapseJSON.synapses.push({
+      fromUUID: "hidden-C",
+      toUUID: "hidden-A",
+      weight: 0.123,
+    });
+    const addBackSynapseCreature = Creature.fromJSON(addBackSynapseJSON);
+    delete addBackSynapseCreature.uuid;
+    CreatureUtil.makeUUID(addBackSynapseCreature);
+
+    const addBackSynapseCandidate: DiscoveryCandidate = {
+      creature: addBackSynapseCreature,
+      change: {
+        type: "add-synapses",
+        description:
+          "Adds back connection hidden-C -> hidden-A (should be rejected in forward-only)",
+      },
+    };
+
+    // Candidate B: a second change so buildCombinedFromSuccessful produces a combination.
+    const removeSynapseJSON = structuredClone(baseJSON);
+    removeSynapseJSON.synapses = removeSynapseJSON.synapses.filter(
+      (s) => !(s.fromUUID === "hidden-B" && s.toUUID === "hidden-C"),
+    );
+    removeSynapseJSON.synapses.push({
+      fromUUID: "hidden-B",
+      toUUID: "output-0",
+      weight: 0.25,
+    });
+    const removeSynapseCreature = Creature.fromJSON(removeSynapseJSON);
+    delete removeSynapseCreature.uuid;
+    removeSynapseCreature.fix();
+    CreatureUtil.makeUUID(removeSynapseCreature);
+
+    const removeSynapseCandidate: DiscoveryCandidate = {
+      creature: removeSynapseCreature,
+      change: {
+        type: "remove-synapse",
+        description: "Removed hidden-B -> hidden-C synapse",
+        synapseDetails: {
+          fromNeuronUUID: "hidden-B",
+          toNeuronUUID: "hidden-C",
+        },
+      },
+    };
+
+    // Act: combine successful candidates.
+    const combined = buildCombinedFromSuccessful(
+      base,
+      "TEST_DISCOVERY",
+      [addBackSynapseCandidate, removeSynapseCandidate],
+    );
+    // Assert: either no combination is produced (because the illegal synapse is rejected),
+    // or any produced combination must still be forward-only valid.
+    for (const candidate of combined) {
+      candidate.creature.validate({ forwardOnly: true });
+    }
+  },
+);
+
+Deno.test(
   "buildCombinedFromSuccessful: add-neurons chain keeps new neurons in candidate order (new -> new -> existing)",
   () => {
     const base = makeTestCreature();
