@@ -1,5 +1,6 @@
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { writeDiagnostics } from "../utils/Diagnostics.ts";
 import { upgradeTwo } from "./UpgradeTwo.ts";
 
 /**
@@ -53,6 +54,12 @@ function validateThreeX(creature: Creature): void {
  *
  * For 4.x, forward-only is a hard invariant: any recurrent connection is an error,
  * regardless of whether the `forwardOnly` flag is set.
+ *
+ * If validation fails, this is a BUG in our breeding/mutation/discovery logic
+ * that must be fixed at the source. We do NOT silently repair or downgrade 4.x
+ * creatures - we write diagnostics and hard fail so the bug can be identified.
+ *
+ * See https://github.com/stSoftwareAU/NEAT-AI/issues/956
  */
 function validateFourX(creature: Creature): void {
   try {
@@ -62,43 +69,29 @@ function validateFourX(creature: Creature): void {
   } catch (e) {
     const error = e as Error;
 
-    // Production safety net: although 4.x is a hard forward-only invariant, we
-    // occasionally encounter corrupted persisted creatures (e.g. a back-connection
-    // sneaking in). Instead of crashing the entire job, attempt to repair using
-    // `fix({ forwardOnly: true })`.
-    if (
-      error.name === "SELF_CONNECTION" ||
-      error.name === "RECURSIVE_SYNAPSE"
-    ) {
-      console.warn(
-        `[upgrade] Corrupted 4.x creature (UUID: ${
-          creature.uuid ?? "unknown"
-        }) failed forward-only validation: ` +
-          `${error.name} - ${error.message}. Attempting repair via fix({ forwardOnly: true }).`,
-      );
-      try {
-        creature.fix({ forwardOnly: true });
-        creatureValidate(creature, { forwardOnly: true });
-        creature.forwardOnly = true;
-        return;
-      } catch (fixError) {
-        const fixErr = fixError as Error;
-        console.error(
-          `[upgrade] Repair failed for corrupted 4.x creature (UUID: ${
-            creature.uuid ?? "unknown"
-          }). ` +
-            `Downgrading to 2.0.0 to avoid crashing. ` +
-            `Original=${error.name}: ${error.message}. ` +
-            `FixError=${fixErr.name}: ${fixErr.message}`,
-        );
+    // 4.x forward-only is a hard invariant. Any failure here indicates a bug
+    // in our breeding/mutation/discovery logic. We write diagnostics so the
+    // offending creature can be analysed, then rethrow.
+    console.error(
+      `[upgrade] CRITICAL: 4.x creature (UUID: ${
+        creature.uuid ?? "unknown"
+      }) failed forward-only validation: ` +
+        `${error.name} - ${error.message}. ` +
+        `This is a bug in our code that must be fixed (not the creature).`,
+    );
 
-        // Last resort: clear the forward-only guarantee and downgrade the semantic
-        // version so callers won't treat this as a forward-only invariant.
-        creature.forwardOnly = undefined;
-        creature.semanticVersion = "2.0.0";
-        return;
-      }
-    }
+    writeDiagnostics({
+      error,
+      prefix: "upgrade-4x",
+      creature: creature.exportJSON(),
+      context: {
+        semanticVersion: creature.semanticVersion,
+        uuid: creature.uuid,
+        forwardOnly: creature.forwardOnly,
+        neuronCount: creature.neurons.length,
+        synapseCount: creature.synapses.length,
+      },
+    });
 
     throw e;
   }

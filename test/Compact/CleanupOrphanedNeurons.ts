@@ -1,8 +1,8 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
+import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { cleanupOrphanedNeurons } from "../../src/compact/CompactUtils.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
