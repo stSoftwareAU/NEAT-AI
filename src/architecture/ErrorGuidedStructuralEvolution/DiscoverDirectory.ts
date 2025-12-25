@@ -607,7 +607,16 @@ class DataRecorder {
               filePath,
               { allowGraceAfterTimeout: true },
             );
-            if (!recorded) break;
+            if (!recorded) {
+              // 25-Dec-2025: When the recorder declines a batch (typically
+              // because the record timeout has expired), we are about to abort
+              // recording altogether. Clear the local buffers so the
+              // post-processing invariants hold (and we don't assert/crash on
+              // intentionally partial recording).
+              dataSet.length = 0;
+              selectedIndices.length = 0;
+              break;
+            }
             assert(dataSet.length === 0, "Data set not empty after flush");
             assert(
               selectedIndices.length === 0,

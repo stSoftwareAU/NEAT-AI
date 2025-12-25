@@ -7,6 +7,7 @@ import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
+import { cleanupOrphanedNeurons } from "./CompactUtils.ts";
 
 /**
  * Compacts a creature by removing redundant neurons and connections.
@@ -159,38 +160,42 @@ export function compactCreature(
     }
   }
 
-  /** clean up dangling neurons */
-  let danglesFound: boolean;
-  do {
-    danglesFound = false;
-    for (const neuron of compactCreature.neurons) {
-      if (neuron.type === "hidden" || neuron.type === "constant") {
-        const outConns = outwardConnections.get(neuron.uuid) || [];
-        if (outConns.length === 0) {
-          compactCreature.neurons = compactCreature.neurons.filter((n) =>
-            n.uuid !== neuron.uuid
-          );
-          neuronMap.delete(neuron.uuid);
-          compactCreature.synapses = compactCreature.synapses.filter((s) =>
-            s.toUUID !== neuron.uuid
-          );
-          didCompact = true;
-          break;
-        }
-      }
-    }
-  } while (danglesFound);
+  /**
+   * Clean up orphaned neurons using the robust iterative utility.
+   *
+   * This replaces a previous buggy loop that failed to:
+   * - Set `danglesFound = true` when removing neurons (so iteration never continued)
+   * - Rebuild the outwardConnections map after backward-synapse removal
+   *
+   * See https://github.com/stSoftwareAU/NEAT-AI/issues/956
+   */
+  const orphanResult = cleanupOrphanedNeurons(compactCreature);
+  if (orphanResult.removed > 0 || orphanResult.converted > 0) {
+    didCompact = true;
+  }
 
   if (didCompact) {
     addTag(compactCreature, "approach", "compact" as Approach);
     delete compactCreature.memetic;
     removeTag(compactCreature, "approach-logged");
 
-    const oldNeurons = compactCreature.neurons.length -
-      compactCreature.input - compactCreature.output;
+    const oldNeurons = startExport.neurons.length -
+      startExport.input - startExport.output;
     addTag(compactCreature, "old-neurons", oldNeurons.toString());
 
+    // Preserve forwardOnly semantics from source creature
+    if (creature.forwardOnly === true) {
+      compactCreature.forwardOnly = true;
+    }
+
     const c = Creature.fromJSON(compactCreature);
+
+    // Validate the compacted creature to catch any structural issues early.
+    // A 4.x forward-only creature must remain valid; any failure here is a bug.
+    c.validate();
+    if (!feedbackLoop && creature.forwardOnly === true) {
+      c.validate({ forwardOnly: true });
+    }
 
     return c;
   }

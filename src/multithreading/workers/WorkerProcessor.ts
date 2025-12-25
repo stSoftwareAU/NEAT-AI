@@ -5,6 +5,7 @@ import { trainDir } from "../../architecture/Training.ts";
 import { Costs } from "../../Costs.ts";
 import type { CostInterface } from "../../costs/CostInterface.ts";
 import { Creature } from "../../Creature.ts";
+import { writeDiagnostics } from "../../utils/Diagnostics.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 export class WorkerProcessor {
@@ -99,19 +100,12 @@ export class WorkerProcessor {
         };
       } catch (error) {
         console.error(error);
-        Deno.mkdirSync(".diagnostics", { recursive: true });
-        Deno.writeTextFileSync(
-          `.diagnostics/error.txt`,
-          `error: ${error}`,
-        );
-        Deno.writeTextFileSync(
-          `.diagnostics/creature.txt`,
-          data.evaluate.creature,
-        );
-        Deno.writeTextFileSync(
-          `.diagnostics/data.json`,
-          JSON.stringify(data, null, 2),
-        );
+        writeDiagnostics({
+          error,
+          prefix: "evaluate",
+          creature: data.evaluate.creature,
+          context: { taskID: data.taskID, data },
+        });
         throw error;
       } finally {
         // Ensure creature is disposed even if an error occurs

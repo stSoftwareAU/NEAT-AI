@@ -5,6 +5,7 @@ import { editParentByIndex } from "../breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
 import { upgrade } from "../upgrade/Upgrade.ts";
+import { writeDiagnostics } from "../utils/Diagnostics.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
@@ -416,19 +417,13 @@ export class Offspring {
         default:
           console.error(e);
           offspring.DEBUG = false;
-          Deno.writeTextFileSync(
-            ".offspring-mother.json",
-            JSON.stringify(mother.exportJSON(), null, 1),
-          );
-          Deno.writeTextFileSync(
-            ".offspring-offspring.json",
-            JSON.stringify(offspring.exportJSON(), null, 1),
-          );
-          Deno.writeTextFileSync(
-            ".offspring-father.json",
-            JSON.stringify(father.exportJSON(), null, 1),
-          );
-
+          writeDiagnostics({
+            error,
+            prefix: "offspring",
+            mother: mother.exportJSON(),
+            father: father.exportJSON(),
+            offspring: offspring.exportJSON(),
+          });
           throw e;
       }
     }

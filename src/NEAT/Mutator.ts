@@ -334,12 +334,15 @@ export class Mutator {
                 `Violations(sample up to 10): ${violations.join(" | ")}`,
             );
 
-            // Forward-only 4.x is a hard guarantee: never repair by mutation.
+            // Forward-only 4.x is a hard guarantee. We must crash fast (even on
+            // unattended machines) so we can locate the logic that introduced a
+            // recurrent connection into a supposedly forward-only creature.
             if (creature.forwardOnly === true && major >= 4) {
               throw new Error(
                 `[Mutator] CRITICAL: forward-only 4.x creature became invalid after '${method.name}': ` +
                   `${error.name} - ${error.message}. ` +
-                  `This indicates a corruption bug (recurrent connections must never be introduced).`,
+                  `This indicates a corruption bug (recurrent connections must never be introduced). ` +
+                  `Violations(sample up to 10): ${violations.join(" | ")}`,
               );
             }
 

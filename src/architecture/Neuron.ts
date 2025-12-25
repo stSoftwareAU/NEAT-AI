@@ -344,6 +344,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
       return true;
     }
 
+    // Forward-only safety: never create a self-loop as a "last resort" outward
+    // connection when the creature is explicitly marked as forward-only.
+    //
+    // Rationale (Australian English): self-loops are valid in recurrent/memory
+    // mode, but they must not be introduced during `fix()` for forward-only
+    // creatures.
+    const isForwardOnly = this.creature.forwardOnly === true;
+
     const candidates: number[] = [];
     const nodeCount = this.creature.nodeCount();
 
@@ -359,6 +367,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     if (
       allowSelfTargets &&
+      isForwardOnly === false &&
       !this.creature.getSynapse(this.index, this.index)
     ) {
       candidates.push(this.index);

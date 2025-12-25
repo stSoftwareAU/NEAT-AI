@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
 
@@ -185,7 +185,14 @@ Deno.test("upgrade should validate and not modify valid 4.x creatures", () => {
   );
 });
 
-Deno.test("upgrade should repair forward-only 4.x creatures with recurrent connections", () => {
+/**
+ * Test for https://github.com/stSoftwareAU/NEAT-AI/issues/956
+ *
+ * A 4.x creature is a hard invariant: if it becomes invalid (recurrent connections),
+ * that's a bug in our breeding/mutation/discovery logic. We do NOT silently repair -
+ * we throw so the bug can be identified and fixed at the source.
+ */
+Deno.test("upgrade should throw for corrupted 4.x creatures with recurrent connections", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
     semanticVersion: "4.0.0",
@@ -193,14 +200,18 @@ Deno.test("upgrade should repair forward-only 4.x creatures with recurrent conne
   creature.forwardOnly = true;
 
   const hiddenNeuron = creature.neurons[creature.input]; // First hidden neuron
+  // Inject a recurrent self-loop. `connect()` guards against adding recurrent
+  // links when `forwardOnly` is set, so temporarily clear the flag to simulate
+  // a corrupted persisted creature.
+  creature.forwardOnly = undefined;
   creature.connect(hiddenNeuron.index, hiddenNeuron.index, 0.5);
+  creature.forwardOnly = true;
 
-  const upgraded = upgrade(creature);
-  upgraded.validate({ forwardOnly: true });
-  assertEquals(
-    upgraded.getSynapse(hiddenNeuron.index, hiddenNeuron.index),
-    null,
-    "upgrade() should remove recurrent self loops for forward-only 4.x creatures",
+  // Act/Assert: upgrading a corrupted 4.x creature should throw.
+  assertThrows(
+    () => upgrade(creature),
+    Error,
+    "Self connection synapse",
   );
 });
 
