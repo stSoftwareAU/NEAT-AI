@@ -3,6 +3,8 @@ import { Creature } from "../../src/Creature.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
 import { validateAfterDiscoveryOrThrow } from "../../src/discovery/DiscoveryPostValidate.ts";
 
+// cspell:ignore TESTDISC
+
 Deno.test(
   "validateAfterDiscoveryOrThrow: throws for forward-only base when discovery result has back connection",
   () => {
