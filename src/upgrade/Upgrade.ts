@@ -71,7 +71,9 @@ function validateFourX(creature: Creature): void {
     const error = e as Error;
 
     // Check if this is a forward-only violation that we can attempt to repair.
-    if (error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE") {
+    if (
+      error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE"
+    ) {
       console.warn(
         `[upgrade] WARNING: 4.x creature (UUID: ${
           creature.uuid ?? "unknown"
