@@ -366,6 +366,12 @@ export class Mutator {
                 a.from === b.from ? a.to - b.to : a.from - b.from
               );
               creature.clearCache();
+              // After filtering recurrent synapses, run a forward-only fix pass again.
+              //
+              // Rationale (Australian English): filtering can remove a required IF
+              // connection (or other structural invariant). Running fix() here is
+              // acceptable because this is *repair*, not candidate generation.
+              creature.fix({ forwardOnly: true });
               creature.validate({ forwardOnly: true });
             }
             if (this.config.feedbackLoop !== true) {
