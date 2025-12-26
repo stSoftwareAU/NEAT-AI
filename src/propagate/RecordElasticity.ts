@@ -75,15 +75,18 @@ export function recordTargetFeasibilityFactor(
   const range = squash.range;
   const name = squash.getName();
 
-  // Hard feasibility: if the target activation is outside the squash output
-  // range, treat it as impossible for selected squashes where clamping hides
-  // impossibility and inflates discovery metrics.
+  // Preference weighting (NOT hard blocking):
+  //
+  // For some squashes, requesting out-of-range targets (or strongly undesirable
+  // targets) can inflate record-time error attribution. We bias away from these
+  // paths, but we do not hard-block them here because we support “partial”
+  // allocation (clamp to feasible boundary + redistribute residue).
   if (HARD_RANGE_SQUASHES.has(name)) {
     if (
       targetActivation < range.low - RECORD_TARGET_EPSILON ||
       targetActivation > range.high + RECORD_TARGET_EPSILON
     ) {
-      return 0;
+      return 0.1;
     }
   }
 
@@ -93,10 +96,147 @@ export function recordTargetFeasibilityFactor(
     NEGATIVE_RESIST_SQUASHES.has(name) &&
     targetActivation < -RECORD_TARGET_EPSILON
   ) {
-    return 0;
+    return 0.1;
   }
 
   return 1;
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  if (v < lo) return lo;
+  if (v > hi) return hi;
+  return v;
+}
+
+/**
+ * Clamp + redistribute record-time shares so we never request impossible (or
+ * strongly undesirable) upstream activation targets.
+ *
+ * Example: ABSOLUTE has activation range [0, +∞). If a link’s allocated share
+ * would imply a negative target activation, we clamp that share to the
+ * boundary (target=0) and redistribute the leftover error to other links.
+ */
+export function constrainAndRedistributeRecordShares(
+  error: number,
+  links: ReadonlyArray<RecordElasticLink>,
+  shares: ReadonlyArray<number>,
+  options?: Readonly<{
+    plankConstant?: number;
+  }>,
+): number[] {
+  const plankConstant = options?.plankConstant ?? 1e-12;
+  const workingShares = shares.slice();
+
+  // Preallocate bounds arrays for stability / perf.
+  const minShareBound = new Array<number>(links.length);
+  const maxShareBound = new Array<number>(links.length);
+
+  for (let pass = 0; pass < links.length + 2; pass++) {
+    let sum = 0;
+
+    // Clamp each share to what its upstream squash can accept.
+    for (let i = 0; i < links.length; i++) {
+      const link = links[i];
+      const weight = link.synapse.weight;
+      const fromNeuron = link.fromNeuron;
+      const fromValue = link.fromValue;
+
+      let minTarget = -Infinity;
+      let maxTarget = Infinity;
+
+      if (
+        fromNeuron.type !== "input" &&
+        fromNeuron.type !== "constant"
+      ) {
+        const squash = fromNeuron.findSquash();
+        const name = squash.getName();
+
+        if (HARD_RANGE_SQUASHES.has(name)) {
+          minTarget = squash.range.low;
+          maxTarget = squash.range.high;
+        } else if (NEGATIVE_RESIST_SQUASHES.has(name)) {
+          // Soft preference: avoid going negative when alternatives exist.
+          minTarget = Math.max(0, squash.range.low);
+          maxTarget = squash.range.high;
+        }
+      }
+
+      let minShare = -Infinity;
+      let maxShare = Infinity;
+
+      // If we cannot recurse meaningfully (no weight / blocked safe-zone),
+      // clamp to 0 share.
+      const gate = Math.max(
+        0,
+        Math.min(1, link.safeZoneFactor * link.feasibilityFactor),
+      );
+      if (!weight || !Number.isFinite(weight) || gate <= plankConstant) {
+        minShare = 0;
+        maxShare = 0;
+      } else {
+        const a = Number.isFinite(minTarget)
+          ? (weight * minTarget - fromValue)
+          : -Infinity;
+        const b = Number.isFinite(maxTarget)
+          ? (weight * maxTarget - fromValue)
+          : Infinity;
+        minShare = Math.min(a, b);
+        maxShare = Math.max(a, b);
+      }
+
+      minShareBound[i] = minShare;
+      maxShareBound[i] = maxShare;
+
+      const s = Number.isFinite(workingShares[i]) ? workingShares[i] : 0;
+      const clampedShare = clamp(s, minShare, maxShare);
+      workingShares[i] = clampedShare;
+      sum += clampedShare;
+    }
+
+    // Leftover value-space error after clamping.
+    const residue = error - sum;
+    if (!Number.isFinite(residue) || Math.abs(residue) <= plankConstant) {
+      break;
+    }
+
+    // Find links that still have capacity to absorb residue in the required direction.
+    const eligibleLinks: RecordElasticLink[] = [];
+    const eligibleIndex: number[] = [];
+    for (let i = 0; i < links.length; i++) {
+      const s = workingShares[i] ?? 0;
+      if (residue > 0) {
+        if (s < (maxShareBound[i] ?? 0) - plankConstant) {
+          eligibleLinks.push(links[i]);
+          eligibleIndex.push(i);
+        }
+      } else {
+        if (s > (minShareBound[i] ?? 0) + plankConstant) {
+          eligibleLinks.push(links[i]);
+          eligibleIndex.push(i);
+        }
+      }
+    }
+
+    if (eligibleLinks.length === 0) {
+      break;
+    }
+
+    // Redistribute residue across remaining-capacity links using elasticity.
+    const { shares: redistributed } = distributeRecordError(
+      residue,
+      eligibleLinks,
+      {
+        plankConstant,
+        allowEqualFallback: true,
+      },
+    );
+    for (let j = 0; j < eligibleIndex.length; j++) {
+      const idx = eligibleIndex[j];
+      workingShares[idx] = (workingShares[idx] ?? 0) + (redistributed[j] ?? 0);
+    }
+  }
+
+  return workingShares;
 }
 
 export function getOrComputeRecordValue(
@@ -232,8 +372,20 @@ export function distributeRecordError(
     return { links, shares: new Array(links.length).fill(0) };
   }
 
+  // IMPORTANT:
+  // Training-time elasticity uses activation² because it approximates the
+  // minimum L2 *weight-change* solution for achieving a target Δv:
+  //   minimise Σ(Δw_i²) s.t. Σ(a_i Δw_i) = Δv  => shares ∝ a_i²
+  //
+  // Record-time attribution recursively calls `fromNeuron.record(targetActivation)`,
+  // i.e. it implies changing *upstream activations*, not weights. For changing
+  // activations, the analogous minimum L2 solution is:
+  //   minimise Σ(Δa_i²) s.t. Σ(w_i Δa_i) = Δv  => shares ∝ w_i²
+  //
+  // This prevents “exploding” implied targets when a link has a tiny weight:
+  //   targetFromActivation = (fromValue + share) / weight.
   const meta = links.map((l) => ({
-    activation: l.fromActivation,
+    activation: Math.abs(l.synapse.weight),
     safeZoneFactor: l.safeZoneFactor * l.feasibilityFactor,
   }));
 
