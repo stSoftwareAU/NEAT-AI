@@ -10,6 +10,18 @@ function getMajorVersion(version: string | undefined): number {
   return Number.isNaN(major) ? 0 : major;
 }
 
+function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
+  // Once forward-only is confirmed, bump 2.x.x/3.x.x → 4.0.0.
+  // Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
+  const version = creature.semanticVersion;
+  const match = version ? /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(version) : null;
+  if (!match) return;
+  const major = Number.parseInt(match[1], 10);
+  if (major === 2 || major === 3) {
+    creature.semanticVersion = "4.0.0";
+  }
+}
+
 /**
  * Interface representing the structure of the CRISPR modification data.
  */
@@ -449,6 +461,7 @@ export class CRISPR {
         // to introduce recurrent connections into such creatures.
         modifiedCreature.validate({ forwardOnly: true });
         modifiedCreature.forwardOnly = true;
+        upgradeSemanticVersionIfForwardOnlyConfirmed(modifiedCreature);
       } else {
         modifiedCreature.validate();
       }

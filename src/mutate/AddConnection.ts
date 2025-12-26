@@ -61,7 +61,7 @@ export class AddConnection implements RadioactiveInterface {
         if (
           error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE"
         ) {
-          // : forward-only pre-4.x may temporarily be invalid; repair it
+          // Australian English: forward-only pre-4.x may temporarily be invalid; repair it
           // so we can continue evolution and only lock the invariant once confirmed.
           this.creature.fix({ forwardOnly: true });
           this.creature.validate({ forwardOnly: true });

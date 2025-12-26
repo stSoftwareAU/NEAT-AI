@@ -17,7 +17,7 @@
  * - If nothing is movable (all scores ~0), we fall back to an equal split so we
  *   still break symmetry (eg. when activations are all zero early in training).
  *
- * : "normalise", "behaviour".
+ * Australian English: "normalise", "behaviour".
  */
 export type ElasticLink = Readonly<{
   activation: number;

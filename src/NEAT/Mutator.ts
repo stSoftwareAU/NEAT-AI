@@ -362,7 +362,7 @@ export class Mutator {
               // Defensive fallback: if fix() did not fully remove recurrent links,
               // explicitly filter self/back connections and re-validate.
               //
-              // : this is intentionally redundant because this path
+              // Australian English: this is intentionally redundant because this path
               // can run unattended and we prefer deterministic recovery for pre-4.x
               // creatures rather than flaky test failures.
               creature.synapses = creature.synapses.filter((s) =>
